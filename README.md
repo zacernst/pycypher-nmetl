@@ -84,3 +84,5 @@ To clean everything up, deleting the virtual environment, documentation, and so 
 ```bash
 make clean
 ```
+
+You don't *need* to use the `Makefile`, and therefore you don't *need* to have `uv` installed on your system. But that's what all the cool kids are using these days.
