@@ -1,6 +1,13 @@
 # Cypher AST Generator for Python
 
-This is a *work in progress*, by which I mean, "ugly, but fixable."
+This is a *work in progress*, by which I mean, "ugly, but fixable." It is also
+woefully incomplete. It generates an abstract syntax tree for Cypher statements
+that use only a subset of the language. That subset is growing, but it's still
+small.
+
+The hope is that this will be useful for building modules that can take advantage
+of the Cypher query language, by eliminating the need to do all the boring work
+of writing a parser and generating an AST.
 
 ## How to use it
 
@@ -28,7 +35,8 @@ Cypher(Query(Match(Node(NodeNameLabel(n, Thing), None)), Return(Projection([Obje
 ```
 
 If you want to understand what's happening, what Python classes are being built, etc., then you'll
-have to use the source, Luke.
+have to use the source, Luke. Check out the `__main__` function at the end of the `cypher.py` script. There
+are no docs yet. Like I said, this is a *work in progress*.
 
 ## Installation
 
