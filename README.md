@@ -1,0 +1,78 @@
+# Cypher AST Generator for Python
+
+This is a *work in progress*, by which I mean, "ugly, but fixable."
+
+## How to use it
+
+Don't. But if you really want to, then:
+
+```python
+>>> from pycypher.cypher import CypherParser
+
+>>> cypher = CypherParser("MATCH (n:Thing) RETURN n.foo")
+>>> cypher.parsed.print_tree()
+Cypher
+└── Query
+    ├── Match
+    │   └── Node
+    │       └── NodeNameLabel
+    │           ├── n
+    │           └── Thing
+    └── Return
+        └── Projection
+            └── ObjectAttributeLookup
+                ├── n
+                └── foo
+>>> print(cypher.parsed)
+Cypher(Query(Match(Node(NodeNameLabel(n, Thing), None)), Return(Projection([ObjectAttributeLookup(n, foo)]))))
+```
+
+If you want to understand what's happening, what Python classes are being built, etc., then you'll
+have to use the source, Luke.
+
+## Installation
+
+### Mac and Linux
+
+You'll need to be able to run `uv` in order to use the `Makefile`. To install `uv` on Linux or Mac:
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+If you don't have `make` on your Mac, then you should:
+
+```bash
+brew install make
+```
+
+And if you don't have `brew`, then install it with:
+
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+```
+
+If you're running Linux without `make`, then follow the directions for your distribution. For example,
+on Ubuntu, you can:
+
+```bash
+sudo apt install make
+```
+
+### Windows 
+
+On Windows, erase your hard drive, install Linux, and then follow the directions above.
+
+## Setting everything up
+
+To set up the virtual environment, install all the dependencies, install the right version of Python, build the package, install it as an editable project, run a bunch of unit tests, and build HTML documentation, do:
+
+```bash
+make all
+```
+
+To clean everything up, deleting the virtual environment, documentation, and so on, do:
+
+```bash
+make clean
+```
