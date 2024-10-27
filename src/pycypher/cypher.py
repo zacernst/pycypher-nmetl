@@ -10,7 +10,6 @@ from rich.tree import Tree
 
 from pycypher.exceptions import (
     CypherParsingError,
-    UnexpectedCypherStructureError,
 )
 from pycypher.logger import LOGGER
 
@@ -26,9 +25,10 @@ class Constraint:
 
 
 class IsTrue(Constraint):
-    '''
+    """
     Class to represent a constraint that merely says that a ``Predicate`` is true.
-    '''
+    """
+
     def __init__(self, predicate: Predicate):
         self.predicate = predicate
 
@@ -40,8 +40,8 @@ class IsTrue(Constraint):
 
 
 class HasLabel(Constraint):
-    def __init__(self, node: str, label: str):
-        self.node = node
+    def __init__(self, node_id: str, label: str):
+        self.node_id = node_id
         self.label = label
 
     def __repr__(self):
@@ -58,28 +58,102 @@ class HasLabel(Constraint):
 
 
 class HasAttributeWithValue(Constraint):
-    def __init__(self, node: str, attribute: str, value: Any):
-        self.node = node
+    def __init__(self, node_id: str, attribute: str, value: Any):
+        self.node_id = node_id
         self.attribute = attribute
         self.value = value
 
     def __repr__(self):
-        return f"HasAttributeWithValue: [{self.node}] {self.attribute}: {self.value}"
+        return f"HasAttributeWithValue: [{self.node_id}] {self.attribute}: {self.value}"
 
     def __hash__(self) -> int:
         return hash(
             "HasAttributeWithValue"
-            + self.node
+            + self.node_id
             + self.attribute
             + str(self.value)
         )
 
     def __eq__(self, other: Any) -> bool:
         return (
-            self.node == other.node
+            self.node_id == other.node_id
             and self.attribute == other.attribute
             and self.value == other.value
         )  # noqa: E501
+
+
+class AtomicFact:
+    def satisfies(self, constraint: Constraint) -> bool:
+        return self._satisfies(constraint)
+
+
+class NodeHasLabel(AtomicFact):
+    def __init__(self, node_id: str, node_label: str):
+        self.node_id = node_id
+        self.label = node_label
+
+    def __repr__(self):
+        return f"NodeHasLabel: {self.node_id} {self.label}"
+
+    def _satisfies(self, constraint: Constraint) -> bool:
+        if not isinstance(constraint, HasLabel):
+            return False
+        return bool(
+            constraint.node_id == self.node_id
+            and constraint.label == self.label
+        )
+
+
+class NodeHasAttributeWithValue(AtomicFact):
+    def __init__(self, node_id: str, attribute: str, value: Any):
+        self.node_id = node_id
+        self.attribute = attribute
+        self.value = value
+
+    def __repr__(self):
+        return f"NodeHasAttributeWithValue: {self.node_id} {self.attribute} {self.value}"
+
+    def _satisfies(self, constraint: Constraint) -> bool:
+        if not isinstance(constraint, HasAttributeWithValue):
+            return False
+        return bool(
+            constraint.node_id == self.node_id
+            and constraint.attribute == self.attribute
+            and constraint.value == self.value
+        )
+
+
+class NodeRelatedToNode(AtomicFact):
+    def __init__(self, node1_id: str, node2_id: str, relationship_label: str):
+        self.node1_id = node1_id
+        self.node2_id = node2_id
+        self.relationship_label = relationship_label
+
+    def __repr__(self):
+        return f"NodeRelatedToNode: {self.node1_id} {self.relationship_label} {self.node2_id}"
+
+    def _satisfies(self, constraint: Constraint) -> bool:
+        if not isinstance(constraint, NodeRelatedToNode):
+            return False
+        return bool(
+            constraint.node1_id == self.node1_id
+            and constraint.node2_id == self.node2_id
+            and constraint.relationship_label == self.relationship_label
+        )
+
+
+class FactCollection:
+    def __init__(self, facts: List[AtomicFact]):
+        self.facts = facts
+
+    def __repr__(self):
+        return f"FactCollection: {len(self.facts)}"
+
+    def satisfies(self, constraint: Constraint) -> bool:
+        return any(fact.satisfies(constraint) for fact in self.facts)
+
+    def __len__(self):
+        return len(self.facts)
 
 
 tokens = [
@@ -867,33 +941,10 @@ class CypherParser:
         return self.parsed.__str__()
 
 
-def cypher_condition(cypher: str) -> Any:
-    def inner_decorator(f: Any) -> Any:
-        LOGGER.info(f"Wrapping function {f.__name__}...")
-        cypher_parser = CypherParser(cypher)
-        try:
-            LOGGER.debug(
-                f"Match clause: {cypher_parser.parsed.cypher.match_clause}"
-            )
-        except Exception as e:
-            LOGGER.info(
-                "Error in expected structure of `cypher_condition` argument"
-            )
-            raise UnexpectedCypherStructureError(e)
-
-        def wrapped(*args: List[Any], **kwargs: Dict[Any, Any]):
-            return f(*args, **kwargs)
-
-        return wrapped
-
-    return inner_decorator
-
-
 if __name__ == "__main__":
-
-    @cypher_condition("MATCH (n) RETURN n.foo")
-    def foo(x):
-        return x + 1
+    # @cypher_condition("MATCH (n) RETURN n.foo")
+    # def foo(x):
+    #     return x + 1
 
     statements = [
         "MATCH (n:Thing) WHERE n.key = 2, n.foo = 3 RETURN n.foobar, n.baz",
@@ -906,3 +957,15 @@ if __name__ == "__main__":
     for statement in statements:
         result = CypherParser(statement)
         print(statement, result)
+
+    fact1 = NodeHasLabel("1", "Thing")
+    fact2 = NodeHasAttributeWithValue("1", "key", 2)
+    fact3 = NodeRelatedToNode("1", "2", "MyRelationship")
+    fact4 = NodeHasLabel("2", "OtherThing")
+    fact5 = NodeHasAttributeWithValue("2", "key", 5)
+
+    fact_collection = FactCollection([fact1, fact2, fact3, fact4, fact5])
+
+    print(fact_collection.satisfies(HasLabel("1", "Thing")))
+    print(fact_collection.satisfies(HasLabel("2", "OtherThing")))
+    print(fact_collection.satisfies(HasLabel("2", "NoThisIsFalse")))

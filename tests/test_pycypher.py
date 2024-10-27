@@ -11,7 +11,27 @@ from pycypher.cypher import (
     ObjectAttributeLookup,
     Query,
     Where,
+    NodeHasLabel,
+    NodeHasAttributeWithValue,
+    NodeRelatedToNode,
+    FactCollection,
 )
+
+
+@pytest.fixture
+def fact_collection():
+    fact1 = NodeHasLabel("1", "Thing")
+    fact2 = NodeHasAttributeWithValue("1", "key", 2)
+    fact3 = NodeRelatedToNode("1", "2", "MyRelationship")
+    fact4 = NodeHasLabel("2", "OtherThing")
+    fact5 = NodeHasAttributeWithValue("2", "key", 5)
+    fact_collection = FactCollection([fact1, fact2, fact3, fact4, fact5])
+
+    return fact_collection
+
+
+def test_fact_collection_has_facts(fact_collection: FactCollection):
+    assert len(fact_collection) == 5
 
 
 @pytest.mark.cypher
