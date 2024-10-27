@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from abc import abstractmethod
+from typing import Any, Dict, Generator, List, Optional, Tuple, Type
 
-import ply.lex as lex
-import ply.yacc as yacc
+import ply.lex as lex  # type: ignore
+import ply.yacc as yacc  # type: ignore
 from rich import print as rprint
 from rich.tree import Tree
 
@@ -12,7 +13,6 @@ from pycypher.exceptions import (
     UnexpectedCypherStructureError,
 )
 from pycypher.logger import LOGGER
-from typing import Any, Generator, Optional, List
 
 
 class State:
@@ -21,18 +21,21 @@ class State:
 
 class Constraint:
     @abstractmethod
-    def eval(self, *args, **kwargs):  # type: ignore
+    def eval(self, *args, **kwargs) -> Any | None:  # type: ignore
         pass
 
 
 class IsTrue(Constraint):
+    '''
+    Class to represent a constraint that merely says that a ``Predicate`` is true.
+    '''
     def __init__(self, predicate: Predicate):
         self.predicate = predicate
 
-    def eval(self, *args) -> bool | None:
+    def eval(self, *_) -> bool | None:
         pass
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"IsTrue({self.predicate})"
 
 
@@ -71,9 +74,9 @@ class HasAttributeWithValue(Constraint):
             + str(self.value)
         )
 
-    def __eq__(self, other) -> bool:
-        return ( 
-            self.node == other.node  # noqa: E501 # type: ignore
+    def __eq__(self, other: Any) -> bool:
+        return (
+            self.node == other.node
             and self.attribute == other.attribute
             and self.value == other.value
         )  # noqa: E501
@@ -139,7 +142,7 @@ reserved = {
 tokens = tokens + list(reserved.values())
 
 
-def t_WORD(t):
+def t_WORD(t: lex.LexToken) -> Any:
     r"[a-zA-Z_][a-zA-Z_0-9]*"
     t.type = reserved.get(t.value, "WORD")  # Check for reserved words
     return t
@@ -158,7 +161,7 @@ class TreeMixin:
     @property
     def children(self) -> Generator[TreeMixin | str | None]:
         yield None
-    
+
     def tree(self) -> Tree:
         t = Tree(self.__class__.__name__)
         for child in self.children:
@@ -224,7 +227,9 @@ class Query(TreeMixin):
 
 
 class Predicate(TreeMixin):
-    def __init__(self, left_side: TreeMixin, operator: TreeMixin, right_side: TreeMixin):
+    def __init__(
+        self, left_side: TreeMixin, operator: TreeMixin, right_side: TreeMixin
+    ):
         self.left_side = left_side
         self.operator = operator
         self.right_side = right_side
@@ -291,14 +296,14 @@ class ObjectAttributeLookup(TreeMixin):
 
 
 class Alias(TreeMixin):
-    def __init__(self, reference, alias):
+    def __init__(self, reference: str, alias: str):
         self.reference = reference
         self.alias = alias
 
     def __repr__(self):
         return f"Alias({self.reference}, {self.alias})"
 
-    def tree(self):
+    def tree(self) -> Tree:
         t = Tree(self.__class__.__name__)
         t.add(
             self.reference.tree()
@@ -315,7 +320,7 @@ class Alias(TreeMixin):
 
 
 class Match(TreeMixin):
-    def __init__(self, pattern: TreeMixin, where: Optional[TreeMixin]=None):
+    def __init__(self, pattern: TreeMixin, where: Optional[TreeMixin] = None):
         self.pattern = pattern
         self.where = where
 
@@ -358,7 +363,7 @@ class Return(TreeMixin):
 
 
 class Projection(TreeMixin):
-    def __init__(self, lookups):
+    def __init__(self, lookups: List[ObjectAttributeLookup] | None = None):
         self.lookups = lookups or []
 
     def __repr__(self):
@@ -400,9 +405,13 @@ class NodeNameLabel(TreeMixin):
 
 
 class Node(TreeMixin):
-    def __init__(self, node_name_label: NodeNameLabel, mapping_list: Optional[List[Mapping]]=None):
+    def __init__(
+        self,
+        node_name_label: NodeNameLabel,
+        mapping_list: Optional[List[Mapping]] = None,
+    ):
         self.node_name_label = node_name_label
-        self.mapping_list = mapping_list
+        self.mapping_list: List[Mapping] | List[None] = mapping_list or []
 
     @property
     def constraints(self):
@@ -441,7 +450,7 @@ class Node(TreeMixin):
 
 
 class Relationship(TreeMixin):
-    def __init__(self, name: str):
+    def __init__(self, name: str | NodeNameLabel):
         self.name = name
 
     def __repr__(self):
@@ -487,7 +496,7 @@ class Mapping(TreeMixin):  # This is not complete
 
 class MappingSet(TreeMixin):
     def __init__(self, mappings: List[Mapping]):
-        self.mappings = mappings
+        self.mappings: List[Mapping] = mappings
 
     def __repr__(self) -> str:
         return f"MappingSet({self.mappings})"
@@ -553,32 +562,32 @@ class RelationshipRightLeft(TreeMixin):
 
 
 class RelationshipChain(TreeMixin):
-    def __init__(self, steps):
+    def __init__(self, steps: List[TreeMixin]):
         self.steps = steps
 
     def __repr__(self):
         return f"RelationshipChain({self.steps})"
 
-    def tree(self):
+    def tree(self) -> Tree:
         t = Tree(self.__class__.__name__)
         for step in self.steps:
             t.add(step.tree())
         return t
 
     @property
-    def children(self):
+    def children(self) -> Generator[TreeMixin]:
         for step in self.steps:
             yield step
 
 
 class Where(TreeMixin):
-    def __init__(self, predicate):
+    def __init__(self, predicate: Predicate):
         self.predicate = predicate
 
     def __repr__(self):
         return f"Where({self.predicate})"
 
-    def tree(self):
+    def tree(self) -> Tree:
         t = Tree(self.__class__.__name__)
         t.add(self.predicate.tree())
         return t
@@ -589,7 +598,12 @@ class Where(TreeMixin):
 
 
 class BinaryBoolean(TreeMixin):
-    def __init__(self, left_side, operator, right_side):
+    def __init__(
+        self,
+        left_side: Predicate | Literal,
+        operator: str,
+        right_side: Predicate | Literal,
+    ):
         self.left_side = left_side
         self.operator = operator
         self.right_side = right_side
@@ -599,7 +613,7 @@ class BinaryBoolean(TreeMixin):
             f"{self.__class__.__name__}({self.left_side}, {self.right_side})"
         )
 
-    def tree(self):
+    def tree(self) -> Tree:
         t = Tree(self.__class__.__name__)
         t.add(self.left_side.tree())
         t.add(self.right_side.tree())
@@ -607,11 +621,13 @@ class BinaryBoolean(TreeMixin):
 
 
 class And(BinaryBoolean):
-    def __init__(self, left_side, right_side):
+    def __init__(
+        self, left_side: Predicate | Literal, right_side: Predicate | Literal
+    ):
         self.left_side = left_side
         self.right_side = right_side
 
-    def tree(self):
+    def tree(self) -> Tree:
         t = Tree(self.__class__.__name__)
         t.add(self.left_side.tree())
         t.add(self.right_side.tree())
@@ -619,7 +635,7 @@ class And(BinaryBoolean):
 
 
 class Or(BinaryBoolean):
-    def tree(self):
+    def tree(self) -> Tree:
         t = Tree(self.__class__.__name__)
         t.add(self.left_side.tree())
         t.add(self.right_side.tree())
@@ -627,7 +643,7 @@ class Or(BinaryBoolean):
 
 
 class Literal(TreeMixin):
-    def __init__(self, value):
+    def __init__(self, value: Any):
         self.value = value
 
     def __repr__(self):
@@ -642,30 +658,34 @@ class Literal(TreeMixin):
 start = "cypher"
 
 
-def p_string(p):
+def p_string(p: yacc.YaccProduction):
     """string : DQUOTE WORD DQUOTE"""
 
 
-def p_cypher(p):
+def p_cypher(p: List[TreeMixin]):
     """cypher : query"""
     if len(p) == 2:
         p[0] = Cypher(p[1])
-    elif len(p) == 3:
-        p[0] = Cypher(p[1], p[2])
+    else:
+        raise Exception(
+            "Parser only accepts one query, and no update clauses (for now)."
+        )
 
 
-def p_query(p):
+def p_query(p: Tuple[yacc.YaccProduction, Match, Return]):
     """query : match_pattern return"""
     p[0] = Query(p[1], p[2])
 
 
-def p_name_label(p):
+def p_name_label(
+    p: Tuple[yacc.YaccProduction, str] | Tuple[yacc.YaccProduction, str, str],
+):
     """name_label : WORD
     | WORD COLON WORD"""
     p[0] = NodeNameLabel(p[1], p[3] if len(p) == 4 else None)
 
 
-def p_mapping_list(p):
+def p_mapping_list(p: List[TreeMixin]):
     """mapping_list : WORD COLON literal
     | mapping_list COMMA WORD COLON literal
     """
@@ -678,7 +698,7 @@ def p_mapping_list(p):
         raise Exception("What?")
 
 
-def p_node(p):
+def p_node(p: yacc.YaccProduction):
     """node : LPAREN name_label RPAREN
     | LPAREN name_label LCURLY mapping_list RCURLY RPAREN
     """
@@ -687,13 +707,13 @@ def p_node(p):
         p[0].mapping_list = p[4]
 
 
-def p_alias(p):
+def p_alias(p: yacc.YaccProduction):
     """alias : WORD AS WORD
     | object_attribute_lookup AS WORD"""
     p[0] = Alias(p[1], p[3])
 
 
-def p_literal(p):
+def p_literal(p: yacc.YaccProduction):
     """literal : INTEGER
     | FLOAT
     | DQUOTE WORD DQUOTE
@@ -701,7 +721,7 @@ def p_literal(p):
     p[0] = Literal(p[1]) if len(p) == 2 else Literal(p[2])
 
 
-def p_relationship(p):
+def p_relationship(p: yacc.YaccProduction):
     """relationship : LSQUARE WORD RSQUARE
     | LSQUARE name_label RSQUARE"""
     if isinstance(p[2], NodeNameLabel):
@@ -710,17 +730,17 @@ def p_relationship(p):
         p[0] = Relationship(NodeNameLabel(p[2]))
 
 
-def p_left_right(p):
+def p_left_right(p: yacc.YaccProduction):
     """left_right : DASH relationship DASH GREATERTHAN"""
     p[0] = RelationshipLeftRight(p[2])
 
 
-def p_right_left(p):
+def p_right_left(p: yacc.YaccProduction):
     """right_left : LESSTHAN DASH relationship DASH"""
     p[0] = RelationshipRightLeft(p[3])
 
 
-def p_incomplete_relationship_chain(p):
+def p_incomplete_relationship_chain(p: yacc.YaccProduction):
     """incomplete_relationship_chain : node left_right
     | node right_left
     | incomplete_relationship_chain node left_right
@@ -736,31 +756,31 @@ def p_incomplete_relationship_chain(p):
         pass
 
 
-def p_relationship_chain(p):
+def p_relationship_chain(p: yacc.YaccProduction):
     """relationship_chain : incomplete_relationship_chain node"""
     p[0] = RelationshipChain(p[1].steps + [p[2]])
 
 
 class RelationshipChainList(TreeMixin):
-    def __init__(self, relationships):
+    def __init__(self, relationships: List[RelationshipChain]):
         self.relationships = relationships
 
     def __repr__(self):
         return f"RelationshipChainList({self.relationships})"
 
-    def tree(self):
+    def tree(self) -> Tree:
         t = Tree(self.__class__.__name__)
         for relationship in self.relationships:
             t.add(relationship.tree())
         return t
 
     @property
-    def children(self):
+    def children(self) -> Generator[RelationshipChain]:
         for relationship in self.relationships:
             yield relationship
 
 
-def p_relationship_chain_list(p):
+def p_relationship_chain_list(p: yacc.YaccProduction):
     """relationship_chain_list : relationship_chain
     | relationship_chain_list COMMA relationship_chain"""
     if len(p) == 2:
@@ -770,7 +790,7 @@ def p_relationship_chain_list(p):
         p[0].relationships.append(p[3])
 
 
-def p_match_pattern(p):
+def p_match_pattern(p: yacc.YaccProduction):
     """match_pattern : MATCH node
     | MATCH relationship_chain_list
     | MATCH relationship_chain_list where
@@ -782,17 +802,17 @@ def p_match_pattern(p):
         p[0] = Match(p[2], p[3])
 
 
-def p_binary_operator(p):
+def p_binary_operator(p: Tuple[yacc.YaccProduction, str]):
     """binary_operator : EQUALS
     | LESSTHAN
     | GREATERTHAN"""
     p[0] = p[1]
 
 
-def p_predicate(p):
+def p_predicate(p: yacc.YaccProduction):
     """predicate : object_attribute_lookup binary_operator literal
     | object_attribute_lookup binary_operator object_attribute_lookup"""
-    predicate_dispatch_dict = {
+    predicate_dispatch_dict: Dict[str, Type[TreeMixin]] = {
         "=": Equals,
         "<": LessThan,
         ">": GreaterThan,
@@ -800,12 +820,12 @@ def p_predicate(p):
     p[0] = predicate_dispatch_dict[p[2]](p[1], p[2], p[3])
 
 
-def p_object_attribute_lookup(p):
+def p_object_attribute_lookup(p: yacc.YaccProduction):
     """object_attribute_lookup : WORD DOT WORD"""
     p[0] = ObjectAttributeLookup(p[1], p[3])
 
 
-def p_where(p):
+def p_where(p: yacc.YaccProduction):
     """where : WHERE predicate
     | where COMMA predicate"""
     if len(p) == 3:
@@ -814,7 +834,7 @@ def p_where(p):
         p[0] = Where(And(p[1].predicate, p[3]))
 
 
-def p_projection(p):
+def p_projection(p: yacc.YaccProduction):
     """projection : object_attribute_lookup
     | alias
     | projection COMMA alias
@@ -826,29 +846,29 @@ def p_projection(p):
         p[0].lookups.append(p[3])
 
 
-def p_return(p):
+def p_return(p: yacc.YaccProduction):
     """return : RETURN projection"""
     p[0] = Return(p[2])
 
 
-CYPHER = yacc.yacc()
+CYPHER: yacc.LRParser = yacc.yacc()
 
 
 class CypherParser:
     def __init__(self, cypher_text: str):
         self.cypher_text = cypher_text
-        self.parsed = CYPHER.parse(self.cypher_text)
+        self.parsed: TreeMixin | None = CYPHER.parse(self.cypher_text)
         if not self.parsed:
             raise CypherParsingError(f"Error parsing {self.cypher_text}")
         [_ for _ in self.parsed.walk()]
         self.parsed.gather_constraints()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.parsed.__str__()
 
 
-def cypher_condition(cypher):
-    def inner_decorator(f):
+def cypher_condition(cypher: str) -> Any:
+    def inner_decorator(f: Any) -> Any:
         LOGGER.info(f"Wrapping function {f.__name__}...")
         cypher_parser = CypherParser(cypher)
         try:
@@ -861,7 +881,7 @@ def cypher_condition(cypher):
             )
             raise UnexpectedCypherStructureError(e)
 
-        def wrapped(*args, **kwargs):
+        def wrapped(*args: List[Any], **kwargs: Dict[Any, Any]):
             return f(*args, **kwargs)
 
         return wrapped
