@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from abc import abstractmethod
 
 import ply.lex as lex
@@ -10,6 +12,7 @@ from pycypher.exceptions import (
     UnexpectedCypherStructureError,
 )
 from pycypher.logger import LOGGER
+from typing import Any, Generator, Optional, List
 
 
 class State:
@@ -18,15 +21,15 @@ class State:
 
 class Constraint:
     @abstractmethod
-    def eval(self, *args, **kwargs):
+    def eval(self, *args, **kwargs):  # type: ignore
         pass
 
 
 class IsTrue(Constraint):
-    def __init__(self, predicate):
+    def __init__(self, predicate: Predicate):
         self.predicate = predicate
 
-    def eval(self, *args) -> bool:
+    def eval(self, *args) -> bool | None:
         pass
 
     def __repr__(self):
@@ -34,25 +37,25 @@ class IsTrue(Constraint):
 
 
 class HasLabel(Constraint):
-    def __init__(self, node, label):
+    def __init__(self, node: str, label: str):
         self.node = node
         self.label = label
 
     def __repr__(self):
         return f"HasLabel: {self.label}"
 
-    def eval(self, state: State) -> bool:
+    def eval(self, state: State) -> bool | None:
         pass
 
     def __hash__(self) -> int:
         return hash("HasLabel" + self.node.__str__() + self.label.__str__())
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: Any) -> bool:
         return self.node == other.node and self.label == other.label
 
 
 class HasAttributeWithValue(Constraint):
-    def __init__(self, node, attribute, value):
+    def __init__(self, node: str, attribute: str, value: Any):
         self.node = node
         self.attribute = attribute
         self.value = value
@@ -69,11 +72,11 @@ class HasAttributeWithValue(Constraint):
         )
 
     def __eq__(self, other) -> bool:
-        return (
-            self.node == other.node
+        return ( 
+            self.node == other.node  # noqa: E501 # type: ignore
             and self.attribute == other.attribute
             and self.value == other.value
-        )
+        )  # noqa: E501
 
 
 tokens = [
@@ -147,35 +150,39 @@ lexer = lex.lex()
 
 
 class TreeMixin:
-    def tree(self):
-        return "hi"
+    parent = None
 
     def print_tree(self):
         rprint(self.tree())
 
     @property
-    def children(self):
+    def children(self) -> Generator[TreeMixin | str | None]:
         yield None
+    
+    def tree(self) -> Tree:
+        t = Tree(self.__class__.__name__)
+        for child in self.children:
+            if child is None:
+                continue
+            t.add(child.tree())
+        return t
 
-    def walk(self):
+    def walk(self) -> Generator[TreeMixin]:
         for child in self.children:
             if child is None:
                 continue
             yield child
-            if isinstance(child, TreeMixin):
-                child.parent = self
             if not hasattr(child, "walk"):
                 continue
+            child.parent = self
             for i in child.walk():
-                if i is None:
-                    continue
                 yield i
 
 
 class Cypher(TreeMixin):
-    def __init__(self, cypher):
+    def __init__(self, cypher: TreeMixin):
         self.cypher = cypher
-        self.aggregated_constraints = []
+        self.aggregated_constraints: List[Constraint] = []
 
     def gather_constraints(self) -> None:
         for node in self.walk():
@@ -184,32 +191,32 @@ class Cypher(TreeMixin):
         LOGGER.info(f"Got constraints: {self.aggregated_constraints}")
 
     @property
-    def children(self):
+    def children(self) -> Generator[TreeMixin]:
         yield self.cypher
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"Cypher({self.cypher})"
 
-    def tree(self):
+    def tree(self) -> Tree:
         t = Tree(self.__class__.__name__)
         t.add(self.cypher.tree())
         return t
 
 
 class Query(TreeMixin):
-    def __init__(self, match_clause, return_clause):
+    def __init__(self, match_clause: Match, return_clause: Return):
         self.match_clause = match_clause
         self.return_clause = return_clause
 
     @property
-    def children(self):
+    def children(self) -> Generator[Match | Return]:
         yield self.match_clause
         yield self.return_clause
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"Query({self.match_clause}, {self.return_clause})"
 
-    def tree(self):
+    def tree(self) -> Tree:
         t = Tree(self.__class__.__name__)
         t.add(self.match_clause.tree())
         t.add(self.return_clause.tree())
@@ -217,30 +224,30 @@ class Query(TreeMixin):
 
 
 class Predicate(TreeMixin):
-    def __init__(self, left_side, operator, right_side):
+    def __init__(self, left_side: TreeMixin, operator: TreeMixin, right_side: TreeMixin):
         self.left_side = left_side
         self.operator = operator
         self.right_side = right_side
 
     @property
-    def children(self):
+    def children(self) -> Generator[TreeMixin]:
         yield self.left_side
         yield self.right_side
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (
             f"{self.__class__.__name__}({self.left_side}, {self.right_side})"
         )
 
-    def tree(self):
-        t = Tree(self.__class__.__name)
+    def tree(self) -> Tree:
+        t = Tree(self.__class__.__name__)
         t.add(self.left_side.tree())
         t.add(self.right_side.tree())
         return t
 
 
 class Equals(Predicate):
-    def tree(self):
+    def tree(self) -> Tree:
         t = Tree(self.__class__.__name__)
         t.add(self.left_side.tree())
         t.add(self.right_side.tree())
@@ -248,7 +255,7 @@ class Equals(Predicate):
 
 
 class LessThan(Predicate):
-    def tree(self):
+    def tree(self) -> Tree:
         t = Tree(self.__class__.__name__)
         t.add(self.left_side.tree())
         t.add(self.right_side.tree())
@@ -256,7 +263,7 @@ class LessThan(Predicate):
 
 
 class GreaterThan(Predicate):
-    def tree(self):
+    def tree(self) -> Tree:
         t = Tree(self.__class__.__name__)
         t.add(self.left_side.tree())
         t.add(self.right_side.tree())
@@ -264,21 +271,21 @@ class GreaterThan(Predicate):
 
 
 class ObjectAttributeLookup(TreeMixin):
-    def __init__(self, object, attribute):
+    def __init__(self, object: str, attribute: str):
         self.object = object
         self.attribute = attribute
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"ObjectAttributeLookup({self.object}, {self.attribute})"
 
-    def tree(self):
+    def tree(self) -> Tree:
         t = Tree(self.__class__.__name__)
         t.add(self.object)
         t.add(self.attribute)
         return t
 
     @property
-    def children(self):
+    def children(self) -> Generator[str]:
         yield self.object
         yield self.attribute
 
@@ -308,18 +315,18 @@ class Alias(TreeMixin):
 
 
 class Match(TreeMixin):
-    def __init__(self, pattern, where=None):
+    def __init__(self, pattern: TreeMixin, where: Optional[TreeMixin]=None):
         self.pattern = pattern
         self.where = where
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (
             f"Match({self.pattern})"
             if not self.where
             else f"Match({self.pattern}, {self.where})"
         )
 
-    def tree(self):
+    def tree(self) -> Tree:
         t = Tree(self.__class__.__name__)
         t.add(self.pattern.tree())
         if self.where:
@@ -334,7 +341,7 @@ class Match(TreeMixin):
 
 
 class Return(TreeMixin):
-    def __init__(self, node):
+    def __init__(self, node: Projection):
         self.projection = node
 
     def __repr__(self):
@@ -370,7 +377,7 @@ class Projection(TreeMixin):
 
 
 class NodeNameLabel(TreeMixin):
-    def __init__(self, name: str, label: str = None):
+    def __init__(self, name: str, label: Optional[str] = None):
         self.name = name
         self.label = label
 
@@ -386,20 +393,20 @@ class NodeNameLabel(TreeMixin):
         return t
 
     @property
-    def children(self):
+    def children(self) -> Generator[str]:
         yield self.name
         if self.label:
             yield self.label
 
 
 class Node(TreeMixin):
-    def __init__(self, node_name_label: NodeNameLabel, mapping_list=None):
+    def __init__(self, node_name_label: NodeNameLabel, mapping_list: Optional[List[Mapping]]=None):
         self.node_name_label = node_name_label
         self.mapping_list = mapping_list
 
     @property
     def constraints(self):
-        constraint_list = []
+        constraint_list: List[Constraint] = []
         if self.node_name_label.label:
             constraint_list.append(
                 HasLabel(self.node_name_label.name, self.node_name_label.label)
@@ -416,7 +423,7 @@ class Node(TreeMixin):
     def __repr__(self):
         return f"Node({self.node_name_label}, {self.mapping_list})"
 
-    def tree(self):
+    def tree(self) -> Tree:
         t = Tree(self.__class__.__name__)
         if self.node_name_label:
             t.add(self.node_name_label.tree())
@@ -425,7 +432,7 @@ class Node(TreeMixin):
         return t
 
     @property
-    def children(self):
+    def children(self) -> Generator[NodeNameLabel | Mapping]:
         if self.node_name_label:
             yield self.node_name_label
         if self.mapping_list:
@@ -451,7 +458,7 @@ class Relationship(TreeMixin):
 
 
 class Mapping(TreeMixin):  # This is not complete
-    def __init__(self, key, value):
+    def __init__(self, key: str, value: Any):
         self.key = key
         self.value = value
 
@@ -479,32 +486,32 @@ class Mapping(TreeMixin):  # This is not complete
 
 
 class MappingSet(TreeMixin):
-    def __init__(self, mappings):
+    def __init__(self, mappings: List[Mapping]):
         self.mappings = mappings
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"MappingSet({self.mappings})"
 
-    def tree(self):
+    def tree(self) -> Tree:
         t = Tree(self.__class__.__name__)
         for mapping in self.mappings:
             t.add(mapping.tree())
         return t
 
     @property
-    def children(self):
+    def children(self) -> Generator[Mapping]:
         for mapping in self.mappings:
             yield mapping
 
 
 class MatchList(TreeMixin):  # Not yet being used
-    def __init__(self, match_list):
+    def __init__(self, match_list: List[Match] | None):
         self.match_list = match_list or []
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"MatchList({self.match_list})"
 
-    def tree(self):
+    def tree(self) -> Tree:
         t = Tree(self.__class__.__name__)
         for match_clause in self.match_list:
             t.add(match_clause.tree())
@@ -515,16 +522,16 @@ class RelationshipLeftRight(TreeMixin):
     def __init__(self, relationship: Relationship):
         self.relationship = relationship
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"LeftRight({self.relationship})"
 
-    def tree(self):
+    def tree(self) -> Tree:
         t = Tree(self.__class__.__name__)
         t.add(self.relationship.tree())
         return t
 
     @property
-    def children(self):
+    def children(self) -> Generator[Relationship]:
         yield self.relationship
 
 
