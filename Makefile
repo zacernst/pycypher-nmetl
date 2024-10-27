@@ -2,7 +2,7 @@ PYTHON = 3.12
 
 clean_build: clean all
 
-all: build docs tests 
+all: build tests 
 
 venv:
 	echo "Installing Python and virtual environment..." && uv venv --python=$(PYTHON) venv
@@ -32,7 +32,7 @@ tests: install
 	( \
 		echo "Running tests..." && \
 		. ./venv/bin/activate && \
-		pytest -n 16 -vv tests/ \
+		pytest -vv tests/ \
 	)
 
 clean:
@@ -41,6 +41,7 @@ clean:
 		rm -rfv ./docs/_build/html/* \
 		rm -rfv ./docs/_build/doctrees/* \
 		rm -fv ./requirements.txt \
+		rm -rfv ./dist/* \
 	)
 
 build: deps
@@ -49,7 +50,7 @@ build: deps
 		. ./venv/bin/activate && \
 		isort . && \
 		ruff format . && \
-		hatch build \
+		hatch build -t wheel \
 	)
 
 docs: install
