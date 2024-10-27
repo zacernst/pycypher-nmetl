@@ -1,3 +1,5 @@
+[![Install and run tests](https://github.com/zacernst/pycypher/actions/workflows/makefile.yml/badge.svg)](https://github.com/zacernst/pycypher/actions/workflows/makefile.yml)
+
 # Cypher AST Generator for Python
 
 This is a *work in progress*, by which I mean, "ugly, but fixable." It is also
