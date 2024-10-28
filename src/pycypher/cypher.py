@@ -1010,15 +1010,15 @@ if __name__ == "__main__":
         if isinstance(constraint, HasAttributeWithValue):
             attributes.add(constraint.attribute)
 
-'''
->>> problem = Problem()
->>> problem.addVariables(["a", "b"], [1, 2])
->>> def func(a, b):
-...     return b > a
->>> problem.addConstraint(FunctionConstraint(func), ["a", "b"])
->>> problem.getSolution()
-{'a': 1, 'b': 2}
-'''
+    '''
+    >>> problem = Problem()
+    >>> problem.addVariables(["a", "b"], [1, 2])
+    >>> def func(a, b):
+    ...     return b > a
+    >>> problem.addConstraint(FunctionConstraint(func), ["a", "b"])
+    >>> problem.getSolution()
+    {'a': 1, 'b': 2}
+    '''
 
 
 
