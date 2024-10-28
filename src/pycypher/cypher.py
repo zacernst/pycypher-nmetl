@@ -8,9 +8,7 @@ import ply.yacc as yacc  # type: ignore
 from rich import print as rprint
 from rich.tree import Tree
 
-from pycypher.exceptions import (
-    CypherParsingError,
-)
+from pycypher.exceptions import CypherParsingError
 from pycypher.logger import LOGGER
 
 
@@ -45,7 +43,7 @@ class HasLabel(Constraint):
         self.label = label
 
     def __repr__(self):
-        return f"HasLabel: {self.label}"
+        return f"HasLabel: {self.node_id} {self.label}"
 
     def eval(self, state: State) -> bool | None:
         pass
@@ -957,6 +955,8 @@ if __name__ == "__main__":
     for statement in statements:
         result = CypherParser(statement)
         print(statement, result)
+    
+    # Constraint satisfaction
 
     fact1 = NodeHasLabel("1", "Thing")
     fact2 = NodeHasAttributeWithValue("1", "key", 2)
@@ -965,6 +965,62 @@ if __name__ == "__main__":
     fact5 = NodeHasAttributeWithValue("2", "key", 5)
 
     fact_collection = FactCollection([fact1, fact2, fact3, fact4, fact5])
+
+    node_id_set = set()
+    attribute_dict = {}  # {attribute: {node_id: value}}
+    relationship_dict = {} # {relationship: [{'source': node1_id, 'target': node2_id} ...]}
+    for fact in fact_collection.facts:
+        if isinstance(fact, NodeHasLabel):
+            node_id_set.add(fact.node_id)
+        elif isinstance(fact, NodeHasAttributeWithValue):
+            node_id_set.add(fact.node_id)
+            if fact.attribute not in attribute_dict:
+                attribute_dict[fact.attribute] = {}
+            attribute_dict[fact.attribute][fact.node_id] = fact.value
+        elif isinstance(fact, NodeRelatedToNode):
+            node_id_set.add(fact.node1_id)
+            node_id_set.add(fact.node2_id)
+            if fact.relationship_label not in relationship_dict:
+                relationship_dict[fact.relationship_label] = []
+            relationship_dict[fact.relationship_label].append(
+                {"source": fact.node1_id, "target": fact.node2_id})
+    
+    cypher_statement = """MATCH (n:Thing {key1: "value", key2: 5})-[r:MyRelationship]->(m:OtherThing {key3: "hithere"}) WHERE n.key = 2, n.foo = 3 RETURN n.foobar, n.baz"""
+    result = CypherParser(cypher_statement)
+    constraints = result.parsed.aggregated_constraints
+
+    # Get list of all nodes in constraints
+    node_ids = set()
+    for constraint in constraints:
+        if isinstance(constraint, HasLabel):
+            node_ids.add(constraint.node_id)
+        elif isinstance(constraint, HasAttributeWithValue):
+            node_ids.add(constraint.node_id)
+        elif isinstance(constraint, NodeRelatedToNode):
+            node_ids.add(constraint.node1_id)
+            node_ids.add(constraint.node2_id)
+    # Get list of all relationships in constraints
+    relationship_labels = set()
+    for constraint in constraints:
+        if isinstance(constraint, NodeRelatedToNode):
+            relationship_labels.add(constraint.relationship_label)
+    # Get list of all attributes in constraints
+    attributes = set()
+    for constraint in constraints:
+        if isinstance(constraint, HasAttributeWithValue):
+            attributes.add(constraint.attribute)
+
+'''
+>>> problem = Problem()
+>>> problem.addVariables(["a", "b"], [1, 2])
+>>> def func(a, b):
+...     return b > a
+>>> problem.addConstraint(FunctionConstraint(func), ["a", "b"])
+>>> problem.getSolution()
+{'a': 1, 'b': 2}
+'''
+
+
 
     print(fact_collection.satisfies(HasLabel("1", "Thing")))
     print(fact_collection.satisfies(HasLabel("2", "OtherThing")))

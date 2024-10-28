@@ -1,8 +1,8 @@
+from typing import Any, Dict, List
+
+from pycypher.cypher import CypherParser
 from pycypher.exceptions import UnexpectedCypherStructureError
 from pycypher.logger import LOGGER
-from pycypher.cypher import CypherParser
-
-from typing import Any, List, Dict
 
 
 def cypher_condition(cypher: str) -> Any:

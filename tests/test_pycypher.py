@@ -7,14 +7,14 @@ from pycypher.cypher import (
     Cypher,
     CypherParser,
     Equals,
+    FactCollection,
     Literal,
+    NodeHasAttributeWithValue,
+    NodeHasLabel,
+    NodeRelatedToNode,
     ObjectAttributeLookup,
     Query,
     Where,
-    NodeHasLabel,
-    NodeHasAttributeWithValue,
-    NodeRelatedToNode,
-    FactCollection,
 )
 
 
