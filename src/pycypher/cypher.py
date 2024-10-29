@@ -1,4 +1,5 @@
 from __future__ import annotations
+from constraint import Domain, Problem
 
 from abc import abstractmethod
 from typing import Any, Dict, Generator, List, Optional, Tuple, Type
@@ -143,6 +144,10 @@ class NodeRelatedToNode(AtomicFact):
 class FactCollection:
     def __init__(self, facts: List[AtomicFact]):
         self.facts = facts
+    
+    def __iter__(self):
+        for fact in self.facts:
+            yield fact
 
     def __repr__(self):
         return f"FactCollection: {len(self.facts)}"
@@ -536,6 +541,12 @@ class Relationship(TreeMixin):
     @property
     def children(self):
         yield self.name
+    
+    @property
+    def constraints(self):
+        relationship_chain = self.parent.parent
+        nodes = [(relationship_chain.steps[i-1], relationship_chain.steps[i+1],) for i in range(len(relationship_chain.steps)) if relationship_chain.steps[i] is self.parent]
+        import pdb; pdb.set_trace()
 
 
 class Mapping(TreeMixin):  # This is not complete
@@ -1002,13 +1013,39 @@ if __name__ == "__main__":
     # Get list of all relationships in constraints
     relationship_labels = set()
     for constraint in constraints:
-        if isinstance(constraint, NodeRelatedToNode):
+        if isinstance(constraint, NodeRelatedToNode):  # This is borked; relationship not in constraints
+            import pdb; pdb.set_trace()
             relationship_labels.add(constraint.relationship_label)
     # Get list of all attributes in constraints
     attributes = set()
     for constraint in constraints:
         if isinstance(constraint, HasAttributeWithValue):
             attributes.add(constraint.attribute)
+    
+    problem = Problem()
+    
+    
+    node_label_domain = Domain(set()) 
+    node_domain = Domain(set())
+    relationship_label_domain = Domain(set())
+    attribute_domain = Domain(set())
+
+    for fact in fact_collection:
+        if isinstance(fact, NodeHasLabel):
+            if fact.node_id not in node_domain:
+                node_domain.append(fact.node_id)
+            if fact.label not in node_label_domain:
+                node_label_domain.append(fact.label)
+        elif isinstance(fact, NodeRelatedToNode) and fact.relationship_label not in relationship_label_domain:
+            relationship_label_domain.append(fact.relationship_label)
+        elif isinstance(fact, NodeHasAttributeWithValue) and fact.attribute not in attribute_domain:
+            attribute_domain.append(fact.attribute)
+        else:
+            pass 
+            
+
+    
+
 
     '''
     >>> problem = Problem()
@@ -1022,6 +1059,6 @@ if __name__ == "__main__":
 
 
 
-    print(fact_collection.satisfies(HasLabel("1", "Thing")))
-    print(fact_collection.satisfies(HasLabel("2", "OtherThing")))
-    print(fact_collection.satisfies(HasLabel("2", "NoThisIsFalse")))
+    # print(fact_collection.satisfies(HasLabel("1", "Thing")))
+    # print(fact_collection.satisfies(HasLabel("2", "OtherThing")))
+    # print(fact_collection.satisfies(HasLabel("2", "NoThisIsFalse")))
