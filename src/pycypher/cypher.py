@@ -966,7 +966,7 @@ if __name__ == "__main__":
     for statement in statements:
         result = CypherParser(statement)
         print(statement, result)
-    
+
     # Constraint satisfaction
 
     fact1 = NodeHasLabel("1", "Thing")
@@ -979,7 +979,7 @@ if __name__ == "__main__":
 
     node_id_set = set()
     attribute_dict = {}  # {attribute: {node_id: value}}
-    relationship_dict = {} # {relationship: [{'source': node1_id, 'target': node2_id} ...]}
+    relationship_dict = {}  # {relationship: [{'source': node1_id, 'target': node2_id} ...]}
     for fact in fact_collection.facts:
         if isinstance(fact, NodeHasLabel):
             node_id_set.add(fact.node_id)
@@ -994,8 +994,9 @@ if __name__ == "__main__":
             if fact.relationship_label not in relationship_dict:
                 relationship_dict[fact.relationship_label] = []
             relationship_dict[fact.relationship_label].append(
-                {"source": fact.node1_id, "target": fact.node2_id})
-    
+                {"source": fact.node1_id, "target": fact.node2_id}
+            )
+
     cypher_statement = """MATCH (n:Thing {key1: "value", key2: 5})-[r:MyRelationship]->(m:OtherThing {key3: "hithere"}) WHERE n.key = 2, n.foo = 3 RETURN n.foobar, n.baz"""
     result = CypherParser(cypher_statement)
     constraints = result.parsed.aggregated_constraints
@@ -1047,18 +1048,16 @@ if __name__ == "__main__":
     
 
 
-    '''
-    >>> problem = Problem()
-    >>> problem.addVariables(["a", "b"], [1, 2])
-    >>> def func(a, b):
-    ...     return b > a
-    >>> problem.addConstraint(FunctionConstraint(func), ["a", "b"])
-    >>> problem.getSolution()
-    {'a': 1, 'b': 2}
-    '''
+"""
+>>> problem = Problem()
+>>> problem.addVariables(["a", "b"], [1, 2])
+>>> def func(a, b):
+...     return b > a
+>>> problem.addConstraint(FunctionConstraint(func), ["a", "b"])
+>>> problem.getSolution()
 
 
 
-    # print(fact_collection.satisfies(HasLabel("1", "Thing")))
-    # print(fact_collection.satisfies(HasLabel("2", "OtherThing")))
-    # print(fact_collection.satisfies(HasLabel("2", "NoThisIsFalse")))
+# print(fact_collection.satisfies(HasLabel("1", "Thing")))
+# print(fact_collection.satisfies(HasLabel("2", "OtherThing")))
+# print(fact_collection.satisfies(HasLabel("2", "NoThisIsFalse")))
