@@ -1061,3 +1061,5 @@ if __name__ == "__main__":
 # print(fact_collection.satisfies(HasLabel("1", "Thing")))
 # print(fact_collection.satisfies(HasLabel("2", "OtherThing")))
 # print(fact_collection.satisfies(HasLabel("2", "NoThisIsFalse")))
+
+"""
