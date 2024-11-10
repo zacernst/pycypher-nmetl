@@ -1,11 +1,11 @@
 from __future__ import annotations
-from constraint import Domain, Problem
 
 from abc import abstractmethod
 from typing import Any, Dict, Generator, List, Optional, Tuple, Type
 
 import ply.lex as lex  # type: ignore
 import ply.yacc as yacc  # type: ignore
+from constraint import Domain, Problem
 from rich import print as rprint
 from rich.tree import Tree
 
@@ -144,7 +144,7 @@ class NodeRelatedToNode(AtomicFact):
 class FactCollection:
     def __init__(self, facts: List[AtomicFact]):
         self.facts = facts
-    
+
     def __iter__(self):
         for fact in self.facts:
             yield fact
@@ -267,7 +267,12 @@ class Cypher(TreeMixin):
     def gather_constraints(self) -> None:
         for node in self.walk():
             LOGGER.debug(f"Walking node: {node}")
-            self.aggregated_constraints += getattr(node, "constraints", [])
+            try:
+                self.aggregated_constraints += getattr(node, "constraints", [])
+            except:
+                import pdb
+
+                pdb.set_trace()
         LOGGER.info(f"Got constraints: {self.aggregated_constraints}")
 
     @property
@@ -504,7 +509,7 @@ class Node(TreeMixin):
                         self.node_name_label.name, mapping.key, mapping.value
                     )
                 )
-        return constraint_list
+        return constraint_list or []
 
     def __repr__(self):
         return f"Node({self.node_name_label}, {self.mapping_list})"
@@ -541,12 +546,19 @@ class Relationship(TreeMixin):
     @property
     def children(self):
         yield self.name
-    
+
     @property
     def constraints(self):
         relationship_chain = self.parent.parent
-        nodes = [(relationship_chain.steps[i-1], relationship_chain.steps[i+1],) for i in range(len(relationship_chain.steps)) if relationship_chain.steps[i] is self.parent]
-        import pdb; pdb.set_trace()
+        nodes = [
+            (
+                relationship_chain.steps[i - 1],
+                relationship_chain.steps[i + 1],
+            )
+            for i in range(len(relationship_chain.steps))
+            if relationship_chain.steps[i] is self.parent
+        ]
+        return []  # TODO
 
 
 class Mapping(TreeMixin):  # This is not complete
@@ -1014,19 +1026,20 @@ if __name__ == "__main__":
     # Get list of all relationships in constraints
     relationship_labels = set()
     for constraint in constraints:
-        if isinstance(constraint, NodeRelatedToNode):  # This is borked; relationship not in constraints
-            import pdb; pdb.set_trace()
+        if isinstance(
+            constraint, NodeRelatedToNode
+        ):  # This is borked; relationship not in constraints
+            # import pdb; pdb.set_trace()
             relationship_labels.add(constraint.relationship_label)
     # Get list of all attributes in constraints
     attributes = set()
     for constraint in constraints:
         if isinstance(constraint, HasAttributeWithValue):
             attributes.add(constraint.attribute)
-    
+
     problem = Problem()
-    
-    
-    node_label_domain = Domain(set()) 
+
+    node_label_domain = Domain(set())
     node_domain = Domain(set())
     relationship_label_domain = Domain(set())
     attribute_domain = Domain(set())
@@ -1037,15 +1050,18 @@ if __name__ == "__main__":
                 node_domain.append(fact.node_id)
             if fact.label not in node_label_domain:
                 node_label_domain.append(fact.label)
-        elif isinstance(fact, NodeRelatedToNode) and fact.relationship_label not in relationship_label_domain:
+        elif (
+            isinstance(fact, NodeRelatedToNode)
+            and fact.relationship_label not in relationship_label_domain
+        ):
             relationship_label_domain.append(fact.relationship_label)
-        elif isinstance(fact, NodeHasAttributeWithValue) and fact.attribute not in attribute_domain:
+        elif (
+            isinstance(fact, NodeHasAttributeWithValue)
+            and fact.attribute not in attribute_domain
+        ):
             attribute_domain.append(fact.attribute)
         else:
-            pass 
-            
-
-    
+            pass
 
 
 """

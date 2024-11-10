@@ -65,7 +65,7 @@ def test_parser_parses_complicated_query():
 
 @pytest.mark.cypher
 def test_parser_handles_node_label():
-    query = """MATCH (n:Thingy)-[r]->(m) RETURN n.foobar"""
+    query = """MATCH (n:Thingy)-[r:Thingy]->(m) RETURN n.foobar"""
     obj = CypherParser(query)
     assert (
         obj.parsed.cypher.match_clause.pattern.relationships[0]
