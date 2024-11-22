@@ -113,6 +113,9 @@ class NodeHasAttributeWithValue(AtomicFact):
         self.node_id = node_id
         self.attribute = attribute
         self.value = value
+    
+    def __hash__(self) -> int:
+        return hash("NodeHasAttributeWithValue" + self.node_id.__str__() + self.attribute.__str__() + self.value.__str__())
 
     def __repr__(self):
         return f"NodeHasAttributeWithValue: {self.node_id} {self.attribute} {self.value}"
@@ -127,7 +130,8 @@ class NodeHasAttributeWithValue(AtomicFact):
         )
     
     def __eq__(self, other):
-        return isinstance(other, NodeHasAttributeWithValue) and self.node_id == other.node_id and self.attribute == other.attribute and self.value == other.value   
+        import pdb; pdb.set_trace()
+        return isinstance(other, NodeHasAttributeWithValue) and (self.node_id == other.node_id) and (self.attribute == other.attribute) and (self.value == other.value)   
 
 
 
@@ -755,6 +759,9 @@ class Literal(TreeMixin):
 
     def __repr__(self):
         return f"Literal({self.value})"
+    
+    def __hash__(self):
+        return hash(self.value)
 
     def _tree(self):
         t = Tree(self.__class__.__name__)
@@ -762,7 +769,7 @@ class Literal(TreeMixin):
         return t
     
     def __eq__(self, other):
-        return isinstance(other, Literal) and self.value == other.value
+        return (isinstance(other, Literal) and self.value == other.value)
 
 
 start = "cypher"
@@ -997,10 +1004,10 @@ if __name__ == "__main__":
     # Constraint satisfaction
 
     fact1 = NodeHasLabel("1", "Thing")
-    fact2 = NodeHasAttributeWithValue("1", "key", 2)
+    fact2 = NodeHasAttributeWithValue("1", "key", Literal('2'))
     fact3 = NodeRelatedToNode("1", "2", "MyRelationship")
     fact4 = NodeHasLabel("2", "OtherThing")
-    fact5 = NodeHasAttributeWithValue("2", "key", 5)
+    fact5 = NodeHasAttributeWithValue("2", "key", Literal(5))
 
     fact_collection = FactCollection([fact1, fact2, fact3, fact4, fact5])
 
@@ -1041,15 +1048,15 @@ if __name__ == "__main__":
         if isinstance(constraint, HasLabel):
             node_labels.add(constraint.label)
     # Get list of all nodes in constraints
-    node_ids = set()
+    node_variables = set()
     for constraint in constraints:
         if isinstance(constraint, HasLabel):
-            node_ids.add(constraint.node_id)
+            node_variables.add(constraint.node_id)
         elif isinstance(constraint, HasAttributeWithValue):
-            node_ids.add(constraint.node_id)
+            node_variables.add(constraint.node_id)
         elif isinstance(constraint, NodeRelatedToNode):
-            node_ids.add(constraint.node1_id)
-            node_ids.add(constraint.node2_id)
+            node_variables.add(constraint.node1_id)
+            node_variables.add(constraint.node2_id)
     # Get list of all relationships in constraints
     relationship_labels = set()
     for constraint in constraints:
@@ -1073,22 +1080,14 @@ if __name__ == "__main__":
     # relationship_label_domain = Domain(set())
     # attribute_domain = Domain(set())
 
+    label_domain_dict = collections.defaultdict(set)
+
     for fact in fact_collection:
         if isinstance(fact, NodeHasLabel):
             if fact.node_id not in node_domain:
                 node_domain.append(fact.node_id)
             if fact.label not in node_label_domain:
-                node_label_domain.append(fact.label)
-        # elif (
-        #     isinstance(fact, NodeRelatedToNode)
-        #     and fact.relationship_label not in relationship_label_domain
-        # ):
-        #     relationship_label_domain.append(fact.relationship_label)
-        # elif (
-        #     isinstance(fact, NodeHasAttributeWithValue)
-        #     and fact.attribute not in attribute_domain
-        # ):
-        #     attribute_domain.append(fact.attribute)
+                label_domain_dict[fact.label].add(fact.node_id)
         else:
             pass
     
@@ -1099,7 +1098,7 @@ if __name__ == "__main__":
 
     problem = Problem()
 
-    for node_id in node_ids:
+    for node_id in node_variables:
         problem.addVariable(node_id, node_domain)
     # for relationship_label in relationship_labels:
     #     problem.addVariable(relationship_labels, relationship_label_domain)
@@ -1110,10 +1109,21 @@ if __name__ == "__main__":
     from functools import partial
 
     def node_has_label(node_id=None, label=None):
-        return NodeHasLabel(node_id, label) in fact_collection
-    
+        LOGGER.debug(f"Checking if {node_id} has label {label}")
+        answer = NodeHasLabel(node_id, label) in fact_collection.facts
+        LOGGER.debug(f"Answer: {answer}")
+        return answer
+
+    # Turn these into partial functions with `node_id` the remaining argument
     def node_has_attribute_with_value(node_id=None, attribute=None, value=None):
-        return HasAttributeWithValue(node_id=node_id, attribute=attribute, value=value) in fact_collection
+        if not isinstance(value, Literal):
+            value = Literal(value)
+        LOGGER.debug(f"Checking if {node_id} has attribute {attribute} with value {value}")
+        obj = NodeHasAttributeWithValue(node_id=node_id, attribute=attribute, value=value)
+        answer = obj in fact_collection.facts
+        LOGGER.debug(f"Answer: {answer}")
+        import pdb; pdb.set_trace()
+        return answer
     
     # attempt = partial(node_has_label, ('n', 'Thing',))
 
@@ -1124,7 +1134,9 @@ if __name__ == "__main__":
         if isinstance(constraint, HasAttributeWithValue):  # This doesn't work
             problem.addConstraint(partial(node_has_attribute_with_value, attribute=constraint.attribute, value=constraint.value), [constraint.node_id])
     
+
     
+
 """
 >>> problem = Problem()
 >>> problem.addVariables(["a", "b"], [1, 2])
