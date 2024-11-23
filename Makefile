@@ -2,7 +2,7 @@ PYTHON = 3.12
 
 clean_build: clean all
 
-all: build tests 
+all: build docs tests 
 
 venv:
 	echo "Installing Python and virtual environment..." && uv venv --python=$(PYTHON) venv

@@ -1,5 +1,6 @@
-import ply.lex as lex
 from typing import Any
+
+import ply.lex as lex
 
 tokens = [
     "COLON",

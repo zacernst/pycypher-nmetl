@@ -6,18 +6,21 @@ from typing import Dict, List, Tuple, Type
 import ply.yacc as yacc  # type: ignore
 from constraint import Domain, Problem
 
-
+from pycypher.cypher_lexer import lexer, tokens
 from pycypher.exceptions import CypherParsingError
-from pycypher.fact import FactCollection, FactNodeRelatedToNode, FactNodeHasLabel, FactNodeHasAttributeWithValue
+from pycypher.fact import (
+    FactCollection,
+    FactNodeHasAttributeWithValue,
+    FactNodeHasLabel,
+    FactNodeRelatedToNode,
+)
 from pycypher.logger import LOGGER
-from pycypher.cypher_lexer import tokens, lexer
+from pycypher.node_classes import *
 from pycypher.solver import (
     ConstraintNodeHasAttributeWithValue,
     ConstraintNodeHasLabel,
 )
 from pycypher.tree_mixin import TreeMixin
-from pycypher.node_classes import *
-
 
 start = "cypher"
 
@@ -237,27 +240,6 @@ if __name__ == "__main__":
 
     fact_collection = FactCollection([fact1, fact2, fact3, fact4, fact5])
 
-    # node_id_set = set()
-    # attribute_dict = {}  # {attribute: {node_id: value}}
-    # relationship_dict = {}  # {relationship: [{'source': node1_id, 'target': node2_id} ...]}
-    # node_label_dict = collections.defaultdict(list) # {node_label: [node_id, ...]}
-    # for fact in fact_collection.facts:
-    #     if isinstance(fact, FactNodeHasLabel):
-    #         node_id_set.add(fact.node_id)
-    #         node_label_dict[fact.label].append(fact.node_id)
-    #     elif isinstance(fact, FactNodeHasAttributeWithValue):
-    #         node_id_set.add(fact.node_id)
-    #         if fact.attribute not in attribute_dict:
-    #             attribute_dict[fact.attribute] = {}
-    #         attribute_dict[fact.attribute][fact.node_id] = fact.value
-    #     elif isinstance(fact, FactNodeRelatedToNode):
-    #         node_id_set.add(fact.node1_id)
-    #         node_id_set.add(fact.node2_id)
-    #         if fact.relationship_label not in relationship_dict:
-    #             relationship_dict[fact.relationship_label] = []
-    #         relationship_dict[fact.relationship_label].append(
-    #             {"source": fact.node1_id, "target": fact.node2_id}
-    #         )
     ###########################################
     ### Define Cypher Query
     ###########################################

@@ -1,7 +1,7 @@
 from __future__ import annotations
-from collections.abc import MutableSequence
-from typing import Generator, Any, List
 
+from collections.abc import MutableSequence
+from typing import Any, Generator, List
 
 from pycypher.solver import (
     Constraint,
@@ -114,7 +114,7 @@ class FactCollection(MutableSequence):
 
     def satisfies(self, constraint: Constraint) -> bool:
         return any(fact.satisfies(constraint) for fact in self.facts)
-    
+
     def __getitem__(self, index):
         return self.facts[index]
 

@@ -1,11 +1,18 @@
 from __future__ import annotations
 
+from typing import Any, Generator, List, Optional
 
-from pycypher.tree_mixin import TreeMixin
-from typing import List, Generator, Any, Optional
-from pycypher.logger import LOGGER
-from pycypher.solver import Constraint, ConstraintNodeHasLabel, ConstraintNodeHasAttributeWithValue, IsTrue
 from rich.tree import Tree
+
+from pycypher.logger import LOGGER
+from pycypher.solver import (
+    Constraint,
+    ConstraintNodeHasAttributeWithValue,
+    ConstraintNodeHasLabel,
+    IsTrue,
+)
+from pycypher.tree_mixin import TreeMixin
+
 
 class Cypher(TreeMixin):
     def __init__(self, cypher: TreeMixin):
@@ -17,7 +24,9 @@ class Cypher(TreeMixin):
             LOGGER.debug(f"Walking node: {node}")
             try:
                 node_constraints = getattr(node, "constraints", [])
-                LOGGER.debug(f"Got constraints: {node_constraints}: {len(node_constraints)}")
+                LOGGER.debug(
+                    f"Got constraints: {node_constraints}: {len(node_constraints)}"
+                )
                 self.aggregated_constraints += getattr(node, "constraints", [])
             except Exception as err:
                 LOGGER.error(err)

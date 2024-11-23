@@ -17,8 +17,8 @@
 
 # -- Project information -----------------------------------------------------
 
-project = "PyCypher: Cypher query language for Python"
-copyright = "Zachary Ernst"
+project = "PyCypher: Cypher parser for Python"
+copyright = "2024, Zachary Ernst"
 author = "Zachary Ernst"
 
 
@@ -30,10 +30,15 @@ extensions = [
     "sphinx.ext.doctest",
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
-    "autoapi.extension",
+    "sphinx.ext.intersphinx",
 ]
 
-intersphinx_mapping = {}
+intersphinx_mapping = {
+    "rtd": ("https://docs.readthedocs.io/en/stable/", None),
+    "python": ("https://docs.python.org/3/", None),
+    "sphinx": ("https://www.sphinx-doc.org/en/master/", None),
+}
+intersphinx_disabled_domains = ["std"]
 
 templates_path = ["_templates"]
 
@@ -56,5 +61,3 @@ html_theme = "sphinx_rtd_theme"
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ["_static"]
-
-autoapi_dirs = ["../src/pycypher"]

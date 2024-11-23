@@ -149,30 +149,37 @@ def test_parser_generates_alias_with_correct_name_in_return_statement():
         obj.parsed.cypher.return_clause.projection.lookups[0].alias
         == "myfoobar"
     )
+
+
 def test_node_has_label_equality():
     fact1 = FactNodeHasLabel("1", "Thing")
     fact2 = FactNodeHasLabel("1", "Thing")
     assert fact1 == fact2
+
 
 def test_node_has_label_inequality():
     fact1 = FactNodeHasLabel("1", "Thing")
     fact2 = FactNodeHasLabel("2", "Thing")
     assert fact1 != fact2
 
+
 def test_node_has_attribute_with_value_equality():
     fact1 = FactNodeHasAttributeWithValue("1", "key", 2)
     fact2 = FactNodeHasAttributeWithValue("1", "key", 2)
     assert fact1 == fact2
+
 
 def test_node_has_attribute_with_value_inequality():
     fact1 = FactNodeHasAttributeWithValue("1", "key", 2)
     fact2 = FactNodeHasAttributeWithValue("1", "key", 3)
     assert fact1 != fact2
 
+
 def test_node_has_related_node_equality():
     fact1 = FactNodeRelatedToNode("1", "2", "MyRelationship")
     fact2 = FactNodeRelatedToNode("1", "2", "MyRelationship")
     assert fact1 == fact2
+
 
 def test_node_has_related_node_inequality():
     fact1 = FactNodeRelatedToNode("1", "2", "MyRelationship")
@@ -180,16 +187,15 @@ def test_node_has_related_node_inequality():
     assert fact1 != fact2
 
 
-
 def test_aggregate_constraints_node_label():
-    cypher = 'MATCH (m:Thing) RETURN m.foobar'
+    cypher = "MATCH (m:Thing) RETURN m.foobar"
     result = CypherParser(cypher)
     constraints = result.parsed.aggregated_constraints
     assert len(constraints) == 1
 
 
 def test_aggregate_constraints_node_and_mapping():
-    cypher = 'MATCH (m:Thing {key: 2}) RETURN m.foobar'
+    cypher = "MATCH (m:Thing {key: 2}) RETURN m.foobar"
     result = CypherParser(cypher)
     constraints = result.parsed.aggregated_constraints
     assert len(constraints) == 2
