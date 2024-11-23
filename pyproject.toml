@@ -45,7 +45,7 @@ markers = [
 [project]
 name = "pycypher"  # REQUIRED, is the only field that cannot be marked as dynamic.
 version = "0.0.1"  # REQUIRED, although can be dynamic
-description = "Cypher for Python Methods for ETL"
+description = "Cypher for Python"
 readme = "README.md"
 requires-python = ">=3.11"
 license = {file = "LICENSE.txt"}
@@ -59,24 +59,25 @@ maintainers = [
 ]
 classifiers = [
   "Development Status :: 3 - Alpha",
-
   # Indicate who your project is intended for
   "Intended Audience :: Developers",
-
   "License :: OSI Approved :: MIT License",
-
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
 ]
 
 dependencies = [
-  "hatch>=1.12.0,<2.0.0",
+  "hatch==1.12.0",
+  "hatchling==1.25",
   "isort>=5.13.2,<6.0.0",
   "pip-tools>=7.4.1,<8.0.0",
+  "ply>=3.11,<4.0.0",
   "pyarrow>=17.0.0,<18.0.0",
+  "pydantic>=2.9.2,<3.0.0",
   "pytest-mock>=3.14.0,<4.0.0",
   "pytest-xdist>=3.6.1,<4.0.0",
   "pytest>=8.3.2,<9.0.0",
+  "python-constraint>=1.4.0,<2.0.0",
   "rich>=13.8.0,<14.0.0",
   "ruff>=0.6.3,<1.0.0",
   "sphinx-autoapi==3.3.1,<4.0.0",

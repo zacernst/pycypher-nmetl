@@ -1,30 +1,26 @@
-from unittest.mock import patch
-
 import pytest
 
-from pycypher.cypher import (
+from pycypher.parser import (
     Alias,
     Cypher,
     CypherParser,
     Equals,
-    FactCollection,
     Literal,
-    NodeHasAttributeWithValue,
-    NodeHasLabel,
-    NodeRelatedToNode,
     ObjectAttributeLookup,
     Query,
     Where,
 )
 
+from pycypher.fact import FactNodeRelatedToNode, FactNodeHasLabel, FactNodeHasAttributeWithValue, FactCollection
+
 
 @pytest.fixture
 def fact_collection():
-    fact1 = NodeHasLabel("1", "Thing")
-    fact2 = NodeHasAttributeWithValue("1", "key", 2)
-    fact3 = NodeRelatedToNode("1", "2", "MyRelationship")
-    fact4 = NodeHasLabel("2", "OtherThing")
-    fact5 = NodeHasAttributeWithValue("2", "key", 5)
+    fact1 = FactNodeHasLabel("1", "Thing")
+    fact2 = FactNodeHasAttributeWithValue("1", "key", 2)
+    fact3 = FactNodeRelatedToNode("1", "2", "MyRelationship")
+    fact4 = FactNodeHasLabel("2", "OtherThing")
+    fact5 = FactNodeHasAttributeWithValue("2", "key", 5)
     fact_collection = FactCollection([fact1, fact2, fact3, fact4, fact5])
 
     return fact_collection

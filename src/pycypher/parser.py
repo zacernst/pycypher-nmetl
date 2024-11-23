@@ -1,179 +1,25 @@
 from __future__ import annotations
 
+import collections
 from abc import abstractmethod
 from typing import Any, Dict, Generator, List, Optional, Tuple, Type
-import collections
 
 import ply.lex as lex  # type: ignore
 import ply.yacc as yacc  # type: ignore
 from constraint import Domain, Problem
+
+# from constraint import Domain, Problem
 from rich import print as rprint
 from rich.tree import Tree
 
 from pycypher.exceptions import CypherParsingError
 from pycypher.logger import LOGGER
-
-
-class State:
-    pass
-
-
-class Constraint:
-    @abstractmethod
-    def eval(self, *args, **kwargs) -> Any | None:  # type: ignore
-        pass
-
-
-class IsTrue(Constraint):
-    """
-    Class to represent a constraint that merely says that a ``Predicate`` is true.
-    """
-
-    def __init__(self, predicate: Predicate):
-        self.predicate = predicate
-
-    def eval(self, *_) -> bool | None:
-        pass
-
-    def __repr__(self) -> str:
-        return f"IsTrue({self.predicate})"
-
-
-class HasLabel(Constraint):
-    def __init__(self, node_id: str, label: str):
-        self.node_id = node_id
-        self.label = label
-
-    def __repr__(self):
-        return f"HasLabel: {self.node_id} {self.label}"
-
-    def eval(self, state: State) -> bool | None:
-        pass
-
-    def __hash__(self) -> int:
-        return hash("HasLabel" + self.node.__str__() + self.label.__str__())
-
-    def __eq__(self, other: Any) -> bool:
-        return isinstance(other, HasLabel) and self.node == other.node and self.label == other.label
-
-
-class HasAttributeWithValue(Constraint):
-    def __init__(self, node_id: str, attribute: str, value: Any):
-        self.node_id = node_id
-        self.attribute = attribute
-        self.value = value
-
-    def __repr__(self):
-        return f"HasAttributeWithValue: [{self.node_id}] {self.attribute}: {self.value}"
-
-    def __hash__(self) -> int:
-        return hash(
-            "HasAttributeWithValue"
-            + self.node_id
-            + self.attribute
-            + str(self.value)
-        )
-
-    def __eq__(self, other: Any) -> bool:
-            return (
-                isinstance(other, HasAttributeWithValue) 
-                and self.node_id == other.node_id
-                and self.attribute == other.attribute
-                and self.value == other.value
-            )  # noqa: E501
-
-
-class AtomicFact:
-    def satisfies(self, constraint: Constraint) -> bool:
-        return self._satisfies(constraint)
-
-
-class NodeHasLabel(AtomicFact):
-    def __init__(self, node_id: str, node_label: str):
-        self.node_id = node_id
-        self.label = node_label
-
-    def __repr__(self):
-        return f"NodeHasLabel: {self.node_id} {self.label}"
-    
-    def __eq__(self, other):
-        return isinstance(other, NodeHasLabel) and self.node_id == other.node_id and self.label == other.label
-
-    def _satisfies(self, constraint: Constraint) -> bool:
-        if not isinstance(constraint, HasLabel):
-            return False
-        return bool(
-            constraint.node_id == self.node_id
-            and constraint.label == self.label
-        )
-
-
-class NodeHasAttributeWithValue(AtomicFact):
-    def __init__(self, node_id: str, attribute: str, value: Any):
-        self.node_id = node_id
-        self.attribute = attribute
-        self.value = value
-    
-    def __hash__(self) -> int:
-        return hash("NodeHasAttributeWithValue" + self.node_id.__str__() + self.attribute.__str__() + self.value.__str__())
-
-    def __repr__(self):
-        return f"NodeHasAttributeWithValue: {self.node_id} {self.attribute} {self.value}"
-
-    def _satisfies(self, constraint: Constraint) -> bool:
-        if not isinstance(constraint, HasAttributeWithValue):
-            return False
-        return bool(
-            constraint.node_id == self.node_id
-            and constraint.attribute == self.attribute
-            and constraint.value == self.value
-        )
-    
-    def __eq__(self, other):
-        import pdb; pdb.set_trace()
-        return isinstance(other, NodeHasAttributeWithValue) and (self.node_id == other.node_id) and (self.attribute == other.attribute) and (self.value == other.value)   
-
-
-
-class NodeRelatedToNode(AtomicFact):
-    def __init__(self, node1_id: str, node2_id: str, relationship_label: str):
-        self.node1_id = node1_id
-        self.node2_id = node2_id
-        self.relationship_label = relationship_label
-
-    def __repr__(self):
-        return f"NodeRelatedToNode: {self.node1_id} {self.relationship_label} {self.node2_id}"
-
-    def _satisfies(self, constraint: Constraint) -> bool:
-        if not isinstance(constraint, NodeRelatedToNode):
-            return False
-        return bool(
-            constraint.node1_id == self.node1_id
-            and constraint.node2_id == self.node2_id
-            and constraint.relationship_label == self.relationship_label
-        )
-    
-    def __eq__(self, other):
-        return isinstance(other, NodeRelatedToNode) and self.node1_id == other.node1_id and self.node2_id == other.node2_id and self.relationship_label == other.relationship_label
-
-
-class FactCollection:
-    def __init__(self, facts: List[AtomicFact]):
-        self.facts = facts
-
-    def __iter__(self):
-        for fact in self.facts:
-            yield fact
-
-    def __repr__(self):
-        return f"FactCollection: {len(self.facts)}"
-
-    def satisfies(self, constraint: Constraint) -> bool:
-        return any(fact.satisfies(constraint) for fact in self.facts)
-
-    def __len__(self):
-        return len(self.facts)
-
+from pycypher.solver import (
+    ConstraintNodeHasAttributeWithValue,
+    ConstraintNodeHasLabel,
+    IsTrue,
+)
+from pycypher.tree_mixin import TreeMixin
 
 tokens = [
     "COLON",
@@ -199,7 +45,6 @@ tokens = [
     "WORD",
 ]
 
-# Regular expression rules for simple tokens
 t_COLON = r":"
 t_COMMA = r","
 t_DASH = r"-"
@@ -232,6 +77,7 @@ reserved = {
     "WHERE": "WHERE",
 }
 
+
 tokens = tokens + list(reserved.values())
 
 
@@ -245,36 +91,6 @@ t_ignore = " \t"
 lexer = lex.lex()
 
 
-class TreeMixin:
-    parent = None
-
-    def print_tree(self):
-        rprint(self.tree())
-
-    @property
-    def children(self) -> Generator[TreeMixin | str | None]:
-        yield None
-
-    def tree(self) -> Tree:
-        t = Tree(self.__class__.__name__)
-        for child in self.children:
-            if child is None:
-                continue
-            t.add(child.tree())
-        return t
-
-    def walk(self) -> Generator[TreeMixin]:
-        for child in self.children:
-            if child is None:
-                continue
-            yield child
-            if not hasattr(child, "walk"):
-                continue
-            child.parent = self
-            for i in child.walk():
-                yield i
-
-
 class Cypher(TreeMixin):
     def __init__(self, cypher: TreeMixin):
         self.cypher = cypher
@@ -285,7 +101,8 @@ class Cypher(TreeMixin):
             LOGGER.debug(f"Walking node: {node}")
             try:
                 self.aggregated_constraints += getattr(node, "constraints", [])
-            except:
+            except Exception as err:
+                LOGGER.error(err)
                 import pdb
 
                 pdb.set_trace()
@@ -516,12 +333,14 @@ class Node(TreeMixin):
         constraint_list: List[Constraint] = []
         if self.node_name_label.label:
             constraint_list.append(
-                HasLabel(self.node_name_label.name, self.node_name_label.label)
+                ConstraintNodeHasLabel(
+                    self.node_name_label.name, self.node_name_label.label
+                )
             )
         if self.mapping_list:
             for mapping in self.mapping_list.mappings:
                 constraint_list.append(
-                    HasAttributeWithValue(
+                    ConstraintNodeHasAttributeWithValue(
                         self.node_name_label.name, mapping.key, mapping.value
                     )
                 )
@@ -594,7 +413,7 @@ class Mapping(TreeMixin):  # This is not complete
     @property
     def constraints(self):
         return [
-            HasAttributeWithValue(
+            ConstraintNodeHasAttributeWithValue(
                 self.parent.node_name_label.name, self.key, self.value
             )
         ]
@@ -753,13 +572,32 @@ class Or(BinaryBoolean):
         return t
 
 
+class RelationshipChainList(TreeMixin):
+    def __init__(self, relationships: List[RelationshipChain]):
+        self.relationships = relationships
+
+    def __repr__(self):
+        return f"RelationshipChainList({self.relationships})"
+
+    def tree(self) -> Tree:
+        t = Tree(self.__class__.__name__)
+        for relationship in self.relationships:
+            t.add(relationship.tree())
+        return t
+
+    @property
+    def children(self) -> Generator[RelationshipChain]:
+        for relationship in self.relationships:
+            yield relationship
+
+
 class Literal(TreeMixin):
     def __init__(self, value: Any):
         self.value = value
 
     def __repr__(self):
         return f"Literal({self.value})"
-    
+
     def __hash__(self):
         return hash(self.value)
 
@@ -767,9 +605,9 @@ class Literal(TreeMixin):
         t = Tree(self.__class__.__name__)
         t.add(str(self.value))
         return t
-    
+
     def __eq__(self, other):
-        return (isinstance(other, Literal) and self.value == other.value)
+        return isinstance(other, Literal) and self.value == other.value
 
 
 start = "cypher"
@@ -878,25 +716,6 @@ def p_relationship_chain(p: yacc.YaccProduction):
     p[0] = RelationshipChain(p[1].steps + [p[2]])
 
 
-class RelationshipChainList(TreeMixin):
-    def __init__(self, relationships: List[RelationshipChain]):
-        self.relationships = relationships
-
-    def __repr__(self):
-        return f"RelationshipChainList({self.relationships})"
-
-    def tree(self) -> Tree:
-        t = Tree(self.__class__.__name__)
-        for relationship in self.relationships:
-            t.add(relationship.tree())
-        return t
-
-    @property
-    def children(self) -> Generator[RelationshipChain]:
-        for relationship in self.relationships:
-            yield relationship
-
-
 def p_relationship_chain_list(p: yacc.YaccProduction):
     """relationship_chain_list : relationship_chain
     | relationship_chain_list COMMA relationship_chain"""
@@ -985,10 +804,6 @@ class CypherParser:
 
 
 if __name__ == "__main__":
-    # @cypher_condition("MATCH (n) RETURN n.foo")
-    # def foo(x):
-    #     return x + 1
-
     statements = [
         "MATCH (n:Thing) WHERE n.key = 2, n.foo = 3 RETURN n.foobar, n.baz",
         'MATCH (n:Thing {key1: "value", key2: 5}) WHERE n.key = 2, n.foo = 3 RETURN n.foobar, n.baz',
@@ -1001,74 +816,82 @@ if __name__ == "__main__":
         result = CypherParser(statement)
         print(statement, result)
 
-    # Constraint satisfaction
+    ################################
+    ### Build FactCollection
+    ################################
 
-    fact1 = NodeHasLabel("1", "Thing")
-    fact2 = NodeHasAttributeWithValue("1", "key", Literal('2'))
-    fact3 = NodeRelatedToNode("1", "2", "MyRelationship")
-    fact4 = NodeHasLabel("2", "OtherThing")
-    fact5 = NodeHasAttributeWithValue("2", "key", Literal(5))
+    fact1 = FactNodeHasLabel("1", "Thing")
+    fact2 = FactNodeHasAttributeWithValue("1", "key", Literal("2"))
+    fact3 = FactNodeRelatedToNode("1", "2", "MyRelationship")
+    fact4 = FactNodeHasLabel("2", "OtherThing")
+    fact5 = FactNodeHasAttributeWithValue("2", "key", Literal(5))
 
     fact_collection = FactCollection([fact1, fact2, fact3, fact4, fact5])
 
-    node_id_set = set()
-    attribute_dict = {}  # {attribute: {node_id: value}}
-    relationship_dict = {}  # {relationship: [{'source': node1_id, 'target': node2_id} ...]}
-    node_label_dict = collections.defaultdict(list) # {node_label: [node_id, ...]}
-    for fact in fact_collection.facts:
-        if isinstance(fact, NodeHasLabel):
-            node_id_set.add(fact.node_id)
-            node_label_dict[fact.label].append(fact.node_id) 
-        elif isinstance(fact, NodeHasAttributeWithValue):
-            node_id_set.add(fact.node_id)
-            if fact.attribute not in attribute_dict:
-                attribute_dict[fact.attribute] = {}
-            attribute_dict[fact.attribute][fact.node_id] = fact.value
-        elif isinstance(fact, NodeRelatedToNode):
-            node_id_set.add(fact.node1_id)
-            node_id_set.add(fact.node2_id)
-            if fact.relationship_label not in relationship_dict:
-                relationship_dict[fact.relationship_label] = []
-            relationship_dict[fact.relationship_label].append(
-                {"source": fact.node1_id, "target": fact.node2_id}
-            )
+    # node_id_set = set()
+    # attribute_dict = {}  # {attribute: {node_id: value}}
+    # relationship_dict = {}  # {relationship: [{'source': node1_id, 'target': node2_id} ...]}
+    # node_label_dict = collections.defaultdict(list) # {node_label: [node_id, ...]}
+    # for fact in fact_collection.facts:
+    #     if isinstance(fact, FactNodeHasLabel):
+    #         node_id_set.add(fact.node_id)
+    #         node_label_dict[fact.label].append(fact.node_id)
+    #     elif isinstance(fact, FactNodeHasAttributeWithValue):
+    #         node_id_set.add(fact.node_id)
+    #         if fact.attribute not in attribute_dict:
+    #             attribute_dict[fact.attribute] = {}
+    #         attribute_dict[fact.attribute][fact.node_id] = fact.value
+    #     elif isinstance(fact, FactNodeRelatedToNode):
+    #         node_id_set.add(fact.node1_id)
+    #         node_id_set.add(fact.node2_id)
+    #         if fact.relationship_label not in relationship_dict:
+    #             relationship_dict[fact.relationship_label] = []
+    #         relationship_dict[fact.relationship_label].append(
+    #             {"source": fact.node1_id, "target": fact.node2_id}
+    #         )
+    ###########################################
+    ### Define Cypher Query
+    ###########################################
 
-    # cypher_statement = """MATCH (n:Thing {key1: "value", key2: 5})-[r:MyRelationship]->(m:OtherThing {key3: "hithere"}) WHERE n.key = 2 RETURN n.foobar, n.baz"""
     cypher_statement = """MATCH (n:Thing {key: 2}) RETURN n.key"""
-    # cypher_statement = '''MATCH (n:Thing {key: 2})-[r:MyRelationship]->(m) WHERE n.key = 2 RETURN n''' # RETURN n'''
+
     ###########################################
-    ### Constraints
+    ### Parse Cypher Query
     ###########################################
+
     result = CypherParser(cypher_statement)
+
+    ###########################################
+    ### Gather constraints
+    ###########################################
     constraints = result.parsed.aggregated_constraints
 
     # Get all the labels
     node_labels = set()
     for constraint in constraints:
-        if isinstance(constraint, HasLabel):
+        if isinstance(constraint, ConstraintNodeHasLabel):
             node_labels.add(constraint.label)
     # Get list of all nodes in constraints
     node_variables = set()
     for constraint in constraints:
-        if isinstance(constraint, HasLabel):
+        if isinstance(constraint, ConstraintNodeHasLabel):
             node_variables.add(constraint.node_id)
-        elif isinstance(constraint, HasAttributeWithValue):
+        elif isinstance(constraint, ConstraintNodeHasAttributeWithValue):
             node_variables.add(constraint.node_id)
-        elif isinstance(constraint, NodeRelatedToNode):
+        elif isinstance(constraint, FactNodeRelatedToNode):
             node_variables.add(constraint.node1_id)
             node_variables.add(constraint.node2_id)
     # Get list of all relationships in constraints
     relationship_labels = set()
     for constraint in constraints:
         if isinstance(
-            constraint, NodeRelatedToNode
+            constraint, FactNodeRelatedToNode
         ):  # This is borked; relationship not in constraints
-            # import pdb; pdb.set_trace()
             relationship_labels.add(constraint.relationship_label)
     # Get list of all attributes in constraints
     attributes = set()
     for constraint in constraints:
-        if isinstance(constraint, HasAttributeWithValue):
+        if isinstance(constraint, ConstraintNodeHasAttributeWithValue):
             attributes.add(constraint.attribute)
 
     #############################
@@ -1083,18 +906,18 @@ if __name__ == "__main__":
     label_domain_dict = collections.defaultdict(set)
 
     for fact in fact_collection:
-        if isinstance(fact, NodeHasLabel):
+        if isinstance(fact, FactNodeHasLabel):
             if fact.node_id not in node_domain:
                 node_domain.append(fact.node_id)
             if fact.label not in node_label_domain:
                 label_domain_dict[fact.label].add(fact.node_id)
         else:
             pass
-    
+
     # I think we have to reify relationships. Ugh.
     ################################################
     ### Define the Problem()
-    ################################################ 
+    ################################################
 
     problem = Problem()
 
@@ -1110,45 +933,43 @@ if __name__ == "__main__":
 
     def node_has_label(node_id=None, label=None):
         LOGGER.debug(f"Checking if {node_id} has label {label}")
-        answer = NodeHasLabel(node_id, label) in fact_collection.facts
+        answer = FactNodeHasLabel(node_id, label) in fact_collection.facts
         LOGGER.debug(f"Answer: {answer}")
         return answer
 
     # Turn these into partial functions with `node_id` the remaining argument
-    def node_has_attribute_with_value(node_id=None, attribute=None, value=None):
+    def node_has_attribute_with_value(
+        node_id=None, attribute=None, value=None
+    ):
         if not isinstance(value, Literal):
             value = Literal(value)
-        LOGGER.debug(f"Checking if {node_id} has attribute {attribute} with value {value}")
-        obj = NodeHasAttributeWithValue(node_id=node_id, attribute=attribute, value=value)
+        LOGGER.debug(
+            f"Checking if {node_id} has attribute {attribute} with value {value}"
+        )
+        obj = FactNodeHasAttributeWithValue(
+            node_id=node_id, attribute=attribute, value=value
+        )
         answer = obj in fact_collection.facts
         LOGGER.debug(f"Answer: {answer}")
-        import pdb; pdb.set_trace()
         return answer
-    
+
     # attempt = partial(node_has_label, ('n', 'Thing',))
 
     # Loop over constraints, creating partial functions and adding them as constraints
     for constraint in constraints:
-        if isinstance(constraint, HasLabel):
-            problem.addConstraint(partial(node_has_label, label=constraint.label), [constraint.node_id])
-        if isinstance(constraint, HasAttributeWithValue):  # This doesn't work
-            problem.addConstraint(partial(node_has_attribute_with_value, attribute=constraint.attribute, value=constraint.value), [constraint.node_id])
-    
-
-    
-
-"""
->>> problem = Problem()
->>> problem.addVariables(["a", "b"], [1, 2])
->>> def func(a, b):
-...     return b > a
->>> problem.addConstraint(FunctionConstraint(func), ["a", "b"])
->>> problem.getSolution()
-
-
-
-# print(fact_collection.satisfies(HasLabel("1", "Thing")))
-# print(fact_collection.satisfies(HasLabel("2", "OtherThing")))
-# print(fact_collection.satisfies(HasLabel("2", "NoThisIsFalse")))
-
-"""
+        if isinstance(constraint, ConstraintNodeHasLabel):
+            problem.addConstraint(
+                partial(node_has_label, label=constraint.label),
+                [constraint.node_id],
+            )
+        if isinstance(
+            constraint, ConstraintNodeHasAttributeWithValue
+        ):  # This doesn't work
+            problem.addConstraint(
+                partial(
+                    node_has_attribute_with_value,
+                    attribute=constraint.attribute,
+                    value=constraint.value,
+                ),
+                [constraint.node_id],
+            )

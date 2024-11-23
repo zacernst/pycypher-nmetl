@@ -2,24 +2,21 @@
 
 # Cypher AST Generator for Python
 
-This is a *work in progress*, by which I mean, "ugly, but fixable." It is also
-woefully incomplete. It generates an abstract syntax tree for Cypher statements
-that use only a subset of the language. That subset is growing, but it's still
-small.
+This is a *work in progress*, by which I mean, "ugly, but fixable." It is also woefully incomplete. It generates an abstract syntax tree for Cypher statements that use only a subset of the language. That subset is growing, but it's still small.
 
-The hope is that this will be useful for building modules that can take advantage
-of the Cypher query language, by eliminating the need to do all the boring work
-of writing a parser and generating an AST.
+Additionally, this package contains the beginning of a query engine that is designed to accept Cypher queries and return results from arbitrary graph structures in Python. This functionality is in a _very_ early state, and works only for trivial queries.
+
+The hope is that this will be useful for building modules that can take advantage of the Cypher query language, by eliminating the need to do all the boring work of writing a parser and generating an AST.
 
 ## How to use it
 
 Don't. But if you really want to, then:
 
 ```python
->>> from pycypher.cypher import CypherParser
-
+>>> from pycypher.parser import CypherParser
 >>> cypher = CypherParser("MATCH (n:Thing) RETURN n.foo")
 >>> cypher.parsed.print_tree()
+
 Cypher
 └── Query
     ├── Match
@@ -36,9 +33,7 @@ Cypher
 Cypher(Query(Match(Node(NodeNameLabel(n, Thing), None)), Return(Projection([ObjectAttributeLookup(n, foo)]))))
 ```
 
-If you want to understand what's happening, what Python classes are being built, etc., then you'll
-have to use the source, Luke. Check out the `__main__` function at the end of the `cypher.py` script. There
-are no docs yet. Like I said, this is a *work in progress*.
+If you want to understand what's happening, what Python classes are being built, etc., then you'll have to use the source, Luke. Check out the `__main__` function at the end of the `cypher.py` script. There are no docs yet. Like I said, this is a *work in progress*.
 
 ## Installation
 
