@@ -1,4 +1,7 @@
 from __future__ import annotations
+from collections.abc import MutableSequence
+from typing import Generator, Any, List
+
 
 from pycypher.solver import (
     Constraint,
@@ -98,11 +101,11 @@ class FactNodeRelatedToNode(AtomicFact):
         )
 
 
-class FactCollection:
+class FactCollection(MutableSequence):
     def __init__(self, facts: List[AtomicFact]):
         self.facts = facts
 
-    def __iter__(self):
+    def __iter__(self) -> Generator[AtomicFact]:
         for fact in self.facts:
             yield fact
 
@@ -111,6 +114,18 @@ class FactCollection:
 
     def satisfies(self, constraint: Constraint) -> bool:
         return any(fact.satisfies(constraint) for fact in self.facts)
+    
+    def __getitem__(self, index):
+        return self.facts[index]
+
+    def __setitem__(self, index, value):
+        self.facts[index] = value
+
+    def __delitem__(self, index):
+        del self.facts[index]
 
     def __len__(self):
         return len(self.facts)
+
+    def insert(self, index, value):
+        self.facts.insert(index, value)

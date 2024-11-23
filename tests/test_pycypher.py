@@ -1,5 +1,11 @@
 import pytest
 
+from pycypher.fact import (
+    FactCollection,
+    FactNodeHasAttributeWithValue,
+    FactNodeHasLabel,
+    FactNodeRelatedToNode,
+)
 from pycypher.parser import (
     Alias,
     Cypher,
@@ -10,8 +16,6 @@ from pycypher.parser import (
     Query,
     Where,
 )
-
-from pycypher.fact import FactNodeRelatedToNode, FactNodeHasLabel, FactNodeHasAttributeWithValue, FactCollection
 
 
 @pytest.fixture
@@ -28,6 +32,30 @@ def fact_collection():
 
 def test_fact_collection_has_facts(fact_collection: FactCollection):
     assert len(fact_collection) == 5
+
+
+def test_fact_collection_del_item(fact_collection: FactCollection):
+    del fact_collection[0]
+    assert len(fact_collection) == 4
+
+
+def test_fact_collection_set_item(fact_collection: FactCollection):
+    fact = FactNodeHasLabel("3", "Thing")
+    fact_collection[0] = fact
+    assert len(fact_collection) == 5
+    assert fact_collection[0] == fact
+
+
+def test_fact_collection_get_item(fact_collection: FactCollection):
+    fact = fact_collection[0]
+    assert isinstance(fact, FactNodeHasLabel)
+
+
+def test_fact_collection_insert(fact_collection: FactCollection):
+    fact = FactNodeHasLabel("3", "Thing")
+    fact_collection.insert(0, fact)
+    assert len(fact_collection) == 6
+    assert fact_collection[0] == fact
 
 
 @pytest.mark.cypher
@@ -121,3 +149,47 @@ def test_parser_generates_alias_with_correct_name_in_return_statement():
         obj.parsed.cypher.return_clause.projection.lookups[0].alias
         == "myfoobar"
     )
+def test_node_has_label_equality():
+    fact1 = FactNodeHasLabel("1", "Thing")
+    fact2 = FactNodeHasLabel("1", "Thing")
+    assert fact1 == fact2
+
+def test_node_has_label_inequality():
+    fact1 = FactNodeHasLabel("1", "Thing")
+    fact2 = FactNodeHasLabel("2", "Thing")
+    assert fact1 != fact2
+
+def test_node_has_attribute_with_value_equality():
+    fact1 = FactNodeHasAttributeWithValue("1", "key", 2)
+    fact2 = FactNodeHasAttributeWithValue("1", "key", 2)
+    assert fact1 == fact2
+
+def test_node_has_attribute_with_value_inequality():
+    fact1 = FactNodeHasAttributeWithValue("1", "key", 2)
+    fact2 = FactNodeHasAttributeWithValue("1", "key", 3)
+    assert fact1 != fact2
+
+def test_node_has_related_node_equality():
+    fact1 = FactNodeRelatedToNode("1", "2", "MyRelationship")
+    fact2 = FactNodeRelatedToNode("1", "2", "MyRelationship")
+    assert fact1 == fact2
+
+def test_node_has_related_node_inequality():
+    fact1 = FactNodeRelatedToNode("1", "2", "MyRelationship")
+    fact2 = FactNodeRelatedToNode("1", "2", "MyOtherRelationship")
+    assert fact1 != fact2
+
+
+
+def test_aggregate_constraints_node_label():
+    cypher = 'MATCH (m:Thing) RETURN m.foobar'
+    result = CypherParser(cypher)
+    constraints = result.parsed.aggregated_constraints
+    assert len(constraints) == 1
+
+
+def test_aggregate_constraints_node_and_mapping():
+    cypher = 'MATCH (m:Thing {key: 2}) RETURN m.foobar'
+    result = CypherParser(cypher)
+    constraints = result.parsed.aggregated_constraints
+    assert len(constraints) == 2

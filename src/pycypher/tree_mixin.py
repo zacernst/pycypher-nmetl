@@ -1,8 +1,10 @@
 from __future__ import annotations
+
+from typing import Generator
+
 from rich import print as rprint
 from rich.tree import Tree
 
-from typing import Generator
 
 class TreeMixin:
     parent = None
