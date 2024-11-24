@@ -1,3 +1,10 @@
+"""
+Facts
+=====
+
+Facts are simple atomic statements that have a truth value.
+"""
+
 from __future__ import annotations
 
 from collections.abc import MutableSequence
@@ -11,8 +18,10 @@ from pycypher.solver import (
 
 
 class AtomicFact:
-    def satisfies(self, constraint: Constraint) -> bool:
-        return self._satisfies(constraint)
+    """Astract base class for specific types of ``Fact``."""
+
+    # def satisfies(self, constraint: Constraint) -> bool:
+    #     return self._satisfies(constraint)
 
 
 class FactNodeHasLabel(AtomicFact):
@@ -30,13 +39,13 @@ class FactNodeHasLabel(AtomicFact):
             and self.label == other.label
         )
 
-    def _satisfies(self, constraint: Constraint) -> bool:
-        if not isinstance(constraint, ConstraintNodeHasLabel):
-            return False
-        return bool(
-            constraint.node_id == self.node_id
-            and constraint.label == self.label
-        )
+    # def _satisfies(self, constraint: Constraint) -> bool:
+    #     if not isinstance(constraint, ConstraintNodeHasLabel):
+    #         return False
+    #     return bool(
+    #         constraint.node_id == self.node_id
+    #         and constraint.label == self.label
+    #     )
 
 
 class FactNodeHasAttributeWithValue(AtomicFact):
@@ -56,14 +65,14 @@ class FactNodeHasAttributeWithValue(AtomicFact):
     def __repr__(self):
         return f"NodeHasAttributeWithValue: {self.node_id} {self.attribute} {self.value}"
 
-    def _satisfies(self, constraint: Constraint) -> bool:
-        if not isinstance(constraint, ConstraintNodeHasAttributeWithValue):
-            return False
-        return bool(
-            constraint.node_id == self.node_id
-            and constraint.attribute == self.attribute
-            and constraint.value == self.value
-        )
+    # def _satisfies(self, constraint: Constraint) -> bool:
+    #     if not isinstance(constraint, ConstraintNodeHasAttributeWithValue):
+    #         return False
+    #     return bool(
+    #         constraint.node_id == self.node_id
+    #         and constraint.attribute == self.attribute
+    #         and constraint.value == self.value
+    #     )
 
     def __eq__(self, other):
         return (
@@ -83,14 +92,14 @@ class FactNodeRelatedToNode(AtomicFact):
     def __repr__(self):
         return f"NodeRelatedToNode: {self.node1_id} {self.relationship_label} {self.node2_id}"
 
-    def _satisfies(self, constraint: Constraint) -> bool:
-        if not isinstance(constraint, FactNodeRelatedToNode):
-            return False
-        return bool(
-            constraint.node1_id == self.node1_id
-            and constraint.node2_id == self.node2_id
-            and constraint.relationship_label == self.relationship_label
-        )
+    # def _satisfies(self, constraint: Constraint) -> bool:
+    #     if not isinstance(constraint, FactNodeRelatedToNode):
+    #         return False
+    #     return bool(
+    #         constraint.node1_id == self.node1_id
+    #         and constraint.node2_id == self.node2_id
+    #         and constraint.relationship_label == self.relationship_label
+    #     )
 
     def __eq__(self, other):
         return (
@@ -112,8 +121,8 @@ class FactCollection(MutableSequence):
     def __repr__(self):
         return f"FactCollection: {len(self.facts)}"
 
-    def satisfies(self, constraint: Constraint) -> bool:
-        return any(fact.satisfies(constraint) for fact in self.facts)
+    # def satisfies(self, constraint: Constraint) -> bool:
+    #     return any(fact.satisfies(constraint) for fact in self.facts)
 
     def __getitem__(self, index):
         return self.facts[index]

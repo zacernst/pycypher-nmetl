@@ -1,15 +1,15 @@
 import pytest
 
+from pycypher import CypherParser
 from pycypher.fact import (
     FactCollection,
     FactNodeHasAttributeWithValue,
     FactNodeHasLabel,
     FactNodeRelatedToNode,
 )
-from pycypher.parser import (
+from pycypher.node_classes import (
     Alias,
     Cypher,
-    CypherParser,
     Equals,
     Literal,
     ObjectAttributeLookup,
@@ -58,25 +58,21 @@ def test_fact_collection_insert(fact_collection: FactCollection):
     assert fact_collection[0] == fact
 
 
-@pytest.mark.cypher
 def test_can_parse_simple_cypher():
     obj = CypherParser("MATCH (n) RETURN n.foo")
     assert isinstance(obj, CypherParser)
 
 
-@pytest.mark.cypher
 def test_parser_builds_cypher_object():
     obj = CypherParser("MATCH (n) RETURN n.foo")
     assert isinstance(obj.parsed, Cypher)
 
 
-@pytest.mark.cypher
 def test_parser_creates_simple_node_object():
     obj = CypherParser("MATCH (n) RETURN n.foo")
     assert isinstance(obj.parsed.cypher, Query)
 
 
-@pytest.mark.cypher
 def test_parser_parses_complicated_query():
     query = (
         """MATCH (n:Thing {key1: "value", key2: 5})-[r]->(m:OtherThing {key3: "hithere"}) """
@@ -87,7 +83,6 @@ def test_parser_parses_complicated_query():
     assert isinstance(obj.parsed, Cypher)
 
 
-@pytest.mark.cypher
 def test_parser_handles_node_label():
     query = """MATCH (n:Thingy)-[r:Thingy]->(m) RETURN n.foobar"""
     obj = CypherParser(query)
@@ -99,21 +94,18 @@ def test_parser_handles_node_label():
     )
 
 
-@pytest.mark.cypher
 def test_parser_handles_where_clause():
     query = """MATCH (n:Thingy) WHERE n.foo = 5 RETURN n.foobar"""
     obj = CypherParser(query)
     assert isinstance(obj.parsed.cypher.match_clause.where, Where)
 
 
-@pytest.mark.cypher
 def test_parser_handles_where_clause_predicate():
     query = """MATCH (n:Thingy) WHERE n.foo = 5 RETURN n.foobar"""
     obj = CypherParser(query)
     assert isinstance(obj.parsed.cypher.match_clause.where.predicate, Equals)
 
 
-@pytest.mark.cypher
 def test_parser_handles_where_clause_predicate_lookup():
     query = """MATCH (n:Thingy) WHERE n.foo = 5 RETURN n.foobar"""
     obj = CypherParser(query)
@@ -123,7 +115,6 @@ def test_parser_handles_where_clause_predicate_lookup():
     )
 
 
-@pytest.mark.cypher
 def test_parser_handles_where_clause_predicate_literal():
     query = """MATCH (n:Thingy) WHERE n.foo = 5 RETURN n.foobar"""
     obj = CypherParser(query)
@@ -132,7 +123,6 @@ def test_parser_handles_where_clause_predicate_literal():
     )
 
 
-@pytest.mark.cypher
 def test_parser_generates_alias_in_return_statement():
     query = """MATCH (n:Thingy) WHERE n.foo = 5 RETURN n.foobar AS myfoobar"""
     obj = CypherParser(query)
@@ -141,7 +131,6 @@ def test_parser_generates_alias_in_return_statement():
     )
 
 
-@pytest.mark.cypher
 def test_parser_generates_alias_with_correct_name_in_return_statement():
     query = """MATCH (n:Thingy) WHERE n.foo = 5 RETURN n.foobar AS myfoobar"""
     obj = CypherParser(query)
