@@ -83,7 +83,7 @@ which will return:
 
 where `n` is the node variable from your Cypher query. It says that the node whose ID is `1` can be put in for the value of `n` in your Cypher query. Alert readers will notice that the query actually asks for an attribute of `n`, not the ID of `n` itself. I know; we haven't gotten there yet.
 
-Why is it designed this way? The idea is that if you've got a graph-like structure (say, a `networkx` graph), it would be very easy to walk the graph and create a list of simple `Fact` objects. Those can be put in a `FactCollection` and passed into your `CypherParser`. In other words, the various `Fact` classes are there to provide a simple and intuitive target to represent graph data. So long as you can get the data into a `FactCollection`, you can query it. The next logial step in developing this package is to provide out-of-the-box methods for querying various graph data formats, probably starting with `networkx`.
+Why is it designed this way? The idea is that if you've got a graph-like structure (say, a `networkx` graph), it would be very easy to walk the graph and create a list of simple `Fact` objects. Those can be put in a `FactCollection` and passed into your `CypherParser`. In other words, the various `Fact` classes are there to provide a simple and intuitive target to represent graph data. So long as you can get the data into a `FactCollection`, you can query it. The next logical step in developing this package is to provide out-of-the-box methods for querying various graph data formats, probably starting with `networkx`.
 
 ## Under the hood
 
