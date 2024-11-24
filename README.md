@@ -1,5 +1,7 @@
 [![Install and run tests](https://github.com/zacernst/pycypher/actions/workflows/makefile.yml/badge.svg)](https://github.com/zacernst/pycypher/actions/workflows/makefile.yml)
 
+[![Build Sphinx documentation](https://github.com/zacernst/pycypher/actions/workflows/docs.yml/badge.svg)](https://github.com/zacernst/pycypher/actions/workflows/docs.yml)
+
 # Cypher AST Generator for Python
 
 This is a *work in progress*, by which I mean, "ugly, but fixable." It is also woefully incomplete. It generates an abstract syntax tree for Cypher statements that use only a subset of the language. That subset is growing, but it's still small.
