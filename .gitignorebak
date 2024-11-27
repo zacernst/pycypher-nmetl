@@ -1,9 +1,12 @@
 docs/_build/doctrees/index.doctree
-docs/_build
+# docs/_build
 requirements.txt
 tests/__pycache__/**
 parser.out
 parsetab.py
 dist/**
-docs/generated/**
+docs/**
+sphinx_docs/_build/**
 src/pycypher/__pycache__/**
+# sphinx_docs/**
+.vscode/**

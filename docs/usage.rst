@@ -1,5 +1,6 @@
 .. _installation:
 
+===============================
 Cypher AST Generator for Python
 ===============================
 
@@ -48,7 +49,7 @@ being built, etc., then you’ll have to use the source, Luke. Check out
 the ``__main__`` function at the end of the ``cypher.py`` script. There
 are no docs yet. Like I said, this is a *work in progress*.
 
-Installation
+Requirements
 ------------
 
 Mac and Linux

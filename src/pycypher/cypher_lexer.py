@@ -1,3 +1,15 @@
+'''
+Lexer
+=====
+
+This uses the ``PLY`` package to define the lexer. "Lexing" is the process of
+breaking a string into tokens. This is the first step in the process of
+parsing a language.
+
+The lexer itself is defined at the end of the file (``lexer = lex.lex()``). It is
+imported by the parser, which is defined in the ``__init__.py`` file.
+'''
+
 from typing import Any
 
 import ply.lex as lex
