@@ -1,7 +1,4 @@
 """
-TreeMixin
-=========
-
 This is a mixin class that provides methods for walking and printing
 the AST.
 """
@@ -15,9 +12,12 @@ from rich.tree import Tree
 
 
 class TreeMixin:
+    """Mixin class that provides methods for walking and printing the AST."""
+
     parent = None
 
     def print_tree(self):
+        """Uses ``rich`` to print the tree representation of the AST."""
         rprint(self.tree())
 
     @property
@@ -25,6 +25,9 @@ class TreeMixin:
         yield None
 
     def tree(self) -> Tree:
+        """Generates a tree representation of the AST which can be pretty-printed
+        with the ``rich`` library.
+        """
         t = Tree(self.__class__.__name__)
         for child in self.children:
             if child is None:
@@ -33,6 +36,7 @@ class TreeMixin:
         return t
 
     def walk(self) -> Generator[TreeMixin]:
+        """Generator that yields every node of the AST."""
         for child in self.children:
             if child is None:
                 continue

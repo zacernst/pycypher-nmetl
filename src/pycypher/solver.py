@@ -19,7 +19,7 @@ class IsTrue(Constraint):
     Class to represent a constraint that merely says that a ``Predicate`` is true.
     """
 
-    def __init__(self, predicate: "Predicate"):
+    def __init__(self, predicate: "Predicate"):  # type: ignore
         self.predicate = predicate
 
     def eval(self, *_) -> bool | None:
@@ -48,6 +48,29 @@ class ConstraintNodeHasLabel(Constraint):
             isinstance(other, ConstraintNodeHasLabel)
             and self.node == other.node
             and self.label == other.label
+        )
+
+
+class ConstraintRelationshipHasSourceNode(Constraint):
+    def __init__(self, source_node_id: str, relationship_id: str):
+        self.source_node_id = source_node_id
+        self.relationship_id = relationship_id
+
+    def __repr__(self):
+        return f"RelatedTo: {self.source_node_id} {self.relationship_id}"
+
+    def __hash__(self) -> int:
+        return hash(
+            "RelatedTo"
+            + self.source_node_id.__str__()
+            + self.relationship_id.__str__()
+        )
+
+    def __eq__(self, other: Any) -> bool:
+        return (
+            isinstance(other, ConstraintRelationshipHasSourceNode)
+            and self.source_node_id == other.source_node_id
+            and self.relationship_id == other.relationship_id
         )
 
 

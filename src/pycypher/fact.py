@@ -1,7 +1,4 @@
 """
-Facts
-=====
-
 Facts are simple atomic statements that have a truth value.
 """
 

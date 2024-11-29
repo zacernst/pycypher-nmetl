@@ -52,10 +52,6 @@ from pycypher.tree_mixin import TreeMixin
 start = "cypher"
 
 
-def p_string(p: yacc.YaccProduction):
-    """string : DQUOTE WORD DQUOTE"""
-
-
 def p_cypher(p: List[TreeMixin]):
     """cypher : query"""
     if len(p) == 2:
@@ -69,6 +65,21 @@ def p_cypher(p: List[TreeMixin]):
 def p_query(p: Tuple[yacc.YaccProduction, Match, Return]):
     """query : match_pattern return"""
     p[0] = Query(p[1], p[2])
+
+
+def p_string(p: yacc.YaccProduction):
+    """string : STRING"""
+    p[0] = p[1]
+
+
+def p_integer(p: yacc.YaccProduction):
+    """integer : INTEGER"""
+    p[0] = p[1]
+
+
+def p_float(p: yacc.YaccProduction):
+    """float : FLOAT"""
+    p[0] = p[1]
 
 
 def p_name_label(
@@ -95,10 +106,24 @@ def p_mapping_list(p: List[TreeMixin]):
 def p_node(p: yacc.YaccProduction):
     """node : LPAREN name_label RPAREN
     | LPAREN name_label LCURLY mapping_list RCURLY RPAREN
+    | LPAREN RPAREN
+    | LPAREN WORD RPAREN
     """
-    p[0] = Node(p[2])
-    if len(p) == 7:
-        p[0].mapping_list = p[4]
+    if len(p) == 4 and isinstance(p[2], NodeNameLabel):
+        node_name_label = p[2]
+        mapping_list = MappingSet([])
+    elif len(p) == 3:
+        node_name_label = NodeNameLabel(None, None)
+        mapping_list = MappingSet([])
+    elif len(p) == 4:
+        node_name_label = NodeNameLabel(p[2], None)
+        mapping_list = MappingSet([])
+    elif len(p) == 7 and isinstance(p[2], NodeNameLabel):
+        node_name_label = p[2]
+        mapping_list = p[4]
+    else:
+        raise Exception("What?")
+    p[0] = Node(node_name_label, mapping_list)
 
 
 def p_alias(p: yacc.YaccProduction):
@@ -110,9 +135,9 @@ def p_alias(p: yacc.YaccProduction):
 def p_literal(p: yacc.YaccProduction):
     """literal : INTEGER
     | FLOAT
-    | DQUOTE WORD DQUOTE
+    | STRING
     """
-    p[0] = Literal(p[1]) if len(p) == 2 else Literal(p[2])
+    p[0] = Literal(p[1])
 
 
 def p_relationship(p: yacc.YaccProduction):

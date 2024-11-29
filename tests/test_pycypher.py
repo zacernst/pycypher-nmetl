@@ -188,3 +188,11 @@ def test_aggregate_constraints_node_and_mapping():
     result = CypherParser(cypher)
     constraints = result.parsed.aggregated_constraints
     assert len(constraints) == 2
+
+
+def test_parse_anonymous_node_no_label_no_mapping():
+    cypher = "MATCH () RETURN m.foobar"
+    result = CypherParser(cypher)
+    import pdb
+
+    pdb.set_trace()

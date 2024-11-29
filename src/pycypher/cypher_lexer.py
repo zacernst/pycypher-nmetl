@@ -1,14 +1,11 @@
-'''
-Lexer
-=====
-
+"""
 This uses the ``PLY`` package to define the lexer. "Lexing" is the process of
 breaking a string into tokens. This is the first step in the process of
 parsing a language.
 
 The lexer itself is defined at the end of the file (``lexer = lex.lex()``). It is
 imported by the parser, which is defined in the ``__init__.py`` file.
-'''
+"""
 
 from typing import Any
 
@@ -35,6 +32,7 @@ tokens = [
     "RPAREN",
     "RSQUARE",
     "STAR",
+    "STRING",
     "WORD",
 ]
 
@@ -77,6 +75,12 @@ tokens = tokens + list(reserved.values())
 def t_WORD(t: lex.LexToken) -> Any:
     r"[a-zA-Z_][a-zA-Z_0-9]*"
     t.type = reserved.get(t.value, "WORD")  # Check for reserved words
+    return t
+
+
+def t_STRING(t):
+    r'"[^"]*"'
+    t.value = t.value[1:-1]  # Remove the surrounding quotes
     return t
 
 
