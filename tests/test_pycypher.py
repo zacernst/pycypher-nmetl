@@ -193,6 +193,3 @@ def test_aggregate_constraints_node_and_mapping():
 def test_parse_anonymous_node_no_label_no_mapping():
     cypher = "MATCH () RETURN m.foobar"
     result = CypherParser(cypher)
-    import pdb
-
-    pdb.set_trace()
