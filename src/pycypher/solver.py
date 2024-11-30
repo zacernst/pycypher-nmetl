@@ -52,25 +52,25 @@ class ConstraintNodeHasLabel(Constraint):
 
 
 class ConstraintRelationshipHasSourceNode(Constraint):
-    def __init__(self, source_node_id: str, relationship_id: str):
-        self.source_node_id = source_node_id
-        self.relationship_id = relationship_id
+    def __init__(self, source_node_name: str, relationship_name: str):
+        self.source_node_name = source_node_name
+        self.relationship_name = relationship_name
 
     def __repr__(self):
-        return f"RelatedTo: {self.source_node_id} {self.relationship_id}"
+        return f"RelationshipHasSourceNode: {self.relationship_name} {self.source_node_name}"
 
     def __hash__(self) -> int:
         return hash(
-            "RelatedTo"
-            + self.source_node_id.__str__()
-            + self.relationship_id.__str__()
+            "RelationshipHasSourceNode"
+            + self.relationship_name.__str__()
+            + self.source_node_name.__str__()
         )
 
     def __eq__(self, other: Any) -> bool:
         return (
             isinstance(other, ConstraintRelationshipHasSourceNode)
-            and self.source_node_id == other.source_node_id
-            and self.relationship_id == other.relationship_id
+            and self.source_node_name == other.source_node_name
+            and self.relationship_name == other.relationship_name
         )
 
 

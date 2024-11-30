@@ -336,12 +336,14 @@ class Node(TreeMixin):
 class Relationship(TreeMixin):
     """Relationships may contain a variable name, label, or mapping."""
 
-    def __init__(self, name: str | NodeNameLabel):
-        self.name = name
+    def __init__(self, name_label: NodeNameLabel):
+        self.name_label = (
+            name_label  # This should be ``label`` for consistency
+        )
         self.relationship_id = uuid.uuid4().hex
 
     def __repr__(self):
-        return f"Relationship({self.name})"
+        return f"Relationship({self.name_label})"
 
     def tree(self):
         t = Tree(self.__class__.__name__)
@@ -350,7 +352,7 @@ class Relationship(TreeMixin):
 
     @property
     def children(self):
-        yield self.name
+        yield self.name_label
 
     @property
     def constraints_bak(self):
@@ -454,6 +456,25 @@ class RelationshipLeftRight(TreeMixin):
     @property
     def children(self) -> Generator[Relationship]:
         yield self.relationship
+
+    @property
+    def constraints(self):
+        constraint_list = []
+        relationship_chain = self.parent
+        nodes = [
+            (
+                relationship_chain.steps[i - 1],
+                relationship_chain.steps[i + 1],
+            )
+            for i in range(len(relationship_chain.steps))
+            if relationship_chain.steps[i] is self
+        ]
+        source_node_constraint = ConstraintRelationshipHasSourceNode(
+            nodes[0][0].node_name_label.name,
+            self.relationship.relationship_id,
+        )
+        constraint_list.append(source_node_constraint)
+        return constraint_list
 
 
 class RelationshipRightLeft(TreeMixin):

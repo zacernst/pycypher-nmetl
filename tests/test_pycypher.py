@@ -1,6 +1,7 @@
 import pytest
 
-from pycypher import CypherParser
+from pycypher.cypher_parser import CypherParser
+from pycypher.solver import Constraint
 from pycypher.fact import (
     FactCollection,
     FactNodeHasAttributeWithValue,
@@ -16,6 +17,7 @@ from pycypher.node_classes import (
     Query,
     Where,
 )
+from pycypher.solver import ConstraintNodeHasLabel, ConstraintRelationshipHasSourceNode
 
 
 @pytest.fixture
@@ -190,6 +192,40 @@ def test_aggregate_constraints_node_and_mapping():
     assert len(constraints) == 2
 
 
-def test_parse_anonymous_node_no_label_no_mapping():
+def test_parse_anonymous_node_no_label_no_mapping_gets_variable():
     cypher = "MATCH () RETURN m.foobar"
     result = CypherParser(cypher)
+    assert int(
+        result.parsed.cypher.match_clause.pattern.node_name_label.name, 32
+    )
+
+
+def test_parse_anonymous_node_with_label_no_mapping_gets_variable():
+    cypher = "MATCH (:Thing) RETURN m.foobar"
+    result = CypherParser(cypher)
+    assert int(
+        result.parsed.cypher.match_clause.pattern.node_name_label.name, 32
+    )
+
+
+def test_parse_anonymous_node_with_label_no_mapping_has_right_label():
+    cypher = "MATCH (:Thing) RETURN m.foobar"
+    result = CypherParser(cypher)
+    assert (
+        result.parsed.cypher.match_clause.pattern.node_name_label.label
+        == "Thing"
+    )
+
+
+def test_constraint_from_left_right_relationship():
+    cypher = "MATCH (n:Thing)-[:Relationship]->(m:Other) RETURN n.foobar"
+    result = CypherParser(cypher)
+    obj = result.parsed.cypher.match_clause.pattern.relationships[0].steps[1]
+    assert isinstance(obj.constraints[0], ConstraintRelationshipHasSourceNode)
+
+
+def test_constraint_node_has_label():
+    cypher = "MATCH (n:Thing) RETURN n.foobar"
+    result = CypherParser(cypher)
+    obj = result.parsed.aggregated_constraints[0]
+    assert isinstance(obj, ConstraintNodeHasLabel)
