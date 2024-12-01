@@ -1,9 +1,0 @@
-docs/_build/doctrees/index.doctree
-docs/_build
-requirements.txt
-tests/__pycache__/**
-parser.out
-parsetab.py
-dist/**
-docs/generated/**
-src/pycypher/__pycache__/**
