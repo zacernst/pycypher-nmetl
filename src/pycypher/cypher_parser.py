@@ -46,6 +46,9 @@ from pycypher.node_classes import (
 from pycypher.solver import (
     ConstraintNodeHasAttributeWithValue,
     ConstraintNodeHasLabel,
+    ConstraintRelationshipHasLabel,
+    ConstraintRelationshipHasSourceNode,
+    ConstraintRelationshipHasTargetNode,
 )
 from pycypher.tree_mixin import TreeMixin
 
@@ -273,9 +276,7 @@ class CypherParser:
 
     def __init__(self, cypher_text: str):
         self.cypher_text = cypher_text
-        self.parsed: TreeMixin | None = CYPHER.parse(self.cypher_text)
-        if not self.parsed:
-            raise CypherParsingError(f"Error parsing {self.cypher_text}")
+        self.parsed: TreeMixin = CYPHER.parse(self.cypher_text)
         [_ for _ in self.parsed.walk()]
         self.parsed.gather_constraints()
 
@@ -331,6 +332,15 @@ class CypherParser:
             LOGGER.debug(f"Answer: {answer}")
             return answer
 
+        def _relationship_has_label(relationship_id=None, label=None):
+            LOGGER.debug(f"Checking if {relationship_id} has label {label}")
+            answer = (
+                FactRelationshipHasLabel(relationship_id, label)
+                in fact_collection.facts
+            )
+            LOGGER.debug(f"Answer: {answer}")
+            return answer
+
         # Turn these into partial functions with `node_id` the remaining argument
         def _node_has_attribute_with_value(
             node_id=None, attribute=None, value=None
@@ -370,7 +380,7 @@ class CypherParser:
                         partial(_node_has_label, label=constraint.label),
                         [constraint.node_id],
                     )
-                if isinstance(
+                elif isinstance(
                     constraint, ConstraintNodeHasAttributeWithValue
                 ):  # This doesn't work
                     problem.addConstraint(
@@ -381,6 +391,18 @@ class CypherParser:
                         ),
                         [constraint.node_id],
                     )
+                elif isinstance(constraint, ConstraintRelationshipHasLabel):
+                    pass
+                elif isinstance(
+                    constraint, ConstraintRelationshipHasSourceNode
+                ):
+                    pass
+                elif isinstance(
+                    constraint, ConstraintRelationshipHasTargetNode
+                ):
+                    pass
+                else:
+                    raise Exception(f"Unknown constraint type: {constraint}")
             return problem
 
         problem = _set_up_problem(self.parsed.aggregated_constraints)

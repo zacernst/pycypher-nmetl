@@ -103,11 +103,11 @@ class ConstraintRelationshipHasLabel(Constraint):
         self.label = label
 
     def __repr__(self):
-        return f"HasLabel: {self.relationship_name} {self.label}"
+        return f"RelationshipHasLabel: {self.relationship_name} {self.label}"
 
     def __hash__(self) -> int:
         return hash(
-            "HasLabel"
+            "RelationshipHasLabel"
             + self.relationship_name.__str__()
             + self.label.__str__()
         )

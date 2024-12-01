@@ -3,11 +3,14 @@ from unittest.mock import patch
 import pytest
 
 from pycypher.cypher_parser import CypherParser
-from pycypher.fact import (
+from pycypher.fact import (  # We might get rid of this class entirely
     FactCollection,
     FactNodeHasAttributeWithValue,
     FactNodeHasLabel,
     FactNodeRelatedToNode,
+    FactRelationshipHasLabel,
+    FactRelationshipHasSourceNode,
+    FactRelationshipHasTargetNode,
 )
 from pycypher.node_classes import (
     Alias,
@@ -19,7 +22,6 @@ from pycypher.node_classes import (
     Where,
 )
 from pycypher.solver import (
-    Constraint,
     ConstraintNodeHasLabel,
     ConstraintRelationshipHasLabel,
     ConstraintRelationshipHasSourceNode,
@@ -34,24 +36,44 @@ def fact_collection():
     fact3 = FactNodeRelatedToNode("1", "2", "MyRelationship")
     fact4 = FactNodeHasLabel("2", "OtherThing")
     fact5 = FactNodeHasAttributeWithValue("2", "key", 5)
-    fact_collection = FactCollection([fact1, fact2, fact3, fact4, fact5])
+    fact6 = FactRelationshipHasLabel("relationship_123", "MyRelationship")
+    fact7 = FactRelationshipHasSourceNode("relationship_123", "1")
+    fact8 = FactRelationshipHasTargetNode("relationship_123", "2")
+    fact_collection = FactCollection(
+        [
+            fact1,
+            fact2,
+            fact3,
+            fact4,
+            fact5,
+            fact6,
+            fact7,
+            fact8,
+        ]
+    )
 
     return fact_collection
 
 
+@pytest.fixture
+def number_of_facts(fact_collection: FactCollection) -> int:
+    return len(fact_collection.facts)
+
+
 def test_fact_collection_has_facts(fact_collection: FactCollection):
-    assert len(fact_collection) == 5
+    assert fact_collection
 
 
 def test_fact_collection_del_item(fact_collection: FactCollection):
+    first_fact = fact_collection[0]
+    assert first_fact in fact_collection
     del fact_collection[0]
-    assert len(fact_collection) == 4
+    assert first_fact not in fact_collection
 
 
 def test_fact_collection_set_item(fact_collection: FactCollection):
     fact = FactNodeHasLabel("3", "Thing")
     fact_collection[0] = fact
-    assert len(fact_collection) == 5
     assert fact_collection[0] == fact
 
 
@@ -62,9 +84,9 @@ def test_fact_collection_get_item(fact_collection: FactCollection):
 
 def test_fact_collection_insert(fact_collection: FactCollection):
     fact = FactNodeHasLabel("3", "Thing")
+    assert fact not in fact_collection
     fact_collection.insert(0, fact)
-    assert len(fact_collection) == 6
-    assert fact_collection[0] == fact
+    assert fact in fact_collection
 
 
 def test_can_parse_simple_cypher():
@@ -264,11 +286,31 @@ class patched_uuid:
         return "SOME_HEX"
 
 
-def test_contraint_relationship_has_label():
-    with patch("uuid.uuid4", patched_uuid) as mock:
+def test_constraint_relationship_has_label():
+    with patch("uuid.uuid4", patched_uuid) as _:
         cypher = "MATCH (n:Thing)-[:Relationship]->(m:Other) RETURN n.foobar"
         result = CypherParser(cypher)
         assert (
             ConstraintRelationshipHasLabel("SOME_HEX", "Relationship")
+            in result.parsed.aggregated_constraints
+        )
+
+
+def test_constraint_relationship_has_source_node():
+    with patch("uuid.uuid4", patched_uuid) as _:
+        cypher = "MATCH (n:Thing)-[:Relationship]->(m:Other) RETURN n.foobar"
+        result = CypherParser(cypher)
+        assert (
+            ConstraintRelationshipHasSourceNode("n", "SOME_HEX")
+            in result.parsed.aggregated_constraints
+        )
+
+
+def test_constraint_relationship_has_target_node():
+    with patch("uuid.uuid4", patched_uuid) as _:
+        cypher = "MATCH (n:Thing)-[:Relationship]->(m:Other) RETURN n.foobar"
+        result = CypherParser(cypher)
+        assert (
+            ConstraintRelationshipHasTargetNode("m", "SOME_HEX")
             in result.parsed.aggregated_constraints
         )

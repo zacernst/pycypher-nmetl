@@ -30,6 +30,24 @@ class FactNodeHasLabel(AtomicFact):
         )
 
 
+class FactRelationshipHasLabel(AtomicFact):
+    def __init__(self, relationship_id: str, relationship_label: str):
+        self.relationship_id = relationship_id
+        self.relationship_label = relationship_label
+
+    def __repr__(self):
+        return (
+            f"NodeHasLabel: {self.relationship_id} {self.relationship_label}"
+        )
+
+    def __eq__(self, other: Any):
+        return (
+            isinstance(other, FactRelationshipHasLabel)
+            and self.relationship_id == other.relationship_id
+            and self.relationship_label == other.relationship_label
+        )
+
+
 class FactNodeHasAttributeWithValue(AtomicFact):
     def __init__(self, node_id: str, attribute: str, value: Any):
         self.node_id = node_id
@@ -71,6 +89,38 @@ class FactNodeRelatedToNode(AtomicFact):
             and self.node1_id == other.node1_id
             and self.node2_id == other.node2_id
             and self.relationship_label == other.relationship_label
+        )
+
+
+class FactRelationshipHasSourceNode(AtomicFact):
+    def __init__(self, relationship_id: str, source_node_id: str):
+        self.relationship_id = relationship_id
+        self.source_node_id = source_node_id
+
+    def __repr__(self):
+        return f"RelationshipHasSourceNode: {self.relationship_id} {self.source_node_id}"
+
+    def __eq__(self, other: Any):
+        return (
+            isinstance(other, FactRelationshipHasSourceNode)
+            and self.relationship_id == other.relationship_id
+            and self.source_node_id == other.source_node_id
+        )
+
+
+class FactRelationshipHasTargetNode(AtomicFact):
+    def __init__(self, relationship_id: str, target_node_id: str):
+        self.relationship_id = relationship_id
+        self.target_node_id = target_node_id
+
+    def __repr__(self):
+        return f"RelationshipHasSourceNode: {self.relationship_id} {self.source_node_id}"
+
+    def __eq__(self, other: Any):
+        return (
+            isinstance(other, FactRelationshipHasSourceNode)
+            and self.relationship_id == other.relationship_id
+            and self.source_node_id == other.source_node_id
         )
 
 
