@@ -14,7 +14,9 @@ from pycypher.solver import (
     Constraint,
     ConstraintNodeHasAttributeWithValue,
     ConstraintNodeHasLabel,
+    ConstraintRelationshipHasLabel,
     ConstraintRelationshipHasSourceNode,
+    ConstraintRelationshipHasTargetNode,
     IsTrue,
 )
 from pycypher.tree_mixin import TreeMixin
@@ -473,7 +475,17 @@ class RelationshipLeftRight(TreeMixin):
             nodes[0][0].node_name_label.name,
             self.relationship.relationship_id,
         )
+        target_node_constraint = ConstraintRelationshipHasTargetNode(
+            nodes[0][1].node_name_label.name,
+            self.relationship.relationship_id,
+        )
+        relationship_label_constraint = ConstraintRelationshipHasLabel(
+            self.relationship.relationship_id,
+            self.relationship.name_label.label,
+        )
         constraint_list.append(source_node_constraint)
+        constraint_list.append(target_node_constraint)
+        constraint_list.append(relationship_label_constraint)
         return constraint_list
 
 

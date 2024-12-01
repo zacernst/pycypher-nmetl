@@ -46,7 +46,7 @@ class ConstraintNodeHasLabel(Constraint):
     def __eq__(self, other: Any) -> bool:
         return (
             isinstance(other, ConstraintNodeHasLabel)
-            and self.node == other.node
+            and self.node_id == other.node_id
             and self.label == other.label
         )
 
@@ -71,6 +71,52 @@ class ConstraintRelationshipHasSourceNode(Constraint):
             isinstance(other, ConstraintRelationshipHasSourceNode)
             and self.source_node_name == other.source_node_name
             and self.relationship_name == other.relationship_name
+        )
+
+
+class ConstraintRelationshipHasTargetNode(Constraint):
+    def __init__(self, target_node_name: str, relationship_name: str):
+        self.target_node_name = target_node_name
+        self.relationship_name = relationship_name
+
+    def __repr__(self):
+        return f"RelationshipHasTargetNode: {self.relationship_name} {self.target_node_name}"
+
+    def __hash__(self) -> int:
+        return hash(
+            "RelationshipHasTargetNode"
+            + self.relationship_name.__str__()
+            + self.target_node_name.__str__()
+        )
+
+    def __eq__(self, other: Any) -> bool:
+        return (
+            isinstance(other, ConstraintRelationshipHasTargetNode)
+            and self.target_node_name == other.target_node_name
+            and self.relationship_name == other.relationship_name
+        )
+
+
+class ConstraintRelationshipHasLabel(Constraint):
+    def __init__(self, relationship_name: str, label: str):
+        self.relationship_name = relationship_name
+        self.label = label
+
+    def __repr__(self):
+        return f"HasLabel: {self.relationship_name} {self.label}"
+
+    def __hash__(self) -> int:
+        return hash(
+            "HasLabel"
+            + self.relationship_name.__str__()
+            + self.label.__str__()
+        )
+
+    def __eq__(self, other: Any) -> bool:
+        return (
+            isinstance(other, ConstraintRelationshipHasLabel)
+            and self.relationship_name == other.relationship_name
+            and self.label == other.label
         )
 
 

@@ -263,6 +263,14 @@ CYPHER: yacc.LRParser = yacc.yacc()
 
 
 class CypherParser:
+    """The main class of the ``pycypher`` package.
+
+    This class is responsible for parsing Cypher queries and
+    returning the solutions to those queries. It creates the
+    AST for the Cypher query and then generates a constraint
+    satisfaction problem which solves the query.
+    """
+
     def __init__(self, cypher_text: str):
         self.cypher_text = cypher_text
         self.parsed: TreeMixin | None = CYPHER.parse(self.cypher_text)

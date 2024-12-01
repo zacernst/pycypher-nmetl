@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cypher AST Generator for Python &mdash; PyCypher: Cypher parser for Python  documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="_static/jquery.js?v=5d32c60e"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="_static/documentation_options.js?v=5929fcd5"></script>
+        <script src="_static/doctools.js?v=9a2dae69"></script>
+        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            PyCypher: Cypher parser for Python
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="index.html">Home</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">PyCypher: Cypher parser for Python</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Cypher AST Generator for Python</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/usage.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="cypher-ast-generator-for-python">
+<span id="installation"></span><h1>Cypher AST Generator for Python<a class="headerlink" href="#cypher-ast-generator-for-python" title="Link to this heading"></a></h1>
+<p>This is a <em>work in progress</em>, by which I mean, “ugly, but fixable.” It
+is also woefully incomplete. It generates an abstract syntax tree for
+Cypher statements that use only a subset of the language. That subset is
+growing, but it’s still small.</p>
+<p>Additionally, this package contains the beginning of a query engine that
+is designed to accept Cypher queries and return results from arbitrary
+graph structures in Python. This functionality is in a <em>very</em> early
+state, and works only for trivial queries.</p>
+<p>The hope is that this will be useful for building modules that can take
+advantage of the Cypher query language, by eliminating the need to do
+all the boring work of writing a parser and generating an AST.</p>
+<section id="how-to-use-it">
+<h2>How to use it<a class="headerlink" href="#how-to-use-it" title="Link to this heading"></a></h2>
+<p>Don’t. But if you really want to, then:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pycypher.parser</span> <span class="kn">import</span> <span class="n">CypherParser</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">cypher</span> <span class="o">=</span> <span class="n">CypherParser</span><span class="p">(</span><span class="s2">&quot;MATCH (n:Thing) RETURN n.foo&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">cypher</span><span class="o">.</span><span class="n">parsed</span><span class="o">.</span><span class="n">print_tree</span><span class="p">()</span>
+
+<span class="go">Cypher</span>
+<span class="go">└── Query</span>
+<span class="go">    ├── Match</span>
+<span class="go">    │   └── Node</span>
+<span class="go">    │       └── NodeNameLabel</span>
+<span class="go">    │           ├── n</span>
+<span class="go">    │           └── Thing</span>
+<span class="go">    └── Return</span>
+<span class="go">        └── Projection</span>
+<span class="go">            └── ObjectAttributeLookup</span>
+<span class="go">                ├── n</span>
+<span class="go">                └── foo</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">cypher</span><span class="o">.</span><span class="n">parsed</span><span class="p">)</span>
+<span class="go">Cypher(Query(Match(Node(NodeNameLabel(n, Thing), None)), Return(Projection([ObjectAttributeLookup(n, foo)]))))</span>
+</pre></div>
+</div>
+<p>If you want to understand what’s happening, what Python classes are
+being built, etc., then you’ll have to use the source, Luke. Check out
+the <code class="docutils literal notranslate"><span class="pre">__main__</span></code> function at the end of the <code class="docutils literal notranslate"><span class="pre">cypher.py</span></code> script. There
+are no docs yet. Like I said, this is a <em>work in progress</em>.</p>
+</section>
+<section id="requirements">
+<h2>Requirements<a class="headerlink" href="#requirements" title="Link to this heading"></a></h2>
+<section id="mac-and-linux">
+<h3>Mac and Linux<a class="headerlink" href="#mac-and-linux" title="Link to this heading"></a></h3>
+<p>You’ll need to be able to run <code class="docutils literal notranslate"><span class="pre">uv</span></code> in order to use the <code class="docutils literal notranslate"><span class="pre">Makefile</span></code>.
+To install <code class="docutils literal notranslate"><span class="pre">uv</span></code> on Linux or Mac:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>curl<span class="w"> </span>-LsSf<span class="w"> </span>https://astral.sh/uv/install.sh<span class="w"> </span><span class="p">|</span><span class="w"> </span>sh
+</pre></div>
+</div>
+<p>If you don’t have <code class="docutils literal notranslate"><span class="pre">make</span></code> on your Mac, then you should:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>brew<span class="w"> </span>install<span class="w"> </span>make
+</pre></div>
+</div>
+<p>And if you don’t have <code class="docutils literal notranslate"><span class="pre">brew</span></code>, then install it with:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>/bin/bash<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>curl<span class="w"> </span>-fsSL<span class="w"> </span>https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh<span class="k">)</span><span class="s2">&quot;</span>
+</pre></div>
+</div>
+<p>If you’re running Linux without <code class="docutils literal notranslate"><span class="pre">make</span></code>, then follow the directions for
+your distribution. For example, on Ubuntu, you can:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sudo<span class="w"> </span>apt<span class="w"> </span>install<span class="w"> </span>make
+</pre></div>
+</div>
+</section>
+<section id="windows">
+<h3>Windows<a class="headerlink" href="#windows" title="Link to this heading"></a></h3>
+<p>On Windows, erase your hard drive, install Linux, and then follow the
+directions above.</p>
+</section>
+</section>
+<section id="setting-everything-up">
+<h2>Setting everything up<a class="headerlink" href="#setting-everything-up" title="Link to this heading"></a></h2>
+<p>To set up the virtual environment, install all the dependencies, install
+the right version of Python, build the package, install it as an
+editable project, run a bunch of unit tests, and build HTML
+documentation, do:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>make<span class="w"> </span>all
+</pre></div>
+</div>
+<p>To clean everything up, deleting the virtual environment, documentation,
+and so on, do:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>make<span class="w"> </span>clean
+</pre></div>
+</div>
+<p>You don’t <em>need</em> to use the <code class="docutils literal notranslate"><span class="pre">Makefile</span></code>, and therefore you don’t <em>need</em>
+to have <code class="docutils literal notranslate"><span class="pre">uv</span></code> installed on your system. But that’s what all the cool
+kids are using these days.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Zachary Ernst.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

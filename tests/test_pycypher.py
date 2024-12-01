@@ -1,7 +1,8 @@
+from unittest.mock import patch
+
 import pytest
 
 from pycypher.cypher_parser import CypherParser
-from pycypher.solver import Constraint
 from pycypher.fact import (
     FactCollection,
     FactNodeHasAttributeWithValue,
@@ -17,7 +18,13 @@ from pycypher.node_classes import (
     Query,
     Where,
 )
-from pycypher.solver import ConstraintNodeHasLabel, ConstraintRelationshipHasSourceNode
+from pycypher.solver import (
+    Constraint,
+    ConstraintNodeHasLabel,
+    ConstraintRelationshipHasLabel,
+    ConstraintRelationshipHasSourceNode,
+    ConstraintRelationshipHasTargetNode,
+)
 
 
 @pytest.fixture
@@ -193,11 +200,13 @@ def test_aggregate_constraints_node_and_mapping():
 
 
 def test_parse_anonymous_node_no_label_no_mapping_gets_variable():
-    cypher = "MATCH () RETURN m.foobar"
-    result = CypherParser(cypher)
-    assert int(
-        result.parsed.cypher.match_clause.pattern.node_name_label.name, 32
-    )
+    with patch("uuid.uuid4", patched_uuid) as mock:
+        cypher = "MATCH () RETURN m.foobar"
+        result = CypherParser(cypher)
+        assert (
+            result.parsed.cypher.match_clause.pattern.node_name_label.name
+            == "SOME_HEX"
+        )
 
 
 def test_parse_anonymous_node_with_label_no_mapping_gets_variable():
@@ -217,15 +226,49 @@ def test_parse_anonymous_node_with_label_no_mapping_has_right_label():
     )
 
 
-def test_constraint_from_left_right_relationship():
-    cypher = "MATCH (n:Thing)-[:Relationship]->(m:Other) RETURN n.foobar"
-    result = CypherParser(cypher)
-    obj = result.parsed.cypher.match_clause.pattern.relationships[0].steps[1]
-    assert isinstance(obj.constraints[0], ConstraintRelationshipHasSourceNode)
+def test_source_node_constraint_from_left_right_relationship():
+    with patch("uuid.uuid4", patched_uuid) as mock:
+        cypher = "MATCH (n:Thing)-[:Relationship]->(m:Other) RETURN n.foobar"
+        result = CypherParser(cypher)
+        assert (
+            ConstraintRelationshipHasSourceNode("n", "SOME_HEX")
+            in result.parsed.aggregated_constraints
+        )
+
+
+def test_target_node_constraint_from_left_right_relationship():
+    with patch("uuid.uuid4", patched_uuid) as mock:
+        cypher = "MATCH (n:Thing)-[:Relationship]->(m:Other) RETURN n.foobar"
+        result = CypherParser(cypher)
+        obj = result.parsed.cypher.match_clause.pattern.relationships[0].steps[
+            1
+        ]
+        assert (
+            ConstraintRelationshipHasTargetNode("m", "SOME_HEX")
+            in result.parsed.aggregated_constraints
+        )
 
 
 def test_constraint_node_has_label():
     cypher = "MATCH (n:Thing) RETURN n.foobar"
     result = CypherParser(cypher)
-    obj = result.parsed.aggregated_constraints[0]
-    assert isinstance(obj, ConstraintNodeHasLabel)
+    assert (
+        ConstraintNodeHasLabel("n", "Thing")
+        in result.parsed.aggregated_constraints
+    )
+
+
+class patched_uuid:
+    @property
+    def hex(self):
+        return "SOME_HEX"
+
+
+def test_contraint_relationship_has_label():
+    with patch("uuid.uuid4", patched_uuid) as mock:
+        cypher = "MATCH (n:Thing)-[:Relationship]->(m:Other) RETURN n.foobar"
+        result = CypherParser(cypher)
+        assert (
+            ConstraintRelationshipHasLabel("SOME_HEX", "Relationship")
+            in result.parsed.aggregated_constraints
+        )
