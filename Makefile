@@ -38,8 +38,9 @@ tests: install
 clean:
 	( \
 		rm -rfv ./venv && \
-		rm -rfv ./docs/_build/html/* \
-		rm -rfv ./docs/_build/doctrees/* \
+		rm -rfv ./sphinx_docs/_build/html/* \
+		rm -rfv ./sphinx_docs/_build/doctrees/* \
+		rm -rfv ./docs/* \
 		rm -fv ./requirements.txt \
 		rm -rfv ./dist/* \
 	)
@@ -57,8 +58,9 @@ docs: install
 	( \
 		echo "Building documentation..." && \
 		. ./venv/bin/activate && \
-		cd docs && \
-		make html & \
+		cd sphinx_docs && \
+		make html && \
+		cp -rfv _build/html/* ../docs/ \
 	)
 
 .PHONY: clean clean_build tests deps install build docs grammar
