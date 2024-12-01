@@ -14,4 +14,4 @@
       FactNodeHasAttributeWithValue
       FactNodeHasLabel
       FactNodeRelatedToNode
-
+   
