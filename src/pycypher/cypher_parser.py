@@ -331,16 +331,24 @@ class CypherParser:
             answer = FactNodeHasLabel(node_id, label) in fact_collection.facts
             LOGGER.debug(f"Answer: {answer}")
             return answer
-        
+
         def _relationship_has_label(relationship_id=None, label=None):
             LOGGER.debug(f"Checking if {relationship_id} has label {label}")
-            answer = FactRelationshipHasLabel(relationship_id, label) in fact_collection.facts
+            answer = (
+                FactRelationshipHasLabel(relationship_id, label)
+                in fact_collection.facts
+            )
             LOGGER.debug(f"Answer: {answer}")
             return answer
-        
+
         def _relationship_has_source_node(relationship_id=None, node_id=None):
-            LOGGER.debug(f"Checking if {relationship_id} has source node {node_id}")
-            answer = FactRelationshipHasSourceNode(relationship_id, node_id) in fact_collection.facts
+            LOGGER.debug(
+                f"Checking if {relationship_id} has source node {node_id}"
+            )
+            answer = (
+                FactRelationshipHasSourceNode(relationship_id, node_id)
+                in fact_collection.facts
+            )
             LOGGER.debug(f"Answer: {answer}")
             return answer
 
@@ -394,9 +402,7 @@ class CypherParser:
                         ),
                         [constraint.node_id],
                     )
-                elif isinstance(
-                    constraint, ConstraintRelationshipHasLabel
-                ):
+                elif isinstance(constraint, ConstraintRelationshipHasLabel):
                     problem.addConstraint(
                         partial(
                             _relationship_has_label,
@@ -404,9 +410,13 @@ class CypherParser:
                         ),
                         [constraint.relationship_id],
                     )
-                elif isinstance(constraint, ConstraintRelationshipHasSourceNode):
+                elif isinstance(
+                    constraint, ConstraintRelationshipHasSourceNode
+                ):
                     pass
-                elif isinstance(constraint, ConstraintRelationshipHasTargetNode):
+                elif isinstance(
+                    constraint, ConstraintRelationshipHasTargetNode
+                ):
                     pass
                 else:
                     raise Exception(f"Unknown constraint type: {constraint}")
