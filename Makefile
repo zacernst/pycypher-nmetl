@@ -60,7 +60,8 @@ docs: install
 		. ./venv/bin/activate && \
 		cd sphinx_docs && \
 		make html && \
-		cp -rfv _build/html/* ../docs/ \
+		make singlehtml && \
+		cp -rfv _build/singlehtml/* ../docs/ \
 	)
 
 .PHONY: clean clean_build tests deps install build docs grammar

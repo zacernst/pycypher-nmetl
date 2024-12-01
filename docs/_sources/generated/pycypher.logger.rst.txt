@@ -1,6 +1,0 @@
-﻿Logger
-======
-
-.. automodule:: pycypher.logger
-
-   
