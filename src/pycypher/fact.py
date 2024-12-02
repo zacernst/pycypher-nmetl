@@ -4,7 +4,6 @@ Facts are simple atomic statements that have a truth value.
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence
 from typing import Any, Generator, List
 
 
@@ -22,7 +21,7 @@ class FactNodeHasLabel(AtomicFact):
     def __repr__(self):
         return f"NodeHasLabel: {self.node_id} {self.label}"
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any):
         return (
             isinstance(other, FactNodeHasLabel)
             and self.node_id == other.node_id
@@ -40,7 +39,7 @@ class FactRelationshipHasLabel(AtomicFact):
             f"NodeHasLabel: {self.relationship_id} {self.relationship_label}"
         )
 
-    def __eq__(self, other: Any):
+    def __eq__(self, other: Any) -> bool:
         return (
             isinstance(other, FactRelationshipHasLabel)
             and self.relationship_id == other.relationship_id
@@ -62,10 +61,10 @@ class FactNodeHasAttributeWithValue(AtomicFact):
             + self.value.__str__()
         )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"NodeHasAttributeWithValue: {self.node_id} {self.attribute} {self.value}"
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         return (
             isinstance(other, FactNodeHasAttributeWithValue)
             and (self.node_id == other.node_id)
@@ -80,10 +79,10 @@ class FactNodeRelatedToNode(AtomicFact):
         self.node2_id = node2_id
         self.relationship_label = relationship_label
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"NodeRelatedToNode: {self.node1_id} {self.relationship_label} {self.node2_id}"
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         return (
             isinstance(other, FactNodeRelatedToNode)
             and self.node1_id == other.node1_id
@@ -97,10 +96,10 @@ class FactRelationshipHasSourceNode(AtomicFact):
         self.relationship_id = relationship_id
         self.source_node_id = source_node_id
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"RelationshipHasSourceNode: {self.relationship_id} {self.source_node_id}"
 
-    def __eq__(self, other: Any):
+    def __eq__(self, other: Any) -> bool:
         return (
             isinstance(other, FactRelationshipHasSourceNode)
             and self.relationship_id == other.relationship_id
@@ -113,42 +112,39 @@ class FactRelationshipHasTargetNode(AtomicFact):
         self.relationship_id = relationship_id
         self.target_node_id = target_node_id
 
-    def __repr__(self):
-        return f"RelationshipHasSourceNode: {self.relationship_id} {self.source_node_id}"
+    def __repr__(self) -> str:
+        return f"RelationshipHasTargetNode: {self.relationship_id} {self.target_node_id}"
 
-    def __eq__(self, other: Any):
+    def __eq__(self, other: Any) -> bool:
         return (
-            isinstance(other, FactRelationshipHasSourceNode)
+            isinstance(other, FactRelationshipHasTargetNode)
             and self.relationship_id == other.relationship_id
-            and self.source_node_id == other.source_node_id
+            and self.target_node_id == other.target_node_id
         )
 
 
-class FactCollection(MutableSequence):
+class FactCollection:
     def __init__(self, facts: List[AtomicFact]):
-        self.facts = facts
+        self.facts: List[AtomicFact] = facts
 
     def __iter__(self) -> Generator[AtomicFact]:
         for fact in self.facts:
             yield fact
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"FactCollection: {len(self.facts)}"
 
-    # def satisfies(self, constraint: Constraint) -> bool:
-    #     return any(fact.satisfies(constraint) for fact in self.facts)
-
-    def __getitem__(self, index):
+    def __getitem__(self, index: int) -> AtomicFact:
         return self.facts[index]
 
-    def __setitem__(self, index, value):
+    def __setitem__(self, index: int, value: AtomicFact):
         self.facts[index] = value
 
-    def __delitem__(self, index):
+    def __delitem__(self, index: int):
         del self.facts[index]
 
     def __len__(self):
         return len(self.facts)
 
-    def insert(self, index, value):
+    def insert(self, index: int, value: AtomicFact):
         self.facts.insert(index, value)

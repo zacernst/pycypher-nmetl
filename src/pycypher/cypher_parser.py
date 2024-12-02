@@ -9,14 +9,14 @@ import rich
 from constraint import Constraint, Domain, Problem
 
 from pycypher.cypher_lexer import *
-
-# from pycypher.solver import Constraint
-from pycypher.exceptions import CypherParsingError
 from pycypher.fact import (
     FactCollection,
     FactNodeHasAttributeWithValue,
     FactNodeHasLabel,
     FactNodeRelatedToNode,
+    FactRelationshipHasLabel,
+    FactRelationshipHasSourceNode,
+    FactRelationshipHasTargetNode,
 )
 from pycypher.logger import LOGGER
 from pycypher.node_classes import (
@@ -130,7 +130,7 @@ def p_node(p: yacc.YaccProduction):
         node_name_label = NodeNameLabel(p[2], None)
         mapping_list = MappingSet([])
     elif len(p) == 7 and isinstance(p[2], NodeNameLabel):
-        node_name_label = p[2]
+        node_name_label: NodeNameLabel = p[2]
         mapping_list = p[4]
     else:
         raise Exception("What?")
@@ -262,7 +262,7 @@ def p_return(p: yacc.YaccProduction):
     p[0] = Return(p[2])
 
 
-CYPHER: yacc.LRParser = yacc.yacc()
+CYPHER: yacc.LRParser = yacc.yacc()  # type: ignore
 
 
 class CypherParser:
@@ -300,10 +300,24 @@ class CypherParser:
                 node_variables.add(constraint.node_id)
             elif isinstance(constraint, ConstraintNodeHasAttributeWithValue):
                 node_variables.add(constraint.node_id)
-            elif isinstance(constraint, FactNodeRelatedToNode):
+            elif 0 and isinstance(constraint, FactNodeRelatedToNode):
                 node_variables.add(constraint.node1_id)
                 node_variables.add(constraint.node2_id)
         return node_variables
+
+    @property
+    def relationship_variables(self) -> set[str]:
+        relationship_variables = set()
+        for constraint in self.parsed.aggregated_constraints:
+            if isinstance(
+                constraint,
+                (
+                    ConstraintRelationshipHasSourceNode,
+                    ConstraintRelationshipHasLabel,
+                ),
+            ):
+                relationship_variables.add(constraint.relationship_name)
+        return relationship_variables
 
     @property
     def relationship_labels(self) -> set[str]:
@@ -352,6 +366,17 @@ class CypherParser:
             LOGGER.debug(f"Answer: {answer}")
             return answer
 
+        def _relationship_has_target_node(relationship_id=None, node_id=None):
+            LOGGER.debug(
+                f"Checking if {relationship_id} has target node {node_id}"
+            )
+            answer = (
+                FactRelationshipHasTargetNode(relationship_id, node_id)
+                in fact_collection.facts
+            )
+            LOGGER.debug(f"Answer: {answer}")
+            return answer
+
         # Turn these into partial functions with `node_id` the remaining argument
         def _node_has_attribute_with_value(
             node_id=None, attribute=None, value=None
@@ -368,11 +393,13 @@ class CypherParser:
             LOGGER.debug(f"Answer: {answer}")
             return answer
 
-        def _set_up_problem(constraints: List[Constraint]) -> Dict:
+        def _set_up_problem(constraints: List[Constraint]) -> Problem:
             problem = Problem()
             node_domain = Domain(set())
             node_label_domain = Domain(set())
             label_domain_dict = collections.defaultdict(set)
+            relationship_domain = Domain(set())
+            relationship_label_domain = Domain(set())
 
             for fact in fact_collection:
                 if isinstance(fact, FactNodeHasLabel):
@@ -380,11 +407,29 @@ class CypherParser:
                         node_domain.append(fact.node_id)
                     if fact.label not in node_label_domain:
                         label_domain_dict[fact.label].add(fact.node_id)
+                elif isinstance(fact, FactRelationshipHasLabel):
+                    if fact.relationship_id not in relationship_label_domain:
+                        relationship_label_domain.append(fact.relationship_id)
+                elif isinstance(fact, FactRelationshipHasSourceNode):
+                    if fact.relationship_id not in relationship_domain:
+                        relationship_domain.append(fact.relationship_id)
+                else:
+                    pass
 
             for node_id in self.node_variables:
                 problem.addVariable(node_id, node_domain)
+            for relationship_variable in self.relationship_variables:
+                try:
+                    problem.addVariable(
+                        relationship_variable, relationship_domain
+                    )
+                except ValueError:
+                    LOGGER.debug(
+                        f"Variable {relationship_variable} already exists. Skipping..."
+                    )
 
             # Loop over constraints, creating partial functions and adding them as constraints
+            # TODO: Replace partial functions with lambda functions
             for constraint in constraints:
                 if isinstance(constraint, ConstraintNodeHasLabel):
                     problem.addConstraint(
@@ -408,16 +453,32 @@ class CypherParser:
                             _relationship_has_label,
                             label=constraint.label,
                         ),
-                        [constraint.relationship_id],
+                        [constraint.relationship_name],
                     )
                 elif isinstance(
                     constraint, ConstraintRelationshipHasSourceNode
                 ):
-                    pass
+                    problem.addConstraint(
+                        lambda x, y: _relationship_has_source_node(
+                            relationship_id=x, node_id=y
+                        ),
+                        [
+                            constraint.relationship_name,
+                            constraint.source_node_name,
+                        ],
+                    )
                 elif isinstance(
                     constraint, ConstraintRelationshipHasTargetNode
                 ):
-                    pass
+                    problem.addConstraint(
+                        lambda x, y: _relationship_has_target_node(
+                            relationship_id=x, node_id=y
+                        ),
+                        [
+                            constraint.relationship_name,
+                            constraint.target_node_name,
+                        ],
+                    )
                 else:
                     raise Exception(f"Unknown constraint type: {constraint}")
             return problem
@@ -428,28 +489,4 @@ class CypherParser:
 
 
 if __name__ == "__main__":
-    ################################
-    ### Build FactCollection
-    ################################
-
-    fact1 = FactNodeHasLabel("1", "Thing")
-    fact2 = FactNodeHasAttributeWithValue("1", "key", Literal("2"))
-    fact3 = FactNodeRelatedToNode("1", "2", "MyRelationship")
-    fact4 = FactNodeHasLabel("2", "OtherThing")
-    fact5 = FactNodeHasAttributeWithValue("2", "key", Literal(5))
-
-    fact_collection = FactCollection([fact1, fact2, fact3, fact4, fact5])
-
-    ###########################################
-    ### Define Cypher Query
-    ###########################################
-
-    cypher_statement = """MATCH (n:Thing {key: 2}) RETURN n.key"""
-
-    ###########################################
-    ### Parse Cypher Query
-    ###########################################
-
-    parsed = CypherParser(cypher_statement)
-    instances = parsed.solutions(fact_collection)
-    rich.print(instances)
+    pass

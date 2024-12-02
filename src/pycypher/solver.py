@@ -20,13 +20,13 @@ class IsTrue(Constraint):
     """
 
     def __init__(self, predicate: "Predicate"):  # type: ignore
-        self.predicate = predicate
+        self.predicate = predicate  # type: ignore
 
     def eval(self, *_) -> bool | None:
         pass
 
     def __repr__(self) -> str:
-        return f"IsTrue({self.predicate})"
+        return f"IsTrue({self.predicate})"  # type: ignore
 
 
 class ConstraintNodeHasLabel(Constraint):
@@ -41,7 +41,9 @@ class ConstraintNodeHasLabel(Constraint):
     #     pass
 
     def __hash__(self) -> int:
-        return hash("HasLabel" + self.node.__str__() + self.label.__str__())
+        return hash(
+            str("HasLabel") + self.node.__str__() + self.label.__str__()
+        )  # type: ignore
 
     def __eq__(self, other: Any) -> bool:
         return (

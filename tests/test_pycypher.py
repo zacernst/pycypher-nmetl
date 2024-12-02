@@ -258,6 +258,16 @@ def test_source_node_constraint_from_left_right_relationship():
         )
 
 
+def test_source_node_constraint_from_left_right_relationship_with_label():
+    cypher = "MATCH (n:Thing)-[r:Relationship]->(m:Other) RETURN n.foobar"
+    result = CypherParser(cypher)
+    assert (
+        ConstraintRelationshipHasSourceNode("n", "r")
+        in result.parsed.aggregated_constraints
+    )
+
+
+# @pytest.mark.skip
 def test_target_node_constraint_from_left_right_relationship():
     with patch("uuid.uuid4", patched_uuid) as mock:
         cypher = "MATCH (n:Thing)-[:Relationship]->(m:Other) RETURN n.foobar"
@@ -269,6 +279,15 @@ def test_target_node_constraint_from_left_right_relationship():
             ConstraintRelationshipHasTargetNode("m", "SOME_HEX")
             in result.parsed.aggregated_constraints
         )
+
+
+def test_target_node_constraint_from_left_right_relationship_with_label():
+    cypher = "MATCH (n:Thing)-[r:Relationship]->(m:Other) RETURN n.foobar"
+    result = CypherParser(cypher)
+    assert (
+        ConstraintRelationshipHasTargetNode("m", "r")
+        in result.parsed.aggregated_constraints
+    )
 
 
 def test_constraint_node_has_label():
@@ -296,6 +315,7 @@ def test_constraint_relationship_has_label():
         )
 
 
+# @pytest.mark.skip
 def test_constraint_relationship_has_source_node():
     with patch("uuid.uuid4", patched_uuid) as _:
         cypher = "MATCH (n:Thing)-[:Relationship]->(m:Other) RETURN n.foobar"
@@ -306,6 +326,7 @@ def test_constraint_relationship_has_source_node():
         )
 
 
+# @pytest.mark.skip
 def test_constraint_relationship_has_target_node():
     with patch("uuid.uuid4", patched_uuid) as _:
         cypher = "MATCH (n:Thing)-[:Relationship]->(m:Other) RETURN n.foobar"
@@ -314,3 +335,40 @@ def test_constraint_relationship_has_target_node():
             ConstraintRelationshipHasTargetNode("m", "SOME_HEX")
             in result.parsed.aggregated_constraints
         )
+
+
+def test_find_solution_node_has_label(fact_collection: FactCollection):
+    cypher = "MATCH (n:Thing) RETURN n.foobar"
+    result = CypherParser(cypher)
+    solutions = result.solutions(fact_collection)
+    expected = [{"n": "1"}]
+    assert solutions == expected
+
+
+def test_find_solution_node_has_wrong_label(fact_collection: FactCollection):
+    cypher = "MATCH (n:WrongLabel) RETURN n.foobar"
+    result = CypherParser(cypher)
+    solutions = result.solutions(fact_collection)
+    assert not solutions
+
+
+def test_find_solution_node_with_relationship(fact_collection: FactCollection):
+    # Hash variable for relationship not being added to variable list
+    cypher = (
+        "MATCH (n:Thing)-[r:MyRelationship]->(m:OtherThing) RETURN n.foobar"
+    )
+    result = CypherParser(cypher)
+    solutions = result.solutions(fact_collection)
+    expected = [{"n": "1", "m": "2", "r": "relationship_123"}]
+    assert solutions == expected
+
+
+def test_find_solution_node_with_relationship_nonexistant(
+    fact_collection: FactCollection,
+):
+    # Hash variable for relationship not being added to variable list
+    cypher = "MATCH (n:Thing)-[r:NotExistingRelationship]->(m:OtherThing) RETURN n.foobar"
+    result = CypherParser(cypher)
+    solutions = result.solutions(fact_collection)
+    expected = []
+    assert solutions == expected
