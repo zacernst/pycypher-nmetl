@@ -1,0 +1,16 @@
+﻿pycypher.fact
+=============
+
+.. automodule:: pycypher.fact
+
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+   
+      AtomicFact
+      FactCollection
+      FactNodeHasAttributeWithValue
+      FactNodeHasLabel
+      FactNodeRelatedToNode
+   

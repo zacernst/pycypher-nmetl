@@ -1,0 +1,12 @@
+﻿pycypher.tree\_mixin
+====================
+
+.. automodule:: pycypher.tree_mixin
+
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+   
+      TreeMixin
+   

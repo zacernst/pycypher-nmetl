@@ -1,0 +1,38 @@
+﻿pycypher
+========
+
+.. automodule:: pycypher
+
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+   
+      p_alias
+      p_binary_operator
+      p_cypher
+      p_incomplete_relationship_chain
+      p_left_right
+      p_literal
+      p_mapping_list
+      p_match_pattern
+      p_name_label
+      p_node
+      p_object_attribute_lookup
+      p_predicate
+      p_projection
+      p_query
+      p_relationship
+      p_relationship_chain
+      p_relationship_chain_list
+      p_return
+      p_right_left
+      p_string
+      p_where
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+   
+      CypherParser
+   

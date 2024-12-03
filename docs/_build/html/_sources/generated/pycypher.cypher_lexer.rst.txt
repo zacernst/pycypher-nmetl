@@ -1,0 +1,12 @@
+﻿pycypher.cypher\_lexer
+======================
+
+.. automodule:: pycypher.cypher_lexer
+
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+   
+      t_WORD
+   

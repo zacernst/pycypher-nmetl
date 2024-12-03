@@ -1,0 +1,16 @@
+﻿pycypher.solver
+===============
+
+.. automodule:: pycypher.solver
+
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+   
+      Constraint
+      ConstraintNodeHasAttributeWithValue
+      ConstraintNodeHasLabel
+      IsTrue
+      State
+   
