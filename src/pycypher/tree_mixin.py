@@ -1,10 +1,10 @@
-'''
+"""
 TreeMixin
 =========
 
 This is a mixin class that provides methods for walking and printing
 the AST.
-'''
+"""
 
 from __future__ import annotations
 

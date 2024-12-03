@@ -37,8 +37,8 @@ class ConstraintNodeHasLabel(Constraint):
     def __repr__(self):
         return f"HasLabel: {self.node_id} {self.label}"
 
-    def eval(self, state: State) -> bool | None:
-        pass
+    # def eval(self, state: State) -> bool | None:
+    #     pass
 
     def __hash__(self) -> int:
         return hash("HasLabel" + self.node.__str__() + self.label.__str__())

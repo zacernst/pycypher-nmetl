@@ -17,7 +17,7 @@
 
 # -- Project information -----------------------------------------------------
 
-project = "PyCypher: Cypher parser for Python"
+project = "PyCypher: Cypher Parser and Query Executor for Python"
 copyright = "2024, Zachary Ernst"
 author = "Zachary Ernst"
 

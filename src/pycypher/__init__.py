@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from functools import partial
-
-import rich
 import collections
+from functools import partial
 from typing import Any, Dict, List, Tuple, Type
 
 import ply.yacc as yacc  # type: ignore
+import rich
 from constraint import Constraint, Domain, Problem
+
 from pycypher.cypher_lexer import *
 
 # from pycypher.solver import Constraint
@@ -240,18 +240,18 @@ class CypherParser:
 
     def __repr__(self) -> str:
         return self.parsed.__str__()
-        
+
     @property
-    def node_labels(self) -> set[str]: 
+    def node_labels(self) -> set[str]:
         # Get all the labels
         node_labels = set()
         for constraint in self.parsed.aggregated_constraints:
             if isinstance(constraint, ConstraintNodeHasLabel):
                 node_labels.add(constraint.label)
         return node_labels
-        
+
     @property
-    def node_variables(self) -> set[str]: 
+    def node_variables(self) -> set[str]:
         node_variables = set()
         for constraint in self.parsed.aggregated_constraints:
             if isinstance(constraint, ConstraintNodeHasLabel):
@@ -262,7 +262,7 @@ class CypherParser:
                 node_variables.add(constraint.node1_id)
                 node_variables.add(constraint.node2_id)
         return node_variables
-    
+
     @property
     def relationship_labels(self) -> set[str]:
         relationship_labels = set()
@@ -272,7 +272,7 @@ class CypherParser:
             ):  # This is borked; relationship not in constraints
                 relationship_labels.add(constraint.relationship_label)
         return relationship_labels
-    
+
     @property
     def attributes(self) -> set[str]:
         attributes = set()
@@ -280,9 +280,10 @@ class CypherParser:
             if isinstance(constraint, ConstraintNodeHasAttributeWithValue):
                 attributes.add(constraint.attribute)
         return attributes
-    
-    def solutions(self, fact_collection: FactCollection) -> List[Dict[str, Any]]:
-        
+
+    def solutions(
+        self, fact_collection: FactCollection
+    ) -> List[Dict[str, Any]]:
         def _node_has_label(node_id=None, label=None):
             LOGGER.debug(f"Checking if {node_id} has label {label}")
             answer = FactNodeHasLabel(node_id, label) in fact_collection.facts
@@ -320,7 +321,7 @@ class CypherParser:
 
             for node_id in self.node_variables:
                 problem.addVariable(node_id, node_domain)
-            
+
             # Loop over constraints, creating partial functions and adding them as constraints
             for constraint in constraints:
                 if isinstance(constraint, ConstraintNodeHasLabel):
@@ -347,7 +348,6 @@ class CypherParser:
 
 
 if __name__ == "__main__":
-
     ################################
     ### Build FactCollection
     ################################
