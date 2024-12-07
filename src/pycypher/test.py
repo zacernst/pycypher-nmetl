@@ -6,9 +6,9 @@ from typing import Generator, Optional, Tuple, Type
 
 from constraint import Domain, Problem
 
+from pycypher.cypher_parser import CypherParser
 from pycypher.exceptions import CypherParsingError
 from pycypher.logger import LOGGER
-from pycypher.parser import CypherParser
 
 if __name__ == "__main__":
     from functools import partial
