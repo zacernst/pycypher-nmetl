@@ -1,6 +1,7 @@
 from unittest.mock import patch
 
 import pytest
+from pytest_unordered import unordered
 
 from pycypher.cypher_parser import CypherParser
 from pycypher.fact import (  # We might get rid of this class entirely
@@ -32,10 +33,10 @@ from pycypher.solver import (
 @pytest.fixture
 def fact_collection():
     fact1 = FactNodeHasLabel("1", "Thing")
-    fact2 = FactNodeHasAttributeWithValue("1", "key", 2)
+    fact2 = FactNodeHasAttributeWithValue("1", "key", Literal(2))
     fact3 = FactNodeRelatedToNode("1", "2", "MyRelationship")
     fact4 = FactNodeHasLabel("2", "OtherThing")
-    fact5 = FactNodeHasAttributeWithValue("2", "key", 5)
+    fact5 = FactNodeHasAttributeWithValue("2", "key", Literal(5))
     fact6 = FactRelationshipHasLabel("relationship_123", "MyRelationship")
     fact7 = FactRelationshipHasSourceNode("relationship_123", "1")
     fact8 = FactRelationshipHasTargetNode("relationship_123", "2")
@@ -49,6 +50,22 @@ def fact_collection():
             fact6,
             fact7,
             fact8,
+        ]
+    )
+
+    return fact_collection
+
+
+@pytest.fixture
+def fact_collection_1():
+    fact1 = FactNodeHasLabel("1", "Thing")
+    fact2 = FactNodeHasLabel("2", "Thing")
+    fact3 = FactNodeHasLabel("3", "OtherThing")
+    fact_collection = FactCollection(
+        [
+            fact1,
+            fact2,
+            fact3,
         ]
     )
 
@@ -372,3 +389,81 @@ def test_find_solution_node_with_relationship_nonexistant(
     solutions = result.solutions(fact_collection)
     expected = []
     assert solutions == expected
+
+
+def test_find_solution_node_with_attribute_value(
+    fact_collection: FactCollection,
+):
+    cypher = "MATCH (n:Thing {key: 2}) RETURN n.foobar"
+    result = CypherParser(cypher)
+    solutions = result.solutions(fact_collection)
+    expected = [{"n": "1"}]
+    assert solutions == expected
+
+
+def test_find_no_solution_node_with_wrong_attribute_value(
+    fact_collection: FactCollection,
+):
+    cypher = "MATCH (n:Thing {key: 123}) RETURN n.foobar"
+    result = CypherParser(cypher)
+    solutions = result.solutions(fact_collection)
+    expected = []
+    assert solutions == expected
+
+
+def test_find_solution_node_with_attribute_and_relationship(
+    fact_collection: FactCollection,
+):
+    cypher = "MATCH (n:Thing {key: 2})-[r:MyRelationship]->(m:OtherThing) RETURN n.foobar"
+    result = CypherParser(cypher)
+    solutions = result.solutions(fact_collection)
+    expected = [{"n": "1", "m": "2", "r": "relationship_123"}]
+    assert solutions == expected
+
+
+def test_find_no_solution_node_with_wrong_attribute_and_relationship(
+    fact_collection: FactCollection,
+):
+    cypher = "MATCH (n:Thing {key: 3})-[r:MyRelationship]->(m:OtherThing) RETURN n.foobar"
+    result = CypherParser(cypher)
+    solutions = result.solutions(fact_collection)
+    expected = []
+    assert solutions == expected
+
+
+def test_find_no_solution_node_with_wrong_attribute_type_and_relationship(
+    fact_collection: FactCollection,
+):
+    cypher = 'MATCH (n:Thing {key: "3"})-[r:MyRelationship]->(m:OtherThing) RETURN n.foobar'
+    result = CypherParser(cypher)
+    solutions = result.solutions(fact_collection)
+    expected = []
+    assert solutions == expected
+
+
+def test_find_solution_node_with_attribute_type_and_relationship_target_node_attribute(
+    fact_collection: FactCollection,
+):
+    cypher = "MATCH (n:Thing {key: 2})-[r:MyRelationship]->(m:OtherThing {key: 5}) RETURN n.foobar"
+    result = CypherParser(cypher)
+    solutions = result.solutions(fact_collection)
+    expected = [{"n": "1", "m": "2", "r": "relationship_123"}]
+    assert solutions == expected
+
+
+def test_find_no_solution_node_with_attribute_type_and_wrong_relationship_target_node_attribute(
+    fact_collection: FactCollection,
+):
+    cypher = "MATCH (n:Thing {key: 2})-[r:NoRelationshipLikeMeExists]->(m:OtherThing {key: 5}) RETURN n.foobar"
+    result = CypherParser(cypher)
+    solutions = result.solutions(fact_collection)
+    expected = []
+    assert solutions == expected
+
+
+def test_find_two_solutions_node_has_label(fact_collection_1: FactCollection):
+    cypher = "MATCH (n:Thing) RETURN n.foobar"
+    result = CypherParser(cypher)
+    solutions = result.solutions(fact_collection_1)
+    expected = [{"n": "1"}, {"n": "2"}]
+    assert solutions == unordered(expected)
