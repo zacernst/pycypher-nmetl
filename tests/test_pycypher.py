@@ -23,6 +23,7 @@ from pycypher.node_classes import (
     Where,
 )
 from pycypher.solver import (
+    ConstraintNodeHasAttributeWithValue,
     ConstraintNodeHasLabel,
     ConstraintRelationshipHasLabel,
     ConstraintRelationshipHasSourceNode,
@@ -31,7 +32,7 @@ from pycypher.solver import (
 
 
 @pytest.fixture
-def fact_collection():
+def fact_collection_0():
     fact1 = FactNodeHasLabel("1", "Thing")
     fact2 = FactNodeHasAttributeWithValue("1", "key", Literal(2))
     fact3 = FactNodeRelatedToNode("1", "2", "MyRelationship")
@@ -73,37 +74,199 @@ def fact_collection_1():
 
 
 @pytest.fixture
-def number_of_facts(fact_collection: FactCollection) -> int:
-    return len(fact_collection.facts)
+def fact_collection_2():
+    fact1 = FactNodeHasLabel("1", "Thing")
+    fact2 = FactNodeHasLabel("2", "MiddleThing")
+    fact3 = FactNodeHasLabel("3", "OtherThing")
+    fact4 = FactRelationshipHasLabel("relationship_1", "MyRelationship")
+    fact5 = FactRelationshipHasLabel("relationship_2", "OtherRelationship")
+    fact6 = FactRelationshipHasSourceNode("relationship_1", "1")
+    fact7 = FactRelationshipHasTargetNode("relationship_1", "2")
+    fact8 = FactRelationshipHasSourceNode("relationship_2", "2")
+    fact9 = FactRelationshipHasTargetNode("relationship_2", "3")
+    fact_collection = FactCollection(
+        [
+            fact1,
+            fact2,
+            fact3,
+            fact4,
+            fact5,
+            fact6,
+            fact7,
+            fact8,
+            fact9,
+        ]
+    )
+
+    return fact_collection
 
 
-def test_fact_collection_has_facts(fact_collection: FactCollection):
-    assert fact_collection
+@pytest.fixture
+def fact_collection_3():
+    fact1 = FactNodeHasLabel("1", "Thing")
+    fact2 = FactNodeHasLabel("2", "MiddleThing")
+    fact3 = FactNodeHasLabel("3", "OtherThing")
+    fact4 = FactRelationshipHasLabel("relationship_1", "MyRelationship")
+    fact5 = FactRelationshipHasLabel("relationship_2", "OtherRelationship")
+    fact6 = FactRelationshipHasSourceNode("relationship_1", "1")
+    fact7 = FactRelationshipHasTargetNode("relationship_1", "2")
+    fact8 = FactRelationshipHasSourceNode("relationship_2", "2")
+    fact9 = FactRelationshipHasTargetNode("relationship_2", "3")
+    fact10 = FactNodeHasLabel("4", "Thing")
+    fact11 = FactRelationshipHasLabel("relationship_3", "MyRelationship")
+    fact12 = FactRelationshipHasSourceNode("relationship_3", "4")
+    fact13 = FactRelationshipHasTargetNode("relationship_3", "2")
+
+    fact_collection = FactCollection(
+        [
+            fact1,
+            fact2,
+            fact3,
+            fact4,
+            fact5,
+            fact6,
+            fact7,
+            fact8,
+            fact9,
+            fact10,
+            fact11,
+            fact12,
+            fact13,
+        ]
+    )
+
+    return fact_collection
 
 
-def test_fact_collection_del_item(fact_collection: FactCollection):
-    first_fact = fact_collection[0]
-    assert first_fact in fact_collection
-    del fact_collection[0]
-    assert first_fact not in fact_collection
+@pytest.fixture
+def fact_collection_4():
+    fact1 = FactNodeHasLabel("1", "Thing")
+    fact2 = FactNodeHasLabel("2", "MiddleThing")
+    fact3 = FactNodeHasLabel("3", "OtherThing")
+    fact4 = FactRelationshipHasLabel("relationship_1", "MyRelationship")
+    fact5 = FactRelationshipHasLabel("relationship_2", "OtherRelationship")
+    fact6 = FactRelationshipHasSourceNode("relationship_1", "1")
+    fact7 = FactRelationshipHasTargetNode("relationship_1", "2")
+    fact8 = FactRelationshipHasSourceNode("relationship_2", "2")
+    fact9 = FactRelationshipHasTargetNode("relationship_2", "3")
+
+    fact10 = FactNodeHasLabel("4", "Thing")
+    fact11 = FactRelationshipHasLabel("relationship_3", "MyRelationship")
+    fact12 = FactRelationshipHasSourceNode("relationship_3", "4")
+    fact13 = FactRelationshipHasTargetNode("relationship_3", "2")
+
+    fact14 = FactNodeHasLabel("5", "OtherThing")
+    fact15 = FactRelationshipHasLabel("relationship_4", "OtherRelationship")
+    fact16 = FactRelationshipHasSourceNode("relationship_4", "2")
+    fact17 = FactRelationshipHasTargetNode("relationship_4", "5")
+
+    fact_collection = FactCollection(
+        [
+            fact1,
+            fact2,
+            fact3,
+            fact4,
+            fact5,
+            fact6,
+            fact7,
+            fact8,
+            fact9,
+            fact10,
+            fact11,
+            fact12,
+            fact13,
+            fact14,
+            fact15,
+            fact16,
+            fact17,
+        ]
+    )
+
+    return fact_collection
 
 
-def test_fact_collection_set_item(fact_collection: FactCollection):
+@pytest.fixture
+def fact_collection_5():
+    fact1 = FactNodeHasLabel("1", "Thing")
+    fact2 = FactNodeHasLabel("2", "MiddleThing")
+    fact3 = FactNodeHasLabel("3", "OtherThing")
+    fact4 = FactRelationshipHasLabel("relationship_1", "MyRelationship")
+    fact5 = FactRelationshipHasLabel("relationship_2", "OtherRelationship")
+    fact6 = FactRelationshipHasSourceNode("relationship_1", "1")
+    fact7 = FactRelationshipHasTargetNode("relationship_1", "2")
+    fact8 = FactRelationshipHasSourceNode("relationship_2", "2")
+    fact9 = FactRelationshipHasTargetNode("relationship_2", "3")
+
+    fact10 = FactNodeHasLabel("4", "Thing")
+    fact11 = FactRelationshipHasLabel("relationship_3", "MyRelationship")
+    fact12 = FactRelationshipHasSourceNode("relationship_3", "4")
+    fact13 = FactRelationshipHasTargetNode("relationship_3", "2")
+
+    fact14 = FactNodeHasLabel("5", "OtherThing")
+    fact15 = FactRelationshipHasLabel("relationship_4", "OtherRelationship")
+    fact16 = FactRelationshipHasSourceNode("relationship_4", "2")
+    fact17 = FactRelationshipHasTargetNode("relationship_4", "5")
+
+    fact18 = FactNodeHasAttributeWithValue("4", "foo", Literal(2))
+
+    fact_collection = FactCollection(
+        [
+            fact1,
+            fact2,
+            fact3,
+            fact4,
+            fact5,
+            fact6,
+            fact7,
+            fact8,
+            fact9,
+            fact10,
+            fact11,
+            fact12,
+            fact13,
+            fact14,
+            fact15,
+            fact16,
+            fact17,
+            fact18,
+        ]
+    )
+
+    return fact_collection
+
+
+@pytest.fixture
+def number_of_facts(fact_collection_0: FactCollection) -> int:
+    return len(fact_collection_0.facts)
+
+
+def test_fact_collection_has_facts(fact_collection_0: FactCollection):
+    assert fact_collection_0
+
+
+def test_fact_collection_del_item(fact_collection_0: FactCollection):
+    first_fact = fact_collection_0[0]
+    assert first_fact in fact_collection_0
+    del fact_collection_0[0]
+    assert first_fact not in fact_collection_0
+
+
+def test_fact_collection_set_item(fact_collection_0: FactCollection):
     fact = FactNodeHasLabel("3", "Thing")
-    fact_collection[0] = fact
-    assert fact_collection[0] == fact
+    fact_collection_0[0] = fact
+    assert fact_collection_0[0] == fact
 
 
-def test_fact_collection_get_item(fact_collection: FactCollection):
-    fact = fact_collection[0]
+def test_fact_collection_get_item(fact_collection_0: FactCollection):
+    fact = fact_collection_0[0]
     assert isinstance(fact, FactNodeHasLabel)
 
 
-def test_fact_collection_insert(fact_collection: FactCollection):
+def test_fact_collection_insert(fact_collection_0: FactCollection):
     fact = FactNodeHasLabel("3", "Thing")
-    assert fact not in fact_collection
-    fact_collection.insert(0, fact)
-    assert fact in fact_collection
+    assert fact not in fact_collection_0
+    fact_collection_0.insert(0, fact)
+    assert fact in fact_collection_0
 
 
 def test_can_parse_simple_cypher():
@@ -284,7 +447,6 @@ def test_source_node_constraint_from_left_right_relationship_with_label():
     )
 
 
-# @pytest.mark.skip
 def test_target_node_constraint_from_left_right_relationship():
     with patch("uuid.uuid4", patched_uuid) as mock:
         cypher = "MATCH (n:Thing)-[:Relationship]->(m:Other) RETURN n.foobar"
@@ -332,7 +494,6 @@ def test_constraint_relationship_has_label():
         )
 
 
-# @pytest.mark.skip
 def test_constraint_relationship_has_source_node():
     with patch("uuid.uuid4", patched_uuid) as _:
         cypher = "MATCH (n:Thing)-[:Relationship]->(m:Other) RETURN n.foobar"
@@ -343,7 +504,6 @@ def test_constraint_relationship_has_source_node():
         )
 
 
-# @pytest.mark.skip
 def test_constraint_relationship_has_target_node():
     with patch("uuid.uuid4", patched_uuid) as _:
         cypher = "MATCH (n:Thing)-[:Relationship]->(m:Other) RETURN n.foobar"
@@ -354,109 +514,111 @@ def test_constraint_relationship_has_target_node():
         )
 
 
-def test_find_solution_node_has_label(fact_collection: FactCollection):
+def test_find_solution_node_has_label(fact_collection_0: FactCollection):
     cypher = "MATCH (n:Thing) RETURN n.foobar"
     result = CypherParser(cypher)
-    solutions = result.solutions(fact_collection)
+    solutions = result.solutions(fact_collection_0)
     expected = [{"n": "1"}]
     assert solutions == expected
 
 
-def test_find_solution_node_has_wrong_label(fact_collection: FactCollection):
+def test_find_solution_node_has_wrong_label(fact_collection_0: FactCollection):
     cypher = "MATCH (n:WrongLabel) RETURN n.foobar"
     result = CypherParser(cypher)
-    solutions = result.solutions(fact_collection)
+    solutions = result.solutions(fact_collection_0)
     assert not solutions
 
 
-def test_find_solution_node_with_relationship(fact_collection: FactCollection):
+def test_find_solution_node_with_relationship(
+    fact_collection_0: FactCollection,
+):
     # Hash variable for relationship not being added to variable list
     cypher = (
         "MATCH (n:Thing)-[r:MyRelationship]->(m:OtherThing) RETURN n.foobar"
     )
     result = CypherParser(cypher)
-    solutions = result.solutions(fact_collection)
+    solutions = result.solutions(fact_collection_0)
     expected = [{"n": "1", "m": "2", "r": "relationship_123"}]
     assert solutions == expected
 
 
 def test_find_solution_node_with_relationship_nonexistant(
-    fact_collection: FactCollection,
+    fact_collection_0: FactCollection,
 ):
     # Hash variable for relationship not being added to variable list
     cypher = "MATCH (n:Thing)-[r:NotExistingRelationship]->(m:OtherThing) RETURN n.foobar"
     result = CypherParser(cypher)
-    solutions = result.solutions(fact_collection)
+    solutions = result.solutions(fact_collection_0)
     expected = []
     assert solutions == expected
 
 
 def test_find_solution_node_with_attribute_value(
-    fact_collection: FactCollection,
+    fact_collection_0: FactCollection,
 ):
     cypher = "MATCH (n:Thing {key: 2}) RETURN n.foobar"
     result = CypherParser(cypher)
-    solutions = result.solutions(fact_collection)
+    solutions = result.solutions(fact_collection_0)
     expected = [{"n": "1"}]
     assert solutions == expected
 
 
 def test_find_no_solution_node_with_wrong_attribute_value(
-    fact_collection: FactCollection,
+    fact_collection_0: FactCollection,
 ):
     cypher = "MATCH (n:Thing {key: 123}) RETURN n.foobar"
     result = CypherParser(cypher)
-    solutions = result.solutions(fact_collection)
+    solutions = result.solutions(fact_collection_0)
     expected = []
     assert solutions == expected
 
 
 def test_find_solution_node_with_attribute_and_relationship(
-    fact_collection: FactCollection,
+    fact_collection_0: FactCollection,
 ):
     cypher = "MATCH (n:Thing {key: 2})-[r:MyRelationship]->(m:OtherThing) RETURN n.foobar"
     result = CypherParser(cypher)
-    solutions = result.solutions(fact_collection)
+    solutions = result.solutions(fact_collection_0)
     expected = [{"n": "1", "m": "2", "r": "relationship_123"}]
     assert solutions == expected
 
 
 def test_find_no_solution_node_with_wrong_attribute_and_relationship(
-    fact_collection: FactCollection,
+    fact_collection_0: FactCollection,
 ):
     cypher = "MATCH (n:Thing {key: 3})-[r:MyRelationship]->(m:OtherThing) RETURN n.foobar"
     result = CypherParser(cypher)
-    solutions = result.solutions(fact_collection)
+    solutions = result.solutions(fact_collection_0)
     expected = []
     assert solutions == expected
 
 
 def test_find_no_solution_node_with_wrong_attribute_type_and_relationship(
-    fact_collection: FactCollection,
+    fact_collection_0: FactCollection,
 ):
     cypher = 'MATCH (n:Thing {key: "3"})-[r:MyRelationship]->(m:OtherThing) RETURN n.foobar'
     result = CypherParser(cypher)
-    solutions = result.solutions(fact_collection)
+    solutions = result.solutions(fact_collection_0)
     expected = []
     assert solutions == expected
 
 
 def test_find_solution_node_with_attribute_type_and_relationship_target_node_attribute(
-    fact_collection: FactCollection,
+    fact_collection_0: FactCollection,
 ):
     cypher = "MATCH (n:Thing {key: 2})-[r:MyRelationship]->(m:OtherThing {key: 5}) RETURN n.foobar"
     result = CypherParser(cypher)
-    solutions = result.solutions(fact_collection)
+    solutions = result.solutions(fact_collection_0)
     expected = [{"n": "1", "m": "2", "r": "relationship_123"}]
     assert solutions == expected
 
 
 def test_find_no_solution_node_with_attribute_type_and_wrong_relationship_target_node_attribute(
-    fact_collection: FactCollection,
+    fact_collection_0: FactCollection,
 ):
     cypher = "MATCH (n:Thing {key: 2})-[r:NoRelationshipLikeMeExists]->(m:OtherThing {key: 5}) RETURN n.foobar"
     result = CypherParser(cypher)
-    solutions = result.solutions(fact_collection)
+    solutions = result.solutions(fact_collection_0)
     expected = []
     assert solutions == expected
 
@@ -467,3 +629,238 @@ def test_find_two_solutions_node_has_label(fact_collection_1: FactCollection):
     solutions = result.solutions(fact_collection_1)
     expected = [{"n": "1"}, {"n": "2"}]
     assert solutions == unordered(expected)
+
+
+def test_constraints_from_relationship_chain():
+    cypher = "MATCH (n:Thing)-[r:MyRelationship]->(m:MiddleThing)-[s:OtherRelationship]->(o:OtherThing) RETURN n.foobar"
+    result = CypherParser(cypher)
+    constraint1 = ConstraintRelationshipHasSourceNode(
+        source_node_name="n", relationship_name="r"
+    )
+    constraint2 = ConstraintRelationshipHasTargetNode(
+        target_node_name="m", relationship_name="r"
+    )
+    constraint3 = ConstraintRelationshipHasSourceNode(
+        source_node_name="m", relationship_name="s"
+    )
+    constraint4 = ConstraintRelationshipHasTargetNode(
+        target_node_name="o", relationship_name="s"
+    )
+    constraint5 = ConstraintRelationshipHasLabel(
+        relationship_name="r", label="MyRelationship"
+    )
+    constraint6 = ConstraintRelationshipHasLabel(
+        relationship_name="s", label="OtherRelationship"
+    )
+    constraint7 = ConstraintNodeHasLabel(node_id="n", label="Thing")
+    constraint8 = ConstraintNodeHasLabel(node_id="m", label="MiddleThing")
+    constraint9 = ConstraintNodeHasLabel(node_id="o", label="OtherThing")
+    assert constraint1 in result.parsed.aggregated_constraints
+    assert constraint2 in result.parsed.aggregated_constraints
+    assert constraint3 in result.parsed.aggregated_constraints
+    assert constraint4 in result.parsed.aggregated_constraints
+    assert constraint5 in result.parsed.aggregated_constraints
+    assert constraint6 in result.parsed.aggregated_constraints
+    assert constraint7 in result.parsed.aggregated_constraints
+    assert constraint8 in result.parsed.aggregated_constraints
+    assert constraint9 in result.parsed.aggregated_constraints
+
+
+def test_constraints_from_relationship_pair():
+    cypher = "MATCH (n:Thing)-[r:MyRelationship]->(m:MiddleThing), (m)-[s:OtherRelationship]->(o:OtherThing) RETURN n.foobar"
+    result = CypherParser(cypher)
+    constraint1 = ConstraintRelationshipHasSourceNode(
+        source_node_name="n", relationship_name="r"
+    )
+    constraint2 = ConstraintRelationshipHasTargetNode(
+        target_node_name="m", relationship_name="r"
+    )
+    constraint3 = ConstraintRelationshipHasSourceNode(
+        source_node_name="m", relationship_name="s"
+    )
+    constraint4 = ConstraintRelationshipHasTargetNode(
+        target_node_name="o", relationship_name="s"
+    )
+    constraint5 = ConstraintRelationshipHasLabel(
+        relationship_name="r", label="MyRelationship"
+    )
+    constraint6 = ConstraintRelationshipHasLabel(
+        relationship_name="s", label="OtherRelationship"
+    )
+    constraint7 = ConstraintNodeHasLabel(node_id="n", label="Thing")
+    constraint8 = ConstraintNodeHasLabel(node_id="m", label="MiddleThing")
+    constraint9 = ConstraintNodeHasLabel(node_id="o", label="OtherThing")
+    assert constraint1 in result.parsed.aggregated_constraints
+    assert constraint2 in result.parsed.aggregated_constraints
+    assert constraint3 in result.parsed.aggregated_constraints
+    assert constraint4 in result.parsed.aggregated_constraints
+    assert constraint5 in result.parsed.aggregated_constraints
+    assert constraint6 in result.parsed.aggregated_constraints
+    assert constraint7 in result.parsed.aggregated_constraints
+    assert constraint8 in result.parsed.aggregated_constraints
+    assert constraint9 in result.parsed.aggregated_constraints
+    assert len(result.parsed.aggregated_constraints) == 9
+
+
+def test_find_solution_relationship_chain_two_forks(
+    fact_collection_2: FactCollection,
+):
+    cypher = "MATCH (n:Thing)-[r:MyRelationship]->(m:MiddleThing)-[s:OtherRelationship]->(o:OtherThing) RETURN n.foobar"
+    result = CypherParser(cypher)
+    solutions = result.solutions(fact_collection_2)
+    expected = [
+        {
+            "m": "2",
+            "r": "relationship_1",
+            "s": "relationship_2",
+            "n": "1",
+            "o": "3",
+        }
+    ]
+    assert solutions == expected
+
+
+def test_find_solution_relationship_chain_fork(
+    fact_collection_3: FactCollection,
+):
+    cypher = "MATCH (n:Thing)-[r:MyRelationship]->(m:MiddleThing)-[s:OtherRelationship]->(o:OtherThing) RETURN n.foobar"
+    result = CypherParser(cypher)
+    solutions = result.solutions(fact_collection_3)
+    expected = [
+        {
+            "m": "2",
+            "r": "relationship_1",
+            "s": "relationship_2",
+            "n": "1",
+            "o": "3",
+        },
+        {
+            "m": "2",
+            "r": "relationship_3",
+            "s": "relationship_2",
+            "n": "4",
+            "o": "3",
+        },
+    ]
+    assert solutions == unordered(expected)
+
+
+def test_find_solution_relationship_chain_fork(
+    fact_collection_4: FactCollection,
+):
+    cypher = "MATCH (n:Thing)-[r:MyRelationship]->(m:MiddleThing)-[s:OtherRelationship]->(o:OtherThing) RETURN n.foobar"
+    result = CypherParser(cypher)
+    solutions = result.solutions(fact_collection_4)
+    expected = [
+        {
+            "m": "2",
+            "r": "relationship_3",
+            "s": "relationship_4",
+            "n": "4",
+            "o": "5",
+        },
+        {
+            "m": "2",
+            "r": "relationship_3",
+            "s": "relationship_2",
+            "n": "4",
+            "o": "3",
+        },
+        {
+            "m": "2",
+            "r": "relationship_1",
+            "s": "relationship_4",
+            "n": "1",
+            "o": "5",
+        },
+        {
+            "m": "2",
+            "r": "relationship_1",
+            "s": "relationship_2",
+            "n": "1",
+            "o": "3",
+        },
+    ]
+    assert solutions == unordered(expected)
+
+
+def test_constraint_relationship_chain_with_node_attribute():
+    cypher = "MATCH (n:Thing {foo: 2})-[r:MyRelationship]->(m:MiddleThing)-[s:OtherRelationship]->(o:OtherThing) RETURN n.foobar"
+    result = CypherParser(cypher)
+    constraint1 = ConstraintRelationshipHasSourceNode(
+        source_node_name="n", relationship_name="r"
+    )
+    constraint2 = ConstraintRelationshipHasTargetNode(
+        target_node_name="m", relationship_name="r"
+    )
+    constraint3 = ConstraintRelationshipHasSourceNode(
+        source_node_name="m", relationship_name="s"
+    )
+    constraint4 = ConstraintRelationshipHasTargetNode(
+        target_node_name="o", relationship_name="s"
+    )
+    constraint5 = ConstraintRelationshipHasLabel(
+        relationship_name="r", label="MyRelationship"
+    )
+    constraint6 = ConstraintRelationshipHasLabel(
+        relationship_name="s", label="OtherRelationship"
+    )
+    constraint7 = ConstraintNodeHasLabel(node_id="n", label="Thing")
+    constraint8 = ConstraintNodeHasLabel(node_id="m", label="MiddleThing")
+    constraint9 = ConstraintNodeHasLabel(node_id="o", label="OtherThing")
+    constraint10 = ConstraintNodeHasAttributeWithValue(
+        node_id="n", attribute="foo", value=Literal(2)
+    )
+    assert constraint1 in result.parsed.aggregated_constraints
+    assert constraint2 in result.parsed.aggregated_constraints
+    assert constraint3 in result.parsed.aggregated_constraints
+    assert constraint4 in result.parsed.aggregated_constraints
+    assert constraint5 in result.parsed.aggregated_constraints
+    assert constraint6 in result.parsed.aggregated_constraints
+    assert constraint7 in result.parsed.aggregated_constraints
+    assert constraint8 in result.parsed.aggregated_constraints
+    assert constraint9 in result.parsed.aggregated_constraints
+    assert constraint10 in result.parsed.aggregated_constraints
+
+
+def test_find_no_solution_relationship_chain_fork_missing_node_attribute(
+    fact_collection_4: FactCollection,
+):
+    cypher = "MATCH (n:Thing {foo: 2})-[r:MyRelationship]->(m:MiddleThing)-[s:OtherRelationship]->(o:OtherThing) RETURN n.foobar"
+    result = CypherParser(cypher)
+    solutions = result.solutions(fact_collection_4)
+    assert not solutions
+
+
+def test_find_two_solutions_relationship_chain_fork_require_node_attribute_value(
+    fact_collection_5: FactCollection,
+):
+    cypher = 'MATCH (n:Thing {foo: 2})-[r:MyRelationship]->(m:MiddleThing)-[s:OtherRelationship]->(o:OtherThing) RETURN n.foobar'
+    result = CypherParser(cypher)
+    solutions = result.solutions(fact_collection_5)
+    expected = [
+        {
+            "m": "2",
+            "r": "relationship_3",
+            "s": "relationship_4",
+            "n": "4",
+            "o": "5",
+        },
+        {
+            "m": "2",
+            "r": "relationship_3",
+            "s": "relationship_2",
+            "n": "4",
+            "o": "3",
+        },
+    ]
+    assert solutions == unordered(expected)
+
+
+def test_find_no_solutions_relationship_chain_fork_node_attribute_value_wrong_type(
+    fact_collection_5: FactCollection,
+):
+    cypher = 'MATCH (n:Thing {foo: "2"})-[r:MyRelationship]->(m:MiddleThing)-[s:OtherRelationship]->(o:OtherThing) RETURN n.foobar'
+    result = CypherParser(cypher)
+    solutions = result.solutions(fact_collection_5)
+    assert not solutions

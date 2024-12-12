@@ -7,6 +7,9 @@ all: build docs tests
 venv:
 	echo "Installing Python and virtual environment..." && uv venv --python=$(PYTHON) venv
 
+veryclean: clean
+	uv cache clean
+
 deps: venv requirements.txt
 	( \
 		echo "Installing dependencies..." && \
