@@ -3,6 +3,7 @@ hatchling==1.25
 isort>=5.13.2,<6.0.0
 pip-tools>=7.4.1,<8.0.0
 ply>=3.11,<4.0.0
+networkx>=3.4.2,<4.0.0
 pydantic>=2.9.2,<3.0.0
 pytest-mock>=3.14.0,<4.0.0
 pytest-xdist>=3.6.1,<4.0.0
@@ -15,3 +16,4 @@ sphinx-rtd-theme==2.0.0
 sphinx>=5.0.2,<9.0.0
 toml>=0.10.2,<1.0.0
 python-constraint>=1.4.0,<2.0.0
+pytest-unordered==0.6.1

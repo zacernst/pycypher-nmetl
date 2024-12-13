@@ -77,12 +77,12 @@ def p_string(p: yacc.YaccProduction):
 
 def p_integer(p: yacc.YaccProduction):
     """integer : INTEGER"""
-    p[0] = p[1]
+    p[0] = int(p[1])
 
 
 def p_float(p: yacc.YaccProduction):
     """float : FLOAT"""
-    p[0] = p[1]
+    p[0] = float(p[1])
 
 
 def p_name_label(
@@ -144,8 +144,8 @@ def p_alias(p: yacc.YaccProduction):
 
 
 def p_literal(p: yacc.YaccProduction):
-    """literal : INTEGER
-    | FLOAT
+    """literal : integer
+    | float
     | STRING
     """
     p[0] = Literal(p[1])
@@ -340,128 +340,178 @@ class CypherParser:
     def solutions(
         self, fact_collection: FactCollection
     ) -> List[Dict[str, Any]]:
-        def _node_has_label(node_id=None, label=None):
-            LOGGER.debug(f"Checking if {node_id} has label {label}")
-            answer = FactNodeHasLabel(node_id, label) in fact_collection.facts
-            LOGGER.debug(f"Answer: {answer}")
-            return answer
-
-        def _relationship_has_label(relationship_id=None, label=None):
-            LOGGER.debug(f"Checking if {relationship_id} has label {label}")
-            answer = (
-                FactRelationshipHasLabel(relationship_id, label)
-                in fact_collection.facts
-            )
-            LOGGER.debug(f"Answer: {answer}")
-            return answer
-
-        def _relationship_has_source_node(relationship_id=None, node_id=None):
-            LOGGER.debug(
-                f"Checking if {relationship_id} has source node {node_id}"
-            )
-            answer = (
-                FactRelationshipHasSourceNode(relationship_id, node_id)
-                in fact_collection.facts
-            )
-            LOGGER.debug(f"Answer: {answer}")
-            return answer
-
-        def _relationship_has_target_node(relationship_id=None, node_id=None):
-            LOGGER.debug(
-                f"Checking if {relationship_id} has target node {node_id}"
-            )
-            answer = (
-                FactRelationshipHasTargetNode(relationship_id, node_id)
-                in fact_collection.facts
-            )
-            LOGGER.debug(f"Answer: {answer}")
-            return answer
-
-        # Turn these into partial functions with `node_id` the remaining argument
-        def _node_has_attribute_with_value(
-            node_id=None, attribute=None, value=None
-        ):
-            if not isinstance(value, Literal):
-                value = Literal(value)
-            LOGGER.debug(
-                f"Checking if {node_id} has attribute {attribute} with value {value}"
-            )
-            obj = FactNodeHasAttributeWithValue(
-                node_id=node_id, attribute=attribute, value=value
-            )
-            answer = obj in fact_collection.facts
-            LOGGER.debug(f"Answer: {answer}")
-            return answer
-
-        def _set_up_problem(constraints: List[Constraint]) -> Problem:
+        def _set_up_problem(parsed_cypher) -> Problem:
+            constraints = parsed_cypher.aggregated_constraints
             problem = Problem()
             node_domain = Domain(set())
-            node_label_domain = Domain(set())
-            label_domain_dict = collections.defaultdict(set)
             relationship_domain = Domain(set())
-            relationship_label_domain = Domain(set())
 
+            # Get domains for nodes and relationships
             for fact in fact_collection:
                 if isinstance(fact, FactNodeHasLabel):
                     if fact.node_id not in node_domain:
+                        LOGGER.debug(f"fact.node_id: {fact.node_id}")
                         node_domain.append(fact.node_id)
-                    if fact.label not in node_label_domain:
-                        label_domain_dict[fact.label].add(fact.node_id)
                 elif isinstance(fact, FactRelationshipHasLabel):
-                    if fact.relationship_id not in relationship_label_domain:
-                        relationship_label_domain.append(fact.relationship_id)
-                elif isinstance(fact, FactRelationshipHasSourceNode):
+                    if fact.relationship_id not in relationship_domain:
+                        relationship_domain.append(fact.relationship_id)
+                elif isinstance(
+                    fact,
+                    (
+                        FactRelationshipHasSourceNode,
+                        FactRelationshipHasTargetNode,
+                    ),
+                ):
                     if fact.relationship_id not in relationship_domain:
                         relationship_domain.append(fact.relationship_id)
                 else:
                     pass
 
-            for node_id in self.node_variables:
-                problem.addVariable(node_id, node_domain)
-            for relationship_variable in self.relationship_variables:
-                try:
-                    problem.addVariable(
-                        relationship_variable, relationship_domain
-                    )
-                except ValueError:
-                    LOGGER.debug(
-                        f"Variable {relationship_variable} already exists. Skipping..."
-                    )
-
-            # Loop over constraints, creating partial functions and adding them as constraints
-            # TODO: Replace partial functions with lambda functions
+            # Assign variables to domains
             for constraint in constraints:
                 if isinstance(constraint, ConstraintNodeHasLabel):
+                    LOGGER.debug(
+                        f"Adding variable: {constraint.node_id} to domain: {node_domain}"
+                    )
+                    problem.addVariable(constraint.node_id, node_domain)
+                elif 0 and isinstance(
+                    constraint, ConstraintNodeHasAttributeWithValue
+                ):
+                    problem.addVariable(constraint.node_id, node_domain)
+                elif (
+                    isinstance(constraint, ConstraintRelationshipHasSourceNode)
+                    and constraint.relationship_name not in problem._variables
+                ):
+                    LOGGER.debug(
+                        f"Adding variable: {constraint.relationship_name} to domain: {relationship_domain}"
+                    )
+                    problem.addVariable(
+                        constraint.relationship_name, relationship_domain
+                    )
+                elif (
+                    isinstance(constraint, ConstraintRelationshipHasSourceNode)
+                    and constraint.relationship_name not in problem._variables
+                ):
+                    LOGGER.debug(
+                        f"Adding variable: {constraint.relationship_name} to domain: {relationship_domain}"
+                    )
+                    problem.addVariable(
+                        constraint.relationship_name, relationship_domain
+                    )
+                elif (
+                    isinstance(constraint, ConstraintRelationshipHasTargetNode)
+                    and constraint.relationship_name not in problem._variables
+                ):
+                    LOGGER.debug(
+                        f"Adding variable: {constraint.relationship_name} to domain: {relationship_domain}"
+                    )
+                    problem.addVariable(
+                        constraint.relationship_name, relationship_domain
+                    )
+                elif (
+                    isinstance(constraint, ConstraintRelationshipHasLabel)
+                    and constraint.relationship_name not in problem._variables
+                ):
+                    LOGGER.debug(
+                        f"Adding variable: {constraint.relationship_name} to domain: {relationship_domain}"
+                    )
+                    problem.addVariable(
+                        constraint.relationship_name, relationship_domain
+                    )
+                elif (
+                    isinstance(constraint, ConstraintNodeHasAttributeWithValue)
+                    and constraint.node_id not in problem._variables
+                ):
+                    LOGGER.debug(
+                        f"Adding variable: {constraint.node_id} to domain: {node_domain}"
+                    )
+                    problem.addVariable(constraint.node_id, node_domain)
+                else:
+                    pass
+
+            # Add constraints to problem definition
+            def _f(x, y):
+                answer = (
+                    FactRelationshipHasSourceNode(
+                        relationship_id=x, source_node_id=y
+                    )
+                    in fact_collection
+                )
+                LOGGER.debug(f"answer _f: {answer} for x: {x}, y: {y}")
+                return answer
+
+            def _g(node_id, node_label=None):
+                answer = (
+                    FactNodeHasLabel(node_id=node_id, node_label=node_label)
+                    in fact_collection
+                )
+                LOGGER.debug(
+                    f"answer _g: {answer} for node_id: {node_id}, node_label: {node_label}"
+                )
+                return answer
+
+            def _h(relationship_id, relationship_label=None):
+                answer = (
+                    FactRelationshipHasLabel(
+                        relationship_id=relationship_id,
+                        relationship_label=relationship_label,
+                    )
+                    in fact_collection
+                )
+                LOGGER.debug(
+                    f"answer _h: {answer} for relationship_id: {relationship_id}, relationship_label: {relationship_label}"
+                )
+                return answer
+
+            def _i(node_id, attribute=None, value=None):
+                answer = (
+                    FactNodeHasAttributeWithValue(
+                        node_id=node_id, attribute=attribute, value=value
+                    )
+                    in fact_collection
+                )
+                LOGGER.debug(
+                    f"answer _i: {answer} for node_id: {node_id}, attribute: {attribute}, value: {value}"
+                )
+                return answer
+
+            for constraint in constraints:
+                if isinstance(constraint, ConstraintNodeHasLabel):
+                    LOGGER.debug(f"Adding constraint: {constraint}")
                     problem.addConstraint(
-                        partial(_node_has_label, label=constraint.label),
-                        [constraint.node_id],
+                        partial(_g, node_label=constraint.label),
+                        [
+                            constraint.node_id,
+                        ],
                     )
                 elif isinstance(
                     constraint, ConstraintNodeHasAttributeWithValue
-                ):  # This doesn't work
+                ):
+                    LOGGER.debug(f"Adding constraint: {constraint}")
                     problem.addConstraint(
                         partial(
-                            _node_has_attribute_with_value,
+                            _i,
                             attribute=constraint.attribute,
                             value=constraint.value,
                         ),
-                        [constraint.node_id],
+                        [
+                            constraint.node_id,
+                        ],
                     )
                 elif isinstance(constraint, ConstraintRelationshipHasLabel):
+                    LOGGER.debug(f"Adding constraint: {constraint}")
                     problem.addConstraint(
-                        partial(
-                            _relationship_has_label,
-                            label=constraint.label,
-                        ),
-                        [constraint.relationship_name],
+                        partial(_h, relationship_label=constraint.label),
+                        [
+                            constraint.relationship_name,
+                        ],
                     )
                 elif isinstance(
                     constraint, ConstraintRelationshipHasSourceNode
                 ):
+                    LOGGER.debug(f"Adding constraint: {constraint}")
                     problem.addConstraint(
-                        lambda x, y: _relationship_has_source_node(
-                            relationship_id=x, node_id=y
-                        ),
+                        _f,
                         [
                             constraint.relationship_name,
                             constraint.source_node_name,
@@ -470,20 +520,22 @@ class CypherParser:
                 elif isinstance(
                     constraint, ConstraintRelationshipHasTargetNode
                 ):
+                    LOGGER.debug(f"Adding constraint: {constraint}")
                     problem.addConstraint(
-                        lambda x, y: _relationship_has_target_node(
-                            relationship_id=x, node_id=y
-                        ),
+                        lambda x, y: FactRelationshipHasTargetNode(
+                            relationship_id=x, target_node_id=y
+                        )
+                        in fact_collection,
                         [
                             constraint.relationship_name,
                             constraint.target_node_name,
                         ],
                     )
                 else:
-                    raise Exception(f"Unknown constraint type: {constraint}")
+                    pass  # TODO: Add more constraints if necessary
             return problem
 
-        problem = _set_up_problem(self.parsed.aggregated_constraints)
+        problem = _set_up_problem(self.parsed)
         solutions = problem.getSolutions()
         return solutions
 
