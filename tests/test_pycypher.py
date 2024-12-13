@@ -236,6 +236,59 @@ def fact_collection_5():
 
 
 @pytest.fixture
+def fact_collection_6():
+    fact1 = FactNodeHasLabel("1", "Thing")
+    fact2 = FactNodeHasLabel("2", "MiddleThing")
+    fact3 = FactNodeHasLabel("3", "OtherThing")
+    fact4 = FactRelationshipHasLabel("relationship_1", "MyRelationship")
+    fact5 = FactRelationshipHasLabel("relationship_2", "OtherRelationship")
+    fact6 = FactRelationshipHasSourceNode("relationship_1", "1")
+    fact7 = FactRelationshipHasTargetNode("relationship_1", "2")
+    fact8 = FactRelationshipHasSourceNode("relationship_2", "2")
+    fact9 = FactRelationshipHasTargetNode("relationship_2", "3")
+
+    fact10 = FactNodeHasLabel("4", "Thing")
+    fact11 = FactRelationshipHasLabel("relationship_3", "MyRelationship")
+    fact12 = FactRelationshipHasSourceNode("relationship_3", "4")
+    fact13 = FactRelationshipHasTargetNode("relationship_3", "2")
+
+    fact14 = FactNodeHasLabel("5", "OtherThing")
+    fact15 = FactRelationshipHasLabel("relationship_4", "OtherRelationship")
+    fact16 = FactRelationshipHasSourceNode("relationship_4", "2")
+    fact17 = FactRelationshipHasTargetNode("relationship_4", "5")
+
+    fact18 = FactNodeHasAttributeWithValue("4", "foo", Literal(2))
+
+    fact19 = FactNodeHasLabel("6", "Irrelevant")
+
+    fact_collection = FactCollection(
+        [
+            fact1,
+            fact2,
+            fact3,
+            fact4,
+            fact5,
+            fact6,
+            fact7,
+            fact8,
+            fact9,
+            fact10,
+            fact11,
+            fact12,
+            fact13,
+            fact14,
+            fact15,
+            fact16,
+            fact17,
+            fact18,
+            fact19,
+        ]
+    )
+
+    return fact_collection
+
+
+@pytest.fixture
 def number_of_facts(fact_collection_0: FactCollection) -> int:
     return len(fact_collection_0.facts)
 
@@ -835,7 +888,7 @@ def test_find_no_solution_relationship_chain_fork_missing_node_attribute(
 def test_find_two_solutions_relationship_chain_fork_require_node_attribute_value(
     fact_collection_5: FactCollection,
 ):
-    cypher = 'MATCH (n:Thing {foo: 2})-[r:MyRelationship]->(m:MiddleThing)-[s:OtherRelationship]->(o:OtherThing) RETURN n.foobar'
+    cypher = "MATCH (n:Thing {foo: 2})-[r:MyRelationship]->(m:MiddleThing)-[s:OtherRelationship]->(o:OtherThing) RETURN n.foobar"
     result = CypherParser(cypher)
     solutions = result.solutions(fact_collection_5)
     expected = [
@@ -863,4 +916,38 @@ def test_find_no_solutions_relationship_chain_fork_node_attribute_value_wrong_ty
     cypher = 'MATCH (n:Thing {foo: "2"})-[r:MyRelationship]->(m:MiddleThing)-[s:OtherRelationship]->(o:OtherThing) RETURN n.foobar'
     result = CypherParser(cypher)
     solutions = result.solutions(fact_collection_5)
+    assert not solutions
+
+
+def test_find_two_solutions_relationship_chain_fork_red_herring_node(
+    fact_collection_6: FactCollection,
+):
+    cypher = "MATCH (n:Thing {foo: 2})-[r:MyRelationship]->(m:MiddleThing)-[s:OtherRelationship]->(o:OtherThing) RETURN n.foobar"
+    result = CypherParser(cypher)
+    solutions = result.solutions(fact_collection_6)
+    expected = [
+        {
+            "m": "2",
+            "r": "relationship_3",
+            "s": "relationship_4",
+            "n": "4",
+            "o": "5",
+        },
+        {
+            "m": "2",
+            "r": "relationship_3",
+            "s": "relationship_2",
+            "n": "4",
+            "o": "3",
+        },
+    ]
+    assert solutions == unordered(expected)
+
+
+def test_find_no_solutions_relationship_chain_fork_node_attribute_value_wrong_type_red_herring_node(
+    fact_collection_6: FactCollection,
+):
+    cypher = 'MATCH (n:Thing {foo: "2"})-[r:MyRelationship]->(m:MiddleThing)-[s:OtherRelationship]->(o:OtherThing) RETURN n.foobar'
+    result = CypherParser(cypher)
+    solutions = result.solutions(fact_collection_6)
     assert not solutions
