@@ -1,3 +1,5 @@
+import networkx as nx
+
 from unittest.mock import patch
 
 import pytest
@@ -29,6 +31,8 @@ from pycypher.solver import (
     ConstraintRelationshipHasSourceNode,
     ConstraintRelationshipHasTargetNode,
 )
+
+from pycypher.shims.networkx_cypher import make_fact_collection
 
 
 @pytest.fixture
@@ -286,6 +290,46 @@ def fact_collection_6():
     )
 
     return fact_collection
+
+@pytest.fixture
+def networkx_graph():
+    edge_dictionary = {
+        "a": ["b", "c", "d", "e"],
+        "b": ["a", "e"],
+        "c": ["a", "d"],
+        "d": ["a", "c"],
+        "e": ["a", "b"],
+        "f": ["g"],
+        "g": ["f"],
+    }
+
+    graph = nx.DiGraph(edge_dictionary)
+
+    graph.nodes["a"]["name"] = "Alice"
+    graph.nodes["b"]["name"] = "Bob"
+    graph.nodes["c"]["name"] = "Charlie"
+    graph.nodes["d"]["name"] = "David"
+    graph.nodes["e"]["name"] = "Eve"
+    graph.nodes["f"]["name"] = "Frank"
+    graph.nodes["g"]["name"] = "Grace"
+
+    graph.nodes["a"]["age"] = 25
+    graph.nodes["b"]["age"] = 30
+    graph.nodes["c"]["age"] = 35
+    graph.nodes["d"]["age"] = 40
+    graph.nodes["e"]["age"] = 45
+    graph.nodes["f"]["age"] = 50
+    graph.nodes["g"]["age"] = 55
+
+    graph.nodes["a"]["category"] = "Person"
+    graph.nodes["b"]["category"] = "Person"
+    graph.nodes["c"]["category"] = "Person"
+    graph.nodes["d"]["category"] = "Person"
+    graph.nodes["e"]["category"] = "Person"
+    graph.nodes["f"]["category"] = "Person"
+    graph.nodes["g"]["category"] = "Person"
+
+    return graph
 
 
 @pytest.fixture
@@ -951,3 +995,8 @@ def test_find_no_solutions_relationship_chain_fork_node_attribute_value_wrong_ty
     result = CypherParser(cypher)
     solutions = result.solutions(fact_collection_6)
     assert not solutions
+
+
+def test_nx_graph_to_fact_collection(networkx_graph):
+    fact_collection = make_fact_collection(networkx_graph)
+    assert fact_collection.facts
