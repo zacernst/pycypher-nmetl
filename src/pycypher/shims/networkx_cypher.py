@@ -12,8 +12,8 @@ from pycypher.fact import (
     FactRelationshipHasSourceNode,
     FactRelationshipHasTargetNode,
 )
-from pycypher.shims import Shim
 from pycypher.node_classes import Literal
+from pycypher.shims import Shim
 
 
 class NetworkX(Shim):
@@ -26,8 +26,8 @@ class NetworkX(Shim):
     def __str__(self):
         return f"NetworkX({self.graph})"
 
-    def make_fact_collection(graph: nx.DiGraph) -> FactCollection:
-        graph_cypher = copy.deepcopy(graph)
+    def make_fact_collection(self) -> FactCollection:
+        graph_cypher = copy.deepcopy(self.graph)
         for node in graph_cypher.nodes:
             graph_cypher.nodes[node]["_labels"] = []
             graph_cypher.nodes[node]["_id"] = uuid.uuid4().hex
@@ -42,7 +42,9 @@ class NetworkX(Shim):
             )
 
         for edge in graph_cypher.edges:
-            graph_cypher.edges[edge]["_labels"].append("Knows")
+            graph_cypher.edges[edge]["_labels"].append(
+                "Knows"
+            )  # TODO: Fix this!
 
         fact_list = []
 
@@ -50,7 +52,8 @@ class NetworkX(Shim):
             for label in graph_cypher.nodes[node]["_labels"]:
                 fact_list.append(
                     FactNodeHasLabel(
-                        node_id=graph_cypher.nodes[node]["_id"], node_label=label
+                        node_id=graph_cypher.nodes[node]["_id"],
+                        node_label=label,
                     )
                 )
             for attribute in graph_cypher.nodes[node]:
@@ -70,17 +73,20 @@ class NetworkX(Shim):
             for label in edge_data["_labels"]:
                 fact_list.append(
                     FactRelationshipHasLabel(
-                        relationship_id=edge_data["_id"], relationship_label=label
+                        relationship_id=edge_data["_id"],
+                        relationship_label=label,
                     )
                 )
             fact_list.append(
                 FactRelationshipHasSourceNode(
-                    relationship_id=edge_data["_id"], source_node_id=source_node_id
+                    relationship_id=edge_data["_id"],
+                    source_node_id=source_node_id,
                 )
             )
             fact_list.append(
                 FactRelationshipHasTargetNode(
-                    relationship_id=edge_data["_id"], target_node_id=target_node_id
+                    relationship_id=edge_data["_id"],
+                    target_node_id=target_node_id,
                 )
             )
 
