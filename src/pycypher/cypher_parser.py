@@ -5,8 +5,7 @@ from functools import partial
 from typing import Any, Dict, List, Tuple, Type
 
 import ply.yacc as yacc  # type: ignore
-import rich
-from constraint import Constraint, Domain, Problem
+from constraint import Domain, Problem
 
 from pycypher.cypher_lexer import *
 from pycypher.fact import (
@@ -43,6 +42,7 @@ from pycypher.node_classes import (
     Return,
     Where,
 )
+from pycypher.shims import Shim
 from pycypher.solver import (
     ConstraintNodeHasAttributeWithValue,
     ConstraintNodeHasLabel,
@@ -338,7 +338,7 @@ class CypherParser:
         return attributes
 
     def solutions(
-        self, fact_collection: FactCollection
+        self, fact_collection: FactCollection | Shim
     ) -> List[Dict[str, Any]]:
         def _set_up_problem(parsed_cypher) -> Problem:
             constraints = parsed_cypher.aggregated_constraints
@@ -535,6 +535,11 @@ class CypherParser:
                     pass  # TODO: Add more constraints if necessary
             return problem
 
+        fact_collection = (
+            fact_collection
+            if isinstance(fact_collection, FactCollection)
+            else fact_collection.make_fact_collection()
+        )
         problem = _set_up_problem(self.parsed)
         solutions = problem.getSolutions()
         return solutions

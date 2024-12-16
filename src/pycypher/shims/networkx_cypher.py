@@ -12,70 +12,81 @@ from pycypher.fact import (
     FactRelationshipHasSourceNode,
     FactRelationshipHasTargetNode,
 )
+from pycypher.shims import Shim
 from pycypher.node_classes import Literal
 
 
-def make_fact_collection(graph: nx.DiGraph):
-    graph_cypher = copy.deepcopy(graph)
-    for node in graph_cypher.nodes:
-        graph_cypher.nodes[node]["_labels"] = []
-        graph_cypher.nodes[node]["_id"] = uuid.uuid4().hex
+class NetworkX(Shim):
+    def __init__(self, graph: nx.DiGraph):
+        self.graph = graph
 
-    for edge in graph_cypher.edges:
-        graph_cypher.edges[edge]["_labels"] = []
-        graph_cypher.edges[edge]["_id"] = uuid.uuid4().hex
+    def __repr__(self):
+        return f"NetworkX({self.graph})"
 
-    for node in graph_cypher.nodes:
-        graph_cypher.nodes[node]["_labels"].append(
-            graph_cypher.nodes[node]["category"]
-        )
+    def __str__(self):
+        return f"NetworkX({self.graph})"
 
-    for edge in graph_cypher.edges:
-        graph_cypher.edges[edge]["_labels"].append("Knows")
+    def make_fact_collection(graph: nx.DiGraph) -> FactCollection:
+        graph_cypher = copy.deepcopy(graph)
+        for node in graph_cypher.nodes:
+            graph_cypher.nodes[node]["_labels"] = []
+            graph_cypher.nodes[node]["_id"] = uuid.uuid4().hex
 
-    fact_list = []
+        for edge in graph_cypher.edges:
+            graph_cypher.edges[edge]["_labels"] = []
+            graph_cypher.edges[edge]["_id"] = uuid.uuid4().hex
 
-    for node in graph_cypher.nodes:
-        for label in graph_cypher.nodes[node]["_labels"]:
-            fact_list.append(
-                FactNodeHasLabel(
-                    node_id=graph_cypher.nodes[node]["_id"], node_label=label
-                )
+        for node in graph_cypher.nodes:
+            graph_cypher.nodes[node]["_labels"].append(
+                graph_cypher.nodes[node]["category"]
             )
-        for attribute in graph_cypher.nodes[node]:
-            if attribute not in ["_labels", "_id"]:
+
+        for edge in graph_cypher.edges:
+            graph_cypher.edges[edge]["_labels"].append("Knows")
+
+        fact_list = []
+
+        for node in graph_cypher.nodes:
+            for label in graph_cypher.nodes[node]["_labels"]:
                 fact_list.append(
-                    FactNodeHasAttributeWithValue(
-                        node_id=graph_cypher.nodes[node]["_id"],
-                        attribute=attribute,
-                        value=Literal(graph_cypher.nodes[node][attribute]),
+                    FactNodeHasLabel(
+                        node_id=graph_cypher.nodes[node]["_id"], node_label=label
                     )
                 )
+            for attribute in graph_cypher.nodes[node]:
+                if attribute not in ["_labels", "_id"]:
+                    fact_list.append(
+                        FactNodeHasAttributeWithValue(
+                            node_id=graph_cypher.nodes[node]["_id"],
+                            attribute=attribute,
+                            value=Literal(graph_cypher.nodes[node][attribute]),
+                        )
+                    )
 
-    for edge in graph_cypher.edges.data():
-        source_node_name, target_node_name, edge_data = edge
-        source_node_id = graph_cypher.nodes[source_node_name]["_id"]
-        target_node_id = graph_cypher.nodes[target_node_name]["_id"]
-        for label in edge_data["_labels"]:
+        for edge in graph_cypher.edges.data():
+            source_node_name, target_node_name, edge_data = edge
+            source_node_id = graph_cypher.nodes[source_node_name]["_id"]
+            target_node_id = graph_cypher.nodes[target_node_name]["_id"]
+            for label in edge_data["_labels"]:
+                fact_list.append(
+                    FactRelationshipHasLabel(
+                        relationship_id=edge_data["_id"], relationship_label=label
+                    )
+                )
             fact_list.append(
-                FactRelationshipHasLabel(
-                    relationship_id=edge_data["_id"], relationship_label=label
+                FactRelationshipHasSourceNode(
+                    relationship_id=edge_data["_id"], source_node_id=source_node_id
                 )
             )
-        fact_list.append(
-            FactRelationshipHasSourceNode(
-                relationship_id=edge_data["_id"], source_node_id=source_node_id
+            fact_list.append(
+                FactRelationshipHasTargetNode(
+                    relationship_id=edge_data["_id"], target_node_id=target_node_id
+                )
             )
-        )
-        fact_list.append(
-            FactRelationshipHasTargetNode(
-                relationship_id=edge_data["_id"], target_node_id=target_node_id
-            )
-        )
 
-    fact_collection = FactCollection(fact_list)
+        fact_collection = FactCollection(fact_list)
 
-    return fact_collection
+        return fact_collection
 
 
 if __name__ == "__main__":
@@ -115,7 +126,9 @@ if __name__ == "__main__":
     graph.nodes["f"]["category"] = "Person"
     graph.nodes["g"]["category"] = "Person"
 
+    networkx_shim = NetworkX(graph)
+
     cypher = "MATCH (n:Person {age: 50})-[r:Knows]->(m:Person) RETURN n.name, m.name"
     result = CypherParser(cypher)
-    solutions = result.solutions(make_fact_collection(graph))
+    solutions = result.solutions(networkx_shim)
     print(solutions)

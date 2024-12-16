@@ -1,7 +1,6 @@
-import networkx as nx
-
 from unittest.mock import patch
 
+import networkx as nx
 import pytest
 from pytest_unordered import unordered
 
@@ -24,6 +23,7 @@ from pycypher.node_classes import (
     Query,
     Where,
 )
+from pycypher.shims.networkx_cypher import make_fact_collection
 from pycypher.solver import (
     ConstraintNodeHasAttributeWithValue,
     ConstraintNodeHasLabel,
@@ -31,8 +31,6 @@ from pycypher.solver import (
     ConstraintRelationshipHasSourceNode,
     ConstraintRelationshipHasTargetNode,
 )
-
-from pycypher.shims.networkx_cypher import make_fact_collection
 
 
 @pytest.fixture
@@ -290,6 +288,7 @@ def fact_collection_6():
     )
 
     return fact_collection
+
 
 @pytest.fixture
 def networkx_graph():
