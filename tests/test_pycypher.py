@@ -23,7 +23,7 @@ from pycypher.node_classes import (
     Query,
     Where,
 )
-from pycypher.shims.networkx_cypher import make_fact_collection
+from pycypher.shims.networkx_cypher import NetworkX
 from pycypher.solver import (
     ConstraintNodeHasAttributeWithValue,
     ConstraintNodeHasLabel,
@@ -996,6 +996,13 @@ def test_find_no_solutions_relationship_chain_fork_node_attribute_value_wrong_ty
     assert not solutions
 
 
+def test_networkx_shim_initialization(networkx_graph):
+    nxshim = NetworkX(networkx_graph)
+    assert nxshim.graph
+    assert isinstance(nxshim.graph, nx.DiGraph)
+
+
 def test_nx_graph_to_fact_collection(networkx_graph):
-    fact_collection = make_fact_collection(networkx_graph)
+    nxshim = NetworkX(networkx_graph)
+    fact_collection = nxshim.make_fact_collection()
     assert fact_collection.facts
