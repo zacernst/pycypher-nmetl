@@ -19,10 +19,10 @@ from pycypher.fact import (
 )
 from pycypher.logger import LOGGER
 from pycypher.node_classes import (
+    Aggregation,
     Alias,
     And,
     Collect,
-    Aggregation,
     Cypher,
     Equals,
     GreaterThan,
@@ -228,15 +228,15 @@ def p_with_as_series(p: yacc.YaccProduction):
         object_attribute_lookup_list.append(p[3])
         p[0] = ObjectAsSeries(object_attribute_lookup_list)
 
+
 def p_collect(p: yacc.YaccProduction):
-    '''collect : COLLECT LPAREN object_attribute_lookup RPAREN'''
+    """collect : COLLECT LPAREN object_attribute_lookup RPAREN"""
     p[0] = Collect(object_attribute_lookup=p[3])
 
 
 def p_aggregation(p: yacc.YaccProduction):
-    '''aggregation : collect'''
+    """aggregation : collect"""
     p[0] = Aggregation(aggregation=p[1])
-
 
 
 def p_with_clause(p: yacc.YaccProduction):
@@ -255,13 +255,16 @@ def p_match_pattern(p: yacc.YaccProduction):
     | MATCH relationship_chain_list
     | MATCH relationship_chain_list with_clause
     | MATCH relationship_chain_list where
+    | MATCH relationship_chain_list with_clause where
     | MATCH node where
+    | MATCH node with_clause where
     """
     if len(p) == 3:
         p[0] = Match(p[2])
     elif len(p) == 4 and isinstance(p[3], WithClause):
         p[0] = Match(p[2], None, p[3])
-
+    elif len(p) == 5:
+        p[0] = Match(p[2], p[4], p[3])
     else:
         p[0] = Match(p[2], p[3], None)
 

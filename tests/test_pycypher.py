@@ -16,6 +16,7 @@ from pycypher.fact import (  # We might get rid of this class entirely
 )
 from pycypher.node_classes import (
     Alias,
+    Collect,
     Cypher,
     Equals,
     Literal,
@@ -1090,3 +1091,54 @@ def test_parser_creates_with_clause_single_element():
     query = """MATCH (n:Thingy)-[r:Thingy]->(m) WITH n.foo AS bar RETURN n.foobar"""
     obj = CypherParser(query)
     assert isinstance(obj.parsed.cypher.match_clause.with_clause, WithClause)
+
+
+def test_parser_handles_collect_aggregation_in_return():
+    query = """MATCH (n:Thingy)-[r:Thingy]->(m) WITH n.foo AS bar RETURN COLLECT(n.foobar) AS whatever"""
+    obj = CypherParser(query)
+    assert (
+        obj.parsed.cypher.return_clause.projection.lookups[0].alias
+        == "whatever"
+    )
+
+
+def test_parser_handles_aggregation_in_return():
+    query = """MATCH (n:Thingy)-[r:Thingy]->(m) WITH n.foo AS bar RETURN COLLECT(n.foobar) AS whatever"""
+    obj = CypherParser(query)
+    assert (
+        obj.parsed.cypher.return_clause.projection.lookups[0].alias
+        == "whatever"
+    )
+
+
+def test_parser_handles_collect_in_aggregation_in_return():
+    query = """MATCH (n:Thingy)-[r:Thingy]->(m) WITH n.foo AS bar RETURN COLLECT(n.foobar) AS whatever"""
+    obj = CypherParser(query)
+    assert isinstance(
+        obj.parsed.cypher.return_clause.projection.lookups[
+            0
+        ].reference.aggregation,
+        Collect,
+    )
+
+
+def test_parser_handles_collect_in_aggregation_in_with_clause():
+    query = """MATCH (n:Thingy)-[r:Thingy]->(m) WITH COLLECT(n.foo) AS bar RETURN COLLECT(n.foobar) AS whatever"""
+    obj = CypherParser(query)
+    assert isinstance(
+        obj.parsed.cypher.return_clause.projection.lookups[
+            0
+        ].reference.aggregation,
+        Collect,
+    )
+
+
+def test_parser_handles_collect_in_aggregation_in_with_clause_node_only():
+    query = """MATCH (n:Thingy) WITH COLLECT(n.foo) AS bar WHERE n.whatever = "thing" RETURN COLLECT(n.foobar) AS whatever"""
+    obj = CypherParser(query)
+    assert isinstance(
+        obj.parsed.cypher.return_clause.projection.lookups[
+            0
+        ].reference.aggregation,
+        Collect,
+    )

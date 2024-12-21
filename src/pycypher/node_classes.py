@@ -59,17 +59,18 @@ class Cypher(TreeMixin):
 
 
 class Aggregation(TreeMixin):
-    '''Anything that turns a list into a singleton. Collect, Add, etc.'''
+    """Anything that turns a list into a singleton. Collect, Add, etc."""
+
     def __init__(self, aggregation):
         self.aggregation = aggregation
-    
+
     @property
     def children(self):
         yield self.aggregation
-    
+
     def __repr__(self):
         return f"Aggregation({self.aggregation})"
-    
+
     def tree(self):
         t = Tree(self.__class__.__name__)
         t.add(self.aggregation.tree())
@@ -77,17 +78,18 @@ class Aggregation(TreeMixin):
 
 
 class Collect(TreeMixin):
-    '''The COLLECT keyword'''
+    """The COLLECT keyword"""
+
     def __init__(self, object_attribute_lookup: ObjectAttributeLookup):
         self.object_attribute_lookup = object_attribute_lookup
-    
+
     @property
     def children(self):
         yield self.object_attribute_lookup
-    
+
     def __repr__(self):
         return f"Collect({self.object_attribute_lookup})"
-    
+
     def tree(self):
         t = Tree(self.__class__.__name__)
         t.add(self.object_attribute_lookup.tree())
@@ -317,10 +319,10 @@ class Match(TreeMixin):
     def tree(self) -> Tree:
         t = Tree(self.__class__.__name__)
         t.add(self.pattern.tree())
-        if self.where:
-            t.add(self.where.tree())
         if self.with_clause:
             t.add(self.with_clause.tree())
+        if self.where:
+            t.add(self.where.tree())
         return t
 
     @property
@@ -340,7 +342,9 @@ class Return(TreeMixin):
         return f"Return({self.projection})"
 
     def tree(self):
-        import pdb; pdb.set_trace()
+        import pdb
+
+        pdb.set_trace()
         t = Tree(self.__class__.__name__)
         t.add(self.projection.tree())
         return t
