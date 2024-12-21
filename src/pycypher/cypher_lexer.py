@@ -66,6 +66,8 @@ reserved = {
     "RETURN": "RETURN",
     "THEN": "THEN",
     "WHERE": "WHERE",
+    "COLLECT": "COLLECT",
+    "WITH": "WITH",
 }
 
 

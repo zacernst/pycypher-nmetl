@@ -58,6 +58,42 @@ class Cypher(TreeMixin):
         return t
 
 
+class Aggregation(TreeMixin):
+    '''Anything that turns a list into a singleton. Collect, Add, etc.'''
+    def __init__(self, aggregation):
+        self.aggregation = aggregation
+    
+    @property
+    def children(self):
+        yield self.aggregation
+    
+    def __repr__(self):
+        return f"Aggregation({self.aggregation})"
+    
+    def tree(self):
+        t = Tree(self.__class__.__name__)
+        t.add(self.aggregation.tree())
+        return t
+
+
+class Collect(TreeMixin):
+    '''The COLLECT keyword'''
+    def __init__(self, object_attribute_lookup: ObjectAttributeLookup):
+        self.object_attribute_lookup = object_attribute_lookup
+    
+    @property
+    def children(self):
+        yield self.object_attribute_lookup
+    
+    def __repr__(self):
+        return f"Collect({self.object_attribute_lookup})"
+    
+    def tree(self):
+        t = Tree(self.__class__.__name__)
+        t.add(self.object_attribute_lookup.tree())
+        return t
+
+
 class Query(TreeMixin):
     """The node that represents the entire query."""
 
@@ -144,7 +180,7 @@ class GreaterThan(Predicate):
 
 
 class ObjectAttributeLookup(TreeMixin):
-    """A node that represents the value of an attribut of a node or relationship
+    """A node that represents the value of an attribute of a node or relationship
     of the form ``node.attribute``.
     """
 
@@ -181,7 +217,7 @@ class Alias(TreeMixin):
         t = Tree(self.__class__.__name__)
         t.add(
             self.reference.tree()
-            if isinstance(self.reference, ObjectAttributeLookup)
+            if isinstance(self.reference, TreeMixin)
             else self.reference
         )
         t.add(self.alias)
@@ -193,27 +229,98 @@ class Alias(TreeMixin):
         yield self.alias
 
 
+class ObjectAs(TreeMixin):
+    """Basically an alias. Might be redundant."""
+
+    def __init__(
+        self, object_attribute_lookup: ObjectAttributeLookup | str, alias: str
+    ):
+        if isinstance(object_attribute_lookup, str):
+            object_attribute_lookup = ObjectAttributeLookup(
+                object_attribute_lookup, None
+            )
+        self.object_attribute_lookup = object_attribute_lookup
+        self.alias = alias
+
+    def __repr__(self):
+        return f"ObjectAs({self.object_attribute_lookup}, {self.alias})"
+
+    def tree(self) -> Tree:
+        t = Tree(self.__class__.__name__)
+        t.add(self.object_attribute_lookup.tree())
+        t.add(self.alias)
+        return t
+
+    @property
+    def children(self) -> Generator[Projection | Alias]:
+        yield self.object_attribute_lookup
+        yield self.alias
+
+
+class ObjectAsSeries(TreeMixin):
+    """Basically an alias. Might be redundant."""
+
+    def __init__(self, object_attribute_lookup_list: List[ObjectAs]):
+        self.object_attribute_lookup_list = object_attribute_lookup_list
+
+    def __repr__(self):
+        return f"ObjectAsSeries({self.object_attribute_lookup_list})"
+
+    def tree(self) -> Tree:
+        t = Tree(self.__class__.__name__)
+        for object_attribute_lookup in self.object_attribute_lookup_list:
+            t.add(object_attribute_lookup.tree())
+        return t
+
+    @property
+    def children(self) -> Generator[Projection | Alias]:
+        yield self.object_attribute_lookup_list
+
+
+class WithClause(TreeMixin):
+    """The ``WITH`` clause of the query, which is a set of projections."""
+
+    def __init__(self, object_as_series: ObjectAsSeries):
+        self.object_as_series = object_as_series
+
+    def __repr__(self):
+        return f"WithClause({self.object_as_series})"
+
+    def tree(self) -> Tree:
+        t = Tree(self.__class__.__name__)
+        t.add(self.object_as_series.tree())
+        return t
+
+    @property
+    def children(self) -> Generator[Projection]:
+        yield self.object_as_series
+
+
 class Match(TreeMixin):
     """The node that represents the ``MATCH`` clause of the query. This includes
     any applicable ``WHERE`` clause, but not a ``RETURN`` clause.
     """
 
-    def __init__(self, pattern: TreeMixin, where: Optional[TreeMixin] = None):
+    def __init__(
+        self,
+        pattern: TreeMixin,
+        where: Optional[TreeMixin] = None,
+        with_clause: Optional[TreeMixin] = None,
+    ):
         self.pattern = pattern
         self.where = where
+        self.with_clause = with_clause
 
     def __repr__(self) -> str:
-        return (
-            f"Match({self.pattern})"
-            if not self.where
-            else f"Match({self.pattern}, {self.where})"
-        )
+        return f"Match({self.pattern}, {self.where}, {self.with_clause})"
 
     def tree(self) -> Tree:
         t = Tree(self.__class__.__name__)
         t.add(self.pattern.tree())
         if self.where:
             t.add(self.where.tree())
+        if self.with_clause:
+            t.add(self.with_clause.tree())
         return t
 
     @property
@@ -233,6 +340,7 @@ class Return(TreeMixin):
         return f"Return({self.projection})"
 
     def tree(self):
+        import pdb; pdb.set_trace()
         t = Tree(self.__class__.__name__)
         t.add(self.projection.tree())
         return t
@@ -349,7 +457,7 @@ class Relationship(TreeMixin):
 
     def tree(self):
         t = Tree(self.__class__.__name__)
-        t.add(self.name.tree())
+        t.add(self.name_label.tree())
         return t
 
     @property

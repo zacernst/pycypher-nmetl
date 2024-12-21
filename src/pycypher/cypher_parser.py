@@ -21,6 +21,8 @@ from pycypher.logger import LOGGER
 from pycypher.node_classes import (
     Alias,
     And,
+    Collect,
+    Aggregation,
     Cypher,
     Equals,
     GreaterThan,
@@ -31,6 +33,8 @@ from pycypher.node_classes import (
     Match,
     Node,
     NodeNameLabel,
+    ObjectAs,
+    ObjectAsSeries,
     ObjectAttributeLookup,
     Projection,
     Query,
@@ -41,6 +45,7 @@ from pycypher.node_classes import (
     RelationshipRightLeft,
     Return,
     Where,
+    WithClause,
 )
 from pycypher.shims import Shim
 from pycypher.solver import (
@@ -139,7 +144,8 @@ def p_node(p: yacc.YaccProduction):
 
 def p_alias(p: yacc.YaccProduction):
     """alias : WORD AS WORD
-    | object_attribute_lookup AS WORD"""
+    | object_attribute_lookup AS WORD
+    | aggregation AS WORD"""
     p[0] = Alias(p[1], p[3])
 
 
@@ -201,16 +207,63 @@ def p_relationship_chain_list(p: yacc.YaccProduction):
         p[0].relationships.append(p[3])
 
 
+# This might be redundant with alias
+# def p_obj_as(p: yacc.YaccProduction):
+#     """obj_as : object_attribute_lookup AS WORD
+#     | WORD AS WORD"""
+#     if isinstance(p[1], ObjectAttributeLookup):
+#         p[0] = ObjectAs(p[1], p[3])
+#     else:
+#         import pdb; pdb.set_trace()
+#         p[0] = ObjectAs(ObjectAttributeLookup(p[1], None), p[3])
+
+
+def p_with_as_series(p: yacc.YaccProduction):
+    """with_as_series : alias
+    | with_as_series COMMA alias"""
+    if len(p) == 2:
+        p[0] = ObjectAsSeries([p[1]])
+    else:
+        object_attribute_lookup_list = p[1].object_attribute_lookup_list
+        object_attribute_lookup_list.append(p[3])
+        p[0] = ObjectAsSeries(object_attribute_lookup_list)
+
+def p_collect(p: yacc.YaccProduction):
+    '''collect : COLLECT LPAREN object_attribute_lookup RPAREN'''
+    p[0] = Collect(object_attribute_lookup=p[3])
+
+
+def p_aggregation(p: yacc.YaccProduction):
+    '''aggregation : collect'''
+    p[0] = Aggregation(aggregation=p[1])
+
+
+
+def p_with_clause(p: yacc.YaccProduction):
+    """with_clause : WITH with_as_series"""
+    p[0] = WithClause(p[2])
+
+
+# Following isn't being used
+# def p_with_node_attribute_lookup(p: yacc.YaccProduction):
+#     """with_node_attribute_lookup : WITH object_attribute_lookup"""
+#     p[0] = ObjectAttributeLookup(p[1], p[3])
+
+
 def p_match_pattern(p: yacc.YaccProduction):
     """match_pattern : MATCH node
     | MATCH relationship_chain_list
+    | MATCH relationship_chain_list with_clause
     | MATCH relationship_chain_list where
     | MATCH node where
     """
     if len(p) == 3:
         p[0] = Match(p[2])
-    elif len(p) == 4:
-        p[0] = Match(p[2], p[3])
+    elif len(p) == 4 and isinstance(p[3], WithClause):
+        p[0] = Match(p[2], None, p[3])
+
+    else:
+        p[0] = Match(p[2], p[3], None)
 
 
 def p_binary_operator(p: Tuple[yacc.YaccProduction, str]):
@@ -232,8 +285,12 @@ def p_predicate(p: yacc.YaccProduction):
 
 
 def p_object_attribute_lookup(p: yacc.YaccProduction):
-    """object_attribute_lookup : WORD DOT WORD"""
-    p[0] = ObjectAttributeLookup(p[1], p[3])
+    """object_attribute_lookup : WORD DOT WORD
+    | WORD"""
+    if len(p) == 4:
+        p[0] = ObjectAttributeLookup(p[1], p[3])
+    else:
+        p[0] = ObjectAttributeLookup(p[1], None)
 
 
 def p_where(p: yacc.YaccProduction):

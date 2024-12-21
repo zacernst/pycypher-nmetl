@@ -19,9 +19,12 @@ from pycypher.node_classes import (
     Cypher,
     Equals,
     Literal,
+    ObjectAs,
+    ObjectAsSeries,
     ObjectAttributeLookup,
     Query,
     Where,
+    WithClause,
 )
 from pycypher.shims.networkx_cypher import NetworkX
 from pycypher.solver import (
@@ -1006,3 +1009,84 @@ def test_nx_graph_to_fact_collection(networkx_graph):
     nxshim = NetworkX(networkx_graph)
     fact_collection = nxshim.make_fact_collection()
     assert fact_collection.facts
+
+
+def test_parser_creates_with_clause():
+    query = """MATCH (n:Thingy)-[r:Thingy]->(m) WITH n.foo AS bar, m.baz AS qux RETURN n.foobar"""
+    obj = CypherParser(query)
+    assert isinstance(obj.parsed.cypher.match_clause.with_clause, WithClause)
+
+
+def test_parser_creates_with_clause_object_as_series():
+    query = """MATCH (n:Thingy)-[r:Thingy]->(m) WITH n.foo AS bar, m.baz AS qux RETURN n.foobar"""
+    obj = CypherParser(query)
+    assert isinstance(
+        obj.parsed.cypher.match_clause.with_clause.object_as_series,
+        ObjectAsSeries,
+    )
+
+
+def test_parser_creates_with_clause_object_as_series_members():
+    query = """MATCH (n:Thingy)-[r:Thingy]->(m) WITH n.foo AS bar, m.baz AS qux RETURN n.foobar"""
+    obj = CypherParser(query)
+    assert isinstance(
+        obj.parsed.cypher.match_clause.with_clause.object_as_series.object_attribute_lookup_list,
+        list,
+    )
+    assert (
+        len(
+            obj.parsed.cypher.match_clause.with_clause.object_as_series.object_attribute_lookup_list
+        )
+        == 2
+    )
+
+
+def test_parser_creates_with_clause_object_as_series_members_are_alias():
+    query = """MATCH (n:Thingy)-[r:Thingy]->(m) WITH n.foo AS bar, m.baz AS qux RETURN n.foobar"""
+    obj = CypherParser(query)
+    assert isinstance(
+        obj.parsed.cypher.match_clause.with_clause.object_as_series.object_attribute_lookup_list[
+            0
+        ],
+        Alias,
+    )
+    assert isinstance(
+        obj.parsed.cypher.match_clause.with_clause.object_as_series.object_attribute_lookup_list[
+            1
+        ],
+        Alias,
+    )
+
+
+def test_parser_creates_with_clause_object_alias_has_lookup():
+    query = """MATCH (n:Thingy)-[r:Thingy]->(m) WITH n.foo AS bar, m.baz AS qux RETURN n.foobar"""
+    obj = CypherParser(query)
+    assert isinstance(
+        obj.parsed.cypher.match_clause.with_clause.object_as_series.object_attribute_lookup_list[
+            0
+        ].reference,
+        ObjectAttributeLookup,
+    )
+    assert isinstance(
+        obj.parsed.cypher.match_clause.with_clause.object_as_series.object_attribute_lookup_list[
+            0
+        ].alias,
+        str,
+    )
+
+
+def test_parser_creates_with_clause_object_alias_correct_value():
+    query = """MATCH (n:Thingy)-[r:Thingy]->(m) WITH n.foo AS bar, m.baz AS qux RETURN n.foobar"""
+    obj = CypherParser(query)
+    assert (
+        obj.parsed.cypher.match_clause.with_clause.object_as_series.object_attribute_lookup_list[
+            0
+        ].alias
+        == "bar"
+    )
+
+
+def test_parser_creates_with_clause_single_element():
+    query = """MATCH (n:Thingy)-[r:Thingy]->(m) WITH n.foo AS bar RETURN n.foobar"""
+    obj = CypherParser(query)
+    assert isinstance(obj.parsed.cypher.match_clause.with_clause, WithClause)
