@@ -19,9 +19,11 @@ from pycypher.fact import (
     FactRelationshipHasTargetNode,
 )
 from pycypher.logger import LOGGER
-from pycypher.node_classes import (  # pylint: disable=unused-import
+from pycypher.node_classes import (
+    Addition,  # pylint: disable=unused-import
     Aggregation,
     Alias,
+    AliasedName,
     And,
     Collect,
     Cypher,
@@ -34,7 +36,6 @@ from pycypher.node_classes import (  # pylint: disable=unused-import
     Match,
     Node,
     NodeNameLabel,
-    ObjectAs,
     ObjectAsSeries,
     ObjectAttributeLookup,
     Projection,
@@ -267,19 +268,44 @@ def p_match_pattern(p: yacc.YaccProduction):
 def p_binary_operator(p: Tuple[yacc.YaccProduction, str]):
     """binary_operator : EQUALS
     | LESSTHAN
-    | GREATERTHAN"""
+    | GREATERTHAN
+    | OR
+    | AND"""
     p[0] = p[1]
+
+
+def p_binary_function(p: Tuple[yacc.YaccProduction, str]):
+    """binary_function : ADDITION"""
+    p[0] = p[1]
+
+
+def p_aliased_name(p: yacc.YaccProduction):
+    """aliased_name : WORD"""
+    p[0] = AliasedName(p[1])
 
 
 def p_predicate(p: yacc.YaccProduction):
     """predicate : object_attribute_lookup binary_operator literal
-    | object_attribute_lookup binary_operator object_attribute_lookup"""
+    | object_attribute_lookup binary_operator object_attribute_lookup
+    | aliased_name binary_operator literal
+    | object_attribute_lookup binary_operator binary_expression"""
     predicate_dispatch_dict: Dict[str, Type[TreeMixin]] = {
         "=": Equals,
         "<": LessThan,
         ">": GreaterThan,
     }
     p[0] = predicate_dispatch_dict[p[2]](p[1], p[3])
+
+
+def p_binary_expression(p: yacc.YaccProduction):
+    """binary_expression : object_attribute_lookup binary_function literal
+    | object_attribute_lookup binary_function object_attribute_lookup
+    | aliased_name binary_function literal
+    | literal binary_function literal"""
+    function_dispatch_dict: Dict[str, Type[TreeMixin]] = {
+        "+": Addition,
+    }
+    p[0] = function_dispatch_dict[p[2]](p[1], p[3])
 
 
 def p_object_attribute_lookup(p: yacc.YaccProduction):
@@ -396,6 +422,10 @@ class CypherParser:
     def solutions(
         self, fact_collection: FactCollection | Shim
     ) -> List[Dict[str, Any]]:
+        """Almost. But we can't do all the constraints at once. Have to start with
+        the Match clause, then the With clause to rename etc., and then the Where clause.
+        """
+
         def _set_up_problem(parsed_cypher) -> Problem:
             constraints = parsed_cypher.aggregated_constraints
             problem = Problem()

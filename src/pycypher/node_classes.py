@@ -152,7 +152,7 @@ class Predicate(TreeMixin):
             f"{self.__class__.__name__}({self.left_side}, {self.right_side})"
         )
 
-    def tree(self) -> Tree:
+    def tree_bak(self) -> Tree:
         t = Tree(self.__class__.__name__)
         t.add(self.left_side.tree())
         t.add(self.right_side.tree())
@@ -220,6 +220,27 @@ class BinaryBoolean(Predicate, TreeMixin):
         return t
 
 
+class AliasedName(TreeMixin):
+    """A node that represents a name that has been aliased with an ``AS``
+    statement and is being refererred to by that alias.
+    """
+
+    def __init__(self, name: str):
+        self.name = name
+
+    def __repr__(self):
+        return f"AliasedName({self.name})"
+
+    def tree(self) -> Tree:
+        t = Tree(self.__class__.__name__)
+        t.add(self.name)
+        return t
+
+    @property
+    def children(self) -> Generator[str]:
+        yield self.name
+
+
 class Equals(BinaryBoolean, Evaluable):
     """Binary infix operator for equality."""
 
@@ -277,23 +298,23 @@ class GreaterThan(Predicate, Evaluable):
         return Literal(left_value.value > right_value.value)
 
 
-class Addition(Predicate, Evaluable):
-    """Binary infix operator for addition."""
-
-    left_side_types = int | float
-    right_side_types = int | float
-
-    def tree(self) -> Tree:
-        t = Tree(self.__class__.__name__)
-        t.add(self.left_side.tree())
-        t.add(self.right_side.tree())
-        return t
-
-    def _evaluate(self, fact_collection: FactCollection) -> Any:
-        left_value = self.left_side._evaluate(fact_collection)  # pylint: disable=protected-access
-        right_value = self.right_side._evaluate(fact_collection)  # pylint: disable=protected-access
-        self.type_check(left_value, right_value)
-        return Literal(left_value.value + right_value.value)
+# class Addition(Predicate, Evaluable):
+#     """Binary infix operator for addition."""
+#
+#     left_side_types = int | float
+#     right_side_types = int | float
+#
+#     def tree(self) -> Tree:
+#         t = Tree(self.__class__.__name__)
+#         t.add(self.left_side.tree())
+#         t.add(self.right_side.tree())
+#         return t
+#
+#     def _evaluate(self, fact_collection: FactCollection) -> Any:
+#         left_value = self.left_side._evaluate(fact_collection)  # pylint: disable=protected-access
+#         right_value = self.right_side._evaluate(fact_collection)  # pylint: disable=protected-access
+#         self.type_check(left_value, right_value)
+#         return Literal(left_value.value + right_value.value)
 
 
 class Subtraction(Predicate, Evaluable):
@@ -384,7 +405,7 @@ class ObjectAttributeLookup(TreeMixin):
         return fact_collection.get_attribute(self.object, self.attribute)
 
 
-class Alias(TreeMixin):
+class Alias(TreeMixin, Evaluable):
     """A node representing use of an ``AS`` statement in the query."""
 
     def __init__(self, reference: str, alias: str):
@@ -404,38 +425,44 @@ class Alias(TreeMixin):
         t.add(self.alias)
         return t
 
+    def _evaluate(self, fact_collection: FactCollection) -> Any:
+        """Get the value of the reference and assign it to the alias."""
+        # Go to the enclosing ``Match`` clause and get the value of the reference
+        match_clause = self.enclosing_class(Match)
+        # START HERE
+
     @property
     def children(self):
         yield self.reference
         yield self.alias
 
 
-class ObjectAs(TreeMixin):
-    """Basically an alias. Might be redundant."""
-
-    def __init__(
-        self, object_attribute_lookup: ObjectAttributeLookup | str, alias: str
-    ):
-        if isinstance(object_attribute_lookup, str):
-            object_attribute_lookup = ObjectAttributeLookup(
-                object_attribute_lookup, None
-            )
-        self.object_attribute_lookup = object_attribute_lookup
-        self.alias = alias
-
-    def __repr__(self):
-        return f"ObjectAs({self.object_attribute_lookup}, {self.alias})"
-
-    def tree(self) -> Tree:
-        t = Tree(self.__class__.__name__)
-        t.add(self.object_attribute_lookup.tree())
-        t.add(self.alias)
-        return t
-
-    @property
-    def children(self) -> Generator[Projection | Alias]:
-        yield self.object_attribute_lookup
-        yield self.alias
+# class ObjectAs(TreeMixin):
+#     """Basically an alias. Might be redundant."""
+# 
+#     def __init__(
+#         self, object_attribute_lookup: ObjectAttributeLookup | str, alias: str
+#     ):
+#         if isinstance(object_attribute_lookup, str):
+#             object_attribute_lookup = ObjectAttributeLookup(
+#                 object_attribute_lookup, None
+#             )
+#         self.object_attribute_lookup = object_attribute_lookup
+#         self.alias = alias
+# 
+#     def __repr__(self):
+#         return f"ObjectAs({self.object_attribute_lookup}, {self.alias})"
+# 
+#     def tree(self) -> Tree:
+#         t = Tree(self.__class__.__name__)
+#         t.add(self.object_attribute_lookup.tree())
+#         t.add(self.alias)
+#         return t
+# 
+#     @property
+#     def children(self) -> Generator[Projection | Alias]:
+#         yield self.object_attribute_lookup
+#         yield self.alias
 
 
 class ObjectAsSeries(TreeMixin):
@@ -908,6 +935,37 @@ class RelationshipChainList(TreeMixin):
         yield from self.relationships
 
 
+class Addition(Evaluable, Predicate):
+    """Binary infix operator for addition."""
+
+    left_side_types = int | float
+    right_side_types = int | float
+
+    def __init__(self, left: TreeMixin, right: TreeMixin):  # pylint: disable=super-init-not-called
+        self.left_side = left
+        self.right_side = right
+
+    def __repr__(self):
+        return f"Addition({self.left_side}, {self.right_side})"
+
+    def tree(self):
+        t = Tree(self.__class__.__name__)
+        t.add(self.left_side.tree())
+        t.add(self.right_side.tree())
+        return t
+
+    @property
+    def children(self):
+        yield self.left_side
+        yield self.right_side
+
+    def _evaluate(self, fact_collection: FactCollection) -> Any:
+        left_value = self.left_side._evaluate(fact_collection)  # pylint: disable=protected-access
+        right_value = self.right_side._evaluate(fact_collection)  # pylint: disable=protected-access
+        self.type_check(left_value, right_value)
+        return Literal(left_value.value + right_value.value)
+
+
 class Literal(TreeMixin, Evaluable):
     """Simply a container for a value. This is the base case for evaluation
     of predicates, etc."""
@@ -921,7 +979,7 @@ class Literal(TreeMixin, Evaluable):
     def __hash__(self):
         return hash(self.value)
 
-    def _tree(self):
+    def tree(self):
         t = Tree(self.__class__.__name__)
         t.add(str(self.value))
         return t

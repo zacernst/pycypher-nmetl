@@ -1,6 +1,7 @@
 """Command line interface for pycypher"""
 
 import sys
+
 import click
 
 from pycypher.cypher_parser import CypherParser

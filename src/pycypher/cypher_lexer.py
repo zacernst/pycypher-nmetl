@@ -6,12 +6,14 @@ parsing a language.
 The lexer itself is defined at the end of the file (``lexer = lex.lex()``). It is
 imported by the parser, which is defined in the ``__init__.py`` file.
 """
+# pylint: disable=invalid-name
 
 from typing import Any
 
 from ply import lex
 
 tokens = [
+    "ADDITION",
     "COLON",
     "COMMA",
     "DASH",
@@ -21,17 +23,16 @@ tokens = [
     "EQUALS",
     "FLOAT",
     "GREATERTHAN",
-    "ID",
+    # "ID",
     "INTEGER",
     "LCURLY",
     "LESSTHAN",
     "LPAREN",
     "LSQUARE",
-    "PLUS",
     "RCURLY",
     "RPAREN",
     "RSQUARE",
-    "STAR",
+    # "STAR",
     "STRING",
     "WORD",
 ]
@@ -50,21 +51,21 @@ t_LCURLY = r"\{"
 t_LESSTHAN = r"<"
 t_LPAREN = r"\("
 t_LSQUARE = r"\["
-t_PLUS = r"\+"
+t_ADDITION = r"\+"
 t_RCURLY = r"\}"
 t_RPAREN = r"\)"
 t_RSQUARE = r"\]"
-t_STAR = r"\*"
+# t_STAR = r"\*"
 
 reserved = {
     "AND": "AND",
     "AS": "AS",
-    "IF": "IF",
+    # "IF": "IF",
     "MATCH": "MATCH",
     "NOT": "NOT",
     "OR": "OR",
     "RETURN": "RETURN",
-    "THEN": "THEN",
+    # "THEN": "THEN",
     "WHERE": "WHERE",
     "COLLECT": "COLLECT",
     "WITH": "WITH",

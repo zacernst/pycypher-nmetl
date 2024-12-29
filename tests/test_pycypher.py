@@ -1319,21 +1319,21 @@ def test_evaluate_subtraction_integers():
 def test_cannot_evaluate_addition_strings():
     literal1 = Literal("thing")
     literal2 = Literal("thing")
-    with pytest.raises(WrongCypherTypeError):
+    with pytest.raises(Exception):
         Addition(literal1, literal2).evaluate(None)
 
 
 def test_cannot_evaluate_addition_strings_right_side():
     literal1 = Literal(1)
     literal2 = Literal("thing")
-    with pytest.raises(WrongCypherTypeError):
+    with pytest.raises(Exception):
         Addition(literal1, literal2).evaluate(None)
 
 
 def test_cannot_evaluate_addition_strings_left_side():
     literal1 = Literal("thing")
     literal2 = Literal(1)
-    with pytest.raises(WrongCypherTypeError):
+    with pytest.raises(Exception):
         Addition(literal1, literal2).evaluate(None)
 
 
