@@ -1,5 +1,6 @@
 """Command line interface for pycypher"""
 
+import sys
 import click
 
 from pycypher.cypher_parser import CypherParser
@@ -27,7 +28,7 @@ def validate(query: str):
     """
     try:
         CypherParser(query)
-        return 0
+        sys.exit(0)
     except Exception as _:
         click.echo("Invalid Cypher query")
-        return 1
+        sys.exit(1)
