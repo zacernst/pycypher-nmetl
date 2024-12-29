@@ -6,20 +6,20 @@ annotated-types==0.7.0
     # via pydantic
 anyio==4.7.0
     # via httpx
-astroid==3.3.5
+astroid==3.3.8
     # via sphinx-autoapi
 babel==2.16.0
     # via sphinx
 build==1.2.2.post1
     # via pip-tools
-certifi==2024.8.30
+certifi==2024.12.14
     # via
     #   httpcore
     #   httpx
     #   requests
-charset-normalizer==3.4.0
+charset-normalizer==3.4.1
     # via requests
-click==8.1.7
+click==8.1.8
     # via
     #   hatch
     #   pip-tools
@@ -66,11 +66,11 @@ jaraco-context==6.0.1
     # via keyring
 jaraco-functools==4.1.0
     # via keyring
-jinja2==3.1.4
+jinja2==3.1.5
     # via
     #   sphinx
     #   sphinx-autoapi
-keyring==25.5.0
+keyring==25.6.0
     # via hatch
 markdown-it-py==3.0.0
     # via rich
@@ -82,6 +82,8 @@ more-itertools==10.5.0
     # via
     #   jaraco-classes
     #   jaraco-functools
+networkx==3.4.2
+    # via -r requirements.in
 packaging==24.2
     # via
     #   build
@@ -109,9 +111,9 @@ ply==3.11
     # via -r requirements.in
 ptyprocess==0.7.0
     # via pexpect
-pydantic==2.10.3
+pydantic==2.10.4
     # via -r requirements.in
-pydantic-core==2.27.1
+pydantic-core==2.27.2
     # via pydantic
 pygments==2.18.0
     # via
@@ -125,8 +127,11 @@ pytest==8.3.4
     # via
     #   -r requirements.in
     #   pytest-mock
+    #   pytest-unordered
     #   pytest-xdist
 pytest-mock==3.14.0
+    # via -r requirements.in
+pytest-unordered==0.6.1
     # via -r requirements.in
 pytest-xdist==3.6.1
     # via -r requirements.in
@@ -140,7 +145,7 @@ rich==13.9.4
     # via
     #   -r requirements.in
     #   hatch
-ruff==0.8.2
+ruff==0.8.4
     # via -r requirements.in
 setuptools==75.6.0
     # via pip-tools
@@ -190,11 +195,11 @@ typing-extensions==4.12.2
     #   anyio
     #   pydantic
     #   pydantic-core
-urllib3==2.2.3
+urllib3==2.3.0
     # via requests
 userpath==1.9.2
     # via hatch
-uv==0.5.7
+uv==0.5.13
     # via hatch
 virtualenv==20.28.0
     # via hatch
