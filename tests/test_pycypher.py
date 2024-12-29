@@ -1,3 +1,5 @@
+# pylint: disable=missing-function-docstring,redefined-outer-name,too-many-lines
+
 from unittest.mock import patch
 
 import networkx as nx
@@ -5,6 +7,7 @@ import pytest
 from pytest_unordered import unordered
 
 from pycypher.cypher_parser import CypherParser
+from pycypher.exceptions import WrongCypherTypeError
 from pycypher.fact import (  # We might get rid of this class entirely
     FactCollection,
     FactNodeHasAttributeWithValue,
@@ -14,16 +17,26 @@ from pycypher.fact import (  # We might get rid of this class entirely
     FactRelationshipHasSourceNode,
     FactRelationshipHasTargetNode,
 )
+from pycypher.node_classes import Alias  # pylint: disable=unused-import
 from pycypher.node_classes import (
-    Alias,
+    Addition,
+    And,
     Collect,
     Cypher,
+    Division,
     Equals,
+    Evaluable,
+    GreaterThan,
+    LessThan,
     Literal,
-    ObjectAs,
+    Match,
+    Multiplication,
+    Not,
     ObjectAsSeries,
     ObjectAttributeLookup,
+    Or,
     Query,
+    Subtraction,
     Where,
     WithClause,
 )
@@ -35,6 +48,7 @@ from pycypher.solver import (
     ConstraintRelationshipHasSourceNode,
     ConstraintRelationshipHasTargetNode,
 )
+from pycypher.tree_mixin import TreeMixin
 
 
 @pytest.fixture
@@ -242,7 +256,7 @@ def fact_collection_5():
 
 
 @pytest.fixture
-def fact_collection_6():
+def fact_collection_6():  # pylint: disable=too-many-locals
     fact1 = FactNodeHasLabel("1", "Thing")
     fact2 = FactNodeHasLabel("2", "MiddleThing")
     fact3 = FactNodeHasLabel("3", "OtherThing")
@@ -502,7 +516,7 @@ def test_aggregate_constraints_node_and_mapping():
 
 
 def test_parse_anonymous_node_no_label_no_mapping_gets_variable():
-    with patch("uuid.uuid4", patched_uuid) as mock:
+    with patch("uuid.uuid4", patched_uuid) as _:
         cypher = "MATCH () RETURN m.foobar"
         result = CypherParser(cypher)
         assert (
@@ -529,7 +543,7 @@ def test_parse_anonymous_node_with_label_no_mapping_has_right_label():
 
 
 def test_source_node_constraint_from_left_right_relationship():
-    with patch("uuid.uuid4", patched_uuid) as mock:
+    with patch("uuid.uuid4", patched_uuid) as _:
         cypher = "MATCH (n:Thing)-[:Relationship]->(m:Other) RETURN n.foobar"
         result = CypherParser(cypher)
         assert (
@@ -548,12 +562,9 @@ def test_source_node_constraint_from_left_right_relationship_with_label():
 
 
 def test_target_node_constraint_from_left_right_relationship():
-    with patch("uuid.uuid4", patched_uuid) as mock:
+    with patch("uuid.uuid4", patched_uuid) as _:
         cypher = "MATCH (n:Thing)-[:Relationship]->(m:Other) RETURN n.foobar"
         result = CypherParser(cypher)
-        obj = result.parsed.cypher.match_clause.pattern.relationships[0].steps[
-            1
-        ]
         assert (
             ConstraintRelationshipHasTargetNode("m", "SOME_HEX")
             in result.parsed.aggregated_constraints
@@ -578,7 +589,9 @@ def test_constraint_node_has_label():
     )
 
 
-class patched_uuid:
+class patched_uuid:  # pylint: disable=invalid-name,too-few-public-methods
+    """Creates a deterministic value for uuid hex"""
+
     @property
     def hex(self):
         return "SOME_HEX"
@@ -845,7 +858,7 @@ def test_find_solution_relationship_chain_fork(
     assert solutions == unordered(expected)
 
 
-def test_find_solution_relationship_chain_fork(
+def test_find_solution_relationship_chain_fork_2(
     fact_collection_4: FactCollection,
 ):
     cypher = "MATCH (n:Thing)-[r:MyRelationship]->(m:MiddleThing)-[s:OtherRelationship]->(o:OtherThing) RETURN n.foobar"
@@ -1142,3 +1155,321 @@ def test_parser_handles_collect_in_aggregation_in_with_clause_node_only():
         ].reference.aggregation,
         Collect,
     )
+
+
+def test_parser_handles_collect_in_aggregation_in_return_twice():
+    query = """MATCH (n:Thingy)-[r:Thingy]->(m) WITH n.foo AS bar RETURN COLLECT(n.foobar) AS whatever, m.whatever AS bazqux"""
+    obj = CypherParser(query)
+    assert isinstance(
+        obj.parsed.cypher.return_clause.projection.lookups[
+            0
+        ].reference.aggregation,
+        Collect,
+    )
+    assert isinstance(
+        obj.parsed.cypher.return_clause.projection.lookups[1].reference,
+        ObjectAttributeLookup,
+    )
+
+
+def test_parser_handles_with_where_clause_where_class():
+    query = """MATCH (n:Thingy)-[r:Thingy]->(m) WITH n.foo AS bar WHERE n.whatever = "thing" RETURN COLLECT(n.foobar) AS whatever"""
+    obj = CypherParser(query)
+    assert isinstance(obj.parsed.cypher.match_clause.where, Where)
+
+
+def test_parser_handles_with_where_clause_with_class():
+    query = """MATCH (n:Thingy)-[r:Thingy]->(m) WITH n.foo AS bar WHERE n.whatever = "thing" RETURN COLLECT(n.foobar) AS whatever"""
+    obj = CypherParser(query)
+    assert isinstance(obj.parsed.cypher.match_clause.with_clause, WithClause)
+
+
+def test_nodes_have_parent():
+    query = """MATCH (n:Thingy)-[r:Thingy]->(m) WITH n.foo AS bar WHERE n.whatever = "thing" RETURN COLLECT(n.foobar) AS whatever"""
+    obj = CypherParser(query)
+    assert all(
+        node.parent is not None
+        for node in obj.parsed.walk()
+        if isinstance(node, TreeMixin)
+    )
+
+
+def test_child_of_parent_is_self():
+    query = """MATCH (n:Thingy)-[r:Thingy]->(m) WITH n.foo AS bar WHERE n.whatever = "thing" RETURN COLLECT(n.foobar) AS whatever"""
+    obj = CypherParser(query)
+    assert all(
+        node in list(node.parent.children)
+        for node in obj.parsed.walk()
+        if isinstance(node, TreeMixin)
+    )
+
+
+def test_root_node_defined_everywhere():
+    query = """MATCH (n:Thingy)-[r:Thingy]->(m) WITH n.foo AS bar WHERE n.whatever = "thing" RETURN COLLECT(n.foobar) AS whatever"""
+    obj = CypherParser(query)
+    assert all(
+        node.root is obj.parsed
+        for node in obj.parsed.walk()
+        if isinstance(node, TreeMixin)
+    )
+
+
+def test_node_in_match_clause_has_match_clause_enclosing():
+    query = """MATCH (n:Thingy)-[r:Thingy]->(m) WITH n.foo AS bar WHERE n.whatever = "thing" RETURN COLLECT(n.foobar) AS whatever"""
+    obj = CypherParser(query)
+    match_node = obj.parsed.cypher.match_clause
+    assert all(
+        node.enclosing_class(Match) is match_node
+        for node in match_node.walk()
+        if isinstance(node, TreeMixin)
+    )
+
+
+def test_error_on_no_enclosing_class():
+    query = """MATCH (n:Thingy)-[r:Thingy]->(m) WITH n.foo AS bar WHERE n.whatever = "thing" RETURN COLLECT(n.foobar) AS whatever"""
+    obj = CypherParser(query)
+    with pytest.raises(ValueError):
+        obj.parsed.cypher.return_clause.enclosing_class(Match)
+
+
+def test_evaluate_literal_string():
+    literal = Literal("thing")
+    assert literal.evaluate(None) == "thing"
+
+
+def test_evaluate_literal_int():
+    literal = Literal(5)
+    assert literal.evaluate(None) == 5
+
+
+def test_evaluate_literal_float():
+    literal = Literal(5.0)
+    assert literal.evaluate(None) == 5.0
+
+
+def test_evaluate_literal_bool():
+    literal = Literal(True)
+    assert literal.evaluate(None) is True
+
+
+def test_evaluate_literal_none():
+    literal = Literal(None)
+    assert literal.evaluate(None) is None
+
+
+def test_literals_are_evaluable():
+    literal = Literal("thing")
+    assert isinstance(literal, Evaluable)
+
+
+def test_evaluate_literals_evaluate_equal_strings():
+    literal1 = Literal("thing")
+    literal2 = Literal("thing")
+    assert Equals(literal1, literal2).evaluate(None)
+
+
+def test_evaluate_literals_evaluate_equal_integer():
+    literal1 = Literal(5)
+    literal2 = Literal(5)
+    assert Equals(literal1, literal2).evaluate(None)
+
+
+def test_evaluate_literals_evaluate_not_equal_strings():
+    literal1 = Literal("thing")
+    literal2 = Literal("thingy")
+    assert not Equals(literal1, literal2).evaluate(None)
+
+
+def test_evaluate_literals_evaluate_greater_than_integer():
+    literal1 = Literal(6)
+    literal2 = Literal(5)
+    assert GreaterThan(literal1, literal2).evaluate(None)
+
+
+def test_evaluate_literals_evaluate_not_greater_than_integer():
+    literal1 = Literal(6)
+    literal2 = Literal(5)
+    assert not GreaterThan(literal2, literal1).evaluate(None)
+
+
+def test_evaluate_literals_evaluate_less_than_integer():
+    literal1 = Literal(6)
+    literal2 = Literal(5)
+    assert not LessThan(literal1, literal2).evaluate(None)
+
+
+def test_evaluate_literals_evaluate_not_less_than_integer():
+    literal1 = Literal(6)
+    literal2 = Literal(5)
+    assert LessThan(literal2, literal1).evaluate(None)
+
+
+def test_evaluate_addition_integers():
+    literal1 = Literal(6)
+    literal2 = Literal(5)
+    assert Addition(literal1, literal2).evaluate(None) == 11
+
+
+def test_evaluate_subtraction_integers():
+    literal1 = Literal(6)
+    literal2 = Literal(5)
+    assert Subtraction(literal1, literal2).evaluate(None) == 1
+
+
+def test_cannot_evaluate_addition_strings():
+    literal1 = Literal("thing")
+    literal2 = Literal("thing")
+    with pytest.raises(WrongCypherTypeError):
+        Addition(literal1, literal2).evaluate(None)
+
+
+def test_cannot_evaluate_addition_strings_right_side():
+    literal1 = Literal(1)
+    literal2 = Literal("thing")
+    with pytest.raises(WrongCypherTypeError):
+        Addition(literal1, literal2).evaluate(None)
+
+
+def test_cannot_evaluate_addition_strings_left_side():
+    literal1 = Literal("thing")
+    literal2 = Literal(1)
+    with pytest.raises(WrongCypherTypeError):
+        Addition(literal1, literal2).evaluate(None)
+
+
+def test_refuse_to_divide_by_zero():
+    literal1 = Literal(1)
+    literal2 = Literal(0)
+    with pytest.raises(WrongCypherTypeError):
+        Division(literal1, literal2).evaluate(None)
+
+
+def test_refuse_to_divide_by_zero_both():
+    literal1 = Literal(0)
+    literal2 = Literal(0)
+    with pytest.raises(WrongCypherTypeError):
+        Division(literal1, literal2).evaluate(None)
+
+
+def test_evaluate_boolean_and_both_true():
+    literal1 = Literal(True)
+    literal2 = Literal(True)
+    assert And(literal1, literal2).evaluate(None)
+
+
+def test_evaluate_boolean_and_both_false():
+    literal1 = Literal(False)
+    literal2 = Literal(False)
+    assert not And(literal1, literal2).evaluate(None)
+
+
+def test_evaluate_boolean_and_one_false():
+    literal1 = Literal(False)
+    literal2 = Literal(True)
+    assert not And(literal1, literal2).evaluate(None)
+
+
+def test_evaluate_boolean_or_both_true():
+    literal1 = Literal(True)
+    literal2 = Literal(True)
+    assert Or(literal1, literal2).evaluate(None)
+
+
+def test_evaluate_boolean_or_one_true():
+    literal1 = Literal(False)
+    literal2 = Literal(True)
+    assert Or(literal1, literal2).evaluate(None)
+
+
+def test_evaluate_boolean_or_both_false():
+    literal1 = Literal(False)
+    literal2 = Literal(False)
+    assert not Or(literal1, literal2).evaluate(None)
+
+
+def test_evaluate_boolean_not_true():
+    literal = Literal(True)
+    assert not Not(literal).evaluate(None)
+
+
+def test_evaluate_boolean_not_false():
+    literal = Literal(False)
+    assert Not(literal).evaluate(None)
+
+
+def test_double_negation():
+    literal = Literal(True)
+    assert Not(Not(literal)).evaluate(None)
+
+
+def test_evaluate_boolean_not_not_true():
+    literal = Literal(False)
+    assert not Not(Not(literal)).evaluate(None)
+
+
+def test_evaluate_boolean_and_both_true_negated():
+    literal1 = Literal(True)
+    literal2 = Literal(True)
+    assert not Not(And(literal1, literal2)).evaluate(None)
+
+
+def test_evaluate_boolean_and_both_false_negated():
+    literal1 = Literal(False)
+    literal2 = Literal(False)
+    assert Not(And(literal1, literal2)).evaluate(None)
+
+
+def test_evaluate_boolean_and_one_false_negated():
+    literal1 = Literal(False)
+    literal2 = Literal(True)
+    assert Not(And(literal1, literal2)).evaluate(None)
+
+
+def test_evaluate_boolean_or_both_true_negated():
+    literal1 = Literal(True)
+    literal2 = Literal(True)
+    assert not Not(Or(literal1, literal2)).evaluate(None)
+
+
+def test_evaluate_boolean_or_one_true_negated():
+    literal1 = Literal(False)
+    literal2 = Literal(True)
+    assert not Not(Or(literal1, literal2)).evaluate(None)
+
+
+def test_evaluate_boolean_or_both_false_negated():
+    literal1 = Literal(False)
+    literal2 = Literal(False)
+    assert Not(Or(literal1, literal2)).evaluate(None)
+
+
+def test_evaluate_demorgan_law_both_true():
+    literal1 = Literal(True)
+    literal2 = Literal(True)
+    assert Equals(
+        Not(And(literal1, literal2)), Or(Not(literal1), Not(literal2))
+    ).evaluate(None)
+
+
+def test_evaluate_demorgan_law_left_true():
+    literal1 = Literal(True)
+    literal2 = Literal(False)
+    assert Equals(
+        Not(And(literal1, literal2)), Or(Not(literal1), Not(literal2))
+    ).evaluate(None)
+
+
+def test_evaluate_demorgan_law_right_true():
+    literal1 = Literal(False)
+    literal2 = Literal(True)
+    assert Equals(
+        Not(And(literal1, literal2)), Or(Not(literal1), Not(literal2))
+    ).evaluate(None)
+
+
+def test_evaluate_demorgan_law_both_false():
+    literal1 = Literal(False)
+    literal2 = Literal(False)
+    assert Equals(
+        Not(And(literal1, literal2)), Or(Not(literal1), Not(literal2))
+    ).evaluate(None)

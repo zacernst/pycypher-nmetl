@@ -8,7 +8,9 @@ import abc
 import uuid
 from typing import Any, Generator, List, Optional
 
+from pydantic import PositiveFloat, PositiveInt, TypeAdapter
 from rich.tree import Tree
+
 from pycypher.exceptions import WrongCypherTypeError
 from pycypher.fact import FactCollection
 from pycypher.solver import (
@@ -21,15 +23,17 @@ from pycypher.solver import (
     IsTrue,
 )
 from pycypher.tree_mixin import TreeMixin
-from pydantic import TypeAdapter, PositiveFloat, PositiveInt
 
 
 class Evaluable(abc.ABC):
+    """Predicates, boolean operators, and arithmetic operators are all evaluable."""
+
     @abc.abstractmethod
     def _evaluate(self, fact_collection: FactCollection) -> Any:
         pass
 
     def evaluate(self, *args):
+        """Calls the `_evaluate` method and returns the value of the `Literal` object."""
         return self._evaluate(*args).value
 
 
@@ -132,6 +136,7 @@ class Predicate(TreeMixin):
 
     left_side_types = Any
     right_side_types = Any
+    argument_types = Any
 
     def __init__(self, left_side: TreeMixin, right_side: TreeMixin):
         self.left_side = left_side
@@ -190,10 +195,12 @@ class Predicate(TreeMixin):
 
 
 class BinaryBoolean(Predicate, TreeMixin):
+    """Superclass for the ``And`` and ``Or`` connective classes."""
+
     left_side_types = bool
     right_side_types = bool
 
-    def __init__(
+    def __init__(  # pylint: disable=super-init-not-called
         self,
         left_side: Predicate | Literal,
         right_side: Predicate | Literal,
@@ -226,8 +233,8 @@ class Equals(BinaryBoolean, Evaluable):
         return t
 
     def _evaluate(self, fact_collection: FactCollection) -> Any:
-        left_value = self.left_side._evaluate(fact_collection)
-        right_value = self.right_side._evaluate(fact_collection)
+        left_value = self.left_side._evaluate(fact_collection)  # pylint: disable=protected-access
+        right_value = self.right_side._evaluate(fact_collection)  # pylint: disable=protected-access
         self.type_check(left_value, right_value)
         return Literal(left_value.value == right_value.value)
 
@@ -245,8 +252,8 @@ class LessThan(Predicate, Evaluable):
         return t
 
     def _evaluate(self, fact_collection: FactCollection) -> Any:
-        left_value = self.left_side._evaluate(fact_collection)
-        right_value = self.right_side._evaluate(fact_collection)
+        left_value = self.left_side._evaluate(fact_collection)  # pylint: disable=protected-access
+        right_value = self.right_side._evaluate(fact_collection)  # pylint: disable=protected-access
         self.type_check(left_value, right_value)
         return Literal(left_value.value < right_value.value)
 
@@ -264,8 +271,8 @@ class GreaterThan(Predicate, Evaluable):
         return t
 
     def _evaluate(self, fact_collection: FactCollection) -> Any:
-        left_value = self.left_side._evaluate(fact_collection)
-        right_value = self.right_side._evaluate(fact_collection)
+        left_value = self.left_side._evaluate(fact_collection)  # pylint: disable=protected-access
+        right_value = self.right_side._evaluate(fact_collection)  # pylint: disable=protected-access
         self.type_check(left_value, right_value)
         return Literal(left_value.value > right_value.value)
 
@@ -283,8 +290,8 @@ class Addition(Predicate, Evaluable):
         return t
 
     def _evaluate(self, fact_collection: FactCollection) -> Any:
-        left_value = self.left_side._evaluate(fact_collection)
-        right_value = self.right_side._evaluate(fact_collection)
+        left_value = self.left_side._evaluate(fact_collection)  # pylint: disable=protected-access
+        right_value = self.right_side._evaluate(fact_collection)  # pylint: disable=protected-access
         self.type_check(left_value, right_value)
         return Literal(left_value.value + right_value.value)
 
@@ -302,8 +309,8 @@ class Subtraction(Predicate, Evaluable):
         return t
 
     def _evaluate(self, fact_collection: FactCollection) -> Any:
-        left_value = self.left_side._evaluate(fact_collection)
-        right_value = self.right_side._evaluate(fact_collection)
+        left_value = self.left_side._evaluate(fact_collection)  # pylint: disable=protected-access
+        right_value = self.right_side._evaluate(fact_collection)  # pylint: disable=protected-access
         self.type_check(left_value, right_value)
         return Literal(left_value.value - right_value.value)
 
@@ -321,8 +328,8 @@ class Multiplication(Predicate, Evaluable):
         return t
 
     def _evaluate(self, fact_collection: FactCollection) -> Any:
-        left_value = self.left_side._evaluate(fact_collection)
-        right_value = self.right_side._evaluate(fact_collection)
+        left_value = self.left_side._evaluate(fact_collection)  # pylint: disable=protected-access
+        right_value = self.right_side._evaluate(fact_collection)  # pylint: disable=protected-access
         self.type_check(left_value, right_value)
         return Literal(left_value.value * right_value.value)
 
@@ -340,8 +347,8 @@ class Division(Predicate, Evaluable):
         return t
 
     def _evaluate(self, fact_collection: FactCollection) -> Any:
-        left_value = self.left_side._evaluate(fact_collection)
-        right_value = self.right_side._evaluate(fact_collection)
+        left_value = self.left_side._evaluate(fact_collection)  # pylint: disable=protected-access
+        right_value = self.right_side._evaluate(fact_collection)  # pylint: disable=protected-access
         self.type_check(left_value, right_value)
         return Literal(left_value.value / right_value.value)
 
@@ -490,6 +497,7 @@ class Match(TreeMixin):
         return f"Match({self.pattern}, {self.where}, {self.with_clause})"
 
     def gather_constraints(self) -> None:
+        """Gather all the ``Constraint`` objects from inside the ``Match`` clause."""
         self.aggregated_constraints = []
         for node in self.walk():
             self.aggregated_constraints += getattr(node, "constraints", [])
@@ -511,7 +519,7 @@ class Match(TreeMixin):
 
 
 class Return(TreeMixin):
-    """Represnents the ``RETURN`` clause, whivh is a set of projections."""
+    """Represnents the ``RETURN`` clause, which is a set of projections."""
 
     def __init__(self, node: Projection):
         self.projection = node
@@ -661,6 +669,7 @@ class Mapping(TreeMixin):  # This is not complete
 
     @property
     def constraints(self):
+        """Generates the ``Constraint`` objects that correspond to this node."""
         return [
             ConstraintNodeHasAttributeWithValue(
                 self.parent.node_name_label.name, self.key, self.value
@@ -694,6 +703,8 @@ class MappingSet(TreeMixin):
 
 
 class MatchList(TreeMixin):  # Not yet being used
+    """Just a container for a list of ``Match`` objects."""
+
     def __init__(self, match_list: List[Match] | None):
         self.match_list = match_list or []
 
@@ -728,6 +739,7 @@ class RelationshipLeftRight(TreeMixin):
 
     @property
     def constraints(self):
+        """Calculates the ``Constraint`` objects for this ``Relationship``."""
         constraint_list: List[Constraint] = []
         relationship_chain: RelationshipChain = self.parent
         nodes = [
@@ -820,6 +832,8 @@ class Where(TreeMixin):
 
 
 class And(BinaryBoolean, Evaluable):
+    """Boolean connective for logical AND."""
+
     def tree(self) -> Tree:
         t = Tree(self.__class__.__name__)
         t.add(self.left_side.tree())
@@ -827,13 +841,15 @@ class And(BinaryBoolean, Evaluable):
         return t
 
     def _evaluate(self, fact_collection: FactCollection) -> Any:
-        left_value = self.left_side._evaluate(fact_collection)
-        right_value = self.right_side._evaluate(fact_collection)
+        left_value = self.left_side._evaluate(fact_collection)  # pylint: disable=protected-access
+        right_value = self.right_side._evaluate(fact_collection)  # pylint: disable=protected-access
         self.type_check(left_value, right_value)
         return Literal(left_value.value and right_value.value)
 
 
 class Or(BinaryBoolean, Evaluable):
+    """Boolean connective for logical OR."""
+
     def tree(self) -> Tree:
         t = Tree(self.__class__.__name__)
         t.add(self.left_side.tree())
@@ -841,16 +857,18 @@ class Or(BinaryBoolean, Evaluable):
         return t
 
     def _evaluate(self, fact_collection: FactCollection) -> Any:
-        left_value = self.left_side._evaluate(fact_collection)
-        right_value = self.right_side._evaluate(fact_collection)
+        left_value = self.left_side._evaluate(fact_collection)  # pylint: disable=protected-access
+        right_value = self.right_side._evaluate(fact_collection)  # pylint: disable=protected-access
         self.type_check(left_value, right_value)
         return Literal(left_value.value or right_value.value)
 
 
 class Not(Evaluable, Predicate):
+    """Boolean connective for logical NOT."""
+
     argument_types = bool
 
-    def __init__(
+    def __init__(  # pylint: disable=super-init-not-called
         self,
         argument: Predicate | Literal,
     ):
@@ -865,12 +883,14 @@ class Not(Evaluable, Predicate):
         return t
 
     def _evaluate(self, fact_collection: FactCollection) -> Any:
-        value = self.argument._evaluate(fact_collection)
+        value = self.argument._evaluate(fact_collection)  # pylint: disable=protected-access
         self.type_check(value)
         return Literal(not value.value)
 
 
 class RelationshipChainList(TreeMixin):
+    """Container for a list of relationship chains."""
+
     def __init__(self, relationships: List[RelationshipChain]):
         self.relationships = relationships
 
@@ -889,6 +909,9 @@ class RelationshipChainList(TreeMixin):
 
 
 class Literal(TreeMixin, Evaluable):
+    """Simply a container for a value. This is the base case for evaluation
+    of predicates, etc."""
+
     def __init__(self, value: Any):
         self.value = value
 
