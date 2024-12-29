@@ -99,3 +99,6 @@ dev = ["hatch>=1.12.0,<2.0.0"]
 # This doesn't exist yet
 # [project.scripts]
 # future_cli = "future_cli:go"
+
+[project.scripts]
+pycypher = "pycypher.cli:main"
