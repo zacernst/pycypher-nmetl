@@ -9,7 +9,7 @@ imported by the parser, which is defined in the ``__init__.py`` file.
 
 from typing import Any
 
-import ply.lex as lex
+from ply import lex
 
 tokens = [
     "COLON",

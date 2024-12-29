@@ -15,5 +15,5 @@ class Shim(ABC):
         pass
 
     @abstractmethod
-    def make_fact_collection(graph):
-        pass
+    def make_fact_collection(self):
+        """Overridden"""

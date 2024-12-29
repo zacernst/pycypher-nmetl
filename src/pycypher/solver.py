@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from abc import abstractmethod
 from typing import Any
 
 
@@ -9,9 +8,10 @@ class State:
 
 
 class Constraint:
-    @abstractmethod
-    def eval(self, *args, **kwargs) -> Any | None:  # type: ignore
-        pass
+    pass
+    # @abstractmethod
+    # def eval(self, *args, **kwargs) -> Any | None:  # type: ignore
+    #     pass
 
 
 class IsTrue(Constraint):
@@ -22,14 +22,13 @@ class IsTrue(Constraint):
     def __init__(self, predicate: "Predicate"):  # type: ignore
         self.predicate = predicate  # type: ignore
 
-    def eval(self, *_) -> bool | None:
-        pass
-
     def __repr__(self) -> str:
         return f"IsTrue({self.predicate})"  # type: ignore
 
 
 class ConstraintNodeHasLabel(Constraint):
+    """Node has a label"""
+
     def __init__(self, node_id: str, label: str):
         self.node_id = node_id
         self.label = label
@@ -37,12 +36,9 @@ class ConstraintNodeHasLabel(Constraint):
     def __repr__(self):
         return f"HasLabel: {self.node_id} {self.label}"
 
-    # def eval(self, state: State) -> bool | None:
-    #     pass
-
     def __hash__(self) -> int:
         return hash(
-            str("HasLabel") + self.node.__str__() + self.label.__str__()
+            str("HasLabel") + self.node_id.__str__() + self.label.__str__()
         )  # type: ignore
 
     def __eq__(self, other: Any) -> bool:

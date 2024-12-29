@@ -1,13 +1,14 @@
+"""Main parser module."""
+
 from __future__ import annotations
 
-import collections
 from functools import partial
 from typing import Any, Dict, List, Tuple, Type
 
 import ply.yacc as yacc  # type: ignore
 from constraint import Domain, Problem
 
-from pycypher.cypher_lexer import *
+from pycypher.cypher_lexer import *  # pylint: disable=wildcard-import,unused-wildcard-import
 from pycypher.fact import (
     FactCollection,
     FactNodeHasAttributeWithValue,
@@ -18,7 +19,7 @@ from pycypher.fact import (
     FactRelationshipHasTargetNode,
 )
 from pycypher.logger import LOGGER
-from pycypher.node_classes import (
+from pycypher.node_classes import (  # pylint: disable=unused-import
     Aggregation,
     Alias,
     And,
@@ -65,7 +66,7 @@ def p_cypher(p: List[TreeMixin]):
     if len(p) == 2:
         p[0] = Cypher(p[1])
     else:
-        raise Exception(
+        raise NotImplementedError(
             "Parser only accepts one query, and no update clauses (for now)."
         )
 
@@ -103,7 +104,7 @@ def p_name_label(
     elif len(p) == 3:
         p[0] = NodeNameLabel(None, p[2])
     else:
-        raise Exception("What?")
+        raise ValueError("What?")
 
 
 def p_mapping_list(p: List[TreeMixin]):
@@ -116,7 +117,7 @@ def p_mapping_list(p: List[TreeMixin]):
         p[0] = p[1]
         p[0].mappings.append(Mapping(p[3], p[5]))
     else:
-        raise Exception("What?")
+        raise ValueError("What?")
 
 
 def p_node(p: yacc.YaccProduction):
@@ -138,7 +139,7 @@ def p_node(p: yacc.YaccProduction):
         node_name_label: NodeNameLabel = p[2]
         mapping_list = p[4]
     else:
-        raise Exception("What?")
+        raise ValueError("What?")
     p[0] = Node(node_name_label, mapping_list)
 
 
@@ -244,12 +245,6 @@ def p_with_clause(p: yacc.YaccProduction):
     p[0] = WithClause(p[2])
 
 
-# Following isn't being used
-# def p_with_node_attribute_lookup(p: yacc.YaccProduction):
-#     """with_node_attribute_lookup : WITH object_attribute_lookup"""
-#     p[0] = ObjectAttributeLookup(p[1], p[3])
-
-
 def p_match_pattern(p: yacc.YaccProduction):
     """match_pattern : MATCH node
     | MATCH relationship_chain_list
@@ -284,7 +279,7 @@ def p_predicate(p: yacc.YaccProduction):
         "<": LessThan,
         ">": GreaterThan,
     }
-    p[0] = predicate_dispatch_dict[p[2]](p[1], p[2], p[3])
+    p[0] = predicate_dispatch_dict[p[2]](p[1], p[3])
 
 
 def p_object_attribute_lookup(p: yacc.YaccProduction):
@@ -337,8 +332,9 @@ class CypherParser:
     def __init__(self, cypher_text: str):
         self.cypher_text = cypher_text
         self.parsed: TreeMixin = CYPHER.parse(self.cypher_text)
-        [_ for _ in self.parsed.walk()]
-        self.parsed.gather_constraints()
+        [_ for _ in self.parsed.walk()]  # pylint: disable=expression-not-assigned
+        # self.parsed.gather_constraints()
+        self.parsed.trigger_gather_constraints_to_match()
 
     def __repr__(self) -> str:
         return self.parsed.__str__()
@@ -410,7 +406,7 @@ class CypherParser:
             for fact in fact_collection:
                 if isinstance(fact, FactNodeHasLabel):
                     if fact.node_id not in node_domain:
-                        LOGGER.debug(f"fact.node_id: {fact.node_id}")
+                        LOGGER.debug("fact.node_id: %s", fact.node_id)
                         node_domain.append(fact.node_id)
                 elif isinstance(fact, FactRelationshipHasLabel):
                     if fact.relationship_id not in relationship_domain:
@@ -430,61 +426,43 @@ class CypherParser:
             # Assign variables to domains
             for constraint in constraints:
                 if isinstance(constraint, ConstraintNodeHasLabel):
-                    LOGGER.debug(
-                        f"Adding variable: {constraint.node_id} to domain: {node_domain}"
-                    )
                     problem.addVariable(constraint.node_id, node_domain)
                 elif 0 and isinstance(
                     constraint, ConstraintNodeHasAttributeWithValue
                 ):
                     problem.addVariable(constraint.node_id, node_domain)
-                elif (
+                elif (  # pylint: disable=protected-access
                     isinstance(constraint, ConstraintRelationshipHasSourceNode)
                     and constraint.relationship_name not in problem._variables
                 ):
-                    LOGGER.debug(
-                        f"Adding variable: {constraint.relationship_name} to domain: {relationship_domain}"
-                    )
                     problem.addVariable(
                         constraint.relationship_name, relationship_domain
                     )
-                elif (
+                elif (  # pylint: disable=protected-access
                     isinstance(constraint, ConstraintRelationshipHasSourceNode)
                     and constraint.relationship_name not in problem._variables
                 ):
-                    LOGGER.debug(
-                        f"Adding variable: {constraint.relationship_name} to domain: {relationship_domain}"
-                    )
                     problem.addVariable(
                         constraint.relationship_name, relationship_domain
                     )
-                elif (
+                elif (  # pylint: disable=protected-access
                     isinstance(constraint, ConstraintRelationshipHasTargetNode)
                     and constraint.relationship_name not in problem._variables
                 ):
-                    LOGGER.debug(
-                        f"Adding variable: {constraint.relationship_name} to domain: {relationship_domain}"
-                    )
                     problem.addVariable(
                         constraint.relationship_name, relationship_domain
                     )
-                elif (
+                elif (  # pylint: disable=protected-access
                     isinstance(constraint, ConstraintRelationshipHasLabel)
                     and constraint.relationship_name not in problem._variables
                 ):
-                    LOGGER.debug(
-                        f"Adding variable: {constraint.relationship_name} to domain: {relationship_domain}"
-                    )
                     problem.addVariable(
                         constraint.relationship_name, relationship_domain
                     )
-                elif (
+                elif (  # pylint: disable=protected-access
                     isinstance(constraint, ConstraintNodeHasAttributeWithValue)
                     and constraint.node_id not in problem._variables
                 ):
-                    LOGGER.debug(
-                        f"Adding variable: {constraint.node_id} to domain: {node_domain}"
-                    )
                     problem.addVariable(constraint.node_id, node_domain)
                 else:
                     pass
@@ -497,7 +475,7 @@ class CypherParser:
                     )
                     in fact_collection
                 )
-                LOGGER.debug(f"answer _f: {answer} for x: {x}, y: {y}")
+                LOGGER.debug("answer _f: %s for x: %s, y: %s", answer, x, y)
                 return answer
 
             def _g(node_id, node_label=None):
@@ -506,7 +484,10 @@ class CypherParser:
                     in fact_collection
                 )
                 LOGGER.debug(
-                    f"answer _g: {answer} for node_id: {node_id}, node_label: {node_label}"
+                    "answer _g: %s for node_id: %s, node_label: %s",
+                    answer,
+                    node_id,
+                    node_label,
                 )
                 return answer
 
@@ -519,7 +500,10 @@ class CypherParser:
                     in fact_collection
                 )
                 LOGGER.debug(
-                    f"answer _h: {answer} for relationship_id: {relationship_id}, relationship_label: {relationship_label}"
+                    "answer _h: %s for relationship_id: %s, relationship_label: %s",
+                    answer,
+                    relationship_id,
+                    relationship_label,
                 )
                 return answer
 
@@ -531,13 +515,17 @@ class CypherParser:
                     in fact_collection
                 )
                 LOGGER.debug(
-                    f"answer _i: {answer} for node_id: {node_id}, attribute: {attribute}, value: {value}"
+                    "answer _i: %s for node_id: %s, attribute: %s, value: %s",
+                    answer,
+                    node_id,
+                    attribute,
+                    value,
                 )
                 return answer
 
             for constraint in constraints:
                 if isinstance(constraint, ConstraintNodeHasLabel):
-                    LOGGER.debug(f"Adding constraint: {constraint}")
+                    LOGGER.debug("Adding constraint: %s", constraint)
                     problem.addConstraint(
                         partial(_g, node_label=constraint.label),
                         [
@@ -547,7 +535,7 @@ class CypherParser:
                 elif isinstance(
                     constraint, ConstraintNodeHasAttributeWithValue
                 ):
-                    LOGGER.debug(f"Adding constraint: {constraint}")
+                    LOGGER.debug("Adding constraint: %s", constraint)
                     problem.addConstraint(
                         partial(
                             _i,
@@ -559,7 +547,7 @@ class CypherParser:
                         ],
                     )
                 elif isinstance(constraint, ConstraintRelationshipHasLabel):
-                    LOGGER.debug(f"Adding constraint: {constraint}")
+                    LOGGER.debug("Adding constraint: %s", constraint)
                     problem.addConstraint(
                         partial(_h, relationship_label=constraint.label),
                         [
@@ -569,7 +557,7 @@ class CypherParser:
                 elif isinstance(
                     constraint, ConstraintRelationshipHasSourceNode
                 ):
-                    LOGGER.debug(f"Adding constraint: {constraint}")
+                    LOGGER.debug("Adding constraint: %s", constraint)
                     problem.addConstraint(
                         _f,
                         [
@@ -580,7 +568,7 @@ class CypherParser:
                 elif isinstance(
                     constraint, ConstraintRelationshipHasTargetNode
                 ):
-                    LOGGER.debug(f"Adding constraint: {constraint}")
+                    LOGGER.debug("Adding constraint: %s", constraint)
                     problem.addConstraint(
                         lambda x, y: FactRelationshipHasTargetNode(
                             relationship_id=x, target_node_id=y
@@ -592,7 +580,7 @@ class CypherParser:
                         ],
                     )
                 else:
-                    pass  # TODO: Add more constraints if necessary
+                    pass  # Add more constraints if necessary
             return problem
 
         fact_collection = (

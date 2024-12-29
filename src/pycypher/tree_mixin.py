@@ -5,7 +5,7 @@ the AST.
 
 from __future__ import annotations
 
-from typing import Generator
+from typing import Generator, Type
 
 from rich import print as rprint
 from rich.tree import Tree
@@ -36,13 +36,45 @@ class TreeMixin:
         return t
 
     def walk(self) -> Generator[TreeMixin]:
-        """Generator that yields every node of the AST."""
+        """Generator that yields every node of the AST.
+
+        Note that this will **not** work if there is a list directly inside another list.
+        But that shouldn't happen in an AST anyway.
+        """
         for child in self.children:
             if child is None:
                 continue
             yield child
+            if isinstance(child, list):
+                for c in child:
+                    if not hasattr(c, "walk"):
+                        continue
+                    c.parent = self
+                    yield from c.walk()
+                continue
             if not hasattr(child, "walk"):
                 continue
             child.parent = self
-            for i in child.walk():
-                yield i
+            yield from child.walk()
+
+    @property
+    def root(self):
+        """Returns the root node of the AST."""
+        if self.parent is None:
+            return self
+        return self.parent.root
+
+    @property
+    def parse_obj(self):
+        """Returns the parse object thst contains the AST and other stuff."""
+        if self.parent is None:
+            return self
+        return self.parent.root
+
+    def enclosing_class(self, cls: Type[TreeMixin]) -> TreeMixin:
+        """Returns the first enclosing node of the given class."""
+        if isinstance(self, cls):
+            return self
+        if self.parent is None:
+            raise ValueError(f"Could not find enclosing class {cls}")
+        return self.parent.enclosing_class(cls)
