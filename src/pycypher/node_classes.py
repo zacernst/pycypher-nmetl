@@ -439,7 +439,7 @@ class Alias(TreeMixin, Evaluable):
 
 # class ObjectAs(TreeMixin):
 #     """Basically an alias. Might be redundant."""
-# 
+#
 #     def __init__(
 #         self, object_attribute_lookup: ObjectAttributeLookup | str, alias: str
 #     ):
@@ -449,16 +449,16 @@ class Alias(TreeMixin, Evaluable):
 #             )
 #         self.object_attribute_lookup = object_attribute_lookup
 #         self.alias = alias
-# 
+#
 #     def __repr__(self):
 #         return f"ObjectAs({self.object_attribute_lookup}, {self.alias})"
-# 
+#
 #     def tree(self) -> Tree:
 #         t = Tree(self.__class__.__name__)
 #         t.add(self.object_attribute_lookup.tree())
 #         t.add(self.alias)
 #         return t
-# 
+#
 #     @property
 #     def children(self) -> Generator[Projection | Alias]:
 #         yield self.object_attribute_lookup

@@ -19,8 +19,8 @@ from pycypher.fact import (
     FactRelationshipHasTargetNode,
 )
 from pycypher.logger import LOGGER
+from pycypher.node_classes import Addition  # pylint: disable=unused-import
 from pycypher.node_classes import (
-    Addition,  # pylint: disable=unused-import
     Aggregation,
     Alias,
     AliasedName,

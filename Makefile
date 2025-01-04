@@ -38,6 +38,12 @@ tests: install
 		pytest -vv tests/ \
 	)
 
+coverage: install
+	( \
+		echo "Running tests with coverage..." && \
+		poetry run pytest --cov=./src/pycypher --cov-report=html:coverage_report \
+	)
+
 clean:
 	( \
 		rm -rfv ./venv && \
