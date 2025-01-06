@@ -40,6 +40,7 @@ from pycypher.node_classes import (
     Where,
     WithClause,
 )
+from pycypher.query import QueryValueOfNodeAttribute
 from pycypher.shims.networkx_cypher import NetworkX
 from pycypher.solver import (
     ConstraintNodeHasAttributeWithValue,
@@ -504,14 +505,14 @@ def test_node_has_related_node_inequality():
 def test_aggregate_constraints_node_label():
     cypher = "MATCH (m:Thing) RETURN m.foobar"
     result = CypherParser(cypher)
-    constraints = result.parsed.aggregated_constraints
+    constraints = result.parsed.cypher.match_clause.constraints
     assert len(constraints) == 1
 
 
 def test_aggregate_constraints_node_and_mapping():
     cypher = "MATCH (m:Thing {key: 2}) RETURN m.foobar"
     result = CypherParser(cypher)
-    constraints = result.parsed.aggregated_constraints
+    constraints = result.parsed.cypher.match_clause.constraints
     assert len(constraints) == 2
 
 
@@ -548,7 +549,7 @@ def test_source_node_constraint_from_left_right_relationship():
         result = CypherParser(cypher)
         assert (
             ConstraintRelationshipHasSourceNode("n", "SOME_HEX")
-            in result.parsed.aggregated_constraints
+            in result.parsed.cypher.match_clause.constraints
         )
 
 
@@ -557,7 +558,7 @@ def test_source_node_constraint_from_left_right_relationship_with_label():
     result = CypherParser(cypher)
     assert (
         ConstraintRelationshipHasSourceNode("n", "r")
-        in result.parsed.aggregated_constraints
+        in result.parsed.cypher.match_clause.constraints
     )
 
 
@@ -567,7 +568,7 @@ def test_target_node_constraint_from_left_right_relationship():
         result = CypherParser(cypher)
         assert (
             ConstraintRelationshipHasTargetNode("m", "SOME_HEX")
-            in result.parsed.aggregated_constraints
+            in result.parsed.cypher.match_clause.constraints
         )
 
 
@@ -576,7 +577,7 @@ def test_target_node_constraint_from_left_right_relationship_with_label():
     result = CypherParser(cypher)
     assert (
         ConstraintRelationshipHasTargetNode("m", "r")
-        in result.parsed.aggregated_constraints
+        in result.parsed.cypher.match_clause.constraints
     )
 
 
@@ -585,7 +586,7 @@ def test_constraint_node_has_label():
     result = CypherParser(cypher)
     assert (
         ConstraintNodeHasLabel("n", "Thing")
-        in result.parsed.aggregated_constraints
+        in result.parsed.cypher.match_clause.constraints
     )
 
 
@@ -603,7 +604,7 @@ def test_constraint_relationship_has_label():
         result = CypherParser(cypher)
         assert (
             ConstraintRelationshipHasLabel("SOME_HEX", "Relationship")
-            in result.parsed.aggregated_constraints
+            in result.parsed.cypher.match_clause.constraints
         )
 
 
@@ -613,7 +614,7 @@ def test_constraint_relationship_has_source_node():
         result = CypherParser(cypher)
         assert (
             ConstraintRelationshipHasSourceNode("n", "SOME_HEX")
-            in result.parsed.aggregated_constraints
+            in result.parsed.cypher.match_clause.constraints
         )
 
 
@@ -623,14 +624,14 @@ def test_constraint_relationship_has_target_node():
         result = CypherParser(cypher)
         assert (
             ConstraintRelationshipHasTargetNode("m", "SOME_HEX")
-            in result.parsed.aggregated_constraints
+            in result.parsed.cypher.match_clause.constraints
         )
 
 
 def test_find_solution_node_has_label(fact_collection_0: FactCollection):
     cypher = "MATCH (n:Thing) RETURN n.foobar"
     result = CypherParser(cypher)
-    solutions = result.solutions(fact_collection_0)
+    solutions = result.parsed.cypher.match_clause.solutions(fact_collection_0)
     expected = [{"n": "1"}]
     assert solutions == expected
 
@@ -638,7 +639,7 @@ def test_find_solution_node_has_label(fact_collection_0: FactCollection):
 def test_find_solution_node_has_wrong_label(fact_collection_0: FactCollection):
     cypher = "MATCH (n:WrongLabel) RETURN n.foobar"
     result = CypherParser(cypher)
-    solutions = result.solutions(fact_collection_0)
+    solutions = result.parsed.cypher.match_clause.solutions(fact_collection_0)
     assert not solutions
 
 
@@ -650,7 +651,7 @@ def test_find_solution_node_with_relationship(
         "MATCH (n:Thing)-[r:MyRelationship]->(m:OtherThing) RETURN n.foobar"
     )
     result = CypherParser(cypher)
-    solutions = result.solutions(fact_collection_0)
+    solutions = result.parsed.cypher.match_clause.solutions(fact_collection_0)
     expected = [{"n": "1", "m": "2", "r": "relationship_123"}]
     assert solutions == expected
 
@@ -661,7 +662,7 @@ def test_find_solution_node_with_relationship_nonexistant(
     # Hash variable for relationship not being added to variable list
     cypher = "MATCH (n:Thing)-[r:NotExistingRelationship]->(m:OtherThing) RETURN n.foobar"
     result = CypherParser(cypher)
-    solutions = result.solutions(fact_collection_0)
+    solutions = result.parsed.cypher.match_clause.solutions(fact_collection_0)
     expected = []
     assert solutions == expected
 
@@ -671,7 +672,7 @@ def test_find_solution_node_with_attribute_value(
 ):
     cypher = "MATCH (n:Thing {key: 2}) RETURN n.foobar"
     result = CypherParser(cypher)
-    solutions = result.solutions(fact_collection_0)
+    solutions = result.parsed.cypher.match_clause.solutions(fact_collection_0)
     expected = [{"n": "1"}]
     assert solutions == expected
 
@@ -681,7 +682,7 @@ def test_find_no_solution_node_with_wrong_attribute_value(
 ):
     cypher = "MATCH (n:Thing {key: 123}) RETURN n.foobar"
     result = CypherParser(cypher)
-    solutions = result.solutions(fact_collection_0)
+    solutions = result.parsed.cypher.match_clause.solutions(fact_collection_0)
     expected = []
     assert solutions == expected
 
@@ -691,7 +692,7 @@ def test_find_solution_node_with_attribute_and_relationship(
 ):
     cypher = "MATCH (n:Thing {key: 2})-[r:MyRelationship]->(m:OtherThing) RETURN n.foobar"
     result = CypherParser(cypher)
-    solutions = result.solutions(fact_collection_0)
+    solutions = result.parsed.cypher.match_clause.solutions(fact_collection_0)
     expected = [{"n": "1", "m": "2", "r": "relationship_123"}]
     assert solutions == expected
 
@@ -701,7 +702,7 @@ def test_find_no_solution_node_with_wrong_attribute_and_relationship(
 ):
     cypher = "MATCH (n:Thing {key: 3})-[r:MyRelationship]->(m:OtherThing) RETURN n.foobar"
     result = CypherParser(cypher)
-    solutions = result.solutions(fact_collection_0)
+    solutions = result.parsed.cypher.match_clause.solutions(fact_collection_0)
     expected = []
     assert solutions == expected
 
@@ -711,7 +712,7 @@ def test_find_no_solution_node_with_wrong_attribute_type_and_relationship(
 ):
     cypher = 'MATCH (n:Thing {key: "3"})-[r:MyRelationship]->(m:OtherThing) RETURN n.foobar'
     result = CypherParser(cypher)
-    solutions = result.solutions(fact_collection_0)
+    solutions = result.parsed.cypher.match_clause.solutions(fact_collection_0)
     expected = []
     assert solutions == expected
 
@@ -721,7 +722,7 @@ def test_find_solution_node_with_attribute_type_and_relationship_target_node_att
 ):
     cypher = "MATCH (n:Thing {key: 2})-[r:MyRelationship]->(m:OtherThing {key: 5}) RETURN n.foobar"
     result = CypherParser(cypher)
-    solutions = result.solutions(fact_collection_0)
+    solutions = result.parsed.cypher.match_clause.solutions(fact_collection_0)
     expected = [{"n": "1", "m": "2", "r": "relationship_123"}]
     assert solutions == expected
 
@@ -731,7 +732,7 @@ def test_find_no_solution_node_with_attribute_type_and_wrong_relationship_target
 ):
     cypher = "MATCH (n:Thing {key: 2})-[r:NoRelationshipLikeMeExists]->(m:OtherThing {key: 5}) RETURN n.foobar"
     result = CypherParser(cypher)
-    solutions = result.solutions(fact_collection_0)
+    solutions = result.parsed.cypher.match_clause.solutions(fact_collection_0)
     expected = []
     assert solutions == expected
 
@@ -739,7 +740,7 @@ def test_find_no_solution_node_with_attribute_type_and_wrong_relationship_target
 def test_find_two_solutions_node_has_label(fact_collection_1: FactCollection):
     cypher = "MATCH (n:Thing) RETURN n.foobar"
     result = CypherParser(cypher)
-    solutions = result.solutions(fact_collection_1)
+    solutions = result.parsed.cypher.match_clause.solutions(fact_collection_1)
     expected = [{"n": "1"}, {"n": "2"}]
     assert solutions == unordered(expected)
 
@@ -768,15 +769,15 @@ def test_constraints_from_relationship_chain():
     constraint7 = ConstraintNodeHasLabel(node_id="n", label="Thing")
     constraint8 = ConstraintNodeHasLabel(node_id="m", label="MiddleThing")
     constraint9 = ConstraintNodeHasLabel(node_id="o", label="OtherThing")
-    assert constraint1 in result.parsed.aggregated_constraints
-    assert constraint2 in result.parsed.aggregated_constraints
-    assert constraint3 in result.parsed.aggregated_constraints
-    assert constraint4 in result.parsed.aggregated_constraints
-    assert constraint5 in result.parsed.aggregated_constraints
-    assert constraint6 in result.parsed.aggregated_constraints
-    assert constraint7 in result.parsed.aggregated_constraints
-    assert constraint8 in result.parsed.aggregated_constraints
-    assert constraint9 in result.parsed.aggregated_constraints
+    assert constraint1 in result.parsed.cypher.match_clause.constraints
+    assert constraint2 in result.parsed.cypher.match_clause.constraints
+    assert constraint3 in result.parsed.cypher.match_clause.constraints
+    assert constraint4 in result.parsed.cypher.match_clause.constraints
+    assert constraint5 in result.parsed.cypher.match_clause.constraints
+    assert constraint6 in result.parsed.cypher.match_clause.constraints
+    assert constraint7 in result.parsed.cypher.match_clause.constraints
+    assert constraint8 in result.parsed.cypher.match_clause.constraints
+    assert constraint9 in result.parsed.cypher.match_clause.constraints
 
 
 def test_constraints_from_relationship_pair():
@@ -803,16 +804,16 @@ def test_constraints_from_relationship_pair():
     constraint7 = ConstraintNodeHasLabel(node_id="n", label="Thing")
     constraint8 = ConstraintNodeHasLabel(node_id="m", label="MiddleThing")
     constraint9 = ConstraintNodeHasLabel(node_id="o", label="OtherThing")
-    assert constraint1 in result.parsed.aggregated_constraints
-    assert constraint2 in result.parsed.aggregated_constraints
-    assert constraint3 in result.parsed.aggregated_constraints
-    assert constraint4 in result.parsed.aggregated_constraints
-    assert constraint5 in result.parsed.aggregated_constraints
-    assert constraint6 in result.parsed.aggregated_constraints
-    assert constraint7 in result.parsed.aggregated_constraints
-    assert constraint8 in result.parsed.aggregated_constraints
-    assert constraint9 in result.parsed.aggregated_constraints
-    assert len(result.parsed.aggregated_constraints) == 9
+    assert constraint1 in result.parsed.cypher.match_clause.constraints
+    assert constraint2 in result.parsed.cypher.match_clause.constraints
+    assert constraint3 in result.parsed.cypher.match_clause.constraints
+    assert constraint4 in result.parsed.cypher.match_clause.constraints
+    assert constraint5 in result.parsed.cypher.match_clause.constraints
+    assert constraint6 in result.parsed.cypher.match_clause.constraints
+    assert constraint7 in result.parsed.cypher.match_clause.constraints
+    assert constraint8 in result.parsed.cypher.match_clause.constraints
+    assert constraint9 in result.parsed.cypher.match_clause.constraints
+    assert len(result.parsed.cypher.match_clause.constraints) == 9
 
 
 def test_find_solution_relationship_chain_two_forks(
@@ -820,7 +821,7 @@ def test_find_solution_relationship_chain_two_forks(
 ):
     cypher = "MATCH (n:Thing)-[r:MyRelationship]->(m:MiddleThing)-[s:OtherRelationship]->(o:OtherThing) RETURN n.foobar"
     result = CypherParser(cypher)
-    solutions = result.solutions(fact_collection_2)
+    solutions = result.parsed.cypher.match_clause.solutions(fact_collection_2)
     expected = [
         {
             "m": "2",
@@ -838,7 +839,7 @@ def test_find_solution_relationship_chain_fork(
 ):
     cypher = "MATCH (n:Thing)-[r:MyRelationship]->(m:MiddleThing)-[s:OtherRelationship]->(o:OtherThing) RETURN n.foobar"
     result = CypherParser(cypher)
-    solutions = result.solutions(fact_collection_3)
+    solutions = result.parsed.cypher.match_clause.solutions(fact_collection_3)
     expected = [
         {
             "m": "2",
@@ -863,7 +864,7 @@ def test_find_solution_relationship_chain_fork_2(
 ):
     cypher = "MATCH (n:Thing)-[r:MyRelationship]->(m:MiddleThing)-[s:OtherRelationship]->(o:OtherThing) RETURN n.foobar"
     result = CypherParser(cypher)
-    solutions = result.solutions(fact_collection_4)
+    solutions = result.parsed.cypher.match_clause.solutions(fact_collection_4)
     expected = [
         {
             "m": "2",
@@ -924,16 +925,16 @@ def test_constraint_relationship_chain_with_node_attribute():
     constraint10 = ConstraintNodeHasAttributeWithValue(
         node_id="n", attribute="foo", value=Literal(2)
     )
-    assert constraint1 in result.parsed.aggregated_constraints
-    assert constraint2 in result.parsed.aggregated_constraints
-    assert constraint3 in result.parsed.aggregated_constraints
-    assert constraint4 in result.parsed.aggregated_constraints
-    assert constraint5 in result.parsed.aggregated_constraints
-    assert constraint6 in result.parsed.aggregated_constraints
-    assert constraint7 in result.parsed.aggregated_constraints
-    assert constraint8 in result.parsed.aggregated_constraints
-    assert constraint9 in result.parsed.aggregated_constraints
-    assert constraint10 in result.parsed.aggregated_constraints
+    assert constraint1 in result.parsed.cypher.match_clause.constraints
+    assert constraint2 in result.parsed.cypher.match_clause.constraints
+    assert constraint3 in result.parsed.cypher.match_clause.constraints
+    assert constraint4 in result.parsed.cypher.match_clause.constraints
+    assert constraint5 in result.parsed.cypher.match_clause.constraints
+    assert constraint6 in result.parsed.cypher.match_clause.constraints
+    assert constraint7 in result.parsed.cypher.match_clause.constraints
+    assert constraint8 in result.parsed.cypher.match_clause.constraints
+    assert constraint9 in result.parsed.cypher.match_clause.constraints
+    assert constraint10 in result.parsed.cypher.match_clause.constraints
 
 
 def test_find_no_solution_relationship_chain_fork_missing_node_attribute(
@@ -941,7 +942,7 @@ def test_find_no_solution_relationship_chain_fork_missing_node_attribute(
 ):
     cypher = "MATCH (n:Thing {foo: 2})-[r:MyRelationship]->(m:MiddleThing)-[s:OtherRelationship]->(o:OtherThing) RETURN n.foobar"
     result = CypherParser(cypher)
-    solutions = result.solutions(fact_collection_4)
+    solutions = result.parsed.cypher.match_clause.solutions(fact_collection_4)
     assert not solutions
 
 
@@ -950,7 +951,7 @@ def test_find_two_solutions_relationship_chain_fork_require_node_attribute_value
 ):
     cypher = "MATCH (n:Thing {foo: 2})-[r:MyRelationship]->(m:MiddleThing)-[s:OtherRelationship]->(o:OtherThing) RETURN n.foobar"
     result = CypherParser(cypher)
-    solutions = result.solutions(fact_collection_5)
+    solutions = result.parsed.cypher.match_clause.solutions(fact_collection_5)
     expected = [
         {
             "m": "2",
@@ -975,7 +976,7 @@ def test_find_no_solutions_relationship_chain_fork_node_attribute_value_wrong_ty
 ):
     cypher = 'MATCH (n:Thing {foo: "2"})-[r:MyRelationship]->(m:MiddleThing)-[s:OtherRelationship]->(o:OtherThing) RETURN n.foobar'
     result = CypherParser(cypher)
-    solutions = result.solutions(fact_collection_5)
+    solutions = result.parsed.cypher.match_clause.solutions(fact_collection_5)
     assert not solutions
 
 
@@ -984,7 +985,7 @@ def test_find_two_solutions_relationship_chain_fork_red_herring_node(
 ):
     cypher = "MATCH (n:Thing {foo: 2})-[r:MyRelationship]->(m:MiddleThing)-[s:OtherRelationship]->(o:OtherThing) RETURN n.foobar"
     result = CypherParser(cypher)
-    solutions = result.solutions(fact_collection_6)
+    solutions = result.parsed.cypher.match_clause.solutions(fact_collection_6)
     expected = [
         {
             "m": "2",
@@ -1009,7 +1010,7 @@ def test_find_no_solutions_relationship_chain_fork_node_attribute_value_wrong_ty
 ):
     cypher = 'MATCH (n:Thing {foo: "2"})-[r:MyRelationship]->(m:MiddleThing)-[s:OtherRelationship]->(o:OtherThing) RETURN n.foobar'
     result = CypherParser(cypher)
-    solutions = result.solutions(fact_collection_6)
+    solutions = result.parsed.cypher.match_clause.solutions(fact_collection_6)
     assert not solutions
 
 
@@ -1323,11 +1324,40 @@ def test_cannot_evaluate_addition_strings():
         Addition(literal1, literal2).evaluate(None)
 
 
+def test_evaluate_nested_addition():
+    literal1 = Literal(6)
+    literal2 = Literal(5)
+    literal3 = Literal(4)
+    assert (
+        Addition(Addition(literal1, literal2), literal3).evaluate(None) == 15
+    )
+
+
 def test_cannot_evaluate_addition_strings_right_side():
     literal1 = Literal(1)
     literal2 = Literal("thing")
     with pytest.raises(Exception):
         Addition(literal1, literal2).evaluate(None)
+
+
+def test_evaluate_nested_subtraction():
+    literal1 = Literal(6)
+    literal2 = Literal(5)
+    literal3 = Literal(4)
+    assert (
+        Subtraction(Subtraction(literal1, literal2), literal3).evaluate(None)
+        == -3
+    )
+
+
+def test_evaluate_nested_addition_multiplication():
+    literal1 = Literal(6)
+    literal2 = Literal(5)
+    literal3 = Literal(4)
+    assert (
+        Addition(Multiplication(literal1, literal2), literal3).evaluate(None)
+        == 34
+    )
 
 
 def test_cannot_evaluate_addition_strings_left_side():
@@ -1473,3 +1503,77 @@ def test_evaluate_demorgan_law_both_false():
     assert Equals(
         Not(And(literal1, literal2)), Or(Not(literal1), Not(literal2))
     ).evaluate(None)
+
+
+def test_enumerate_fact_types(fact_collection_6):
+    facts = [fact for fact in fact_collection_6.node_has_label_facts()]
+    assert len(facts) == 6
+
+
+def test_query_node_has_attribute_with_value(fact_collection_6):
+    query = QueryValueOfNodeAttribute(node_id="4", attribute="foo")
+    value = fact_collection_6.query(query)
+    assert value.evaluate(fact_collection_6) == 2
+
+
+def test_query_node_has_non_existent_attribute(fact_collection_6):
+    query = QueryValueOfNodeAttribute(node_id="4", attribute="bar")
+    with pytest.raises(ValueError):
+        fact_collection_6.query(query)
+
+
+def test_query_non_existent_node_has_attribute_raises_error(fact_collection_6):
+    query = QueryValueOfNodeAttribute(node_id="idontexist", attribute="foo")
+    with pytest.raises(ValueError):
+        fact_collection_6.query(query)
+
+
+def test_object_attribute_lookup_evaluate(fact_collection_6):
+    lookup = ObjectAttributeLookup(object_name="4", attribute="foo")
+    assert lookup.evaluate(fact_collection_6) == 2
+
+
+def test_object_attribute_lookup_non_existent_object_raises_error(
+    fact_collection_6,
+):
+    with pytest.raises(ValueError):
+        ObjectAttributeLookup(
+            object_name="idontexist", attribute="foo"
+        ).evaluate(fact_collection_6)
+
+
+def test_object_attribute_lookup_in_addition(fact_collection_6):
+    lookup = ObjectAttributeLookup(object_name="4", attribute="foo")
+    literal = Literal(3)
+    assert Addition(lookup, literal).evaluate(fact_collection_6) == 5
+
+
+def test_object_attribute_lookup_greater_tan(fact_collection_6):
+    lookup = ObjectAttributeLookup(object_name="4", attribute="foo")
+    literal = Literal(1)
+    assert GreaterThan(lookup, literal).evaluate(fact_collection_6)
+
+
+def test_object_attribute_lookup_greater_than_false(fact_collection_6):
+    lookup = ObjectAttributeLookup(object_name="4", attribute="foo")
+    literal = Literal(10)
+    assert Not(GreaterThan(lookup, literal)).evaluate(fact_collection_6)
+
+
+def test_object_attribute_lookup_greater_than_double_negation(
+    fact_collection_6,
+):
+    lookup = ObjectAttributeLookup(object_name="4", attribute="foo")
+    literal = Literal(10)
+    assert not Not(Not(GreaterThan(lookup, literal))).evaluate(
+        fact_collection_6
+    )
+
+
+def test_nonexistent_attribute_nested_evaluation_raises_error(
+    fact_collection_6,
+):
+    lookup = ObjectAttributeLookup(object_name="4", attribute="idontexist")
+    literal = Literal(10)
+    with pytest.raises(ValueError):
+        Not(Not(GreaterThan(lookup, literal))).evaluate(fact_collection_6)

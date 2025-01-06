@@ -6,6 +6,8 @@ from __future__ import annotations
 
 from typing import Any, Generator, List
 
+from pycypher.query import Query, QueryValueOfNodeAttribute
+
 
 class AtomicFact:
     """Astract base class for specific types of ``Fact``."""
@@ -47,19 +49,18 @@ class FactRelationshipHasLabel(AtomicFact):
         )
 
 
+class FactRelationshipHasAttributeWithValue(AtomicFact):
+    def __init__(self, relationship_id: str, attribute: str, value: Any):
+        self.relationship_id = relationship_id
+        self.attribute = attribute
+        self.value = value
+
+
 class FactNodeHasAttributeWithValue(AtomicFact):
     def __init__(self, node_id: str, attribute: str, value: Any):
         self.node_id = node_id
         self.attribute = attribute
         self.value = value
-
-    def __hash__(self) -> int:
-        return hash(
-            "NodeHasAttributeWithValue"
-            + self.node_id.__str__()
-            + self.attribute.__str__()
-            + self.value.__str__()
-        )
 
     def __repr__(self) -> str:
         return f"NodeHasAttributeWithValue: {self.node_id} {self.attribute} {self.value}"
@@ -128,8 +129,7 @@ class FactCollection:
         self.facts: List[AtomicFact] = facts
 
     def __iter__(self) -> Generator[AtomicFact]:
-        for fact in self.facts:
-            yield fact
+        yield from self.facts
 
     def __repr__(self) -> str:
         return f"FactCollection: {len(self.facts)}"
@@ -148,3 +148,47 @@ class FactCollection:
 
     def insert(self, index: int, value: AtomicFact):
         self.facts.insert(index, value)
+
+    def relationship_has_source_node_facts(self):
+        for fact in self.facts:
+            if isinstance(fact, FactRelationshipHasSourceNode):
+                yield fact
+
+    def relationship_has_target_node_facts(self):
+        for fact in self.facts:
+            if isinstance(fact, FactRelationshipHasTargetNode):
+                yield fact
+
+    def node_has_label_facts(self):
+        for fact in self.facts:
+            if isinstance(fact, FactNodeHasLabel):
+                yield fact
+
+    def node_has_attribute_with_value_facts(self):
+        for fact in self.facts:
+            if isinstance(fact, FactNodeHasAttributeWithValue):
+                yield fact
+
+    def relationship_has_attribute_with_value_facts(self):
+        for fact in self.facts:
+            if isinstance(fact, FactRelationshipHasAttributeWithValue):
+                yield fact
+
+    def query(self, query: Query) -> Any:
+        if isinstance(query, QueryValueOfNodeAttribute):
+            facts = [
+                fact
+                for fact in self.node_has_attribute_with_value_facts()
+                if fact.node_id == query.node_id
+                and fact.attribute == query.attribute
+            ]
+            if len(facts) == 1:
+                return facts[0].value
+            elif len(facts) == 0:
+                raise ValueError(f"Could not find value for {query}")
+            elif len(facts) > 1:
+                raise ValueError(f"Found multiple values for {query}")
+            else:
+                raise ValueError("Unknown error")
+        else:
+            raise NotImplementedError(f"Unknown query type {query}")
