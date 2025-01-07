@@ -1577,3 +1577,138 @@ def test_nonexistent_attribute_nested_evaluation_raises_error(
     literal = Literal(10)
     with pytest.raises(ValueError):
         Not(Not(GreaterThan(lookup, literal))).evaluate(fact_collection_6)
+
+
+def test_collect_aggregated_variables_in_with_clause():
+    query = """MATCH (n:Thingy)-[r:Thingy]->(m) WITH COLLECT(n.foo) AS thingy, m.qux AS bar RETURN COLLECT(n.foobar) AS whatever"""
+    obj = CypherParser(query)
+    assert obj.parsed.cypher.match_clause.with_clause.aggregated_variables == [
+        "n"
+    ]
+
+
+def test_collect_all_variables_in_with_clause():
+    query = """MATCH (n:Thingy)-[r:Thingy]->(m) WITH COLLECT(n.foo) AS thingy, m.qux AS bar RETURN COLLECT(n.foobar) AS whatever"""
+    obj = CypherParser(query)
+    assert sorted(
+        obj.parsed.cypher.match_clause.with_clause.all_variables
+    ) == ["m", "n"]
+
+
+def test_collect_non_aggregated_variables_in_with_clause():
+    query = """MATCH (n:Thingy)-[r:Thingy]->(m) WITH COLLECT(n.foo) AS thingy, m.qux AS bar RETURN COLLECT(n.foobar) AS whatever"""
+    obj = CypherParser(query)
+    assert (
+        obj.parsed.cypher.match_clause.with_clause.non_aggregated_variables
+        == ["m"]
+    )
+
+
+def test_unique_non_aggregated_variable_solutions_one_aggregation():
+    solutions = [
+        {"n": "1", "m": "2", "o": "3"},
+        {"n": "2", "m": "2", "o": "3"},
+        {"n": "3", "m": "2", "o": "3"},
+    ]
+    non_aggregated_variables = ["m", "o"]
+    unique_solutions = WithClause._unique_non_aggregated_variable_solutions(
+        solutions, non_aggregated_variables
+    )
+    assert unique_solutions == [{"m": "2", "o": "3"}]
+
+
+def test_unique_non_aggregated_variable_solutions_one_aggregation_complex():
+    solutions = [
+        {"n": "1", "m": "2", "o": "3"},
+        {"n": "2", "m": "2", "o": "3"},
+        {"n": "3", "m": "2", "o": "3"},
+        {"n": "4", "m": "1", "o": "3"},
+        {"n": "5", "m": "1", "o": "3"},
+    ]
+    non_aggregated_variables = ["m", "o"]
+    unique_solutions = WithClause._unique_non_aggregated_variable_solutions(
+        solutions, non_aggregated_variables
+    )
+    assert unique_solutions == [
+        {"m": "2", "o": "3"},
+        {"m": "1", "o": "3"},
+    ]
+
+
+def test_unique_non_aggregated_variable_solutions_two_aggregations_complex():
+    solutions = [
+        {"n": "1", "m": "2", "o": "3"},
+        {"n": "2", "m": "2", "o": "3"},
+        {"n": "3", "m": "2", "o": "3"},
+        {"n": "4", "m": "1", "o": "3"},
+        {"n": "5", "m": "1", "o": "3"},
+    ]
+    non_aggregated_variables = ["m"]
+    unique_solutions = WithClause._unique_non_aggregated_variable_solutions(
+        solutions, non_aggregated_variables
+    )
+    assert unique_solutions == [
+        {"m": "2"},
+        {"m": "1"},
+    ]
+
+
+def test_transform_solutions_by_aggregations():
+    solutions = [
+        {"n": "1", "m": "2", "o": "3"},
+        {"n": "2", "m": "2", "o": "3"},
+        {"n": "3", "m": "2", "o": "3"},
+        {"n": "4", "m": "1", "o": "3"},
+        {"n": "5", "m": "1", "o": "3"},
+    ]
+    aggregated_variables = ["n"]
+    non_aggregated_variables = ["m", "o"]
+    transformed_solutions = WithClause._transform_solutions_by_aggregations(
+        solutions, aggregated_variables, non_aggregated_variables
+    )
+    assert transformed_solutions == [
+        {
+            "n": [
+                "1",
+                "2",
+                "3",
+            ],
+            "m": "2",
+            "o": "3",
+        },
+        {
+            "n": [
+                "4",
+                "5",
+            ],
+            "m": "1",
+            "o": "3",
+        },
+    ]
+
+
+def test_transform_solutions_in_with_clause(
+    fact_collection_6: FactCollection,
+):
+    # TODO: Start by testing the WithClause.transform... method
+    #       This test is not right yet.
+    cypher = "MATCH (n:Thing {foo: 2})-[r:MyRelationship]->(m:MiddleThing)-[s:OtherRelationship]->(o:OtherThing) WITH COLLECT(o) AS co, n AS n, m AS m  RETURN n.foobar"
+    result = CypherParser(cypher)
+    solutions = result.parsed.cypher.match_clause.solutions(fact_collection_6)
+    expected = [
+        {
+            "m": "2",
+            "r": "relationship_3",
+            "s": "relationship_4",
+            "n": "4",
+            "o": "5",
+        },
+        {
+            "m": "2",
+            "r": "relationship_3",
+            "s": "relationship_2",
+            "n": "4",
+            "o": "3",
+        },
+    ]
+    assert solutions == unordered(expected)
