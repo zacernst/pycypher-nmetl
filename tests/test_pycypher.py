@@ -1529,8 +1529,8 @@ def test_query_non_existent_node_has_attribute_raises_error(fact_collection_6):
 
 
 def test_object_attribute_lookup_evaluate(fact_collection_6):
-    lookup = ObjectAttributeLookup(object_name="4", attribute="foo")
-    assert lookup.evaluate(fact_collection_6) == 2
+    lookup = ObjectAttributeLookup(object_name="n", attribute="foo")
+    assert lookup.evaluate(fact_collection_6, projection={'n': '4'}) == 2
 
 
 def test_object_attribute_lookup_non_existent_object_raises_error(
@@ -1538,45 +1538,45 @@ def test_object_attribute_lookup_non_existent_object_raises_error(
 ):
     with pytest.raises(ValueError):
         ObjectAttributeLookup(
-            object_name="idontexist", attribute="foo"
-        ).evaluate(fact_collection_6)
+            object_name="n", attribute="foo"
+        ).evaluate(fact_collection_6, projection={'n': 'idontexist'})
 
 
 def test_object_attribute_lookup_in_addition(fact_collection_6):
-    lookup = ObjectAttributeLookup(object_name="4", attribute="foo")
+    lookup = ObjectAttributeLookup(object_name="n", attribute="foo")
     literal = Literal(3)
-    assert Addition(lookup, literal).evaluate(fact_collection_6) == 5
+    assert Addition(lookup, literal).evaluate(fact_collection_6, projection={'n': '4'}) == 5
 
 
-def test_object_attribute_lookup_greater_tan(fact_collection_6):
-    lookup = ObjectAttributeLookup(object_name="4", attribute="foo")
+def test_object_attribute_lookup_greater_than(fact_collection_6):
+    lookup = ObjectAttributeLookup(object_name="n", attribute="foo")
     literal = Literal(1)
-    assert GreaterThan(lookup, literal).evaluate(fact_collection_6)
+    assert GreaterThan(lookup, literal).evaluate(fact_collection_6, projection={'n': '4'})
 
 
 def test_object_attribute_lookup_greater_than_false(fact_collection_6):
-    lookup = ObjectAttributeLookup(object_name="4", attribute="foo")
+    lookup = ObjectAttributeLookup(object_name="n", attribute="foo")
     literal = Literal(10)
-    assert Not(GreaterThan(lookup, literal)).evaluate(fact_collection_6)
+    assert Not(GreaterThan(lookup, literal)).evaluate(fact_collection_6, projection={'n': '4'})
 
 
 def test_object_attribute_lookup_greater_than_double_negation(
     fact_collection_6,
 ):
-    lookup = ObjectAttributeLookup(object_name="4", attribute="foo")
+    lookup = ObjectAttributeLookup(object_name="n", attribute="foo")
     literal = Literal(10)
     assert not Not(Not(GreaterThan(lookup, literal))).evaluate(
-        fact_collection_6
+        fact_collection_6, projection={'n': '4'}
     )
 
 
 def test_nonexistent_attribute_nested_evaluation_raises_error(
     fact_collection_6,
 ):
-    lookup = ObjectAttributeLookup(object_name="4", attribute="idontexist")
+    lookup = ObjectAttributeLookup(object_name="n", attribute="idontexist")
     literal = Literal(10)
     with pytest.raises(ValueError):
-        Not(Not(GreaterThan(lookup, literal))).evaluate(fact_collection_6)
+        Not(Not(GreaterThan(lookup, literal))).evaluate(fact_collection_6, projection={'n': '4'})
 
 
 def test_collect_aggregated_variables_in_with_clause():
@@ -1690,25 +1690,65 @@ def test_transform_solutions_by_aggregations():
 def test_transform_solutions_in_with_clause(
     fact_collection_6: FactCollection,
 ):
-    # TODO: Start by testing the WithClause.transform... method
-    #       This test is not right yet.
-    cypher = "MATCH (n:Thing {foo: 2})-[r:MyRelationship]->(m:MiddleThing)-[s:OtherRelationship]->(o:OtherThing) WITH COLLECT(o) AS co, n AS n, m AS m  RETURN n.foobar"
+    cypher = "MATCH (n:Thing {foo: 2})-[r:MyRelationship]->(m:MiddleThing)-[s:OtherRelationship]->(o:OtherThing) WITH COLLECT(o) AS co, n.foo AS nfoo, m.bar AS mbar RETURN n.foobar"
     result = CypherParser(cypher)
-    solutions = result.parsed.cypher.match_clause.solutions(fact_collection_6)
-    expected = [
+    aggregated_results = result.parsed.cypher.match_clause.with_clause.transform_solutions_by_aggregations(
+        fact_collection_6
+    )
+    expected_results = [
         {
-            "m": "2",
-            "r": "relationship_3",
-            "s": "relationship_4",
             "n": "4",
-            "o": "5",
-        },
-        {
             "m": "2",
-            "r": "relationship_3",
-            "s": "relationship_2",
-            "n": "4",
-            "o": "3",
-        },
+            "o": ["5", "3"],
+        }
     ]
-    assert solutions == unordered(expected)
+
+    assert aggregated_results == expected_results
+
+
+def test_transform_solutions_in_with_clause_no_solutions(
+    fact_collection_6: FactCollection,
+):
+    cypher = "MATCH (n:Thing {foo: 37})-[r:MyRelationship]->(m:MiddleThing)-[s:OtherRelationship]->(o:OtherThing) WITH COLLECT(o) AS co, n.foo AS nfoo, m.bar AS mbar RETURN n.foobar"
+    result = CypherParser(cypher)
+    aggregated_results = result.parsed.cypher.match_clause.with_clause.transform_solutions_by_aggregations(
+        fact_collection_6
+    )
+    expected_results = []
+
+    assert aggregated_results == expected_results
+
+
+def test_transform_solutions_in_with_clause_multiple_solutions(
+    fact_collection_6: FactCollection,
+):
+    cypher = "MATCH (n:Thing)-[r:MyRelationship]->(m:MiddleThing)-[s:OtherRelationship]->(o:OtherThing) WITH COLLECT(o) AS co, n.foo AS nfoo, m.bar AS mbar RETURN n.foobar"
+    result = CypherParser(cypher)
+    aggregated_results = result.parsed.cypher.match_clause.with_clause.transform_solutions_by_aggregations(
+        fact_collection_6
+    )
+    expected_results = [
+        {"n": "4", "m": "2", "o": ["5", "3"]},
+        {"n": "1", "m": "2", "o": ["5", "3"]},
+    ]
+
+    assert aggregated_results == expected_results
+
+@pytest.mark.skip
+def test_apply_substitutions_to_projections(
+    fact_collection_6: FactCollection,
+):
+    cypher = "MATCH (n:Thing)-[r:MyRelationship]->(m:MiddleThing)-[s:OtherRelationship]->(o:OtherThing) WITH COLLECT(o) AS co, n.foo AS nfoo, m.bar AS mbar RETURN n.foobar"
+    result = CypherParser(cypher)
+    aggregated_results = result.parsed.cypher.match_clause.with_clause.transform_solutions_by_aggregations(
+        fact_collection_6
+    )
+    expected_results = [
+        {"n": "4", "m": "2", "o": ["5", "3"]},
+        {"n": "1", "m": "2", "o": ["5", "3"]},
+    ]
+
+    result.parsed.cypher.match_clause.with_clause.evaluate(
+        fact_collection_6,
+        projection=expected_results[0], 
+    )

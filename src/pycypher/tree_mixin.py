@@ -22,6 +22,7 @@ class TreeMixin:
 
     @property
     def children(self) -> Generator[TreeMixin | str | None]:
+        """Each node should have a children property that returns a generator of its children."""
         yield None
 
     def tree(self) -> Tree:
