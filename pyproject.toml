@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pycypher"
-version = "0.0.7"
+version = "0.0.8"
 description = "Cypher for Python"
 readme = "README.md"
 requires-python = ">=3.11"

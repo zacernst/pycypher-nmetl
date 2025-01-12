@@ -47,14 +47,14 @@ def get_version() -> Version:
 
 
 def write_version(version: Version) -> None:
-    """Rewrite the pyproject file with the new version"""
+    """Rewrite the pyproject and __init__.py files with the new version"""
     pyproject_toml = toml.load(PYPROJECT_TOML)
     pyproject_toml["project"]["version"] = str(version)
 
     with open(PYPROJECT_TOML, "w", encoding="utf8") as f:
         toml.dump(pyproject_toml, f)
 
-    with open(INIT_FILE, "w") as f:
+    with open(INIT_FILE, "w", encoding="utf8") as f:
         f.write(f'__version__ = "{version}"\n')
 
     click.echo(f"Version updated to {version}")
