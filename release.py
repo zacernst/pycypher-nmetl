@@ -100,8 +100,6 @@ def release(increment, dry_run, confirm, version) -> None:
         sys.exit(1)
 
     # Publish to Github
-    # This is an example of how you might publish to Github
-
     repo = Repo(".")
     repo.git.add(".")
     repo.git.add("./dist")

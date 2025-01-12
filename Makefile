@@ -73,4 +73,9 @@ docs: install
 		cp -rfv _build/singlehtml/* ../docs/ \
 	)
 
+publish: build
+	( \
+		uv run python ./release.py --increment=$(BUMP) \
+	)
+
 .PHONY: clean clean_build tests deps install build docs grammar
