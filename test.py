@@ -1,44 +1,76 @@
+"""testing"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from hashlib import md5
+from typing import Any, Callable, Dict, List, Type
+
 from pycypher.cypher_parser import CypherParser
-from pycypher.fact import (
-    FactCollection,
-    FactNodeHasAttributeWithValue,
-    FactNodeHasLabel,
-    FactNodeRelatedToNode,
-    FactRelationshipHasLabel,
-    FactRelationshipHasSourceNode,
-    FactRelationshipHasTargetNode,
+from pycypher.fact import FactCollection
+from pycypher.node_classes import Cypher
+
+
+@dataclass
+class CypherTrigger:
+    """hi"""
+
+    function: Callable
+    cypher_string: str
+    cypher: Cypher
+    call_counter: int = 0
+    error_counter: int = 0
+
+
+class ReactiveFactCollection(FactCollection):
+    """Adds trigger capabilities to the FactCollection class"""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.trigger_dict: Dict[str, CypherTrigger] = {}
+
+    def trigger(self, cypher: str) -> Any:
+        """Register the Cypher query."""
+        cypher_parser = CypherParser(cypher)
+
+        def inner_decorator(f: Callable) -> Any:
+            def wrapped(*args: List[Any], **kwargs: Dict[Any, Any]):
+                return f(*args, **kwargs)
+
+            return wrapped
+
+        self.trigger_dict[md5(cypher.encode()).hexdigest()] = CypherTrigger(
+            function=inner_decorator,
+            cypher_string=cypher,
+            cypher=cypher_parser,
+        )
+
+        return inner_decorator
+
+    @classmethod
+    def init(
+        cls, fact_collection_cls: Type, *args, **kwargs
+    ) -> ReactiveFactCollection:
+        """Initialise the class with a FactCollection class"""
+        new_class = type(
+            "ReactiveFactCollection",
+            (cls,),
+            {"fact_collection_cls": fact_collection_cls},
+        )
+        return new_class(*args, **kwargs)
+
+
+test_fact_collection = ReactiveFactCollection(facts=[])
+
+
+@test_fact_collection.trigger(
+    "MATCH (n:Thingy)-[r:Relationship]->(m:Foobar) WITH n.foo AS nfoo RETURN nfoo"
 )
+def my_function(nfoo):
+    print(f"Function called with {nfoo}")
 
-fact1 = FactNodeHasLabel("1", "Thing")
-fact2 = FactNodeHasAttributeWithValue("1", "key", 2)
-fact3 = FactNodeRelatedToNode("1", "2", "MyRelationship")
-fact4 = FactNodeHasLabel("2", "OtherThing")
-fact5 = FactNodeHasAttributeWithValue("2", "key", 5)
-fact6 = FactRelationshipHasLabel("relationship_123", "MyRelationship")
-fact7 = FactRelationshipHasSourceNode("relationship_123", "1")
-fact8 = FactRelationshipHasTargetNode("relationship_123", "2")
-fact_collection = FactCollection(
-    [
-        fact1,
-        fact2,
-        fact3,
-        fact4,
-        fact5,
-        fact6,
-        fact7,
-        fact8,
-    ]
+
+result = CypherParser(
+    "MATCH (n:Thingy)-[r:Relationship]->(m:Foobar) WITH n.foo AS nfoo RETURN nfoo"
 )
-
-# cypher = "MATCH (n:Thing) RETURN n.foobar"
-# result = CypherParser(cypher)
-# solutions = result.solutions(fact_collection)
-
-# Variable "Thing" hasn't been assigned to a domain
-
-
-cypher = "MATCH (n:Thing)-[r:MyRelationship]->(m:OtherThing) RETURN n.foobar"
-result = CypherParser(cypher)
-solutions = result.solutions(fact_collection)
-expected = [{"n": "1", "m": "2", "r": "relationship_123"}]
-assert solutions == expected
+result.parsed.print_tree()

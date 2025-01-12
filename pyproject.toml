@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pycypher"
-version = "0.0.12"
+version = "0.0.13"
 description = "Cypher for Python"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -38,7 +38,7 @@ indent-width = 4
 target-version = "py312"
 
 [tool.coverage.report]
-omit = ['cli.py']
+omit = [ "cli.py",]
 exclude_also = [ "def tree", "def print_tree", "def __repr__", "if self.debug:", "if settings.DEBUG", "raise AssertionError", "raise NotImplementedError", "if 0:", "if __name__ == .__main__.:", "if TYPE_CHECKING:", "class .*\\bProtocol\\):", "@(abc\\.)?abstractmethod",]
 
 [tool.pytest.ini_options]
