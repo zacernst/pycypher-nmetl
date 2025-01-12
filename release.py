@@ -104,6 +104,7 @@ def release(increment, dry_run, confirm, version) -> None:
 
     repo = Repo(".")
     repo.git.add(".")
+    repo.git.add("./dist")
     repo.index.commit(f"Release {next_version}")
     repo.create_tag(f"v{next_version}", message=f"Release {next_version}")
     repo.remote().push()
