@@ -41,7 +41,7 @@ tests: install
 coverage: install
 	( \
 		echo "Running tests with coverage..." && \
-		poetry run pytest --cov=./src/pycypher --cov-report=html:coverage_report \
+		uv run pytest --cov=./src/pycypher --cov-report=html:coverage_report \
 	)
 
 clean:
@@ -52,6 +52,7 @@ clean:
 		rm -rfv ./docs/* \
 		rm -fv ./requirements.txt \
 		rm -rfv ./dist/* \
+		rm -rfv ./coverage_report \
 	)
 
 build: deps

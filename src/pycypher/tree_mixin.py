@@ -5,36 +5,32 @@ the AST.
 
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from typing import Generator, Type
 
 from rich import print as rprint
 from rich.tree import Tree
 
 
-class TreeMixin:
+class TreeMixin(ABC):
     """Mixin class that provides methods for walking and printing the AST."""
 
     parent = None
 
     def print_tree(self):
         """Uses ``rich`` to print the tree representation of the AST."""
-        rprint(self.tree())
+        rprint(self.tree())  # pragma: no cover
 
     @property
     def children(self) -> Generator[TreeMixin | str | None]:
         """Each node should have a children property that returns a generator of its children."""
         yield None
 
-    def tree(self) -> Tree:
+    @abstractmethod
+    def tree(self) -> Tree:  # pragma: no cover
         """Generates a tree representation of the AST which can be pretty-printed
         with the ``rich`` library.
         """
-        t = Tree(self.__class__.__name__)
-        for child in self.children:
-            if child is None:
-                continue
-            t.add(child.tree())
-        return t
 
     def walk(self) -> Generator[TreeMixin]:
         """Generator that yields every node of the AST.

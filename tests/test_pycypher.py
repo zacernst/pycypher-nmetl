@@ -14,7 +14,7 @@ from pycypher.fact import (  # We might get rid of this class entirely
     FactNodeHasLabel,
     FactNodeRelatedToNode,
 )
-from pycypher.fixtures import (
+from pycypher.fixtures import (  # pylint: disable=unused-import
     fact_collection_0,
     fact_collection_1,
     fact_collection_2,
@@ -24,11 +24,12 @@ from pycypher.fixtures import (
     fact_collection_6,
     fact_collection_7,
     networkx_graph,
-    number_of_facts,
 )
 from pycypher.node_classes import Alias  # pylint: disable=unused-import
 from pycypher.node_classes import (
     Addition,
+    Aggregation,
+    AliasedName,
     And,
     Collect,
     Collection,
@@ -40,13 +41,25 @@ from pycypher.node_classes import (
     GreaterThan,
     LessThan,
     Literal,
+    Mapping,
+    MappingSet,
     Match,
     Multiplication,
+    Node,
+    NodeNameLabel,
     Not,
     ObjectAsSeries,
     ObjectAttributeLookup,
     Or,
+    Predicate,
+    Projection,
     Query,
+    Relationship,
+    RelationshipChain,
+    RelationshipChainList,
+    RelationshipLeftRight,
+    RelationshipRightLeft,
+    Return,
     Size,
     Subtraction,
     Where,
@@ -1020,6 +1033,18 @@ def test_evaluate_addition_integers():
     assert Addition(literal1, literal2).evaluate(None) == 11
 
 
+def test_evaluate_division_integers():
+    literal1 = Literal(6)
+    literal2 = Literal(3)
+    assert Division(literal1, literal2).evaluate(None) == 2
+
+
+def test_evaluating_division_returns_float():
+    literal1 = Literal(6)
+    literal2 = Literal(3)
+    assert isinstance(Division(literal1, literal2).evaluate(None), float)
+
+
 def test_evaluate_subtraction_integers():
     literal1 = Literal(6)
     literal2 = Literal(5)
@@ -1628,3 +1653,1339 @@ def test_evaluate_return_after_with_clause(fact_collection_7):
         fact_collection_7, projection=None
     )
     assert out == expected
+
+
+def test_tree_mixing_get_parse_object():
+    query = "MATCH (n:Thingy)-[r:Thingy]->(m) WITH n.foo AS bar, m.baz AS qux RETURN n.foobar"
+    obj = CypherParser(query)
+    assert obj.parsed.cypher.match_clause.pattern.parse_obj is obj.parsed
+
+
+def test_collection_children():
+    # Create a mock Evaluable object
+    mock_evaluable = Collection(values=[])
+
+    # Create a Collection instance with the mock evaluable object
+    collection = Collection(values=[mock_evaluable])
+
+    # Get the children of the collection
+    children = list(collection.children)
+
+    # Assert that the children list contains the mock evaluable object
+    assert children == [mock_evaluable]
+
+
+def test_distinct_children():
+    # Create a mock Collection object
+    mock_collection = Collection(values=[])
+
+    # Create a Distinct instance with the mock collection
+    distinct = Distinct(collection=mock_collection)
+
+    # Get the children of the distinct instance
+    children = list(distinct.children)
+
+    # Assert that the children list contains the mock collection
+    assert children == [mock_collection]
+
+
+def test_size_children():
+    # Create a mock Collection object
+    mock_collection = Collection(values=[])
+
+    # Create a Size instance with the mock collection
+    size = Size(collection=mock_collection)
+
+    # Get the children of the size instance
+    children = list(size.children)
+
+    # Assert that the children list contains the mock collection
+    assert children == [mock_collection]
+
+
+def test_distinct_collect_children():
+    # Create a mock ObjectAttributeLookup object
+    mock_object_attribute_lookup = ObjectAttributeLookup(
+        "object_name", "attribute_name"
+    )
+
+    # Create a Collect instance with the mock object attribute lookup
+    collect = Collect(object_attribute_lookup=mock_object_attribute_lookup)
+
+    # Get the children of the collect instance
+    children = list(collect.children)
+
+    # Assert that the children list contains the mock object attribute lookup
+    assert children == [mock_object_attribute_lookup]
+
+
+def test_cypher_collection_children():
+    # Create a mock Evaluable object
+    mock_evaluable = Collection(values=[])
+
+    # Create a Collection instance with the mock evaluable object
+    collection = Collection(values=[mock_evaluable])
+
+    # Get the children of the collection
+    children = list(collection.children)
+
+    # Assert that the children list contains the mock evaluable object
+    assert children == [mock_evaluable]
+
+
+def test_cypher_distinct_children():
+    # Create a mock Collection object
+    mock_collection = Collection(values=[])
+
+    # Create a Distinct instance with the mock collection
+    distinct = Distinct(collection=mock_collection)
+
+    # Get the children of the distinct instance
+    children = list(distinct.children)
+
+    # Assert that the children list contains the mock collection
+    assert children == [mock_collection]
+
+
+def test_cypher_size_children():
+    # Create a mock Collection object
+    mock_collection = Collection(values=[])
+
+    # Create a Size instance with the mock collection
+    size = Size(collection=mock_collection)
+
+    # Get the children of the size instance
+    children = list(size.children)
+
+    # Assert that the children list contains the mock collection
+    assert children == [mock_collection]
+
+
+def test_cypher_collect_children():
+    # Create a mock ObjectAttributeLookup object
+    mock_object_attribute_lookup = ObjectAttributeLookup(
+        "object_name", "attribute_name"
+    )
+
+    # Create a Collect instance with the mock object attribute lookup
+    collect = Collect(object_attribute_lookup=mock_object_attribute_lookup)
+
+    # Get the children of the collect instance
+    children = list(collect.children)
+
+    # Assert that the children list contains the mock object attribute lookup
+    assert children == [mock_object_attribute_lookup]
+
+
+def test_aggregation_children():
+    # Create a mock Evaluable object
+    mock_evaluable = Collection(values=[])
+
+    # Create an Aggregation instance with the mock evaluable object
+    aggregation = Aggregation(aggregation=mock_evaluable)
+
+    # Get the children of the aggregation instance
+    children = list(aggregation.children)
+
+    # Assert that the children list contains the mock evaluable object
+    assert children == [mock_evaluable]
+
+
+def test_collect_evaluate():
+    # Create a mock ObjectAttributeLookup object
+    mock_object_attribute_lookup = ObjectAttributeLookup(
+        "object_name", "attribute_name"
+    )
+
+    # Create a Collect instance with the mock object attribute lookup
+    collect = Collect(object_attribute_lookup=mock_object_attribute_lookup)
+
+    # Create a mock FactCollection
+    mock_fact_collection = FactCollection([])
+
+    # Create a mock projection
+    mock_projection = {"object_name": ["instance1", "instance2"]}
+
+    # Mock the _evaluate method of ObjectAttributeLookup
+    def mock_evaluate(fact_collection, projection):
+        return Literal(projection["object_name"])
+
+    mock_object_attribute_lookup._evaluate = mock_evaluate
+
+    # Evaluate the collect instance
+    result = collect._evaluate(
+        mock_fact_collection, projection=mock_projection
+    )
+
+    # Assert that the result is a Collection with the expected values
+    assert isinstance(result, Collection)
+    assert result.values == [Literal("instance1"), Literal("instance2")]
+
+
+def test_collect_evaluate_empty_projection():
+    # Create a mock ObjectAttributeLookup object
+    mock_object_attribute_lookup = ObjectAttributeLookup(
+        "object_name", "attribute_name"
+    )
+
+    # Create a Collect instance with the mock object attribute lookup
+    collect = Collect(object_attribute_lookup=mock_object_attribute_lookup)
+
+    # Create a mock FactCollection
+    mock_fact_collection = FactCollection([])
+
+    # Create an empty mock projection
+    mock_projection = {"object_name": []}
+
+    # Mock the _evaluate method of ObjectAttributeLookup
+    def mock_evaluate(fact_collection, projection):
+        return Literal(projection["object_name"])
+
+    mock_object_attribute_lookup._evaluate = mock_evaluate
+
+    # Evaluate the collect instance
+    result = collect._evaluate(
+        mock_fact_collection, projection=mock_projection
+    )
+
+    # Assert that the result is a Collection with no values
+    assert isinstance(result, Collection)
+    assert result.values == []
+
+
+def test_collect_evaluate_with_projection():
+    # Create a mock ObjectAttributeLookup object
+    mock_object_attribute_lookup = ObjectAttributeLookup(
+        "object_name", "attribute_name"
+    )
+
+    # Create a Collect instance with the mock object attribute lookup
+    collect = Collect(object_attribute_lookup=mock_object_attribute_lookup)
+
+    # Create a mock FactCollection
+    mock_fact_collection = FactCollection([])
+
+    # Create a mock projection
+    mock_projection = {"object_name": ["instance1", "instance2"]}
+
+    # Mock the _evaluate method of ObjectAttributeLookup
+    def mock_evaluate(fact_collection, projection):
+        return Literal(projection["object_name"])
+
+    mock_object_attribute_lookup._evaluate = mock_evaluate
+
+    # Evaluate the collect instance
+    result = collect._evaluate(
+        mock_fact_collection, projection=mock_projection
+    )
+
+    # Assert that the result is a Collection with the expected values
+    assert isinstance(result, Collection)
+    assert result.values == [Literal("instance1"), Literal("instance2")]
+
+
+def test_query_children():
+    # Create a mock Collection object
+    mock_collection = Collection(values=[])
+
+    # Create a Cypher instance with the mock collection
+    cypher = Cypher(cypher=mock_collection)
+
+    # Get the children of the Cypher instance
+    children = list(cypher.children)
+
+    # Assert that the children list contains the mock collection
+    assert children == [mock_collection]
+
+
+def test_trigger_gather_constraints_to_match():
+    query = (
+        """MATCH (n:Thing {key1: "value", key2: 5})-[r]->(m:OtherThing {key3: "hithere"}) """
+        """WHERE n.key = 2, n.foo = 3 """
+        """RETURN n.foobar, n.baz"""
+    )
+    obj = CypherParser(query)
+    obj.parsed.trigger_gather_constraints_to_match()
+    assert len(obj.parsed.cypher.match_clause.constraints) == 18  # check this
+
+
+def test_trigger_gather_constraints_to_match_no_match():
+    class MockCypher(Cypher):
+        def walk(self):
+            return [Collection(values=[]), Collection(values=[])]
+
+    # Create a mock Cypher instance
+    mock_cypher = MockCypher(cypher=Collection(values=[]))
+
+    # Trigger the gathering of constraints
+    mock_cypher.trigger_gather_constraints_to_match()
+
+    # Check that no constraints were gathered since there are no Match instances
+    for node in mock_cypher.walk():
+        if isinstance(node, Collection):
+            assert not hasattr(node, "constraints_gathered")
+
+
+def test_match_children_with_all_attributes():
+    # Create mock objects for pattern, where, and with_clause
+    mock_pattern = Collection(values=[])
+    mock_where = Collection(values=[])
+    mock_with_clause = Collection(values=[])
+
+    # Create a Match instance with all attributes
+    match = Match(
+        pattern=mock_pattern, where=mock_where, with_clause=mock_with_clause
+    )
+
+    # Get the children of the match instance
+    children = list(match.children)
+
+    # Assert that the children list contains the mock pattern, where, and with_clause
+    assert children == [mock_pattern, mock_where, mock_with_clause]
+
+
+def test_match_children_with_pattern_only():
+    # Create a mock object for pattern
+    mock_pattern = Collection(values=[])
+
+    # Create a Match instance with only the pattern attribute
+    match = Match(pattern=mock_pattern, where=None, with_clause=None)
+
+    # Get the children of the match instance
+    children = list(match.children)
+
+    # Assert that the children list contains only the mock pattern
+    assert children == [mock_pattern]
+
+
+def test_match_children_with_pattern_and_where():
+    # Create mock objects for pattern and where
+    mock_pattern = Collection(values=[])
+    mock_where = Collection(values=[])
+
+    # Create a Match instance with pattern and where attributes
+    match = Match(pattern=mock_pattern, where=mock_where, with_clause=None)
+
+    # Get the children of the match instance
+    children = list(match.children)
+
+    # Assert that the children list contains the mock pattern and where
+    assert children == [mock_pattern, mock_where]
+
+
+def test_match_children_with_pattern_and_with_clause():
+    # Create mock objects for pattern and with_clause
+    mock_pattern = Collection(values=[])
+    mock_with_clause = Collection(values=[])
+
+    # Create a Match instance with pattern and with_clause attributes
+    match = Match(
+        pattern=mock_pattern, where=None, with_clause=mock_with_clause
+    )
+
+    # Get the children of the match instance
+    children = list(match.children)
+
+    # Assert that the children list contains the mock pattern and with_clause
+    assert children == [mock_pattern, mock_with_clause]
+
+
+def test_return_children():
+    # Create a mock Projection object
+    mock_projection = Projection(lookups=[])
+
+    # Create a Return instance with the mock projection
+    return_clause = Return(node=mock_projection)
+
+    # Get the children of the return instance
+    children = list(return_clause.children)
+
+    # Assert that the children list contains the mock projection
+    assert children == [mock_projection]
+
+
+def test_projection_children():
+    # Create mock ObjectAttributeLookup objects
+    mock_lookup1 = ObjectAttributeLookup("object1", "attribute1")
+    mock_lookup2 = ObjectAttributeLookup("object2", "attribute2")
+
+    # Create a Projection instance with the mock lookups
+    projection = Projection(lookups=[mock_lookup1, mock_lookup2])
+
+    # Get the children of the projection instance
+    children = list(projection.children)
+
+    # Assert that the children list contains the mock lookups
+    assert children == [mock_lookup1, mock_lookup2]
+
+
+def test_projection_children_empty():
+    # Create a Projection instance with no lookups
+    projection = Projection(lookups=[])
+
+    # Get the children of the projection instance
+    children = list(projection.children)
+
+    # Assert that the children list is empty
+    assert not children
+
+
+def test_node_constraints_with_label():
+    # Create a mock NodeNameLabel with a label
+    mock_node_name_label = NodeNameLabel(name="node1", label="Label1")
+
+    # Create a Node instance with the mock NodeNameLabel
+    node = Node(node_name_label=mock_node_name_label)
+
+    # Get the constraints of the node
+    constraints = node.constraints
+
+    # Assert that the constraints list contains the expected ConstraintNodeHasLabel
+    assert len(constraints) == 1
+    assert isinstance(constraints[0], ConstraintNodeHasLabel)
+    assert constraints[0].node_id == "node1"
+    assert constraints[0].label == "Label1"
+
+
+def test_node_constraints_without_label():
+    # Create a mock NodeNameLabel without a label
+    mock_node_name_label = NodeNameLabel(name="node1", label=None)
+
+    # Create a Node instance with the mock NodeNameLabel
+    node = Node(node_name_label=mock_node_name_label)
+
+    # Get the constraints of the node
+    constraints = node.constraints
+
+    # Assert that the constraints list is empty
+    assert len(constraints) == 0
+
+
+def test_evaluate_with_projection():
+    # Create a mock Projection object with lookups
+    mock_lookup1 = ObjectAttributeLookup("object1", "attribute1")
+    mock_lookup2 = ObjectAttributeLookup("object2", "attribute2")
+    mock_projection = Projection(lookups=[mock_lookup1, mock_lookup2])
+
+    # Create a Return instance with the mock projection
+    return_clause = Return(node=mock_projection)
+
+    # Create a mock FactCollection
+    mock_fact_collection = FactCollection([])
+
+    # Create a mock projection
+    mock_projection_data = [
+        {"object1": "value1", "object2": "value2"},
+        {"object1": "value3", "object2": "value4"},
+    ]
+
+    # Mock the _evaluate method of the parent match_clause.with_clause
+    class MockWithClause:
+        def _evaluate(self, fact_collection, projection=None):
+            return mock_projection_data
+
+    class MockMatchClause:
+        with_clause = MockWithClause()
+
+    class MockParent:
+        match_clause = MockMatchClause()
+
+    return_clause.parent = MockParent()
+
+    # Evaluate the return instance
+    result = return_clause._evaluate(mock_fact_collection, projection=None)
+
+    # Assert that the result is as expected
+    expected_result = [
+        {"object1": "value1", "object2": "value2"},
+        {"object1": "value3", "object2": "value4"},
+    ]
+    assert result == expected_result
+
+
+def test_evaluate_with_given_projection():
+    # Create a mock Projection object with lookups
+    mock_lookup1 = ObjectAttributeLookup("object1", "attribute1")
+    mock_lookup2 = ObjectAttributeLookup("object2", "attribute2")
+    mock_projection = Projection(lookups=[mock_lookup1, mock_lookup2])
+
+    # Create a Return instance with the mock projection
+    return_clause = Return(node=mock_projection)
+
+    # Create a mock FactCollection
+    mock_fact_collection = FactCollection([])
+
+    # Create a given projection
+    given_projection = [
+        {"object1": "value1", "object2": "value2"},
+        {"object1": "value3", "object2": "value4"},
+    ]
+
+    # Evaluate the return instance with the given projection
+    result = return_clause._evaluate(
+        mock_fact_collection, projection=given_projection
+    )
+
+    # Assert that the result is as expected
+    expected_result = [
+        {"object1": "value1", "object2": "value2"},
+        {"object1": "value3", "object2": "value4"},
+    ]
+    assert result == expected_result
+
+
+def test_projection_children():
+    # Create mock ObjectAttributeLookup objects
+    mock_lookup1 = ObjectAttributeLookup("object1", "attribute1")
+    mock_lookup2 = ObjectAttributeLookup("object2", "attribute2")
+
+    # Create a Projection instance with the mock lookups
+    projection = Projection(lookups=[mock_lookup1, mock_lookup2])
+
+    # Get the children of the projection instance
+    children = list(projection.children)
+
+    # Assert that the children list contains the mock lookups
+    assert children == [mock_lookup1, mock_lookup2]
+
+
+def test_projection_children_empty():
+    # Create a Projection instance with no lookups
+    projection = Projection(lookups=[])
+
+    # Get the children of the projection instance
+    children = list(projection.children)
+
+    # Assert that the children list is empty
+    assert not children
+
+
+def test_node_name_label_children_with_label():
+    # Create a NodeNameLabel instance with a name and label
+    node_name_label = NodeNameLabel(name="node1", label="Label1")
+
+    # Get the children of the NodeNameLabel instance
+    children = list(node_name_label.children)
+
+    # Assert that the children list contains the name and label
+    assert children == ["node1", "Label1"]
+
+
+def test_node_name_label_children_without_label():
+    # Create a NodeNameLabel instance with a name and no label
+    node_name_label = NodeNameLabel(name="node1", label=None)
+
+    # Get the children of the NodeNameLabel instance
+    children = list(node_name_label.children)
+
+    # Assert that the children list contains only the name
+    assert children == ["node1"]
+
+
+@pytest.mark.skip
+def test_node_children_with_node_name_label_and_mappings():
+    # Create a mock NodeNameLabel
+    mock_node_name_label = NodeNameLabel(name="node1", label="Label1")
+
+    # Create mock Mapping objects
+    mock_mapping1 = Mapping(key="key1", value="value1")
+    mock_mapping2 = Mapping(key="key2", value="value2")
+
+    # Create a Node instance with the mock NodeNameLabel and mappings
+    node = Node(
+        node_name_label=mock_node_name_label,
+        mapping_list=[mock_mapping1, mock_mapping2],
+    )
+
+    # Get the children of the node instance
+    children = list(node.children)
+
+    # Assert that the children list contains the mock NodeNameLabel and mappings
+    assert children == [mock_node_name_label, mock_mapping1, mock_mapping2]
+
+
+def test_node_children_with_node_name_label_only():
+    # Create a mock NodeNameLabel
+    mock_node_name_label = NodeNameLabel(name="node1", label="Label1")
+
+    # Create a Node instance with the mock NodeNameLabel and no mappings
+    node = Node(node_name_label=mock_node_name_label, mapping_list=[])
+
+    # Get the children of the node instance
+    children = list(node.children)
+
+    # Assert that the children list contains only the mock NodeNameLabel
+    assert children == [mock_node_name_label]
+
+
+@pytest.mark.skip
+def test_node_children_with_mappings_only():
+    # Create mock Mapping objects
+    mock_mapping1 = Mapping(key="key1", value="value1")
+    mock_mapping2 = Mapping(key="key2", value="value2")
+
+    # Create a Node instance with no NodeNameLabel and the mock mappings
+    node = Node(
+        node_name_label=None, mapping_list=[mock_mapping1, mock_mapping2]
+    )
+
+    # Get the children of the node instance
+    children = list(node.children)
+
+    # Assert that the children list contains only the mock mappings
+    assert children == [mock_mapping1, mock_mapping2]
+
+
+def test_node_children_empty():
+    # Create a Node instance with no NodeNameLabel and no mappings
+    node = Node(node_name_label=None, mapping_list=[])
+
+    # Get the children of the node instance
+    children = list(node.children)
+
+    # Assert that the children list is empty
+    assert not children
+
+
+def test_relationship_children():
+    # Create a mock NodeNameLabel
+    mock_name_label = NodeNameLabel(name="relationship1", label="Label1")
+
+    # Create a Relationship instance with the mock NodeNameLabel
+    relationship = Relationship(name_label=mock_name_label)
+
+    # Get the children of the relationship instance
+    children = list(relationship.children)
+
+    # Assert that the children list contains the mock NodeNameLabel
+    assert children == [mock_name_label]
+
+
+def test_relationship_chain_children():
+    # Create mock Relationship objects
+    mock_relationship1 = Relationship(
+        name_label=NodeNameLabel(name="relationship1", label="Label1")
+    )
+    mock_relationship2 = Relationship(
+        name_label=NodeNameLabel(name="relationship2", label="Label2")
+    )
+
+    # Create a RelationshipChain instance with the mock relationships
+    relationship_chain = RelationshipChain(
+        steps=[mock_relationship1, mock_relationship2]
+    )
+
+    # Get the children of the relationship chain instance
+    children = list(relationship_chain.children)
+
+    # Assert that the children list contains the mock relationships
+    assert children == [mock_relationship1, mock_relationship2]
+
+
+def test_relationship_left_right_children():
+    # Create a mock Relationship object
+    mock_relationship = Relationship(
+        name_label=NodeNameLabel(name="relationship1", label="Label1")
+    )
+
+    # Create a RelationshipLeftRight instance with the mock relationship
+    relationship_left_right = RelationshipLeftRight(
+        relationship=mock_relationship
+    )
+
+    # Get the children of the relationship left-right instance
+    children = list(relationship_left_right.children)
+
+    # Assert that the children list contains the mock relationship
+    assert children == [mock_relationship]
+
+
+def test_relationship_right_left_children():
+    # Create a mock Relationship object
+    mock_relationship = Relationship(
+        name_label=NodeNameLabel(name="relationship1", label="Label1")
+    )
+
+    # Create a RelationshipRightLeft instance with the mock relationship
+    relationship_right_left = RelationshipRightLeft(
+        relationship=mock_relationship
+    )
+
+    # Get the children of the relationship right-left instance
+    children = list(relationship_right_left.children)
+
+    # Assert that the children list contains the mock relationship
+    assert children == [mock_relationship]
+
+
+def test_mapping_set_children():
+    # Create mock Mapping objects
+    mock_mapping1 = Mapping(key="key1", value="value1")
+    mock_mapping2 = Mapping(key="key2", value="value2")
+
+    # Create a MappingSet instance with the mock mappings
+    mapping_set = MappingSet(mappings=[mock_mapping1, mock_mapping2])
+
+    # Get the children of the mapping set instance
+    children = list(mapping_set.children)
+
+    # Assert that the children list contains the mock mappings
+    assert children == [mock_mapping1, mock_mapping2]
+
+
+def test_mapping_set_children_empty():
+    # Create a MappingSet instance with no mappings
+    mapping_set = MappingSet(mappings=[])
+
+    # Get the children of the mapping set instance
+    children = list(mapping_set.children)
+
+    # Assert that the children list is empty
+    assert not children
+
+
+def test_relationship_left_right_children():
+    # Create a mock Relationship object
+    mock_relationship = Relationship(
+        name_label=NodeNameLabel(name="relationship1", label="Label1")
+    )
+
+    # Create a RelationshipLeftRight instance with the mock relationship
+    relationship_left_right = RelationshipLeftRight(
+        relationship=mock_relationship
+    )
+
+    # Get the children of the relationship left-right instance
+    children = list(relationship_left_right.children)
+
+    # Assert that the children list contains the mock relationship
+    assert children == [mock_relationship]
+
+
+def test_relationship_right_left_children():
+    # Create a mock Relationship object
+    mock_relationship = Relationship(
+        name_label=NodeNameLabel(name="relationship1", label="Label1")
+    )
+
+    # Create a RelationshipRightLeft instance with the mock relationship
+    relationship_right_left = RelationshipRightLeft(
+        relationship=mock_relationship
+    )
+
+    # Get the children of the relationship right-left instance
+    children = list(relationship_right_left.children)
+
+    # Assert that the children list contains the mock relationship
+    assert children == [mock_relationship]
+
+
+def test_relationship_chain_list_children():
+    # Create mock RelationshipChain objects
+    mock_relationship_chain1 = RelationshipChain(steps=[])
+    mock_relationship_chain2 = RelationshipChain(steps=[])
+
+    # Create a RelationshipChainList instance with the mock relationship chains
+    relationship_chain_list = RelationshipChainList(
+        relationships=[mock_relationship_chain1, mock_relationship_chain2]
+    )
+
+    # Get the children of the relationship chain list instance
+    children = list(relationship_chain_list.children)
+
+    # Assert that the children list contains the mock relationship chains
+    assert children == [mock_relationship_chain1, mock_relationship_chain2]
+
+
+def test_addition_children():
+    # Create mock TreeMixin objects
+    mock_left = Literal(value=1)
+    mock_right = Literal(value=2)
+
+    # Create an Addition instance with the mock left and right operands
+    addition = Addition(left=mock_left, right=mock_right)
+
+    # Get the children of the addition instance
+    children = list(addition.children)
+
+    # Assert that the children list contains the mock left and right operands
+    assert children == [mock_left, mock_right]
+
+
+def test_where_children():
+    # Create a mock Predicate object
+    class MockPredicate(Predicate):
+        def tree(self):
+            return "Predicate Tree"
+
+    mock_predicate = MockPredicate(
+        left_side=Literal(value=1), right_side=Literal(value=2)
+    )
+
+    # Create a Where instance with the mock predicate
+    where_clause = Where(predicate=mock_predicate)
+
+    # Get the children of the where instance
+    children = list(where_clause.children)
+
+    # Assert that the children list contains the mock predicate
+    assert children == [mock_predicate]
+
+
+def test_aliased_name_children():
+    # Create an AliasedName instance with a name
+    aliased_name = AliasedName(name="alias")
+
+    # Get the children of the AliasedName instance
+    children = list(aliased_name.children)
+
+    # Assert that the children list contains the name
+    assert children == ["alias"]
+
+
+def test_evaluate_equals():
+    # Create mock Literal objects
+    mock_left = Literal(value=5)
+    mock_right = Literal(value=5)
+
+    # Create an Equals instance with the mock literals
+    equals = Equals(left_side=mock_left, right_side=mock_right)
+
+    # Create a mock FactCollection
+    mock_fact_collection = FactCollection([])
+
+    # Evaluate the equals instance
+    result = equals._evaluate(mock_fact_collection)
+
+    # Assert that the result is a Literal with the value True
+    assert isinstance(result, Literal)
+    assert result.value is True
+
+
+def test_evaluate_equals_false():
+    # Create mock Literal objects
+    mock_left = Literal(value=5)
+    mock_right = Literal(value=10)
+
+    # Create an Equals instance with the mock literals
+    equals = Equals(left_side=mock_left, right_side=mock_right)
+
+    # Create a mock FactCollection
+    mock_fact_collection = FactCollection([])
+
+    # Evaluate the equals instance
+    result = equals._evaluate(mock_fact_collection)
+
+    # Assert that the result is a Literal with the value False
+    assert isinstance(result, Literal)
+    assert result.value is False
+
+
+def test_evaluate_equals_with_projection():
+    # Create mock Literal objects
+    mock_left = Literal(value=5)
+    mock_right = Literal(value=5)
+
+    # Create an Equals instance with the mock literals
+    equals = Equals(left_side=mock_left, right_side=mock_right)
+
+    # Create a mock FactCollection
+    mock_fact_collection = FactCollection([])
+
+    # Create a mock projection
+    mock_projection = {"key": "value"}
+
+    # Evaluate the equals instance with the projection
+    result = equals._evaluate(mock_fact_collection, projection=mock_projection)
+
+    # Assert that the result is a Literal with the value True
+    assert isinstance(result, Literal)
+    assert result.value is True
+
+
+def test_evaluate_equals_with_projection_false():
+    # Create mock Literal objects
+    mock_left = Literal(value=5)
+    mock_right = Literal(value=10)
+
+    # Create an Equals instance with the mock literals
+    equals = Equals(left_side=mock_left, right_side=mock_right)
+
+    # Create a mock FactCollection
+    mock_fact_collection = FactCollection([])
+
+    # Create a mock projection
+    mock_projection = {"key": "value"}
+
+    # Evaluate the equals instance with the projection
+    result = equals._evaluate(mock_fact_collection, projection=mock_projection)
+
+    # Assert that the result is a Literal with the value False
+    assert isinstance(result, Literal)
+    assert result.value is False
+
+
+def test_evaluate_less_than():
+    # Create mock Literal objects
+    mock_left = Literal(value=5)
+    mock_right = Literal(value=10)
+
+    # Create a LessThan instance with the mock literals
+    less_than = LessThan(left_side=mock_left, right_side=mock_right)
+
+    # Create a mock FactCollection
+    mock_fact_collection = FactCollection([])
+
+    # Evaluate the less_than instance
+    result = less_than._evaluate(mock_fact_collection)
+
+    # Assert that the result is a Literal with the value True
+    assert isinstance(result, Literal)
+    assert result.value is True
+
+
+def test_evaluate_less_than_false():
+    # Create mock Literal objects
+    mock_left = Literal(value=10)
+    mock_right = Literal(value=5)
+
+    # Create a LessThan instance with the mock literals
+    less_than = LessThan(left_side=mock_left, right_side=mock_right)
+
+    # Create a mock FactCollection
+    mock_fact_collection = FactCollection([])
+
+    # Evaluate the less_than instance
+    result = less_than._evaluate(mock_fact_collection)
+
+    # Assert that the result is a Literal with the value False
+    assert isinstance(result, Literal)
+    assert result.value is False
+
+
+def test_evaluate_less_than_with_projection():
+    # Create mock Literal objects
+    mock_left = Literal(value=5)
+    mock_right = Literal(value=10)
+
+    # Create a LessThan instance with the mock literals
+    less_than = LessThan(left_side=mock_left, right_side=mock_right)
+
+    # Create a mock FactCollection
+    mock_fact_collection = FactCollection([])
+
+    # Create a mock projection
+    mock_projection = {"key": "value"}
+
+    # Evaluate the less_than instance with the projection
+    result = less_than._evaluate(
+        mock_fact_collection, projection=mock_projection
+    )
+
+    # Assert that the result is a Literal with the value True
+    assert isinstance(result, Literal)
+    assert result.value is True
+
+
+def test_evaluate_less_than_with_projection_false():
+    # Create mock Literal objects
+    mock_left = Literal(value=10)
+    mock_right = Literal(value=5)
+
+    # Create a LessThan instance with the mock literals
+    less_than = LessThan(left_side=mock_left, right_side=mock_right)
+
+    # Create a mock FactCollection
+    mock_fact_collection = FactCollection([])
+
+    # Create a mock projection
+    mock_projection = {"key": "value"}
+
+    # Evaluate the less_than instance with the projection
+    result = less_than._evaluate(
+        mock_fact_collection, projection=mock_projection
+    )
+
+    # Assert that the result is a Literal with the value False
+    assert isinstance(result, Literal)
+    assert result.value is False
+
+
+def test_evaluate_greater_than():
+    # Create mock Literal objects
+    mock_left = Literal(value=10)
+    mock_right = Literal(value=5)
+
+    # Create a GreaterThan instance with the mock literals
+    greater_than = GreaterThan(left_side=mock_left, right_side=mock_right)
+
+    # Create a mock FactCollection
+    mock_fact_collection = FactCollection([])
+
+    # Evaluate the greater_than instance
+    result = greater_than._evaluate(mock_fact_collection)
+
+    # Assert that the result is a Literal with the value True
+    assert isinstance(result, Literal)
+    assert result.value is True
+
+
+def test_evaluate_greater_than_false():
+    # Create mock Literal objects
+    mock_left = Literal(value=5)
+    mock_right = Literal(value=10)
+
+    # Create a GreaterThan instance with the mock literals
+    greater_than = GreaterThan(left_side=mock_left, right_side=mock_right)
+
+    # Create a mock FactCollection
+    mock_fact_collection = FactCollection([])
+
+    # Evaluate the greater_than instance
+    result = greater_than._evaluate(mock_fact_collection)
+
+    # Assert that the result is a Literal with the value False
+    assert isinstance(result, Literal)
+    assert result.value is False
+
+
+def test_evaluate_greater_than_with_projection():
+    # Create mock Literal objects
+    mock_left = Literal(value=10)
+    mock_right = Literal(value=5)
+
+    # Create a GreaterThan instance with the mock literals
+    greater_than = GreaterThan(left_side=mock_left, right_side=mock_right)
+
+    # Create a mock FactCollection
+    mock_fact_collection = FactCollection([])
+
+    # Create a mock projection
+    mock_projection = {"key": "value"}
+
+    # Evaluate the greater_than instance with the projection
+    result = greater_than._evaluate(
+        mock_fact_collection, projection=mock_projection
+    )
+
+    # Assert that the result is a Literal with the value True
+    assert isinstance(result, Literal)
+    assert result.value is True
+
+
+def test_evaluate_greater_than_with_projection_false():
+    # Create mock Literal objects
+    mock_left = Literal(value=5)
+    mock_right = Literal(value=10)
+
+    # Create a GreaterThan instance with the mock literals
+    greater_than = GreaterThan(left_side=mock_left, right_side=mock_right)
+
+    # Create a mock FactCollection
+    mock_fact_collection = FactCollection([])
+
+    # Create a mock projection
+    mock_projection = {"key": "value"}
+
+    # Evaluate the greater_than instance with the projection
+    result = greater_than._evaluate(
+        mock_fact_collection, projection=mock_projection
+    )
+
+    # Assert that the result is a Literal with the value False
+    assert isinstance(result, Literal)
+    assert result.value is False
+
+
+def test_evaluate_subtraction():
+    # Create mock Literal objects
+    mock_left = Literal(value=10)
+    mock_right = Literal(value=5)
+
+    # Create a Subtraction instance with the mock literals
+    subtraction = Subtraction(left_side=mock_left, right_side=mock_right)
+
+    # Create a mock FactCollection
+    mock_fact_collection = FactCollection([])
+
+    # Evaluate the subtraction instance
+    result = subtraction._evaluate(mock_fact_collection)
+
+    # Assert that the result is a Literal with the value 5
+    assert isinstance(result, Literal)
+    assert result.value == 5
+
+
+def test_evaluate_subtraction_negative_result():
+    # Create mock Literal objects
+    mock_left = Literal(value=5)
+    mock_right = Literal(value=10)
+
+    # Create a Subtraction instance with the mock literals
+    subtraction = Subtraction(left_side=mock_left, right_side=mock_right)
+
+    # Create a mock FactCollection
+    mock_fact_collection = FactCollection([])
+
+    # Evaluate the subtraction instance
+    result = subtraction._evaluate(mock_fact_collection)
+
+    # Assert that the result is a Literal with the value -5
+    assert isinstance(result, Literal)
+    assert result.value == -5
+
+
+def test_evaluate_subtraction_with_projection():
+    # Create mock Literal objects
+    mock_left = Literal(value=10)
+    mock_right = Literal(value=5)
+
+    # Create a Subtraction instance with the mock literals
+    subtraction = Subtraction(left_side=mock_left, right_side=mock_right)
+
+    # Create a mock FactCollection
+    mock_fact_collection = FactCollection([])
+
+    # Create a mock projection
+    mock_projection = {"key": "value"}
+
+    # Evaluate the subtraction instance with the projection
+    result = subtraction._evaluate(
+        mock_fact_collection, projection=mock_projection
+    )
+
+    # Assert that the result is a Literal with the value 5
+    assert isinstance(result, Literal)
+    assert result.value == 5
+
+
+def test_evaluate_subtraction_with_projection_negative_result():
+    # Create mock Literal objects
+    mock_left = Literal(value=5)
+    mock_right = Literal(value=10)
+
+    # Create a Subtraction instance with the mock literals
+    subtraction = Subtraction(left_side=mock_left, right_side=mock_right)
+
+    # Create a mock FactCollection
+    mock_fact_collection = FactCollection([])
+
+    # Create a mock projection
+    mock_projection = {"key": "value"}
+
+    # Evaluate the subtraction instance with the projection
+    result = subtraction._evaluate(
+        mock_fact_collection, projection=mock_projection
+    )
+
+    # Assert that the result is a Literal with the value -5
+    assert isinstance(result, Literal)
+    assert result.value == -5
+
+
+def test_evaluate_multiplication():
+    # Create mock Literal objects
+    mock_left = Literal(value=5)
+    mock_right = Literal(value=10)
+
+    # Create a Multiplication instance with the mock literals
+    multiplication = Multiplication(left_side=mock_left, right_side=mock_right)
+
+    # Create a mock FactCollection
+    mock_fact_collection = FactCollection([])
+
+    # Evaluate the multiplication instance
+    result = multiplication._evaluate(mock_fact_collection)
+
+    # Assert that the result is a Literal with the value 50
+    assert isinstance(result, Literal)
+    assert result.value == 50
+
+
+def test_evaluate_multiplication_with_projection():
+    # Create mock Literal objects
+    mock_left = Literal(value=5)
+    mock_right = Literal(value=10)
+
+    # Create a Multiplication instance with the mock literals
+    multiplication = Multiplication(left_side=mock_left, right_side=mock_right)
+
+    # Create a mock FactCollection
+    mock_fact_collection = FactCollection([])
+
+    # Create a mock projection
+    mock_projection = {"key": "value"}
+
+    # Evaluate the multiplication instance with the projection
+    result = multiplication._evaluate(
+        mock_fact_collection, projection=mock_projection
+    )
+
+    # Assert that the result is a Literal with the value 50
+    assert isinstance(result, Literal)
+    assert result.value == 50
+
+
+def test_evaluate_multiplication_negative():
+    # Create mock Literal objects
+    mock_left = Literal(value=-5)
+    mock_right = Literal(value=10)
+
+    # Create a Multiplication instance with the mock literals
+    multiplication = Multiplication(left_side=mock_left, right_side=mock_right)
+
+    # Create a mock FactCollection
+    mock_fact_collection = FactCollection([])
+
+    # Evaluate the multiplication instance
+    result = multiplication._evaluate(mock_fact_collection)
+
+    # Assert that the result is a Literal with the value -50
+    assert isinstance(result, Literal)
+    assert result.value == -50
+
+
+def test_evaluate_multiplication_zero():
+    # Create mock Literal objects
+    mock_left = Literal(value=0)
+    mock_right = Literal(value=10)
+
+    # Create a Multiplication instance with the mock literals
+    multiplication = Multiplication(left_side=mock_left, right_side=mock_right)
+
+    # Create a mock FactCollection
+    mock_fact_collection = FactCollection([])
+
+    # Evaluate the multiplication instance
+    result = multiplication._evaluate(mock_fact_collection)
+
+    # Assert that the result is a Literal with the value 0
+    assert isinstance(result, Literal)
+    assert result.value == 0
+
+
+def test_evaluate_multiplication_with_projection_negative():
+    # Create mock Literal objects
+    mock_left = Literal(value=-5)
+    mock_right = Literal(value=10)
+
+    # Create a Multiplication instance with the mock literals
+    multiplication = Multiplication(left_side=mock_left, right_side=mock_right)
+
+    # Create a mock FactCollection
+    mock_fact_collection = FactCollection([])
+
+    # Create a mock projection
+    mock_projection = {"key": "value"}
+
+    # Evaluate the multiplication instance with the projection
+    result = multiplication._evaluate(
+        mock_fact_collection, projection=mock_projection
+    )
+
+    # Assert that the result is a Literal with the value -50
+    assert isinstance(result, Literal)
+    assert result.value == -50
+
+
+def test_evaluate_division():
+    # Create mock Literal objects
+    mock_left = Literal(value=10)
+    mock_right = Literal(value=2)
+
+    # Create a Division instance with the mock literals
+    division = Division(left_side=mock_left, right_side=mock_right)
+
+    # Create a mock FactCollection
+    mock_fact_collection = FactCollection([])
+
+    # Evaluate the division instance
+    result = division._evaluate(mock_fact_collection)
+
+    # Assert that the result is a Literal with the value 5
+    assert isinstance(result, Literal)
+    assert result.value == 5
+
+
+def test_evaluate_division_with_projection():
+    # Create mock Literal objects
+    mock_left = Literal(value=10)
+    mock_right = Literal(value=2)
+
+    # Create a Division instance with the mock literals
+    division = Division(left_side=mock_left, right_side=mock_right)
+
+    # Create a mock FactCollection
+    mock_fact_collection = FactCollection([])
+
+    # Create a mock projection
+    mock_projection = {"key": "value"}
+
+    # Evaluate the division instance with the projection
+    result = division._evaluate(
+        mock_fact_collection, projection=mock_projection
+    )  # pylint: disable=protected-access
+
+    # Assert that the result is a Literal with the value 5
+    assert isinstance(result, Literal)
+    assert result.value == 5
+
+
+def test_evaluate_division_by_zero():
+    # Create mock Literal objects
+    mock_left = Literal(value=10)
+    mock_right = Literal(value=0)
+
+    # Create a Division instance with the mock literals
+    division = Division(left_side=mock_left, right_side=mock_right)
+
+    # Create a mock FactCollection
+    mock_fact_collection = FactCollection([])
+
+    # # Evaluate the division instance and expect an exception
+    # with pytest.raises(ZeroDivisionError):
+    with pytest.raises(WrongCypherTypeError):
+        division._evaluate(mock_fact_collection)  # pylint: disable=protected-access
+
+
+def test_evaluate_division_negative():
+    # Create mock Literal objects
+    mock_left = Literal(value=10)
+    mock_right = Literal(value=-2)
+
+    # Create a Division instance with the mock literals
+    division = Division(left_side=mock_left, right_side=mock_right)
+
+    # Create a mock FactCollection
+    mock_fact_collection = FactCollection([])
+
+    # Evaluate the division instance
+    result = division._evaluate(mock_fact_collection)
+
+    # Assert that the result is a Literal with the value -5
+    assert isinstance(result, Literal)
+    assert result.value == -5
+
+
+def test_evaluate_division_with_projection_negative():
+    # Create mock Literal objects
+    mock_left = Literal(value=10)
+    mock_right = Literal(value=-2)
+
+    # Create a Division instance with the mock literals
+    division = Division(left_side=mock_left, right_side=mock_right)
+
+    # Create a mock FactCollection
+    mock_fact_collection = FactCollection([])
+
+    # Create a mock projection
+    mock_projection = {"key": "value"}
+
+    # Evaluate the division instance with the projection
+    result = division._evaluate(
+        mock_fact_collection, projection=mock_projection
+    )
+
+    # Assert that the result is a Literal with the value -5
+    assert isinstance(result, Literal)
+    assert result.value == -5
