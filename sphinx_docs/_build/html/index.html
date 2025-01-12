@@ -91,7 +91,7 @@ all the boring work of writing a parser and generating an AST.</p>
 <section id="how-to-use-it">
 <h3>How to use it<a class="headerlink" href="#how-to-use-it" title="Link to this heading"></a></h3>
 <p>Don’t. But if you really want to, then:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pycypher.parser</span> <span class="kn">import</span> <span class="n">CypherParser</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">pycypher.parser</span><span class="w"> </span><span class="kn">import</span> <span class="n">CypherParser</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">cypher</span> <span class="o">=</span> <span class="n">CypherParser</span><span class="p">(</span><span class="s2">&quot;MATCH (n:Thing) RETURN n.foo&quot;</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">cypher</span><span class="o">.</span><span class="n">parsed</span><span class="o">.</span><span class="n">print_tree</span><span class="p">()</span>
 
@@ -251,8 +251,13 @@ kids are using these days.</p>
 <li class="toctree-l1"><a class="reference internal" href="api.html">API</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="generated/pycypher.html">Parser</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="generated/pycypher.html#pycypher.cypher_parser.CypherParser"><code class="docutils literal notranslate"><span class="pre">CypherParser</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/pycypher.html#pycypher.cypher_parser.p_aggregation"><code class="docutils literal notranslate"><span class="pre">p_aggregation()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="generated/pycypher.html#pycypher.cypher_parser.p_alias"><code class="docutils literal notranslate"><span class="pre">p_alias()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/pycypher.html#pycypher.cypher_parser.p_aliased_name"><code class="docutils literal notranslate"><span class="pre">p_aliased_name()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/pycypher.html#pycypher.cypher_parser.p_binary_expression"><code class="docutils literal notranslate"><span class="pre">p_binary_expression()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/pycypher.html#pycypher.cypher_parser.p_binary_function"><code class="docutils literal notranslate"><span class="pre">p_binary_function()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="generated/pycypher.html#pycypher.cypher_parser.p_binary_operator"><code class="docutils literal notranslate"><span class="pre">p_binary_operator()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/pycypher.html#pycypher.cypher_parser.p_collect"><code class="docutils literal notranslate"><span class="pre">p_collect()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="generated/pycypher.html#pycypher.cypher_parser.p_cypher"><code class="docutils literal notranslate"><span class="pre">p_cypher()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="generated/pycypher.html#pycypher.cypher_parser.p_float"><code class="docutils literal notranslate"><span class="pre">p_float()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="generated/pycypher.html#pycypher.cypher_parser.p_incomplete_relationship_chain"><code class="docutils literal notranslate"><span class="pre">p_incomplete_relationship_chain()</span></code></a></li>
@@ -274,6 +279,8 @@ kids are using these days.</p>
 <li class="toctree-l3"><a class="reference internal" href="generated/pycypher.html#pycypher.cypher_parser.p_right_left"><code class="docutils literal notranslate"><span class="pre">p_right_left()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="generated/pycypher.html#pycypher.cypher_parser.p_string"><code class="docutils literal notranslate"><span class="pre">p_string()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="generated/pycypher.html#pycypher.cypher_parser.p_where"><code class="docutils literal notranslate"><span class="pre">p_where()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/pycypher.html#pycypher.cypher_parser.p_with_as_series"><code class="docutils literal notranslate"><span class="pre">p_with_as_series()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/pycypher.html#pycypher.cypher_parser.p_with_clause"><code class="docutils literal notranslate"><span class="pre">p_with_clause()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="generated/pycypher.cypher_lexer.html">Lexer</a><ul>
@@ -284,6 +291,7 @@ kids are using these days.</p>
 <li class="toctree-l2"><a class="reference internal" href="generated/pycypher.exceptions.html">Exceptions</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="generated/pycypher.exceptions.html#pycypher.exceptions.CypherParsingError"><code class="docutils literal notranslate"><span class="pre">CypherParsingError</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="generated/pycypher.exceptions.html#pycypher.exceptions.UnexpectedCypherStructureError"><code class="docutils literal notranslate"><span class="pre">UnexpectedCypherStructureError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/pycypher.exceptions.html#pycypher.exceptions.WrongCypherTypeError"><code class="docutils literal notranslate"><span class="pre">WrongCypherTypeError</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="generated/pycypher.fact.html">Facts</a><ul>
@@ -291,6 +299,7 @@ kids are using these days.</p>
 <li class="toctree-l3"><a class="reference internal" href="generated/pycypher.fact.html#pycypher.fact.FactNodeHasAttributeWithValue"><code class="docutils literal notranslate"><span class="pre">FactNodeHasAttributeWithValue</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="generated/pycypher.fact.html#pycypher.fact.FactNodeHasLabel"><code class="docutils literal notranslate"><span class="pre">FactNodeHasLabel</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="generated/pycypher.fact.html#pycypher.fact.FactNodeRelatedToNode"><code class="docutils literal notranslate"><span class="pre">FactNodeRelatedToNode</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/pycypher.fact.html#pycypher.fact.FactRelationshipHasAttributeWithValue"><code class="docutils literal notranslate"><span class="pre">FactRelationshipHasAttributeWithValue</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="generated/pycypher.fact.html#pycypher.fact.FactRelationshipHasLabel"><code class="docutils literal notranslate"><span class="pre">FactRelationshipHasLabel</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="generated/pycypher.fact.html#pycypher.fact.FactRelationshipHasSourceNode"><code class="docutils literal notranslate"><span class="pre">FactRelationshipHasSourceNode</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="generated/pycypher.fact.html#pycypher.fact.FactRelationshipHasTargetNode"><code class="docutils literal notranslate"><span class="pre">FactRelationshipHasTargetNode</span></code></a></li>
@@ -298,8 +307,24 @@ kids are using these days.</p>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="generated/pycypher.logger.html">Logger</a></li>
 <li class="toctree-l2"><a class="reference internal" href="generated/pycypher.node_classes.html">AST Node Classes</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Addition"><code class="docutils literal notranslate"><span class="pre">Addition</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Addition.children"><code class="docutils literal notranslate"><span class="pre">Addition.children</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Addition.tree"><code class="docutils literal notranslate"><span class="pre">Addition.tree()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Aggregation"><code class="docutils literal notranslate"><span class="pre">Aggregation</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Aggregation.children"><code class="docutils literal notranslate"><span class="pre">Aggregation.children</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Aggregation.tree"><code class="docutils literal notranslate"><span class="pre">Aggregation.tree()</span></code></a></li>
+</ul>
+</li>
 <li class="toctree-l3"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Alias"><code class="docutils literal notranslate"><span class="pre">Alias</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Alias.children"><code class="docutils literal notranslate"><span class="pre">Alias.children</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Alias.tree"><code class="docutils literal notranslate"><span class="pre">Alias.tree()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.AliasedName"><code class="docutils literal notranslate"><span class="pre">AliasedName</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.AliasedName.children"><code class="docutils literal notranslate"><span class="pre">AliasedName.children</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.AliasedName.tree"><code class="docutils literal notranslate"><span class="pre">AliasedName.tree()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.And"><code class="docutils literal notranslate"><span class="pre">And</span></code></a><ul>
@@ -307,15 +332,42 @@ kids are using these days.</p>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.BinaryBoolean"><code class="docutils literal notranslate"><span class="pre">BinaryBoolean</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.BinaryBoolean.left_side_types"><code class="docutils literal notranslate"><span class="pre">BinaryBoolean.left_side_types</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.BinaryBoolean.right_side_types"><code class="docutils literal notranslate"><span class="pre">BinaryBoolean.right_side_types</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.BinaryBoolean.tree"><code class="docutils literal notranslate"><span class="pre">BinaryBoolean.tree()</span></code></a></li>
 </ul>
 </li>
+<li class="toctree-l3"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Collect"><code class="docutils literal notranslate"><span class="pre">Collect</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Collect.children"><code class="docutils literal notranslate"><span class="pre">Collect.children</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Collect.tree"><code class="docutils literal notranslate"><span class="pre">Collect.tree()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Collection"><code class="docutils literal notranslate"><span class="pre">Collection</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Collection.children"><code class="docutils literal notranslate"><span class="pre">Collection.children</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Collection.tree"><code class="docutils literal notranslate"><span class="pre">Collection.tree()</span></code></a></li>
+</ul>
+</li>
 <li class="toctree-l3"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Cypher"><code class="docutils literal notranslate"><span class="pre">Cypher</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Cypher.children"><code class="docutils literal notranslate"><span class="pre">Cypher.children</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Cypher.tree"><code class="docutils literal notranslate"><span class="pre">Cypher.tree()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Distinct"><code class="docutils literal notranslate"><span class="pre">Distinct</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Distinct.children"><code class="docutils literal notranslate"><span class="pre">Distinct.children</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Distinct.tree"><code class="docutils literal notranslate"><span class="pre">Distinct.tree()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Division"><code class="docutils literal notranslate"><span class="pre">Division</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Division.right_side_types"><code class="docutils literal notranslate"><span class="pre">Division.right_side_types</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Division.tree"><code class="docutils literal notranslate"><span class="pre">Division.tree()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Equals"><code class="docutils literal notranslate"><span class="pre">Equals</span></code></a><ul>
 <li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Equals.tree"><code class="docutils literal notranslate"><span class="pre">Equals.tree()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Evaluable"><code class="docutils literal notranslate"><span class="pre">Evaluable</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Evaluable.evaluate"><code class="docutils literal notranslate"><span class="pre">Evaluable.evaluate()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.GreaterThan"><code class="docutils literal notranslate"><span class="pre">GreaterThan</span></code></a><ul>
@@ -326,16 +378,25 @@ kids are using these days.</p>
 <li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.LessThan.tree"><code class="docutils literal notranslate"><span class="pre">LessThan.tree()</span></code></a></li>
 </ul>
 </li>
-<li class="toctree-l3"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Literal"><code class="docutils literal notranslate"><span class="pre">Literal</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Literal"><code class="docutils literal notranslate"><span class="pre">Literal</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Literal.tree"><code class="docutils literal notranslate"><span class="pre">Literal.tree()</span></code></a></li>
+</ul>
+</li>
 <li class="toctree-l3"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Mapping"><code class="docutils literal notranslate"><span class="pre">Mapping</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Mapping.children"><code class="docutils literal notranslate"><span class="pre">Mapping.children</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Mapping.constraints"><code class="docutils literal notranslate"><span class="pre">Mapping.constraints</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Mapping.tree"><code class="docutils literal notranslate"><span class="pre">Mapping.tree()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.MappingSet"><code class="docutils literal notranslate"><span class="pre">MappingSet</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.MappingSet.children"><code class="docutils literal notranslate"><span class="pre">MappingSet.children</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.MappingSet.tree"><code class="docutils literal notranslate"><span class="pre">MappingSet.tree()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Match"><code class="docutils literal notranslate"><span class="pre">Match</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Match.children"><code class="docutils literal notranslate"><span class="pre">Match.children</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Match.gather_constraints"><code class="docutils literal notranslate"><span class="pre">Match.gather_constraints()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Match.solutions"><code class="docutils literal notranslate"><span class="pre">Match.solutions()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Match.tree"><code class="docutils literal notranslate"><span class="pre">Match.tree()</span></code></a></li>
 </ul>
 </li>
@@ -343,17 +404,35 @@ kids are using these days.</p>
 <li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.MatchList.tree"><code class="docutils literal notranslate"><span class="pre">MatchList.tree()</span></code></a></li>
 </ul>
 </li>
+<li class="toctree-l3"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Multiplication"><code class="docutils literal notranslate"><span class="pre">Multiplication</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Multiplication.tree"><code class="docutils literal notranslate"><span class="pre">Multiplication.tree()</span></code></a></li>
+</ul>
+</li>
 <li class="toctree-l3"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Node"><code class="docutils literal notranslate"><span class="pre">Node</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Node.children"><code class="docutils literal notranslate"><span class="pre">Node.children</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Node.constraints"><code class="docutils literal notranslate"><span class="pre">Node.constraints</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Node.tree"><code class="docutils literal notranslate"><span class="pre">Node.tree()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.NodeNameLabel"><code class="docutils literal notranslate"><span class="pre">NodeNameLabel</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.NodeNameLabel.children"><code class="docutils literal notranslate"><span class="pre">NodeNameLabel.children</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.NodeNameLabel.tree"><code class="docutils literal notranslate"><span class="pre">NodeNameLabel.tree()</span></code></a></li>
 </ul>
 </li>
+<li class="toctree-l3"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Not"><code class="docutils literal notranslate"><span class="pre">Not</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Not.argument_types"><code class="docutils literal notranslate"><span class="pre">Not.argument_types</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Not.tree"><code class="docutils literal notranslate"><span class="pre">Not.tree()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.ObjectAsSeries"><code class="docutils literal notranslate"><span class="pre">ObjectAsSeries</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.ObjectAsSeries.children"><code class="docutils literal notranslate"><span class="pre">ObjectAsSeries.children</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.ObjectAsSeries.tree"><code class="docutils literal notranslate"><span class="pre">ObjectAsSeries.tree()</span></code></a></li>
+</ul>
+</li>
 <li class="toctree-l3"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.ObjectAttributeLookup"><code class="docutils literal notranslate"><span class="pre">ObjectAttributeLookup</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.ObjectAttributeLookup.children"><code class="docutils literal notranslate"><span class="pre">ObjectAttributeLookup.children</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.ObjectAttributeLookup.tree"><code class="docutils literal notranslate"><span class="pre">ObjectAttributeLookup.tree()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.ObjectAttributeLookup.value"><code class="docutils literal notranslate"><span class="pre">ObjectAttributeLookup.value()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Or"><code class="docutils literal notranslate"><span class="pre">Or</span></code></a><ul>
@@ -361,54 +440,92 @@ kids are using these days.</p>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Predicate"><code class="docutils literal notranslate"><span class="pre">Predicate</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Predicate.tree"><code class="docutils literal notranslate"><span class="pre">Predicate.tree()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Predicate.argument_types"><code class="docutils literal notranslate"><span class="pre">Predicate.argument_types</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Predicate.children"><code class="docutils literal notranslate"><span class="pre">Predicate.children</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Predicate.left_side_types"><code class="docutils literal notranslate"><span class="pre">Predicate.left_side_types</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Predicate.right_side_types"><code class="docutils literal notranslate"><span class="pre">Predicate.right_side_types</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Projection"><code class="docutils literal notranslate"><span class="pre">Projection</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Projection.children"><code class="docutils literal notranslate"><span class="pre">Projection.children</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Projection.tree"><code class="docutils literal notranslate"><span class="pre">Projection.tree()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Query"><code class="docutils literal notranslate"><span class="pre">Query</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Query.children"><code class="docutils literal notranslate"><span class="pre">Query.children</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Query.tree"><code class="docutils literal notranslate"><span class="pre">Query.tree()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Relationship"><code class="docutils literal notranslate"><span class="pre">Relationship</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Relationship.children"><code class="docutils literal notranslate"><span class="pre">Relationship.children</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Relationship.tree"><code class="docutils literal notranslate"><span class="pre">Relationship.tree()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.RelationshipChain"><code class="docutils literal notranslate"><span class="pre">RelationshipChain</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.RelationshipChain.children"><code class="docutils literal notranslate"><span class="pre">RelationshipChain.children</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.RelationshipChain.tree"><code class="docutils literal notranslate"><span class="pre">RelationshipChain.tree()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.RelationshipChainList"><code class="docutils literal notranslate"><span class="pre">RelationshipChainList</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.RelationshipChainList.children"><code class="docutils literal notranslate"><span class="pre">RelationshipChainList.children</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.RelationshipChainList.tree"><code class="docutils literal notranslate"><span class="pre">RelationshipChainList.tree()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.RelationshipLeftRight"><code class="docutils literal notranslate"><span class="pre">RelationshipLeftRight</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.RelationshipLeftRight.children"><code class="docutils literal notranslate"><span class="pre">RelationshipLeftRight.children</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.RelationshipLeftRight.constraints"><code class="docutils literal notranslate"><span class="pre">RelationshipLeftRight.constraints</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.RelationshipLeftRight.tree"><code class="docutils literal notranslate"><span class="pre">RelationshipLeftRight.tree()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.RelationshipRightLeft"><code class="docutils literal notranslate"><span class="pre">RelationshipRightLeft</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.RelationshipRightLeft.children"><code class="docutils literal notranslate"><span class="pre">RelationshipRightLeft.children</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.RelationshipRightLeft.tree"><code class="docutils literal notranslate"><span class="pre">RelationshipRightLeft.tree()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Return"><code class="docutils literal notranslate"><span class="pre">Return</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Return.children"><code class="docutils literal notranslate"><span class="pre">Return.children</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Return.tree"><code class="docutils literal notranslate"><span class="pre">Return.tree()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Size"><code class="docutils literal notranslate"><span class="pre">Size</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Size.children"><code class="docutils literal notranslate"><span class="pre">Size.children</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Size.tree"><code class="docutils literal notranslate"><span class="pre">Size.tree()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Subtraction"><code class="docutils literal notranslate"><span class="pre">Subtraction</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Subtraction.tree"><code class="docutils literal notranslate"><span class="pre">Subtraction.tree()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Where"><code class="docutils literal notranslate"><span class="pre">Where</span></code></a><ul>
 <li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.Where.tree"><code class="docutils literal notranslate"><span class="pre">Where.tree()</span></code></a></li>
 </ul>
 </li>
+<li class="toctree-l3"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.WithClause"><code class="docutils literal notranslate"><span class="pre">WithClause</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.WithClause.children"><code class="docutils literal notranslate"><span class="pre">WithClause.children</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="generated/pycypher.node_classes.html#pycypher.node_classes.WithClause.tree"><code class="docutils literal notranslate"><span class="pre">WithClause.tree()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="generated/pycypher.shim.html">Shims</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="generated/pycypher.shim.html#pycypher.shims.Shim"><code class="docutils literal notranslate"><span class="pre">Shim</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="generated/pycypher.shim.html#pycypher.shims.Shim.make_fact_collection"><code class="docutils literal notranslate"><span class="pre">Shim.make_fact_collection()</span></code></a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="generated/pycypher.solver.html">Constraint Solver</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="generated/pycypher.solver.html#pycypher.solver.ConstraintNodeHasLabel"><code class="docutils literal notranslate"><span class="pre">ConstraintNodeHasLabel</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="generated/pycypher.solver.html#pycypher.solver.IsTrue"><code class="docutils literal notranslate"><span class="pre">IsTrue</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="generated/pycypher.tree_mixin.html">Tree Mixin</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="generated/pycypher.tree_mixin.html#pycypher.tree_mixin.TreeMixin"><code class="docutils literal notranslate"><span class="pre">TreeMixin</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="generated/pycypher.tree_mixin.html#pycypher.tree_mixin.TreeMixin.children"><code class="docutils literal notranslate"><span class="pre">TreeMixin.children</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="generated/pycypher.tree_mixin.html#pycypher.tree_mixin.TreeMixin.enclosing_class"><code class="docutils literal notranslate"><span class="pre">TreeMixin.enclosing_class()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="generated/pycypher.tree_mixin.html#pycypher.tree_mixin.TreeMixin.parse_obj"><code class="docutils literal notranslate"><span class="pre">TreeMixin.parse_obj</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="generated/pycypher.tree_mixin.html#pycypher.tree_mixin.TreeMixin.print_tree"><code class="docutils literal notranslate"><span class="pre">TreeMixin.print_tree()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="generated/pycypher.tree_mixin.html#pycypher.tree_mixin.TreeMixin.root"><code class="docutils literal notranslate"><span class="pre">TreeMixin.root</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="generated/pycypher.tree_mixin.html#pycypher.tree_mixin.TreeMixin.tree"><code class="docutils literal notranslate"><span class="pre">TreeMixin.tree()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="generated/pycypher.tree_mixin.html#pycypher.tree_mixin.TreeMixin.walk"><code class="docutils literal notranslate"><span class="pre">TreeMixin.walk()</span></code></a></li>
 </ul>

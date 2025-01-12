@@ -49,8 +49,13 @@
 <li class="toctree-l1 current"><a class="reference internal" href="../api.html">API</a><ul class="current">
 <li class="toctree-l2 current"><a class="current reference internal" href="#">Parser</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#pycypher.cypher_parser.CypherParser"><code class="docutils literal notranslate"><span class="pre">CypherParser</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pycypher.cypher_parser.p_aggregation"><code class="docutils literal notranslate"><span class="pre">p_aggregation()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#pycypher.cypher_parser.p_alias"><code class="docutils literal notranslate"><span class="pre">p_alias()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pycypher.cypher_parser.p_aliased_name"><code class="docutils literal notranslate"><span class="pre">p_aliased_name()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pycypher.cypher_parser.p_binary_expression"><code class="docutils literal notranslate"><span class="pre">p_binary_expression()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pycypher.cypher_parser.p_binary_function"><code class="docutils literal notranslate"><span class="pre">p_binary_function()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#pycypher.cypher_parser.p_binary_operator"><code class="docutils literal notranslate"><span class="pre">p_binary_operator()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pycypher.cypher_parser.p_collect"><code class="docutils literal notranslate"><span class="pre">p_collect()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#pycypher.cypher_parser.p_cypher"><code class="docutils literal notranslate"><span class="pre">p_cypher()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#pycypher.cypher_parser.p_float"><code class="docutils literal notranslate"><span class="pre">p_float()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#pycypher.cypher_parser.p_incomplete_relationship_chain"><code class="docutils literal notranslate"><span class="pre">p_incomplete_relationship_chain()</span></code></a></li>
@@ -72,6 +77,8 @@
 <li class="toctree-l3"><a class="reference internal" href="#pycypher.cypher_parser.p_right_left"><code class="docutils literal notranslate"><span class="pre">p_right_left()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#pycypher.cypher_parser.p_string"><code class="docutils literal notranslate"><span class="pre">p_string()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#pycypher.cypher_parser.p_where"><code class="docutils literal notranslate"><span class="pre">p_where()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pycypher.cypher_parser.p_with_as_series"><code class="docutils literal notranslate"><span class="pre">p_with_as_series()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pycypher.cypher_parser.p_with_clause"><code class="docutils literal notranslate"><span class="pre">p_with_clause()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="pycypher.cypher_lexer.html">Lexer</a></li>
@@ -79,6 +86,7 @@
 <li class="toctree-l2"><a class="reference internal" href="pycypher.fact.html">Facts</a></li>
 <li class="toctree-l2"><a class="reference internal" href="pycypher.logger.html">Logger</a></li>
 <li class="toctree-l2"><a class="reference internal" href="pycypher.node_classes.html">AST Node Classes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pycypher.shim.html">Shims</a></li>
 <li class="toctree-l2"><a class="reference internal" href="pycypher.solver.html">Constraint Solver</a></li>
 <li class="toctree-l2"><a class="reference internal" href="pycypher.tree_mixin.html">Tree Mixin</a></li>
 </ul>
@@ -112,6 +120,7 @@
              
   <section id="module-pycypher.cypher_parser">
 <span id="parser"></span><h1>Parser<a class="headerlink" href="#module-pycypher.cypher_parser" title="Link to this heading"></a></h1>
+<p>Main parser module.</p>
 <p class="rubric">Functions</p>
 <table class="autosummary longtable docutils align-default">
 <tbody>
@@ -131,10 +140,39 @@ satisfaction problem which solves the query.</p>
 </dd></dl>
 
 <dl class="py function">
+<dt class="sig sig-object py" id="pycypher.cypher_parser.p_aggregation">
+<span class="sig-prename descclassname"><span class="pre">pycypher.cypher_parser.</span></span><span class="sig-name descname"><span class="pre">p_aggregation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">p</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">YaccProduction</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.cypher_parser.p_aggregation" title="Link to this definition"></a></dt>
+<dd><p>aggregation : collect
+| DISTINCT aggregation</p>
+</dd></dl>
+
+<dl class="py function">
 <dt class="sig sig-object py" id="pycypher.cypher_parser.p_alias">
 <span class="sig-prename descclassname"><span class="pre">pycypher.cypher_parser.</span></span><span class="sig-name descname"><span class="pre">p_alias</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">p</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">YaccProduction</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.cypher_parser.p_alias" title="Link to this definition"></a></dt>
 <dd><p>alias : WORD AS WORD
-| object_attribute_lookup AS WORD</p>
+| object_attribute_lookup AS WORD
+| aggregation AS WORD</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="pycypher.cypher_parser.p_aliased_name">
+<span class="sig-prename descclassname"><span class="pre">pycypher.cypher_parser.</span></span><span class="sig-name descname"><span class="pre">p_aliased_name</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">p</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">YaccProduction</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.cypher_parser.p_aliased_name" title="Link to this definition"></a></dt>
+<dd><p>aliased_name : WORD</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="pycypher.cypher_parser.p_binary_expression">
+<span class="sig-prename descclassname"><span class="pre">pycypher.cypher_parser.</span></span><span class="sig-name descname"><span class="pre">p_binary_expression</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">p</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">YaccProduction</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.cypher_parser.p_binary_expression" title="Link to this definition"></a></dt>
+<dd><p>binary_expression : object_attribute_lookup binary_function literal
+| object_attribute_lookup binary_function object_attribute_lookup
+| aliased_name binary_function literal
+| literal binary_function literal</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="pycypher.cypher_parser.p_binary_function">
+<span class="sig-prename descclassname"><span class="pre">pycypher.cypher_parser.</span></span><span class="sig-name descname"><span class="pre">p_binary_function</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">p</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.13)"><span class="pre">Tuple</span></a><span class="p"><span class="pre">[</span></span><span class="pre">YaccProduction</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.cypher_parser.p_binary_function" title="Link to this definition"></a></dt>
+<dd><p>binary_function : ADDITION</p>
 </dd></dl>
 
 <dl class="py function">
@@ -142,7 +180,15 @@ satisfaction problem which solves the query.</p>
 <span class="sig-prename descclassname"><span class="pre">pycypher.cypher_parser.</span></span><span class="sig-name descname"><span class="pre">p_binary_operator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">p</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.13)"><span class="pre">Tuple</span></a><span class="p"><span class="pre">[</span></span><span class="pre">YaccProduction</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.cypher_parser.p_binary_operator" title="Link to this definition"></a></dt>
 <dd><p>binary_operator : EQUALS
 | LESSTHAN
-| GREATERTHAN</p>
+| GREATERTHAN
+| OR
+| AND</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="pycypher.cypher_parser.p_collect">
+<span class="sig-prename descclassname"><span class="pre">pycypher.cypher_parser.</span></span><span class="sig-name descname"><span class="pre">p_collect</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">p</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">YaccProduction</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.cypher_parser.p_collect" title="Link to this definition"></a></dt>
+<dd><p>collect : COLLECT LPAREN object_attribute_lookup RPAREN</p>
 </dd></dl>
 
 <dl class="py function">
@@ -181,8 +227,8 @@ satisfaction problem which solves the query.</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="pycypher.cypher_parser.p_literal">
 <span class="sig-prename descclassname"><span class="pre">pycypher.cypher_parser.</span></span><span class="sig-name descname"><span class="pre">p_literal</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">p</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">YaccProduction</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.cypher_parser.p_literal" title="Link to this definition"></a></dt>
-<dd><p>literal : INTEGER
-| FLOAT
+<dd><p>literal : integer
+| float
 | STRING</p>
 </dd></dl>
 
@@ -198,8 +244,11 @@ satisfaction problem which solves the query.</p>
 <span class="sig-prename descclassname"><span class="pre">pycypher.cypher_parser.</span></span><span class="sig-name descname"><span class="pre">p_match_pattern</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">p</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">YaccProduction</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.cypher_parser.p_match_pattern" title="Link to this definition"></a></dt>
 <dd><p>match_pattern : MATCH node
 | MATCH relationship_chain_list
+| MATCH relationship_chain_list with_clause
 | MATCH relationship_chain_list where
-| MATCH node where</p>
+| MATCH relationship_chain_list with_clause where
+| MATCH node where
+| MATCH node with_clause where</p>
 </dd></dl>
 
 <dl class="py function">
@@ -222,14 +271,17 @@ satisfaction problem which solves the query.</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="pycypher.cypher_parser.p_object_attribute_lookup">
 <span class="sig-prename descclassname"><span class="pre">pycypher.cypher_parser.</span></span><span class="sig-name descname"><span class="pre">p_object_attribute_lookup</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">p</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">YaccProduction</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.cypher_parser.p_object_attribute_lookup" title="Link to this definition"></a></dt>
-<dd><p>object_attribute_lookup : WORD DOT WORD</p>
+<dd><p>object_attribute_lookup : WORD DOT WORD
+| WORD</p>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="pycypher.cypher_parser.p_predicate">
 <span class="sig-prename descclassname"><span class="pre">pycypher.cypher_parser.</span></span><span class="sig-name descname"><span class="pre">p_predicate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">p</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">YaccProduction</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.cypher_parser.p_predicate" title="Link to this definition"></a></dt>
 <dd><p>predicate : object_attribute_lookup binary_operator literal
-| object_attribute_lookup binary_operator object_attribute_lookup</p>
+| object_attribute_lookup binary_operator object_attribute_lookup
+| aliased_name binary_operator literal
+| object_attribute_lookup binary_operator binary_expression</p>
 </dd></dl>
 
 <dl class="py function">
@@ -290,6 +342,19 @@ satisfaction problem which solves the query.</p>
 <span class="sig-prename descclassname"><span class="pre">pycypher.cypher_parser.</span></span><span class="sig-name descname"><span class="pre">p_where</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">p</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">YaccProduction</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.cypher_parser.p_where" title="Link to this definition"></a></dt>
 <dd><p>where : WHERE predicate
 | where COMMA predicate</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="pycypher.cypher_parser.p_with_as_series">
+<span class="sig-prename descclassname"><span class="pre">pycypher.cypher_parser.</span></span><span class="sig-name descname"><span class="pre">p_with_as_series</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">p</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">YaccProduction</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.cypher_parser.p_with_as_series" title="Link to this definition"></a></dt>
+<dd><p>with_as_series : alias
+| with_as_series COMMA alias</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="pycypher.cypher_parser.p_with_clause">
+<span class="sig-prename descclassname"><span class="pre">pycypher.cypher_parser.</span></span><span class="sig-name descname"><span class="pre">p_with_clause</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">p</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">YaccProduction</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.cypher_parser.p_with_clause" title="Link to this definition"></a></dt>
+<dd><p>with_clause : WITH with_as_series</p>
 </dd></dl>
 
 </section>

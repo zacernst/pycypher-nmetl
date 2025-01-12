@@ -52,10 +52,15 @@
 <li class="toctree-l2"><a class="reference internal" href="pycypher.fact.html">Facts</a></li>
 <li class="toctree-l2"><a class="reference internal" href="pycypher.logger.html">Logger</a></li>
 <li class="toctree-l2"><a class="reference internal" href="pycypher.node_classes.html">AST Node Classes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pycypher.shim.html">Shims</a></li>
 <li class="toctree-l2"><a class="reference internal" href="pycypher.solver.html">Constraint Solver</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">Tree Mixin</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#pycypher.tree_mixin.TreeMixin"><code class="docutils literal notranslate"><span class="pre">TreeMixin</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#pycypher.tree_mixin.TreeMixin.children"><code class="docutils literal notranslate"><span class="pre">TreeMixin.children</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pycypher.tree_mixin.TreeMixin.enclosing_class"><code class="docutils literal notranslate"><span class="pre">TreeMixin.enclosing_class()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pycypher.tree_mixin.TreeMixin.parse_obj"><code class="docutils literal notranslate"><span class="pre">TreeMixin.parse_obj</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#pycypher.tree_mixin.TreeMixin.print_tree"><code class="docutils literal notranslate"><span class="pre">TreeMixin.print_tree()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pycypher.tree_mixin.TreeMixin.root"><code class="docutils literal notranslate"><span class="pre">TreeMixin.root</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#pycypher.tree_mixin.TreeMixin.tree"><code class="docutils literal notranslate"><span class="pre">TreeMixin.tree()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#pycypher.tree_mixin.TreeMixin.walk"><code class="docutils literal notranslate"><span class="pre">TreeMixin.walk()</span></code></a></li>
 </ul>
@@ -107,10 +112,34 @@ the AST.</p>
 <dt class="sig sig-object py" id="pycypher.tree_mixin.TreeMixin">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.tree_mixin.</span></span><span class="sig-name descname"><span class="pre">TreeMixin</span></span><a class="headerlink" href="#pycypher.tree_mixin.TreeMixin" title="Link to this definition"></a></dt>
 <dd><p>Mixin class that provides methods for walking and printing the AST.</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="pycypher.tree_mixin.TreeMixin.children">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">children</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Generator</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#pycypher.tree_mixin.TreeMixin" title="pycypher.tree_mixin.TreeMixin"><span class="pre">TreeMixin</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#pycypher.tree_mixin.TreeMixin.children" title="Link to this definition"></a></dt>
+<dd><p>Each node should have a children property that returns a generator of its children.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pycypher.tree_mixin.TreeMixin.enclosing_class">
+<span class="sig-name descname"><span class="pre">enclosing_class</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cls</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Type" title="(in Python v3.13)"><span class="pre">Type</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#pycypher.tree_mixin.TreeMixin" title="pycypher.tree_mixin.TreeMixin"><span class="pre">TreeMixin</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#pycypher.tree_mixin.TreeMixin" title="pycypher.tree_mixin.TreeMixin"><span class="pre">TreeMixin</span></a></span></span><a class="headerlink" href="#pycypher.tree_mixin.TreeMixin.enclosing_class" title="Link to this definition"></a></dt>
+<dd><p>Returns the first enclosing node of the given class.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="pycypher.tree_mixin.TreeMixin.parse_obj">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">parse_obj</span></span><a class="headerlink" href="#pycypher.tree_mixin.TreeMixin.parse_obj" title="Link to this definition"></a></dt>
+<dd><p>Returns the parse object thst contains the AST and other stuff.</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="pycypher.tree_mixin.TreeMixin.print_tree">
 <span class="sig-name descname"><span class="pre">print_tree</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.tree_mixin.TreeMixin.print_tree" title="Link to this definition"></a></dt>
 <dd><p>Uses <code class="docutils literal notranslate"><span class="pre">rich</span></code> to print the tree representation of the AST.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="pycypher.tree_mixin.TreeMixin.root">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">root</span></span><a class="headerlink" href="#pycypher.tree_mixin.TreeMixin.root" title="Link to this definition"></a></dt>
+<dd><p>Returns the root node of the AST.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -124,6 +153,8 @@ with the <code class="docutils literal notranslate"><span class="pre">rich</span
 <dt class="sig sig-object py" id="pycypher.tree_mixin.TreeMixin.walk">
 <span class="sig-name descname"><span class="pre">walk</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Generator</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#pycypher.tree_mixin.TreeMixin" title="pycypher.tree_mixin.TreeMixin"><span class="pre">TreeMixin</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#pycypher.tree_mixin.TreeMixin.walk" title="Link to this definition"></a></dt>
 <dd><p>Generator that yields every node of the AST.</p>
+<p>Note that this will <strong>not</strong> work if there is a list directly inside another list.
+But that shouldn’t happen in an AST anyway.</p>
 </dd></dl>
 
 </dd></dl>

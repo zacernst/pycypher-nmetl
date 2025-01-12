@@ -26,6 +26,7 @@ from pycypher.node_classes import (
     And,
     Collect,
     Cypher,
+    Distinct,
     Equals,
     GreaterThan,
     LessThan,
@@ -235,9 +236,14 @@ def p_collect(p: yacc.YaccProduction):
     p[0] = Collect(object_attribute_lookup=p[3])
 
 
+# Revisit this: Distinct isn't really an aggregation
 def p_aggregation(p: yacc.YaccProduction):
-    """aggregation : collect"""
-    p[0] = Aggregation(aggregation=p[1])
+    """aggregation : collect
+    | DISTINCT aggregation"""
+    if len(p) == 2:
+        p[0] = Aggregation(aggregation=p[1])
+    else:
+        p[0] = Distinct(p[2])
 
 
 def p_with_clause(p: yacc.YaccProduction):

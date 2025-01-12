@@ -82,7 +82,7 @@ all the boring work of writing a parser and generating an AST.</p>
 <section id="how-to-use-it">
 <h3>How to use it<a class="headerlink" href="#how-to-use-it" title="Link to this heading"></a></h3>
 <p>Don’t. But if you really want to, then:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pycypher.parser</span> <span class="kn">import</span> <span class="n">CypherParser</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">pycypher.parser</span><span class="w"> </span><span class="kn">import</span> <span class="n">CypherParser</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">cypher</span> <span class="o">=</span> <span class="n">CypherParser</span><span class="p">(</span><span class="s2">&quot;MATCH (n:Thing) RETURN n.foo&quot;</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">cypher</span><span class="o">.</span><span class="n">parsed</span><span class="o">.</span><span class="n">print_tree</span><span class="p">()</span>
 
@@ -242,6 +242,7 @@ kids are using these days.</p>
 <div class="toctree-wrapper compound">
 <span id="document-generated/pycypher"></span><section id="module-pycypher.cypher_parser">
 <span id="parser"></span><h5>Parser<a class="headerlink" href="#module-pycypher.cypher_parser" title="Link to this heading"></a></h5>
+<p>Main parser module.</p>
 <p class="rubric">Functions</p>
 <table class="autosummary longtable docutils align-default">
 <tbody>
@@ -261,10 +262,39 @@ satisfaction problem which solves the query.</p>
 </dd></dl>
 
 <dl class="py function">
+<dt class="sig sig-object py" id="pycypher.cypher_parser.p_aggregation">
+<span class="sig-prename descclassname"><span class="pre">pycypher.cypher_parser.</span></span><span class="sig-name descname"><span class="pre">p_aggregation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">p</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">YaccProduction</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.cypher_parser.p_aggregation" title="Link to this definition"></a></dt>
+<dd><p>aggregation : collect
+| DISTINCT aggregation</p>
+</dd></dl>
+
+<dl class="py function">
 <dt class="sig sig-object py" id="pycypher.cypher_parser.p_alias">
 <span class="sig-prename descclassname"><span class="pre">pycypher.cypher_parser.</span></span><span class="sig-name descname"><span class="pre">p_alias</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">p</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">YaccProduction</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.cypher_parser.p_alias" title="Link to this definition"></a></dt>
 <dd><p>alias : WORD AS WORD
-| object_attribute_lookup AS WORD</p>
+| object_attribute_lookup AS WORD
+| aggregation AS WORD</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="pycypher.cypher_parser.p_aliased_name">
+<span class="sig-prename descclassname"><span class="pre">pycypher.cypher_parser.</span></span><span class="sig-name descname"><span class="pre">p_aliased_name</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">p</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">YaccProduction</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.cypher_parser.p_aliased_name" title="Link to this definition"></a></dt>
+<dd><p>aliased_name : WORD</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="pycypher.cypher_parser.p_binary_expression">
+<span class="sig-prename descclassname"><span class="pre">pycypher.cypher_parser.</span></span><span class="sig-name descname"><span class="pre">p_binary_expression</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">p</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">YaccProduction</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.cypher_parser.p_binary_expression" title="Link to this definition"></a></dt>
+<dd><p>binary_expression : object_attribute_lookup binary_function literal
+| object_attribute_lookup binary_function object_attribute_lookup
+| aliased_name binary_function literal
+| literal binary_function literal</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="pycypher.cypher_parser.p_binary_function">
+<span class="sig-prename descclassname"><span class="pre">pycypher.cypher_parser.</span></span><span class="sig-name descname"><span class="pre">p_binary_function</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">p</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.13)"><span class="pre">Tuple</span></a><span class="p"><span class="pre">[</span></span><span class="pre">YaccProduction</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.cypher_parser.p_binary_function" title="Link to this definition"></a></dt>
+<dd><p>binary_function : ADDITION</p>
 </dd></dl>
 
 <dl class="py function">
@@ -272,7 +302,15 @@ satisfaction problem which solves the query.</p>
 <span class="sig-prename descclassname"><span class="pre">pycypher.cypher_parser.</span></span><span class="sig-name descname"><span class="pre">p_binary_operator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">p</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.13)"><span class="pre">Tuple</span></a><span class="p"><span class="pre">[</span></span><span class="pre">YaccProduction</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.cypher_parser.p_binary_operator" title="Link to this definition"></a></dt>
 <dd><p>binary_operator : EQUALS
 | LESSTHAN
-| GREATERTHAN</p>
+| GREATERTHAN
+| OR
+| AND</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="pycypher.cypher_parser.p_collect">
+<span class="sig-prename descclassname"><span class="pre">pycypher.cypher_parser.</span></span><span class="sig-name descname"><span class="pre">p_collect</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">p</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">YaccProduction</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.cypher_parser.p_collect" title="Link to this definition"></a></dt>
+<dd><p>collect : COLLECT LPAREN object_attribute_lookup RPAREN</p>
 </dd></dl>
 
 <dl class="py function">
@@ -311,8 +349,8 @@ satisfaction problem which solves the query.</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="pycypher.cypher_parser.p_literal">
 <span class="sig-prename descclassname"><span class="pre">pycypher.cypher_parser.</span></span><span class="sig-name descname"><span class="pre">p_literal</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">p</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">YaccProduction</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.cypher_parser.p_literal" title="Link to this definition"></a></dt>
-<dd><p>literal : INTEGER
-| FLOAT
+<dd><p>literal : integer
+| float
 | STRING</p>
 </dd></dl>
 
@@ -328,8 +366,11 @@ satisfaction problem which solves the query.</p>
 <span class="sig-prename descclassname"><span class="pre">pycypher.cypher_parser.</span></span><span class="sig-name descname"><span class="pre">p_match_pattern</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">p</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">YaccProduction</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.cypher_parser.p_match_pattern" title="Link to this definition"></a></dt>
 <dd><p>match_pattern : MATCH node
 | MATCH relationship_chain_list
+| MATCH relationship_chain_list with_clause
 | MATCH relationship_chain_list where
-| MATCH node where</p>
+| MATCH relationship_chain_list with_clause where
+| MATCH node where
+| MATCH node with_clause where</p>
 </dd></dl>
 
 <dl class="py function">
@@ -352,14 +393,17 @@ satisfaction problem which solves the query.</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="pycypher.cypher_parser.p_object_attribute_lookup">
 <span class="sig-prename descclassname"><span class="pre">pycypher.cypher_parser.</span></span><span class="sig-name descname"><span class="pre">p_object_attribute_lookup</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">p</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">YaccProduction</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.cypher_parser.p_object_attribute_lookup" title="Link to this definition"></a></dt>
-<dd><p>object_attribute_lookup : WORD DOT WORD</p>
+<dd><p>object_attribute_lookup : WORD DOT WORD
+| WORD</p>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="pycypher.cypher_parser.p_predicate">
 <span class="sig-prename descclassname"><span class="pre">pycypher.cypher_parser.</span></span><span class="sig-name descname"><span class="pre">p_predicate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">p</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">YaccProduction</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.cypher_parser.p_predicate" title="Link to this definition"></a></dt>
 <dd><p>predicate : object_attribute_lookup binary_operator literal
-| object_attribute_lookup binary_operator object_attribute_lookup</p>
+| object_attribute_lookup binary_operator object_attribute_lookup
+| aliased_name binary_operator literal
+| object_attribute_lookup binary_operator binary_expression</p>
 </dd></dl>
 
 <dl class="py function">
@@ -422,6 +466,19 @@ satisfaction problem which solves the query.</p>
 | where COMMA predicate</p>
 </dd></dl>
 
+<dl class="py function">
+<dt class="sig sig-object py" id="pycypher.cypher_parser.p_with_as_series">
+<span class="sig-prename descclassname"><span class="pre">pycypher.cypher_parser.</span></span><span class="sig-name descname"><span class="pre">p_with_as_series</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">p</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">YaccProduction</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.cypher_parser.p_with_as_series" title="Link to this definition"></a></dt>
+<dd><p>with_as_series : alias
+| with_as_series COMMA alias</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="pycypher.cypher_parser.p_with_clause">
+<span class="sig-prename descclassname"><span class="pre">pycypher.cypher_parser.</span></span><span class="sig-name descname"><span class="pre">p_with_clause</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">p</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">YaccProduction</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.cypher_parser.p_with_clause" title="Link to this definition"></a></dt>
+<dd><p>with_clause : WITH with_as_series</p>
+</dd></dl>
+
 </section>
 <span id="document-generated/pycypher.cypher_lexer"></span><section id="module-pycypher.cypher_lexer">
 <span id="lexer"></span><h5>Lexer<a class="headerlink" href="#module-pycypher.cypher_lexer" title="Link to this heading"></a></h5>
@@ -477,6 +534,12 @@ imported by the parser, which is defined in the <code class="docutils literal no
 <dd><p>To be thrown when the <cite>CypherParser</cite> can parse the expression, but it has an unexpected structure.</p>
 </dd></dl>
 
+<dl class="py exception">
+<dt class="sig sig-object py" id="pycypher.exceptions.WrongCypherTypeError">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.exceptions.</span></span><span class="sig-name descname"><span class="pre">WrongCypherTypeError</span></span><a class="headerlink" href="#pycypher.exceptions.WrongCypherTypeError" title="Link to this definition"></a></dt>
+<dd><p>To be thrown when the <cite>CypherParser</cite> can parse the expression, but it has an unexpected type.</p>
+</dd></dl>
+
 </section>
 <span id="document-generated/pycypher.fact"></span><section id="module-pycypher.fact">
 <span id="facts"></span><h5>Facts<a class="headerlink" href="#module-pycypher.fact" title="Link to this heading"></a></h5>
@@ -523,6 +586,11 @@ imported by the parser, which is defined in the <code class="docutils literal no
 <dd></dd></dl>
 
 <dl class="py class">
+<dt class="sig sig-object py" id="pycypher.fact.FactRelationshipHasAttributeWithValue">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.fact.</span></span><span class="sig-name descname"><span class="pre">FactRelationshipHasAttributeWithValue</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">relationship_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">attribute</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.13)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.fact.FactRelationshipHasAttributeWithValue" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py class">
 <dt class="sig sig-object py" id="pycypher.fact.FactRelationshipHasLabel">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.fact.</span></span><span class="sig-name descname"><span class="pre">FactRelationshipHasLabel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">relationship_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">relationship_label</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.fact.FactRelationshipHasLabel" title="Link to this definition"></a></dt>
 <dd></dd></dl>
@@ -551,25 +619,25 @@ imported by the parser, which is defined in the <code class="docutils literal no
 <td><p>A node representing use of an <code class="docutils literal notranslate"><span class="pre">AS</span></code> statement in the query.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#pycypher.node_classes.And" title="pycypher.node_classes.And"><code class="xref py py-obj docutils literal notranslate"><span class="pre">And</span></code></a>(left_side, right_side)</p></td>
-<td><p></p></td>
+<td><p>Boolean connective for logical AND.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#pycypher.node_classes.BinaryBoolean" title="pycypher.node_classes.BinaryBoolean"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BinaryBoolean</span></code></a>(left_side, operator, right_side)</p></td>
-<td><p></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#pycypher.node_classes.BinaryBoolean" title="pycypher.node_classes.BinaryBoolean"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BinaryBoolean</span></code></a>(left_side, right_side)</p></td>
+<td><p>Superclass for the <code class="docutils literal notranslate"><span class="pre">And</span></code> and <code class="docutils literal notranslate"><span class="pre">Or</span></code> connective classes.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#pycypher.node_classes.Cypher" title="pycypher.node_classes.Cypher"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Cypher</span></code></a>(cypher)</p></td>
 <td><p>The root node of the AST.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#pycypher.node_classes.Equals" title="pycypher.node_classes.Equals"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Equals</span></code></a>(left_side, operator, right_side)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#pycypher.node_classes.Equals" title="pycypher.node_classes.Equals"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Equals</span></code></a>(left_side, right_side)</p></td>
 <td><p>Binary infix operator for equality.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#pycypher.node_classes.GreaterThan" title="pycypher.node_classes.GreaterThan"><code class="xref py py-obj docutils literal notranslate"><span class="pre">GreaterThan</span></code></a>(left_side, operator, right_side)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#pycypher.node_classes.GreaterThan" title="pycypher.node_classes.GreaterThan"><code class="xref py py-obj docutils literal notranslate"><span class="pre">GreaterThan</span></code></a>(left_side, right_side)</p></td>
 <td><p>Binary infix operator for greater than.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#pycypher.node_classes.LessThan" title="pycypher.node_classes.LessThan"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LessThan</span></code></a>(left_side, operator, right_side)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#pycypher.node_classes.LessThan" title="pycypher.node_classes.LessThan"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LessThan</span></code></a>(left_side, right_side)</p></td>
 <td><p>Binary infix operator for less than.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#pycypher.node_classes.Literal" title="pycypher.node_classes.Literal"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Literal</span></code></a>(value)</p></td>
-<td><p></p></td>
+<td><p>Simply a container for a value.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#pycypher.node_classes.Mapping" title="pycypher.node_classes.Mapping"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Mapping</span></code></a>(key, value)</p></td>
 <td><p>Mappings are dictionaries of key-value pairs.</p></td>
@@ -577,11 +645,11 @@ imported by the parser, which is defined in the <code class="docutils literal no
 <tr class="row-even"><td><p><a class="reference internal" href="#pycypher.node_classes.MappingSet" title="pycypher.node_classes.MappingSet"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MappingSet</span></code></a>(mappings)</p></td>
 <td><p>A list of mappings.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#pycypher.node_classes.Match" title="pycypher.node_classes.Match"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Match</span></code></a>(pattern[, where])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#pycypher.node_classes.Match" title="pycypher.node_classes.Match"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Match</span></code></a>(pattern[, where, with_clause, constraints])</p></td>
 <td><p>The node that represents the <code class="docutils literal notranslate"><span class="pre">MATCH</span></code> clause of the query.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#pycypher.node_classes.MatchList" title="pycypher.node_classes.MatchList"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MatchList</span></code></a>(match_list)</p></td>
-<td><p></p></td>
+<td><p>Just a container for a list of <code class="docutils literal notranslate"><span class="pre">Match</span></code> objects.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#pycypher.node_classes.Node" title="pycypher.node_classes.Node"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Node</span></code></a>(node_name_label[, mapping_list])</p></td>
 <td><p>A node in the graph, which may contain a variable name, label, or mapping.</p></td>
@@ -589,13 +657,13 @@ imported by the parser, which is defined in the <code class="docutils literal no
 <tr class="row-even"><td><p><a class="reference internal" href="#pycypher.node_classes.NodeNameLabel" title="pycypher.node_classes.NodeNameLabel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">NodeNameLabel</span></code></a>([name, label])</p></td>
 <td><p>A node name, optionally followed by a label, separated by a dot.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#pycypher.node_classes.ObjectAttributeLookup" title="pycypher.node_classes.ObjectAttributeLookup"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ObjectAttributeLookup</span></code></a>(object, attribute)</p></td>
-<td><p>A node that represents the value of an attribut of a node or relationship of the form <code class="docutils literal notranslate"><span class="pre">node.attribute</span></code>.</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#pycypher.node_classes.ObjectAttributeLookup" title="pycypher.node_classes.ObjectAttributeLookup"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ObjectAttributeLookup</span></code></a>(object_name, attribute)</p></td>
+<td><p>A node that represents the value of an attribute of a node or relationship of the form <code class="docutils literal notranslate"><span class="pre">node.attribute</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#pycypher.node_classes.Or" title="pycypher.node_classes.Or"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Or</span></code></a>(left_side, operator, right_side)</p></td>
-<td><p></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#pycypher.node_classes.Or" title="pycypher.node_classes.Or"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Or</span></code></a>(left_side, right_side)</p></td>
+<td><p>Boolean connective for logical OR.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#pycypher.node_classes.Predicate" title="pycypher.node_classes.Predicate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Predicate</span></code></a>(left_side, operator, right_side)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#pycypher.node_classes.Predicate" title="pycypher.node_classes.Predicate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Predicate</span></code></a>(left_side, right_side)</p></td>
 <td><p>A node of the AST that represents a unary or binary expression with a definite truth value.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#pycypher.node_classes.Projection" title="pycypher.node_classes.Projection"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Projection</span></code></a>([lookups])</p></td>
@@ -611,7 +679,7 @@ imported by the parser, which is defined in the <code class="docutils literal no
 <td><p>Several <code class="docutils literal notranslate"><span class="pre">Relationship</span></code> nodes chained together, sharing <code class="docutils literal notranslate"><span class="pre">Node</span></code> objects between them.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#pycypher.node_classes.RelationshipChainList" title="pycypher.node_classes.RelationshipChainList"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RelationshipChainList</span></code></a>(relationships)</p></td>
-<td><p></p></td>
+<td><p>Container for a list of relationship chains.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#pycypher.node_classes.RelationshipLeftRight" title="pycypher.node_classes.RelationshipLeftRight"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RelationshipLeftRight</span></code></a>(relationship)</p></td>
 <td><p>A <code class="docutils literal notranslate"><span class="pre">Relationship</span></code> with the arrow pointing from left to right.</p></td>
@@ -620,7 +688,7 @@ imported by the parser, which is defined in the <code class="docutils literal no
 <td><p>A <code class="docutils literal notranslate"><span class="pre">Relationship</span></code> with the arrow pointing from right to left.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#pycypher.node_classes.Return" title="pycypher.node_classes.Return"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Return</span></code></a>(node)</p></td>
-<td><p>Represnents the <code class="docutils literal notranslate"><span class="pre">RETURN</span></code> clause, whivh is a set of projections.</p></td>
+<td><p>Represents the <code class="docutils literal notranslate"><span class="pre">RETURN</span></code> clause, which is a set of projections.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#pycypher.node_classes.Where" title="pycypher.node_classes.Where"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Where</span></code></a>(predicate)</p></td>
 <td><p>A node that represents the <code class="docutils literal notranslate"><span class="pre">WHERE</span></code> clause of the query, which is a single <code class="docutils literal notranslate"><span class="pre">Predicate</span></code> object prefixed with <code class="docutils literal notranslate"><span class="pre">WHERE</span></code>.</p></td>
@@ -628,9 +696,53 @@ imported by the parser, which is defined in the <code class="docutils literal no
 </tbody>
 </table>
 <dl class="py class">
+<dt class="sig sig-object py" id="pycypher.node_classes.Addition">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.node_classes.</span></span><span class="sig-name descname"><span class="pre">Addition</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">left</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="index.html#pycypher.tree_mixin.TreeMixin" title="pycypher.tree_mixin.TreeMixin"><span class="pre">TreeMixin</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">right</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="index.html#pycypher.tree_mixin.TreeMixin" title="pycypher.tree_mixin.TreeMixin"><span class="pre">TreeMixin</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.node_classes.Addition" title="Link to this definition"></a></dt>
+<dd><p>Binary infix operator for addition.</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="pycypher.node_classes.Addition.children">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">children</span></span><a class="headerlink" href="#pycypher.node_classes.Addition.children" title="Link to this definition"></a></dt>
+<dd><p>Each node should have a children property that returns a generator of its children.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pycypher.node_classes.Addition.tree">
+<span class="sig-name descname"><span class="pre">tree</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.node_classes.Addition.tree" title="Link to this definition"></a></dt>
+<dd><p>Generates a tree representation of the AST which can be pretty-printed
+with the <code class="docutils literal notranslate"><span class="pre">rich</span></code> library.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="pycypher.node_classes.Aggregation">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.node_classes.</span></span><span class="sig-name descname"><span class="pre">Aggregation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">aggregation</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.node_classes.Aggregation" title="Link to this definition"></a></dt>
+<dd><p>Anything that turns a list into a singleton. Collect, Add, etc.</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="pycypher.node_classes.Aggregation.children">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">children</span></span><a class="headerlink" href="#pycypher.node_classes.Aggregation.children" title="Link to this definition"></a></dt>
+<dd><p>Each node should have a children property that returns a generator of its children.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pycypher.node_classes.Aggregation.tree">
+<span class="sig-name descname"><span class="pre">tree</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.node_classes.Aggregation.tree" title="Link to this definition"></a></dt>
+<dd><p>Generates a tree representation of the AST which can be pretty-printed
+with the <code class="docutils literal notranslate"><span class="pre">rich</span></code> library.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
 <dt class="sig sig-object py" id="pycypher.node_classes.Alias">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.node_classes.</span></span><span class="sig-name descname"><span class="pre">Alias</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">reference</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">alias</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.node_classes.Alias" title="Link to this definition"></a></dt>
 <dd><p>A node representing use of an <code class="docutils literal notranslate"><span class="pre">AS</span></code> statement in the query.</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="pycypher.node_classes.Alias.children">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">children</span></span><a class="headerlink" href="#pycypher.node_classes.Alias.children" title="Link to this definition"></a></dt>
+<dd><p>Each node should have a children property that returns a generator of its children.</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="pycypher.node_classes.Alias.tree">
 <span class="sig-name descname"><span class="pre">tree</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tree</span></span></span><a class="headerlink" href="#pycypher.node_classes.Alias.tree" title="Link to this definition"></a></dt>
@@ -641,9 +753,30 @@ with the <code class="docutils literal notranslate"><span class="pre">rich</span
 </dd></dl>
 
 <dl class="py class">
+<dt class="sig sig-object py" id="pycypher.node_classes.AliasedName">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.node_classes.</span></span><span class="sig-name descname"><span class="pre">AliasedName</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.node_classes.AliasedName" title="Link to this definition"></a></dt>
+<dd><p>A node that represents a name that has been aliased with an <code class="docutils literal notranslate"><span class="pre">AS</span></code>
+statement and is being refererred to by that alias.</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="pycypher.node_classes.AliasedName.children">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">children</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Generator</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#pycypher.node_classes.AliasedName.children" title="Link to this definition"></a></dt>
+<dd><p>Each node should have a children property that returns a generator of its children.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pycypher.node_classes.AliasedName.tree">
+<span class="sig-name descname"><span class="pre">tree</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tree</span></span></span><a class="headerlink" href="#pycypher.node_classes.AliasedName.tree" title="Link to this definition"></a></dt>
+<dd><p>Generates a tree representation of the AST which can be pretty-printed
+with the <code class="docutils literal notranslate"><span class="pre">rich</span></code> library.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
 <dt class="sig sig-object py" id="pycypher.node_classes.And">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.node_classes.</span></span><span class="sig-name descname"><span class="pre">And</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">left_side</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="index.html#pycypher.node_classes.Predicate" title="pycypher.node_classes.Predicate"><span class="pre">Predicate</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="index.html#pycypher.node_classes.Literal" title="pycypher.node_classes.Literal"><span class="pre">Literal</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">right_side</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="index.html#pycypher.node_classes.Predicate" title="pycypher.node_classes.Predicate"><span class="pre">Predicate</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="index.html#pycypher.node_classes.Literal" title="pycypher.node_classes.Literal"><span class="pre">Literal</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.node_classes.And" title="Link to this definition"></a></dt>
-<dd><dl class="py method">
+<dd><p>Boolean connective for logical AND.</p>
+<dl class="py method">
 <dt class="sig sig-object py" id="pycypher.node_classes.And.tree">
 <span class="sig-name descname"><span class="pre">tree</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tree</span></span></span><a class="headerlink" href="#pycypher.node_classes.And.tree" title="Link to this definition"></a></dt>
 <dd><p>Generates a tree representation of the AST which can be pretty-printed
@@ -654,10 +787,61 @@ with the <code class="docutils literal notranslate"><span class="pre">rich</span
 
 <dl class="py class">
 <dt class="sig sig-object py" id="pycypher.node_classes.BinaryBoolean">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.node_classes.</span></span><span class="sig-name descname"><span class="pre">BinaryBoolean</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">left_side</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="index.html#pycypher.node_classes.Predicate" title="pycypher.node_classes.Predicate"><span class="pre">Predicate</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="index.html#pycypher.node_classes.Literal" title="pycypher.node_classes.Literal"><span class="pre">Literal</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">operator</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">right_side</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="index.html#pycypher.node_classes.Predicate" title="pycypher.node_classes.Predicate"><span class="pre">Predicate</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="index.html#pycypher.node_classes.Literal" title="pycypher.node_classes.Literal"><span class="pre">Literal</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.node_classes.BinaryBoolean" title="Link to this definition"></a></dt>
-<dd><dl class="py method">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.node_classes.</span></span><span class="sig-name descname"><span class="pre">BinaryBoolean</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">left_side</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="index.html#pycypher.node_classes.Predicate" title="pycypher.node_classes.Predicate"><span class="pre">Predicate</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="index.html#pycypher.node_classes.Literal" title="pycypher.node_classes.Literal"><span class="pre">Literal</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">right_side</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="index.html#pycypher.node_classes.Predicate" title="pycypher.node_classes.Predicate"><span class="pre">Predicate</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="index.html#pycypher.node_classes.Literal" title="pycypher.node_classes.Literal"><span class="pre">Literal</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.node_classes.BinaryBoolean" title="Link to this definition"></a></dt>
+<dd><p>Superclass for the <code class="docutils literal notranslate"><span class="pre">And</span></code> and <code class="docutils literal notranslate"><span class="pre">Or</span></code> connective classes.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pycypher.node_classes.BinaryBoolean.left_side_types">
+<span class="sig-name descname"><span class="pre">left_side_types</span></span><a class="headerlink" href="#pycypher.node_classes.BinaryBoolean.left_side_types" title="Link to this definition"></a></dt>
+<dd><p>alias of <a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a></p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pycypher.node_classes.BinaryBoolean.right_side_types">
+<span class="sig-name descname"><span class="pre">right_side_types</span></span><a class="headerlink" href="#pycypher.node_classes.BinaryBoolean.right_side_types" title="Link to this definition"></a></dt>
+<dd><p>alias of <a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a></p>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="pycypher.node_classes.BinaryBoolean.tree">
 <span class="sig-name descname"><span class="pre">tree</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tree</span></span></span><a class="headerlink" href="#pycypher.node_classes.BinaryBoolean.tree" title="Link to this definition"></a></dt>
+<dd><p>Generates a tree representation of the AST which can be pretty-printed
+with the <code class="docutils literal notranslate"><span class="pre">rich</span></code> library.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="pycypher.node_classes.Collect">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.node_classes.</span></span><span class="sig-name descname"><span class="pre">Collect</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">object_attribute_lookup</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="index.html#pycypher.node_classes.ObjectAttributeLookup" title="pycypher.node_classes.ObjectAttributeLookup"><span class="pre">ObjectAttributeLookup</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.node_classes.Collect" title="Link to this definition"></a></dt>
+<dd><p>The COLLECT keyword</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="pycypher.node_classes.Collect.children">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">children</span></span><a class="headerlink" href="#pycypher.node_classes.Collect.children" title="Link to this definition"></a></dt>
+<dd><p>Each node should have a children property that returns a generator of its children.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pycypher.node_classes.Collect.tree">
+<span class="sig-name descname"><span class="pre">tree</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.node_classes.Collect.tree" title="Link to this definition"></a></dt>
+<dd><p>Generates a tree representation of the AST which can be pretty-printed
+with the <code class="docutils literal notranslate"><span class="pre">rich</span></code> library.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="pycypher.node_classes.Collection">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.node_classes.</span></span><span class="sig-name descname"><span class="pre">Collection</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">values</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.13)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="index.html#pycypher.node_classes.Evaluable" title="pycypher.node_classes.Evaluable"><span class="pre">Evaluable</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.node_classes.Collection" title="Link to this definition"></a></dt>
+<dd><p>A list of values.</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="pycypher.node_classes.Collection.children">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">children</span></span><a class="headerlink" href="#pycypher.node_classes.Collection.children" title="Link to this definition"></a></dt>
+<dd><p>Each node should have a children property that returns a generator of its children.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pycypher.node_classes.Collection.tree">
+<span class="sig-name descname"><span class="pre">tree</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.node_classes.Collection.tree" title="Link to this definition"></a></dt>
 <dd><p>Generates a tree representation of the AST which can be pretty-printed
 with the <code class="docutils literal notranslate"><span class="pre">rich</span></code> library.</p>
 </dd></dl>
@@ -668,6 +852,12 @@ with the <code class="docutils literal notranslate"><span class="pre">rich</span
 <dt class="sig sig-object py" id="pycypher.node_classes.Cypher">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.node_classes.</span></span><span class="sig-name descname"><span class="pre">Cypher</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cypher</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="index.html#pycypher.tree_mixin.TreeMixin" title="pycypher.tree_mixin.TreeMixin"><span class="pre">TreeMixin</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.node_classes.Cypher" title="Link to this definition"></a></dt>
 <dd><p>The root node of the AST.</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="pycypher.node_classes.Cypher.children">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">children</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Generator</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="index.html#pycypher.tree_mixin.TreeMixin" title="pycypher.tree_mixin.TreeMixin"><span class="pre">TreeMixin</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#pycypher.node_classes.Cypher.children" title="Link to this definition"></a></dt>
+<dd><p>Each node should have a children property that returns a generator of its children.</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="pycypher.node_classes.Cypher.tree">
 <span class="sig-name descname"><span class="pre">tree</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tree</span></span></span><a class="headerlink" href="#pycypher.node_classes.Cypher.tree" title="Link to this definition"></a></dt>
@@ -678,8 +868,46 @@ with the <code class="docutils literal notranslate"><span class="pre">rich</span
 </dd></dl>
 
 <dl class="py class">
+<dt class="sig sig-object py" id="pycypher.node_classes.Distinct">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.node_classes.</span></span><span class="sig-name descname"><span class="pre">Distinct</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">collection</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="index.html#pycypher.node_classes.Collection" title="pycypher.node_classes.Collection"><span class="pre">Collection</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.node_classes.Distinct" title="Link to this definition"></a></dt>
+<dd><p>The DISTINCT keyword</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="pycypher.node_classes.Distinct.children">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">children</span></span><a class="headerlink" href="#pycypher.node_classes.Distinct.children" title="Link to this definition"></a></dt>
+<dd><p>Each node should have a children property that returns a generator of its children.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pycypher.node_classes.Distinct.tree">
+<span class="sig-name descname"><span class="pre">tree</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.node_classes.Distinct.tree" title="Link to this definition"></a></dt>
+<dd><p>Generates a tree representation of the AST which can be pretty-printed
+with the <code class="docutils literal notranslate"><span class="pre">rich</span></code> library.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="pycypher.node_classes.Division">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.node_classes.</span></span><span class="sig-name descname"><span class="pre">Division</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">left_side</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="index.html#pycypher.tree_mixin.TreeMixin" title="pycypher.tree_mixin.TreeMixin"><span class="pre">TreeMixin</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">right_side</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="index.html#pycypher.tree_mixin.TreeMixin" title="pycypher.tree_mixin.TreeMixin"><span class="pre">TreeMixin</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.node_classes.Division" title="Link to this definition"></a></dt>
+<dd><p>Binary infix operator for division.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pycypher.node_classes.Division.right_side_types">
+<span class="sig-name descname"><span class="pre">right_side_types</span></span><a class="headerlink" href="#pycypher.node_classes.Division.right_side_types" title="Link to this definition"></a></dt>
+<dd><p>alias of <code class="xref py py-class docutils literal notranslate"><span class="pre">Annotated</span></code>[<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></a>, <code class="xref py py-class docutils literal notranslate"><span class="pre">Gt</span></code>(gt=0)] | <code class="xref py py-class docutils literal notranslate"><span class="pre">Annotated</span></code>[<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a>, <code class="xref py py-class docutils literal notranslate"><span class="pre">Gt</span></code>(gt=0)]</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pycypher.node_classes.Division.tree">
+<span class="sig-name descname"><span class="pre">tree</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tree</span></span></span><a class="headerlink" href="#pycypher.node_classes.Division.tree" title="Link to this definition"></a></dt>
+<dd><p>Generates a tree representation of the AST which can be pretty-printed
+with the <code class="docutils literal notranslate"><span class="pre">rich</span></code> library.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
 <dt class="sig sig-object py" id="pycypher.node_classes.Equals">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.node_classes.</span></span><span class="sig-name descname"><span class="pre">Equals</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">left_side</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="index.html#pycypher.tree_mixin.TreeMixin" title="pycypher.tree_mixin.TreeMixin"><span class="pre">TreeMixin</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">operator</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="index.html#pycypher.tree_mixin.TreeMixin" title="pycypher.tree_mixin.TreeMixin"><span class="pre">TreeMixin</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">right_side</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="index.html#pycypher.tree_mixin.TreeMixin" title="pycypher.tree_mixin.TreeMixin"><span class="pre">TreeMixin</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.node_classes.Equals" title="Link to this definition"></a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.node_classes.</span></span><span class="sig-name descname"><span class="pre">Equals</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">left_side</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="index.html#pycypher.node_classes.Predicate" title="pycypher.node_classes.Predicate"><span class="pre">Predicate</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="index.html#pycypher.node_classes.Literal" title="pycypher.node_classes.Literal"><span class="pre">Literal</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">right_side</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="index.html#pycypher.node_classes.Predicate" title="pycypher.node_classes.Predicate"><span class="pre">Predicate</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="index.html#pycypher.node_classes.Literal" title="pycypher.node_classes.Literal"><span class="pre">Literal</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.node_classes.Equals" title="Link to this definition"></a></dt>
 <dd><p>Binary infix operator for equality.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="pycypher.node_classes.Equals.tree">
@@ -691,8 +919,20 @@ with the <code class="docutils literal notranslate"><span class="pre">rich</span
 </dd></dl>
 
 <dl class="py class">
+<dt class="sig sig-object py" id="pycypher.node_classes.Evaluable">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.node_classes.</span></span><span class="sig-name descname"><span class="pre">Evaluable</span></span><a class="headerlink" href="#pycypher.node_classes.Evaluable" title="Link to this definition"></a></dt>
+<dd><p>Predicates, boolean operators, and arithmetic operators are all evaluable.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="pycypher.node_classes.Evaluable.evaluate">
+<span class="sig-name descname"><span class="pre">evaluate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.node_classes.Evaluable.evaluate" title="Link to this definition"></a></dt>
+<dd><p>Calls the <cite>_evaluate</cite> method and returns the value of the <cite>Literal</cite> object.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
 <dt class="sig sig-object py" id="pycypher.node_classes.GreaterThan">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.node_classes.</span></span><span class="sig-name descname"><span class="pre">GreaterThan</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">left_side</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="index.html#pycypher.tree_mixin.TreeMixin" title="pycypher.tree_mixin.TreeMixin"><span class="pre">TreeMixin</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">operator</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="index.html#pycypher.tree_mixin.TreeMixin" title="pycypher.tree_mixin.TreeMixin"><span class="pre">TreeMixin</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">right_side</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="index.html#pycypher.tree_mixin.TreeMixin" title="pycypher.tree_mixin.TreeMixin"><span class="pre">TreeMixin</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.node_classes.GreaterThan" title="Link to this definition"></a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.node_classes.</span></span><span class="sig-name descname"><span class="pre">GreaterThan</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">left_side</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="index.html#pycypher.tree_mixin.TreeMixin" title="pycypher.tree_mixin.TreeMixin"><span class="pre">TreeMixin</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">right_side</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="index.html#pycypher.tree_mixin.TreeMixin" title="pycypher.tree_mixin.TreeMixin"><span class="pre">TreeMixin</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.node_classes.GreaterThan" title="Link to this definition"></a></dt>
 <dd><p>Binary infix operator for greater than.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="pycypher.node_classes.GreaterThan.tree">
@@ -705,7 +945,7 @@ with the <code class="docutils literal notranslate"><span class="pre">rich</span
 
 <dl class="py class">
 <dt class="sig sig-object py" id="pycypher.node_classes.LessThan">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.node_classes.</span></span><span class="sig-name descname"><span class="pre">LessThan</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">left_side</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="index.html#pycypher.tree_mixin.TreeMixin" title="pycypher.tree_mixin.TreeMixin"><span class="pre">TreeMixin</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">operator</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="index.html#pycypher.tree_mixin.TreeMixin" title="pycypher.tree_mixin.TreeMixin"><span class="pre">TreeMixin</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">right_side</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="index.html#pycypher.tree_mixin.TreeMixin" title="pycypher.tree_mixin.TreeMixin"><span class="pre">TreeMixin</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.node_classes.LessThan" title="Link to this definition"></a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.node_classes.</span></span><span class="sig-name descname"><span class="pre">LessThan</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">left_side</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="index.html#pycypher.tree_mixin.TreeMixin" title="pycypher.tree_mixin.TreeMixin"><span class="pre">TreeMixin</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">right_side</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="index.html#pycypher.tree_mixin.TreeMixin" title="pycypher.tree_mixin.TreeMixin"><span class="pre">TreeMixin</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.node_classes.LessThan" title="Link to this definition"></a></dt>
 <dd><p>Binary infix operator for less than.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="pycypher.node_classes.LessThan.tree">
@@ -719,12 +959,33 @@ with the <code class="docutils literal notranslate"><span class="pre">rich</span
 <dl class="py class">
 <dt class="sig sig-object py" id="pycypher.node_classes.Literal">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.node_classes.</span></span><span class="sig-name descname"><span class="pre">Literal</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.13)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.node_classes.Literal" title="Link to this definition"></a></dt>
-<dd></dd></dl>
+<dd><p>Simply a container for a value. This is the base case for evaluation
+of predicates, etc.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="pycypher.node_classes.Literal.tree">
+<span class="sig-name descname"><span class="pre">tree</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.node_classes.Literal.tree" title="Link to this definition"></a></dt>
+<dd><p>Generates a tree representation of the AST which can be pretty-printed
+with the <code class="docutils literal notranslate"><span class="pre">rich</span></code> library.</p>
+</dd></dl>
+
+</dd></dl>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="pycypher.node_classes.Mapping">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.node_classes.</span></span><span class="sig-name descname"><span class="pre">Mapping</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.13)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.node_classes.Mapping" title="Link to this definition"></a></dt>
 <dd><p>Mappings are dictionaries of key-value pairs.</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="pycypher.node_classes.Mapping.children">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">children</span></span><a class="headerlink" href="#pycypher.node_classes.Mapping.children" title="Link to this definition"></a></dt>
+<dd><p>Each node should have a children property that returns a generator of its children.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="pycypher.node_classes.Mapping.constraints">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">constraints</span></span><a class="headerlink" href="#pycypher.node_classes.Mapping.constraints" title="Link to this definition"></a></dt>
+<dd><p>Generates the <code class="docutils literal notranslate"><span class="pre">Constraint</span></code> objects that correspond to this node.</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="pycypher.node_classes.Mapping.tree">
 <span class="sig-name descname"><span class="pre">tree</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.node_classes.Mapping.tree" title="Link to this definition"></a></dt>
@@ -738,6 +999,12 @@ with the <code class="docutils literal notranslate"><span class="pre">rich</span
 <dt class="sig sig-object py" id="pycypher.node_classes.MappingSet">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.node_classes.</span></span><span class="sig-name descname"><span class="pre">MappingSet</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mappings</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.13)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="index.html#pycypher.node_classes.Mapping" title="pycypher.node_classes.Mapping"><span class="pre">Mapping</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.node_classes.MappingSet" title="Link to this definition"></a></dt>
 <dd><p>A list of mappings.</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="pycypher.node_classes.MappingSet.children">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">children</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Generator</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="index.html#pycypher.node_classes.Mapping" title="pycypher.node_classes.Mapping"><span class="pre">Mapping</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#pycypher.node_classes.MappingSet.children" title="Link to this definition"></a></dt>
+<dd><p>Each node should have a children property that returns a generator of its children.</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="pycypher.node_classes.MappingSet.tree">
 <span class="sig-name descname"><span class="pre">tree</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tree</span></span></span><a class="headerlink" href="#pycypher.node_classes.MappingSet.tree" title="Link to this definition"></a></dt>
@@ -749,9 +1016,27 @@ with the <code class="docutils literal notranslate"><span class="pre">rich</span
 
 <dl class="py class">
 <dt class="sig sig-object py" id="pycypher.node_classes.Match">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.node_classes.</span></span><span class="sig-name descname"><span class="pre">Match</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pattern</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="index.html#pycypher.tree_mixin.TreeMixin" title="pycypher.tree_mixin.TreeMixin"><span class="pre">TreeMixin</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">where</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="index.html#pycypher.tree_mixin.TreeMixin" title="pycypher.tree_mixin.TreeMixin"><span class="pre">TreeMixin</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.node_classes.Match" title="Link to this definition"></a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.node_classes.</span></span><span class="sig-name descname"><span class="pre">Match</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pattern</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="index.html#pycypher.tree_mixin.TreeMixin" title="pycypher.tree_mixin.TreeMixin"><span class="pre">TreeMixin</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">where</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="index.html#pycypher.tree_mixin.TreeMixin" title="pycypher.tree_mixin.TreeMixin"><span class="pre">TreeMixin</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">with_clause</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="index.html#pycypher.tree_mixin.TreeMixin" title="pycypher.tree_mixin.TreeMixin"><span class="pre">TreeMixin</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">constraints</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.13)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><span class="pre">Constraint</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.node_classes.Match" title="Link to this definition"></a></dt>
 <dd><p>The node that represents the <code class="docutils literal notranslate"><span class="pre">MATCH</span></code> clause of the query. This includes
 any applicable <code class="docutils literal notranslate"><span class="pre">WHERE</span></code> clause, but not a <code class="docutils literal notranslate"><span class="pre">RETURN</span></code> clause.</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="pycypher.node_classes.Match.children">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">children</span></span><a class="headerlink" href="#pycypher.node_classes.Match.children" title="Link to this definition"></a></dt>
+<dd><p>Each node should have a children property that returns a generator of its children.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pycypher.node_classes.Match.gather_constraints">
+<span class="sig-name descname"><span class="pre">gather_constraints</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#pycypher.node_classes.Match.gather_constraints" title="Link to this definition"></a></dt>
+<dd><p>Gather all the <code class="docutils literal notranslate"><span class="pre">Constraint</span></code> objects from inside the <code class="docutils literal notranslate"><span class="pre">Match</span></code> clause.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pycypher.node_classes.Match.solutions">
+<span class="sig-name descname"><span class="pre">solutions</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fact_collection</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">FactCollection</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="index.html#pycypher.shims.Shim" title="pycypher.shims.Shim"><span class="pre">Shim</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.13)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.13)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.13)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#pycypher.node_classes.Match.solutions" title="Link to this definition"></a></dt>
+<dd><p>Find solutions with respect to Match clause ONLY.</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="pycypher.node_classes.Match.tree">
 <span class="sig-name descname"><span class="pre">tree</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tree</span></span></span><a class="headerlink" href="#pycypher.node_classes.Match.tree" title="Link to this definition"></a></dt>
@@ -764,9 +1049,23 @@ with the <code class="docutils literal notranslate"><span class="pre">rich</span
 <dl class="py class">
 <dt class="sig sig-object py" id="pycypher.node_classes.MatchList">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.node_classes.</span></span><span class="sig-name descname"><span class="pre">MatchList</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">match_list</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.13)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="index.html#pycypher.node_classes.Match" title="pycypher.node_classes.Match"><span class="pre">Match</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.node_classes.MatchList" title="Link to this definition"></a></dt>
-<dd><dl class="py method">
+<dd><p>Just a container for a list of <code class="docutils literal notranslate"><span class="pre">Match</span></code> objects.</p>
+<dl class="py method">
 <dt class="sig sig-object py" id="pycypher.node_classes.MatchList.tree">
 <span class="sig-name descname"><span class="pre">tree</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tree</span></span></span><a class="headerlink" href="#pycypher.node_classes.MatchList.tree" title="Link to this definition"></a></dt>
+<dd><p>Generates a tree representation of the AST which can be pretty-printed
+with the <code class="docutils literal notranslate"><span class="pre">rich</span></code> library.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="pycypher.node_classes.Multiplication">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.node_classes.</span></span><span class="sig-name descname"><span class="pre">Multiplication</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">left_side</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="index.html#pycypher.tree_mixin.TreeMixin" title="pycypher.tree_mixin.TreeMixin"><span class="pre">TreeMixin</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">right_side</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="index.html#pycypher.tree_mixin.TreeMixin" title="pycypher.tree_mixin.TreeMixin"><span class="pre">TreeMixin</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.node_classes.Multiplication" title="Link to this definition"></a></dt>
+<dd><p>Binary infix operator for multiplication.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="pycypher.node_classes.Multiplication.tree">
+<span class="sig-name descname"><span class="pre">tree</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tree</span></span></span><a class="headerlink" href="#pycypher.node_classes.Multiplication.tree" title="Link to this definition"></a></dt>
 <dd><p>Generates a tree representation of the AST which can be pretty-printed
 with the <code class="docutils literal notranslate"><span class="pre">rich</span></code> library.</p>
 </dd></dl>
@@ -777,6 +1076,12 @@ with the <code class="docutils literal notranslate"><span class="pre">rich</span
 <dt class="sig sig-object py" id="pycypher.node_classes.Node">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.node_classes.</span></span><span class="sig-name descname"><span class="pre">Node</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">node_name_label</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="index.html#pycypher.node_classes.NodeNameLabel" title="pycypher.node_classes.NodeNameLabel"><span class="pre">NodeNameLabel</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">mapping_list</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.13)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="index.html#pycypher.node_classes.Mapping" title="pycypher.node_classes.Mapping"><span class="pre">Mapping</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.node_classes.Node" title="Link to this definition"></a></dt>
 <dd><p>A node in the graph, which may contain a variable name, label, or mapping.</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="pycypher.node_classes.Node.children">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">children</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Generator</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="index.html#pycypher.node_classes.NodeNameLabel" title="pycypher.node_classes.NodeNameLabel"><span class="pre">NodeNameLabel</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="index.html#pycypher.node_classes.Mapping" title="pycypher.node_classes.Mapping"><span class="pre">Mapping</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#pycypher.node_classes.Node.children" title="Link to this definition"></a></dt>
+<dd><p>Each node should have a children property that returns a generator of its children.</p>
+</dd></dl>
+
 <dl class="py property">
 <dt class="sig sig-object py" id="pycypher.node_classes.Node.constraints">
 <em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">constraints</span></span><a class="headerlink" href="#pycypher.node_classes.Node.constraints" title="Link to this definition"></a></dt>
@@ -796,6 +1101,12 @@ with the <code class="docutils literal notranslate"><span class="pre">rich</span
 <dt class="sig sig-object py" id="pycypher.node_classes.NodeNameLabel">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.node_classes.</span></span><span class="sig-name descname"><span class="pre">NodeNameLabel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">label</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.node_classes.NodeNameLabel" title="Link to this definition"></a></dt>
 <dd><p>A node name, optionally followed by a label, separated by a dot.</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="pycypher.node_classes.NodeNameLabel.children">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">children</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Generator</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#pycypher.node_classes.NodeNameLabel.children" title="Link to this definition"></a></dt>
+<dd><p>Each node should have a children property that returns a generator of its children.</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="pycypher.node_classes.NodeNameLabel.tree">
 <span class="sig-name descname"><span class="pre">tree</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.node_classes.NodeNameLabel.tree" title="Link to this definition"></a></dt>
@@ -806,13 +1117,18 @@ with the <code class="docutils literal notranslate"><span class="pre">rich</span
 </dd></dl>
 
 <dl class="py class">
-<dt class="sig sig-object py" id="pycypher.node_classes.ObjectAttributeLookup">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.node_classes.</span></span><span class="sig-name descname"><span class="pre">ObjectAttributeLookup</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">object</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">attribute</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.node_classes.ObjectAttributeLookup" title="Link to this definition"></a></dt>
-<dd><p>A node that represents the value of an attribut of a node or relationship
-of the form <code class="docutils literal notranslate"><span class="pre">node.attribute</span></code>.</p>
+<dt class="sig sig-object py" id="pycypher.node_classes.Not">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.node_classes.</span></span><span class="sig-name descname"><span class="pre">Not</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">argument</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="index.html#pycypher.node_classes.Predicate" title="pycypher.node_classes.Predicate"><span class="pre">Predicate</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="index.html#pycypher.node_classes.Literal" title="pycypher.node_classes.Literal"><span class="pre">Literal</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.node_classes.Not" title="Link to this definition"></a></dt>
+<dd><p>Boolean connective for logical NOT.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pycypher.node_classes.Not.argument_types">
+<span class="sig-name descname"><span class="pre">argument_types</span></span><a class="headerlink" href="#pycypher.node_classes.Not.argument_types" title="Link to this definition"></a></dt>
+<dd><p>alias of <a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a></p>
+</dd></dl>
+
 <dl class="py method">
-<dt class="sig sig-object py" id="pycypher.node_classes.ObjectAttributeLookup.tree">
-<span class="sig-name descname"><span class="pre">tree</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tree</span></span></span><a class="headerlink" href="#pycypher.node_classes.ObjectAttributeLookup.tree" title="Link to this definition"></a></dt>
+<dt class="sig sig-object py" id="pycypher.node_classes.Not.tree">
+<span class="sig-name descname"><span class="pre">tree</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tree</span></span></span><a class="headerlink" href="#pycypher.node_classes.Not.tree" title="Link to this definition"></a></dt>
 <dd><p>Generates a tree representation of the AST which can be pretty-printed
 with the <code class="docutils literal notranslate"><span class="pre">rich</span></code> library.</p>
 </dd></dl>
@@ -820,9 +1136,56 @@ with the <code class="docutils literal notranslate"><span class="pre">rich</span
 </dd></dl>
 
 <dl class="py class">
+<dt class="sig sig-object py" id="pycypher.node_classes.ObjectAsSeries">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.node_classes.</span></span><span class="sig-name descname"><span class="pre">ObjectAsSeries</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">object_attribute_lookup_list</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.13)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="index.html#pycypher.node_classes.Alias" title="pycypher.node_classes.Alias"><span class="pre">Alias</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.node_classes.ObjectAsSeries" title="Link to this definition"></a></dt>
+<dd><p>Basically an alias. Might be redundant.</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="pycypher.node_classes.ObjectAsSeries.children">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">children</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Generator</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="index.html#pycypher.node_classes.Projection" title="pycypher.node_classes.Projection"><span class="pre">Projection</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="index.html#pycypher.node_classes.Alias" title="pycypher.node_classes.Alias"><span class="pre">Alias</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#pycypher.node_classes.ObjectAsSeries.children" title="Link to this definition"></a></dt>
+<dd><p>Each node should have a children property that returns a generator of its children.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pycypher.node_classes.ObjectAsSeries.tree">
+<span class="sig-name descname"><span class="pre">tree</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tree</span></span></span><a class="headerlink" href="#pycypher.node_classes.ObjectAsSeries.tree" title="Link to this definition"></a></dt>
+<dd><p>Generates a tree representation of the AST which can be pretty-printed
+with the <code class="docutils literal notranslate"><span class="pre">rich</span></code> library.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="pycypher.node_classes.ObjectAttributeLookup">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.node_classes.</span></span><span class="sig-name descname"><span class="pre">ObjectAttributeLookup</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">object_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">attribute</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.node_classes.ObjectAttributeLookup" title="Link to this definition"></a></dt>
+<dd><p>A node that represents the value of an attribute of a node or relationship
+of the form <code class="docutils literal notranslate"><span class="pre">node.attribute</span></code>.</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="pycypher.node_classes.ObjectAttributeLookup.children">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">children</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Generator</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#pycypher.node_classes.ObjectAttributeLookup.children" title="Link to this definition"></a></dt>
+<dd><p>Each node should have a children property that returns a generator of its children.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pycypher.node_classes.ObjectAttributeLookup.tree">
+<span class="sig-name descname"><span class="pre">tree</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tree</span></span></span><a class="headerlink" href="#pycypher.node_classes.ObjectAttributeLookup.tree" title="Link to this definition"></a></dt>
+<dd><p>Generates a tree representation of the AST which can be pretty-printed
+with the <code class="docutils literal notranslate"><span class="pre">rich</span></code> library.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pycypher.node_classes.ObjectAttributeLookup.value">
+<span class="sig-name descname"><span class="pre">value</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fact_collection</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">FactCollection</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.13)"><span class="pre">Any</span></a></span></span><a class="headerlink" href="#pycypher.node_classes.ObjectAttributeLookup.value" title="Link to this definition"></a></dt>
+<dd><p>Need to find reference of variable from previous Match clause.
+Then look up the attribute for that object from the FactCollection.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
 <dt class="sig sig-object py" id="pycypher.node_classes.Or">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.node_classes.</span></span><span class="sig-name descname"><span class="pre">Or</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">left_side</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="index.html#pycypher.node_classes.Predicate" title="pycypher.node_classes.Predicate"><span class="pre">Predicate</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="index.html#pycypher.node_classes.Literal" title="pycypher.node_classes.Literal"><span class="pre">Literal</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">operator</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">right_side</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="index.html#pycypher.node_classes.Predicate" title="pycypher.node_classes.Predicate"><span class="pre">Predicate</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="index.html#pycypher.node_classes.Literal" title="pycypher.node_classes.Literal"><span class="pre">Literal</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.node_classes.Or" title="Link to this definition"></a></dt>
-<dd><dl class="py method">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.node_classes.</span></span><span class="sig-name descname"><span class="pre">Or</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">left_side</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="index.html#pycypher.node_classes.Predicate" title="pycypher.node_classes.Predicate"><span class="pre">Predicate</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="index.html#pycypher.node_classes.Literal" title="pycypher.node_classes.Literal"><span class="pre">Literal</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">right_side</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="index.html#pycypher.node_classes.Predicate" title="pycypher.node_classes.Predicate"><span class="pre">Predicate</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="index.html#pycypher.node_classes.Literal" title="pycypher.node_classes.Literal"><span class="pre">Literal</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.node_classes.Or" title="Link to this definition"></a></dt>
+<dd><p>Boolean connective for logical OR.</p>
+<dl class="py method">
 <dt class="sig sig-object py" id="pycypher.node_classes.Or.tree">
 <span class="sig-name descname"><span class="pre">tree</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tree</span></span></span><a class="headerlink" href="#pycypher.node_classes.Or.tree" title="Link to this definition"></a></dt>
 <dd><p>Generates a tree representation of the AST which can be pretty-printed
@@ -833,16 +1196,33 @@ with the <code class="docutils literal notranslate"><span class="pre">rich</span
 
 <dl class="py class">
 <dt class="sig sig-object py" id="pycypher.node_classes.Predicate">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.node_classes.</span></span><span class="sig-name descname"><span class="pre">Predicate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">left_side</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="index.html#pycypher.tree_mixin.TreeMixin" title="pycypher.tree_mixin.TreeMixin"><span class="pre">TreeMixin</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">operator</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="index.html#pycypher.tree_mixin.TreeMixin" title="pycypher.tree_mixin.TreeMixin"><span class="pre">TreeMixin</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">right_side</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="index.html#pycypher.tree_mixin.TreeMixin" title="pycypher.tree_mixin.TreeMixin"><span class="pre">TreeMixin</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.node_classes.Predicate" title="Link to this definition"></a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.node_classes.</span></span><span class="sig-name descname"><span class="pre">Predicate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">left_side</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="index.html#pycypher.tree_mixin.TreeMixin" title="pycypher.tree_mixin.TreeMixin"><span class="pre">TreeMixin</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">right_side</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="index.html#pycypher.tree_mixin.TreeMixin" title="pycypher.tree_mixin.TreeMixin"><span class="pre">TreeMixin</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.node_classes.Predicate" title="Link to this definition"></a></dt>
 <dd><p>A node of the AST that represents a unary or binary expression
 with a definite truth value.</p>
 <p>This class is not instantiated directly, but is subclassed by specific
 operators.</p>
-<dl class="py method">
-<dt class="sig sig-object py" id="pycypher.node_classes.Predicate.tree">
-<span class="sig-name descname"><span class="pre">tree</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tree</span></span></span><a class="headerlink" href="#pycypher.node_classes.Predicate.tree" title="Link to this definition"></a></dt>
-<dd><p>Generates a tree representation of the AST which can be pretty-printed
-with the <code class="docutils literal notranslate"><span class="pre">rich</span></code> library.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pycypher.node_classes.Predicate.argument_types">
+<span class="sig-name descname"><span class="pre">argument_types</span></span><a class="headerlink" href="#pycypher.node_classes.Predicate.argument_types" title="Link to this definition"></a></dt>
+<dd><p>alias of <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.13)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Any</span></code></a></p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="pycypher.node_classes.Predicate.children">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">children</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Generator</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="index.html#pycypher.tree_mixin.TreeMixin" title="pycypher.tree_mixin.TreeMixin"><span class="pre">TreeMixin</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#pycypher.node_classes.Predicate.children" title="Link to this definition"></a></dt>
+<dd><p>Each node should have a children property that returns a generator of its children.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pycypher.node_classes.Predicate.left_side_types">
+<span class="sig-name descname"><span class="pre">left_side_types</span></span><a class="headerlink" href="#pycypher.node_classes.Predicate.left_side_types" title="Link to this definition"></a></dt>
+<dd><p>alias of <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.13)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Any</span></code></a></p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pycypher.node_classes.Predicate.right_side_types">
+<span class="sig-name descname"><span class="pre">right_side_types</span></span><a class="headerlink" href="#pycypher.node_classes.Predicate.right_side_types" title="Link to this definition"></a></dt>
+<dd><p>alias of <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.13)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Any</span></code></a></p>
 </dd></dl>
 
 </dd></dl>
@@ -851,6 +1231,12 @@ with the <code class="docutils literal notranslate"><span class="pre">rich</span
 <dt class="sig sig-object py" id="pycypher.node_classes.Projection">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.node_classes.</span></span><span class="sig-name descname"><span class="pre">Projection</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lookups</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.13)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="index.html#pycypher.node_classes.ObjectAttributeLookup" title="pycypher.node_classes.ObjectAttributeLookup"><span class="pre">ObjectAttributeLookup</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.node_classes.Projection" title="Link to this definition"></a></dt>
 <dd><p>A node variable followed by an attribute, or another evaluable expression.</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="pycypher.node_classes.Projection.children">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">children</span></span><a class="headerlink" href="#pycypher.node_classes.Projection.children" title="Link to this definition"></a></dt>
+<dd><p>Each node should have a children property that returns a generator of its children.</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="pycypher.node_classes.Projection.tree">
 <span class="sig-name descname"><span class="pre">tree</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.node_classes.Projection.tree" title="Link to this definition"></a></dt>
@@ -864,6 +1250,12 @@ with the <code class="docutils literal notranslate"><span class="pre">rich</span
 <dt class="sig sig-object py" id="pycypher.node_classes.Query">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.node_classes.</span></span><span class="sig-name descname"><span class="pre">Query</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">match_clause</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="index.html#pycypher.node_classes.Match" title="pycypher.node_classes.Match"><span class="pre">Match</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">return_clause</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="index.html#pycypher.node_classes.Return" title="pycypher.node_classes.Return"><span class="pre">Return</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.node_classes.Query" title="Link to this definition"></a></dt>
 <dd><p>The node that represents the entire query.</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="pycypher.node_classes.Query.children">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">children</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Generator</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="index.html#pycypher.node_classes.Match" title="pycypher.node_classes.Match"><span class="pre">Match</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="index.html#pycypher.node_classes.Return" title="pycypher.node_classes.Return"><span class="pre">Return</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#pycypher.node_classes.Query.children" title="Link to this definition"></a></dt>
+<dd><p>Each node should have a children property that returns a generator of its children.</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="pycypher.node_classes.Query.tree">
 <span class="sig-name descname"><span class="pre">tree</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tree</span></span></span><a class="headerlink" href="#pycypher.node_classes.Query.tree" title="Link to this definition"></a></dt>
@@ -877,6 +1269,12 @@ with the <code class="docutils literal notranslate"><span class="pre">rich</span
 <dt class="sig sig-object py" id="pycypher.node_classes.Relationship">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.node_classes.</span></span><span class="sig-name descname"><span class="pre">Relationship</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name_label</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="index.html#pycypher.node_classes.NodeNameLabel" title="pycypher.node_classes.NodeNameLabel"><span class="pre">NodeNameLabel</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.node_classes.Relationship" title="Link to this definition"></a></dt>
 <dd><p>Relationships may contain a variable name, label, or mapping.</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="pycypher.node_classes.Relationship.children">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">children</span></span><a class="headerlink" href="#pycypher.node_classes.Relationship.children" title="Link to this definition"></a></dt>
+<dd><p>Each node should have a children property that returns a generator of its children.</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="pycypher.node_classes.Relationship.tree">
 <span class="sig-name descname"><span class="pre">tree</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.node_classes.Relationship.tree" title="Link to this definition"></a></dt>
@@ -891,6 +1289,12 @@ with the <code class="docutils literal notranslate"><span class="pre">rich</span
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.node_classes.</span></span><span class="sig-name descname"><span class="pre">RelationshipChain</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">steps</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.13)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="index.html#pycypher.tree_mixin.TreeMixin" title="pycypher.tree_mixin.TreeMixin"><span class="pre">TreeMixin</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.node_classes.RelationshipChain" title="Link to this definition"></a></dt>
 <dd><p>Several <code class="docutils literal notranslate"><span class="pre">Relationship</span></code> nodes chained together, sharing <code class="docutils literal notranslate"><span class="pre">Node</span></code> objects
 between them.</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="pycypher.node_classes.RelationshipChain.children">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">children</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Generator</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="index.html#pycypher.tree_mixin.TreeMixin" title="pycypher.tree_mixin.TreeMixin"><span class="pre">TreeMixin</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#pycypher.node_classes.RelationshipChain.children" title="Link to this definition"></a></dt>
+<dd><p>Each node should have a children property that returns a generator of its children.</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="pycypher.node_classes.RelationshipChain.tree">
 <span class="sig-name descname"><span class="pre">tree</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tree</span></span></span><a class="headerlink" href="#pycypher.node_classes.RelationshipChain.tree" title="Link to this definition"></a></dt>
@@ -903,7 +1307,14 @@ with the <code class="docutils literal notranslate"><span class="pre">rich</span
 <dl class="py class">
 <dt class="sig sig-object py" id="pycypher.node_classes.RelationshipChainList">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.node_classes.</span></span><span class="sig-name descname"><span class="pre">RelationshipChainList</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">relationships</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.13)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="index.html#pycypher.node_classes.RelationshipChain" title="pycypher.node_classes.RelationshipChain"><span class="pre">RelationshipChain</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.node_classes.RelationshipChainList" title="Link to this definition"></a></dt>
-<dd><dl class="py method">
+<dd><p>Container for a list of relationship chains.</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="pycypher.node_classes.RelationshipChainList.children">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">children</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Generator</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="index.html#pycypher.node_classes.RelationshipChain" title="pycypher.node_classes.RelationshipChain"><span class="pre">RelationshipChain</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#pycypher.node_classes.RelationshipChainList.children" title="Link to this definition"></a></dt>
+<dd><p>Each node should have a children property that returns a generator of its children.</p>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="pycypher.node_classes.RelationshipChainList.tree">
 <span class="sig-name descname"><span class="pre">tree</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tree</span></span></span><a class="headerlink" href="#pycypher.node_classes.RelationshipChainList.tree" title="Link to this definition"></a></dt>
 <dd><p>Generates a tree representation of the AST which can be pretty-printed
@@ -917,6 +1328,18 @@ with the <code class="docutils literal notranslate"><span class="pre">rich</span
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.node_classes.</span></span><span class="sig-name descname"><span class="pre">RelationshipLeftRight</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">relationship</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="index.html#pycypher.node_classes.Relationship" title="pycypher.node_classes.Relationship"><span class="pre">Relationship</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.node_classes.RelationshipLeftRight" title="Link to this definition"></a></dt>
 <dd><p>A <code class="docutils literal notranslate"><span class="pre">Relationship</span></code> with the arrow pointing from left to right. Note that there
 is no semantic difference between this and <code class="docutils literal notranslate"><span class="pre">RelationshipRightLeft</span></code>.</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="pycypher.node_classes.RelationshipLeftRight.children">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">children</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Generator</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="index.html#pycypher.node_classes.Relationship" title="pycypher.node_classes.Relationship"><span class="pre">Relationship</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#pycypher.node_classes.RelationshipLeftRight.children" title="Link to this definition"></a></dt>
+<dd><p>Each node should have a children property that returns a generator of its children.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="pycypher.node_classes.RelationshipLeftRight.constraints">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">constraints</span></span><a class="headerlink" href="#pycypher.node_classes.RelationshipLeftRight.constraints" title="Link to this definition"></a></dt>
+<dd><p>Calculates the <code class="docutils literal notranslate"><span class="pre">Constraint</span></code> objects for this <code class="docutils literal notranslate"><span class="pre">Relationship</span></code>.</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="pycypher.node_classes.RelationshipLeftRight.tree">
 <span class="sig-name descname"><span class="pre">tree</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tree</span></span></span><a class="headerlink" href="#pycypher.node_classes.RelationshipLeftRight.tree" title="Link to this definition"></a></dt>
@@ -931,6 +1354,12 @@ with the <code class="docutils literal notranslate"><span class="pre">rich</span
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.node_classes.</span></span><span class="sig-name descname"><span class="pre">RelationshipRightLeft</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">relationship</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="index.html#pycypher.node_classes.Relationship" title="pycypher.node_classes.Relationship"><span class="pre">Relationship</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.node_classes.RelationshipRightLeft" title="Link to this definition"></a></dt>
 <dd><p>A <code class="docutils literal notranslate"><span class="pre">Relationship</span></code> with the arrow pointing from right to left. Note that there
 is no semantic difference between this and <code class="docutils literal notranslate"><span class="pre">RelationshipLeftRight</span></code>.</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="pycypher.node_classes.RelationshipRightLeft.children">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">children</span></span><a class="headerlink" href="#pycypher.node_classes.RelationshipRightLeft.children" title="Link to this definition"></a></dt>
+<dd><p>Each node should have a children property that returns a generator of its children.</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="pycypher.node_classes.RelationshipRightLeft.tree">
 <span class="sig-name descname"><span class="pre">tree</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.node_classes.RelationshipRightLeft.tree" title="Link to this definition"></a></dt>
@@ -943,10 +1372,48 @@ with the <code class="docutils literal notranslate"><span class="pre">rich</span
 <dl class="py class">
 <dt class="sig sig-object py" id="pycypher.node_classes.Return">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.node_classes.</span></span><span class="sig-name descname"><span class="pre">Return</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">node</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="index.html#pycypher.node_classes.Projection" title="pycypher.node_classes.Projection"><span class="pre">Projection</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.node_classes.Return" title="Link to this definition"></a></dt>
-<dd><p>Represnents the <code class="docutils literal notranslate"><span class="pre">RETURN</span></code> clause, whivh is a set of projections.</p>
+<dd><p>Represents the <code class="docutils literal notranslate"><span class="pre">RETURN</span></code> clause, which is a set of projections.</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="pycypher.node_classes.Return.children">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">children</span></span><a class="headerlink" href="#pycypher.node_classes.Return.children" title="Link to this definition"></a></dt>
+<dd><p>Each node should have a children property that returns a generator of its children.</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="pycypher.node_classes.Return.tree">
 <span class="sig-name descname"><span class="pre">tree</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.node_classes.Return.tree" title="Link to this definition"></a></dt>
+<dd><p>Generates a tree representation of the AST which can be pretty-printed
+with the <code class="docutils literal notranslate"><span class="pre">rich</span></code> library.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="pycypher.node_classes.Size">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.node_classes.</span></span><span class="sig-name descname"><span class="pre">Size</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">collection</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="index.html#pycypher.node_classes.Collection" title="pycypher.node_classes.Collection"><span class="pre">Collection</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.node_classes.Size" title="Link to this definition"></a></dt>
+<dd><p>The SIZE keyword</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="pycypher.node_classes.Size.children">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">children</span></span><a class="headerlink" href="#pycypher.node_classes.Size.children" title="Link to this definition"></a></dt>
+<dd><p>Each node should have a children property that returns a generator of its children.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pycypher.node_classes.Size.tree">
+<span class="sig-name descname"><span class="pre">tree</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.node_classes.Size.tree" title="Link to this definition"></a></dt>
+<dd><p>Generates a tree representation of the AST which can be pretty-printed
+with the <code class="docutils literal notranslate"><span class="pre">rich</span></code> library.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="pycypher.node_classes.Subtraction">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.node_classes.</span></span><span class="sig-name descname"><span class="pre">Subtraction</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">left_side</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="index.html#pycypher.tree_mixin.TreeMixin" title="pycypher.tree_mixin.TreeMixin"><span class="pre">TreeMixin</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">right_side</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="index.html#pycypher.tree_mixin.TreeMixin" title="pycypher.tree_mixin.TreeMixin"><span class="pre">TreeMixin</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.node_classes.Subtraction" title="Link to this definition"></a></dt>
+<dd><p>Binary infix operator for subtraction.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="pycypher.node_classes.Subtraction.tree">
+<span class="sig-name descname"><span class="pre">tree</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tree</span></span></span><a class="headerlink" href="#pycypher.node_classes.Subtraction.tree" title="Link to this definition"></a></dt>
 <dd><p>Generates a tree representation of the AST which can be pretty-printed
 with the <code class="docutils literal notranslate"><span class="pre">rich</span></code> library.</p>
 </dd></dl>
@@ -969,6 +1436,84 @@ with the <code class="docutils literal notranslate"><span class="pre">rich</span
 
 </dd></dl>
 
+<dl class="py class">
+<dt class="sig sig-object py" id="pycypher.node_classes.WithClause">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.node_classes.</span></span><span class="sig-name descname"><span class="pre">WithClause</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">object_as_series</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="index.html#pycypher.node_classes.ObjectAsSeries" title="pycypher.node_classes.ObjectAsSeries"><span class="pre">ObjectAsSeries</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.node_classes.WithClause" title="Link to this definition"></a></dt>
+<dd><p>The <code class="docutils literal notranslate"><span class="pre">WITH</span></code> clause of the query, which is a set of projections.</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="pycypher.node_classes.WithClause.children">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">children</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Generator</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="index.html#pycypher.node_classes.Projection" title="pycypher.node_classes.Projection"><span class="pre">Projection</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#pycypher.node_classes.WithClause.children" title="Link to this definition"></a></dt>
+<dd><p>Each node should have a children property that returns a generator of its children.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pycypher.node_classes.WithClause.tree">
+<span class="sig-name descname"><span class="pre">tree</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tree</span></span></span><a class="headerlink" href="#pycypher.node_classes.WithClause.tree" title="Link to this definition"></a></dt>
+<dd><p>Generates a tree representation of the AST which can be pretty-printed
+with the <code class="docutils literal notranslate"><span class="pre">rich</span></code> library.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<span id="document-generated/pycypher.shim"></span><section id="shims">
+<h5>Shims<a class="headerlink" href="#shims" title="Link to this heading"></a></h5>
+<p>In order to use <cite>pycypher</cite> as a search engine (as opposed to just using it to parse Cypher into an AST), you need to have a subclass of <code class="docutils literal notranslate"><span class="pre">Shim</span></code> appropriate for your data source.</p>
+<p>The job of a <code class="docutils literal notranslate"><span class="pre">Shim</span></code> is to generate a <code class="docutils literal notranslate"><span class="pre">FactCollection</span></code> object from your data source. When you call <code class="docutils literal notranslate"><span class="pre">CypherParser.solutions</span></code> on your shim, it will automatically generate the required <code class="docutils literal notranslate"><span class="pre">FactCollection</span></code> and return the solution(s) to your query.</p>
+<p><code class="docutils literal notranslate"><span class="pre">Shim</span></code> is a very simple abstract base class that requires you to implement a single method, <code class="docutils literal notranslate"><span class="pre">make_fact_collection</span></code>. This method should return a <code class="docutils literal notranslate"><span class="pre">FactCollection</span></code> object. For reference, we include a shim for NetworkX’s <code class="docutils literal notranslate"><span class="pre">DiGraph</span></code> (directed graph) class, which is documented in detail. But generally speaking, there is a standard strategy for implementing your <code class="docutils literal notranslate"><span class="pre">make_fact_collection</span></code> method, which goes like this:</p>
+<ol class="arabic simple">
+<li><p>Make a new <code class="docutils literal notranslate"><span class="pre">FactCollection</span></code> object.</p></li>
+<li><dl class="simple">
+<dt>Traverse your graph, and:</dt><dd><ul class="simple">
+<li><dl class="simple">
+<dt>for each node:</dt><dd><ul>
+<li><p>if it has a label, create a <code class="docutils literal notranslate"><span class="pre">FactNodeHasLabel</span></code> object, initialized with the node’s ID and label;</p></li>
+<li><p>if it has any attributes, create a <code class="docutils literal notranslate"><span class="pre">FactNodeHasProperty</span></code> object for each attribute, initialized with the node’s ID, attribute name, and attribute value.</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>for each edge:</dt><dd><ul>
+<li><p>if it has a label, create a <code class="docutils literal notranslate"><span class="pre">FactRelationshipHasLabel</span></code> object, initialized with the edge’s ID and label;</p></li>
+<li><p>if it has any attributes, create a <code class="docutils literal notranslate"><span class="pre">FactRelationshipHasAttribute</span></code> object for each attribute, initialized with the edge’s ID, attribute name, and attribute value;</p></li>
+<li><p>create a <code class="docutils literal notranslate"><span class="pre">FactEdgeHasSourceNode</span></code> object, initialized with the edge’s ID and source node ID;</p></li>
+<li><p>create a <code class="docutils literal notranslate"><span class="pre">FactEdgeHasTargetNode</span></code> object, initialized with the edge’s ID and target node ID.</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><p>Add those facts to your <code class="docutils literal notranslate"><span class="pre">FactCollection</span></code> object.</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><p>Return the <code class="docutils literal notranslate"><span class="pre">FactCollection</span></code> object.</p></li>
+</ol>
+<p>The NetworkX shim is an example of this procedure. It inherits from <code class="docutils literal notranslate"><span class="pre">Shim</span></code>, takes a <code class="docutils literal notranslate"><span class="pre">networkx.DiGraph</span></code> object in its <code class="docutils literal notranslate"><span class="pre">__init__</span></code> method, and implements the <code class="docutils literal notranslate"><span class="pre">make_fact_collection</span></code> method. That method traverses the graph, defining a list of <code class="docutils literal notranslate"><span class="pre">Fact</span></code> objects. Then it adds those <code class="docutils literal notranslate"><span class="pre">Fact</span></code> objects to a <code class="docutils literal notranslate"><span class="pre">FactCollection</span></code>.</p>
+<p>If you follow this procedure, you should be able to call <code class="docutils literal notranslate"><span class="pre">CypherParser.solutions</span></code> on your shim and get the results you expect.</p>
+<p id="module-pycypher.shims">Abstract base class</p>
+<p class="rubric">Functions</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#pycypher.shims.Shim" title="pycypher.shims.Shim"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Shim</span></code></a>(*args, **kwargs)</p></td>
+<td><p>Abstract base class for interfaces between data structures and the Cypher query language.</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py class">
+<dt class="sig sig-object py" id="pycypher.shims.Shim">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.shims.</span></span><span class="sig-name descname"><span class="pre">Shim</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.shims.Shim" title="Link to this definition"></a></dt>
+<dd><p>Abstract base class for interfaces between data structures and
+the Cypher query language.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="pycypher.shims.Shim.make_fact_collection">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">make_fact_collection</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.shims.Shim.make_fact_collection" title="Link to this definition"></a></dt>
+<dd><p>Overridden</p>
+</dd></dl>
+
+</dd></dl>
+
 </section>
 <span id="document-generated/pycypher.solver"></span><section id="module-pycypher.solver">
 <span id="constraint-solver"></span><h5>Constraint Solver<a class="headerlink" href="#module-pycypher.solver" title="Link to this heading"></a></h5>
@@ -981,8 +1526,8 @@ with the <code class="docutils literal notranslate"><span class="pre">rich</span
 <tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">ConstraintNodeHasAttributeWithValue</span></code>(node_id, ...)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">ConstraintNodeHasLabel</span></code>(node_id, label)</p></td>
-<td><p></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#pycypher.solver.ConstraintNodeHasLabel" title="pycypher.solver.ConstraintNodeHasLabel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ConstraintNodeHasLabel</span></code></a>(node_id, label)</p></td>
+<td><p>Node has a label</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#pycypher.solver.IsTrue" title="pycypher.solver.IsTrue"><code class="xref py py-obj docutils literal notranslate"><span class="pre">IsTrue</span></code></a>(predicate)</p></td>
 <td><p>Class to represent a constraint that merely says that a <code class="docutils literal notranslate"><span class="pre">Predicate</span></code> is true.</p></td>
@@ -992,6 +1537,12 @@ with the <code class="docutils literal notranslate"><span class="pre">rich</span
 </tr>
 </tbody>
 </table>
+<dl class="py class">
+<dt class="sig sig-object py" id="pycypher.solver.ConstraintNodeHasLabel">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.solver.</span></span><span class="sig-name descname"><span class="pre">ConstraintNodeHasLabel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">node_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">label</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.solver.ConstraintNodeHasLabel" title="Link to this definition"></a></dt>
+<dd><p>Node has a label</p>
+</dd></dl>
+
 <dl class="py class">
 <dt class="sig sig-object py" id="pycypher.solver.IsTrue">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.solver.</span></span><span class="sig-name descname"><span class="pre">IsTrue</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">predicate</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="index.html#pycypher.node_classes.Predicate" title="pycypher.node_classes.Predicate"><span class="pre">Predicate</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.solver.IsTrue" title="Link to this definition"></a></dt>
@@ -1015,10 +1566,34 @@ the AST.</p>
 <dt class="sig sig-object py" id="pycypher.tree_mixin.TreeMixin">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.tree_mixin.</span></span><span class="sig-name descname"><span class="pre">TreeMixin</span></span><a class="headerlink" href="#pycypher.tree_mixin.TreeMixin" title="Link to this definition"></a></dt>
 <dd><p>Mixin class that provides methods for walking and printing the AST.</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="pycypher.tree_mixin.TreeMixin.children">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">children</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Generator</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="index.html#pycypher.tree_mixin.TreeMixin" title="pycypher.tree_mixin.TreeMixin"><span class="pre">TreeMixin</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#pycypher.tree_mixin.TreeMixin.children" title="Link to this definition"></a></dt>
+<dd><p>Each node should have a children property that returns a generator of its children.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pycypher.tree_mixin.TreeMixin.enclosing_class">
+<span class="sig-name descname"><span class="pre">enclosing_class</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cls</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Type" title="(in Python v3.13)"><span class="pre">Type</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="index.html#pycypher.tree_mixin.TreeMixin" title="pycypher.tree_mixin.TreeMixin"><span class="pre">TreeMixin</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="index.html#pycypher.tree_mixin.TreeMixin" title="pycypher.tree_mixin.TreeMixin"><span class="pre">TreeMixin</span></a></span></span><a class="headerlink" href="#pycypher.tree_mixin.TreeMixin.enclosing_class" title="Link to this definition"></a></dt>
+<dd><p>Returns the first enclosing node of the given class.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="pycypher.tree_mixin.TreeMixin.parse_obj">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">parse_obj</span></span><a class="headerlink" href="#pycypher.tree_mixin.TreeMixin.parse_obj" title="Link to this definition"></a></dt>
+<dd><p>Returns the parse object thst contains the AST and other stuff.</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="pycypher.tree_mixin.TreeMixin.print_tree">
 <span class="sig-name descname"><span class="pre">print_tree</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.tree_mixin.TreeMixin.print_tree" title="Link to this definition"></a></dt>
 <dd><p>Uses <code class="docutils literal notranslate"><span class="pre">rich</span></code> to print the tree representation of the AST.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="pycypher.tree_mixin.TreeMixin.root">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">root</span></span><a class="headerlink" href="#pycypher.tree_mixin.TreeMixin.root" title="Link to this definition"></a></dt>
+<dd><p>Returns the root node of the AST.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -1032,6 +1607,8 @@ with the <code class="docutils literal notranslate"><span class="pre">rich</span
 <dt class="sig sig-object py" id="pycypher.tree_mixin.TreeMixin.walk">
 <span class="sig-name descname"><span class="pre">walk</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Generator</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="index.html#pycypher.tree_mixin.TreeMixin" title="pycypher.tree_mixin.TreeMixin"><span class="pre">TreeMixin</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#pycypher.tree_mixin.TreeMixin.walk" title="Link to this definition"></a></dt>
 <dd><p>Generator that yields every node of the AST.</p>
+<p>Note that this will <strong>not</strong> work if there is a list directly inside another list.
+But that shouldn’t happen in an AST anyway.</p>
 </dd></dl>
 
 </dd></dl>

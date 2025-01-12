@@ -52,11 +52,13 @@
 <li class="toctree-l2 current"><a class="current reference internal" href="#">Exceptions</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#pycypher.exceptions.CypherParsingError"><code class="docutils literal notranslate"><span class="pre">CypherParsingError</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#pycypher.exceptions.UnexpectedCypherStructureError"><code class="docutils literal notranslate"><span class="pre">UnexpectedCypherStructureError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pycypher.exceptions.WrongCypherTypeError"><code class="docutils literal notranslate"><span class="pre">WrongCypherTypeError</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="pycypher.fact.html">Facts</a></li>
 <li class="toctree-l2"><a class="reference internal" href="pycypher.logger.html">Logger</a></li>
 <li class="toctree-l2"><a class="reference internal" href="pycypher.node_classes.html">AST Node Classes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pycypher.shim.html">Shims</a></li>
 <li class="toctree-l2"><a class="reference internal" href="pycypher.solver.html">Constraint Solver</a></li>
 <li class="toctree-l2"><a class="reference internal" href="pycypher.tree_mixin.html">Tree Mixin</a></li>
 </ul>
@@ -112,6 +114,12 @@
 <dt class="sig sig-object py" id="pycypher.exceptions.UnexpectedCypherStructureError">
 <em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.exceptions.</span></span><span class="sig-name descname"><span class="pre">UnexpectedCypherStructureError</span></span><a class="headerlink" href="#pycypher.exceptions.UnexpectedCypherStructureError" title="Link to this definition"></a></dt>
 <dd><p>To be thrown when the <cite>CypherParser</cite> can parse the expression, but it has an unexpected structure.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="pycypher.exceptions.WrongCypherTypeError">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.exceptions.</span></span><span class="sig-name descname"><span class="pre">WrongCypherTypeError</span></span><a class="headerlink" href="#pycypher.exceptions.WrongCypherTypeError" title="Link to this definition"></a></dt>
+<dd><p>To be thrown when the <cite>CypherParser</cite> can parse the expression, but it has an unexpected type.</p>
 </dd></dl>
 
 </section>

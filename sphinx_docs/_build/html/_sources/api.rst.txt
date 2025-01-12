@@ -9,5 +9,6 @@ API
    generated/pycypher.fact
    generated/pycypher.logger
    generated/pycypher.node_classes
+   generated/pycypher.shim
    generated/pycypher.solver
    generated/pycypher.tree_mixin

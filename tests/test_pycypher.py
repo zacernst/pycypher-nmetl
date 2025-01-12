@@ -1,4 +1,4 @@
-# pylint: disable=missing-function-docstring,redefined-outer-name,too-many-lines
+# pylint: disable=missing-function-docstring,protected-access,redefined-outer-name,too-many-lines
 
 from unittest.mock import patch
 
@@ -13,16 +13,27 @@ from pycypher.fact import (  # We might get rid of this class entirely
     FactNodeHasAttributeWithValue,
     FactNodeHasLabel,
     FactNodeRelatedToNode,
-    FactRelationshipHasLabel,
-    FactRelationshipHasSourceNode,
-    FactRelationshipHasTargetNode,
+)
+from pycypher.fixtures import (
+    fact_collection_0,
+    fact_collection_1,
+    fact_collection_2,
+    fact_collection_3,
+    fact_collection_4,
+    fact_collection_5,
+    fact_collection_6,
+    fact_collection_7,
+    networkx_graph,
+    number_of_facts,
 )
 from pycypher.node_classes import Alias  # pylint: disable=unused-import
 from pycypher.node_classes import (
     Addition,
     And,
     Collect,
+    Collection,
     Cypher,
+    Distinct,
     Division,
     Equals,
     Evaluable,
@@ -36,6 +47,7 @@ from pycypher.node_classes import (
     ObjectAttributeLookup,
     Or,
     Query,
+    Size,
     Subtraction,
     Where,
     WithClause,
@@ -50,309 +62,6 @@ from pycypher.solver import (
     ConstraintRelationshipHasTargetNode,
 )
 from pycypher.tree_mixin import TreeMixin
-
-
-@pytest.fixture
-def fact_collection_0():
-    fact1 = FactNodeHasLabel("1", "Thing")
-    fact2 = FactNodeHasAttributeWithValue("1", "key", Literal(2))
-    fact3 = FactNodeRelatedToNode("1", "2", "MyRelationship")
-    fact4 = FactNodeHasLabel("2", "OtherThing")
-    fact5 = FactNodeHasAttributeWithValue("2", "key", Literal(5))
-    fact6 = FactRelationshipHasLabel("relationship_123", "MyRelationship")
-    fact7 = FactRelationshipHasSourceNode("relationship_123", "1")
-    fact8 = FactRelationshipHasTargetNode("relationship_123", "2")
-    fact_collection = FactCollection(
-        [
-            fact1,
-            fact2,
-            fact3,
-            fact4,
-            fact5,
-            fact6,
-            fact7,
-            fact8,
-        ]
-    )
-
-    return fact_collection
-
-
-@pytest.fixture
-def fact_collection_1():
-    fact1 = FactNodeHasLabel("1", "Thing")
-    fact2 = FactNodeHasLabel("2", "Thing")
-    fact3 = FactNodeHasLabel("3", "OtherThing")
-    fact_collection = FactCollection(
-        [
-            fact1,
-            fact2,
-            fact3,
-        ]
-    )
-
-    return fact_collection
-
-
-@pytest.fixture
-def fact_collection_2():
-    fact1 = FactNodeHasLabel("1", "Thing")
-    fact2 = FactNodeHasLabel("2", "MiddleThing")
-    fact3 = FactNodeHasLabel("3", "OtherThing")
-    fact4 = FactRelationshipHasLabel("relationship_1", "MyRelationship")
-    fact5 = FactRelationshipHasLabel("relationship_2", "OtherRelationship")
-    fact6 = FactRelationshipHasSourceNode("relationship_1", "1")
-    fact7 = FactRelationshipHasTargetNode("relationship_1", "2")
-    fact8 = FactRelationshipHasSourceNode("relationship_2", "2")
-    fact9 = FactRelationshipHasTargetNode("relationship_2", "3")
-    fact_collection = FactCollection(
-        [
-            fact1,
-            fact2,
-            fact3,
-            fact4,
-            fact5,
-            fact6,
-            fact7,
-            fact8,
-            fact9,
-        ]
-    )
-
-    return fact_collection
-
-
-@pytest.fixture
-def fact_collection_3():
-    fact1 = FactNodeHasLabel("1", "Thing")
-    fact2 = FactNodeHasLabel("2", "MiddleThing")
-    fact3 = FactNodeHasLabel("3", "OtherThing")
-    fact4 = FactRelationshipHasLabel("relationship_1", "MyRelationship")
-    fact5 = FactRelationshipHasLabel("relationship_2", "OtherRelationship")
-    fact6 = FactRelationshipHasSourceNode("relationship_1", "1")
-    fact7 = FactRelationshipHasTargetNode("relationship_1", "2")
-    fact8 = FactRelationshipHasSourceNode("relationship_2", "2")
-    fact9 = FactRelationshipHasTargetNode("relationship_2", "3")
-    fact10 = FactNodeHasLabel("4", "Thing")
-    fact11 = FactRelationshipHasLabel("relationship_3", "MyRelationship")
-    fact12 = FactRelationshipHasSourceNode("relationship_3", "4")
-    fact13 = FactRelationshipHasTargetNode("relationship_3", "2")
-
-    fact_collection = FactCollection(
-        [
-            fact1,
-            fact2,
-            fact3,
-            fact4,
-            fact5,
-            fact6,
-            fact7,
-            fact8,
-            fact9,
-            fact10,
-            fact11,
-            fact12,
-            fact13,
-        ]
-    )
-
-    return fact_collection
-
-
-@pytest.fixture
-def fact_collection_4():
-    fact1 = FactNodeHasLabel("1", "Thing")
-    fact2 = FactNodeHasLabel("2", "MiddleThing")
-    fact3 = FactNodeHasLabel("3", "OtherThing")
-    fact4 = FactRelationshipHasLabel("relationship_1", "MyRelationship")
-    fact5 = FactRelationshipHasLabel("relationship_2", "OtherRelationship")
-    fact6 = FactRelationshipHasSourceNode("relationship_1", "1")
-    fact7 = FactRelationshipHasTargetNode("relationship_1", "2")
-    fact8 = FactRelationshipHasSourceNode("relationship_2", "2")
-    fact9 = FactRelationshipHasTargetNode("relationship_2", "3")
-
-    fact10 = FactNodeHasLabel("4", "Thing")
-    fact11 = FactRelationshipHasLabel("relationship_3", "MyRelationship")
-    fact12 = FactRelationshipHasSourceNode("relationship_3", "4")
-    fact13 = FactRelationshipHasTargetNode("relationship_3", "2")
-
-    fact14 = FactNodeHasLabel("5", "OtherThing")
-    fact15 = FactRelationshipHasLabel("relationship_4", "OtherRelationship")
-    fact16 = FactRelationshipHasSourceNode("relationship_4", "2")
-    fact17 = FactRelationshipHasTargetNode("relationship_4", "5")
-
-    fact_collection = FactCollection(
-        [
-            fact1,
-            fact2,
-            fact3,
-            fact4,
-            fact5,
-            fact6,
-            fact7,
-            fact8,
-            fact9,
-            fact10,
-            fact11,
-            fact12,
-            fact13,
-            fact14,
-            fact15,
-            fact16,
-            fact17,
-        ]
-    )
-
-    return fact_collection
-
-
-@pytest.fixture
-def fact_collection_5():
-    fact1 = FactNodeHasLabel("1", "Thing")
-    fact2 = FactNodeHasLabel("2", "MiddleThing")
-    fact3 = FactNodeHasLabel("3", "OtherThing")
-    fact4 = FactRelationshipHasLabel("relationship_1", "MyRelationship")
-    fact5 = FactRelationshipHasLabel("relationship_2", "OtherRelationship")
-    fact6 = FactRelationshipHasSourceNode("relationship_1", "1")
-    fact7 = FactRelationshipHasTargetNode("relationship_1", "2")
-    fact8 = FactRelationshipHasSourceNode("relationship_2", "2")
-    fact9 = FactRelationshipHasTargetNode("relationship_2", "3")
-
-    fact10 = FactNodeHasLabel("4", "Thing")
-    fact11 = FactRelationshipHasLabel("relationship_3", "MyRelationship")
-    fact12 = FactRelationshipHasSourceNode("relationship_3", "4")
-    fact13 = FactRelationshipHasTargetNode("relationship_3", "2")
-
-    fact14 = FactNodeHasLabel("5", "OtherThing")
-    fact15 = FactRelationshipHasLabel("relationship_4", "OtherRelationship")
-    fact16 = FactRelationshipHasSourceNode("relationship_4", "2")
-    fact17 = FactRelationshipHasTargetNode("relationship_4", "5")
-
-    fact18 = FactNodeHasAttributeWithValue("4", "foo", Literal(2))
-
-    fact_collection = FactCollection(
-        [
-            fact1,
-            fact2,
-            fact3,
-            fact4,
-            fact5,
-            fact6,
-            fact7,
-            fact8,
-            fact9,
-            fact10,
-            fact11,
-            fact12,
-            fact13,
-            fact14,
-            fact15,
-            fact16,
-            fact17,
-            fact18,
-        ]
-    )
-
-    return fact_collection
-
-
-@pytest.fixture
-def fact_collection_6():  # pylint: disable=too-many-locals
-    fact1 = FactNodeHasLabel("1", "Thing")
-    fact2 = FactNodeHasLabel("2", "MiddleThing")
-    fact3 = FactNodeHasLabel("3", "OtherThing")
-    fact4 = FactRelationshipHasLabel("relationship_1", "MyRelationship")
-    fact5 = FactRelationshipHasLabel("relationship_2", "OtherRelationship")
-    fact6 = FactRelationshipHasSourceNode("relationship_1", "1")
-    fact7 = FactRelationshipHasTargetNode("relationship_1", "2")
-    fact8 = FactRelationshipHasSourceNode("relationship_2", "2")
-    fact9 = FactRelationshipHasTargetNode("relationship_2", "3")
-
-    fact10 = FactNodeHasLabel("4", "Thing")
-    fact11 = FactRelationshipHasLabel("relationship_3", "MyRelationship")
-    fact12 = FactRelationshipHasSourceNode("relationship_3", "4")
-    fact13 = FactRelationshipHasTargetNode("relationship_3", "2")
-
-    fact14 = FactNodeHasLabel("5", "OtherThing")
-    fact15 = FactRelationshipHasLabel("relationship_4", "OtherRelationship")
-    fact16 = FactRelationshipHasSourceNode("relationship_4", "2")
-    fact17 = FactRelationshipHasTargetNode("relationship_4", "5")
-
-    fact18 = FactNodeHasAttributeWithValue("4", "foo", Literal(2))
-
-    fact19 = FactNodeHasLabel("6", "Irrelevant")
-
-    fact_collection = FactCollection(
-        [
-            fact1,
-            fact2,
-            fact3,
-            fact4,
-            fact5,
-            fact6,
-            fact7,
-            fact8,
-            fact9,
-            fact10,
-            fact11,
-            fact12,
-            fact13,
-            fact14,
-            fact15,
-            fact16,
-            fact17,
-            fact18,
-            fact19,
-        ]
-    )
-
-    return fact_collection
-
-
-@pytest.fixture
-def networkx_graph():
-    edge_dictionary = {
-        "a": ["b", "c", "d", "e"],
-        "b": ["a", "e"],
-        "c": ["a", "d"],
-        "d": ["a", "c"],
-        "e": ["a", "b"],
-        "f": ["g"],
-        "g": ["f"],
-    }
-
-    graph = nx.DiGraph(edge_dictionary)
-
-    graph.nodes["a"]["name"] = "Alice"
-    graph.nodes["b"]["name"] = "Bob"
-    graph.nodes["c"]["name"] = "Charlie"
-    graph.nodes["d"]["name"] = "David"
-    graph.nodes["e"]["name"] = "Eve"
-    graph.nodes["f"]["name"] = "Frank"
-    graph.nodes["g"]["name"] = "Grace"
-
-    graph.nodes["a"]["age"] = 25
-    graph.nodes["b"]["age"] = 30
-    graph.nodes["c"]["age"] = 35
-    graph.nodes["d"]["age"] = 40
-    graph.nodes["e"]["age"] = 45
-    graph.nodes["f"]["age"] = 50
-    graph.nodes["g"]["age"] = 55
-
-    graph.nodes["a"]["category"] = "Person"
-    graph.nodes["b"]["category"] = "Person"
-    graph.nodes["c"]["category"] = "Person"
-    graph.nodes["d"]["category"] = "Person"
-    graph.nodes["e"]["category"] = "Person"
-    graph.nodes["f"]["category"] = "Person"
-    graph.nodes["g"]["category"] = "Person"
-
-    return graph
-
-
-@pytest.fixture
-def number_of_facts(fact_collection_0: FactCollection) -> int:
-    return len(fact_collection_0.facts)
 
 
 def test_fact_collection_has_facts(fact_collection_0: FactCollection):
@@ -1530,34 +1239,43 @@ def test_query_non_existent_node_has_attribute_raises_error(fact_collection_6):
 
 def test_object_attribute_lookup_evaluate(fact_collection_6):
     lookup = ObjectAttributeLookup(object_name="n", attribute="foo")
-    assert lookup.evaluate(fact_collection_6, projection={'n': '4'}) == 2
+    assert lookup.evaluate(fact_collection_6, projection={"n": "4"}) == 2
 
 
 def test_object_attribute_lookup_non_existent_object_raises_error(
     fact_collection_6,
 ):
     with pytest.raises(ValueError):
-        ObjectAttributeLookup(
-            object_name="n", attribute="foo"
-        ).evaluate(fact_collection_6, projection={'n': 'idontexist'})
+        ObjectAttributeLookup(object_name="n", attribute="foo").evaluate(
+            fact_collection_6, projection={"n": "idontexist"}
+        )
 
 
 def test_object_attribute_lookup_in_addition(fact_collection_6):
     lookup = ObjectAttributeLookup(object_name="n", attribute="foo")
     literal = Literal(3)
-    assert Addition(lookup, literal).evaluate(fact_collection_6, projection={'n': '4'}) == 5
+    assert (
+        Addition(lookup, literal).evaluate(
+            fact_collection_6, projection={"n": "4"}
+        )
+        == 5
+    )
 
 
 def test_object_attribute_lookup_greater_than(fact_collection_6):
     lookup = ObjectAttributeLookup(object_name="n", attribute="foo")
     literal = Literal(1)
-    assert GreaterThan(lookup, literal).evaluate(fact_collection_6, projection={'n': '4'})
+    assert GreaterThan(lookup, literal).evaluate(
+        fact_collection_6, projection={"n": "4"}
+    )
 
 
 def test_object_attribute_lookup_greater_than_false(fact_collection_6):
     lookup = ObjectAttributeLookup(object_name="n", attribute="foo")
     literal = Literal(10)
-    assert Not(GreaterThan(lookup, literal)).evaluate(fact_collection_6, projection={'n': '4'})
+    assert Not(GreaterThan(lookup, literal)).evaluate(
+        fact_collection_6, projection={"n": "4"}
+    )
 
 
 def test_object_attribute_lookup_greater_than_double_negation(
@@ -1566,7 +1284,7 @@ def test_object_attribute_lookup_greater_than_double_negation(
     lookup = ObjectAttributeLookup(object_name="n", attribute="foo")
     literal = Literal(10)
     assert not Not(Not(GreaterThan(lookup, literal))).evaluate(
-        fact_collection_6, projection={'n': '4'}
+        fact_collection_6, projection={"n": "4"}
     )
 
 
@@ -1576,7 +1294,9 @@ def test_nonexistent_attribute_nested_evaluation_raises_error(
     lookup = ObjectAttributeLookup(object_name="n", attribute="idontexist")
     literal = Literal(10)
     with pytest.raises(ValueError):
-        Not(Not(GreaterThan(lookup, literal))).evaluate(fact_collection_6, projection={'n': '4'})
+        Not(Not(GreaterThan(lookup, literal))).evaluate(
+            fact_collection_6, projection={"n": "4"}
+        )
 
 
 def test_collect_aggregated_variables_in_with_clause():
@@ -1734,21 +1454,177 @@ def test_transform_solutions_in_with_clause_multiple_solutions(
 
     assert aggregated_results == expected_results
 
-@pytest.mark.skip
-def test_apply_substitutions_to_projections(
-    fact_collection_6: FactCollection,
+
+def test_apply_substitutions_to_one_projection(
+    fact_collection_7: FactCollection,
 ):
-    cypher = "MATCH (n:Thing)-[r:MyRelationship]->(m:MiddleThing)-[s:OtherRelationship]->(o:OtherThing) WITH COLLECT(o) AS co, n.foo AS nfoo, m.bar AS mbar RETURN n.foobar"
-    result = CypherParser(cypher)
-    aggregated_results = result.parsed.cypher.match_clause.with_clause.transform_solutions_by_aggregations(
-        fact_collection_6
+    cypher = (
+        "MATCH (n:Thing)-[r:MyRelationship]->(m:MiddleThing)-"
+        "[s:OtherRelationship]->(o:OtherThing) "
+        "WITH COLLECT(o.oattr) AS co, n.foo AS nfoo, m.bar AS mbar "
+        "RETURN n.foobar"
     )
-    expected_results = [
+    result = CypherParser(cypher)
+
+    projection = {"n": "4", "m": "2", "o": ["5", "3"]}
+
+    out = (
+        result.parsed.cypher.match_clause.with_clause._evaluate_one_projection(
+            fact_collection_7,
+            projection=projection,
+        )
+    )
+    expected_result = {
+        "co": Collection([Literal(5), Literal(4)]),
+        "nfoo": Literal(2),
+        "mbar": Literal(3),
+    }
+    assert out == expected_result
+
+
+def test_apply_substitutions_to_projection_list(
+    fact_collection_7: FactCollection,
+):
+    cypher = (
+        "MATCH (n:Thing)-[r:MyRelationship]->(m:MiddleThing)-"
+        "[s:OtherRelationship]->(o:OtherThing) "
+        "WITH COLLECT(o.oattr) AS co, n.foo AS nfoo, m.bar AS mbar "
+        "RETURN n.foobar"
+    )
+    result = CypherParser(cypher)
+
+    solutions = [
         {"n": "4", "m": "2", "o": ["5", "3"]},
         {"n": "1", "m": "2", "o": ["5", "3"]},
     ]
 
-    result.parsed.cypher.match_clause.with_clause.evaluate(
-        fact_collection_6,
-        projection=expected_results[0], 
+    out = result.parsed.cypher.match_clause.with_clause._evaluate(
+        fact_collection_7,
+        projection=solutions,
     )
+    expected_result = [
+        {
+            "co": Collection([Literal(5), Literal(4)]),
+            "nfoo": Literal(2),
+            "mbar": Literal(3),
+        },
+        {
+            "co": Collection([Literal(5), Literal(4)]),
+            "nfoo": Literal(42),
+            "mbar": Literal(3),
+        },
+    ]
+
+    assert out == expected_result
+
+
+def test_distinct_evaluation_removes_duplicates():
+    assert Distinct(
+        Collection([Literal(1), Literal(2), Literal(2)])
+    )._evaluate(None) == Collection([Literal(1), Literal(2)])
+
+
+def test_distinct_evaluation_removes_nothing_if_no_duplicates():
+    assert Distinct(
+        Collection([Literal(1), Literal(2), Literal(3)])
+    )._evaluate(None) == Collection([Literal(1), Literal(2), Literal(3)])
+
+
+def test_distinct_evaluation_removes_nothing_if_different_types():
+    assert Distinct(
+        Collection([Literal(1), Literal(2), Literal("2")])
+    )._evaluate(None) == Collection([Literal(1), Literal(2), Literal("2")])
+
+
+def test_size_of_list():
+    assert Size(Collection([Literal(1), Literal(2), Literal("2")]))._evaluate(
+        None
+    ) == Literal(3)
+
+
+def test_size_of_empty_list_is_zero():
+    assert Size(Collection([]))._evaluate(None) == Literal(0)
+
+
+def test_size_around_distinct():
+    assert Size(
+        Distinct(Collection([Literal(1), Literal(2), Literal(2)]))
+    )._evaluate(None) == Literal(2)
+
+
+def test_parse_distinct_keyword_with_collect_no_dups(fact_collection_7):
+    cypher = (
+        "MATCH (n:Thing)-[r:MyRelationship]->(m:MiddleThing)-"
+        "[s:OtherRelationship]->(o:OtherThing) "
+        "WITH DISTINCT COLLECT(o.oattr) AS co, n.foo AS nfoo, m.bar AS mbar "
+        "RETURN n.foobar"
+    )
+    result = CypherParser(cypher)
+    solutions = [
+        {"n": "4", "m": "2", "o": ["5", "3"]},
+        {"n": "1", "m": "2", "o": ["5", "3"]},
+    ]
+    out = result.parsed.cypher.match_clause.with_clause._evaluate(
+        fact_collection_7,
+        projection=solutions,
+    )
+    assert out == [
+        {
+            "co": Collection([Literal(5), Literal(4)]),
+            "nfoo": Literal(2),
+            "mbar": Literal(3),
+        },
+        {
+            "co": Collection([Literal(5), Literal(4)]),
+            "nfoo": Literal(42),
+            "mbar": Literal(3),
+        },
+    ]
+
+
+def test_parse_distinct_keyword_with_collect_one_dup(fact_collection_7):
+    cypher = (
+        "MATCH (n:Thing)-[r:MyRelationship]->(m:MiddleThing)-"
+        "[s:OtherRelationship]->(o:OtherThing) "
+        "WITH DISTINCT COLLECT(o.oattr) AS co, n.foo AS nfoo, m.bar AS mbar "
+        "RETURN n.foobar"
+    )
+    result = CypherParser(cypher)
+    solutions = [
+        {"n": "4", "m": "2", "o": ["5", "5"]},
+        {"n": "1", "m": "2", "o": ["5", "3"]},
+    ]
+    out = result.parsed.cypher.match_clause.with_clause._evaluate(
+        fact_collection_7,
+        projection=solutions,
+    )
+    assert out == [
+        {
+            "co": Collection([Literal(5)]),
+            "nfoo": Literal(2),
+            "mbar": Literal(3),
+        },
+        {
+            "co": Collection([Literal(5), Literal(4)]),
+            "nfoo": Literal(42),
+            "mbar": Literal(3),
+        },
+    ]
+
+
+def test_evaluate_return_after_with_clause(fact_collection_7):
+    cypher = (
+        "MATCH (n:Thing)-[r:MyRelationship]->(m:MiddleThing)-"
+        "[s:OtherRelationship]->(o:OtherThing) "
+        "WITH DISTINCT COLLECT(o.oattr) AS co, n.foo AS nfoo, m.bar AS mbar "
+        "RETURN nfoo, co"
+    )
+    result = CypherParser(cypher)
+    expected = [
+        {"nfoo": Literal(2), "co": Collection([Literal(5), Literal(4)])},
+        {"nfoo": Literal(42), "co": Collection([Literal(5), Literal(4)])},
+    ]
+    out = result.parsed.cypher.return_clause._evaluate(
+        fact_collection_7, projection=None
+    )
+    assert out == expected

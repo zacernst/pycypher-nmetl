@@ -1,130 +1,52 @@
 [build-system]
-requires = ["hatchling>=1.24.2", "hatch-vcs>=0.3.0"]
+requires = [ "hatchling>=1.24.2", "hatch-vcs>=0.3.0",]
 build-backend = "hatchling.build"
 
-[tool.coverage.report]
-exclude_also = [
-    "def __repr__",
-    "if self.debug:",
-    "if settings.DEBUG",
-    "raise AssertionError",
-    "raise NotImplementedError",
-    "if 0:",
-    "if __name__ == .__main__.:",
-    "if TYPE_CHECKING:",
-    "class .*\\bProtocol\\):",
-    "@(abc\\.)?abstractmethod",
-    ]
-
-[tool.ruff]
-exclude = [
-    ".bzr",
-    ".direnv",
-    ".eggs",
-    ".git",
-    ".git-rewrite",
-    ".hg",
-    ".ipynb_checkpoints",
-    ".mypy_cache",
-    ".nox",
-    ".pants.d",
-    ".pyenv",
-    ".pytest_cache",
-    ".pytype",
-    ".ruff_cache",
-    ".svn",
-    ".tox",
-    ".venv",
-    ".vscode",
-    "__pypackages__",
-    "_build",
-    "buck-out",
-    "build",
-    "dist",
-    "node_modules",
-    "site-packages",
-    "venv",
-]
-
-line-length = 79
-indent-width = 4
-
-target-version = "py312"
-
-[tool.pytest.ini_options]
-markers = [
-    "cypher",
-]
-
 [project]
-name = "pycypher"  # REQUIRED, is the only field that cannot be marked as dynamic.
-version = "0.0.1"  # REQUIRED, although can be dynamic
+name = "pycypher"
+version = "0.0.5"
 description = "Cypher for Python"
 readme = "README.md"
 requires-python = ">=3.11"
-license = {file = "LICENSE.txt"}
-keywords = ["neo4j", "cypher"]
+keywords = [ "neo4j", "cypher",]
+classifiers = [ "Development Status :: 3 - Alpha", "Intended Audience :: Developers", "License :: OSI Approved :: MIT License", "Programming Language :: Python :: 3.11", "Programming Language :: Python :: 3.12",]
+dependencies = [ "gitpython==3.1.44", "hatch==1.12.0", "hatchling==1.25", "isort>=5.13.2,<6.0.0", "networkx==3.4.2,<4.0.0", "pip-tools>=7.4.1,<8.0.0", "ply>=3.11,<4.0.0", "pyarrow>=17.0.0,<18.0.0", "pydantic>=2.9.2,<3.0.0", "pytest-cov>=6.0.0,<7.0.0", "pytest-mock>=3.14.0,<4.0.0", "pytest-unordered==0.6.1,<1.0.0", "pytest-xdist>=3.6.1,<4.0.0", "pytest>=8.3.2,<9.0.0", "python-constraint>=1.4.0,<2.0.0", "rich>=13.8.0,<14.0.0", "ruff>=0.6.3,<1.0.0", "sphinx-autoapi==3.3.1,<4.0.0", "sphinx-autodocgen==1.3", "sphinx-rtd-theme==2.0.0", "sphinx>=5.0.2,<9.0.0", "toml>=0.10.2,<1.0.0", "uv>=0.4.1,<1.0.0",]
+[[project.authors]]
+name = "Zachary Ernst"
+email = "zac.ernst@gmail.com"
 
-authors = [
-  {name = "Zachary Ernst", email = "zac.ernst@gmail.com" }
-]
-maintainers = [
-  {name = "Zachary Ernst", email = "zac.ernst@gmail.com" }
-]
-classifiers = [
-  "Development Status :: 3 - Alpha",
-  # Indicate who your project is intended for
-  "Intended Audience :: Developers",
-  "License :: OSI Approved :: MIT License",
-  "Programming Language :: Python :: 3.11",
-  "Programming Language :: Python :: 3.12",
-]
+[[project.maintainers]]
+name = "Zachary Ernst"
+email = "zac.ernst@gmail.com"
 
-dependencies = [
-  "hatch==1.12.0",
-  "hatchling==1.25",
-  "isort>=5.13.2,<6.0.0",
-  "pip-tools>=7.4.1,<8.0.0",
-  "ply>=3.11,<4.0.0",
-  "pyarrow>=17.0.0,<18.0.0",
-  "pydantic>=2.9.2,<3.0.0",
-  "pytest-mock>=3.14.0,<4.0.0",
-  "pytest-xdist>=3.6.1,<4.0.0",
-  "pytest>=8.3.2,<9.0.0",
-  "python-constraint>=1.4.0,<2.0.0",
-  "rich>=13.8.0,<14.0.0",
-  "ruff>=0.6.3,<1.0.0",
-  "sphinx-autoapi==3.3.1,<4.0.0",
-  "networkx==3.4.2,<4.0.0",
-  "sphinx-autodocgen==1.3",
-  "sphinx-rtd-theme==2.0.0",
-  "sphinx>=5.0.2,<9.0.0",
-  "pytest-cov>=6.0.0,<7.0.0",
-  "toml>=0.10.2,<1.0.0",
-  "pytest-unordered==0.6.1,<1.0.0",
-  "uv>=0.4.1,<1.0.0",
-]
+[project.license]
+file = "LICENSE.txt"
 
 [project.optional-dependencies]
-dev = ["hatch>=1.12.0,<2.0.0"]
+dev = [ "hatch>=1.12.0,<2.0.0",]
 
 [project.urls]
-"Homepage" = "https://github.com/zacernst/pycypher"
-
-# This doesn't exist yet
-# [project.scripts]
-# future_cli = "future_cli:go"
+Homepage = "https://github.com/zacernst/pycypher"
 
 [project.scripts]
 pycypher = "pycypher.cli:main"
 
+[tool.ruff]
+exclude = [ ".bzr", ".direnv", ".eggs", ".git", ".git-rewrite", ".hg", ".ipynb_checkpoints", ".mypy_cache", ".nox", ".pants.d", ".pyenv", ".pytest_cache", ".pytype", ".ruff_cache", ".svn", ".tox", ".venv", ".vscode", "__pypackages__", "_build", "buck-out", "build", "dist", "node_modules", "site-packages", "venv",]
+line-length = 79
+indent-width = 4
+target-version = "py312"
+
 [tool.poetry]
-name = "pycypher"  # REQUIRED, is the only field that cannot be marked as dynamic.
-version = "0.0.1"  # REQUIRED, although can be dynamic
+name = "pycypher"
+version = "0.0.1"
 description = "Cypher for Python"
 readme = "README.md"
-keywords = ["neo4j", "cypher"]
+keywords = [ "neo4j", "cypher",]
+authors = [ "Zachary Ernst",]
 
-authors = [
-  "Zachary Ernst",
-]
+[tool.coverage.report]
+exclude_also = [ "def __repr__", "if self.debug:", "if settings.DEBUG", "raise AssertionError", "raise NotImplementedError", "if 0:", "if __name__ == .__main__.:", "if TYPE_CHECKING:", "class .*\\bProtocol\\):", "@(abc\\.)?abstractmethod",]
+
+[tool.pytest.ini_options]
+markers = [ "cypher",]

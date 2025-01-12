@@ -17,6 +17,7 @@ tokens = [
     "COLON",
     "COMMA",
     "DASH",
+    "DISTINCT",
     "DIVIDE",
     "DOT",
     "DQUOTE",
@@ -68,6 +69,7 @@ reserved = {
     # "THEN": "THEN",
     "WHERE": "WHERE",
     "COLLECT": "COLLECT",
+    "DISTINCT": "DISTINCT",
     "WITH": "WITH",
 }
 

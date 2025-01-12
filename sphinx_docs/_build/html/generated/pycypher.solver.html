@@ -22,7 +22,7 @@
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="Tree Mixin" href="pycypher.tree_mixin.html" />
-    <link rel="prev" title="AST Node Classes" href="pycypher.node_classes.html" /> 
+    <link rel="prev" title="Shims" href="pycypher.shim.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -53,7 +53,9 @@
 <li class="toctree-l2"><a class="reference internal" href="pycypher.fact.html">Facts</a></li>
 <li class="toctree-l2"><a class="reference internal" href="pycypher.logger.html">Logger</a></li>
 <li class="toctree-l2"><a class="reference internal" href="pycypher.node_classes.html">AST Node Classes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pycypher.shim.html">Shims</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">Constraint Solver</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#pycypher.solver.ConstraintNodeHasLabel"><code class="docutils literal notranslate"><span class="pre">ConstraintNodeHasLabel</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#pycypher.solver.IsTrue"><code class="docutils literal notranslate"><span class="pre">IsTrue</span></code></a></li>
 </ul>
 </li>
@@ -98,8 +100,8 @@
 <tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">ConstraintNodeHasAttributeWithValue</span></code>(node_id, ...)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">ConstraintNodeHasLabel</span></code>(node_id, label)</p></td>
-<td><p></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#pycypher.solver.ConstraintNodeHasLabel" title="pycypher.solver.ConstraintNodeHasLabel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ConstraintNodeHasLabel</span></code></a>(node_id, label)</p></td>
+<td><p>Node has a label</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#pycypher.solver.IsTrue" title="pycypher.solver.IsTrue"><code class="xref py py-obj docutils literal notranslate"><span class="pre">IsTrue</span></code></a>(predicate)</p></td>
 <td><p>Class to represent a constraint that merely says that a <code class="docutils literal notranslate"><span class="pre">Predicate</span></code> is true.</p></td>
@@ -109,6 +111,12 @@
 </tr>
 </tbody>
 </table>
+<dl class="py class">
+<dt class="sig sig-object py" id="pycypher.solver.ConstraintNodeHasLabel">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.solver.</span></span><span class="sig-name descname"><span class="pre">ConstraintNodeHasLabel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">node_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">label</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.solver.ConstraintNodeHasLabel" title="Link to this definition"></a></dt>
+<dd><p>Node has a label</p>
+</dd></dl>
+
 <dl class="py class">
 <dt class="sig sig-object py" id="pycypher.solver.IsTrue">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.solver.</span></span><span class="sig-name descname"><span class="pre">IsTrue</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">predicate</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="pycypher.node_classes.html#pycypher.node_classes.Predicate" title="pycypher.node_classes.Predicate"><span class="pre">Predicate</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.solver.IsTrue" title="Link to this definition"></a></dt>
@@ -121,7 +129,7 @@
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="pycypher.node_classes.html" class="btn btn-neutral float-left" title="AST Node Classes" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="pycypher.shim.html" class="btn btn-neutral float-left" title="Shims" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
         <a href="pycypher.tree_mixin.html" class="btn btn-neutral float-right" title="Tree Mixin" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
