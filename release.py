@@ -68,7 +68,9 @@ def write_version(version: Version) -> None:
 )
 @click.option("--confirm", is_flag=True, help="Confirm before publishing.")
 def release(increment, dry_run, confirm, version) -> None:
-    """Bump the release version"""
+    """____            _               \n _ __  _   _ / ___|   _ _ __ | |__   ___ _ __ \n| '_ \\| | | | |  | | | | '_ \\| '_ │
+    \\ / _ \\ '__|\n| |_) | |_| | |__| |_| | |_) | | | |  __/ |   \n| .__/ \\__, |\\____\\__, | .__/|_| |_|\\___|_|   \n|_|    |___/     │
+     |___/|_|                    \n"""
     if increment not in ["major", "minor", "micro"]:
         click.echo(
             f"Invalid increment value: {increment}. Must be major, minor, or micro"
@@ -107,26 +109,6 @@ def release(increment, dry_run, confirm, version) -> None:
     repo.create_tag(f"v{next_version}", message=f"Release {next_version}")
     repo.remote().push()
 
-
-# from github import Github
-
-# Authenticate with GitHub
-# g = Github("YOUR_GITHUB_ACCESS_TOKEN")
-#
-# # Get the repository
-# repo = g.get_repo("YOUR_USERNAME/YOUR_REPOSITORY")
-#
-# # Create the release
-# release = repo.create_git_release(
-#     tag_name="v1.0.0",  # Replace with your tag name
-#     name="Release v1.0.0",  # Replace with your release title
-#     body="Release notes",  # Replace with your release description
-#     draft=False,  # Set to True for a draft release
-#     prerelease=False  # Set to True for a pre-release
-# )
-#
-# # Optionally, upload assets
-# release.upload_asset("path/to/asset.zip")
 
 if __name__ == "__main__":
     release()  # pylint: disable=no-value-for-parameter
