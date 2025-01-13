@@ -1,7 +1,7 @@
 PYTHON = 3.12
 BUMP = micro
 
-clean_build: clean all
+clean_build: veryclean all
 
 all: build docs tests 
 
