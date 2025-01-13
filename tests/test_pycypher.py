@@ -1,6 +1,7 @@
+'''All the tests.'''
 # pylint: disable=missing-function-docstring,protected-access,redefined-outer-name,too-many-lines
 
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 
 import networkx as nx
 import pytest
@@ -25,6 +26,7 @@ from pycypher.fixtures import (  # pylint: disable=unused-import
     fact_collection_7,
     networkx_graph,
 )
+from pycypher.solver import IsTrue
 from pycypher.node_classes import Alias  # pylint: disable=unused-import
 from pycypher.node_classes import (
     Addition,
@@ -452,7 +454,10 @@ def test_find_solution_node_with_attribute_type_and_relationship_target_node_att
 def test_find_no_solution_node_with_attribute_type_and_wrong_relationship_target_node_attribute(
     fact_collection_0: FactCollection,
 ):
-    cypher = "MATCH (n:Thing {key: 2})-[r:NoRelationshipLikeMeExists]->(m:OtherThing {key: 5}) RETURN n.foobar"
+    cypher = (
+        "MATCH (n:Thing {key: 2})-[r:NoRelationshipLikeMeExists]->(m:OtherThing {key: 5}) "
+        "RETURN n.foobar"
+    )
     result = CypherParser(cypher)
     solutions = result.parsed.cypher.match_clause.solutions(fact_collection_0)
     expected = []
@@ -468,7 +473,11 @@ def test_find_two_solutions_node_has_label(fact_collection_1: FactCollection):
 
 
 def test_constraints_from_relationship_chain():
-    cypher = "MATCH (n:Thing)-[r:MyRelationship]->(m:MiddleThing)-[s:OtherRelationship]->(o:OtherThing) RETURN n.foobar"
+    cypher = (
+        "MATCH (n:Thing)-[r:MyRelationship]->(m:MiddleThing)-[s:OtherRelationship]->"
+        "(o:OtherThing) "
+        "RETURN n.foobar"
+    )
     result = CypherParser(cypher)
     constraint1 = ConstraintRelationshipHasSourceNode(
         source_node_name="n", relationship_name="r"
@@ -503,7 +512,11 @@ def test_constraints_from_relationship_chain():
 
 
 def test_constraints_from_relationship_pair():
-    cypher = "MATCH (n:Thing)-[r:MyRelationship]->(m:MiddleThing), (m)-[s:OtherRelationship]->(o:OtherThing) RETURN n.foobar"
+    cypher = (
+        "MATCH (n:Thing)-[r:MyRelationship]->(m:MiddleThing), "
+        "(m)-[s:OtherRelationship]->(o:OtherThing) "
+        "RETURN n.foobar"
+    )
     result = CypherParser(cypher)
     constraint1 = ConstraintRelationshipHasSourceNode(
         source_node_name="n", relationship_name="r"
@@ -541,7 +554,11 @@ def test_constraints_from_relationship_pair():
 def test_find_solution_relationship_chain_two_forks(
     fact_collection_2: FactCollection,
 ):
-    cypher = "MATCH (n:Thing)-[r:MyRelationship]->(m:MiddleThing)-[s:OtherRelationship]->(o:OtherThing) RETURN n.foobar"
+    cypher = (
+        "MATCH (n:Thing)-[r:MyRelationship]->(m:MiddleThing)-[s:OtherRelationship]->"
+        "(o:OtherThing) "
+        "RETURN n.foobar"
+    )
     result = CypherParser(cypher)
     solutions = result.parsed.cypher.match_clause.solutions(fact_collection_2)
     expected = [
@@ -559,7 +576,11 @@ def test_find_solution_relationship_chain_two_forks(
 def test_find_solution_relationship_chain_fork(
     fact_collection_3: FactCollection,
 ):
-    cypher = "MATCH (n:Thing)-[r:MyRelationship]->(m:MiddleThing)-[s:OtherRelationship]->(o:OtherThing) RETURN n.foobar"
+    cypher = (
+        "MATCH (n:Thing)-[r:MyRelationship]->(m:MiddleThing)-[s:OtherRelationship]->"
+        "(o:OtherThing) "
+        "RETURN n.foobar"
+    )
     result = CypherParser(cypher)
     solutions = result.parsed.cypher.match_clause.solutions(fact_collection_3)
     expected = [
@@ -584,7 +605,11 @@ def test_find_solution_relationship_chain_fork(
 def test_find_solution_relationship_chain_fork_2(
     fact_collection_4: FactCollection,
 ):
-    cypher = "MATCH (n:Thing)-[r:MyRelationship]->(m:MiddleThing)-[s:OtherRelationship]->(o:OtherThing) RETURN n.foobar"
+    cypher = (
+        "MATCH (n:Thing)-[r:MyRelationship]->(m:MiddleThing)-[s:OtherRelationship]->"
+        "(o:OtherThing) "
+        "RETURN n.foobar"
+    )
     result = CypherParser(cypher)
     solutions = result.parsed.cypher.match_clause.solutions(fact_collection_4)
     expected = [
@@ -621,7 +646,11 @@ def test_find_solution_relationship_chain_fork_2(
 
 
 def test_constraint_relationship_chain_with_node_attribute():
-    cypher = "MATCH (n:Thing {foo: 2})-[r:MyRelationship]->(m:MiddleThing)-[s:OtherRelationship]->(o:OtherThing) RETURN n.foobar"
+    cypher = (
+        "MATCH (n:Thing {foo: 2})-[r:MyRelationship]->(m:MiddleThing)-"
+        "[s:OtherRelationship]->(o:OtherThing) "
+        "RETURN n.foobar"
+    )
     result = CypherParser(cypher)
     constraint1 = ConstraintRelationshipHasSourceNode(
         source_node_name="n", relationship_name="r"
@@ -662,7 +691,11 @@ def test_constraint_relationship_chain_with_node_attribute():
 def test_find_no_solution_relationship_chain_fork_missing_node_attribute(
     fact_collection_4: FactCollection,
 ):
-    cypher = "MATCH (n:Thing {foo: 2})-[r:MyRelationship]->(m:MiddleThing)-[s:OtherRelationship]->(o:OtherThing) RETURN n.foobar"
+    cypher = (
+        "MATCH (n:Thing {foo: 2})-[r:MyRelationship]->(m:MiddleThing)-"
+        "[s:OtherRelationship]->(o:OtherThing) "
+        "RETURN n.foobar"
+    )
     result = CypherParser(cypher)
     solutions = result.parsed.cypher.match_clause.solutions(fact_collection_4)
     assert not solutions
@@ -671,7 +704,11 @@ def test_find_no_solution_relationship_chain_fork_missing_node_attribute(
 def test_find_two_solutions_relationship_chain_fork_require_node_attribute_value(
     fact_collection_5: FactCollection,
 ):
-    cypher = "MATCH (n:Thing {foo: 2})-[r:MyRelationship]->(m:MiddleThing)-[s:OtherRelationship]->(o:OtherThing) RETURN n.foobar"
+    cypher = (
+        "MATCH (n:Thing {foo: 2})-[r:MyRelationship]->(m:MiddleThing)-"
+        "[s:OtherRelationship]->(o:OtherThing) "
+        "RETURN n.foobar"
+    )
     result = CypherParser(cypher)
     solutions = result.parsed.cypher.match_clause.solutions(fact_collection_5)
     expected = [
@@ -696,7 +733,11 @@ def test_find_two_solutions_relationship_chain_fork_require_node_attribute_value
 def test_find_no_solutions_relationship_chain_fork_node_attribute_value_wrong_type(
     fact_collection_5: FactCollection,
 ):
-    cypher = 'MATCH (n:Thing {foo: "2"})-[r:MyRelationship]->(m:MiddleThing)-[s:OtherRelationship]->(o:OtherThing) RETURN n.foobar'
+    cypher = (
+        'MATCH (n:Thing {foo: "2"})-[r:MyRelationship]->(m:MiddleThing)-'
+        "[s:OtherRelationship]->(o:OtherThing) "
+        "RETURN n.foobar"
+    )
     result = CypherParser(cypher)
     solutions = result.parsed.cypher.match_clause.solutions(fact_collection_5)
     assert not solutions
@@ -705,7 +746,11 @@ def test_find_no_solutions_relationship_chain_fork_node_attribute_value_wrong_ty
 def test_find_two_solutions_relationship_chain_fork_red_herring_node(
     fact_collection_6: FactCollection,
 ):
-    cypher = "MATCH (n:Thing {foo: 2})-[r:MyRelationship]->(m:MiddleThing)-[s:OtherRelationship]->(o:OtherThing) RETURN n.foobar"
+    cypher = (
+        "MATCH (n:Thing {foo: 2})-[r:MyRelationship]->(m:MiddleThing)-"
+        "[s:OtherRelationship]->(o:OtherThing) "
+        "RETURN n.foobar"
+    )
     result = CypherParser(cypher)
     solutions = result.parsed.cypher.match_clause.solutions(fact_collection_6)
     expected = [
@@ -730,7 +775,11 @@ def test_find_two_solutions_relationship_chain_fork_red_herring_node(
 def test_find_no_solutions_relationship_chain_fork_node_attribute_value_wrong_type_red_herring_node(
     fact_collection_6: FactCollection,
 ):
-    cypher = 'MATCH (n:Thing {foo: "2"})-[r:MyRelationship]->(m:MiddleThing)-[s:OtherRelationship]->(o:OtherThing) RETURN n.foobar'
+    cypher = (
+        """MATCH (n:Thing {foo: "2"})-[r:MyRelationship]->(m:MiddleThing)-"""
+        """[s:OtherRelationship]->(o:OtherThing) """
+        """RETURN n.foobar"""
+    )
     result = CypherParser(cypher)
     solutions = result.parsed.cypher.match_clause.solutions(fact_collection_6)
     assert not solutions
@@ -830,7 +879,11 @@ def test_parser_creates_with_clause_single_element():
 
 
 def test_parser_handles_collect_aggregation_in_return():
-    query = """MATCH (n:Thingy)-[r:Thingy]->(m) WITH n.foo AS bar RETURN COLLECT(n.foobar) AS whatever"""
+    query = (
+        """MATCH (n:Thingy)-[r:Thingy]->(m) """
+        """WITH n.foo AS bar """
+        """RETURN COLLECT(n.foobar) AS whatever"""
+    )
     obj = CypherParser(query)
     assert (
         obj.parsed.cypher.return_clause.projection.lookups[0].alias
@@ -839,7 +892,11 @@ def test_parser_handles_collect_aggregation_in_return():
 
 
 def test_parser_handles_aggregation_in_return():
-    query = """MATCH (n:Thingy)-[r:Thingy]->(m) WITH n.foo AS bar RETURN COLLECT(n.foobar) AS whatever"""
+    query = (
+        """MATCH (n:Thingy)-[r:Thingy]->(m) """
+        """WITH n.foo AS bar """
+        """RETURN COLLECT(n.foobar) AS whatever"""
+    )
     obj = CypherParser(query)
     assert (
         obj.parsed.cypher.return_clause.projection.lookups[0].alias
@@ -848,7 +905,11 @@ def test_parser_handles_aggregation_in_return():
 
 
 def test_parser_handles_collect_in_aggregation_in_return():
-    query = """MATCH (n:Thingy)-[r:Thingy]->(m) WITH n.foo AS bar RETURN COLLECT(n.foobar) AS whatever"""
+    query = (
+        """MATCH (n:Thingy)-[r:Thingy]->(m) """
+        """WITH n.foo AS bar """
+        """RETURN COLLECT(n.foobar) AS whatever"""
+    )
     obj = CypherParser(query)
     assert isinstance(
         obj.parsed.cypher.return_clause.projection.lookups[
@@ -859,7 +920,11 @@ def test_parser_handles_collect_in_aggregation_in_return():
 
 
 def test_parser_handles_collect_in_aggregation_in_with_clause():
-    query = """MATCH (n:Thingy)-[r:Thingy]->(m) WITH COLLECT(n.foo) AS bar RETURN COLLECT(n.foobar) AS whatever"""
+    query = (
+        """MATCH (n:Thingy)-[r:Thingy]->(m) """
+        """WITH COLLECT(n.foo) AS bar """
+        """RETURN COLLECT(n.foobar) AS whatever"""
+    )
     obj = CypherParser(query)
     assert isinstance(
         obj.parsed.cypher.return_clause.projection.lookups[
@@ -870,7 +935,12 @@ def test_parser_handles_collect_in_aggregation_in_with_clause():
 
 
 def test_parser_handles_collect_in_aggregation_in_with_clause_node_only():
-    query = """MATCH (n:Thingy) WITH COLLECT(n.foo) AS bar WHERE n.whatever = "thing" RETURN COLLECT(n.foobar) AS whatever"""
+    query = (
+        """MATCH (n:Thingy) """
+        """WITH COLLECT(n.foo) AS bar """
+        """WHERE n.whatever = "thing" """
+        """RETURN COLLECT(n.foobar) AS whatever"""
+    )
     obj = CypherParser(query)
     assert isinstance(
         obj.parsed.cypher.return_clause.projection.lookups[
@@ -881,7 +951,11 @@ def test_parser_handles_collect_in_aggregation_in_with_clause_node_only():
 
 
 def test_parser_handles_collect_in_aggregation_in_return_twice():
-    query = """MATCH (n:Thingy)-[r:Thingy]->(m) WITH n.foo AS bar RETURN COLLECT(n.foobar) AS whatever, m.whatever AS bazqux"""
+    query = (
+        """MATCH (n:Thingy)-[r:Thingy]->(m) """
+        """WITH n.foo AS bar """
+        """RETURN COLLECT(n.foobar) AS whatever, m.whatever AS bazqux"""
+    )
     obj = CypherParser(query)
     assert isinstance(
         obj.parsed.cypher.return_clause.projection.lookups[
@@ -896,19 +970,34 @@ def test_parser_handles_collect_in_aggregation_in_return_twice():
 
 
 def test_parser_handles_with_where_clause_where_class():
-    query = """MATCH (n:Thingy)-[r:Thingy]->(m) WITH n.foo AS bar WHERE n.whatever = "thing" RETURN COLLECT(n.foobar) AS whatever"""
+    query = (
+        """MATCH (n:Thingy)-[r:Thingy]->(m) """
+        """WITH n.foo AS bar """
+        """WHERE n.whatever = "thing" """
+        """RETURN COLLECT(n.foobar) AS whatever"""
+    )
     obj = CypherParser(query)
     assert isinstance(obj.parsed.cypher.match_clause.where, Where)
 
 
 def test_parser_handles_with_where_clause_with_class():
-    query = """MATCH (n:Thingy)-[r:Thingy]->(m) WITH n.foo AS bar WHERE n.whatever = "thing" RETURN COLLECT(n.foobar) AS whatever"""
+    query = (
+        """MATCH (n:Thingy)-[r:Thingy]->(m) """
+        """WITH n.foo AS bar """
+        """WHERE n.whatever = "thing" """
+        """RETURN COLLECT(n.foobar) AS whatever"""
+    )
     obj = CypherParser(query)
     assert isinstance(obj.parsed.cypher.match_clause.with_clause, WithClause)
 
 
 def test_nodes_have_parent():
-    query = """MATCH (n:Thingy)-[r:Thingy]->(m) WITH n.foo AS bar WHERE n.whatever = "thing" RETURN COLLECT(n.foobar) AS whatever"""
+    query = (
+        """MATCH (n:Thingy)-[r:Thingy]->(m) """
+        """WITH n.foo AS bar """
+        """WHERE n.whatever = "thing" """
+        """RETURN COLLECT(n.foobar) AS whatever"""
+    )
     obj = CypherParser(query)
     assert all(
         node.parent is not None
@@ -918,7 +1007,11 @@ def test_nodes_have_parent():
 
 
 def test_child_of_parent_is_self():
-    query = """MATCH (n:Thingy)-[r:Thingy]->(m) WITH n.foo AS bar WHERE n.whatever = "thing" RETURN COLLECT(n.foobar) AS whatever"""
+    query = (
+        """MATCH (n:Thingy)-[r:Thingy]->(m) """
+        """WITH n.foo AS bar WHERE n.whatever = "thing" """
+        """RETURN COLLECT(n.foobar) AS whatever"""
+    )
     obj = CypherParser(query)
     assert all(
         node in list(node.parent.children)
@@ -928,7 +1021,12 @@ def test_child_of_parent_is_self():
 
 
 def test_root_node_defined_everywhere():
-    query = """MATCH (n:Thingy)-[r:Thingy]->(m) WITH n.foo AS bar WHERE n.whatever = "thing" RETURN COLLECT(n.foobar) AS whatever"""
+    query = (
+        """MATCH (n:Thingy)-[r:Thingy]->(m) """
+        """WITH n.foo AS bar """
+        """WHERE n.whatever = "thing" """
+        """RETURN COLLECT(n.foobar) AS whatever"""
+    )
     obj = CypherParser(query)
     assert all(
         node.root is obj.parsed
@@ -938,7 +1036,12 @@ def test_root_node_defined_everywhere():
 
 
 def test_node_in_match_clause_has_match_clause_enclosing():
-    query = """MATCH (n:Thingy)-[r:Thingy]->(m) WITH n.foo AS bar WHERE n.whatever = "thing" RETURN COLLECT(n.foobar) AS whatever"""
+    query = (
+        """MATCH (n:Thingy)-[r:Thingy]->(m) """
+        """WITH n.foo AS bar """
+        """WHERE n.whatever = "thing" """
+        """RETURN COLLECT(n.foobar) AS whatever"""
+    )
     obj = CypherParser(query)
     match_node = obj.parsed.cypher.match_clause
     assert all(
@@ -949,7 +1052,12 @@ def test_node_in_match_clause_has_match_clause_enclosing():
 
 
 def test_error_on_no_enclosing_class():
-    query = """MATCH (n:Thingy)-[r:Thingy]->(m) WITH n.foo AS bar WHERE n.whatever = "thing" RETURN COLLECT(n.foobar) AS whatever"""
+    query = (
+        """MATCH (n:Thingy)-[r:Thingy]->(m) """
+        """WITH n.foo AS bar """
+        """WHERE n.whatever = "thing" """
+        """RETURN COLLECT(n.foobar) AS whatever"""
+    )
     obj = CypherParser(query)
     with pytest.raises(ValueError):
         obj.parsed.cypher.return_clause.enclosing_class(Match)
@@ -1325,7 +1433,11 @@ def test_nonexistent_attribute_nested_evaluation_raises_error(
 
 
 def test_collect_aggregated_variables_in_with_clause():
-    query = """MATCH (n:Thingy)-[r:Thingy]->(m) WITH COLLECT(n.foo) AS thingy, m.qux AS bar RETURN COLLECT(n.foobar) AS whatever"""
+    query = (
+        """MATCH (n:Thingy)-[r:Thingy]->(m) """
+        """WITH COLLECT(n.foo) AS thingy, m.qux AS bar """
+        """RETURN COLLECT(n.foobar) AS whatever"""
+    )
     obj = CypherParser(query)
     assert obj.parsed.cypher.match_clause.with_clause.aggregated_variables == [
         "n"
@@ -1333,7 +1445,11 @@ def test_collect_aggregated_variables_in_with_clause():
 
 
 def test_collect_all_variables_in_with_clause():
-    query = """MATCH (n:Thingy)-[r:Thingy]->(m) WITH COLLECT(n.foo) AS thingy, m.qux AS bar RETURN COLLECT(n.foobar) AS whatever"""
+    query = (
+        """MATCH (n:Thingy)-[r:Thingy]->(m) """
+        """WITH COLLECT(n.foo) AS thingy, m.qux AS bar """
+        """RETURN COLLECT(n.foobar) AS whatever"""
+    )
     obj = CypherParser(query)
     assert sorted(
         obj.parsed.cypher.match_clause.with_clause.all_variables
@@ -1341,7 +1457,11 @@ def test_collect_all_variables_in_with_clause():
 
 
 def test_collect_non_aggregated_variables_in_with_clause():
-    query = """MATCH (n:Thingy)-[r:Thingy]->(m) WITH COLLECT(n.foo) AS thingy, m.qux AS bar RETURN COLLECT(n.foobar) AS whatever"""
+    query = (
+        """MATCH (n:Thingy)-[r:Thingy]->(m) """
+        """WITH COLLECT(n.foo) AS thingy, m.qux AS bar """
+        """RETURN COLLECT(n.foobar) AS whatever"""
+    )
     obj = CypherParser(query)
     assert (
         obj.parsed.cypher.match_clause.with_clause.non_aggregated_variables
@@ -1435,9 +1555,19 @@ def test_transform_solutions_by_aggregations():
 def test_transform_solutions_in_with_clause(
     fact_collection_6: FactCollection,
 ):
-    cypher = "MATCH (n:Thing {foo: 2})-[r:MyRelationship]->(m:MiddleThing)-[s:OtherRelationship]->(o:OtherThing) WITH COLLECT(o) AS co, n.foo AS nfoo, m.bar AS mbar RETURN n.foobar"
+    cypher = (
+        "MATCH (n:Thing {foo: 2})-[r:MyRelationship]->(m:MiddleThing)-[s:OtherRelationship]"
+        "->(o:OtherThing) "
+        "WITH COLLECT(o) AS co, n.foo AS nfoo, m.bar AS mbar "
+        "RETURN n.foobar"
+    )
     result = CypherParser(cypher)
-    aggregated_results = result.parsed.cypher.match_clause.with_clause.transform_solutions_by_aggregations(
+    aggregated_results = result.\
+    parsed.\
+    cypher.\
+    match_clause.\
+    with_clause.\
+    transform_solutions_by_aggregations(
         fact_collection_6
     )
     expected_results = [
@@ -1454,10 +1584,16 @@ def test_transform_solutions_in_with_clause(
 def test_transform_solutions_in_with_clause_no_solutions(
     fact_collection_6: FactCollection,
 ):
-    cypher = "MATCH (n:Thing {foo: 37})-[r:MyRelationship]->(m:MiddleThing)-[s:OtherRelationship]->(o:OtherThing) WITH COLLECT(o) AS co, n.foo AS nfoo, m.bar AS mbar RETURN n.foobar"
+    cypher = (
+        "MATCH (n:Thing {foo: 37})-[r:MyRelationship]->(m:MiddleThing)-"
+        "[s:OtherRelationship]->(o:OtherThing) "
+        "WITH COLLECT(o) AS co, n.foo AS nfoo, m.bar AS mbar "
+        "RETURN n.foobar"
+    )
     result = CypherParser(cypher)
-    aggregated_results = result.parsed.cypher.match_clause.with_clause.transform_solutions_by_aggregations(
-        fact_collection_6
+    aggregated_results = result.parsed.cypher.match_clause.with_clause.\
+        transform_solutions_by_aggregations(
+            fact_collection_6
     )
     expected_results = []
 
@@ -1467,10 +1603,16 @@ def test_transform_solutions_in_with_clause_no_solutions(
 def test_transform_solutions_in_with_clause_multiple_solutions(
     fact_collection_6: FactCollection,
 ):
-    cypher = "MATCH (n:Thing)-[r:MyRelationship]->(m:MiddleThing)-[s:OtherRelationship]->(o:OtherThing) WITH COLLECT(o) AS co, n.foo AS nfoo, m.bar AS mbar RETURN n.foobar"
+    cypher = (
+        "MATCH (n:Thing)-[r:MyRelationship]->(m:MiddleThing)-[s:OtherRelationship]->"
+        "(o:OtherThing) "
+        "WITH COLLECT(o) AS co, n.foo AS nfoo, m.bar AS mbar "
+        "RETURN n.foobar"
+    )
     result = CypherParser(cypher)
-    aggregated_results = result.parsed.cypher.match_clause.with_clause.transform_solutions_by_aggregations(
-        fact_collection_6
+    aggregated_results = result.parsed.cypher.match_clause.with_clause.\
+        transform_solutions_by_aggregations(
+            fact_collection_6
     )
     expected_results = [
         {"n": "4", "m": "2", "o": ["5", "3"]},
@@ -1807,7 +1949,7 @@ def test_collect_evaluate():
     mock_projection = {"object_name": ["instance1", "instance2"]}
 
     # Mock the _evaluate method of ObjectAttributeLookup
-    def mock_evaluate(fact_collection, projection):
+    def mock_evaluate(_, projection):
         return Literal(projection["object_name"])
 
     mock_object_attribute_lookup._evaluate = mock_evaluate
@@ -1838,7 +1980,7 @@ def test_collect_evaluate_empty_projection():
     mock_projection = {"object_name": []}
 
     # Mock the _evaluate method of ObjectAttributeLookup
-    def mock_evaluate(fact_collection, projection):
+    def mock_evaluate(_, projection):
         return Literal(projection["object_name"])
 
     mock_object_attribute_lookup._evaluate = mock_evaluate
@@ -1869,7 +2011,7 @@ def test_collect_evaluate_with_projection():
     mock_projection = {"object_name": ["instance1", "instance2"]}
 
     # Mock the _evaluate method of ObjectAttributeLookup
-    def mock_evaluate(fact_collection, projection):
+    def mock_evaluate(_, projection):
         return Literal(projection["object_name"])
 
     mock_object_attribute_lookup._evaluate = mock_evaluate
@@ -1910,7 +2052,7 @@ def test_trigger_gather_constraints_to_match():
 
 
 def test_trigger_gather_constraints_to_match_no_match():
-    class MockCypher(Cypher):
+    class MockCypher(Cypher):  # pylint: disable=too-few-public-methods,missing-class-docstring
         def walk(self):
             return [Collection(values=[]), Collection(values=[])]
 
@@ -2080,14 +2222,14 @@ def test_evaluate_with_projection():
     ]
 
     # Mock the _evaluate method of the parent match_clause.with_clause
-    class MockWithClause:
-        def _evaluate(self, fact_collection, projection=None):
+    class MockWithClause:  # pylint: disable=too-few-public-methods,missing-class-docstring
+        def _evaluate(self, *args, **kwargs):  # pylint: disable=unused-argument
             return mock_projection_data
 
-    class MockMatchClause:
+    class MockMatchClause:  # pylint: disable=too-few-public-methods,missing-class-docstring
         with_clause = MockWithClause()
 
-    class MockParent:
+    class MockParent:  # pylint: disable=too-few-public-methods,missing-class-docstring
         match_clause = MockMatchClause()
 
     return_clause.parent = MockParent()
@@ -2132,32 +2274,6 @@ def test_evaluate_with_given_projection():
         {"object1": "value3", "object2": "value4"},
     ]
     assert result == expected_result
-
-
-def test_projection_children():
-    # Create mock ObjectAttributeLookup objects
-    mock_lookup1 = ObjectAttributeLookup("object1", "attribute1")
-    mock_lookup2 = ObjectAttributeLookup("object2", "attribute2")
-
-    # Create a Projection instance with the mock lookups
-    projection = Projection(lookups=[mock_lookup1, mock_lookup2])
-
-    # Get the children of the projection instance
-    children = list(projection.children)
-
-    # Assert that the children list contains the mock lookups
-    assert children == [mock_lookup1, mock_lookup2]
-
-
-def test_projection_children_empty():
-    # Create a Projection instance with no lookups
-    projection = Projection(lookups=[])
-
-    # Get the children of the projection instance
-    children = list(projection.children)
-
-    # Assert that the children list is empty
-    assert not children
 
 
 def test_node_name_label_children_with_label():
@@ -2344,42 +2460,6 @@ def test_mapping_set_children_empty():
     assert not children
 
 
-def test_relationship_left_right_children():
-    # Create a mock Relationship object
-    mock_relationship = Relationship(
-        name_label=NodeNameLabel(name="relationship1", label="Label1")
-    )
-
-    # Create a RelationshipLeftRight instance with the mock relationship
-    relationship_left_right = RelationshipLeftRight(
-        relationship=mock_relationship
-    )
-
-    # Get the children of the relationship left-right instance
-    children = list(relationship_left_right.children)
-
-    # Assert that the children list contains the mock relationship
-    assert children == [mock_relationship]
-
-
-def test_relationship_right_left_children():
-    # Create a mock Relationship object
-    mock_relationship = Relationship(
-        name_label=NodeNameLabel(name="relationship1", label="Label1")
-    )
-
-    # Create a RelationshipRightLeft instance with the mock relationship
-    relationship_right_left = RelationshipRightLeft(
-        relationship=mock_relationship
-    )
-
-    # Get the children of the relationship right-left instance
-    children = list(relationship_right_left.children)
-
-    # Assert that the children list contains the mock relationship
-    assert children == [mock_relationship]
-
-
 def test_relationship_chain_list_children():
     # Create mock RelationshipChain objects
     mock_relationship_chain1 = RelationshipChain(steps=[])
@@ -2414,7 +2494,7 @@ def test_addition_children():
 
 def test_where_children():
     # Create a mock Predicate object
-    class MockPredicate(Predicate):
+    class MockPredicate(Predicate):  # pylint: disable=missing-class-docstring
         def tree(self):
             return "Predicate Tree"
 
@@ -2989,3 +3069,24 @@ def test_evaluate_division_with_projection_negative():
     # Assert that the result is a Literal with the value -5
     assert isinstance(result, Literal)
     assert result.value == -5
+
+
+def test_is_true_eq_same_predicate():
+    predicate = Mock()
+    constraint1 = IsTrue(predicate)
+    constraint2 = IsTrue(predicate)
+    assert constraint1 == constraint2
+
+
+def test_is_true_eq_different_predicate():
+    predicate1 = Mock()
+    predicate2 = Mock()
+    constraint1 = IsTrue(predicate1)
+    constraint2 = IsTrue(predicate2)
+    assert constraint1 != constraint2
+
+
+def test_is_true_eq_different_type():
+    predicate = Mock()
+    constraint = IsTrue(predicate)
+    assert constraint != "not a constraint"

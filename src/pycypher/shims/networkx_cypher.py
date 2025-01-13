@@ -21,6 +21,18 @@ from pycypher.shims import Shim
 
 
 class NetworkX(Shim):
+    """
+    A shim class for converting a NetworkX directed graph into a FactCollection.
+
+    Attributes:
+        graph (nx.DiGraph): The NetworkX directed graph to be converted.
+
+    Methods:
+        __repr__(): Returns a string representation of the NetworkX object.
+        __str__(): Returns a string representation of the NetworkX object.
+        make_fact_collection() -> FactCollection: Converts the NetworkX graph into a FactCollection.
+    """
+
     def __init__(self, graph: nx.DiGraph):
         self.graph = graph
 
@@ -31,6 +43,16 @@ class NetworkX(Shim):
         return f"NetworkX({self.graph})"
 
     def make_fact_collection(self) -> FactCollection:
+        """
+        Creates a FactCollection from the current graph.
+
+        This method deep copies the current graph and assigns unique IDs and empty label lists to each node and edge.
+        It then populates the labels and attributes for nodes and edges, and constructs a list of facts representing
+        these properties.
+
+        Returns:
+            FactCollection: A collection of facts representing the nodes and edges of the graph.
+        """
         graph_cypher = copy.deepcopy(self.graph)
         for node in graph_cypher.nodes:
             graph_cypher.nodes[node]["_labels"] = []
@@ -97,48 +119,3 @@ class NetworkX(Shim):
         fact_collection = FactCollection(fact_list)
 
         return fact_collection
-
-
-if __name__ == "__main__":
-    edge_dictionary = {
-        "a": ["b", "c", "d", "e"],
-        "b": ["a", "e"],
-        "c": ["a", "d"],
-        "d": ["a", "c"],
-        "e": ["a", "b"],
-        "f": ["g"],
-        "g": ["f"],
-    }
-
-    graph = nx.DiGraph(edge_dictionary)
-
-    graph.nodes["a"]["name"] = "Alice"
-    graph.nodes["b"]["name"] = "Bob"
-    graph.nodes["c"]["name"] = "Charlie"
-    graph.nodes["d"]["name"] = "David"
-    graph.nodes["e"]["name"] = "Eve"
-    graph.nodes["f"]["name"] = "Frank"
-    graph.nodes["g"]["name"] = "Grace"
-
-    graph.nodes["a"]["age"] = 25
-    graph.nodes["b"]["age"] = 30
-    graph.nodes["c"]["age"] = 35
-    graph.nodes["d"]["age"] = 40
-    graph.nodes["e"]["age"] = 45
-    graph.nodes["f"]["age"] = 50
-    graph.nodes["g"]["age"] = 55
-
-    graph.nodes["a"]["category"] = "Person"
-    graph.nodes["b"]["category"] = "Person"
-    graph.nodes["c"]["category"] = "Person"
-    graph.nodes["d"]["category"] = "Person"
-    graph.nodes["e"]["category"] = "Person"
-    graph.nodes["f"]["category"] = "Person"
-    graph.nodes["g"]["category"] = "Person"
-
-    networkx_shim = NetworkX(graph)
-
-    cypher = "MATCH (n:Person {age: 50})-[r:Knows]->(m:Person) RETURN n.name, m.name"
-    result = CypherParser(cypher)
-    solutions = result.solutions(networkx_shim)
-    print(solutions)

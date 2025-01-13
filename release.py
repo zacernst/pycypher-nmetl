@@ -68,9 +68,7 @@ def write_version(version: Version) -> None:
 )
 @click.option("--confirm", is_flag=True, help="Confirm before publishing.")
 def release(increment, dry_run, confirm, version) -> None:
-    """____            _               \n _ __  _   _ / ___|   _ _ __ | |__   ___ _ __ \n| '_ \\| | | | |  | | | | '_ \\| '_ │
-    \\ / _ \\ '__|\n| |_) | |_| | |__| |_| | |_) | | | |  __/ |   \n| .__/ \\__, |\\____\\__, | .__/|_| |_|\\___|_|   \n|_|    |___/     │
-     |___/|_|                    \n"""
+    """Bump the version without having to remember anything about how."""
     if increment not in ["major", "minor", "micro"]:
         click.echo(
             f"Invalid increment value: {increment}. Must be major, minor, or micro"

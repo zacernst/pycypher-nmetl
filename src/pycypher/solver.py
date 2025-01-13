@@ -1,22 +1,50 @@
+"""
+This module defines various constraint classes used to represent different 
+types of constraints in a graph database context.
+
+Classes:
+
+- Constraint: A base class for all constraints.
+- IsTrue: A constraint that checks if a given predicate is true.
+- ConstraintNodeHasLabel: A constraint that ensures a node has a specific label.
+- ConstraintRelationshipHasSourceNode: A constraint that ensures a relationship has a 
+  specific source node.
+- ConstraintRelationshipHasTargetNode: A constraint that ensures a relationship has a 
+  specific target node.
+- ConstraintRelationshipHasLabel: A constraint that ensures a relationship has a specific label.
+- ConstraintNodeHasAttributeWithValue: A constraint that ensures a node has a specific 
+  attribute with a given value.
+"""
 from __future__ import annotations
 
 from typing import Any
 
 
-class State:
-    pass
-
-
 class Constraint:
-    pass
-    # @abstractmethod
-    # def eval(self, *args, **kwargs) -> Any | None:  # type: ignore
-    #     pass
+    """
+    A base class used to represent a Constraint.
+
+    This class currently does not have any attributes or methods.
+
+    Attributes
+    ----------
+    None
+
+    Methods
+    -------
+    None
+    """
 
 
 class IsTrue(Constraint):
     """
-    Class to represent a constraint that merely says that a ``Predicate`` is true.
+    A constraint that checks if a given predicate is true.
+
+    Attributes:
+        predicate (Predicate): The predicate to be evaluated.
+
+    Methods:
+        __repr__() -> str: Returns a string representation of the IsTrue instance.
     """
 
     def __init__(self, predicate: "Predicate"):  # type: ignore
@@ -25,9 +53,30 @@ class IsTrue(Constraint):
     def __repr__(self) -> str:
         return f"IsTrue({self.predicate})"  # type: ignore
 
+    def __eq__(self, other: Any) -> bool:
+        return isinstance(other, IsTrue) and self.predicate == other.predicate
+
 
 class ConstraintNodeHasLabel(Constraint):
-    """Node has a label"""
+    """
+    A class to represent a constraint that a node must have a specific label.
+
+    Attributes:
+    -----------
+    node_id : str
+        The identifier of the node.
+    label : str
+        The label that the node must have.
+
+    Methods:
+    --------
+    __repr__():
+        Returns a string representation of the constraint.
+    __hash__() -> int:
+        Returns a hash value for the constraint.
+    __eq__(other: Any) -> bool:
+        Checks if this constraint is equal to another constraint.
+    """
 
     def __init__(self, node_id: str, label: str):
         self.node_id = node_id
@@ -50,6 +99,19 @@ class ConstraintNodeHasLabel(Constraint):
 
 
 class ConstraintRelationshipHasSourceNode(Constraint):
+    """
+    A constraint that ensures a relationship has a specific source node.
+
+    Attributes:
+        source_node_name (str): The name of the source node.
+        relationship_name (str): The name of the relationship.
+
+    Methods:
+        __repr__(): Returns a string representation of the constraint.
+        __hash__(): Returns a hash value for the constraint.
+        __eq__(other: Any): Checks equality between this constraint and another object.
+    """
+
     def __init__(self, source_node_name: str, relationship_name: str):
         self.source_node_name = source_node_name
         self.relationship_name = relationship_name
@@ -65,6 +127,16 @@ class ConstraintRelationshipHasSourceNode(Constraint):
         )
 
     def __eq__(self, other: Any) -> bool:
+        """
+        Check if this instance is equal to another instance.
+
+        Args:
+            other (Any): The other instance to compare against.
+
+        Returns:
+            bool: True if the other instance is of type ConstraintRelationshipHasSourceNode
+                  and has the same source_node_name and relationship_name, False otherwise.
+        """
         return (
             isinstance(other, ConstraintRelationshipHasSourceNode)
             and self.source_node_name == other.source_node_name
@@ -73,6 +145,19 @@ class ConstraintRelationshipHasSourceNode(Constraint):
 
 
 class ConstraintRelationshipHasTargetNode(Constraint):
+    """
+    A constraint that ensures a relationship has a specific target node.
+
+    Attributes:
+        target_node_name (str): The name of the target node.
+        relationship_name (str): The name of the relationship.
+
+    Methods:
+        __repr__(): Returns a string representation of the constraint.
+        __hash__(): Returns a hash value for the constraint.
+        __eq__(other: Any): Checks equality between this constraint and another object.
+    """
+
     def __init__(self, target_node_name: str, relationship_name: str):
         self.target_node_name = target_node_name
         self.relationship_name = relationship_name
@@ -96,6 +181,19 @@ class ConstraintRelationshipHasTargetNode(Constraint):
 
 
 class ConstraintRelationshipHasLabel(Constraint):
+    """
+    A constraint that specifies a relationship must have a certain label.
+
+    Attributes:
+        relationship_name (str): The name of the relationship.
+        label (str): The label that the relationship must have.
+
+    Methods:
+        __repr__(): Returns a string representation of the constraint.
+        __hash__(): Returns a hash value for the constraint.
+        __eq__(other: Any): Checks if this constraint is equal to another constraint.
+    """
+
     def __init__(self, relationship_name: str, label: str):
         self.relationship_name = relationship_name
         self.label = label
@@ -119,6 +217,20 @@ class ConstraintRelationshipHasLabel(Constraint):
 
 
 class ConstraintNodeHasAttributeWithValue(Constraint):
+    """
+    A constraint that checks if a node has a specific attribute with a given value.
+
+    Attributes:
+        node_id (str): The ID of the node.
+        attribute (str): The attribute to check.
+        value (Any): The value that the attribute should have.
+
+    Methods:
+        __repr__(): Returns a string representation of the constraint.
+        __hash__(): Returns a hash value for the constraint.
+        __eq__(other: Any): Checks if this constraint is equal to another constraint.
+    """
+
     def __init__(self, node_id: str, attribute: str, value: Any):
         self.node_id = node_id
         self.attribute = attribute

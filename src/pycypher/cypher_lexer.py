@@ -17,7 +17,6 @@ tokens = [
     "COLON",
     "COMMA",
     "DASH",
-    "DISTINCT",
     "DIVIDE",
     "DOT",
     "DQUOTE",
