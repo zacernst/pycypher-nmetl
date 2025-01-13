@@ -1,5 +1,5 @@
 """
-This module defines various constraint classes used to represent different 
+This module defines various constraint classes used to represent different
 types of constraints in a graph database context.
 
 Classes:
@@ -7,14 +7,15 @@ Classes:
 - Constraint: A base class for all constraints.
 - IsTrue: A constraint that checks if a given predicate is true.
 - ConstraintNodeHasLabel: A constraint that ensures a node has a specific label.
-- ConstraintRelationshipHasSourceNode: A constraint that ensures a relationship has a 
+- ConstraintRelationshipHasSourceNode: A constraint that ensures a relationship has a
   specific source node.
-- ConstraintRelationshipHasTargetNode: A constraint that ensures a relationship has a 
+- ConstraintRelationshipHasTargetNode: A constraint that ensures a relationship has a
   specific target node.
 - ConstraintRelationshipHasLabel: A constraint that ensures a relationship has a specific label.
-- ConstraintNodeHasAttributeWithValue: A constraint that ensures a node has a specific 
+- ConstraintNodeHasAttributeWithValue: A constraint that ensures a node has a specific
   attribute with a given value.
 """
+
 from __future__ import annotations
 
 from typing import Any

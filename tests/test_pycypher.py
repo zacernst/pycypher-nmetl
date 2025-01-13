@@ -1,7 +1,7 @@
-'''All the tests.'''
+"""All the tests."""
 # pylint: disable=missing-function-docstring,protected-access,redefined-outer-name,too-many-lines
 
-from unittest.mock import patch, Mock
+from unittest.mock import Mock, patch
 
 import networkx as nx
 import pytest
@@ -26,7 +26,6 @@ from pycypher.fixtures import (  # pylint: disable=unused-import
     fact_collection_7,
     networkx_graph,
 )
-from pycypher.solver import IsTrue
 from pycypher.node_classes import Alias  # pylint: disable=unused-import
 from pycypher.node_classes import (
     Addition,
@@ -75,6 +74,7 @@ from pycypher.solver import (
     ConstraintRelationshipHasLabel,
     ConstraintRelationshipHasSourceNode,
     ConstraintRelationshipHasTargetNode,
+    IsTrue,
 )
 from pycypher.tree_mixin import TreeMixin
 
@@ -1562,12 +1562,7 @@ def test_transform_solutions_in_with_clause(
         "RETURN n.foobar"
     )
     result = CypherParser(cypher)
-    aggregated_results = result.\
-    parsed.\
-    cypher.\
-    match_clause.\
-    with_clause.\
-    transform_solutions_by_aggregations(
+    aggregated_results = result.parsed.cypher.match_clause.with_clause.transform_solutions_by_aggregations(
         fact_collection_6
     )
     expected_results = [
@@ -1591,9 +1586,8 @@ def test_transform_solutions_in_with_clause_no_solutions(
         "RETURN n.foobar"
     )
     result = CypherParser(cypher)
-    aggregated_results = result.parsed.cypher.match_clause.with_clause.\
-        transform_solutions_by_aggregations(
-            fact_collection_6
+    aggregated_results = result.parsed.cypher.match_clause.with_clause.transform_solutions_by_aggregations(
+        fact_collection_6
     )
     expected_results = []
 
@@ -1610,9 +1604,8 @@ def test_transform_solutions_in_with_clause_multiple_solutions(
         "RETURN n.foobar"
     )
     result = CypherParser(cypher)
-    aggregated_results = result.parsed.cypher.match_clause.with_clause.\
-        transform_solutions_by_aggregations(
-            fact_collection_6
+    aggregated_results = result.parsed.cypher.match_clause.with_clause.transform_solutions_by_aggregations(
+        fact_collection_6
     )
     expected_results = [
         {"n": "4", "m": "2", "o": ["5", "3"]},

@@ -60,16 +60,13 @@ class ReactiveFactCollection(FactCollection):
         return new_class(*args, **kwargs)
 
 
+if __name__ == "__main__":  # pragma: no cover # typing:ignore
 
-
-
-if __name__ == '__main__':  # pragma: no cover # typing:ignore
     @test_fact_collection.trigger(
         "MATCH (n:Thingy)-[r:Relationship]->(m:Foobar) WITH n.foo AS nfoo RETURN nfoo"
     )
     def my_function(nfoo):  # pylint: disable=unused-argument
         print(f"Function called with {nfoo}")
-
 
     result = CypherParser(
         "MATCH (n:Thingy)-[r:Relationship]->(m:Foobar) WITH n.foo AS nfoo RETURN nfoo"
