@@ -7,6 +7,11 @@ from __future__ import annotations
 from typing import Any, Generator, List
 
 from pycypher.query import Query, QueryValueOfNodeAttribute
+from pycypher.solver import (
+    Constraint,
+    ConstraintNodeHasLabel,
+    ConstraintRelationshipHasLabel,
+)
 
 
 class AtomicFact:  # pylint: disable=too-few-public-methods
@@ -22,8 +27,6 @@ class AtomicFact:  # pylint: disable=too-few-public-methods
     Methods:
         None
     """
-
-    pass
 
 
 class FactNodeHasLabel(AtomicFact):
@@ -51,6 +54,16 @@ class FactNodeHasLabel(AtomicFact):
             isinstance(other, FactNodeHasLabel)
             and self.node_id == other.node_id
             and self.label == other.label
+        )
+
+    def __add__(self, other: Constraint):
+        if not isinstance(other, Constraint):
+            raise ValueError("Can only check constraints against facts")
+        return (
+            {other.node_id: self.node_id}
+            if isinstance(other, ConstraintNodeHasLabel)
+            and self.label == other.label
+            else None
         )
 
 
@@ -81,6 +94,18 @@ class FactRelationshipHasLabel(AtomicFact):
             isinstance(other, FactRelationshipHasLabel)
             and self.relationship_id == other.relationship_id
             and self.relationship_label == other.relationship_label
+        )
+
+    def __add__(self, other: Constraint):
+        if not isinstance(other, Constraint):
+            raise ValueError("Can only check constraints against facts")
+        return (
+            {other.relationship_name: self.relationship_id}
+            if (
+                isinstance(other, ConstraintRelationshipHasLabel)
+                and self.relationship_label == other.label
+            )
+            else None
         )
 
 
@@ -298,7 +323,7 @@ class FactCollection:
     def __len__(self):
         return len(self.facts)
 
-    def insert(self, index: int, value: AtomicFact):
+    def insert(self, index: int, value: AtomicFact) -> FactCollection:
         """
         Insert an AtomicFact into the facts list at the specified index.
 
@@ -310,6 +335,25 @@ class FactCollection:
             None
         """
         self.facts.insert(index, value)
+        return self
+
+    def append(self, value: AtomicFact) -> FactCollection:
+        """
+        Append an AtomicFact to the facts list.
+
+        Args:
+            value (AtomicFact): The AtomicFact object to be appended.
+
+        Returns:
+            None
+        """
+        self.facts.append(value)
+        return self
+
+    def __iadd__(self, other: AtomicFact) -> FactCollection:
+        """Let us use ``+=`` to add facts to the collection."""
+        self.append(other)
+        return self
 
     def relationship_has_source_node_facts(self):
         """
@@ -413,3 +457,12 @@ class FactCollection:
                 raise ValueError("Unknown error")
         else:
             raise NotImplementedError(f"Unknown query type {query}")
+
+    def is_empty(self) -> bool:
+        """
+        Check if the fact collection is empty.
+
+        Returns:
+            bool: True if the fact collection is empty, False otherwise.
+        """
+        return len(self.facts) == 0

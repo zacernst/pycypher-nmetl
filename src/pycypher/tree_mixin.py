@@ -13,7 +13,38 @@ from rich.tree import Tree
 
 
 class TreeMixin(ABC):
-    """Mixin class that provides methods for walking and printing the AST."""
+    """
+    TreeMixin is an abstract base class that provides a mixin for tree structures,
+    typically used for Abstract Syntax Trees (ASTs). It includes methods for
+    printing, walking, and navigating the tree.
+
+    Attributes:
+        parent: The parent node of the current node.
+
+    Methods:
+        print_tree():
+            Uses the `rich` library to print the tree representation of the AST.
+
+        children() -> Generator[TreeMixin | str | None]:
+            A property that returns a generator of the node's children.
+
+        tree() -> Tree:
+            An abstract method that generates a tree representation of the AST
+            which can be pretty-printed with the `rich` library.
+
+        walk() -> Generator[TreeMixin]:
+            A generator that yields every node of the AST.
+
+        root():
+            A property that returns the root node of the AST.
+
+        parse_obj():
+            A property that returns the parse object that contains the AST and
+            other related information.
+
+        enclosing_class(cls: Type[TreeMixin]) -> TreeMixin:
+            Returns the first enclosing node of the given class.
+    """
 
     parent = None
 
@@ -56,20 +87,52 @@ class TreeMixin(ABC):
 
     @property
     def root(self):
-        """Returns the root node of the AST."""
+        """
+        Returns the root node of the tree.
+
+        This method traverses up the tree by following the parent references
+        until it finds the root node (a node with no parent).
+
+        Returns:
+            The root node of the tree.
+        """
         if self.parent is None:
             return self
         return self.parent.root
 
     @property
     def parse_obj(self):
-        """Returns the parse object thst contains the AST and other stuff."""
+        """
+        Returns the root object of the tree.
+
+        If the current object has no parent, it is considered the root and is returned.
+        Otherwise, the method recursively traverses up the tree to find and return the root object.
+
+        Returns:
+            The root object of the tree.
+        """
         if self.parent is None:
             return self
         return self.parent.root
 
     def enclosing_class(self, cls: Type[TreeMixin]) -> TreeMixin:
-        """Returns the first enclosing node of the given class."""
+        """
+        Finds the nearest enclosing instance of the specified class type.
+
+        This method traverses up the parent hierarchy to find the nearest
+        instance of the specified class type. If the current instance is
+        of the specified class type, it returns itself. If no such instance
+        is found in the hierarchy, a ValueError is raised.
+
+        Args:
+            cls (Type[TreeMixin]): The class type to search for in the parent hierarchy.
+
+        Returns:
+            TreeMixin: The nearest enclosing instance of the specified class type.
+
+        Raises:
+            ValueError: If no enclosing instance of the specified class type is found.
+        """
         if isinstance(self, cls):
             return self
         if self.parent is None:

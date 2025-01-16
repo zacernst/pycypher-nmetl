@@ -4,8 +4,22 @@ from abc import ABC, abstractmethod
 
 
 class Shim(ABC):
-    """Abstract base class for interfaces between data structures and
-    the Cypher query language.
+    """
+    Shim is an abstract base class that defines the interface for shims.
+
+    Methods
+    -------
+    __init__(*args, **kwargs)
+        Abstract method for initializing the shim.
+
+    __repr__()
+        Abstract method for returning the string representation of the shim.
+
+    __str__()
+        Abstract method for returning the string representation of the shim.
+
+    make_fact_collection()
+        Abstract method for creating a fact collection. This method should be overridden by subclasses.
     """
 
     @abstractmethod

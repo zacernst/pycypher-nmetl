@@ -12,6 +12,7 @@ from pycypher.fact import (  # We might get rid of this class entirely
     FactRelationshipHasTargetNode,
 )
 from pycypher.node_classes import Literal
+from pycypher.trigger import Goldberg
 
 
 @pytest.fixture
@@ -382,3 +383,8 @@ def networkx_graph():
 @pytest.fixture
 def number_of_facts(fact_collection_0: FactCollection) -> int:
     return len(fact_collection_0.facts)
+
+
+@pytest.fixture
+def empty_goldberg():
+    return Goldberg()

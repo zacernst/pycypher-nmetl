@@ -14,8 +14,10 @@ from pycypher.fact import (  # We might get rid of this class entirely
     FactNodeHasAttributeWithValue,
     FactNodeHasLabel,
     FactNodeRelatedToNode,
+    FactRelationshipHasLabel,
 )
-from pycypher.fixtures import (  # pylint: disable=unused-import
+from pycypher.fixtures import empty_goldberg  # pylint: disable=unused-import
+from pycypher.fixtures import (
     fact_collection_0,
     fact_collection_1,
     fact_collection_2,
@@ -77,6 +79,7 @@ from pycypher.solver import (
     IsTrue,
 )
 from pycypher.tree_mixin import TreeMixin
+from pycypher.trigger import CypherTrigger, Goldberg
 
 
 def test_fact_collection_has_facts(fact_collection_0: FactCollection):
@@ -105,6 +108,20 @@ def test_fact_collection_insert(fact_collection_0: FactCollection):
     fact = FactNodeHasLabel("3", "Thing")
     assert fact not in fact_collection_0
     fact_collection_0.insert(0, fact)
+    assert fact in fact_collection_0
+
+
+def test_fact_collection_iadd(fact_collection_0: FactCollection):
+    fact = FactNodeHasLabel("3", "Thing")
+    assert fact not in fact_collection_0
+    fact_collection_0 += fact
+    assert fact in fact_collection_0
+
+
+def test_fact_collection_append(fact_collection_0: FactCollection):
+    fact = FactNodeHasLabel("3", "Thing")
+    assert fact not in fact_collection_0
+    fact_collection_0.append(fact)
     assert fact in fact_collection_0
 
 
@@ -3083,3 +3100,198 @@ def test_is_true_eq_different_type():
     predicate = Mock()
     constraint = IsTrue(predicate)
     assert constraint != "not a constraint"
+
+
+def test_fact_node_has_label_matches_constraint():
+    constraint1 = ConstraintNodeHasLabel("n", "Thingy")
+    fact1 = FactNodeHasLabel("123", "Thingy")
+    assert fact1 + constraint1 == {"n": "123"}
+
+
+def test_fact_matching_error_on_non_constraint():
+    with pytest.raises(ValueError):
+        fact1 = FactNodeHasLabel("123", "Thingy")
+        thing = "Thingy"
+        fact1 + thing  # pylint: disable=pointless-statement
+
+
+def test_fact_node_has_label_no_match_empty_result():
+    constraint1 = ConstraintNodeHasLabel("n", "Thingy")
+    fact1 = FactNodeHasLabel("123", "NotThingy")
+    assert fact1 + constraint1 is None
+
+
+def test_fact_node_has_label_no_match_wrong_constraint_type():
+    constraint1 = ConstraintRelationshipHasLabel("r", "Thingy")
+    fact1 = FactNodeHasLabel("123", "Thingy")
+    assert fact1 + constraint1 is None
+
+
+def test_fact_relationship_has_label_matches_constraint():
+    fact2 = FactRelationshipHasLabel("234", "Relationship")
+    constraint2 = ConstraintRelationshipHasLabel("r", "Relationship")
+    assert fact2 + constraint2 == {"r": "234"}
+
+
+def test_fact_relationship_has_label_matching_error_on_non_constraint():
+    with pytest.raises(ValueError):
+        fact2 = FactRelationshipHasLabel("234", "Relationship")
+        thing = "Thingy"
+        fact2 + thing  # pylint: disable=pointless-statement
+
+
+def test_fact_relationship_has_label_no_match_empty_result():
+    fact2 = FactRelationshipHasLabel("234", "Relationship")
+    constraint2 = ConstraintRelationshipHasLabel("r", "NotTheRelationship")
+    assert fact2 + constraint2 is None
+
+
+def test_fact_relationship_has_label_no_match_wrong_constraint_type():
+    fact2 = FactRelationshipHasLabel("234", "Relationship")
+    constraint2 = ConstraintNodeHasLabel("r", "NotRightAtAll")
+    assert fact2 + constraint2 is None
+
+
+def test_initialize_empty_goldberg(empty_goldberg):
+    assert isinstance(empty_goldberg, Goldberg)
+    assert len(empty_goldberg.fact_collection) == 0
+    assert not empty_goldberg.trigger_dict
+
+
+def test_add_trigger_to_goldberg(empty_goldberg):
+    cypher_trigger = CypherTrigger(
+        function=lambda x: x,
+        cypher_string="MATCH (n) RETURN n.foo",
+    )
+    assert not empty_goldberg.trigger_dict
+    empty_goldberg.register_trigger(cypher_trigger)
+    assert empty_goldberg.trigger_dict
+
+
+def test_empty_goldberg_fact_collection_empty(empty_goldberg):
+    assert len(empty_goldberg.fact_collection) == 0
+
+
+def test_add_fact_collection_to_goldberg(empty_goldberg, fact_collection_1):
+    assert len(empty_goldberg.fact_collection) == 0
+    empty_goldberg.attach_fact_collection(fact_collection_1)
+    assert len(empty_goldberg.fact_collection) == 3
+
+
+def test_fact_collection_empty():
+    fact_collection = FactCollection(facts=[])
+    assert fact_collection.is_empty()
+
+
+def test_fact_collection_not_empty(fact_collection_0):
+    assert not fact_collection_0.is_empty()
+
+
+def test_trigger_decorator_function_works(empty_goldberg):
+    @empty_goldberg.cypher_trigger("MATCH (n) RETURN n.foo")
+    def test_function():
+        return 1
+
+    assert test_function() == 1
+
+
+def test_trigger_decorator_function_insert_to_dict(empty_goldberg):
+    @empty_goldberg.cypher_trigger("MATCH (n) RETURN n.foo")
+    def test_function(x):
+        return x + 1
+
+    assert list(empty_goldberg.trigger_dict.values())[0].function(1) == 2
+
+
+def test_reject_non_fact_collection_on_attach(empty_goldberg):
+    with pytest.raises(ValueError):
+        empty_goldberg.attach_fact_collection("not a fact collection")
+
+
+def test_attach_fact_collection_manually(empty_goldberg):
+    fact_collection = FactCollection(facts=[])
+    empty_goldberg.attach_fact_collection(fact_collection)
+    assert empty_goldberg.fact_collection is fact_collection
+
+
+def test_iadd_goldberg_trigger(mocker, empty_goldberg):
+    mocker.patch.object(empty_goldberg, "register_trigger")
+    trigger = CypherTrigger(
+        function=lambda x: x,
+        cypher_string="MATCH (n) RETURN n.foo",
+    )
+    empty_goldberg += trigger
+    empty_goldberg.register_trigger.assert_called_once_with(trigger)
+
+
+def test_goldberg_decorator_registers_trigger(mocker, empty_goldberg):
+    mocker.patch.object(empty_goldberg, "register_trigger")
+
+    @empty_goldberg.cypher_trigger("MATCH (n) RETURN n.foo")
+    def test_function():
+        return 1
+
+    empty_goldberg.register_trigger.assert_called_once()
+
+
+def test_iadd_goldberg_fact_collection(mocker, empty_goldberg):
+    mocker.patch.object(empty_goldberg, "attach_fact_collection")
+    fact_collection = FactCollection(facts=[])
+    empty_goldberg += fact_collection
+    empty_goldberg.attach_fact_collection.assert_called_once_with(
+        fact_collection
+    )
+
+
+def test_iadd_goldberg_fact(mocker, empty_goldberg):
+    mocker.patch.object(empty_goldberg.fact_collection, "append")
+    fact = FactNodeHasLabel("123", "Thingy")
+    empty_goldberg += fact
+    empty_goldberg.fact_collection.append.assert_called_once_with(fact)
+
+
+def test_iadd_raises_value_error(empty_goldberg):
+    with pytest.raises(ValueError):
+        empty_goldberg += "not a fact collection"
+
+
+def test_trigger_iadd_constraint(empty_goldberg):
+    trigger = CypherTrigger(
+        function=lambda x: x,
+        cypher_string="MATCH (n:Thingy) RETURN n.foo",
+    )
+    empty_goldberg += trigger
+    constraint = ConstraintNodeHasLabel("n", "Thingy")
+    assert list(empty_goldberg.walk_constraints()) == [constraint]
+
+
+def test_trigger_has_constraint_from_cypher():
+    trigger = CypherTrigger(
+        function=lambda x: x,
+        cypher_string="MATCH (n:Thingy) RETURN n.foo",
+    )
+    constraint = ConstraintNodeHasLabel("n", "Thingy")
+    assert constraint in trigger.constraints
+    assert len(trigger.constraints) == 1
+    
+    
+def test_constraint_propogates_to_goldberg_from_decorator(empty_goldberg): 
+    assert not empty_goldberg.constraints
+
+    @empty_goldberg.cypher_trigger("MATCH (n:Thingy) RETURN n.foo")
+    def test_function():
+        return 1
+
+    assert empty_goldberg.constraints
+
+
+def test_fact_triggers_constraint_in_goldberg(empty_goldberg): 
+
+    @empty_goldberg.cypher_trigger("MATCH (n:Thingy) RETURN n.foo")
+    def test_function():
+        return 1
+    
+    fact = FactNodeHasLabel("123", "Thingy")
+    
+
+    assert empty_goldberg.constraints

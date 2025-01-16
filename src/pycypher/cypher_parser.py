@@ -339,3 +339,7 @@ class CypherParser:
 
     def __repr__(self) -> str:
         return self.parsed.__str__()
+
+    def walk(self):
+        """Just calls the walk method on the parsed tree."""
+        yield from self.parsed.walk()

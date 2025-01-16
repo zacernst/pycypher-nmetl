@@ -402,7 +402,7 @@ class Distinct(TreeMixin, Evaluable):
         Returns:
             Any: A new collection with duplicates removed.
         """
-        collection = self.collection._evaluate(
+        collection = self.collection._evaluate(  # pylint: disable=protected-access
             fact_collection, projection=projection
         )
         new_values = []
@@ -549,7 +549,7 @@ class Collect(TreeMixin, Evaluable):
             individuated_projection[self.object_attribute_lookup.object] = (
                 matching_instance
             )
-            single_value = self.object_attribute_lookup._evaluate(  # pyint: disable=protected-access
+            single_value = self.object_attribute_lookup._evaluate(  # pylint: disable=protected-access
                 fact_collection, projection=individuated_projection
             )
             output.append(single_value)
@@ -903,10 +903,10 @@ class Multiplication(Predicate, Evaluable):
         fact_collection: FactCollection,
         projection: Optional[Dict[str, str | List[str]]] = None,
     ) -> Any:
-        left_value = self.left_side._evaluate(
+        left_value = self.left_side._evaluate(  # pylint: disable=protected-access
             fact_collection, projection=projection
         )  # pylint: disable=protected-access
-        right_value = self.right_side._evaluate(
+        right_value = self.right_side._evaluate(  # pylint: disable=protected-access
             fact_collection, projection=projection
         )  # pylint: disable=protected-access
         self.type_check(left_value, right_value)
@@ -946,10 +946,10 @@ class Division(Predicate, Evaluable):
         fact_collection: FactCollection,
         projection: Optional[Dict[str, str | List[str]]] = None,
     ) -> Any:
-        left_value = self.left_side._evaluate(
+        left_value = self.left_side._evaluate(  # pylint: disable=protected-access
             fact_collection, projection=projection
         )  # pylint: disable=protected-access
-        right_value = self.right_side._evaluate(
+        right_value = self.right_side._evaluate(  # pylint: disable=protected-access
             fact_collection, projection=projection
         )  # pylint: disable=protected-access
         self.type_check(left_value, right_value)
@@ -1094,7 +1094,7 @@ class ObjectAsSeries(TreeMixin, Evaluable):
         projection: Optional[Dict[str, str | List[str]]] = None,
     ) -> Any:
         result = {
-            obj.alias: obj._evaluate(fact_collection, projection=projection)
+            obj.alias: obj._evaluate(fact_collection, projection=projection)  # pylint: disable=protected-access
             for obj in self.object_attribute_lookup_list
         }
         return result
@@ -1155,10 +1155,24 @@ class WithClause(TreeMixin, Evaluable):
 
     @property
     def children(self) -> Generator[Projection]:
+        """
+        Generator that yields the children of the current node.
+        Yields:
+            Projection: The object as a series.
+        """
+
         yield self.object_as_series
 
     @property
     def aggregated_variables(self):
+        """
+        Collects and returns a list of objects that are attributes of
+        Aggregation instances found during a walk through the current object.
+        The method performs a depth-first traversal of the current object
+        and collects objects that are attributes of Aggregation instances.
+        Returns:
+            list: A list of objects that are attributes of Aggregation instances.
+        """
         out = []
         for obj in self.walk():
             if isinstance(obj, Aggregation):
@@ -1240,7 +1254,7 @@ class WithClause(TreeMixin, Evaluable):
         fact_collection: FactCollection,
         projection: Optional[Dict[str, str | List[str]]] = None,
     ) -> Any:
-        return self.object_as_series._evaluate(
+        return self.object_as_series._evaluate(  # pylint: disable=protected-access
             fact_collection, projection=projection
         )
 
@@ -1568,7 +1582,7 @@ class Return(TreeMixin):
         """For now, just return a subset of the projection from the WITH clause."""
         with_clause_projections = (
             projection
-            or self.parent.match_clause.with_clause._evaluate(
+            or self.parent.match_clause.with_clause._evaluate(  # pylint: disable=protected-access
                 fact_collection, projection=None
             )
         )
@@ -1913,10 +1927,10 @@ class And(BinaryBoolean, Evaluable):
         fact_collection: FactCollection,
         projection: Optional[Dict[str, str | List[str]]] = None,
     ) -> Any:
-        left_value = self.left_side._evaluate(
+        left_value = self.left_side._evaluate(  # pylint: disable=protected-access
             fact_collection, projection=projection
         )  # pylint: disable=protected-access
-        right_value = self.right_side._evaluate(
+        right_value = self.right_side._evaluate(  # pylint: disable=protected-access
             fact_collection, projection=projection
         )  # pylint: disable=protected-access
         self.type_check(left_value, right_value)
@@ -1948,10 +1962,10 @@ class Or(BinaryBoolean, Evaluable):
         fact_collection: FactCollection,
         projection: Optional[Dict[str, str | List[str]]] = None,
     ) -> Any:
-        left_value = self.left_side._evaluate(
+        left_value = self.left_side._evaluate(  # pylint: disable=protected-access
             fact_collection, projection=projection
         )  # pylint: disable=protected-access
-        right_value = self.right_side._evaluate(
+        right_value = self.right_side._evaluate(  # pylint: disable=protected-access
             fact_collection, projection=projection
         )  # pylint: disable=protected-access
         self.type_check(left_value, right_value)
