@@ -1,8 +1,13 @@
+"""
+Fixtures for the unit tests.
+"""
+
 # pylint: disable=missing-function-docstring,protected-access,redefined-outer-name,too-many-lines
 import networkx as nx
 import pytest
 
-from pycypher.fact import (  # We might get rid of this class entirely
+from pycypher.core.node_classes import Literal
+from pycypher.etl.fact import (  # We might get rid of this class entirely
     FactCollection,
     FactNodeHasAttributeWithValue,
     FactNodeHasLabel,
@@ -11,8 +16,15 @@ from pycypher.fact import (  # We might get rid of this class entirely
     FactRelationshipHasSourceNode,
     FactRelationshipHasTargetNode,
 )
-from pycypher.node_classes import Literal
-from pycypher.trigger import Goldberg
+from pycypher.etl.trigger import Goldberg
+
+
+class patched_uuid:  # pylint: disable=invalid-name,too-few-public-methods
+    """Creates a deterministic value for uuid hex"""
+
+    @property
+    def hex(self):
+        return "SOME_HEX"
 
 
 @pytest.fixture

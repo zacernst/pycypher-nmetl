@@ -6,8 +6,8 @@ from __future__ import annotations
 
 from typing import Any, Generator, List
 
-from pycypher.query import Query, QueryValueOfNodeAttribute
-from pycypher.solver import (
+from pycypher.etl.query import Query, QueryValueOfNodeAttribute
+from pycypher.etl.solver import (
     Constraint,
     ConstraintNodeHasLabel,
     ConstraintRelationshipHasLabel,
@@ -24,8 +24,6 @@ class AtomicFact:  # pylint: disable=too-few-public-methods
     Attributes:
         None
 
-    Methods:
-        None
     """
 
 
@@ -37,9 +35,6 @@ class FactNodeHasLabel(AtomicFact):
         node_id (str): The ID of the node.
         label (str): The label of the node.
 
-    Methods:
-        __repr__(): Returns a string representation of the FactNodeHasLabel instance.
-        __eq__(other: Any): Checks equality between this instance and another FactNodeHasLabel instance.
     """
 
     def __init__(self, node_id: str, node_label: str):
@@ -75,9 +70,6 @@ class FactRelationshipHasLabel(AtomicFact):
         relationship_id (str): The ID of the relationship.
         relationship_label (str): The label of the relationship.
 
-    Methods:
-        __repr__(): Returns a string representation of the fact.
-        __eq__(other: Any) -> bool: Checks equality between this fact and another.
     """
 
     def __init__(self, relationship_id: str, relationship_label: str):
@@ -139,9 +131,6 @@ class FactNodeHasAttributeWithValue(AtomicFact):
         attribute (str): The attribute of the node.
         value (Any): The value of the attribute.
 
-    Methods:
-        __repr__(): Returns a string representation of the fact.
-        __eq__(other: Any): Checks equality between this fact and another fact.
     """
 
     def __init__(self, node_id: str, attribute: str, value: Any):
@@ -170,9 +159,6 @@ class FactNodeRelatedToNode(AtomicFact):
         node2_id (str): The ID of the second node.
         relationship_label (str): The label of the relationship between the two nodes.
 
-    Methods:
-        __repr__() -> str: Returns a string representation of the fact.
-        __eq__(other: Any) -> bool: Checks if this fact is equal to another fact.
     """
 
     def __init__(self, node1_id: str, node2_id: str, relationship_label: str):
@@ -200,9 +186,6 @@ class FactRelationshipHasSourceNode(AtomicFact):
         relationship_id (str): The ID of the relationship.
         source_node_id (str): The ID of the source node.
 
-    Methods:
-        __repr__(): Returns a string representation of the FactRelationshipHasSourceNode instance.
-        __eq__(other: Any): Checks equality between this instance and another FactRelationshipHasSourceNode instance.
     """
 
     def __init__(self, relationship_id: str, source_node_id: str):
@@ -228,12 +211,6 @@ class FactRelationshipHasTargetNode(AtomicFact):
         relationship_id (str): The ID of the relationship.
         target_node_id (str): The ID of the target node.
 
-    Methods:
-        __repr__() -> str:
-            Returns a string representation of the FactRelationshipHasTargetNode instance.
-
-        __eq__(other: Any) -> bool:
-            Checks if this instance is equal to another instance of FactRelationshipHasTargetNode.
     """
 
     def __init__(self, relationship_id: str, target_node_id: str):
@@ -253,53 +230,12 @@ class FactRelationshipHasTargetNode(AtomicFact):
 
 class FactCollection:
     """
-    A collection of AtomicFact objects with various utility methods for querying and manipulating the facts.
+    A collection of AtomicFact objects with various utility methods for
+    querying and manipulating the facts.
 
     Attributes:
         facts (List[AtomicFact]): A list of AtomicFact objects.
 
-    Methods:
-        __iter__() -> Generator[AtomicFact]:
-            Yields each fact in the collection.
-
-        __repr__() -> str:
-            Returns a string representation of the FactCollection.
-
-        __getitem__(index: int) -> AtomicFact:
-            Returns the fact at the specified index.
-
-        __setitem__(index: int, value: AtomicFact):
-            Sets the fact at the specified index to the given value.
-
-        __delitem__(index: int):
-            Deletes the fact at the specified index.
-
-        __len__() -> int:
-            Returns the number of facts in the collection.
-
-        insert(index: int, value: AtomicFact):
-            Inserts a fact at the specified index.
-
-        relationship_has_source_node_facts() -> Generator[FactRelationshipHasSourceNode]:
-            Yields facts that are instances of FactRelationshipHasSourceNode.
-
-        relationship_has_target_node_facts() -> Generator[FactRelationshipHasTargetNode]:
-            Yields facts that are instances of FactRelationshipHasTargetNode.
-
-        node_has_label_facts() -> Generator[FactNodeHasLabel]:
-            Yields facts that are instances of FactNodeHasLabel.
-
-        node_has_attribute_with_value_facts() -> Generator[FactNodeHasAttributeWithValue]:
-            Yields facts that are instances of FactNodeHasAttributeWithValue.
-
-        relationship_has_attribute_with_value_facts() -> Generator[FactRelationshipHasAttributeWithValue]:
-            Yields facts that are instances of FactRelationshipHasAttributeWithValue.
-
-        query(query: Query) -> Any:
-            Executes a query on the collection and returns the result.
-            Raises:
-                ValueError: If the query cannot be resolved or if multiple values are found for a QueryValueOfNodeAttribute.
-                NotImplementedError: If the query type is unknown.
     """
 
     def __init__(self, facts: List[AtomicFact]):
@@ -363,7 +299,8 @@ class FactCollection:
         each fact that is an instance of the FactRelationshipHasSourceNode class.
 
         Yields:
-            FactRelationshipHasSourceNode: Facts that are instances of FactRelationshipHasSourceNode.
+            FactRelationshipHasSourceNode: Facts that are instances of
+                FactRelationshipHasSourceNode.
         """
         for fact in self.facts:
             if isinstance(fact, FactRelationshipHasSourceNode):
@@ -377,7 +314,8 @@ class FactCollection:
         that is an instance of FactRelationshipHasTargetNode.
 
         Yields:
-            FactRelationshipHasTargetNode: Facts that are instances of FactRelationshipHasTargetNode.
+            FactRelationshipHasTargetNode: Facts that are instances of
+                FactRelationshipHasTargetNode.
         """
         for fact in self.facts:
             if isinstance(fact, FactRelationshipHasTargetNode):
@@ -405,7 +343,8 @@ class FactCollection:
         of FactNodeHasAttributeWithValue.
 
         Yields:
-            FactNodeHasAttributeWithValue: Facts that are instances of FactNodeHasAttributeWithValue.
+            FactNodeHasAttributeWithValue: Facts that are instances of
+                FactNodeHasAttributeWithValue.
         """
         for fact in self.facts:
             if isinstance(fact, FactNodeHasAttributeWithValue):
@@ -419,7 +358,8 @@ class FactCollection:
         FactRelationshipHasAttributeWithValue.
 
         Yields:
-            FactRelationshipHasAttributeWithValue: Facts that are instances of FactRelationshipHasAttributeWithValue.
+            FactRelationshipHasAttributeWithValue: Facts that are instances of
+                FactRelationshipHasAttributeWithValue.
         """
         for fact in self.facts:
             if isinstance(fact, FactRelationshipHasAttributeWithValue):
@@ -436,8 +376,9 @@ class FactCollection:
             Any: The result of the query. The type of the result depends on the query type.
 
         Raises:
-            ValueError: If the query is of type QueryValueOfNodeAttribute and no matching facts are found,
-                        or if multiple matching facts are found, or if an unknown error occurs.
+            ValueError: If the query is of type QueryValueOfNodeAttribute and no matching
+                facts are found, or if multiple matching facts are found, or if an
+                unknown error occurs.
             NotImplementedError: If the query type is not recognized.
         """
         if isinstance(query, QueryValueOfNodeAttribute):

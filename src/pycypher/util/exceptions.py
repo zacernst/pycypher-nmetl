@@ -8,8 +8,10 @@ class CypherParsingError(Exception):
 
 
 class UnexpectedCypherStructureError(Exception):
-    """To be thrown when the `CypherParser` can parse the expression, but it has an unexpected structure."""
+    """To be thrown when the `CypherParser` can parse the expression, but it has
+    an unexpected structure."""
 
 
 class WrongCypherTypeError(Exception):
-    """To be thrown when the `CypherParser` can parse the expression, but it has an unexpected type."""
+    """To be thrown when the `CypherParser` can parse the expression, but it has
+    an unexpected type."""

@@ -47,7 +47,7 @@ Classes:
 - **RelationshipChainList**: Represents a container for a list of relationship chains.
 - **Addition**: Represents the binary infix operator for addition.
 - **Literal**: Represents a container for a value.
-"""
+"""  # pylint: disable=too-many-lines
 
 from __future__ import annotations
 
@@ -67,8 +67,8 @@ from pydantic import (
 )
 from rich.tree import Tree
 
-from pycypher.exceptions import WrongCypherTypeError
-from pycypher.fact import (
+from pycypher.core.tree_mixin import TreeMixin
+from pycypher.etl.fact import (
     FactCollection,
     FactNodeHasAttributeWithValue,
     FactNodeHasLabel,
@@ -76,10 +76,8 @@ from pycypher.fact import (
     FactRelationshipHasSourceNode,
     FactRelationshipHasTargetNode,
 )
-from pycypher.logger import LOGGER
-from pycypher.query import QueryValueOfNodeAttribute
-from pycypher.shims import Shim
-from pycypher.solver import (
+from pycypher.etl.query import QueryValueOfNodeAttribute
+from pycypher.etl.solver import (
     Constraint,
     ConstraintNodeHasAttributeWithValue,
     ConstraintNodeHasLabel,
@@ -88,20 +86,14 @@ from pycypher.solver import (
     ConstraintRelationshipHasTargetNode,
     IsTrue,
 )
-from pycypher.tree_mixin import TreeMixin
+from pycypher.shims import Shim
+from pycypher.util.exceptions import WrongCypherTypeError
+from pycypher.util.logger import LOGGER
 
 
 class Evaluable(abc.ABC):  # pylint: disable=too-few-public-methods
     """
     Abstract base class representing an evaluable entity.
-
-    Methods
-    -------
-    _evaluate(fact_collection: FactCollection, projection: Optional[Dict[str, str | List[str]]] = None) -> Any
-        Abstract method to be implemented by subclasses to perform evaluation based on the provided fact collection and optional projection.
-
-    evaluate(*args, **kwargs)
-        Calls the `_evaluate` method and returns the value of the `Literal` object.
     """
 
     @abc.abstractmethod
@@ -125,18 +117,6 @@ class Cypher(TreeMixin):
     Attributes:
         cypher (TreeMixin): The root node of the AST.
 
-    Methods:
-        trigger_gather_constraints_to_match():
-            Traverses the AST and triggers the `gather_constraints` method on all `Match` nodes.
-
-        children() -> Generator[TreeMixin]:
-            Yields the child nodes of the current node.
-
-        __repr__() -> str:
-            Returns a string representation of the Cypher node.
-
-        tree() -> Tree:
-            Constructs and returns a tree representation of the AST.
     """
 
     def __init__(self, cypher: TreeMixin):
@@ -165,13 +145,20 @@ class Cypher(TreeMixin):
             TreeMixin: The child node of the current node.
         """
         yield self.cypher
+    
+    def get_return_clause(self) -> Return:
+        """
+        Returns the Return clause of the Cypher query.
+        """
+        return self.cypher.return_clause
 
     def __repr__(self) -> str:
         """
         Return a string representation of the Cypher object.
 
         Returns:
-            str: A string in the format "Cypher(<cypher>)" where <cypher> is the cypher attribute of the object.
+            str: A string in the format "Cypher(<cypher>)" where <cypher> is the
+                cypher attribute of the object.
         """
         return f"Cypher({self.cypher})"
 
@@ -194,11 +181,6 @@ class Aggregation(TreeMixin, Evaluable):
     Attributes:
         aggregation: The aggregation operation to be performed.
 
-    Methods:
-        children: Yields the aggregation operation as a child node.
-        __repr__: Returns a string representation of the Aggregation instance.
-        tree: Constructs and returns a tree representation of the aggregation.
-        _evaluate: Evaluates the aggregation operation using the provided fact collection and projection.
     """
 
     def __init__(self, aggregation):
@@ -244,9 +226,10 @@ class Aggregation(TreeMixin, Evaluable):
 
         Args:
             fact_collection (FactCollection): The collection of facts to be used in the evaluation.
-            projection (Optional[Dict[str, str | List[str]]]): An optional dictionary specifying the projection
-                to be applied during the evaluation. The keys are the projection names, and the values are either
-                a single string or a list of strings representing the projection fields.
+            projection (Optional[Dict[str, str | List[str]]]): An optional dictionary specifying
+                the projection to be applied during the evaluation. The keys are the projection
+                names, and the values are either a single string or a list of strings representing
+                the projection fields.
 
         Returns:
             Any: The result of the aggregation evaluation.
@@ -263,21 +246,6 @@ class Collection(TreeMixin, Evaluable):  # i.e. a list
     Attributes:
         values (List[Evaluable]): A list of evaluable items.
 
-    Methods:
-        children:
-            Yields the children of the collection.
-
-        __repr__:
-            Returns a string representation of the collection.
-
-        tree:
-            Constructs and returns a tree representation of the collection.
-
-        _evaluate:
-            Evaluates the collection based on the provided fact collection and projection.
-
-        __eq__:
-            Checks equality between two Collection instances.
     """
 
     def __init__(self, values: List[Evaluable]):
@@ -317,7 +285,8 @@ class Collection(TreeMixin, Evaluable):  # i.e. a list
         Evaluates the current node using the provided fact collection and projection.
         Args:
             fact_collection (FactCollection): The collection of facts to use for evaluation.
-            projection (Optional[Dict[str, str | List[str]]]): An optional dictionary specifying the projection rules.
+            projection (Optional[Dict[str, str | List[str]]]): An optional dictionary
+                specifying the projection rules.
         Returns:
             Any: The result of the evaluation, wrapped in a Collection.
         """
@@ -339,18 +308,6 @@ class Distinct(TreeMixin, Evaluable):
     Attributes:
         collection (Collection): The collection to be evaluated and filtered for distinct values.
 
-    Methods:
-        children:
-            Yields the collection as a child node.
-
-        __repr__:
-            Returns a string representation of the Distinct instance.
-
-        tree:
-            Constructs and returns a tree representation of the Distinct instance.
-
-        _evaluate:
-            Evaluates the collection, removes duplicate values, and returns a new collection with distinct values.
     """
 
     def __init__(self, collection: Collection):
@@ -397,7 +354,8 @@ class Distinct(TreeMixin, Evaluable):
 
         Args:
             fact_collection (FactCollection): The collection of facts to evaluate.
-            projection (Optional[Dict[str, str | List[str]]], optional): A dictionary specifying the projection. Defaults to None.
+            projection (Optional[Dict[str, str | List[str]]], optional): A dictionary
+                specifying the projection. Defaults to None.
 
         Returns:
             Any: A new collection with duplicates removed.
@@ -419,23 +377,6 @@ class Size(TreeMixin, Evaluable):
     Attributes:
         collection (Collection): The collection whose size is to be evaluated.
 
-    Methods:
-        children:
-            Yields the collection as the child node.
-
-        __repr__:
-            Returns a string representation of the Size instance.
-
-        tree:
-            Constructs and returns a tree representation of the Size instance.
-
-        _evaluate:
-            Evaluates the size of the collection within the given fact collection and projection context.
-            Args:
-                fact_collection (FactCollection): The collection of facts to evaluate against.
-                projection (Optional[Dict[str, str | List[str]]]): The projection context for evaluation.
-            Returns:
-                Literal: The size of the collection as a Literal instance.
     """
 
     def __init__(self, collection: Collection):
@@ -472,25 +413,9 @@ class Collect(TreeMixin, Evaluable):
     A class that represents a collection of objects based on an attribute lookup.
 
     Attributes:
-        object_attribute_lookup (ObjectAttributeLookup): The attribute lookup object used to collect instances.
+        object_attribute_lookup (ObjectAttributeLookup): The attribute lookup object
+            used to collect instances.
 
-    Methods:
-        children:
-            Yields the object attribute lookup as a child node.
-
-        __repr__:
-            Returns a string representation of the Collect instance.
-
-        tree:
-            Returns a tree representation of the Collect instance.
-
-        _evaluate:
-            Evaluates the collection based on the provided fact collection and projection.
-            Args:
-                fact_collection (FactCollection): The collection of facts to evaluate against.
-                projection (Optional[Dict[str, str | List[str]]]): The projection to use for evaluation.
-            Returns:
-                Any: The result of the evaluation.
     """
 
     def __init__(self, object_attribute_lookup: ObjectAttributeLookup):
@@ -537,7 +462,8 @@ class Collect(TreeMixin, Evaluable):
         Evaluates the node using the provided fact collection and projection.
         Args:
             fact_collection (FactCollection): The collection of facts to evaluate against.
-            projection (Optional[Dict[str, str | List[str]]]): A dictionary specifying the projection of attributes.
+            projection (Optional[Dict[str, str | List[str]]]): A dictionary specifying the
+            projection of attributes.
         Returns:
             Any: The result of the evaluation.
         """
@@ -567,10 +493,6 @@ class Query(TreeMixin):
         match_clause (Match): The MATCH clause of the query.
         return_clause (Return): The RETURN clause of the query.
 
-    Methods:
-        children: A generator that yields the match_clause and return_clause.
-        __repr__: Returns a string representation of the Query object.
-        tree: Constructs and returns a Tree representation of the Query object.
     """
 
     def __init__(self, match_clause: Match, return_clause: Return):
@@ -601,17 +523,6 @@ class Predicate(TreeMixin):
         argument_types (Any): The expected type(s) for the arguments of the predicate.
         left_side (TreeMixin): The left side of the predicate.
         right_side (TreeMixin): The right side of the predicate.
-    Methods:
-        children() -> Generator[TreeMixin]:
-            Yields the children of the predicate (left and right sides).
-        __repr__() -> str:
-            Returns a string representation of the predicate.
-        _type_check_binary(left_value, right_value):
-            Checks the types of the left and right values against the expected types.
-        _type_check_unary(value):
-            Checks the type of a single value against the expected argument type.
-        type_check(*args):
-            Checks the types of the provided arguments. Supports unary and binary predicates.
     """
 
     left_side_types = Any
@@ -692,15 +603,6 @@ class BinaryBoolean(Predicate, TreeMixin):
         left_side (Predicate | Literal): The left side of the binary boolean operation.
         right_side (Predicate | Literal): The right side of the binary boolean operation.
 
-    Methods:
-        __init__(left_side: Predicate | Literal, right_side: Predicate | Literal):
-            Initializes the BinaryBoolean instance with the given left and right sides.
-
-        __repr__() -> str:
-            Returns a string representation of the BinaryBoolean instance.
-
-        tree() -> Tree:
-            Constructs and returns a tree representation of the binary boolean operation.
     """
 
     left_side_types = bool
@@ -733,10 +635,6 @@ class AliasedName(TreeMixin):
     Attributes:
         name (str): The name to be aliased.
 
-    Methods:
-        __repr__(): Returns a string representation of the AliasedName instance.
-        tree() -> Tree: Returns a tree representation of the AliasedName instance.
-        children() -> Generator[str]: A generator that yields the name as a child node.
     """
 
     def __init__(self, name: str):
@@ -848,6 +746,8 @@ class GreaterThan(Predicate, Evaluable):
 
 
 class Subtraction(Predicate, Evaluable):
+    """Binary subtraction operator"""
+
     left_side_types = float | int
     right_side_types = float | int
 
@@ -880,13 +780,6 @@ class Multiplication(Predicate, Evaluable):
         left_side_types (type): The allowed types for the left operand (float or int).
         right_side_types (type): The allowed types for the right operand (float or int).
 
-    Methods:
-        tree() -> Tree:
-            Constructs and returns a tree representation of the multiplication operation.
-
-        _evaluate(fact_collection: FactCollection, projection: Optional[Dict[str, str | List[str]]] = None) -> Any:
-            Evaluates the multiplication operation using the provided fact collection and optional projection.
-            Returns a Literal object containing the result of the multiplication.
     """
 
     left_side_types = float | int
@@ -921,13 +814,6 @@ class Division(Predicate, Evaluable):
         left_side_types (Union[int, float]): Allowed types for the left operand.
         right_side_types (Union[PositiveFloat, PositiveInt]): Allowed types for the right operand.
 
-    Methods:
-        tree() -> Tree:
-            Constructs and returns a tree representation of the division operation.
-
-        _evaluate(fact_collection: FactCollection, projection: Optional[Dict[str, Union[str, List[str]]]] = None) -> Any:
-            Evaluates the division operation using the provided fact collection and optional projection.
-            Returns the result as a Literal.
     """
 
     left_side_types = int | float
@@ -1009,12 +895,6 @@ class Alias(TreeMixin, Evaluable):
         reference (str): The original reference.
         alias (str): The alias for the reference.
 
-    Methods:
-        __repr__(): Returns a string representation of the Alias object.
-        tree() -> Tree: Constructs a tree representation of the Alias object.
-        _evaluate(fact_collection: FactCollection, projection: Optional[Dict[str, str | List[str]]] = None) -> Any:
-            Evaluates the reference and assigns its value to the alias.
-        children: Yields the reference and alias as children nodes.
     """
 
     def __init__(self, reference: str, alias: str):
@@ -1056,37 +936,24 @@ class ObjectAsSeries(TreeMixin, Evaluable):
     A class that represents an object as a series of attributes.
 
     Attributes:
-        object_attribute_lookup_list (List[Alias]): A list of Alias objects representing the attributes of the object.
-
-    Methods:
-        __repr__():
-            Returns a string representation of the ObjectAsSeries instance.
-
-        tree() -> Tree:
-            Constructs and returns a Tree representation of the object and its attributes.
-
-        children() -> Generator[Projection | Alias]:
-            A property that yields the children of the object, which are the attributes in the object_attribute_lookup_list.
-
-        _evaluate(fact_collection: FactCollection, projection: Optional[Dict[str, str | List[str]]] = None) -> Any:
-            Evaluates the object attributes against a given fact collection and optional projection, returning the result as a dictionary.
+        lookups (List[Alias]): A list of Alias objects representing the attributes of the object.
     """
 
-    def __init__(self, object_attribute_lookup_list: List[Alias]):
-        self.object_attribute_lookup_list = object_attribute_lookup_list
+    def __init__(self, lookups: List[Alias]):
+        self.lookups = lookups
 
     def __repr__(self):
-        return f"ObjectAsSeries({self.object_attribute_lookup_list})"
+        return f"ObjectAsSeries({self.lookups})"
 
     def tree(self) -> Tree:
         t = Tree(self.__class__.__name__)
-        for object_attribute_lookup in self.object_attribute_lookup_list:
+        for object_attribute_lookup in self.lookups:
             t.add(object_attribute_lookup.tree())
         return t
 
     @property
     def children(self) -> Generator[Projection | Alias]:
-        yield self.object_attribute_lookup_list
+        yield self.lookups
 
     def _evaluate(
         self,
@@ -1095,7 +962,7 @@ class ObjectAsSeries(TreeMixin, Evaluable):
     ) -> Any:
         result = {
             obj.alias: obj._evaluate(fact_collection, projection=projection)  # pylint: disable=protected-access
-            for obj in self.object_attribute_lookup_list
+            for obj in self.lookups
         }
         return result
 
@@ -1107,50 +974,17 @@ class WithClause(TreeMixin, Evaluable):
     Attributes:
         object_as_series (ObjectAsSeries): The object representing the series of projections.
 
-    Methods:
-        __repr__():
-            Returns a string representation of the WithClause instance.
-
-        tree() -> Tree:
-            Returns a tree representation of the WithClause.
-
-        children() -> Generator[Projection]:
-            Yields the children projections of the WithClause.
-
-        aggregated_variables():
-            Returns a list of variables that are aggregated in the WithClause.
-
-        all_variables():
-            Returns a list of all variables in the WithClause.
-
-        non_aggregated_variables():
-            Returns a list of variables that are not aggregated in the WithClause.
-
-        _unique_non_aggregated_variable_solutions(solutions, non_aggregated_variables):
-            Returns a list of unique non-aggregated variable solutions from the given solutions.
-
-        _transform_solutions_by_aggregations(solutions, aggregated_variables, non_aggregated_variables):
-            Transforms the given solutions by aggregating the variables.
-
-        transform_solutions_by_aggregations(fact_collection: FactCollection):
-            Transforms the solutions from the parent by aggregating the variables.
-
-        _evaluate_one_projection(fact_collection: FactCollection, projection: Optional[Dict[str, str | List[str]]] = None) -> Any:
-            Evaluates a single projection within the fact collection.
-
-        _evaluate(fact_collection: FactCollection, projection: Optional[Any] = None):
-            Evaluates the WithClause within the fact collection and returns the result.
     """
 
-    def __init__(self, object_as_series: ObjectAsSeries):
-        self.object_as_series = object_as_series
+    def __init__(self, lookups: ObjectAsSeries):
+        self.lookups = lookups
 
     def __repr__(self):
-        return f"WithClause({self.object_as_series})"
+        return f"WithClause({self.lookups})"
 
     def tree(self) -> Tree:
         t = Tree(self.__class__.__name__)
-        t.add(self.object_as_series.tree())
+        t.add(self.lookups.tree())
         return t
 
     @property
@@ -1161,7 +995,7 @@ class WithClause(TreeMixin, Evaluable):
             Projection: The object as a series.
         """
 
-        yield self.object_as_series
+        yield self.lookups
 
     @property
     def aggregated_variables(self):
@@ -1170,6 +1004,7 @@ class WithClause(TreeMixin, Evaluable):
         Aggregation instances found during a walk through the current object.
         The method performs a depth-first traversal of the current object
         and collects objects that are attributes of Aggregation instances.
+
         Returns:
             list: A list of objects that are attributes of Aggregation instances.
         """
@@ -1183,6 +1018,7 @@ class WithClause(TreeMixin, Evaluable):
 
     @property
     def all_variables(self):
+        """All the variables in the WITH clause."""
         out = []
         for obj in self.walk():
             if isinstance(obj, ObjectAttributeLookup):
@@ -1191,6 +1027,7 @@ class WithClause(TreeMixin, Evaluable):
 
     @property
     def non_aggregated_variables(self):
+        """Variables not in a COLLECT, SUM, or other Aggregation."""
         return list(set(self.all_variables) - set(self.aggregated_variables))
 
     @staticmethod
@@ -1243,6 +1080,9 @@ class WithClause(TreeMixin, Evaluable):
     def transform_solutions_by_aggregations(
         self, fact_collection: FactCollection
     ):
+        """
+        Transform the solutions by aggregations.
+        """
         return self._transform_solutions_by_aggregations(
             self.parent.solutions(fact_collection),
             self.aggregated_variables,
@@ -1254,7 +1094,7 @@ class WithClause(TreeMixin, Evaluable):
         fact_collection: FactCollection,
         projection: Optional[Dict[str, str | List[str]]] = None,
     ) -> Any:
-        return self.object_as_series._evaluate(  # pylint: disable=protected-access
+        return self.lookups._evaluate(  # pylint: disable=protected-access
             fact_collection, projection=projection
         )
 
@@ -1283,33 +1123,24 @@ class Match(TreeMixin):
         where (Optional[TreeMixin]): An optional WHERE clause to filter the results.
         with_clause (Optional[TreeMixin]): An optional WITH clause to chain queries.
         constraints (Optional[List[Constraint]]): A list of constraints to apply to the match.
-    Methods:
-        __repr__() -> str:
-            Returns a string representation of the Match object.
-        gather_constraints() -> None:
-            Gathers all the Constraint objects from inside the Match clause.
-        tree() -> Tree:
-            Constructs and returns a tree representation of the Match clause.
-        children() -> Iterator[TreeMixin]:
-            Yields the child elements of the Match clause.
-        solutions(fact_collection: FactCollection | Shim) -> List[Dict[str, Any]]:
-            Generates solutions based on the given fact collection and constraints.
     """
 
     def __init__(
         self,
         pattern: TreeMixin,
-        where: Optional[TreeMixin] = None,
+        where_clause: Optional[TreeMixin] = None,
         with_clause: Optional[TreeMixin] = None,
         constraints: Optional[List[Constraint]] = None,
     ):
         self.pattern = pattern
-        self.where = where
+        self.where_clause = where_clause
         self.with_clause = with_clause
         self.constraints = constraints or []
 
     def __repr__(self) -> str:
-        return f"Match({self.pattern}, {self.where}, {self.with_clause})"
+        return (
+            f"Match({self.pattern}, {self.where_clause}, {self.with_clause})"
+        )
 
     def gather_constraints(self) -> None:
         """Gather all the ``Constraint`` objects from inside the ``Match`` clause."""
@@ -1321,15 +1152,15 @@ class Match(TreeMixin):
         t.add(self.pattern.tree())
         if self.with_clause:
             t.add(self.with_clause.tree())
-        if self.where:
-            t.add(self.where.tree())
+        if self.where_clause:
+            t.add(self.where_clause.tree())
         return t
 
     @property
     def children(self):
         yield self.pattern
-        if self.where:
-            yield self.where
+        if self.where_clause:
+            yield self.where_clause
         if self.with_clause:
             yield self.with_clause
 
@@ -1340,10 +1171,12 @@ class Match(TreeMixin):
         Generate solutions based on the given fact collection and constraints.
 
         Args:
-            fact_collection (FactCollection | Shim): A collection of facts or a shim that can be converted to a fact collection.
+            fact_collection (FactCollection | Shim):
+                A collection of facts or a shim that can be converted to a fact collection.
 
         Returns:
-            List[Dict[str, Any]]: A list of dictionaries representing the solutions that satisfy the constraints.
+            List[Dict[str, Any]]:
+                A list of dictionaries representing the solutions that satisfy the constraints.
         """
 
         def _set_up_problem(match_clause) -> Problem:
@@ -1551,16 +1384,11 @@ class Return(TreeMixin):
     Attributes:
         projection (Projection): The projection node that specifies the columns to be returned.
 
-    Methods:
-        __repr__(): Returns a string representation of the Return object.
-        tree(): Returns a tree representation of the Return object.
-        children(): Yields the child nodes of the Return object.
-        _evaluate(fact_collection, projection=None): Evaluates the RETURN clause and returns
-            the specified projections from the WITH clause.
     """
 
     def __init__(self, node: Projection):
         self.projection = node
+        self.variables = self.gather_variables()
 
     def __repr__(self):
         return f"Return({self.projection})"
@@ -1573,6 +1401,23 @@ class Return(TreeMixin):
     @property
     def children(self):
         yield self.projection
+
+    def gather_variables(self):
+        """Get the variables from the projection"""
+        _ = [_ for _ in self.walk()]  # Inefficient.
+        variables = []
+        for child in self.walk():
+            if isinstance(child, ObjectAttributeLookup) and not isinstance(
+                child.parent, Alias
+            ):
+                variable = child.object
+                if variable not in variables:
+                    variables.append(variable)
+            elif isinstance(child, Alias):
+                variable = child.alias
+                if variable not in variables:
+                    variables.append(variable)
+        return variables
 
     def _evaluate(
         self,
@@ -1606,10 +1451,6 @@ class Projection(TreeMixin):
     Attributes:
         lookups (List[ObjectAttributeLookup]): A list of ObjectAttributeLookup instances.
 
-    Methods:
-        __repr__(): Returns a string representation of the Projection instance.
-        tree(): Constructs and returns a Tree representation of the Projection instance.
-        children(): A generator that yields the lookups.
     """
 
     def __init__(self, lookups: List[ObjectAttributeLookup] | None = None):
@@ -1882,6 +1723,8 @@ class RelationshipChain(TreeMixin):
 
 
 class Where(TreeMixin):
+    """The all-important WHERE clause."""
+
     def __init__(self, predicate: Predicate):
         self.predicate = predicate
 
@@ -1895,6 +1738,7 @@ class Where(TreeMixin):
 
     @property
     def constraints(self):
+        """Pointless?"""
         return [IsTrue(self.predicate)]
 
     @property
@@ -1905,15 +1749,6 @@ class Where(TreeMixin):
 class And(BinaryBoolean, Evaluable):
     """
     Represents a logical AND operation between two boolean expressions.
-
-    Methods
-    -------
-    tree() -> Tree
-        Constructs and returns a tree representation of the AND operation.
-
-    _evaluate(fact_collection: FactCollection, projection: Optional[Dict[str, str | List[str]]] = None) -> Any
-        Evaluates the AND operation using the provided fact collection and optional projection.
-        Returns a Literal containing the result of the AND operation.
     """
 
     def tree(self) -> Tree:
@@ -1941,14 +1776,6 @@ class Or(BinaryBoolean, Evaluable):
     """
     Represents a logical OR operation between two boolean expressions.
 
-    Methods
-    -------
-    tree() -> Tree
-        Constructs and returns a tree representation of the OR operation.
-
-    _evaluate(fact_collection: FactCollection, projection: Optional[Dict[str, str | List[str]]] = None) -> Any
-        Evaluates the OR operation using the provided fact collection and optional projection.
-        Returns a Literal containing the result of the OR operation.
     """
 
     def tree(self) -> Tree:
@@ -1986,11 +1813,6 @@ class Not(Evaluable, Predicate):
     Args:
         argument (Predicate | Literal): The predicate or literal to be negated.
 
-    Methods:
-        __repr__(): Returns a string representation of the Not instance.
-        tree() -> Tree: Constructs and returns a tree representation of the Not instance.
-        _evaluate(fact_collection: FactCollection, projection: Optional[Dict[str, str | List[str]]] = None) -> Any:
-            Evaluates the NOT operation on the provided fact collection and optional projection.
     """
 
     argument_types = bool
@@ -2028,16 +1850,6 @@ class RelationshipChainList(TreeMixin):
     relationships : List[RelationshipChain]
         A list of RelationshipChain objects.
 
-    Methods:
-    --------
-    __repr__():
-        Returns a string representation of the RelationshipChainList object.
-
-    tree() -> Tree:
-        Constructs and returns a Tree representation of the RelationshipChainList.
-
-    children() -> Generator[RelationshipChain]:
-        A generator that yields the RelationshipChain objects in the list.
     """
 
     def __init__(self, relationships: List[RelationshipChain]):
@@ -2067,22 +1879,6 @@ class Addition(Evaluable, Predicate):
         left_side (TreeMixin): The left operand of the addition.
         right_side (TreeMixin): The right operand of the addition.
 
-    Methods:
-        __init__(left: TreeMixin, right: TreeMixin):
-            Initializes the Addition instance with left and right operands.
-
-        __repr__():
-            Returns a string representation of the Addition instance.
-
-        tree():
-            Constructs and returns a tree representation of the addition operation.
-
-        children():
-            Yields the child nodes (left and right operands) of the addition operation.
-
-        _evaluate(fact_collection: FactCollection, projection: Optional[Dict[str, str | List[str]]] = None) -> Any:
-            Evaluates the addition operation using the provided fact collection and optional projection.
-            Returns the result as a Literal.
     """
 
     left_side_types = int | float
@@ -2128,12 +1924,6 @@ class Literal(TreeMixin, Evaluable):
     Attributes:
         value (Any): The literal value.
 
-    Methods:
-        __repr__(): Returns a string representation of the Literal instance.
-        tree(): Returns a tree representation of the Literal instance.
-        _evaluate(fact_collection: FactCollection, projection: Optional[Dict[str, str | List[str]]] = None) -> Any:
-            Evaluates and returns a new Literal instance with the same value.
-        __eq__(other): Checks equality between two Literal instances based on their values.
     """
 
     def __init__(self, value: Any):

@@ -21,29 +21,6 @@ class TreeMixin(ABC):
     Attributes:
         parent: The parent node of the current node.
 
-    Methods:
-        print_tree():
-            Uses the `rich` library to print the tree representation of the AST.
-
-        children() -> Generator[TreeMixin | str | None]:
-            A property that returns a generator of the node's children.
-
-        tree() -> Tree:
-            An abstract method that generates a tree representation of the AST
-            which can be pretty-printed with the `rich` library.
-
-        walk() -> Generator[TreeMixin]:
-            A generator that yields every node of the AST.
-
-        root():
-            A property that returns the root node of the AST.
-
-        parse_obj():
-            A property that returns the parse object that contains the AST and
-            other related information.
-
-        enclosing_class(cls: Type[TreeMixin]) -> TreeMixin:
-            Returns the first enclosing node of the given class.
     """
 
     parent = None

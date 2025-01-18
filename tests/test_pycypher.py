@@ -7,31 +7,11 @@ import networkx as nx
 import pytest
 from pytest_unordered import unordered
 
-from pycypher.cypher_parser import CypherParser
-from pycypher.exceptions import WrongCypherTypeError
-from pycypher.fact import (  # We might get rid of this class entirely
-    FactCollection,
-    FactNodeHasAttributeWithValue,
-    FactNodeHasLabel,
-    FactNodeRelatedToNode,
-    FactRelationshipHasLabel,
-)
-from pycypher.fixtures import empty_goldberg  # pylint: disable=unused-import
-from pycypher.fixtures import (
-    fact_collection_0,
-    fact_collection_1,
-    fact_collection_2,
-    fact_collection_3,
-    fact_collection_4,
-    fact_collection_5,
-    fact_collection_6,
-    fact_collection_7,
-    networkx_graph,
-)
-from pycypher.node_classes import Alias  # pylint: disable=unused-import
-from pycypher.node_classes import (
+from pycypher.core.cypher_parser import CypherParser
+from pycypher.core.node_classes import (
     Addition,
     Aggregation,
+    Alias,
     AliasedName,
     And,
     Collect,
@@ -68,9 +48,16 @@ from pycypher.node_classes import (
     Where,
     WithClause,
 )
-from pycypher.query import QueryValueOfNodeAttribute
-from pycypher.shims.networkx_cypher import NetworkX
-from pycypher.solver import (
+from pycypher.core.tree_mixin import TreeMixin
+from pycypher.etl.fact import (  # We might get rid of this class entirely
+    FactCollection,
+    FactNodeHasAttributeWithValue,
+    FactNodeHasLabel,
+    FactNodeRelatedToNode,
+    FactRelationshipHasLabel,
+)
+from pycypher.etl.query import QueryValueOfNodeAttribute
+from pycypher.etl.solver import (
     ConstraintNodeHasAttributeWithValue,
     ConstraintNodeHasLabel,
     ConstraintRelationshipHasLabel,
@@ -78,8 +65,32 @@ from pycypher.solver import (
     ConstraintRelationshipHasTargetNode,
     IsTrue,
 )
-from pycypher.tree_mixin import TreeMixin
-from pycypher.trigger import CypherTrigger, Goldberg
+from pycypher.etl.trigger import CypherTrigger, Goldberg, VariableAttribute
+from pycypher.shims.networkx_cypher import NetworkX
+from pycypher.util.exceptions import WrongCypherTypeError
+from pycypher.util.fixtures import (  # pylint: disable=unused-import
+    empty_goldberg,
+    fact_collection_0,
+    fact_collection_1,
+    fact_collection_2,
+    fact_collection_3,
+    fact_collection_4,
+    fact_collection_5,
+    fact_collection_6,
+    fact_collection_7,
+    networkx_graph,
+    patched_uuid,
+)
+
+
+def test_parameter_not_present_in_cypher_with_aliases(empty_goldberg):
+    with pytest.raises(ValueError):
+
+        @empty_goldberg.cypher_trigger(
+            "MATCH (n:Thingy) RETURN n.foo AS whatever"
+        )
+        def test_function(n) -> VariableAttribute["n", "thingy"]:  # pylint: disable=unused-argument
+            return 1
 
 
 def test_fact_collection_has_facts(fact_collection_0: FactCollection):
@@ -132,12 +143,12 @@ def test_can_parse_simple_cypher():
 
 def test_parser_builds_cypher_object():
     obj = CypherParser("MATCH (n) RETURN n.foo")
-    assert isinstance(obj.parsed, Cypher)
+    assert isinstance(obj.parse_tree, Cypher)
 
 
 def test_parser_creates_simple_node_object():
     obj = CypherParser("MATCH (n) RETURN n.foo")
-    assert isinstance(obj.parsed.cypher, Query)
+    assert isinstance(obj.parse_tree.cypher, Query)
 
 
 def test_parser_parses_complicated_query():
@@ -147,14 +158,14 @@ def test_parser_parses_complicated_query():
         """RETURN n.foobar, n.baz"""
     )
     obj = CypherParser(query)
-    assert isinstance(obj.parsed, Cypher)
+    assert isinstance(obj.parse_tree, Cypher)
 
 
 def test_parser_handles_node_label():
     query = """MATCH (n:Thingy)-[r:Thingy]->(m) RETURN n.foobar"""
     obj = CypherParser(query)
     assert (
-        obj.parsed.cypher.match_clause.pattern.relationships[0]
+        obj.parse_tree.cypher.match_clause.pattern.relationships[0]
         .steps[0]
         .node_name_label.label
         == "Thingy"
@@ -164,20 +175,22 @@ def test_parser_handles_node_label():
 def test_parser_handles_where_clause():
     query = """MATCH (n:Thingy) WHERE n.foo = 5 RETURN n.foobar"""
     obj = CypherParser(query)
-    assert isinstance(obj.parsed.cypher.match_clause.where, Where)
+    assert isinstance(obj.parse_tree.cypher.match_clause.where_clause, Where)
 
 
 def test_parser_handles_where_clause_predicate():
     query = """MATCH (n:Thingy) WHERE n.foo = 5 RETURN n.foobar"""
     obj = CypherParser(query)
-    assert isinstance(obj.parsed.cypher.match_clause.where.predicate, Equals)
+    assert isinstance(
+        obj.parse_tree.cypher.match_clause.where_clause.predicate, Equals
+    )
 
 
 def test_parser_handles_where_clause_predicate_lookup():
     query = """MATCH (n:Thingy) WHERE n.foo = 5 RETURN n.foobar"""
     obj = CypherParser(query)
     assert isinstance(
-        obj.parsed.cypher.match_clause.where.predicate.left_side,
+        obj.parse_tree.cypher.match_clause.where_clause.predicate.left_side,
         ObjectAttributeLookup,
     )
 
@@ -186,7 +199,8 @@ def test_parser_handles_where_clause_predicate_literal():
     query = """MATCH (n:Thingy) WHERE n.foo = 5 RETURN n.foobar"""
     obj = CypherParser(query)
     assert isinstance(
-        obj.parsed.cypher.match_clause.where.predicate.right_side, Literal
+        obj.parse_tree.cypher.match_clause.where_clause.predicate.right_side,
+        Literal,
     )
 
 
@@ -194,7 +208,7 @@ def test_parser_generates_alias_in_return_statement():
     query = """MATCH (n:Thingy) WHERE n.foo = 5 RETURN n.foobar AS myfoobar"""
     obj = CypherParser(query)
     assert isinstance(
-        obj.parsed.cypher.return_clause.projection.lookups[0], Alias
+        obj.parse_tree.cypher.return_clause.projection.lookups[0], Alias
     )
 
 
@@ -202,7 +216,7 @@ def test_parser_generates_alias_with_correct_name_in_return_statement():
     query = """MATCH (n:Thingy) WHERE n.foo = 5 RETURN n.foobar AS myfoobar"""
     obj = CypherParser(query)
     assert (
-        obj.parsed.cypher.return_clause.projection.lookups[0].alias
+        obj.parse_tree.cypher.return_clause.projection.lookups[0].alias
         == "myfoobar"
     )
 
@@ -246,14 +260,14 @@ def test_node_has_related_node_inequality():
 def test_aggregate_constraints_node_label():
     cypher = "MATCH (m:Thing) RETURN m.foobar"
     result = CypherParser(cypher)
-    constraints = result.parsed.cypher.match_clause.constraints
+    constraints = result.parse_tree.cypher.match_clause.constraints
     assert len(constraints) == 1
 
 
 def test_aggregate_constraints_node_and_mapping():
     cypher = "MATCH (m:Thing {key: 2}) RETURN m.foobar"
     result = CypherParser(cypher)
-    constraints = result.parsed.cypher.match_clause.constraints
+    constraints = result.parse_tree.cypher.match_clause.constraints
     assert len(constraints) == 2
 
 
@@ -262,7 +276,7 @@ def test_parse_anonymous_node_no_label_no_mapping_gets_variable():
         cypher = "MATCH () RETURN m.foobar"
         result = CypherParser(cypher)
         assert (
-            result.parsed.cypher.match_clause.pattern.node_name_label.name
+            result.parse_tree.cypher.match_clause.pattern.node_name_label.name
             == "SOME_HEX"
         )
 
@@ -271,7 +285,7 @@ def test_parse_anonymous_node_with_label_no_mapping_gets_variable():
     cypher = "MATCH (:Thing) RETURN m.foobar"
     result = CypherParser(cypher)
     assert int(
-        result.parsed.cypher.match_clause.pattern.node_name_label.name, 32
+        result.parse_tree.cypher.match_clause.pattern.node_name_label.name, 32
     )
 
 
@@ -279,7 +293,7 @@ def test_parse_anonymous_node_with_label_no_mapping_has_right_label():
     cypher = "MATCH (:Thing) RETURN m.foobar"
     result = CypherParser(cypher)
     assert (
-        result.parsed.cypher.match_clause.pattern.node_name_label.label
+        result.parse_tree.cypher.match_clause.pattern.node_name_label.label
         == "Thing"
     )
 
@@ -290,7 +304,7 @@ def test_source_node_constraint_from_left_right_relationship():
         result = CypherParser(cypher)
         assert (
             ConstraintRelationshipHasSourceNode("n", "SOME_HEX")
-            in result.parsed.cypher.match_clause.constraints
+            in result.parse_tree.cypher.match_clause.constraints
         )
 
 
@@ -299,7 +313,7 @@ def test_source_node_constraint_from_left_right_relationship_with_label():
     result = CypherParser(cypher)
     assert (
         ConstraintRelationshipHasSourceNode("n", "r")
-        in result.parsed.cypher.match_clause.constraints
+        in result.parse_tree.cypher.match_clause.constraints
     )
 
 
@@ -309,7 +323,7 @@ def test_target_node_constraint_from_left_right_relationship():
         result = CypherParser(cypher)
         assert (
             ConstraintRelationshipHasTargetNode("m", "SOME_HEX")
-            in result.parsed.cypher.match_clause.constraints
+            in result.parse_tree.cypher.match_clause.constraints
         )
 
 
@@ -318,7 +332,7 @@ def test_target_node_constraint_from_left_right_relationship_with_label():
     result = CypherParser(cypher)
     assert (
         ConstraintRelationshipHasTargetNode("m", "r")
-        in result.parsed.cypher.match_clause.constraints
+        in result.parse_tree.cypher.match_clause.constraints
     )
 
 
@@ -327,16 +341,8 @@ def test_constraint_node_has_label():
     result = CypherParser(cypher)
     assert (
         ConstraintNodeHasLabel("n", "Thing")
-        in result.parsed.cypher.match_clause.constraints
+        in result.parse_tree.cypher.match_clause.constraints
     )
-
-
-class patched_uuid:  # pylint: disable=invalid-name,too-few-public-methods
-    """Creates a deterministic value for uuid hex"""
-
-    @property
-    def hex(self):
-        return "SOME_HEX"
 
 
 def test_constraint_relationship_has_label():
@@ -345,7 +351,7 @@ def test_constraint_relationship_has_label():
         result = CypherParser(cypher)
         assert (
             ConstraintRelationshipHasLabel("SOME_HEX", "Relationship")
-            in result.parsed.cypher.match_clause.constraints
+            in result.parse_tree.cypher.match_clause.constraints
         )
 
 
@@ -355,7 +361,7 @@ def test_constraint_relationship_has_source_node():
         result = CypherParser(cypher)
         assert (
             ConstraintRelationshipHasSourceNode("n", "SOME_HEX")
-            in result.parsed.cypher.match_clause.constraints
+            in result.parse_tree.cypher.match_clause.constraints
         )
 
 
@@ -365,14 +371,16 @@ def test_constraint_relationship_has_target_node():
         result = CypherParser(cypher)
         assert (
             ConstraintRelationshipHasTargetNode("m", "SOME_HEX")
-            in result.parsed.cypher.match_clause.constraints
+            in result.parse_tree.cypher.match_clause.constraints
         )
 
 
 def test_find_solution_node_has_label(fact_collection_0: FactCollection):
     cypher = "MATCH (n:Thing) RETURN n.foobar"
     result = CypherParser(cypher)
-    solutions = result.parsed.cypher.match_clause.solutions(fact_collection_0)
+    solutions = result.parse_tree.cypher.match_clause.solutions(
+        fact_collection_0
+    )
     expected = [{"n": "1"}]
     assert solutions == expected
 
@@ -380,7 +388,9 @@ def test_find_solution_node_has_label(fact_collection_0: FactCollection):
 def test_find_solution_node_has_wrong_label(fact_collection_0: FactCollection):
     cypher = "MATCH (n:WrongLabel) RETURN n.foobar"
     result = CypherParser(cypher)
-    solutions = result.parsed.cypher.match_clause.solutions(fact_collection_0)
+    solutions = result.parse_tree.cypher.match_clause.solutions(
+        fact_collection_0
+    )
     assert not solutions
 
 
@@ -392,7 +402,9 @@ def test_find_solution_node_with_relationship(
         "MATCH (n:Thing)-[r:MyRelationship]->(m:OtherThing) RETURN n.foobar"
     )
     result = CypherParser(cypher)
-    solutions = result.parsed.cypher.match_clause.solutions(fact_collection_0)
+    solutions = result.parse_tree.cypher.match_clause.solutions(
+        fact_collection_0
+    )
     expected = [{"n": "1", "m": "2", "r": "relationship_123"}]
     assert solutions == expected
 
@@ -403,7 +415,9 @@ def test_find_solution_node_with_relationship_nonexistant(
     # Hash variable for relationship not being added to variable list
     cypher = "MATCH (n:Thing)-[r:NotExistingRelationship]->(m:OtherThing) RETURN n.foobar"
     result = CypherParser(cypher)
-    solutions = result.parsed.cypher.match_clause.solutions(fact_collection_0)
+    solutions = result.parse_tree.cypher.match_clause.solutions(
+        fact_collection_0
+    )
     expected = []
     assert solutions == expected
 
@@ -413,7 +427,9 @@ def test_find_solution_node_with_attribute_value(
 ):
     cypher = "MATCH (n:Thing {key: 2}) RETURN n.foobar"
     result = CypherParser(cypher)
-    solutions = result.parsed.cypher.match_clause.solutions(fact_collection_0)
+    solutions = result.parse_tree.cypher.match_clause.solutions(
+        fact_collection_0
+    )
     expected = [{"n": "1"}]
     assert solutions == expected
 
@@ -423,7 +439,9 @@ def test_find_no_solution_node_with_wrong_attribute_value(
 ):
     cypher = "MATCH (n:Thing {key: 123}) RETURN n.foobar"
     result = CypherParser(cypher)
-    solutions = result.parsed.cypher.match_clause.solutions(fact_collection_0)
+    solutions = result.parse_tree.cypher.match_clause.solutions(
+        fact_collection_0
+    )
     expected = []
     assert solutions == expected
 
@@ -433,7 +451,9 @@ def test_find_solution_node_with_attribute_and_relationship(
 ):
     cypher = "MATCH (n:Thing {key: 2})-[r:MyRelationship]->(m:OtherThing) RETURN n.foobar"
     result = CypherParser(cypher)
-    solutions = result.parsed.cypher.match_clause.solutions(fact_collection_0)
+    solutions = result.parse_tree.cypher.match_clause.solutions(
+        fact_collection_0
+    )
     expected = [{"n": "1", "m": "2", "r": "relationship_123"}]
     assert solutions == expected
 
@@ -443,7 +463,9 @@ def test_find_no_solution_node_with_wrong_attribute_and_relationship(
 ):
     cypher = "MATCH (n:Thing {key: 3})-[r:MyRelationship]->(m:OtherThing) RETURN n.foobar"
     result = CypherParser(cypher)
-    solutions = result.parsed.cypher.match_clause.solutions(fact_collection_0)
+    solutions = result.parse_tree.cypher.match_clause.solutions(
+        fact_collection_0
+    )
     expected = []
     assert solutions == expected
 
@@ -453,7 +475,9 @@ def test_find_no_solution_node_with_wrong_attribute_type_and_relationship(
 ):
     cypher = 'MATCH (n:Thing {key: "3"})-[r:MyRelationship]->(m:OtherThing) RETURN n.foobar'
     result = CypherParser(cypher)
-    solutions = result.parsed.cypher.match_clause.solutions(fact_collection_0)
+    solutions = result.parse_tree.cypher.match_clause.solutions(
+        fact_collection_0
+    )
     expected = []
     assert solutions == expected
 
@@ -463,7 +487,9 @@ def test_find_solution_node_with_attribute_type_and_relationship_target_node_att
 ):
     cypher = "MATCH (n:Thing {key: 2})-[r:MyRelationship]->(m:OtherThing {key: 5}) RETURN n.foobar"
     result = CypherParser(cypher)
-    solutions = result.parsed.cypher.match_clause.solutions(fact_collection_0)
+    solutions = result.parse_tree.cypher.match_clause.solutions(
+        fact_collection_0
+    )
     expected = [{"n": "1", "m": "2", "r": "relationship_123"}]
     assert solutions == expected
 
@@ -476,7 +502,9 @@ def test_find_no_solution_node_with_attribute_type_and_wrong_relationship_target
         "RETURN n.foobar"
     )
     result = CypherParser(cypher)
-    solutions = result.parsed.cypher.match_clause.solutions(fact_collection_0)
+    solutions = result.parse_tree.cypher.match_clause.solutions(
+        fact_collection_0
+    )
     expected = []
     assert solutions == expected
 
@@ -484,7 +512,9 @@ def test_find_no_solution_node_with_attribute_type_and_wrong_relationship_target
 def test_find_two_solutions_node_has_label(fact_collection_1: FactCollection):
     cypher = "MATCH (n:Thing) RETURN n.foobar"
     result = CypherParser(cypher)
-    solutions = result.parsed.cypher.match_clause.solutions(fact_collection_1)
+    solutions = result.parse_tree.cypher.match_clause.solutions(
+        fact_collection_1
+    )
     expected = [{"n": "1"}, {"n": "2"}]
     assert solutions == unordered(expected)
 
@@ -517,15 +547,15 @@ def test_constraints_from_relationship_chain():
     constraint7 = ConstraintNodeHasLabel(node_id="n", label="Thing")
     constraint8 = ConstraintNodeHasLabel(node_id="m", label="MiddleThing")
     constraint9 = ConstraintNodeHasLabel(node_id="o", label="OtherThing")
-    assert constraint1 in result.parsed.cypher.match_clause.constraints
-    assert constraint2 in result.parsed.cypher.match_clause.constraints
-    assert constraint3 in result.parsed.cypher.match_clause.constraints
-    assert constraint4 in result.parsed.cypher.match_clause.constraints
-    assert constraint5 in result.parsed.cypher.match_clause.constraints
-    assert constraint6 in result.parsed.cypher.match_clause.constraints
-    assert constraint7 in result.parsed.cypher.match_clause.constraints
-    assert constraint8 in result.parsed.cypher.match_clause.constraints
-    assert constraint9 in result.parsed.cypher.match_clause.constraints
+    assert constraint1 in result.parse_tree.cypher.match_clause.constraints
+    assert constraint2 in result.parse_tree.cypher.match_clause.constraints
+    assert constraint3 in result.parse_tree.cypher.match_clause.constraints
+    assert constraint4 in result.parse_tree.cypher.match_clause.constraints
+    assert constraint5 in result.parse_tree.cypher.match_clause.constraints
+    assert constraint6 in result.parse_tree.cypher.match_clause.constraints
+    assert constraint7 in result.parse_tree.cypher.match_clause.constraints
+    assert constraint8 in result.parse_tree.cypher.match_clause.constraints
+    assert constraint9 in result.parse_tree.cypher.match_clause.constraints
 
 
 def test_constraints_from_relationship_pair():
@@ -556,16 +586,16 @@ def test_constraints_from_relationship_pair():
     constraint7 = ConstraintNodeHasLabel(node_id="n", label="Thing")
     constraint8 = ConstraintNodeHasLabel(node_id="m", label="MiddleThing")
     constraint9 = ConstraintNodeHasLabel(node_id="o", label="OtherThing")
-    assert constraint1 in result.parsed.cypher.match_clause.constraints
-    assert constraint2 in result.parsed.cypher.match_clause.constraints
-    assert constraint3 in result.parsed.cypher.match_clause.constraints
-    assert constraint4 in result.parsed.cypher.match_clause.constraints
-    assert constraint5 in result.parsed.cypher.match_clause.constraints
-    assert constraint6 in result.parsed.cypher.match_clause.constraints
-    assert constraint7 in result.parsed.cypher.match_clause.constraints
-    assert constraint8 in result.parsed.cypher.match_clause.constraints
-    assert constraint9 in result.parsed.cypher.match_clause.constraints
-    assert len(result.parsed.cypher.match_clause.constraints) == 9
+    assert constraint1 in result.parse_tree.cypher.match_clause.constraints
+    assert constraint2 in result.parse_tree.cypher.match_clause.constraints
+    assert constraint3 in result.parse_tree.cypher.match_clause.constraints
+    assert constraint4 in result.parse_tree.cypher.match_clause.constraints
+    assert constraint5 in result.parse_tree.cypher.match_clause.constraints
+    assert constraint6 in result.parse_tree.cypher.match_clause.constraints
+    assert constraint7 in result.parse_tree.cypher.match_clause.constraints
+    assert constraint8 in result.parse_tree.cypher.match_clause.constraints
+    assert constraint9 in result.parse_tree.cypher.match_clause.constraints
+    assert len(result.parse_tree.cypher.match_clause.constraints) == 9
 
 
 def test_find_solution_relationship_chain_two_forks(
@@ -577,7 +607,9 @@ def test_find_solution_relationship_chain_two_forks(
         "RETURN n.foobar"
     )
     result = CypherParser(cypher)
-    solutions = result.parsed.cypher.match_clause.solutions(fact_collection_2)
+    solutions = result.parse_tree.cypher.match_clause.solutions(
+        fact_collection_2
+    )
     expected = [
         {
             "m": "2",
@@ -599,7 +631,9 @@ def test_find_solution_relationship_chain_fork(
         "RETURN n.foobar"
     )
     result = CypherParser(cypher)
-    solutions = result.parsed.cypher.match_clause.solutions(fact_collection_3)
+    solutions = result.parse_tree.cypher.match_clause.solutions(
+        fact_collection_3
+    )
     expected = [
         {
             "m": "2",
@@ -628,7 +662,9 @@ def test_find_solution_relationship_chain_fork_2(
         "RETURN n.foobar"
     )
     result = CypherParser(cypher)
-    solutions = result.parsed.cypher.match_clause.solutions(fact_collection_4)
+    solutions = result.parse_tree.cypher.match_clause.solutions(
+        fact_collection_4
+    )
     expected = [
         {
             "m": "2",
@@ -693,16 +729,16 @@ def test_constraint_relationship_chain_with_node_attribute():
     constraint10 = ConstraintNodeHasAttributeWithValue(
         node_id="n", attribute="foo", value=Literal(2)
     )
-    assert constraint1 in result.parsed.cypher.match_clause.constraints
-    assert constraint2 in result.parsed.cypher.match_clause.constraints
-    assert constraint3 in result.parsed.cypher.match_clause.constraints
-    assert constraint4 in result.parsed.cypher.match_clause.constraints
-    assert constraint5 in result.parsed.cypher.match_clause.constraints
-    assert constraint6 in result.parsed.cypher.match_clause.constraints
-    assert constraint7 in result.parsed.cypher.match_clause.constraints
-    assert constraint8 in result.parsed.cypher.match_clause.constraints
-    assert constraint9 in result.parsed.cypher.match_clause.constraints
-    assert constraint10 in result.parsed.cypher.match_clause.constraints
+    assert constraint1 in result.parse_tree.cypher.match_clause.constraints
+    assert constraint2 in result.parse_tree.cypher.match_clause.constraints
+    assert constraint3 in result.parse_tree.cypher.match_clause.constraints
+    assert constraint4 in result.parse_tree.cypher.match_clause.constraints
+    assert constraint5 in result.parse_tree.cypher.match_clause.constraints
+    assert constraint6 in result.parse_tree.cypher.match_clause.constraints
+    assert constraint7 in result.parse_tree.cypher.match_clause.constraints
+    assert constraint8 in result.parse_tree.cypher.match_clause.constraints
+    assert constraint9 in result.parse_tree.cypher.match_clause.constraints
+    assert constraint10 in result.parse_tree.cypher.match_clause.constraints
 
 
 def test_find_no_solution_relationship_chain_fork_missing_node_attribute(
@@ -714,7 +750,9 @@ def test_find_no_solution_relationship_chain_fork_missing_node_attribute(
         "RETURN n.foobar"
     )
     result = CypherParser(cypher)
-    solutions = result.parsed.cypher.match_clause.solutions(fact_collection_4)
+    solutions = result.parse_tree.cypher.match_clause.solutions(
+        fact_collection_4
+    )
     assert not solutions
 
 
@@ -727,7 +765,9 @@ def test_find_two_solutions_relationship_chain_fork_require_node_attribute_value
         "RETURN n.foobar"
     )
     result = CypherParser(cypher)
-    solutions = result.parsed.cypher.match_clause.solutions(fact_collection_5)
+    solutions = result.parse_tree.cypher.match_clause.solutions(
+        fact_collection_5
+    )
     expected = [
         {
             "m": "2",
@@ -756,7 +796,9 @@ def test_find_no_solutions_relationship_chain_fork_node_attribute_value_wrong_ty
         "RETURN n.foobar"
     )
     result = CypherParser(cypher)
-    solutions = result.parsed.cypher.match_clause.solutions(fact_collection_5)
+    solutions = result.parse_tree.cypher.match_clause.solutions(
+        fact_collection_5
+    )
     assert not solutions
 
 
@@ -769,7 +811,9 @@ def test_find_two_solutions_relationship_chain_fork_red_herring_node(
         "RETURN n.foobar"
     )
     result = CypherParser(cypher)
-    solutions = result.parsed.cypher.match_clause.solutions(fact_collection_6)
+    solutions = result.parse_tree.cypher.match_clause.solutions(
+        fact_collection_6
+    )
     expected = [
         {
             "m": "2",
@@ -798,7 +842,9 @@ def test_find_no_solutions_relationship_chain_fork_node_attribute_value_wrong_ty
         """RETURN n.foobar"""
     )
     result = CypherParser(cypher)
-    solutions = result.parsed.cypher.match_clause.solutions(fact_collection_6)
+    solutions = result.parse_tree.cypher.match_clause.solutions(
+        fact_collection_6
+    )
     assert not solutions
 
 
@@ -817,14 +863,16 @@ def test_nx_graph_to_fact_collection(networkx_graph):
 def test_parser_creates_with_clause():
     query = """MATCH (n:Thingy)-[r:Thingy]->(m) WITH n.foo AS bar, m.baz AS qux RETURN n.foobar"""
     obj = CypherParser(query)
-    assert isinstance(obj.parsed.cypher.match_clause.with_clause, WithClause)
+    assert isinstance(
+        obj.parse_tree.cypher.match_clause.with_clause, WithClause
+    )
 
 
 def test_parser_creates_with_clause_object_as_series():
     query = """MATCH (n:Thingy)-[r:Thingy]->(m) WITH n.foo AS bar, m.baz AS qux RETURN n.foobar"""
     obj = CypherParser(query)
     assert isinstance(
-        obj.parsed.cypher.match_clause.with_clause.object_as_series,
+        obj.parse_tree.cypher.match_clause.with_clause.lookups,
         ObjectAsSeries,
     )
 
@@ -833,13 +881,11 @@ def test_parser_creates_with_clause_object_as_series_members():
     query = """MATCH (n:Thingy)-[r:Thingy]->(m) WITH n.foo AS bar, m.baz AS qux RETURN n.foobar"""
     obj = CypherParser(query)
     assert isinstance(
-        obj.parsed.cypher.match_clause.with_clause.object_as_series.object_attribute_lookup_list,
+        obj.parse_tree.cypher.match_clause.with_clause.lookups.lookups,
         list,
     )
     assert (
-        len(
-            obj.parsed.cypher.match_clause.with_clause.object_as_series.object_attribute_lookup_list
-        )
+        len(obj.parse_tree.cypher.match_clause.with_clause.lookups.lookups)
         == 2
     )
 
@@ -848,15 +894,11 @@ def test_parser_creates_with_clause_object_as_series_members_are_alias():
     query = """MATCH (n:Thingy)-[r:Thingy]->(m) WITH n.foo AS bar, m.baz AS qux RETURN n.foobar"""
     obj = CypherParser(query)
     assert isinstance(
-        obj.parsed.cypher.match_clause.with_clause.object_as_series.object_attribute_lookup_list[
-            0
-        ],
+        obj.parse_tree.cypher.match_clause.with_clause.lookups.lookups[0],
         Alias,
     )
     assert isinstance(
-        obj.parsed.cypher.match_clause.with_clause.object_as_series.object_attribute_lookup_list[
-            1
-        ],
+        obj.parse_tree.cypher.match_clause.with_clause.lookups.lookups[1],
         Alias,
     )
 
@@ -865,13 +907,13 @@ def test_parser_creates_with_clause_object_alias_has_lookup():
     query = """MATCH (n:Thingy)-[r:Thingy]->(m) WITH n.foo AS bar, m.baz AS qux RETURN n.foobar"""
     obj = CypherParser(query)
     assert isinstance(
-        obj.parsed.cypher.match_clause.with_clause.object_as_series.object_attribute_lookup_list[
+        obj.parse_tree.cypher.match_clause.with_clause.lookups.lookups[
             0
         ].reference,
         ObjectAttributeLookup,
     )
     assert isinstance(
-        obj.parsed.cypher.match_clause.with_clause.object_as_series.object_attribute_lookup_list[
+        obj.parse_tree.cypher.match_clause.with_clause.lookups.lookups[
             0
         ].alias,
         str,
@@ -882,9 +924,7 @@ def test_parser_creates_with_clause_object_alias_correct_value():
     query = """MATCH (n:Thingy)-[r:Thingy]->(m) WITH n.foo AS bar, m.baz AS qux RETURN n.foobar"""
     obj = CypherParser(query)
     assert (
-        obj.parsed.cypher.match_clause.with_clause.object_as_series.object_attribute_lookup_list[
-            0
-        ].alias
+        obj.parse_tree.cypher.match_clause.with_clause.lookups.lookups[0].alias
         == "bar"
     )
 
@@ -892,7 +932,9 @@ def test_parser_creates_with_clause_object_alias_correct_value():
 def test_parser_creates_with_clause_single_element():
     query = """MATCH (n:Thingy)-[r:Thingy]->(m) WITH n.foo AS bar RETURN n.foobar"""
     obj = CypherParser(query)
-    assert isinstance(obj.parsed.cypher.match_clause.with_clause, WithClause)
+    assert isinstance(
+        obj.parse_tree.cypher.match_clause.with_clause, WithClause
+    )
 
 
 def test_parser_handles_collect_aggregation_in_return():
@@ -903,7 +945,7 @@ def test_parser_handles_collect_aggregation_in_return():
     )
     obj = CypherParser(query)
     assert (
-        obj.parsed.cypher.return_clause.projection.lookups[0].alias
+        obj.parse_tree.cypher.return_clause.projection.lookups[0].alias
         == "whatever"
     )
 
@@ -916,7 +958,7 @@ def test_parser_handles_aggregation_in_return():
     )
     obj = CypherParser(query)
     assert (
-        obj.parsed.cypher.return_clause.projection.lookups[0].alias
+        obj.parse_tree.cypher.return_clause.projection.lookups[0].alias
         == "whatever"
     )
 
@@ -929,7 +971,7 @@ def test_parser_handles_collect_in_aggregation_in_return():
     )
     obj = CypherParser(query)
     assert isinstance(
-        obj.parsed.cypher.return_clause.projection.lookups[
+        obj.parse_tree.cypher.return_clause.projection.lookups[
             0
         ].reference.aggregation,
         Collect,
@@ -944,7 +986,7 @@ def test_parser_handles_collect_in_aggregation_in_with_clause():
     )
     obj = CypherParser(query)
     assert isinstance(
-        obj.parsed.cypher.return_clause.projection.lookups[
+        obj.parse_tree.cypher.return_clause.projection.lookups[
             0
         ].reference.aggregation,
         Collect,
@@ -960,7 +1002,7 @@ def test_parser_handles_collect_in_aggregation_in_with_clause_node_only():
     )
     obj = CypherParser(query)
     assert isinstance(
-        obj.parsed.cypher.return_clause.projection.lookups[
+        obj.parse_tree.cypher.return_clause.projection.lookups[
             0
         ].reference.aggregation,
         Collect,
@@ -975,13 +1017,13 @@ def test_parser_handles_collect_in_aggregation_in_return_twice():
     )
     obj = CypherParser(query)
     assert isinstance(
-        obj.parsed.cypher.return_clause.projection.lookups[
+        obj.parse_tree.cypher.return_clause.projection.lookups[
             0
         ].reference.aggregation,
         Collect,
     )
     assert isinstance(
-        obj.parsed.cypher.return_clause.projection.lookups[1].reference,
+        obj.parse_tree.cypher.return_clause.projection.lookups[1].reference,
         ObjectAttributeLookup,
     )
 
@@ -994,7 +1036,7 @@ def test_parser_handles_with_where_clause_where_class():
         """RETURN COLLECT(n.foobar) AS whatever"""
     )
     obj = CypherParser(query)
-    assert isinstance(obj.parsed.cypher.match_clause.where, Where)
+    assert isinstance(obj.parse_tree.cypher.match_clause.where_clause, Where)
 
 
 def test_parser_handles_with_where_clause_with_class():
@@ -1005,7 +1047,9 @@ def test_parser_handles_with_where_clause_with_class():
         """RETURN COLLECT(n.foobar) AS whatever"""
     )
     obj = CypherParser(query)
-    assert isinstance(obj.parsed.cypher.match_clause.with_clause, WithClause)
+    assert isinstance(
+        obj.parse_tree.cypher.match_clause.with_clause, WithClause
+    )
 
 
 def test_nodes_have_parent():
@@ -1018,7 +1062,7 @@ def test_nodes_have_parent():
     obj = CypherParser(query)
     assert all(
         node.parent is not None
-        for node in obj.parsed.walk()
+        for node in obj.parse_tree.walk()
         if isinstance(node, TreeMixin)
     )
 
@@ -1032,7 +1076,7 @@ def test_child_of_parent_is_self():
     obj = CypherParser(query)
     assert all(
         node in list(node.parent.children)
-        for node in obj.parsed.walk()
+        for node in obj.parse_tree.walk()
         if isinstance(node, TreeMixin)
     )
 
@@ -1046,8 +1090,8 @@ def test_root_node_defined_everywhere():
     )
     obj = CypherParser(query)
     assert all(
-        node.root is obj.parsed
-        for node in obj.parsed.walk()
+        node.root is obj.parse_tree
+        for node in obj.parse_tree.walk()
         if isinstance(node, TreeMixin)
     )
 
@@ -1060,7 +1104,7 @@ def test_node_in_match_clause_has_match_clause_enclosing():
         """RETURN COLLECT(n.foobar) AS whatever"""
     )
     obj = CypherParser(query)
-    match_node = obj.parsed.cypher.match_clause
+    match_node = obj.parse_tree.cypher.match_clause
     assert all(
         node.enclosing_class(Match) is match_node
         for node in match_node.walk()
@@ -1077,7 +1121,7 @@ def test_error_on_no_enclosing_class():
     )
     obj = CypherParser(query)
     with pytest.raises(ValueError):
-        obj.parsed.cypher.return_clause.enclosing_class(Match)
+        obj.parse_tree.cypher.return_clause.enclosing_class(Match)
 
 
 def test_evaluate_literal_string():
@@ -1456,9 +1500,10 @@ def test_collect_aggregated_variables_in_with_clause():
         """RETURN COLLECT(n.foobar) AS whatever"""
     )
     obj = CypherParser(query)
-    assert obj.parsed.cypher.match_clause.with_clause.aggregated_variables == [
-        "n"
-    ]
+    assert (
+        obj.parse_tree.cypher.match_clause.with_clause.aggregated_variables
+        == ["n"]
+    )
 
 
 def test_collect_all_variables_in_with_clause():
@@ -1469,7 +1514,7 @@ def test_collect_all_variables_in_with_clause():
     )
     obj = CypherParser(query)
     assert sorted(
-        obj.parsed.cypher.match_clause.with_clause.all_variables
+        obj.parse_tree.cypher.match_clause.with_clause.all_variables
     ) == ["m", "n"]
 
 
@@ -1481,7 +1526,7 @@ def test_collect_non_aggregated_variables_in_with_clause():
     )
     obj = CypherParser(query)
     assert (
-        obj.parsed.cypher.match_clause.with_clause.non_aggregated_variables
+        obj.parse_tree.cypher.match_clause.with_clause.non_aggregated_variables
         == ["m"]
     )
 
@@ -1579,7 +1624,7 @@ def test_transform_solutions_in_with_clause(
         "RETURN n.foobar"
     )
     result = CypherParser(cypher)
-    aggregated_results = result.parsed.cypher.match_clause.with_clause.transform_solutions_by_aggregations(
+    aggregated_results = result.parse_tree.cypher.match_clause.with_clause.transform_solutions_by_aggregations(
         fact_collection_6
     )
     expected_results = [
@@ -1603,7 +1648,7 @@ def test_transform_solutions_in_with_clause_no_solutions(
         "RETURN n.foobar"
     )
     result = CypherParser(cypher)
-    aggregated_results = result.parsed.cypher.match_clause.with_clause.transform_solutions_by_aggregations(
+    aggregated_results = result.parse_tree.cypher.match_clause.with_clause.transform_solutions_by_aggregations(
         fact_collection_6
     )
     expected_results = []
@@ -1621,7 +1666,7 @@ def test_transform_solutions_in_with_clause_multiple_solutions(
         "RETURN n.foobar"
     )
     result = CypherParser(cypher)
-    aggregated_results = result.parsed.cypher.match_clause.with_clause.transform_solutions_by_aggregations(
+    aggregated_results = result.parse_tree.cypher.match_clause.with_clause.transform_solutions_by_aggregations(
         fact_collection_6
     )
     expected_results = [
@@ -1645,11 +1690,9 @@ def test_apply_substitutions_to_one_projection(
 
     projection = {"n": "4", "m": "2", "o": ["5", "3"]}
 
-    out = (
-        result.parsed.cypher.match_clause.with_clause._evaluate_one_projection(
-            fact_collection_7,
-            projection=projection,
-        )
+    out = result.parse_tree.cypher.match_clause.with_clause._evaluate_one_projection(
+        fact_collection_7,
+        projection=projection,
     )
     expected_result = {
         "co": Collection([Literal(5), Literal(4)]),
@@ -1675,7 +1718,7 @@ def test_apply_substitutions_to_projection_list(
         {"n": "1", "m": "2", "o": ["5", "3"]},
     ]
 
-    out = result.parsed.cypher.match_clause.with_clause._evaluate(
+    out = result.parse_tree.cypher.match_clause.with_clause._evaluate(
         fact_collection_7,
         projection=solutions,
     )
@@ -1741,7 +1784,7 @@ def test_parse_distinct_keyword_with_collect_no_dups(fact_collection_7):
         {"n": "4", "m": "2", "o": ["5", "3"]},
         {"n": "1", "m": "2", "o": ["5", "3"]},
     ]
-    out = result.parsed.cypher.match_clause.with_clause._evaluate(
+    out = result.parse_tree.cypher.match_clause.with_clause._evaluate(
         fact_collection_7,
         projection=solutions,
     )
@@ -1771,7 +1814,7 @@ def test_parse_distinct_keyword_with_collect_one_dup(fact_collection_7):
         {"n": "4", "m": "2", "o": ["5", "5"]},
         {"n": "1", "m": "2", "o": ["5", "3"]},
     ]
-    out = result.parsed.cypher.match_clause.with_clause._evaluate(
+    out = result.parse_tree.cypher.match_clause.with_clause._evaluate(
         fact_collection_7,
         projection=solutions,
     )
@@ -1801,7 +1844,7 @@ def test_evaluate_return_after_with_clause(fact_collection_7):
         {"nfoo": Literal(2), "co": Collection([Literal(5), Literal(4)])},
         {"nfoo": Literal(42), "co": Collection([Literal(5), Literal(4)])},
     ]
-    out = result.parsed.cypher.return_clause._evaluate(
+    out = result.parse_tree.cypher.return_clause._evaluate(
         fact_collection_7, projection=None
     )
     assert out == expected
@@ -1810,7 +1853,9 @@ def test_evaluate_return_after_with_clause(fact_collection_7):
 def test_tree_mixing_get_parse_object():
     query = "MATCH (n:Thingy)-[r:Thingy]->(m) WITH n.foo AS bar, m.baz AS qux RETURN n.foobar"
     obj = CypherParser(query)
-    assert obj.parsed.cypher.match_clause.pattern.parse_obj is obj.parsed
+    assert (
+        obj.parse_tree.cypher.match_clause.pattern.parse_obj is obj.parse_tree
+    )
 
 
 def test_collection_children():
@@ -2057,8 +2102,10 @@ def test_trigger_gather_constraints_to_match():
         """RETURN n.foobar, n.baz"""
     )
     obj = CypherParser(query)
-    obj.parsed.trigger_gather_constraints_to_match()
-    assert len(obj.parsed.cypher.match_clause.constraints) == 18  # check this
+    obj.parse_tree.trigger_gather_constraints_to_match()
+    assert (
+        len(obj.parse_tree.cypher.match_clause.constraints) == 18
+    )  # check this
 
 
 def test_trigger_gather_constraints_to_match_no_match():
@@ -2086,7 +2133,9 @@ def test_match_children_with_all_attributes():
 
     # Create a Match instance with all attributes
     match = Match(
-        pattern=mock_pattern, where=mock_where, with_clause=mock_with_clause
+        pattern=mock_pattern,
+        where_clause=mock_where,
+        with_clause=mock_with_clause,
     )
 
     # Get the children of the match instance
@@ -2101,7 +2150,7 @@ def test_match_children_with_pattern_only():
     mock_pattern = Collection(values=[])
 
     # Create a Match instance with only the pattern attribute
-    match = Match(pattern=mock_pattern, where=None, with_clause=None)
+    match = Match(pattern=mock_pattern, where_clause=None, with_clause=None)
 
     # Get the children of the match instance
     children = list(match.children)
@@ -2116,7 +2165,9 @@ def test_match_children_with_pattern_and_where():
     mock_where = Collection(values=[])
 
     # Create a Match instance with pattern and where attributes
-    match = Match(pattern=mock_pattern, where=mock_where, with_clause=None)
+    match = Match(
+        pattern=mock_pattern, where_clause=mock_where, with_clause=None
+    )
 
     # Get the children of the match instance
     children = list(match.children)
@@ -2132,7 +2183,7 @@ def test_match_children_with_pattern_and_with_clause():
 
     # Create a Match instance with pattern and with_clause attributes
     match = Match(
-        pattern=mock_pattern, where=None, with_clause=mock_with_clause
+        pattern=mock_pattern, where_clause=None, with_clause=mock_with_clause
     )
 
     # Get the children of the match instance
@@ -2308,28 +2359,6 @@ def test_node_name_label_children_without_label():
     assert children == ["node1"]
 
 
-@pytest.mark.skip
-def test_node_children_with_node_name_label_and_mappings():
-    # Create a mock NodeNameLabel
-    mock_node_name_label = NodeNameLabel(name="node1", label="Label1")
-
-    # Create mock Mapping objects
-    mock_mapping1 = Mapping(key="key1", value="value1")
-    mock_mapping2 = Mapping(key="key2", value="value2")
-
-    # Create a Node instance with the mock NodeNameLabel and mappings
-    node = Node(
-        node_name_label=mock_node_name_label,
-        mapping_list=[mock_mapping1, mock_mapping2],
-    )
-
-    # Get the children of the node instance
-    children = list(node.children)
-
-    # Assert that the children list contains the mock NodeNameLabel and mappings
-    assert children == [mock_node_name_label, mock_mapping1, mock_mapping2]
-
-
 def test_node_children_with_node_name_label_only():
     # Create a mock NodeNameLabel
     mock_node_name_label = NodeNameLabel(name="node1", label="Label1")
@@ -2342,24 +2371,6 @@ def test_node_children_with_node_name_label_only():
 
     # Assert that the children list contains only the mock NodeNameLabel
     assert children == [mock_node_name_label]
-
-
-@pytest.mark.skip
-def test_node_children_with_mappings_only():
-    # Create mock Mapping objects
-    mock_mapping1 = Mapping(key="key1", value="value1")
-    mock_mapping2 = Mapping(key="key2", value="value2")
-
-    # Create a Node instance with no NodeNameLabel and the mock mappings
-    node = Node(
-        node_name_label=None, mapping_list=[mock_mapping1, mock_mapping2]
-    )
-
-    # Get the children of the node instance
-    children = list(node.children)
-
-    # Assert that the children list contains only the mock mappings
-    assert children == [mock_mapping1, mock_mapping2]
 
 
 def test_node_children_empty():
@@ -3187,18 +3198,38 @@ def test_fact_collection_not_empty(fact_collection_0):
     assert not fact_collection_0.is_empty()
 
 
-def test_trigger_decorator_function_works(empty_goldberg):
-    @empty_goldberg.cypher_trigger("MATCH (n) RETURN n.foo")
-    def test_function():
+def test_argument_propagates_from_function_signature(
+    empty_goldberg,
+):
+    @empty_goldberg.cypher_trigger("MATCH (n:Thingy) RETURN n.foo")
+    def test_function(n) -> VariableAttribute["n", "bar"]:  # pylint: disable=unused-argument
         return 1
 
-    assert test_function() == 1
+    assert list(empty_goldberg.trigger_dict.values())[0].parameter_names == [
+        "n"
+    ]
+
+
+def test_trigger_decorator_function_works(empty_goldberg):
+    @empty_goldberg.cypher_trigger("MATCH (n) RETURN n.foo")
+    def test_function(n) -> VariableAttribute["n", "bar"]:  # pylint: disable=unused-argument
+        return 1
+
+    assert list(empty_goldberg.trigger_dict.values())[0].function(1) == 1
+
+
+def test_trigger_decorator_function_has_return_variable(empty_goldberg):
+    @empty_goldberg.cypher_trigger("MATCH (n) RETURN n.foo")
+    def test_function(n) -> VariableAttribute["n", "bar"]:  # pylint: disable=unused-argument
+        return 1
+
+    assert list(empty_goldberg.trigger_dict.values())[0].variable_set == "n"
 
 
 def test_trigger_decorator_function_insert_to_dict(empty_goldberg):
     @empty_goldberg.cypher_trigger("MATCH (n) RETURN n.foo")
-    def test_function(x):
-        return x + 1
+    def test_function(n) -> VariableAttribute["n", "bar"]:
+        return n + 1
 
     assert list(empty_goldberg.trigger_dict.values())[0].function(1) == 2
 
@@ -3228,7 +3259,7 @@ def test_goldberg_decorator_registers_trigger(mocker, empty_goldberg):
     mocker.patch.object(empty_goldberg, "register_trigger")
 
     @empty_goldberg.cypher_trigger("MATCH (n) RETURN n.foo")
-    def test_function():
+    def test_function(n) -> VariableAttribute["n", "bar"]:  # pylint: disable=unused-argument
         return 1
 
     empty_goldberg.register_trigger.assert_called_once()
@@ -3273,25 +3304,134 @@ def test_trigger_has_constraint_from_cypher():
     constraint = ConstraintNodeHasLabel("n", "Thingy")
     assert constraint in trigger.constraints
     assert len(trigger.constraints) == 1
-    
-    
-def test_constraint_propogates_to_goldberg_from_decorator(empty_goldberg): 
+
+
+def test_constraint_propogates_to_goldberg_from_decorator(empty_goldberg):
     assert not empty_goldberg.constraints
 
     @empty_goldberg.cypher_trigger("MATCH (n:Thingy) RETURN n.foo")
-    def test_function():
+    def test_function(n) -> VariableAttribute["n", "bar"]:  # pylint: disable=unused-argument
         return 1
 
     assert empty_goldberg.constraints
 
 
-def test_fact_triggers_constraint_in_goldberg(empty_goldberg): 
-
+def test_fact_matches_constraint_in_goldberg(empty_goldberg):
     @empty_goldberg.cypher_trigger("MATCH (n:Thingy) RETURN n.foo")
-    def test_function():
+    def test_function(n) -> VariableAttribute["n", "bar"]:  # pylint: disable=unused-argument
         return 1
-    
-    fact = FactNodeHasLabel("123", "Thingy")
-    
 
-    assert empty_goldberg.constraints
+    fact = FactNodeHasLabel("123", "Thingy")
+
+    assert fact + empty_goldberg.constraints[0] == {"n": "123"}
+
+
+def test_fact_matches_constraint_generator_in_goldberg(empty_goldberg):
+    @empty_goldberg.cypher_trigger("MATCH (n:Thingy) RETURN n.foo")
+    def test_function(n) -> VariableAttribute["n", "bar"]:  # pylint: disable=unused-argument
+        return 1
+
+    fact_list = [FactNodeHasLabel("123", "Thingy")]
+
+    assert list(empty_goldberg.facts_matching_constraints(fact_list)) == [
+        (
+            fact_list[0],
+            ConstraintNodeHasLabel(node_id="n", label="Thingy"),
+            {"n": "123"},
+        )
+    ]
+
+
+def test_fact_does_not_match_wrong_constraint_generator_in_goldberg(
+    empty_goldberg,
+):
+    @empty_goldberg.cypher_trigger("MATCH (n:NotTheThingy) RETURN n.foo")
+    def test_function(n) -> VariableAttribute["n", "bar"]:  # pylint: disable=unused-argument
+        return 1
+
+    fact_list = [FactNodeHasLabel("123", "Thingy")]
+
+    assert not list(empty_goldberg.facts_matching_constraints(fact_list))
+
+
+def test_fact_matches_exactly_one_constraint_generator_in_goldberg(
+    empty_goldberg,
+):
+    @empty_goldberg.cypher_trigger("MATCH (n:Thingy) RETURN n.foo")
+    def test_function(n) -> VariableAttribute["n", "bar"]:  # pylint: disable=unused-argument
+        return 1
+
+    fact_list = [
+        FactNodeHasLabel("123", "Thingy"),
+        FactNodeHasLabel("456", "NotTheThingy"),
+    ]
+
+    assert list(empty_goldberg.facts_matching_constraints(fact_list)) == [
+        (
+            fact_list[0],
+            ConstraintNodeHasLabel(node_id="n", label="Thingy"),
+            {"n": "123"},
+        )
+    ]
+
+
+def test_variable_propagates_from_return_annotation(
+    empty_goldberg,
+):
+    @empty_goldberg.cypher_trigger("MATCH (n:Thingy) RETURN n.foo")
+    def test_function(n) -> VariableAttribute["n", "bar"]:  # pylint: disable=unused-argument
+        return 1
+
+    assert list(empty_goldberg.trigger_dict.values())[0].variable_set == "n"
+
+
+def test_attribute_propagates_from_return_annotation(
+    empty_goldberg,
+):
+    @empty_goldberg.cypher_trigger("MATCH (n:Thingy) RETURN n.foo")
+    def test_function(n) -> VariableAttribute["n", "bar"]:  # pylint: disable=unused-argument
+        return 1
+
+    assert list(empty_goldberg.trigger_dict.values())[0].attribute_set == "bar"
+
+
+def test_decorated_function_requires_return_annotation(empty_goldberg):
+    with pytest.raises(ValueError):
+
+        @empty_goldberg.cypher_trigger("MATCH (n:Thingy) RETURN n.foo")
+        def test_function(n):  # pylint: disable=unused-argument
+            return 1
+
+
+def test_parameter_not_present_in_cypher(empty_goldberg):
+    with pytest.raises(ValueError):
+
+        @empty_goldberg.cypher_trigger("MATCH (n:Thingy) RETURN n.foo")
+        def test_function(
+            imnotinthecypher,
+        ) -> VariableAttribute["n", "thingy"]:  # pylint: disable=unused-argument
+            return 1
+
+
+def test_raise_error_on_bad_cypher_string(empty_goldberg):
+    with pytest.raises(ValueError):
+
+        @empty_goldberg.cypher_trigger("i am not a valid cypher string")
+        def test_function(n) -> VariableAttribute["n", "thingy"]:
+            return 1
+
+
+def test_return_clause_gather_variables():
+    obj = CypherParser("MATCH (n:Thing) RETURN n.foo, n.baz, m.bar")
+    assert obj.parse_tree.cypher.return_clause.gather_variables() == ["n", "m"]
+
+
+def test_return_clause_gather_variables_from_aliases():
+    obj = CypherParser(
+        "MATCH (n:Thing) RETURN n.foo AS thingy, n.baz AS otherthingy, m.bar"
+    )
+    assert obj.parse_tree.cypher.return_clause.gather_variables() == [
+        "thingy",
+        "otherthingy",
+        "m",
+    ]

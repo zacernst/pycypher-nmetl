@@ -6,9 +6,9 @@ from typing import Dict, List, Tuple, Type
 
 from ply import yacc  # type: ignore
 
-from pycypher.cypher_lexer import *  # pylint: disable=wildcard-import,unused-wildcard-import
-from pycypher.node_classes import Addition  # pylint: disable=unused-import
-from pycypher.node_classes import (
+from pycypher.core.cypher_lexer import *  # pylint: disable=wildcard-import,unused-wildcard-import
+from pycypher.core.node_classes import (
+    Addition,
     Aggregation,
     Alias,
     AliasedName,
@@ -38,7 +38,7 @@ from pycypher.node_classes import (
     Where,
     WithClause,
 )
-from pycypher.tree_mixin import TreeMixin
+from pycypher.core.tree_mixin import TreeMixin
 
 start = "cypher"  # pylint: disable=invalid-name
 
@@ -196,9 +196,9 @@ def p_with_as_series(p: yacc.YaccProduction):
     if len(p) == 2:
         p[0] = ObjectAsSeries([p[1]])
     else:
-        object_attribute_lookup_list = p[1].object_attribute_lookup_list
-        object_attribute_lookup_list.append(p[3])
-        p[0] = ObjectAsSeries(object_attribute_lookup_list)
+        lookups = p[1].lookups
+        lookups.append(p[3])
+        p[0] = ObjectAsSeries(lookups)
 
 
 def p_collect(p: yacc.YaccProduction):
@@ -332,14 +332,14 @@ class CypherParser:
 
     def __init__(self, cypher_text: str):
         self.cypher_text = cypher_text
-        self.parsed: TreeMixin = CYPHER.parse(self.cypher_text)
-        [_ for _ in self.parsed.walk()]  # pylint: disable=expression-not-assigned
+        self.parse_tree: TreeMixin = CYPHER.parse(self.cypher_text)
+        [_ for _ in self.parse_tree.walk()]  # pylint: disable=expression-not-assigned
         # self.parsed.gather_constraints()
-        self.parsed.trigger_gather_constraints_to_match()
+        self.parse_tree.trigger_gather_constraints_to_match()
 
     def __repr__(self) -> str:
-        return self.parsed.__str__()
+        return self.parse_tree.__str__()
 
     def walk(self):
         """Just calls the walk method on the parsed tree."""
-        yield from self.parsed.walk()
+        yield from self.parse_tree.walk()

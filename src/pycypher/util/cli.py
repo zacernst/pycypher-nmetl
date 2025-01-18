@@ -4,7 +4,7 @@ import sys
 
 import click
 
-from pycypher.cypher_parser import CypherParser
+from pycypher.core.cypher_parser import CypherParser
 
 
 @click.group()
@@ -18,7 +18,7 @@ def parse(query: str):
     """
     Parse a Cypher query
     """
-    CypherParser(query).parsed.print_tree()
+    CypherParser(query).parse_tree.print_tree()
 
 
 @main.command()
@@ -30,6 +30,6 @@ def validate(query: str):
     try:
         CypherParser(query)
         sys.exit(0)
-    except Exception as _:
+    except Exception as _:  # pylint: disable=broad-exception-caught
         click.echo("Invalid Cypher query")
         sys.exit(1)

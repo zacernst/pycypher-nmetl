@@ -7,8 +7,8 @@ import uuid
 
 import networkx as nx
 
-from pycypher.cypher_parser import CypherParser
-from pycypher.fact import (
+from pycypher.core.node_classes import Literal
+from pycypher.etl.fact import (
     FactCollection,
     FactNodeHasAttributeWithValue,
     FactNodeHasLabel,
@@ -16,7 +16,6 @@ from pycypher.fact import (
     FactRelationshipHasSourceNode,
     FactRelationshipHasTargetNode,
 )
-from pycypher.node_classes import Literal
 from pycypher.shims import Shim
 
 
@@ -46,9 +45,9 @@ class NetworkX(Shim):
         """
         Creates a FactCollection from the current graph.
 
-        This method deep copies the current graph and assigns unique IDs and empty label lists to each node and edge.
-        It then populates the labels and attributes for nodes and edges, and constructs a list of facts representing
-        these properties.
+        This method deep copies the current graph and assigns unique IDs and empty label lists
+        to each node and edge. It then populates the labels and attributes for nodes and edges,
+        and constructs a list of facts representing these properties.
 
         Returns:
             FactCollection: A collection of facts representing the nodes and edges of the graph.
