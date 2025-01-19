@@ -145,7 +145,7 @@ class Cypher(TreeMixin):
             TreeMixin: The child node of the current node.
         """
         yield self.cypher
-    
+
     def get_return_clause(self) -> Return:
         """
         Returns the Return clause of the Cypher query.
@@ -1062,11 +1062,8 @@ class WithClause(TreeMixin, Evaluable):
             transformed_solution = non_aggregated_combination
             for solution in solutions:
                 if all(
-                    [
-                        solution[variable]
-                        == non_aggregated_combination[variable]
-                        for variable in non_aggregated_variables
-                    ]
+                    solution[variable] == non_aggregated_combination[variable]
+                    for variable in non_aggregated_variables
                 ):
                     for variable in aggregated_variables:
                         if variable not in transformed_solution:

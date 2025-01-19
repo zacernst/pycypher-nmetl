@@ -1,6 +1,8 @@
 """All the tests."""
 # pylint: disable=missing-function-docstring,protected-access,redefined-outer-name,too-many-lines
 
+import queue
+from typing import Iterable
 from unittest.mock import Mock, patch
 
 import networkx as nx
@@ -49,6 +51,7 @@ from pycypher.core.node_classes import (
     WithClause,
 )
 from pycypher.core.tree_mixin import TreeMixin
+from pycypher.etl.data_source import DataSource, FixtureDataSource
 from pycypher.etl.fact import (  # We might get rid of this class entirely
     FactCollection,
     FactNodeHasAttributeWithValue,
@@ -56,6 +59,8 @@ from pycypher.etl.fact import (  # We might get rid of this class entirely
     FactNodeRelatedToNode,
     FactRelationshipHasLabel,
 )
+from pycypher.etl.goldberg import Goldberg
+from pycypher.etl.message_types import EndOfData, RawDatum
 from pycypher.etl.query import QueryValueOfNodeAttribute
 from pycypher.etl.solver import (
     ConstraintNodeHasAttributeWithValue,
@@ -65,7 +70,7 @@ from pycypher.etl.solver import (
     ConstraintRelationshipHasTargetNode,
     IsTrue,
 )
-from pycypher.etl.trigger import CypherTrigger, Goldberg, VariableAttribute
+from pycypher.etl.trigger import CypherTrigger, VariableAttribute
 from pycypher.shims.networkx_cypher import NetworkX
 from pycypher.util.exceptions import WrongCypherTypeError
 from pycypher.util.fixtures import (  # pylint: disable=unused-import
@@ -78,6 +83,8 @@ from pycypher.util.fixtures import (  # pylint: disable=unused-import
     fact_collection_5,
     fact_collection_6,
     fact_collection_7,
+    fixture_0_data_source_mapping,
+    fixture_data_source_0,
     networkx_graph,
     patched_uuid,
 )
@@ -3435,3 +3442,59 @@ def test_return_clause_gather_variables_from_aliases():
         "otherthingy",
         "m",
     ]
+
+
+def test_data_source_is_right_class(fixture_data_source_0):
+    assert isinstance(fixture_data_source_0, DataSource)
+
+
+def test_data_source_has_right_type_row_iterator(fixture_data_source_0):
+    assert isinstance(fixture_data_source_0.rows(), Iterable)
+
+
+def test_data_source_row_iterator_yields_data(fixture_data_source_0):
+    counter = 0
+    for row in fixture_data_source_0.rows():
+        assert row
+        assert isinstance(row, dict)
+        assert len(row) == 5
+        counter += 1
+    assert counter == 7
+
+
+def test_attach_data_source_mapping_to_data_source(
+    fixture_0_data_source_mapping,
+):
+    assert isinstance(fixture_0_data_source_mapping.data_source, DataSource)
+
+
+def test_attach_data_source_to_goldberg(empty_goldberg, fixture_data_source_0):
+    empty_goldberg.attach_data_source(fixture_data_source_0)
+    assert fixture_data_source_0 in empty_goldberg.data_sources
+
+
+def test_data_source_requires_queue(fixture_data_source_0):
+    with pytest.raises(ValueError):
+        fixture_data_source_0.queue_rows()
+
+
+def test_data_source_cannot_attach_non_queue(fixture_data_source_0):
+    with pytest.raises(ValueError):
+        fixture_data_source_0.attach_queue("not a queue")
+
+
+def test_data_source_attach_queue(fixture_data_source_0):
+    fixture_data_source_0.attach_queue(queue.Queue())
+    assert fixture_data_source_0.raw_data_queue
+    assert isinstance(fixture_data_source_0.raw_data_queue, queue.Queue)
+
+
+def test_data_source_queue_rows(fixture_data_source_0):
+    raw_data_queue = queue.Queue()
+    fixture_data_source_0.attach_queue(raw_data_queue)
+    fixture_data_source_0.queue_rows()
+    obj = raw_data_queue.get()
+    assert isinstance(obj, RawDatum)
+    while not raw_data_queue.empty():
+        obj = raw_data_queue.get()
+    assert isinstance(obj, EndOfData)

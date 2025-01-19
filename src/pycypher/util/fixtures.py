@@ -7,6 +7,7 @@ import networkx as nx
 import pytest
 
 from pycypher.core.node_classes import Literal
+from pycypher.etl.data_source import DataSourceMapping, FixtureDataSource
 from pycypher.etl.fact import (  # We might get rid of this class entirely
     FactCollection,
     FactNodeHasAttributeWithValue,
@@ -16,7 +17,7 @@ from pycypher.etl.fact import (  # We might get rid of this class entirely
     FactRelationshipHasSourceNode,
     FactRelationshipHasTargetNode,
 )
-from pycypher.etl.trigger import Goldberg
+from pycypher.etl.goldberg import Goldberg
 
 
 class patched_uuid:  # pylint: disable=invalid-name,too-few-public-methods
@@ -25,6 +26,77 @@ class patched_uuid:  # pylint: disable=invalid-name,too-few-public-methods
     @property
     def hex(self):
         return "SOME_HEX"
+
+
+@pytest.fixture
+def fixture_data_source_0():
+    # name, age, zip code, widgets_purchased
+    obj = FixtureDataSource(
+        name="people_fixture",
+        data=[
+            {
+                "person_id": "001",
+                "name": "Alice",
+                "age": 25,
+                "zip_code": "02056",
+                "widgets": 5,
+            },
+            {
+                "person_id": "002",
+                "name": "Bob",
+                "age": 30,
+                "zip_code": "02055",
+                "widgets": 3,
+            },
+            {
+                "person_id": "003",
+                "name": "Charlie",
+                "age": 35,
+                "zip_code": "02054",
+                "widgets": 2,
+            },
+            {
+                "person_id": "004",
+                "name": "David",
+                "age": 40,
+                "zip_code": "02053",
+                "widgets": 1,
+            },
+            {
+                "person_id": "005",
+                "name": "Eve",
+                "age": 45,
+                "zip_code": "02052",
+                "widgets": 4,
+            },
+            {
+                "person_id": "006",
+                "name": "Frank",
+                "age": 50,
+                "zip_code": "02051",
+                "widgets": 6,
+            },
+            {
+                "person_id": "007",
+                "name": "Grace",
+                "age": 55,
+                "zip_code": "02050",
+                "widgets": 7,
+            },
+        ],
+    )
+    return obj
+
+
+@pytest.fixture
+def fixture_0_data_source_mapping(fixture_data_source_0):
+    data_source_mapping = DataSourceMapping(
+        data_source=fixture_data_source_0,
+        attribute_key="person_id",
+        identifier_key="person_id",
+        attribute="Identifier",
+    )
+    return data_source_mapping
 
 
 @pytest.fixture
