@@ -2,6 +2,8 @@
 # pylint: disable=missing-function-docstring,protected-access,redefined-outer-name,too-many-lines
 
 import queue
+import threading
+import time
 from typing import Iterable
 from unittest.mock import Mock, patch
 
@@ -51,7 +53,7 @@ from pycypher.core.node_classes import (
     WithClause,
 )
 from pycypher.core.tree_mixin import TreeMixin
-from pycypher.etl.data_source import DataSource, FixtureDataSource
+from pycypher.etl.data_source import DataSource
 from pycypher.etl.fact import (  # We might get rid of this class entirely
     FactCollection,
     FactNodeHasAttributeWithValue,
@@ -59,7 +61,8 @@ from pycypher.etl.fact import (  # We might get rid of this class entirely
     FactNodeRelatedToNode,
     FactRelationshipHasLabel,
 )
-from pycypher.etl.goldberg import Goldberg
+from pycypher.util.helpers import QueueGenerator
+from pycypher.etl.goldberg import Goldberg, RawDataProcessor
 from pycypher.etl.message_types import EndOfData, RawDatum
 from pycypher.etl.query import QueryValueOfNodeAttribute
 from pycypher.etl.solver import (
@@ -80,13 +83,15 @@ from pycypher.util.fixtures import (  # pylint: disable=unused-import
     fact_collection_2,
     fact_collection_3,
     fact_collection_4,
+    populated_goldberg,
     fact_collection_5,
     fact_collection_6,
     fact_collection_7,
-    fixture_0_data_source_mapping,
+    fixture_0_data_source_mapping_list,
     fixture_data_source_0,
     networkx_graph,
     patched_uuid,
+    raw_data_processor,
 )
 
 
@@ -3415,7 +3420,7 @@ def test_parameter_not_present_in_cypher(empty_goldberg):
 
         @empty_goldberg.cypher_trigger("MATCH (n:Thingy) RETURN n.foo")
         def test_function(
-            imnotinthecypher,
+            imnotinthecypher,  # pylint: disable=unused-argument
         ) -> VariableAttribute["n", "thingy"]:  # pylint: disable=unused-argument
             return 1
 
@@ -3463,9 +3468,21 @@ def test_data_source_row_iterator_yields_data(fixture_data_source_0):
 
 
 def test_attach_data_source_mapping_to_data_source(
-    fixture_0_data_source_mapping,
+    fixture_0_data_source_mapping_list,
+    fixture_data_source_0,
 ):
-    assert isinstance(fixture_0_data_source_mapping.data_source, DataSource)
+    for fixture_0_data_source_mapping in fixture_0_data_source_mapping_list:
+        fixture_data_source_0.attach_mapping(fixture_0_data_source_mapping)
+
+    assert fixture_data_source_0.mappings == fixture_0_data_source_mapping_list
+
+
+def test_attach_data_source_mapping_list_to_data_source(
+    fixture_0_data_source_mapping_list,
+    fixture_data_source_0,
+):
+    fixture_data_source_0.attach_mapping(fixture_0_data_source_mapping_list)
+    assert fixture_data_source_0.mappings == fixture_0_data_source_mapping_list
 
 
 def test_attach_data_source_to_goldberg(empty_goldberg, fixture_data_source_0):
@@ -3485,16 +3502,218 @@ def test_data_source_cannot_attach_non_queue(fixture_data_source_0):
 
 def test_data_source_attach_queue(fixture_data_source_0):
     fixture_data_source_0.attach_queue(queue.Queue())
-    assert fixture_data_source_0.raw_data_queue
-    assert isinstance(fixture_data_source_0.raw_data_queue, queue.Queue)
+    assert fixture_data_source_0.raw_input_queue
+    assert isinstance(fixture_data_source_0.raw_input_queue, queue.Queue)
+
+
+def test_attaching_data_source_also_attaches_queue(
+    empty_goldberg, fixture_data_source_0
+):
+    empty_goldberg.attach_data_source(fixture_data_source_0)
+    assert isinstance(fixture_data_source_0.raw_input_queue, (queue.Queue, QueueGenerator,))
 
 
 def test_data_source_queue_rows(fixture_data_source_0):
-    raw_data_queue = queue.Queue()
-    fixture_data_source_0.attach_queue(raw_data_queue)
+    raw_input_queue = queue.Queue()
+    fixture_data_source_0.attach_queue(raw_input_queue)
     fixture_data_source_0.queue_rows()
-    obj = raw_data_queue.get()
+    obj = raw_input_queue.get()
     assert isinstance(obj, RawDatum)
-    while not raw_data_queue.empty():
-        obj = raw_data_queue.get()
+    counter = 0
+
+    while not raw_input_queue.empty():
+        counter += 1
+        obj = raw_input_queue.get()
+
     assert isinstance(obj, EndOfData)
+    assert obj.data_source is fixture_data_source_0
+    assert counter == 7
+
+
+def test_data_source_not_started_yet_flag(fixture_data_source_0):
+    raw_input_queue = queue.Queue()
+    fixture_data_source_0.attach_queue(raw_input_queue)
+    assert not fixture_data_source_0.started
+
+
+def test_data_source_started_flag(fixture_data_source_0):
+    """Allow one second for data source fixture to start."""
+    raw_input_queue = queue.Queue()
+    fixture_data_source_0.attach_queue(raw_input_queue)
+    fixture_data_source_0.start()
+    test_time = time.time()
+    while not fixture_data_source_0.started and time.time() - test_time < 1:
+        pass
+    assert fixture_data_source_0.started
+
+
+def test_data_source_finished_flag(fixture_data_source_0):
+    """Allow one second for data source fixture to finish."""
+    raw_input_queue = queue.Queue()
+    fixture_data_source_0.attach_queue(raw_input_queue)
+    fixture_data_source_0.start()
+    test_time = time.time()
+    while (
+        not fixture_data_source_0.sent_end_of_data
+        and time.time() - test_time < 1
+    ):
+        pass
+    assert fixture_data_source_0.sent_end_of_data
+
+
+def test_raw_input_queue_not_empty_after_finished_flag(fixture_data_source_0):
+    """Allow one second for data source fixture to finish."""
+    raw_input_queue = queue.Queue()
+    fixture_data_source_0.attach_queue(raw_input_queue)
+    fixture_data_source_0.start()
+    test_time = time.time()
+    while (
+        not fixture_data_source_0.sent_end_of_data
+        and time.time() - test_time < 1
+    ):
+        pass
+    assert not raw_input_queue.empty()
+
+
+def test_raw_input_queue_has_all_objects_after_finished_flag(
+    fixture_data_source_0,
+):
+    """Allow one second for data source fixture to finish."""
+    raw_input_queue = queue.Queue()
+    fixture_data_source_0.attach_queue(raw_input_queue)
+    fixture_data_source_0.start()
+    test_time = time.time()
+    while (
+        not fixture_data_source_0.sent_end_of_data
+        and time.time() - test_time < 1
+    ):
+        pass
+    assert not raw_input_queue.empty()
+    counter = 0
+    while not raw_input_queue.empty():
+        raw_input_queue.get()
+        counter += 1
+    assert counter == 8
+
+
+def test_attach_non_data_source_mapping_raises_error(fixture_data_source_0):
+    with pytest.raises(ValueError):
+        fixture_data_source_0.attach_mapping("not a mapping")
+
+
+def test_start_loading_thread_from_goldberg(
+    empty_goldberg, fixture_data_source_0
+):
+    empty_goldberg.attach_data_source(fixture_data_source_0)
+    empty_goldberg.start_threads()
+    assert isinstance(fixture_data_source_0.loading_thread, threading.Thread)
+
+
+def test_attach_raw_data_processor_to_goldberg(
+    empty_goldberg, raw_data_processor
+):
+    empty_goldberg.attach_raw_data_processor(raw_data_processor)
+    assert empty_goldberg.raw_data_processor is raw_data_processor
+
+
+def test_goldberg_reports_unfinished_data_source_if_not_started(
+    empty_goldberg, fixture_data_source_0
+):
+    empty_goldberg.attach_data_source(fixture_data_source_0)
+    assert empty_goldberg.has_unfinished_data_source()
+
+
+def test_goldberg_reports_unfinished_data_source_if_running(
+    empty_goldberg, fixture_data_source_0
+):
+    fixture_data_source_0.delay = 0.1
+    empty_goldberg.attach_data_source(fixture_data_source_0)
+    empty_goldberg.start_threads()
+    assert empty_goldberg.has_unfinished_data_source()
+
+
+def test_goldberg_reports_no_unfinished_data_source_if_complete(
+    empty_goldberg, fixture_data_source_0
+):
+    empty_goldberg.attach_data_source(fixture_data_source_0)
+    empty_goldberg.start_threads()
+    while not fixture_data_source_0.sent_end_of_data:
+        pass
+    assert not empty_goldberg.has_unfinished_data_source()
+
+
+def test_goldberg_has_raw_data_processor(
+    fixture_0_data_source_mapping_list,
+    empty_goldberg, 
+    fixture_data_source_0
+):
+    fixture_data_source_0.attach_mapping(fixture_0_data_source_mapping_list)
+    empty_goldberg.attach_data_source(fixture_data_source_0)
+    assert empty_goldberg.raw_data_processor
+
+
+def test_goldberg_has_fact_generated_queue_processor(
+    fixture_0_data_source_mapping_list,
+    empty_goldberg, 
+    fixture_data_source_0
+):
+    fixture_data_source_0.attach_mapping(fixture_0_data_source_mapping_list)
+    empty_goldberg.attach_data_source(fixture_data_source_0)
+    assert empty_goldberg.fact_generated_queue_processor
+
+
+def test_goldberg_fact_generated_queue_processor_starts_in_thread(
+    fixture_0_data_source_mapping_list,
+    empty_goldberg, 
+    fixture_data_source_0
+):
+    # This one takes a few seconds to complete because thread has to time out
+    fixture_data_source_0.attach_mapping(fixture_0_data_source_mapping_list)
+    empty_goldberg.attach_data_source(fixture_data_source_0)
+    empty_goldberg.start_threads()
+    assert empty_goldberg.fact_generated_queue_processor.started
+
+
+def test_goldberg_fact_generated_queue_processor_appends_facts_to_collection(
+    fixture_0_data_source_mapping_list,
+    empty_goldberg, 
+    fixture_data_source_0
+):
+    fixture_data_source_0.attach_mapping(fixture_0_data_source_mapping_list)
+    empty_goldberg.attach_data_source(fixture_data_source_0)
+    empty_goldberg.start_threads()
+    empty_goldberg.block_until_finished()
+    assert len(empty_goldberg.fact_collection) == 35
+
+def test_queue_generator_not_completed_immediately():
+    q = QueueGenerator()
+    assert not q.completed
+
+def test_queue_generator_completed_after_end_of_data():
+    q = QueueGenerator()
+    q.put('hi')
+    q.put(EndOfData())
+    for _ in q.yield_items():
+        pass
+    assert q.completed
+
+
+def test_queue_generator_not_completed_during_generation():
+    q = QueueGenerator()
+    q.put('hi')
+    q.put('there')
+    q.put(EndOfData())
+    for _ in q.yield_items():
+        assert not q.completed
+
+
+def test_queue_generator_yields_correct_items():
+    q = QueueGenerator()
+    q.put('hi')
+    q.put('there')
+    q.put('you')
+    q.put(EndOfData())
+    items = []
+    for item in q.yield_items():
+        items.append(item)
+    assert items == ['hi', 'there', 'you',]

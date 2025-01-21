@@ -17,7 +17,7 @@ from pycypher.etl.fact import (  # We might get rid of this class entirely
     FactRelationshipHasSourceNode,
     FactRelationshipHasTargetNode,
 )
-from pycypher.etl.goldberg import Goldberg
+from pycypher.etl.goldberg import Goldberg, RawDataProcessor
 
 
 class patched_uuid:  # pylint: disable=invalid-name,too-few-public-methods
@@ -26,6 +26,11 @@ class patched_uuid:  # pylint: disable=invalid-name,too-few-public-methods
     @property
     def hex(self):
         return "SOME_HEX"
+
+
+@pytest.fixture
+def raw_data_processor():
+    return RawDataProcessor()
 
 
 @pytest.fixture
@@ -89,14 +94,39 @@ def fixture_data_source_0():
 
 
 @pytest.fixture
-def fixture_0_data_source_mapping(fixture_data_source_0):
-    data_source_mapping = DataSourceMapping(
-        data_source=fixture_data_source_0,
+def fixture_0_data_source_mapping_list():
+    data_source_mapping_0 = DataSourceMapping(
         attribute_key="person_id",
         identifier_key="person_id",
         attribute="Identifier",
     )
-    return data_source_mapping
+    data_source_mapping_1 = DataSourceMapping(
+        attribute_key="name",
+        identifier_key="person_id",
+        attribute="Name",
+    )
+    data_source_mapping_2 = DataSourceMapping(
+        attribute_key="age",
+        identifier_key="person_id",
+        attribute="Age",
+    )
+    data_source_mapping_3 = DataSourceMapping(
+        attribute_key="zip_code",
+        identifier_key="person_id",
+        attribute="ZipCode",
+    )
+    data_source_mapping_4 = DataSourceMapping(
+        attribute_key="widgets",
+        identifier_key="person_id",
+        attribute="WidgetsPurchased",
+    )
+    return [
+        data_source_mapping_0,
+        data_source_mapping_1,
+        data_source_mapping_2,
+        data_source_mapping_3,
+        data_source_mapping_4,
+    ]
 
 
 @pytest.fixture
@@ -472,3 +502,18 @@ def number_of_facts(fact_collection_0: FactCollection) -> int:
 @pytest.fixture
 def empty_goldberg():
     return Goldberg()
+
+
+@pytest.fixture
+def populated_goldberg(
+    fixture_0_data_source_mapping_list,
+    empty_goldberg, 
+    fixture_data_source_0
+):
+    # Get data source mappings
+    # Attach data source mappings to data source
+    # Attach data source to goldberg
+
+    fixture_data_source_0.attach_mapping(fixture_0_data_source_mapping_list)
+    empty_goldberg.attach_data_source(fixture_data_source_0)
+    return empty_goldberg
