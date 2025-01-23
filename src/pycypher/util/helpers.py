@@ -3,10 +3,10 @@
 import queue
 import time
 from pathlib import Path
-from typing import Generator, Any, Optional, Type
+from typing import Any, Generator, Optional, Type
 from urllib.parse import ParseResult, urlparse
-from pycypher.etl.message_types import EndOfData
 
+from pycypher.etl.message_types import EndOfData
 from pycypher.util.logger import LOGGER
 
 
@@ -38,14 +38,13 @@ class QueueGenerator:  # pylint: disable=too-few-public-methods
     """A queue that also generates items."""
 
     def __init__(
-        self, 
-        *args, 
+        self,
+        *args,
         timeout: Optional[int] = 1,
         end_of_queue_cls: Optional[Type] = EndOfData,
         max_timeout: Optional[int] = 10,
-        **kwargs
+        **kwargs,
     ) -> None:
-
         super().__init__(*args, **kwargs)
         self.queue = queue.Queue()
         self.timeout = timeout
@@ -83,20 +82,20 @@ class QueueGenerator:  # pylint: disable=too-few-public-methods
         elif exit_code == 0:
             LOGGER.warning("Exiting generator normally")
         self.exit_code = exit_code
-    
+
     @property
     def completed(self) -> bool:
         """Is the queue completed? Has ``EndOfData`` been received?"""
         return self.no_more_items
-    
+
     def empty(self) -> bool:
         """Is the queue empty?"""
         return self.queue.empty
-    
+
     def get(self, **kwargs) -> Any:
         """Get an item from the queue."""
         return self.queue.get(**kwargs)
-    
+
     def put(self, item: Any) -> None:
         """Put an item on the queue."""
         self.queue.put(item)

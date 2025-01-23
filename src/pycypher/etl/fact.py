@@ -130,7 +130,6 @@ class FactNodeHasAttributeWithValue(AtomicFact):
         node_id (str): The identifier of the node.
         attribute (str): The attribute of the node.
         value (Any): The value of the attribute.
-
     """
 
     def __init__(self, node_id: str, attribute: str, value: Any):

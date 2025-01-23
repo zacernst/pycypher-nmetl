@@ -10,13 +10,16 @@ from hashlib import md5
 from typing import Dict, Generator, Iterable, List, Optional, Type
 
 from pycypher.etl.data_source import DataSource
-from pycypher.etl.fact import AtomicFact, FactCollection, FactNodeHasAttributeWithValue
-from pycypher.etl.message_types import RawDatum, EndOfData
+from pycypher.etl.fact import (
+    AtomicFact,
+    FactCollection,
+)
+from pycypher.etl.message_types import EndOfData, RawDatum
 from pycypher.etl.solver import Constraint
 from pycypher.etl.trigger import CypherTrigger
 from pycypher.util.config import MONITOR_LOOP_DELAY  # pylint: disable=no-name-in-module
-from pycypher.util.logger import LOGGER
 from pycypher.util.helpers import QueueGenerator
+from pycypher.util.logger import LOGGER
 
 
 class RawDataProcessor:
@@ -26,62 +29,107 @@ class RawDataProcessor:
         self.goldberg = goldberg
         self.processing_thread = threading.Thread(target=self.process_raw_data)
         self.started = False
+        self.counter = 0
+        self.finished = False
 
     def process_raw_data(self) -> None:
-        """Process raw data from all the DataSource objects."""
+        """Process raw data from the ``raw_input_queue``, generate facts,
+        and put them into the ``fact_generated_queue``."""
         self.started = True
-        counter = 0
         raw_input_queue_counter = 0
         for datum in self.goldberg.raw_input_queue.yield_items():
-            raw_input_queue_counter += 1
-            for fact in self.raw_datum_to_facts(datum):
+            data_source = datum.data_source
+            row = datum.row
+            for fact in data_source.generate_raw_facts_from_row(row):
                 self.goldberg.fact_generated_queue.put(fact)
-                counter += 1
-        self.goldberg.fact_generated_queue.put(EndOfData())
-        LOGGER.info("Processed %s facts", counter)
+                LOGGER.debug("Added fact %s to the fact_generated_queue", fact)
+                self.counter += 1
+        LOGGER.info("Processed %s facts", self.counter)
         LOGGER.info("Got %s raw data items", raw_input_queue_counter)
-    
+        self.finished = True
+
     def raw_datum_to_facts(
         self, raw_datum: RawDatum
     ) -> Generator[AtomicFact, None, None]:
         """Convert a RawDatum to a generator of AtomicFact objects."""
         data_source = raw_datum.data_source
         row = raw_datum.row
-        for mapping in data_source.mappings:
-            # Create a new fact from the raw_datum and the mapping
-            LOGGER.debug("Mapping %s to %s", raw_datum, mapping)
-            identifier = row[mapping.identifier_key]
-            attribute_value = row[mapping.attribute_key]
-            attribute = mapping.attribute
-            
-            LOGGER.debug("Creating fact %s", (identifier, attribute, attribute_value))
-            fact = FactNodeHasAttributeWithValue(node_id=identifier, attribute=attribute, value=attribute_value)
-            LOGGER.debug("Fact created: %s", fact)
-
+        for fact in data_source.generate_raw_facts_from_row(row):
             yield fact
 
 
 class FactGeneratedQueueProcessor:  # pylint: disable=too-few-public-methods
-    '''Reads from the fact_generated_queue and processes the facts
+    """Reads from the fact_generated_queue and processes the facts
     by inserting them into the ``FactCollection``.
-    '''
+    """
+
     def __init__(self, goldberg: Optional[Goldberg] = None) -> None:
         self.goldberg = goldberg
-        self.processing_thread = threading.Thread(target=self.process_generated_facts)
+        self.processing_thread = threading.Thread(
+            target=self.process_generated_facts
+        )
         self.started = False
+        self.counter = 0
 
     def process_generated_facts(self) -> None:
         """Process new facts from the fact_generated_queue."""
         self.started = True
-        counter = 0
         for fact in self.goldberg.fact_generated_queue.yield_items():
-            if not isinstance(fact, (AtomicFact, EndOfData,)):
-                LOGGER.warning('Expected an AtomicFact, got %s', type(fact))
+            if not isinstance(
+                fact,
+                (
+                    AtomicFact,
+                    EndOfData,
+                ),
+            ):
+                LOGGER.debug("Expected an AtomicFact, got %s", type(fact))
                 continue
-            counter += 1
-            LOGGER.warning('Adding fact %s to the fact collection: %s', fact, counter)
+            self.counter += 1
+            LOGGER.debug(
+                "Adding fact %s to the fact collection: %s", fact, self.counter
+            )
             self.goldberg.fact_collection.append(fact)
-        LOGGER.warning('Processed %s facts', counter)
+
+            # Put the fact in the queue to be checked for triggers
+            self.goldberg.check_fact_against_triggers_queue.put(fact)
+        LOGGER.debug("Processed %s facts", self.counter)
+
+
+class CheckFactAgainstTriggersQueueProcessor:  # pylint: disable=too-few-public-methods
+    """Reads from the check_fact_against_triggers_queue and processes the facts
+    by checking them against the triggers.
+    """
+    
+    def __init__(self, goldberg: Optional[Goldberg] = None) -> None:
+        self.goldberg = goldberg
+        self.processing_thread = threading.Thread(
+            target=self.process_facts_against_triggers
+        )
+        self.started = False
+        self.facts_checked = 0
+        self.facts_generated = 0
+    
+    def process_facts_against_triggers(self) -> None:
+        """Process new facts from the check_fact_against_triggers_queue."""
+        self.started = True
+        for fact in self.goldberg.check_fact_against_triggers_queue.yield_items():
+            if not isinstance(
+                fact,
+                (
+                    AtomicFact,
+                    EndOfData,
+                ),
+            ):
+                LOGGER.debug("Expected an AtomicFact, got %s", type(fact))
+                continue
+            self.facts_checked += 1
+            LOGGER.debug(
+                "Checking fact %s against triggers: %s", fact, self.facts_checked
+            )
+            ##############################
+            ### Do the work here
+            ##############################
+        LOGGER.debug("Processed %s facts", self.facts_checked)
 
 
 class Goldberg:  # pylint: disable=too-many-instance-attributes
@@ -100,6 +148,7 @@ class Goldberg:  # pylint: disable=too-many-instance-attributes
         self.fact_collection = fact_collection or FactCollection(facts=[])
         self.raw_data_processor = raw_data_processor or RawDataProcessor(self)
         self.fact_generated_queue_processor = FactGeneratedQueueProcessor(self)
+        self.check_fact_against_triggers_queue_processor = CheckFactAgainstTriggersQueueProcessor(self)
 
         self.queue_class = queue_class
         self.queue_options = queue_options or {}
@@ -107,6 +156,7 @@ class Goldberg:  # pylint: disable=too-many-instance-attributes
         # Instantiate the various queues using the queue_class
         self.raw_input_queue = self.queue_class(**self.queue_options)
         self.fact_generated_queue = self.queue_class(**self.queue_options)
+        self.check_fact_against_triggers_queue = self.queue_class(**self.queue_options)
 
         # Instantiate threads
         self.monitor_thread = threading.Thread(
@@ -124,11 +174,14 @@ class Goldberg:  # pylint: disable=too-many-instance-attributes
 
         # Insert facts into the FactCollection
         self.fact_generated_queue_processor.processing_thread.start()
-    
+
     def block_until_finished(self):
         """Block until all data sources have finished."""
-        while not self.fact_generated_queue.completed:
+        # TODO: Change this when we've got the next stage in the pipeline
+        while not self.raw_data_processor.finished:
             pass
+        # while not self.fact_generated_queue.completed:
+        #     pass
 
     def monitor(self):
         """Generate stats on the ETL process."""
@@ -146,7 +199,7 @@ class Goldberg:  # pylint: disable=too-many-instance-attributes
 
     def has_unfinished_data_source(self) -> bool:
         """Checks whether any of the data sources are still loading data."""
-        LOGGER.warning('Checking if any data sources are still loading data')
+        LOGGER.debug("Checking if any data sources are still loading data")
         return any(
             not data_source.sent_end_of_data
             for data_source in self.data_sources

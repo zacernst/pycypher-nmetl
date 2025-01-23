@@ -99,26 +99,31 @@ def fixture_0_data_source_mapping_list():
         attribute_key="person_id",
         identifier_key="person_id",
         attribute="Identifier",
+        label="Person",
     )
     data_source_mapping_1 = DataSourceMapping(
         attribute_key="name",
         identifier_key="person_id",
         attribute="Name",
+        label="Person",
     )
     data_source_mapping_2 = DataSourceMapping(
         attribute_key="age",
         identifier_key="person_id",
         attribute="Age",
+        label="Person",
     )
     data_source_mapping_3 = DataSourceMapping(
         attribute_key="zip_code",
         identifier_key="person_id",
         attribute="ZipCode",
+        label="Person",
     )
     data_source_mapping_4 = DataSourceMapping(
         attribute_key="widgets",
         identifier_key="person_id",
         attribute="WidgetsPurchased",
+        label="Person",
     )
     return [
         data_source_mapping_0,
@@ -506,9 +511,7 @@ def empty_goldberg():
 
 @pytest.fixture
 def populated_goldberg(
-    fixture_0_data_source_mapping_list,
-    empty_goldberg, 
-    fixture_data_source_0
+    fixture_0_data_source_mapping_list, empty_goldberg, fixture_data_source_0
 ):
     # Get data source mappings
     # Attach data source mappings to data source

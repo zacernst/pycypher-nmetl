@@ -9,13 +9,14 @@ import threading
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import List, Any, Generator, Optional
+from typing import Any, Generator, List, Optional
 from urllib.parse import ParseResult
 
 import pyarrow.parquet as pq
 
+from pycypher.etl.fact import AtomicFact, FactNodeHasAttributeWithValue
 from pycypher.etl.message_types import EndOfData, RawDatum
-from pycypher.util.helpers import ensure_uri, QueueGenerator
+from pycypher.util.helpers import QueueGenerator, ensure_uri
 from pycypher.util.logger import LOGGER
 
 
@@ -67,7 +68,13 @@ class DataSource(ABC):  # pylint: disable=too-many-instance-attributes
 
     def attach_queue(self, queue_obj: queue.Queue) -> None:
         """Attach a queue to the data source."""
-        if not isinstance(queue_obj, (queue.Queue, QueueGenerator,)):
+        if not isinstance(
+            queue_obj,
+            (
+                queue.Queue,
+                QueueGenerator,
+            ),
+        ):
             raise ValueError(f"Expected a Queue, got {type(queue_obj)}")
         self.raw_input_queue = queue_obj
 
@@ -95,7 +102,7 @@ class DataSource(ABC):  # pylint: disable=too-many-instance-attributes
             raise ValueError(
                 f"Expected a DataSourceMapping, got {type(data_source_mapping)}"
             )
-        
+
         return self
 
     def __lt__(self, other: DataSource) -> DataSource:
@@ -131,7 +138,9 @@ class DataSource(ABC):  # pylint: disable=too-many-instance-attributes
             EndOfData(data_source=self),
         )
         self.sent_end_of_data = True
-        LOGGER.info("Finished loading %s with %s rows", self.name, self.message_counter)
+        LOGGER.info(
+            "Finished loading %s with %s rows", self.name, self.message_counter
+        )
 
     def start(self) -> None:
         """Start the loading thread."""
@@ -142,6 +151,13 @@ class DataSource(ABC):  # pylint: disable=too-many-instance-attributes
         """Is there unread data in the queue? or is the loading thread still running?
         or has the loading thread not started yet?"""
         return not self.started or not self.sent_end_of_data
+
+    def generate_raw_facts_from_row(
+        self, row: dict[str, Any]
+    ) -> Generator[AtomicFact, None, None]:
+        """Generate raw facts from a row."""
+        for mapping in self.mappings:
+            yield mapping + row
 
 
 @dataclass
@@ -155,9 +171,54 @@ class DataSourceMapping:  # pylint: disable=too-few-public-methods
     Will need to expand or subclass for relationships.
     """
 
-    attribute_key: str
-    identifier_key: str
-    attribute: str
+    attribute_key: Optional[str] = None
+    identifier_key: Optional[str] = None
+    label: Optional[str] = None
+    attribute: Optional[str] = None
+    source_identifier_key: Optional[str] = None
+    target_identifier_key: Optional[str] = None
+    source_label: Optional[str] = None
+    target_label: Optional[str] = None
+    relationship: Optional[str] = None
+
+    @property
+    def is_attribute_mapping(self) -> bool:
+        """Is this an attribute mapping? (vs a relationship mapping)"""
+        return (
+            self.attribute_key is not None
+            and self.identifier_key is not None
+            and self.attribute is not None
+            and self.label is not None
+        )
+
+    @property
+    def is_relationship_mapping(self) -> bool:  # TODO: incomplete probably
+        """Is this a relationship mapping? (vs an attribute mapping)"""
+        return (
+            self.source_identifier_key is not None
+            and self.target_identifier_key is not None
+            and self.source_label is not None
+            and self.target_label is not None
+            and self.relationship is not None
+        )
+
+    def process_against_raw_datum(self, row: dict[str, Any]) -> AtomicFact:
+        """Process the mapping against a raw datum."""
+        if self.is_attribute_mapping:
+            fact = FactNodeHasAttributeWithValue(
+                node_id=f"{self.label}::{row[self.identifier_key]}",
+                attribute=self.attribute,
+                value=row[self.attribute_key],
+            )
+        else:
+            raise NotImplementedError(
+                "Only attribute mappings are supported for now."
+            )
+        return fact
+
+    def __add__(self, row: dict[str, Any]) -> AtomicFact:
+        """Let us use the + operator to process a row against a mapping."""
+        return self.process_against_raw_datum(row)
 
 
 class FixtureDataSource(DataSource):

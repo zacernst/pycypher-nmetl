@@ -53,7 +53,7 @@ from pycypher.core.node_classes import (
     WithClause,
 )
 from pycypher.core.tree_mixin import TreeMixin
-from pycypher.etl.data_source import DataSource
+from pycypher.etl.data_source import DataSource, DataSourceMapping
 from pycypher.etl.fact import (  # We might get rid of this class entirely
     FactCollection,
     FactNodeHasAttributeWithValue,
@@ -61,7 +61,6 @@ from pycypher.etl.fact import (  # We might get rid of this class entirely
     FactNodeRelatedToNode,
     FactRelationshipHasLabel,
 )
-from pycypher.util.helpers import QueueGenerator
 from pycypher.etl.goldberg import Goldberg, RawDataProcessor
 from pycypher.etl.message_types import EndOfData, RawDatum
 from pycypher.etl.query import QueryValueOfNodeAttribute
@@ -83,7 +82,6 @@ from pycypher.util.fixtures import (  # pylint: disable=unused-import
     fact_collection_2,
     fact_collection_3,
     fact_collection_4,
-    populated_goldberg,
     fact_collection_5,
     fact_collection_6,
     fact_collection_7,
@@ -91,8 +89,10 @@ from pycypher.util.fixtures import (  # pylint: disable=unused-import
     fixture_data_source_0,
     networkx_graph,
     patched_uuid,
+    populated_goldberg,
     raw_data_processor,
 )
+from pycypher.util.helpers import QueueGenerator
 
 
 def test_parameter_not_present_in_cypher_with_aliases(empty_goldberg):
@@ -3510,7 +3510,13 @@ def test_attaching_data_source_also_attaches_queue(
     empty_goldberg, fixture_data_source_0
 ):
     empty_goldberg.attach_data_source(fixture_data_source_0)
-    assert isinstance(fixture_data_source_0.raw_input_queue, (queue.Queue, QueueGenerator,))
+    assert isinstance(
+        fixture_data_source_0.raw_input_queue,
+        (
+            queue.Queue,
+            QueueGenerator,
+        ),
+    )
 
 
 def test_data_source_queue_rows(fixture_data_source_0):
@@ -3643,9 +3649,7 @@ def test_goldberg_reports_no_unfinished_data_source_if_complete(
 
 
 def test_goldberg_has_raw_data_processor(
-    fixture_0_data_source_mapping_list,
-    empty_goldberg, 
-    fixture_data_source_0
+    fixture_0_data_source_mapping_list, empty_goldberg, fixture_data_source_0
 ):
     fixture_data_source_0.attach_mapping(fixture_0_data_source_mapping_list)
     empty_goldberg.attach_data_source(fixture_data_source_0)
@@ -3653,9 +3657,7 @@ def test_goldberg_has_raw_data_processor(
 
 
 def test_goldberg_has_fact_generated_queue_processor(
-    fixture_0_data_source_mapping_list,
-    empty_goldberg, 
-    fixture_data_source_0
+    fixture_0_data_source_mapping_list, empty_goldberg, fixture_data_source_0
 ):
     fixture_data_source_0.attach_mapping(fixture_0_data_source_mapping_list)
     empty_goldberg.attach_data_source(fixture_data_source_0)
@@ -3663,9 +3665,7 @@ def test_goldberg_has_fact_generated_queue_processor(
 
 
 def test_goldberg_fact_generated_queue_processor_starts_in_thread(
-    fixture_0_data_source_mapping_list,
-    empty_goldberg, 
-    fixture_data_source_0
+    fixture_0_data_source_mapping_list, empty_goldberg, fixture_data_source_0
 ):
     # This one takes a few seconds to complete because thread has to time out
     fixture_data_source_0.attach_mapping(fixture_0_data_source_mapping_list)
@@ -3675,9 +3675,7 @@ def test_goldberg_fact_generated_queue_processor_starts_in_thread(
 
 
 def test_goldberg_fact_generated_queue_processor_appends_facts_to_collection(
-    fixture_0_data_source_mapping_list,
-    empty_goldberg, 
-    fixture_data_source_0
+    fixture_0_data_source_mapping_list, empty_goldberg, fixture_data_source_0
 ):
     fixture_data_source_0.attach_mapping(fixture_0_data_source_mapping_list)
     empty_goldberg.attach_data_source(fixture_data_source_0)
@@ -3685,13 +3683,15 @@ def test_goldberg_fact_generated_queue_processor_appends_facts_to_collection(
     empty_goldberg.block_until_finished()
     assert len(empty_goldberg.fact_collection) == 35
 
+
 def test_queue_generator_not_completed_immediately():
     q = QueueGenerator()
     assert not q.completed
 
+
 def test_queue_generator_completed_after_end_of_data():
     q = QueueGenerator()
-    q.put('hi')
+    q.put("hi")
     q.put(EndOfData())
     for _ in q.yield_items():
         pass
@@ -3700,8 +3700,8 @@ def test_queue_generator_completed_after_end_of_data():
 
 def test_queue_generator_not_completed_during_generation():
     q = QueueGenerator()
-    q.put('hi')
-    q.put('there')
+    q.put("hi")
+    q.put("there")
     q.put(EndOfData())
     for _ in q.yield_items():
         assert not q.completed
@@ -3709,11 +3709,100 @@ def test_queue_generator_not_completed_during_generation():
 
 def test_queue_generator_yields_correct_items():
     q = QueueGenerator()
-    q.put('hi')
-    q.put('there')
-    q.put('you')
+    q.put("hi")
+    q.put("there")
+    q.put("you")
     q.put(EndOfData())
     items = []
     for item in q.yield_items():
         items.append(item)
-    assert items == ['hi', 'there', 'you',]
+    assert items == [
+        "hi",
+        "there",
+        "you",
+    ]
+
+
+def test_queue_generator_exit_code_1_if_timeout():
+    q = QueueGenerator(max_timeout=0.2)
+    q.put("hi")
+    q.put("there")
+    q.put("you")
+    for _ in q.yield_items():
+        pass
+    time.sleep(0.4)
+    assert q.exit_code == 1
+
+
+def test_queue_generator_exit_0_if_normal_stop():
+    q = QueueGenerator()
+    q.put("hi")
+    q.put("there")
+    q.put("you")
+    q.put(EndOfData())
+    for _ in q.yield_items():
+        pass
+    assert q.exit_code == 0
+
+
+def test_data_source_mapping_against_row(
+    fixture_data_source_0, fixture_0_data_source_mapping_list
+):
+    row = fixture_data_source_0.data[0]
+    data_source_mapping = fixture_0_data_source_mapping_list[0]
+    fact = data_source_mapping.process_against_raw_datum(row)
+    assert fact == FactNodeHasAttributeWithValue(
+        node_id="Person::001", attribute="Identifier", value="001"
+    )
+
+
+def test_plus_operator_calls_process_against_raw_datum(
+    fixture_data_source_0, fixture_0_data_source_mapping_list
+):
+    mocked = Mock()
+    with patch(
+        "pycypher.etl.data_source.DataSourceMapping.__add__", mocked
+    ) as _:
+        row = fixture_data_source_0.data[0]
+        data_source_mapping = fixture_0_data_source_mapping_list[0]
+        data_source_mapping + row
+        mocked.assert_called_once_with(row)
+
+
+def test_data_source_mapping_against_row_from_data_source(
+    fixture_data_source_0, empty_goldberg, fixture_0_data_source_mapping_list
+):
+    fixture_data_source_0.attach_mapping(fixture_0_data_source_mapping_list)
+    empty_goldberg.attach_data_source(fixture_data_source_0)
+    row = fixture_data_source_0.data[0]
+    fact_list = list(
+        empty_goldberg.data_sources[0].generate_raw_facts_from_row(row)
+    )
+    expected_fact_list = [
+        FactNodeHasAttributeWithValue(
+            node_id="Person::001", attribute="Identifier", value="001"
+        ),
+        FactNodeHasAttributeWithValue(
+            node_id="Person::001", attribute="Name", value="Alice"
+        ),
+        FactNodeHasAttributeWithValue(
+            node_id="Person::001", attribute="Age", value=25
+        ),
+        FactNodeHasAttributeWithValue(
+            node_id="Person::001", attribute="ZipCode", value="02056"
+        ),
+        FactNodeHasAttributeWithValue(
+            node_id="Person::001", attribute="WidgetsPurchased", value=5
+        ),
+    ]
+    assert fact_list == expected_fact_list
+
+
+def test_data_source_mapping_against_row_from_goldberg(
+    fixture_data_source_0, empty_goldberg, fixture_0_data_source_mapping_list
+):
+    fixture_data_source_0.attach_mapping(fixture_0_data_source_mapping_list)
+    empty_goldberg.attach_data_source(fixture_data_source_0)
+    empty_goldberg.start_threads()
+    empty_goldberg.block_until_finished()
+    assert empty_goldberg.raw_data_processor.counter == 35
