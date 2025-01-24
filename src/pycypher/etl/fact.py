@@ -142,17 +142,24 @@ class FactNodeHasAttributeWithValue(AtomicFact):
         return f"NodeHasAttributeWithValue: {self.node_id} {self.attribute} {self.value}"
 
     def __add__(self, other: Constraint):
-        if not isinstance(other, Constraint):
-            raise ValueError("Can only check constraints against facts")
-        return (
+        if not isinstance(other, ConstraintNodeHasAttributeWithValue):
+            return None
+
+        other_value = (
+            other.value
+            if not hasattr(other.value, "value")
+            else other.value.value
+        )
+        out = (
             {other.node_id: self.node_id}
             if (
                 isinstance(other, ConstraintNodeHasAttributeWithValue)
                 and self.attribute == other.attribute
-                and self.value == other.value
+                and self.value == other_value
             )
             else None
         )
+        return out
 
     def __eq__(self, other: Any) -> bool:
         return (

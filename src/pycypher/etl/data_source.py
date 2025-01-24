@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+import datetime
 import hashlib
 import queue
 import threading
@@ -29,6 +30,7 @@ class RawDataThread(threading.Thread):
         self.data_source = data_source
         self.thread_has_started = False
         self.raw_input_queue = None
+        self.halt = False
 
     def run(self) -> None:
         """Run the thread."""
@@ -38,11 +40,14 @@ class RawDataThread(threading.Thread):
     def block(self) -> None:
         """Block until the thread has finished loading data onto queue."""
         LOGGER.debug("Thread %s is blocking", self.data_source.name)
-        while not self.thread_has_started:
+        while (
+            not self.thread_has_started or not self.data_source.finished
+        ) and not self.halt:
             pass
-        while not self.data_source.sent_end_of_data:
-            pass
-        LOGGER.debug("Thread %s is unblocking", self.data_source.name)
+        if self.halt:
+            LOGGER.warning("Thread %s is halting", self.data_source.name)
+        else:
+            LOGGER.debug("Thread %s is unblocking", self.data_source.name)
 
 
 class DataSource(ABC):  # pylint: disable=too-many-instance-attributes
@@ -60,11 +65,19 @@ class DataSource(ABC):  # pylint: disable=too-many-instance-attributes
     ) -> None:
         self.raw_input_queue = None
         self.started = False
+        self.finished = False
         self.loading_thread = threading.Thread(target=self.queue_rows)
         self.message_counter = 0
         self.mappings = []
         self.name = name or hashlib.md5(str(self).encode()).hexdigest()
-        self.sent_end_of_data = False
+        self.received_counter = 0
+        self.sent_counter = 0
+        self.started_at = None
+        self.finished_at = None
+        self.halt = False
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({self.name})"
 
     def attach_queue(self, queue_obj: queue.Queue) -> None:
         """Attach a queue to the data source."""
@@ -129,18 +142,22 @@ class DataSource(ABC):  # pylint: disable=too-many-instance-attributes
         LOGGER.info("Loading from %s", self.name)
         if self.raw_input_queue is None:
             raise ValueError("Output queue is not set")
+        self.started = True
+        self.started_at = datetime.datetime.now()
         for row in self.rows():
+            self.received_counter += 1
             self.raw_input_queue.put(
                 RawDatum(data_source=self, row=row),
             )
-            self.message_counter += 1
+            self.sent_counter += 1
+            if self.halt:
+                LOGGER.debug("DataSource %s is halting", self.name)
+                break
         self.raw_input_queue.put(
             EndOfData(data_source=self),
         )
-        self.sent_end_of_data = True
-        LOGGER.info(
-            "Finished loading %s with %s rows", self.name, self.message_counter
-        )
+        self.finished = True
+        self.finished_at = datetime.datetime.now()
 
     def start(self) -> None:
         """Start the loading thread."""
@@ -150,7 +167,7 @@ class DataSource(ABC):  # pylint: disable=too-many-instance-attributes
     def unfinished(self) -> bool:
         """Is there unread data in the queue? or is the loading thread still running?
         or has the loading thread not started yet?"""
-        return not self.started or not self.sent_end_of_data
+        return (not self.started or not self.finished) and not self.halt
 
     def generate_raw_facts_from_row(
         self, row: dict[str, Any]
@@ -161,7 +178,7 @@ class DataSource(ABC):  # pylint: disable=too-many-instance-attributes
 
 
 @dataclass
-class DataSourceMapping:  # pylint: disable=too-few-public-methods
+class DataSourceMapping:  # pylint: disable=too-few-public-methods,too-many-instance-attributes
     """
     A mapping from keys to ``Feature`` objects.
 
@@ -227,13 +244,15 @@ class FixtureDataSource(DataSource):
     def __init__(
         self,
         data: list[dict[str, Any]],
-        hang: bool = False,
-        delay: float = 0,
+        hang: Optional[bool] = False,
+        delay: Optional[float] = 0,
+        loop: Optional[bool] = False,
         **kwargs,
     ):
         self.data = data
         self.hang = hang
         self.delay = delay
+        self.loop = loop
         super().__init__(**kwargs)
 
     def rows(self) -> Generator[dict[str, Any], None, None]:
@@ -241,9 +260,14 @@ class FixtureDataSource(DataSource):
         if self.hang:
             while True:
                 time.sleep(1)
-        for row in self.data:
-            time.sleep(self.delay)
-            yield row
+        go = True
+        while go:
+            go = False
+            for row in self.data:
+                time.sleep(self.delay)
+                yield row
+            if self.loop:
+                go = True
 
 
 class CSVDataSource(DataSource):

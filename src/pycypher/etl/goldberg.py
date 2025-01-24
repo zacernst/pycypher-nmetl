@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import datetime
 import functools
 import inspect
 import threading
 import time
 from hashlib import md5
 from typing import Dict, Generator, Iterable, List, Optional, Type
+
+from rich.console import Console
+from rich.table import Table
 
 from pycypher.etl.data_source import DataSource
 from pycypher.etl.fact import AtomicFact, FactCollection
@@ -26,24 +30,27 @@ class RawDataProcessor:
         self.goldberg = goldberg
         self.processing_thread = threading.Thread(target=self.process_raw_data)
         self.started = False
-        self.counter = 0
+        self.started_at = None
         self.finished = False
+        self.finished_at = None
+        self.received_counter = 0
+        self.sent_counter = 0
 
     def process_raw_data(self) -> None:
         """Process raw data from the ``raw_input_queue``, generate facts,
         and put them into the ``fact_generated_queue``."""
         self.started = True
-        raw_input_queue_counter = 0
+        self.started_at = datetime.datetime.now()
         for datum in self.goldberg.raw_input_queue.yield_items():
+            self.received_counter += 1
             data_source = datum.data_source
             row = datum.row
             for fact in data_source.generate_raw_facts_from_row(row):
                 self.goldberg.fact_generated_queue.put(fact)
+                self.sent_counter += 1
                 LOGGER.debug("Added fact %s to the fact_generated_queue", fact)
-                self.counter += 1
-        LOGGER.info("Processed %s facts", self.counter)
-        LOGGER.info("Got %s raw data items", raw_input_queue_counter)
         self.finished = True
+        self.finished_at = datetime.datetime.now()
 
     def raw_datum_to_facts(
         self, raw_datum: RawDatum
@@ -66,12 +73,18 @@ class FactGeneratedQueueProcessor:  # pylint: disable=too-few-public-methods
             target=self.process_generated_facts
         )
         self.started = False
-        self.counter = 0
+        self.finished = False
+        self.started_at = None
+        self.finished_at = None
+        self.received_counter = 0
+        self.sent_counter = 0
 
     def process_generated_facts(self) -> None:
         """Process new facts from the fact_generated_queue."""
         self.started = True
+        self.started_at = datetime.datetime.now()
         for fact in self.goldberg.fact_generated_queue.yield_items():
+            self.received_counter += 1
             if not isinstance(
                 fact,
                 (
@@ -81,15 +94,18 @@ class FactGeneratedQueueProcessor:  # pylint: disable=too-few-public-methods
             ):
                 LOGGER.debug("Expected an AtomicFact, got %s", type(fact))
                 continue
-            self.counter += 1
             LOGGER.debug(
-                "Adding fact %s to the fact collection: %s", fact, self.counter
+                "Adding fact %s to the fact collection: %s",
+                fact,
+                self.sent_counter,
             )
             self.goldberg.fact_collection.append(fact)
 
             # Put the fact in the queue to be checked for triggers
             self.goldberg.check_fact_against_triggers_queue.put(fact)
-        LOGGER.debug("Processed %s facts", self.counter)
+            self.sent_counter += 1
+        self.finished = True
+        self.finished_at = datetime.datetime.now()
 
 
 class CheckFactAgainstTriggersQueueProcessor:  # pylint: disable=too-few-public-methods
@@ -103,16 +119,20 @@ class CheckFactAgainstTriggersQueueProcessor:  # pylint: disable=too-few-public-
             target=self.process_facts_against_triggers
         )
         self.started = False
-        self.facts_checked = 0
-        self.facts_generated = 0
         self.finished = False
+        self.started_at = None
+        self.finished_at = None
+        self.received_counter = 0
+        self.sent_counter = 0
 
     def process_facts_against_triggers(self) -> None:
         """Process new facts from the check_fact_against_triggers_queue."""
         self.started = True
+        self.started_at = datetime.datetime.now()
         for (
             fact
         ) in self.goldberg.check_fact_against_triggers_queue.yield_items():
+            self.received_counter += 1
             if not isinstance(
                 fact,
                 (
@@ -122,23 +142,22 @@ class CheckFactAgainstTriggersQueueProcessor:  # pylint: disable=too-few-public-
             ):
                 LOGGER.debug("Expected an AtomicFact, got %s", type(fact))
                 continue
-            self.facts_checked += 1
             LOGGER.debug(
                 "Checking fact %s against triggers: %s",
                 fact,
-                self.facts_checked,
+                self.received_counter,
             )
             for _, trigger in self.goldberg.trigger_dict.items():
                 for constraint in trigger.constraints:
-                    sub = (
-                        fact + constraint
-                    )  # sub is either None or a dictionary
-                    # fact + constraint isn't matching because it is checking for
-                    # equality between a python primitive and a Literal object
-                    # TODO: This needs to be fixed!
-                    import pdb
+                    if sub := fact + constraint:
+                        pass
+                        # LOGGER.debug("Fact %s matched a trigger", fact)
+                        # import pdb
 
-                    pdb.set_trace()
+                        # pdb.set_trace()
+                    self.sent_counter += (
+                        1  # Not yet sending anything to outbound queue
+                    )
             #     fact in self.goldberg.facts_matching_constraints(
             #     FactCollection([fact])
             # ):
@@ -147,8 +166,8 @@ class CheckFactAgainstTriggersQueueProcessor:  # pylint: disable=too-few-public-
             ##############################
             ### Do the work here
             ##############################
-        LOGGER.debug("Processed %s facts", self.facts_checked)
         self.finished = True
+        self.finished_at = datetime.datetime.now()
 
 
 class Goldberg:  # pylint: disable=too-many-instance-attributes
@@ -162,6 +181,7 @@ class Goldberg:  # pylint: disable=too-many-instance-attributes
         queue_options: Optional[Dict] = None,
         data_sources: Optional[List[DataSource]] = None,
         raw_data_processor: Optional[RawDataProcessor] = None,
+        queue_list: Optional[List[QueueGenerator]] = None,
     ):  # pylint: disable=too-many-arguments
         self.trigger_dict = trigger_dict or {}
         self.fact_collection = fact_collection or FactCollection(facts=[])
@@ -173,12 +193,17 @@ class Goldberg:  # pylint: disable=too-many-instance-attributes
 
         self.queue_class = queue_class
         self.queue_options = queue_options or {}
+        self.queue_list = queue_list or []
 
         # Instantiate the various queues using the queue_class
-        self.raw_input_queue = self.queue_class(**self.queue_options)
-        self.fact_generated_queue = self.queue_class(**self.queue_options)
+        self.raw_input_queue = self.queue_class(
+            goldberg=self, name="RawInput", **self.queue_options
+        )
+        self.fact_generated_queue = self.queue_class(
+            goldberg=self, name="FactGenerated", **self.queue_options
+        )
         self.check_fact_against_triggers_queue = self.queue_class(
-            **self.queue_options
+            goldberg=self, name="CheckFactTrigger", **self.queue_options
         )
 
         # Instantiate threads
@@ -189,7 +214,9 @@ class Goldberg:  # pylint: disable=too-many-instance-attributes
 
     def start_threads(self):
         """Start the threads."""
-        # self.monitor_thread.start()
+        # Start the monitor thread
+        self.monitor_thread.start()
+
         for data_source in self.data_sources:
             data_source.loading_thread.start()
         # Process rows into Facts
@@ -200,6 +227,23 @@ class Goldberg:  # pylint: disable=too-many-instance-attributes
 
         # Check facts against triggers
         self.check_fact_against_triggers_queue_processor.processing_thread.start()
+
+    def halt(self, level: int = 0):
+        """Stop the threads."""
+        LOGGER.critical("Halt: Signal received")
+        if level == 0:
+            for data_source in self.data_sources:
+                LOGGER.critical("Halt: Stopping data source %s", data_source)
+                data_source.halt = True
+                data_source.raw_input_queue.put(EndOfData())
+            LOGGER.critical("Halt: Waiting for data sources to finish")
+            for data_source in self.data_sources:
+                data_source.loading_thread.join()
+            LOGGER.critical("Halt: Data sources finished")
+            LOGGER.critical("Halt: Putting EndOfData on raw_input_queue")
+            self.raw_input_queue.put(EndOfData())
+        else:
+            LOGGER.critical("Halting at non-zero level not yet implemented.")
 
     def block_until_finished(self):
         """Block until all data sources have finished."""
@@ -217,6 +261,93 @@ class Goldberg:  # pylint: disable=too-many-instance-attributes
         while True:
             time.sleep(MONITOR_LOOP_DELAY)
 
+            for data_source in self.data_sources:
+                LOGGER.info(
+                    "Data source %s has sent %s messages",
+                    data_source.name,
+                    data_source.sent_counter,
+                )
+
+            console = Console()
+            table = Table(title="Thread queues")
+
+            table.add_column(
+                "Thread", justify="right", style="cyan", no_wrap=True
+            )
+            table.add_column("Started", style="magenta")
+            table.add_column("Finished", justify="right", style="green")
+            table.add_column("Received", justify="right", style="green")
+            table.add_column("Sent", justify="right", style="green")
+
+            monitored_threads = [
+                self.fact_generated_queue_processor,
+                self.check_fact_against_triggers_queue_processor,
+                self.raw_data_processor,
+            ]
+            monitored_threads.extend(self.data_sources)
+            for monitored_thread in monitored_threads:
+                end_time = (
+                    datetime.datetime.now()
+                    if not monitored_thread.finished
+                    else monitored_thread.finished_at
+                )
+                received_rate = round(
+                    monitored_thread.received_counter
+                    / float(
+                        (
+                            end_time - monitored_thread.started_at
+                        ).total_seconds()
+                    ),
+                    1,
+                )
+                sent_rate = round(
+                    monitored_thread.sent_counter
+                    / float(
+                        (
+                            end_time - monitored_thread.started_at
+                        ).total_seconds()
+                    ),
+                    1,
+                )
+                started_at = (
+                    monitored_thread.started_at.strftime("%H:%M:%S")
+                    if monitored_thread.started_at
+                    else "---"
+                )
+                finished_at = (
+                    monitored_thread.finished_at.strftime("%H:%M:%S")
+                    if monitored_thread.finished_at
+                    else "---"
+                )
+                table.add_row(
+                    monitored_thread.__class__.__name__,
+                    started_at,
+                    finished_at,
+                    f"{monitored_thread.received_counter} ({received_rate}/s)",
+                    f"{monitored_thread.sent_counter} ({sent_rate}/s)",
+                )
+
+            console.print(table)
+
+            table = Table(title="Queues")
+
+            table.add_column(
+                "Queue", justify="right", style="cyan", no_wrap=True
+            )
+            table.add_column("Size", style="magenta")
+            table.add_column("Total", justify="right", style="green")
+            table.add_column("Completed", justify="right", style="green")
+
+            for queue in self.queue_list:
+                table.add_row(
+                    queue.name,
+                    f"{queue.queue.qsize()}",
+                    f"{queue.counter}",
+                    f"{queue.completed}",
+                )
+
+            console.print(table)
+
     def attach_fact_collection(self, fact_collection: FactCollection) -> None:
         """Attach a ``FactCollection`` to the machine."""
         if not isinstance(fact_collection, FactCollection):
@@ -229,8 +360,7 @@ class Goldberg:  # pylint: disable=too-many-instance-attributes
         """Checks whether any of the data sources are still loading data."""
         LOGGER.debug("Checking if any data sources are still loading data")
         return any(
-            not data_source.sent_end_of_data
-            for data_source in self.data_sources
+            not data_source.finished for data_source in self.data_sources
         )
 
     def walk_constraints(self) -> Generator[Constraint, None, None]:

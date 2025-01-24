@@ -1,12 +1,17 @@
 """Place for functions that might be used across the project."""
 
+import datetime
 import queue
-import time
+import uuid
 from pathlib import Path
 from typing import Any, Generator, Optional, Type
 from urllib.parse import ParseResult, urlparse
 
 from pycypher.etl.message_types import EndOfData
+from pycypher.util.config import (  # pylint: disable=no-name-in-module
+    INNER_QUEUE_TIMEOUT,
+    OUTER_QUEUE_TIMEOUT,
+)
 from pycypher.util.logger import LOGGER
 
 
@@ -34,47 +39,56 @@ def ensure_uri(uri: str | ParseResult | Path) -> ParseResult:
     return uri
 
 
-class QueueGenerator:  # pylint: disable=too-few-public-methods
+class QueueGenerator:  # pylint: disable=too-few-public-methods,too-many-instance-attributes
     """A queue that also generates items."""
 
     def __init__(
         self,
         *args,
-        timeout: Optional[int] = 1,
+        inner_queue_timeout: Optional[int] = INNER_QUEUE_TIMEOUT,
         end_of_queue_cls: Optional[Type] = EndOfData,
-        max_timeout: Optional[int] = 1,
+        outer_queue_timeout: Optional[int] = OUTER_QUEUE_TIMEOUT,
+        name: Optional[str] = uuid.uuid4().hex,
+        goldberg: Optional["Goldberg"] = None,
         **kwargs,
     ) -> None:
         super().__init__(*args, **kwargs)
         self.queue = queue.Queue()
-        self.timeout = timeout
+        self.inner_queue_timeout = inner_queue_timeout
         self.end_of_queue_cls = end_of_queue_cls
         self.counter: int = 0
-        self.max_timeout = max_timeout
+        self.outer_queue_timeout = outer_queue_timeout
         self.no_more_items = False  # ever
         self.exit_code = None
+        self.name = name
+        self.goldberg = goldberg
+
+        if self.goldberg:
+            self.goldberg.queue_list.append(self)
 
     def yield_items(self) -> Generator[Any, None, None]:
         """Generate items."""
-        last_time = time.time()
+        last_time = datetime.datetime.now()
         running = True
         exit_code = 0
         while running:
             while True:
-                if (time.time() - last_time) > self.max_timeout:
+                if (
+                    datetime.datetime.now() - last_time
+                ).total_seconds() > self.outer_queue_timeout:
                     running = False
                     exit_code = 1
                     break
 
                 try:
-                    item = self.get(timeout=self.timeout)
+                    item = self.get(timeout=self.inner_queue_timeout)
                 except queue.Empty:
                     break
                 if isinstance(item, self.end_of_queue_cls):
                     running = False
                     break
                 self.counter += 1
-                last_time = time.time()
+                last_time = datetime.datetime.now()
                 yield item
         self.no_more_items = True
         if exit_code == 1:

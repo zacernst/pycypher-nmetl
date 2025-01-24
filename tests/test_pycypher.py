@@ -3574,12 +3574,9 @@ def test_data_source_finished_flag(fixture_data_source_0):
     fixture_data_source_0.attach_queue(raw_input_queue)
     fixture_data_source_0.start()
     test_time = time.time()
-    while (
-        not fixture_data_source_0.sent_end_of_data
-        and time.time() - test_time < 1
-    ):
+    while not fixture_data_source_0.finished and time.time() - test_time < 1:
         pass
-    assert fixture_data_source_0.sent_end_of_data
+    assert fixture_data_source_0.finished
 
 
 def test_raw_input_queue_not_empty_after_finished_flag(fixture_data_source_0):
@@ -3588,10 +3585,7 @@ def test_raw_input_queue_not_empty_after_finished_flag(fixture_data_source_0):
     fixture_data_source_0.attach_queue(raw_input_queue)
     fixture_data_source_0.start()
     test_time = time.time()
-    while (
-        not fixture_data_source_0.sent_end_of_data
-        and time.time() - test_time < 1
-    ):
+    while not fixture_data_source_0.finished and time.time() - test_time < 1:
         pass
     assert not raw_input_queue.empty()
 
@@ -3604,10 +3598,7 @@ def test_raw_input_queue_has_all_objects_after_finished_flag(
     fixture_data_source_0.attach_queue(raw_input_queue)
     fixture_data_source_0.start()
     test_time = time.time()
-    while (
-        not fixture_data_source_0.sent_end_of_data
-        and time.time() - test_time < 1
-    ):
+    while not fixture_data_source_0.finished and time.time() - test_time < 1:
         pass
     assert not raw_input_queue.empty()
     counter = 0
@@ -3658,7 +3649,7 @@ def test_goldberg_reports_no_unfinished_data_source_if_complete(
 ):
     empty_goldberg.attach_data_source(fixture_data_source_0)
     empty_goldberg.start_threads()
-    while not fixture_data_source_0.sent_end_of_data:
+    while not fixture_data_source_0.finished:
         pass
     assert not empty_goldberg.has_unfinished_data_source()
 
@@ -3739,7 +3730,7 @@ def test_queue_generator_yields_correct_items():
 
 
 def test_queue_generator_exit_code_1_if_timeout():
-    q = QueueGenerator(max_timeout=0.2)
+    q = QueueGenerator()
     q.put("hi")
     q.put("there")
     q.put("you")
@@ -3780,7 +3771,7 @@ def test_plus_operator_calls_process_against_raw_datum(
     ) as _:
         row = fixture_data_source_0.data[0]
         data_source_mapping = fixture_0_data_source_mapping_list[0]
-        data_source_mapping + row
+        data_source_mapping + row  # pylint: disable=pointless-statement
         mocked.assert_called_once_with(row)
 
 
@@ -3820,4 +3811,17 @@ def test_data_source_mapping_against_row_from_goldberg(
     empty_goldberg.attach_data_source(fixture_data_source_0)
     empty_goldberg.start_threads()
     empty_goldberg.block_until_finished()
-    assert empty_goldberg.raw_data_processor.counter == 35
+    assert empty_goldberg.raw_data_processor.received_counter == 7
+    assert empty_goldberg.raw_data_processor.sent_counter == 35
+
+
+@pytest.mark.timeout(4)
+def test_can_stop_goldberg(
+    fixture_data_source_0, empty_goldberg, fixture_0_data_source_mapping_list
+):
+    fixture_data_source_0.loop = True
+    fixture_data_source_0.attach_mapping(fixture_0_data_source_mapping_list)
+    empty_goldberg.attach_data_source(fixture_data_source_0)
+    empty_goldberg.start_threads()
+    empty_goldberg.halt()
+    empty_goldberg.block_until_finished()
