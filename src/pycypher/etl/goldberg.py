@@ -10,10 +10,7 @@ from hashlib import md5
 from typing import Dict, Generator, Iterable, List, Optional, Type
 
 from pycypher.etl.data_source import DataSource
-from pycypher.etl.fact import (
-    AtomicFact,
-    FactCollection,
-)
+from pycypher.etl.fact import AtomicFact, FactCollection
 from pycypher.etl.message_types import EndOfData, RawDatum
 from pycypher.etl.solver import Constraint
 from pycypher.etl.trigger import CypherTrigger
@@ -99,7 +96,7 @@ class CheckFactAgainstTriggersQueueProcessor:  # pylint: disable=too-few-public-
     """Reads from the check_fact_against_triggers_queue and processes the facts
     by checking them against the triggers.
     """
-    
+
     def __init__(self, goldberg: Optional[Goldberg] = None) -> None:
         self.goldberg = goldberg
         self.processing_thread = threading.Thread(
@@ -108,11 +105,14 @@ class CheckFactAgainstTriggersQueueProcessor:  # pylint: disable=too-few-public-
         self.started = False
         self.facts_checked = 0
         self.facts_generated = 0
-    
+        self.finished = False
+
     def process_facts_against_triggers(self) -> None:
         """Process new facts from the check_fact_against_triggers_queue."""
         self.started = True
-        for fact in self.goldberg.check_fact_against_triggers_queue.yield_items():
+        for (
+            fact
+        ) in self.goldberg.check_fact_against_triggers_queue.yield_items():
             if not isinstance(
                 fact,
                 (
@@ -124,12 +124,31 @@ class CheckFactAgainstTriggersQueueProcessor:  # pylint: disable=too-few-public-
                 continue
             self.facts_checked += 1
             LOGGER.debug(
-                "Checking fact %s against triggers: %s", fact, self.facts_checked
+                "Checking fact %s against triggers: %s",
+                fact,
+                self.facts_checked,
             )
+            for _, trigger in self.goldberg.trigger_dict.items():
+                for constraint in trigger.constraints:
+                    sub = (
+                        fact + constraint
+                    )  # sub is either None or a dictionary
+                    # fact + constraint isn't matching because it is checking for
+                    # equality between a python primitive and a Literal object
+                    # TODO: This needs to be fixed!
+                    import pdb
+
+                    pdb.set_trace()
+            #     fact in self.goldberg.facts_matching_constraints(
+            #     FactCollection([fact])
+            # ):
+            #     import pdb; pdb.set_trace()
+            #     LOGGER.debug("Fact %s matched a trigger", fact)
             ##############################
             ### Do the work here
             ##############################
         LOGGER.debug("Processed %s facts", self.facts_checked)
+        self.finished = True
 
 
 class Goldberg:  # pylint: disable=too-many-instance-attributes
@@ -148,7 +167,9 @@ class Goldberg:  # pylint: disable=too-many-instance-attributes
         self.fact_collection = fact_collection or FactCollection(facts=[])
         self.raw_data_processor = raw_data_processor or RawDataProcessor(self)
         self.fact_generated_queue_processor = FactGeneratedQueueProcessor(self)
-        self.check_fact_against_triggers_queue_processor = CheckFactAgainstTriggersQueueProcessor(self)
+        self.check_fact_against_triggers_queue_processor = (
+            CheckFactAgainstTriggersQueueProcessor(self)
+        )
 
         self.queue_class = queue_class
         self.queue_options = queue_options or {}
@@ -156,7 +177,9 @@ class Goldberg:  # pylint: disable=too-many-instance-attributes
         # Instantiate the various queues using the queue_class
         self.raw_input_queue = self.queue_class(**self.queue_options)
         self.fact_generated_queue = self.queue_class(**self.queue_options)
-        self.check_fact_against_triggers_queue = self.queue_class(**self.queue_options)
+        self.check_fact_against_triggers_queue = self.queue_class(
+            **self.queue_options
+        )
 
         # Instantiate threads
         self.monitor_thread = threading.Thread(
@@ -175,6 +198,9 @@ class Goldberg:  # pylint: disable=too-many-instance-attributes
         # Insert facts into the FactCollection
         self.fact_generated_queue_processor.processing_thread.start()
 
+        # Check facts against triggers
+        self.check_fact_against_triggers_queue_processor.processing_thread.start()
+
     def block_until_finished(self):
         """Block until all data sources have finished."""
         # TODO: Change this when we've got the next stage in the pipeline
@@ -182,6 +208,8 @@ class Goldberg:  # pylint: disable=too-many-instance-attributes
             pass
         # while not self.fact_generated_queue.completed:
         #     pass
+        while not self.check_fact_against_triggers_queue_processor.finished:
+            pass
 
     def monitor(self):
         """Generate stats on the ETL process."""

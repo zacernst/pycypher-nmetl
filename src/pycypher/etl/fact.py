@@ -9,6 +9,7 @@ from typing import Any, Generator, List
 from pycypher.etl.query import Query, QueryValueOfNodeAttribute
 from pycypher.etl.solver import (
     Constraint,
+    ConstraintNodeHasAttributeWithValue,
     ConstraintNodeHasLabel,
     ConstraintRelationshipHasLabel,
 )
@@ -139,6 +140,19 @@ class FactNodeHasAttributeWithValue(AtomicFact):
 
     def __repr__(self) -> str:
         return f"NodeHasAttributeWithValue: {self.node_id} {self.attribute} {self.value}"
+
+    def __add__(self, other: Constraint):
+        if not isinstance(other, Constraint):
+            raise ValueError("Can only check constraints against facts")
+        return (
+            {other.node_id: self.node_id}
+            if (
+                isinstance(other, ConstraintNodeHasAttributeWithValue)
+                and self.attribute == other.attribute
+                and self.value == other.value
+            )
+            else None
+        )
 
     def __eq__(self, other: Any) -> bool:
         return (

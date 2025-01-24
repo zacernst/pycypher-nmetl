@@ -84,7 +84,7 @@ class ConstraintNodeHasLabel(Constraint):
         self.label = label
 
     def __repr__(self):
-        return f"HasLabel: {self.node_id} {self.label}"
+        return f"ConstraintNodeHasLabel: {self.node_id} {self.label}"
 
     def __hash__(self) -> int:
         return hash(
@@ -118,7 +118,7 @@ class ConstraintRelationshipHasSourceNode(Constraint):
         self.relationship_name = relationship_name
 
     def __repr__(self):
-        return f"RelationshipHasSourceNode: {self.relationship_name} {self.source_node_name}"
+        return f"ConstraintRelationshipHasSourceNode: {self.relationship_name} {self.source_node_name}"
 
     def __hash__(self) -> int:
         return hash(
@@ -164,7 +164,7 @@ class ConstraintRelationshipHasTargetNode(Constraint):
         self.relationship_name = relationship_name
 
     def __repr__(self):
-        return f"RelationshipHasTargetNode: {self.relationship_name} {self.target_node_name}"
+        return f"ConstraintRelationshipHasTargetNode: {self.relationship_name} {self.target_node_name}"
 
     def __hash__(self) -> int:
         return hash(
@@ -200,7 +200,7 @@ class ConstraintRelationshipHasLabel(Constraint):
         self.label = label
 
     def __repr__(self):
-        return f"RelationshipHasLabel: {self.relationship_name} {self.label}"
+        return f"ConstraintRelationshipHasLabel: {self.relationship_name} {self.label}"
 
     def __hash__(self) -> int:
         return hash(
@@ -238,7 +238,7 @@ class ConstraintNodeHasAttributeWithValue(Constraint):
         self.value = value
 
     def __repr__(self):
-        return f"HasAttributeWithValue: [{self.node_id}] {self.attribute}: {self.value}"
+        return f"ConstraintNodeHasAttributeWithValue: [{self.node_id}] {self.attribute}: {self.value}"
 
     def __hash__(self) -> int:
         return hash(

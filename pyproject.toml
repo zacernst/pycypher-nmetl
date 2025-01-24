@@ -42,7 +42,7 @@ omit = [ "cli.py",]
 exclude_also = [ "def tree", "def print_tree", "def __repr__", "if self.debug:", "if settings.DEBUG", "raise AssertionError", "raise NotImplementedError", "if 0:", "if __name__ == .__main__.:", "if TYPE_CHECKING:", "class .*\\bProtocol\\):", "@(abc\\.)?abstractmethod",]
 
 [tool.pytest.ini_options]
-addopts = "-n 4"
+addopts = ""
 testpaths = [
     "tests",
 ]

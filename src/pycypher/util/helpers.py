@@ -42,7 +42,7 @@ class QueueGenerator:  # pylint: disable=too-few-public-methods
         *args,
         timeout: Optional[int] = 1,
         end_of_queue_cls: Optional[Type] = EndOfData,
-        max_timeout: Optional[int] = 10,
+        max_timeout: Optional[int] = 1,
         **kwargs,
     ) -> None:
         super().__init__(*args, **kwargs)

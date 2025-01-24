@@ -95,6 +95,21 @@ from pycypher.util.fixtures import (  # pylint: disable=unused-import
 from pycypher.util.helpers import QueueGenerator
 
 
+def test_trigger_in_queue_processor(
+    fixture_data_source_0, empty_goldberg, fixture_0_data_source_mapping_list
+):
+    @empty_goldberg.cypher_trigger(
+        "MATCH (n:Person {age: 25}) RETURN n.Identifier"
+    )
+    def test_function(n) -> VariableAttribute["n", "Identifier"]:
+        return n
+
+    fixture_data_source_0.attach_mapping(fixture_0_data_source_mapping_list)
+    empty_goldberg.attach_data_source(fixture_data_source_0)
+    empty_goldberg.start_threads()
+    empty_goldberg.block_until_finished()
+
+
 def test_parameter_not_present_in_cypher_with_aliases(empty_goldberg):
     with pytest.raises(ValueError):
 
