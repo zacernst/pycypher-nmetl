@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import datetime
 import functools
 import inspect
 import threading
 import time
+from dataclasses import dataclass
 from hashlib import md5
-from typing import Dict, Any, Generator, Iterable, List, Optional, Type
+from typing import Any, Dict, Generator, Iterable, List, Optional, Type
 
 from rich.console import Console
 from rich.table import Table
@@ -112,6 +112,7 @@ class FactGeneratedQueueProcessor:  # pylint: disable=too-few-public-methods
 @dataclass
 class SubTriggerPair:
     """A pair of a sub and a trigger."""
+
     sub: Dict[str, str]
     trigger: CypherTrigger
 
@@ -163,7 +164,9 @@ class CheckFactAgainstTriggersQueueProcessor:  # pylint: disable=too-few-public-
 
                         # pdb.set_trace()
                         # import pdb; pdb.set_trace()
-                        sub_trigger_pair = SubTriggerPair(sub=sub, trigger=trigger)
+                        sub_trigger_pair = SubTriggerPair(
+                            sub=sub, trigger=trigger
+                        )
                         self.goldberg.triggered_lookup_processor_queue.put(
                             sub_trigger_pair
                         )
@@ -202,7 +205,9 @@ class TriggeredLookupProcessor:  # pylint: disable=too-few-public-methods
         """Process new facts from the check_fact_against_triggers_queue."""
         self.started = True
         self.started_at = datetime.datetime.now()
-        for sub_trigger_obj in self.goldberg.triggered_lookup_processor_queue.yield_items():
+        for (
+            sub_trigger_obj
+        ) in self.goldberg.triggered_lookup_processor_queue.yield_items():
             self.received_counter += 1
             # Add "NodeHasAttributeWithValue" constraint to the cypher
             # object's Match clause. Evaluate against the FactCollection.
@@ -248,7 +253,9 @@ class Goldberg:  # pylint: disable=too-many-instance-attributes
             goldberg=self, name="CheckFactTrigger", **self.queue_options
         )
         self.triggered_lookup_processor_queue = self.queue_class(
-            goldberg=self, name="TriggeredLookupProcessor", **self.queue_options
+            goldberg=self,
+            name="TriggeredLookupProcessor",
+            **self.queue_options,
         )
 
         # Instantiate threads
@@ -264,7 +271,7 @@ class Goldberg:  # pylint: disable=too-many-instance-attributes
 
         for data_source in self.data_sources:
             data_source.loading_thread.start()
-        
+
         # Process rows into Facts
         self.raw_data_processor.processing_thread.start()
 
@@ -300,8 +307,9 @@ class Goldberg:  # pylint: disable=too-many-instance-attributes
         #     pass
         while not self.check_fact_against_triggers_queue_processor.finished:
             pass
+
     def monitor(self):
-        '''Loop the _monitor function'''
+        """Loop the _monitor function"""
         time.sleep(MONITOR_LOOP_DELAY)
         while True:
             self._monitor()
@@ -320,9 +328,7 @@ class Goldberg:  # pylint: disable=too-many-instance-attributes
         console = Console()
         table = Table(title="Thread queues")
 
-        table.add_column(
-            "Thread", justify="right", style="cyan", no_wrap=True
-        )
+        table.add_column("Thread", justify="right", style="cyan", no_wrap=True)
         table.add_column("Started", style="magenta")
         table.add_column("Finished", justify="right", style="green")
         table.add_column("Received", justify="right", style="green")
@@ -343,18 +349,14 @@ class Goldberg:  # pylint: disable=too-many-instance-attributes
             received_rate = round(
                 monitored_thread.received_counter
                 / float(
-                    (
-                        end_time - monitored_thread.started_at
-                    ).total_seconds()
+                    (end_time - monitored_thread.started_at).total_seconds()
                 ),
                 1,
             )
             sent_rate = round(
                 monitored_thread.sent_counter
                 / float(
-                    (
-                        end_time - monitored_thread.started_at
-                    ).total_seconds()
+                    (end_time - monitored_thread.started_at).total_seconds()
                 ),
                 1,
             )
@@ -380,9 +382,7 @@ class Goldberg:  # pylint: disable=too-many-instance-attributes
 
         table = Table(title="Queues")
 
-        table.add_column(
-            "Queue", justify="right", style="cyan", no_wrap=True
-        )
+        table.add_column("Queue", justify="right", style="cyan", no_wrap=True)
         table.add_column("Size", style="magenta")
         table.add_column("Total", justify="right", style="green")
         table.add_column("Completed", justify="right", style="green")

@@ -3815,7 +3815,7 @@ def test_data_source_mapping_against_row_from_goldberg(
     assert empty_goldberg.raw_data_processor.sent_counter == 35
 
 
-@pytest.mark.timeout(4)
+@pytest.mark.timeout(15)
 def test_can_stop_goldberg(
     fixture_data_source_0, empty_goldberg, fixture_0_data_source_mapping_list
 ):

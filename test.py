@@ -8,7 +8,6 @@ from pycypher.etl.data_source import DataSourceMapping, FixtureDataSource
 from pycypher.etl.goldberg import Goldberg
 from pycypher.etl.trigger import VariableAttribute
 
-
 data_source = FixtureDataSource(
     name="people_fixture",
     data=[
@@ -105,7 +104,6 @@ mapping_list = [
 ]
 
 
-
 def populated_goldberg(
     fixture_0_data_source_mapping_list, empty_goldberg, fixture_data_source_0
 ):
@@ -117,10 +115,11 @@ def populated_goldberg(
     empty_goldberg.attach_data_source(fixture_data_source_0)
     return empty_goldberg
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     goldberg = Goldberg()
 
-    @goldberg.cypher_trigger('MATCH (n:Person {age: 25}) RETURN n.Identifier')
+    @goldberg.cypher_trigger("MATCH (n:Person {age: 25}) RETURN n.Identifier")
     def f(n) -> VariableAttribute["n", "age"]:
         return n
 
