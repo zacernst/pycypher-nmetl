@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 import datetime
 import functools
 import inspect
 import threading
 import time
 from hashlib import md5
-from typing import Dict, Generator, Iterable, List, Optional, Type
+from typing import Dict, Any, Generator, Iterable, List, Optional, Type
 
 from rich.console import Console
 from rich.table import Table
@@ -108,6 +109,13 @@ class FactGeneratedQueueProcessor:  # pylint: disable=too-few-public-methods
         self.finished_at = datetime.datetime.now()
 
 
+@dataclass
+class SubTriggerPair:
+    """A pair of a sub and a trigger."""
+    sub: Dict[str, str]
+    trigger: CypherTrigger
+
+
 class CheckFactAgainstTriggersQueueProcessor:  # pylint: disable=too-few-public-methods
     """Reads from the check_fact_against_triggers_queue and processes the facts
     by checking them against the triggers.
@@ -150,22 +158,57 @@ class CheckFactAgainstTriggersQueueProcessor:  # pylint: disable=too-few-public-
             for _, trigger in self.goldberg.trigger_dict.items():
                 for constraint in trigger.constraints:
                     if sub := fact + constraint:
-                        pass
-                        # LOGGER.debug("Fact %s matched a trigger", fact)
+                        LOGGER.debug("Fact %s matched a trigger", fact)
                         # import pdb
 
                         # pdb.set_trace()
-                    self.sent_counter += (
-                        1  # Not yet sending anything to outbound queue
-                    )
-            #     fact in self.goldberg.facts_matching_constraints(
-            #     FactCollection([fact])
-            # ):
-            #     import pdb; pdb.set_trace()
-            #     LOGGER.debug("Fact %s matched a trigger", fact)
-            ##############################
-            ### Do the work here
-            ##############################
+                        # import pdb; pdb.set_trace()
+                        sub_trigger_pair = SubTriggerPair(sub=sub, trigger=trigger)
+                        self.goldberg.triggered_lookup_processor_queue.put(
+                            sub_trigger_pair
+                        )
+                        self.sent_counter += (
+                            1  # Not yet sending anything to outbound queue
+                        )
+                        # TODO:
+                        # Add "NodeHasAttributeWithValue" constraint to the cypher
+                        # object's Match clause. Evaluate against the FactCollection.
+                        # Find all the solutions, project the return clause and
+                        # splat the results into the function.
+                        # Put (trigger, sub,) into another queue
+        self.goldberg.triggered_lookup_processor_queue.put(EndOfData())
+        self.finished = True
+        self.finished_at = datetime.datetime.now()
+
+
+class TriggeredLookupProcessor:  # pylint: disable=too-few-public-methods
+    """Reads from the check_fact_against_triggers_queue and processes the facts
+    by checking them against the triggers.
+    """
+
+    def __init__(self, goldberg: Optional[Goldberg] = None) -> None:
+        self.goldberg = goldberg
+        self.processing_thread = threading.Thread(
+            target=self.process_triggered_lookups
+        )
+        self.started = False
+        self.finished = False
+        self.started_at = None
+        self.finished_at = None
+        self.received_counter = 0
+        self.sent_counter = 0
+
+    def process_triggered_lookups(self) -> None:
+        """Process new facts from the check_fact_against_triggers_queue."""
+        self.started = True
+        self.started_at = datetime.datetime.now()
+        for sub_trigger_obj in self.goldberg.triggered_lookup_processor_queue.yield_items():
+            self.received_counter += 1
+            # Add "NodeHasAttributeWithValue" constraint to the cypher
+            # object's Match clause. Evaluate against the FactCollection.
+            # Find all the solutions, project the return clause and
+            # splat the results into the function.
+            # Put (trigger, sub,) into another queue
         self.finished = True
         self.finished_at = datetime.datetime.now()
 
@@ -175,21 +218,20 @@ class Goldberg:  # pylint: disable=too-many-instance-attributes
 
     def __init__(
         self,
-        trigger_dict: Optional[Dict[str, CypherTrigger]] = None,
         fact_collection: Optional[FactCollection] = None,
         queue_class: Optional[Type] = QueueGenerator,
-        queue_options: Optional[Dict] = None,
+        queue_options: Optional[Dict[str, Any]] = None,
         data_sources: Optional[List[DataSource]] = None,
-        raw_data_processor: Optional[RawDataProcessor] = None,
         queue_list: Optional[List[QueueGenerator]] = None,
     ):  # pylint: disable=too-many-arguments
-        self.trigger_dict = trigger_dict or {}
+        self.trigger_dict = {}
         self.fact_collection = fact_collection or FactCollection(facts=[])
-        self.raw_data_processor = raw_data_processor or RawDataProcessor(self)
+        self.raw_data_processor = RawDataProcessor(self)
         self.fact_generated_queue_processor = FactGeneratedQueueProcessor(self)
         self.check_fact_against_triggers_queue_processor = (
             CheckFactAgainstTriggersQueueProcessor(self)
         )
+        self.triggered_lookup_processor = TriggeredLookupProcessor(self)
 
         self.queue_class = queue_class
         self.queue_options = queue_options or {}
@@ -205,6 +247,9 @@ class Goldberg:  # pylint: disable=too-many-instance-attributes
         self.check_fact_against_triggers_queue = self.queue_class(
             goldberg=self, name="CheckFactTrigger", **self.queue_options
         )
+        self.triggered_lookup_processor_queue = self.queue_class(
+            goldberg=self, name="TriggeredLookupProcessor", **self.queue_options
+        )
 
         # Instantiate threads
         self.monitor_thread = threading.Thread(
@@ -219,6 +264,7 @@ class Goldberg:  # pylint: disable=too-many-instance-attributes
 
         for data_source in self.data_sources:
             data_source.loading_thread.start()
+        
         # Process rows into Facts
         self.raw_data_processor.processing_thread.start()
 
@@ -254,99 +300,102 @@ class Goldberg:  # pylint: disable=too-many-instance-attributes
         #     pass
         while not self.check_fact_against_triggers_queue_processor.finished:
             pass
-
     def monitor(self):
-        """Generate stats on the ETL process."""
-        # Run in daemon thread
+        '''Loop the _monitor function'''
+        time.sleep(MONITOR_LOOP_DELAY)
         while True:
+            self._monitor()
             time.sleep(MONITOR_LOOP_DELAY)
 
-            for data_source in self.data_sources:
-                LOGGER.info(
-                    "Data source %s has sent %s messages",
-                    data_source.name,
-                    data_source.sent_counter,
-                )
-
-            console = Console()
-            table = Table(title="Thread queues")
-
-            table.add_column(
-                "Thread", justify="right", style="cyan", no_wrap=True
+    def _monitor(self):
+        """Generate stats on the ETL process."""
+        # Run in daemon thread
+        for data_source in self.data_sources:
+            LOGGER.info(
+                "Data source %s has sent %s messages",
+                data_source.name,
+                data_source.sent_counter,
             )
-            table.add_column("Started", style="magenta")
-            table.add_column("Finished", justify="right", style="green")
-            table.add_column("Received", justify="right", style="green")
-            table.add_column("Sent", justify="right", style="green")
 
-            monitored_threads = [
-                self.fact_generated_queue_processor,
-                self.check_fact_against_triggers_queue_processor,
-                self.raw_data_processor,
-            ]
-            monitored_threads.extend(self.data_sources)
-            for monitored_thread in monitored_threads:
-                end_time = (
-                    datetime.datetime.now()
-                    if not monitored_thread.finished
-                    else monitored_thread.finished_at
-                )
-                received_rate = round(
-                    monitored_thread.received_counter
-                    / float(
-                        (
-                            end_time - monitored_thread.started_at
-                        ).total_seconds()
-                    ),
-                    1,
-                )
-                sent_rate = round(
-                    monitored_thread.sent_counter
-                    / float(
-                        (
-                            end_time - monitored_thread.started_at
-                        ).total_seconds()
-                    ),
-                    1,
-                )
-                started_at = (
-                    monitored_thread.started_at.strftime("%H:%M:%S")
-                    if monitored_thread.started_at
-                    else "---"
-                )
-                finished_at = (
-                    monitored_thread.finished_at.strftime("%H:%M:%S")
-                    if monitored_thread.finished_at
-                    else "---"
-                )
-                table.add_row(
-                    monitored_thread.__class__.__name__,
-                    started_at,
-                    finished_at,
-                    f"{monitored_thread.received_counter} ({received_rate}/s)",
-                    f"{monitored_thread.sent_counter} ({sent_rate}/s)",
-                )
+        console = Console()
+        table = Table(title="Thread queues")
 
-            console.print(table)
+        table.add_column(
+            "Thread", justify="right", style="cyan", no_wrap=True
+        )
+        table.add_column("Started", style="magenta")
+        table.add_column("Finished", justify="right", style="green")
+        table.add_column("Received", justify="right", style="green")
+        table.add_column("Sent", justify="right", style="green")
 
-            table = Table(title="Queues")
-
-            table.add_column(
-                "Queue", justify="right", style="cyan", no_wrap=True
+        monitored_threads = [
+            self.fact_generated_queue_processor,
+            self.check_fact_against_triggers_queue_processor,
+            self.raw_data_processor,
+        ]
+        monitored_threads.extend(self.data_sources)
+        for monitored_thread in monitored_threads:
+            end_time = (
+                datetime.datetime.now()
+                if not monitored_thread.finished
+                else monitored_thread.finished_at
             )
-            table.add_column("Size", style="magenta")
-            table.add_column("Total", justify="right", style="green")
-            table.add_column("Completed", justify="right", style="green")
+            received_rate = round(
+                monitored_thread.received_counter
+                / float(
+                    (
+                        end_time - monitored_thread.started_at
+                    ).total_seconds()
+                ),
+                1,
+            )
+            sent_rate = round(
+                monitored_thread.sent_counter
+                / float(
+                    (
+                        end_time - monitored_thread.started_at
+                    ).total_seconds()
+                ),
+                1,
+            )
+            started_at = (
+                monitored_thread.started_at.strftime("%H:%M:%S")
+                if monitored_thread.started_at
+                else "---"
+            )
+            finished_at = (
+                monitored_thread.finished_at.strftime("%H:%M:%S")
+                if monitored_thread.finished_at
+                else "---"
+            )
+            table.add_row(
+                monitored_thread.__class__.__name__,
+                started_at,
+                finished_at,
+                f"{monitored_thread.received_counter} ({received_rate}/s)",
+                f"{monitored_thread.sent_counter} ({sent_rate}/s)",
+            )
 
-            for queue in self.queue_list:
-                table.add_row(
-                    queue.name,
-                    f"{queue.queue.qsize()}",
-                    f"{queue.counter}",
-                    f"{queue.completed}",
-                )
+        console.print(table)
 
-            console.print(table)
+        table = Table(title="Queues")
+
+        table.add_column(
+            "Queue", justify="right", style="cyan", no_wrap=True
+        )
+        table.add_column("Size", style="magenta")
+        table.add_column("Total", justify="right", style="green")
+        table.add_column("Completed", justify="right", style="green")
+
+        for queue in self.queue_list:
+            table.add_row(
+                queue.name,
+                f"{queue.queue.qsize()}",
+                f"{queue.counter}",
+                f"{queue.completed}",
+            )
+
+        console.print(table)
 
     def attach_fact_collection(self, fact_collection: FactCollection) -> None:
         """Attach a ``FactCollection`` to the machine."""
