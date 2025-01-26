@@ -5,44 +5,31 @@ clean_build: veryclean all
 
 all: format build docs tests 
 
-venv:
-	echo "Installing Python and virtual environment..." && uv venv --python=$(PYTHON) venv
-
 veryclean: clean
-	uv cache clean
+	uv cache clean && rm -rfv ./.venv
 
-format: venv
+format: 
 	( \
 		uv run isort . && \
 		uv run ruff format . \
 	)
 
-deps: venv requirements.txt
-	( \
-		echo "Installing dependencies..." && \
-		. ./venv/bin/activate && \
-		uv pip install -r requirements.txt \
-	)
-
 requirements.txt: requirements.in
 	( \
 		echo "Compiling requirements.txt..." && \
-		. ./venv/bin/activate && \
 		uv pip compile --output-file=requirements.txt requirements.in \
 	)
 
 install: build
 	( \
 		echo "Installing package as editable project..." && \
-		. ./venv/bin/activate && \
 		uv pip install --upgrade -e . \
 	)
 
 tests: install 
 	( \
 		echo "Running tests..." && \
-		. ./venv/bin/activate && \
-		pytest -vv tests/ \
+		uv run pytest -vv tests/ \
 	)
 
 coverage: install
@@ -62,20 +49,18 @@ clean:
 		rm -rfv ./coverage_report \
 	)
 
-build: deps
+build: 
 	( \
 		echo "Formatting code and building package..." && \
-		. ./venv/bin/activate && \
-		hatch build -t wheel \
+		uv run hatch build -t wheel \
 	)
 
 docs: install
 	( \
 		echo "Building documentation..." && \
-		. ./venv/bin/activate && \
 		cd sphinx_docs && \
-		make html && \
-		make singlehtml && \
+		uv run make html && \
+		uv run make singlehtml && \
 		cp -rfv _build/singlehtml/* ../docs/ \
 	)
 
