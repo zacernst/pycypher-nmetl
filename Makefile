@@ -13,8 +13,8 @@ veryclean: clean
 
 format: venv
 	( \
-		isort . && \
-		ruff format . \
+		uv run isort . && \
+		uv run ruff format . \
 	)
 
 deps: venv requirements.txt

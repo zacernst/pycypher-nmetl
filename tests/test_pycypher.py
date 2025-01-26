@@ -70,6 +70,7 @@ from pycypher.etl.solver import (
     ConstraintRelationshipHasLabel,
     ConstraintRelationshipHasSourceNode,
     ConstraintRelationshipHasTargetNode,
+    ConstraintVariableRefersToSpecificObject,
     IsTrue,
 )
 from pycypher.etl.trigger import CypherTrigger, VariableAttribute
@@ -116,7 +117,7 @@ def test_parameter_not_present_in_cypher_with_aliases(empty_goldberg):
         @empty_goldberg.cypher_trigger(
             "MATCH (n:Thingy) RETURN n.foo AS whatever"
         )
-        def test_function(n) -> VariableAttribute["n", "thingy"]:  # pylint: disable=unused-argument
+        def test_function(n) -> VariableAttribute["n", "thingy"]:  # pylint: disable=unused-argument  # type:ignore
             return 1
 
 
@@ -571,9 +572,9 @@ def test_constraints_from_relationship_chain():
     constraint6 = ConstraintRelationshipHasLabel(
         relationship_name="s", label="OtherRelationship"
     )
-    constraint7 = ConstraintNodeHasLabel(node_id="n", label="Thing")
-    constraint8 = ConstraintNodeHasLabel(node_id="m", label="MiddleThing")
-    constraint9 = ConstraintNodeHasLabel(node_id="o", label="OtherThing")
+    constraint7 = ConstraintNodeHasLabel(variable="n", label="Thing")
+    constraint8 = ConstraintNodeHasLabel(variable="m", label="MiddleThing")
+    constraint9 = ConstraintNodeHasLabel(variable="o", label="OtherThing")
     assert constraint1 in result.parse_tree.cypher.match_clause.constraints
     assert constraint2 in result.parse_tree.cypher.match_clause.constraints
     assert constraint3 in result.parse_tree.cypher.match_clause.constraints
@@ -610,9 +611,9 @@ def test_constraints_from_relationship_pair():
     constraint6 = ConstraintRelationshipHasLabel(
         relationship_name="s", label="OtherRelationship"
     )
-    constraint7 = ConstraintNodeHasLabel(node_id="n", label="Thing")
-    constraint8 = ConstraintNodeHasLabel(node_id="m", label="MiddleThing")
-    constraint9 = ConstraintNodeHasLabel(node_id="o", label="OtherThing")
+    constraint7 = ConstraintNodeHasLabel(variable="n", label="Thing")
+    constraint8 = ConstraintNodeHasLabel(variable="m", label="MiddleThing")
+    constraint9 = ConstraintNodeHasLabel(variable="o", label="OtherThing")
     assert constraint1 in result.parse_tree.cypher.match_clause.constraints
     assert constraint2 in result.parse_tree.cypher.match_clause.constraints
     assert constraint3 in result.parse_tree.cypher.match_clause.constraints
@@ -750,11 +751,11 @@ def test_constraint_relationship_chain_with_node_attribute():
     constraint6 = ConstraintRelationshipHasLabel(
         relationship_name="s", label="OtherRelationship"
     )
-    constraint7 = ConstraintNodeHasLabel(node_id="n", label="Thing")
-    constraint8 = ConstraintNodeHasLabel(node_id="m", label="MiddleThing")
-    constraint9 = ConstraintNodeHasLabel(node_id="o", label="OtherThing")
+    constraint7 = ConstraintNodeHasLabel(variable="n", label="Thing")
+    constraint8 = ConstraintNodeHasLabel(variable="m", label="MiddleThing")
+    constraint9 = ConstraintNodeHasLabel(variable="o", label="OtherThing")
     constraint10 = ConstraintNodeHasAttributeWithValue(
-        node_id="n", attribute="foo", value=Literal(2)
+        variable="n", attribute="foo", value=Literal(2)
     )
     assert constraint1 in result.parse_tree.cypher.match_clause.constraints
     assert constraint2 in result.parse_tree.cypher.match_clause.constraints
@@ -2273,7 +2274,7 @@ def test_node_constraints_with_label():
     # Assert that the constraints list contains the expected ConstraintNodeHasLabel
     assert len(constraints) == 1
     assert isinstance(constraints[0], ConstraintNodeHasLabel)
-    assert constraints[0].node_id == "node1"
+    assert constraints[0].variable == "node1"
     assert constraints[0].label == "Label1"
 
 
@@ -3330,7 +3331,7 @@ def test_fact_matches_constraint_generator_in_goldberg(empty_goldberg):
     assert list(empty_goldberg.facts_matching_constraints(fact_list)) == [
         (
             fact_list[0],
-            ConstraintNodeHasLabel(node_id="n", label="Thingy"),
+            ConstraintNodeHasLabel(variable="n", label="Thingy"),
             {"n": "123"},
         )
     ]
@@ -3363,7 +3364,7 @@ def test_fact_matches_exactly_one_constraint_generator_in_goldberg(
     assert list(empty_goldberg.facts_matching_constraints(fact_list)) == [
         (
             fact_list[0],
-            ConstraintNodeHasLabel(node_id="n", label="Thingy"),
+            ConstraintNodeHasLabel(variable="n", label="Thingy"),
             {"n": "123"},
         )
     ]
@@ -3785,3 +3786,44 @@ def test_can_stop_goldberg(
     empty_goldberg.start_threads()
     empty_goldberg.halt()
     empty_goldberg.block_until_finished()
+
+
+def test_constraint_variable_refers_to_specific_object():
+    constraint = ConstraintVariableRefersToSpecificObject("n", "00001")
+    assert constraint.variable == "n"
+    assert constraint.node_id == "00001"
+
+
+# @pytest.mark.skip
+def test_find_solution_node_has_label_with_node_identity_constraint(
+    fact_collection_0: FactCollection,
+):
+    cypher = "MATCH (n:Thing) RETURN n.foobar"
+    result = CypherParser(cypher)
+
+    added_constraint = ConstraintVariableRefersToSpecificObject("n", "1")
+    result.parse_tree.cypher.match_clause.constraints.append(added_constraint)
+
+    solutions = result.parse_tree.cypher.match_clause.solutions(
+        fact_collection_0
+    )
+    expected = [{"n": "1"}]
+    assert solutions == expected
+
+
+def test_find_solution_node_has_label_with_node_identity_constraint_unsatisfiable(
+    fact_collection_0: FactCollection,
+):
+    cypher = "MATCH (n:Thing) RETURN n.foobar"
+    result = CypherParser(cypher)
+
+    added_constraint = ConstraintVariableRefersToSpecificObject(
+        "n", "idontexist"
+    )
+    result.parse_tree.cypher.match_clause.constraints.append(added_constraint)
+
+    solutions = result.parse_tree.cypher.match_clause.solutions(
+        fact_collection_0
+    )
+    expected = []
+    assert solutions == expected

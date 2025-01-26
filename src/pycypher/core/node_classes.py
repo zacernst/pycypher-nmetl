@@ -84,6 +84,7 @@ from pycypher.etl.solver import (
     ConstraintRelationshipHasLabel,
     ConstraintRelationshipHasSourceNode,
     ConstraintRelationshipHasTargetNode,
+    ConstraintVariableRefersToSpecificObject,
     IsTrue,
 )
 from pycypher.shims import Shim
@@ -1206,18 +1207,7 @@ class Match(TreeMixin):
             # Assign variables to domains
             for constraint in constraints:
                 if isinstance(constraint, ConstraintNodeHasLabel):
-                    problem.addVariable(constraint.node_id, node_domain)
-                elif 0 and isinstance(
-                    constraint, ConstraintNodeHasAttributeWithValue
-                ):
-                    problem.addVariable(constraint.node_id, node_domain)
-                elif (  # pylint: disable=protected-access
-                    isinstance(constraint, ConstraintRelationshipHasSourceNode)
-                    and constraint.relationship_name not in problem._variables
-                ):
-                    problem.addVariable(
-                        constraint.relationship_name, relationship_domain
-                    )
+                    problem.addVariable(constraint.variable, node_domain)
                 elif (  # pylint: disable=protected-access
                     isinstance(constraint, ConstraintRelationshipHasSourceNode)
                     and constraint.relationship_name not in problem._variables
@@ -1241,9 +1231,16 @@ class Match(TreeMixin):
                     )
                 elif (  # pylint: disable=protected-access
                     isinstance(constraint, ConstraintNodeHasAttributeWithValue)
-                    and constraint.node_id not in problem._variables
+                    and constraint.variable not in problem._variables
                 ):
-                    problem.addVariable(constraint.node_id, node_domain)
+                    problem.addVariable(constraint.variable, node_domain)
+                elif (
+                    isinstance(
+                        constraint, ConstraintVariableRefersToSpecificObject
+                    )
+                    and constraint.variable not in problem._variables
+                ):
+                    problem.addVariable(constraint.variable, node_domain)
                 else:
                     pass
 
@@ -1303,13 +1300,23 @@ class Match(TreeMixin):
                 )
                 return answer
 
+            # Experimental...
+            def _j(node_id, other_node_id=None):
+                answer = node_id == other_node_id
+                LOGGER.debug(
+                    "answer _j: %s for node_id: %s",
+                    answer,
+                    node_id,
+                )
+                return answer
+
             for constraint in constraints:
                 if isinstance(constraint, ConstraintNodeHasLabel):
                     LOGGER.debug("Adding constraint: %s", constraint)
                     problem.addConstraint(
                         partial(_g, node_label=constraint.label),
                         [
-                            constraint.node_id,
+                            constraint.variable,
                         ],
                     )
                 elif isinstance(
@@ -1323,7 +1330,18 @@ class Match(TreeMixin):
                             value=constraint.value,
                         ),
                         [
-                            constraint.node_id,
+                            constraint.variable,
+                        ],
+                    )
+                # Experimental...
+                elif isinstance(
+                    constraint, ConstraintVariableRefersToSpecificObject
+                ):
+                    LOGGER.debug("Adding constraint: %s", constraint)
+                    problem.addConstraint(
+                        partial(_j, other_node_id=constraint.node_id),
+                        [
+                            constraint.variable,
                         ],
                     )
                 elif isinstance(constraint, ConstraintRelationshipHasLabel):

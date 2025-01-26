@@ -58,6 +58,32 @@ class IsTrue(Constraint):
         return isinstance(other, IsTrue) and self.predicate == other.predicate
 
 
+class ConstraintVariableRefersToSpecificObject(Constraint):
+    """
+    A constraint that checks if a given predicate refers to a specific object.
+
+    Attributes:
+        predicate (Predicate): The predicate to be evaluated.
+
+    Methods:
+        __repr__() -> str: Returns a string representation of the IsTrue instance.
+    """
+
+    def __init__(self, variable: str, node_id: str):
+        self.variable = variable
+        self.node_id = node_id
+
+    def __repr__(self) -> str:
+        return f"ConstraintVariableRefersToSpecificObject: {self.variable} -> {self.node_id}"
+
+    def __eq__(self, other: Any) -> bool:
+        return (
+            isinstance(other, ConstraintVariableRefersToSpecificObject)
+            and self.variable == other.variable
+            and self.node_id == other.node_id
+        )
+
+
 class ConstraintNodeHasLabel(Constraint):
     """
     A class to represent a constraint that a node must have a specific label.
@@ -79,22 +105,22 @@ class ConstraintNodeHasLabel(Constraint):
         Checks if this constraint is equal to another constraint.
     """
 
-    def __init__(self, node_id: str, label: str):
-        self.node_id = node_id
+    def __init__(self, variable: str, label: str):
+        self.variable = variable
         self.label = label
 
     def __repr__(self):
-        return f"ConstraintNodeHasLabel: {self.node_id} {self.label}"
+        return f"ConstraintNodeHasLabel: {self.variable} {self.label}"
 
     def __hash__(self) -> int:
         return hash(
-            str("HasLabel") + self.node_id.__str__() + self.label.__str__()
+            str("HasLabel") + self.variable.__str__() + self.label.__str__()
         )  # type: ignore
 
     def __eq__(self, other: Any) -> bool:
         return (
             isinstance(other, ConstraintNodeHasLabel)
-            and self.node_id == other.node_id
+            and self.variable == other.variable
             and self.label == other.label
         )
 
@@ -222,7 +248,7 @@ class ConstraintNodeHasAttributeWithValue(Constraint):
     A constraint that checks if a node has a specific attribute with a given value.
 
     Attributes:
-        node_id (str): The ID of the node.
+        variable (str): The ID of the node.
         attribute (str): The attribute to check.
         value (Any): The value that the attribute should have.
 
@@ -232,18 +258,18 @@ class ConstraintNodeHasAttributeWithValue(Constraint):
         __eq__(other: Any): Checks if this constraint is equal to another constraint.
     """
 
-    def __init__(self, node_id: str, attribute: str, value: Any):
-        self.node_id = node_id
+    def __init__(self, variable: str, attribute: str, value: Any):
+        self.variable = variable
         self.attribute = attribute
         self.value = value
 
     def __repr__(self):
-        return f"ConstraintNodeHasAttributeWithValue: [{self.node_id}] {self.attribute}: {self.value}"
+        return f"ConstraintNodeHasAttributeWithValue: [{self.variable}] {self.attribute}: {self.value}"
 
     def __hash__(self) -> int:
         return hash(
             "HasAttributeWithValue"
-            + self.node_id
+            + self.variable
             + self.attribute
             + str(self.value)
         )
@@ -251,7 +277,7 @@ class ConstraintNodeHasAttributeWithValue(Constraint):
     def __eq__(self, other: Any) -> bool:
         return (
             isinstance(other, ConstraintNodeHasAttributeWithValue)
-            and self.node_id == other.node_id
+            and self.variable == other.variable
             and self.attribute == other.attribute
             and self.value == other.value
         )  # noqa: E501

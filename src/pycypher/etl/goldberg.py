@@ -18,7 +18,10 @@ from rich.table import Table
 from pycypher.etl.data_source import DataSource
 from pycypher.etl.fact import AtomicFact, FactCollection
 from pycypher.etl.message_types import EndOfData, RawDatum
-from pycypher.etl.solver import Constraint
+from pycypher.etl.solver import (
+    Constraint,
+    ConstraintVariableRefersToSpecificObject,
+)
 from pycypher.etl.trigger import CypherTrigger
 from pycypher.util.config import MONITOR_LOOP_DELAY  # pylint: disable=no-name-in-module
 from pycypher.util.helpers import QueueGenerator
@@ -132,6 +135,22 @@ class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-publi
             self.incoming_queue.yield_items()
         ):  # self.goldberg.triggered_lookup_processor_queue.yield_items():
             self.received_counter += 1
+            # sub_trigger_obj looks like:
+            # subTriggerPair(sub={'n': 'Person::001'}, trigger=CypherTrigger())
+            # Would add:
+            #     ConstraintNodeHasAttributeWithValue('n', 'Identifier', 'Person::001')
+            variable = tuple(sub_trigger_obj.sub)[0]
+            node_id = sub_trigger_obj.sub[variable]
+
+            specific_object_constraint = (
+                ConstraintVariableRefersToSpecificObject(
+                    variable=variable, node_id=node_id
+                )
+            )
+            import pdb
+
+            pdb.set_trace()
+            # Need a constraint class saying that a node is a specific object.
             # TODO:
             # Add "NodeHasAttributeWithValue" constraint to the cypher
             # object's Match clause. Evaluate against the FactCollection.
@@ -153,8 +172,11 @@ class Goldberg:  # pylint: disable=too-many-instance-attributes
         queue_options: Optional[Dict[str, Any]] = None,
         data_sources: Optional[List[DataSource]] = None,
         queue_list: Optional[List[QueueGenerator]] = None,
+        run_monitor: Optional[bool] = True,
     ):  # pylint: disable=too-many-arguments
         # Instantiate the various queues using the queue_class
+        self.data_sources = data_sources or []
+        self.run_monitor = run_monitor
         self.queue_class = queue_class
         self.queue_options = queue_options or {}
         self.queue_list = queue_list or []
@@ -200,15 +222,18 @@ class Goldberg:  # pylint: disable=too-many-instance-attributes
         )
 
         # Instantiate threads
-        self.monitor_thread = threading.Thread(
-            target=self.monitor, daemon=True
-        )
-        self.data_sources = data_sources or []
+        if self.run_monitor:
+            self.monitor_thread = threading.Thread(
+                target=self.monitor, daemon=True
+            )
 
     def start_threads(self):
         """Start the threads."""
         # Start the monitor thread
-        self.monitor_thread.start()
+        if self.run_monitor:
+            self.monitor_thread.start()
+        else:
+            LOGGER.warning("Not starting monitor thread")
 
         # Start the data source threads
         for data_source in self.data_sources:
@@ -222,6 +247,9 @@ class Goldberg:  # pylint: disable=too-many-instance-attributes
 
         # Check facts against triggers
         self.check_fact_against_triggers_queue_processor.processing_thread.start()
+
+        # Triggered lookup processor
+        self.triggered_lookup_processor.processing_thread.start()
 
     def halt(self, level: int = 0):
         """Stop the threads."""
@@ -374,9 +402,7 @@ class Goldberg:  # pylint: disable=too-many-instance-attributes
                 if sub := fact + constraint:
                     yield fact, constraint, sub
 
-    def __iadd__(
-        self, other: FactCollection | DataSource
-    ) -> Goldberg:
+    def __iadd__(self, other: FactCollection | DataSource) -> Goldberg:
         """Add a ``FactCollection`` or ``DataSource``."""
         if isinstance(other, FactCollection):
             self.attach_fact_collection(other)
