@@ -7,6 +7,7 @@ import functools
 import inspect
 import threading
 import time
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from hashlib import md5
 from typing import Any, Dict, Generator, Iterable, List, Optional, Type
@@ -24,91 +25,6 @@ from pycypher.util.helpers import QueueGenerator
 from pycypher.util.logger import LOGGER
 
 
-class RawDataProcessor:
-    """Runs in a thread to process raw data from all the DataSource objects."""
-
-    def __init__(self, goldberg: Optional[Goldberg] = None) -> None:
-        self.goldberg = goldberg
-        self.processing_thread = threading.Thread(target=self.process_raw_data)
-        self.started = False
-        self.started_at = None
-        self.finished = False
-        self.finished_at = None
-        self.received_counter = 0
-        self.sent_counter = 0
-
-    def process_raw_data(self) -> None:
-        """Process raw data from the ``raw_input_queue``, generate facts,
-        and put them into the ``fact_generated_queue``."""
-        self.started = True
-        self.started_at = datetime.datetime.now()
-        for datum in self.goldberg.raw_input_queue.yield_items():
-            self.received_counter += 1
-            data_source = datum.data_source
-            row = datum.row
-            for fact in data_source.generate_raw_facts_from_row(row):
-                self.goldberg.fact_generated_queue.put(fact)
-                self.sent_counter += 1
-                LOGGER.debug("Added fact %s to the fact_generated_queue", fact)
-        self.finished = True
-        self.finished_at = datetime.datetime.now()
-
-    def raw_datum_to_facts(
-        self, raw_datum: RawDatum
-    ) -> Generator[AtomicFact, None, None]:
-        """Convert a RawDatum to a generator of AtomicFact objects."""
-        data_source = raw_datum.data_source
-        row = raw_datum.row
-        for fact in data_source.generate_raw_facts_from_row(row):
-            yield fact
-
-
-class FactGeneratedQueueProcessor:  # pylint: disable=too-few-public-methods
-    """Reads from the fact_generated_queue and processes the facts
-    by inserting them into the ``FactCollection``.
-    """
-
-    def __init__(self, goldberg: Optional[Goldberg] = None) -> None:
-        self.goldberg = goldberg
-        self.processing_thread = threading.Thread(
-            target=self.process_generated_facts
-        )
-        self.started = False
-        self.finished = False
-        self.started_at = None
-        self.finished_at = None
-        self.received_counter = 0
-        self.sent_counter = 0
-
-    def process_generated_facts(self) -> None:
-        """Process new facts from the fact_generated_queue."""
-        self.started = True
-        self.started_at = datetime.datetime.now()
-        for fact in self.goldberg.fact_generated_queue.yield_items():
-            self.received_counter += 1
-            if not isinstance(
-                fact,
-                (
-                    AtomicFact,
-                    EndOfData,
-                ),
-            ):
-                LOGGER.debug("Expected an AtomicFact, got %s", type(fact))
-                continue
-            LOGGER.debug(
-                "Adding fact %s to the fact collection: %s",
-                fact,
-                self.sent_counter,
-            )
-            self.goldberg.fact_collection.append(fact)
-
-            # Put the fact in the queue to be checked for triggers
-            self.goldberg.check_fact_against_triggers_queue.put(fact)
-            self.sent_counter += 1
-        self.finished = True
-        self.finished_at = datetime.datetime.now()
-
-
 @dataclass
 class SubTriggerPair:
     """A pair of a sub and a trigger."""
@@ -117,98 +33,106 @@ class SubTriggerPair:
     trigger: CypherTrigger
 
 
-class CheckFactAgainstTriggersQueueProcessor:  # pylint: disable=too-few-public-methods
-    """Reads from the check_fact_against_triggers_queue and processes the facts
-    by checking them against the triggers.
-    """
+class QueueProcessor(ABC):
+    """ABC that processes items from a queue and places the results onto another queue."""
 
-    def __init__(self, goldberg: Optional[Goldberg] = None) -> None:
+    def __init__(
+        self,
+        goldberg: Optional[Goldberg] = None,
+        incoming_queue: Optional[QueueGenerator] = None,
+        outgoing_queue: Optional[QueueGenerator] = None,
+    ) -> None:
         self.goldberg = goldberg
-        self.processing_thread = threading.Thread(
-            target=self.process_facts_against_triggers
-        )
+        self.processing_thread = threading.Thread(target=self.process_queue)
         self.started = False
-        self.finished = False
         self.started_at = None
+        self.finished = False
         self.finished_at = None
         self.received_counter = 0
         self.sent_counter = 0
+        self.incoming_queue = incoming_queue
+        self.outgoing_queue = outgoing_queue
 
-    def process_facts_against_triggers(self) -> None:
-        """Process new facts from the check_fact_against_triggers_queue."""
+    def process_queue(self) -> None:
         self.started = True
         self.started_at = datetime.datetime.now()
-        for (
-            fact
-        ) in self.goldberg.check_fact_against_triggers_queue.yield_items():
+        for item in self.incoming_queue.yield_items():
             self.received_counter += 1
-            if not isinstance(
-                fact,
-                (
-                    AtomicFact,
-                    EndOfData,
-                ),
-            ):
-                LOGGER.debug("Expected an AtomicFact, got %s", type(fact))
+            out = self.process_item_from_queue(item)
+            if not out:
                 continue
-            LOGGER.debug(
-                "Checking fact %s against triggers: %s",
-                fact,
-                self.received_counter,
-            )
-            for _, trigger in self.goldberg.trigger_dict.items():
-                for constraint in trigger.constraints:
-                    if sub := fact + constraint:
-                        LOGGER.debug("Fact %s matched a trigger", fact)
-                        # import pdb
-
-                        # pdb.set_trace()
-                        # import pdb; pdb.set_trace()
-                        sub_trigger_pair = SubTriggerPair(
-                            sub=sub, trigger=trigger
-                        )
-                        self.goldberg.triggered_lookup_processor_queue.put(
-                            sub_trigger_pair
-                        )
-                        self.sent_counter += (
-                            1  # Not yet sending anything to outbound queue
-                        )
-                        # TODO:
-                        # Add "NodeHasAttributeWithValue" constraint to the cypher
-                        # object's Match clause. Evaluate against the FactCollection.
-                        # Find all the solutions, project the return clause and
-                        # splat the results into the function.
-                        # Put (trigger, sub,) into another queue
-        self.goldberg.triggered_lookup_processor_queue.put(EndOfData())
+            if not isinstance(out, list):
+                out = [out]
+            for out_item in out:
+                self.outgoing_queue.put(out_item)
+                self.sent_counter += 1
         self.finished = True
         self.finished_at = datetime.datetime.now()
 
+    @abstractmethod
+    def process_item_from_queue(self, item: Any) -> Any:
+        pass
 
-class TriggeredLookupProcessor:  # pylint: disable=too-few-public-methods
-    """Reads from the check_fact_against_triggers_queue and processes the facts
+
+class RawDataProcessor(QueueProcessor):
+    """Runs in a thread to process raw data from all the DataSource objects."""
+
+    def process_item_from_queue(self, item) -> List[AtomicFact]:
+        """Process raw data from the ``raw_input_queue``, generate facts."""
+        data_source = item.data_source
+        row = item.row
+        out = []
+        for fact in data_source.generate_raw_facts_from_row(row):
+            out.append(fact)
+        return out
+
+
+class FactGeneratedQueueProcessor(QueueProcessor):  # pylint: disable=too-few-public-methods
+    """
+    Reads from the fact_generated_queue and processes the facts
+    by inserting them into the ``FactCollection``.
+    """
+
+    def process_item_from_queue(self, item: Any) -> None:
+        """Process new facts from the fact_generated_queue."""
+        self.goldberg.fact_collection.append(item)
+        # Put the fact in the queue to be checked for triggers
+        self.outgoing_queue.put(item)
+
+
+class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable=too-few-public-methods
+    """
+    Reads from the check_fact_against_triggers_queue and processes the facts
     by checking them against the triggers.
     """
 
-    def __init__(self, goldberg: Optional[Goldberg] = None) -> None:
-        self.goldberg = goldberg
-        self.processing_thread = threading.Thread(
-            target=self.process_triggered_lookups
-        )
-        self.started = False
-        self.finished = False
-        self.started_at = None
-        self.finished_at = None
-        self.received_counter = 0
-        self.sent_counter = 0
+    def process_item_from_queue(self, item: Any) -> None:
+        """Process new facts from the check_fact_against_triggers_queue."""
+        out = []
+        for _, trigger in self.goldberg.trigger_dict.items():
+            for constraint in trigger.constraints:
+                if sub := item + constraint:
+                    LOGGER.debug("Fact %s matched a trigger", item)
+                    sub_trigger_pair = SubTriggerPair(sub=sub, trigger=trigger)
+                    out.append(sub_trigger_pair)
+        return out
 
-    def process_triggered_lookups(self) -> None:
+
+class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-public-methods
+    """
+    Reads from the check_fact_against_triggers_queue and processes the facts
+    by checking them against the triggers.
+    """
+
+    def process_item_from_queue(self, item: Any) -> List[Any]:
         """Process new facts from the check_fact_against_triggers_queue."""
         self.started = True
         self.started_at = datetime.datetime.now()
-        for (
-            sub_trigger_obj
-        ) in self.goldberg.triggered_lookup_processor_queue.yield_items():
+        for sub_trigger_obj in (
+            self.incoming_queue.yield_items()
+        ):  # self.goldberg.triggered_lookup_processor_queue.yield_items():
             self.received_counter += 1
+            # TODO:
             # Add "NodeHasAttributeWithValue" constraint to the cypher
             # object's Match clause. Evaluate against the FactCollection.
             # Find all the solutions, project the return clause and
@@ -216,6 +140,7 @@ class TriggeredLookupProcessor:  # pylint: disable=too-few-public-methods
             # Put (trigger, sub,) into another queue
         self.finished = True
         self.finished_at = datetime.datetime.now()
+        return None
 
 
 class Goldberg:  # pylint: disable=too-many-instance-attributes
@@ -229,20 +154,11 @@ class Goldberg:  # pylint: disable=too-many-instance-attributes
         data_sources: Optional[List[DataSource]] = None,
         queue_list: Optional[List[QueueGenerator]] = None,
     ):  # pylint: disable=too-many-arguments
-        self.trigger_dict = {}
-        self.fact_collection = fact_collection or FactCollection(facts=[])
-        self.raw_data_processor = RawDataProcessor(self)
-        self.fact_generated_queue_processor = FactGeneratedQueueProcessor(self)
-        self.check_fact_against_triggers_queue_processor = (
-            CheckFactAgainstTriggersQueueProcessor(self)
-        )
-        self.triggered_lookup_processor = TriggeredLookupProcessor(self)
-
+        # Instantiate the various queues using the queue_class
         self.queue_class = queue_class
         self.queue_options = queue_options or {}
         self.queue_list = queue_list or []
 
-        # Instantiate the various queues using the queue_class
         self.raw_input_queue = self.queue_class(
             goldberg=self, name="RawInput", **self.queue_options
         )
@@ -258,6 +174,31 @@ class Goldberg:  # pylint: disable=too-many-instance-attributes
             **self.queue_options,
         )
 
+        self.trigger_dict = {}
+        self.fact_collection = fact_collection or FactCollection(facts=[])
+        self.raw_data_processor = RawDataProcessor(
+            self,
+            incoming_queue=self.raw_input_queue,
+            outgoing_queue=self.fact_generated_queue,
+        )
+        self.fact_generated_queue_processor = FactGeneratedQueueProcessor(
+            self,
+            incoming_queue=self.fact_generated_queue,
+            outgoing_queue=self.check_fact_against_triggers_queue,
+        )
+        self.check_fact_against_triggers_queue_processor = (
+            CheckFactAgainstTriggersQueueProcessor(
+                self,
+                incoming_queue=self.check_fact_against_triggers_queue,
+                outgoing_queue=self.triggered_lookup_processor_queue,
+            )
+        )
+        self.triggered_lookup_processor = TriggeredLookupProcessor(
+            self,
+            incoming_queue=self.triggered_lookup_processor_queue,
+            outgoing_queue=None,
+        )
+
         # Instantiate threads
         self.monitor_thread = threading.Thread(
             target=self.monitor, daemon=True
@@ -269,6 +210,7 @@ class Goldberg:  # pylint: disable=too-many-instance-attributes
         # Start the monitor thread
         self.monitor_thread.start()
 
+        # Start the data source threads
         for data_source in self.data_sources:
             data_source.loading_thread.start()
 
@@ -420,7 +362,7 @@ class Goldberg:  # pylint: disable=too-many-instance-attributes
     @property
     def constraints(self) -> List[Constraint]:
         """Return all the constraints from the triggers."""
-        constraints = list(i for i in self.walk_constraints())
+        constraints = list(self.walk_constraints())
         return constraints
 
     def facts_matching_constraints(
@@ -433,22 +375,16 @@ class Goldberg:  # pylint: disable=too-many-instance-attributes
                     yield fact, constraint, sub
 
     def __iadd__(
-        self, other: CypherTrigger | FactCollection | AtomicFact
+        self, other: FactCollection | DataSource
     ) -> Goldberg:
-        """Add a CypherTrigger, FactCollection, or Fact to the machine."""
-        if isinstance(other, CypherTrigger):
-            self.register_trigger(other)
-        elif isinstance(other, FactCollection):
+        """Add a ``FactCollection`` or ``DataSource``."""
+        if isinstance(other, FactCollection):
             self.attach_fact_collection(other)
-        elif isinstance(other, AtomicFact):
-            self.fact_collection.append(other)
         elif isinstance(other, DataSource):
             self.attach_data_source(other)
-        elif isinstance(other, RawDataProcessor):
-            self.attach_raw_data_processor(other)
         else:
             raise ValueError(
-                f"Expected a CypherTrigger, FactCollection, or Fact, got {type(other)}"
+                f"Expected a DataSource or FactCollection, got {type(other)}"
             )
         return self
 
@@ -456,10 +392,7 @@ class Goldberg:  # pylint: disable=too-many-instance-attributes
         self, raw_data_processor: Optional[RawDataProcessor] = None
     ) -> None:
         """Attach the raw data processor to the machine."""
-        if raw_data_processor is None:
-            raw_data_processor = RawDataProcessor()
-        self.raw_data_processor = raw_data_processor
-        raw_data_processor.goldberg = self
+        pass
 
     def attach_data_source(self, data_source: DataSource) -> None:
         """Attach a DataSource to the machine."""
@@ -518,16 +451,10 @@ class Goldberg:  # pylint: disable=too-many-instance-attributes
                         f"Parameter {param} not found in Cypher string"
                     )
 
-            self.register_trigger(trigger)
+            self.trigger_dict[
+                md5(trigger.cypher_string.encode()).hexdigest()
+            ] = trigger
 
             return wrapper
 
         return decorator
-
-    def register_trigger(self, cypher_trigger: CypherTrigger) -> None:
-        """
-        Register a CypherTrigger with the machine.
-        """
-        self.trigger_dict[
-            md5(cypher_trigger.cypher_string.encode()).hexdigest()
-        ] = cypher_trigger

@@ -3196,16 +3196,6 @@ def test_initialize_empty_goldberg(empty_goldberg):
     assert not empty_goldberg.trigger_dict
 
 
-def test_add_trigger_to_goldberg(empty_goldberg):
-    cypher_trigger = CypherTrigger(
-        function=lambda x: x,
-        cypher_string="MATCH (n) RETURN n.foo",
-    )
-    assert not empty_goldberg.trigger_dict
-    empty_goldberg.register_trigger(cypher_trigger)
-    assert empty_goldberg.trigger_dict
-
-
 def test_empty_goldberg_fact_collection_empty(empty_goldberg):
     assert len(empty_goldberg.fact_collection) == 0
 
@@ -3272,24 +3262,18 @@ def test_attach_fact_collection_manually(empty_goldberg):
     assert empty_goldberg.fact_collection is fact_collection
 
 
-def test_iadd_goldberg_trigger(mocker, empty_goldberg):
-    mocker.patch.object(empty_goldberg, "register_trigger")
-    trigger = CypherTrigger(
-        function=lambda x: x,
-        cypher_string="MATCH (n) RETURN n.foo",
-    )
-    empty_goldberg += trigger
-    empty_goldberg.register_trigger.assert_called_once_with(trigger)
-
-
 def test_goldberg_decorator_registers_trigger(mocker, empty_goldberg):
-    mocker.patch.object(empty_goldberg, "register_trigger")
-
     @empty_goldberg.cypher_trigger("MATCH (n) RETURN n.foo")
     def test_function(n) -> VariableAttribute["n", "bar"]:  # pylint: disable=unused-argument
         return 1
 
-    empty_goldberg.register_trigger.assert_called_once()
+    assert (
+        list(empty_goldberg.trigger_dict.values())[0].function.__name__
+        == "test_function"
+    )
+    assert (
+        list(empty_goldberg.trigger_dict.values())[0].function("hithere") == 1
+    )
 
 
 def test_iadd_goldberg_fact_collection(mocker, empty_goldberg):
@@ -3301,26 +3285,9 @@ def test_iadd_goldberg_fact_collection(mocker, empty_goldberg):
     )
 
 
-def test_iadd_goldberg_fact(mocker, empty_goldberg):
-    mocker.patch.object(empty_goldberg.fact_collection, "append")
-    fact = FactNodeHasLabel("123", "Thingy")
-    empty_goldberg += fact
-    empty_goldberg.fact_collection.append.assert_called_once_with(fact)
-
-
 def test_iadd_raises_value_error(empty_goldberg):
     with pytest.raises(ValueError):
         empty_goldberg += "not a fact collection"
-
-
-def test_trigger_iadd_constraint(empty_goldberg):
-    trigger = CypherTrigger(
-        function=lambda x: x,
-        cypher_string="MATCH (n:Thingy) RETURN n.foo",
-    )
-    empty_goldberg += trigger
-    constraint = ConstraintNodeHasLabel("n", "Thingy")
-    assert list(empty_goldberg.walk_constraints()) == [constraint]
 
 
 def test_trigger_has_constraint_from_cypher():
@@ -3619,13 +3586,6 @@ def test_start_loading_thread_from_goldberg(
     empty_goldberg.attach_data_source(fixture_data_source_0)
     empty_goldberg.start_threads()
     assert isinstance(fixture_data_source_0.loading_thread, threading.Thread)
-
-
-def test_attach_raw_data_processor_to_goldberg(
-    empty_goldberg, raw_data_processor
-):
-    empty_goldberg.attach_raw_data_processor(raw_data_processor)
-    assert empty_goldberg.raw_data_processor is raw_data_processor
 
 
 def test_goldberg_reports_unfinished_data_source_if_not_started(

@@ -3,13 +3,19 @@ BUMP = micro
 
 clean_build: veryclean all
 
-all: build docs tests 
+all: format build docs tests 
 
 venv:
 	echo "Installing Python and virtual environment..." && uv venv --python=$(PYTHON) venv
 
 veryclean: clean
 	uv cache clean
+
+format: venv
+	( \
+		isort . && \
+		ruff format . \
+	)
 
 deps: venv requirements.txt
 	( \
@@ -60,8 +66,6 @@ build: deps
 	( \
 		echo "Formatting code and building package..." && \
 		. ./venv/bin/activate && \
-		isort . && \
-		ruff format . && \
 		hatch build -t wheel \
 	)
 
