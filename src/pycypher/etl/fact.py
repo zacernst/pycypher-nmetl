@@ -153,9 +153,6 @@ class FactNodeHasAttributeWithValue(AtomicFact):
         # VariableRefersToSpecificObject
         if isinstance(other, ConstraintVariableRefersToSpecificObject):
             out = {other.node_id: self.node_id}
-            import pdb
-
-            pdb.set_trace()
         # NodeHasAttributeWithValue
         elif isinstance(other, ConstraintNodeHasAttributeWithValue):
             other_value = (
@@ -164,7 +161,7 @@ class FactNodeHasAttributeWithValue(AtomicFact):
                 else other.value.value
             )
             out = (
-                {other.node_id: self.node_id}
+                {other.variable: self.node_id}
                 if (
                     isinstance(other, ConstraintNodeHasAttributeWithValue)
                     and self.attribute == other.attribute

@@ -131,32 +131,35 @@ class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-publi
         """Process new facts from the check_fact_against_triggers_queue."""
         self.started = True
         self.started_at = datetime.datetime.now()
-        for sub_trigger_obj in (
-            self.incoming_queue.yield_items()
-        ):  # self.goldberg.triggered_lookup_processor_queue.yield_items():
-            self.received_counter += 1
-            # sub_trigger_obj looks like:
-            # subTriggerPair(sub={'n': 'Person::001'}, trigger=CypherTrigger())
-            # Would add:
-            #     ConstraintNodeHasAttributeWithValue('n', 'Identifier', 'Person::001')
-            variable = tuple(sub_trigger_obj.sub)[0]
-            node_id = sub_trigger_obj.sub[variable]
+        sub_trigger_obj = item
+        self.received_counter += 1
+        # sub_trigger_obj looks like:
+        # subTriggerPair(sub={'n': 'Person::001'}, trigger=CypherTrigger())
+        # Would add:
+        #     ConstraintNodeHasAttributeWithValue('n', 'Identifier', 'Person::001')
+        variable = tuple(sub_trigger_obj.sub)[0]
+        node_id = sub_trigger_obj.sub[variable]
 
-            specific_object_constraint = (
-                ConstraintVariableRefersToSpecificObject(
-                    variable=variable, node_id=node_id
-                )
+        specific_object_constraint = (
+            ConstraintVariableRefersToSpecificObject(
+                variable=variable, node_id=node_id
             )
-            import pdb
+        )
+        # 
+        match_clause = item.trigger.cypher.parse_tree.cypher.match_clause
+        # match_clause.constraints.append(specific_object_constraint)
+        fact_collection = self.goldberg.fact_collection
+        solutions = match_clause.solutions(fact_collection)
 
-            pdb.set_trace()
-            # Need a constraint class saying that a node is a specific object.
-            # TODO:
-            # Add "NodeHasAttributeWithValue" constraint to the cypher
-            # object's Match clause. Evaluate against the FactCollection.
-            # Find all the solutions, project the return clause and
-            # splat the results into the function.
-            # Put (trigger, sub,) into another queue
+
+        
+        # Need a constraint class saying that a node is a specific object.
+        # TODO:
+        # Add "NodeHasAttributeWithValue" constraint to the cypher
+        # object's Match clause. Evaluate against the FactCollection.
+        # Find all the solutions, project the return clause and
+        # splat the results into the function.
+        # Put (trigger, sub,) into another queue
         self.finished = True
         self.finished_at = datetime.datetime.now()
         return None

@@ -506,7 +506,7 @@ def number_of_facts(fact_collection_0: FactCollection) -> int:
 
 @pytest.fixture
 def empty_goldberg():
-    return Goldberg()
+    return Goldberg(run_monitor=False)
 
 
 @pytest.fixture

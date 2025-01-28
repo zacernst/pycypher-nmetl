@@ -1192,6 +1192,9 @@ class Match(TreeMixin):
                 elif isinstance(fact, FactRelationshipHasLabel):
                     if fact.relationship_id not in relationship_domain:
                         relationship_domain.append(fact.relationship_id)
+                elif isinstance(fact, FactNodeHasAttributeWithValue):
+                    if fact.node_id not in node_domain:
+                        node_domain.append(fact.node_id)
                 elif isinstance(
                     fact,
                     (

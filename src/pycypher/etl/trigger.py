@@ -50,6 +50,9 @@ class CypherTrigger:  # pylint: disable=too-many-instance-attributes
         self.constraints: Set[Constraint] = set()
 
         self._gather_constraints()
+    
+    def __repr__(self) -> str:
+        return f"CypherTrigger(constraints: {self.constraints})"
 
     def _gather_constraints(self):
         for node in self.cypher.walk():

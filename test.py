@@ -7,6 +7,10 @@ Fixtures for the unit tests.
 from pycypher.etl.data_source import DataSourceMapping, FixtureDataSource
 from pycypher.etl.goldberg import Goldberg
 from pycypher.etl.trigger import VariableAttribute
+from pycypher.util.logger import LOGGER
+
+
+LOGGER.setLevel("DEBUG")
 
 data_source = FixtureDataSource(
     name="people_fixture",
@@ -61,7 +65,8 @@ data_source = FixtureDataSource(
             "widgets": 7,
         },
     ],
-    loop=True,
+    loop=False,
+    delay=1,
 )
 
 
@@ -117,7 +122,7 @@ def populated_goldberg(
 
 
 if __name__ == "__main__":
-    goldberg = Goldberg()
+    goldberg = Goldberg(run_monitor=True)
 
     @goldberg.cypher_trigger("MATCH (n:Person {age: 25}) RETURN n.Identifier")
     def f(n) -> VariableAttribute["n", "age"]:
