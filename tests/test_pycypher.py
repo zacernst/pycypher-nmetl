@@ -3843,5 +3843,4 @@ def test_fact_plus_constraint_variable_refers_to_specific_object_false(
 ):
     fact = FactNodeHasLabel("1", "Thing")
     constraint = ConstraintVariableRefersToSpecificObject("n", "2")
-
     assert fact + constraint is None
