@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fact and FactCollection &mdash; PyCypher: Cypher Parser and Query Executor for Python  documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="_static/jquery.js?v=5d32c60e"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="_static/documentation_options.js?v=5929fcd5"></script>
+        <script src="_static/doctools.js?v=9a2dae69"></script>
+        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Goldberg" href="pycypher.etl.goldberg.html" />
+    <link rel="prev" title="Data Source" href="pycypher.etl.data_source.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            PyCypher: Cypher Parser and Query Executor for Python
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="index.html">Home</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="api.html">API</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="pycypher.core.cypher_lexer.html">Lexer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pycypher.core.cypher_parser.html">Cypher Parser</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pycypher.core.node_classes.html">AST Node Classes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pycypher.etl.data_source.html">Data Source</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Fact and FactCollection</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#pycypher.etl.fact.AtomicFact"><code class="docutils literal notranslate"><span class="pre">AtomicFact</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pycypher.etl.fact.FactCollection"><code class="docutils literal notranslate"><span class="pre">FactCollection</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#pycypher.etl.fact.FactCollection.append"><code class="docutils literal notranslate"><span class="pre">FactCollection.append()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pycypher.etl.fact.FactCollection.insert"><code class="docutils literal notranslate"><span class="pre">FactCollection.insert()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pycypher.etl.fact.FactCollection.is_empty"><code class="docutils literal notranslate"><span class="pre">FactCollection.is_empty()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pycypher.etl.fact.FactCollection.node_has_attribute_with_value_facts"><code class="docutils literal notranslate"><span class="pre">FactCollection.node_has_attribute_with_value_facts()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pycypher.etl.fact.FactCollection.node_has_label_facts"><code class="docutils literal notranslate"><span class="pre">FactCollection.node_has_label_facts()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pycypher.etl.fact.FactCollection.node_with_id_exists"><code class="docutils literal notranslate"><span class="pre">FactCollection.node_with_id_exists()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pycypher.etl.fact.FactCollection.query"><code class="docutils literal notranslate"><span class="pre">FactCollection.query()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pycypher.etl.fact.FactCollection.relationship_has_attribute_with_value_facts"><code class="docutils literal notranslate"><span class="pre">FactCollection.relationship_has_attribute_with_value_facts()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pycypher.etl.fact.FactCollection.relationship_has_source_node_facts"><code class="docutils literal notranslate"><span class="pre">FactCollection.relationship_has_source_node_facts()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pycypher.etl.fact.FactCollection.relationship_has_target_node_facts"><code class="docutils literal notranslate"><span class="pre">FactCollection.relationship_has_target_node_facts()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#pycypher.etl.fact.FactNodeHasAttributeWithValue"><code class="docutils literal notranslate"><span class="pre">FactNodeHasAttributeWithValue</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pycypher.etl.fact.FactNodeHasLabel"><code class="docutils literal notranslate"><span class="pre">FactNodeHasLabel</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pycypher.etl.fact.FactNodeRelatedToNode"><code class="docutils literal notranslate"><span class="pre">FactNodeRelatedToNode</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pycypher.etl.fact.FactRelationshipHasAttributeWithValue"><code class="docutils literal notranslate"><span class="pre">FactRelationshipHasAttributeWithValue</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pycypher.etl.fact.FactRelationshipHasLabel"><code class="docutils literal notranslate"><span class="pre">FactRelationshipHasLabel</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pycypher.etl.fact.FactRelationshipHasSourceNode"><code class="docutils literal notranslate"><span class="pre">FactRelationshipHasSourceNode</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pycypher.etl.fact.FactRelationshipHasTargetNode"><code class="docutils literal notranslate"><span class="pre">FactRelationshipHasTargetNode</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="pycypher.etl.goldberg.html">Goldberg</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pycypher.etl.message_types.html">Message Types</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pycypher.etl.solver.html">Constraint Solver</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pycypher.etl.trigger.html">Trigger</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pycypher.shims.networkx_cypher.html">NetworkX Shim</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">PyCypher: Cypher Parser and Query Executor for Python</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="api.html">API</a></li>
+      <li class="breadcrumb-item active">Fact and FactCollection</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/pycypher.etl.fact.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-pycypher.etl.fact">
+<span id="fact-and-factcollection"></span><h1>Fact and FactCollection<a class="headerlink" href="#module-pycypher.etl.fact" title="Link to this heading"></a></h1>
+<p>Facts are simple atomic statements that have a truth value.</p>
+<p class="rubric">Functions</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+</tbody>
+</table>
+<dl class="py class">
+<dt class="sig sig-object py" id="pycypher.etl.fact.AtomicFact">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.etl.fact.</span></span><span class="sig-name descname"><span class="pre">AtomicFact</span></span><a class="headerlink" href="#pycypher.etl.fact.AtomicFact" title="Link to this definition"></a></dt>
+<dd><p>Abstract base class for specific types of <cite>Fact</cite>.</p>
+<p>This class serves as a base for creating various types of facts in the system.
+It is intended to be subclassed and not used directly.</p>
+<dl class="simple">
+<dt>Attributes:</dt><dd><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="pycypher.etl.fact.FactCollection">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.etl.fact.</span></span><span class="sig-name descname"><span class="pre">FactCollection</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">facts</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.13)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#pycypher.etl.fact.AtomicFact" title="pycypher.etl.fact.AtomicFact"><span class="pre">AtomicFact</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.etl.fact.FactCollection" title="Link to this definition"></a></dt>
+<dd><p>A collection of AtomicFact objects with various utility methods for
+querying and manipulating the facts.</p>
+<dl class="simple">
+<dt>Attributes:</dt><dd><p>facts (List[AtomicFact]): A list of AtomicFact objects.</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="pycypher.etl.fact.FactCollection.append">
+<span class="sig-name descname"><span class="pre">append</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#pycypher.etl.fact.AtomicFact" title="pycypher.etl.fact.AtomicFact"><span class="pre">AtomicFact</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#pycypher.etl.fact.FactCollection" title="pycypher.etl.fact.FactCollection"><span class="pre">FactCollection</span></a></span></span><a class="headerlink" href="#pycypher.etl.fact.FactCollection.append" title="Link to this definition"></a></dt>
+<dd><p>Append an AtomicFact to the facts list.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>value (AtomicFact): The AtomicFact object to be appended.</p>
+</dd>
+<dt>Returns:</dt><dd><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pycypher.etl.fact.FactCollection.insert">
+<span class="sig-name descname"><span class="pre">insert</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">index</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#pycypher.etl.fact.AtomicFact" title="pycypher.etl.fact.AtomicFact"><span class="pre">AtomicFact</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#pycypher.etl.fact.FactCollection" title="pycypher.etl.fact.FactCollection"><span class="pre">FactCollection</span></a></span></span><a class="headerlink" href="#pycypher.etl.fact.FactCollection.insert" title="Link to this definition"></a></dt>
+<dd><p>Insert an AtomicFact into the facts list at the specified index.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>index (int): The position at which to insert the value.
+value (AtomicFact): The AtomicFact object to be inserted.</p>
+</dd>
+<dt>Returns:</dt><dd><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pycypher.etl.fact.FactCollection.is_empty">
+<span class="sig-name descname"><span class="pre">is_empty</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><span class="pre">bool</span></a></span></span><a class="headerlink" href="#pycypher.etl.fact.FactCollection.is_empty" title="Link to this definition"></a></dt>
+<dd><p>Check if the fact collection is empty.</p>
+<dl class="simple">
+<dt>Returns:</dt><dd><p>bool: True if the fact collection is empty, False otherwise.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pycypher.etl.fact.FactCollection.node_has_attribute_with_value_facts">
+<span class="sig-name descname"><span class="pre">node_has_attribute_with_value_facts</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.etl.fact.FactCollection.node_has_attribute_with_value_facts" title="Link to this definition"></a></dt>
+<dd><p>Generator method that yields facts of type FactNodeHasAttributeWithValue.</p>
+<p>Iterates over the list of facts and yields each fact that is an instance
+of FactNodeHasAttributeWithValue.</p>
+<dl class="simple">
+<dt>Yields:</dt><dd><dl class="simple">
+<dt>FactNodeHasAttributeWithValue: Facts that are instances of</dt><dd><p>FactNodeHasAttributeWithValue.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pycypher.etl.fact.FactCollection.node_has_label_facts">
+<span class="sig-name descname"><span class="pre">node_has_label_facts</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.etl.fact.FactCollection.node_has_label_facts" title="Link to this definition"></a></dt>
+<dd><p>Generator function that yields facts of type <cite>FactNodeHasLabel</cite>.</p>
+<p>Iterates over the <cite>facts</cite> attribute and yields each fact that is an instance
+of <cite>FactNodeHasLabel</cite>.</p>
+<dl class="simple">
+<dt>Yields:</dt><dd><p>FactNodeHasLabel: Facts that are instances of <cite>FactNodeHasLabel</cite>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pycypher.etl.fact.FactCollection.node_with_id_exists">
+<span class="sig-name descname"><span class="pre">node_with_id_exists</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">node_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><span class="pre">bool</span></a></span></span><a class="headerlink" href="#pycypher.etl.fact.FactCollection.node_with_id_exists" title="Link to this definition"></a></dt>
+<dd><p>Check if a node with a specific ID exists in the fact collection.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>node_id (str): The ID of the node to check for.</p>
+</dd>
+<dt>Returns:</dt><dd><dl class="simple">
+<dt>bool: True if a node with the specified ID exists in the fact collection,</dt><dd><p>False otherwise.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pycypher.etl.fact.FactCollection.query">
+<span class="sig-name descname"><span class="pre">query</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Query</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.13)"><span class="pre">Any</span></a></span></span><a class="headerlink" href="#pycypher.etl.fact.FactCollection.query" title="Link to this definition"></a></dt>
+<dd><p>Executes a query to retrieve information based on the type of the query.</p>
+<dl>
+<dt>Args:</dt><dd><p>query (Query): The query object containing the parameters for the query.</p>
+</dd>
+<dt>Returns:</dt><dd><p>Any: The result of the query. The type of the result depends on the query type.</p>
+</dd>
+<dt>Raises:</dt><dd><dl class="simple">
+<dt>ValueError: If the query is of type QueryValueOfNodeAttribute and no matching</dt><dd><p>facts are found, or if multiple matching facts are found, or if an
+unknown error occurs.</p>
+</dd>
+</dl>
+<p>NotImplementedError: If the query type is not recognized.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pycypher.etl.fact.FactCollection.relationship_has_attribute_with_value_facts">
+<span class="sig-name descname"><span class="pre">relationship_has_attribute_with_value_facts</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.etl.fact.FactCollection.relationship_has_attribute_with_value_facts" title="Link to this definition"></a></dt>
+<dd><p>Generator function that yields facts of type FactRelationshipHasAttributeWithValue.</p>
+<p>Iterates over the <cite>facts</cite> attribute and yields each fact that is an instance of
+FactRelationshipHasAttributeWithValue.</p>
+<dl class="simple">
+<dt>Yields:</dt><dd><dl class="simple">
+<dt>FactRelationshipHasAttributeWithValue: Facts that are instances of</dt><dd><p>FactRelationshipHasAttributeWithValue.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pycypher.etl.fact.FactCollection.relationship_has_source_node_facts">
+<span class="sig-name descname"><span class="pre">relationship_has_source_node_facts</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.etl.fact.FactCollection.relationship_has_source_node_facts" title="Link to this definition"></a></dt>
+<dd><p>Generator method that yields facts of type FactRelationshipHasSourceNode.</p>
+<p>This method iterates over the <cite>facts</cite> attribute of the instance and yields
+each fact that is an instance of the FactRelationshipHasSourceNode class.</p>
+<dl class="simple">
+<dt>Yields:</dt><dd><dl class="simple">
+<dt>FactRelationshipHasSourceNode: Facts that are instances of</dt><dd><p>FactRelationshipHasSourceNode.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pycypher.etl.fact.FactCollection.relationship_has_target_node_facts">
+<span class="sig-name descname"><span class="pre">relationship_has_target_node_facts</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.etl.fact.FactCollection.relationship_has_target_node_facts" title="Link to this definition"></a></dt>
+<dd><p>Generator method that yields facts of type FactRelationshipHasTargetNode.</p>
+<p>Iterates over the <cite>facts</cite> attribute of the instance and yields each fact
+that is an instance of FactRelationshipHasTargetNode.</p>
+<dl class="simple">
+<dt>Yields:</dt><dd><dl class="simple">
+<dt>FactRelationshipHasTargetNode: Facts that are instances of</dt><dd><p>FactRelationshipHasTargetNode.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="pycypher.etl.fact.FactNodeHasAttributeWithValue">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.etl.fact.</span></span><span class="sig-name descname"><span class="pre">FactNodeHasAttributeWithValue</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">node_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">attribute</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.13)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.etl.fact.FactNodeHasAttributeWithValue" title="Link to this definition"></a></dt>
+<dd><p>Represents a fact that a node has a specific attribute with a given value.</p>
+<dl class="simple">
+<dt>Attributes:</dt><dd><p>node_id (str): The identifier of the node.
+attribute (str): The attribute of the node.
+value (Any): The value of the attribute.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="pycypher.etl.fact.FactNodeHasLabel">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.etl.fact.</span></span><span class="sig-name descname"><span class="pre">FactNodeHasLabel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">node_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">label</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.etl.fact.FactNodeHasLabel" title="Link to this definition"></a></dt>
+<dd><p>Represents a fact that a node has a specific label.</p>
+<dl class="simple">
+<dt>Attributes:</dt><dd><p>node_id (str): The ID of the node.
+label (str): The label of the node.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="pycypher.etl.fact.FactNodeRelatedToNode">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.etl.fact.</span></span><span class="sig-name descname"><span class="pre">FactNodeRelatedToNode</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">node1_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">node2_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">relationship_label</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.etl.fact.FactNodeRelatedToNode" title="Link to this definition"></a></dt>
+<dd><p>Represents a fact that one node is related to another node with a specific relationship label.</p>
+<dl class="simple">
+<dt>Attributes:</dt><dd><p>node1_id (str): The ID of the first node.
+node2_id (str): The ID of the second node.
+relationship_label (str): The label of the relationship between the two nodes.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="pycypher.etl.fact.FactRelationshipHasAttributeWithValue">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.etl.fact.</span></span><span class="sig-name descname"><span class="pre">FactRelationshipHasAttributeWithValue</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">relationship_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">attribute</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.13)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.etl.fact.FactRelationshipHasAttributeWithValue" title="Link to this definition"></a></dt>
+<dd><p>Represents a fact that a relationship has a specific attribute with a given value.</p>
+<dl class="simple">
+<dt>Attributes:</dt><dd><p>relationship_id (str): The ID of the relationship.
+attribute (str): The attribute of the relationship.
+value (Any): The value of the attribute.</p>
+</dd>
+<dt>Args:</dt><dd><p>relationship_id (str): The ID of the relationship.
+attribute (str): The attribute of the relationship.
+value (Any): The value of the attribute.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="pycypher.etl.fact.FactRelationshipHasLabel">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.etl.fact.</span></span><span class="sig-name descname"><span class="pre">FactRelationshipHasLabel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">relationship_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">relationship_label</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.etl.fact.FactRelationshipHasLabel" title="Link to this definition"></a></dt>
+<dd><p>Represents a fact that a relationship has a specific label.</p>
+<dl class="simple">
+<dt>Attributes:</dt><dd><p>relationship_id (str): The ID of the relationship.
+relationship_label (str): The label of the relationship.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="pycypher.etl.fact.FactRelationshipHasSourceNode">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.etl.fact.</span></span><span class="sig-name descname"><span class="pre">FactRelationshipHasSourceNode</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">relationship_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">source_node_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.etl.fact.FactRelationshipHasSourceNode" title="Link to this definition"></a></dt>
+<dd><p>Represents a fact that a relationship has a source node.</p>
+<dl class="simple">
+<dt>Attributes:</dt><dd><p>relationship_id (str): The ID of the relationship.
+source_node_id (str): The ID of the source node.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="pycypher.etl.fact.FactRelationshipHasTargetNode">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.etl.fact.</span></span><span class="sig-name descname"><span class="pre">FactRelationshipHasTargetNode</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">relationship_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_node_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.etl.fact.FactRelationshipHasTargetNode" title="Link to this definition"></a></dt>
+<dd><p>Represents a fact that a relationship has a target node.</p>
+<dl class="simple">
+<dt>Attributes:</dt><dd><p>relationship_id (str): The ID of the relationship.
+target_node_id (str): The ID of the target node.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="pycypher.etl.data_source.html" class="btn btn-neutral float-left" title="Data Source" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="pycypher.etl.goldberg.html" class="btn btn-neutral float-right" title="Goldberg" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Zachary Ernst.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1258,16 +1258,16 @@ class Match(TreeMixin):
                 LOGGER.debug("answer _f: %s for x: %s, y: %s", answer, x, y)
                 return answer
 
-            def _g(node_id, node_label=None):
+            def _g(node_id, label=None):
                 answer = (
-                    FactNodeHasLabel(node_id=node_id, node_label=node_label)
+                    FactNodeHasLabel(node_id=node_id, label=label)
                     in fact_collection
                 )
                 LOGGER.debug(
-                    "answer _g: %s for node_id: %s, node_label: %s",
+                    "answer _g: %s for node_id: %s, label: %s",
                     answer,
                     node_id,
-                    node_label,
+                    label,
                 )
                 return answer
 
@@ -1317,7 +1317,7 @@ class Match(TreeMixin):
                 if isinstance(constraint, ConstraintNodeHasLabel):
                     LOGGER.debug("Adding constraint: %s", constraint)
                     problem.addConstraint(
-                        partial(_g, node_label=constraint.label),
+                        partial(_g, label=constraint.label),
                         [
                             constraint.variable,
                         ],

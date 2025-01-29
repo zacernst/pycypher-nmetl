@@ -125,12 +125,17 @@ def fixture_0_data_source_mapping_list():
         attribute="WidgetsPurchased",
         label="Person",
     )
+    data_source_label_mapping = DataSourceMapping(
+        identifier_key="person_id",
+        label="Person",
+    )
     return [
         data_source_mapping_0,
         data_source_mapping_1,
         data_source_mapping_2,
         data_source_mapping_3,
         data_source_mapping_4,
+        data_source_label_mapping,
     ]
 
 

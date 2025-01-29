@@ -1,0 +1,1537 @@
+Created by PLY version 3.11 (http://www.dabeaz.com/ply)
+
+Unused terminals:
+
+    DIVIDE
+    DQUOTE
+    NOT
+
+Grammar
+
+Rule 0     S' -> cypher
+Rule 1     cypher -> query
+Rule 2     query -> match_pattern return
+Rule 3     string -> STRING
+Rule 4     integer -> INTEGER
+Rule 5     float -> FLOAT
+Rule 6     name_label -> WORD
+Rule 7     name_label -> WORD COLON WORD
+Rule 8     name_label -> COLON WORD
+Rule 9     mapping_list -> WORD COLON literal
+Rule 10    mapping_list -> mapping_list COMMA WORD COLON literal
+Rule 11    node -> LPAREN name_label RPAREN
+Rule 12    node -> LPAREN name_label LCURLY mapping_list RCURLY RPAREN
+Rule 13    node -> LPAREN RPAREN
+Rule 14    node -> LPAREN WORD RPAREN
+Rule 15    alias -> WORD AS WORD
+Rule 16    alias -> object_attribute_lookup AS WORD
+Rule 17    alias -> aggregation AS WORD
+Rule 18    literal -> integer
+Rule 19    literal -> float
+Rule 20    literal -> STRING
+Rule 21    relationship -> LSQUARE WORD RSQUARE
+Rule 22    relationship -> LSQUARE name_label RSQUARE
+Rule 23    left_right -> DASH relationship DASH GREATERTHAN
+Rule 24    right_left -> LESSTHAN DASH relationship DASH
+Rule 25    incomplete_relationship_chain -> node left_right
+Rule 26    incomplete_relationship_chain -> node right_left
+Rule 27    incomplete_relationship_chain -> incomplete_relationship_chain node left_right
+Rule 28    incomplete_relationship_chain -> incomplete_relationship_chain node right_left
+Rule 29    relationship_chain -> incomplete_relationship_chain node
+Rule 30    relationship_chain_list -> relationship_chain
+Rule 31    relationship_chain_list -> relationship_chain_list COMMA relationship_chain
+Rule 32    with_as_series -> alias
+Rule 33    with_as_series -> with_as_series COMMA alias
+Rule 34    collect -> COLLECT LPAREN object_attribute_lookup RPAREN
+Rule 35    aggregation -> collect
+Rule 36    aggregation -> DISTINCT aggregation
+Rule 37    with_clause -> WITH with_as_series
+Rule 38    match_pattern -> MATCH node
+Rule 39    match_pattern -> MATCH relationship_chain_list
+Rule 40    match_pattern -> MATCH relationship_chain_list with_clause
+Rule 41    match_pattern -> MATCH relationship_chain_list where
+Rule 42    match_pattern -> MATCH relationship_chain_list with_clause where
+Rule 43    match_pattern -> MATCH node where
+Rule 44    match_pattern -> MATCH node with_clause where
+Rule 45    binary_operator -> EQUALS
+Rule 46    binary_operator -> LESSTHAN
+Rule 47    binary_operator -> GREATERTHAN
+Rule 48    binary_operator -> OR
+Rule 49    binary_operator -> AND
+Rule 50    binary_function -> ADDITION
+Rule 51    aliased_name -> WORD
+Rule 52    predicate -> object_attribute_lookup binary_operator literal
+Rule 53    predicate -> object_attribute_lookup binary_operator object_attribute_lookup
+Rule 54    predicate -> aliased_name binary_operator literal
+Rule 55    predicate -> object_attribute_lookup binary_operator binary_expression
+Rule 56    binary_expression -> object_attribute_lookup binary_function literal
+Rule 57    binary_expression -> object_attribute_lookup binary_function object_attribute_lookup
+Rule 58    binary_expression -> aliased_name binary_function literal
+Rule 59    binary_expression -> literal binary_function literal
+Rule 60    object_attribute_lookup -> WORD DOT WORD
+Rule 61    object_attribute_lookup -> WORD
+Rule 62    where -> WHERE predicate
+Rule 63    where -> where COMMA predicate
+Rule 64    projection -> object_attribute_lookup
+Rule 65    projection -> alias
+Rule 66    projection -> projection COMMA alias
+Rule 67    projection -> projection COMMA object_attribute_lookup
+Rule 68    return -> RETURN projection
+
+Terminals, with rules where they appear
+
+ADDITION             : 50
+AND                  : 49
+AS                   : 15 16 17
+COLLECT              : 34
+COLON                : 7 8 9 10
+COMMA                : 10 31 33 63 66 67
+DASH                 : 23 23 24 24
+DISTINCT             : 36
+DIVIDE               : 
+DOT                  : 60
+DQUOTE               : 
+EQUALS               : 45
+FLOAT                : 5
+GREATERTHAN          : 23 47
+INTEGER              : 4
+LCURLY               : 12
+LESSTHAN             : 24 46
+LPAREN               : 11 12 13 14 34
+LSQUARE              : 21 22
+MATCH                : 38 39 40 41 42 43 44
+NOT                  : 
+OR                   : 48
+RCURLY               : 12
+RETURN               : 68
+RPAREN               : 11 12 13 14 34
+RSQUARE              : 21 22
+STRING               : 3 20
+WHERE                : 62
+WITH                 : 37
+WORD                 : 6 7 7 8 9 10 14 15 15 16 17 21 51 60 60 61
+error                : 
+
+Nonterminals, with rules where they appear
+
+aggregation          : 17 36
+alias                : 32 33 65 66
+aliased_name         : 54 58
+binary_expression    : 55
+binary_function      : 56 57 58 59
+binary_operator      : 52 53 54 55
+collect              : 35
+cypher               : 0
+float                : 19
+incomplete_relationship_chain : 27 28 29
+integer              : 18
+left_right           : 25 27
+literal              : 9 10 52 54 56 58 59 59
+mapping_list         : 10 12
+match_pattern        : 2
+name_label           : 11 12 22
+node                 : 25 26 27 28 29 38 43 44
+object_attribute_lookup : 16 34 52 53 53 55 56 57 57 64 67
+predicate            : 62 63
+projection           : 66 67 68
+query                : 1
+relationship         : 23 24
+relationship_chain   : 30 31
+relationship_chain_list : 31 39 40 41 42
+return               : 2
+right_left           : 26 28
+string               : 
+where                : 41 42 43 44 63
+with_as_series       : 33 37
+with_clause          : 40 42 44
+
+Parsing method: LALR
+
+state 0
+
+    (0) S' -> . cypher
+    (1) cypher -> . query
+    (2) query -> . match_pattern return
+    (38) match_pattern -> . MATCH node
+    (39) match_pattern -> . MATCH relationship_chain_list
+    (40) match_pattern -> . MATCH relationship_chain_list with_clause
+    (41) match_pattern -> . MATCH relationship_chain_list where
+    (42) match_pattern -> . MATCH relationship_chain_list with_clause where
+    (43) match_pattern -> . MATCH node where
+    (44) match_pattern -> . MATCH node with_clause where
+
+    MATCH           shift and go to state 4
+
+    cypher                         shift and go to state 1
+    query                          shift and go to state 2
+    match_pattern                  shift and go to state 3
+
+state 1
+
+    (0) S' -> cypher .
+
+
+
+state 2
+
+    (1) cypher -> query .
+
+    $end            reduce using rule 1 (cypher -> query .)
+
+
+state 3
+
+    (2) query -> match_pattern . return
+    (68) return -> . RETURN projection
+
+    RETURN          shift and go to state 6
+
+    return                         shift and go to state 5
+
+state 4
+
+    (38) match_pattern -> MATCH . node
+    (39) match_pattern -> MATCH . relationship_chain_list
+    (40) match_pattern -> MATCH . relationship_chain_list with_clause
+    (41) match_pattern -> MATCH . relationship_chain_list where
+    (42) match_pattern -> MATCH . relationship_chain_list with_clause where
+    (43) match_pattern -> MATCH . node where
+    (44) match_pattern -> MATCH . node with_clause where
+    (11) node -> . LPAREN name_label RPAREN
+    (12) node -> . LPAREN name_label LCURLY mapping_list RCURLY RPAREN
+    (13) node -> . LPAREN RPAREN
+    (14) node -> . LPAREN WORD RPAREN
+    (30) relationship_chain_list -> . relationship_chain
+    (31) relationship_chain_list -> . relationship_chain_list COMMA relationship_chain
+    (29) relationship_chain -> . incomplete_relationship_chain node
+    (25) incomplete_relationship_chain -> . node left_right
+    (26) incomplete_relationship_chain -> . node right_left
+    (27) incomplete_relationship_chain -> . incomplete_relationship_chain node left_right
+    (28) incomplete_relationship_chain -> . incomplete_relationship_chain node right_left
+
+    LPAREN          shift and go to state 9
+
+    node                           shift and go to state 7
+    relationship_chain_list        shift and go to state 8
+    relationship_chain             shift and go to state 10
+    incomplete_relationship_chain  shift and go to state 11
+
+state 5
+
+    (2) query -> match_pattern return .
+
+    $end            reduce using rule 2 (query -> match_pattern return .)
+
+
+state 6
+
+    (68) return -> RETURN . projection
+    (64) projection -> . object_attribute_lookup
+    (65) projection -> . alias
+    (66) projection -> . projection COMMA alias
+    (67) projection -> . projection COMMA object_attribute_lookup
+    (60) object_attribute_lookup -> . WORD DOT WORD
+    (61) object_attribute_lookup -> . WORD
+    (15) alias -> . WORD AS WORD
+    (16) alias -> . object_attribute_lookup AS WORD
+    (17) alias -> . aggregation AS WORD
+    (35) aggregation -> . collect
+    (36) aggregation -> . DISTINCT aggregation
+    (34) collect -> . COLLECT LPAREN object_attribute_lookup RPAREN
+
+    WORD            shift and go to state 15
+    DISTINCT        shift and go to state 18
+    COLLECT         shift and go to state 19
+
+    projection                     shift and go to state 12
+    object_attribute_lookup        shift and go to state 13
+    alias                          shift and go to state 14
+    aggregation                    shift and go to state 16
+    collect                        shift and go to state 17
+
+state 7
+
+    (38) match_pattern -> MATCH node .
+    (43) match_pattern -> MATCH node . where
+    (44) match_pattern -> MATCH node . with_clause where
+    (25) incomplete_relationship_chain -> node . left_right
+    (26) incomplete_relationship_chain -> node . right_left
+    (62) where -> . WHERE predicate
+    (63) where -> . where COMMA predicate
+    (37) with_clause -> . WITH with_as_series
+    (23) left_right -> . DASH relationship DASH GREATERTHAN
+    (24) right_left -> . LESSTHAN DASH relationship DASH
+
+    RETURN          reduce using rule 38 (match_pattern -> MATCH node .)
+    WHERE           shift and go to state 24
+    WITH            shift and go to state 25
+    DASH            shift and go to state 26
+    LESSTHAN        shift and go to state 27
+
+    where                          shift and go to state 20
+    with_clause                    shift and go to state 21
+    left_right                     shift and go to state 22
+    right_left                     shift and go to state 23
+
+state 8
+
+    (39) match_pattern -> MATCH relationship_chain_list .
+    (40) match_pattern -> MATCH relationship_chain_list . with_clause
+    (41) match_pattern -> MATCH relationship_chain_list . where
+    (42) match_pattern -> MATCH relationship_chain_list . with_clause where
+    (31) relationship_chain_list -> relationship_chain_list . COMMA relationship_chain
+    (37) with_clause -> . WITH with_as_series
+    (62) where -> . WHERE predicate
+    (63) where -> . where COMMA predicate
+
+    RETURN          reduce using rule 39 (match_pattern -> MATCH relationship_chain_list .)
+    COMMA           shift and go to state 30
+    WITH            shift and go to state 25
+    WHERE           shift and go to state 24
+
+    with_clause                    shift and go to state 28
+    where                          shift and go to state 29
+
+state 9
+
+    (11) node -> LPAREN . name_label RPAREN
+    (12) node -> LPAREN . name_label LCURLY mapping_list RCURLY RPAREN
+    (13) node -> LPAREN . RPAREN
+    (14) node -> LPAREN . WORD RPAREN
+    (6) name_label -> . WORD
+    (7) name_label -> . WORD COLON WORD
+    (8) name_label -> . COLON WORD
+
+    RPAREN          shift and go to state 32
+    WORD            shift and go to state 33
+    COLON           shift and go to state 34
+
+    name_label                     shift and go to state 31
+
+state 10
+
+    (30) relationship_chain_list -> relationship_chain .
+
+    COMMA           reduce using rule 30 (relationship_chain_list -> relationship_chain .)
+    WITH            reduce using rule 30 (relationship_chain_list -> relationship_chain .)
+    WHERE           reduce using rule 30 (relationship_chain_list -> relationship_chain .)
+    RETURN          reduce using rule 30 (relationship_chain_list -> relationship_chain .)
+
+
+state 11
+
+    (29) relationship_chain -> incomplete_relationship_chain . node
+    (27) incomplete_relationship_chain -> incomplete_relationship_chain . node left_right
+    (28) incomplete_relationship_chain -> incomplete_relationship_chain . node right_left
+    (11) node -> . LPAREN name_label RPAREN
+    (12) node -> . LPAREN name_label LCURLY mapping_list RCURLY RPAREN
+    (13) node -> . LPAREN RPAREN
+    (14) node -> . LPAREN WORD RPAREN
+
+    LPAREN          shift and go to state 9
+
+    node                           shift and go to state 35
+
+state 12
+
+    (68) return -> RETURN projection .
+    (66) projection -> projection . COMMA alias
+    (67) projection -> projection . COMMA object_attribute_lookup
+
+    $end            reduce using rule 68 (return -> RETURN projection .)
+    COMMA           shift and go to state 36
+
+
+state 13
+
+    (64) projection -> object_attribute_lookup .
+    (16) alias -> object_attribute_lookup . AS WORD
+
+    COMMA           reduce using rule 64 (projection -> object_attribute_lookup .)
+    $end            reduce using rule 64 (projection -> object_attribute_lookup .)
+    AS              shift and go to state 37
+
+
+state 14
+
+    (65) projection -> alias .
+
+    COMMA           reduce using rule 65 (projection -> alias .)
+    $end            reduce using rule 65 (projection -> alias .)
+
+
+state 15
+
+    (60) object_attribute_lookup -> WORD . DOT WORD
+    (61) object_attribute_lookup -> WORD .
+    (15) alias -> WORD . AS WORD
+
+  ! shift/reduce conflict for AS resolved as shift
+    DOT             shift and go to state 38
+    COMMA           reduce using rule 61 (object_attribute_lookup -> WORD .)
+    $end            reduce using rule 61 (object_attribute_lookup -> WORD .)
+    AS              shift and go to state 39
+
+  ! AS              [ reduce using rule 61 (object_attribute_lookup -> WORD .) ]
+
+
+state 16
+
+    (17) alias -> aggregation . AS WORD
+
+    AS              shift and go to state 40
+
+
+state 17
+
+    (35) aggregation -> collect .
+
+    AS              reduce using rule 35 (aggregation -> collect .)
+
+
+state 18
+
+    (36) aggregation -> DISTINCT . aggregation
+    (35) aggregation -> . collect
+    (36) aggregation -> . DISTINCT aggregation
+    (34) collect -> . COLLECT LPAREN object_attribute_lookup RPAREN
+
+    DISTINCT        shift and go to state 18
+    COLLECT         shift and go to state 19
+
+    aggregation                    shift and go to state 41
+    collect                        shift and go to state 17
+
+state 19
+
+    (34) collect -> COLLECT . LPAREN object_attribute_lookup RPAREN
+
+    LPAREN          shift and go to state 42
+
+
+state 20
+
+    (43) match_pattern -> MATCH node where .
+    (63) where -> where . COMMA predicate
+
+    RETURN          reduce using rule 43 (match_pattern -> MATCH node where .)
+    COMMA           shift and go to state 43
+
+
+state 21
+
+    (44) match_pattern -> MATCH node with_clause . where
+    (62) where -> . WHERE predicate
+    (63) where -> . where COMMA predicate
+
+    WHERE           shift and go to state 24
+
+    where                          shift and go to state 44
+
+state 22
+
+    (25) incomplete_relationship_chain -> node left_right .
+
+    LPAREN          reduce using rule 25 (incomplete_relationship_chain -> node left_right .)
+
+
+state 23
+
+    (26) incomplete_relationship_chain -> node right_left .
+
+    LPAREN          reduce using rule 26 (incomplete_relationship_chain -> node right_left .)
+
+
+state 24
+
+    (62) where -> WHERE . predicate
+    (52) predicate -> . object_attribute_lookup binary_operator literal
+    (53) predicate -> . object_attribute_lookup binary_operator object_attribute_lookup
+    (54) predicate -> . aliased_name binary_operator literal
+    (55) predicate -> . object_attribute_lookup binary_operator binary_expression
+    (60) object_attribute_lookup -> . WORD DOT WORD
+    (61) object_attribute_lookup -> . WORD
+    (51) aliased_name -> . WORD
+
+    WORD            shift and go to state 48
+
+    predicate                      shift and go to state 45
+    object_attribute_lookup        shift and go to state 46
+    aliased_name                   shift and go to state 47
+
+state 25
+
+    (37) with_clause -> WITH . with_as_series
+    (32) with_as_series -> . alias
+    (33) with_as_series -> . with_as_series COMMA alias
+    (15) alias -> . WORD AS WORD
+    (16) alias -> . object_attribute_lookup AS WORD
+    (17) alias -> . aggregation AS WORD
+    (60) object_attribute_lookup -> . WORD DOT WORD
+    (61) object_attribute_lookup -> . WORD
+    (35) aggregation -> . collect
+    (36) aggregation -> . DISTINCT aggregation
+    (34) collect -> . COLLECT LPAREN object_attribute_lookup RPAREN
+
+    WORD            shift and go to state 51
+    DISTINCT        shift and go to state 18
+    COLLECT         shift and go to state 19
+
+    with_as_series                 shift and go to state 49
+    alias                          shift and go to state 50
+    object_attribute_lookup        shift and go to state 52
+    aggregation                    shift and go to state 16
+    collect                        shift and go to state 17
+
+state 26
+
+    (23) left_right -> DASH . relationship DASH GREATERTHAN
+    (21) relationship -> . LSQUARE WORD RSQUARE
+    (22) relationship -> . LSQUARE name_label RSQUARE
+
+    LSQUARE         shift and go to state 54
+
+    relationship                   shift and go to state 53
+
+state 27
+
+    (24) right_left -> LESSTHAN . DASH relationship DASH
+
+    DASH            shift and go to state 55
+
+
+state 28
+
+    (40) match_pattern -> MATCH relationship_chain_list with_clause .
+    (42) match_pattern -> MATCH relationship_chain_list with_clause . where
+    (62) where -> . WHERE predicate
+    (63) where -> . where COMMA predicate
+
+    RETURN          reduce using rule 40 (match_pattern -> MATCH relationship_chain_list with_clause .)
+    WHERE           shift and go to state 24
+
+    where                          shift and go to state 56
+
+state 29
+
+    (41) match_pattern -> MATCH relationship_chain_list where .
+    (63) where -> where . COMMA predicate
+
+    RETURN          reduce using rule 41 (match_pattern -> MATCH relationship_chain_list where .)
+    COMMA           shift and go to state 43
+
+
+state 30
+
+    (31) relationship_chain_list -> relationship_chain_list COMMA . relationship_chain
+    (29) relationship_chain -> . incomplete_relationship_chain node
+    (25) incomplete_relationship_chain -> . node left_right
+    (26) incomplete_relationship_chain -> . node right_left
+    (27) incomplete_relationship_chain -> . incomplete_relationship_chain node left_right
+    (28) incomplete_relationship_chain -> . incomplete_relationship_chain node right_left
+    (11) node -> . LPAREN name_label RPAREN
+    (12) node -> . LPAREN name_label LCURLY mapping_list RCURLY RPAREN
+    (13) node -> . LPAREN RPAREN
+    (14) node -> . LPAREN WORD RPAREN
+
+    LPAREN          shift and go to state 9
+
+    relationship_chain             shift and go to state 57
+    incomplete_relationship_chain  shift and go to state 11
+    node                           shift and go to state 58
+
+state 31
+
+    (11) node -> LPAREN name_label . RPAREN
+    (12) node -> LPAREN name_label . LCURLY mapping_list RCURLY RPAREN
+
+    RPAREN          shift and go to state 59
+    LCURLY          shift and go to state 60
+
+
+state 32
+
+    (13) node -> LPAREN RPAREN .
+
+    WHERE           reduce using rule 13 (node -> LPAREN RPAREN .)
+    WITH            reduce using rule 13 (node -> LPAREN RPAREN .)
+    DASH            reduce using rule 13 (node -> LPAREN RPAREN .)
+    LESSTHAN        reduce using rule 13 (node -> LPAREN RPAREN .)
+    RETURN          reduce using rule 13 (node -> LPAREN RPAREN .)
+    COMMA           reduce using rule 13 (node -> LPAREN RPAREN .)
+
+
+state 33
+
+    (14) node -> LPAREN WORD . RPAREN
+    (6) name_label -> WORD .
+    (7) name_label -> WORD . COLON WORD
+
+  ! shift/reduce conflict for RPAREN resolved as shift
+    RPAREN          shift and go to state 61
+    LCURLY          reduce using rule 6 (name_label -> WORD .)
+    COLON           shift and go to state 62
+
+  ! RPAREN          [ reduce using rule 6 (name_label -> WORD .) ]
+
+
+state 34
+
+    (8) name_label -> COLON . WORD
+
+    WORD            shift and go to state 63
+
+
+state 35
+
+    (29) relationship_chain -> incomplete_relationship_chain node .
+    (27) incomplete_relationship_chain -> incomplete_relationship_chain node . left_right
+    (28) incomplete_relationship_chain -> incomplete_relationship_chain node . right_left
+    (23) left_right -> . DASH relationship DASH GREATERTHAN
+    (24) right_left -> . LESSTHAN DASH relationship DASH
+
+    COMMA           reduce using rule 29 (relationship_chain -> incomplete_relationship_chain node .)
+    WITH            reduce using rule 29 (relationship_chain -> incomplete_relationship_chain node .)
+    WHERE           reduce using rule 29 (relationship_chain -> incomplete_relationship_chain node .)
+    RETURN          reduce using rule 29 (relationship_chain -> incomplete_relationship_chain node .)
+    DASH            shift and go to state 26
+    LESSTHAN        shift and go to state 27
+
+    left_right                     shift and go to state 64
+    right_left                     shift and go to state 65
+
+state 36
+
+    (66) projection -> projection COMMA . alias
+    (67) projection -> projection COMMA . object_attribute_lookup
+    (15) alias -> . WORD AS WORD
+    (16) alias -> . object_attribute_lookup AS WORD
+    (17) alias -> . aggregation AS WORD
+    (60) object_attribute_lookup -> . WORD DOT WORD
+    (61) object_attribute_lookup -> . WORD
+    (35) aggregation -> . collect
+    (36) aggregation -> . DISTINCT aggregation
+    (34) collect -> . COLLECT LPAREN object_attribute_lookup RPAREN
+
+    WORD            shift and go to state 51
+    DISTINCT        shift and go to state 18
+    COLLECT         shift and go to state 19
+
+    alias                          shift and go to state 66
+    object_attribute_lookup        shift and go to state 67
+    aggregation                    shift and go to state 16
+    collect                        shift and go to state 17
+
+state 37
+
+    (16) alias -> object_attribute_lookup AS . WORD
+
+    WORD            shift and go to state 68
+
+
+state 38
+
+    (60) object_attribute_lookup -> WORD DOT . WORD
+
+    WORD            shift and go to state 69
+
+
+state 39
+
+    (15) alias -> WORD AS . WORD
+
+    WORD            shift and go to state 70
+
+
+state 40
+
+    (17) alias -> aggregation AS . WORD
+
+    WORD            shift and go to state 71
+
+
+state 41
+
+    (36) aggregation -> DISTINCT aggregation .
+
+    AS              reduce using rule 36 (aggregation -> DISTINCT aggregation .)
+
+
+state 42
+
+    (34) collect -> COLLECT LPAREN . object_attribute_lookup RPAREN
+    (60) object_attribute_lookup -> . WORD DOT WORD
+    (61) object_attribute_lookup -> . WORD
+
+    WORD            shift and go to state 73
+
+    object_attribute_lookup        shift and go to state 72
+
+state 43
+
+    (63) where -> where COMMA . predicate
+    (52) predicate -> . object_attribute_lookup binary_operator literal
+    (53) predicate -> . object_attribute_lookup binary_operator object_attribute_lookup
+    (54) predicate -> . aliased_name binary_operator literal
+    (55) predicate -> . object_attribute_lookup binary_operator binary_expression
+    (60) object_attribute_lookup -> . WORD DOT WORD
+    (61) object_attribute_lookup -> . WORD
+    (51) aliased_name -> . WORD
+
+    WORD            shift and go to state 48
+
+    predicate                      shift and go to state 74
+    object_attribute_lookup        shift and go to state 46
+    aliased_name                   shift and go to state 47
+
+state 44
+
+    (44) match_pattern -> MATCH node with_clause where .
+    (63) where -> where . COMMA predicate
+
+    RETURN          reduce using rule 44 (match_pattern -> MATCH node with_clause where .)
+    COMMA           shift and go to state 43
+
+
+state 45
+
+    (62) where -> WHERE predicate .
+
+    COMMA           reduce using rule 62 (where -> WHERE predicate .)
+    RETURN          reduce using rule 62 (where -> WHERE predicate .)
+
+
+state 46
+
+    (52) predicate -> object_attribute_lookup . binary_operator literal
+    (53) predicate -> object_attribute_lookup . binary_operator object_attribute_lookup
+    (55) predicate -> object_attribute_lookup . binary_operator binary_expression
+    (45) binary_operator -> . EQUALS
+    (46) binary_operator -> . LESSTHAN
+    (47) binary_operator -> . GREATERTHAN
+    (48) binary_operator -> . OR
+    (49) binary_operator -> . AND
+
+    EQUALS          shift and go to state 76
+    LESSTHAN        shift and go to state 77
+    GREATERTHAN     shift and go to state 78
+    OR              shift and go to state 79
+    AND             shift and go to state 80
+
+    binary_operator                shift and go to state 75
+
+state 47
+
+    (54) predicate -> aliased_name . binary_operator literal
+    (45) binary_operator -> . EQUALS
+    (46) binary_operator -> . LESSTHAN
+    (47) binary_operator -> . GREATERTHAN
+    (48) binary_operator -> . OR
+    (49) binary_operator -> . AND
+
+    EQUALS          shift and go to state 76
+    LESSTHAN        shift and go to state 77
+    GREATERTHAN     shift and go to state 78
+    OR              shift and go to state 79
+    AND             shift and go to state 80
+
+    binary_operator                shift and go to state 81
+
+state 48
+
+    (60) object_attribute_lookup -> WORD . DOT WORD
+    (61) object_attribute_lookup -> WORD .
+    (51) aliased_name -> WORD .
+
+  ! reduce/reduce conflict for EQUALS resolved using rule 51 (aliased_name -> WORD .)
+  ! reduce/reduce conflict for LESSTHAN resolved using rule 51 (aliased_name -> WORD .)
+  ! reduce/reduce conflict for GREATERTHAN resolved using rule 51 (aliased_name -> WORD .)
+  ! reduce/reduce conflict for OR resolved using rule 51 (aliased_name -> WORD .)
+  ! reduce/reduce conflict for AND resolved using rule 51 (aliased_name -> WORD .)
+  ! reduce/reduce conflict for ADDITION resolved using rule 51 (aliased_name -> WORD .)
+    DOT             shift and go to state 38
+    COMMA           reduce using rule 61 (object_attribute_lookup -> WORD .)
+    RETURN          reduce using rule 61 (object_attribute_lookup -> WORD .)
+    EQUALS          reduce using rule 51 (aliased_name -> WORD .)
+    LESSTHAN        reduce using rule 51 (aliased_name -> WORD .)
+    GREATERTHAN     reduce using rule 51 (aliased_name -> WORD .)
+    OR              reduce using rule 51 (aliased_name -> WORD .)
+    AND             reduce using rule 51 (aliased_name -> WORD .)
+    ADDITION        reduce using rule 51 (aliased_name -> WORD .)
+
+  ! EQUALS          [ reduce using rule 61 (object_attribute_lookup -> WORD .) ]
+  ! LESSTHAN        [ reduce using rule 61 (object_attribute_lookup -> WORD .) ]
+  ! GREATERTHAN     [ reduce using rule 61 (object_attribute_lookup -> WORD .) ]
+  ! OR              [ reduce using rule 61 (object_attribute_lookup -> WORD .) ]
+  ! AND             [ reduce using rule 61 (object_attribute_lookup -> WORD .) ]
+  ! ADDITION        [ reduce using rule 61 (object_attribute_lookup -> WORD .) ]
+
+
+state 49
+
+    (37) with_clause -> WITH with_as_series .
+    (33) with_as_series -> with_as_series . COMMA alias
+
+    WHERE           reduce using rule 37 (with_clause -> WITH with_as_series .)
+    RETURN          reduce using rule 37 (with_clause -> WITH with_as_series .)
+    COMMA           shift and go to state 82
+
+
+state 50
+
+    (32) with_as_series -> alias .
+
+    COMMA           reduce using rule 32 (with_as_series -> alias .)
+    WHERE           reduce using rule 32 (with_as_series -> alias .)
+    RETURN          reduce using rule 32 (with_as_series -> alias .)
+
+
+state 51
+
+    (15) alias -> WORD . AS WORD
+    (60) object_attribute_lookup -> WORD . DOT WORD
+    (61) object_attribute_lookup -> WORD .
+
+  ! shift/reduce conflict for AS resolved as shift
+    AS              shift and go to state 39
+    DOT             shift and go to state 38
+    COMMA           reduce using rule 61 (object_attribute_lookup -> WORD .)
+    $end            reduce using rule 61 (object_attribute_lookup -> WORD .)
+
+  ! AS              [ reduce using rule 61 (object_attribute_lookup -> WORD .) ]
+
+
+state 52
+
+    (16) alias -> object_attribute_lookup . AS WORD
+
+    AS              shift and go to state 37
+
+
+state 53
+
+    (23) left_right -> DASH relationship . DASH GREATERTHAN
+
+    DASH            shift and go to state 83
+
+
+state 54
+
+    (21) relationship -> LSQUARE . WORD RSQUARE
+    (22) relationship -> LSQUARE . name_label RSQUARE
+    (6) name_label -> . WORD
+    (7) name_label -> . WORD COLON WORD
+    (8) name_label -> . COLON WORD
+
+    WORD            shift and go to state 84
+    COLON           shift and go to state 34
+
+    name_label                     shift and go to state 85
+
+state 55
+
+    (24) right_left -> LESSTHAN DASH . relationship DASH
+    (21) relationship -> . LSQUARE WORD RSQUARE
+    (22) relationship -> . LSQUARE name_label RSQUARE
+
+    LSQUARE         shift and go to state 54
+
+    relationship                   shift and go to state 86
+
+state 56
+
+    (42) match_pattern -> MATCH relationship_chain_list with_clause where .
+    (63) where -> where . COMMA predicate
+
+    RETURN          reduce using rule 42 (match_pattern -> MATCH relationship_chain_list with_clause where .)
+    COMMA           shift and go to state 43
+
+
+state 57
+
+    (31) relationship_chain_list -> relationship_chain_list COMMA relationship_chain .
+
+    COMMA           reduce using rule 31 (relationship_chain_list -> relationship_chain_list COMMA relationship_chain .)
+    WITH            reduce using rule 31 (relationship_chain_list -> relationship_chain_list COMMA relationship_chain .)
+    WHERE           reduce using rule 31 (relationship_chain_list -> relationship_chain_list COMMA relationship_chain .)
+    RETURN          reduce using rule 31 (relationship_chain_list -> relationship_chain_list COMMA relationship_chain .)
+
+
+state 58
+
+    (25) incomplete_relationship_chain -> node . left_right
+    (26) incomplete_relationship_chain -> node . right_left
+    (23) left_right -> . DASH relationship DASH GREATERTHAN
+    (24) right_left -> . LESSTHAN DASH relationship DASH
+
+    DASH            shift and go to state 26
+    LESSTHAN        shift and go to state 27
+
+    left_right                     shift and go to state 22
+    right_left                     shift and go to state 23
+
+state 59
+
+    (11) node -> LPAREN name_label RPAREN .
+
+    WHERE           reduce using rule 11 (node -> LPAREN name_label RPAREN .)
+    WITH            reduce using rule 11 (node -> LPAREN name_label RPAREN .)
+    DASH            reduce using rule 11 (node -> LPAREN name_label RPAREN .)
+    LESSTHAN        reduce using rule 11 (node -> LPAREN name_label RPAREN .)
+    RETURN          reduce using rule 11 (node -> LPAREN name_label RPAREN .)
+    COMMA           reduce using rule 11 (node -> LPAREN name_label RPAREN .)
+
+
+state 60
+
+    (12) node -> LPAREN name_label LCURLY . mapping_list RCURLY RPAREN
+    (9) mapping_list -> . WORD COLON literal
+    (10) mapping_list -> . mapping_list COMMA WORD COLON literal
+
+    WORD            shift and go to state 88
+
+    mapping_list                   shift and go to state 87
+
+state 61
+
+    (14) node -> LPAREN WORD RPAREN .
+
+    WHERE           reduce using rule 14 (node -> LPAREN WORD RPAREN .)
+    WITH            reduce using rule 14 (node -> LPAREN WORD RPAREN .)
+    DASH            reduce using rule 14 (node -> LPAREN WORD RPAREN .)
+    LESSTHAN        reduce using rule 14 (node -> LPAREN WORD RPAREN .)
+    RETURN          reduce using rule 14 (node -> LPAREN WORD RPAREN .)
+    COMMA           reduce using rule 14 (node -> LPAREN WORD RPAREN .)
+
+
+state 62
+
+    (7) name_label -> WORD COLON . WORD
+
+    WORD            shift and go to state 89
+
+
+state 63
+
+    (8) name_label -> COLON WORD .
+
+    RPAREN          reduce using rule 8 (name_label -> COLON WORD .)
+    LCURLY          reduce using rule 8 (name_label -> COLON WORD .)
+    RSQUARE         reduce using rule 8 (name_label -> COLON WORD .)
+
+
+state 64
+
+    (27) incomplete_relationship_chain -> incomplete_relationship_chain node left_right .
+
+    LPAREN          reduce using rule 27 (incomplete_relationship_chain -> incomplete_relationship_chain node left_right .)
+
+
+state 65
+
+    (28) incomplete_relationship_chain -> incomplete_relationship_chain node right_left .
+
+    LPAREN          reduce using rule 28 (incomplete_relationship_chain -> incomplete_relationship_chain node right_left .)
+
+
+state 66
+
+    (66) projection -> projection COMMA alias .
+
+    COMMA           reduce using rule 66 (projection -> projection COMMA alias .)
+    $end            reduce using rule 66 (projection -> projection COMMA alias .)
+
+
+state 67
+
+    (67) projection -> projection COMMA object_attribute_lookup .
+    (16) alias -> object_attribute_lookup . AS WORD
+
+    COMMA           reduce using rule 67 (projection -> projection COMMA object_attribute_lookup .)
+    $end            reduce using rule 67 (projection -> projection COMMA object_attribute_lookup .)
+    AS              shift and go to state 37
+
+
+state 68
+
+    (16) alias -> object_attribute_lookup AS WORD .
+
+    COMMA           reduce using rule 16 (alias -> object_attribute_lookup AS WORD .)
+    $end            reduce using rule 16 (alias -> object_attribute_lookup AS WORD .)
+    WHERE           reduce using rule 16 (alias -> object_attribute_lookup AS WORD .)
+    RETURN          reduce using rule 16 (alias -> object_attribute_lookup AS WORD .)
+
+
+state 69
+
+    (60) object_attribute_lookup -> WORD DOT WORD .
+
+    AS              reduce using rule 60 (object_attribute_lookup -> WORD DOT WORD .)
+    COMMA           reduce using rule 60 (object_attribute_lookup -> WORD DOT WORD .)
+    $end            reduce using rule 60 (object_attribute_lookup -> WORD DOT WORD .)
+    EQUALS          reduce using rule 60 (object_attribute_lookup -> WORD DOT WORD .)
+    LESSTHAN        reduce using rule 60 (object_attribute_lookup -> WORD DOT WORD .)
+    GREATERTHAN     reduce using rule 60 (object_attribute_lookup -> WORD DOT WORD .)
+    OR              reduce using rule 60 (object_attribute_lookup -> WORD DOT WORD .)
+    AND             reduce using rule 60 (object_attribute_lookup -> WORD DOT WORD .)
+    RPAREN          reduce using rule 60 (object_attribute_lookup -> WORD DOT WORD .)
+    ADDITION        reduce using rule 60 (object_attribute_lookup -> WORD DOT WORD .)
+    RETURN          reduce using rule 60 (object_attribute_lookup -> WORD DOT WORD .)
+
+
+state 70
+
+    (15) alias -> WORD AS WORD .
+
+    COMMA           reduce using rule 15 (alias -> WORD AS WORD .)
+    $end            reduce using rule 15 (alias -> WORD AS WORD .)
+    WHERE           reduce using rule 15 (alias -> WORD AS WORD .)
+    RETURN          reduce using rule 15 (alias -> WORD AS WORD .)
+
+
+state 71
+
+    (17) alias -> aggregation AS WORD .
+
+    COMMA           reduce using rule 17 (alias -> aggregation AS WORD .)
+    $end            reduce using rule 17 (alias -> aggregation AS WORD .)
+    WHERE           reduce using rule 17 (alias -> aggregation AS WORD .)
+    RETURN          reduce using rule 17 (alias -> aggregation AS WORD .)
+
+
+state 72
+
+    (34) collect -> COLLECT LPAREN object_attribute_lookup . RPAREN
+
+    RPAREN          shift and go to state 90
+
+
+state 73
+
+    (60) object_attribute_lookup -> WORD . DOT WORD
+    (61) object_attribute_lookup -> WORD .
+
+    DOT             shift and go to state 38
+    RPAREN          reduce using rule 61 (object_attribute_lookup -> WORD .)
+    COMMA           reduce using rule 61 (object_attribute_lookup -> WORD .)
+    RETURN          reduce using rule 61 (object_attribute_lookup -> WORD .)
+
+
+state 74
+
+    (63) where -> where COMMA predicate .
+
+    COMMA           reduce using rule 63 (where -> where COMMA predicate .)
+    RETURN          reduce using rule 63 (where -> where COMMA predicate .)
+
+
+state 75
+
+    (52) predicate -> object_attribute_lookup binary_operator . literal
+    (53) predicate -> object_attribute_lookup binary_operator . object_attribute_lookup
+    (55) predicate -> object_attribute_lookup binary_operator . binary_expression
+    (18) literal -> . integer
+    (19) literal -> . float
+    (20) literal -> . STRING
+    (60) object_attribute_lookup -> . WORD DOT WORD
+    (61) object_attribute_lookup -> . WORD
+    (56) binary_expression -> . object_attribute_lookup binary_function literal
+    (57) binary_expression -> . object_attribute_lookup binary_function object_attribute_lookup
+    (58) binary_expression -> . aliased_name binary_function literal
+    (59) binary_expression -> . literal binary_function literal
+    (4) integer -> . INTEGER
+    (5) float -> . FLOAT
+    (51) aliased_name -> . WORD
+
+    STRING          shift and go to state 96
+    WORD            shift and go to state 48
+    INTEGER         shift and go to state 98
+    FLOAT           shift and go to state 99
+
+    object_attribute_lookup        shift and go to state 91
+    literal                        shift and go to state 92
+    binary_expression              shift and go to state 93
+    integer                        shift and go to state 94
+    float                          shift and go to state 95
+    aliased_name                   shift and go to state 97
+
+state 76
+
+    (45) binary_operator -> EQUALS .
+
+    STRING          reduce using rule 45 (binary_operator -> EQUALS .)
+    WORD            reduce using rule 45 (binary_operator -> EQUALS .)
+    INTEGER         reduce using rule 45 (binary_operator -> EQUALS .)
+    FLOAT           reduce using rule 45 (binary_operator -> EQUALS .)
+
+
+state 77
+
+    (46) binary_operator -> LESSTHAN .
+
+    STRING          reduce using rule 46 (binary_operator -> LESSTHAN .)
+    WORD            reduce using rule 46 (binary_operator -> LESSTHAN .)
+    INTEGER         reduce using rule 46 (binary_operator -> LESSTHAN .)
+    FLOAT           reduce using rule 46 (binary_operator -> LESSTHAN .)
+
+
+state 78
+
+    (47) binary_operator -> GREATERTHAN .
+
+    STRING          reduce using rule 47 (binary_operator -> GREATERTHAN .)
+    WORD            reduce using rule 47 (binary_operator -> GREATERTHAN .)
+    INTEGER         reduce using rule 47 (binary_operator -> GREATERTHAN .)
+    FLOAT           reduce using rule 47 (binary_operator -> GREATERTHAN .)
+
+
+state 79
+
+    (48) binary_operator -> OR .
+
+    STRING          reduce using rule 48 (binary_operator -> OR .)
+    WORD            reduce using rule 48 (binary_operator -> OR .)
+    INTEGER         reduce using rule 48 (binary_operator -> OR .)
+    FLOAT           reduce using rule 48 (binary_operator -> OR .)
+
+
+state 80
+
+    (49) binary_operator -> AND .
+
+    STRING          reduce using rule 49 (binary_operator -> AND .)
+    WORD            reduce using rule 49 (binary_operator -> AND .)
+    INTEGER         reduce using rule 49 (binary_operator -> AND .)
+    FLOAT           reduce using rule 49 (binary_operator -> AND .)
+
+
+state 81
+
+    (54) predicate -> aliased_name binary_operator . literal
+    (18) literal -> . integer
+    (19) literal -> . float
+    (20) literal -> . STRING
+    (4) integer -> . INTEGER
+    (5) float -> . FLOAT
+
+    STRING          shift and go to state 96
+    INTEGER         shift and go to state 98
+    FLOAT           shift and go to state 99
+
+    literal                        shift and go to state 100
+    integer                        shift and go to state 94
+    float                          shift and go to state 95
+
+state 82
+
+    (33) with_as_series -> with_as_series COMMA . alias
+    (15) alias -> . WORD AS WORD
+    (16) alias -> . object_attribute_lookup AS WORD
+    (17) alias -> . aggregation AS WORD
+    (60) object_attribute_lookup -> . WORD DOT WORD
+    (61) object_attribute_lookup -> . WORD
+    (35) aggregation -> . collect
+    (36) aggregation -> . DISTINCT aggregation
+    (34) collect -> . COLLECT LPAREN object_attribute_lookup RPAREN
+
+    WORD            shift and go to state 51
+    DISTINCT        shift and go to state 18
+    COLLECT         shift and go to state 19
+
+    alias                          shift and go to state 101
+    object_attribute_lookup        shift and go to state 52
+    aggregation                    shift and go to state 16
+    collect                        shift and go to state 17
+
+state 83
+
+    (23) left_right -> DASH relationship DASH . GREATERTHAN
+
+    GREATERTHAN     shift and go to state 102
+
+
+state 84
+
+    (21) relationship -> LSQUARE WORD . RSQUARE
+    (6) name_label -> WORD .
+    (7) name_label -> WORD . COLON WORD
+
+  ! shift/reduce conflict for RSQUARE resolved as shift
+    RSQUARE         shift and go to state 103
+    COLON           shift and go to state 62
+
+  ! RSQUARE         [ reduce using rule 6 (name_label -> WORD .) ]
+
+
+state 85
+
+    (22) relationship -> LSQUARE name_label . RSQUARE
+
+    RSQUARE         shift and go to state 104
+
+
+state 86
+
+    (24) right_left -> LESSTHAN DASH relationship . DASH
+
+    DASH            shift and go to state 105
+
+
+state 87
+
+    (12) node -> LPAREN name_label LCURLY mapping_list . RCURLY RPAREN
+    (10) mapping_list -> mapping_list . COMMA WORD COLON literal
+
+    RCURLY          shift and go to state 106
+    COMMA           shift and go to state 107
+
+
+state 88
+
+    (9) mapping_list -> WORD . COLON literal
+
+    COLON           shift and go to state 108
+
+
+state 89
+
+    (7) name_label -> WORD COLON WORD .
+
+    RPAREN          reduce using rule 7 (name_label -> WORD COLON WORD .)
+    LCURLY          reduce using rule 7 (name_label -> WORD COLON WORD .)
+    RSQUARE         reduce using rule 7 (name_label -> WORD COLON WORD .)
+
+
+state 90
+
+    (34) collect -> COLLECT LPAREN object_attribute_lookup RPAREN .
+
+    AS              reduce using rule 34 (collect -> COLLECT LPAREN object_attribute_lookup RPAREN .)
+
+
+state 91
+
+    (53) predicate -> object_attribute_lookup binary_operator object_attribute_lookup .
+    (56) binary_expression -> object_attribute_lookup . binary_function literal
+    (57) binary_expression -> object_attribute_lookup . binary_function object_attribute_lookup
+    (50) binary_function -> . ADDITION
+
+    COMMA           reduce using rule 53 (predicate -> object_attribute_lookup binary_operator object_attribute_lookup .)
+    RETURN          reduce using rule 53 (predicate -> object_attribute_lookup binary_operator object_attribute_lookup .)
+    ADDITION        shift and go to state 110
+
+    binary_function                shift and go to state 109
+
+state 92
+
+    (52) predicate -> object_attribute_lookup binary_operator literal .
+    (59) binary_expression -> literal . binary_function literal
+    (50) binary_function -> . ADDITION
+
+    COMMA           reduce using rule 52 (predicate -> object_attribute_lookup binary_operator literal .)
+    RETURN          reduce using rule 52 (predicate -> object_attribute_lookup binary_operator literal .)
+    ADDITION        shift and go to state 110
+
+    binary_function                shift and go to state 111
+
+state 93
+
+    (55) predicate -> object_attribute_lookup binary_operator binary_expression .
+
+    COMMA           reduce using rule 55 (predicate -> object_attribute_lookup binary_operator binary_expression .)
+    RETURN          reduce using rule 55 (predicate -> object_attribute_lookup binary_operator binary_expression .)
+
+
+state 94
+
+    (18) literal -> integer .
+
+    ADDITION        reduce using rule 18 (literal -> integer .)
+    COMMA           reduce using rule 18 (literal -> integer .)
+    RETURN          reduce using rule 18 (literal -> integer .)
+    RCURLY          reduce using rule 18 (literal -> integer .)
+
+
+state 95
+
+    (19) literal -> float .
+
+    ADDITION        reduce using rule 19 (literal -> float .)
+    COMMA           reduce using rule 19 (literal -> float .)
+    RETURN          reduce using rule 19 (literal -> float .)
+    RCURLY          reduce using rule 19 (literal -> float .)
+
+
+state 96
+
+    (20) literal -> STRING .
+
+    ADDITION        reduce using rule 20 (literal -> STRING .)
+    COMMA           reduce using rule 20 (literal -> STRING .)
+    RETURN          reduce using rule 20 (literal -> STRING .)
+    RCURLY          reduce using rule 20 (literal -> STRING .)
+
+
+state 97
+
+    (58) binary_expression -> aliased_name . binary_function literal
+    (50) binary_function -> . ADDITION
+
+    ADDITION        shift and go to state 110
+
+    binary_function                shift and go to state 112
+
+state 98
+
+    (4) integer -> INTEGER .
+
+    ADDITION        reduce using rule 4 (integer -> INTEGER .)
+    COMMA           reduce using rule 4 (integer -> INTEGER .)
+    RETURN          reduce using rule 4 (integer -> INTEGER .)
+    RCURLY          reduce using rule 4 (integer -> INTEGER .)
+
+
+state 99
+
+    (5) float -> FLOAT .
+
+    ADDITION        reduce using rule 5 (float -> FLOAT .)
+    COMMA           reduce using rule 5 (float -> FLOAT .)
+    RETURN          reduce using rule 5 (float -> FLOAT .)
+    RCURLY          reduce using rule 5 (float -> FLOAT .)
+
+
+state 100
+
+    (54) predicate -> aliased_name binary_operator literal .
+
+    COMMA           reduce using rule 54 (predicate -> aliased_name binary_operator literal .)
+    RETURN          reduce using rule 54 (predicate -> aliased_name binary_operator literal .)
+
+
+state 101
+
+    (33) with_as_series -> with_as_series COMMA alias .
+
+    COMMA           reduce using rule 33 (with_as_series -> with_as_series COMMA alias .)
+    WHERE           reduce using rule 33 (with_as_series -> with_as_series COMMA alias .)
+    RETURN          reduce using rule 33 (with_as_series -> with_as_series COMMA alias .)
+
+
+state 102
+
+    (23) left_right -> DASH relationship DASH GREATERTHAN .
+
+    LPAREN          reduce using rule 23 (left_right -> DASH relationship DASH GREATERTHAN .)
+
+
+state 103
+
+    (21) relationship -> LSQUARE WORD RSQUARE .
+
+    DASH            reduce using rule 21 (relationship -> LSQUARE WORD RSQUARE .)
+
+
+state 104
+
+    (22) relationship -> LSQUARE name_label RSQUARE .
+
+    DASH            reduce using rule 22 (relationship -> LSQUARE name_label RSQUARE .)
+
+
+state 105
+
+    (24) right_left -> LESSTHAN DASH relationship DASH .
+
+    LPAREN          reduce using rule 24 (right_left -> LESSTHAN DASH relationship DASH .)
+
+
+state 106
+
+    (12) node -> LPAREN name_label LCURLY mapping_list RCURLY . RPAREN
+
+    RPAREN          shift and go to state 113
+
+
+state 107
+
+    (10) mapping_list -> mapping_list COMMA . WORD COLON literal
+
+    WORD            shift and go to state 114
+
+
+state 108
+
+    (9) mapping_list -> WORD COLON . literal
+    (18) literal -> . integer
+    (19) literal -> . float
+    (20) literal -> . STRING
+    (4) integer -> . INTEGER
+    (5) float -> . FLOAT
+
+    STRING          shift and go to state 96
+    INTEGER         shift and go to state 98
+    FLOAT           shift and go to state 99
+
+    literal                        shift and go to state 115
+    integer                        shift and go to state 94
+    float                          shift and go to state 95
+
+state 109
+
+    (56) binary_expression -> object_attribute_lookup binary_function . literal
+    (57) binary_expression -> object_attribute_lookup binary_function . object_attribute_lookup
+    (18) literal -> . integer
+    (19) literal -> . float
+    (20) literal -> . STRING
+    (60) object_attribute_lookup -> . WORD DOT WORD
+    (61) object_attribute_lookup -> . WORD
+    (4) integer -> . INTEGER
+    (5) float -> . FLOAT
+
+    STRING          shift and go to state 96
+    WORD            shift and go to state 73
+    INTEGER         shift and go to state 98
+    FLOAT           shift and go to state 99
+
+    object_attribute_lookup        shift and go to state 116
+    literal                        shift and go to state 117
+    integer                        shift and go to state 94
+    float                          shift and go to state 95
+
+state 110
+
+    (50) binary_function -> ADDITION .
+
+    STRING          reduce using rule 50 (binary_function -> ADDITION .)
+    WORD            reduce using rule 50 (binary_function -> ADDITION .)
+    INTEGER         reduce using rule 50 (binary_function -> ADDITION .)
+    FLOAT           reduce using rule 50 (binary_function -> ADDITION .)
+
+
+state 111
+
+    (59) binary_expression -> literal binary_function . literal
+    (18) literal -> . integer
+    (19) literal -> . float
+    (20) literal -> . STRING
+    (4) integer -> . INTEGER
+    (5) float -> . FLOAT
+
+    STRING          shift and go to state 96
+    INTEGER         shift and go to state 98
+    FLOAT           shift and go to state 99
+
+    literal                        shift and go to state 118
+    integer                        shift and go to state 94
+    float                          shift and go to state 95
+
+state 112
+
+    (58) binary_expression -> aliased_name binary_function . literal
+    (18) literal -> . integer
+    (19) literal -> . float
+    (20) literal -> . STRING
+    (4) integer -> . INTEGER
+    (5) float -> . FLOAT
+
+    STRING          shift and go to state 96
+    INTEGER         shift and go to state 98
+    FLOAT           shift and go to state 99
+
+    literal                        shift and go to state 119
+    integer                        shift and go to state 94
+    float                          shift and go to state 95
+
+state 113
+
+    (12) node -> LPAREN name_label LCURLY mapping_list RCURLY RPAREN .
+
+    WHERE           reduce using rule 12 (node -> LPAREN name_label LCURLY mapping_list RCURLY RPAREN .)
+    WITH            reduce using rule 12 (node -> LPAREN name_label LCURLY mapping_list RCURLY RPAREN .)
+    DASH            reduce using rule 12 (node -> LPAREN name_label LCURLY mapping_list RCURLY RPAREN .)
+    LESSTHAN        reduce using rule 12 (node -> LPAREN name_label LCURLY mapping_list RCURLY RPAREN .)
+    RETURN          reduce using rule 12 (node -> LPAREN name_label LCURLY mapping_list RCURLY RPAREN .)
+    COMMA           reduce using rule 12 (node -> LPAREN name_label LCURLY mapping_list RCURLY RPAREN .)
+
+
+state 114
+
+    (10) mapping_list -> mapping_list COMMA WORD . COLON literal
+
+    COLON           shift and go to state 120
+
+
+state 115
+
+    (9) mapping_list -> WORD COLON literal .
+
+    RCURLY          reduce using rule 9 (mapping_list -> WORD COLON literal .)
+    COMMA           reduce using rule 9 (mapping_list -> WORD COLON literal .)
+
+
+state 116
+
+    (57) binary_expression -> object_attribute_lookup binary_function object_attribute_lookup .
+
+    COMMA           reduce using rule 57 (binary_expression -> object_attribute_lookup binary_function object_attribute_lookup .)
+    RETURN          reduce using rule 57 (binary_expression -> object_attribute_lookup binary_function object_attribute_lookup .)
+
+
+state 117
+
+    (56) binary_expression -> object_attribute_lookup binary_function literal .
+
+    COMMA           reduce using rule 56 (binary_expression -> object_attribute_lookup binary_function literal .)
+    RETURN          reduce using rule 56 (binary_expression -> object_attribute_lookup binary_function literal .)
+
+
+state 118
+
+    (59) binary_expression -> literal binary_function literal .
+
+    COMMA           reduce using rule 59 (binary_expression -> literal binary_function literal .)
+    RETURN          reduce using rule 59 (binary_expression -> literal binary_function literal .)
+
+
+state 119
+
+    (58) binary_expression -> aliased_name binary_function literal .
+
+    COMMA           reduce using rule 58 (binary_expression -> aliased_name binary_function literal .)
+    RETURN          reduce using rule 58 (binary_expression -> aliased_name binary_function literal .)
+
+
+state 120
+
+    (10) mapping_list -> mapping_list COMMA WORD COLON . literal
+    (18) literal -> . integer
+    (19) literal -> . float
+    (20) literal -> . STRING
+    (4) integer -> . INTEGER
+    (5) float -> . FLOAT
+
+    STRING          shift and go to state 96
+    INTEGER         shift and go to state 98
+    FLOAT           shift and go to state 99
+
+    literal                        shift and go to state 121
+    integer                        shift and go to state 94
+    float                          shift and go to state 95
+
+state 121
+
+    (10) mapping_list -> mapping_list COMMA WORD COLON literal .
+
+    RCURLY          reduce using rule 10 (mapping_list -> mapping_list COMMA WORD COLON literal .)
+    COMMA           reduce using rule 10 (mapping_list -> mapping_list COMMA WORD COLON literal .)
+
+WARNING: 
+WARNING: Conflicts:
+WARNING: 
+WARNING: shift/reduce conflict for AS in state 15 resolved as shift
+WARNING: shift/reduce conflict for RPAREN in state 33 resolved as shift
+WARNING: shift/reduce conflict for AS in state 51 resolved as shift
+WARNING: shift/reduce conflict for RSQUARE in state 84 resolved as shift
+WARNING: reduce/reduce conflict in state 48 resolved using rule (aliased_name -> WORD)
+WARNING: rejected rule (object_attribute_lookup -> WORD) in state 48

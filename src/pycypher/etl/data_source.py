@@ -15,7 +15,11 @@ from urllib.parse import ParseResult
 
 import pyarrow.parquet as pq
 
-from pycypher.etl.fact import AtomicFact, FactNodeHasLabel, FactNodeHasAttributeWithValue
+from pycypher.etl.fact import (
+    AtomicFact,
+    FactNodeHasAttributeWithValue,
+    FactNodeHasLabel,
+)
 from pycypher.etl.message_types import EndOfData, RawDatum
 from pycypher.util.helpers import QueueGenerator, ensure_uri
 from pycypher.util.logger import LOGGER
@@ -207,7 +211,7 @@ class DataSourceMapping:  # pylint: disable=too-few-public-methods,too-many-inst
             and self.attribute is not None
             and self.label is not None
         )
-    
+
     @property
     def is_label_mapping(self) -> bool:
         """Is this a label mapping? (vs an attribute mapping)"""
@@ -244,7 +248,7 @@ class DataSourceMapping:  # pylint: disable=too-few-public-methods,too-many-inst
             )
         else:
             raise NotImplementedError(
-                "Only attribute mappings are supported for now."
+                "Only attribute and label mappings are supported for now."
             )
         return fact
 

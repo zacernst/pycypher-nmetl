@@ -9,7 +9,6 @@ from pycypher.etl.goldberg import Goldberg
 from pycypher.etl.trigger import VariableAttribute
 from pycypher.util.logger import LOGGER
 
-
 LOGGER.setLevel("DEBUG")
 
 data_source = FixtureDataSource(

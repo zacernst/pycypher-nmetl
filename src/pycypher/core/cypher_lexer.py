@@ -88,5 +88,9 @@ def t_STRING(t):
     return t
 
 
+def t_error(t):
+    raise Exception(f"Illegal character '{t.value[0]}'")
+
+
 t_ignore = " \t"
 lexer = lex.lex()

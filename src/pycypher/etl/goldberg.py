@@ -140,19 +140,15 @@ class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-publi
         variable = tuple(sub_trigger_obj.sub)[0]
         node_id = sub_trigger_obj.sub[variable]
 
-        specific_object_constraint = (
-            ConstraintVariableRefersToSpecificObject(
-                variable=variable, node_id=node_id
-            )
+        specific_object_constraint = ConstraintVariableRefersToSpecificObject(
+            variable=variable, node_id=node_id
         )
-        # 
+        #
         match_clause = item.trigger.cypher.parse_tree.cypher.match_clause
         # match_clause.constraints.append(specific_object_constraint)
         fact_collection = self.goldberg.fact_collection
         solutions = match_clause.solutions(fact_collection)
 
-
-        
         # Need a constraint class saying that a node is a specific object.
         # TODO:
         # Add "NodeHasAttributeWithValue" constraint to the cypher

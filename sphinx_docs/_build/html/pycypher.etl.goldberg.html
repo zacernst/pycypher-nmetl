@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Goldberg &mdash; PyCypher: Cypher Parser and Query Executor for Python  documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="_static/jquery.js?v=5d32c60e"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="_static/documentation_options.js?v=5929fcd5"></script>
+        <script src="_static/doctools.js?v=9a2dae69"></script>
+        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Message Types" href="pycypher.etl.message_types.html" />
+    <link rel="prev" title="Fact and FactCollection" href="pycypher.etl.fact.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            PyCypher: Cypher Parser and Query Executor for Python
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="index.html">Home</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="api.html">API</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="pycypher.core.cypher_lexer.html">Lexer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pycypher.core.cypher_parser.html">Cypher Parser</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pycypher.core.node_classes.html">AST Node Classes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pycypher.etl.data_source.html">Data Source</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pycypher.etl.fact.html">Fact and FactCollection</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Goldberg</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#pycypher.etl.goldberg.CheckFactAgainstTriggersQueueProcessor"><code class="docutils literal notranslate"><span class="pre">CheckFactAgainstTriggersQueueProcessor</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#pycypher.etl.goldberg.CheckFactAgainstTriggersQueueProcessor.process_item_from_queue"><code class="docutils literal notranslate"><span class="pre">CheckFactAgainstTriggersQueueProcessor.process_item_from_queue()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#pycypher.etl.goldberg.FactGeneratedQueueProcessor"><code class="docutils literal notranslate"><span class="pre">FactGeneratedQueueProcessor</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#pycypher.etl.goldberg.FactGeneratedQueueProcessor.process_item_from_queue"><code class="docutils literal notranslate"><span class="pre">FactGeneratedQueueProcessor.process_item_from_queue()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#pycypher.etl.goldberg.Goldberg"><code class="docutils literal notranslate"><span class="pre">Goldberg</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#pycypher.etl.goldberg.Goldberg.attach_data_source"><code class="docutils literal notranslate"><span class="pre">Goldberg.attach_data_source()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pycypher.etl.goldberg.Goldberg.attach_fact_collection"><code class="docutils literal notranslate"><span class="pre">Goldberg.attach_fact_collection()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pycypher.etl.goldberg.Goldberg.attach_raw_data_processor"><code class="docutils literal notranslate"><span class="pre">Goldberg.attach_raw_data_processor()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pycypher.etl.goldberg.Goldberg.block_until_finished"><code class="docutils literal notranslate"><span class="pre">Goldberg.block_until_finished()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pycypher.etl.goldberg.Goldberg.constraints"><code class="docutils literal notranslate"><span class="pre">Goldberg.constraints</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pycypher.etl.goldberg.Goldberg.cypher_trigger"><code class="docutils literal notranslate"><span class="pre">Goldberg.cypher_trigger()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pycypher.etl.goldberg.Goldberg.facts_matching_constraints"><code class="docutils literal notranslate"><span class="pre">Goldberg.facts_matching_constraints()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pycypher.etl.goldberg.Goldberg.halt"><code class="docutils literal notranslate"><span class="pre">Goldberg.halt()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pycypher.etl.goldberg.Goldberg.has_unfinished_data_source"><code class="docutils literal notranslate"><span class="pre">Goldberg.has_unfinished_data_source()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pycypher.etl.goldberg.Goldberg.monitor"><code class="docutils literal notranslate"><span class="pre">Goldberg.monitor()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pycypher.etl.goldberg.Goldberg.start_threads"><code class="docutils literal notranslate"><span class="pre">Goldberg.start_threads()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pycypher.etl.goldberg.Goldberg.walk_constraints"><code class="docutils literal notranslate"><span class="pre">Goldberg.walk_constraints()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#pycypher.etl.goldberg.QueueProcessor"><code class="docutils literal notranslate"><span class="pre">QueueProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pycypher.etl.goldberg.RawDataProcessor"><code class="docutils literal notranslate"><span class="pre">RawDataProcessor</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#pycypher.etl.goldberg.RawDataProcessor.process_item_from_queue"><code class="docutils literal notranslate"><span class="pre">RawDataProcessor.process_item_from_queue()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#pycypher.etl.goldberg.SubTriggerPair"><code class="docutils literal notranslate"><span class="pre">SubTriggerPair</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pycypher.etl.goldberg.TriggeredLookupProcessor"><code class="docutils literal notranslate"><span class="pre">TriggeredLookupProcessor</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#pycypher.etl.goldberg.TriggeredLookupProcessor.process_item_from_queue"><code class="docutils literal notranslate"><span class="pre">TriggeredLookupProcessor.process_item_from_queue()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="pycypher.etl.message_types.html">Message Types</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pycypher.etl.solver.html">Constraint Solver</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pycypher.etl.trigger.html">Trigger</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pycypher.shims.networkx_cypher.html">NetworkX Shim</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">PyCypher: Cypher Parser and Query Executor for Python</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="api.html">API</a></li>
+      <li class="breadcrumb-item active">Goldberg</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/pycypher.etl.goldberg.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-pycypher.etl.goldberg">
+<span id="goldberg"></span><h1>Goldberg<a class="headerlink" href="#module-pycypher.etl.goldberg" title="Link to this heading"></a></h1>
+<p>Main class for managing ETL flow.</p>
+<p class="rubric">Functions</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+</tbody>
+</table>
+<dl class="py class">
+<dt class="sig sig-object py" id="pycypher.etl.goldberg.CheckFactAgainstTriggersQueueProcessor">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.etl.goldberg.</span></span><span class="sig-name descname"><span class="pre">CheckFactAgainstTriggersQueueProcessor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">goldberg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#pycypher.etl.goldberg.Goldberg" title="pycypher.etl.goldberg.Goldberg"><span class="pre">Goldberg</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">incoming_queue</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">QueueGenerator</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">outgoing_queue</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">QueueGenerator</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.etl.goldberg.CheckFactAgainstTriggersQueueProcessor" title="Link to this definition"></a></dt>
+<dd><p>Reads from the check_fact_against_triggers_queue and processes the facts
+by checking them against the triggers.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="pycypher.etl.goldberg.CheckFactAgainstTriggersQueueProcessor.process_item_from_queue">
+<span class="sig-name descname"><span class="pre">process_item_from_queue</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">item</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.13)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#pycypher.etl.goldberg.CheckFactAgainstTriggersQueueProcessor.process_item_from_queue" title="Link to this definition"></a></dt>
+<dd><p>Process new facts from the check_fact_against_triggers_queue.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="pycypher.etl.goldberg.FactGeneratedQueueProcessor">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.etl.goldberg.</span></span><span class="sig-name descname"><span class="pre">FactGeneratedQueueProcessor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">goldberg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#pycypher.etl.goldberg.Goldberg" title="pycypher.etl.goldberg.Goldberg"><span class="pre">Goldberg</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">incoming_queue</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">QueueGenerator</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">outgoing_queue</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">QueueGenerator</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.etl.goldberg.FactGeneratedQueueProcessor" title="Link to this definition"></a></dt>
+<dd><p>Reads from the fact_generated_queue and processes the facts
+by inserting them into the <code class="docutils literal notranslate"><span class="pre">FactCollection</span></code>.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="pycypher.etl.goldberg.FactGeneratedQueueProcessor.process_item_from_queue">
+<span class="sig-name descname"><span class="pre">process_item_from_queue</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">item</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.13)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#pycypher.etl.goldberg.FactGeneratedQueueProcessor.process_item_from_queue" title="Link to this definition"></a></dt>
+<dd><p>Process new facts from the fact_generated_queue.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="pycypher.etl.goldberg.Goldberg">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.etl.goldberg.</span></span><span class="sig-name descname"><span class="pre">Goldberg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fact_collection:</span> <span class="pre">~pycypher.etl.fact.FactCollection</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">queue_class:</span> <span class="pre">~typing.Type</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">&lt;class</span> <span class="pre">'pycypher.util.helpers.QueueGenerator'&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">queue_options:</span> <span class="pre">~typing.Dict[str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">~typing.Any]</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_sources:</span> <span class="pre">~typing.List[~pycypher.etl.data_source.DataSource]</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">queue_list:</span> <span class="pre">~typing.List[~pycypher.util.helpers.QueueGenerator]</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">run_monitor:</span> <span class="pre">bool</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.etl.goldberg.Goldberg" title="Link to this definition"></a></dt>
+<dd><p>Holds the triggers and fact collection and makes everything go.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="pycypher.etl.goldberg.Goldberg.attach_data_source">
+<span class="sig-name descname"><span class="pre">attach_data_source</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data_source</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="pycypher.etl.data_source.html#pycypher.etl.data_source.DataSource" title="pycypher.etl.data_source.DataSource"><span class="pre">DataSource</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#pycypher.etl.goldberg.Goldberg.attach_data_source" title="Link to this definition"></a></dt>
+<dd><p>Attach a DataSource to the machine.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pycypher.etl.goldberg.Goldberg.attach_fact_collection">
+<span class="sig-name descname"><span class="pre">attach_fact_collection</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fact_collection</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="pycypher.etl.fact.html#pycypher.etl.fact.FactCollection" title="pycypher.etl.fact.FactCollection"><span class="pre">FactCollection</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#pycypher.etl.goldberg.Goldberg.attach_fact_collection" title="Link to this definition"></a></dt>
+<dd><p>Attach a <code class="docutils literal notranslate"><span class="pre">FactCollection</span></code> to the machine.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pycypher.etl.goldberg.Goldberg.attach_raw_data_processor">
+<span class="sig-name descname"><span class="pre">attach_raw_data_processor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">raw_data_processor</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#pycypher.etl.goldberg.RawDataProcessor" title="pycypher.etl.goldberg.RawDataProcessor"><span class="pre">RawDataProcessor</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#pycypher.etl.goldberg.Goldberg.attach_raw_data_processor" title="Link to this definition"></a></dt>
+<dd><p>Attach the raw data processor to the machine.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pycypher.etl.goldberg.Goldberg.block_until_finished">
+<span class="sig-name descname"><span class="pre">block_until_finished</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.etl.goldberg.Goldberg.block_until_finished" title="Link to this definition"></a></dt>
+<dd><p>Block until all data sources have finished.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="pycypher.etl.goldberg.Goldberg.constraints">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">constraints</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.13)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="pycypher.etl.solver.html#pycypher.etl.solver.Constraint" title="pycypher.etl.solver.Constraint"><span class="pre">Constraint</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#pycypher.etl.goldberg.Goldberg.constraints" title="Link to this definition"></a></dt>
+<dd><p>Return all the constraints from the triggers.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pycypher.etl.goldberg.Goldberg.cypher_trigger">
+<span class="sig-name descname"><span class="pre">cypher_trigger</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arg1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.etl.goldberg.Goldberg.cypher_trigger" title="Link to this definition"></a></dt>
+<dd><p>Decorator that registers a trigger with a Cypher string and a function.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pycypher.etl.goldberg.Goldberg.facts_matching_constraints">
+<span class="sig-name descname"><span class="pre">facts_matching_constraints</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fact_generator</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Iterable" title="(in Python v3.13)"><span class="pre">Iterable</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Generator" title="(in Python v3.13)"><span class="pre">Generator</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="pycypher.etl.fact.html#pycypher.etl.fact.AtomicFact" title="pycypher.etl.fact.AtomicFact"><span class="pre">AtomicFact</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#pycypher.etl.goldberg.Goldberg.facts_matching_constraints" title="Link to this definition"></a></dt>
+<dd><p>Yield all the facts that match the constraints.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pycypher.etl.goldberg.Goldberg.halt">
+<span class="sig-name descname"><span class="pre">halt</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">level</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.etl.goldberg.Goldberg.halt" title="Link to this definition"></a></dt>
+<dd><p>Stop the threads.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pycypher.etl.goldberg.Goldberg.has_unfinished_data_source">
+<span class="sig-name descname"><span class="pre">has_unfinished_data_source</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><span class="pre">bool</span></a></span></span><a class="headerlink" href="#pycypher.etl.goldberg.Goldberg.has_unfinished_data_source" title="Link to this definition"></a></dt>
+<dd><p>Checks whether any of the data sources are still loading data.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pycypher.etl.goldberg.Goldberg.monitor">
+<span class="sig-name descname"><span class="pre">monitor</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.etl.goldberg.Goldberg.monitor" title="Link to this definition"></a></dt>
+<dd><p>Loop the _monitor function</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pycypher.etl.goldberg.Goldberg.start_threads">
+<span class="sig-name descname"><span class="pre">start_threads</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.etl.goldberg.Goldberg.start_threads" title="Link to this definition"></a></dt>
+<dd><p>Start the threads.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pycypher.etl.goldberg.Goldberg.walk_constraints">
+<span class="sig-name descname"><span class="pre">walk_constraints</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Generator" title="(in Python v3.13)"><span class="pre">Generator</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="pycypher.etl.solver.html#pycypher.etl.solver.Constraint" title="pycypher.etl.solver.Constraint"><span class="pre">Constraint</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#pycypher.etl.goldberg.Goldberg.walk_constraints" title="Link to this definition"></a></dt>
+<dd><p>Yield all the triggers’ constraints.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="pycypher.etl.goldberg.QueueProcessor">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.etl.goldberg.</span></span><span class="sig-name descname"><span class="pre">QueueProcessor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">goldberg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#pycypher.etl.goldberg.Goldberg" title="pycypher.etl.goldberg.Goldberg"><span class="pre">Goldberg</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">incoming_queue</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">QueueGenerator</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">outgoing_queue</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">QueueGenerator</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.etl.goldberg.QueueProcessor" title="Link to this definition"></a></dt>
+<dd><p>ABC that processes items from a queue and places the results onto another queue.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="pycypher.etl.goldberg.RawDataProcessor">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.etl.goldberg.</span></span><span class="sig-name descname"><span class="pre">RawDataProcessor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">goldberg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#pycypher.etl.goldberg.Goldberg" title="pycypher.etl.goldberg.Goldberg"><span class="pre">Goldberg</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">incoming_queue</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">QueueGenerator</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">outgoing_queue</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">QueueGenerator</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.etl.goldberg.RawDataProcessor" title="Link to this definition"></a></dt>
+<dd><p>Runs in a thread to process raw data from all the DataSource objects.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="pycypher.etl.goldberg.RawDataProcessor.process_item_from_queue">
+<span class="sig-name descname"><span class="pre">process_item_from_queue</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">item</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.13)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="pycypher.etl.fact.html#pycypher.etl.fact.AtomicFact" title="pycypher.etl.fact.AtomicFact"><span class="pre">AtomicFact</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#pycypher.etl.goldberg.RawDataProcessor.process_item_from_queue" title="Link to this definition"></a></dt>
+<dd><p>Process raw data from the <code class="docutils literal notranslate"><span class="pre">raw_input_queue</span></code>, generate facts.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="pycypher.etl.goldberg.SubTriggerPair">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.etl.goldberg.</span></span><span class="sig-name descname"><span class="pre">SubTriggerPair</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sub</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.13)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">trigger</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="pycypher.etl.trigger.html#pycypher.etl.trigger.CypherTrigger" title="pycypher.etl.trigger.CypherTrigger"><span class="pre">CypherTrigger</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.etl.goldberg.SubTriggerPair" title="Link to this definition"></a></dt>
+<dd><p>A pair of a sub and a trigger.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="pycypher.etl.goldberg.TriggeredLookupProcessor">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.etl.goldberg.</span></span><span class="sig-name descname"><span class="pre">TriggeredLookupProcessor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">goldberg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#pycypher.etl.goldberg.Goldberg" title="pycypher.etl.goldberg.Goldberg"><span class="pre">Goldberg</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">incoming_queue</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">QueueGenerator</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">outgoing_queue</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">QueueGenerator</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.etl.goldberg.TriggeredLookupProcessor" title="Link to this definition"></a></dt>
+<dd><p>Reads from the check_fact_against_triggers_queue and processes the facts
+by checking them against the triggers.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="pycypher.etl.goldberg.TriggeredLookupProcessor.process_item_from_queue">
+<span class="sig-name descname"><span class="pre">process_item_from_queue</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">item</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.13)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.13)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.13)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#pycypher.etl.goldberg.TriggeredLookupProcessor.process_item_from_queue" title="Link to this definition"></a></dt>
+<dd><p>Process new facts from the check_fact_against_triggers_queue.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="pycypher.etl.fact.html" class="btn btn-neutral float-left" title="Fact and FactCollection" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="pycypher.etl.message_types.html" class="btn btn-neutral float-right" title="Message Types" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Zachary Ernst.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

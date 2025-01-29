@@ -3648,7 +3648,7 @@ def test_goldberg_fact_generated_queue_processor_appends_facts_to_collection(
     empty_goldberg.attach_data_source(fixture_data_source_0)
     empty_goldberg.start_threads()
     empty_goldberg.block_until_finished()
-    assert len(empty_goldberg.fact_collection) == 35
+    assert len(empty_goldberg.fact_collection) == 42
 
 
 def test_queue_generator_not_completed_immediately():
@@ -3761,6 +3761,7 @@ def test_data_source_mapping_against_row_from_data_source(
         FactNodeHasAttributeWithValue(
             node_id="Person::001", attribute="WidgetsPurchased", value=5
         ),
+        FactNodeHasLabel(node_id="Person::001", label="Person"),
     ]
     assert fact_list == expected_fact_list
 
@@ -3773,7 +3774,7 @@ def test_data_source_mapping_against_row_from_goldberg(
     empty_goldberg.start_threads()
     empty_goldberg.block_until_finished()
     assert empty_goldberg.raw_data_processor.received_counter == 7
-    assert empty_goldberg.raw_data_processor.sent_counter == 35
+    assert empty_goldberg.raw_data_processor.sent_counter == 42
 
 
 @pytest.mark.timeout(15)
@@ -3827,3 +3828,20 @@ def test_find_solution_node_has_label_with_node_identity_constraint_unsatisfiabl
     )
     expected = []
     assert solutions == expected
+
+
+def test_fact_plus_constraint_variable_refers_to_specific_object_true(
+    fact_collection_0: FactCollection,
+):
+    fact = FactNodeHasLabel("1", "Thing")
+    constraint = ConstraintVariableRefersToSpecificObject("n", "1")
+    assert fact + constraint == {"n": "1"}
+
+
+def test_fact_plus_constraint_variable_refers_to_specific_object_false(
+    fact_collection_0: FactCollection,
+):
+    fact = FactNodeHasLabel("1", "Thing")
+    constraint = ConstraintVariableRefersToSpecificObject("n", "2")
+
+    assert fact + constraint is None

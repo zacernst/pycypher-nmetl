@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tree Mixin &mdash; PyCypher: Cypher Parser and Query Executor for Python  documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="_static/jquery.js?v=5d32c60e"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="_static/documentation_options.js?v=5929fcd5"></script>
+        <script src="_static/doctools.js?v=9a2dae69"></script>
+        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            PyCypher: Cypher Parser and Query Executor for Python
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="index.html">Home</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">PyCypher: Cypher Parser and Query Executor for Python</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Tree Mixin</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/pycypher.core.tree_mixin.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-pycypher.core.tree_mixin">
+<span id="tree-mixin"></span><h1>Tree Mixin<a class="headerlink" href="#module-pycypher.core.tree_mixin" title="Link to this heading"></a></h1>
+<p>This is a mixin class that provides methods for walking and printing
+the AST.</p>
+<p class="rubric">Functions</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+</tbody>
+</table>
+<dl class="py class">
+<dt class="sig sig-object py" id="pycypher.core.tree_mixin.TreeMixin">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.core.tree_mixin.</span></span><span class="sig-name descname"><span class="pre">TreeMixin</span></span><a class="headerlink" href="#pycypher.core.tree_mixin.TreeMixin" title="Link to this definition"></a></dt>
+<dd><p>TreeMixin is an abstract base class that provides a mixin for tree structures,
+typically used for Abstract Syntax Trees (ASTs). It includes methods for
+printing, walking, and navigating the tree.</p>
+<dl class="simple">
+<dt>Attributes:</dt><dd><p>parent: The parent node of the current node.</p>
+</dd>
+</dl>
+<dl class="py property">
+<dt class="sig sig-object py" id="pycypher.core.tree_mixin.TreeMixin.children">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">children</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Generator</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#pycypher.core.tree_mixin.TreeMixin" title="pycypher.core.tree_mixin.TreeMixin"><span class="pre">TreeMixin</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#pycypher.core.tree_mixin.TreeMixin.children" title="Link to this definition"></a></dt>
+<dd><p>Each node should have a children property that returns a generator of its children.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pycypher.core.tree_mixin.TreeMixin.enclosing_class">
+<span class="sig-name descname"><span class="pre">enclosing_class</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cls</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Type" title="(in Python v3.13)"><span class="pre">Type</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#pycypher.core.tree_mixin.TreeMixin" title="pycypher.core.tree_mixin.TreeMixin"><span class="pre">TreeMixin</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#pycypher.core.tree_mixin.TreeMixin" title="pycypher.core.tree_mixin.TreeMixin"><span class="pre">TreeMixin</span></a></span></span><a class="headerlink" href="#pycypher.core.tree_mixin.TreeMixin.enclosing_class" title="Link to this definition"></a></dt>
+<dd><p>Finds the nearest enclosing instance of the specified class type.</p>
+<p>This method traverses up the parent hierarchy to find the nearest
+instance of the specified class type. If the current instance is
+of the specified class type, it returns itself. If no such instance
+is found in the hierarchy, a ValueError is raised.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>cls (Type[TreeMixin]): The class type to search for in the parent hierarchy.</p>
+</dd>
+<dt>Returns:</dt><dd><p>TreeMixin: The nearest enclosing instance of the specified class type.</p>
+</dd>
+<dt>Raises:</dt><dd><p>ValueError: If no enclosing instance of the specified class type is found.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="pycypher.core.tree_mixin.TreeMixin.parse_obj">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">parse_obj</span></span><a class="headerlink" href="#pycypher.core.tree_mixin.TreeMixin.parse_obj" title="Link to this definition"></a></dt>
+<dd><p>Returns the root object of the tree.</p>
+<p>If the current object has no parent, it is considered the root and is returned.
+Otherwise, the method recursively traverses up the tree to find and return the root object.</p>
+<dl class="simple">
+<dt>Returns:</dt><dd><p>The root object of the tree.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pycypher.core.tree_mixin.TreeMixin.print_tree">
+<span class="sig-name descname"><span class="pre">print_tree</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.core.tree_mixin.TreeMixin.print_tree" title="Link to this definition"></a></dt>
+<dd><p>Uses <code class="docutils literal notranslate"><span class="pre">rich</span></code> to print the tree representation of the AST.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="pycypher.core.tree_mixin.TreeMixin.root">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">root</span></span><a class="headerlink" href="#pycypher.core.tree_mixin.TreeMixin.root" title="Link to this definition"></a></dt>
+<dd><p>Returns the root node of the tree.</p>
+<p>This method traverses up the tree by following the parent references
+until it finds the root node (a node with no parent).</p>
+<dl class="simple">
+<dt>Returns:</dt><dd><p>The root node of the tree.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pycypher.core.tree_mixin.TreeMixin.tree">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">tree</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tree</span></span></span><a class="headerlink" href="#pycypher.core.tree_mixin.TreeMixin.tree" title="Link to this definition"></a></dt>
+<dd><p>Generates a tree representation of the AST which can be pretty-printed
+with the <code class="docutils literal notranslate"><span class="pre">rich</span></code> library.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pycypher.core.tree_mixin.TreeMixin.walk">
+<span class="sig-name descname"><span class="pre">walk</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Generator</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#pycypher.core.tree_mixin.TreeMixin" title="pycypher.core.tree_mixin.TreeMixin"><span class="pre">TreeMixin</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#pycypher.core.tree_mixin.TreeMixin.walk" title="Link to this definition"></a></dt>
+<dd><p>Generator that yields every node of the AST.</p>
+<p>Note that this will <strong>not</strong> work if there is a list directly inside another list.
+But that shouldn’t happen in an AST anyway.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Zachary Ernst.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

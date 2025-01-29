@@ -39,9 +39,9 @@ class FactNodeHasLabel(AtomicFact):
 
     """
 
-    def __init__(self, node_id: str, node_label: str):
+    def __init__(self, node_id: str, label: str):
         self.node_id = node_id
-        self.label = node_label
+        self.label = label
 
     def __repr__(self):
         return f"NodeHasLabel: {self.node_id} {self.label}"
@@ -53,15 +53,24 @@ class FactNodeHasLabel(AtomicFact):
             and self.label == other.label
         )
 
-    def __add__(self, other: Constraint):
+    def __add__(self, other: Constraint) -> List[Dict[str, str]] | None:
         if not isinstance(other, Constraint):
             raise ValueError("Can only check constraints against facts")
-        return (
-            {other.variable: self.node_id}
-            if isinstance(other, ConstraintNodeHasLabel)
-            and self.label == other.label
-            else None
-        )
+        if isinstance(other, ConstraintNodeHasLabel):
+            out = (
+                {other.variable: self.node_id}
+                if self.label == other.label
+                else None
+            )
+        elif isinstance(other, ConstraintVariableRefersToSpecificObject):
+            out = (
+                {other.variable: self.node_id}
+                if self.node_id == other.node_id
+                else None
+            )
+        else:
+            out = None
+        return out
 
 
 class FactRelationshipHasLabel(AtomicFact):

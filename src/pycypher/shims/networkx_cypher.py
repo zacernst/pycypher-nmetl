@@ -78,7 +78,7 @@ class NetworkX(Shim):
                 fact_list.append(
                     FactNodeHasLabel(
                         node_id=graph_cypher.nodes[node]["_id"],
-                        node_label=label,
+                        label=label,
                     )
                 )
             for attribute in graph_cypher.nodes[node]:
