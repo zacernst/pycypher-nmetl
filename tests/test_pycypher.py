@@ -9,6 +9,23 @@ from unittest.mock import Mock, patch
 
 import networkx as nx
 import pytest
+from fixtures import empty_goldberg  # pylint: disable=unused-import
+from fixtures import (
+    fact_collection_0,
+    fact_collection_1,
+    fact_collection_2,
+    fact_collection_3,
+    fact_collection_4,
+    fact_collection_5,
+    fact_collection_6,
+    fact_collection_7,
+    fixture_0_data_source_mapping_list,
+    fixture_data_source_0,
+    networkx_graph,
+    patched_uuid,
+    populated_goldberg,
+    raw_data_processor,
+)
 from pytest_unordered import unordered
 
 from pycypher.core.cypher_parser import CypherParser
@@ -76,23 +93,6 @@ from pycypher.etl.solver import (
 from pycypher.etl.trigger import CypherTrigger, VariableAttribute
 from pycypher.shims.networkx_cypher import NetworkX
 from pycypher.util.exceptions import WrongCypherTypeError
-from pycypher.util.fixtures import (  # pylint: disable=unused-import
-    empty_goldberg,
-    fact_collection_0,
-    fact_collection_1,
-    fact_collection_2,
-    fact_collection_3,
-    fact_collection_4,
-    fact_collection_5,
-    fact_collection_6,
-    fact_collection_7,
-    fixture_0_data_source_mapping_list,
-    fixture_data_source_0,
-    networkx_graph,
-    patched_uuid,
-    populated_goldberg,
-    raw_data_processor,
-)
 from pycypher.util.helpers import QueueGenerator
 
 
@@ -3844,3 +3844,14 @@ def test_fact_plus_constraint_variable_refers_to_specific_object_false(
     fact = FactNodeHasLabel("1", "Thing")
     constraint = ConstraintVariableRefersToSpecificObject("n", "2")
     assert fact + constraint is None
+
+
+@pytest.mark.skip
+def test_end_to_end_with_decorated_function_and_fact_collection(
+    empty_goldberg, Fact_collection_0
+):
+    @empty_goldberg.cypher_trigger("MATCH (n:Person {age: 45}) RETURN n.name")
+    def test_function(
+        imnotinthecypher,  # pylint: disable=unused-argument
+    ) -> VariableAttribute["n", "thingy"]:  # pylint: disable=unused-argument
+        return 1
