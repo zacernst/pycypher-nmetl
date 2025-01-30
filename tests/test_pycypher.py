@@ -3846,12 +3846,19 @@ def test_fact_plus_constraint_variable_refers_to_specific_object_false(
     assert fact + constraint is None
 
 
-@pytest.mark.skip
 def test_end_to_end_with_decorated_function_and_fact_collection(
-    empty_goldberg, Fact_collection_0
+    fixture_data_source_0, empty_goldberg, fixture_0_data_source_mapping_list
 ):
-    @empty_goldberg.cypher_trigger("MATCH (n:Person {age: 45}) RETURN n.name")
+    fixture_data_source_0.attach_mapping(fixture_0_data_source_mapping_list)
+    empty_goldberg.attach_data_source(fixture_data_source_0)
+
+    @empty_goldberg.cypher_trigger(
+        "MATCH (n:Person {age: 45}) RETURN n.name AS arg1"
+    )
     def test_function(
-        imnotinthecypher,  # pylint: disable=unused-argument
+        arg1,  # pylint: disable=unused-argument
     ) -> VariableAttribute["n", "thingy"]:  # pylint: disable=unused-argument
         return 1
+
+    empty_goldberg.start_threads()
+    empty_goldberg.block_until_finished()

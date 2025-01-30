@@ -440,9 +440,10 @@ class FactCollection:
 
         Raises:
             ValueError: If the query is of type QueryValueOfNodeAttribute and no matching
-                facts are found, or if multiple matching facts are found, or if an
-                unknown error occurs.
+            facts are found, or if multiple matching facts are found, or if an
+            unknown error occurs.
             NotImplementedError: If the query type is not recognized.
+
         """
         if isinstance(query, QueryValueOfNodeAttribute):
             facts = [

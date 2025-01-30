@@ -256,8 +256,6 @@ class Collection(TreeMixin, Evaluable):  # i.e. a list
     def children(self):
         """
         Generator that yields the values of the node.
-        Yields:
-            The values contained within the node.
         """
 
         yield from self.values
@@ -518,12 +516,13 @@ class Query(TreeMixin):
 class Predicate(TreeMixin):
     """
     A class representing a predicate in a tree structure.
+
     Attributes:
-        left_side_types (Any): The expected type(s) for the left side of the predicate.
-        right_side_types (Any): The expected type(s) for the right side of the predicate.
-        argument_types (Any): The expected type(s) for the arguments of the predicate.
-        left_side (TreeMixin): The left side of the predicate.
-        right_side (TreeMixin): The right side of the predicate.
+    left_side_types (Any): The expected type(s) for the left side of the predicate.
+    right_side_types (Any): The expected type(s) for the right side of the predicate.
+    argument_types (Any): The expected type(s) for the arguments of the predicate.
+    left_side (TreeMixin): The left side of the predicate.
+    right_side (TreeMixin): The right side of the predicate.
     """
 
     left_side_types = Any
@@ -582,10 +581,12 @@ class Predicate(TreeMixin):
         This method processes the provided arguments, replacing instances of the
         `Literal` class with their `value` attribute. It then performs type checking
         based on the number of arguments provided.
+
         Args:
-            *args: Variable length argument list. Can be one or two arguments.
+        args: Variable length argument list. Can be one or two arguments.
+
         Raises:
-            ValueError: If the number of arguments is not one or two.
+        ValueError: If the number of arguments is not one or two.
         """
         args = [arg.value if isinstance(arg, Literal) else arg for arg in args]
         if len(args) == 1:
@@ -992,8 +993,9 @@ class WithClause(TreeMixin, Evaluable):
     def children(self) -> Generator[Projection]:
         """
         Generator that yields the children of the current node.
+
         Yields:
-            Projection: The object as a series.
+        Projection: The object as a series.
         """
 
         yield self.lookups
@@ -1116,11 +1118,12 @@ class WithClause(TreeMixin, Evaluable):
 class Match(TreeMixin):
     """
     Represents a MATCH clause in a Cypher query.
+
     Attributes:
-        pattern (TreeMixin): The pattern to match in the query.
-        where (Optional[TreeMixin]): An optional WHERE clause to filter the results.
-        with_clause (Optional[TreeMixin]): An optional WITH clause to chain queries.
-        constraints (Optional[List[Constraint]]): A list of constraints to apply to the match.
+    pattern (TreeMixin): The pattern to match in the query.
+    where (Optional[TreeMixin]): An optional WHERE clause to filter the results.
+    with_clause (Optional[TreeMixin]): An optional WITH clause to chain queries.
+    constraints (Optional[List[Constraint]]): A list of constraints to apply to the match.
     """
 
     def __init__(
