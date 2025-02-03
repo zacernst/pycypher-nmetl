@@ -17,7 +17,7 @@ from rich.table import Table
 
 from pycypher.etl.data_source import DataSource
 from pycypher.etl.fact import AtomicFact, FactCollection
-from pycypher.etl.message_types import EndOfData, RawDatum
+from pycypher.etl.message_types import EndOfData
 from pycypher.etl.solver import (
     Constraint,
     ConstraintVariableRefersToSpecificObject,
@@ -225,6 +225,10 @@ class Goldberg:  # pylint: disable=too-many-instance-attributes
             self.monitor_thread = threading.Thread(
                 target=self.monitor, daemon=True
             )
+    
+    def __call__(self):
+        self.start_threads()
+        self.block_until_finished()
 
     def start_threads(self):
         """Start the threads."""

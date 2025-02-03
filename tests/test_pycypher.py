@@ -1,6 +1,7 @@
 """All the tests."""
 # pylint: disable=missing-function-docstring,protected-access,redefined-outer-name,too-many-lines
 
+import pathlib
 import queue
 import threading
 import time
@@ -10,8 +11,8 @@ from unittest.mock import Mock, patch
 import networkx as nx
 import pytest
 from fixtures import empty_goldberg  # pylint: disable=unused-import
+from fixtures import fact_collection_0  # pylint: disable=unused-import
 from fixtures import (
-    fact_collection_0,
     fact_collection_1,
     fact_collection_2,
     fact_collection_3,
@@ -25,6 +26,7 @@ from fixtures import (
     patched_uuid,
     populated_goldberg,
     raw_data_processor,
+    squares_csv_data_source,
 )
 from pytest_unordered import unordered
 
@@ -70,7 +72,7 @@ from pycypher.core.node_classes import (
     WithClause,
 )
 from pycypher.core.tree_mixin import TreeMixin
-from pycypher.etl.data_source import DataSource, DataSourceMapping
+from pycypher.etl.data_source import CSVDataSource, DataSource
 from pycypher.etl.fact import (  # We might get rid of this class entirely
     FactCollection,
     FactNodeHasAttributeWithValue,
@@ -78,7 +80,7 @@ from pycypher.etl.fact import (  # We might get rid of this class entirely
     FactNodeRelatedToNode,
     FactRelationshipHasLabel,
 )
-from pycypher.etl.goldberg import Goldberg, RawDataProcessor
+from pycypher.etl.goldberg import Goldberg
 from pycypher.etl.message_types import EndOfData, RawDatum
 from pycypher.etl.query import QueryValueOfNodeAttribute
 from pycypher.etl.solver import (
@@ -93,7 +95,9 @@ from pycypher.etl.solver import (
 from pycypher.etl.trigger import CypherTrigger, VariableAttribute
 from pycypher.shims.networkx_cypher import NetworkX
 from pycypher.util.exceptions import WrongCypherTypeError
-from pycypher.util.helpers import QueueGenerator
+from pycypher.util.helpers import QueueGenerator, ensure_uri
+
+TEST_DATA_DIRECTORY = pathlib.Path(__file__).parent / "test_data"
 
 
 def test_trigger_in_queue_processor(
@@ -3263,7 +3267,7 @@ def test_attach_fact_collection_manually(empty_goldberg):
     assert empty_goldberg.fact_collection is fact_collection
 
 
-def test_goldberg_decorator_registers_trigger(mocker, empty_goldberg):
+def test_goldberg_decorator_registers_trigger(empty_goldberg):
     @empty_goldberg.cypher_trigger("MATCH (n) RETURN n.foo")
     def test_function(n) -> VariableAttribute["n", "bar"]:  # pylint: disable=unused-argument
         return 1
@@ -3830,17 +3834,13 @@ def test_find_solution_node_has_label_with_node_identity_constraint_unsatisfiabl
     assert solutions == expected
 
 
-def test_fact_plus_constraint_variable_refers_to_specific_object_true(
-    fact_collection_0: FactCollection,
-):
+def test_fact_plus_constraint_variable_refers_to_specific_object_true():
     fact = FactNodeHasLabel("1", "Thing")
     constraint = ConstraintVariableRefersToSpecificObject("n", "1")
     assert fact + constraint == {"n": "1"}
 
 
-def test_fact_plus_constraint_variable_refers_to_specific_object_false(
-    fact_collection_0: FactCollection,
-):
+def test_fact_plus_constraint_variable_refers_to_specific_object_false():
     fact = FactNodeHasLabel("1", "Thing")
     constraint = ConstraintVariableRefersToSpecificObject("n", "2")
     assert fact + constraint is None
@@ -3862,3 +3862,42 @@ def test_end_to_end_with_decorated_function_and_fact_collection(
 
     empty_goldberg.start_threads()
     empty_goldberg.block_until_finished()
+
+
+def test_create_csv_data_source_from_uri():
+    squares_csv = TEST_DATA_DIRECTORY / "squares.csv"
+    squares_csv_uri = ensure_uri(squares_csv)
+    csv_data_source = DataSource.from_uri(squares_csv_uri)
+    assert isinstance(csv_data_source, CSVDataSource)
+
+
+def test_ensure_uri_creates_uri():
+    squares_csv = TEST_DATA_DIRECTORY / "squares.csv"
+    squares_csv_uri = ensure_uri(squares_csv)
+    assert squares_csv_uri.scheme == "file"
+
+
+def test_ensure_uri_idempotent():
+    squares_csv = TEST_DATA_DIRECTORY / "squares.csv"
+    assert ensure_uri(squares_csv) == ensure_uri(ensure_uri(squares_csv))
+
+
+def test_rows_method_yields_csv_rows(squares_csv_data_source):
+    counter = 0
+    for row in squares_csv_data_source.rows():
+        assert row
+        assert isinstance(row, dict)
+        assert len(row) == 3
+        counter += 1
+    assert counter == 4
+
+
+def test_rows_method_yields_csv_correct_data(squares_csv_data_source):
+    actual = [
+        {"name": "squarename1", "length": "1", "color": "blue"},
+        {"name": "squarename2", "length": "5", "color": "red"},
+        {"name": "squarename3", "length": "3", "color": "blue"},
+        {"name": "squarename4", "length": "10", "color": "orange"},
+    ]
+    expected = [row for row in squares_csv_data_source.rows()]
+    assert actual == expected

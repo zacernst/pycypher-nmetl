@@ -127,9 +127,7 @@ class DataSource(ABC):  # pylint: disable=too-many-instance-attributes
         return self.attach_mapping(other)
 
     @classmethod
-    def from_uri(
-        cls, uri: str | ParseResult, session: "Session"
-    ) -> "DataSource":
+    def from_uri(cls, uri: str | ParseResult) -> "DataSource":
         """Factory for creating a ``DataSource`` from a URI."""
         dispatcher = {
             "csv": CSVDataSource,
@@ -137,7 +135,7 @@ class DataSource(ABC):  # pylint: disable=too-many-instance-attributes
         }
         uri = ensure_uri(uri)
         filename_extension = uri.path.split(".")[-1]
-        return dispatcher[filename_extension](uri, session)
+        return dispatcher[filename_extension](uri)
 
     def queue_rows(self) -> None:
         """Places the rows emitted by the ``DataSource`` onto the
@@ -299,7 +297,7 @@ class CSVDataSource(DataSource):
     ):
         self.uri = ensure_uri(uri)
         self.name = name
-        self.file = open(self.uri.path, "r", encoding="utf-8")
+        self.file = open(self.uri.path, "r", encoding="utf-8")  # pylint: disable=consider-using-with
         self.reader = csv.DictReader(self.file)
         super().__init__()
 

@@ -1,0 +1,22 @@
+fact_collection: null
+fact_collection_class: null
+run_monitor: true
+
+data_sources:
+- name: squares_table
+  uri: file:///Users/zernst/git/pycypher/tests/test_data/squares.csv
+  mappings:
+  - attribute_key: name
+    identifier_key: name
+    attribute: name
+    label: Square
+  - attribute_key: length
+    identifier_key: name
+    attribute: side_length
+    label: Square
+  - attribute_key: color
+    identifier_key: name
+    attribute: square_color
+    label: Square
+  - identifier_key: name
+    label: Square

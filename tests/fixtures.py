@@ -2,12 +2,18 @@
 Fixtures for the unit tests.
 """
 
+import pathlib
+
 # pylint: disable=missing-function-docstring,protected-access,redefined-outer-name,too-many-lines
 import networkx as nx
 import pytest
 
 from pycypher.core.node_classes import Literal
-from pycypher.etl.data_source import DataSourceMapping, FixtureDataSource
+from pycypher.etl.data_source import (
+    DataSource,
+    DataSourceMapping,
+    FixtureDataSource,
+)
 from pycypher.etl.fact import (  # We might get rid of this class entirely
     FactCollection,
     FactNodeHasAttributeWithValue,
@@ -18,6 +24,9 @@ from pycypher.etl.fact import (  # We might get rid of this class entirely
     FactRelationshipHasTargetNode,
 )
 from pycypher.etl.goldberg import Goldberg, RawDataProcessor
+from pycypher.util.helpers import ensure_uri
+
+TEST_DATA_DIRECTORY = pathlib.Path(__file__).parent / "test_data"
 
 
 class patched_uuid:  # pylint: disable=invalid-name,too-few-public-methods
@@ -31,6 +40,14 @@ class patched_uuid:  # pylint: disable=invalid-name,too-few-public-methods
 @pytest.fixture
 def raw_data_processor():
     return RawDataProcessor()
+
+
+@pytest.fixture
+def squares_csv_data_source():
+    squares_csv = TEST_DATA_DIRECTORY / "squares.csv"
+    squares_csv_uri = ensure_uri(squares_csv)
+    csv_data_source = DataSource.from_uri(squares_csv_uri)
+    return csv_data_source
 
 
 @pytest.fixture

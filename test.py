@@ -2,12 +2,21 @@
 Fixtures for the unit tests.
 """
 
-# pylint: disable=missing-function-docstring,protected-access,redefined-outer-name,too-many-lines
+from __future__ import annotations
 
-from pycypher.etl.data_source import DataSourceMapping, FixtureDataSource
+import rich
+
+from pycypher.etl.data_source import (
+    DataSource,
+    DataSourceMapping,
+    FixtureDataSource,
+)
 from pycypher.etl.goldberg import Goldberg
 from pycypher.etl.trigger import VariableAttribute
 from pycypher.util.logger import LOGGER
+
+# pylint: disable=missing-function-docstring,protected-access,redefined-outer-name,too-many-lines
+
 
 LOGGER.setLevel("DEBUG")
 
@@ -121,13 +130,10 @@ def populated_goldberg(
 
 
 if __name__ == "__main__":
-    goldberg = Goldberg(run_monitor=True)
+    from pycypher.util.goldberg_loader import load_goldberg_config
 
-    @goldberg.cypher_trigger("MATCH (n:Person {age: 25}) RETURN n.Identifier")
-    def f(n) -> VariableAttribute["n", "age"]:
-        return n
+    goldberg = load_goldberg_config(
+        "/Users/zernst/git/pycypher/tests/test_data/ingest.yaml"
+    )
 
-    data_source.attach_mapping(mapping_list)
-    goldberg.attach_data_source(data_source)
-    goldberg.start_threads()
-    goldberg.block_until_finished()
+    rich.print(goldberg)
