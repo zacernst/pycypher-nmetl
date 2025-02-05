@@ -15,3 +15,7 @@ class UnexpectedCypherStructureError(Exception):
 class WrongCypherTypeError(Exception):
     """To be thrown when the `CypherParser` can parse the expression, but it has
     an unexpected type."""
+
+
+class InvalidCastError(Exception):
+    """The Goldberg tries to do an impossible cast on a row value."""

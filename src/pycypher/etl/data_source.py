@@ -5,12 +5,11 @@ from __future__ import annotations
 import csv
 import datetime
 import hashlib
-import queue
 import threading
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Generator, List, Optional
+from typing import Any, Dict, Generator, List, Optional
 from urllib.parse import ParseResult
 
 import pyarrow.parquet as pq
@@ -21,6 +20,7 @@ from pycypher.etl.fact import (
     FactNodeHasLabel,
 )
 from pycypher.etl.message_types import EndOfData, RawDatum
+from pycypher.util.exceptions import InvalidCastError
 from pycypher.util.helpers import QueueGenerator, ensure_uri
 from pycypher.util.logger import LOGGER
 
@@ -79,24 +79,40 @@ class DataSource(ABC):  # pylint: disable=too-many-instance-attributes
         self.started_at = None
         self.finished_at = None
         self.halt = False
+        self.schema = {}
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}({self.name})"
 
-    def attach_queue(self, queue_obj: queue.Queue) -> None:
+    def attach_queue(self, queue_obj: QueueGenerator) -> None:
         """Attach a queue to the data source."""
         if not isinstance(
             queue_obj,
             (
-                queue.Queue,
+                # queue.Queue,
                 QueueGenerator,
             ),
         ):
-            raise ValueError(f"Expected a Queue, got {type(queue_obj)}")
+            raise ValueError(
+                f"Expected a QueueGenerator, got {type(queue_obj)}"
+            )
         self.raw_input_queue = queue_obj
+        self.raw_input_queue.incoming_queue_processors.append(self)
+
+    def attach_schema(
+        self, schema: Dict[str, str], dispatch_dict: Dict
+    ) -> DataSource:
+        """Attach a schema to the data source.
+
+        Each key in the schema is a key in the data source, and each
+        value is a callable type.
+        """
+        self.schema = {
+            key: dispatch_dict[value] for key, value in schema.items()
+        }
 
     @abstractmethod
-    def rows(self) -> Generator[dict[str, Any], None, None]:
+    def rows(self) -> Generator[Dict[str, Any], None, None]:
         """Basic method to get rows from the data source."""
 
     def attach_mapping(
@@ -137,6 +153,14 @@ class DataSource(ABC):  # pylint: disable=too-many-instance-attributes
         filename_extension = uri.path.split(".")[-1]
         return dispatcher[filename_extension](uri)
 
+    def cast_row(self, row: Dict[str, Any]) -> Dict[str, Any]:
+        """Cast the row to the schema."""
+        row = {
+            key: self.schema[key](value) if key in self.schema else value
+            for key, value in row.items()
+        }
+        return row
+
     def queue_rows(self) -> None:
         """Places the rows emitted by the ``DataSource`` onto the
         right queue after wrapping them in a ``RawDatum``.
@@ -147,6 +171,7 @@ class DataSource(ABC):  # pylint: disable=too-many-instance-attributes
         self.started = True
         self.started_at = datetime.datetime.now()
         for row in self.rows():
+            row = self.cast_row(row)
             self.received_counter += 1
             self.raw_input_queue.put(
                 RawDatum(data_source=self, row=row),
@@ -172,7 +197,7 @@ class DataSource(ABC):  # pylint: disable=too-many-instance-attributes
         return (not self.started or not self.finished) and not self.halt
 
     def generate_raw_facts_from_row(
-        self, row: dict[str, Any]
+        self, row: Dict[str, Any]
     ) -> Generator[AtomicFact, None, None]:
         """Generate raw facts from a row."""
         for mapping in self.mappings:
@@ -231,7 +256,7 @@ class DataSourceMapping:  # pylint: disable=too-few-public-methods,too-many-inst
             and self.relationship is not None
         )
 
-    def process_against_raw_datum(self, row: dict[str, Any]) -> AtomicFact:
+    def process_against_raw_datum(self, row: Dict[str, Any]) -> AtomicFact:
         """Process the mapping against a raw datum."""
         if self.is_attribute_mapping:
             fact = FactNodeHasAttributeWithValue(
@@ -260,7 +285,7 @@ class FixtureDataSource(DataSource):
 
     def __init__(
         self,
-        data: list[dict[str, Any]],
+        data: list[Dict[str, Any]],
         hang: Optional[bool] = False,
         delay: Optional[float] = 0,
         loop: Optional[bool] = False,
@@ -272,7 +297,7 @@ class FixtureDataSource(DataSource):
         self.loop = loop
         super().__init__(**kwargs)
 
-    def rows(self) -> Generator[dict[str, Any], None, None]:
+    def rows(self) -> Generator[Dict[str, Any], None, None]:
         """Generate rows from the data."""
         if self.hang:
             while True:
@@ -301,7 +326,7 @@ class CSVDataSource(DataSource):
         self.reader = csv.DictReader(self.file)
         super().__init__()
 
-    def rows(self) -> Generator[dict[str, Any], None, None]:
+    def rows(self) -> Generator[Dict[str, Any], None, None]:
         """Generate rows from the CSV file."""
         yield from self.reader
 
@@ -318,7 +343,7 @@ class ParquetFileDataSource(DataSource):
         self.name = name
         super().__init__()
 
-    def rows(self) -> Generator[dict[str, Any], None, None]:
+    def rows(self) -> Generator[Dict[str, Any], None, None]:
         """Stream the file in batches from local disk. Eventually include other sources."""
         parquet_file = pq.ParquetFile(self.uri.path)
         for batch in parquet_file.iter_batches():

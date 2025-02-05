@@ -1,19 +1,37 @@
+"""Reads the configuration file into a Pydantic model."""
+
 from __future__ import annotations
 
-from typing import List, Optional
+import datetime
+from typing import Annotated, Dict, List, Optional
 
 import yaml
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, TypeAdapter
 
-from pycypher.etl.data_source import (
-    DataSource,
-    DataSourceMapping,
-    FixtureDataSource,
-)
-from pycypher.etl.goldberg import Goldberg
-from pycypher.etl.trigger import VariableAttribute
+from pycypher.etl.data_source import DataSource, DataSourceMapping
 from pycypher.etl.fact import FactCollection
-from pycypher.util.logger import LOGGER
+from pycypher.etl.goldberg import Goldberg
+
+TYPE_DISPATCH_DICT = {
+    "PositiveInteger": TypeAdapter(Annotated[int, Field(gt=0)]),
+    "PositiveFloat": TypeAdapter(Annotated[float, Field(gt=0)]),
+    "String": TypeAdapter(str),
+    "Boolean": TypeAdapter(bool),
+    "NegativeInteger": TypeAdapter(Annotated[int, Field(lt=0)]),
+    "NegativeFloat": TypeAdapter(Annotated[float, Field(lt=0)]),
+    "Integer": TypeAdapter(int),
+    "Float": TypeAdapter(float),
+    "NonZeroInteger": TypeAdapter(Annotated[int, Field(ne=0)]),
+    "NonZeroFloat": TypeAdapter(Annotated[float, Field(ne=0)]),
+    "NonEmptyString": TypeAdapter(Annotated[str, Field(min_length=1)]),
+    "Date": TypeAdapter(datetime.date),
+    "DateTime": TypeAdapter(datetime.datetime),
+}
+
+TYPE_DISPATCH_DICT = {
+    key: getattr(value, "validate_python")
+    for key, value in TYPE_DISPATCH_DICT.items()
+}
 
 
 class GoldbergConfig(BaseModel):
@@ -23,6 +41,7 @@ class GoldbergConfig(BaseModel):
     run_monitor: Optional[bool] = True
     fact_collection_class: Optional[str] = None
     data_sources: Optional[List[DataSources]] = []
+    logging_level: Optional[str] = "INFO"
 
 
 class IngestConfig(BaseModel):
@@ -37,6 +56,16 @@ class DataSources(BaseModel):
     name: Optional[str] = None
     uri: Optional[str] = None
     mappings: List[DataSourceMappingConfig] = []
+    data_types: Optional[Dict[str, str]] = {}
+
+
+class DataSchema(BaseModel):
+    """Information about casting types for each key/value of a DataSource.
+
+    We will use pydantic TypeAdapter for this."""
+
+    key: Optional[str] = None
+    type: Optional[str] = None
 
 
 class DataSourceMappingConfig(BaseModel):
@@ -55,13 +84,12 @@ def load_goldberg_config(path: str) -> Goldberg:
 
     goldberg = Goldberg()
 
-    fact_collection_config = goldberg_config.fact_collection
+    # fact_collection_config = goldberg_config.fact_collection
     goldberg.fact_collection = FactCollection([])
 
     for data_source_config in goldberg_config.data_sources:
         data_source = DataSource.from_uri(data_source_config.uri)
 
-        
         for mapping_config in data_source_config.mappings:
             mapping = DataSourceMapping(
                 attribute_key=mapping_config.attribute_key,
@@ -70,7 +98,10 @@ def load_goldberg_config(path: str) -> Goldberg:
                 label=mapping_config.label,
             )
             data_source.attach_mapping(mapping)
-        
+            data_source.attach_schema(
+                data_source_config.data_types, TYPE_DISPATCH_DICT
+            )
+
         goldberg.attach_data_source(data_source)
 
     return goldberg

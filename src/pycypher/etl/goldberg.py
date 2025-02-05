@@ -5,6 +5,7 @@ from __future__ import annotations
 import datetime
 import functools
 import inspect
+import logging
 import threading
 import time
 from abc import ABC, abstractmethod
@@ -36,7 +37,7 @@ class SubTriggerPair:
     trigger: CypherTrigger
 
 
-class QueueProcessor(ABC):
+class QueueProcessor(ABC):  # pylint: disable=too-few-public-methods,too-many-instance-attributes
     """ABC that processes items from a queue and places the results onto another queue."""
 
     def __init__(
@@ -55,6 +56,9 @@ class QueueProcessor(ABC):
         self.sent_counter = 0
         self.incoming_queue = incoming_queue
         self.outgoing_queue = outgoing_queue
+
+        if self.outgoing_queue:
+            self.outgoing_queue.incoming_queue_processors.append(self)
 
     def process_queue(self) -> None:
         self.started = True
@@ -167,6 +171,7 @@ class Goldberg:  # pylint: disable=too-many-instance-attributes
     def __init__(
         self,
         fact_collection: Optional[FactCollection] = None,
+        logging_level: Optional[str] = "WARNING",
         queue_class: Optional[Type] = QueueGenerator,
         queue_options: Optional[Dict[str, Any]] = None,
         data_sources: Optional[List[DataSource]] = None,
@@ -195,6 +200,8 @@ class Goldberg:  # pylint: disable=too-many-instance-attributes
             **self.queue_options,
         )
 
+        self.LOGGER = LOGGER
+        self.LOGGER.setLevel(getattr(logging, logging_level.upper()))
         self.trigger_dict = {}
         self.fact_collection = fact_collection or FactCollection(facts=[])
         self.raw_data_processor = RawDataProcessor(
@@ -225,10 +232,11 @@ class Goldberg:  # pylint: disable=too-many-instance-attributes
             self.monitor_thread = threading.Thread(
                 target=self.monitor, daemon=True
             )
-    
-    def __call__(self):
+
+    def __call__(self, block: bool = True):
         self.start_threads()
-        self.block_until_finished()
+        if block:
+            self.block_until_finished()
 
     def start_threads(self):
         """Start the threads."""

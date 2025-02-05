@@ -1,6 +1,7 @@
 fact_collection: null
 fact_collection_class: null
-run_monitor: true
+run_monitor: false
+logging_level: INFO
 
 data_sources:
 - name: squares_table
@@ -20,3 +21,38 @@ data_sources:
     label: Square
   - identifier_key: name
     label: Square
+  data_types:
+    name: NonEmptyString
+    length: Float
+    color: String
+- name: circles_table
+  uri: file:///users/zernst/git/pycypher/tests/test_data/circles.csv
+  mappings:
+  - attribute_key: circle_name
+    identifier_key: circle_name
+    attribute: identification_string
+    label: circle
+  - attribute_key: center_x
+    identifier_key: circle_name
+    attribute: x_coordinate
+    label: circle
+  - attribute_key: center_y
+    identifier_key: circle_name
+    attribute: y_coordinate
+    label: circle
+  - identifier_key: circle_name
+    label: circle
+- name: contains_table
+  uri: file:///users/zernst/git/pycypher/tests/test_data/contains.csv
+  mappings:
+  - attribute_key: square
+    identifier_key: square
+    attribute: name
+    label: Square
+  - attribute_key: circle
+    identifier_key: circle
+    attribute: name
+    label: Circle
+  data_types:
+    square_name: NonEmptyString
+    circle_name: NonEmptyString

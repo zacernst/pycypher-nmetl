@@ -62,6 +62,7 @@ class QueueGenerator:  # pylint: disable=too-few-public-methods,too-many-instanc
         self.exit_code = None
         self.name = name
         self.goldberg = goldberg
+        self.incoming_queue_processors = []
 
         if self.goldberg:
             self.goldberg.queue_list.append(self)
@@ -71,6 +72,7 @@ class QueueGenerator:  # pylint: disable=too-few-public-methods,too-many-instanc
         last_time = datetime.datetime.now()
         running = True
         exit_code = 0
+        finished_incoming_data_source_counter = 0
         while running:
             while True:
                 if (
@@ -84,9 +86,16 @@ class QueueGenerator:  # pylint: disable=too-few-public-methods,too-many-instanc
                     item = self.get(timeout=self.inner_queue_timeout)
                 except queue.Empty:
                     break
+                # Need to check ALL of the incoming data sources
                 if isinstance(item, self.end_of_queue_cls):
-                    running = False
-                    break
+                    finished_incoming_data_source_counter += 1
+                    if finished_incoming_data_source_counter == len(
+                        self.incoming_queue_processors
+                    ):
+                        running = False
+                        break
+                    else:
+                        continue
                 self.counter += 1
                 last_time = datetime.datetime.now()
                 yield item
@@ -104,7 +113,7 @@ class QueueGenerator:  # pylint: disable=too-few-public-methods,too-many-instanc
 
     def empty(self) -> bool:
         """Is the queue empty?"""
-        return self.queue.empty
+        return self.queue.empty()
 
     def get(self, **kwargs) -> Any:
         """Get an item from the queue."""

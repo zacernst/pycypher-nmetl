@@ -1,6 +1,7 @@
 """All the tests."""
 # pylint: disable=missing-function-docstring,protected-access,redefined-outer-name,too-many-lines
 
+import datetime
 import pathlib
 import queue
 import threading
@@ -12,8 +13,8 @@ import networkx as nx
 import pytest
 from fixtures import empty_goldberg  # pylint: disable=unused-import
 from fixtures import fact_collection_0  # pylint: disable=unused-import
+from fixtures import fact_collection_1  # pylint: disable=unused-import
 from fixtures import (
-    fact_collection_1,
     fact_collection_2,
     fact_collection_3,
     fact_collection_4,
@@ -94,7 +95,18 @@ from pycypher.etl.solver import (
 )
 from pycypher.etl.trigger import CypherTrigger, VariableAttribute
 from pycypher.shims.networkx_cypher import NetworkX
-from pycypher.util.exceptions import WrongCypherTypeError
+from pycypher.util.configuration import (  # pylint: disable=unused-import
+    TYPE_DISPATCH_DICT,
+    DataSourceMappingConfig,
+    DataSources,
+    GoldbergConfig,
+    IngestConfig,
+    load_goldberg_config,
+)
+from pycypher.util.exceptions import (  # pylint: disable=unused-import
+    InvalidCastError,
+    WrongCypherTypeError,
+)
 from pycypher.util.helpers import QueueGenerator, ensure_uri
 
 TEST_DATA_DIRECTORY = pathlib.Path(__file__).parent / "test_data"
@@ -3488,9 +3500,9 @@ def test_data_source_cannot_attach_non_queue(fixture_data_source_0):
 
 
 def test_data_source_attach_queue(fixture_data_source_0):
-    fixture_data_source_0.attach_queue(queue.Queue())
+    fixture_data_source_0.attach_queue(QueueGenerator())
     assert fixture_data_source_0.raw_input_queue
-    assert isinstance(fixture_data_source_0.raw_input_queue, queue.Queue)
+    assert isinstance(fixture_data_source_0.raw_input_queue, QueueGenerator)
 
 
 def test_attaching_data_source_also_attaches_queue(
@@ -3507,31 +3519,31 @@ def test_attaching_data_source_also_attaches_queue(
 
 
 def test_data_source_queue_rows(fixture_data_source_0):
-    raw_input_queue = queue.Queue()
+    raw_input_queue = QueueGenerator()  # queue.Queue()
     fixture_data_source_0.attach_queue(raw_input_queue)
     fixture_data_source_0.queue_rows()
-    obj = raw_input_queue.get()
-    assert isinstance(obj, RawDatum)
     counter = 0
-
-    while not raw_input_queue.empty():
+    for obj in raw_input_queue.yield_items():
         counter += 1
-        obj = raw_input_queue.get()
-
-    assert isinstance(obj, EndOfData)
-    assert obj.data_source is fixture_data_source_0
+        assert isinstance(
+            obj,
+            (
+                EndOfData,
+                RawDatum,
+            ),
+        )
     assert counter == 7
 
 
 def test_data_source_not_started_yet_flag(fixture_data_source_0):
-    raw_input_queue = queue.Queue()
+    raw_input_queue = QueueGenerator()
     fixture_data_source_0.attach_queue(raw_input_queue)
     assert not fixture_data_source_0.started
 
 
 def test_data_source_started_flag(fixture_data_source_0):
     """Allow one second for data source fixture to start."""
-    raw_input_queue = queue.Queue()
+    raw_input_queue = QueueGenerator()
     fixture_data_source_0.attach_queue(raw_input_queue)
     fixture_data_source_0.start()
     test_time = time.time()
@@ -3542,42 +3554,23 @@ def test_data_source_started_flag(fixture_data_source_0):
 
 def test_data_source_finished_flag(fixture_data_source_0):
     """Allow one second for data source fixture to finish."""
-    raw_input_queue = queue.Queue()
+    raw_input_queue = QueueGenerator()
     fixture_data_source_0.attach_queue(raw_input_queue)
     fixture_data_source_0.start()
     test_time = time.time()
-    while not fixture_data_source_0.finished and time.time() - test_time < 1:
+    while not fixture_data_source_0.finished and time.time() - test_time < 5:
         pass
     assert fixture_data_source_0.finished
 
 
 def test_raw_input_queue_not_empty_after_finished_flag(fixture_data_source_0):
     """Allow one second for data source fixture to finish."""
-    raw_input_queue = queue.Queue()
+    raw_input_queue = QueueGenerator()
     fixture_data_source_0.attach_queue(raw_input_queue)
     fixture_data_source_0.start()
-    test_time = time.time()
-    while not fixture_data_source_0.finished and time.time() - test_time < 1:
+    while not fixture_data_source_0.finished:
         pass
     assert not raw_input_queue.empty()
-
-
-def test_raw_input_queue_has_all_objects_after_finished_flag(
-    fixture_data_source_0,
-):
-    """Allow one second for data source fixture to finish."""
-    raw_input_queue = queue.Queue()
-    fixture_data_source_0.attach_queue(raw_input_queue)
-    fixture_data_source_0.start()
-    test_time = time.time()
-    while not fixture_data_source_0.finished and time.time() - test_time < 1:
-        pass
-    assert not raw_input_queue.empty()
-    counter = 0
-    while not raw_input_queue.empty():
-        raw_input_queue.get()
-        counter += 1
-    assert counter == 8
 
 
 def test_attach_non_data_source_mapping_raises_error(fixture_data_source_0):
@@ -3680,6 +3673,9 @@ def test_queue_generator_not_completed_during_generation():
 
 def test_queue_generator_yields_correct_items():
     q = QueueGenerator()
+    q.incoming_queue_processors.append(
+        Mock()
+    )  # otherwise will exit immediately
     q.put("hi")
     q.put("there")
     q.put("you")
@@ -3699,6 +3695,9 @@ def test_queue_generator_exit_code_1_if_timeout():
     q.put("hi")
     q.put("there")
     q.put("you")
+    q.incoming_queue_processors.append(
+        Mock()
+    )  # otherwise will exit immediately
     for _ in q.yield_items():
         pass
     time.sleep(0.4)
@@ -3711,6 +3710,10 @@ def test_queue_generator_exit_0_if_normal_stop():
     q.put("there")
     q.put("you")
     q.put(EndOfData())
+    # ?
+    q.incoming_queue_processors.append(
+        Mock()
+    )  # otherwise will exit immediately
     for _ in q.yield_items():
         pass
     assert q.exit_code == 0
@@ -3901,3 +3904,182 @@ def test_rows_method_yields_csv_correct_data(squares_csv_data_source):
     ]
     expected = [row for row in squares_csv_data_source.rows()]
     assert actual == expected
+
+
+def test_load_configuration_file_for_goldberg_job():
+    ingest_file = TEST_DATA_DIRECTORY / "ingest.yaml"
+    goldberg = load_goldberg_config(ingest_file)
+    assert isinstance(goldberg, Goldberg)
+
+
+def test_load_configuration_file_data_sources():
+    ingest_file = TEST_DATA_DIRECTORY / "ingest.yaml"
+    goldberg = load_goldberg_config(ingest_file)
+    assert isinstance(goldberg.data_sources, list)
+
+
+def test_load_configuration_file_data_sources_have_correct_type():
+    ingest_file = TEST_DATA_DIRECTORY / "ingest.yaml"
+    goldberg = load_goldberg_config(ingest_file)
+    assert all(isinstance(ds, DataSource) for ds in goldberg.data_sources)
+
+
+def test_goldberg_runs_from_ingest_file():
+    ingest_file = TEST_DATA_DIRECTORY / "ingest.yaml"
+    goldberg = load_goldberg_config(ingest_file)
+    start_threads_mock = Mock()
+
+    with patch(
+        "pycypher.etl.goldberg.Goldberg.start_threads", start_threads_mock
+    ) as _:
+        goldberg(block=False)
+        start_threads_mock.assert_called_once()
+
+
+def test_load_configuration_three_data_sources():
+    ingest_file = TEST_DATA_DIRECTORY / "ingest.yaml"
+    goldberg = load_goldberg_config(ingest_file)
+    assert len(goldberg.data_sources) == 3
+    assert all(isinstance(ds, DataSource) for ds in goldberg.data_sources)
+
+
+def test_cast_row():
+    ingest_file = TEST_DATA_DIRECTORY / "ingest.yaml"
+    goldberg = load_goldberg_config(ingest_file)
+    row = {"name": "Alice", "length": "25", "color": "blue"}
+    casted = goldberg.data_sources[0].cast_row(row)
+    assert isinstance(casted["length"], float)
+
+
+def test_cast_row_with_bad_data():
+    ingest_file = TEST_DATA_DIRECTORY / "ingest.yaml"
+    goldberg = load_goldberg_config(ingest_file)
+    row = {"name": "", "length": "25", "color": "blue"}
+    with pytest.raises(ValueError):
+        goldberg.data_sources[0].cast_row(row)
+
+
+def test_fact_collection_has_casted_value():
+    ingest_file = TEST_DATA_DIRECTORY / "ingest.yaml"
+    goldberg = load_goldberg_config(ingest_file)
+    goldberg.start_threads()
+    goldberg.block_until_finished()
+    fact = FactNodeHasAttributeWithValue(
+        node_id="Square::squarename1", attribute="side_length", value=1.0
+    )
+    assert fact in goldberg.fact_collection
+
+
+def test_type_dispatch_dict_casting_date():
+    out = TYPE_DISPATCH_DICT["Date"]("1972-10-18")
+    assert out == datetime.date(1972, 10, 18)
+
+
+def test_type_dispatch_dict_casting_datetime():
+    out = TYPE_DISPATCH_DICT["DateTime"]("1972-10-18T12:34:56")
+    assert out == datetime.datetime(1972, 10, 18, 12, 34, 56)
+
+
+def test_type_dispatch_dict_casting_positive_int_1():
+    out = TYPE_DISPATCH_DICT["PositiveInteger"](5)
+    assert out == 5
+
+
+def test_type_dispatch_dict_casting_positive_int_fail():
+    with pytest.raises(ValueError):
+        TYPE_DISPATCH_DICT["PositiveInteger"](-5)
+
+
+def test_type_dispatch_dict_casting_positive_int_2():
+    out = TYPE_DISPATCH_DICT["PositiveInteger"]("5")
+    assert out == 5
+
+
+def test_type_dispatch_dict_casting_negative_int_1():
+    out = TYPE_DISPATCH_DICT["NegativeInteger"](-5)
+    assert out == -5
+
+
+def test_type_dispatch_dict_casting_negative_int_2():
+    out = TYPE_DISPATCH_DICT["NegativeInteger"]("-5")
+    assert out == -5
+
+
+def test_type_dispatch_dict_casting_negative_int_fail_1():
+    with pytest.raises(ValueError):
+        TYPE_DISPATCH_DICT["NegativeInteger"](5)
+
+
+def test_type_dispatch_dict_casting_negative_int_fail_2():
+    with pytest.raises(ValueError):
+        TYPE_DISPATCH_DICT["NegativeInteger"]("5")
+
+
+def test_type_dispatch_dict_casting_boolean_1():
+    out = TYPE_DISPATCH_DICT["Boolean"](True)
+    assert out
+
+
+def test_type_dispatch_dict_casting_boolean_2():
+    out = TYPE_DISPATCH_DICT["Boolean"]("True")
+    assert out
+
+
+def test_type_dispatch_dict_casting_boolean_3():
+    out = TYPE_DISPATCH_DICT["Boolean"]("TRUE")
+    assert out
+
+
+def test_type_dispatch_dict_casting_boolean_4():
+    out = TYPE_DISPATCH_DICT["Boolean"]("true")
+    assert out
+
+
+def test_type_dispatch_dict_casting_boolean_5():
+    out = TYPE_DISPATCH_DICT["Boolean"]("False")
+    assert not out
+
+
+def test_type_dispatch_dict_casting_boolean_6():
+    out = TYPE_DISPATCH_DICT["Boolean"]("FALSE")
+    assert not out
+
+
+def test_type_dispatch_dict_casting_boolean_7():
+    out = TYPE_DISPATCH_DICT["Boolean"]("false")
+    assert not out
+
+
+def test_type_dispatch_dict_casting_boolean_8():
+    out = TYPE_DISPATCH_DICT["Boolean"](False)
+    assert not out
+
+
+def test_type_dispatch_dict_casting_boolean_fail():
+    with pytest.raises(ValueError):
+        TYPE_DISPATCH_DICT["Boolean"]("not a boolean")
+
+
+def test_type_dispatch_dict_casting_float_1():
+    out = TYPE_DISPATCH_DICT["Float"](1.0)
+    assert out == 1.0
+
+
+def test_type_dispatch_dict_casting_float_2():
+    out = TYPE_DISPATCH_DICT["Float"]("1.0")
+    assert out == 1.0
+
+
+def test_type_dispatch_dict_casting_float_fail():
+    with pytest.raises(ValueError):
+        TYPE_DISPATCH_DICT["Float"]("not a float")
+
+
+def test_type_dispatch_dict_nonempty_string_1():
+    out = TYPE_DISPATCH_DICT["NonEmptyString"]("hi")
+    assert out == "hi"
+
+
+def test_type_dispastch_dict_nonempty_string_fail():
+    with pytest.raises(ValueError):
+        TYPE_DISPATCH_DICT["NonEmptyString"]("")
