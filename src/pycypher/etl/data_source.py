@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import csv
-import uuid
 import datetime
 import hashlib
 import threading
 import time
+import uuid
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Dict, Generator, List, Optional
@@ -19,9 +19,9 @@ from pycypher.etl.fact import (
     AtomicFact,
     FactNodeHasAttributeWithValue,
     FactNodeHasLabel,
+    FactRelationshipHasLabel,
     FactRelationshipHasSourceNode,
     FactRelationshipHasTargetNode,
-    FactRelationshipHasLabel,
 )
 from pycypher.etl.message_types import EndOfData, RawDatum
 from pycypher.util.exceptions import InvalidCastError
@@ -260,7 +260,9 @@ class DataSourceMapping:  # pylint: disable=too-few-public-methods,too-many-inst
             and self.relationship is not None
         )
 
-    def process_against_raw_datum(self, row: Dict[str, Any]) -> Generator[AtomicFact, None, None]:
+    def process_against_raw_datum(
+        self, row: Dict[str, Any]
+    ) -> Generator[AtomicFact, None, None]:
         """Process the mapping against a raw datum."""
         if self.is_attribute_mapping:
             fact = FactNodeHasAttributeWithValue(
@@ -279,15 +281,15 @@ class DataSourceMapping:  # pylint: disable=too-few-public-methods,too-many-inst
             relationship_id = uuid.uuid4().hex
             source_fact = FactRelationshipHasSourceNode(
                 relationship_id=relationship_id,
-                source_node_id=f"{self.source_label}::{row[self.source_key]}"
-            ) 
+                source_node_id=f"{self.source_label}::{row[self.source_key]}",
+            )
             target_fact = FactRelationshipHasTargetNode(
                 relationship_id=relationship_id,
-                target_node_id=f"{self.target_label}::{row[self.target_key]}"
+                target_node_id=f"{self.target_label}::{row[self.target_key]}",
             )
             label_fact = FactRelationshipHasLabel(
                 relationship_id=relationship_id,
-                relationship_label=self.relationship
+                relationship_label=self.relationship,
             )
             yield source_fact
             yield target_fact
@@ -297,7 +299,9 @@ class DataSourceMapping:  # pylint: disable=too-few-public-methods,too-many-inst
                 "Only attribute and label mappings are supported for now."
             )
 
-    def __add__(self, row: dict[str, Any]) -> Generator[AtomicFact, None, None]:
+    def __add__(
+        self, row: dict[str, Any]
+    ) -> Generator[AtomicFact, None, None]:
         """Let us use the + operator to process a row against a mapping."""
         yield from self.process_against_raw_datum(row)
 

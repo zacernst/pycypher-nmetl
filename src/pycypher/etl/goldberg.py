@@ -17,7 +17,11 @@ from rich.console import Console
 from rich.table import Table
 
 from pycypher.etl.data_source import DataSource
-from pycypher.etl.fact import AtomicFact, FactCollection, FactRelationshipHasSourceNode
+from pycypher.etl.fact import (
+    AtomicFact,
+    FactCollection,
+    FactRelationshipHasSourceNode,
+)
 from pycypher.etl.message_types import EndOfData
 from pycypher.etl.solver import (
     Constraint,
