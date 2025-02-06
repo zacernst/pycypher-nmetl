@@ -8,9 +8,16 @@ import pyfiglet
 from pycypher.util.configuration import load_goldberg_config
 
 
+# fmt: off
 @click.group()
 def main():
-    """Run NMETaL jobs"""
+    """
+\b
+ _   _ __  __ _____ _____     _     \n| \\ | |  \\/  | ____|_   _|_ _| |    \n|  \\| | |\\/| |  _|   | |/ _` | |    \n| |\\  | |  | | |___  | | (_| | |___ \n|_| \\_|_|  |_|_____| |_|\\__,_|_____|\n
+\b
+ETL with less insanity
+    """
+# fmt: on
 
 
 @main.command()
