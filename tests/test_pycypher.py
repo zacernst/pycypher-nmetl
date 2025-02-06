@@ -73,13 +73,15 @@ from pycypher.core.node_classes import (
     WithClause,
 )
 from pycypher.core.tree_mixin import TreeMixin
-from pycypher.etl.data_source import CSVDataSource, DataSource
+from pycypher.etl.data_source import CSVDataSource, DataSource, DataSourceMapping
 from pycypher.etl.fact import (  # We might get rid of this class entirely
     FactCollection,
     FactNodeHasAttributeWithValue,
     FactNodeHasLabel,
     FactNodeRelatedToNode,
     FactRelationshipHasLabel,
+    FactRelationshipHasSourceNode,
+    FactRelationshipHasTargetNode,
 )
 from pycypher.etl.goldberg import Goldberg
 from pycypher.etl.message_types import EndOfData, RawDatum
@@ -98,9 +100,7 @@ from pycypher.shims.networkx_cypher import NetworkX
 from pycypher.util.configuration import (  # pylint: disable=unused-import
     TYPE_DISPATCH_DICT,
     DataSourceMappingConfig,
-    DataSources,
     GoldbergConfig,
-    IngestConfig,
     load_goldberg_config,
 )
 from pycypher.util.exceptions import (  # pylint: disable=unused-import
@@ -3724,10 +3724,10 @@ def test_data_source_mapping_against_row(
 ):
     row = fixture_data_source_0.data[0]
     data_source_mapping = fixture_0_data_source_mapping_list[0]
-    fact = data_source_mapping.process_against_raw_datum(row)
-    assert fact == FactNodeHasAttributeWithValue(
+    fact = list(data_source_mapping.process_against_raw_datum(row))
+    assert fact == [FactNodeHasAttributeWithValue(
         node_id="Person::001", attribute="Identifier", value="001"
-    )
+    )]
 
 
 def test_plus_operator_calls_process_against_raw_datum(
@@ -4083,3 +4083,91 @@ def test_type_dispatch_dict_nonempty_string_1():
 def test_type_dispastch_dict_nonempty_string_fail():
     with pytest.raises(ValueError):
         TYPE_DISPATCH_DICT["NonEmptyString"]("")
+
+
+def test_relationship_data_mapping():
+    relationship_mapping = DataSourceMapping(
+        source_key='1', 
+        target_key='2', 
+        relationship='related', 
+        source_label='foo', 
+        target_label='bar'
+    )
+    assert relationship_mapping.is_relationship_mapping
+    assert not relationship_mapping.is_label_mapping
+    assert not relationship_mapping.is_attribute_mapping
+
+def test_relationship_mapping_with_raw_datum_source():
+    relationship_mapping = DataSourceMapping(
+        source_key='1', 
+        target_key='2', 
+        relationship='related', 
+        source_label='foo', 
+        target_label='bar'
+    )
+    row={
+            '1': 'a',
+            '2': 'b',
+        }
+    source_fact, _, _ = relationship_mapping.process_against_raw_datum(row)
+
+    assert source_fact.source_node_id == 'foo::a'
+    
+def test_relationship_mapping_with_raw_datum_target():
+    relationship_mapping = DataSourceMapping(
+        source_key='1', 
+        target_key='2', 
+        relationship='related', 
+        source_label='foo', 
+        target_label='bar'
+    )
+    row={
+            '1': 'a',
+            '2': 'b',
+        }
+    _, target_fact, _ = relationship_mapping.process_against_raw_datum(row)
+
+    assert target_fact.target_node_id == 'bar::b'
+    
+def test_relationship_mapping_with_raw_datum_relationship():
+    relationship_mapping = DataSourceMapping(
+        source_key='1', 
+        target_key='2', 
+        relationship='related', 
+        source_label='foo', 
+        target_label='bar'
+    )
+    row={
+            '1': 'a',
+            '2': 'b',
+        }
+    _, _, label_fact = relationship_mapping.process_against_raw_datum(row)
+
+    assert label_fact.relationship_label == 'related' 
+    
+
+def test_fact_collection_has_relationship_fact_source_node():
+
+    with patch("uuid.uuid4", patched_uuid) as _:
+        ingest_file = TEST_DATA_DIRECTORY / "ingest.yaml"
+        goldberg = load_goldberg_config(ingest_file)
+        goldberg.start_threads()
+        goldberg.block_until_finished()
+        fact1 = FactRelationshipHasSourceNode(
+            relationship_id="SOME_HEX",
+            source_node_id="Square::squarename1",
+        )
+        assert fact1 in goldberg.fact_collection
+
+def test_fact_collection_has_relationship_fact_target_node():
+
+    with patch("uuid.uuid4", patched_uuid) as _:
+        ingest_file = TEST_DATA_DIRECTORY / "ingest.yaml"
+        goldberg = load_goldberg_config(ingest_file)
+        goldberg.start_threads()
+        goldberg.block_until_finished()
+        fact1 = FactRelationshipHasTargetNode(
+            relationship_id="SOME_HEX",
+            target_node_id="Circle::circle_a",
+        )
+        assert fact1 in goldberg.fact_collection

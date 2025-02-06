@@ -40,17 +40,11 @@ class GoldbergConfig(BaseModel):
     fact_collection: Optional[str] = None
     run_monitor: Optional[bool] = True
     fact_collection_class: Optional[str] = None
-    data_sources: Optional[List[DataSources]] = []
+    data_sources: Optional[List[DataSourceConfig]] = []
     logging_level: Optional[str] = "INFO"
 
 
-class IngestConfig(BaseModel):
-    """The entire configuration"""
-
-    data_sources: Optional[List[DataSources]] = []
-
-
-class DataSources(BaseModel):
+class DataSourceConfig(BaseModel):
     """A list of data source mappings"""
 
     name: Optional[str] = None
@@ -75,6 +69,11 @@ class DataSourceMappingConfig(BaseModel):
     identifier_key: Optional[str] = None
     attribute: Optional[str] = None
     label: Optional[str] = None
+    source_key: Optional[str] = None
+    target_key: Optional[str] = None
+    source_label: Optional[str] = None
+    target_label: Optional[str] = None
+    relationship: Optional[str] = None
 
 
 def load_goldberg_config(path: str) -> Goldberg:
@@ -96,6 +95,11 @@ def load_goldberg_config(path: str) -> Goldberg:
                 identifier_key=mapping_config.identifier_key,
                 attribute=mapping_config.attribute,
                 label=mapping_config.label,
+                source_key=mapping_config.source_key,
+                target_key=mapping_config.target_key,
+                source_label=mapping_config.source_label,
+                target_label=mapping_config.target_label,
+                relationship=mapping_config.relationship,
             )
             data_source.attach_mapping(mapping)
             data_source.attach_schema(

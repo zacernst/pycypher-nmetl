@@ -29,7 +29,8 @@ dev = [ "hatch>=1.12.0,<2.0.0",]
 Homepage = "https://github.com/zacernst/pycypher"
 
 [project.scripts]
-pycypher = "pycypher.cli:main"
+pycypher = "pycypher.util.cli:main"
+nmetl = "pycypher.util.nmetl_cli:main"
 
 [tool.ruff]
 exclude = [ ".bzr", ".direnv", ".eggs", ".git", ".git-rewrite", ".hg", ".ipynb_checkpoints", ".mypy_cache", ".nox", ".pants.d", ".pyenv", ".pytest_cache", ".pytype", ".ruff_cache", ".svn", ".tox", ".venv", ".vscode", "__pypackages__", "_build", "buck-out", "build", "dist", "node_modules", "site-packages", "venv",]

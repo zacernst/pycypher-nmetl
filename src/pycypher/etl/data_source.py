@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+import uuid
 import datetime
 import hashlib
 import threading
@@ -18,6 +19,9 @@ from pycypher.etl.fact import (
     AtomicFact,
     FactNodeHasAttributeWithValue,
     FactNodeHasLabel,
+    FactRelationshipHasSourceNode,
+    FactRelationshipHasTargetNode,
+    FactRelationshipHasLabel,
 )
 from pycypher.etl.message_types import EndOfData, RawDatum
 from pycypher.util.exceptions import InvalidCastError
@@ -201,7 +205,7 @@ class DataSource(ABC):  # pylint: disable=too-many-instance-attributes
     ) -> Generator[AtomicFact, None, None]:
         """Generate raw facts from a row."""
         for mapping in self.mappings:
-            yield mapping + row
+            yield from mapping + row
 
 
 @dataclass
@@ -210,7 +214,7 @@ class DataSourceMapping:  # pylint: disable=too-few-public-methods,too-many-inst
     A mapping from keys to ``Feature`` objects.
 
     (key, Feature, identifier_key)
-    (source_identifier_key, Relationship, target_identifier_key)
+    (source_key, Relationship, target_key)
 
     Will need to expand or subclass for relationships.
     """
@@ -219,8 +223,8 @@ class DataSourceMapping:  # pylint: disable=too-few-public-methods,too-many-inst
     identifier_key: Optional[str] = None
     label: Optional[str] = None
     attribute: Optional[str] = None
-    source_identifier_key: Optional[str] = None
-    target_identifier_key: Optional[str] = None
+    source_key: Optional[str] = None
+    target_key: Optional[str] = None
     source_label: Optional[str] = None
     target_label: Optional[str] = None
     relationship: Optional[str] = None
@@ -249,14 +253,14 @@ class DataSourceMapping:  # pylint: disable=too-few-public-methods,too-many-inst
     def is_relationship_mapping(self) -> bool:  # TODO: incomplete probably
         """Is this a relationship mapping? (vs an attribute mapping)"""
         return (
-            self.source_identifier_key is not None
-            and self.target_identifier_key is not None
+            self.source_key is not None
+            and self.target_key is not None
             and self.source_label is not None
             and self.target_label is not None
             and self.relationship is not None
         )
 
-    def process_against_raw_datum(self, row: Dict[str, Any]) -> AtomicFact:
+    def process_against_raw_datum(self, row: Dict[str, Any]) -> Generator[AtomicFact, None, None]:
         """Process the mapping against a raw datum."""
         if self.is_attribute_mapping:
             fact = FactNodeHasAttributeWithValue(
@@ -264,20 +268,38 @@ class DataSourceMapping:  # pylint: disable=too-few-public-methods,too-many-inst
                 attribute=self.attribute,
                 value=row[self.attribute_key],
             )
+            yield fact
         elif self.is_label_mapping:
             fact = FactNodeHasLabel(
                 node_id=f"{self.label}::{row[self.identifier_key]}",
                 label=self.label,
             )
+            yield fact
+        elif self.is_relationship_mapping:
+            relationship_id = uuid.uuid4().hex
+            source_fact = FactRelationshipHasSourceNode(
+                relationship_id=relationship_id,
+                source_node_id=f"{self.source_label}::{row[self.source_key]}"
+            ) 
+            target_fact = FactRelationshipHasTargetNode(
+                relationship_id=relationship_id,
+                target_node_id=f"{self.target_label}::{row[self.target_key]}"
+            )
+            label_fact = FactRelationshipHasLabel(
+                relationship_id=relationship_id,
+                relationship_label=self.relationship
+            )
+            yield source_fact
+            yield target_fact
+            yield label_fact
         else:
             raise NotImplementedError(
                 "Only attribute and label mappings are supported for now."
             )
-        return fact
 
-    def __add__(self, row: dict[str, Any]) -> AtomicFact:
+    def __add__(self, row: dict[str, Any]) -> Generator[AtomicFact, None, None]:
         """Let us use the + operator to process a row against a mapping."""
-        return self.process_against_raw_datum(row)
+        yield from self.process_against_raw_datum(row)
 
 
 class FixtureDataSource(DataSource):

@@ -1,7 +1,7 @@
 fact_collection: null
 fact_collection_class: null
 run_monitor: false
-logging_level: INFO
+logging_level: DEBUG
 
 data_sources:
 - name: squares_table
@@ -53,6 +53,11 @@ data_sources:
     identifier_key: circle
     attribute: name
     label: Circle
+  - source_key: square
+    target_key: circle
+    source_label: Square
+    target_label: Circle
+    relationship: contains
   data_types:
     square_name: NonEmptyString
     circle_name: NonEmptyString

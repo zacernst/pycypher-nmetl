@@ -89,7 +89,7 @@ class FactRelationshipHasLabel(AtomicFact):
 
     def __repr__(self):
         return (
-            f"NodeHasLabel: {self.relationship_id} {self.relationship_label}"
+            f"RelationshipHasLabel: {self.relationship_id} {self.relationship_label}"
         )
 
     def __eq__(self, other: Any) -> bool:
