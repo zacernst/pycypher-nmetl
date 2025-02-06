@@ -4,6 +4,7 @@
 import datetime
 import pathlib
 import queue
+import subprocess
 import threading
 import time
 from typing import Iterable
@@ -4179,3 +4180,43 @@ def test_fact_collection_has_relationship_fact_target_node():
             target_node_id="Circle::circle_a",
         )
         assert fact1 in goldberg.fact_collection
+
+
+def test_nmetl_cli_runs():
+    result = subprocess.run(
+        [
+            "nmetl",
+        ],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert result.returncode == 0
+
+
+def test_nmetl_cli_validation_passes():
+    result = subprocess.run(
+        [
+            "nmetl",
+            "validate",
+            str(TEST_DATA_DIRECTORY / "ingest.yaml"),
+        ],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert result.returncode == 0
+
+
+def test_nmetl_cli_validation_fails():
+    with pytest.raises(subprocess.CalledProcessError) as _:
+        subprocess.run(
+            [
+                "nmetl",
+                "validate",
+                str(TEST_DATA_DIRECTORY / "bad_ingest.yaml"),
+            ],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
