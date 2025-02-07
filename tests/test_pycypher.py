@@ -2,6 +2,7 @@
 # pylint: disable=missing-function-docstring,protected-access,redefined-outer-name,too-many-lines
 
 import datetime
+import logging
 import pathlib
 import queue
 import subprocess
@@ -113,6 +114,7 @@ from pycypher.util.exceptions import (  # pylint: disable=unused-import
     WrongCypherTypeError,
 )
 from pycypher.util.helpers import QueueGenerator, ensure_uri
+from pycypher.util.logger import LOGGER
 
 TEST_DATA_DIRECTORY = pathlib.Path(__file__).parent / "test_data"
 
@@ -4220,3 +4222,20 @@ def test_nmetl_cli_validation_fails():
             text=True,
             check=True,
         )
+
+
+@pytest.mark.skip
+def test_cypher_trigger_function_on_relationship_match():
+    LOGGER.setLevel(logging.DEBUG)
+    with patch("uuid.uuid4", patched_uuid) as _:
+        ingest_file = TEST_DATA_DIRECTORY / "ingest.yaml"
+        goldberg = load_goldberg_config(ingest_file)
+
+        @goldberg.cypher_trigger(
+            "MATCH (s:Square)-[:contains]->(c:Circle) RETURN s.length AS length"
+        )
+        def test_function(length) -> VariableAttribute["s", "color"]:
+            return 1
+
+        goldberg.start_threads()
+        goldberg.block_until_finished()

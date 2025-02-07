@@ -5,7 +5,7 @@ from __future__ import annotations
 import datetime
 import functools
 import inspect
-import logging
+import queue
 import threading
 import time
 from abc import ABC, abstractmethod
@@ -17,16 +17,9 @@ from rich.console import Console
 from rich.table import Table
 
 from pycypher.etl.data_source import DataSource
-from pycypher.etl.fact import (
-    AtomicFact,
-    FactCollection,
-    FactRelationshipHasSourceNode,
-)
+from pycypher.etl.fact import AtomicFact, FactCollection
 from pycypher.etl.message_types import EndOfData
-from pycypher.etl.solver import (
-    Constraint,
-    ConstraintVariableRefersToSpecificObject,
-)
+from pycypher.etl.solver import Constraint
 from pycypher.etl.trigger import CypherTrigger
 from pycypher.util.config import MONITOR_LOOP_DELAY  # pylint: disable=no-name-in-module
 from pycypher.util.helpers import QueueGenerator
@@ -49,6 +42,7 @@ class QueueProcessor(ABC):  # pylint: disable=too-few-public-methods,too-many-in
         goldberg: Optional[Goldberg] = None,
         incoming_queue: Optional[QueueGenerator] = None,
         outgoing_queue: Optional[QueueGenerator] = None,
+        status_queue: Optional[queue.Queue] = None,
     ) -> None:
         self.goldberg = goldberg
         self.processing_thread = threading.Thread(target=self.process_queue)
@@ -60,16 +54,23 @@ class QueueProcessor(ABC):  # pylint: disable=too-few-public-methods,too-many-in
         self.sent_counter = 0
         self.incoming_queue = incoming_queue
         self.outgoing_queue = outgoing_queue
+        self.status_queue = status_queue
 
         if self.outgoing_queue:
             self.outgoing_queue.incoming_queue_processors.append(self)
 
     def process_queue(self) -> None:
+        """Process every item in the queue using the yield_items method."""
         self.started = True
         self.started_at = datetime.datetime.now()
         for item in self.incoming_queue.yield_items():
             self.received_counter += 1
-            out = self.process_item_from_queue(item)
+            try:
+                out = self.process_item_from_queue(item)
+            except Exception as e:  # pylint: disable=broad-except
+                LOGGER.error("Error processing item %s: %s", item, e)
+                self.status_queue.put(e)
+                continue
             if not out:
                 continue
             if not isinstance(out, list):
@@ -82,7 +83,7 @@ class QueueProcessor(ABC):  # pylint: disable=too-few-public-methods,too-many-in
 
     @abstractmethod
     def process_item_from_queue(self, item: Any) -> Any:
-        pass
+        """Process an item from the queue."""
 
 
 class RawDataProcessor(QueueProcessor):
@@ -146,16 +147,17 @@ class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-publi
         # Would add:
         #     ConstraintNodeHasAttributeWithValue('n', 'Identifier', 'Person::001')
         variable = tuple(sub_trigger_obj.sub)[0]
-        node_id = sub_trigger_obj.sub[variable]
+        node_id = sub_trigger_obj.sub[variable]  # pylint: disable=unused-variable
 
-        specific_object_constraint = ConstraintVariableRefersToSpecificObject(
-            variable=variable, node_id=node_id
-        )
+        # specific_object_constraint = ConstraintVariableRefersToSpecificObject(
+        #     variable=variable, node_id=node_id
+        # )
         #
         match_clause = item.trigger.cypher.parse_tree.cypher.match_clause
         # match_clause.constraints.append(specific_object_constraint)
         fact_collection = self.goldberg.fact_collection
-        solutions = match_clause.solutions(fact_collection)
+
+        solutions = match_clause.solutions(fact_collection)  # pylint: disable=unused-variable
 
         # Need a constraint class saying that a node is a specific object.
         # TODO:
@@ -166,7 +168,6 @@ class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-publi
         # Put (trigger, sub,) into another queue
         self.finished = True
         self.finished_at = datetime.datetime.now()
-        return None
 
 
 class Goldberg:  # pylint: disable=too-many-instance-attributes
@@ -180,6 +181,7 @@ class Goldberg:  # pylint: disable=too-many-instance-attributes
         queue_options: Optional[Dict[str, Any]] = None,
         data_sources: Optional[List[DataSource]] = None,
         queue_list: Optional[List[QueueGenerator]] = None,
+        status_queue: Optional[queue.Queue] = None,
         run_monitor: Optional[bool] = True,
     ):  # pylint: disable=too-many-arguments
         # Instantiate the various queues using the queue_class
@@ -188,6 +190,8 @@ class Goldberg:  # pylint: disable=too-many-instance-attributes
         self.queue_class = queue_class
         self.queue_options = queue_options or {}
         self.queue_list = queue_list or []
+        # No need for a fancy queue class here
+        self.status_queue = status_queue or queue.Queue()
 
         self.raw_input_queue = self.queue_class(
             goldberg=self, name="RawInput", **self.queue_options
@@ -204,31 +208,33 @@ class Goldberg:  # pylint: disable=too-many-instance-attributes
             **self.queue_options,
         )
 
-        self.LOGGER = LOGGER
-        self.LOGGER.setLevel(getattr(logging, logging_level.upper()))
         self.trigger_dict = {}
         self.fact_collection = fact_collection or FactCollection(facts=[])
         self.raw_data_processor = RawDataProcessor(
             self,
             incoming_queue=self.raw_input_queue,
             outgoing_queue=self.fact_generated_queue,
+            status_queue=self.status_queue,
         )
         self.fact_generated_queue_processor = FactGeneratedQueueProcessor(
             self,
             incoming_queue=self.fact_generated_queue,
             outgoing_queue=self.check_fact_against_triggers_queue,
+            status_queue=self.status_queue,
         )
         self.check_fact_against_triggers_queue_processor = (
             CheckFactAgainstTriggersQueueProcessor(
                 self,
                 incoming_queue=self.check_fact_against_triggers_queue,
                 outgoing_queue=self.triggered_lookup_processor_queue,
+                status_queue=self.status_queue,
             )
         )
         self.triggered_lookup_processor = TriggeredLookupProcessor(
             self,
             incoming_queue=self.triggered_lookup_processor_queue,
             outgoing_queue=None,
+            status_queue=self.status_queue,
         )
 
         # Instantiate threads
@@ -284,14 +290,26 @@ class Goldberg:  # pylint: disable=too-many-instance-attributes
             LOGGER.critical("Halting at non-zero level not yet implemented.")
 
     def block_until_finished(self):
-        """Block until all data sources have finished."""
-        # TODO: Change this when we've got the next stage in the pipeline
+        """Block until all data sources have finished. Re-raise
+        exceptions from threads.
+        """
+
+        def _check_status_queue():
+            try:
+                obj = self.status_queue.get(timeout=0.1)
+            except queue.Empty:
+                return
+            if isinstance(obj, Exception):
+                LOGGER.error("Error in thread: %s", obj)
+                raise obj
+            LOGGER.error("Unknown object on status queue: %s", obj)
+            raise ValueError(f"Unknown object on status queue {obj}")
+
         while not self.raw_data_processor.finished:
-            pass
-        # while not self.fact_generated_queue.completed:
-        #     pass
+            _check_status_queue()
+
         while not self.check_fact_against_triggers_queue_processor.finished:
-            pass
+            _check_status_queue()
 
     def monitor(self):
         """Loop the _monitor function"""
@@ -428,12 +446,6 @@ class Goldberg:  # pylint: disable=too-many-instance-attributes
                 f"Expected a DataSource or FactCollection, got {type(other)}"
             )
         return self
-
-    def attach_raw_data_processor(
-        self, raw_data_processor: Optional[RawDataProcessor] = None
-    ) -> None:
-        """Attach the raw data processor to the machine."""
-        pass
 
     def attach_data_source(self, data_source: DataSource) -> None:
         """Attach a DataSource to the machine."""

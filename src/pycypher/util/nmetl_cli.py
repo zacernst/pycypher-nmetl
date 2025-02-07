@@ -42,6 +42,3 @@ def validate(pathname: str):
         click.echo(f"Invalid config file: {e}")
         sys.exit(1)
     sys.exit(0)
-
-
-main.__doc__ = pyfiglet.figlet_format("nmetl", font="slant")

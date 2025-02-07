@@ -12,6 +12,8 @@ from pycypher.etl.solver import (
     ConstraintNodeHasAttributeWithValue,
     ConstraintNodeHasLabel,
     ConstraintRelationshipHasLabel,
+    ConstraintRelationshipHasSourceNode,
+    ConstraintRelationshipHasTargetNode,
     ConstraintVariableRefersToSpecificObject,
 )
 
@@ -176,10 +178,14 @@ class FactNodeHasAttributeWithValue(AtomicFact):
                 )
                 else None
             )
-        # NodeHasLabel
         elif isinstance(other, ConstraintNodeHasLabel):
             out = None
-
+        elif isinstance(other, ConstraintRelationshipHasSourceNode):
+            out = None
+        elif isinstance(other, ConstraintRelationshipHasTargetNode):
+            out = None
+        elif isinstance(other, ConstraintRelationshipHasLabel):
+            out = None
         else:
             raise ValueError(
                 f"Expected a ``Constraint``, but got {other.__class__.__name__}."
@@ -246,6 +252,10 @@ class FactRelationshipHasSourceNode(AtomicFact):
             and self.relationship_id == other.relationship_id
             and self.source_node_id == other.source_node_id
         )
+
+    def __add__(self, other: Constraint):
+        if not isinstance(other, Constraint):
+            raise ValueError("Can only check constraints against facts")
 
 
 class FactRelationshipHasTargetNode(AtomicFact):

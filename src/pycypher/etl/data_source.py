@@ -24,7 +24,6 @@ from pycypher.etl.fact import (
     FactRelationshipHasTargetNode,
 )
 from pycypher.etl.message_types import EndOfData, RawDatum
-from pycypher.util.exceptions import InvalidCastError
 from pycypher.util.helpers import QueueGenerator, ensure_uri
 from pycypher.util.logger import LOGGER
 
@@ -194,11 +193,6 @@ class DataSource(ABC):  # pylint: disable=too-many-instance-attributes
         """Start the loading thread."""
         self.loading_thread.run()
         self.started = True
-
-    def unfinished(self) -> bool:
-        """Is there unread data in the queue? or is the loading thread still running?
-        or has the loading thread not started yet?"""
-        return (not self.started or not self.finished) and not self.halt
 
     def generate_raw_facts_from_row(
         self, row: Dict[str, Any]
