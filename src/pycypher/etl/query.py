@@ -13,6 +13,9 @@ class QueryValueOfNodeAttribute(Query):
     def __init__(self, node_id: str, attribute: str):
         self.node_id = node_id
         self.attribute = attribute
+    
+    def __repr__(self):
+        return f"QueryValueOfNodeAttribute({self.node_id}, {self.attribute})"
 
 
 class QueryValueOfRelationshipAttribute(Query):
@@ -21,3 +24,16 @@ class QueryValueOfRelationshipAttribute(Query):
     def __init__(self, relationship_id: str, attribute: str):
         self.relationship_id = relationship_id
         self.attribute = attribute
+    
+    def __repr__(self):
+        return f"QueryValueOfRelationshipAttribute({self.relationship_id}, {self.attribute})"
+
+
+class QueryNodeLabel(Query):
+    """Not implemented"""  # pylint: disable=too-few-public-methods
+
+    def __init__(self, node_id: str):
+        self.node_id = node_id
+
+    def __repr__(self):
+        return f"QueryNodeLabel({self.node_id})"

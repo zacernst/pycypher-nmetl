@@ -3,7 +3,6 @@
 import sys
 
 import click
-import pyfiglet
 
 from pycypher.util.configuration import load_goldberg_config
 

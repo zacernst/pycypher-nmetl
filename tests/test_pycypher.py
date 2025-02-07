@@ -1,6 +1,7 @@
 """All the tests."""
 # pylint: disable=missing-function-docstring,protected-access,redefined-outer-name,too-many-lines
 
+import collections
 import datetime
 import logging
 import pathlib
@@ -29,6 +30,7 @@ from fixtures import (
     patched_uuid,
     populated_goldberg,
     raw_data_processor,
+    shapes_goldberg,
     squares_csv_data_source,
 )
 from pytest_unordered import unordered
@@ -91,7 +93,7 @@ from pycypher.etl.fact import (  # We might get rid of this class entirely
 )
 from pycypher.etl.goldberg import Goldberg
 from pycypher.etl.message_types import EndOfData, RawDatum
-from pycypher.etl.query import QueryValueOfNodeAttribute
+from pycypher.etl.query import QueryNodeLabel, QueryValueOfNodeAttribute
 from pycypher.etl.solver import (
     ConstraintNodeHasAttributeWithValue,
     ConstraintNodeHasLabel,
@@ -1468,6 +1470,18 @@ def test_query_node_has_attribute_with_value(fact_collection_6):
     query = QueryValueOfNodeAttribute(node_id="4", attribute="foo")
     value = fact_collection_6.query(query)
     assert value.evaluate(fact_collection_6) == 2
+
+
+def test_query_node_label(fact_collection_6):
+    query = QueryNodeLabel(node_id="4")
+    value = fact_collection_6.query(query)
+    assert value == "Thing"
+
+
+def test_query_nonexistent_node_label(fact_collection_6):
+    with pytest.raises(ValueError):
+        query = QueryNodeLabel(node_id="idontexist")
+        fact_collection_6.query(query)
 
 
 def test_query_node_has_non_existent_attribute(fact_collection_6):
@@ -4239,3 +4253,44 @@ def test_cypher_trigger_function_on_relationship_match():
 
         goldberg.start_threads()
         goldberg.block_until_finished()
+
+
+def test_fact_collection_inventory(fact_collection_6):
+    obj = fact_collection_6.node_label_attribute_inventory()
+    expected = collections.defaultdict(
+        set,
+        {
+            "Thing": {"foo"},
+            "MiddleThing": set(),
+            "OtherThing": set(),
+            "Irrelevant": set(),
+        },
+    )
+    assert obj == expected
+
+
+def test_nodes_with_label(shapes_goldberg):
+    obj = list(shapes_goldberg.fact_collection.nodes_with_label("Square"))
+    obj.sort()
+    expected = [
+        "Square::squarename1",
+        "Square::squarename2",
+        "Square::squarename3",
+        "Square::squarename4",
+    ]
+    assert obj == expected
+
+def test_attributes_for_specific_node(shapes_goldberg):
+    obj = shapes_goldberg.fact_collection.attributes_for_specific_node("Square::squarename1", 'side_length', 'square_color')
+    expected = {
+        "side_length": 1.0,
+        "square_color": "blue",
+    }
+    assert obj == expected
+
+def test_rows_by_node_label(shapes_goldberg):
+    obj = list(shapes_goldberg.fact_collection.rows_by_node_label("Square"))
+    obj = sorted(obj, key=lambda x: x['name'])
+    expected = [{'name': 'squarename1', 'square_color': 'blue', 'side_length': 1.0}, {'name': 'squarename2', 'square_color': 'red', 'side_length': 5.0}, {'name': 'squarename3', 'square_color': 'blue', 'side_length': 3.0}, {'name': 'squarename4', 'square_color': 'orange', 'side_length': 10.0}]
+    expected = sorted(expected, key=lambda x: x['name'])
+    assert obj == expected

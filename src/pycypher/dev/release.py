@@ -8,8 +8,15 @@ import click
 import toml
 from git import Repo
 
-PYPROJECT_TOML = pathlib.Path(__file__).parent / "pyproject.toml"
-INIT_FILE = pathlib.Path(__file__).parent / "src" / "pycypher" / "__init__.py"
+PYPROJECT_TOML = (
+    pathlib.Path(__file__).parent.parent.parent.parent / "pyproject.toml"
+)
+INIT_FILE = (
+    pathlib.Path(__file__).parent.parent.parent.parent
+    / "src"
+    / "pycypher"
+    / "__init__.py"
+)
 
 
 class Version:

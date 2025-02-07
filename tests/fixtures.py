@@ -24,6 +24,7 @@ from pycypher.etl.fact import (  # We might get rid of this class entirely
     FactRelationshipHasTargetNode,
 )
 from pycypher.etl.goldberg import Goldberg, RawDataProcessor
+from pycypher.util.configuration import load_goldberg_config
 from pycypher.util.helpers import ensure_uri
 
 TEST_DATA_DIRECTORY = pathlib.Path(__file__).parent / "test_data"
@@ -542,3 +543,12 @@ def populated_goldberg(
     fixture_data_source_0.attach_mapping(fixture_0_data_source_mapping_list)
     empty_goldberg.attach_data_source(fixture_data_source_0)
     return empty_goldberg
+
+
+@pytest.fixture
+def shapes_goldberg():
+    ingest_file = TEST_DATA_DIRECTORY / "ingest.yaml"
+    goldberg = load_goldberg_config(ingest_file)
+    goldberg.start_threads()
+    goldberg.block_until_finished()
+    return goldberg

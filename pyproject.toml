@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pycypher"
-version = "0.0.16"
+version = "0.0.18"
 description = "Cypher for Python"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -31,6 +31,7 @@ Homepage = "https://github.com/zacernst/pycypher"
 [project.scripts]
 pycypher = "pycypher.util.cli:main"
 nmetl = "pycypher.util.nmetl_cli:main"
+release = "pycypher.dev.release:release"
 
 [tool.ruff]
 exclude = [ ".bzr", ".direnv", ".eggs", ".git", ".git-rewrite", ".hg", ".ipynb_checkpoints", ".mypy_cache", ".nox", ".pants.d", ".pyenv", ".pytest_cache", ".pytype", ".ruff_cache", ".svn", ".tox", ".venv", ".vscode", "__pypackages__", "_build", "buck-out", "build", "dist", "node_modules", "site-packages", "venv",]
@@ -44,6 +45,4 @@ exclude_also = [ "def tree", "def print_tree", "def __repr__", "if self.debug:",
 
 [tool.pytest.ini_options]
 addopts = ""
-testpaths = [
-    "tests",
-]
+testpaths = [ "tests",]

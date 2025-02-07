@@ -4,9 +4,10 @@ Facts are simple atomic statements that have a truth value.
 
 from __future__ import annotations
 
+import collections
 from typing import Any, Dict, Generator, List
 
-from pycypher.etl.query import Query, QueryValueOfNodeAttribute
+from pycypher.etl.query import Query, QueryNodeLabel, QueryValueOfNodeAttribute
 from pycypher.etl.solver import (
     Constraint,
     ConstraintNodeHasAttributeWithValue,
@@ -282,6 +283,10 @@ class FactRelationshipHasTargetNode(AtomicFact):
             and self.target_node_id == other.target_node_id
         )
 
+    def __add__(self, other: Constraint):
+        if not isinstance(other, Constraint):
+            raise ValueError("Can only check constraints against facts")
+
 
 class FactCollection:
     """
@@ -462,10 +467,24 @@ class FactCollection:
             ]
             if len(facts) == 1:
                 return facts[0].value
-            elif len(facts) == 0:
+            elif not facts:
                 raise ValueError(f"Could not find value for {query}")
             elif len(facts) > 1:
                 raise ValueError(f"Found multiple values for {query}")
+            else:
+                raise ValueError("Unknown error")
+        elif isinstance(query, QueryNodeLabel):
+            facts = [
+                fact
+                for fact in self.node_has_label_facts()
+                if fact.node_id == query.node_id
+            ]
+            if len(facts) == 1:
+                return facts[0].label
+            elif not facts:
+                raise ValueError(f"Could not find label for {query}")
+            elif len(facts) > 1:
+                raise ValueError(f"Found multiple labels for {query}")
             else:
                 raise ValueError("Unknown error")
         else:
@@ -479,3 +498,78 @@ class FactCollection:
             bool: True if the fact collection is empty, False otherwise.
         """
         return len(self.facts) == 0
+
+    def node_label_attribute_inventory(self):
+        """
+        Return a dictionary of all the facts in the collection.
+
+        Returns:
+            dict: A dictionary of all the facts in the collection.
+        """
+        attributes_by_label = collections.defaultdict(set)
+        relationship_labels = set()
+        # TODO: Relationships
+
+        for fact in self.facts:
+            if isinstance(fact, FactNodeHasAttributeWithValue):
+                label = self.query(QueryNodeLabel(node_id=fact.node_id))
+                attributes_by_label[label].add(fact.attribute)
+            elif isinstance(fact, FactNodeHasLabel):
+                if fact.label not in attributes_by_label:
+                    attributes_by_label[fact.label] = set()
+            elif isinstance(fact, FactRelationshipHasLabel):
+                relationship_labels.add(fact.relationship_label)
+            else:
+                continue
+
+        return attributes_by_label
+
+    def attributes_for_specific_node(
+        self, node_id: str, *attributes: str
+    ) -> Dict[str, Any]:
+        """
+        Return a dictionary of all the attributes for a specific node.
+
+        Args:
+            node_id (str): The ID of the node.
+
+        Returns:
+            dict: A dictionary of all the attributes for the specified node.
+        """
+        row = {attribute: None for attribute in attributes}
+        for fact in self.facts:
+            if (
+                isinstance(fact, FactNodeHasAttributeWithValue)
+                and fact.node_id == node_id
+                and fact.attribute in attributes
+            ):
+                row[fact.attribute] = fact.value
+        return row
+
+    def nodes_with_label(self, label: str) -> Generator[str]:
+        """
+        Return a list of all the nodes with a specific label.
+
+        Args:
+            label (str): The label of the nodes to return.
+
+        Returns:
+            list: A list of all the nodes with the specified label.
+        """
+        for fact in self.node_has_label_facts():
+            if fact.label == label:
+                yield fact.node_id
+
+    def rows_by_node_label(self, label: str) -> Generator[Dict[str, Any]]:
+        """Docstring for rows_by_node_label
+
+        :param self: Description
+        :type self:
+        :param label: Description
+        :type label: str
+        :return: Description
+        :rtype: Generator[Dict[str, Any], None, None]
+        """
+        inventory = self.node_label_attribute_inventory()
+        for node_id in self.nodes_with_label(label):
+            yield self.attributes_for_specific_node(node_id, *inventory[label])

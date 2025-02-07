@@ -31,17 +31,17 @@ data_sources:
   - attribute_key: circle_name
     identifier_key: circle_name
     attribute: identification_string
-    label: circle
+    label: Circle
   - attribute_key: center_x
     identifier_key: circle_name
     attribute: x_coordinate
-    label: circle
+    label: Circle
   - attribute_key: center_y
     identifier_key: circle_name
     attribute: y_coordinate
-    label: circle
+    label: Circle
   - identifier_key: circle_name
-    label: circle
+    label: Circle
 - name: contains_table
   uri: file:///users/zernst/git/pycypher/tests/test_data/contains.csv
   mappings:
