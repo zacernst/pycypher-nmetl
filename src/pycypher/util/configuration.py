@@ -77,13 +77,27 @@ class DataSourceMappingConfig(BaseModel):
 
 
 def load_goldberg_config(path: str) -> Goldberg:
+    """
+    Load and parse the Goldberg configuration from a YAML file.
+
+    Args:
+        path (str): The file path to the YAML configuration file.
+
+    Returns:
+        Goldberg: An instance of the Goldberg class configured according to the YAML file.
+
+    Raises:
+        FileNotFoundError: If the specified file does not exist.
+        yaml.YAMLError: If there is an error parsing the YAML file.
+        TypeError: If the configuration data does not match the expected structure.
+    """
     with open(path, "r", encoding="utf8") as f:
         config = yaml.safe_load(f)
     goldberg_config = GoldbergConfig(**config)
 
     goldberg = Goldberg(
         run_monitor=goldberg_config.run_monitor,
-        logging_level=goldberg_config.logging_level,
+        logging_level=goldberg_config.logging_level
     )
 
     # fact_collection_config = goldberg_config.fact_collection
