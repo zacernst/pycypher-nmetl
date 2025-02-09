@@ -4238,23 +4238,6 @@ def test_nmetl_cli_validation_fails():
         )
 
 
-@pytest.mark.skip
-def test_cypher_trigger_function_on_relationship_match():
-    LOGGER.setLevel(logging.DEBUG)
-    with patch("uuid.uuid4", patched_uuid) as _:
-        ingest_file = TEST_DATA_DIRECTORY / "ingest.yaml"
-        goldberg = load_goldberg_config(ingest_file)
-
-        @goldberg.cypher_trigger(
-            "MATCH (s:Square)-[:contains]->(c:Circle) RETURN s.length AS length"
-        )
-        def test_function(length) -> VariableAttribute["s", "color"]:
-            return 1
-
-        goldberg.start_threads()
-        goldberg.block_until_finished()
-
-
 def test_fact_collection_inventory(fact_collection_6):
     obj = fact_collection_6.node_label_attribute_inventory()
     expected = collections.defaultdict(
@@ -4280,17 +4263,48 @@ def test_nodes_with_label(shapes_goldberg):
     ]
     assert obj == expected
 
+
 def test_attributes_for_specific_node(shapes_goldberg):
-    obj = shapes_goldberg.fact_collection.attributes_for_specific_node("Square::squarename1", 'side_length', 'square_color')
+    obj = shapes_goldberg.fact_collection.attributes_for_specific_node(
+        "Square::squarename1", "side_length", "square_color"
+    )
     expected = {
         "side_length": 1.0,
         "square_color": "blue",
     }
     assert obj == expected
 
+
 def test_rows_by_node_label(shapes_goldberg):
     obj = list(shapes_goldberg.fact_collection.rows_by_node_label("Square"))
-    obj = sorted(obj, key=lambda x: x['name'])
-    expected = [{'name': 'squarename1', 'square_color': 'blue', 'side_length': 1.0}, {'name': 'squarename2', 'square_color': 'red', 'side_length': 5.0}, {'name': 'squarename3', 'square_color': 'blue', 'side_length': 3.0}, {'name': 'squarename4', 'square_color': 'orange', 'side_length': 10.0}]
-    expected = sorted(expected, key=lambda x: x['name'])
+    obj = sorted(obj, key=lambda x: x["name"])
+    expected = [
+        {"name": "squarename1", "square_color": "blue", "side_length": 1.0},
+        {"name": "squarename2", "square_color": "red", "side_length": 5.0},
+        {"name": "squarename3", "square_color": "blue", "side_length": 3.0},
+        {"name": "squarename4", "square_color": "orange", "side_length": 10.0},
+    ]
+    expected = sorted(expected, key=lambda x: x["name"])
     assert obj == expected
+
+
+def test_cypher_trigger_function_on_relationship_match():
+    LOGGER.setLevel(logging.DEBUG)
+    ingest_file = TEST_DATA_DIRECTORY / "ingest.yaml"
+    goldberg = load_goldberg_config(ingest_file)
+
+    @goldberg.cypher_trigger(
+        "MATCH (s:Square)-[my_relationship:contains]->(c:Circle) RETURN s.length AS side_length"
+    )
+    def compute_area(side_length) -> VariableAttribute["s", "area"]:
+        return side_length ** 2
+
+    goldberg.start_threads()
+    goldberg.block_until_finished()
+
+    LOGGER.debug(goldberg.fact_collection.facts)
+    for trigger_function in goldberg.trigger_dict.values():
+        LOGGER.debug(trigger_function.function)
+        LOGGER.debug("Called %s times", trigger_function.call_counter)
+    LOGGER.info(goldberg.trigger_dict)
+    print('hithere')

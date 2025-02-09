@@ -140,17 +140,17 @@ class ConstraintRelationshipHasSourceNode(Constraint):
     """
 
     def __init__(self, source_node_name: str, relationship_name: str):
-        self.source_node_name = source_node_name
+        self.variable = source_node_name
         self.relationship_name = relationship_name
 
     def __repr__(self):
-        return f"ConstraintRelationshipHasSourceNode: {self.relationship_name} {self.source_node_name}"
+        return f"ConstraintRelationshipHasSourceNode: {self.relationship_name} {self.variable}"
 
     def __hash__(self) -> int:
         return hash(
             "RelationshipHasSourceNode"
             + self.relationship_name.__str__()
-            + self.source_node_name.__str__()
+            + self.variable.__str__()
         )
 
     def __eq__(self, other: Any) -> bool:
@@ -166,7 +166,7 @@ class ConstraintRelationshipHasSourceNode(Constraint):
         """
         return (
             isinstance(other, ConstraintRelationshipHasSourceNode)
-            and self.source_node_name == other.source_node_name
+            and self.variable == other.variable
             and self.relationship_name == other.relationship_name
         )
 
@@ -186,23 +186,23 @@ class ConstraintRelationshipHasTargetNode(Constraint):
     """
 
     def __init__(self, target_node_name: str, relationship_name: str):
-        self.target_node_name = target_node_name
+        self.variable = target_node_name
         self.relationship_name = relationship_name
 
     def __repr__(self):
-        return f"ConstraintRelationshipHasTargetNode: {self.relationship_name} {self.target_node_name}"
+        return f"ConstraintRelationshipHasTargetNode: {self.relationship_name} {self.variable}"
 
     def __hash__(self) -> int:
         return hash(
             "RelationshipHasTargetNode"
             + self.relationship_name.__str__()
-            + self.target_node_name.__str__()
+            + self.variable.__str__()
         )
 
     def __eq__(self, other: Any) -> bool:
         return (
             isinstance(other, ConstraintRelationshipHasTargetNode)
-            and self.target_node_name == other.target_node_name
+            and self.variable == other.variable
             and self.relationship_name == other.relationship_name
         )
 

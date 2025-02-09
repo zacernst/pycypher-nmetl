@@ -17,13 +17,14 @@ from rich.console import Console
 from rich.table import Table
 
 from pycypher.etl.data_source import DataSource
-from pycypher.etl.fact import AtomicFact, FactCollection
+from pycypher.etl.fact import AtomicFact, FactCollection, FactNodeHasAttributeWithValue
 from pycypher.etl.message_types import EndOfData
 from pycypher.etl.solver import Constraint
 from pycypher.etl.trigger import CypherTrigger
 from pycypher.util.config import MONITOR_LOOP_DELAY  # pylint: disable=no-name-in-module
 from pycypher.util.helpers import QueueGenerator
 from pycypher.util.logger import LOGGER
+from pycypher.etl.query import QueryValueOfNodeAttribute
 
 
 @dataclass
@@ -118,8 +119,12 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
     by checking them against the triggers.
     """
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
     def process_item_from_queue(self, item: Any) -> None:
         """Process new facts from the check_fact_against_triggers_queue."""
+        
         out = []
         for _, trigger in self.goldberg.trigger_dict.items():
             for constraint in trigger.constraints:
@@ -136,7 +141,7 @@ class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-publi
     by checking them against the triggers.
     """
 
-    def process_item_from_queue(self, item: Any) -> List[Any]:
+    def process_item_from_queue(self, item: SubTriggerPair) -> List[Any]:
         """Process new facts from the check_fact_against_triggers_queue."""
         self.started = True
         self.started_at = datetime.datetime.now()
@@ -158,8 +163,43 @@ class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-publi
         fact_collection = self.goldberg.fact_collection
 
         solutions = match_clause.solutions(fact_collection)  # pylint: disable=unused-variable
+        LOGGER.debug("Solutions: %s", solutions)
 
-        # Need a constraint class saying that a node is a specific object.
+        # Get the Return clause from the Cypher object
+        return_clause = item.trigger.cypher.parse_tree.cypher.return_clause       
+        LOGGER.debug("Return clause: %s", return_clause)
+        aliases = return_clause.projection.lookups
+        for solution in solutions:
+            LOGGER.debug("Solution: %s", solution)
+            splat = []
+            for alias in aliases:
+                LOGGER.debug("Alias: %s", alias)
+                variable = alias.reference.object
+                node_id = solution[variable]
+                attribute = alias.alias
+                attribute_value_query = QueryValueOfNodeAttribute(
+                    node_id=node_id,
+                    attribute=attribute,
+                )
+                LOGGER.debug("Attribute value query: %s", attribute_value_query)
+                LOGGER.info("Fact collection: %s", fact_collection.facts)
+                attribute_value = fact_collection.query(attribute_value_query)
+                LOGGER.debug("Attribute value: %s", attribute_value)
+                splat.append(attribute_value)
+            LOGGER.debug("Splat: %s", splat)
+            # Call the function with the spatted values:
+            computed_value = item.trigger.function(*splat)
+            item.trigger.call_counter += 1
+            LOGGER.debug("computed_value: %s", computed_value)
+            target_attribute = sub_trigger_obj.trigger.attribute_set
+            LOGGER.debug("target_attribute: %s", target_attribute)
+            computed_fact = FactNodeHasAttributeWithValue(
+                node_id=node_id,
+                attribute=target_attribute,
+                value=computed_value,
+            )
+            LOGGER.debug("Computed fact: %s", computed_fact)
+            self.goldberg.fact_generated_queue.put(computed_fact)
         # TODO:
         # Add "NodeHasAttributeWithValue" constraint to the cypher
         # object's Match clause. Evaluate against the FactCollection.
@@ -190,6 +230,7 @@ class Goldberg:  # pylint: disable=too-many-instance-attributes
         self.queue_class = queue_class
         self.queue_options = queue_options or {}
         self.queue_list = queue_list or []
+        self.logging_level = logging_level  # Not so sure
         # No need for a fancy queue class here
         self.status_queue = status_queue or queue.Queue()
 
@@ -267,6 +308,7 @@ class Goldberg:  # pylint: disable=too-many-instance-attributes
         self.fact_generated_queue_processor.processing_thread.start()
 
         # Check facts against triggers
+        time.sleep(.5)
         self.check_fact_against_triggers_queue_processor.processing_thread.start()
 
         # Triggered lookup processor
@@ -390,12 +432,12 @@ class Goldberg:  # pylint: disable=too-many-instance-attributes
         table.add_column("Total", justify="right", style="green")
         table.add_column("Completed", justify="right", style="green")
 
-        for queue in self.queue_list:
+        for goldberg_queue in self.queue_list:
             table.add_row(
-                queue.name,
-                f"{queue.queue.qsize()}",
-                f"{queue.counter}",
-                f"{queue.completed}",
+                goldberg_queue.name,
+                f"{goldberg_queue.queue.qsize()}",
+                f"{goldberg_queue.counter}",
+                f"{goldberg_queue.completed}",
             )
 
         console.print(table)
@@ -460,6 +502,7 @@ class Goldberg:  # pylint: disable=too-many-instance-attributes
         """Decorator that registers a trigger with a Cypher string and a function."""
 
         def decorator(func):
+            
             @functools.wraps
             def wrapper(*args, **kwargs):
                 result = func(*args, **kwargs)

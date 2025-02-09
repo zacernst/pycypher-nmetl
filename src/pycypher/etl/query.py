@@ -13,7 +13,7 @@ class QueryValueOfNodeAttribute(Query):
     def __init__(self, node_id: str, attribute: str):
         self.node_id = node_id
         self.attribute = attribute
-    
+
     def __repr__(self):
         return f"QueryValueOfNodeAttribute({self.node_id}, {self.attribute})"
 
@@ -24,7 +24,7 @@ class QueryValueOfRelationshipAttribute(Query):
     def __init__(self, relationship_id: str, attribute: str):
         self.relationship_id = relationship_id
         self.attribute = attribute
-    
+
     def __repr__(self):
         return f"QueryValueOfRelationshipAttribute({self.relationship_id}, {self.attribute})"
 

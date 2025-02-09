@@ -1181,11 +1181,11 @@ class Match(TreeMixin):
         """
 
         def _set_up_problem(match_clause) -> Problem:
+            # AttributeError: 'ConstraintRelationshipHasSourceNode' object has no attribute 'variable'
             constraints = match_clause.constraints
             problem = Problem()
             node_domain = Domain(set())
             relationship_domain = Domain(set())
-
             # Get domains for nodes and relationships
             for fact in fact_collection:
                 if isinstance(fact, FactNodeHasLabel):
@@ -1210,43 +1210,49 @@ class Match(TreeMixin):
                 else:
                     pass
 
-            # Assign variables to domains
+            # Assign variables to domains -- TODO: Ensure no duplicates!
             for constraint in constraints:
                 if isinstance(constraint, ConstraintNodeHasLabel):
-                    problem.addVariable(constraint.variable, node_domain)
+                    if constraint.variable not in problem._variables:  # pylint: disable=protected-access
+                        problem.addVariable(constraint.variable, node_domain)
                 elif (  # pylint: disable=protected-access
                     isinstance(constraint, ConstraintRelationshipHasSourceNode)
                     and constraint.relationship_name not in problem._variables
                 ):
-                    problem.addVariable(
-                        constraint.relationship_name, relationship_domain
-                    )
+                    if constraint.variable not in problem._variables:
+                        problem.addVariable(
+                            constraint.relationship_name, relationship_domain
+                        )
                 elif (  # pylint: disable=protected-access
                     isinstance(constraint, ConstraintRelationshipHasTargetNode)
                     and constraint.relationship_name not in problem._variables
                 ):
-                    problem.addVariable(
-                        constraint.relationship_name, relationship_domain
-                    )
+                    if constraint.variable not in problem._variables:
+                        problem.addVariable(
+                            constraint.relationship_name, relationship_domain
+                        )
                 elif (  # pylint: disable=protected-access
                     isinstance(constraint, ConstraintRelationshipHasLabel)
                     and constraint.relationship_name not in problem._variables
                 ):
-                    problem.addVariable(
-                        constraint.relationship_name, relationship_domain
-                    )
+                    if constraint.variable not in problem._variables:
+                        problem.addVariable(
+                            constraint.relationship_name, relationship_domain
+                        )
                 elif (  # pylint: disable=protected-access
                     isinstance(constraint, ConstraintNodeHasAttributeWithValue)
                     and constraint.variable not in problem._variables
                 ):
-                    problem.addVariable(constraint.variable, node_domain)
+                    if constraint.variable not in problem._variables:
+                        problem.addVariable(constraint.variable, node_domain)
                 elif (
                     isinstance(
                         constraint, ConstraintVariableRefersToSpecificObject
                     )
-                    and constraint.variable not in problem._variables
+                    and constraint.variable not in problem._variables  # pylint: disable=protected-access
                 ):
-                    problem.addVariable(constraint.variable, node_domain)
+                    if constraint.variable not in problem._variables:  # pylint: disable=protected-access
+                        problem.addVariable(constraint.variable, node_domain)
                 else:
                     pass
 
@@ -1366,7 +1372,7 @@ class Match(TreeMixin):
                         _f,
                         [
                             constraint.relationship_name,
-                            constraint.source_node_name,
+                            constraint.variable,
                         ],
                     )
                 elif isinstance(
@@ -1380,7 +1386,7 @@ class Match(TreeMixin):
                         in fact_collection,
                         [
                             constraint.relationship_name,
-                            constraint.target_node_name,
+                            constraint.variable,
                         ],
                     )
                 else:
@@ -1392,6 +1398,8 @@ class Match(TreeMixin):
             if isinstance(fact_collection, FactCollection)
             else fact_collection.make_fact_collection()
         )
+        # import pdb; pdb.set_trace()
+        # Tried to insert duplicated variable...
         problem = _set_up_problem(self)
         solutions = problem.getSolutions()
         return solutions
