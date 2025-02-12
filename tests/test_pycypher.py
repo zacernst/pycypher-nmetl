@@ -4297,7 +4297,7 @@ def test_cypher_trigger_function_on_relationship_match():
         "MATCH (s:Square)-[my_relationship:contains]->(c:Circle) RETURN s.length AS side_length"
     )
     def compute_area(side_length) -> VariableAttribute["s", "area"]:
-        return side_length ** 2
+        return side_length**2
 
     goldberg.start_threads()
     goldberg.block_until_finished()
@@ -4307,4 +4307,4 @@ def test_cypher_trigger_function_on_relationship_match():
         LOGGER.debug(trigger_function.function)
         LOGGER.debug("Called %s times", trigger_function.call_counter)
     LOGGER.info(goldberg.trigger_dict)
-    print('hithere')
+    print("hithere")

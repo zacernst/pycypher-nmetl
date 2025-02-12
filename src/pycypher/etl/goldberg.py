@@ -17,14 +17,18 @@ from rich.console import Console
 from rich.table import Table
 
 from pycypher.etl.data_source import DataSource
-from pycypher.etl.fact import AtomicFact, FactCollection, FactNodeHasAttributeWithValue
+from pycypher.etl.fact import (
+    AtomicFact,
+    FactCollection,
+    FactNodeHasAttributeWithValue,
+)
 from pycypher.etl.message_types import EndOfData
+from pycypher.etl.query import QueryValueOfNodeAttribute
 from pycypher.etl.solver import Constraint
 from pycypher.etl.trigger import CypherTrigger
 from pycypher.util.config import MONITOR_LOOP_DELAY  # pylint: disable=no-name-in-module
 from pycypher.util.helpers import QueueGenerator
 from pycypher.util.logger import LOGGER
-from pycypher.etl.query import QueryValueOfNodeAttribute
 
 
 @dataclass
@@ -124,7 +128,7 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
 
     def process_item_from_queue(self, item: Any) -> None:
         """Process new facts from the check_fact_against_triggers_queue."""
-        
+
         out = []
         for _, trigger in self.goldberg.trigger_dict.items():
             for constraint in trigger.constraints:
@@ -166,7 +170,7 @@ class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-publi
         LOGGER.debug("Solutions: %s", solutions)
 
         # Get the Return clause from the Cypher object
-        return_clause = item.trigger.cypher.parse_tree.cypher.return_clause       
+        return_clause = item.trigger.cypher.parse_tree.cypher.return_clause
         LOGGER.debug("Return clause: %s", return_clause)
         aliases = return_clause.projection.lookups
         for solution in solutions:
@@ -181,7 +185,9 @@ class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-publi
                     node_id=node_id,
                     attribute=attribute,
                 )
-                LOGGER.debug("Attribute value query: %s", attribute_value_query)
+                LOGGER.debug(
+                    "Attribute value query: %s", attribute_value_query
+                )
                 LOGGER.info("Fact collection: %s", fact_collection.facts)
                 attribute_value = fact_collection.query(attribute_value_query)
                 LOGGER.debug("Attribute value: %s", attribute_value)
@@ -308,7 +314,7 @@ class Goldberg:  # pylint: disable=too-many-instance-attributes
         self.fact_generated_queue_processor.processing_thread.start()
 
         # Check facts against triggers
-        time.sleep(.5)
+        time.sleep(0.5)
         self.check_fact_against_triggers_queue_processor.processing_thread.start()
 
         # Triggered lookup processor
@@ -502,7 +508,6 @@ class Goldberg:  # pylint: disable=too-many-instance-attributes
         """Decorator that registers a trigger with a Cypher string and a function."""
 
         def decorator(func):
-            
             @functools.wraps
             def wrapper(*args, **kwargs):
                 result = func(*args, **kwargs)

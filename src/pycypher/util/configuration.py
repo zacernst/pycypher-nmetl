@@ -97,7 +97,7 @@ def load_goldberg_config(path: str) -> Goldberg:
 
     goldberg = Goldberg(
         run_monitor=goldberg_config.run_monitor,
-        logging_level=goldberg_config.logging_level
+        logging_level=goldberg_config.logging_level,
     )
 
     # fact_collection_config = goldberg_config.fact_collection
