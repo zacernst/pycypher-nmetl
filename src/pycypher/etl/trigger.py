@@ -59,6 +59,14 @@ class CypherTrigger:  # pylint: disable=too-many-instance-attributes
             if hasattr(node, "constraints"):
                 self.constraints = self.constraints | set(node.constraints)
 
+    def __hash__(self):
+        return hash(
+            self.cypher_string
+            + self.function.__name__
+            + self.variable_set
+            + self.attribute_set
+        )
+
 
 if __name__ == "__main__":  # pragma: no cover # typing:ignore
     pass

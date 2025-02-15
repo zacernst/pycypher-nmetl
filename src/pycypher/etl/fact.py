@@ -5,9 +5,14 @@ Facts are simple atomic statements that have a truth value.
 from __future__ import annotations
 
 import collections
-from typing import Any, Dict, Generator, List
+from typing import Any, Dict, Generator, List, Optional
 
-from pycypher.etl.query import Query, QueryNodeLabel, QueryValueOfNodeAttribute
+from pycypher.etl.query import (
+    NullResult,
+    Query,
+    QueryNodeLabel,
+    QueryValueOfNodeAttribute,
+)
 from pycypher.etl.solver import (
     Constraint,
     ConstraintNodeHasAttributeWithValue,
@@ -31,6 +36,9 @@ class AtomicFact:  # pylint: disable=too-few-public-methods
 
     """
 
+    def __init__(self, *args, goldberg: Optional["Goldberg"] = None):
+        self.goldberg = goldberg
+
 
 class FactNodeHasLabel(AtomicFact):
     """
@@ -42,9 +50,10 @@ class FactNodeHasLabel(AtomicFact):
 
     """
 
-    def __init__(self, node_id: str, label: str):
+    def __init__(self, node_id: str, label: str, **kwargs):
         self.node_id = node_id
         self.label = label
+        super().__init__(**kwargs)
 
     def __repr__(self):
         return f"NodeHasLabel: {self.node_id} {self.label}"
@@ -75,6 +84,9 @@ class FactNodeHasLabel(AtomicFact):
             out = None
         return out
 
+    def __hash__(self):
+        return hash((self.node_id, self.label))
+
 
 class FactRelationshipHasLabel(AtomicFact):
     """
@@ -86,9 +98,12 @@ class FactRelationshipHasLabel(AtomicFact):
 
     """
 
-    def __init__(self, relationship_id: str, relationship_label: str):
+    def __init__(
+        self, relationship_id: str, relationship_label: str, **kwargs
+    ):
         self.relationship_id = relationship_id
         self.relationship_label = relationship_label
+        super().__init__(**kwargs)
 
     def __repr__(self):
         return f"RelationshipHasLabel: {self.relationship_id} {self.relationship_label}"
@@ -112,6 +127,9 @@ class FactRelationshipHasLabel(AtomicFact):
             else None
         )
 
+    def __hash__(self):
+        return hash((self.relationship_id, self.relationship_label))
+
 
 class FactRelationshipHasAttributeWithValue(AtomicFact):
     """
@@ -128,10 +146,16 @@ class FactRelationshipHasAttributeWithValue(AtomicFact):
         value (Any): The value of the attribute.
     """
 
-    def __init__(self, relationship_id: str, attribute: str, value: Any):
+    def __init__(
+        self, relationship_id: str, attribute: str, value: Any, **kwargs
+    ):
         self.relationship_id = relationship_id
         self.attribute = attribute
         self.value = value
+        super().__init__(**kwargs)
+
+    def __hash__(self):
+        return hash((self.relationship_id, self.attribute, self.value))
 
 
 class FactNodeHasAttributeWithValue(AtomicFact):
@@ -144,10 +168,11 @@ class FactNodeHasAttributeWithValue(AtomicFact):
         value (Any): The value of the attribute.
     """
 
-    def __init__(self, node_id: str, attribute: str, value: Any):
+    def __init__(self, node_id: str, attribute: str, value: Any, **kwargs):
         self.node_id = node_id
         self.attribute = attribute
         self.value = value
+        super().__init__(**kwargs)
 
     def __repr__(self) -> str:
         return f"NodeHasAttributeWithValue: {self.node_id} {self.attribute} {self.value}"
@@ -179,8 +204,24 @@ class FactNodeHasAttributeWithValue(AtomicFact):
                 )
                 else None
             )
-        elif isinstance(other, ConstraintNodeHasLabel):
-            out = None
+        elif isinstance(other, ConstraintNodeHasLabel):  # Too chatty!
+            # Need the attributes in the triggers return projection
+
+            if hasattr(
+                self.goldberg, "fact_collection"
+            ):  # only missing if unit tests
+                node_label = self.goldberg.fact_collection.query(
+                    QueryNodeLabel(self.node_id)
+                )
+
+                out = (
+                    {other.variable: self.node_id}
+                    if node_label
+                    == other.label  # and self.attribute is in the trigger's arguments
+                    else None
+                )
+            else:
+                out = None
         elif isinstance(other, ConstraintRelationshipHasSourceNode):
             out = None
         elif isinstance(other, ConstraintRelationshipHasTargetNode):
@@ -191,6 +232,17 @@ class FactNodeHasAttributeWithValue(AtomicFact):
             raise ValueError(
                 f"Expected a ``Constraint``, but got {other.__class__.__name__}."
             )
+        if (
+            0
+            and self.attribute == "area"
+            and self.value == 1.0
+            and isinstance(other, ConstraintNodeHasLabel)
+            and other.label == "Square"
+        ):
+            # self.goldberg is None! <-- BUG
+            import pdb
+
+            pdb.set_trace()
         return out
 
     def __eq__(self, other: Any) -> bool:
@@ -200,6 +252,9 @@ class FactNodeHasAttributeWithValue(AtomicFact):
             and (self.attribute == other.attribute)
             and (self.value == other.value)
         )
+
+    def __hash__(self):
+        return hash((self.node_id, self.attribute, self.value))
 
 
 class FactNodeRelatedToNode(AtomicFact):
@@ -213,10 +268,13 @@ class FactNodeRelatedToNode(AtomicFact):
 
     """
 
-    def __init__(self, node1_id: str, node2_id: str, relationship_label: str):
+    def __init__(
+        self, node1_id: str, node2_id: str, relationship_label: str, **kwargs
+    ):
         self.node1_id = node1_id
         self.node2_id = node2_id
         self.relationship_label = relationship_label
+        super().__init__(**kwargs)
 
     def __repr__(self) -> str:
         return f"NodeRelatedToNode: {self.node1_id} {self.relationship_label} {self.node2_id}"
@@ -240,9 +298,10 @@ class FactRelationshipHasSourceNode(AtomicFact):
 
     """
 
-    def __init__(self, relationship_id: str, source_node_id: str):
+    def __init__(self, relationship_id: str, source_node_id: str, **kwargs):
         self.relationship_id = relationship_id
         self.source_node_id = source_node_id
+        super().__init__(**kwargs)
 
     def __repr__(self) -> str:
         return f"RelationshipHasSourceNode: {self.relationship_id} {self.source_node_id}"
@@ -258,6 +317,9 @@ class FactRelationshipHasSourceNode(AtomicFact):
         if not isinstance(other, Constraint):
             raise ValueError("Can only check constraints against facts")
 
+    def __hash__(self):
+        return hash((self.relationship_id, self.source_node_id))
+
 
 class FactRelationshipHasTargetNode(AtomicFact):
     """
@@ -269,9 +331,10 @@ class FactRelationshipHasTargetNode(AtomicFact):
 
     """
 
-    def __init__(self, relationship_id: str, target_node_id: str):
+    def __init__(self, relationship_id: str, target_node_id: str, **kwargs):
         self.relationship_id = relationship_id
         self.target_node_id = target_node_id
+        super().__init__(**kwargs)
 
     def __repr__(self) -> str:
         return f"RelationshipHasTargetNode: {self.relationship_id} {self.target_node_id}"
@@ -287,6 +350,9 @@ class FactRelationshipHasTargetNode(AtomicFact):
         if not isinstance(other, Constraint):
             raise ValueError("Can only check constraints against facts")
 
+    def __hash__(self):
+        return hash((self.relationship_id, self.target_node_id))
+
 
 class FactCollection:
     """
@@ -298,8 +364,11 @@ class FactCollection:
 
     """
 
-    def __init__(self, facts: List[AtomicFact]):
+    def __init__(
+        self, facts: List[AtomicFact], goldberg: Optional["Goldberg"] = None
+    ):
         self.facts: List[AtomicFact] = facts
+        self.goldberg: Optional["Goldberg"] = None
 
     def __iter__(self) -> Generator[AtomicFact]:
         yield from self.facts
@@ -343,7 +412,9 @@ class FactCollection:
         Returns:
             None
         """
-        self.facts.append(value)
+        value.goldberg = self.goldberg
+        if value not in self:
+            self.facts.append(value)
         return self
 
     def __iadd__(self, other: AtomicFact) -> FactCollection:
@@ -465,14 +536,21 @@ class FactCollection:
                 if fact.node_id == query.node_id
                 and fact.attribute == query.attribute
             ]
+            if 0 and len(self.facts) > 72:
+                import pdb
+
+                pdb.set_trace()
+            if 0 and query.attribute == "area":
+                import pdb
+
+                pdb.set_trace()
             if len(facts) == 1:
                 return facts[0].value
-            elif not facts:
-                raise ValueError(f"Could not find value for {query}")
-            elif len(facts) > 1:
+            if not facts:
+                return NullResult(query)
+            if len(facts) > 1:
                 raise ValueError(f"Found multiple values for {query}")
-            else:
-                raise ValueError("Unknown error")
+            raise ValueError("Unknown error")
         elif isinstance(query, QueryNodeLabel):
             facts = [
                 fact
@@ -482,7 +560,7 @@ class FactCollection:
             if len(facts) == 1:
                 return facts[0].label
             elif not facts:
-                raise ValueError(f"Could not find label for {query}")
+                return NullResult(query)
             elif len(facts) > 1:
                 raise ValueError(f"Found multiple labels for {query}")
             else:

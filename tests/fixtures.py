@@ -24,6 +24,7 @@ from pycypher.etl.fact import (  # We might get rid of this class entirely
     FactRelationshipHasTargetNode,
 )
 from pycypher.etl.goldberg import Goldberg, RawDataProcessor
+from pycypher.etl.trigger import VariableAttribute
 from pycypher.util.configuration import load_goldberg_config
 from pycypher.util.helpers import ensure_uri
 
@@ -551,4 +552,38 @@ def shapes_goldberg():
     goldberg = load_goldberg_config(ingest_file)
     goldberg.start_threads()
     goldberg.block_until_finished()
+    return goldberg
+
+
+@pytest.fixture
+def goldberg_with_trigger():
+    ingest_file = TEST_DATA_DIRECTORY / "ingest.yaml"
+    goldberg = load_goldberg_config(ingest_file)
+
+    @goldberg.cypher_trigger(
+        "MATCH (s:Square)-[my_relationship:contains]->(c:Circle) RETURN s.side_length AS side_length"
+    )
+    def compute_area(side_length) -> VariableAttribute["s", "area"]:
+        return side_length**2
+
+    return goldberg
+
+
+@pytest.fixture
+def goldberg_with_two_triggers():
+    ingest_file = TEST_DATA_DIRECTORY / "ingest.yaml"
+    goldberg = load_goldberg_config(ingest_file)
+
+    @goldberg.cypher_trigger(
+        "MATCH (s:Square)-[my_relationship:contains]->(c:Circle) RETURN s.side_length AS side_length"
+    )
+    def compute_area(side_length) -> VariableAttribute["s", "area"]:
+        return side_length**2
+
+    @goldberg.cypher_trigger(
+        "MATCH (s:Square)-[my_relationship:contains]->(c:Circle) RETURN s.area AS square_area"
+    )
+    def compute_bigness(square_area) -> VariableAttribute["s", "big"]:
+        return square_area > 10
+
     return goldberg

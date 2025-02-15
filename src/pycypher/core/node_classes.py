@@ -76,7 +76,7 @@ from pycypher.etl.fact import (
     FactRelationshipHasSourceNode,
     FactRelationshipHasTargetNode,
 )
-from pycypher.etl.query import QueryValueOfNodeAttribute
+from pycypher.etl.query import NullResult, QueryValueOfNodeAttribute
 from pycypher.etl.solver import (
     Constraint,
     ConstraintNodeHasAttributeWithValue,
@@ -107,8 +107,10 @@ class Evaluable(abc.ABC):  # pylint: disable=too-few-public-methods
 
     def evaluate(self, *args, **kwargs):
         """Calls the `_evaluate` method and returns the value of the `Literal` object."""
-        result = self._evaluate(*args, **kwargs).value
-        return result
+        if any(isinstance(arg, NullResult) for arg in args):
+            return NullResult(self)
+        result = self._evaluate(*args, **kwargs)
+        return getattr(result, "value", result)
 
 
 class Cypher(TreeMixin):
@@ -588,6 +590,9 @@ class Predicate(TreeMixin):
         Raises:
         ValueError: If the number of arguments is not one or two.
         """
+        # Just return if anything is a NullResult
+        if any(isinstance(arg, NullResult) for arg in args):
+            return NullResult(self)
         args = [arg.value if isinstance(arg, Literal) else arg for arg in args]
         if len(args) == 1:
             self._type_check_unary(args[0])
@@ -678,7 +683,9 @@ class Equals(BinaryBoolean, Evaluable):
         right_value = self.right_side.evaluate(
             fact_collection, projection=projection
         )  # pylint: disable=protected-access
-        self.type_check(left_value, right_value)
+        type_check_result = self.type_check(left_value, right_value)
+        if isinstance(type_check_result, NullResult):
+            return NullResult(self)
         return Literal(left_value == right_value)
 
 
@@ -705,7 +712,9 @@ class LessThan(Predicate, Evaluable):
         right_value = self.right_side.evaluate(
             fact_collection, projection=projection
         )  # pylint: disable=protected-access
-        self.type_check(left_value, right_value)
+        type_check_result = self.type_check(left_value, right_value)
+        if isinstance(type_check_result, NullResult):
+            return NullResult(self)
         return Literal(left_value < right_value)
 
 
@@ -743,7 +752,10 @@ class GreaterThan(Predicate, Evaluable):
         right_value = self.right_side.evaluate(
             fact_collection, projection=projection
         )  # pylint: disable=protected-access
-        self.type_check(left_value, right_value)
+        type_check_result = self.type_check(left_value, right_value)
+        if isinstance(type_check_result, NullResult):
+            return NullResult(self)
+
         return Literal(left_value > right_value)
 
 
@@ -770,7 +782,9 @@ class Subtraction(Predicate, Evaluable):
         right_value = self.right_side.evaluate(
             fact_collection, projection=projection
         )  # pylint: disable=protected-access
-        self.type_check(left_value, right_value)
+        type_check_result = self.type_check(left_value, right_value)
+        if isinstance(type_check_result, NullResult):
+            return NullResult(self)
         return Literal(left_value - right_value)
 
 
@@ -804,7 +818,9 @@ class Multiplication(Predicate, Evaluable):
         right_value = self.right_side._evaluate(  # pylint: disable=protected-access
             fact_collection, projection=projection
         )  # pylint: disable=protected-access
-        self.type_check(left_value, right_value)
+        type_check_result = self.type_check(left_value, right_value)
+        if isinstance(type_check_result, NullResult):
+            return NullResult(self)
         return Literal(left_value.value * right_value.value)
 
 
@@ -840,7 +856,9 @@ class Division(Predicate, Evaluable):
         right_value = self.right_side._evaluate(  # pylint: disable=protected-access
             fact_collection, projection=projection
         )  # pylint: disable=protected-access
-        self.type_check(left_value, right_value)
+        type_check_result = self.type_check(left_value, right_value)
+        if isinstance(type_check_result, NullResult):
+            return NullResult(self)
         return Literal(left_value.value / right_value.value)
 
 
@@ -1866,7 +1884,9 @@ class Not(Evaluable, Predicate):
         projection: Optional[Dict[str, str | List[str]]] = None,
     ) -> Any:
         value = self.argument._evaluate(fact_collection, projection=projection)  # pylint: disable=protected-access
-        self.type_check(value)
+        type_check_result = self.type_check(value)
+        if isinstance(type_check_result, NullResult):
+            return NullResult(self)
         return Literal(not value.value)
 
 
@@ -1942,7 +1962,9 @@ class Addition(Evaluable, Predicate):
         right_value = self.right_side._evaluate(  # pylint: disable=protected-access
             fact_collection, projection=projection
         )  # pylint: disable=protected-access
-        self.type_check(left_value, right_value)
+        type_check_result = self.type_check(left_value, right_value)
+        if isinstance(type_check_result, NullResult):
+            return NullResult(self)
         return Literal(left_value.value + right_value.value)
 
 

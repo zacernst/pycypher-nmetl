@@ -5,7 +5,7 @@ logging_level: DEBUG
 
 data_sources:
 - name: squares_table
-  uri: file:///Users/zernst/git/pycypher/tests/test_data/squares.csv
+  uri: file://{SRC_BASE_DIR}/tests/test_data/squares.csv
   mappings:
   - attribute_key: name
     identifier_key: name
@@ -26,7 +26,7 @@ data_sources:
     length: Float
     color: String
 - name: circles_table
-  uri: file:///users/zernst/git/pycypher/tests/test_data/circles.csv
+  uri: file://{SRC_BASE_DIR}/tests/test_data/circles.csv
   mappings:
   - attribute_key: circle_name
     identifier_key: circle_name
@@ -43,7 +43,7 @@ data_sources:
   - identifier_key: circle_name
     label: Circle
 - name: contains_table
-  uri: file:///users/zernst/git/pycypher/tests/test_data/contains.csv
+  uri: file://{SRC_BASE_DIR}/tests/test_data/contains.csv
   mappings:
   - attribute_key: square
     identifier_key: square

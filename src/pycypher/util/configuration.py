@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field, TypeAdapter
 from pycypher.etl.data_source import DataSource, DataSourceMapping
 from pycypher.etl.fact import FactCollection
 from pycypher.etl.goldberg import Goldberg
+from pycypher.util.config import CWD, SRC_BASE_DIR
 
 TYPE_DISPATCH_DICT = {
     "PositiveInteger": TypeAdapter(Annotated[int, Field(gt=0)]),
@@ -51,6 +52,9 @@ class DataSourceConfig(BaseModel):
     uri: Optional[str] = None
     mappings: List[DataSourceMappingConfig] = []
     data_types: Optional[Dict[str, str]] = {}
+
+    def model_post_init(self, *args, **kwargs):
+        self.uri = self.uri.format(CWD=CWD, SRC_BASE_DIR=SRC_BASE_DIR)
 
 
 class DataSchema(BaseModel):

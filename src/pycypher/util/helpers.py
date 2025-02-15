@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, Generator, Optional, Type
 from urllib.parse import ParseResult, urlparse
 
+from pycypher.etl.fact import FactNodeHasAttributeWithValue
 from pycypher.etl.message_types import EndOfData
 from pycypher.util.config import (  # pylint: disable=no-name-in-module
     INNER_QUEUE_TIMEOUT,
@@ -49,6 +50,7 @@ class QueueGenerator:  # pylint: disable=too-few-public-methods,too-many-instanc
         end_of_queue_cls: Optional[Type] = EndOfData,
         outer_queue_timeout: Optional[int] = OUTER_QUEUE_TIMEOUT,
         name: Optional[str] = uuid.uuid4().hex,
+        use_cache: Optional[bool] = False,
         goldberg: Optional["Goldberg"] = None,
         **kwargs,
     ) -> None:
@@ -63,6 +65,8 @@ class QueueGenerator:  # pylint: disable=too-few-public-methods,too-many-instanc
         self.name = name
         self.goldberg = goldberg
         self.incoming_queue_processors = []
+        self.timed_cache = {}
+        self.use_cache = use_cache
 
         if self.goldberg:
             self.goldberg.queue_list.append(self)
@@ -121,4 +125,15 @@ class QueueGenerator:  # pylint: disable=too-few-public-methods,too-many-instanc
 
     def put(self, item: Any) -> None:
         """Put an item on the queue."""
-        self.queue.put(item)
+        if self.goldberg:
+            item.goldberg = self.goldberg
+        if not self.ignore_item(item):
+            LOGGER.debug("QUEUE: %s: %s", self.name, item)
+            self.queue.put(item)
+            self.timed_cache[hash(item)] = datetime.datetime.now()
+
+    def ignore_item(self, item: Any) -> bool:
+        """Should the item be ignored?"""
+        if self.use_cache and hash(item) in self.timed_cache:
+            return True
+        return False

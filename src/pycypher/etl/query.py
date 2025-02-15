@@ -7,6 +7,13 @@ class Query:  # pylint: disable=too-few-public-methods
     """Abstract base class."""
 
 
+class NullResult:  # pylint: disable=too-few-public-methods
+    """Stands in for a result that's empty."""
+
+    def __init__(self, query):
+        self.query = query
+
+
 class QueryValueOfNodeAttribute(Query):
     """Ask what the value of a specific attribute is for a specific node."""  # pylint: disable=too-few-public-methods
 

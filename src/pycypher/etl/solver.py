@@ -18,7 +18,7 @@ Classes:
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Optional
 
 
 class Constraint:
@@ -36,6 +36,9 @@ class Constraint:
     None
     """
 
+    def __init__(self, trigger: Optional["CypherTrigger"] = None):
+        self.trigger = trigger
+
 
 class IsTrue(Constraint):
     """
@@ -48,8 +51,9 @@ class IsTrue(Constraint):
         __repr__() -> str: Returns a string representation of the IsTrue instance.
     """
 
-    def __init__(self, predicate: "Predicate"):  # type: ignore
+    def __init__(self, predicate: "Predicate", **kwargs):  # type: ignore
         self.predicate = predicate  # type: ignore
+        super().__init__(**kwargs)
 
     def __repr__(self) -> str:
         return f"IsTrue({self.predicate})"  # type: ignore
@@ -69,9 +73,10 @@ class ConstraintVariableRefersToSpecificObject(Constraint):
         __repr__() -> str: Returns a string representation of the IsTrue instance.
     """
 
-    def __init__(self, variable: str, node_id: str):
+    def __init__(self, variable: str, node_id: str, **kwargs):
         self.variable = variable
         self.node_id = node_id
+        super().__init__(**kwargs)
 
     def __repr__(self) -> str:
         return f"ConstraintVariableRefersToSpecificObject: {self.variable} -> {self.node_id}"
@@ -105,9 +110,10 @@ class ConstraintNodeHasLabel(Constraint):
         Checks if this constraint is equal to another constraint.
     """
 
-    def __init__(self, variable: str, label: str):
+    def __init__(self, variable: str, label: str, **kwargs):
         self.variable = variable
         self.label = label
+        super().__init__(**kwargs)
 
     def __repr__(self):
         return f"ConstraintNodeHasLabel: {self.variable} {self.label}"
@@ -139,9 +145,12 @@ class ConstraintRelationshipHasSourceNode(Constraint):
         __eq__(other: Any): Checks equality between this constraint and another object.
     """
 
-    def __init__(self, source_node_name: str, relationship_name: str):
+    def __init__(
+        self, source_node_name: str, relationship_name: str, **kwargs
+    ):
         self.variable = source_node_name
         self.relationship_name = relationship_name
+        super().__init__(**kwargs)
 
     def __repr__(self):
         return f"ConstraintRelationshipHasSourceNode: {self.relationship_name} {self.variable}"
@@ -185,9 +194,12 @@ class ConstraintRelationshipHasTargetNode(Constraint):
         __eq__(other: Any): Checks equality between this constraint and another object.
     """
 
-    def __init__(self, target_node_name: str, relationship_name: str):
+    def __init__(
+        self, target_node_name: str, relationship_name: str, **kwargs
+    ):
         self.variable = target_node_name
         self.relationship_name = relationship_name
+        super().__init__(**kwargs)
 
     def __repr__(self):
         return f"ConstraintRelationshipHasTargetNode: {self.relationship_name} {self.variable}"
@@ -221,9 +233,10 @@ class ConstraintRelationshipHasLabel(Constraint):
         __eq__(other: Any): Checks if this constraint is equal to another constraint.
     """
 
-    def __init__(self, relationship_name: str, label: str):
+    def __init__(self, relationship_name: str, label: str, **kwargs):
         self.relationship_name = relationship_name
         self.label = label
+        super().__init__(**kwargs)
 
     def __repr__(self):
         return f"ConstraintRelationshipHasLabel: {self.relationship_name} {self.label}"
@@ -258,10 +271,11 @@ class ConstraintNodeHasAttributeWithValue(Constraint):
         __eq__(other: Any): Checks if this constraint is equal to another constraint.
     """
 
-    def __init__(self, variable: str, attribute: str, value: Any):
+    def __init__(self, variable: str, attribute: str, value: Any, **kwargs):
         self.variable = variable
         self.attribute = attribute
         self.value = value
+        super().__init__(**kwargs)
 
     def __repr__(self):
         return f"ConstraintNodeHasAttributeWithValue: [{self.variable}] {self.attribute}: {self.value}"
