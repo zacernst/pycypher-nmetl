@@ -1,10 +1,10 @@
 """
 Fixtures for the unit tests.
 """
+# pylint: disable=missing-function-docstring,protected-access,redefined-outer-name,too-many-lines
 
 import pathlib
 
-# pylint: disable=missing-function-docstring,protected-access,redefined-outer-name,too-many-lines
 import networkx as nx
 import pytest
 
@@ -563,7 +563,7 @@ def goldberg_with_trigger():
     @goldberg.cypher_trigger(
         "MATCH (s:Square)-[my_relationship:contains]->(c:Circle) RETURN s.side_length AS side_length"
     )
-    def compute_area(side_length) -> VariableAttribute["s", "area"]:
+    def compute_area(side_length) -> VariableAttribute["s", "area"]:  # type: ignore
         return side_length**2
 
     return goldberg
@@ -577,13 +577,13 @@ def goldberg_with_two_triggers():
     @goldberg.cypher_trigger(
         "MATCH (s:Square)-[my_relationship:contains]->(c:Circle) RETURN s.side_length AS side_length"
     )
-    def compute_area(side_length) -> VariableAttribute["s", "area"]:
+    def compute_area(side_length) -> VariableAttribute["s", "area"]:  # type: ignore
         return side_length**2
 
     @goldberg.cypher_trigger(
         "MATCH (s:Square)-[my_relationship:contains]->(c:Circle) RETURN s.area AS square_area"
     )
-    def compute_bigness(square_area) -> VariableAttribute["s", "big"]:
+    def compute_bigness(square_area) -> VariableAttribute["s", "big"]:  # type: ignore
         return square_area > 10
 
     return goldberg
@@ -597,19 +597,19 @@ def goldberg_with_three_triggers():
     @goldberg.cypher_trigger(
         "MATCH (s:Square)-[my_relationship:contains]->(c:Circle) RETURN s.side_length AS side_length"
     )
-    def compute_area(side_length) -> VariableAttribute["s", "area"]:
+    def compute_area(side_length) -> VariableAttribute["s", "area"]:  # type: ignore
         return side_length**2
 
     @goldberg.cypher_trigger(
         "MATCH (s:Square)-[my_relationship:contains]->(c:Circle) RETURN s.area AS square_area"
     )
-    def compute_bigness(square_area) -> VariableAttribute["s", "big"]:
+    def compute_bigness(square_area) -> VariableAttribute["s", "big"]:  # type: ignore
         return square_area > 10
 
     @goldberg.cypher_trigger(
         "MATCH (s:Square)-[my_relationship:contains]->(c:Circle) RETURN s.big AS bigness"
     )
-    def compute_smallness(bigness) -> VariableAttribute["s", "small"]:
+    def compute_smallness(bigness) -> VariableAttribute["s", "small"]:  # type: ignore
         return not bigness
 
     return goldberg

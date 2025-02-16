@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import Any, Generator, Optional, Type
 from urllib.parse import ParseResult, urlparse
 
-from pycypher.etl.fact import FactNodeHasAttributeWithValue
 from pycypher.etl.message_types import EndOfData
 from pycypher.util.config import (  # pylint: disable=no-name-in-module
     INNER_QUEUE_TIMEOUT,
@@ -51,7 +50,7 @@ class QueueGenerator:  # pylint: disable=too-few-public-methods,too-many-instanc
         outer_queue_timeout: Optional[int] = OUTER_QUEUE_TIMEOUT,
         name: Optional[str] = uuid.uuid4().hex,
         use_cache: Optional[bool] = False,
-        goldberg: Optional["Goldberg"] = None,
+        goldberg: Optional["Goldberg"] = None, # type: ignore
         **kwargs,
     ) -> None:
         super().__init__(*args, **kwargs)

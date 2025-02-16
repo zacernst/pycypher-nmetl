@@ -244,7 +244,7 @@ class DataSourceMapping:  # pylint: disable=too-few-public-methods,too-many-inst
         )
 
     @property
-    def is_relationship_mapping(self) -> bool:  # TODO: incomplete probably
+    def is_relationship_mapping(self) -> bool:
         """Is this a relationship mapping? (vs an attribute mapping)"""
         return (
             self.source_key is not None

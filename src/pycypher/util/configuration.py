@@ -53,7 +53,7 @@ class DataSourceConfig(BaseModel):
     mappings: List[DataSourceMappingConfig] = []
     data_types: Optional[Dict[str, str]] = {}
 
-    def model_post_init(self, *args, **kwargs):
+    def model_post_init(self, *args, **kwargs):  # pylint: disable=unused-argument
         self.uri = self.uri.format(CWD=CWD, SRC_BASE_DIR=SRC_BASE_DIR)
 
 
@@ -104,7 +104,6 @@ def load_goldberg_config(path: str) -> Goldberg:
         logging_level=goldberg_config.logging_level,
     )
 
-    # fact_collection_config = goldberg_config.fact_collection
     goldberg.fact_collection = FactCollection([])
 
     for data_source_config in goldberg_config.data_sources:

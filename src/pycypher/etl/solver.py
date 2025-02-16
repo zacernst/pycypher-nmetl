@@ -36,7 +36,7 @@ class Constraint:
     None
     """
 
-    def __init__(self, trigger: Optional["CypherTrigger"] = None):
+    def __init__(self, trigger: Optional["CypherTrigger"] = None):  # type: ignore
         self.trigger = trigger
 
 

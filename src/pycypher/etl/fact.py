@@ -36,7 +36,7 @@ class AtomicFact:  # pylint: disable=too-few-public-methods
 
     """
 
-    def __init__(self, *args, goldberg: Optional["Goldberg"] = None):
+    def __init__(self, *_, goldberg: Optional["Goldberg"] = None):  # type: ignore
         self.goldberg = goldberg
 
 
@@ -354,10 +354,10 @@ class FactCollection:
     """
 
     def __init__(
-        self, facts: List[AtomicFact], goldberg: Optional["Goldberg"] = None
+        self, facts: List[AtomicFact], goldberg: Optional["Goldberg"] = None  # type: ignore
     ):
         self.facts: List[AtomicFact] = facts
-        self.goldberg: Optional["Goldberg"] = None
+        self.goldberg: Optional["Goldberg"] = goldberg  # type: ignore
 
     def __iter__(self) -> Generator[AtomicFact]:
         yield from self.facts
@@ -568,7 +568,6 @@ class FactCollection:
         """
         attributes_by_label = collections.defaultdict(set)
         relationship_labels = set()
-        # TODO: Relationships
 
         for fact in self.facts:
             match fact:

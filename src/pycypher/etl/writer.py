@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import csv
 import pathlib
 from abc import ABC, abstractmethod
+from typing import Optional
 
 import pyarrow as pa
 
+from pycypher.etl.goldberg import Goldberg
 from pycypher.util.helpers import ensure_uri
 
 
@@ -20,7 +23,7 @@ class TableWriter(ABC):
         self.kwargs = kwargs
 
     @abstractmethod
-    def write(self, generator):
+    def write(self, generator, entity: Optional[str] = None, goldberg: Optional[Goldberg] = None, **kwargs):
         """ABC for writing data to a table from a generator of rows."""
         raise NotImplementedError
 
@@ -34,6 +37,11 @@ class TableWriter(ABC):
     def extension(self):
         """Return the file extension of the URI."""
         return self.path.suffix
+
+    def write_entity_table(self, goldberg: Goldberg, entity: str):
+        """Write an entity table to the target URI."""
+        gen = goldberg.rows_by_node_label(entity)
+        self.write(gen, entity=entity, goldberg=goldberg)
 
     @classmethod
     def get_writer(cls, uri: str) -> TableWriter:
@@ -55,7 +63,7 @@ class TableWriter(ABC):
 class ParquetTableWriter(TableWriter):
     """Parquet"""
 
-    def write(self, generator):
+    def write(self, generator, entity: str = None, goldberg: Goldberg = None, **kwargs):
         """Write in batches"""
         schema = pa.schema(generator)
         with pa.RecordBatchFileWriter(self.target_uri, schema) as writer:
@@ -66,6 +74,13 @@ class ParquetTableWriter(TableWriter):
 class CSVTableWriter(TableWriter):
     """CSV"""
 
-    def write(self, generator):
+    def write(self, generator, entity: Optional[str] = None, goldberg: Optional[Goldberg] = None, **kwargs):
         """Ugh, CSV files are so awful."""
-        raise NotImplementedError
+        fieldnames = sorted(
+            list(goldberg.node_label_attribute_inventory()[entity])
+        )
+        with open(self.target_uri.path, "w", encoding="utf8") as file:
+            writer = csv.DictWriter(file, fieldnames=fieldnames)
+            writer.writeheader()
+            for row in generator:
+                writer.writerow(row)

@@ -3,6 +3,7 @@
 
 import collections
 import datetime
+import filecmp
 import pathlib
 import queue
 import subprocess
@@ -16,8 +17,8 @@ import pytest
 from fixtures import empty_goldberg  # pylint: disable=unused-import
 from fixtures import fact_collection_0  # pylint: disable=unused-import
 from fixtures import fact_collection_1  # pylint: disable=unused-import
-from fixtures import (
-    fact_collection_2,
+from fixtures import fact_collection_2  # pylint: disable=unused-import
+from fixtures import (  # pylint: disable=unused-import
     fact_collection_3,
     fact_collection_4,
     fact_collection_5,
@@ -124,7 +125,6 @@ from pycypher.util.exceptions import (  # pylint: disable=unused-import
     WrongCypherTypeError,
 )
 from pycypher.util.helpers import QueueGenerator, ensure_uri
-from pycypher.util.logger import LOGGER
 
 TEST_DATA_DIRECTORY = pathlib.Path(__file__).parent / "test_data"
 
@@ -135,7 +135,7 @@ def test_trigger_in_queue_processor(
     @empty_goldberg.cypher_trigger(
         "MATCH (n:Person {age: 25}) RETURN n.Identifier"
     )
-    def test_function(n) -> VariableAttribute["n", "Identifier"]:
+    def test_function(n) -> VariableAttribute["n", "Identifier"]:  # type: ignore
         return n
 
     fixture_data_source_0.attach_mapping(fixture_0_data_source_mapping_list)
@@ -3262,7 +3262,7 @@ def test_argument_propagates_from_function_signature(
     empty_goldberg,
 ):
     @empty_goldberg.cypher_trigger("MATCH (n:Thingy) RETURN n.foo")
-    def test_function(n) -> VariableAttribute["n", "bar"]:  # pylint: disable=unused-argument
+    def test_function(n) -> VariableAttribute["n", "bar"]:  # type: ignore
         return 1
 
     assert list(empty_goldberg.trigger_dict.values())[0].parameter_names == [
@@ -3272,7 +3272,7 @@ def test_argument_propagates_from_function_signature(
 
 def test_trigger_decorator_function_works(empty_goldberg):
     @empty_goldberg.cypher_trigger("MATCH (n) RETURN n.foo")
-    def test_function(n) -> VariableAttribute["n", "bar"]:  # pylint: disable=unused-argument
+    def test_function(n) -> VariableAttribute["n", "bar"]:  # type: ignore
         return 1
 
     assert list(empty_goldberg.trigger_dict.values())[0].function(1) == 1
@@ -3280,7 +3280,7 @@ def test_trigger_decorator_function_works(empty_goldberg):
 
 def test_trigger_decorator_function_has_return_variable(empty_goldberg):
     @empty_goldberg.cypher_trigger("MATCH (n) RETURN n.foo")
-    def test_function(n) -> VariableAttribute["n", "bar"]:  # pylint: disable=unused-argument
+    def test_function(n) -> VariableAttribute["n", "bar"]:  # type: ignore
         return 1
 
     assert list(empty_goldberg.trigger_dict.values())[0].variable_set == "n"
@@ -3288,7 +3288,7 @@ def test_trigger_decorator_function_has_return_variable(empty_goldberg):
 
 def test_trigger_decorator_function_insert_to_dict(empty_goldberg):
     @empty_goldberg.cypher_trigger("MATCH (n) RETURN n.foo")
-    def test_function(n) -> VariableAttribute["n", "bar"]:
+    def test_function(n) -> VariableAttribute["n", "bar"]:  # type: ignore
         return n + 1
 
     assert list(empty_goldberg.trigger_dict.values())[0].function(1) == 2
@@ -3307,7 +3307,7 @@ def test_attach_fact_collection_manually(empty_goldberg):
 
 def test_goldberg_decorator_registers_trigger(empty_goldberg):
     @empty_goldberg.cypher_trigger("MATCH (n) RETURN n.foo")
-    def test_function(n) -> VariableAttribute["n", "bar"]:  # pylint: disable=unused-argument
+    def test_function(n) -> VariableAttribute["n", "bar"]:  # type: ignore
         return 1
 
     assert (
@@ -3347,7 +3347,7 @@ def test_constraint_propogates_to_goldberg_from_decorator(empty_goldberg):
     assert not empty_goldberg.constraints
 
     @empty_goldberg.cypher_trigger("MATCH (n:Thingy) RETURN n.foo")
-    def test_function(n) -> VariableAttribute["n", "bar"]:  # pylint: disable=unused-argument
+    def test_function(n) -> VariableAttribute["n", "bar"]:  # type: ignore
         return 1
 
     assert empty_goldberg.constraints
@@ -3355,7 +3355,7 @@ def test_constraint_propogates_to_goldberg_from_decorator(empty_goldberg):
 
 def test_fact_matches_constraint_in_goldberg(empty_goldberg):
     @empty_goldberg.cypher_trigger("MATCH (n:Thingy) RETURN n.foo")
-    def test_function(n) -> VariableAttribute["n", "bar"]:  # pylint: disable=unused-argument
+    def test_function(n) -> VariableAttribute["n", "bar"]:  # type: ignore
         return 1
 
     fact = FactNodeHasLabel("123", "Thingy")
@@ -3365,7 +3365,7 @@ def test_fact_matches_constraint_in_goldberg(empty_goldberg):
 
 def test_fact_matches_constraint_generator_in_goldberg(empty_goldberg):
     @empty_goldberg.cypher_trigger("MATCH (n:Thingy) RETURN n.foo")
-    def test_function(n) -> VariableAttribute["n", "bar"]:  # pylint: disable=unused-argument
+    def test_function(n) -> VariableAttribute["n", "bar"]:  # type: ignore
         return 1
 
     fact_list = [FactNodeHasLabel("123", "Thingy")]
@@ -3383,7 +3383,7 @@ def test_fact_does_not_match_wrong_constraint_generator_in_goldberg(
     empty_goldberg,
 ):
     @empty_goldberg.cypher_trigger("MATCH (n:NotTheThingy) RETURN n.foo")
-    def test_function(n) -> VariableAttribute["n", "bar"]:  # pylint: disable=unused-argument
+    def test_function(n) -> VariableAttribute["n", "bar"]:  # type: ignore
         return 1
 
     fact_list = [FactNodeHasLabel("123", "Thingy")]
@@ -3395,7 +3395,7 @@ def test_fact_matches_exactly_one_constraint_generator_in_goldberg(
     empty_goldberg,
 ):
     @empty_goldberg.cypher_trigger("MATCH (n:Thingy) RETURN n.foo")
-    def test_function(n) -> VariableAttribute["n", "bar"]:  # pylint: disable=unused-argument
+    def test_function(n) -> VariableAttribute["n", "bar"]:  # type: ignore
         return 1
 
     fact_list = [
@@ -3416,7 +3416,7 @@ def test_variable_propagates_from_return_annotation(
     empty_goldberg,
 ):
     @empty_goldberg.cypher_trigger("MATCH (n:Thingy) RETURN n.foo")
-    def test_function(n) -> VariableAttribute["n", "bar"]:  # pylint: disable=unused-argument
+    def test_function(n) -> VariableAttribute["n", "bar"]:  # type: ignore
         return 1
 
     assert list(empty_goldberg.trigger_dict.values())[0].variable_set == "n"
@@ -3426,7 +3426,7 @@ def test_attribute_propagates_from_return_annotation(
     empty_goldberg,
 ):
     @empty_goldberg.cypher_trigger("MATCH (n:Thingy) RETURN n.foo")
-    def test_function(n) -> VariableAttribute["n", "bar"]:  # pylint: disable=unused-argument
+    def test_function(n) -> VariableAttribute["n", "bar"]:  # type: ignore
         return 1
 
     assert list(empty_goldberg.trigger_dict.values())[0].attribute_set == "bar"
@@ -3446,7 +3446,7 @@ def test_parameter_not_present_in_cypher(empty_goldberg):
         @empty_goldberg.cypher_trigger("MATCH (n:Thingy) RETURN n.foo")
         def test_function(
             imnotinthecypher,  # pylint: disable=unused-argument
-        ) -> VariableAttribute["n", "thingy"]:  # pylint: disable=unused-argument
+        ) -> VariableAttribute["n", "thingy"]:  # type: ignore
             return 1
 
 
@@ -3454,7 +3454,7 @@ def test_raise_error_on_bad_cypher_string(empty_goldberg):
     with pytest.raises(ValueError):
 
         @empty_goldberg.cypher_trigger("i am not a valid cypher string")
-        def test_function(n) -> VariableAttribute["n", "thingy"]:
+        def test_function(n) -> VariableAttribute["n", "thingy"]:  # type: ignore
             return 1
 
 
@@ -3888,7 +3888,7 @@ def test_end_to_end_with_decorated_function_and_fact_collection(
     )
     def test_function(
         arg1,  # pylint: disable=unused-argument
-    ) -> VariableAttribute["n", "thingy"]:  # pylint: disable=unused-argument
+    ) -> VariableAttribute["n", "thingy"]:  # type: ignore
         return 1
 
     empty_goldberg.start_threads()
@@ -4563,3 +4563,16 @@ def test_generate_rows_for_entity_type_from_goldberg_method(
         },
     ]
     assert rows == unordered(expected)
+
+
+def test_write_csv_table_with_one_entity(
+    goldberg_with_three_triggers,
+    tmp_path,
+):
+    uri = tmp_path.with_suffix(".csv").as_uri()
+    goldberg_with_three_triggers.start_threads()
+    goldberg_with_three_triggers.block_until_finished()
+    writer = TableWriter.get_writer(uri)
+    writer.write_entity_table(goldberg_with_three_triggers, "Square")
+    outfile = tmp_path.with_suffix(".csv").as_uri().replace("file://", "")
+    assert filecmp.cmp(outfile, TEST_DATA_DIRECTORY / "square_entity_output.csv")

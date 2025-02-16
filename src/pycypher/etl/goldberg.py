@@ -24,7 +24,7 @@ from pycypher.etl.fact import (
 )
 from pycypher.etl.message_types import EndOfData
 from pycypher.etl.query import NullResult, QueryValueOfNodeAttribute
-from pycypher.etl.solver import Constraint, ConstraintNodeHasLabel
+from pycypher.etl.solver import Constraint
 from pycypher.etl.trigger import CypherTrigger
 from pycypher.util.config import MONITOR_LOOP_DELAY  # pylint: disable=no-name-in-module
 from pycypher.util.helpers import QueueGenerator
@@ -143,15 +143,6 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
 
         out = []
         LOGGER.debug("Checking fact %s against triggers", item)
-        if (
-            0
-            and isinstance(item, FactNodeHasAttributeWithValue)
-            and item.attribute == "area"
-            and item.value == 1.0
-        ):
-            import pdb
-
-            pdb.set_trace()
         for _, trigger in self.goldberg.trigger_dict.items():
             LOGGER.debug("Checking trigger %s", trigger)
             for constraint in trigger.constraints:
@@ -167,16 +158,6 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
                     LOGGER.debug("Fact %s matched a trigger", item)
                     sub_trigger_pair = SubTriggerPair(sub=sub, trigger=trigger)
                     out.append(sub_trigger_pair)
-                    if (
-                        0
-                        and isinstance(constraint, ConstraintNodeHasLabel)
-                        and isinstance(item, FactNodeHasAttributeWithValue)
-                        and item.attribute == "area"
-                        and item.value == 1.0
-                    ):
-                        import pdb
-
-                        pdb.set_trace()
         return out
 
 
@@ -192,17 +173,8 @@ class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-publi
         self.started = True
         self.started_at = datetime.datetime.now()
         self.received_counter += 1
-        # sub_trigger_obj looks like:
-        # subTriggerPair(sub={'n': 'Person::001'}, trigger=CypherTrigger())
-        # Would add:
-        #     ConstraintNodeHasAttributeWithValue('n', 'Identifier', 'Person::001')
         variable = tuple(sub_trigger_obj.sub)[0]
         node_id = sub_trigger_obj.sub[variable]  # pylint: disable=unused-variable
-
-        # specific_object_constraint = ConstraintVariableRefersToSpecificObject(
-        #     variable=variable, node_id=node_id
-        # )
-        #
         match_clause = (
             sub_trigger_obj.trigger.cypher.parse_tree.cypher.match_clause
         )
@@ -211,8 +183,6 @@ class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-publi
 
         solutions = match_clause.solutions(fact_collection)  # pylint: disable=unused-variable
         LOGGER.debug("Solutions: %s", solutions)
-
-        # Get the Return clause from the Cypher object
         return_clause = (
             sub_trigger_obj.trigger.cypher.parse_tree.cypher.return_clause
         )
@@ -227,7 +197,6 @@ class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-publi
                 LOGGER.debug("Alias: %s", alias)
                 variable = alias.reference.object
                 node_id = solution[variable]
-                # attribute = alias.alias # WRONG! Should be alias.reference.attribute
                 attribute = alias.reference.attribute
                 attribute_value_query = QueryValueOfNodeAttribute(
                     node_id=node_id,
@@ -245,10 +214,8 @@ class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-publi
                 )
                 splat.append(attribute_value)
             LOGGER.debug("Splat: %s", splat)
-            # Check for NullResult in splat; continue if found
             if any(isinstance(arg, NullResult) for arg in splat):
                 continue
-            # Call the function with the spatted values:
             computed_value = sub_trigger_obj.trigger.function(*splat)
             sub_trigger_obj.trigger.call_counter += 1
             LOGGER.debug("computed_value: %s", computed_value)
@@ -261,12 +228,6 @@ class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-publi
             )
             LOGGER.debug("Computed fact: %s", computed_fact)
             self.goldberg.fact_generated_queue.put(computed_fact)
-        # TODO:
-        # Add "NodeHasAttributeWithValue" constraint to the cypher
-        # object's Match clause. Evaluate against the FactCollection.
-        # Find all the solutions, project the return clause and
-        # splat the results into the function.
-        # Put (trigger, sub,) into another queue
         self.finished = True
         self.finished_at = datetime.datetime.now()
 
