@@ -68,20 +68,22 @@ class FactNodeHasLabel(AtomicFact):
     def __add__(self, other: Constraint) -> List[Dict[str, str]] | None:
         if not isinstance(other, Constraint):
             raise ValueError("Can only check constraints against facts")
-        if isinstance(other, ConstraintNodeHasLabel):
-            out = (
-                {other.variable: self.node_id}
-                if self.label == other.label
-                else None
-            )
-        elif isinstance(other, ConstraintVariableRefersToSpecificObject):
-            out = (
-                {other.variable: self.node_id}
-                if self.node_id == other.node_id
-                else None
-            )
-        else:
-            out = None
+
+        match other:
+            case ConstraintNodeHasLabel():
+                out = (
+                    {other.variable: self.node_id}
+                    if self.label == other.label
+                    else None
+                )
+            case ConstraintVariableRefersToSpecificObject():
+                out = (
+                    {other.variable: self.node_id}
+                    if self.node_id == other.node_id
+                    else None
+                )
+            case _:
+                out = None
         return out
 
     def __hash__(self):
@@ -186,63 +188,50 @@ class FactNodeHasAttributeWithValue(AtomicFact):
             other (Constraint): The constraint to check against the fact.
         """
         # VariableRefersToSpecificObject
-        if isinstance(other, ConstraintVariableRefersToSpecificObject):
-            out = {other.node_id: self.node_id}
-        # NodeHasAttributeWithValue
-        elif isinstance(other, ConstraintNodeHasAttributeWithValue):
-            other_value = (
-                other.value
-                if not hasattr(other.value, "value")
-                else other.value.value
-            )
-            out = (
-                {other.variable: self.node_id}
-                if (
-                    isinstance(other, ConstraintNodeHasAttributeWithValue)
-                    and self.attribute == other.attribute
-                    and self.value == other_value
+        match other:
+            case ConstraintVariableRefersToSpecificObject():
+                out = {other.node_id: self.node_id}
+            case ConstraintNodeHasAttributeWithValue():
+                other_value = (
+                    other.value
+                    if not hasattr(other.value, "value")
+                    else other.value.value
                 )
-                else None
-            )
-        elif isinstance(other, ConstraintNodeHasLabel):  # Too chatty!
-            # Need the attributes in the triggers return projection
-
-            if hasattr(
-                self.goldberg, "fact_collection"
-            ):  # only missing if unit tests
-                node_label = self.goldberg.fact_collection.query(
-                    QueryNodeLabel(self.node_id)
-                )
-
                 out = (
                     {other.variable: self.node_id}
-                    if node_label
-                    == other.label  # and self.attribute is in the trigger's arguments
+                    if (
+                        isinstance(other, ConstraintNodeHasAttributeWithValue)
+                        and self.attribute == other.attribute
+                        and self.value == other_value
+                    )
                     else None
                 )
-            else:
-                out = None
-        elif isinstance(other, ConstraintRelationshipHasSourceNode):
-            out = None
-        elif isinstance(other, ConstraintRelationshipHasTargetNode):
-            out = None
-        elif isinstance(other, ConstraintRelationshipHasLabel):
-            out = None
-        else:
-            raise ValueError(
-                f"Expected a ``Constraint``, but got {other.__class__.__name__}."
-            )
-        if (
-            0
-            and self.attribute == "area"
-            and self.value == 1.0
-            and isinstance(other, ConstraintNodeHasLabel)
-            and other.label == "Square"
-        ):
-            # self.goldberg is None! <-- BUG
-            import pdb
+            case ConstraintNodeHasLabel():  # Too chatty!
+                # Need the attributes in the triggers return projection
 
-            pdb.set_trace()
+                if hasattr(
+                    self.goldberg, "fact_collection"
+                ):  # only missing if unit tests
+                    node_label = self.goldberg.fact_collection.query(
+                        QueryNodeLabel(self.node_id)
+                    )
+
+                    out = (
+                        {other.variable: self.node_id}
+                        if node_label
+                        == other.label  # and self.attribute is in the trigger's arguments
+                        else None
+                    )
+            case ConstraintRelationshipHasSourceNode():
+                out = None
+            case ConstraintRelationshipHasTargetNode():
+                out = None
+            case ConstraintRelationshipHasLabel():
+                out = None
+            case _:
+                raise ValueError(
+                    f"Expected a ``Constraint``, but got {other.__class__.__name__}."
+                )
         return out
 
     def __eq__(self, other: Any) -> bool:
@@ -529,44 +518,37 @@ class FactCollection:
             NotImplementedError: If the query type is not recognized.
 
         """
-        if isinstance(query, QueryValueOfNodeAttribute):
-            facts = [
-                fact
-                for fact in self.node_has_attribute_with_value_facts()
-                if fact.node_id == query.node_id
-                and fact.attribute == query.attribute
-            ]
-            if 0 and len(self.facts) > 72:
-                import pdb
-
-                pdb.set_trace()
-            if 0 and query.attribute == "area":
-                import pdb
-
-                pdb.set_trace()
-            if len(facts) == 1:
-                return facts[0].value
-            if not facts:
-                return NullResult(query)
-            if len(facts) > 1:
-                raise ValueError(f"Found multiple values for {query}")
-            raise ValueError("Unknown error")
-        elif isinstance(query, QueryNodeLabel):
-            facts = [
-                fact
-                for fact in self.node_has_label_facts()
-                if fact.node_id == query.node_id
-            ]
-            if len(facts) == 1:
-                return facts[0].label
-            elif not facts:
-                return NullResult(query)
-            elif len(facts) > 1:
-                raise ValueError(f"Found multiple labels for {query}")
-            else:
+        match query:
+            case QueryValueOfNodeAttribute():
+                facts = [
+                    fact
+                    for fact in self.node_has_attribute_with_value_facts()
+                    if fact.node_id == query.node_id
+                    and fact.attribute == query.attribute
+                ]
+                if len(facts) == 1:
+                    return facts[0].value
+                if not facts:
+                    return NullResult(query)
+                if len(facts) > 1:
+                    raise ValueError(f"Found multiple values for {query}")
                 raise ValueError("Unknown error")
-        else:
-            raise NotImplementedError(f"Unknown query type {query}")
+            case QueryNodeLabel():
+                facts = [
+                    fact
+                    for fact in self.node_has_label_facts()
+                    if fact.node_id == query.node_id
+                ]
+                if len(facts) == 1:
+                    return facts[0].label
+                elif not facts:
+                    return NullResult(query)
+                elif len(facts) > 1:
+                    raise ValueError(f"Found multiple labels for {query}")
+                else:
+                    raise ValueError("Unknown error")
+            case _:
+                raise NotImplementedError(f"Unknown query type {query}")
 
     def is_empty(self) -> bool:
         """
@@ -589,16 +571,17 @@ class FactCollection:
         # TODO: Relationships
 
         for fact in self.facts:
-            if isinstance(fact, FactNodeHasAttributeWithValue):
-                label = self.query(QueryNodeLabel(node_id=fact.node_id))
-                attributes_by_label[label].add(fact.attribute)
-            elif isinstance(fact, FactNodeHasLabel):
-                if fact.label not in attributes_by_label:
-                    attributes_by_label[fact.label] = set()
-            elif isinstance(fact, FactRelationshipHasLabel):
-                relationship_labels.add(fact.relationship_label)
-            else:
-                continue
+            match fact:
+                case FactNodeHasAttributeWithValue():
+                    label = self.query(QueryNodeLabel(node_id=fact.node_id))
+                    attributes_by_label[label].add(fact.attribute)
+                case FactNodeHasLabel():
+                    if fact.label not in attributes_by_label:
+                        attributes_by_label[fact.label] = set()
+                case FactRelationshipHasLabel():
+                    relationship_labels.add(fact.relationship_label)
+                case _:
+                    continue
 
         return attributes_by_label
 
@@ -648,6 +631,6 @@ class FactCollection:
         :return: Description
         :rtype: Generator[Dict[str, Any], None, None]
         """
-        inventory = self.node_label_attribute_inventory()
+        inventory = list(self.node_label_attribute_inventory()[label])
         for node_id in self.nodes_with_label(label):
-            yield self.attributes_for_specific_node(node_id, *inventory[label])
+            yield self.attributes_for_specific_node(node_id, *inventory)

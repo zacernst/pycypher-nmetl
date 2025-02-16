@@ -3,13 +3,11 @@
 
 import collections
 import datetime
-import logging
 import pathlib
 import queue
 import subprocess
 import threading
 import time
-from tkinter import W
 from typing import Iterable
 from unittest.mock import Mock, patch
 
@@ -27,6 +25,7 @@ from fixtures import (
     fact_collection_7,
     fixture_0_data_source_mapping_list,
     fixture_data_source_0,
+    goldberg_with_three_triggers,
     goldberg_with_trigger,
     goldberg_with_two_triggers,
     networkx_graph,
@@ -112,6 +111,7 @@ from pycypher.etl.solver import (
     IsTrue,
 )
 from pycypher.etl.trigger import CypherTrigger, VariableAttribute
+from pycypher.etl.writer import CSVTableWriter, ParquetTableWriter, TableWriter
 from pycypher.shims.networkx_cypher import NetworkX
 from pycypher.util.configuration import (  # pylint: disable=unused-import
     TYPE_DISPATCH_DICT,
@@ -4397,3 +4397,169 @@ def test_second_order_trigger_executes(goldberg_with_two_triggers):
         )
         is False
     )
+
+
+def test_third_order_trigger_executes(goldberg_with_three_triggers):
+    goldberg_with_three_triggers.start_threads()
+    goldberg_with_three_triggers.block_until_finished()
+    assert (
+        goldberg_with_three_triggers.fact_collection.query(
+            QueryValueOfNodeAttribute(
+                node_id="Square::squarename1", attribute="small"
+            )
+        )
+        is True
+    )
+
+    inventory = goldberg_with_three_triggers.fact_collection.node_label_attribute_inventory()
+    expected = {
+        "Circle": {
+            "y_coordinate",
+            "x_coordinate",
+            "identification_string",
+            "name",
+        },
+        "Square": {
+            "small",
+            "area",
+            "square_color",
+            "name",
+            "big",
+            "side_length",
+        },
+    }
+    expected = collections.defaultdict(set, expected)
+    assert inventory == expected
+
+
+def test_inventory_on_goldberg_executes_fact_collection_method(
+    goldberg_with_three_triggers,
+):
+    inventory_mock = Mock()
+    with patch(
+        "pycypher.etl.fact.FactCollection.node_label_attribute_inventory",
+        inventory_mock,
+    ) as _:
+        goldberg_with_three_triggers.node_label_attribute_inventory()
+        inventory_mock.assert_called_once()
+
+
+def test_get_writer_from_csv_uri():
+    uri = "file:///tmp/test.csv"
+    writer = TableWriter.get_writer(uri)
+    assert isinstance(writer, CSVTableWriter)
+
+
+def test_get_writer_from_parquet_uri():
+    uri = "file:///tmp/test.parquet"
+    writer = TableWriter.get_writer(uri)
+    assert isinstance(writer, ParquetTableWriter)
+
+
+def test_raise_error_on_unsupported_uri():
+    uri = "file:///tmp/test.idontexist"
+    with pytest.raises(ValueError):
+        TableWriter.get_writer(uri)
+
+
+def test_nodes_with_label_generator(goldberg_with_three_triggers):
+    goldberg_with_three_triggers.start_threads()
+    goldberg_with_three_triggers.block_until_finished()
+    nodes = goldberg_with_three_triggers.fact_collection.nodes_with_label(
+        "Square"
+    )
+    nodes = list(nodes)
+    assert nodes == [
+        "Square::squarename1",
+        "Square::squarename2",
+        "Square::squarename3",
+        "Square::squarename4",
+    ]
+
+
+def test_generate_rows_for_entity_type(goldberg_with_three_triggers):
+    goldberg_with_three_triggers.start_threads()
+    goldberg_with_three_triggers.block_until_finished()
+    rows = goldberg_with_three_triggers.fact_collection.rows_by_node_label(
+        "Square"
+    )
+    rows = list(rows)
+    expected = [
+        {
+            "big": False,
+            "name": "squarename1",
+            "area": 1.0,
+            "side_length": 1.0,
+            "small": True,
+            "square_color": "blue",
+        },
+        {
+            "big": True,
+            "name": "squarename2",
+            "area": 25.0,
+            "side_length": 5.0,
+            "small": False,
+            "square_color": "red",
+        },
+        {
+            "big": False,
+            "name": "squarename3",
+            "area": 9.0,
+            "side_length": 3.0,
+            "small": True,
+            "square_color": "blue",
+        },
+        {
+            "big": None,
+            "name": "squarename4",
+            "area": None,
+            "side_length": 10.0,
+            "small": None,
+            "square_color": "orange",
+        },
+    ]
+    assert rows == unordered(expected)
+
+
+def test_generate_rows_for_entity_type_from_goldberg_method(
+    goldberg_with_three_triggers,
+):
+    goldberg_with_three_triggers.start_threads()
+    goldberg_with_three_triggers.block_until_finished()
+    rows = goldberg_with_three_triggers.rows_by_node_label("Square")
+    rows = list(rows)
+    expected = [
+        {
+            "big": False,
+            "name": "squarename1",
+            "area": 1.0,
+            "side_length": 1.0,
+            "small": True,
+            "square_color": "blue",
+        },
+        {
+            "big": True,
+            "name": "squarename2",
+            "area": 25.0,
+            "side_length": 5.0,
+            "small": False,
+            "square_color": "red",
+        },
+        {
+            "big": False,
+            "name": "squarename3",
+            "area": 9.0,
+            "side_length": 3.0,
+            "small": True,
+            "square_color": "blue",
+        },
+        {
+            "big": None,
+            "name": "squarename4",
+            "area": None,
+            "side_length": 10.0,
+            "small": None,
+            "square_color": "orange",
+        },
+    ]
+    assert rows == unordered(expected)

@@ -587,3 +587,29 @@ def goldberg_with_two_triggers():
         return square_area > 10
 
     return goldberg
+
+
+@pytest.fixture
+def goldberg_with_three_triggers():
+    ingest_file = TEST_DATA_DIRECTORY / "ingest.yaml"
+    goldberg = load_goldberg_config(ingest_file)
+
+    @goldberg.cypher_trigger(
+        "MATCH (s:Square)-[my_relationship:contains]->(c:Circle) RETURN s.side_length AS side_length"
+    )
+    def compute_area(side_length) -> VariableAttribute["s", "area"]:
+        return side_length**2
+
+    @goldberg.cypher_trigger(
+        "MATCH (s:Square)-[my_relationship:contains]->(c:Circle) RETURN s.area AS square_area"
+    )
+    def compute_bigness(square_area) -> VariableAttribute["s", "big"]:
+        return square_area > 10
+
+    @goldberg.cypher_trigger(
+        "MATCH (s:Square)-[my_relationship:contains]->(c:Circle) RETURN s.big AS bigness"
+    )
+    def compute_smallness(bigness) -> VariableAttribute["s", "small"]:
+        return not bigness
+
+    return goldberg

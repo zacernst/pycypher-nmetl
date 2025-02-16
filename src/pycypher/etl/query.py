@@ -13,6 +13,9 @@ class NullResult:  # pylint: disable=too-few-public-methods
     def __init__(self, query):
         self.query = query
 
+    def __repr__(self):
+        return "NullResult"
+
 
 class QueryValueOfNodeAttribute(Query):
     """Ask what the value of a specific attribute is for a specific node."""  # pylint: disable=too-few-public-methods
@@ -44,3 +47,53 @@ class QueryNodeLabel(Query):
 
     def __repr__(self):
         return f"QueryNodeLabel({self.node_id})"
+
+
+class QueryRelationshipLabel(Query):
+    """Not implemented"""  # pylint: disable=too-few-public-methods
+
+    def __init__(self, relationship_id: str):
+        self.relationship_id = relationship_id
+
+    def __repr__(self):
+        return f"QueryRelationshipLabel({self.relationship_id})"
+
+
+class QueryRelationshipsWithSourceNode(Query):
+    """Not implemented"""  # pylint: disable=too-few-public-methods
+
+    def __init__(self, node_id: str):
+        self.node_id = node_id
+
+    def __repr__(self):
+        return f"QueryRelationshipsWithSourceNode({self.node_id})"
+
+
+class QueryRelationshipsWithTargetNode(Query):
+    """Not implemented"""  # pylint: disable=too-few-public-methods
+
+    def __init__(self, node_id: str):
+        self.node_id = node_id
+
+    def __repr__(self):
+        return f"QueryRelationshipsWithTargetNode({self.node_id})"
+
+
+class QueryTargetNodeOfRelationship(Query):
+    """Not implemented"""  # pylint: disable=too-few-public-methods
+
+    def __init__(self, relationship_id: str):
+        self.relationship_id = relationship_id
+
+    def __repr__(self):
+        return f"QueryTargetNodeOfRelationship({self.relationship_id})"
+
+
+class QuerySourceNodeOfRelationship(Query):
+    """Not implemented"""  # pylint: disable=too-few-public-methods
+
+    def __init__(self, relationship_id: str):
+        self.relationship_id = relationship_id
+
+    def __repr__(self):
+        return f"QuerySourceNodeOfRelationship({self.relationship_id})"

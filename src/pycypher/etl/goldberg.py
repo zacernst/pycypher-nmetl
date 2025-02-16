@@ -561,6 +561,10 @@ class Goldberg:  # pylint: disable=too-many-instance-attributes
         LOGGER.debug("Attaching data source %s", data_source)
         self.data_sources.append(data_source)
 
+    def node_label_attribute_inventory(self):
+        """wraps the fact_collection method"""
+        return self.fact_collection.node_label_attribute_inventory()
+
     def cypher_trigger(self, arg1):
         """Decorator that registers a trigger with a Cypher string and a function."""
 
@@ -616,3 +620,9 @@ class Goldberg:  # pylint: disable=too-many-instance-attributes
             return wrapper
 
         return decorator
+
+    def rows_by_node_label(
+        self, entity: str
+    ) -> Generator[Dict[str, Any], None, None]:
+        """Yield rows by node label"""
+        yield from self.fact_collection.rows_by_node_label(entity)
