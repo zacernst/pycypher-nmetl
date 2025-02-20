@@ -182,51 +182,36 @@ class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-publi
         fact_collection = self.goldberg.fact_collection
 
         solutions = match_clause.solutions(fact_collection)  # pylint: disable=unused-variable
-        LOGGER.debug("Solutions: %s", solutions)
         return_clause = (
             sub_trigger_obj.trigger.cypher.parse_tree.cypher.return_clause
         )
-        LOGGER.debug("Return clause: %s", return_clause)
         aliases = return_clause.projection.lookups
-        if sub_trigger_obj.sub == {"s": "Square::squarename1"}:
-            LOGGER.debug(">>>>>>>>> Trigger: %s", sub_trigger_obj.trigger)
         for solution in solutions:
-            LOGGER.debug("Solution: %s", solution)
             splat = []
             for alias in aliases:
-                LOGGER.debug("Alias: %s", alias)
-                variable = alias.reference.object
-                node_id = solution[variable]
-                attribute = alias.reference.attribute
-                attribute_value_query = QueryValueOfNodeAttribute(
-                    node_id=node_id,
-                    attribute=attribute,
-                )
-                LOGGER.debug(
-                    "Attribute value query: %s", attribute_value_query
-                )
-                LOGGER.info("Fact collection: %s", fact_collection.facts)
-                attribute_value = fact_collection.query(attribute_value_query)
-                LOGGER.debug(
-                    "Attribute value: %s --> %s",
-                    attribute_value_query,
-                    attribute_value,
-                )
+                if hasattr(alias.reference, "aggregation"):  # pylint: disable=no-else-raise
+                    # TODO: Implement aggregation in RETURN statement
+                    raise NotImplementedError("Aggregation in RETURN not yet implemented")
+                else:
+                    variable = alias.reference.object  # HERE
+                    node_id = solution[variable]
+                    attribute = alias.reference.attribute
+                    attribute_value_query = QueryValueOfNodeAttribute(
+                        node_id=node_id,
+                        attribute=attribute,
+                    )
+                    attribute_value = fact_collection.query(attribute_value_query)
                 splat.append(attribute_value)
-            LOGGER.debug("Splat: %s", splat)
             if any(isinstance(arg, NullResult) for arg in splat):
                 continue
             computed_value = sub_trigger_obj.trigger.function(*splat)
             sub_trigger_obj.trigger.call_counter += 1
-            LOGGER.debug("computed_value: %s", computed_value)
             target_attribute = sub_trigger_obj.trigger.attribute_set
-            LOGGER.debug("target_attribute: %s", target_attribute)
             computed_fact = FactNodeHasAttributeWithValue(
                 node_id=node_id,
                 attribute=target_attribute,
                 value=computed_value,
             )
-            LOGGER.debug("Computed fact: %s", computed_fact)
             self.goldberg.fact_generated_queue.put(computed_fact)
         self.finished = True
         self.finished_at = datetime.datetime.now()

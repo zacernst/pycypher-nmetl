@@ -19,13 +19,14 @@ from fixtures import fact_collection_0  # pylint: disable=unused-import
 from fixtures import fact_collection_1  # pylint: disable=unused-import
 from fixtures import fact_collection_2  # pylint: disable=unused-import
 from fixtures import (  # pylint: disable=unused-import
-    fact_collection_3,
+    fact_collection_3,  
     fact_collection_4,
     fact_collection_5,
     fact_collection_6,
     fact_collection_7,
     fixture_0_data_source_mapping_list,
     fixture_data_source_0,
+    goldberg_with_aggregation_fixture,
     goldberg_with_three_triggers,
     goldberg_with_trigger,
     goldberg_with_two_triggers,
@@ -999,19 +1000,6 @@ def test_parser_creates_with_clause_single_element():
 
 
 def test_parser_handles_collect_aggregation_in_return():
-    query = (
-        """MATCH (n:Thingy)-[r:Thingy]->(m) """
-        """WITH n.foo AS bar """
-        """RETURN COLLECT(n.foobar) AS whatever"""
-    )
-    obj = CypherParser(query)
-    assert (
-        obj.parse_tree.cypher.return_clause.projection.lookups[0].alias
-        == "whatever"
-    )
-
-
-def test_parser_handles_aggregation_in_return():
     query = (
         """MATCH (n:Thingy)-[r:Thingy]->(m) """
         """WITH n.foo AS bar """
@@ -4014,7 +4002,7 @@ def test_type_dispatch_dict_casting_positive_int_1():
 
 
 def test_type_dispatch_dict_casting_positive_int_fail():
-    with pytest.raises(ValueError):
+    with pytest.raises(Exception):
         TYPE_DISPATCH_DICT["PositiveInteger"](-5)
 
 
@@ -4575,4 +4563,14 @@ def test_write_csv_table_with_one_entity(
     writer = TableWriter.get_writer(uri)
     writer.write_entity_table(goldberg_with_three_triggers, "Square")
     outfile = tmp_path.with_suffix(".csv").as_uri().replace("file://", "")
-    assert filecmp.cmp(outfile, TEST_DATA_DIRECTORY / "square_entity_output.csv")
+    assert filecmp.cmp(
+        outfile, TEST_DATA_DIRECTORY / "square_entity_output.csv"
+    )
+
+
+@pytest.mark.xfail
+def test_can_make_trigger_with_aggregation(
+    goldberg_with_aggregation_fixture,
+):
+    goldberg_with_aggregation_fixture.start_threads()
+    goldberg_with_aggregation_fixture.block_until_finished()

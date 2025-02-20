@@ -354,7 +354,9 @@ class FactCollection:
     """
 
     def __init__(
-        self, facts: List[AtomicFact], goldberg: Optional["Goldberg"] = None  # type: ignore
+        self,
+        facts: List[AtomicFact],
+        goldberg: Optional["Goldberg"] = None,  # type: ignore
     ):
         self.facts: List[AtomicFact] = facts
         self.goldberg: Optional["Goldberg"] = goldberg  # type: ignore

@@ -613,3 +613,77 @@ def goldberg_with_three_triggers():
         return not bigness
 
     return goldberg
+
+
+@pytest.fixture
+def goldberg_with_aggregation_fixture():
+    ingest_file = TEST_DATA_DIRECTORY / "ingest.yaml"
+    goldberg = load_goldberg_config(ingest_file)
+
+    @goldberg.cypher_trigger(
+        "MATCH (s:Square)-[my_relationship:contains]->(c:Circle) RETURN s.side_length AS side_length"
+    )
+    def compute_area(side_length) -> VariableAttribute["s", "area"]:  # type: ignore
+        return side_length**2
+
+    @goldberg.cypher_trigger(
+        "MATCH (s:Square)-[my_relationship:contains]->(c:Circle) RETURN s.area AS square_area"
+    )
+    def compute_bigness(square_area) -> VariableAttribute["s", "big"]:  # type: ignore
+        return square_area > 10
+
+    @goldberg.cypher_trigger(
+        "MATCH (s:Square)-[my_relationship:contains]->(c:Circle) RETURN s.big AS bigness"
+    )
+    def compute_smallness(bigness) -> VariableAttribute["s", "small"]:  # type: ignore
+        return not bigness
+
+    @goldberg.cypher_trigger(
+        "MATCH (s:Square)-[r:contains]->(c:Circle) WITH c.name AS circle_name, COLLECT(s.length) AS lengths RETURN circle_name, lengths"
+    )  # Should be an alias, not an ObjectAttributeLookup
+    def i_wont_work(squares) -> VariableAttribute["s", "num_circles"]:  # type: ignore
+        return len(squares)
+
+    return goldberg
+
+# Cypher
+# └── Query
+#     ├── Match
+#     │   ├── RelationshipChainList
+#     │   │   └── RelationshipChain
+#     │   │       ├── Node
+#     │   │       │   ├── NodeNameLabel
+#     │   │       │   │   ├── s
+#     │   │       │   │   └── Square
+#     │   │       │   └── MappingSet
+#     │   │       ├── RelationshipLeftRight
+#     │   │       │   └── Relationship
+#     │   │       │       └── NodeNameLabel
+#     │   │       │           ├── r
+#     │   │       │           └── contains
+#     │   │       └── Node
+#     │   │           ├── NodeNameLabel
+#     │   │           │   ├── c
+#     │   │           │   └── Circle
+#     │   │           └── MappingSet
+#     │   └── WithClause
+#     │       └── ObjectAsSeries
+#     │           ├── Alias
+#     │           │   ├── ObjectAttributeLookup
+#     │           │   │   ├── c
+#     │           │   │   └── name
+#     │           │   └── circle_name
+#     │           └── Alias
+#     │               ├── Aggregation
+#     │               │   └── Collect
+#     │               │       └── ObjectAttributeLookup
+#     │               │           ├── s
+#     │               │           └── length
+#     │               └── lengths
+#     └── Return
+#         └── Projection
+#             ├── ObjectAttributeLookup
+#             │   └── circle_name
+#             └── ObjectAttributeLookup
+#                 └── length
+

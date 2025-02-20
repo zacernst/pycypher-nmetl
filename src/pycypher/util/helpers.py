@@ -50,7 +50,7 @@ class QueueGenerator:  # pylint: disable=too-few-public-methods,too-many-instanc
         outer_queue_timeout: Optional[int] = OUTER_QUEUE_TIMEOUT,
         name: Optional[str] = uuid.uuid4().hex,
         use_cache: Optional[bool] = False,
-        goldberg: Optional["Goldberg"] = None, # type: ignore
+        goldberg: Optional["Goldberg"] = None,  # type: ignore
         **kwargs,
     ) -> None:
         super().__init__(*args, **kwargs)

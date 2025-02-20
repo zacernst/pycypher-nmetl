@@ -23,7 +23,13 @@ class TableWriter(ABC):
         self.kwargs = kwargs
 
     @abstractmethod
-    def write(self, generator, entity: Optional[str] = None, goldberg: Optional[Goldberg] = None, **kwargs):
+    def write(
+        self,
+        generator,
+        entity: Optional[str] = None,
+        goldberg: Optional[Goldberg] = None,
+        **kwargs,
+    ):
         """ABC for writing data to a table from a generator of rows."""
         raise NotImplementedError
 
@@ -63,7 +69,13 @@ class TableWriter(ABC):
 class ParquetTableWriter(TableWriter):
     """Parquet"""
 
-    def write(self, generator, entity: str = None, goldberg: Goldberg = None, **kwargs):
+    def write(
+        self,
+        generator,
+        entity: str = None,
+        goldberg: Goldberg = None,
+        **kwargs,
+    ):
         """Write in batches"""
         schema = pa.schema(generator)
         with pa.RecordBatchFileWriter(self.target_uri, schema) as writer:
@@ -74,7 +86,13 @@ class ParquetTableWriter(TableWriter):
 class CSVTableWriter(TableWriter):
     """CSV"""
 
-    def write(self, generator, entity: Optional[str] = None, goldberg: Optional[Goldberg] = None, **kwargs):
+    def write(
+        self,
+        generator,
+        entity: Optional[str] = None,
+        goldberg: Optional[Goldberg] = None,
+        **kwargs,
+    ):
         """Ugh, CSV files are so awful."""
         fieldnames = sorted(
             list(goldberg.node_label_attribute_inventory()[entity])
