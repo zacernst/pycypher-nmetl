@@ -39,6 +39,7 @@ from pycypher.core.node_classes import (
     WithClause,
 )
 from pycypher.core.tree_mixin import TreeMixin
+from pycypher.etl.fact import FactCollection
 
 start = "cypher"  # pylint: disable=invalid-name
 
@@ -203,7 +204,12 @@ def p_with_as_series(p: yacc.YaccProduction):
 
 def p_collect(p: yacc.YaccProduction):
     """collect : COLLECT LPAREN object_attribute_lookup RPAREN"""
-    p[0] = Collect(object_attribute_lookup=p[3])
+    if isinstance(p[3], ObjectAttributeLookup):
+        p[0] = Collect(object_attribute_lookup=p[3])
+    else:
+        raise ValueError(
+            "We're assuming for now that the collect is on an object attribute lookup."
+        )
 
 
 # Revisit this: Distinct isn't really an aggregation
@@ -285,11 +291,11 @@ def p_binary_expression(p: yacc.YaccProduction):
 
 def p_object_attribute_lookup(p: yacc.YaccProduction):
     """object_attribute_lookup : WORD DOT WORD
-    | WORD"""
+    | WORD"""  # Need to get rid of this because it's misleading
     if len(p) == 4:
         p[0] = ObjectAttributeLookup(p[1], p[3])
     else:
-        p[0] = ObjectAttributeLookup(p[1], None)
+        p[0] = AliasedName(p[1])
 
 
 def p_where(p: yacc.YaccProduction):
@@ -334,7 +340,6 @@ class CypherParser:
         self.cypher_text = cypher_text
         self.parse_tree: TreeMixin = CYPHER.parse(self.cypher_text)
         [_ for _ in self.parse_tree.walk()]  # pylint: disable=expression-not-assigned
-        # self.parsed.gather_constraints()
         self.parse_tree.trigger_gather_constraints_to_match()
 
     def __repr__(self) -> str:
@@ -343,3 +348,7 @@ class CypherParser:
     def walk(self):
         """Just calls the walk method on the parsed tree."""
         yield from self.parse_tree.walk()
+
+    def solutions(self, fact_collection: FactCollection):
+        """Returns the solutions to the Cypher query."""
+        return self.parse_tree.get_return_clause()._evaluate(fact_collection)  # pylint: disable=protected-access

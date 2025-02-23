@@ -14,16 +14,18 @@ from unittest.mock import Mock, patch
 
 import networkx as nx
 import pytest
+import rich
 from fixtures import empty_goldberg  # pylint: disable=unused-import
 from fixtures import fact_collection_0  # pylint: disable=unused-import
 from fixtures import fact_collection_1  # pylint: disable=unused-import
 from fixtures import fact_collection_2  # pylint: disable=unused-import
-from fixtures import (  # pylint: disable=unused-import
-    fact_collection_3,  
+from fixtures import (
+    fact_collection_3,  # pylint: disable=unused-import
     fact_collection_4,
     fact_collection_5,
     fact_collection_6,
     fact_collection_7,
+    fact_collection_squares_circles,
     fixture_0_data_source_mapping_list,
     fixture_data_source_0,
     goldberg_with_aggregation_fixture,
@@ -1678,7 +1680,7 @@ def test_transform_solutions_in_with_clause(
     cypher = (
         "MATCH (n:Thing {foo: 2})-[r:MyRelationship]->(m:MiddleThing)-[s:OtherRelationship]"
         "->(o:OtherThing) "
-        "WITH COLLECT(o) AS co, n.foo AS nfoo, m.bar AS mbar "
+        "WITH COLLECT(o.foo) AS co, n.foo AS nfoo, m.bar AS mbar "
         "RETURN n.foobar"
     )
     result = CypherParser(cypher)
@@ -1702,7 +1704,7 @@ def test_transform_solutions_in_with_clause_no_solutions(
     cypher = (
         "MATCH (n:Thing {foo: 37})-[r:MyRelationship]->(m:MiddleThing)-"
         "[s:OtherRelationship]->(o:OtherThing) "
-        "WITH COLLECT(o) AS co, n.foo AS nfoo, m.bar AS mbar "
+        "WITH COLLECT(o.foo) AS co, n.foo AS nfoo, m.bar AS mbar "
         "RETURN n.foobar"
     )
     result = CypherParser(cypher)
@@ -1720,7 +1722,7 @@ def test_transform_solutions_in_with_clause_multiple_solutions(
     cypher = (
         "MATCH (n:Thing)-[r:MyRelationship]->(m:MiddleThing)-[s:OtherRelationship]->"
         "(o:OtherThing) "
-        "WITH COLLECT(o) AS co, n.foo AS nfoo, m.bar AS mbar "
+        "WITH COLLECT(o.foo) AS co, n.foo AS nfoo, m.bar AS mbar "
         "RETURN n.foobar"
     )
     result = CypherParser(cypher)
@@ -4238,7 +4240,7 @@ def test_fact_collection_inventory(fact_collection_6):
         {
             "Thing": {"foo"},
             "MiddleThing": set(),
-            "OtherThing": set(),
+            "OtherThing": {"foo"},
             "Irrelevant": set(),
         },
     )
@@ -4568,9 +4570,32 @@ def test_write_csv_table_with_one_entity(
     )
 
 
-@pytest.mark.xfail
-def test_can_make_trigger_with_aggregation(
-    goldberg_with_aggregation_fixture,
+def test_parser_gets_solutions_from_fact_collection(
+    fact_collection_squares_circles,
 ):
+    cypher = (
+        "MATCH (s:Square)-[r:contains]->(c:Circle) "
+        "WITH s.name AS square_name, s.length AS square_length, COLLECT(c.radius) AS radii "
+        "RETURN square_name, square_length, radii"
+    )
+    parser = CypherParser(cypher)
+    solutions = parser.solutions(fact_collection_squares_circles)
+    assert solutions
+
+
+def test_parser_gets_aggregated_solutions_from_fact_collection(
+    fact_collection_squares_circles,
+):
+    cypher = (
+        "MATCH (s:Square)-[r:contains]->(c:Circle) "
+        "WITH s.name AS square_name, s.length AS square_length, COLLECT(c.radius) AS radii "
+        "RETURN square_name, square_length, radii"
+    )
+    parser = CypherParser(cypher)
+    solutions = parser.solutions(fact_collection_squares_circles)
+    assert solutions
+
+@pytest.mark.xfail
+def test_aggregation_trigger_in_goldberg(goldberg_with_aggregation_fixture):
     goldberg_with_aggregation_fixture.start_threads()
     goldberg_with_aggregation_fixture.block_until_finished()

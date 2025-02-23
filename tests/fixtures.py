@@ -268,6 +268,67 @@ def fact_collection_7():  # pylint: disable=too-many-locals
 
 
 @pytest.fixture
+def fact_collection_squares_circles():  # pylint: disable=too-many-locals
+    fact_collection = FactCollection(
+        [
+            FactNodeHasLabel("square_1", "Square"),
+            FactNodeHasAttributeWithValue("square_1", "length", Literal(2)),
+            FactNodeHasLabel("square_2", "Square"),
+            FactNodeHasAttributeWithValue("square_2", "length", Literal(3)),
+            FactNodeHasLabel("square_3", "Square"),
+            FactNodeHasAttributeWithValue("square_3", "length", Literal(4)),
+            FactNodeHasLabel("square_4", "Square"),
+            FactNodeHasAttributeWithValue("square_4", "length", Literal(5)),
+            FactNodeHasLabel("circle_1", "Circle"),
+            FactNodeHasAttributeWithValue("circle_1", "radius", Literal(2)),
+            FactNodeHasLabel("circle_2", "Circle"),
+            FactNodeHasAttributeWithValue("circle_2", "radius", Literal(3)),
+            FactNodeHasLabel("circle_3", "Circle"),
+            FactNodeHasAttributeWithValue("circle_3", "radius", Literal(4)),
+            FactNodeHasLabel("circle_4", "Circle"),
+            FactNodeHasAttributeWithValue("circle_4", "radius", Literal(5)),
+            FactRelationshipHasLabel("relationship_1", "contains"),
+            FactRelationshipHasSourceNode("relationship_1", "square_1"),
+            FactRelationshipHasTargetNode("relationship_1", "circle_1"),
+            FactRelationshipHasLabel("relationship_2", "contains"),
+            FactRelationshipHasSourceNode("relationship_2", "square_2"),
+            FactRelationshipHasTargetNode("relationship_2", "circle_2"),
+            FactRelationshipHasLabel("relationship_3", "contains"),
+            FactRelationshipHasSourceNode("relationship_3", "square_3"),
+            FactRelationshipHasTargetNode("relationship_3", "circle_3"),
+            FactRelationshipHasLabel("relationship_4", "contains"),
+            FactRelationshipHasSourceNode("relationship_4", "square_3"),
+            FactRelationshipHasTargetNode("relationship_4", "circle_4"),
+            FactNodeHasAttributeWithValue(
+                "square_1", "name", Literal("square_alice")
+            ),
+            FactNodeHasAttributeWithValue(
+                "square_2", "name", Literal("square_bob")
+            ),
+            FactNodeHasAttributeWithValue(
+                "square_3", "name", Literal("square_carol")
+            ),
+            FactNodeHasAttributeWithValue(
+                "square_4", "name", Literal("square_dave")
+            ),
+            FactNodeHasAttributeWithValue(
+                "circle_1", "name", Literal("circle_alice")
+            ),
+            FactNodeHasAttributeWithValue(
+                "circle_2", "name", Literal("circle_bob")
+            ),
+            FactNodeHasAttributeWithValue(
+                "circle_3", "name", Literal("circle_carol")
+            ),
+            FactNodeHasAttributeWithValue(
+                "circle_4", "name", Literal("circle_dave")
+            ),
+        ]
+    )
+    return fact_collection
+
+
+@pytest.fixture
 def fact_collection_2():
     fact1 = FactNodeHasLabel("1", "Thing")
     fact2 = FactNodeHasLabel("2", "MiddleThing")
@@ -452,6 +513,8 @@ def fact_collection_6():  # pylint: disable=too-many-locals
     fact17 = FactRelationshipHasTargetNode("relationship_4", "5")
 
     fact18 = FactNodeHasAttributeWithValue("4", "foo", Literal(2))
+    fact20 = FactNodeHasAttributeWithValue("3", "foo", Literal(2))
+    fact21 = FactNodeHasAttributeWithValue("5", "foo", Literal(2))
 
     fact19 = FactNodeHasLabel("6", "Irrelevant")
 
@@ -476,6 +539,8 @@ def fact_collection_6():  # pylint: disable=too-many-locals
             fact17,
             fact18,
             fact19,
+            fact20,
+            fact21,
         ]
     )
 
@@ -639,12 +704,15 @@ def goldberg_with_aggregation_fixture():
         return not bigness
 
     @goldberg.cypher_trigger(
-        "MATCH (s:Square)-[r:contains]->(c:Circle) WITH c.name AS circle_name, COLLECT(s.length) AS lengths RETURN circle_name, lengths"
+        "MATCH (s:Square)-[r:contains]->(c:Circle) WITH s.name AS square_name, s.length AS square_length, COLLECT(c.radius) AS radii RETURN square_name, square_length, radii"
     )  # Should be an alias, not an ObjectAttributeLookup
-    def i_wont_work(squares) -> VariableAttribute["s", "num_circles"]:  # type: ignore
-        return len(squares)
+    def aggregation_of_radii(
+        square_name, radii
+    ) -> VariableAttribute["s", "num_circles"]:  # type: ignore
+        return len(radii)
 
     return goldberg
+
 
 # Cypher
 # └── Query
@@ -686,4 +754,3 @@ def goldberg_with_aggregation_fixture():
 #             │   └── circle_name
 #             └── ObjectAttributeLookup
 #                 └── length
-

@@ -189,9 +189,15 @@ class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-publi
         for solution in solutions:
             splat = []
             for alias in aliases:
+                if not hasattr(alias, "reference"):
+                    import pdb
+
+                    pdb.set_trace()
                 if hasattr(alias.reference, "aggregation"):  # pylint: disable=no-else-raise
                     # TODO: Implement aggregation in RETURN statement
-                    raise NotImplementedError("Aggregation in RETURN not yet implemented")
+                    raise NotImplementedError(
+                        "Aggregation in RETURN not yet implemented"
+                    )
                 else:
                     variable = alias.reference.object  # HERE
                     node_id = solution[variable]
@@ -200,7 +206,9 @@ class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-publi
                         node_id=node_id,
                         attribute=attribute,
                     )
-                    attribute_value = fact_collection.query(attribute_value_query)
+                    attribute_value = fact_collection.query(
+                        attribute_value_query
+                    )
                 splat.append(attribute_value)
             if any(isinstance(arg, NullResult) for arg in splat):
                 continue

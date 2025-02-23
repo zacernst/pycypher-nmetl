@@ -1484,9 +1484,14 @@ class Return(TreeMixin):
             for return_lookup in (
                 self.projection.lookups
             ):  # Each is a single object/attribute lookup
-                one_return_output[return_lookup.object] = (
-                    with_clause_projection[return_lookup.object]
-                )
+                if isinstance(return_lookup, ObjectAttributeLookup):
+                    one_return_output[return_lookup.object] = (
+                        with_clause_projection[return_lookup.object]
+                    )
+                elif isinstance(return_lookup, AliasedName):
+                    one_return_output[return_lookup.name] = (
+                        with_clause_projection[return_lookup.name]
+                    )
             result.append(one_return_output)
         return result
 
