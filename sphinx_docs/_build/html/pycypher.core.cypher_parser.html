@@ -50,6 +50,7 @@
 <li class="toctree-l2"><a class="reference internal" href="pycypher.core.cypher_lexer.html">Lexer</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">Cypher Parser</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#pycypher.core.cypher_parser.CypherParser"><code class="docutils literal notranslate"><span class="pre">CypherParser</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#pycypher.core.cypher_parser.CypherParser.solutions"><code class="docutils literal notranslate"><span class="pre">CypherParser.solutions()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#pycypher.core.cypher_parser.CypherParser.walk"><code class="docutils literal notranslate"><span class="pre">CypherParser.walk()</span></code></a></li>
 </ul>
 </li>
@@ -141,6 +142,12 @@
 returning the solutions to those queries. It creates the
 AST for the Cypher query and then generates a constraint
 satisfaction problem which solves the query.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="pycypher.core.cypher_parser.CypherParser.solutions">
+<span class="sig-name descname"><span class="pre">solutions</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fact_collection</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="pycypher.etl.fact.html#pycypher.etl.fact.FactCollection" title="pycypher.etl.fact.FactCollection"><span class="pre">FactCollection</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.core.cypher_parser.CypherParser.solutions" title="Link to this definition"></a></dt>
+<dd><p>Returns the solutions to the Cypher query.</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="pycypher.core.cypher_parser.CypherParser.walk">
 <span class="sig-name descname"><span class="pre">walk</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.core.cypher_parser.CypherParser.walk" title="Link to this definition"></a></dt>
@@ -256,9 +263,7 @@ satisfaction problem which solves the query.</p>
 | MATCH relationship_chain_list
 | MATCH relationship_chain_list with_clause
 | MATCH relationship_chain_list where
-| MATCH relationship_chain_list with_clause where
-| MATCH node where
-| MATCH node with_clause where</p>
+| MATCH relationship_chain_list with_clause where</p>
 </dd></dl>
 
 <dl class="py function">
@@ -306,7 +311,8 @@ satisfaction problem which solves the query.</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="pycypher.core.cypher_parser.p_query">
 <span class="sig-prename descclassname"><span class="pre">pycypher.core.cypher_parser.</span></span><span class="sig-name descname"><span class="pre">p_query</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">p</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.13)"><span class="pre">Tuple</span></a><span class="p"><span class="pre">[</span></span><span class="pre">YaccProduction</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="pycypher.core.node_classes.html#pycypher.core.node_classes.Match" title="pycypher.core.node_classes.Match"><span class="pre">Match</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="pycypher.core.node_classes.html#pycypher.core.node_classes.Return" title="pycypher.core.node_classes.Return"><span class="pre">Return</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.core.cypher_parser.p_query" title="Link to this definition"></a></dt>
-<dd><p>query : match_pattern return</p>
+<dd><p>query : match_pattern return
+| relationship_chain_list</p>
 </dd></dl>
 
 <dl class="py function">
@@ -319,7 +325,8 @@ satisfaction problem which solves the query.</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="pycypher.core.cypher_parser.p_relationship_chain">
 <span class="sig-prename descclassname"><span class="pre">pycypher.core.cypher_parser.</span></span><span class="sig-name descname"><span class="pre">p_relationship_chain</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">p</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">YaccProduction</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.core.cypher_parser.p_relationship_chain" title="Link to this definition"></a></dt>
-<dd><p>relationship_chain : incomplete_relationship_chain node</p>
+<dd><p>relationship_chain : incomplete_relationship_chain node
+| node</p>
 </dd></dl>
 
 <dl class="py function">
