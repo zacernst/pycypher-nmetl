@@ -1124,13 +1124,16 @@ class WithClause(TreeMixin, Evaluable):
         solutions = projection or self.transform_solutions_by_aggregations(
             fact_collection
         )
-        result = [
+        results = [
             self._evaluate_one_projection(
                 fact_collection, projection=one_projection
             )
             for one_projection in solutions
         ]
-        return result
+        for one_result, one_solution in zip(results, solutions):
+            one_result["__match_solution__"] = one_solution
+
+        return results
 
 
 class Match(TreeMixin):
@@ -1464,6 +1467,10 @@ class Return(TreeMixin):
                 variable = child.alias
                 if variable not in variables:
                     variables.append(variable)
+            elif isinstance(child, AliasedName):
+                variable = child.name
+                if variable not in variables:
+                    variables.append(variable)
         return variables
 
     def _evaluate(
@@ -1492,6 +1499,9 @@ class Return(TreeMixin):
                     one_return_output[return_lookup.name] = (
                         with_clause_projection[return_lookup.name]
                     )
+            one_return_output["__with_clause_projection__"] = (
+                with_clause_projection
+            )
             result.append(one_return_output)
         return result
 

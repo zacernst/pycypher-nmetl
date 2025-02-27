@@ -533,7 +533,9 @@ class FactCollection:
                 if not facts:
                     return NullResult(query)
                 if len(facts) > 1:
-                    raise ValueError(f"Found multiple values for {query}")
+                    raise ValueError(
+                        f"Found multiple values for {query}: {facts}"
+                    )
                 raise ValueError("Unknown error")
             case QueryNodeLabel():
                 facts = [

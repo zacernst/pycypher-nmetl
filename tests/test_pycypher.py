@@ -14,13 +14,13 @@ from unittest.mock import Mock, patch
 
 import networkx as nx
 import pytest
-import rich
+import rich  # pylint: disable=unused-import
 from fixtures import empty_goldberg  # pylint: disable=unused-import
 from fixtures import fact_collection_0  # pylint: disable=unused-import
 from fixtures import fact_collection_1  # pylint: disable=unused-import
 from fixtures import fact_collection_2  # pylint: disable=unused-import
-from fixtures import (
-    fact_collection_3,  # pylint: disable=unused-import
+from fixtures import fact_collection_3  # pylint: disable=unused-import
+from fixtures import (  # pylint: disable=unused-import
     fact_collection_4,
     fact_collection_5,
     fact_collection_6,
@@ -128,18 +128,28 @@ from pycypher.util.exceptions import (  # pylint: disable=unused-import
     WrongCypherTypeError,
 )
 from pycypher.util.helpers import QueueGenerator, ensure_uri
+from pycypher.util.logger import LOGGER
+import logging
 
 TEST_DATA_DIRECTORY = pathlib.Path(__file__).parent / "test_data"
+
+
+def test_parse_match_with_one_node_only_and_with_return():
+    cypher_string = (
+        "MATCH (s:Square) WITH s.side_length AS side_length RETURN side_length"
+    )
+    cypher = CypherParser(cypher_string)
+    assert cypher
 
 
 def test_trigger_in_queue_processor(
     fixture_data_source_0, empty_goldberg, fixture_0_data_source_mapping_list
 ):
     @empty_goldberg.cypher_trigger(
-        "MATCH (n:Person {age: 25}) RETURN n.Identifier"
+        "MATCH (n:Person {age: 25}) WITH n.Identifier AS person_name RETURN person_name"
     )
-    def test_function(n) -> VariableAttribute["n", "Identifier"]:  # type: ignore
-        return n
+    def test_function(person_name) -> VariableAttribute["n", "thingy"]:  # type: ignore
+        return True
 
     fixture_data_source_0.attach_mapping(fixture_0_data_source_mapping_list)
     empty_goldberg.attach_data_source(fixture_data_source_0)
@@ -340,26 +350,35 @@ def test_parse_anonymous_node_no_label_no_mapping_gets_variable():
         cypher = "MATCH () RETURN m.foobar"
         result = CypherParser(cypher)
         assert (
-            result.parse_tree.cypher.match_clause.pattern.node_name_label.name
+            result.parse_tree.cypher.match_clause.pattern.relationships[0]
+            .steps[0]
+            .node_name_label.name
             == "SOME_HEX"
         )
 
 
 def test_parse_anonymous_node_with_label_no_mapping_gets_variable():
-    cypher = "MATCH (:Thing) RETURN m.foobar"
-    result = CypherParser(cypher)
-    assert int(
-        result.parse_tree.cypher.match_clause.pattern.node_name_label.name, 32
-    )
+    with patch("uuid.uuid4", patched_uuid) as _:
+        cypher = "MATCH (:Thing) RETURN m.foobar"
+        result = CypherParser(cypher)
+        assert (
+            result.parse_tree.cypher.match_clause.pattern.relationships[0]
+            .steps[0]
+            .node_name_label.name
+            == "SOME_HEX"
+        )
 
 
 def test_parse_anonymous_node_with_label_no_mapping_has_right_label():
-    cypher = "MATCH (:Thing) RETURN m.foobar"
-    result = CypherParser(cypher)
-    assert (
-        result.parse_tree.cypher.match_clause.pattern.node_name_label.label
-        == "Thing"
-    )
+    with patch("uuid.uuid4", patched_uuid) as _:
+        cypher = "MATCH (:Thing) RETURN m.foobar"
+        result = CypherParser(cypher)
+        assert (
+            result.parse_tree.cypher.match_clause.pattern.relationships[0]
+            .steps[0]
+            .node_name_label.label
+            == "Thing"
+        )
 
 
 def test_source_node_constraint_from_left_right_relationship():
@@ -1787,11 +1806,13 @@ def test_apply_substitutions_to_projection_list(
             "co": Collection([Literal(5), Literal(4)]),
             "nfoo": Literal(2),
             "mbar": Literal(3),
+            "__match_solution__": {"n": "4", "m": "2", "o": ["5", "3"]},
         },
         {
             "co": Collection([Literal(5), Literal(4)]),
             "nfoo": Literal(42),
             "mbar": Literal(3),
+            "__match_solution__": {"n": "1", "m": "2", "o": ["5", "3"]},
         },
     ]
 
@@ -1848,18 +1869,21 @@ def test_parse_distinct_keyword_with_collect_no_dups(fact_collection_7):
         fact_collection_7,
         projection=solutions,
     )
-    assert out == [
+    expected = [
         {
             "co": Collection([Literal(5), Literal(4)]),
             "nfoo": Literal(2),
             "mbar": Literal(3),
+            "__match_solution__": {"n": "4", "m": "2", "o": ["5", "3"]},
         },
         {
             "co": Collection([Literal(5), Literal(4)]),
             "nfoo": Literal(42),
             "mbar": Literal(3),
+            "__match_solution__": {"n": "1", "m": "2", "o": ["5", "3"]},
         },
     ]
+    assert out == expected
 
 
 def test_parse_distinct_keyword_with_collect_one_dup(fact_collection_7):
@@ -1878,18 +1902,21 @@ def test_parse_distinct_keyword_with_collect_one_dup(fact_collection_7):
         fact_collection_7,
         projection=solutions,
     )
-    assert out == [
+    expected = [
         {
             "co": Collection([Literal(5)]),
             "nfoo": Literal(2),
             "mbar": Literal(3),
+            "__match_solution__": {"n": "4", "m": "2", "o": ["5", "5"]},
         },
         {
             "co": Collection([Literal(5), Literal(4)]),
             "nfoo": Literal(42),
             "mbar": Literal(3),
+            "__match_solution__": {"n": "1", "m": "2", "o": ["5", "3"]},
         },
     ]
+    assert out == expected
 
 
 def test_evaluate_return_after_with_clause(fact_collection_7):
@@ -1901,8 +1928,26 @@ def test_evaluate_return_after_with_clause(fact_collection_7):
     )
     result = CypherParser(cypher)
     expected = [
-        {"nfoo": Literal(2), "co": Collection([Literal(5), Literal(4)])},
-        {"nfoo": Literal(42), "co": Collection([Literal(5), Literal(4)])},
+        {
+            "nfoo": Literal(2),
+            "co": Collection([Literal(5), Literal(4)]),
+            "__with_clause_projection__": {
+                "co": Collection([Literal(5), Literal(4)]),
+                "nfoo": Literal(2),
+                "mbar": Literal(3),
+                "__match_solution__": {"m": "2", "n": "4", "o": ["5", "3"]},
+            },
+        },
+        {
+            "nfoo": Literal(42),
+            "co": Collection([Literal(5), Literal(4)]),
+            "__with_clause_projection__": {
+                "co": Collection([Literal(5), Literal(4)]),
+                "nfoo": Literal(42),
+                "mbar": Literal(3),
+                "__match_solution__": {"m": "2", "n": "1", "o": ["5", "3"]},
+            },
+        },
     ]
     out = result.parse_tree.cypher.return_clause._evaluate(
         fact_collection_7, projection=None
@@ -2359,9 +2404,27 @@ def test_evaluate_with_projection():
     result = return_clause._evaluate(mock_fact_collection, projection=None)
 
     # Assert that the result is as expected
+    # expected_result = [
+    #     {"object1": "value1", "object2": "value2"},
+    #     {"object1": "value3", "object2": "value4"},
+    # ]
     expected_result = [
-        {"object1": "value1", "object2": "value2"},
-        {"object1": "value3", "object2": "value4"},
+        {
+            "object1": "value1",
+            "object2": "value2",
+            "__with_clause_projection__": {
+                "object1": "value1",
+                "object2": "value2",
+            },
+        },
+        {
+            "object1": "value3",
+            "object2": "value4",
+            "__with_clause_projection__": {
+                "object1": "value3",
+                "object2": "value4",
+            },
+        },
     ]
     assert result == expected_result
 
@@ -2391,8 +2454,22 @@ def test_evaluate_with_given_projection():
 
     # Assert that the result is as expected
     expected_result = [
-        {"object1": "value1", "object2": "value2"},
-        {"object1": "value3", "object2": "value4"},
+        {
+            "object1": "value1",
+            "object2": "value2",
+            "__with_clause_projection__": {
+                "object1": "value1",
+                "object2": "value2",
+            },
+        },
+        {
+            "object1": "value3",
+            "object2": "value4",
+            "__with_clause_projection__": {
+                "object1": "value3",
+                "object2": "value4",
+            },
+        },
     ]
     assert result == expected_result
 
@@ -3874,10 +3951,10 @@ def test_end_to_end_with_decorated_function_and_fact_collection(
     empty_goldberg.attach_data_source(fixture_data_source_0)
 
     @empty_goldberg.cypher_trigger(
-        "MATCH (n:Person {age: 45}) RETURN n.name AS arg1"
+        "MATCH (n:Person {age: 45}) WITH n.name AS person_name RETURN person_name"
     )
     def test_function(
-        arg1,  # pylint: disable=unused-argument
+        person_name,  # pylint: disable=unused-argument
     ) -> VariableAttribute["n", "thingy"]:  # type: ignore
         return 1
 
@@ -4295,6 +4372,7 @@ def test_cypher_trigger_function_on_relationship_match(goldberg_with_trigger):
 def test_cypher_trigger_function_on_relationship_match_insert_results(
     goldberg_with_trigger,
 ):
+    # LOGGER.setLevel(logging.DEBUG)
     goldberg_with_trigger.start_threads()
     goldberg_with_trigger.block_until_finished()
 
@@ -4377,6 +4455,7 @@ def test_fact_relationship_has_attribute_with_value_hashable():
 
 
 def test_second_order_trigger_executes(goldberg_with_two_triggers):
+    LOGGER.setLevel(logging.DEBUG)
     goldberg_with_two_triggers.start_threads()
     goldberg_with_two_triggers.block_until_finished()
     assert (
@@ -4595,7 +4674,38 @@ def test_parser_gets_aggregated_solutions_from_fact_collection(
     solutions = parser.solutions(fact_collection_squares_circles)
     assert solutions
 
+
+def test_evaluate_call_on_return_with_alias(
+    fact_collection_squares_circles,
+):
+    cypher = "MATCH (s:Square)-[my_relationship:contains]->(c:Circle) WITH s.side_length AS side_length RETURN side_length"
+    parser = CypherParser(cypher)
+    parser.parse_tree.get_return_clause()._evaluate(
+        fact_collection_squares_circles
+    )
+
+
+def test_test_gather_variables_on_return_with_alias():
+    cypher = "MATCH (s:Square)-[my_relationship:contains]->(c:Circle) RETURN s.side_length AS side_length"
+    parser = CypherParser(cypher)
+    assert parser.parse_tree.get_return_clause().gather_variables() == [
+        "side_length"
+    ]
+
+
 @pytest.mark.xfail
 def test_aggregation_trigger_in_goldberg(goldberg_with_aggregation_fixture):
     goldberg_with_aggregation_fixture.start_threads()
     goldberg_with_aggregation_fixture.block_until_finished()
+
+
+@pytest.mark.skip  # Not done yet
+def test_with_clause_records_variables(fact_collection_squares_circles):
+    cypher = "MATCH (s:Square)-[my_relationship:contains]->(c:Circle) WITH s.side_length AS side_length RETURN side_length"
+    parser = CypherParser(cypher)
+    parser.parse_tree.cypher.match_clause.with_clause._evaluate(
+        fact_collection_squares_circles
+    )
+    # import pdb; pdb.set_trace()
+    # parser.parse_tree.get_with_clause().gather_variables()
+    # assert parser.parse_tree.get_with_clause().variables == ["one", "two"]

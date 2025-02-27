@@ -55,8 +55,16 @@ def p_cypher(p: List[TreeMixin]):
 
 
 def p_query(p: Tuple[yacc.YaccProduction, Match, Return]):
-    """query : match_pattern return"""
-    p[0] = Query(p[1], p[2])
+    """query : match_pattern return
+    | relationship_chain_list
+    """
+    if len(p) == 3:
+        p[0] = Query(p[1], p[2])
+    else:
+        p[0] = p[1]
+        import pdb
+
+        pdb.set_trace()
 
 
 def p_string(p: yacc.YaccProduction):
@@ -177,8 +185,14 @@ def p_incomplete_relationship_chain(p: yacc.YaccProduction):
 
 
 def p_relationship_chain(p: yacc.YaccProduction):
-    """relationship_chain : incomplete_relationship_chain node"""
-    p[0] = RelationshipChain(p[1].steps + [p[2]])
+    """relationship_chain : incomplete_relationship_chain node
+    | node"""
+    if len(p) == 3:
+        p[0] = RelationshipChain(p[1].steps + [p[2]])
+    elif len(p) == 2:
+        p[0] = RelationshipChain([p[1]])
+    else:
+        raise ValueError("What?")
 
 
 def p_relationship_chain_list(p: yacc.YaccProduction):
@@ -233,8 +247,6 @@ def p_match_pattern(p: yacc.YaccProduction):
     | MATCH relationship_chain_list with_clause
     | MATCH relationship_chain_list where
     | MATCH relationship_chain_list with_clause where
-    | MATCH node where
-    | MATCH node with_clause where
     """
     if len(p) == 3:
         p[0] = Match(p[2])

@@ -16,6 +16,9 @@ class NullResult:  # pylint: disable=too-few-public-methods
     def __repr__(self):
         return "NullResult"
 
+    def _evaluate(self, *args, **kwargs):
+        return self
+
 
 class QueryValueOfNodeAttribute(Query):
     """Ask what the value of a specific attribute is for a specific node."""  # pylint: disable=too-few-public-methods

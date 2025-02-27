@@ -33,6 +33,7 @@ class CypherTrigger:  # pylint: disable=too-many-instance-attributes
         cypher_string: Optional[str] = None,
         variable_set: Optional[str] = None,
         attribute_set: Optional[str] = None,
+        goldberg: Optional["Goldberg"] = None,
         parameter_names: Optional[List[str]] = None,
     ):
         self.function = function
@@ -43,6 +44,7 @@ class CypherTrigger:  # pylint: disable=too-many-instance-attributes
             raise ValueError(f"Error parsing Cypher string: {e}") from e
         self.call_counter = 0
         self.error_counter = 0
+        self.goldberg = goldberg
         self.variable_set: Optional[str] = variable_set
         self.attribute_set: Optional[str] = attribute_set
         self.parameter_names = parameter_names
