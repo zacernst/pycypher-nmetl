@@ -8,8 +8,8 @@ import inspect
 import queue
 import sys
 import threading
-import traceback
 import time
+import traceback
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from hashlib import md5
@@ -18,6 +18,7 @@ from typing import Any, Dict, Generator, Iterable, List, Optional, Type
 from rich.console import Console
 from rich.table import Table
 
+from pycypher.core.node_classes import AliasedName
 from pycypher.etl.data_source import DataSource
 from pycypher.etl.fact import (
     AtomicFact,
@@ -31,7 +32,6 @@ from pycypher.etl.trigger import CypherTrigger
 from pycypher.util.config import MONITOR_LOOP_DELAY  # pylint: disable=no-name-in-module
 from pycypher.util.helpers import QueueGenerator
 from pycypher.util.logger import LOGGER
-from pycypher.core.node_classes import AliasedName
 
 
 @dataclass
@@ -209,6 +209,10 @@ class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-publi
                 solution.get(alias.name)
                 for alias in return_clause.projection.lookups
             ]
+            if any(isinstance(arg, NullResult) for arg in splat):
+                LOGGER.debug("NullResult found in splat %s", splat)
+                continue
+            # Prevent call from happening if NullResult is present
             computed_value = sub_trigger_obj.trigger.function(*splat)
             sub_trigger_obj.trigger.call_counter += 1
             target_attribute = sub_trigger_obj.trigger.attribute_set
@@ -598,6 +602,10 @@ class Goldberg:  # pylint: disable=too-many-instance-attributes
         def decorator(func):
             @functools.wraps
             def wrapper(*args, **kwargs):
+                # if any(isinstance(arg, NullResult) for arg in args):
+                #     LOGGER.debug("NullResult found in args")
+                #     return NullResult(None)  # Add something here
+
                 result = func(*args, **kwargs)
                 return result
 
