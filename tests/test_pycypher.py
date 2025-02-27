@@ -4,6 +4,7 @@
 import collections
 import datetime
 import filecmp
+import logging
 import pathlib
 import queue
 import subprocess
@@ -20,8 +21,8 @@ from fixtures import fact_collection_0  # pylint: disable=unused-import
 from fixtures import fact_collection_1  # pylint: disable=unused-import
 from fixtures import fact_collection_2  # pylint: disable=unused-import
 from fixtures import fact_collection_3  # pylint: disable=unused-import
-from fixtures import (  # pylint: disable=unused-import
-    fact_collection_4,
+from fixtures import (
+    fact_collection_4,  # pylint: disable=unused-import
     fact_collection_5,
     fact_collection_6,
     fact_collection_7,
@@ -129,7 +130,6 @@ from pycypher.util.exceptions import (  # pylint: disable=unused-import
 )
 from pycypher.util.helpers import QueueGenerator, ensure_uri
 from pycypher.util.logger import LOGGER
-import logging
 
 TEST_DATA_DIRECTORY = pathlib.Path(__file__).parent / "test_data"
 
@@ -4455,7 +4455,7 @@ def test_fact_relationship_has_attribute_with_value_hashable():
 
 
 def test_second_order_trigger_executes(goldberg_with_two_triggers):
-    LOGGER.setLevel(logging.DEBUG)
+    # LOGGER.setLevel(logging.DEBUG)
     goldberg_with_two_triggers.start_threads()
     goldberg_with_two_triggers.block_until_finished()
     assert (
@@ -4699,7 +4699,7 @@ def test_aggregation_trigger_in_goldberg(goldberg_with_aggregation_fixture):
     goldberg_with_aggregation_fixture.block_until_finished()
 
 
-@pytest.mark.skip  # Not done yet
+# @pytest.mark.skip  # Not done yet
 def test_with_clause_records_variables(fact_collection_squares_circles):
     cypher = "MATCH (s:Square)-[my_relationship:contains]->(c:Circle) WITH s.side_length AS side_length RETURN side_length"
     parser = CypherParser(cypher)
