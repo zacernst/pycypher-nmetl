@@ -1,0 +1,8 @@
+circle_name,center_x,center_y,radius
+circle_a,0,0,2
+circle_b,1,1,3
+circle_c,2,2,5
+circle_d,3,3,7
+circle_e,4,4,11
+circle_f,5,5,13
+circle_g,6,6,17
