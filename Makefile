@@ -23,6 +23,8 @@ requirements.txt: requirements.in
 install: build
 	( \
 		echo "Installing package as editable project..." && \
+		uv pip install --upgrade -e ./packages/pycypher && \
+		uv pip install --upgrade -e ./packages/nmetl && \
 		uv pip install --upgrade -e . \
 	)
 

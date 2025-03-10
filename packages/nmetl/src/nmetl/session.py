@@ -1,6 +1,6 @@
 """
 Session Class Documentation
-============================
+===========================
 
 The ``Session`` class is the central orchestrator within the ``pycypher``
 library. It manages the entire data processing pipeline, from ingesting raw data
@@ -51,7 +51,7 @@ Key Components
 3.  **Triggers (``trigger_dict``)**
 
     *   ``Session`` uses a dictionary (``trigger_dict``) to store ``CypherTrigger`` objects.
-    *   Triggers are defined using the ``@session.cypher_trigger`` decorator.
+    *   Triggers are defined using the ``@session.trigger`` decorator.
     *   Each trigger specifies:
 
         *   A Cypher query that defines the constraints.
@@ -125,7 +125,7 @@ Key Methods
     exceptions from the threads.
 *   ``monitor``, ``_monitor``: Monitors system status and prints information.
 *   ``attach_data_source``: Adds a ``DataSource`` to the pipeline.
-*   ``cypher_trigger``: Decorator for registering triggers.
+*   ``trigger``: Decorator for registering triggers.
 *   ``rows_by_node_label``: passes this call to the fact collection.
 *   ``node_label_attribute_inventory``: passes this call to the fact collection.
 *   ``__iadd__``: Enables the ``+=`` operator to add either a ``FactCollection``
@@ -163,7 +163,12 @@ from nmetl.queue_processor import (
     RawDataProcessor,
     TriggeredLookupProcessor,
 )
-from nmetl.trigger import CypherTrigger
+from nmetl.trigger import (
+    NodeRelationship,
+    NodeRelationshipTrigger,
+    VariableAttribute,
+    VariableAttributeTrigger,
+)
 from pycypher.fact import AtomicFact, FactCollection
 from pycypher.logger import LOGGER
 from pycypher.solver import Constraint
@@ -490,32 +495,14 @@ class Session:  # pylint: disable=too-many-instance-attributes
         """wraps the fact_collection method"""
         return self.fact_collection.node_label_attribute_inventory()
 
-    def cypher_trigger(self, arg1):
+    def trigger(self, arg1):
         """Decorator that registers a trigger with a Cypher string and a function."""
 
         def decorator(func):
             @functools.wraps
             def wrapper(*args, **kwargs):
-                # if any(isinstance(arg, NullResult) for arg in args):
-                #     LOGGER.debug("NullResult found in args")
-                #     return NullResult(None)  # Add something here
-
                 result = func(*args, **kwargs)
                 return result
-
-            variable_attribute_annotation = inspect.signature(
-                func
-            ).return_annotation
-            if variable_attribute_annotation is inspect.Signature.empty:
-                raise ValueError("Function must have a return annotation.")
-
-            variable_attribute_args = variable_attribute_annotation.__args__
-            if len(variable_attribute_args) != 2:
-                raise ValueError(
-                    "Function must have a return annotation with two arguments."
-                )
-            variable_name = variable_attribute_args[0].__forward_arg__
-            attribute_name = variable_attribute_args[1].__forward_arg__
 
             parameters = inspect.signature(func).parameters
             parameter_names = list(parameters.keys())
@@ -524,14 +511,53 @@ class Session:  # pylint: disable=too-many-instance-attributes
                     "CypherTrigger functions require at least one parameter."
                 )
 
-            trigger = CypherTrigger(
-                function=func,
-                cypher_string=arg1,
-                variable_set=variable_name,
-                attribute_set=attribute_name,
-                parameter_names=parameter_names,
-                session=self,
-            )
+            return_annotation = inspect.signature(func).return_annotation
+
+            if return_annotation is inspect.Signature.empty:
+                raise ValueError("Function must have a return annotation.")
+
+            if "VariableAttribute" in str(return_annotation):
+                variable_attribute_args = return_annotation.__args__
+                if len(variable_attribute_args) != 2:
+                    raise ValueError(
+                        "Function must have a return annotation with two arguments."
+                    )
+                variable_name = variable_attribute_args[0].__forward_arg__
+                attribute_name = variable_attribute_args[1].__forward_arg__
+                trigger = VariableAttributeTrigger(
+                    function=func,
+                    cypher_string=arg1,
+                    variable_set=variable_name,
+                    attribute_set=attribute_name,
+                    parameter_names=parameter_names,
+                    session=self,
+                )
+            elif "NodeRelationship" in str(return_annotation):
+                node_relationship_args = return_annotation.__args__
+                if len(node_relationship_args) != 3:
+                    raise ValueError(
+                        "Function must have a return annotation with three arguments."
+                    )
+                source_variable_name = node_relationship_args[
+                    0
+                ].__forward_arg__
+                relationship_name = node_relationship_args[1].__forward_arg__
+                target_variable_name = node_relationship_args[
+                    2
+                ].__forward_arg__
+                trigger = NodeRelationshipTrigger(
+                    function=func,
+                    cypher_string=arg1,
+                    source_variable=source_variable_name,
+                    relationship_name=relationship_name,
+                    target_variable=target_variable_name,
+                    parameter_names=parameter_names,
+                    session=self,
+                )
+            else:
+                raise ValueError(
+                    "Trigger function must have a return annotation of type VariableAttribute or NodeRelationship"
+                )
 
             # Check that parameters are in the Return statement of the Cypher string
             for param in parameter_names:

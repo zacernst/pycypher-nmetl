@@ -29,15 +29,15 @@ from fixtures import (
     fact_collection_squares_circles,
     fixture_0_data_source_mapping_list,
     fixture_data_source_0,
+    networkx_graph,
+    patched_uuid,
+    populated_session,
+    raw_data_processor,
     session_with_aggregation_fixture,
     session_with_city_state_fixture,
     session_with_three_triggers,
     session_with_trigger,
     session_with_two_triggers,
-    networkx_graph,
-    patched_uuid,
-    populated_session,
-    raw_data_processor,
     shapes_session,
     squares_csv_data_source,
 )
@@ -50,10 +50,15 @@ from nmetl.configuration import (  # pylint: disable=unused-import
 )
 from nmetl.data_source import CSVDataSource, DataSource, DataSourceMapping, NewColumn
 from nmetl.exceptions import UnknownDataSourceError
-from nmetl.session import Session, NewColumnConfig
 from nmetl.helpers import QueueGenerator, ensure_uri
 from nmetl.message_types import EndOfData, RawDatum
-from nmetl.trigger import CypherTrigger, VariableAttribute
+from nmetl.session import NewColumnConfig, Session
+from nmetl.trigger import (
+    NodeRelationship,
+    NodeRelationshipTrigger,
+    VariableAttribute,
+    VariableAttributeTrigger,
+)
 from nmetl.writer import CSVTableWriter, ParquetTableWriter, TableWriter
 from pycypher.cypher_parser import CypherParser
 from pycypher.exceptions import (  # pylint: disable=unused-import
@@ -139,7 +144,7 @@ def test_parse_match_with_one_node_only_and_with_return():
 def test_trigger_in_queue_processor(
     fixture_data_source_0, empty_session, fixture_0_data_source_mapping_list
 ):
-    @empty_session.cypher_trigger(
+    @empty_session.trigger(
         "MATCH (n:Person {age: 25}) WITH n.Identifier AS person_name RETURN person_name"
     )
     def test_function(person_name) -> VariableAttribute["n", "thingy"]:  # type: ignore
@@ -154,7 +159,7 @@ def test_trigger_in_queue_processor(
 def test_parameter_not_present_in_cypher_with_aliases(empty_session):
     with pytest.raises(ValueError):
 
-        @empty_session.cypher_trigger("MATCH (n:Thingy) RETURN n.foo AS whatever")
+        @empty_session.trigger("MATCH (n:Thingy) RETURN n.foo AS whatever")
         def test_function(n) -> VariableAttribute["n", "thingy"]:  # pylint: disable=unused-argument  # type:ignore
             return 1
 
@@ -3201,7 +3206,7 @@ def test_fact_collection_not_empty(fact_collection_0):
 def test_argument_propagates_from_function_signature(
     empty_session,
 ):
-    @empty_session.cypher_trigger("MATCH (n:Thingy) RETURN n.foo")
+    @empty_session.trigger("MATCH (n:Thingy) RETURN n.foo")
     def test_function(n) -> VariableAttribute["n", "bar"]:  # type: ignore
         return 1
 
@@ -3209,7 +3214,7 @@ def test_argument_propagates_from_function_signature(
 
 
 def test_trigger_decorator_function_works(empty_session):
-    @empty_session.cypher_trigger("MATCH (n) RETURN n.foo")
+    @empty_session.trigger("MATCH (n) RETURN n.foo")
     def test_function(n) -> VariableAttribute["n", "bar"]:  # type: ignore
         return 1
 
@@ -3217,15 +3222,70 @@ def test_trigger_decorator_function_works(empty_session):
 
 
 def test_trigger_decorator_function_has_return_variable(empty_session):
-    @empty_session.cypher_trigger("MATCH (n) RETURN n.foo")
+    @empty_session.trigger("MATCH (n) RETURN n.foo")
     def test_function(n) -> VariableAttribute["n", "bar"]:  # type: ignore
         return 1
 
     assert list(empty_session.trigger_dict.values())[0].variable_set == "n"
 
 
+def test_trigger_decorator_function_has_variable_attribute_trigger_type(empty_session):
+    @empty_session.trigger("MATCH (n) RETURN n.foo")
+    def test_function(n) -> VariableAttribute["n", "bar"]:  # type: ignore
+        return 1
+
+    assert isinstance(
+        list(empty_session.trigger_dict.values())[0], VariableAttributeTrigger
+    )
+
+
+def test_relationship_trigger_decorator_function_has_return_source_variable(
+    empty_session,
+):
+    @empty_session.trigger("MATCH (n) RETURN n.foo")
+    def test_function(n) -> NodeRelationship["s", "relationshipthingy", "t"]:  # type: ignore
+        return 1
+
+    assert list(empty_session.trigger_dict.values())[0].source_variable == "s"
+
+
+def test_relationship_trigger_decorator_function_has_return_target_variable(
+    empty_session,
+):
+    @empty_session.trigger("MATCH (n) RETURN n.foo")
+    def test_function(n) -> NodeRelationship["s", "relationshipthingy", "t"]:  # type: ignore
+        return 1
+
+    assert list(empty_session.trigger_dict.values())[0].target_variable == "t"
+
+
+def test_relationship_trigger_decorator_function_has_return_relationship_name(
+    empty_session,
+):
+    @empty_session.trigger("MATCH (n) RETURN n.foo")
+    def test_function(n) -> NodeRelationship["s", "relationshipthingy", "t"]:  # type: ignore
+        return 1
+
+    assert (
+        list(empty_session.trigger_dict.values())[0].relationship_name
+        == "relationshipthingy"
+    )
+
+
+def test_relationship_trigger_decorator_function_has_relationship_trigger_type(
+    empty_session,
+):
+    @empty_session.trigger("MATCH (n) RETURN n.foo")
+    def test_function(n) -> NodeRelationship["s", "relationshipthingy", "t"]:  # type: ignore
+        return 1
+
+    assert isinstance(
+        list(empty_session.trigger_dict.values())[0], NodeRelationshipTrigger
+    )
+
+
 def test_trigger_decorator_function_insert_to_dict(empty_session):
-    @empty_session.cypher_trigger("MATCH (n) RETURN n.foo")
+    @empty_session.trigger("MATCH (n) RETURN n.foo")
     def test_function(n) -> VariableAttribute["n", "bar"]:  # type: ignore
         return n + 1
 
@@ -3244,7 +3304,7 @@ def test_attach_fact_collection_manually(empty_session):
 
 
 def test_session_decorator_registers_trigger(empty_session):
-    @empty_session.cypher_trigger("MATCH (n) RETURN n.foo")
+    @empty_session.trigger("MATCH (n) RETURN n.foo")
     def test_function(n) -> VariableAttribute["n", "bar"]:  # type: ignore
         return 1
 
@@ -3268,7 +3328,7 @@ def test_iadd_raises_value_error(empty_session):
 
 
 def test_trigger_has_constraint_from_cypher():
-    trigger = CypherTrigger(
+    trigger = VariableAttributeTrigger(
         function=lambda x: x,
         cypher_string="MATCH (n:Thingy) RETURN n.foo",
     )
@@ -3280,7 +3340,7 @@ def test_trigger_has_constraint_from_cypher():
 def test_constraint_propogates_to_session_from_decorator(empty_session):
     assert not empty_session.constraints
 
-    @empty_session.cypher_trigger("MATCH (n:Thingy) RETURN n.foo")
+    @empty_session.trigger("MATCH (n:Thingy) RETURN n.foo")
     def test_function(n) -> VariableAttribute["n", "bar"]:  # type: ignore
         return 1
 
@@ -3288,7 +3348,7 @@ def test_constraint_propogates_to_session_from_decorator(empty_session):
 
 
 def test_fact_matches_constraint_in_session(empty_session):
-    @empty_session.cypher_trigger("MATCH (n:Thingy) RETURN n.foo")
+    @empty_session.trigger("MATCH (n:Thingy) RETURN n.foo")
     def test_function(n) -> VariableAttribute["n", "bar"]:  # type: ignore
         return 1
 
@@ -3298,7 +3358,7 @@ def test_fact_matches_constraint_in_session(empty_session):
 
 
 def test_fact_matches_constraint_generator_in_session(empty_session):
-    @empty_session.cypher_trigger("MATCH (n:Thingy) RETURN n.foo")
+    @empty_session.trigger("MATCH (n:Thingy) RETURN n.foo")
     def test_function(n) -> VariableAttribute["n", "bar"]:  # type: ignore
         return 1
 
@@ -3316,7 +3376,7 @@ def test_fact_matches_constraint_generator_in_session(empty_session):
 def test_fact_does_not_match_wrong_constraint_generator_in_session(
     empty_session,
 ):
-    @empty_session.cypher_trigger("MATCH (n:NotTheThingy) RETURN n.foo")
+    @empty_session.trigger("MATCH (n:NotTheThingy) RETURN n.foo")
     def test_function(n) -> VariableAttribute["n", "bar"]:  # type: ignore
         return 1
 
@@ -3328,7 +3388,7 @@ def test_fact_does_not_match_wrong_constraint_generator_in_session(
 def test_fact_matches_exactly_one_constraint_generator_in_session(
     empty_session,
 ):
-    @empty_session.cypher_trigger("MATCH (n:Thingy) RETURN n.foo")
+    @empty_session.trigger("MATCH (n:Thingy) RETURN n.foo")
     def test_function(n) -> VariableAttribute["n", "bar"]:  # type: ignore
         return 1
 
@@ -3349,7 +3409,7 @@ def test_fact_matches_exactly_one_constraint_generator_in_session(
 def test_variable_propagates_from_return_annotation(
     empty_session,
 ):
-    @empty_session.cypher_trigger("MATCH (n:Thingy) RETURN n.foo")
+    @empty_session.trigger("MATCH (n:Thingy) RETURN n.foo")
     def test_function(n) -> VariableAttribute["n", "bar"]:  # type: ignore
         return 1
 
@@ -3359,7 +3419,7 @@ def test_variable_propagates_from_return_annotation(
 def test_attribute_propagates_from_return_annotation(
     empty_session,
 ):
-    @empty_session.cypher_trigger("MATCH (n:Thingy) RETURN n.foo")
+    @empty_session.trigger("MATCH (n:Thingy) RETURN n.foo")
     def test_function(n) -> VariableAttribute["n", "bar"]:  # type: ignore
         return 1
 
@@ -3369,7 +3429,7 @@ def test_attribute_propagates_from_return_annotation(
 def test_decorated_function_requires_return_annotation(empty_session):
     with pytest.raises(ValueError):
 
-        @empty_session.cypher_trigger("MATCH (n:Thingy) RETURN n.foo")
+        @empty_session.trigger("MATCH (n:Thingy) RETURN n.foo")
         def test_function(n):  # pylint: disable=unused-argument
             return 1
 
@@ -3377,7 +3437,7 @@ def test_decorated_function_requires_return_annotation(empty_session):
 def test_parameter_not_present_in_cypher(empty_session):
     with pytest.raises(ValueError):
 
-        @empty_session.cypher_trigger("MATCH (n:Thingy) RETURN n.foo")
+        @empty_session.trigger("MATCH (n:Thingy) RETURN n.foo")
         def test_function(
             imnotinthecypher,  # pylint: disable=unused-argument
         ) -> VariableAttribute["n", "thingy"]:  # type: ignore
@@ -3387,7 +3447,7 @@ def test_parameter_not_present_in_cypher(empty_session):
 def test_raise_error_on_bad_cypher_string(empty_session):
     with pytest.raises(ValueError):
 
-        @empty_session.cypher_trigger("i am not a valid cypher string")
+        @empty_session.trigger("i am not a valid cypher string")
         def test_function(n) -> VariableAttribute["n", "thingy"]:  # type: ignore
             return 1
 
@@ -3797,7 +3857,7 @@ def test_end_to_end_with_decorated_function_and_fact_collection(
     fixture_data_source_0.attach_mapping(fixture_0_data_source_mapping_list)
     empty_session.attach_data_source(fixture_data_source_0)
 
-    @empty_session.cypher_trigger(
+    @empty_session.trigger(
         "MATCH (n:Person {age: 45}) WITH n.name AS person_name RETURN person_name"
     )
     def test_function(
@@ -4205,14 +4265,14 @@ def test_rows_by_node_label(shapes_session):
     assert obj == expected
 
 
-def test_cypher_trigger_function_on_relationship_match(session_with_trigger):
+def test_trigger_function_on_relationship_match(session_with_trigger):
     session_with_trigger.start_threads()
     session_with_trigger.block_until_finished()
 
     assert list(session_with_trigger.trigger_dict.values())[0].call_counter > 0
 
 
-def test_cypher_trigger_function_on_relationship_match_insert_results(
+def test_trigger_function_on_relationship_match_insert_results(
     session_with_trigger,
 ):
     # LOGGER.setLevel(logging.DEBUG)
@@ -4239,7 +4299,7 @@ def test_cypher_trigger_function_on_relationship_match_insert_results(
     )
 
 
-def test_cypher_trigger_function_on_relationship_match_no_insert_no_match(
+def test_trigger_function_on_relationship_match_no_insert_no_match(
     session_with_trigger,
 ):
     session_with_trigger.start_threads()
@@ -4629,4 +4689,9 @@ def test_ingestion_with_new_column_annotation(
 ):
     session_with_city_state_fixture.start_threads()
     session_with_city_state_fixture.block_until_finished()
-    assert FactNodeHasAttributeWithValue(node_id='City::Seattle__Washington', attribute='population', value=652405) in session_with_city_state_fixture.fact_collection
+    assert (
+        FactNodeHasAttributeWithValue(
+            node_id="City::Seattle__Washington", attribute="population", value=652405
+        )
+        in session_with_city_state_fixture.fact_collection
+    )

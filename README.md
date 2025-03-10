@@ -371,7 +371,7 @@ session = load_session_config(
     "/path/to/ingest.yaml"
 )
 
-@session.cypher_trigger(
+@session.trigger(
   'MATCH (s:Square) WHERE EXISTS(s.side_length) 
   WITH s.side_length AS side_length 
   RETURN side_length")
@@ -386,7 +386,7 @@ Most of the code block is identical to the earlier example. The only difference 
 
 ### The decorator and function signature
 
-After you've created your `Session` object (usually by loading a configuration file), you can call a method `cypher_trigger` on that object as a decorator.
+After you've created your `Session` object (usually by loading a configuration file), you can call a method `trigger` on that object as a decorator.
 
 The string inside the decorator is a vaid Cypher query. If you're not familiar with Cypher, don't worry -- a few patterns suffice for the vast majority of use-cases. For now, you only need to note that this query is matched whenever a `Square` object has the `side_length` attribute set. When that is matched, the Cypher query will pull out of the `side_length` attribute of the associated `Square` object, which we call `s`.
 
@@ -409,7 +409,7 @@ Having added the `area` function,  we can define additional attributes that shou
 This is pretty easy to do:
 
 ```python
-@session.cypher_trigger('MATCH (s:Square) WHERE EXISTS(s.area) WITH s.area AS square_area RETURN square_area')
+@session.trigger('MATCH (s:Square) WHERE EXISTS(s.area) WITH s.area AS square_area RETURN square_area')
 def compute_bigness(square_area: float) -> VariableAttribute['s', 'big']:
     return square_area > 100)
 ```
@@ -460,5 +460,5 @@ Now, when you stream the rows from the data source, in addition to the columns, 
 A couple of quick things to note about this example. First the decorator calls the `new_column` method of the `Session` class. Instead of taking a Cypher query as an argument, it takes the name of the data source. This name is the same one you used to create the `ingest.yaml` file. Second, notice that the return type annotation has the `NewColumn` type, which takes a single string argument. That argument will be used as the name of the new column when the data source is streamed through the system. If the argument names don't correspond to keys in your data source, or the data source name isn't named in your configuration file, an exception will be thrown.
 
 > [!NOTE]
-> Although it is possible to use this `new_column` mechanism to apply complicated functions that perform arbitrary calculations, it is strongly suggested that you only use it to do trivial operations on your raw data. The `cypher_trigger` mechanism is assumed to be your first choice for anything more complicated, and the code is optimized accordingly.
+> Although it is possible to use this `new_column` mechanism to apply complicated functions that perform arbitrary calculations, it is strongly suggested that you only use it to do trivial operations on your raw data. The `trigger` mechanism is assumed to be your first choice for anything more complicated, and the code is optimized accordingly.
 
