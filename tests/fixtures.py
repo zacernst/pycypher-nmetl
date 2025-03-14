@@ -14,9 +14,9 @@ from nmetl.data_source import (
     FixtureDataSource,
     NewColumn,
 )
-from nmetl.session import Session, RawDataProcessor
 from nmetl.helpers import ensure_uri
-from nmetl.trigger import VariableAttribute
+from nmetl.session import RawDataProcessor, Session
+from nmetl.trigger import VariableAttribute, NodeRelationship
 from pycypher.fact import (  # We might get rid of this class entirely
     FactCollection,
     FactNodeHasAttributeWithValue,
@@ -609,7 +609,7 @@ def session_with_trigger():
     ingest_file = TEST_DATA_DIRECTORY / "ingest.yaml"
     session = load_session_config(ingest_file)
 
-    @session.cypher_trigger(
+    @session.trigger(
         "MATCH (s:Square)-[my_relationship:contains]->(c:Circle) WITH s.side_length AS side_length RETURN side_length"
     )
     def compute_area(side_length) -> VariableAttribute["s", "area"]:  # type: ignore
@@ -623,13 +623,13 @@ def session_with_two_triggers():
     ingest_file = TEST_DATA_DIRECTORY / "ingest.yaml"
     session = load_session_config(ingest_file)
 
-    @session.cypher_trigger(
+    @session.trigger(
         "MATCH (s:Square)-[my_relationship:contains]->(c:Circle) WITH s.side_length AS side_length RETURN side_length"
     )
     def compute_area(side_length) -> VariableAttribute["s", "area"]:  # type: ignore
         return side_length**2
 
-    @session.cypher_trigger(
+    @session.trigger(
         "MATCH (s:Square)-[my_relationship:contains]->(c:Circle) WITH s.area AS square_area RETURN square_area"
     )
     def compute_bigness(square_area) -> VariableAttribute["s", "big"]:  # type: ignore
@@ -643,19 +643,19 @@ def session_with_three_triggers():
     ingest_file = TEST_DATA_DIRECTORY / "ingest.yaml"
     session = load_session_config(ingest_file)
 
-    @session.cypher_trigger(
+    @session.trigger(
         "MATCH (s:Square)-[my_relationship:contains]->(c:Circle) WITH s.side_length AS side_length RETURN side_length"
     )
     def compute_area(side_length) -> VariableAttribute["s", "area"]:  # type: ignore
         return side_length**2
 
-    @session.cypher_trigger(
+    @session.trigger(
         "MATCH (s:Square)-[my_relationship:contains]->(c:Circle) WITH s.area AS square_area RETURN square_area"
     )
     def compute_bigness(square_area) -> VariableAttribute["s", "big"]:  # type: ignore
         return square_area > 10
 
-    @session.cypher_trigger(
+    @session.trigger(
         "MATCH (s:Square)-[my_relationship:contains]->(c:Circle) WITH s.big AS bigness RETURN bigness"
     )
     def compute_smallness(bigness) -> VariableAttribute["s", "small"]:  # type: ignore
@@ -669,25 +669,25 @@ def session_with_aggregation_fixture():
     ingest_file = TEST_DATA_DIRECTORY / "ingest.yaml"
     session = load_session_config(ingest_file)
 
-    @session.cypher_trigger(
+    @session.trigger(
         "MATCH (s:Square)-[my_relationship:contains]->(c:Circle) WITH s.side_length AS side_length RETURN side_length"
     )
     def compute_area(side_length) -> VariableAttribute["s", "area"]:  # type: ignore
         return side_length**2
 
-    @session.cypher_trigger(
+    @session.trigger(
         "MATCH (s:Square)-[my_relationship:contains]->(c:Circle) WITH s.area AS square_area RETURN square_area"
     )
     def compute_bigness(square_area) -> VariableAttribute["s", "big"]:  # type: ignore
         return square_area > 10
 
-    @session.cypher_trigger(
+    @session.trigger(
         "MATCH (s:Square)-[my_relationship:contains]->(c:Circle) WITH s.big AS bigness RETURN bigness"
     )
     def compute_smallness(bigness) -> VariableAttribute["s", "small"]:  # type: ignore
         return not bigness
 
-    @session.cypher_trigger(
+    @session.trigger(
         "MATCH (s:Square)-[r:contains]->(c:Circle) "
         "WITH s.name AS square_name, s.side_length AS side_length, COLLECT(c.radius) AS radii "
         "RETURN side_length, radii"
@@ -705,6 +705,7 @@ def session_with_city_state_fixture():
     ingest_file = TEST_DATA_DIRECTORY / "ingest_city_state.yaml"
     session = load_session_config(ingest_file)
 
+    
     @session.new_column("city_table")
     def city_state(city: str, state: str) -> NewColumn["city_state"]:
         return "__".join([city, state])
