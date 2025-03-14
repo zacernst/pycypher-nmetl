@@ -269,6 +269,8 @@ class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-publi
         self, sub_trigger_pair: SubTriggerPair
     ) -> List[Any]:
         """Helper function to process a sub_trigger_pair"""
+        # TODO: Thid needs to know if we're possibly adding a relationship and have an alternative to
+        # FactNodeHasAttributeWithValue and variable_to_set below.
         variable_to_set = sub_trigger_pair.trigger.variable_set
         fact_collection = self.session.fact_collection
         return_clause = (
@@ -308,14 +310,21 @@ class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-publi
 
         computed_value = sub_trigger_pair.trigger.function(*splat)
         sub_trigger_pair.trigger.call_counter += 1
+        #############################################################
+        # TODO: Turn this into a branch, where the other branch is
+        # used when the return annotation of the trigger function is
+        # a NodeRelationship.
         target_attribute = sub_trigger_pair.trigger.attribute_set
         node_id = self._extract_node_id_from_solution(
             solution, variable_to_set
         )
 
         computed_fact = FactNodeHasAttributeWithValue(
-            node_id=node_id, attribute=target_attribute, value=computed_value
+            node_id=node_id,
+            attribute=target_attribute,
+            value=computed_value,
         )
+        #############################################################
         LOGGER.debug(">>>>>>> Computed fact: %s", computed_fact)
         self.session.fact_generated_queue.put(computed_fact)
         return computed_fact
@@ -349,116 +358,3 @@ class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-publi
             return node_id
         except KeyError as e:
             raise ValueError(f"Error extracting node ID: {e}") from e
-
-    def original_process_item_from_queue(
-        self, item: SubTriggerPair
-    ) -> List[Any]:
-        """Process new facts from the check_fact_against_triggers_queue."""
-        sub_trigger_obj = item
-        self.started = True
-        self.started_at = datetime.datetime.now()
-        self.received_counter += 1
-        variable_to_set = sub_trigger_obj.trigger.variable_set
-        # match_clause = (
-        #     sub_trigger_obj.trigger.cypher.parse_tree.cypher.match_clause
-        # )
-        # # match_clause.constraints.append(specific_object_constraint)
-        fact_collection = self.session.fact_collection
-
-        return_clause = (
-            sub_trigger_obj.trigger.cypher.parse_tree.cypher.return_clause
-        )
-        solutions = return_clause._evaluate(fact_collection)  # pylint: disable=protected-access
-
-        def to_python(x):
-            if isinstance(x, Collection):
-                return [to_python(y) for y in x.values]
-            return x
-
-        for solution in solutions:
-            splat = [
-                to_python(solution.get(alias.name))
-                for alias in return_clause.projection.lookups
-            ]
-            if any(isinstance(arg, NullResult) for arg in splat):
-                LOGGER.debug("NullResult found in splat %s", splat)
-                continue
-            # Prevent call from happening if NullResult is present
-            computed_value = sub_trigger_obj.trigger.function(*splat)
-            sub_trigger_obj.trigger.call_counter += 1
-            target_attribute = sub_trigger_obj.trigger.attribute_set
-            # variable no longer present in solution because of alias renaming
-            # import pdb; pdb.set_trace()
-            # node_id = alias[name]
-            node_id = solution["__with_clause_projection__"][
-                "__match_solution__"
-            ][variable_to_set]
-            computed_fact = FactNodeHasAttributeWithValue(
-                node_id=node_id,
-                attribute=target_attribute,
-                value=computed_value,
-            )
-            LOGGER.debug(">>>>>>> Computed fact: %s", computed_fact)
-            self.session.fact_generated_queue.put(computed_fact)
-        self.finished = True
-        self.finished_at = datetime.datetime.now()
-
-    def process_item_from_queue_bak(self, item: SubTriggerPair) -> List[Any]:
-        """Process new facts from the check_fact_against_triggers_queue."""
-        sub_trigger_obj = item
-        self.started = True
-        self.started_at = datetime.datetime.now()
-        self.received_counter += 1
-        variable = tuple(sub_trigger_obj.sub)[0]
-        node_id = sub_trigger_obj.sub[variable]  # pylint: disable=unused-variable
-        match_clause = (
-            sub_trigger_obj.trigger.cypher.parse_tree.cypher.match_clause
-        )
-        # match_clause.constraints.append(specific_object_constraint)
-        fact_collection = self.session.fact_collection
-
-        solutions = match_clause.solutions(fact_collection)  # pylint: disable=unused-variable
-        return_clause = (
-            sub_trigger_obj.trigger.cypher.parse_tree.cypher.return_clause
-        )
-        aliases = return_clause.projection.lookups
-        for solution in solutions:
-            splat = []
-            for alias in aliases:
-                if hasattr(alias, "reference") and hasattr(
-                    alias.reference, "aggregation"
-                ):  # pylint: disable=no-else-raise
-                    # TODO: Implement aggregation in RETURN statement
-                    raise NotImplementedError(
-                        "Aggregation in RETURN not yet implemented"
-                    )
-                elif isinstance(alias, AliasedName):
-                    variable = alias.name
-                    node_id = solution[variable]
-                    attribute_value_query = QueryValueOfNodeAttribute(
-                        node_id=node_id,
-                        attribute=alias.name,
-                    )
-                else:
-                    variable = alias.reference.object  # HERE
-                    node_id = solution[variable]
-                    attribute = alias.reference.attribute
-                    attribute_value_query = QueryValueOfNodeAttribute(
-                        node_id=node_id,
-                        attribute=attribute,
-                    )
-                attribute_value = fact_collection.query(attribute_value_query)
-                splat.append(attribute_value)
-            if any(isinstance(arg, NullResult) for arg in splat):
-                continue
-            computed_value = sub_trigger_obj.trigger.function(*splat)
-            sub_trigger_obj.trigger.call_counter += 1
-            target_attribute = sub_trigger_obj.trigger.attribute_set
-            computed_fact = FactNodeHasAttributeWithValue(
-                node_id=node_id,
-                attribute=target_attribute,
-                value=computed_value,
-            )
-            self.session.fact_generated_queue.put(computed_fact)
-        self.finished = True
-        self.finished_at = datetime.datetime.now()
