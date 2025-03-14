@@ -16,7 +16,7 @@ from nmetl.data_source import (
 )
 from nmetl.helpers import ensure_uri
 from nmetl.session import RawDataProcessor, Session
-from nmetl.trigger import VariableAttribute
+from nmetl.trigger import VariableAttribute, NodeRelationship
 from pycypher.fact import (  # We might get rid of this class entirely
     FactCollection,
     FactNodeHasAttributeWithValue,
@@ -705,6 +705,7 @@ def session_with_city_state_fixture():
     ingest_file = TEST_DATA_DIRECTORY / "ingest_city_state.yaml"
     session = load_session_config(ingest_file)
 
+    
     @session.new_column("city_table")
     def city_state(city: str, state: str) -> NewColumn["city_state"]:
         return "__".join([city, state])

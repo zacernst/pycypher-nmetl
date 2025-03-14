@@ -154,7 +154,10 @@ from typing import Any, Dict, Generator, Iterable, List, Optional, Type
 
 from nmetl.config import MONITOR_LOOP_DELAY  # pylint: disable=no-name-in-module
 from nmetl.data_source import DataSource
-from nmetl.exceptions import UnknownDataSourceError
+from nmetl.exceptions import (
+    BadTriggerReturnAnnotationError,
+    UnknownDataSourceError,
+)
 from nmetl.helpers import QueueGenerator
 from nmetl.message_types import EndOfData
 from nmetl.queue_processor import (
@@ -516,14 +519,16 @@ class Session:  # pylint: disable=too-many-instance-attributes
             if return_annotation is inspect.Signature.empty:
                 raise ValueError("Function must have a return annotation.")
 
-            if "VariableAttribute" in str(return_annotation):
+            if return_annotation.__origin__ is VariableAttribute:
                 variable_attribute_args = return_annotation.__args__
                 if len(variable_attribute_args) != 2:
                     raise ValueError(
                         "Function must have a return annotation with two arguments."
                     )
+
                 variable_name = variable_attribute_args[0].__forward_arg__
                 attribute_name = variable_attribute_args[1].__forward_arg__
+
                 trigger = VariableAttributeTrigger(
                     function=func,
                     cypher_string=arg1,
@@ -532,11 +537,21 @@ class Session:  # pylint: disable=too-many-instance-attributes
                     parameter_names=parameter_names,
                     session=self,
                 )
-            elif "NodeRelationship" in str(return_annotation):
+
+                if any(
+                    param
+                    not in trigger.cypher.parse_tree.cypher.return_clause.variables
+                    for param in parameter_names
+                ):
+                    raise BadTriggerReturnAnnotationError()
+
+            elif return_annotation.__origin__ is NodeRelationship:
                 node_relationship_args = return_annotation.__args__
-                if len(node_relationship_args) != 3:
-                    raise ValueError(
-                        "Function must have a return annotation with three arguments."
+                if (
+                    len(node_relationship_args) != 3
+                ):  # This might be impossible path
+                    raise BadTriggerReturnAnnotationError(
+                        "NodeRelationship annotation must have a return annotation with three arguments."
                     )
                 source_variable_name = node_relationship_args[
                     0
@@ -554,20 +569,20 @@ class Session:  # pylint: disable=too-many-instance-attributes
                     parameter_names=parameter_names,
                     session=self,
                 )
+                if (
+                    source_variable_name
+                    not in trigger.cypher.parse_tree.cypher.return_clause.variables
+                ):
+                    raise BadTriggerReturnAnnotationError()
+                if (
+                    target_variable_name
+                    not in trigger.cypher.parse_tree.cypher.return_clause.variables
+                ):
+                    raise BadTriggerReturnAnnotationError()
             else:
                 raise ValueError(
                     "Trigger function must have a return annotation of type VariableAttribute or NodeRelationship"
                 )
-
-            # Check that parameters are in the Return statement of the Cypher string
-            for param in parameter_names:
-                if (
-                    param
-                    not in trigger.cypher.parse_tree.cypher.return_clause.variables
-                ):
-                    raise ValueError(
-                        f"Parameter {param} not found in Cypher string"
-                    )
 
             self.trigger_dict[
                 md5(trigger.cypher_string.encode()).hexdigest()

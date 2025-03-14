@@ -49,7 +49,7 @@ from nmetl.configuration import (  # pylint: disable=unused-import
     load_session_config,
 )
 from nmetl.data_source import CSVDataSource, DataSource, DataSourceMapping, NewColumn
-from nmetl.exceptions import UnknownDataSourceError
+from nmetl.exceptions import BadTriggerReturnAnnotationError, UnknownDataSourceError
 from nmetl.helpers import QueueGenerator, ensure_uri
 from nmetl.message_types import EndOfData, RawDatum
 from nmetl.session import NewColumnConfig, Session
@@ -157,7 +157,7 @@ def test_trigger_in_queue_processor(
 
 
 def test_parameter_not_present_in_cypher_with_aliases(empty_session):
-    with pytest.raises(ValueError):
+    with pytest.raises(BadTriggerReturnAnnotationError):
 
         @empty_session.trigger("MATCH (n:Thingy) RETURN n.foo AS whatever")
         def test_function(n) -> VariableAttribute["n", "thingy"]:  # pylint: disable=unused-argument  # type:ignore
@@ -3242,17 +3242,17 @@ def test_trigger_decorator_function_has_variable_attribute_trigger_type(empty_se
 def test_relationship_trigger_decorator_function_has_return_source_variable(
     empty_session,
 ):
-    @empty_session.trigger("MATCH (n) RETURN n.foo")
-    def test_function(n) -> NodeRelationship["s", "relationshipthingy", "t"]:  # type: ignore
+    @empty_session.trigger("MATCH (n) RETURN n.foo, m.bar")
+    def test_function(n) -> NodeRelationship["n", "relationshipthingy", "m"]:  # type: ignore
         return 1
 
-    assert list(empty_session.trigger_dict.values())[0].source_variable == "s"
+    assert list(empty_session.trigger_dict.values())[0].source_variable == "n"
 
 
 def test_relationship_trigger_decorator_function_has_return_target_variable(
     empty_session,
 ):
-    @empty_session.trigger("MATCH (n) RETURN n.foo")
+    @empty_session.trigger("MATCH (n) RETURN n.foo, s.bar, t.baz")
     def test_function(n) -> NodeRelationship["s", "relationshipthingy", "t"]:  # type: ignore
         return 1
 
@@ -3262,7 +3262,7 @@ def test_relationship_trigger_decorator_function_has_return_target_variable(
 def test_relationship_trigger_decorator_function_has_return_relationship_name(
     empty_session,
 ):
-    @empty_session.trigger("MATCH (n) RETURN n.foo")
+    @empty_session.trigger("MATCH (n) RETURN n.foo, s.bar, t.baz")
     def test_function(n) -> NodeRelationship["s", "relationshipthingy", "t"]:  # type: ignore
         return 1
 
@@ -3275,7 +3275,7 @@ def test_relationship_trigger_decorator_function_has_return_relationship_name(
 def test_relationship_trigger_decorator_function_has_relationship_trigger_type(
     empty_session,
 ):
-    @empty_session.trigger("MATCH (n) RETURN n.foo")
+    @empty_session.trigger("MATCH (n) RETURN n.foo, s.bar, t.baz")
     def test_function(n) -> NodeRelationship["s", "relationshipthingy", "t"]:  # type: ignore
         return 1
 
@@ -3435,7 +3435,7 @@ def test_decorated_function_requires_return_annotation(empty_session):
 
 
 def test_parameter_not_present_in_cypher(empty_session):
-    with pytest.raises(ValueError):
+    with pytest.raises(BadTriggerReturnAnnotationError):
 
         @empty_session.trigger("MATCH (n:Thingy) RETURN n.foo")
         def test_function(
@@ -4695,3 +4695,30 @@ def test_ingestion_with_new_column_annotation(
         )
         in session_with_city_state_fixture.fact_collection
     )
+
+
+def test_trigger_decorator_function_exception_if_bad_number_of_return_variable(
+    session_with_trigger,
+):
+    with pytest.raises(TypeError):
+
+        @session_with_trigger.trigger("MATCH (n) RETURN n.foo")
+        def test_function(n) -> NodeRelationship["idontexist", "bar"]:  # type: ignore
+            return n + 1
+
+
+def test_trigger_decorator_function_relationship_function(
+    session_with_city_state_fixture,
+):
+    # @session_with_city_state_fixture.trigger("MATCH (n) RETURN n.foo, m.bar")
+    # def test_function(n) -> NodeRelationship["n", "bar", "m"]:  # type: ignore
+    #     return n + 1
+    
+    @session_with_city_state_fixture.trigger("MATCH (n: City) RETURN n.foo, m.bar")
+    def test_function(n) -> NodeRelationship["n", "bar", "m"]:  # type: ignore
+        return n + 1
+
+    session_with_city_state_fixture.start_threads()
+    session_with_city_state_fixture.block_until_finished()
+    import pdb; pdb.set_trace()
+    
