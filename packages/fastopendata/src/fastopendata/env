@@ -1,0 +1,267 @@
+export FOD_LOCAL_BASE_DIR=/Users/zac/git/pycypher-nmetl/packages/fastopendata/
+export FOD_LOCAL_DATA_DIR=${FOD_BASE_DIR}/src/fastopendata/data/
+
+# Social vulnerability index by county
+export FOD_SVI_COUNTY_URL="https://data.cdc.gov/resource/48va-t53r.csv"
+export FOD_SVI_COUNTY_FILE=${FOD_LOCAL_DATA_DIR}/svi_county.csv
+
+# # Social vulnerability index by census tract
+# export FOD_SVI_TRACT_URL="https://data.cdc.gov/resource/4d8n-kk8a.csv"
+# export FOD_SVI_TRACT_FILE=${FOD_RAW_DATA_FILES_DIR}/svi_tract.csv
+
+# export FOD_SERVER_BIND_ADDRESS="0.0.0.0"
+# export FOD_SERVER_PORT=8000
+# export FOD_CERTFILE_PATH=/etc/ssl/localcerts/apache.pem
+# export FOD_CERTFILE_KEY_PATH=/etc/ssl/localcerts/apache.key
+# export FOD_REDIS_HOST=localhost
+# 
+# export FOD_REDOC_STATIC_DIR=${FOD_PROJECT_BASE_DIR}/web/static
+# export FOD_RAW_DATA_FILES_DIR=${FOD_PROJECT_BASE_DIR}/raw
+# export FOD_USA_SPENDING_API_URL="https://api.usaspending.gov"
+# export FOD_USA_SPENDING_DATA_FILES_DIR=${FOD_RAW_DATA_FILES_DIR}/usa_spending_zip
+# export FOD_USA_SPENDING_CSV_FILES_DIR=${FOD_RAW_DATA_FILES_DIR}/usa_spending_csv
+# export FOD_USA_SPENDING_CONCATENATED_CSV_FILE=${FOD_RAW_DATA_FILES_DIR}/usaspending.csv
+# export FOD_BIN_FILES_DIR=${FOD_PROJECT_BASE_DIR}/bin
+# export FOD_SCRIPTS_DIR=${FOD_PROJECT_BASE_DIR}/scripts
+# export FOD_CONFIG_FILES_DIR=${FOD_PROJECT_BASE_DIR}/config
+# export FOD_TMP_DIRECTORY=/tmp
+# 
+# export FOD_CYPHER_CONFIG_FILE=${FOD_CONFIG_FILES_DIR}/cypher_config.yaml
+# export FOD_TEST_CONFIG_FILE=${FOD_CONFIG_FILES_DIR}/test_config.yaml
+# export FOD_PLACES_DATA_BETTER_HEALTH_COUNTY_CONFIG_FILE=${FOD_CONFIG_FILES_DIR}/places_data_better_health_county_mapping.yaml
+# export FOD_SURVEY_AGGREGATION_CONFIG_FILE=${FOD_CONFIG_FILES_DIR}/survey_aggregation_config.yaml
+# export FOD_SIMPLE_NAME_REMAPPING_CONFIG_FILE=${FOD_CONFIG_FILES_DIR}/simple_name_remapping.yaml
+# 
+# export FOD_RAW_STATES_FILE=${FOD_RAW_DATA_FILES_DIR}/states.txt
+# export FOD_PUMS_STATES_DOWNLOAD_PATH=programs-surveys/acs/data/pums/2021/1-Year
+# 
+# export FOD_RAW_PUMS_PA_FILE=${FOD_RAW_DATA_FILES_DIR}/psam_pusa.csv
+# export FOD_RAW_PUMS_PB_FILE=${FOD_RAW_DATA_FILES_DIR}/psam_pusb.csv
+# export FOD_RAW_PUMS_P_FILE=${FOD_RAW_DATA_FILES_DIR}/psam_pus.csv
+# export FOD_RAW_PUMS_HA_FILE=${FOD_RAW_DATA_FILES_DIR}/psam_husa.csv
+# export FOD_RAW_PUMS_HB_FILE=${FOD_RAW_DATA_FILES_DIR}/psam_husb.csv
+# export FOD_RAW_PUMS_H_FILE=${FOD_RAW_DATA_FILES_DIR}/psam_hus.csv
+# 
+export FOD_CENSUS_BASE_URL=www2.census.gov
+# export FOD_RAW_STATES_DOWNLOAD_PATH=geo/docs/reference/state.txt
+# export FOD_RAW_STATES_DOWNLOAD_URL=https://${FOD_CENSUS_BASE_URL}/${FOD_RAW_STATES_DOWNLOAD_PATH}
+# 
+# export FOD_PUMS_STATES_DOWNLOAD_URL=https://${FOD_CENSUS_BASE_URL}/${FOD_PUMS_STATES_DOWNLOAD_PATH}
+# 
+# # Social vulnerability index by county
+# export FOD_SVI_COUNTY_URL="https://data.cdc.gov/resource/48va-t53r.csv"
+# export FOD_SVI_COUNTY_FILE=${FOD_RAW_DATA_FILES_DIR}/svi_county.csv
+# 
+# # Social vulnerability index by census tract
+# export FOD_SVI_TRACT_URL="https://data.cdc.gov/resource/4d8n-kk8a.csv"
+# export FOD_SVI_TRACT_FILE=${FOD_RAW_DATA_FILES_DIR}/svi_tract.csv
+# 
+# # Drug overdoses by county
+# export FOD_DRUG_OVERDOSE_URL="https://data.cdc.gov/api/views/gb4e-yj24/rows.csv?accessType=DOWNLOAD&api_foundry=true"
+# export FOD_DRUG_OVERDOSE_FILE=${FOD_RAW_DATA_FILES_DIR}/drug_overdose_by_county.csv
+# 
+# export FOD_ZCTA_TO_CENSUS_TRACT_PATH=geo/docs/maps-data/data/rel2020/zcta520/tab20_zcta520_tract20_natl.txt
+# export FOD_ZCTA_TO_CENSUS_TRACT_URL=${FOD_CENSUS_BASE_URL}/${FOD_ZCTA_TO_CENSUS_TRACT_PATH}
+# export FOD_ZCTA_TO_CENSUS_TRACT_FILE=${FOD_RAW_DATA_FILES_DIR}/zcta_to_census_tract.csv
+# 
+export FOD_STATE_COUNTY_TRACT_PUMA_PATH=geo/docs/maps-data/data/rel2020/2020_Census_Tract_to_2020_PUMA.txt
+export FOD_STATE_COUNTY_TRACT_PUMA_URL=${FOD_CENSUS_BASE_URL}/${FOD_STATE_COUNTY_TRACT_PUMA_PATH}
+export FOD_STATE_COUNTY_TRACT_PUMA_FILE=${FOD_RAW_DATA_FILES_DIR}/state_county_tract_puma.csv
+# 
+# export FOD_NEO4J_DOWNLOAD_URL=https://neo4j.com/artifact.php?name=neo4j-community-5.8.0-unix.tar.gz
+# 
+# export FOD_TRACT_SHAPEFILE_PATH=geo/tiger/TIGER2020/TRACT
+# export FOD_TRACT_SHAPEFILE_URL=https://www2.census.gov/${FOD_TRACT_SHAPEFILE_PATH}
+# 
+# export FOD_COUNTY_SHAPEFILE_PATH=geo/tiger/TIGER2020/COUNTY/tl_2020_us_county.zip
+# export FOD_COUNTY_SHAPEFILE_URL=https://www2.census.gov/${FOD_COUNTY_SHAPEFILE_PATH}
+# 
+# export FOD_CBSA_SHAPEFILE_URL="https://www2.census.gov/geo/tiger/TIGER2020/CBSA/tl_2020_us_cbsa.zip"
+# export FOD_CBSA_SHAPEFILE_ZIP_FILE=${FOD_RAW_DATA_FILES_DIR}/cbsa_shapefile.zip
+# export FOD_CBSA_SHAPEFILE_FILE=${FOD_RAW_DATA_FILES_DIR}/tl_2020_us_cbsa.shp
+# 
+# # The American Housing Survey uses the 2013(!) CBSA definitions
+# export FOD_CBSA_2013_SHAPEFILE_URL="https://www2.census.gov/geo/tiger/TIGER2013/CBSA/tl_2013_us_cbsa.zip"
+# export FOD_CBSA_2013_SHAPEFILE_ZIP_FILE=${FOD_RAW_DATA_FILES_DIR}/cbsa13_shapefile.zip
+# export FOD_CBSA_2013_SHAPEFILE_FILE=${FOD_RAW_DATA_FILES_DIR}/tl_2013_us_cbsa.shp
+# export FOD_CBSA_2013_CSV_FILE=${FOD_RAW_DATA_FILES_DIR}/cbsa_2013.csv
+# 
+# export FOD_CBSA_COUNTY_CROSSWALK_FILE_URL="https://data.nber.org/cbsa-csa-fips-county-crosswalk/cbsa2fipsxw.csv"
+# export FOD_CBSA_COUNTY_CROSSWALK_CSV_FILE=${FOD_RAW_DATA_FILES_DIR}/cbsa2fipsxw.csv
+# 
+# export FOD_PLACES_DATA_BETTER_HEALTH_COUNTY_URL=https://chronicdata.cdc.gov/api/views/swc5-untb/rows.csv?accessType=DOWNLOAD
+# export FOD_PLACES_DATA_BETTER_HEALTH_COUNTY_FILE=${FOD_RAW_DATA_FILES_DIR}/places_data_better_health_county.csv
+# 
+# export FOD_PUBLIC_ELEMENTARY_SECONDARY_EDUCATION_FINANCE_URL=https://www2.census.gov/programs-surveys/school-finances/tables/2021/secondary-education-finance/elsec21.xls
+# export FOD_PUBLIC_ELEMENTARY_SECONDARY_EDUCATION_FINANCE_EXCEL_FILE=${FOD_RAW_DATA_FILES_DIR}/public_elementary_secondary_education_finance.xls
+# export FOD_PUBLIC_ELEMENTARY_SECONDARY_EDUCATION_FINANCE_CSV_FILE=${FOD_RAW_DATA_FILES_DIR}/public_elementary_secondary_education_finance.csv
+# 
+# export FOD_EPA_WALKABILITY_INDEX_URL=https://edg.epa.gov/EPADataCommons/public/OA/WalkabilityIndex.zip
+# export FOD_EPA_WALKABILITY_INDEX_ZIP_FILE=${FOD_RAW_DATA_FILES_DIR}/walkability_index.zip
+# 
+# export FOD_NEO4J_IP=localhost
+# export FOD_NEO4J_PORT=7687
+# export FOD_NEO4J_URL=bolt://${FOD_NEO4J_IP}:${FOD_NEO4J_PORT}
+# export FOD_NEO4J_USER=neo4j
+# export FOD_NEO4J_MAX_QUERY_LENGTH=1000000
+# export FOD_NEO4J_MAX_QUEUE_LENGTH=1
+# export FOD_TRACT_CENTROID_TRANSACTION_LENGTH=1000
+# 
+# export FOD_INGESTION_ROW_COUNTER_INTERVAL=1000
+# export FOD_ETL_THREADS=16
+# export FOD_ETL_MULTIPROCESSING=4
+# export FOD_ETL_MULTIPROCESSING_QUEUE_SIZE=1024
+# export FOD_LOG_CYPHER_ETL=1
+# export FOD_DEBUG_LEVEL=INFO
+# export FOD_TEST_WORKERS=24
+# export FOD_UPSERT_THREADS=1
+# export FOD_CLEAR_NEO4J_CACHE_INTERVAL=1000
+# export FOD_NEO4J_UPSERT_HIGH_WATER_MARK=512
+# export FOD_NEO4J_UPSERT_LOW_WATER_MARK=128
+# export FOD_NEO4J_UPSERT_CACHE_INTERVAL_CHECK=5
+# export FOD_REQUEST_TIMEOUT_SECONDS=5
+# export FOD_MARKDOWN_DOCUMENTATION=${FOD_PROJECT_BASE_DIR}/docs/api_description.md
+# 
+# export FOD_GEOFABRIK_UNITED_STATES_URL=https://download.geofabrik.de/north-america/us-latest.osm.pbf
+# # export FOD_GEOFABRIK_GEORGIA_URL=https://download.geofabrik.de/north-america/us/georgia-latest.osm.bz2
+# export FOD_GEOFABRIK_GEORGIA_URL=https://download.geofabrik.de/north-america/us-south-latest.osm.pbf
+# 
+# export FOD_TRACT_SHAPEFILES="tl_2020_01_tract.shp tl_2020_02_tract.shp tl_2020_04_tract.shp tl_2020_05_tract.shp tl_2020_06_tract.shp tl_2020_08_tract.shp tl_2020_09_tract.shp tl_2020_10_tract.shp tl_2020_11_tract.shp tl_2020_12_tract.shp tl_2020_13_tract.shp tl_2020_15_tract.shp tl_2020_16_tract.shp tl_2020_17_tract.shp tl_2020_18_tract.shp tl_2020_19_tract.shp tl_2020_20_tract.shp tl_2020_21_tract.shp tl_2020_22_tract.shp tl_2020_23_tract.shp tl_2020_24_tract.shp tl_2020_25_tract.shp tl_2020_26_tract.shp tl_2020_27_tract.shp tl_2020_28_tract.shp tl_2020_29_tract.shp tl_2020_30_tract.shp tl_2020_31_tract.shp tl_2020_32_tract.shp tl_2020_33_tract.shp tl_2020_34_tract.shp tl_2020_35_tract.shp tl_2020_36_tract.shp tl_2020_37_tract.shp tl_2020_38_tract.shp tl_2020_39_tract.shp tl_2020_40_tract.shp tl_2020_41_tract.shp tl_2020_42_tract.shp tl_2020_44_tract.shp tl_2020_45_tract.shp tl_2020_46_tract.shp tl_2020_47_tract.shp tl_2020_48_tract.shp tl_2020_49_tract.shp tl_2020_50_tract.shp tl_2020_51_tract.shp tl_2020_53_tract.shp tl_2020_54_tract.shp tl_2020_55_tract.shp tl_2020_56_tract.shp tl_2020_60_tract.shp tl_2020_66_tract.shp tl_2020_69_tract.shp tl_2020_72_tract.shp tl_2020_78_tract.shp"
+# export FOD_TRACT_FILES="tl_2020_01_tract.zip tl_2020_02_tract.zip tl_2020_04_tract.zip tl_2020_05_tract.zip tl_2020_06_tract.zip tl_2020_08_tract.zip tl_2020_09_tract.zip tl_2020_10_tract.zip tl_2020_11_tract.zip tl_2020_12_tract.zip tl_2020_13_tract.zip tl_2020_15_tract.zip tl_2020_16_tract.zip tl_2020_17_tract.zip tl_2020_18_tract.zip tl_2020_19_tract.zip tl_2020_20_tract.zip tl_2020_21_tract.zip tl_2020_22_tract.zip tl_2020_23_tract.zip tl_2020_24_tract.zip tl_2020_25_tract.zip tl_2020_26_tract.zip tl_2020_27_tract.zip tl_2020_28_tract.zip tl_2020_29_tract.zip tl_2020_30_tract.zip tl_2020_31_tract.zip tl_2020_32_tract.zip tl_2020_33_tract.zip tl_2020_34_tract.zip tl_2020_35_tract.zip tl_2020_36_tract.zip tl_2020_37_tract.zip tl_2020_38_tract.zip tl_2020_39_tract.zip tl_2020_40_tract.zip tl_2020_41_tract.zip tl_2020_42_tract.zip tl_2020_44_tract.zip tl_2020_45_tract.zip tl_2020_46_tract.zip tl_2020_47_tract.zip tl_2020_48_tract.zip tl_2020_49_tract.zip tl_2020_50_tract.zip tl_2020_51_tract.zip tl_2020_53_tract.zip tl_2020_54_tract.zip tl_2020_55_tract.zip tl_2020_56_tract.zip tl_2020_60_tract.zip tl_2020_66_tract.zip tl_2020_69_tract.zip tl_2020_72_tract.zip tl_2020_78_tract.zip"
+# export FOD_CONCATENATED_TRACT_SHAPEFILES_FILE=${FOD_RAW_DATA_FILES_DIR}/tract_shapefile.shp
+# 
+# export FOD_CONGRESSIONAL_DISTRICT_SHAPEFILES="tl_2022_01_cd118.zip tl_2022_02_cd118.zip tl_2022_04_cd118.zip tl_2022_05_cd118.zip tl_2022_06_cd118.zip tl_2022_08_cd118.zip tl_2022_09_cd118.zip tl_2022_10_cd118.zip tl_2022_11_cd118.zip tl_2022_12_cd118.zip tl_2022_13_cd118.zip tl_2022_15_cd118.zip tl_2022_16_cd118.zip tl_2022_17_cd118.zip tl_2022_18_cd118.zip tl_2022_19_cd118.zip tl_2022_20_cd118.zip tl_2022_21_cd118.zip tl_2022_22_cd118.zip tl_2022_23_cd118.zip tl_2022_24_cd118.zip tl_2022_25_cd118.zip tl_2022_26_cd118.zip tl_2022_27_cd118.zip tl_2022_28_cd118.zip tl_2022_29_cd118.zip tl_2022_30_cd118.zip tl_2022_31_cd118.zip tl_2022_32_cd118.zip tl_2022_33_cd118.zip tl_2022_34_cd118.zip tl_2022_35_cd118.zip tl_2022_36_cd118.zip tl_2022_37_cd118.zip tl_2022_38_cd118.zip tl_2022_39_cd118.zip tl_2022_40_cd118.zip tl_2022_41_cd118.zip tl_2022_42_cd118.zip tl_2022_44_cd118.zip tl_2022_45_cd118.zip tl_2022_46_cd118.zip tl_2022_47_cd118.zip tl_2022_48_cd118.zip tl_2022_49_cd118.zip tl_2022_50_cd118.zip tl_2022_51_cd118.zip tl_2022_53_cd118.zip tl_2022_54_cd118.zip tl_2022_55_cd118.zip tl_2022_56_cd118.zip tl_2022_60_cd118.zip tl_2022_66_cd118.zip tl_2022_69_cd118.zip tl_2022_72_cd118.zip tl_2022_78_cd118.zip"
+# export FOD_CONGRESSIONAL_DISTRICT_URL="https://www2.census.gov/geo/tiger/TIGER2022/CD"
+# export FOD_CONCATENATED_CONGRESSIONAL_DISTRICT_SHAPEFILES_FILE=${FOD_RAW_DATA_FILES_DIR}/congressional_districts.shp
+# export FOD_CONGRESSIONAL_DISTRICT_FILE=${FOD_RAW_DATA_FILES_DIR}/congressional_districts.csv
+# 
+# export FOD_CENSUS_BLOCK_ZIP_FILES="tl_2022_01_tabblock20.zip tl_2022_02_tabblock20.zip tl_2022_04_tabblock20.zip tl_2022_05_tabblock20.zip tl_2022_06_tabblock20.zip tl_2022_08_tabblock20.zip tl_2022_09_tabblock20.zip tl_2022_10_tabblock20.zip tl_2022_11_tabblock20.zip tl_2022_12_tabblock20.zip tl_2022_13_tabblock20.zip tl_2022_15_tabblock20.zip tl_2022_16_tabblock20.zip tl_2022_17_tabblock20.zip tl_2022_18_tabblock20.zip tl_2022_19_tabblock20.zip tl_2022_20_tabblock20.zip tl_2022_21_tabblock20.zip tl_2022_22_tabblock20.zip tl_2022_23_tabblock20.zip tl_2022_24_tabblock20.zip tl_2022_25_tabblock20.zip tl_2022_26_tabblock20.zip tl_2022_27_tabblock20.zip tl_2022_28_tabblock20.zip tl_2022_29_tabblock20.zip tl_2022_30_tabblock20.zip tl_2022_31_tabblock20.zip tl_2022_32_tabblock20.zip tl_2022_33_tabblock20.zip tl_2022_34_tabblock20.zip tl_2022_35_tabblock20.zip tl_2022_36_tabblock20.zip tl_2022_37_tabblock20.zip tl_2022_38_tabblock20.zip tl_2022_39_tabblock20.zip tl_2022_40_tabblock20.zip tl_2022_41_tabblock20.zip tl_2022_42_tabblock20.zip tl_2022_44_tabblock20.zip tl_2022_45_tabblock20.zip tl_2022_46_tabblock20.zip tl_2022_47_tabblock20.zip tl_2022_48_tabblock20.zip tl_2022_49_tabblock20.zip tl_2022_50_tabblock20.zip tl_2022_51_tabblock20.zip tl_2022_53_tabblock20.zip tl_2022_54_tabblock20.zip tl_2022_55_tabblock20.zip tl_2022_56_tabblock20.zip tl_2022_60_tabblock20.zip tl_2022_66_tabblock20.zip tl_2022_69_tabblock20.zip tl_2022_72_tabblock20.zip tl_2022_78_tabblock20.zip"
+# export FOD_CENSUS_BLOCK_SHAPEFILE_URL="https://www2.census.gov/geo/tiger/TIGER2022/TABBLOCK20/"
+# export FOD_CENSUS_BLOCK_SHAPEFILES="tl_2022_01_tabblock20.shp tl_2022_02_tabblock20.shp tl_2022_04_tabblock20.shp tl_2022_05_tabblock20.shp tl_2022_06_tabblock20.shp tl_2022_08_tabblock20.shp tl_2022_09_tabblock20.shp tl_2022_10_tabblock20.shp tl_2022_11_tabblock20.shp tl_2022_12_tabblock20.shp tl_2022_13_tabblock20.shp tl_2022_15_tabblock20.shp tl_2022_16_tabblock20.shp tl_2022_17_tabblock20.shp tl_2022_18_tabblock20.shp tl_2022_19_tabblock20.shp tl_2022_20_tabblock20.shp tl_2022_21_tabblock20.shp tl_2022_22_tabblock20.shp tl_2022_23_tabblock20.shp tl_2022_24_tabblock20.shp tl_2022_25_tabblock20.shp tl_2022_26_tabblock20.shp tl_2022_27_tabblock20.shp tl_2022_28_tabblock20.shp tl_2022_29_tabblock20.shp tl_2022_30_tabblock20.shp tl_2022_31_tabblock20.shp tl_2022_32_tabblock20.shp tl_2022_33_tabblock20.shp tl_2022_34_tabblock20.shp tl_2022_35_tabblock20.shp tl_2022_36_tabblock20.shp tl_2022_37_tabblock20.shp tl_2022_38_tabblock20.shp tl_2022_39_tabblock20.shp tl_2022_40_tabblock20.shp tl_2022_41_tabblock20.shp tl_2022_42_tabblock20.shp tl_2022_44_tabblock20.shp tl_2022_45_tabblock20.shp tl_2022_46_tabblock20.shp tl_2022_47_tabblock20.shp tl_2022_48_tabblock20.shp tl_2022_49_tabblock20.shp tl_2022_50_tabblock20.shp tl_2022_51_tabblock20.shp tl_2022_53_tabblock20.shp tl_2022_54_tabblock20.shp tl_2022_55_tabblock20.shp tl_2022_56_tabblock20.shp tl_2022_60_tabblock20.shp tl_2022_66_tabblock20.shp tl_2022_69_tabblock20.shp tl_2022_72_tabblock20.shp tl_2022_78_tabblock20.shp"
+# export FOD_CONCATENATED_CENSUS_BLOCK_SHAPEFILES_FILE=${FOD_RAW_DATA_FILES_DIR}/census_block_shapefile.shp
+# 
+# export FOD_CENSUS_BLOCK_GROUP_ZIP_FILES="tl_2022_01_bg.zip tl_2022_02_bg.zip tl_2022_04_bg.zip tl_2022_05_bg.zip tl_2022_06_bg.zip tl_2022_08_bg.zip tl_2022_09_bg.zip tl_2022_10_bg.zip tl_2022_11_bg.zip tl_2022_12_bg.zip tl_2022_13_bg.zip tl_2022_15_bg.zip tl_2022_16_bg.zip tl_2022_17_bg.zip tl_2022_18_bg.zip tl_2022_19_bg.zip tl_2022_20_bg.zip tl_2022_21_bg.zip tl_2022_22_bg.zip tl_2022_23_bg.zip tl_2022_24_bg.zip tl_2022_25_bg.zip tl_2022_26_bg.zip tl_2022_27_bg.zip tl_2022_28_bg.zip tl_2022_29_bg.zip tl_2022_30_bg.zip tl_2022_31_bg.zip tl_2022_32_bg.zip tl_2022_33_bg.zip tl_2022_34_bg.zip tl_2022_35_bg.zip tl_2022_36_bg.zip tl_2022_37_bg.zip tl_2022_38_bg.zip tl_2022_39_bg.zip tl_2022_40_bg.zip tl_2022_41_bg.zip tl_2022_42_bg.zip tl_2022_44_bg.zip tl_2022_45_bg.zip tl_2022_46_bg.zip tl_2022_47_bg.zip tl_2022_48_bg.zip tl_2022_49_bg.zip tl_2022_50_bg.zip tl_2022_51_bg.zip tl_2022_53_bg.zip tl_2022_54_bg.zip tl_2022_55_bg.zip tl_2022_56_bg.zip tl_2022_60_bg.zip tl_2022_66_bg.zip tl_2022_69_bg.zip tl_2022_72_bg.zip tl_2022_78_bg.zip"
+# export FOD_CENSUS_BLOCK_GROUP_SHAPEFILE_URL="https://www2.census.gov/geo/tiger/TIGER2022/BG/"
+# export FOD_CONCATENATED_CENSUS_BLOCK_GROUP_SHAPEFILES_FILE=${FOD_RAW_DATA_FILES_DIR}/census_block_group_shapefile.shp
+# export FOD_CENSUS_BLOCK_GROUP_SHAPEFILES="tl_2022_01_bg.shp tl_2022_02_bg.shp tl_2022_04_bg.shp tl_2022_05_bg.shp tl_2022_06_bg.shp tl_2022_08_bg.shp tl_2022_09_bg.shp tl_2022_10_bg.shp tl_2022_11_bg.shp tl_2022_12_bg.shp tl_2022_13_bg.shp tl_2022_15_bg.shp tl_2022_16_bg.shp tl_2022_17_bg.shp tl_2022_18_bg.shp tl_2022_19_bg.shp tl_2022_20_bg.shp tl_2022_21_bg.shp tl_2022_22_bg.shp tl_2022_23_bg.shp tl_2022_24_bg.shp tl_2022_25_bg.shp tl_2022_26_bg.shp tl_2022_27_bg.shp tl_2022_28_bg.shp tl_2022_29_bg.shp tl_2022_30_bg.shp tl_2022_31_bg.shp tl_2022_32_bg.shp tl_2022_33_bg.shp tl_2022_34_bg.shp tl_2022_35_bg.shp tl_2022_36_bg.shp tl_2022_37_bg.shp tl_2022_38_bg.shp tl_2022_39_bg.shp tl_2022_40_bg.shp tl_2022_41_bg.shp tl_2022_42_bg.shp tl_2022_44_bg.shp tl_2022_45_bg.shp tl_2022_46_bg.shp tl_2022_47_bg.shp tl_2022_48_bg.shp tl_2022_49_bg.shp tl_2022_50_bg.shp tl_2022_51_bg.shp tl_2022_53_bg.shp tl_2022_54_bg.shp tl_2022_55_bg.shp tl_2022_56_bg.shp tl_2022_60_bg.shp tl_2022_66_bg.shp tl_2022_69_bg.shp tl_2022_72_bg.shp tl_2022_78_bg.shp"
+# export FOD_CENSUS_BLOCK_GROUP_FILE=${FOD_RAW_DATA_FILES_DIR}/census_block_groups.csv
+# 
+# export FOD_NAICS_CODE_LIST_EXCEL_FILE_URL="https://www.census.gov/naics/2022NAICS/2-6%20digit_2022_Codes.xlsx"
+# export FOD_NAICS_CODE_LIST_EXCEL_FILE=${FOD_RAW_DATA_FILES_DIR}/naics_code_list.xls
+# export FOD_NAICS_CODE_LIST_CSV_FILE=${FOD_RAW_DATA_FILES_DIR}/naics_code_list.csv
+# export FOD_NAICS_CODE_MAPPING_FILE=${FOD_RAW_DATA_FILES_DIR}/naics_code_mapping.yaml
+# 
+# export FOD_COUNTY_BUSINESS_PATTERNS_URL="https://www2.census.gov/programs-surveys/cbp/datasets/2021/cbp21co.zip"
+# export FOD_COUNTY_BUSINESS_PATTERNS_ZIP_FILE=${FOD_RAW_DATA_FILES_DIR}/county_business_patterns.zip
+# export FOD_COUNTY_BUSINESS_PATTERNS_CSV_FILE=${FOD_RAW_DATA_FILES_DIR}/cbp21co.txt
+# 
+# export FOD_NOMINATIM_ADDRESS=localhost
+# export FOD_NOMINATIM_PORT=8080
+# export FOD_NOMINATIM_SCHEME=http
+# export FOD_NOMINATIM_URL=${FOD_NOMINATIM_SCHEME}://${FOD_NOMINATIM_ADDRESS}:${FOD_NOMINATIM_PORT}/search.php
+# 
+# export FOD_SCHOOL_DISTRICT_SHAPEFILE_URL="https://nces.ed.gov/programs/edge/data/EDGE_SCHOOLDISTRICT_TL22_SY2122.zip"
+# export FOD_SCHOOL_DISTRICT_ZIP_FILE=${FOD_RAW_DATA_FILES_DIR}/school_districts.zip
+# export FOD_SCHOOL_DISTRICT_SHAPEFILE_FILE=${FOD_RAW_DATA_FILES_DIR}/EDGE_SCHOOLDISTRICT_TL22_SY2122/EDGE_SCHOOLDISTRICT_TL22_SY2122.shp
+# 
+# export FOD_CONSOLIDATED_SCHOOL_DISTRICT_ZIP_FILES="tl_2022_78_unsd.zip tl_2022_60_unsd.zip tl_2022_66_unsd.zip tl_2022_69_unsd.zip tl_2022_72_unsd.zip tl_2022_15_unsd.zip tl_2022_11_unsd.zip tl_2022_44_unsd.zip tl_2022_10_unsd.zip tl_2022_32_unsd.zip tl_2022_50_unsd.zip tl_2022_33_unsd.zip tl_2022_09_unsd.zip tl_2022_02_unsd.zip tl_2022_24_unsd.zip tl_2022_56_unsd.zip tl_2022_35_unsd.zip tl_2022_30_unsd.zip tl_2022_04_unsd.zip tl_2022_25_unsd.zip tl_2022_54_unsd.zip tl_2022_49_unsd.zip tl_2022_38_unsd.zip tl_2022_08_unsd.zip tl_2022_12_unsd.zip tl_2022_22_unsd.zip tl_2022_16_unsd.zip tl_2022_45_unsd.zip tl_2022_18_unsd.zip tl_2022_20_unsd.zip tl_2022_53_unsd.zip tl_2022_28_unsd.zip tl_2022_23_unsd.zip tl_2022_19_unsd.zip tl_2022_41_unsd.zip tl_2022_46_unsd.zip tl_2022_34_unsd.zip tl_2022_21_unsd.zip tl_2022_26_unsd.zip tl_2022_17_unsd.zip tl_2022_31_unsd.zip tl_2022_06_unsd.zip tl_2022_27_unsd.zip tl_2022_47_unsd.zip tl_2022_39_unsd.zip tl_2022_05_unsd.zip tl_2022_40_unsd.zip tl_2022_29_unsd.zip tl_2022_55_unsd.zip tl_2022_36_unsd.zip tl_2022_37_unsd.zip tl_2022_01_unsd.zip tl_2022_51_unsd.zip tl_2022_42_unsd.zip tl_2022_13_unsd.zip tl_2022_48_unsd.zip"
+# export FOD_CONSOLIDATED_SCHOOL_DISTRICT_SHAPEFILE_URL="https://www2.census.gov/geo/tiger/TIGER2022/UNSD/"
+# export FOD_CONSOLIDATED_SCHOOL_DISTRICT_SHAPEFILES="tl_2022_01_unsd.shp tl_2022_02_unsd.shp tl_2022_04_unsd.shp tl_2022_05_unsd.shp tl_2022_06_unsd.shp tl_2022_08_unsd.shp tl_2022_09_unsd.shp tl_2022_10_unsd.shp tl_2022_11_unsd.shp tl_2022_12_unsd.shp tl_2022_13_unsd.shp tl_2022_15_unsd.shp tl_2022_16_unsd.shp tl_2022_17_unsd.shp tl_2022_18_unsd.shp tl_2022_19_unsd.shp tl_2022_20_unsd.shp tl_2022_21_unsd.shp tl_2022_22_unsd.shp tl_2022_23_unsd.shp tl_2022_24_unsd.shp tl_2022_25_unsd.shp tl_2022_26_unsd.shp tl_2022_27_unsd.shp tl_2022_28_unsd.shp tl_2022_29_unsd.shp tl_2022_30_unsd.shp tl_2022_31_unsd.shp tl_2022_32_unsd.shp tl_2022_33_unsd.shp tl_2022_34_unsd.shp tl_2022_35_unsd.shp tl_2022_36_unsd.shp tl_2022_37_unsd.shp tl_2022_38_unsd.shp tl_2022_39_unsd.shp tl_2022_40_unsd.shp tl_2022_41_unsd.shp tl_2022_42_unsd.shp tl_2022_44_unsd.shp tl_2022_45_unsd.shp tl_2022_46_unsd.shp tl_2022_47_unsd.shp tl_2022_48_unsd.shp tl_2022_49_unsd.shp tl_2022_50_unsd.shp tl_2022_51_unsd.shp tl_2022_53_unsd.shp tl_2022_54_unsd.shp tl_2022_55_unsd.shp tl_2022_56_unsd.shp tl_2022_60_unsd.shp tl_2022_66_unsd.shp tl_2022_69_unsd.shp tl_2022_72_unsd.shp tl_2022_78_unsd.shp"
+# 
+# export FOD_CONCATENATED_CONSOLIDATED_SCHOOL_DISTRICT_SHAPEFILES_FILE=${FOD_RAW_DATA_FILES_DIR}/school_district_shapefile.shp
+# 
+# export FOD_LANGUAGE_SPOKEN_BY_TRACT_URL=https://www2.census.gov/programs-surveys/acs/data/covid_19/Language_Tables_for_CDC/C16001_140_Census_Tract.csv
+# export FOD_LANGUAGE_SPOKEN_BY_TRACT_RAW_CSV_FILE=${FOD_RAW_DATA_FILES_DIR}/language_spoken_by_tract_raw.csv
+# export FOD_LANGUAGE_SPOKEN_BY_TRACT_RENAMING_CONFIG_FILE=${FOD_CONFIG_FILES_DIR}/language_spoken_by_tract_renaming_config.yaml
+# export FOD_LANGUAGE_SPOKEN_BY_TRACT_CSV_FILE=${FOD_RAW_DATA_FILES_DIR}/language_spoken_by_tract.csv
+# 
+# export FOD_LANGUAGE_SPOKEN_BY_TRACT_PROCESSING_CONFIG=${FOD_CONFIG_FILES_DIR}/language_spoken_by_tract_processing_config.yaml
+# 
+# # Probably won't use this one:
+# export FOD_FEDERAL_SPENDING_DATABASE_ZIP_FILE_URL="https://files.usaspending.gov/database_download/usaspending-db-subset_20230508.zip"
+# 
+# export FOD_FEDERAL_AWARD_ARCHIVE_ZIP_FILE_URL="https://files.usaspending.gov/award_data_archive/FY2002_All_Contracts_Full_20231108.zip"
+# export FOD_FEDERAL_AWARD_ARCHIVE_ZIP_FILE=${FOD_RAW_DATA_FILES_DIR}/federal_awards.zip
+# export FOD_FEDERAL_AWARD_ARCHIVE_CSV_FILE_1=${FOD_RAW_DATA_FILES_DIR}/FY2002_All_Contracts_Full_20231109_1.csv
+# # export FOD_FEDERAL_AWARD_ARCHIVE_CSV_FILE_2=${FOD_RAW_DATA_FILES_DIR}/FY2023_All_Contracts_Full_20231008_2.csv
+# # export FOD_FEDERAL_AWARD_ARCHIVE_CSV_FILE_3=${FOD_RAW_DATA_FILES_DIR}/FY2023_All_Contracts_Full_20231008_3.csv
+# # export FOD_FEDERAL_AWARD_ARCHIVE_CSV_FILE_4=${FOD_RAW_DATA_FILES_DIR}/FY2023_All_Contracts_Full_20231008_4.csv
+# # export FOD_FEDERAL_AWARD_ARCHIVE_CSV_FILE_5=${FOD_RAW_DATA_FILES_DIR}/FY2023_All_Contracts_Full_20231008_5.csv
+# # export FOD_FEDERAL_AWARD_ARCHIVE_CSV_FILE_6=${FOD_RAW_DATA_FILES_DIR}/FY2023_All_Contracts_Full_20231008_6.csv
+# export FOD_FEDERAL_AWARD_ARCHIVE_CSV_FILE=${FOD_RAW_DATA_FILES_DIR}/federal_awards.csv
+# export FOD_FEDERAL_AWARD_ARCHIVE_CSV_MAPPING_CONFIG=${FOD_CONFIG_FILES_DIR}/federal_award_column_mapping_config.yaml
+# 
+# export FOD_AMERICAN_HOUSING_SURVEY_ZIP_FILE_URL="https://www2.census.gov/programs-surveys/ahs/2021/AHS%202021%20National%20PUF%20v1.0%20Flat%20CSV.zip"
+# export FOD_AMERICAN_HOUSING_SURVEY_ZIP_FILE=${FOD_RAW_DATA_FILES_DIR}/american_housing_survey.zip
+# export FOD_AMERICAN_HOUSING_SURVEY_CSV_FILE=${FOD_RAW_DATA_FILES_DIR}/ahs2021n.csv
+# 
+# export FOD_COUNTY_TRANSPORTATION_PROFILES_CSV_FILE_URL="https://data.bts.gov/api/views/qdmf-cxm3/rows.csv?accessType=DOWNLOAD"
+# export FOD_COUNTY_TRANSPORTATION_PROFILES_CSV_FILE=${FOD_RAW_DATA_FILES_DIR}/county_transportation_profiles.csv
+# export FOD_COUNTY_TRANSPORTATION_PROFILES_COLUMN_MAPPING_CONFIG=${FOD_CONFIG_FILES_DIR}/county_transportation_profiles_column_mapping_config.yaml
+# 
+# export FOD_SMART_LOCATION_DATABASE_ZIP_FILE_URL="https://edg.epa.gov/EPADataCommons/public/OA/SLD/SmartLocationDatabaseV3.zip"
+# export FOD_SMART_LOCATION_DATABASE_ZIP_FILE=${FOD_RAW_DATA_FILES_DIR}/smart_location_database.zip
+# export FOD_SMART_LOCATION_DATABASE_FILE=${FOD_RAW_DATA_FILES_DIR}/SmartLocationDatabase.gdb
+# export FOD_SMART_LOCATION_DATABASE_CSV_FILE=${FOD_RAW_DATA_FILES_DIR}/smart_location_database.csv
+# export FOD_SMART_LOCATION_DATABASE_COLUMN_MAPPING_CONFIG=${FOD_CONFIG_FILES_DIR}/smart_location_column_mapping_config.yaml
+# 
+# export FOD_CENSUS_BLOCK_GROUP_2019_ZIP_FILES="tl_2019_01_bg.zip tl_2019_02_bg.zip tl_2019_04_bg.zip tl_2019_05_bg.zip tl_2019_06_bg.zip tl_2019_08_bg.zip tl_2019_09_bg.zip tl_2019_10_bg.zip tl_2019_11_bg.zip tl_2019_12_bg.zip tl_2019_13_bg.zip tl_2019_15_bg.zip tl_2019_16_bg.zip tl_2019_17_bg.zip tl_2019_18_bg.zip tl_2019_19_bg.zip tl_2019_20_bg.zip tl_2019_21_bg.zip tl_2019_22_bg.zip tl_2019_23_bg.zip tl_2019_24_bg.zip tl_2019_25_bg.zip tl_2019_26_bg.zip tl_2019_27_bg.zip tl_2019_28_bg.zip tl_2019_29_bg.zip tl_2019_30_bg.zip tl_2019_31_bg.zip tl_2019_32_bg.zip tl_2019_33_bg.zip tl_2019_34_bg.zip tl_2019_35_bg.zip tl_2019_36_bg.zip tl_2019_37_bg.zip tl_2019_38_bg.zip tl_2019_39_bg.zip tl_2019_40_bg.zip tl_2019_41_bg.zip tl_2019_42_bg.zip tl_2019_44_bg.zip tl_2019_45_bg.zip tl_2019_46_bg.zip tl_2019_47_bg.zip tl_2019_48_bg.zip tl_2019_49_bg.zip tl_2019_50_bg.zip tl_2019_51_bg.zip tl_2019_53_bg.zip tl_2019_54_bg.zip tl_2019_55_bg.zip tl_2019_56_bg.zip tl_2019_60_bg.zip tl_2019_66_bg.zip tl_2019_69_bg.zip tl_2019_72_bg.zip tl_2019_78_bg.zip"
+# export FOD_CENSUS_BLOCK_GROUP_2019_SHAPEFILES_URL="https://www2.census.gov/geo/tiger/TIGER2019/BG/"
+# export FOD_CENSUS_BLOCK_GROUP_2019_SHAPEFILES="tl_2019_01_bg.shp tl_2019_02_bg.shp tl_2019_04_bg.shp tl_2019_05_bg.shp tl_2019_06_bg.shp tl_2019_08_bg.shp tl_2019_09_bg.shp tl_2019_10_bg.shp tl_2019_11_bg.shp tl_2019_12_bg.shp tl_2019_13_bg.shp tl_2019_15_bg.shp tl_2019_16_bg.shp tl_2019_17_bg.shp tl_2019_18_bg.shp tl_2019_19_bg.shp tl_2019_20_bg.shp tl_2019_21_bg.shp tl_2019_22_bg.shp tl_2019_23_bg.shp tl_2019_24_bg.shp tl_2019_25_bg.shp tl_2019_26_bg.shp tl_2019_27_bg.shp tl_2019_28_bg.shp tl_2019_29_bg.shp tl_2019_30_bg.shp tl_2019_31_bg.shp tl_2019_32_bg.shp tl_2019_33_bg.shp tl_2019_34_bg.shp tl_2019_35_bg.shp tl_2019_36_bg.shp tl_2019_37_bg.shp tl_2019_38_bg.shp tl_2019_39_bg.shp tl_2019_40_bg.shp tl_2019_41_bg.shp tl_2019_42_bg.shp tl_2019_44_bg.shp tl_2019_45_bg.shp tl_2019_46_bg.shp tl_2019_47_bg.shp tl_2019_48_bg.shp tl_2019_49_bg.shp tl_2019_50_bg.shp tl_2019_51_bg.shp tl_2019_53_bg.shp tl_2019_54_bg.shp tl_2019_55_bg.shp tl_2019_56_bg.shp tl_2019_60_bg.shp tl_2019_66_bg.shp tl_2019_69_bg.shp tl_2019_72_bg.shp tl_2019_78_bg.shp"
+# 
+# export FOD_CONCATENATED_CENSUS_BLOCK_GROUP_2019_SHAPEFILES_FILE=${FOD_RAW_DATA_FILES_DIR}/census_block_group_2019_shapefile.gpkg
+# 
+# export FOD_SIMPLE_TYPE_CASTING_CONFIG=${FOD_CONFIG_FILES_DIR}/simple_type_casting.yaml
+# 
+# export FOD_AMENITY_CSV_FILE=${FOD_RAW_DATA_FILES_DIR}/amenities.csv
+# export FOD_UNITED_STATES_STREET_MAP_FILE=${FOD_RAW_DATA_FILES_DIR}/us-latest.osm.pbf
+# export FOD_UNITED_STATES_STREET_MAP_FILE_URL="https://download.geofabrik.de/north-america/us-latest.osm.pbf"
+# export FOD_UNITED_STATES_NODES_FILE=${FOD_RAW_DATA_FILES_DIR}/us_latest_nodes.csv
+# export FOD_FILTERED_UNITED_STATES_NODES_FILE=${FOD_RAW_DATA_FILES_DIR}/us_latest_nodes_filtered.osm.pbf
+# 
+# export FOD_PROCESS_AMERICAN_HOUSING_SURVEY_CONFIG_FILE=${FOD_CONFIG_FILES_DIR}/process_american_housing_survey_config.yaml
+# 
+# export FOD_OSM_TAGGED_NODES_CSV_FILE=${FOD_RAW_DATA_FILES_DIR}/osm_tagged_nodes.csv
+# export FOD_POINT_OF_INTEREST_MAPPING_CONFIG=${FOD_CONFIG_FILES_DIR}/point_of_interest_mapping.yaml
+# 
+# export FOD_CAMPAIGN_CONTRIBUTIONS_BY_INDIVIDUALS_ZIP_FILE_URL="https://www.fec.gov/files/bulk-downloads/2024/indiv24.zip"
+# export FOD_CAMPAIGN_CONTRIBUTIONS_BY_INDIVIDUALS_ZIP_FILE=${FOD_RAW_DATA_FILES_DIR}/indiv24.zip
+# export FOD_CAMPAIGN_CONTRIBUTIONS_BY_INDIVIDUALS_HEADER_FILE_URL="https://www.fec.gov/files/bulk-downloads/data_dictionaries/indiv_header_file.csv"
+# export FOD_CAMPAIGN_CONTRIBUTIONS_BY_INDIVIDUALS_HEADER_FILE=${FOD_RAW_DATA_FILES_DIR}/indiv_header_file.csv
+# export FOD_CAMPAIGN_CONTRIBUTIONS_BY_INDIVIDUALS_ROWS_CSV_FILE=${FOD_RAW_DATA_FILES_DIR}/itcont.txt
+# export FOD_CAMPAIGN_CONTRIBUTIONS_BY_INDIVIDUALS_CSV_FILE=${FOD_RAW_DATA_FILES_DIR}/campaign_contributions.csv
+# 
+# export FOD_WIKIDATA_RAW_JSON_FILE_URL="https://dumps.wikimedia.org/wikidatawiki/entities/latest-all.json.bz2"
+# export FOD_WIKIDATA_RAW_JSON_FILE=${FOD_RAW_DATA_FILES_DIR}/latest-all.json.bz2
+# export FOD_WIKIDATA_LOCATION_FILE=${FOD_RAW_DATA_FILES_DIR}/wikidata_locations.gz
+# export FOD_WIKIDATA_CLASS_CONFIG=${FOD_CONFIG_FILES_DIR}/wikidata_entity_config.yaml
+# 
+# # TRI Facility (toxic release inventory)
+# export FOD_TRI_FACILITY_URL="https://data.epa.gov/efservice/tri_facility/csv"
+# export FOD_TRI_FACILITY_FILE=${FOD_RAW_DATA_FILES_DIR}/tri_facility.csv
+# 
+# export FOD_MAX_BATCH_PAYLOAD_LENGTH=10000
+# export FOD_ADDRESS_BATCH_SIZE=100
+# 
+# export FOD_MAX_USA_SPENDING_AGENCIES=3  # Not sure this is being used
+# 
+# # Testing limits
+# export FOD_LOAD_DATA_TEST_LIMIT=1250000000
+# export FOD_EXTRACT_OSM_NODES_TEST_LIMIT=100000000
+# export FOD_LOAD_DATA_TIMEOUT_LIMIT=3600
+# export FOD_GEOGRAPHIES_ONLY_IN_GEORGIA=0
+# export FOD_AMERICAN_HOUSING_SURVEY_LOAD_LIMIT=10000000  # For testing because AHS is so slow
+# export FOD_SKIP_USA_SPENDING_DOWNLOAD=0  # The feds screw up this download at the start of each month
+# 
+# # From GCP secrets manager
+# export FOD_NEO4J_PASSWORD=`gcloud secrets versions access latest --secret=FOD_NEO4J_PASSWORD`
+# 
+# # Checkpoint
+# export FOD_CHECKPOINT_FILE=${FOD_RAW_DATA_FILES_DIR}/etl_checkpoint_
+# 
+# # Election data (Common Content)
+# export FOD_ELECTION_COMMON_CONTENT_URL="https://dataverse.harvard.edu/api/access/datafile/4949558"
+# export FOD_ELECTION_COMMON_CONTENT_CSV_FILE=${FOD_RAW_DATA_FILES_DIR}/election_common_content.csv
+# 
+# export FOD_ATTRIBUTE_VALUE_MAPPING_CONFIG_FILE=${FOD_CONFIG_FILES_DIR}/attribute_value_mapping.yaml
+# export FOD_AGGREGATION_CONFIG=${FOD_CONFIG_FILES_DIR}/aggregation_config.yaml

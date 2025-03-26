@@ -1057,6 +1057,7 @@ class WithClause(TreeMixin, Evaluable):
         non_aggregated_variable_solutions = []
         for solution in solutions:
             non_aggregated_variable_solution = {}
+            # Below raises error in test_trigger_decorator_function_relationship_function unit test
             for variable in non_aggregated_variables:
                 non_aggregated_variable_solution[variable] = solution[variable]
             if (

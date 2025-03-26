@@ -158,6 +158,7 @@ from nmetl.exceptions import (
     BadTriggerReturnAnnotationError,
     UnknownDataSourceError,
 )
+from nmetl.data_asset import DataAsset
 from nmetl.helpers import QueueGenerator
 from nmetl.message_types import EndOfData
 from nmetl.queue_processor import (
@@ -172,6 +173,7 @@ from nmetl.trigger import (
     VariableAttribute,
     VariableAttributeTrigger,
 )
+from pycypher.cypher_parser import CypherParser
 from pycypher.fact import AtomicFact, FactCollection
 from pycypher.logger import LOGGER
 from pycypher.solver import Constraint
@@ -195,6 +197,7 @@ class Session:  # pylint: disable=too-many-instance-attributes
     def __init__(
         self,
         fact_collection: Optional[FactCollection] = None,
+        data_assets: Optional[List[DataAsset]] = None,
         logging_level: Optional[str] = "WARNING",
         queue_class: Optional[Type] = QueueGenerator,
         queue_options: Optional[Dict[str, Any]] = None,
@@ -217,6 +220,11 @@ class Session:  # pylint: disable=too-many-instance-attributes
         self.raw_input_queue = self.queue_class(
             session=self, name="RawInput", **self.queue_options
         )
+        self.data_assets = {}
+        if data_assets:
+            for data_asset in data_assets:
+                self.register_data_asset(data_asset)
+
         self.fact_generated_queue = self.queue_class(
             session=self, name="FactGenerated", **self.queue_options
         )
@@ -270,6 +278,11 @@ class Session:  # pylint: disable=too-many-instance-attributes
         self.start_threads()
         if block:
             self.block_until_finished()
+    
+    def register_data_asset(self, data_asset: DataAsset) -> None:
+        """Register a data asset with the session."""
+        LOGGER.info("Registering data asset %s", data_asset.name)
+        self.data_assets[data_asset.name] = data_asset
 
     # def attach_new_columns_to_data_sources(self):
     #     """Attach new columns to data sources."""
@@ -553,6 +566,7 @@ class Session:  # pylint: disable=too-many-instance-attributes
                     raise BadTriggerReturnAnnotationError(
                         "NodeRelationship annotation must have a return annotation with three arguments."
                     )
+
                 source_variable_name = node_relationship_args[
                     0
                 ].__forward_arg__
@@ -560,6 +574,19 @@ class Session:  # pylint: disable=too-many-instance-attributes
                 target_variable_name = node_relationship_args[
                     2
                 ].__forward_arg__
+
+                all_cypher_variables = CypherParser(
+                    arg1
+                ).parse_tree.cypher.match_clause.with_clause.all_variables
+                if source_variable_name not in all_cypher_variables:
+                    raise BadTriggerReturnAnnotationError(
+                        f"Variable {source_variable_name} not in {all_cypher_variables}."
+                    )
+                if target_variable_name not in all_cypher_variables:
+                    raise BadTriggerReturnAnnotationError(
+                        f"Variable {target_variable_name} not in {all_cypher_variables}"
+                    )
+
                 trigger = NodeRelationshipTrigger(
                     function=func,
                     cypher_string=arg1,
@@ -569,16 +596,7 @@ class Session:  # pylint: disable=too-many-instance-attributes
                     parameter_names=parameter_names,
                     session=self,
                 )
-                if (
-                    source_variable_name
-                    not in trigger.cypher.parse_tree.cypher.return_clause.variables
-                ):
-                    raise BadTriggerReturnAnnotationError()
-                if (
-                    target_variable_name
-                    not in trigger.cypher.parse_tree.cypher.return_clause.variables
-                ):
-                    raise BadTriggerReturnAnnotationError()
+
             else:
                 raise ValueError(
                     "Trigger function must have a return annotation of type VariableAttribute or NodeRelationship"

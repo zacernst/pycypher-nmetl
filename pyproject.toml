@@ -29,6 +29,8 @@ dependencies = [
  "sphinx>=5.0.2,<9.0.0",
  "toml>=0.10.2,<1.0.0",
  "uv>=0.4.1,<1.0.0",
+ "dvc>=3.59.1",
+ "geopandas>=1.0.1",
 ]
 
 [build-system]
@@ -37,7 +39,6 @@ build-backend = "hatchling.build"
 
 [tool.uv.sources]
 pycypher = { workspace = true }
-nmetl = { workspace = true }
 
 [tool.uv.workspace]
 members = ["packages/*"]

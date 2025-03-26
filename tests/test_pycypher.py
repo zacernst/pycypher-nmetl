@@ -3242,7 +3242,9 @@ def test_trigger_decorator_function_has_variable_attribute_trigger_type(empty_se
 def test_relationship_trigger_decorator_function_has_return_source_variable(
     empty_session,
 ):
-    @empty_session.trigger("MATCH (n) RETURN n.foo, m.bar")
+    @empty_session.trigger(
+        "MATCH (n)-[m:relationshipthingy]->(m) WITH n.foo AS foo, m.bar AS bar RETURN foo, bar"
+    )
     def test_function(n) -> NodeRelationship["n", "relationshipthingy", "m"]:  # type: ignore
         return 1
 
@@ -3252,18 +3254,22 @@ def test_relationship_trigger_decorator_function_has_return_source_variable(
 def test_relationship_trigger_decorator_function_has_return_target_variable(
     empty_session,
 ):
-    @empty_session.trigger("MATCH (n) RETURN n.foo, s.bar, t.baz")
-    def test_function(n) -> NodeRelationship["s", "relationshipthingy", "t"]:  # type: ignore
+    @empty_session.trigger(
+        "MATCH (n)-[m:relationshipthingy]->(m) WITH n.foo AS foo, m.bar AS bar RETURN foo, bar"
+    )
+    def test_function(foo, bar) -> NodeRelationship["n", "relationshipthingy", "m"]:  # type: ignore
         return 1
 
-    assert list(empty_session.trigger_dict.values())[0].target_variable == "t"
+    assert list(empty_session.trigger_dict.values())[0].target_variable == "m"
 
 
 def test_relationship_trigger_decorator_function_has_return_relationship_name(
     empty_session,
 ):
-    @empty_session.trigger("MATCH (n) RETURN n.foo, s.bar, t.baz")
-    def test_function(n) -> NodeRelationship["s", "relationshipthingy", "t"]:  # type: ignore
+    @empty_session.trigger(
+        "MATCH (n)-[s:relationshipthingy]->(t) WITH n.foo AS foo, t.bar AS bar RETURN foo, bar"
+    )
+    def test_function(foo, bar) -> NodeRelationship["n", "relationshipthingy", "t"]:  # type: ignore
         return 1
 
     assert (
@@ -3275,8 +3281,10 @@ def test_relationship_trigger_decorator_function_has_return_relationship_name(
 def test_relationship_trigger_decorator_function_has_relationship_trigger_type(
     empty_session,
 ):
-    @empty_session.trigger("MATCH (n) RETURN n.foo, s.bar, t.baz")
-    def test_function(n) -> NodeRelationship["s", "relationshipthingy", "t"]:  # type: ignore
+    @empty_session.trigger(
+        "MATCH (n)-[s:relationshipthingy]->(t) WITH n.foo AS foo, t.bar AS bar RETURN foo, bar"
+    )
+    def test_function(n) -> NodeRelationship["n", "relationshipthingy", "t"]:  # type: ignore
         return 1
 
     assert isinstance(
@@ -4707,18 +4715,249 @@ def test_trigger_decorator_function_exception_if_bad_number_of_return_variable(
             return n + 1
 
 
-def test_trigger_decorator_function_relationship_function(
+def test_trigger_decorator_function_relationship_function_raises_error_if_unknown_source_variable(
     session_with_city_state_fixture,
 ):
-    # @session_with_city_state_fixture.trigger("MATCH (n) RETURN n.foo, m.bar")
-    # def test_function(n) -> NodeRelationship["n", "bar", "m"]:  # type: ignore
-    #     return n + 1
-    
-    @session_with_city_state_fixture.trigger("MATCH (n: City) RETURN n.foo, m.bar")
-    def test_function(n) -> NodeRelationship["n", "bar", "m"]:  # type: ignore
-        return n + 1
+    with pytest.raises(BadTriggerReturnAnnotationError):
 
-    session_with_city_state_fixture.start_threads()
-    session_with_city_state_fixture.block_until_finished()
-    import pdb; pdb.set_trace()
-    
+        @session_with_city_state_fixture.trigger(
+            "MATCH (n: City) WITH n.foo AS nfoo, m.bar AS mbar RETURN nfoo, nbar"
+        )
+        def test_function(n) -> NodeRelationship["idontexist", "bar", "m"]:  # type: ignore
+            return n + 1
+
+
+def test_trigger_decorator_function_relationship_function_raises_error_if_unknown_target_variable(
+    session_with_city_state_fixture,
+):
+    with pytest.raises(BadTriggerReturnAnnotationError):
+
+        @session_with_city_state_fixture.trigger(
+            "MATCH (n: City) WITH n.foo AS nfoo, m.bar AS mbar RETURN nfoo, nbar"
+        )
+        def test_function(n) -> NodeRelationship["n", "bar", "idontexist"]:  # type: ignore
+            return n + 1
+
+
+def test_trigger_decorator_function_insert_relationship_labels(
+    session_with_trigger,
+):
+    @session_with_trigger.trigger(
+        "MATCH (s:Square)-[r:contains]->(c:Circle) WITH s.side_length AS side_length, c.radius AS radius RETURN side_length, radius"
+    )
+    def test_function(
+        side_length, radius
+    ) -> NodeRelationship["c", "contained_by", "s"]:  # type: ignore
+        return True
+
+    session_with_trigger.start_threads()
+    session_with_trigger.block_until_finished()
+
+    assert (
+        FactRelationshipHasLabel(
+            relationship_id="4f64697615ed409f1ad4be73706c6e11",
+            relationship_label="contained_by",
+        )
+        in session_with_trigger.fact_collection
+    )
+    assert (
+        FactRelationshipHasLabel(
+            relationship_id="8787716373083ea1ce8305360fd2bebf",
+            relationship_label="contained_by",
+        )
+        in session_with_trigger.fact_collection
+    )
+    assert (
+        FactRelationshipHasLabel(
+            relationship_id="8cea9fd9306e58ccfffbe3e4a657dbca",
+            relationship_label="contained_by",
+        )
+        in session_with_trigger.fact_collection
+    )
+    assert (
+        FactRelationshipHasLabel(
+            relationship_id="a842fe315d0e482cc1f1000132cb02bd",
+            relationship_label="contained_by",
+        )
+        in session_with_trigger.fact_collection
+    )
+    assert (
+        FactRelationshipHasLabel(
+            relationship_id="e47e8fd79d20027896d1a151bd13c0a0",
+            relationship_label="contained_by",
+        )
+        in session_with_trigger.fact_collection
+    )
+    assert (
+        FactRelationshipHasLabel(
+            relationship_id="eadfe2c7ff2be67a7948d91a035fbcf1",
+            relationship_label="contained_by",
+        )
+        in session_with_trigger.fact_collection
+    )
+    assert (
+        FactRelationshipHasLabel(
+            relationship_id="fad6e43cbacaafaa4345ab96c4f89edc",
+            relationship_label="contained_by",
+        )
+        in session_with_trigger.fact_collection
+    )
+
+
+def test_trigger_decorator_function_insert_relationship_source_nodes(
+    session_with_trigger,
+):
+    @session_with_trigger.trigger(
+        "MATCH (s:Square)-[r:contains]->(c:Circle) WITH s.side_length AS side_length, c.radius AS radius RETURN side_length, radius"
+    )
+    def test_function(
+        side_length, radius
+    ) -> NodeRelationship["c", "contained_by", "s"]:  # type: ignore
+        return True
+
+    session_with_trigger.start_threads()
+    session_with_trigger.block_until_finished()
+
+    assert FactRelationshipHasSourceNode(
+        relationship_id="4f64697615ed409f1ad4be73706c6e11",
+        source_node_id="Circle::circle_a",
+    )
+    assert FactRelationshipHasSourceNode(
+        relationship_id="8787716373083ea1ce8305360fd2bebf",
+        source_node_id="Circle::circle_c",
+    )
+    assert FactRelationshipHasSourceNode(
+        relationship_id="8cea9fd9306e58ccfffbe3e4a657dbca",
+        source_node_id="Circle::circle_g",
+    )
+    assert FactRelationshipHasSourceNode(
+        relationship_id="a842fe315d0e482cc1f1000132cb02bd",
+        source_node_id="Circle::circle_e",
+    )
+    assert FactRelationshipHasSourceNode(
+        relationship_id="e47e8fd79d20027896d1a151bd13c0a0",
+        source_node_id="Circle::circle_d",
+    )
+    assert FactRelationshipHasSourceNode(
+        relationship_id="eadfe2c7ff2be67a7948d91a035fbcf1",
+        source_node_id="Circle::circle_f",
+    )
+    assert FactRelationshipHasSourceNode(
+        relationship_id="fad6e43cbacaafaa4345ab96c4f89edc",
+        source_node_id="Circle::circle_b",
+    )
+
+
+def test_trigger_decorator_function_insert_relationship_target_nodes(
+    session_with_trigger,
+):
+    @session_with_trigger.trigger(
+        "MATCH (s:Square)-[r:contains]->(c:Circle) WITH s.side_length AS side_length, c.radius AS radius RETURN side_length, radius"
+    )
+    def test_function(
+        side_length, radius
+    ) -> NodeRelationship["c", "contained_by", "s"]:  # type: ignore
+        return True
+
+    session_with_trigger.start_threads()
+    session_with_trigger.block_until_finished()
+
+    assert FactRelationshipHasTargetNode(
+        relationship_id="4f64697615ed409f1ad4be73706c6e11",
+        target_node_id="Square::squarename1",
+    )
+    assert FactRelationshipHasTargetNode(
+        relationship_id="8787716373083ea1ce8305360fd2bebf",
+        target_node_id="Square::squarename1",
+    )
+    assert FactRelationshipHasTargetNode(
+        relationship_id="8cea9fd9306e58ccfffbe3e4a657dbca",
+        target_node_id="Square::squarename3",
+    )
+    assert FactRelationshipHasTargetNode(
+        relationship_id="a842fe315d0e482cc1f1000132cb02bd",
+        target_node_id="Square::squarename2",
+    )
+    assert FactRelationshipHasTargetNode(
+        relationship_id="e47e8fd79d20027896d1a151bd13c0a0",
+        target_node_id="Square::squarename2",
+    )
+    assert FactRelationshipHasTargetNode(
+        relationship_id="eadfe2c7ff2be67a7948d91a035fbcf1",
+        target_node_id="Square::squarename2",
+    )
+    assert FactRelationshipHasTargetNode(
+        relationship_id="fad6e43cbacaafaa4345ab96c4f89edc",
+        target_node_id="Square::squarename1",
+    )
+
+
+def test_trigger_decorator_function_insert_no_extra_relationship_labels(
+    session_with_trigger,
+):
+    @session_with_trigger.trigger(
+        "MATCH (s:Square)-[r:contains]->(c:Circle) WITH s.side_length AS side_length, c.radius AS radius RETURN side_length, radius"
+    )
+    def test_function(
+        side_length, radius
+    ) -> NodeRelationship["c", "contained_by", "s"]:  # type: ignore
+        return True
+
+    session_with_trigger.start_threads()
+    session_with_trigger.block_until_finished()
+    num_facts = len(
+        [
+            fact
+            for fact in session_with_trigger.fact_collection
+            if isinstance(fact, FactRelationshipHasLabel)
+        ]
+    )
+    assert num_facts == 14
+
+
+def test_trigger_decorator_function_insert_no_extra_relationship_source_nodes(
+    session_with_trigger,
+):
+    @session_with_trigger.trigger(
+        "MATCH (s:Square)-[r:contains]->(c:Circle) WITH s.side_length AS side_length, c.radius AS radius RETURN side_length, radius"
+    )
+    def test_function(
+        side_length, radius
+    ) -> NodeRelationship["c", "contained_by", "s"]:  # type: ignore
+        return True
+
+    session_with_trigger.start_threads()
+    session_with_trigger.block_until_finished()
+
+    num_facts = len(
+        [
+            fact
+            for fact in session_with_trigger.fact_collection
+            if isinstance(fact, FactRelationshipHasSourceNode)
+        ]
+    )
+    assert num_facts == 14
+
+
+def test_trigger_decorator_function_insert_no_extra_relationship_target_nodes(
+    session_with_trigger,
+):
+    @session_with_trigger.trigger(
+        "MATCH (s:Square)-[r:contains]->(c:Circle) WITH s.side_length AS side_length, c.radius AS radius RETURN side_length, radius"
+    )
+    def test_function(
+        side_length, radius
+    ) -> NodeRelationship["c", "contained_by", "s"]:  # type: ignore
+        return True
+
+    session_with_trigger.start_threads()
+    session_with_trigger.block_until_finished()
+
+    num_facts = len(
+        [
+            fact
+            for fact in session_with_trigger.fact_collection
+            if isinstance(fact, FactRelationshipHasTargetNode)
+        ]
+    )
+    assert num_facts == 14

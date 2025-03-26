@@ -88,7 +88,7 @@ class CypherTrigger(ABC):  # pylint: disable=too-many-instance-attributes
 
 
 class NodeRelationshipTrigger(CypherTrigger):
-    """ """
+    """First draft"""
 
     def __init__(
         self,
@@ -109,6 +109,8 @@ class NodeRelationshipTrigger(CypherTrigger):
         self.source_variable: Optional[str] = source_variable
         self.target_variable: Optional[str] = target_variable
         self.relationship_name: Optional[str] = relationship_name
+        self.is_relationship_trigger = True
+        self.is_attribute_trigger = False
 
     def __hash__(self):
         return hash(
@@ -121,7 +123,7 @@ class NodeRelationshipTrigger(CypherTrigger):
 
 
 class VariableAttributeTrigger(CypherTrigger):
-    """ """
+    """For setting attributes"""
 
     def __init__(
         self,
@@ -140,6 +142,8 @@ class VariableAttributeTrigger(CypherTrigger):
         )
         self.variable_set: Optional[str] = variable_set
         self.attribute_set: Optional[str] = attribute_set
+        self.is_relationship_trigger = False
+        self.is_attribute_trigger = True
 
     def __hash__(self):
         return hash(

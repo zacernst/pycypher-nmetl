@@ -71,4 +71,10 @@ publish: build
 		uv run python ./release.py --increment=$(BUMP) \
 	)
 
+data: install
+	( \
+		echo "Running DVC pipeline..." && \
+		dvc repro \
+	)
+
 .PHONY: clean clean_build tests deps install build docs grammar

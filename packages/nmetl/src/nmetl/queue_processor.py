@@ -42,8 +42,7 @@ Key Components
 
 4. **CheckFactAgainstTriggersQueueProcessor (Concrete Class)**:
     * Reads facts from the check_fact_against_triggers queue and checks them
-      against the registered triggers.
-    * If a fact matches a trigger's constraints, it creates a `SubTriggerPair`
+      against the registered triggers.  * If a fact matches a trigger's constraints, it creates a `SubTriggerPair`
       and puts it on the outgoing queue.
 
 5. **TriggeredLookupProcessor (Concrete Class)**:
@@ -73,6 +72,7 @@ functions, creating new facts.
 from __future__ import annotations
 
 import datetime
+import hashlib
 import queue
 import sys
 import threading
@@ -83,13 +83,16 @@ from typing import Any, Dict, List, Optional
 
 from nmetl.helpers import QueueGenerator
 from nmetl.trigger import CypherTrigger
-from pycypher.fact import AtomicFact, FactNodeHasAttributeWithValue, NullResult
-from pycypher.logger import LOGGER
-from pycypher.node_classes import (
-    AliasedName,
-    Collection,
-    QueryValueOfNodeAttribute,
+from pycypher.fact import (
+    AtomicFact,
+    FactNodeHasAttributeWithValue,
+    FactRelationshipHasLabel,
+    FactRelationshipHasSourceNode,
+    FactRelationshipHasTargetNode,
+    NullResult,
 )
+from pycypher.logger import LOGGER
+from pycypher.node_classes import Collection
 
 
 @dataclass
@@ -269,33 +272,105 @@ class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-publi
         self, sub_trigger_pair: SubTriggerPair
     ) -> List[Any]:
         """Helper function to process a sub_trigger_pair"""
-        # TODO: Thid needs to know if we're possibly adding a relationship and have an alternative to
+        # TODO: This needs to know if we're possibly adding a relationship and have an alternative to
         # FactNodeHasAttributeWithValue and variable_to_set below.
-        variable_to_set = sub_trigger_pair.trigger.variable_set
         fact_collection = self.session.fact_collection
         return_clause = (
             sub_trigger_pair.trigger.cypher.parse_tree.cypher.return_clause
         )
         solutions = return_clause._evaluate(fact_collection)
+        if sub_trigger_pair.trigger.is_relationship_trigger:
+            source_variable = sub_trigger_pair.trigger.source_variable
+            target_variable = sub_trigger_pair.trigger.target_variable
+            relationship_name = sub_trigger_pair.trigger.relationship_name
+
+            process_solution_args = [  # prepend `solutions` onto this when called later
+                sub_trigger_pair,
+                source_variable,
+                target_variable,
+                relationship_name,
+                return_clause,
+            ]
+            process_solution_function = (
+                self._process_solution_node_relationship
+            )
+        elif sub_trigger_pair.trigger.is_attribute_trigger:
+            variable_to_set = sub_trigger_pair.trigger.variable_set
+            process_solution_args = [  # prepend `solutions` onto this when called later
+                sub_trigger_pair,
+                variable_to_set,
+                return_clause,
+            ]
+            process_solution_function = self._process_solution_node_attribute
+        else:
+            raise ValueError(
+                f"Unknown trigger type: Expected VariableAttributeTrigger or NodeRelationshipTrigger got {sub_trigger_pair.trigger.__class__.__name__}"
+            )
 
         computed_facts = []
         for solution in solutions:
             try:
                 computed_facts.append(
-                    self._process_solution(
-                        solution,
-                        sub_trigger_pair,
-                        variable_to_set,
-                        return_clause,
-                    )
+                    process_solution_function(solution, *process_solution_args)
                 )
+                # computed_facts.append(
+                #     self._process_solution_node_attribute(
+                #         solution,
+                #         sub_trigger_pair,
+                #         variable_to_set,
+                #         return_clause,
+                #     )
+                # )
             except Exception as e:
                 LOGGER.error("Error processing solution: %s", e)
                 self.status_queue.put(e)
 
         return computed_facts
 
-    def _process_solution(
+    def _process_solution_node_relationship(
+        self,
+        solution: Dict,
+        sub_trigger_pair: SubTriggerPair,
+        source_variable: str,
+        target_variable: str,
+        relationship_name: str,
+        return_clause,
+    ) -> List[
+        FactNodeHasAttributeWithValue
+        | FactRelationshipHasSourceNode
+        | FactRelationshipHasTargetNode
+    ]:
+        """Process a solution and generate a list of facts."""
+        splat = self._extract_splat_from_solution(solution, return_clause)
+        computed_value = sub_trigger_pair.trigger.function(*splat)
+        if computed_value:
+            sub_trigger_pair.trigger.call_counter += 1
+            source_node_id = self._extract_node_id_from_solution(
+                solution, source_variable
+            )
+            target_node_id = self._extract_node_id_from_solution(
+                solution, target_variable
+            )
+            relationship_id = hashlib.md5(
+                f"{source_node_id}{target_node_id}{relationship_name}".encode()
+            ).hexdigest()
+            fact_1 = FactRelationshipHasSourceNode(
+                source_node_id=source_node_id,
+                relationship_id=relationship_id,
+            )
+            fact_2 = FactRelationshipHasTargetNode(
+                target_node_id=target_node_id,
+                relationship_id=relationship_id,
+            )
+            fact_3 = FactRelationshipHasLabel(
+                relationship_id=relationship_id,
+                relationship_label=relationship_name,
+            )
+            self.session.fact_generated_queue.put(fact_1)
+            self.session.fact_generated_queue.put(fact_2)
+            self.session.fact_generated_queue.put(fact_3)
+
+    def _process_solution_node_attribute(
         self,
         solution: Dict,
         sub_trigger_pair: SubTriggerPair,
