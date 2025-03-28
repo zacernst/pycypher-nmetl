@@ -3,9 +3,9 @@ requires = [ "hatchling>=1.24.2", "hatch-vcs>=0.3.0",]
 build-backend = "hatchling.build"
 
 [project]
-name = "nmetl"
+name = "fastopendata"
 version = "0.0.1"
-description = "Declarative ETL"
+description = "FastOpenData"
 readme = "README.md"
 requires-python = ">=3.12"
 keywords = [ "cypher", "etl","declarative"]
@@ -58,7 +58,6 @@ dev = [ "hatch>=1.12.0,<2.0.0",]
 Homepage = "https://github.com/zacernst/pycypher-nmetl"
 
 [project.scripts]
-nmetl = "nmetl.nmetl_cli:main"
 
 [tool.ruff]
 exclude = [ ".bzr", ".direnv", ".eggs", ".git", ".git-rewrite", ".hg", ".ipynb_checkpoints", ".mypy_cache", ".nox", ".pants.d", ".pyenv", ".pytest_cache", ".pytype", ".ruff_cache", ".svn", ".tox", ".venv", ".vscode", "__pypackages__", "_build", "buck-out", "build", "dist", "node_modules", "site-packages", "venv",]
@@ -74,4 +73,4 @@ addopts = ""
 testpaths = [ "tests",]
 
 [tool.uv.sources]
-pycypher = { workspace = true }
+fastopendata = { workspace = true }

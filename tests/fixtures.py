@@ -3,11 +3,13 @@ Fixtures for the unit tests.
 """
 # pylint: disable=missing-function-docstring,protected-access,redefined-outer-name,too-many-lines
 
+import json
 import pathlib
 
 import networkx as nx
 import pytest
 from nmetl.configuration import load_session_config
+from nmetl.data_asset import DataAsset
 from nmetl.data_source import (
     DataSource,
     DataSourceMapping,
@@ -16,7 +18,7 @@ from nmetl.data_source import (
 )
 from nmetl.helpers import ensure_uri
 from nmetl.session import RawDataProcessor, Session
-from nmetl.trigger import NodeRelationship, VariableAttribute
+from nmetl.trigger import VariableAttribute
 from pycypher.fact import (  # We might get rid of this class entirely
     FactCollection,
     FactNodeHasAttributeWithValue,
@@ -610,7 +612,9 @@ def session_with_trigger():
     session = load_session_config(ingest_file)
 
     @session.trigger(
-        "MATCH (s:Square)-[my_relationship:contains]->(c:Circle) WITH s.side_length AS side_length RETURN side_length"
+        "MATCH (s:Square)-[my_relationship:contains]->(c:Circle) "
+        "WITH s.side_length AS side_length "
+        "RETURN side_length"
     )
     def compute_area(side_length) -> VariableAttribute["s", "area"]:  # type: ignore
         return side_length**2
@@ -624,13 +628,16 @@ def session_with_two_triggers():
     session = load_session_config(ingest_file)
 
     @session.trigger(
-        "MATCH (s:Square)-[my_relationship:contains]->(c:Circle) WITH s.side_length AS side_length RETURN side_length"
+        "MATCH (s:Square)-[my_relationship:contains]->(c:Circle) "
+        "WITH s.side_length AS side_length RETURN side_length"
     )
     def compute_area(side_length) -> VariableAttribute["s", "area"]:  # type: ignore
         return side_length**2
 
     @session.trigger(
-        "MATCH (s:Square)-[my_relationship:contains]->(c:Circle) WITH s.area AS square_area RETURN square_area"
+        "MATCH (s:Square)-[my_relationship:contains]->(c:Circle) "
+        "WITH s.area AS square_area "
+        "RETURN square_area"
     )
     def compute_bigness(square_area) -> VariableAttribute["s", "big"]:  # type: ignore
         return square_area > 10
@@ -644,19 +651,25 @@ def session_with_three_triggers():
     session = load_session_config(ingest_file)
 
     @session.trigger(
-        "MATCH (s:Square)-[my_relationship:contains]->(c:Circle) WITH s.side_length AS side_length RETURN side_length"
+        "MATCH (s:Square)-[my_relationship:contains]->(c:Circle) "
+        "WITH s.side_length AS side_length "
+        "RETURN side_length"
     )
     def compute_area(side_length) -> VariableAttribute["s", "area"]:  # type: ignore
         return side_length**2
 
     @session.trigger(
-        "MATCH (s:Square)-[my_relationship:contains]->(c:Circle) WITH s.area AS square_area RETURN square_area"
+        "MATCH (s:Square)-[my_relationship:contains]->(c:Circle) "
+        "WITH s.area AS square_area "
+        "RETURN square_area"
     )
     def compute_bigness(square_area) -> VariableAttribute["s", "big"]:  # type: ignore
         return square_area > 10
 
     @session.trigger(
-        "MATCH (s:Square)-[my_relationship:contains]->(c:Circle) WITH s.big AS bigness RETURN bigness"
+        "MATCH (s:Square)-[my_relationship:contains]->(c:Circle) "
+        "WITH s.big AS bigness "
+        "RETURN bigness"
     )
     def compute_smallness(bigness) -> VariableAttribute["s", "small"]:  # type: ignore
         return not bigness
@@ -670,19 +683,25 @@ def session_with_aggregation_fixture():
     session = load_session_config(ingest_file)
 
     @session.trigger(
-        "MATCH (s:Square)-[my_relationship:contains]->(c:Circle) WITH s.side_length AS side_length RETURN side_length"
+        "MATCH (s:Square)-[my_relationship:contains]->(c:Circle) "
+        "WITH s.side_length AS side_length "
+        "RETURN side_length"
     )
     def compute_area(side_length) -> VariableAttribute["s", "area"]:  # type: ignore
         return side_length**2
 
     @session.trigger(
-        "MATCH (s:Square)-[my_relationship:contains]->(c:Circle) WITH s.area AS square_area RETURN square_area"
+        "MATCH (s:Square)-[my_relationship:contains]->(c:Circle) "
+        "WITH s.area AS square_area "
+        "RETURN square_area"
     )
     def compute_bigness(square_area) -> VariableAttribute["s", "big"]:  # type: ignore
         return square_area > 10
 
     @session.trigger(
-        "MATCH (s:Square)-[my_relationship:contains]->(c:Circle) WITH s.big AS bigness RETURN bigness"
+        "MATCH (s:Square)-[my_relationship:contains]->(c:Circle) "
+        "WITH s.big AS bigness "
+        "RETURN bigness"
     )
     def compute_smallness(bigness) -> VariableAttribute["s", "small"]:  # type: ignore
         return not bigness
@@ -693,7 +712,7 @@ def session_with_aggregation_fixture():
         "RETURN side_length, radii"
     )  # Should be an alias, not an ObjectAttributeLookup
     def aggregation_of_radii(
-        side_length, radii
+        side_length, radii  # pylint: disable=unused-argument
     ) -> VariableAttribute["s", "num_circles"]:  # type: ignore
         return len(radii)
 
@@ -710,6 +729,42 @@ def session_with_city_state_fixture():
         return "__".join([city, state])
 
     return session
+
+
+@pytest.fixture
+def data_asset_1():
+    with open(TEST_DATA_DIRECTORY / "data_asset_1.json", "r", encoding="utf8") as file:
+        data = json.load(file)
+    return DataAsset(name="data_asset_1", obj=data)
+
+
+@pytest.fixture
+def session_with_data_asset(data_asset_1):
+    ingest_file = TEST_DATA_DIRECTORY / "ingest.yaml"
+    session = load_session_config(ingest_file)
+    session.register_data_asset(data_asset_1)
+    return session
+
+
+@pytest.fixture
+def session_with_trigger_using_data_asset(session_with_data_asset):
+    with open(TEST_DATA_DIRECTORY / "data_asset_1.json", "r", encoding="utf8") as file:
+        data = json.load(file)
+    data_asset = DataAsset(name="my_data_asset", obj=data)
+    session_with_data_asset.register_data_asset(data_asset)
+
+    @session_with_data_asset.trigger(
+        "MATCH (s:Square)-[my_relationship:contains]->(c:Circle) "
+        "WITH s.side_length AS side_length, c.radius AS radius "
+        "RETURN side_length"
+    )
+    def compute_bar_with_data_asset(
+        side_length,  # pylint: disable=unused-argument
+        my_data_asset,
+    ) -> VariableAttribute["s", "foo"]:
+        return my_data_asset["foo"]
+
+    return session_with_data_asset
 
 
 # Cypher

@@ -42,3 +42,7 @@ pycypher = { workspace = true }
 
 [tool.uv.workspace]
 members = ["packages/*"]
+
+[tool.ruff]
+[[lint]]
+line-length = 80

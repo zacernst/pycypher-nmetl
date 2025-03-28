@@ -3,15 +3,15 @@
 import base64
 import csv
 import datetime
-import pickle
 import os
+import pickle
 
 import osmium
-
 from pycypher.logger import LOGGER
 
 MAX_NODES = -1
-FOD_UNITED_STATES_NODES_FILE = '/Users/zernst/git/pycypher-nmetl/packages/fastopendata/src/fastopendata/data/united_states_nodes.csv'
+FOD_UNITED_STATES_NODES_FILE = "/Users/zernst/git/pycypher-nmetl/packages/fastopendata/src/fastopendata/data/united_states_nodes.csv"
+
 
 class NodeHandler(osmium.SimpleHandler):
     def __init__(self):
@@ -19,7 +19,7 @@ class NodeHandler(osmium.SimpleHandler):
         self.start_time = datetime.datetime.now()
         self.node_count = 0
         self.filtered_node_count = 0
-        self.file = open(FOD_UNITED_STATES_NODES_FILE, "w", encoding='utf8')
+        self.file = open(FOD_UNITED_STATES_NODES_FILE, "w", encoding="utf8")
         self.writer = csv.DictWriter(
             self.file,
             fieldnames=[
@@ -69,13 +69,13 @@ class NodeHandler(osmium.SimpleHandler):
         self.writer.writeheader()
 
     def node(self, o):
-        '''node handler'''
+        """node handler"""
         self.node_count += 1
         if self.node_count % 100000 == 0:
             LOGGER.info(  # pylint: disable=logging-fstring-interpolation
                 f"Node count: {self.node_count}"
                 f"  Filtered: {self.filtered_node_count}"
-                f"  Nodes per second: { round(self.node_count / (datetime.datetime.now() - self.start_time).seconds, 3)}"
+                f"  Nodes per second: {round(self.node_count / (datetime.datetime.now() - self.start_time).seconds, 3)}"
             )
         tag_dict = dict(o.tags)
         for one_tag in list(tag_dict.keys()):
@@ -103,6 +103,9 @@ class NodeHandler(osmium.SimpleHandler):
 if __name__ == "__main__":
     LOGGER.info("Extracting point data from OSM...")
     h = NodeHandler()
-    h.apply_file('/Users/zernst/git/pycypher-nmetl/packages/fastopendata/src/fastopendata/data/us-latest.osm.pbf', locations=True)
+    h.apply_file(
+        "/Users/zernst/git/pycypher-nmetl/packages/fastopendata/src/fastopendata/data/us-latest.osm.pbf",
+        locations=True,
+    )
     h.file.close()
     LOGGER.info("Done. Total nodes processed: %s", h.node_count)

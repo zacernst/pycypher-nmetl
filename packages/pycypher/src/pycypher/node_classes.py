@@ -1202,7 +1202,6 @@ class Match(TreeMixin):
         """
 
         def _set_up_problem(match_clause) -> Problem:
-            # AttributeError: 'ConstraintRelationshipHasSourceNode' object has no attribute 'variable'
             constraints = match_clause.constraints
             problem = Problem()
             node_domain = Domain(set())
@@ -1285,7 +1284,12 @@ class Match(TreeMixin):
                     )
                     in fact_collection
                 )
-                LOGGER.debug("answer _f: %s for x: %s, y: %s", answer, x, y)
+                LOGGER.debug(
+                    "answer _f: FactRelationshipHasSourceNode: %s for x: %s, y: %s",
+                    answer,
+                    x,
+                    y,
+                )
                 return answer
 
             def _g(node_id, label=None):
@@ -1294,7 +1298,7 @@ class Match(TreeMixin):
                     in fact_collection
                 )
                 LOGGER.debug(
-                    "answer _g: %s for node_id: %s, label: %s",
+                    "answer _g: FactNodeHasLabel: %s for node_id: %s, label: %s",
                     answer,
                     node_id,
                     label,
@@ -1310,7 +1314,8 @@ class Match(TreeMixin):
                     in fact_collection
                 )
                 LOGGER.debug(
-                    "answer _h: %s for relationship_id: %s, relationship_label: %s",
+                    "answer _h: FactRelationshipHasLabel %s for relationship_id: %s, "
+                    "relationship_label: %s",
                     answer,
                     relationship_id,
                     relationship_label,
@@ -1325,7 +1330,8 @@ class Match(TreeMixin):
                     in fact_collection
                 )
                 LOGGER.debug(
-                    "answer _i: %s for node_id: %s, attribute: %s, value: %s",
+                    "answer _i: FactNodeHasAttributeWithValue %s for node_id: %s, "
+                    "attribute: %s, value: %s",
                     answer,
                     node_id,
                     attribute,

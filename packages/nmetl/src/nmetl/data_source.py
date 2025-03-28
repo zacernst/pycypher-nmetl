@@ -2,184 +2,10 @@
 DataSource Module (data_source.py)
 ==================================
 
-The ``data_source.py`` module in the `pycypher` library defines the core classes for ingesting data from various sources. It provides an abstract base class, ``DataSource``, and several concrete subclasses for reading data from different formats, such as CSV and Parquet files.
-
-Core Concepts
--------------
-
-*   **Data Ingestion:** The primary purpose of this module is to define a standardized way to read raw data from diverse sources and make it available to the `pycypher` ETL pipeline.
-*   **Streaming Data:** The module's design allows for the handling of both finite datasets (e.g., files) and potentially infinite data streams.
-*   **Abstraction:** The ``DataSource`` abstract base class provides a common interface for working with different data sources, making the rest of the system agnostic to the specific source type.
-* **Raw Data:** Data returned from a `DataSource` are shallow dictionaries.
-* **Data Mapping:** `DataSource` objects can have mappings attached to them, that specify how to convert the raw data into facts.
-* **Schema Attachment**: `DataSource` objects can have a schema attached to them, that will cast the raw data into the correct types.
-* **Queue Based**: `DataSource` objects put `RawDatum` and `EndOfData` objects on a queue.
-
-Key Classes
------------
-
-1.  ``DataSource`` (Abstract Base Class)
-    --------------------------------------
-
-    *   **Purpose:** This is the abstract base class for all data sources. It defines the common interface that all concrete data source implementations must adhere to.
-    *   **Responsibilities:**
-        *   Defines a standard way to initialize a data source.
-        *   Provides an abstract ``rows`` method that subclasses must implement to yield data rows.
-        *   Manages a queue (``raw_input_queue``) for sending processed data to downstream components.
-        *   Handles the starting and stopping of data loading threads.
-        * Allows for the attachment of mappings.
-        * Allows for the attachment of a schema.
-        * Casts the row according to the schema.
-        * Maintains statistics about the number of messages received and sent.
-    *   **Key Methods:**
-        *   ``__init__(self, name: Optional[str] = None)``: Initializes the data source.
-            *   **Parameters**:
-                *   ``name`` (``Optional[str]``): An optional name for the data source.
-        *   ``rows(self) -> Generator[Dict[str, Any], None, None]``: An abstract method that must be implemented by subclasses to yield rows of data as dictionaries.
-        *   ``attach_queue(self, queue_obj: QueueGenerator) -> None``: Attaches a queue to the data source for sending data.
-            *   **Parameters**:
-                *   ``queue_obj`` (``QueueGenerator``): The queue object to attach.
-        * ``attach_schema(self, schema: Dict[str, str], dispatch_dict: Dict) -> DataSource``
-            * **Purpose**: Attach a schema to the data source.
-            * **Parameters**:
-                * `schema`: A dict where the key is a column name, and the value is a string referring to the desired type.
-                * `dispatch_dict`: a dict that maps the strings in the schema to callable types.
-        *   ``queue_rows(self) -> None``: Reads data from ``rows`` and puts it on the queue.
-        *   ``from_uri(cls, uri: str | ParseResult) -> "DataSource"``: A class method that acts as a factory for creating data sources from a URI.
-            *   **Parameters**:
-                *   ``uri`` (``str | ParseResult``): The URI of the data source.
-            *   **Returns**:
-                 * ``"DataSource"``: A concrete `DataSource` class.
-        *   ``cast_row(self, row: Dict[str, Any]) -> Dict[str, Any]``: Casts the row to the correct types specified in the schema.
-        * ``attach_mapping(self, data_source_mapping: DataSourceMapping | List[DataSourceMapping]) -> DataSource``:
-            * **Purpose**: Attach a mapping to the data source.
-            * **Parameters**:
-                * `data_source_mapping`: either a single mapping, or a list of mappings.
-        * ``__lt__(self, other: DataSource) -> DataSource``: Attach a mapping using the less than operator.
-        *  ``start(self) -> None``: Starts the data loading thread.
-        *   ``generate_raw_facts_from_row(self, row: Dict[str, Any]) -> Generator[AtomicFact, None, None]``: Generates raw facts from a row based on the attached mappings.
-        *  ``__repr__(self) -> str``: return a string representation of the object.
-    *   **Attributes:**
-        * ``raw_input_queue``: the queue where `RawDatum` and `EndOfData` objects are put.
-        * `started`: True if the data source has been started.
-        * `finished`: True if the data source has been finished.
-        * `loading_thread`: The thread that is loading the data.
-        * `message_counter`: A count of the messages that have been processed.
-        * `mappings`: the mappings for this data source.
-        * `name`: The name of this data source.
-        * `received_counter`: A count of the number of rows that have been read.
-        * `sent_counter`: A count of the number of rows that have been put on the queue.
-        * `started_at`: When this data source was started.
-        * `finished_at`: When this data source was finished.
-        * `halt`: True if this data source has been told to halt.
-        * `schema`: A schema to cast the row into the correct types.
-
-2. ``DataSourceMapping``
-    ---------------------
-    * **Purpose**: Define how to map raw data rows to facts.
-    * **Responsibilities**:
-        * Maintain the keys for attributes, labels, and relationships.
-        * Convert a single row into one or more facts.
-        * Distinguish between label mappings, attribute mappings, and relationship mappings.
-        * Add its resulting facts using the `+` operator.
-    * **Key Methods**:
-        * `process_against_raw_datum(self, row: Dict[str, Any]) -> Generator[AtomicFact, None, None]`
-            * **Purpose**: Return a generator of facts based on the row and the mapping.
-        * `__add__(self, row: dict[str, Any]) -> Generator[AtomicFact, None, None]`
-            * **Purpose**: Allow the use of the `+` operator to process the row against the mapping.
-    * **Attributes**:
-        * `attribute_key`: The key in the row that contains the attribute value.
-        * `identifier_key`: The key in the row that contains the node id.
-        * `label`: The label of the node.
-        * `attribute`: The attribute name.
-        * `source_key`: The key in the row that contains the source node.
-        * `target_key`: The key in the row that contains the target node.
-        * `source_label`: The label of the source node.
-        * `target_label`: The label of the target node.
-        * `relationship`: The relationship label.
-        * `is_attribute_mapping`: true if it is an attribute mapping.
-        * `is_label_mapping`: true if it is a label mapping.
-        * `is_relationship_mapping`: true if it is a relationship mapping.
-
-3.  ``FixtureDataSource`` (Concrete Implementation)
-    -----------------------------------------------
-
-    *   **Purpose:** A concrete ``DataSource`` implementation useful for testing. It reads data from an in-memory list of dictionaries.
-    *   **Responsibilities:**
-        *   Provides an easy way to define test data without relying on external files.
-        *   Can optionally hang, delay, or loop over its data for testing purposes.
-    *   **Key Methods:**
-        *   ``__init__(self, data: list[Dict[str, Any]], hang: Optional[bool] = False, delay: Optional[float] = 0, loop: Optional[bool] = False, **kwargs)``: Initializes the data source.
-            * **Parameters**:
-                * `data`: the in memory data.
-                * `hang`: true if this fixture should hang.
-                * `delay`: how long to delay between rows.
-                * `loop`: true if this fixture should loop through the data.
-                * `**kwargs`: other keyword arguments.
-        *   ``rows(self) -> Generator[Dict[str, Any], None, None]``: Yields rows from the in-memory data list.
-
-4.  ``CSVDataSource`` (Concrete Implementation)
-    ------------------------------------------
-
-    *   **Purpose:** A concrete ``DataSource`` implementation for reading data from CSV files.
-    *   **Responsibilities:**
-        *   Reads a CSV file and yields rows as dictionaries using the ``csv.DictReader``.
-    *   **Key Methods:**
-        *   ``__init__(self, uri: str | ParseResult, name: Optional[str] = None)``: Initializes the data source with a URI to a CSV file.
-            *   **Parameters**:
-                *   ``uri`` (``str | ParseResult``): The URI of the CSV file.
-                *   ``name`` (``Optional[str]``): An optional name for the data source.
-        *   ``rows(self) -> Generator[Dict[str, Any], None, None]``: Yields rows from the CSV file.
-
-5.  ``ParquetFileDataSource`` (Concrete Implementation)
-    --------------------------------------------------
-
-    *   **Purpose:** A concrete ``DataSource`` implementation for reading data from Parquet files.
-    *   **Responsibilities:**
-        *   Reads a Parquet file and yields rows as dictionaries using the ``pyarrow.parquet`` module.
-    *   **Key Methods:**
-        *   ``__init__(self, uri: str | ParseResult, name: Optional[str] = None)``: Initializes the data source with a URI to a Parquet file.
-            *   **Parameters**:
-                *   ``uri`` (``str | ParseResult``): The URI of the Parquet file.
-                *   ``name`` (``Optional[str]``): An optional name for the data source.
-        *   ``rows(self) -> Generator[Dict[str, Any], None, None]``: Yields rows from the Parquet file.
-
-Workflow
---------
-
-1.  **Initialization:** A ``DataSource`` object is created, usually using the ``from_uri`` factory method or by directly instantiating a concrete subclass.
-2.  **Queue Attachment:** A queue is attached to the data source using the ``attach_queue`` method.
-3. **Schema Attachment:** Optionally a schema is attached to the data source.
-4. **Mapping Attachment:** Optionally mappings are attached to the data source.
-5.  **Data Loading:** The ``queue_rows`` method is called, which starts reading data.
-6.  **Data Processing:** As data is read, it's placed on the queue as `RawDatum` objects. The `EndOfData` object is put on the queue when the data source is finished.
-7.  **Downstream Consumption:** Downstream components consume the data from the queue.
-
-Key Features
-------------
-
-*   **URI-Based:** The use of URIs allows for flexibility in specifying data source locations.
-*   **Generator Output:** The ``rows`` method uses a generator, making it suitable for handling large or streaming datasets.
-*   **Queue-Based Communication:** The use of a queue decouples the data source from downstream consumers, allowing for asynchronous processing.
-*   **Factory Pattern:** The ``from_uri`` method provides a convenient way to create data sources based on the URI scheme.
-* **Mapping**: The `DataSourceMapping` class makes it easy to define how to convert a row of raw data into one or more `Fact` objects.
-* **Schema**: The ability to attach a schema makes it easy to ensure that the data is of the correct type.
-* **Raw Data**: All `DataSource` objects return data as a shallow dictionary.
-
-Extensibility
--------------
-
-The module is designed to be extended:
-
-*   **New File Formats:** You can add support for new file formats by creating a new subclass of ``DataSource`` and implementing the ``rows`` method.
-*   **New Data Sources:** You can add support for new types of data sources (e.g., databases, APIs, message queues) by creating new subclasses of ``DataSource`` that handle the specifics of reading from those sources.
-
-Use Cases
----------
-
-*   **ETL Pipelines:** The module is fundamental for building ETL pipelines that ingest data from various sources, transform it, and load it into a target system.
-*   **Data Migration:** It can be used to read data from legacy systems and migrate it to new systems.
-*   **Data Analysis:** It can be used to read data from files or streams for analysis in other tools.
+The ``data_source.py`` module in the `pycypher` library defines the core classes for 
+ingesting data from various sources. It provides an abstract base class, 
+``DataSource``, and several concrete subclasses for reading data from different formats, 
+such as CSV and Parquet files.
 """
 
 from __future__ import annotations
@@ -385,6 +211,8 @@ class DataSource(ABC):  # pylint: disable=too-many-instance-attributes
                 RawDatum(data_source=self, row=row),
             )
             self.sent_counter += 1
+            if self.sent_counter > 1000:  # for testing
+                break
             if self.halt:
                 LOGGER.debug("DataSource %s is halting", self.name)
                 break

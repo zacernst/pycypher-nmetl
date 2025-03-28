@@ -5,139 +5,6 @@ Session Class Documentation
 The ``Session`` class is the central orchestrator within the ``pycypher``
 library. It manages the entire data processing pipeline, from ingesting raw data
 to executing triggers based on facts and constraints.
-
-Overall Purpose
----------------
-
-The ``Session`` class serves as the "brain" of the ``pycypher`` system. Its
-primary responsibilities include:
-
-1.  **Data Ingestion Management:** Handles the intake of raw data from various
-``DataSource`` objects.
-2.  **Fact Generation Orchestration:** Coordinates the transformation of raw
-data into ``AtomicFact`` objects.
-3.  **Fact Storage and Retrieval:** Houses the ``FactCollection``, which is the
-central repository for storing and querying facts.
-4.  **Trigger Management:** Registers and manages ``CypherTrigger`` objects,
-which define reactive behaviors.
-5.  **Constraint Satisfaction:** Monitors facts and triggers, ensuring that
-constraints defined by the triggers are met.
-6.  **Trigger Execution:** Executes the associated function of a trigger when
-its constraints are satisfied.
-7.  **Pipeline Orchestration:** Manages the flow of data through multiple
-processing queues and threads.
-8.  **Monitoring:** Tracks the status of queues, threads, and data sources,
-providing performance insights.
-
-Key Components
---------------
-
-1.  **Data Sources (``data_sources``)**
-
-    *   ``Session`` manages a list of ``DataSource`` objects.
-    *   ``DataSource`` objects are responsible for reading raw data from
-        external sources (e.g., CSV files, databases).
-    *   ``Session`` starts each ``DataSource``'s loading thread.
-    *   When a data source is finished, it puts an ``EndOfData`` object on the
-        ``raw_input_queue``.
-
-2.  **Fact Collection (``fact_collection``)**
-
-    *   ``Session`` contains a ``FactCollection`` instance.
-    *   The ``FactCollection`` stores all the generated ``AtomicFact`` objects.
-    *   It provides methods for querying and retrieving facts.
-    *   It also maintains an inventory of all node labels and their attributes.
-
-3.  **Triggers (``trigger_dict``)**
-
-    *   ``Session`` uses a dictionary (``trigger_dict``) to store ``CypherTrigger`` objects.
-    *   Triggers are defined using the ``@session.trigger`` decorator.
-    *   Each trigger specifies:
-
-        *   A Cypher query that defines the constraints.
-        *   A Python function to execute when the constraints are met.
-        *   The variable it is monitoring, and the attribute it is setting.
-
-4.  **Queues and Queue Processors**
-
-    *   ``Session`` uses queues to manage data and facts:
-
-        *   ``raw_input_queue``: Receives raw data rows from data sources.
-        *   ``fact_generated_queue``: Receives new ``AtomicFact`` objects.
-        *   ``check_fact_against_triggers_queue``: Receives facts to check against triggers.
-        *   ``triggered_lookup_processor_queue``: Receives information about
-            which triggers need to be executed.
-
-    *   It manages queue processors that operate on these queues:
-
-        *   ``RawDataProcessor``: Converts raw data rows into facts and sends them to ``fact_generated_queue``.
-        *   ``FactGeneratedQueueProcessor``: Inserts new facts into the
-            ``FactCollection``.
-        *   ``CheckFactAgainstTriggersQueueProcessor``: Checks new facts against
-             trigger constraints and puts the matching trigger/sub information on
-             the ``triggered_lookup_processor_queue``.
-        *   ``TriggeredLookupProcessor``: Executes the trigger and generates new
-            facts as a result.
-
-5. **Threads**
-    * `Session` is responsible for starting all the threads.
-    * `Session` contains a monitor thread.
-
-6.  **Monitoring (``monitor``, ``_monitor``)**
-
-    *   ``Session`` has a monitoring system that tracks the status of queues,
-        threads, and data sources.
-    *   It provides performance insights (e.g., message rates, queue sizes).
-    *   It also detects errors and halts the process if an exception occurs.
-
-Workflow Overview
------------------
-
-1.  **Data Ingestion:** Data sources load data and send it to the ``raw_input_queue``.
-2.  **Raw Data Processing:** The ``RawDataProcessor`` reads data from
-``raw_input_queue``, converts it into facts, and sends them to
-``fact_generated_queue``.
-3.  **Fact Storage:** The ``FactGeneratedQueueProcessor`` adds the facts to the
-``fact_collection`` and sends them to the ``check_fact_against_triggers_queue``.
-4.  **Constraint Checking:** The ``CheckFactAgainstTriggersQueueProcessor``
-reads facts from ``check_fact_against_triggers_queue``, checks them against
-trigger constraints, and if there's a match, puts the trigger and sub
-information on the ``triggered_lookup_processor_queue``.
-5.  **Triggered Lookup Processor**: The ``TriggeredLookupProcessor`` reads the
-trigger information and sub information, looks up information about the nodes in
-the sub information, and runs the trigger's function on that information.
-6.  **Trigger Execution:** If a trigger's constraints are satisfied, its
-function is executed, potentially generating new facts.
-7.  **Repeat:** New facts may satisfy other triggers, leading to a chain
-reaction.
-8. **Monitoring**: `Session`'s monitor thread keeps track of all of this, and
-prints out information on the queues, and threads.
-
-Key Methods
------------
-
-*   ``__init__``: Initializes the ``Session`` object, creating queues,
-    processors, and other components.
-*   ``__call__``: Starts the threads, and optionally blocks until they are finished.
-*   ``start_threads``: Starts all threads in the pipeline.
-*   ``halt``: Safely stops all threads.
-*   ``block_until_finished``: Blocks until all threads have finished. Re-raises
-    exceptions from the threads.
-*   ``monitor``, ``_monitor``: Monitors system status and prints information.
-*   ``attach_data_source``: Adds a ``DataSource`` to the pipeline.
-*   ``trigger``: Decorator for registering triggers.
-*   ``rows_by_node_label``: passes this call to the fact collection.
-*   ``node_label_attribute_inventory``: passes this call to the fact collection.
-*   ``__iadd__``: Enables the ``+=`` operator to add either a ``FactCollection``
-    or a ``DataSource``.
-
-Summary
--------
-
-The ``Session`` class is the central hub of the ``pycypher`` library. It
-orchestrates data processing, managing data ingestion, fact generation, fact
-storage, trigger management, and constraint satisfaction. It handles reactive
-behaviors within a graph-like data structure.
 """
 
 from __future__ import annotations
@@ -153,12 +20,12 @@ from hashlib import md5
 from typing import Any, Dict, Generator, Iterable, List, Optional, Type
 
 from nmetl.config import MONITOR_LOOP_DELAY  # pylint: disable=no-name-in-module
+from nmetl.data_asset import DataAsset
 from nmetl.data_source import DataSource
 from nmetl.exceptions import (
     BadTriggerReturnAnnotationError,
     UnknownDataSourceError,
 )
-from nmetl.data_asset import DataAsset
 from nmetl.helpers import QueueGenerator
 from nmetl.message_types import EndOfData
 from nmetl.queue_processor import (
@@ -220,10 +87,10 @@ class Session:  # pylint: disable=too-many-instance-attributes
         self.raw_input_queue = self.queue_class(
             session=self, name="RawInput", **self.queue_options
         )
-        self.data_assets = {}
-        if data_assets:
-            for data_asset in data_assets:
-                self.register_data_asset(data_asset)
+        self.data_assets = data_assets or []
+        self.data_asset_names = [
+            data_asset.name for data_asset in self.data_assets
+        ]
 
         self.fact_generated_queue = self.queue_class(
             session=self, name="FactGenerated", **self.queue_options
@@ -278,11 +145,6 @@ class Session:  # pylint: disable=too-many-instance-attributes
         self.start_threads()
         if block:
             self.block_until_finished()
-    
-    def register_data_asset(self, data_asset: DataAsset) -> None:
-        """Register a data asset with the session."""
-        LOGGER.info("Registering data asset %s", data_asset.name)
-        self.data_assets[data_asset.name] = data_asset
 
     # def attach_new_columns_to_data_sources(self):
     #     """Attach new columns to data sources."""
@@ -511,7 +373,7 @@ class Session:  # pylint: disable=too-many-instance-attributes
         """wraps the fact_collection method"""
         return self.fact_collection.node_label_attribute_inventory()
 
-    def trigger(self, arg1):
+    def trigger(self, arg1: str):
         """Decorator that registers a trigger with a Cypher string and a function."""
 
         def decorator(func):
@@ -554,6 +416,7 @@ class Session:  # pylint: disable=too-many-instance-attributes
                 if any(
                     param
                     not in trigger.cypher.parse_tree.cypher.return_clause.variables
+                    and param not in self.data_asset_names
                     for param in parameter_names
                 ):
                     raise BadTriggerReturnAnnotationError()
@@ -564,7 +427,8 @@ class Session:  # pylint: disable=too-many-instance-attributes
                     len(node_relationship_args) != 3
                 ):  # This might be impossible path
                     raise BadTriggerReturnAnnotationError(
-                        "NodeRelationship annotation must have a return annotation with three arguments."
+                        "NodeRelationship annotation must have a return annotation "
+                        "with three arguments."
                     )
 
                 source_variable_name = node_relationship_args[
@@ -599,7 +463,8 @@ class Session:  # pylint: disable=too-many-instance-attributes
 
             else:
                 raise ValueError(
-                    "Trigger function must have a return annotation of type VariableAttribute or NodeRelationship"
+                    "Trigger function must have a return annotation of type "
+                    "VariableAttribute or NodeRelationship"
                 )
 
             self.trigger_dict[
@@ -609,6 +474,22 @@ class Session:  # pylint: disable=too-many-instance-attributes
             return wrapper
 
         return decorator
+
+    def register_data_asset(self, data_asset: DataAsset) -> None:
+        """Register a DataAsset with the session."""
+        if not isinstance(data_asset, DataAsset):
+            raise ValueError(f"Expected a DataAsset, got {type(data_asset)}")
+        self.data_assets.append(data_asset)
+        self.data_asset_names.append(data_asset.name)
+        LOGGER.debug("Registered data asset %s", data_asset.name)
+
+    def get_data_asset_by_name(self, name: str) -> DataAsset:
+        """Get a DataAsset by name."""
+        for data_asset in self.data_assets:
+            if data_asset.name == name:
+                return data_asset
+        LOGGER.error("Data asset %s not found", name)
+        raise ValueError(f"Data asset {name} not found")
 
     def new_column(
         self,

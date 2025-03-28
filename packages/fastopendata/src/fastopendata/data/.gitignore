@@ -1,3 +1,4 @@
+*
 /census_pus.zip
 /csv_pus.zip
 /psam_pusa.csv
@@ -5,3 +6,10 @@
 /psam_pus.csv
 /csv_pus_5_year.zip
 /us-latest.osm.pbf
+/united_states_nodes.csv
+/svi_county.csv
+/state_county_tract_puma.csv
+/combined.shp
+/psam_p.csv
+/psam_h.csv
+/entities_with_lat_long.json.gz

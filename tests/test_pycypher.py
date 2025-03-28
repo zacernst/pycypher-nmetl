@@ -1,5 +1,5 @@
 """All the tests."""
-# pylint: disable=missing-function-docstring,protected-access,redefined-outer-name,too-many-lines
+# pylint: disable=invalid-name,missing-function-docstring,disallowed-name,protected-access,unused-argument,unused-import,redefined-outer-name,too-many-lines
 
 import collections
 import datetime
@@ -16,8 +16,9 @@ from unittest.mock import Mock, patch
 import networkx as nx
 import pytest
 import rich  # pylint: disable=unused-import
-from fixtures import empty_session  # pylint: disable=unused-import
 from fixtures import (
+    data_asset_1,
+    empty_session,
     fact_collection_0,
     fact_collection_1,
     fact_collection_2,
@@ -35,8 +36,10 @@ from fixtures import (
     raw_data_processor,
     session_with_aggregation_fixture,
     session_with_city_state_fixture,
+    session_with_data_asset,
     session_with_three_triggers,
     session_with_trigger,
+    session_with_trigger_using_data_asset,
     session_with_two_triggers,
     shapes_session,
     squares_csv_data_source,
@@ -48,11 +51,20 @@ from nmetl.configuration import (  # pylint: disable=unused-import
     SessionConfig,
     load_session_config,
 )
-from nmetl.data_source import CSVDataSource, DataSource, DataSourceMapping, NewColumn
-from nmetl.exceptions import BadTriggerReturnAnnotationError, UnknownDataSourceError
+from nmetl.data_source import (
+    CSVDataSource,
+    DataSource,
+    DataSourceMapping,
+    NewColumn,
+)
+from nmetl.exceptions import (
+    BadTriggerReturnAnnotationError,
+    UnknownDataSourceError,
+)
 from nmetl.helpers import QueueGenerator, ensure_uri
 from nmetl.message_types import EndOfData, RawDatum
 from nmetl.session import NewColumnConfig, Session
+from nmetl.data_asset import DataAsset
 from nmetl.trigger import (
     NodeRelationship,
     NodeRelationshipTrigger,
@@ -147,7 +159,7 @@ def test_trigger_in_queue_processor(
     @empty_session.trigger(
         "MATCH (n:Person {age: 25}) WITH n.Identifier AS person_name RETURN person_name"
     )
-    def test_function(person_name) -> VariableAttribute["n", "thingy"]:  # type: ignore
+    def test_function(person_name) -> VariableAttribute["n", "thingy"]:  # pylint: disable=unused-argument  # type:ignore:w
         return True
 
     fixture_data_source_0.attach_mapping(fixture_0_data_source_mapping_list)
@@ -1621,7 +1633,8 @@ def test_transform_solutions_in_with_clause(
         "RETURN n.foobar"
     )
     result = CypherParser(cypher)
-    aggregated_results = result.parse_tree.cypher.match_clause.with_clause.transform_solutions_by_aggregations(
+    aggregated_results = result.parse_tree.cypher.match_clause.with_clause.\
+        transform_solutions_by_aggregations(
         fact_collection_6
     )
     expected_results = [
@@ -1645,7 +1658,8 @@ def test_transform_solutions_in_with_clause_no_solutions(
         "RETURN n.foobar"
     )
     result = CypherParser(cypher)
-    aggregated_results = result.parse_tree.cypher.match_clause.with_clause.transform_solutions_by_aggregations(
+    aggregated_results = result.parse_tree.cypher.match_clause.with_clause.\
+        transform_solutions_by_aggregations(
         fact_collection_6
     )
     expected_results = []
@@ -1663,7 +1677,8 @@ def test_transform_solutions_in_with_clause_multiple_solutions(
         "RETURN n.foobar"
     )
     result = CypherParser(cypher)
-    aggregated_results = result.parse_tree.cypher.match_clause.with_clause.transform_solutions_by_aggregations(
+    aggregated_results = result.parse_tree.cypher.match_clause.with_clause.\
+        transform_solutions_by_aggregations(
         fact_collection_6
     )
     expected_results = [
@@ -3229,7 +3244,9 @@ def test_trigger_decorator_function_has_return_variable(empty_session):
     assert list(empty_session.trigger_dict.values())[0].variable_set == "n"
 
 
-def test_trigger_decorator_function_has_variable_attribute_trigger_type(empty_session):
+def test_trigger_decorator_function_has_variable_attribute_trigger_type(
+    empty_session,
+):
     @empty_session.trigger("MATCH (n) RETURN n.foo")
     def test_function(n) -> VariableAttribute["n", "bar"]:  # type: ignore
         return 1
@@ -3257,7 +3274,7 @@ def test_relationship_trigger_decorator_function_has_return_target_variable(
     @empty_session.trigger(
         "MATCH (n)-[m:relationshipthingy]->(m) WITH n.foo AS foo, m.bar AS bar RETURN foo, bar"
     )
-    def test_function(foo, bar) -> NodeRelationship["n", "relationshipthingy", "m"]:  # type: ignore
+    def test_function(foo, bar) -> NodeRelationship["n", "relationshipthingy", "m"]:  # pylint: disable=unused-argument
         return 1
 
     assert list(empty_session.trigger_dict.values())[0].target_variable == "m"
@@ -4283,7 +4300,6 @@ def test_trigger_function_on_relationship_match(session_with_trigger):
 def test_trigger_function_on_relationship_match_insert_results(
     session_with_trigger,
 ):
-    # LOGGER.setLevel(logging.DEBUG)
     session_with_trigger.start_threads()
     session_with_trigger.block_until_finished()
 
@@ -4573,13 +4589,19 @@ def test_parser_gets_aggregated_solutions_from_fact_collection(
 def test_evaluate_call_on_return_with_alias(
     fact_collection_squares_circles,
 ):
-    cypher = "MATCH (s:Square)-[my_relationship:contains]->(c:Circle) WITH s.side_length AS side_length RETURN side_length"
+    cypher = (
+        "MATCH (s:Square)-[my_relationship:contains]->(c:Circle) "
+        "WITH s.side_length AS side_length RETURN side_length"
+    )
     parser = CypherParser(cypher)
     parser.parse_tree.get_return_clause()._evaluate(fact_collection_squares_circles)
 
 
 def test_test_gather_variables_on_return_with_alias():
-    cypher = "MATCH (s:Square)-[my_relationship:contains]->(c:Circle) RETURN s.side_length AS side_length"
+    cypher = (
+        "MATCH (s:Square)-[my_relationship:contains]->(c:Circle) "
+        "RETURN s.side_length AS side_length"
+    )
     parser = CypherParser(cypher)
     assert parser.parse_tree.get_return_clause().gather_variables() == ["side_length"]
 
@@ -4614,7 +4636,10 @@ def test_aggregation_trigger_in_session_inserts_facts(
 
 
 def test_with_clause_records_variables(fact_collection_squares_circles):
-    cypher = "MATCH (s:Square)-[my_relationship:contains]->(c:Circle) WITH s.length AS length RETURN length"
+    cypher = (
+        "MATCH (s:Square)-[my_relationship:contains]->(c:Circle) "
+        "WITH s.length AS length RETURN length"
+    )
     parser = CypherParser(cypher)
     out = parser.parse_tree.cypher.match_clause.with_clause._evaluate(
         fact_collection_squares_circles
@@ -4699,7 +4724,9 @@ def test_ingestion_with_new_column_annotation(
     session_with_city_state_fixture.block_until_finished()
     assert (
         FactNodeHasAttributeWithValue(
-            node_id="City::Seattle__Washington", attribute="population", value=652405
+            node_id="City::Seattle__Washington",
+            attribute="population",
+            value=652405,
         )
         in session_with_city_state_fixture.fact_collection
     )
@@ -4743,11 +4770,14 @@ def test_trigger_decorator_function_insert_relationship_labels(
     session_with_trigger,
 ):
     @session_with_trigger.trigger(
-        "MATCH (s:Square)-[r:contains]->(c:Circle) WITH s.side_length AS side_length, c.radius AS radius RETURN side_length, radius"
+        "MATCH (s:Square)-[r:contains]->(c:Circle) "
+        "WITH s.side_length AS side_length, c.radius AS radius "
+        "RETURN side_length, radius"
     )
     def test_function(
-        side_length, radius
-    ) -> NodeRelationship["c", "contained_by", "s"]:  # type: ignore
+        side_length,
+        radius,  # pylint: disable=unused-argument
+    ) -> NodeRelationship["c", "contained_by", "s"]:
         return True
 
     session_with_trigger.start_threads()
@@ -4808,11 +4838,14 @@ def test_trigger_decorator_function_insert_relationship_source_nodes(
     session_with_trigger,
 ):
     @session_with_trigger.trigger(
-        "MATCH (s:Square)-[r:contains]->(c:Circle) WITH s.side_length AS side_length, c.radius AS radius RETURN side_length, radius"
+        "MATCH (s:Square)-[r:contains]->(c:Circle) "
+        "WITH s.side_length AS side_length, c.radius AS radius "
+        "RETURN side_length, radius"
     )
     def test_function(
-        side_length, radius
-    ) -> NodeRelationship["c", "contained_by", "s"]:  # type: ignore
+        side_length,
+        radius,  # pylint: disable=unused-argument
+    ) -> NodeRelationship["c", "contained_by", "s"]:
         return True
 
     session_with_trigger.start_threads()
@@ -4852,7 +4885,9 @@ def test_trigger_decorator_function_insert_relationship_target_nodes(
     session_with_trigger,
 ):
     @session_with_trigger.trigger(
-        "MATCH (s:Square)-[r:contains]->(c:Circle) WITH s.side_length AS side_length, c.radius AS radius RETURN side_length, radius"
+        "MATCH (s:Square)-[r:contains]->(c:Circle) "
+        "WITH s.side_length AS side_length, c.radius AS radius "
+        "RETURN side_length, radius"
     )
     def test_function(
         side_length, radius
@@ -4896,7 +4931,9 @@ def test_trigger_decorator_function_insert_no_extra_relationship_labels(
     session_with_trigger,
 ):
     @session_with_trigger.trigger(
-        "MATCH (s:Square)-[r:contains]->(c:Circle) WITH s.side_length AS side_length, c.radius AS radius RETURN side_length, radius"
+        "MATCH (s:Square)-[r:contains]->(c:Circle) "
+        "WITH s.side_length AS side_length, c.radius AS radius "
+        "RETURN side_length, radius"
     )
     def test_function(
         side_length, radius
@@ -4919,7 +4956,9 @@ def test_trigger_decorator_function_insert_no_extra_relationship_source_nodes(
     session_with_trigger,
 ):
     @session_with_trigger.trigger(
-        "MATCH (s:Square)-[r:contains]->(c:Circle) WITH s.side_length AS side_length, c.radius AS radius RETURN side_length, radius"
+        "MATCH (s:Square)-[r:contains]->(c:Circle) "
+        "WITH s.side_length AS side_length, c.radius AS radius "
+        "RETURN side_length, radius"
     )
     def test_function(
         side_length, radius
@@ -4943,7 +4982,9 @@ def test_trigger_decorator_function_insert_no_extra_relationship_target_nodes(
     session_with_trigger,
 ):
     @session_with_trigger.trigger(
-        "MATCH (s:Square)-[r:contains]->(c:Circle) WITH s.side_length AS side_length, c.radius AS radius RETURN side_length, radius"
+        "MATCH (s:Square)-[r:contains]->(c:Circle) "
+        "WITH s.side_length AS side_length, c.radius AS radius "
+        "RETURN side_length, radius"
     )
     def test_function(
         side_length, radius
@@ -4961,3 +5002,34 @@ def test_trigger_decorator_function_insert_no_extra_relationship_target_nodes(
         ]
     )
     assert num_facts == 14
+
+
+def test_data_asset_has_attributes(data_asset_1):
+    assert data_asset_1.name == "data_asset_1"
+    assert isinstance(data_asset_1.obj, dict)
+    assert data_asset_1.obj["foo"] == "bar"
+
+
+def test_register_data_asset(session_with_data_asset):
+    assert "data_asset_1" in session_with_data_asset.data_asset_names
+    assert isinstance(
+        session_with_data_asset.get_data_asset_by_name("data_asset_1"),
+        DataAsset,
+    )
+    assert isinstance(
+        session_with_data_asset.get_data_asset_by_name("data_asset_1").obj, dict
+    )
+
+
+def test_trigger_function_can_access_data_asset(
+    session_with_trigger_using_data_asset,
+):
+    LOGGER.setLevel(logging.INFO)
+    session_with_trigger_using_data_asset.start_threads()
+    session_with_trigger_using_data_asset.block_until_finished()
+    assert (
+        FactNodeHasAttributeWithValue(
+            node_id="Square::squarename3", attribute="foo", value="bar"
+        )
+        in session_with_trigger_using_data_asset.fact_collection
+    )

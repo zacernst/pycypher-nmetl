@@ -197,3 +197,5 @@ fontawesome-*.*
 environment.pickle
 .buildinfo
 test.py
+packages/fastopendata/src/fastopendata/acs_pums_2023_data_dictionary.json
+packages/nmetl/src/nmetl/queue_processor.py.bak

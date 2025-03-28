@@ -1,0 +1,28 @@
+fact_collection: null
+fact_collection_class: null
+run_monitor: true
+logging_level: INFO
+
+data_sources:
+- name: city_table
+  uri: file://{MONOREPO_BASE_DIR}/packages/fastopendata/src/fastopendata/data/state_county_tract_puma.csv
+  mappings:
+  - attribute_key: STATEFP
+    identifier_key: STATEFP
+    attribute: state_fips
+    label: State
+  - attribute_key: state
+    identifier_key: city_state
+    attribute: state_name
+    label: City
+  - attribute_key: population
+    identifier_key: city_state
+    attribute: population
+    label: City
+  - identifier_key: city_state
+    label: City
+  data_types:
+    city_name: NonEmptyString
+    state_name: NonEmptyString
+    population: Integer
+    city_state: NonEmptyString
