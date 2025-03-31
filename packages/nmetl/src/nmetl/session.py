@@ -135,6 +135,8 @@ class Session:  # pylint: disable=too-many-instance-attributes
             status_queue=self.status_queue,
         )
 
+        self.attribute_metadata_dict = {}
+
         # Instantiate threads
         if self.run_monitor:
             self.monitor_thread = threading.Thread(
@@ -151,6 +153,23 @@ class Session:  # pylint: disable=too-many-instance-attributes
     #     for new_column in self.new_column_dict.values():
     #         data_source = self.data_source_by_name(new_column.data_source_name)
     #         data_source.new_columns[new_column.new_column_name] = new_column
+
+    def attribute_table(self):
+        '''Print a table showing the attributes and their descriptions.'''
+        console = Console()
+        
+        table = Table(title="Attributes")
+
+        table.add_column("Name", justify="right", style="cyan", no_wrap=True)
+        table.add_column("Description", style="green")
+
+        for attribute_metadata in self.attribute_metadata_dict.values():
+            table.add_row(
+                attribute_metadata.attribute_name,
+                attribute_metadata.description,
+            )
+
+        console.print(table)
 
     def start_threads(self):
         """Start the threads."""

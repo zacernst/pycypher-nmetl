@@ -2,6 +2,12 @@
 requires = [ "hatchling>=1.24.2", "hatch-vcs>=0.3.0",]
 build-backend = "hatchling.build"
 
+# Exclude data directory from build
+[tool.hatch.build]
+exclude = [
+ "raw_data",
+]
+
 [project]
 name = "fastopendata"
 version = "0.0.1"

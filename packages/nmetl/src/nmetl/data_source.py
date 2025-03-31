@@ -2,9 +2,9 @@
 DataSource Module (data_source.py)
 ==================================
 
-The ``data_source.py`` module in the `pycypher` library defines the core classes for 
-ingesting data from various sources. It provides an abstract base class, 
-``DataSource``, and several concrete subclasses for reading data from different formats, 
+The ``data_source.py`` module in the `pycypher` library defines the core classes for
+ingesting data from various sources. It provides an abstract base class,
+``DataSource``, and several concrete subclasses for reading data from different formats,
 such as CSV and Parquet files.
 """
 
@@ -211,7 +211,7 @@ class DataSource(ABC):  # pylint: disable=too-many-instance-attributes
                 RawDatum(data_source=self, row=row),
             )
             self.sent_counter += 1
-            if self.sent_counter > 1000:  # for testing
+            if self.sent_counter > 100:  # for testing
                 break
             if self.halt:
                 LOGGER.debug("DataSource %s is halting", self.name)

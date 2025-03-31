@@ -6,6 +6,7 @@ It provides an abstract base class, ``QueueProcessor``, and concrete
 implementations for specific tasks in the data processing pipeline.
 
 """
+
 from __future__ import annotations
 
 import datetime

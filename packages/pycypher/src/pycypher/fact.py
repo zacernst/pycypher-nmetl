@@ -2,9 +2,9 @@
 Fact Module Documentation (fact.py)
 ==================================
 
-The ``fact.py`` module within the ``pycypher`` library defines the core classes for 
-representing and managing "facts" within a graph-like data structure. Facts are 
-atomic pieces of information about nodes, relationships, and their attributes. 
+The ``fact.py`` module within the ``pycypher`` library defines the core classes for
+representing and managing "facts" within a graph-like data structure. Facts are
+atomic pieces of information about nodes, relationships, and their attributes.
 """
 
 from __future__ import annotations

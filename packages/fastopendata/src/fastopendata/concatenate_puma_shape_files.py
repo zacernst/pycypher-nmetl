@@ -42,12 +42,12 @@ if __name__ == "__main__":
     SHAPE_FILES = [
         filename
         for filename in os.listdir(DATA_DIR)
-        if filename.endswith(".shp")
+        if 'puma' in filename and filename.endswith(".shp")
     ]
     LOGGER.info("Concatenating shapefiles...")
     concatenate_shapefiles(
         SHAPE_FILES,
         DATA_DIR,
-        DATA_DIR + "/combined.shp",
-        columns=["BLKGRPCE", "GEOID", "geometry"],
+        DATA_DIR + "/puma_combined.shp",
+        columns=["PUMA20", "GEOID", "geometry"],
     )

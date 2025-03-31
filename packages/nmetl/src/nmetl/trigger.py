@@ -42,6 +42,23 @@ class NodeRelationship(Protocol[SourceVariable, Attribute, TargetVariable]):
 
 
 @dataclass
+class AttributeMetadata:
+    """Metadata about the attribute."""
+
+    function_name: Optional[str]
+    attribute_name: Optional[str]
+    description: Optional[str]
+
+
+@dataclass
+class RelationshipMetadata:
+    """Metadata about the relationship."""
+
+    name: Optional[str]
+    description: Optional[str]
+
+
+@dataclass
 class CypherTrigger(ABC):  # pylint: disable=too-many-instance-attributes
     """
     We check the ``Fact`` and ``Constraint`` objects to see if they
@@ -125,7 +142,7 @@ class NodeRelationshipTrigger(CypherTrigger):
 class VariableAttributeTrigger(CypherTrigger):
     """For setting attributes"""
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-arguments,too-many-positional-arguments
         self,
         function: Optional[Callable] = None,
         cypher_string: Optional[str] = None,
@@ -144,6 +161,17 @@ class VariableAttributeTrigger(CypherTrigger):
         self.attribute_set: Optional[str] = attribute_set
         self.is_relationship_trigger = False
         self.is_attribute_trigger = True
+
+        if function.__doc__:
+            attribute_metadata = AttributeMetadata(
+                attribute_name=attribute_set,
+                function_name=function.__name__,
+                description=function.__doc__,
+            )
+
+            self.session.attribute_metadata_dict[
+                self.attribute_set  # should be name of attribute
+            ] = attribute_metadata
 
     def __hash__(self):
         return hash(

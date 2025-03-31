@@ -3,34 +3,35 @@ name = "pycypher-nmetl"
 version = "0.0.1"
 requires-python = ">=3.12"
 dependencies = [
- "pytest-timeout==2.3.1",
- "gitpython==3.1.44",
- "pyfiglet==1.0.2",
- "hatch==1.12.0",
- "hatchling==1.25",
- "isort>=5.13.2,<6.0.0",
- "foundationdb==7.3.63",
- "networkx==3.4.2,<4.0.0",
- "pip-tools>=7.4.1,<8.0.0",
- "ply>=3.11,<4.0.0",
- "pyarrow>=17.0.0,<18.0.0",
- "pydantic>=2.9.2,<3.0.0",
- "pytest-cov>=6.0.0,<7.0.0",
- "pytest-mock>=3.14.0,<4.0.0",
- "pytest-unordered==0.6.1,<1.0.0",
- "pytest-xdist>=3.6.1,<4.0.0",
- "pytest>=8.3.2,<9.0.0",
- "python-constraint>=1.4.0,<2.0.0",
- "rich>=13.8.0,<14.0.0",
- "ruff>=0.6.3,<1.0.0",
- "sphinx-autoapi==3.3.1,<4.0.0",
- "sphinx-autodocgen==1.3",
- "sphinx-rtd-theme==2.0.0",
- "sphinx>=5.0.2,<9.0.0",
- "toml>=0.10.2,<1.0.0",
- "uv>=0.4.1,<1.0.0",
- "dvc>=3.59.1",
- "geopandas>=1.0.1",
+    "pytest-timeout==2.3.1",
+    "gitpython==3.1.44",
+    "pyfiglet==1.0.2",
+    "hatch==1.12.0",
+    "hatchling==1.25",
+    "isort>=5.13.2,<6.0.0",
+    "foundationdb==7.3.63",
+    "networkx==3.4.2,<4.0.0",
+    "pip-tools>=7.4.1,<8.0.0",
+    "ply>=3.11,<4.0.0",
+    "pyarrow>=17.0.0,<18.0.0",
+    "pydantic>=2.9.2,<3.0.0",
+    "pytest-cov>=6.0.0,<7.0.0",
+    "pytest-mock>=3.14.0,<4.0.0",
+    "pytest-unordered==0.6.1,<1.0.0",
+    "pytest-xdist>=3.6.1,<4.0.0",
+    "pytest>=8.3.2,<9.0.0",
+    "python-constraint>=1.4.0,<2.0.0",
+    "rich>=13.8.0,<14.0.0",
+    "ruff>=0.6.3,<1.0.0",
+    "sphinx-autoapi==3.3.1,<4.0.0",
+    "sphinx-autodocgen==1.3",
+    "sphinx-rtd-theme==2.0.0",
+    "sphinx>=5.0.2,<9.0.0",
+    "toml>=0.10.2,<1.0.0",
+    "uv>=0.4.1,<1.0.0",
+    "dvc>=3.59.1",
+    "geopandas>=1.0.1",
+    "osmium>=4.0.2",
 ]
 
 [build-system]
@@ -44,5 +45,22 @@ pycypher = { workspace = true }
 members = ["packages/*"]
 
 [tool.ruff]
-[[lint]]
 line-length = 80
+
+[tool.hatch.build.targets.wheel]
+universal = true
+[tool.hatch.build.targets.sdist]
+formats = ["zip"]
+[tool.hatch.build]
+include = [
+    "README.md",
+    "LICENSE",
+    "pyproject.toml",
+    "packages/pycypher/**/*.py",
+    "packages/pycypher/**/*.txt",
+    "packages/pycypher/**/*.json",
+    "packages/pycypher/**/*.yml",
+    "packages/pycypher/**/*.yaml",
+    "packages/pycypher/**/*.csv",
+    "packages/pycypher/**/*.parquet",
+]

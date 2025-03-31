@@ -5,7 +5,7 @@ logging_level: DEBUG
 
 data_sources:
 - name: state_county_tract_puma
-  uri: file://{MONOREPO_BASE_DIR}/packages/fastopendata/src/fastopendata/data/state_county_tract_puma.csv
+  uri: file://{MONOREPO_BASE_DIR}/packages/fastopendata/raw_data/state_county_tract_puma.csv
   mappings:
   - identifier_key: STATEFP
     label: State
@@ -35,1448 +35,1448 @@ data_sources:
     COUNTYFP: NonEmptyString
     TRACTCE: NonEmptyString
 
-#- name: acs_2023_microdata_housing
-#  uri: file://{MONOREPO_BASE_DIR}/packages/fastopendata/src/fastopendata/data/psam_2023_housing.csv
-#  mappings:
-#  - attribute_key: SERIALNO
-#    identifier_key: SERIALNO
-#    attribute: serial_number
-#    label: PSAM_2023_Housing
-#  - attribute_key: RT
-#    identifier_key: SERIALNO
-#    attribute: RT
-#    label: PSAM_2023_Individual
-#  - attribute_key: DIVISION
-#    identifier_key: SERIALNO
-#    attribute: DIVISION
-#    label: PSAM_2023_Housing
-#  - attribute_key: SPORDER
-#    identifier_key: SERIALNO
-#    attribute: SPORDER
-#    label: PSAM_2023_Housing
-#  - attribute_key: PUMA
-#    identifier_key: SERIALNO
-#    attribute: PUMA
-#    label: PSAM_2023_Housing
-#  - attribute_key: REGION
-#    identifier_key: SERIALNO
-#    attribute: REGION
-#    label: PSAM_2023_Housing
-#  - attribute_key: STATE
-#    identifier_key: SERIALNO
-#    attribute: STATE
-#    label: PSAM_2023_Housing
-#  - attribute_key: ADJINC
-#    identifier_key: SERIALNO
-#    attribute: ADJINC
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP
-#    identifier_key: SERIALNO
-#    attribute: PWGTP
-#    label: PSAM_2023_Housing
-#  - attribute_key: AGEP
-#    identifier_key: SERIALNO
-#    attribute: AGEP
-#    label: PSAM_2023_Housing
-#  - attribute_key: CIT
-#    identifier_key: SERIALNO
-#    attribute: CIT
-#    label: PSAM_2023_Housing
-#  - attribute_key: CITWP
-#    identifier_key: SERIALNO
-#    attribute: CITWP
-#    label: PSAM_2023_Housing
-#  - attribute_key: COW
-#    identifier_key: SERIALNO
-#    attribute: COW
-#    label: PSAM_2023_Housing
-#  - attribute_key: DDRS
-#    identifier_key: SERIALNO
-#    attribute: DDRS
-#    label: PSAM_2023_Housing
-#  - attribute_key: DEAR
-#    identifier_key: SERIALNO
-#    attribute: DEAR
-#    label: PSAM_2023_Housing
-#  - attribute_key: DEYE
-#    identifier_key: SERIALNO
-#    attribute: DEYE
-#    label: PSAM_2023_Housing
-#  - attribute_key: DOUT
-#    identifier_key: SERIALNO
-#    attribute: DOUT
-#    label: PSAM_2023_Housing
-#  - attribute_key: DPHY
-#    identifier_key: SERIALNO
-#    attribute: DPHY
-#    label: PSAM_2023_Housing
-#  - attribute_key: DRAT
-#    identifier_key: SERIALNO
-#    attribute: DRAT
-#    label: PSAM_2023_Housing
-#  - attribute_key: DRATX
-#    identifier_key: SERIALNO
-#    attribute: DRATX
-#    label: PSAM_2023_Housing
-#  - attribute_key: DREM
-#    identifier_key: SERIALNO
-#    attribute: DREM
-#    label: PSAM_2023_Housing
-#  - attribute_key: ENG
-#    identifier_key: SERIALNO
-#    attribute: ENG
-#    label: PSAM_2023_Housing
-#  - attribute_key: FER
-#    identifier_key: SERIALNO
-#    attribute: FER
-#    label: PSAM_2023_Housing
-#  - attribute_key: GCL
-#    identifier_key: SERIALNO
-#    attribute: GCL
-#    label: PSAM_2023_Housing
-#  - attribute_key: GCM
-#    identifier_key: SERIALNO
-#    attribute: GCM
-#    label: PSAM_2023_Housing
-#  - attribute_key: GCR
-#    identifier_key: SERIALNO
-#    attribute: GCR
-#    label: PSAM_2023_Housing
-#  - attribute_key: HIMRKS
-#    identifier_key: SERIALNO
-#    attribute: HIMRKS
-#    label: PSAM_2023_Housing
-#  - attribute_key: HINS1
-#    identifier_key: SERIALNO
-#    attribute: HINS1
-#    label: PSAM_2023_Housing
-#  - attribute_key: HINS2
-#    identifier_key: SERIALNO
-#    attribute: HINS2
-#    label: PSAM_2023_Housing
-#  - attribute_key: HINS3
-#    identifier_key: SERIALNO
-#    attribute: HINS3
-#    label: PSAM_2023_Housing
-#  - attribute_key: HINS4
-#    identifier_key: SERIALNO
-#    attribute: HINS4
-#    label: PSAM_2023_Housing
-#  - attribute_key: HINS5
-#    identifier_key: SERIALNO
-#    attribute: HINS5
-#    label: PSAM_2023_Housing
-#  - attribute_key: HINS6
-#    identifier_key: SERIALNO
-#    attribute: HINS6
-#    label: PSAM_2023_Housing
-#  - attribute_key: HINS7
-#    identifier_key: SERIALNO
-#    attribute: HINS7
-#    label: PSAM_2023_Housing
-#  - attribute_key: INTP
-#    identifier_key: SERIALNO
-#    attribute: INTP
-#    label: PSAM_2023_Housing
-#  - attribute_key: JWMNP
-#    identifier_key: SERIALNO
-#    attribute: JWMNP
-#    label: PSAM_2023_Housing
-#  - attribute_key: JWRIP
-#    identifier_key: SERIALNO
-#    attribute: JWRIP
-#    label: PSAM_2023_Housing
-#  - attribute_key: JWTRNS
-#    identifier_key: SERIALNO
-#    attribute: JWTRNS
-#    label: PSAM_2023_Housing
-#  - attribute_key: LANX
-#    identifier_key: SERIALNO
-#    attribute: LANX
-#    label: PSAM_2023_Housing
-#  - attribute_key: MAR
-#    identifier_key: SERIALNO
-#    attribute: MAR
-#    label: PSAM_2023_Housing
-#  - attribute_key: MARHD
-#    identifier_key: SERIALNO
-#    attribute: MARHD
-#    label: PSAM_2023_Housing
-#  - attribute_key: MARHM
-#    identifier_key: SERIALNO
-#    attribute: MARHM
-#    label: PSAM_2023_Housing
-#  - attribute_key: MARHT
-#    identifier_key: SERIALNO
-#    attribute: MARHT
-#    label: PSAM_2023_Housing
-#  - attribute_key: MARHW
-#    identifier_key: SERIALNO
-#    attribute: MARHW
-#    label: PSAM_2023_Housing
-#  - attribute_key: MARHYP
-#    identifier_key: SERIALNO
-#    attribute: MARHYP
-#    label: PSAM_2023_Housing
-#  - attribute_key: MIG
-#    identifier_key: SERIALNO
-#    attribute: MIG
-#    label: PSAM_2023_Housing
-#  - attribute_key: MIL
-#    identifier_key: SERIALNO
-#    attribute: MIL
-#    label: PSAM_2023_Housing
-#  - attribute_key: MLPA
-#    identifier_key: SERIALNO
-#    attribute: MLPA
-#    label: PSAM_2023_Housing
-#  - attribute_key: MLPB
-#    identifier_key: SERIALNO
-#    attribute: MLPB
-#    label: PSAM_2023_Housing
-#  - attribute_key: MLPCD
-#    identifier_key: SERIALNO
-#    attribute: MLPCD
-#    label: PSAM_2023_Housing
-#  - attribute_key: MLPE
-#    identifier_key: SERIALNO
-#    attribute: MLPE
-#    label: PSAM_2023_Housing
-#  - attribute_key: MLPFG
-#    identifier_key: SERIALNO
-#    attribute: MLPFG
-#    label: PSAM_2023_Housing
-#  - attribute_key: MLPH
-#    identifier_key: SERIALNO
-#    attribute: MLPH
-#    label: PSAM_2023_Housing
-#  - attribute_key: MLPIK
-#    identifier_key: SERIALNO
-#    attribute: MLPIK
-#    label: PSAM_2023_Housing
-#  - attribute_key: MLPJ
-#    identifier_key: SERIALNO
-#    attribute: MLPJ
-#    label: PSAM_2023_Housing
-#  - attribute_key: NWAB
-#    identifier_key: SERIALNO
-#    attribute: NWAB
-#    label: PSAM_2023_Housing
-#  - attribute_key: NWAV
-#    identifier_key: SERIALNO
-#    attribute: NWAV
-#    label: PSAM_2023_Housing
-#  - attribute_key: NWLA
-#    identifier_key: SERIALNO
-#    attribute: NWLA
-#    label: PSAM_2023_Housing
-#  - attribute_key: NWLK
-#    identifier_key: SERIALNO
-#    attribute: NWLK
-#    label: PSAM_2023_Housing
-#  - attribute_key: NWRE
-#    identifier_key: SERIALNO
-#    attribute: NWRE
-#    label: PSAM_2023_Housing
-#  - attribute_key: OIP
-#    identifier_key: SERIALNO
-#    attribute: OIP
-#    label: PSAM_2023_Housing
-#  - attribute_key: PAP
-#    identifier_key: SERIALNO
-#    attribute: PAP
-#    label: PSAM_2023_Housing
-#  - attribute_key: RELSHIPP
-#    identifier_key: SERIALNO
-#    attribute: RELSHIPP
-#    label: PSAM_2023_Housing
-#  - attribute_key: RETP
-#    identifier_key: SERIALNO
-#    attribute: RETP
-#    label: PSAM_2023_Housing
-#  - attribute_key: SCH
-#    identifier_key: SERIALNO
-#    attribute: SCH
-#    label: PSAM_2023_Housing
-#  - attribute_key: SCHG
-#    identifier_key: SERIALNO
-#    attribute: SCHG
-#    label: PSAM_2023_Housing
-#  - attribute_key: SCHL
-#    identifier_key: SERIALNO
-#    attribute: SCHL
-#    label: PSAM_2023_Housing
-#  - attribute_key: SEMP
-#    identifier_key: SERIALNO
-#    attribute: SEMP
-#    label: PSAM_2023_Housing
-#  - attribute_key: SEX
-#    identifier_key: SERIALNO
-#    attribute: SEX
-#    label: PSAM_2023_Housing
-#  - attribute_key: SSIP
-#    identifier_key: SERIALNO
-#    attribute: SSIP
-#    label: PSAM_2023_Housing
-#  - attribute_key: SSP
-#    identifier_key: SERIALNO
-#    attribute: SSP
-#    label: PSAM_2023_Housing
-#  - attribute_key: WAGP
-#    identifier_key: SERIALNO
-#    attribute: WAGP
-#    label: PSAM_2023_Housing
-#  - attribute_key: WKHP
-#    identifier_key: SERIALNO
-#    attribute: WKHP
-#    label: PSAM_2023_Housing
-#  - attribute_key: WKL
-#    identifier_key: SERIALNO
-#    attribute: WKL
-#    label: PSAM_2023_Housing
-#  - attribute_key: WKWN
-#    identifier_key: SERIALNO
-#    attribute: WKWN
-#    label: PSAM_2023_Housing
-#  - attribute_key: WRK
-#    identifier_key: SERIALNO
-#    attribute: WRK
-#    label: PSAM_2023_Housing
-#  - attribute_key: YOEP
-#    identifier_key: SERIALNO
-#    attribute: YOEP
-#    label: PSAM_2023_Housing
-#  - attribute_key: ANC
-#    identifier_key: SERIALNO
-#    attribute: ANC
-#    label: PSAM_2023_Housing
-#  - attribute_key: ANC1P
-#    identifier_key: SERIALNO
-#    attribute: ANC1P
-#    label: PSAM_2023_Housing
-#  - attribute_key: ANC2P
-#    identifier_key: SERIALNO
-#    attribute: ANC2P
-#    label: PSAM_2023_Housing
-#  - attribute_key: DECADE
-#    identifier_key: SERIALNO
-#    attribute: DECADE
-#    label: PSAM_2023_Housing
-#  - attribute_key: DIS
-#    identifier_key: SERIALNO
-#    attribute: DIS
-#    label: PSAM_2023_Housing
-#  - attribute_key: DRIVESP
-#    identifier_key: SERIALNO
-#    attribute: DRIVESP
-#    label: PSAM_2023_Housing
-#  - attribute_key: ESP
-#    identifier_key: SERIALNO
-#    attribute: ESP
-#    label: PSAM_2023_Housing
-#  - attribute_key: ESR
-#    identifier_key: SERIALNO
-#    attribute: ESR
-#    label: PSAM_2023_Housing
-#  - attribute_key: FOD1P
-#    identifier_key: SERIALNO
-#    attribute: FOD1P
-#    label: PSAM_2023_Housing
-#  - attribute_key: FOD2P
-#    identifier_key: SERIALNO
-#    attribute: FOD2P
-#    label: PSAM_2023_Housing
-#  - attribute_key: HICOV
-#    identifier_key: SERIALNO
-#    attribute: HICOV
-#    label: PSAM_2023_Housing
-#  - attribute_key: HISP
-#    identifier_key: SERIALNO
-#    attribute: HISP
-#    label: PSAM_2023_Housing
-#  - attribute_key: INDP
-#    identifier_key: SERIALNO
-#    attribute: INDP
-#    label: PSAM_2023_Housing
-#  - attribute_key: JWAP
-#    identifier_key: SERIALNO
-#    attribute: JWAP
-#    label: PSAM_2023_Housing
-#  - attribute_key: JWDP
-#    identifier_key: SERIALNO
-#    attribute: JWDP
-#    label: PSAM_2023_Housing
-#  - attribute_key: LANP
-#    identifier_key: SERIALNO
-#    attribute: LANP
-#    label: PSAM_2023_Housing
-#  - attribute_key: MIGPUMA
-#    identifier_key: SERIALNO
-#    attribute: MIGPUMA
-#    label: PSAM_2023_Housing
-#  - attribute_key: MIGSP
-#    identifier_key: SERIALNO
-#    attribute: MIGSP
-#    label: PSAM_2023_Housing
-#  - attribute_key: MSP
-#    identifier_key: SERIALNO
-#    attribute: MSP
-#    label: PSAM_2023_Housing
-#  - attribute_key: NAICSP
-#    identifier_key: SERIALNO
-#    attribute: NAICSP
-#    label: PSAM_2023_Housing
-#  - attribute_key: NATIVITY
-#    identifier_key: SERIALNO
-#    attribute: NATIVITY
-#    label: PSAM_2023_Housing
-#  - attribute_key: NOP
-#    identifier_key: SERIALNO
-#    attribute: NOP
-#    label: PSAM_2023_Housing
-#  - attribute_key: OC
-#    identifier_key: SERIALNO
-#    attribute: OC
-#    label: PSAM_2023_Housing
-#  - attribute_key: OCCP
-#    identifier_key: SERIALNO
-#    attribute: OCCP
-#    label: PSAM_2023_Housing
-#  - attribute_key: PAOC
-#    identifier_key: SERIALNO
-#    attribute: PAOC
-#    label: PSAM_2023_Housing
-#  - attribute_key: PERNP
-#    identifier_key: SERIALNO
-#    attribute: PERNP
-#    label: PSAM_2023_Housing
-#  - attribute_key: PINCP
-#    identifier_key: SERIALNO
-#    attribute: PINCP
-#    label: PSAM_2023_Housing
-#  - attribute_key: POBP
-#    identifier_key: SERIALNO
-#    attribute: POBP
-#    label: PSAM_2023_Housing
-#  - attribute_key: POVPIP
-#    identifier_key: SERIALNO
-#    attribute: POVPIP
-#    label: PSAM_2023_Housing
-#  - attribute_key: POWPUMA
-#    identifier_key: SERIALNO
-#    attribute: POWPUMA
-#    label: PSAM_2023_Housing
-#  - attribute_key: POWSP
-#    identifier_key: SERIALNO
-#    attribute: POWSP
-#    label: PSAM_2023_Housing
-#  - attribute_key: PRIVCOV
-#    identifier_key: SERIALNO
-#    attribute: PRIVCOV
-#    label: PSAM_2023_Housing
-#  - attribute_key: PUBCOV
-#    identifier_key: SERIALNO
-#    attribute: PUBCOV
-#    label: PSAM_2023_Housing
-#  - attribute_key: QTRBIR
-#    identifier_key: SERIALNO
-#    attribute: QTRBIR
-#    label: PSAM_2023_Housing
-#  - attribute_key: RAC1P
-#    identifier_key: SERIALNO
-#    attribute: RAC1P
-#    label: PSAM_2023_Housing
-#  - attribute_key: RAC2P
-#    identifier_key: SERIALNO
-#    attribute: RAC2P
-#    label: PSAM_2023_Housing
-#  - attribute_key: RAC3P
-#    identifier_key: SERIALNO
-#    attribute: RAC3P
-#    label: PSAM_2023_Housing
-#  - attribute_key: RACAIAN
-#    identifier_key: SERIALNO
-#    attribute: RACAIAN
-#    label: PSAM_2023_Housing
-#  - attribute_key: RACASN
-#    identifier_key: SERIALNO
-#    attribute: RACASN
-#    label: PSAM_2023_Housing
-#  - attribute_key: RACBLK
-#    identifier_key: SERIALNO
-#    attribute: RACBLK
-#    label: PSAM_2023_Housing
-#  - attribute_key: RACNH
-#    identifier_key: SERIALNO
-#    attribute: RACNH
-#    label: PSAM_2023_Housing
-#  - attribute_key: RACNUM
-#    identifier_key: SERIALNO
-#    attribute: RACNUM
-#    label: PSAM_2023_Housing
-#  - attribute_key: RACPI
-#    identifier_key: SERIALNO
-#    attribute: RACPI
-#    label: PSAM_2023_Housing
-#  - attribute_key: RACSOR
-#    identifier_key: SERIALNO
-#    attribute: RACSOR
-#    label: PSAM_2023_Housing
-#  - attribute_key: RACWHT
-#    identifier_key: SERIALNO
-#    attribute: RACWHT
-#    label: PSAM_2023_Housing
-#  - attribute_key: RC
-#    identifier_key: SERIALNO
-#    attribute: RC
-#    label: PSAM_2023_Housing
-#  - attribute_key: SCIENGP
-#    identifier_key: SERIALNO
-#    attribute: SCIENGP
-#    label: PSAM_2023_Housing
-#  - attribute_key: SCIENGRLP
-#    identifier_key: SERIALNO
-#    attribute: SCIENGRLP
-#    label: PSAM_2023_Housing
-#  - attribute_key: SFN
-#    identifier_key: SERIALNO
-#    attribute: SFN
-#    label: PSAM_2023_Housing
-#  - attribute_key: SFR
-#    identifier_key: SERIALNO
-#    attribute: SFR
-#    label: PSAM_2023_Housing
-#  - attribute_key: SOCP
-#    identifier_key: SERIALNO
-#    attribute: SOCP
-#    label: PSAM_2023_Housing
-#  - attribute_key: VPS
-#    identifier_key: SERIALNO
-#    attribute: VPS
-#    label: PSAM_2023_Housing
-#  - attribute_key: WAOB
-#    identifier_key: SERIALNO
-#    attribute: WAOB
-#    label: PSAM_2023_Housing
-#  - attribute_key: FAGEP
-#    identifier_key: SERIALNO
-#    attribute: FAGEP
-#    label: PSAM_2023_Housing
-#  - attribute_key: FANCP
-#    identifier_key: SERIALNO
-#    attribute: FANCP
-#    label: PSAM_2023_Housing
-#  - attribute_key: FCITP
-#    identifier_key: SERIALNO
-#    attribute: FCITP
-#    label: PSAM_2023_Housing
-#  - attribute_key: FCITWP
-#    identifier_key: SERIALNO
-#    attribute: FCITWP
-#    label: PSAM_2023_Housing
-#  - attribute_key: FCOWP
-#    identifier_key: SERIALNO
-#    attribute: FCOWP
-#    label: PSAM_2023_Housing
-#  - attribute_key: FDDRSP
-#    identifier_key: SERIALNO
-#    attribute: FDDRSP
-#    label: PSAM_2023_Housing
-#  - attribute_key: FDEARP
-#    identifier_key: SERIALNO
-#    attribute: FDEARP
-#    label: PSAM_2023_Housing
-#  - attribute_key: FDEYEP
-#    identifier_key: SERIALNO
-#    attribute: FDEYEP
-#    label: PSAM_2023_Housing
-#  - attribute_key: FDISP
-#    identifier_key: SERIALNO
-#    attribute: FDISP
-#    label: PSAM_2023_Housing
-#  - attribute_key: FDOUTP
-#    identifier_key: SERIALNO
-#    attribute: FDOUTP
-#    label: PSAM_2023_Housing
-#  - attribute_key: FDPHYP
-#    identifier_key: SERIALNO
-#    attribute: FDPHYP
-#    label: PSAM_2023_Housing
-#  - attribute_key: FDRATP
-#    identifier_key: SERIALNO
-#    attribute: FDRATP
-#    label: PSAM_2023_Housing
-#  - attribute_key: FDRATXP
-#    identifier_key: SERIALNO
-#    attribute: FDRATXP
-#    label: PSAM_2023_Housing
-#  - attribute_key: FDREMP
-#    identifier_key: SERIALNO
-#    attribute: FDREMP
-#    label: PSAM_2023_Housing
-#  - attribute_key: FENGP
-#    identifier_key: SERIALNO
-#    attribute: FENGP
-#    label: PSAM_2023_Housing
-#  - attribute_key: FESRP
-#    identifier_key: SERIALNO
-#    attribute: FESRP
-#    label: PSAM_2023_Housing
-#  - attribute_key: FFERP
-#    identifier_key: SERIALNO
-#    attribute: FFERP
-#    label: PSAM_2023_Housing
-#  - attribute_key: FFODP
-#    identifier_key: SERIALNO
-#    attribute: FFODP
-#    label: PSAM_2023_Housing
-#  - attribute_key: FGCLP
-#    identifier_key: SERIALNO
-#    attribute: FGCLP
-#    label: PSAM_2023_Housing
-#  - attribute_key: FGCMP
-#    identifier_key: SERIALNO
-#    attribute: FGCMP
-#    label: PSAM_2023_Housing
-#  - attribute_key: FGCRP
-#    identifier_key: SERIALNO
-#    attribute: FGCRP
-#    label: PSAM_2023_Housing
-#  - attribute_key: FHICOVP
-#    identifier_key: SERIALNO
-#    attribute: FHICOVP
-#    label: PSAM_2023_Housing
-#  - attribute_key: FHIMRKSP
-#    identifier_key: SERIALNO
-#    attribute: FHIMRKSP
-#    label: PSAM_2023_Housing
-#  - attribute_key: FHINS1P
-#    identifier_key: SERIALNO
-#    attribute: FHINS1P
-#    label: PSAM_2023_Housing
-#  - attribute_key: FHINS2P
-#    identifier_key: SERIALNO
-#    attribute: FHINS2P
-#    label: PSAM_2023_Housing
-#  - attribute_key: FHINS3C
-#    identifier_key: SERIALNO
-#    attribute: FHINS3C
-#    label: PSAM_2023_Housing
-#  - attribute_key: FHINS3P
-#    identifier_key: SERIALNO
-#    attribute: FHINS3P
-#    label: PSAM_2023_Housing
-#  - attribute_key: FHINS4C
-#    identifier_key: SERIALNO
-#    attribute: FHINS4C
-#    label: PSAM_2023_Housing
-#  - attribute_key: FHINS4P
-#    identifier_key: SERIALNO
-#    attribute: FHINS4P
-#    label: PSAM_2023_Housing
-#  - attribute_key: FHINS5C
-#    identifier_key: SERIALNO
-#    attribute: FHINS5C
-#    label: PSAM_2023_Housing
-#  - attribute_key: FHINS5P
-#    identifier_key: SERIALNO
-#    attribute: FHINS5P
-#    label: PSAM_2023_Housing
-#  - attribute_key: FHINS6P
-#    identifier_key: SERIALNO
-#    attribute: FHINS6P
-#    label: PSAM_2023_Housing
-#  - attribute_key: FHINS7P
-#    identifier_key: SERIALNO
-#    attribute: FHINS7P
-#    label: PSAM_2023_Housing
-#  - attribute_key: FHISP
-#    identifier_key: SERIALNO
-#    attribute: FHISP
-#    label: PSAM_2023_Housing
-#  - attribute_key: FINDP
-#    identifier_key: SERIALNO
-#    attribute: FINDP
-#    label: PSAM_2023_Housing
-#  - attribute_key: FINTP
-#    identifier_key: SERIALNO
-#    attribute: FINTP
-#    label: PSAM_2023_Housing
-#  - attribute_key: FJWDP
-#    identifier_key: SERIALNO
-#    attribute: FJWDP
-#    label: PSAM_2023_Housing
-#  - attribute_key: FJWMNP
-#    identifier_key: SERIALNO
-#    attribute: FJWMNP
-#    label: PSAM_2023_Housing
-#  - attribute_key: FJWRIP
-#    identifier_key: SERIALNO
-#    attribute: FJWRIP
-#    label: PSAM_2023_Housing
-#  - attribute_key: FJWTRNSP
-#    identifier_key: SERIALNO
-#    attribute: FJWTRNSP
-#    label: PSAM_2023_Housing
-#  - attribute_key: FLANP
-#    identifier_key: SERIALNO
-#    attribute: FLANP
-#    label: PSAM_2023_Housing
-#  - attribute_key: FLANXP
-#    identifier_key: SERIALNO
-#    attribute: FLANXP
-#    label: PSAM_2023_Housing
-#  - attribute_key: FMARP
-#    identifier_key: SERIALNO
-#    attribute: FMARP
-#    label: PSAM_2023_Housing
-#  - attribute_key: FMARHDP
-#    identifier_key: SERIALNO
-#    attribute: FMARHDP
-#    label: PSAM_2023_Housing
-#  - attribute_key: FMARHMP
-#    identifier_key: SERIALNO
-#    attribute: FMARHMP
-#    label: PSAM_2023_Housing
-#  - attribute_key: FMARHTP
-#    identifier_key: SERIALNO
-#    attribute: FMARHTP
-#    label: PSAM_2023_Housing
-#  - attribute_key: FMARHWP
-#    identifier_key: SERIALNO
-#    attribute: FMARHWP
-#    label: PSAM_2023_Housing
-#  - attribute_key: FMARHYP
-#    identifier_key: SERIALNO
-#    attribute: FMARHYP
-#    label: PSAM_2023_Housing
-#  - attribute_key: FMIGP
-#    identifier_key: SERIALNO
-#    attribute: FMIGP
-#    label: PSAM_2023_Housing
-#  - attribute_key: FMIGSP
-#    identifier_key: SERIALNO
-#    attribute: FMIGSP
-#    label: PSAM_2023_Housing
-#  - attribute_key: FMILPP
-#    identifier_key: SERIALNO
-#    attribute: FMILPP
-#    label: PSAM_2023_Housing
-#  - attribute_key: FMILSP
-#    identifier_key: SERIALNO
-#    attribute: FMILSP
-#    label: PSAM_2023_Housing
-#  - attribute_key: FOCCP
-#    identifier_key: SERIALNO
-#    attribute: FOCCP
-#    label: PSAM_2023_Housing
-#  - attribute_key: FOIP
-#    identifier_key: SERIALNO
-#    attribute: FOIP
-#    label: PSAM_2023_Housing
-#  - attribute_key: FPAP
-#    identifier_key: SERIALNO
-#    attribute: FPAP
-#    label: PSAM_2023_Housing
-#  - attribute_key: FPERNP
-#    identifier_key: SERIALNO
-#    attribute: FPERNP
-#    label: PSAM_2023_Housing
-#  - attribute_key: FPINCP
-#    identifier_key: SERIALNO
-#    attribute: FPINCP
-#    label: PSAM_2023_Housing
-#  - attribute_key: FPOBP
-#    identifier_key: SERIALNO
-#    attribute: FPOBP
-#    label: PSAM_2023_Housing
-#  - attribute_key: FPOWSP
-#    identifier_key: SERIALNO
-#    attribute: FPOWSP
-#    label: PSAM_2023_Housing
-#  - attribute_key: FPRIVCOVP
-#    identifier_key: SERIALNO
-#    attribute: FPRIVCOVP
-#    label: PSAM_2023_Housing
-#  - attribute_key: FPUBCOVP
-#    identifier_key: SERIALNO
-#    attribute: FPUBCOVP
-#    label: PSAM_2023_Housing
-#  - attribute_key: FRACP
-#    identifier_key: SERIALNO
-#    attribute: FRACP
-#    label: PSAM_2023_Housing
-#  - attribute_key: FRELSHIPP
-#    identifier_key: SERIALNO
-#    attribute: FRELSHIPP
-#    label: PSAM_2023_Housing
-#  - attribute_key: FRETP
-#    identifier_key: SERIALNO
-#    attribute: FRETP
-#    label: PSAM_2023_Housing
-#  - attribute_key: FSCHGP
-#    identifier_key: SERIALNO
-#    attribute: FSCHGP
-#    label: PSAM_2023_Housing
-#  - attribute_key: FSCHLP
-#    identifier_key: SERIALNO
-#    attribute: FSCHLP
-#    label: PSAM_2023_Housing
-#  - attribute_key: FSCHP
-#    identifier_key: SERIALNO
-#    attribute: FSCHP
-#    label: PSAM_2023_Housing
-#  - attribute_key: FSEMP
-#    identifier_key: SERIALNO
-#    attribute: FSEMP
-#    label: PSAM_2023_Housing
-#  - attribute_key: FSEXP
-#    identifier_key: SERIALNO
-#    attribute: FSEXP
-#    label: PSAM_2023_Housing
-#  - attribute_key: FSSIP
-#    identifier_key: SERIALNO
-#    attribute: FSSIP
-#    label: PSAM_2023_Housing
-#  - attribute_key: FSSP
-#    identifier_key: SERIALNO
-#    attribute: FSSP
-#    label: PSAM_2023_Housing
-#  - attribute_key: FWAGP
-#    identifier_key: SERIALNO
-#    attribute: FWAGP
-#    label: PSAM_2023_Housing
-#  - attribute_key: FWKHP
-#    identifier_key: SERIALNO
-#    attribute: FWKHP
-#    label: PSAM_2023_Housing
-#  - attribute_key: FWKLP
-#    identifier_key: SERIALNO
-#    attribute: FWKLP
-#    label: PSAM_2023_Housing
-#  - attribute_key: FWKWNP
-#    identifier_key: SERIALNO
-#    attribute: FWKWNP
-#    label: PSAM_2023_Housing
-#  - attribute_key: FWRKP
-#    identifier_key: SERIALNO
-#    attribute: FWRKP
-#    label: PSAM_2023_Housing
-#  - attribute_key: FYOEP
-#    identifier_key: SERIALNO
-#    attribute: FYOEP
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP1
-#    identifier_key: SERIALNO
-#    attribute: PWGTP1
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP2
-#    identifier_key: SERIALNO
-#    attribute: PWGTP2
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP3
-#    identifier_key: SERIALNO
-#    attribute: PWGTP3
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP4
-#    identifier_key: SERIALNO
-#    attribute: PWGTP4
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP5
-#    identifier_key: SERIALNO
-#    attribute: PWGTP5
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP6
-#    identifier_key: SERIALNO
-#    attribute: PWGTP6
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP7
-#    identifier_key: SERIALNO
-#    attribute: PWGTP7
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP8
-#    identifier_key: SERIALNO
-#    attribute: PWGTP8
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP9
-#    identifier_key: SERIALNO
-#    attribute: PWGTP9
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP10
-#    identifier_key: SERIALNO
-#    attribute: PWGTP10
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP11
-#    identifier_key: SERIALNO
-#    attribute: PWGTP11
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP12
-#    identifier_key: SERIALNO
-#    attribute: PWGTP12
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP13
-#    identifier_key: SERIALNO
-#    attribute: PWGTP13
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP14
-#    identifier_key: SERIALNO
-#    attribute: PWGTP14
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP15
-#    identifier_key: SERIALNO
-#    attribute: PWGTP15
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP16
-#    identifier_key: SERIALNO
-#    attribute: PWGTP16
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP17
-#    identifier_key: SERIALNO
-#    attribute: PWGTP17
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP18
-#    identifier_key: SERIALNO
-#    attribute: PWGTP18
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP19
-#    identifier_key: SERIALNO
-#    attribute: PWGTP19
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP20
-#    identifier_key: SERIALNO
-#    attribute: PWGTP20
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP21
-#    identifier_key: SERIALNO
-#    attribute: PWGTP21
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP22
-#    identifier_key: SERIALNO
-#    attribute: PWGTP22
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP23
-#    identifier_key: SERIALNO
-#    attribute: PWGTP23
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP24
-#    identifier_key: SERIALNO
-#    attribute: PWGTP24
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP25
-#    identifier_key: SERIALNO
-#    attribute: PWGTP25
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP26
-#    identifier_key: SERIALNO
-#    attribute: PWGTP26
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP27
-#    identifier_key: SERIALNO
-#    attribute: PWGTP27
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP28
-#    identifier_key: SERIALNO
-#    attribute: PWGTP28
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP29
-#    identifier_key: SERIALNO
-#    attribute: PWGTP29
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP30
-#    identifier_key: SERIALNO
-#    attribute: PWGTP30
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP31
-#    identifier_key: SERIALNO
-#    attribute: PWGTP31
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP32
-#    identifier_key: SERIALNO
-#    attribute: PWGTP32
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP33
-#    identifier_key: SERIALNO
-#    attribute: PWGTP33
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP34
-#    identifier_key: SERIALNO
-#    attribute: PWGTP34
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP35
-#    identifier_key: SERIALNO
-#    attribute: PWGTP35
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP36
-#    identifier_key: SERIALNO
-#    attribute: PWGTP36
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP37
-#    identifier_key: SERIALNO
-#    attribute: PWGTP37
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP38
-#    identifier_key: SERIALNO
-#    attribute: PWGTP38
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP39
-#    identifier_key: SERIALNO
-#    attribute: PWGTP39
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP40
-#    identifier_key: SERIALNO
-#    attribute: PWGTP40
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP41
-#    identifier_key: SERIALNO
-#    attribute: PWGTP41
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP42
-#    identifier_key: SERIALNO
-#    attribute: PWGTP42
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP43
-#    identifier_key: SERIALNO
-#    attribute: PWGTP43
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP44
-#    identifier_key: SERIALNO
-#    attribute: PWGTP44
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP45
-#    identifier_key: SERIALNO
-#    attribute: PWGTP45
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP46
-#    identifier_key: SERIALNO
-#    attribute: PWGTP46
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP47
-#    identifier_key: SERIALNO
-#    attribute: PWGTP47
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP48
-#    identifier_key: SERIALNO
-#    attribute: PWGTP48
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP49
-#    identifier_key: SERIALNO
-#    attribute: PWGTP49
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP50
-#    identifier_key: SERIALNO
-#    attribute: PWGTP50
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP51
-#    identifier_key: SERIALNO
-#    attribute: PWGTP51
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP52
-#    identifier_key: SERIALNO
-#    attribute: PWGTP52
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP53
-#    identifier_key: SERIALNO
-#    attribute: PWGTP53
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP54
-#    identifier_key: SERIALNO
-#    attribute: PWGTP54
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP55
-#    identifier_key: SERIALNO
-#    attribute: PWGTP55
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP56
-#    identifier_key: SERIALNO
-#    attribute: PWGTP56
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP57
-#    identifier_key: SERIALNO
-#    attribute: PWGTP57
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP58
-#    identifier_key: SERIALNO
-#    attribute: PWGTP58
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP59
-#    identifier_key: SERIALNO
-#    attribute: PWGTP59
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP60
-#    identifier_key: SERIALNO
-#    attribute: PWGTP60
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP61
-#    identifier_key: SERIALNO
-#    attribute: PWGTP61
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP62
-#    identifier_key: SERIALNO
-#    attribute: PWGTP62
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP63
-#    identifier_key: SERIALNO
-#    attribute: PWGTP63
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP64
-#    identifier_key: SERIALNO
-#    attribute: PWGTP64
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP65
-#    identifier_key: SERIALNO
-#    attribute: PWGTP65
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP66
-#    identifier_key: SERIALNO
-#    attribute: PWGTP66
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP67
-#    identifier_key: SERIALNO
-#    attribute: PWGTP67
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP68
-#    identifier_key: SERIALNO
-#    attribute: PWGTP68
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP69
-#    identifier_key: SERIALNO
-#    attribute: PWGTP69
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP70
-#    identifier_key: SERIALNO
-#    attribute: PWGTP70
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP71
-#    identifier_key: SERIALNO
-#    attribute: PWGTP71
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP72
-#    identifier_key: SERIALNO
-#    attribute: PWGTP72
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP73
-#    identifier_key: SERIALNO
-#    attribute: PWGTP73
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP74
-#    identifier_key: SERIALNO
-#    attribute: PWGTP74
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP75
-#    identifier_key: SERIALNO
-#    attribute: PWGTP75
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP76
-#    identifier_key: SERIALNO
-#    attribute: PWGTP76
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP77
-#    identifier_key: SERIALNO
-#    attribute: PWGTP77
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP78
-#    identifier_key: SERIALNO
-#    attribute: PWGTP78
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP79
-#    identifier_key: SERIALNO
-#    attribute: PWGTP79
-#    label: PSAM_2023_Housing
-#  - attribute_key: PWGTP80
-#    identifier_key: SERIALNO
-#    attribute: PWGTP80
-#    label: PSAM_2023_Housing
-#  data_types:
-#    RT: String
-#    SERIALNO: NonEmptyString
-#    DIVISION: String
-#    SPORDER: String
-#    PUMA: String
-#    REGION: String
-#    STATE: String
-#    ADJINC: String
-#    PWGTP: String
-#    AGEP: String
-#    CIT: String
-#    CITWP: String
-#    COW: String
-#    DDRS: String
-#    DEAR: String
-#    DEYE: String
-#    DOUT: String
-#    DPHY: String
-#    DRAT: String
-#    DRATX: String
-#    DREM: String
-#    ENG: String
-#    FER: String
-#    GCL: String
-#    GCM: String
-#    GCR: String
-#    HIMRKS: String
-#    HINS1: String
-#    HINS2: String
-#    HINS3: String
-#    HINS4: String
-#    HINS5: String
-#    HINS6: String
-#    HINS7: String
-#    INTP: String
-#    JWMNP: String
-#    JWRIP: String
-#    JWTRNS: String
-#    LANX: String
-#    MAR: String
-#    MARHD: String
-#    MARHM: String
-#    MARHT: String
-#    MARHW: String
-#    MARHYP: String
-#    MIG: String
-#    MIL: String
-#    MLPA: String
-#    MLPB: String
-#    MLPCD: String
-#    MLPE: String
-#    MLPFG: String
-#    MLPH: String
-#    MLPIK: String
-#    MLPJ: String
-#    NWAB: String
-#    NWAV: String
-#    NWLA: String
-#    NWLK: String
-#    NWRE: String
-#    OIP: String
-#    PAP: String
-#    RELSHIPP: String
-#    RETP: String
-#    SCH: String
-#    SCHG: String
-#    SCHL: String
-#    SEMP: String
-#    SEX: String
-#    SSIP: String
-#    SSP: String
-#    WAGP: String
-#    WKHP: String
-#    WKL: String
-#    WKWN: String
-#    WRK: String
-#    YOEP: String
-#    ANC: String
-#    ANC1P: String
-#    ANC2P: String
-#    DECADE: String
-#    DIS: String
-#    DRIVESP: String
-#    ESP: String
-#    ESR: String
-#    FOD1P: String
-#    FOD2P: String
-#    HICOV: String
-#    HISP: String
-#    INDP: String
-#    JWAP: String
-#    JWDP: String
-#    LANP: String
-#    MIGPUMA: String
-#    MIGSP: String
-#    MSP: String
-#    NAICSP: String
-#    NATIVITY: String
-#    NOP: String
-#    OC: String
-#    OCCP: String
-#    PAOC: String
-#    PERNP: String
-#    PINCP: String
-#    POBP: String
-#    POVPIP: String
-#    POWPUMA: String
-#    POWSP: String
-#    PRIVCOV: String
-#    PUBCOV: String
-#    QTRBIR: String
-#    RAC1P: String
-#    RAC2P: String
-#    RAC3P: String
-#    RACAIAN: String
-#    RACASN: String
-#    RACBLK: String
-#    RACNH: String
-#    RACNUM: String
-#    RACPI: String
-#    RACSOR: String
-#    RACWHT: String
-#    RC: String
-#    SCIENGP: String
-#    SCIENGRLP: String
-#    SFN: String
-#    SFR: String
-#    SOCP: String
-#    VPS: String
-#    WAOB: String
-#    FAGEP: String
-#    FANCP: String
-#    FCITP: String
-#    FCITWP: String
-#    FCOWP: String
-#    FDDRSP: String
-#    FDEARP: String
-#    FDEYEP: String
-#    FDISP: String
-#    FDOUTP: String
-#    FDPHYP: String
-#    FDRATP: String
-#    FDRATXP: String
-#    FDREMP: String
-#    FENGP: String
-#    FESRP: String
-#    FFERP: String
-#    FFODP: String
-#    FGCLP: String
-#    FGCMP: String
-#    FGCRP: String
-#    FHICOVP: String
-#    FHIMRKSP: String
-#    FHINS1P: String
-#    FHINS2P: String
-#    FHINS3C: String
-#    FHINS3P: String
-#    FHINS4C: String
-#    FHINS4P: String
-#    FHINS5C: String
-#    FHINS5P: String
-#    FHINS6P: String
-#    FHINS7P: String
-#    FHISP: String
-#    FINDP: String
-#    FINTP: String
-#    FJWDP: String
-#    FJWMNP: String
-#    FJWRIP: String
-#    FJWTRNSP: String
-#    FLANP: String
-#    FLANXP: String
-#    FMARP: String
-#    FMARHDP: String
-#    FMARHMP: String
-#    FMARHTP: String
-#    FMARHWP: String
-#    FMARHYP: String
-#    FMIGP: String
-#    FMIGSP: String
-#    FMILPP: String
-#    FMILSP: String
-#    FOCCP: String
-#    FOIP: String
-#    FPAP: String
-#    FPERNP: String
-#    FPINCP: String
-#    FPOBP: String
-#    FPOWSP: String
-#    FPRIVCOVP: String
-#    FPUBCOVP: String
-#    FRACP: String
-#    FRELSHIPP: String
-#    FRETP: String
-#    FSCHGP: String
-#    FSCHLP: String
-#    FSCHP: String
-#    FSEMP: String
-#    FSEXP: String
-#    FSSIP: String
-#    FSSP: String
-#    FWAGP: String
-#    FWKHP: String
-#    FWKLP: String
-#    FWKWNP: String
-#    FWRKP: String
-#    FYOEP: String
-#    PWGTP1: String
-#    PWGTP2: String
-#    PWGTP3: String
-#    PWGTP4: String
-#    PWGTP5: String
-#    PWGTP6: String
-#    PWGTP7: String
-#    PWGTP8: String
-#    PWGTP9: String
-#    PWGTP10: String
-#    PWGTP11: String
-#    PWGTP12: String
-#    PWGTP13: String
-#    PWGTP14: String
-#    PWGTP15: String
-#    PWGTP16: String
-#    PWGTP17: String
-#    PWGTP18: String
-#    PWGTP19: String
-#    PWGTP20: String
-#    PWGTP21: String
-#    PWGTP22: String
-#    PWGTP23: String
-#    PWGTP24: String
-#    PWGTP25: String
-#    PWGTP26: String
-#    PWGTP27: String
-#    PWGTP28: String
-#    PWGTP29: String
-#    PWGTP30: String
-#    PWGTP31: String
-#    PWGTP32: String
-#    PWGTP33: String
-#    PWGTP34: String
-#    PWGTP35: String
-#    PWGTP36: String
-#    PWGTP37: String
-#    PWGTP38: String
-#    PWGTP39: String
-#    PWGTP40: String
-#    PWGTP41: String
-#    PWGTP42: String
-#    PWGTP43: String
-#    PWGTP44: String
-#    PWGTP45: String
-#    PWGTP46: String
-#    PWGTP47: String
-#    PWGTP48: String
-#    PWGTP49: String
-#    PWGTP50: String
-#    PWGTP51: String
-#    PWGTP52: String
-#    PWGTP53: String
-#    PWGTP54: String
-#    PWGTP55: String
-#    PWGTP56: String
-#    PWGTP57: String
-#    PWGTP58: String
-#    PWGTP59: String
-#    PWGTP60: String
-#    PWGTP61: String
-#    PWGTP62: String
-#    PWGTP63: String
-#    PWGTP64: String
-#    PWGTP65: String
-#    PWGTP66: String
-#    PWGTP67: String
-#    PWGTP68: String
-#    PWGTP69: String
-#    PWGTP70: String
-#    PWGTP71: String
-#    PWGTP72: String
-#    PWGTP73: String
-#    PWGTP74: String
-#    PWGTP75: String
-#    PWGTP76: String
-#    PWGTP77: String
-#    PWGTP78: String
-#    PWGTP79: String
-#    PWGTP80: String
+- name: acs_2023_microdata_housing
+  uri: file://{MONOREPO_BASE_DIR}/packages/fastopendata/raw_data/psam_2023_housing.csv
+  mappings:
+  - attribute_key: SERIALNO
+    identifier_key: SERIALNO
+    attribute: serial_number
+    label: PSAM_2023_Housing
+  - attribute_key: RT
+    identifier_key: SERIALNO
+    attribute: RT
+    label: PSAM_2023_Individual
+  - attribute_key: DIVISION
+    identifier_key: SERIALNO
+    attribute: DIVISION
+    label: PSAM_2023_Housing
+  - attribute_key: SPORDER
+    identifier_key: SERIALNO
+    attribute: SPORDER
+    label: PSAM_2023_Housing
+  - attribute_key: PUMA
+    identifier_key: SERIALNO
+    attribute: PUMA
+    label: PSAM_2023_Housing
+  - attribute_key: REGION
+    identifier_key: SERIALNO
+    attribute: REGION
+    label: PSAM_2023_Housing
+  - attribute_key: STATE
+    identifier_key: SERIALNO
+    attribute: STATE
+    label: PSAM_2023_Housing
+  - attribute_key: ADJINC
+    identifier_key: SERIALNO
+    attribute: ADJINC
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP
+    identifier_key: SERIALNO
+    attribute: PWGTP
+    label: PSAM_2023_Housing
+  - attribute_key: AGEP
+    identifier_key: SERIALNO
+    attribute: AGEP
+    label: PSAM_2023_Housing
+  - attribute_key: CIT
+    identifier_key: SERIALNO
+    attribute: CIT
+    label: PSAM_2023_Housing
+  - attribute_key: CITWP
+    identifier_key: SERIALNO
+    attribute: CITWP
+    label: PSAM_2023_Housing
+  - attribute_key: COW
+    identifier_key: SERIALNO
+    attribute: COW
+    label: PSAM_2023_Housing
+  - attribute_key: DDRS
+    identifier_key: SERIALNO
+    attribute: DDRS
+    label: PSAM_2023_Housing
+  - attribute_key: DEAR
+    identifier_key: SERIALNO
+    attribute: DEAR
+    label: PSAM_2023_Housing
+  - attribute_key: DEYE
+    identifier_key: SERIALNO
+    attribute: DEYE
+    label: PSAM_2023_Housing
+  - attribute_key: DOUT
+    identifier_key: SERIALNO
+    attribute: DOUT
+    label: PSAM_2023_Housing
+  - attribute_key: DPHY
+    identifier_key: SERIALNO
+    attribute: DPHY
+    label: PSAM_2023_Housing
+  - attribute_key: DRAT
+    identifier_key: SERIALNO
+    attribute: DRAT
+    label: PSAM_2023_Housing
+  - attribute_key: DRATX
+    identifier_key: SERIALNO
+    attribute: DRATX
+    label: PSAM_2023_Housing
+  - attribute_key: DREM
+    identifier_key: SERIALNO
+    attribute: DREM
+    label: PSAM_2023_Housing
+  - attribute_key: ENG
+    identifier_key: SERIALNO
+    attribute: ENG
+    label: PSAM_2023_Housing
+  - attribute_key: FER
+    identifier_key: SERIALNO
+    attribute: FER
+    label: PSAM_2023_Housing
+  - attribute_key: GCL
+    identifier_key: SERIALNO
+    attribute: GCL
+    label: PSAM_2023_Housing
+  - attribute_key: GCM
+    identifier_key: SERIALNO
+    attribute: GCM
+    label: PSAM_2023_Housing
+  - attribute_key: GCR
+    identifier_key: SERIALNO
+    attribute: GCR
+    label: PSAM_2023_Housing
+  - attribute_key: HIMRKS
+    identifier_key: SERIALNO
+    attribute: HIMRKS
+    label: PSAM_2023_Housing
+  - attribute_key: HINS1
+    identifier_key: SERIALNO
+    attribute: HINS1
+    label: PSAM_2023_Housing
+  - attribute_key: HINS2
+    identifier_key: SERIALNO
+    attribute: HINS2
+    label: PSAM_2023_Housing
+  - attribute_key: HINS3
+    identifier_key: SERIALNO
+    attribute: HINS3
+    label: PSAM_2023_Housing
+  - attribute_key: HINS4
+    identifier_key: SERIALNO
+    attribute: HINS4
+    label: PSAM_2023_Housing
+  - attribute_key: HINS5
+    identifier_key: SERIALNO
+    attribute: HINS5
+    label: PSAM_2023_Housing
+  - attribute_key: HINS6
+    identifier_key: SERIALNO
+    attribute: HINS6
+    label: PSAM_2023_Housing
+  - attribute_key: HINS7
+    identifier_key: SERIALNO
+    attribute: HINS7
+    label: PSAM_2023_Housing
+  - attribute_key: INTP
+    identifier_key: SERIALNO
+    attribute: INTP
+    label: PSAM_2023_Housing
+  - attribute_key: JWMNP
+    identifier_key: SERIALNO
+    attribute: JWMNP
+    label: PSAM_2023_Housing
+  - attribute_key: JWRIP
+    identifier_key: SERIALNO
+    attribute: JWRIP
+    label: PSAM_2023_Housing
+  - attribute_key: JWTRNS
+    identifier_key: SERIALNO
+    attribute: JWTRNS
+    label: PSAM_2023_Housing
+  - attribute_key: LANX
+    identifier_key: SERIALNO
+    attribute: LANX
+    label: PSAM_2023_Housing
+  - attribute_key: MAR
+    identifier_key: SERIALNO
+    attribute: MAR
+    label: PSAM_2023_Housing
+  - attribute_key: MARHD
+    identifier_key: SERIALNO
+    attribute: MARHD
+    label: PSAM_2023_Housing
+  - attribute_key: MARHM
+    identifier_key: SERIALNO
+    attribute: MARHM
+    label: PSAM_2023_Housing
+  - attribute_key: MARHT
+    identifier_key: SERIALNO
+    attribute: MARHT
+    label: PSAM_2023_Housing
+  - attribute_key: MARHW
+    identifier_key: SERIALNO
+    attribute: MARHW
+    label: PSAM_2023_Housing
+  - attribute_key: MARHYP
+    identifier_key: SERIALNO
+    attribute: MARHYP
+    label: PSAM_2023_Housing
+  - attribute_key: MIG
+    identifier_key: SERIALNO
+    attribute: MIG
+    label: PSAM_2023_Housing
+  - attribute_key: MIL
+    identifier_key: SERIALNO
+    attribute: MIL
+    label: PSAM_2023_Housing
+  - attribute_key: MLPA
+    identifier_key: SERIALNO
+    attribute: MLPA
+    label: PSAM_2023_Housing
+  - attribute_key: MLPB
+    identifier_key: SERIALNO
+    attribute: MLPB
+    label: PSAM_2023_Housing
+  - attribute_key: MLPCD
+    identifier_key: SERIALNO
+    attribute: MLPCD
+    label: PSAM_2023_Housing
+  - attribute_key: MLPE
+    identifier_key: SERIALNO
+    attribute: MLPE
+    label: PSAM_2023_Housing
+  - attribute_key: MLPFG
+    identifier_key: SERIALNO
+    attribute: MLPFG
+    label: PSAM_2023_Housing
+  - attribute_key: MLPH
+    identifier_key: SERIALNO
+    attribute: MLPH
+    label: PSAM_2023_Housing
+  - attribute_key: MLPIK
+    identifier_key: SERIALNO
+    attribute: MLPIK
+    label: PSAM_2023_Housing
+  - attribute_key: MLPJ
+    identifier_key: SERIALNO
+    attribute: MLPJ
+    label: PSAM_2023_Housing
+  - attribute_key: NWAB
+    identifier_key: SERIALNO
+    attribute: NWAB
+    label: PSAM_2023_Housing
+  - attribute_key: NWAV
+    identifier_key: SERIALNO
+    attribute: NWAV
+    label: PSAM_2023_Housing
+  - attribute_key: NWLA
+    identifier_key: SERIALNO
+    attribute: NWLA
+    label: PSAM_2023_Housing
+  - attribute_key: NWLK
+    identifier_key: SERIALNO
+    attribute: NWLK
+    label: PSAM_2023_Housing
+  - attribute_key: NWRE
+    identifier_key: SERIALNO
+    attribute: NWRE
+    label: PSAM_2023_Housing
+  - attribute_key: OIP
+    identifier_key: SERIALNO
+    attribute: OIP
+    label: PSAM_2023_Housing
+  - attribute_key: PAP
+    identifier_key: SERIALNO
+    attribute: PAP
+    label: PSAM_2023_Housing
+  - attribute_key: RELSHIPP
+    identifier_key: SERIALNO
+    attribute: RELSHIPP
+    label: PSAM_2023_Housing
+  - attribute_key: RETP
+    identifier_key: SERIALNO
+    attribute: RETP
+    label: PSAM_2023_Housing
+  - attribute_key: SCH
+    identifier_key: SERIALNO
+    attribute: SCH
+    label: PSAM_2023_Housing
+  - attribute_key: SCHG
+    identifier_key: SERIALNO
+    attribute: SCHG
+    label: PSAM_2023_Housing
+  - attribute_key: SCHL
+    identifier_key: SERIALNO
+    attribute: SCHL
+    label: PSAM_2023_Housing
+  - attribute_key: SEMP
+    identifier_key: SERIALNO
+    attribute: SEMP
+    label: PSAM_2023_Housing
+  - attribute_key: SEX
+    identifier_key: SERIALNO
+    attribute: SEX
+    label: PSAM_2023_Housing
+  - attribute_key: SSIP
+    identifier_key: SERIALNO
+    attribute: SSIP
+    label: PSAM_2023_Housing
+  - attribute_key: SSP
+    identifier_key: SERIALNO
+    attribute: SSP
+    label: PSAM_2023_Housing
+  - attribute_key: WAGP
+    identifier_key: SERIALNO
+    attribute: WAGP
+    label: PSAM_2023_Housing
+  - attribute_key: WKHP
+    identifier_key: SERIALNO
+    attribute: WKHP
+    label: PSAM_2023_Housing
+  - attribute_key: WKL
+    identifier_key: SERIALNO
+    attribute: WKL
+    label: PSAM_2023_Housing
+  - attribute_key: WKWN
+    identifier_key: SERIALNO
+    attribute: WKWN
+    label: PSAM_2023_Housing
+  - attribute_key: WRK
+    identifier_key: SERIALNO
+    attribute: WRK
+    label: PSAM_2023_Housing
+  - attribute_key: YOEP
+    identifier_key: SERIALNO
+    attribute: YOEP
+    label: PSAM_2023_Housing
+  - attribute_key: ANC
+    identifier_key: SERIALNO
+    attribute: ANC
+    label: PSAM_2023_Housing
+  - attribute_key: ANC1P
+    identifier_key: SERIALNO
+    attribute: ANC1P
+    label: PSAM_2023_Housing
+  - attribute_key: ANC2P
+    identifier_key: SERIALNO
+    attribute: ANC2P
+    label: PSAM_2023_Housing
+  - attribute_key: DECADE
+    identifier_key: SERIALNO
+    attribute: DECADE
+    label: PSAM_2023_Housing
+  - attribute_key: DIS
+    identifier_key: SERIALNO
+    attribute: DIS
+    label: PSAM_2023_Housing
+  - attribute_key: DRIVESP
+    identifier_key: SERIALNO
+    attribute: DRIVESP
+    label: PSAM_2023_Housing
+  - attribute_key: ESP
+    identifier_key: SERIALNO
+    attribute: ESP
+    label: PSAM_2023_Housing
+  - attribute_key: ESR
+    identifier_key: SERIALNO
+    attribute: ESR
+    label: PSAM_2023_Housing
+  - attribute_key: FOD1P
+    identifier_key: SERIALNO
+    attribute: FOD1P
+    label: PSAM_2023_Housing
+  - attribute_key: FOD2P
+    identifier_key: SERIALNO
+    attribute: FOD2P
+    label: PSAM_2023_Housing
+  - attribute_key: HICOV
+    identifier_key: SERIALNO
+    attribute: HICOV
+    label: PSAM_2023_Housing
+  - attribute_key: HISP
+    identifier_key: SERIALNO
+    attribute: HISP
+    label: PSAM_2023_Housing
+  - attribute_key: INDP
+    identifier_key: SERIALNO
+    attribute: INDP
+    label: PSAM_2023_Housing
+  - attribute_key: JWAP
+    identifier_key: SERIALNO
+    attribute: JWAP
+    label: PSAM_2023_Housing
+  - attribute_key: JWDP
+    identifier_key: SERIALNO
+    attribute: JWDP
+    label: PSAM_2023_Housing
+  - attribute_key: LANP
+    identifier_key: SERIALNO
+    attribute: LANP
+    label: PSAM_2023_Housing
+  - attribute_key: MIGPUMA
+    identifier_key: SERIALNO
+    attribute: MIGPUMA
+    label: PSAM_2023_Housing
+  - attribute_key: MIGSP
+    identifier_key: SERIALNO
+    attribute: MIGSP
+    label: PSAM_2023_Housing
+  - attribute_key: MSP
+    identifier_key: SERIALNO
+    attribute: MSP
+    label: PSAM_2023_Housing
+  - attribute_key: NAICSP
+    identifier_key: SERIALNO
+    attribute: NAICSP
+    label: PSAM_2023_Housing
+  - attribute_key: NATIVITY
+    identifier_key: SERIALNO
+    attribute: NATIVITY
+    label: PSAM_2023_Housing
+  - attribute_key: NOP
+    identifier_key: SERIALNO
+    attribute: NOP
+    label: PSAM_2023_Housing
+  - attribute_key: OC
+    identifier_key: SERIALNO
+    attribute: OC
+    label: PSAM_2023_Housing
+  - attribute_key: OCCP
+    identifier_key: SERIALNO
+    attribute: OCCP
+    label: PSAM_2023_Housing
+  - attribute_key: PAOC
+    identifier_key: SERIALNO
+    attribute: PAOC
+    label: PSAM_2023_Housing
+  - attribute_key: PERNP
+    identifier_key: SERIALNO
+    attribute: PERNP
+    label: PSAM_2023_Housing
+  - attribute_key: PINCP
+    identifier_key: SERIALNO
+    attribute: PINCP
+    label: PSAM_2023_Housing
+  - attribute_key: POBP
+    identifier_key: SERIALNO
+    attribute: POBP
+    label: PSAM_2023_Housing
+  - attribute_key: POVPIP
+    identifier_key: SERIALNO
+    attribute: POVPIP
+    label: PSAM_2023_Housing
+  - attribute_key: POWPUMA
+    identifier_key: SERIALNO
+    attribute: POWPUMA
+    label: PSAM_2023_Housing
+  - attribute_key: POWSP
+    identifier_key: SERIALNO
+    attribute: POWSP
+    label: PSAM_2023_Housing
+  - attribute_key: PRIVCOV
+    identifier_key: SERIALNO
+    attribute: PRIVCOV
+    label: PSAM_2023_Housing
+  - attribute_key: PUBCOV
+    identifier_key: SERIALNO
+    attribute: PUBCOV
+    label: PSAM_2023_Housing
+  - attribute_key: QTRBIR
+    identifier_key: SERIALNO
+    attribute: QTRBIR
+    label: PSAM_2023_Housing
+  - attribute_key: RAC1P
+    identifier_key: SERIALNO
+    attribute: RAC1P
+    label: PSAM_2023_Housing
+  - attribute_key: RAC2P
+    identifier_key: SERIALNO
+    attribute: RAC2P
+    label: PSAM_2023_Housing
+  - attribute_key: RAC3P
+    identifier_key: SERIALNO
+    attribute: RAC3P
+    label: PSAM_2023_Housing
+  - attribute_key: RACAIAN
+    identifier_key: SERIALNO
+    attribute: RACAIAN
+    label: PSAM_2023_Housing
+  - attribute_key: RACASN
+    identifier_key: SERIALNO
+    attribute: RACASN
+    label: PSAM_2023_Housing
+  - attribute_key: RACBLK
+    identifier_key: SERIALNO
+    attribute: RACBLK
+    label: PSAM_2023_Housing
+  - attribute_key: RACNH
+    identifier_key: SERIALNO
+    attribute: RACNH
+    label: PSAM_2023_Housing
+  - attribute_key: RACNUM
+    identifier_key: SERIALNO
+    attribute: RACNUM
+    label: PSAM_2023_Housing
+  - attribute_key: RACPI
+    identifier_key: SERIALNO
+    attribute: RACPI
+    label: PSAM_2023_Housing
+  - attribute_key: RACSOR
+    identifier_key: SERIALNO
+    attribute: RACSOR
+    label: PSAM_2023_Housing
+  - attribute_key: RACWHT
+    identifier_key: SERIALNO
+    attribute: RACWHT
+    label: PSAM_2023_Housing
+  - attribute_key: RC
+    identifier_key: SERIALNO
+    attribute: RC
+    label: PSAM_2023_Housing
+  - attribute_key: SCIENGP
+    identifier_key: SERIALNO
+    attribute: SCIENGP
+    label: PSAM_2023_Housing
+  - attribute_key: SCIENGRLP
+    identifier_key: SERIALNO
+    attribute: SCIENGRLP
+    label: PSAM_2023_Housing
+  - attribute_key: SFN
+    identifier_key: SERIALNO
+    attribute: SFN
+    label: PSAM_2023_Housing
+  - attribute_key: SFR
+    identifier_key: SERIALNO
+    attribute: SFR
+    label: PSAM_2023_Housing
+  - attribute_key: SOCP
+    identifier_key: SERIALNO
+    attribute: SOCP
+    label: PSAM_2023_Housing
+  - attribute_key: VPS
+    identifier_key: SERIALNO
+    attribute: VPS
+    label: PSAM_2023_Housing
+  - attribute_key: WAOB
+    identifier_key: SERIALNO
+    attribute: WAOB
+    label: PSAM_2023_Housing
+  - attribute_key: FAGEP
+    identifier_key: SERIALNO
+    attribute: FAGEP
+    label: PSAM_2023_Housing
+  - attribute_key: FANCP
+    identifier_key: SERIALNO
+    attribute: FANCP
+    label: PSAM_2023_Housing
+  - attribute_key: FCITP
+    identifier_key: SERIALNO
+    attribute: FCITP
+    label: PSAM_2023_Housing
+  - attribute_key: FCITWP
+    identifier_key: SERIALNO
+    attribute: FCITWP
+    label: PSAM_2023_Housing
+  - attribute_key: FCOWP
+    identifier_key: SERIALNO
+    attribute: FCOWP
+    label: PSAM_2023_Housing
+  - attribute_key: FDDRSP
+    identifier_key: SERIALNO
+    attribute: FDDRSP
+    label: PSAM_2023_Housing
+  - attribute_key: FDEARP
+    identifier_key: SERIALNO
+    attribute: FDEARP
+    label: PSAM_2023_Housing
+  - attribute_key: FDEYEP
+    identifier_key: SERIALNO
+    attribute: FDEYEP
+    label: PSAM_2023_Housing
+  - attribute_key: FDISP
+    identifier_key: SERIALNO
+    attribute: FDISP
+    label: PSAM_2023_Housing
+  - attribute_key: FDOUTP
+    identifier_key: SERIALNO
+    attribute: FDOUTP
+    label: PSAM_2023_Housing
+  - attribute_key: FDPHYP
+    identifier_key: SERIALNO
+    attribute: FDPHYP
+    label: PSAM_2023_Housing
+  - attribute_key: FDRATP
+    identifier_key: SERIALNO
+    attribute: FDRATP
+    label: PSAM_2023_Housing
+  - attribute_key: FDRATXP
+    identifier_key: SERIALNO
+    attribute: FDRATXP
+    label: PSAM_2023_Housing
+  - attribute_key: FDREMP
+    identifier_key: SERIALNO
+    attribute: FDREMP
+    label: PSAM_2023_Housing
+  - attribute_key: FENGP
+    identifier_key: SERIALNO
+    attribute: FENGP
+    label: PSAM_2023_Housing
+  - attribute_key: FESRP
+    identifier_key: SERIALNO
+    attribute: FESRP
+    label: PSAM_2023_Housing
+  - attribute_key: FFERP
+    identifier_key: SERIALNO
+    attribute: FFERP
+    label: PSAM_2023_Housing
+  - attribute_key: FFODP
+    identifier_key: SERIALNO
+    attribute: FFODP
+    label: PSAM_2023_Housing
+  - attribute_key: FGCLP
+    identifier_key: SERIALNO
+    attribute: FGCLP
+    label: PSAM_2023_Housing
+  - attribute_key: FGCMP
+    identifier_key: SERIALNO
+    attribute: FGCMP
+    label: PSAM_2023_Housing
+  - attribute_key: FGCRP
+    identifier_key: SERIALNO
+    attribute: FGCRP
+    label: PSAM_2023_Housing
+  - attribute_key: FHICOVP
+    identifier_key: SERIALNO
+    attribute: FHICOVP
+    label: PSAM_2023_Housing
+  - attribute_key: FHIMRKSP
+    identifier_key: SERIALNO
+    attribute: FHIMRKSP
+    label: PSAM_2023_Housing
+  - attribute_key: FHINS1P
+    identifier_key: SERIALNO
+    attribute: FHINS1P
+    label: PSAM_2023_Housing
+  - attribute_key: FHINS2P
+    identifier_key: SERIALNO
+    attribute: FHINS2P
+    label: PSAM_2023_Housing
+  - attribute_key: FHINS3C
+    identifier_key: SERIALNO
+    attribute: FHINS3C
+    label: PSAM_2023_Housing
+  - attribute_key: FHINS3P
+    identifier_key: SERIALNO
+    attribute: FHINS3P
+    label: PSAM_2023_Housing
+  - attribute_key: FHINS4C
+    identifier_key: SERIALNO
+    attribute: FHINS4C
+    label: PSAM_2023_Housing
+  - attribute_key: FHINS4P
+    identifier_key: SERIALNO
+    attribute: FHINS4P
+    label: PSAM_2023_Housing
+  - attribute_key: FHINS5C
+    identifier_key: SERIALNO
+    attribute: FHINS5C
+    label: PSAM_2023_Housing
+  - attribute_key: FHINS5P
+    identifier_key: SERIALNO
+    attribute: FHINS5P
+    label: PSAM_2023_Housing
+  - attribute_key: FHINS6P
+    identifier_key: SERIALNO
+    attribute: FHINS6P
+    label: PSAM_2023_Housing
+  - attribute_key: FHINS7P
+    identifier_key: SERIALNO
+    attribute: FHINS7P
+    label: PSAM_2023_Housing
+  - attribute_key: FHISP
+    identifier_key: SERIALNO
+    attribute: FHISP
+    label: PSAM_2023_Housing
+  - attribute_key: FINDP
+    identifier_key: SERIALNO
+    attribute: FINDP
+    label: PSAM_2023_Housing
+  - attribute_key: FINTP
+    identifier_key: SERIALNO
+    attribute: FINTP
+    label: PSAM_2023_Housing
+  - attribute_key: FJWDP
+    identifier_key: SERIALNO
+    attribute: FJWDP
+    label: PSAM_2023_Housing
+  - attribute_key: FJWMNP
+    identifier_key: SERIALNO
+    attribute: FJWMNP
+    label: PSAM_2023_Housing
+  - attribute_key: FJWRIP
+    identifier_key: SERIALNO
+    attribute: FJWRIP
+    label: PSAM_2023_Housing
+  - attribute_key: FJWTRNSP
+    identifier_key: SERIALNO
+    attribute: FJWTRNSP
+    label: PSAM_2023_Housing
+  - attribute_key: FLANP
+    identifier_key: SERIALNO
+    attribute: FLANP
+    label: PSAM_2023_Housing
+  - attribute_key: FLANXP
+    identifier_key: SERIALNO
+    attribute: FLANXP
+    label: PSAM_2023_Housing
+  - attribute_key: FMARP
+    identifier_key: SERIALNO
+    attribute: FMARP
+    label: PSAM_2023_Housing
+  - attribute_key: FMARHDP
+    identifier_key: SERIALNO
+    attribute: FMARHDP
+    label: PSAM_2023_Housing
+  - attribute_key: FMARHMP
+    identifier_key: SERIALNO
+    attribute: FMARHMP
+    label: PSAM_2023_Housing
+  - attribute_key: FMARHTP
+    identifier_key: SERIALNO
+    attribute: FMARHTP
+    label: PSAM_2023_Housing
+  - attribute_key: FMARHWP
+    identifier_key: SERIALNO
+    attribute: FMARHWP
+    label: PSAM_2023_Housing
+  - attribute_key: FMARHYP
+    identifier_key: SERIALNO
+    attribute: FMARHYP
+    label: PSAM_2023_Housing
+  - attribute_key: FMIGP
+    identifier_key: SERIALNO
+    attribute: FMIGP
+    label: PSAM_2023_Housing
+  - attribute_key: FMIGSP
+    identifier_key: SERIALNO
+    attribute: FMIGSP
+    label: PSAM_2023_Housing
+  - attribute_key: FMILPP
+    identifier_key: SERIALNO
+    attribute: FMILPP
+    label: PSAM_2023_Housing
+  - attribute_key: FMILSP
+    identifier_key: SERIALNO
+    attribute: FMILSP
+    label: PSAM_2023_Housing
+  - attribute_key: FOCCP
+    identifier_key: SERIALNO
+    attribute: FOCCP
+    label: PSAM_2023_Housing
+  - attribute_key: FOIP
+    identifier_key: SERIALNO
+    attribute: FOIP
+    label: PSAM_2023_Housing
+  - attribute_key: FPAP
+    identifier_key: SERIALNO
+    attribute: FPAP
+    label: PSAM_2023_Housing
+  - attribute_key: FPERNP
+    identifier_key: SERIALNO
+    attribute: FPERNP
+    label: PSAM_2023_Housing
+  - attribute_key: FPINCP
+    identifier_key: SERIALNO
+    attribute: FPINCP
+    label: PSAM_2023_Housing
+  - attribute_key: FPOBP
+    identifier_key: SERIALNO
+    attribute: FPOBP
+    label: PSAM_2023_Housing
+  - attribute_key: FPOWSP
+    identifier_key: SERIALNO
+    attribute: FPOWSP
+    label: PSAM_2023_Housing
+  - attribute_key: FPRIVCOVP
+    identifier_key: SERIALNO
+    attribute: FPRIVCOVP
+    label: PSAM_2023_Housing
+  - attribute_key: FPUBCOVP
+    identifier_key: SERIALNO
+    attribute: FPUBCOVP
+    label: PSAM_2023_Housing
+  - attribute_key: FRACP
+    identifier_key: SERIALNO
+    attribute: FRACP
+    label: PSAM_2023_Housing
+  - attribute_key: FRELSHIPP
+    identifier_key: SERIALNO
+    attribute: FRELSHIPP
+    label: PSAM_2023_Housing
+  - attribute_key: FRETP
+    identifier_key: SERIALNO
+    attribute: FRETP
+    label: PSAM_2023_Housing
+  - attribute_key: FSCHGP
+    identifier_key: SERIALNO
+    attribute: FSCHGP
+    label: PSAM_2023_Housing
+  - attribute_key: FSCHLP
+    identifier_key: SERIALNO
+    attribute: FSCHLP
+    label: PSAM_2023_Housing
+  - attribute_key: FSCHP
+    identifier_key: SERIALNO
+    attribute: FSCHP
+    label: PSAM_2023_Housing
+  - attribute_key: FSEMP
+    identifier_key: SERIALNO
+    attribute: FSEMP
+    label: PSAM_2023_Housing
+  - attribute_key: FSEXP
+    identifier_key: SERIALNO
+    attribute: FSEXP
+    label: PSAM_2023_Housing
+  - attribute_key: FSSIP
+    identifier_key: SERIALNO
+    attribute: FSSIP
+    label: PSAM_2023_Housing
+  - attribute_key: FSSP
+    identifier_key: SERIALNO
+    attribute: FSSP
+    label: PSAM_2023_Housing
+  - attribute_key: FWAGP
+    identifier_key: SERIALNO
+    attribute: FWAGP
+    label: PSAM_2023_Housing
+  - attribute_key: FWKHP
+    identifier_key: SERIALNO
+    attribute: FWKHP
+    label: PSAM_2023_Housing
+  - attribute_key: FWKLP
+    identifier_key: SERIALNO
+    attribute: FWKLP
+    label: PSAM_2023_Housing
+  - attribute_key: FWKWNP
+    identifier_key: SERIALNO
+    attribute: FWKWNP
+    label: PSAM_2023_Housing
+  - attribute_key: FWRKP
+    identifier_key: SERIALNO
+    attribute: FWRKP
+    label: PSAM_2023_Housing
+  - attribute_key: FYOEP
+    identifier_key: SERIALNO
+    attribute: FYOEP
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP1
+    identifier_key: SERIALNO
+    attribute: PWGTP1
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP2
+    identifier_key: SERIALNO
+    attribute: PWGTP2
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP3
+    identifier_key: SERIALNO
+    attribute: PWGTP3
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP4
+    identifier_key: SERIALNO
+    attribute: PWGTP4
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP5
+    identifier_key: SERIALNO
+    attribute: PWGTP5
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP6
+    identifier_key: SERIALNO
+    attribute: PWGTP6
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP7
+    identifier_key: SERIALNO
+    attribute: PWGTP7
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP8
+    identifier_key: SERIALNO
+    attribute: PWGTP8
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP9
+    identifier_key: SERIALNO
+    attribute: PWGTP9
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP10
+    identifier_key: SERIALNO
+    attribute: PWGTP10
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP11
+    identifier_key: SERIALNO
+    attribute: PWGTP11
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP12
+    identifier_key: SERIALNO
+    attribute: PWGTP12
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP13
+    identifier_key: SERIALNO
+    attribute: PWGTP13
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP14
+    identifier_key: SERIALNO
+    attribute: PWGTP14
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP15
+    identifier_key: SERIALNO
+    attribute: PWGTP15
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP16
+    identifier_key: SERIALNO
+    attribute: PWGTP16
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP17
+    identifier_key: SERIALNO
+    attribute: PWGTP17
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP18
+    identifier_key: SERIALNO
+    attribute: PWGTP18
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP19
+    identifier_key: SERIALNO
+    attribute: PWGTP19
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP20
+    identifier_key: SERIALNO
+    attribute: PWGTP20
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP21
+    identifier_key: SERIALNO
+    attribute: PWGTP21
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP22
+    identifier_key: SERIALNO
+    attribute: PWGTP22
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP23
+    identifier_key: SERIALNO
+    attribute: PWGTP23
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP24
+    identifier_key: SERIALNO
+    attribute: PWGTP24
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP25
+    identifier_key: SERIALNO
+    attribute: PWGTP25
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP26
+    identifier_key: SERIALNO
+    attribute: PWGTP26
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP27
+    identifier_key: SERIALNO
+    attribute: PWGTP27
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP28
+    identifier_key: SERIALNO
+    attribute: PWGTP28
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP29
+    identifier_key: SERIALNO
+    attribute: PWGTP29
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP30
+    identifier_key: SERIALNO
+    attribute: PWGTP30
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP31
+    identifier_key: SERIALNO
+    attribute: PWGTP31
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP32
+    identifier_key: SERIALNO
+    attribute: PWGTP32
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP33
+    identifier_key: SERIALNO
+    attribute: PWGTP33
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP34
+    identifier_key: SERIALNO
+    attribute: PWGTP34
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP35
+    identifier_key: SERIALNO
+    attribute: PWGTP35
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP36
+    identifier_key: SERIALNO
+    attribute: PWGTP36
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP37
+    identifier_key: SERIALNO
+    attribute: PWGTP37
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP38
+    identifier_key: SERIALNO
+    attribute: PWGTP38
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP39
+    identifier_key: SERIALNO
+    attribute: PWGTP39
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP40
+    identifier_key: SERIALNO
+    attribute: PWGTP40
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP41
+    identifier_key: SERIALNO
+    attribute: PWGTP41
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP42
+    identifier_key: SERIALNO
+    attribute: PWGTP42
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP43
+    identifier_key: SERIALNO
+    attribute: PWGTP43
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP44
+    identifier_key: SERIALNO
+    attribute: PWGTP44
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP45
+    identifier_key: SERIALNO
+    attribute: PWGTP45
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP46
+    identifier_key: SERIALNO
+    attribute: PWGTP46
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP47
+    identifier_key: SERIALNO
+    attribute: PWGTP47
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP48
+    identifier_key: SERIALNO
+    attribute: PWGTP48
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP49
+    identifier_key: SERIALNO
+    attribute: PWGTP49
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP50
+    identifier_key: SERIALNO
+    attribute: PWGTP50
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP51
+    identifier_key: SERIALNO
+    attribute: PWGTP51
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP52
+    identifier_key: SERIALNO
+    attribute: PWGTP52
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP53
+    identifier_key: SERIALNO
+    attribute: PWGTP53
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP54
+    identifier_key: SERIALNO
+    attribute: PWGTP54
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP55
+    identifier_key: SERIALNO
+    attribute: PWGTP55
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP56
+    identifier_key: SERIALNO
+    attribute: PWGTP56
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP57
+    identifier_key: SERIALNO
+    attribute: PWGTP57
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP58
+    identifier_key: SERIALNO
+    attribute: PWGTP58
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP59
+    identifier_key: SERIALNO
+    attribute: PWGTP59
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP60
+    identifier_key: SERIALNO
+    attribute: PWGTP60
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP61
+    identifier_key: SERIALNO
+    attribute: PWGTP61
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP62
+    identifier_key: SERIALNO
+    attribute: PWGTP62
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP63
+    identifier_key: SERIALNO
+    attribute: PWGTP63
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP64
+    identifier_key: SERIALNO
+    attribute: PWGTP64
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP65
+    identifier_key: SERIALNO
+    attribute: PWGTP65
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP66
+    identifier_key: SERIALNO
+    attribute: PWGTP66
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP67
+    identifier_key: SERIALNO
+    attribute: PWGTP67
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP68
+    identifier_key: SERIALNO
+    attribute: PWGTP68
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP69
+    identifier_key: SERIALNO
+    attribute: PWGTP69
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP70
+    identifier_key: SERIALNO
+    attribute: PWGTP70
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP71
+    identifier_key: SERIALNO
+    attribute: PWGTP71
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP72
+    identifier_key: SERIALNO
+    attribute: PWGTP72
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP73
+    identifier_key: SERIALNO
+    attribute: PWGTP73
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP74
+    identifier_key: SERIALNO
+    attribute: PWGTP74
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP75
+    identifier_key: SERIALNO
+    attribute: PWGTP75
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP76
+    identifier_key: SERIALNO
+    attribute: PWGTP76
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP77
+    identifier_key: SERIALNO
+    attribute: PWGTP77
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP78
+    identifier_key: SERIALNO
+    attribute: PWGTP78
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP79
+    identifier_key: SERIALNO
+    attribute: PWGTP79
+    label: PSAM_2023_Housing
+  - attribute_key: PWGTP80
+    identifier_key: SERIALNO
+    attribute: PWGTP80
+    label: PSAM_2023_Housing
+  data_types:
+    RT: String
+    SERIALNO: NonEmptyString
+    DIVISION: String
+    SPORDER: String
+    PUMA: String
+    REGION: String
+    STATE: String
+    ADJINC: String
+    PWGTP: String
+    AGEP: String
+    CIT: String
+    CITWP: String
+    COW: String
+    DDRS: String
+    DEAR: String
+    DEYE: String
+    DOUT: String
+    DPHY: String
+    DRAT: String
+    DRATX: String
+    DREM: String
+    ENG: String
+    FER: String
+    GCL: String
+    GCM: String
+    GCR: String
+    HIMRKS: String
+    HINS1: String
+    HINS2: String
+    HINS3: String
+    HINS4: String
+    HINS5: String
+    HINS6: String
+    HINS7: String
+    INTP: String
+    JWMNP: String
+    JWRIP: String
+    JWTRNS: String
+    LANX: String
+    MAR: String
+    MARHD: String
+    MARHM: String
+    MARHT: String
+    MARHW: String
+    MARHYP: String
+    MIG: String
+    MIL: String
+    MLPA: String
+    MLPB: String
+    MLPCD: String
+    MLPE: String
+    MLPFG: String
+    MLPH: String
+    MLPIK: String
+    MLPJ: String
+    NWAB: String
+    NWAV: String
+    NWLA: String
+    NWLK: String
+    NWRE: String
+    OIP: String
+    PAP: String
+    RELSHIPP: String
+    RETP: String
+    SCH: String
+    SCHG: String
+    SCHL: String
+    SEMP: String
+    SEX: String
+    SSIP: String
+    SSP: String
+    WAGP: String
+    WKHP: String
+    WKL: String
+    WKWN: String
+    WRK: String
+    YOEP: String
+    ANC: String
+    ANC1P: String
+    ANC2P: String
+    DECADE: String
+    DIS: String
+    DRIVESP: String
+    ESP: String
+    ESR: String
+    FOD1P: String
+    FOD2P: String
+    HICOV: String
+    HISP: String
+    INDP: String
+    JWAP: String
+    JWDP: String
+    LANP: String
+    MIGPUMA: String
+    MIGSP: String
+    MSP: String
+    NAICSP: String
+    NATIVITY: String
+    NOP: String
+    OC: String
+    OCCP: String
+    PAOC: String
+    PERNP: String
+    PINCP: String
+    POBP: String
+    POVPIP: String
+    POWPUMA: String
+    POWSP: String
+    PRIVCOV: String
+    PUBCOV: String
+    QTRBIR: String
+    RAC1P: String
+    RAC2P: String
+    RAC3P: String
+    RACAIAN: String
+    RACASN: String
+    RACBLK: String
+    RACNH: String
+    RACNUM: String
+    RACPI: String
+    RACSOR: String
+    RACWHT: String
+    RC: String
+    SCIENGP: String
+    SCIENGRLP: String
+    SFN: String
+    SFR: String
+    SOCP: String
+    VPS: String
+    WAOB: String
+    FAGEP: String
+    FANCP: String
+    FCITP: String
+    FCITWP: String
+    FCOWP: String
+    FDDRSP: String
+    FDEARP: String
+    FDEYEP: String
+    FDISP: String
+    FDOUTP: String
+    FDPHYP: String
+    FDRATP: String
+    FDRATXP: String
+    FDREMP: String
+    FENGP: String
+    FESRP: String
+    FFERP: String
+    FFODP: String
+    FGCLP: String
+    FGCMP: String
+    FGCRP: String
+    FHICOVP: String
+    FHIMRKSP: String
+    FHINS1P: String
+    FHINS2P: String
+    FHINS3C: String
+    FHINS3P: String
+    FHINS4C: String
+    FHINS4P: String
+    FHINS5C: String
+    FHINS5P: String
+    FHINS6P: String
+    FHINS7P: String
+    FHISP: String
+    FINDP: String
+    FINTP: String
+    FJWDP: String
+    FJWMNP: String
+    FJWRIP: String
+    FJWTRNSP: String
+    FLANP: String
+    FLANXP: String
+    FMARP: String
+    FMARHDP: String
+    FMARHMP: String
+    FMARHTP: String
+    FMARHWP: String
+    FMARHYP: String
+    FMIGP: String
+    FMIGSP: String
+    FMILPP: String
+    FMILSP: String
+    FOCCP: String
+    FOIP: String
+    FPAP: String
+    FPERNP: String
+    FPINCP: String
+    FPOBP: String
+    FPOWSP: String
+    FPRIVCOVP: String
+    FPUBCOVP: String
+    FRACP: String
+    FRELSHIPP: String
+    FRETP: String
+    FSCHGP: String
+    FSCHLP: String
+    FSCHP: String
+    FSEMP: String
+    FSEXP: String
+    FSSIP: String
+    FSSP: String
+    FWAGP: String
+    FWKHP: String
+    FWKLP: String
+    FWKWNP: String
+    FWRKP: String
+    FYOEP: String
+    PWGTP1: String
+    PWGTP2: String
+    PWGTP3: String
+    PWGTP4: String
+    PWGTP5: String
+    PWGTP6: String
+    PWGTP7: String
+    PWGTP8: String
+    PWGTP9: String
+    PWGTP10: String
+    PWGTP11: String
+    PWGTP12: String
+    PWGTP13: String
+    PWGTP14: String
+    PWGTP15: String
+    PWGTP16: String
+    PWGTP17: String
+    PWGTP18: String
+    PWGTP19: String
+    PWGTP20: String
+    PWGTP21: String
+    PWGTP22: String
+    PWGTP23: String
+    PWGTP24: String
+    PWGTP25: String
+    PWGTP26: String
+    PWGTP27: String
+    PWGTP28: String
+    PWGTP29: String
+    PWGTP30: String
+    PWGTP31: String
+    PWGTP32: String
+    PWGTP33: String
+    PWGTP34: String
+    PWGTP35: String
+    PWGTP36: String
+    PWGTP37: String
+    PWGTP38: String
+    PWGTP39: String
+    PWGTP40: String
+    PWGTP41: String
+    PWGTP42: String
+    PWGTP43: String
+    PWGTP44: String
+    PWGTP45: String
+    PWGTP46: String
+    PWGTP47: String
+    PWGTP48: String
+    PWGTP49: String
+    PWGTP50: String
+    PWGTP51: String
+    PWGTP52: String
+    PWGTP53: String
+    PWGTP54: String
+    PWGTP55: String
+    PWGTP56: String
+    PWGTP57: String
+    PWGTP58: String
+    PWGTP59: String
+    PWGTP60: String
+    PWGTP61: String
+    PWGTP62: String
+    PWGTP63: String
+    PWGTP64: String
+    PWGTP65: String
+    PWGTP66: String
+    PWGTP67: String
+    PWGTP68: String
+    PWGTP69: String
+    PWGTP70: String
+    PWGTP71: String
+    PWGTP72: String
+    PWGTP73: String
+    PWGTP74: String
+    PWGTP75: String
+    PWGTP76: String
+    PWGTP77: String
+    PWGTP78: String
+    PWGTP79: String
+    PWGTP80: String
 #
 - name: acs_2023_microdata_individual
-  uri: file://{MONOREPO_BASE_DIR}/packages/fastopendata/src/fastopendata/data/psam_2023_individual.csv
+  uri: file://{MONOREPO_BASE_DIR}/packages/fastopendata/raw_data/psam_2023_individual.csv
   mappings:
   - identifier_key: SERIALNO
     label: PSAM_2023_Individual

@@ -10,7 +10,7 @@ import osmium
 from pycypher.logger import LOGGER
 
 MAX_NODES = -1
-FOD_UNITED_STATES_NODES_FILE = "/Users/zernst/git/pycypher-nmetl/packages/fastopendata/src/fastopendata/data/united_states_nodes.csv"
+FOD_UNITED_STATES_NODES_FILE = "/Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data/united_states_nodes.csv"
 
 
 class NodeHandler(osmium.SimpleHandler):
@@ -104,7 +104,7 @@ if __name__ == "__main__":
     LOGGER.info("Extracting point data from OSM...")
     h = NodeHandler()
     h.apply_file(
-        "/Users/zernst/git/pycypher-nmetl/packages/fastopendata/src/fastopendata/data/us-latest.osm.pbf",
+        "/Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data/us-latest.osm.pbf",
         locations=True,
     )
     h.file.close()

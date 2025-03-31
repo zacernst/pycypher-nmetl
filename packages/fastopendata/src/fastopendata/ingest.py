@@ -70,6 +70,7 @@ def reserves_national_guard(
 def never_served_in_military(
     military,
 ) -> VariableAttribute["i", "never_served_in_military"]:
+    """Never served in the military"""
     return military == "3"
 
 
@@ -77,6 +78,7 @@ def never_served_in_military(
     "MATCH (i:PSAM_2023_Individual) WITH i.MIL AS military RETURN military"
 )
 def some_military(military) -> VariableAttribute["i", "some_military"]:
+    """Currently serving or served in the military previously"""
     return military in ["1", "2", "3"]
 
 
@@ -86,6 +88,7 @@ def some_military(military) -> VariableAttribute["i", "some_military"]:
 def military_after_sept_11(
     military,
 ) -> VariableAttribute["i", "military_after_sept_11"]:
+    """Served in the military after September 11, 2001"""
     return military == "1"
 
 
@@ -95,8 +98,22 @@ def military_after_sept_11(
 def vision_difficulty(
     eye, acs_pums_2023_data_dictionary
 ) -> VariableAttribute["i", "vision_difficulty"]:
+    """Has vision difficulty"""
     return acs_pums_2023_data_dictionary["DEYE"][eye]
 
 
-LOGGER.setLevel("DEBUG")
-session.start_threads()
+@session.trigger(
+    "MATCH (i:PSAM_2023_Individual) WITH i.DPHY AS physical RETURN physical"
+)
+def physical_difficulty(
+    physical, acs_pums_2023_data_dictionary
+) -> VariableAttribute["i", "physical_difficulty"]:
+    """Has physical difficulty"""
+    return acs_pums_2023_data_dictionary["DPHY"][physical]
+
+
+
+
+LOGGER.setLevel("INFO")
+session()
+# session.start_threads()

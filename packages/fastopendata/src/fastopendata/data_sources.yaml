@@ -5,7 +5,7 @@ logging_level: INFO
 
 data_sources:
 - name: city_table
-  uri: file://{MONOREPO_BASE_DIR}/packages/fastopendata/src/fastopendata/data/state_county_tract_puma.csv
+  uri: file://{MONOREPO_BASE_DIR}/packages/fastopendata/raw_data/state_county_tract_puma.csv
   mappings:
   - attribute_key: STATEFP
     identifier_key: STATEFP

@@ -301,14 +301,30 @@ def fact_collection_squares_circles():  # pylint: disable=too-many-locals
             FactRelationshipHasLabel("relationship_4", "contains"),
             FactRelationshipHasSourceNode("relationship_4", "square_3"),
             FactRelationshipHasTargetNode("relationship_4", "circle_4"),
-            FactNodeHasAttributeWithValue("square_1", "name", Literal("square_alice")),
-            FactNodeHasAttributeWithValue("square_2", "name", Literal("square_bob")),
-            FactNodeHasAttributeWithValue("square_3", "name", Literal("square_carol")),
-            FactNodeHasAttributeWithValue("square_4", "name", Literal("square_dave")),
-            FactNodeHasAttributeWithValue("circle_1", "name", Literal("circle_alice")),
-            FactNodeHasAttributeWithValue("circle_2", "name", Literal("circle_bob")),
-            FactNodeHasAttributeWithValue("circle_3", "name", Literal("circle_carol")),
-            FactNodeHasAttributeWithValue("circle_4", "name", Literal("circle_dave")),
+            FactNodeHasAttributeWithValue(
+                "square_1", "name", Literal("square_alice")
+            ),
+            FactNodeHasAttributeWithValue(
+                "square_2", "name", Literal("square_bob")
+            ),
+            FactNodeHasAttributeWithValue(
+                "square_3", "name", Literal("square_carol")
+            ),
+            FactNodeHasAttributeWithValue(
+                "square_4", "name", Literal("square_dave")
+            ),
+            FactNodeHasAttributeWithValue(
+                "circle_1", "name", Literal("circle_alice")
+            ),
+            FactNodeHasAttributeWithValue(
+                "circle_2", "name", Literal("circle_bob")
+            ),
+            FactNodeHasAttributeWithValue(
+                "circle_3", "name", Literal("circle_carol")
+            ),
+            FactNodeHasAttributeWithValue(
+                "circle_4", "name", Literal("circle_dave")
+            ),
         ]
     )
     return fact_collection
@@ -712,7 +728,8 @@ def session_with_aggregation_fixture():
         "RETURN side_length, radii"
     )  # Should be an alias, not an ObjectAttributeLookup
     def aggregation_of_radii(
-        side_length, radii  # pylint: disable=unused-argument
+        side_length,
+        radii,  # pylint: disable=unused-argument
     ) -> VariableAttribute["s", "num_circles"]:  # type: ignore
         return len(radii)
 
@@ -733,7 +750,9 @@ def session_with_city_state_fixture():
 
 @pytest.fixture
 def data_asset_1():
-    with open(TEST_DATA_DIRECTORY / "data_asset_1.json", "r", encoding="utf8") as file:
+    with open(
+        TEST_DATA_DIRECTORY / "data_asset_1.json", "r", encoding="utf8"
+    ) as file:
         data = json.load(file)
     return DataAsset(name="data_asset_1", obj=data)
 
@@ -748,7 +767,9 @@ def session_with_data_asset(data_asset_1):
 
 @pytest.fixture
 def session_with_trigger_using_data_asset(session_with_data_asset):
-    with open(TEST_DATA_DIRECTORY / "data_asset_1.json", "r", encoding="utf8") as file:
+    with open(
+        TEST_DATA_DIRECTORY / "data_asset_1.json", "r", encoding="utf8"
+    ) as file:
         data = json.load(file)
     data_asset = DataAsset(name="my_data_asset", obj=data)
     session_with_data_asset.register_data_asset(data_asset)
