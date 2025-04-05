@@ -42,7 +42,7 @@ if __name__ == "__main__":
     SHAPE_FILES = [
         filename
         for filename in os.listdir(DATA_DIR)
-        if 'puma' in filename and filename.endswith(".shp")
+        if "puma" in filename and filename.endswith(".shp")
     ]
     LOGGER.info("Concatenating shapefiles...")
     concatenate_shapefiles(

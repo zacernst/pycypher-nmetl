@@ -51,6 +51,7 @@ from nmetl.configuration import (  # pylint: disable=unused-import
     SessionConfig,
     load_session_config,
 )
+from nmetl.data_asset import DataAsset
 from nmetl.data_source import (
     CSVDataSource,
     DataSource,
@@ -64,7 +65,6 @@ from nmetl.exceptions import (
 from nmetl.helpers import QueueGenerator, ensure_uri
 from nmetl.message_types import EndOfData, RawDatum
 from nmetl.session import NewColumnConfig, Session
-from nmetl.data_asset import DataAsset
 from nmetl.trigger import (
     NodeRelationship,
     NodeRelationshipTrigger,

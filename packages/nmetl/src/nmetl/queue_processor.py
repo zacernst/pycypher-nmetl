@@ -11,11 +11,11 @@ from __future__ import annotations
 
 import datetime
 import hashlib
+import inspect
 import queue
 import sys
 import threading
 import traceback
-import inspect
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional

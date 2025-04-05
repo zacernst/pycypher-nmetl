@@ -1,15 +1,17 @@
 schema: '2.0'
 stages:
   census_pus:
-    cmd: wget https://www2.census.gov/programs-surveys/acs/data/pums/2023/1-Year/csv_pus.zip
-      -O /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data/csv_pus.zip
+    cmd: "wget --user-agent='Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1)'
+      --no-cache --header='referer: https://www2.census.gov/programs-surveys/acs/data/pums/2027/'
+      https://www2.census.gov/programs-surveys/acs/data/pums/2023/1-Year/csv_pus.zip
+      -O /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data//csv_pus_1_year.zip"
     outs:
-    - path: packages/fastopendata/raw_data/csv_pus.zip
+    - path: packages/fastopendata/raw_data/csv_pus_1_year.zip
       hash: md5
       md5: 9453446308b8e2308aafd925b14c42e3
       size: 597292173
   unzip_psam:
-    cmd: unzip -o /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data/csv_pus.zip
+    cmd: unzip -o /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data//csv_pus.zip
       -d /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data/
     deps:
     - path: packages/fastopendata/raw_data/csv_pus.zip
@@ -26,10 +28,10 @@ stages:
       md5: 7374726b0169ed0e5db2537c86ab6eb8
       size: 1176135954
   combine_psam:
-    cmd: (cat /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data/psam_pusa.csv
-      > /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data/psam_pus.csv
-      && cat /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data/psam_pusb.csv
-      | tail +2 >> /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data/psam_pus.csv)
+    cmd: (cat /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data//psam_pusa.csv
+      > /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data//psam_pus.csv
+      && cat /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data//psam_pusb.csv
+      | tail +2 >> /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data//psam_pus.csv)
     deps:
     - path: packages/fastopendata/raw_data/psam_pusa.csv
       hash: md5
@@ -45,37 +47,46 @@ stages:
       md5: fb4223021465a1ada0fa88f49f5d546d
       size: 2395912460
   census_pus_5_year:
-    cmd: wget https://www2.census.gov/programs-surveys/acs/data/pums/2023/5-Year/csv_pus.zip
-      -O 
-      /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data/csv_pus_5_year.zip
+    cmd: "wget --user-agent='Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1)'
+      --no-cache --header='referer: https://www2.census.gov/programs-surveys/acs/data/pums/2027/'
+      https://www2.census.gov/programs-surveys/acs/data/pums/2023/5-Year/csv_pus.zip
+      -O /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data//csv_pus_5_year.zip"
     outs:
     - path: packages/fastopendata/raw_data/csv_pus_5_year.zip
       hash: md5
-      md5: 7a49abec58e16ae8fa86cf825f58c382
-      size: 1885713616
+      md5: 8cc7f0fd7e62f1673f3535048b46f4ed
+      size: 2246441858
   osm:
     cmd: wget https://download.geofabrik.de/north-america/us-latest.osm.pbf -O 
-      /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data/us-latest.osm.pbf
+      /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data//us-latest.osm.pbf
     outs:
     - path: packages/fastopendata/raw_data/us-latest.osm.pbf
       hash: md5
-      md5: e5e6cabe30f4725d97ae75805005c571
-      size: 11025998648
+      md5: 5e1724b84e6502bf4296eb3b4d19df89
+      size: 11036724597
   state_county_tract_puma:
     cmd: wget 
       https://www2.census.gov/geo/docs/maps-data/data/rel2020/2020_Census_Tract_to_2020_PUMA.txt
       -O - | sed $'1s/^\uFEFF//' > 
-      /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data/state_county_tract_puma.csv
+      /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data//state_county_tract_puma.csv
     outs:
     - path: packages/fastopendata/raw_data/state_county_tract_puma.csv
       hash: md5
       md5: 1529972993fc370f3883d881106eb620
       size: 1709073
   split_psam_to_housing_and_individual:
-    cmd: head -1 packages/fastopendata/raw_data/psam_pus.csv > packages/fastopendata/raw_data/psam_2023_individual.csv
-      && grep 2023GQ packages/fastopendata/raw_data/psam_pus.csv >> packages/fastopendata/raw_data/psam_2023_individual.csv
-      && head -1 packages/fastopendata/raw_data/psam_pus.csv > packages/fastopendata/raw_data/psam_2023_housing.csv
-      && grep 2023HU packages/fastopendata/raw_data/psam_pus.csv >> packages/fastopendata/raw_data/psam_2023_housing.csv
+    cmd: head -1 /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data//psam_pus.csv
+      > 
+      /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data//psam_2023_individual.csv
+      && grep 2023GQ /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data//psam_pus.csv
+      >> 
+      /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data//psam_2023_individual.csv
+      && head -1 /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data//psam_pus.csv
+      > 
+      /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data//psam_2023_housing.csv
+      && grep 2023HU /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data//psam_pus.csv
+      >> 
+      /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data//psam_2023_housing.csv
     deps:
     - path: packages/fastopendata/raw_data/psam_pus.csv
       hash: md5
@@ -92,73 +103,307 @@ stages:
       size: 115863208
   united_states_nodes_csv:
     cmd: python 
-      /Users/zernst/git/pycypher-nmetl/packages/fastopendata/src/fastopendata/extract_osm_nodes.py
+      /Users/zernst/git/pycypher-nmetl/packages/fastopendata/src/fastopendata//extract_osm_nodes.py
     deps:
     - path: packages/fastopendata/raw_data/us-latest.osm.pbf
       hash: md5
-      md5: e5e6cabe30f4725d97ae75805005c571
-      size: 11025998648
+      md5: 5e1724b84e6502bf4296eb3b4d19df89
+      size: 11036724597
     outs:
     - path: packages/fastopendata/raw_data/united_states_nodes.csv
       hash: md5
-      md5: ed27eba09f951fc57fd890551679da7f
-      size: 5252645549
+      md5: 90c05998fc4c62935e345ea94412a811
+      size: 5260295641
   census_block_shape_files:
-    cmd: /bin/bash -c ./packages/fastopendata/src/fastopendata/block_shape_files.sh
+    cmd: /bin/bash -c 
+      /Users/zernst/git/pycypher-nmetl/packages/fastopendata/src/fastopendata//block_shape_files.sh
     outs:
     - path: packages/fastopendata/raw_data/combined.shp
       hash: md5
-      md5: a99179a02eb8e8f5e33863740fa17188
-      size: 1146308212
+      md5: e18f7dffe7b4e362b0bde4e65ec485d9
+      size: 1161839904
   download_pums_5_year:
-    cmd: wget -P /Users/zernst/git/pycypher-nmetl/packages/fastopendata/src/fastopendata/data/
+    cmd: wget -P '/Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data/'
       -e robots=off -nH --recursive -np https://www2.census.gov/programs-surveys/acs/data/pums/2023/5-Year/
       && /bin/bash -c 
-      /Users/zernst/git/pycypher-nmetl/packages/fastopendata/src/fastopendata/pums_5_year.sh
+      /Users/zernst/git/pycypher-nmetl/packages/fastopendata/src/fastopendata//pums_5_year.sh
     outs:
-    - path: packages/fastopendata/src/fastopendata/data/psam_h.csv
+    - path: packages/fastopendata/raw_data/psam_h.csv
       hash: md5
       md5: 02dff4261afb749033c590ecca1e8cb7
       size: 4210441612
-    - path: packages/fastopendata/src/fastopendata/data/psam_p.csv
+    - path: packages/fastopendata/raw_data/psam_p.csv
       hash: md5
       md5: b0067c846fc7973991294f8b299f6419
       size: 10440919764
   download_wikidata:
     cmd: wget https://dumps.wikimedia.org/wikidatawiki/entities/latest-all.json.bz2
       -O 
-      /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data/latest-all.json.bz2
+      /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data//latest-all.json.bz2
     outs:
     - path: packages/fastopendata/raw_data/latest-all.json.bz2
       hash: md5
-      md5: 2ed1a39c36b73a41300ce15d28b7ca45
-      size: 95299191072
+      md5: 31abfbc2fde5ee65077692c7e834111a
+      size: 95386713019
   extract_entities_from_wikidata:
     cmd: cat 
-      /Users/zernst/git/pycypher-nmetl/packages/fastopendata/src/fastopendata/data/latest-all.json.bz2|
-      pv -s `ls -l 
-      /Users/zernst/git/pycypher-nmetl/packages/fastopendata/src/fastopendata/data/latest-all.json.bz2
-      | awk '{print $5}'` | bunzip2 -c | grep -e longitude -e latitude | gzip -9 >
-      /Users/zernst/git/pycypher-nmetl/packages/fastopendata/src/fastopendata/data/entities_with_lat_long.json.gz
+      /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data//latest-all.json.bz2
+      | pv -s `ls -l 
+      /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data//latest-all.json.bz2
+      | awk '{print $5}'` | lbunzip2 -c | parallel --pipe --block 128M grep latitude
+      | lbzip2 -c > 
+      /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data//location_entities.json.bz2
     deps:
-    - path: packages/fastopendata/src/fastopendata/data/latest-all.json.bz2
+    - path: packages/fastopendata/raw_data/latest-all.json.bz2
       hash: md5
-      md5: df388f34631a246194aeca5a4274ff37
-      size: 95228332493
+      md5: 31abfbc2fde5ee65077692c7e834111a
+      size: 95386713019
     outs:
-    - path: packages/fastopendata/src/fastopendata/data/entities_with_lat_long.json.gz
+    - path: packages/fastopendata/raw_data/location_entities.json.bz2
       hash: md5
-      md5: fdf6f99ed436c688af7cc6592476e100
-      size: 7976045291
+      md5: 6bbd95f263e5b81eb10aaff76bca3db1
+      size: 5987328960
   download_puma_shapefiles:
-    cmd: wget -P /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data/
-      -e robots=off -nH --recursive -np https://www2.census.gov/geo/tiger/TIGER2024/PUMA20/
-      && /bin/bash -c 
-      /Users/zernst/git/pycypher-nmetl/packages/fastopendata/src/fastopendata/puma_shape_files.sh
-      && uv run 
-      /Users/zernst/git/pycypher-nmetl/packages/fastopendata/src/fastopendata/concatenate_puma_shape_files.py
+    cmd: "wget --user-agent='Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1)'
+      --no-cache --header='referer: https://www2.census.gov/programs-surveys/acs/data/pums/2027/'
+      -P /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data/ -nH --recursive
+      -np https://www2.census.gov/geo/tiger/TIGER2024/PUMA20/ && /bin/bash -c /Users/zernst/git/pycypher-nmetl/packages/fastopendata/src/fastopendata//puma_shape_files.sh
+      && python /Users/zernst/git/pycypher-nmetl/packages/fastopendata/src/fastopendata//concatenate_puma_shape_files.py"
     outs:
-    - path: ./packages/fastopendata/raw_data/puma_combined.shp
+    - path: packages/fastopendata/raw_data/puma_combined.shp
       hash: md5
       md5: 1719e7384cd32e7b2fdb690c3ec3b8b4
       size: 115431992
+  state_boundaries:
+    cmd: "wget --user-agent='Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1)'
+      --no-cache --header='referer: https://www2.census.gov/programs-surveys/acs/data/pums/2027/'
+      -P /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data/ -nH --recursive
+      -np https://www2.census.gov/geo/tiger/TIGER2024/STATE/tl_2024_us_state.zip -O
+      /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data//us_state_boundaries.zip
+      && unzip -o /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data//us_state_boundaries.zip
+      -d /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data/"
+    outs:
+    - path: packages/fastopendata/raw_data/tl_2024_us_state.shp
+      hash: md5
+      md5: 03d9eb88a2cd863e130125d992ae27ec
+      size: 15531792
+      isexec: true
+  filter_us_wikidata:
+    cmd: python 
+      /Users/zernst/git/pycypher-nmetl/packages/fastopendata/src/fastopendata//filter_us_nodes.py
+    deps:
+    - path: packages/fastopendata/raw_data/location_entities.json.bz2
+      hash: md5
+      md5: 6bbd95f263e5b81eb10aaff76bca3db1
+      size: 5987328960
+    - path: packages/fastopendata/raw_data/tl_2024_us_state.shp
+      hash: md5
+      md5: 03d9eb88a2cd863e130125d992ae27ec
+      size: 15531792
+      isexec: true
+    outs:
+    - path: packages/fastopendata/raw_data/wikidata_us_points.json
+      hash: md5
+      md5: 18ee5bd489929247e4ac064f2c50abf4
+      size: 8275572264
+  download_sipp_directory:
+    cmd: wget https://www2.census.gov/programs-surveys/sipp/data/datasets/2023/pu2023_csv.zip
+      -O /Users/zernst/git/pycypher-nmetl//packages/fastopendata/raw_data/pu2023_csv.zip
+      && unzip -o /Users/zernst/git/pycypher-nmetl//packages/fastopendata/raw_data/pu2023_csv.zip
+      -d /Users/zernst/git/pycypher-nmetl//packages/fastopendata/raw_data/
+    outs:
+    - path: packages/fastopendata/raw_data/pu2023.csv
+      hash: md5
+      md5: 878401c68951331ab4fd3540467e53d1
+      size: 3726010471
+  download_sipp_data_dictionary:
+    cmd: wget 
+      https://www2.census.gov/programs-surveys/sipp/data/datasets/2023/pu2023_schema.json
+      -O 
+      /Users/zernst/git/pycypher-nmetl//packages/fastopendata/raw_data/pu2023_schema.json
+    outs:
+    - path: packages/fastopendata/raw_data/pu2023_schema.json
+      hash: md5
+      md5: aba42297618c03271c1e65f34c36afcb
+      size: 755059
+  download_sipp_rw_data:
+    cmd: wget https://www2.census.gov/programs-surveys/sipp/data/datasets/2023/rw2023_csv.zip
+      -O /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data//rw2023_csv.zip
+      && unzip -o /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data//rw2023_csv.zip
+      -d /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data//
+    outs:
+    - path: packages/fastopendata/raw_data/rw2023.csv
+      hash: md5
+      md5: b12725864500c0d3b8470f7390ef46a7
+      size: 1406529489
+  download_housing_survey:
+    cmd: wget 
+      https://www2.census.gov/programs-surveys/ahs/2023/AHS%202023%20Value%20Labels%20Package.zip
+      -O /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data//ahs_2023.zip
+      && unzip -o /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data//ahs_2023.zip
+      -d /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data/ && wget
+      https://www2.census.gov/programs-surveys/ahs/2023/AHS%202023%20National%20PUF%20v1.1%20Flat%20CSV.zip
+      -O 
+      /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data//ahs_2023_csv.zip
+      && unzip -o 
+      /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data//ahs_2023_csv.zip
+      -d /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data/
+    outs:
+    - path: packages/fastopendata/raw_data/AHS 2023 Value Labels.csv
+      hash: md5
+      md5: 0ede7910147d57d52f81d997d3cfc841
+      size: 690235
+    - path: packages/fastopendata/raw_data/ahs2023n.csv
+      hash: md5
+      md5: 0c3bad23b2df075cec1c041a5d761678
+      size: 838423951
+      isexec: true
+  download_justice_outcomes:
+    cmd: wget 
+      https://www2.census.gov/programs-surveys/cjars/datasets/2022/cjars_joe_2022_co.csv.zip
+      -O 
+      /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data//cjars_joe_2022_co.csv.zip
+    outs:
+    - path: packages/fastopendata/raw_data/cjars_joe_2022_co.csv.zip
+      hash: md5
+      md5: f0b98f53fcc48232e8e783aaccaa5cd4
+      size: 1197916752
+  download_sipp_pu_data:
+    cmd: "wget --user-agent='Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1)'
+      --no-cache --header='referer: https://www2.census.gov/programs-surveys/acs/data/pums/2027/'
+      https://www2.census.gov/programs-surveys/sipp/data/datasets/2023/pu2023_csv.zip
+      -O /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data//pu2023_csv.zip
+      && unzip -o /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data//pu2023_csv.zip
+      -d /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data//"
+    outs:
+    - path: packages/fastopendata/raw_data/pu2023.csv
+      hash: md5
+      md5: 878401c68951331ab4fd3540467e53d1
+      size: 3726010471
+  download_sipp_pu_data_dictionary:
+    cmd: wget 
+      https://www2.census.gov/programs-surveys/sipp/data/datasets/2023/pu2023_schema.json
+      -O 
+      /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data//pu2023_schema.json
+    outs:
+    - path: packages/fastopendata/raw_data/pu2023_schema.json
+      hash: md5
+      md5: aba42297618c03271c1e65f34c36afcb
+      size: 755059
+  unzip_justice_outcomes:
+    cmd: unzip -o 
+      /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data//cjars_joe_2022_co.csv.zip
+      -d /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data/ && mv 
+      /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data//output/cjars_joe_2022_co.csv
+      /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data//cjars_joe_2022_co.csv
+    deps:
+    - path: packages/fastopendata/raw_data/cjars_joe_2022_co.csv.zip
+      hash: md5
+      md5: f0b98f53fcc48232e8e783aaccaa5cd4
+      size: 1197916752
+    outs:
+    - path: packages/fastopendata/raw_data/cjars_joe_2022_co.csv
+      hash: md5
+      md5: ac278e709ab9cf6b61d2467db8d1efc6
+      size: 23551441642
+  bzip_justice_outcomes:
+    cmd: lbzip2 -k 
+      /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data//cjars_joe_2022_co.csv
+    deps:
+    - path: packages/fastopendata/raw_data/cjars_joe_2022_co.csv
+      hash: md5
+      md5: ac278e709ab9cf6b61d2467db8d1efc6
+      size: 23551441642
+    outs:
+    - path: packages/fastopendata/raw_data/cjars_joe_2022_co.csv.bz2
+      hash: md5
+      md5: ab555d7115186de1e6386db1b14fee1f
+      size: 482544948
+  unzip_psam_p:
+    cmd: unzip -o 
+      /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data//csv_pus_1_year.zip
+      -d /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data/
+    deps:
+    - path: packages/fastopendata/raw_data/csv_pus_1_year.zip
+      hash: md5
+      md5: 9453446308b8e2308aafd925b14c42e3
+      size: 597292173
+    outs:
+    - path: packages/fastopendata/raw_data/psam_pusa.csv
+      hash: md5
+      md5: 9c0e920a0a00eb445cfd0afde9d19c97
+      size: 1219778391
+    - path: packages/fastopendata/raw_data/psam_pusb.csv
+      hash: md5
+      md5: 7374726b0169ed0e5db2537c86ab6eb8
+      size: 1176135954
+  census_hus_5_year:
+    cmd: "wget --user-agent='Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1)'
+      --no-cache --header='referer: https://www2.census.gov/programs-surveys/acs/data/pums/2027/'
+      https://www2.census.gov/programs-surveys/acs/data/pums/2023/5-Year/csv_hus.zip
+      -O /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data//csv_hus_5_year.zip"
+    outs:
+    - path: packages/fastopendata/raw_data/csv_hus_5_year.zip
+      hash: md5
+      md5: a655e42065411c1eacda998d4aee4f1a
+      size: 939474811
+  unzip_psam_h:
+    cmd: unzip -o 
+      /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data//csv_hus_5_year.zip
+      -d /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data/
+    deps:
+    - path: packages/fastopendata/raw_data/csv_hus_5_year.zip
+      hash: md5
+      md5: a655e42065411c1eacda998d4aee4f1a
+      size: 939474811
+    outs:
+    - path: packages/fastopendata/raw_data/psam_husa.csv
+      hash: md5
+      md5: 85fdbd76e90008388a4e1393c91c4ae9
+      size: 1202978040
+      isexec: true
+    - path: packages/fastopendata/raw_data/psam_husb.csv
+      hash: md5
+      md5: ce64e6cacbd87749dcf2b057f350f99b
+      size: 916843533
+      isexec: true
+  combine_psam_p:
+    cmd: (cat /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data//psam_pusa.csv
+      > /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data//psam_pus.csv
+      && cat /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data//psam_pusb.csv
+      | tail +2 >> /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data//psam_pus.csv)
+    deps:
+    - path: packages/fastopendata/raw_data/psam_pusa.csv
+      hash: md5
+      md5: 9c0e920a0a00eb445cfd0afde9d19c97
+      size: 1219778391
+    - path: packages/fastopendata/raw_data/psam_pusb.csv
+      hash: md5
+      md5: 7374726b0169ed0e5db2537c86ab6eb8
+      size: 1176135954
+    outs:
+    - path: packages/fastopendata/raw_data/psam_pus.csv
+      hash: md5
+      md5: fb4223021465a1ada0fa88f49f5d546d
+      size: 2395912460
+  combine_psam_h:
+    cmd: (cat /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data//psam_husa.csv
+      > /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data//psam_hus.csv
+      && cat /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data//psam_husb.csv
+      | tail +2 >> /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data//psam_hus.csv)
+    deps:
+    - path: packages/fastopendata/raw_data/psam_husa.csv
+      hash: md5
+      md5: 85fdbd76e90008388a4e1393c91c4ae9
+      size: 1202978040
+      isexec: true
+    - path: packages/fastopendata/raw_data/psam_husb.csv
+      hash: md5
+      md5: ce64e6cacbd87749dcf2b057f350f99b
+      size: 916843533
+      isexec: true
+    outs:
+    - path: packages/fastopendata/raw_data/psam_hus.csv
+      hash: md5
+      md5: 54f982d3a145d8b1ff48c994b163ceb9
+      size: 2119820035

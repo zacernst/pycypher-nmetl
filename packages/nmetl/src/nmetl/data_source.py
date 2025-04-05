@@ -166,7 +166,8 @@ class DataSource(ABC):  # pylint: disable=too-many-instance-attributes
 
     @classmethod
     def from_uri(
-        cls, uri: str | ParseResult, name: Optional[str] = None
+        cls, uri: str | ParseResult, name: Optional[str] = None,
+        config: Optional[Dict[str, Any]] = {}
     ) -> "DataSource":
         """Factory for creating a ``DataSource`` from a URI."""
         dispatcher = {
@@ -175,7 +176,7 @@ class DataSource(ABC):  # pylint: disable=too-many-instance-attributes
         }
         uri = ensure_uri(uri)
         filename_extension = uri.path.split(".")[-1]
-        data_source = dispatcher[filename_extension](uri)
+        data_source = dispatcher[filename_extension](uri, **config.options)
         data_source.name = name
         return data_source
 
@@ -372,11 +373,12 @@ class CSVDataSource(DataSource):
         self,
         uri: str | ParseResult,
         name: Optional[str] = None,
+        **options,
     ):
         self.uri = ensure_uri(uri)
         self.name = name
         self.file = open(self.uri.path, "r", encoding="utf-8")  # pylint: disable=consider-using-with
-        self.reader = csv.DictReader(self.file)
+        self.reader = csv.DictReader(self.file, **options)
         super().__init__()
 
     def rows(self) -> Generator[Dict[str, Any], None, None]:

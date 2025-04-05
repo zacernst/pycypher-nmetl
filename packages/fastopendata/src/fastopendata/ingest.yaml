@@ -4,6 +4,1268 @@ run_monitor: true
 logging_level: DEBUG
 
 data_sources:
+- name: united_states_nodes
+  uri: file://{MONOREPO_BASE_DIR}/packages/fastopendata/raw_data/united_states_nodes.csv
+  mappings:
+  - identifier_key: id
+    label: OSM_Node
+  - attribute_key: id
+    identifier_key: id
+    attribute: osm_id
+    label: OSM_Node
+  - attribute_key: latitude
+    identifier_key: id
+    attribute: latitude
+    label: OSM_Node
+  - attribute_key: longitude
+    identifier_key: id
+    attribute: longitude
+    label: OSM_Node
+  - attribute_key: encoded_tags
+    identifier_key: id
+    attribute: encoded_tags
+    label: OSM_Node
+  data_types:
+    id: NonEmptyString
+    latitude: Float
+    longitude: Float
+    encoded_tags: NonEmptyString
+    tags: Dict
+- name: rw_2023
+  uri: file://{MONOREPO_BASE_DIR}/packages/fastopendata/raw_data/rw2023.csv
+  options:
+    delimiter: "|"
+  mappings:
+  - attribute_key: ssuid
+    identifier_key: ssuid
+    attribute: ssuid
+    label: SSUID
+  - attribute_key: pnum
+    identifier_key: ssuid
+    attribute: pnum
+    label: SSUID
+  - attribute_key: spanel
+    identifier_key: ssuid
+    attribute: spanel
+    label: SSUID
+  - attribute_key: swave
+    identifier_key: ssuid
+    attribute: swave
+    label: SSUID
+  - attribute_key: monthcode
+    identifier_key: ssuid
+    attribute: monthcode
+    label: SSUID
+  - attribute_key: repwgt0
+    identifier_key: ssuid
+    attribute: repwgt0
+    label: SSUID
+  - attribute_key: repwgt1
+    identifier_key: ssuid
+    attribute: repwgt1
+    label: SSUID
+  - attribute_key: repwgt2
+    identifier_key: ssuid
+    attribute: repwgt2
+    label: SSUID
+  - attribute_key: repwgt3
+    identifier_key: ssuid
+    attribute: repwgt3
+    label: SSUID
+  - attribute_key: repwgt4
+    identifier_key: ssuid
+    attribute: repwgt4
+    label: SSUID
+  - attribute_key: repwgt5
+    identifier_key: ssuid
+    attribute: repwgt5
+    label: SSUID
+  - attribute_key: repwgt6
+    identifier_key: ssuid
+    attribute: repwgt6
+    label: SSUID
+  - attribute_key: repwgt7
+    identifier_key: ssuid
+    attribute: repwgt7
+    label: SSUID
+  - attribute_key: repwgt8
+    identifier_key: ssuid
+    attribute: repwgt8
+    label: SSUID
+  - attribute_key: repwgt9
+    identifier_key: ssuid
+    attribute: repwgt9
+    label: SSUID
+  - attribute_key: repwgt10
+    identifier_key: ssuid
+    attribute: repwgt10
+    label: SSUID
+  - attribute_key: repwgt11
+    identifier_key: ssuid
+    attribute: repwgt11
+    label: SSUID
+  - attribute_key: repwgt12
+    identifier_key: ssuid
+    attribute: repwgt12
+    label: SSUID
+  - attribute_key: repwgt13
+    identifier_key: ssuid
+    attribute: repwgt13
+    label: SSUID
+  - attribute_key: repwgt14
+    identifier_key: ssuid
+    attribute: repwgt14
+    label: SSUID
+  - attribute_key: repwgt15
+    identifier_key: ssuid
+    attribute: repwgt15
+    label: SSUID
+  - attribute_key: repwgt16
+    identifier_key: ssuid
+    attribute: repwgt16
+    label: SSUID
+  - attribute_key: repwgt17
+    identifier_key: ssuid
+    attribute: repwgt17
+    label: SSUID
+  - attribute_key: repwgt18
+    identifier_key: ssuid
+    attribute: repwgt18
+    label: SSUID
+  - attribute_key: repwgt19
+    identifier_key: ssuid
+    attribute: repwgt19
+    label: SSUID
+  - attribute_key: repwgt20
+    identifier_key: ssuid
+    attribute: repwgt20
+    label: SSUID
+  - attribute_key: repwgt21
+    identifier_key: ssuid
+    attribute: repwgt21
+    label: SSUID
+  - attribute_key: repwgt22
+    identifier_key: ssuid
+    attribute: repwgt22
+    label: SSUID
+  - attribute_key: repwgt23
+    identifier_key: ssuid
+    attribute: repwgt23
+    label: SSUID
+  - attribute_key: repwgt24
+    identifier_key: ssuid
+    attribute: repwgt24
+    label: SSUID
+  - attribute_key: repwgt25
+    identifier_key: ssuid
+    attribute: repwgt25
+    label: SSUID
+  - attribute_key: repwgt26
+    identifier_key: ssuid
+    attribute: repwgt26
+    label: SSUID
+  - attribute_key: repwgt27
+    identifier_key: ssuid
+    attribute: repwgt27
+    label: SSUID
+  - attribute_key: repwgt28
+    identifier_key: ssuid
+    attribute: repwgt28
+    label: SSUID
+  - attribute_key: repwgt29
+    identifier_key: ssuid
+    attribute: repwgt29
+    label: SSUID
+  - attribute_key: repwgt30
+    identifier_key: ssuid
+    attribute: repwgt30
+    label: SSUID
+  - attribute_key: repwgt31
+    identifier_key: ssuid
+    attribute: repwgt31
+    label: SSUID
+  - attribute_key: repwgt32
+    identifier_key: ssuid
+    attribute: repwgt32
+    label: SSUID
+  - attribute_key: repwgt33
+    identifier_key: ssuid
+    attribute: repwgt33
+    label: SSUID
+  - attribute_key: repwgt34
+    identifier_key: ssuid
+    attribute: repwgt34
+    label: SSUID
+  - attribute_key: repwgt35
+    identifier_key: ssuid
+    attribute: repwgt35
+    label: SSUID
+  - attribute_key: repwgt36
+    identifier_key: ssuid
+    attribute: repwgt36
+    label: SSUID
+  - attribute_key: repwgt37
+    identifier_key: ssuid
+    attribute: repwgt37
+    label: SSUID
+  - attribute_key: repwgt38
+    identifier_key: ssuid
+    attribute: repwgt38
+    label: SSUID
+  - attribute_key: repwgt39
+    identifier_key: ssuid
+    attribute: repwgt39
+    label: SSUID
+  - attribute_key: repwgt40
+    identifier_key: ssuid
+    attribute: repwgt40
+    label: SSUID
+  - attribute_key: repwgt41
+    identifier_key: ssuid
+    attribute: repwgt41
+    label: SSUID
+  - attribute_key: repwgt42
+    identifier_key: ssuid
+    attribute: repwgt42
+    label: SSUID
+  - attribute_key: repwgt43
+    identifier_key: ssuid
+    attribute: repwgt43
+    label: SSUID
+  - attribute_key: repwgt44
+    identifier_key: ssuid
+    attribute: repwgt44
+    label: SSUID
+  - attribute_key: repwgt45
+    identifier_key: ssuid
+    attribute: repwgt45
+    label: SSUID
+  - attribute_key: repwgt46
+    identifier_key: ssuid
+    attribute: repwgt46
+    label: SSUID
+  - attribute_key: repwgt47
+    identifier_key: ssuid
+    attribute: repwgt47
+    label: SSUID
+  - attribute_key: repwgt48
+    identifier_key: ssuid
+    attribute: repwgt48
+    label: SSUID
+  - attribute_key: repwgt49
+    identifier_key: ssuid
+    attribute: repwgt49
+    label: SSUID
+  - attribute_key: repwgt50
+    identifier_key: ssuid
+    attribute: repwgt50
+    label: SSUID
+  - attribute_key: repwgt51
+    identifier_key: ssuid
+    attribute: repwgt51
+    label: SSUID
+  - attribute_key: repwgt52
+    identifier_key: ssuid
+    attribute: repwgt52
+    label: SSUID
+  - attribute_key: repwgt53
+    identifier_key: ssuid
+    attribute: repwgt53
+    label: SSUID
+  - attribute_key: repwgt54
+    identifier_key: ssuid
+    attribute: repwgt54
+    label: SSUID
+  - attribute_key: repwgt55
+    identifier_key: ssuid
+    attribute: repwgt55
+    label: SSUID
+  - attribute_key: repwgt56
+    identifier_key: ssuid
+    attribute: repwgt56
+    label: SSUID
+  - attribute_key: repwgt57
+    identifier_key: ssuid
+    attribute: repwgt57
+    label: SSUID
+  - attribute_key: repwgt58
+    identifier_key: ssuid
+    attribute: repwgt58
+    label: SSUID
+  - attribute_key: repwgt59
+    identifier_key: ssuid
+    attribute: repwgt59
+    label: SSUID
+  - attribute_key: repwgt60
+    identifier_key: ssuid
+    attribute: repwgt60
+    label: SSUID
+  - attribute_key: repwgt61
+    identifier_key: ssuid
+    attribute: repwgt61
+    label: SSUID
+  - attribute_key: repwgt62
+    identifier_key: ssuid
+    attribute: repwgt62
+    label: SSUID
+  - attribute_key: repwgt63
+    identifier_key: ssuid
+    attribute: repwgt63
+    label: SSUID
+  - attribute_key: repwgt64
+    identifier_key: ssuid
+    attribute: repwgt64
+    label: SSUID
+  - attribute_key: repwgt65
+    identifier_key: ssuid
+    attribute: repwgt65
+    label: SSUID
+  - attribute_key: repwgt66
+    identifier_key: ssuid
+    attribute: repwgt66
+    label: SSUID
+  - attribute_key: repwgt67
+    identifier_key: ssuid
+    attribute: repwgt67
+    label: SSUID
+  - attribute_key: repwgt68
+    identifier_key: ssuid
+    attribute: repwgt68
+    label: SSUID
+  - attribute_key: repwgt69
+    identifier_key: ssuid
+    attribute: repwgt69
+    label: SSUID
+  - attribute_key: repwgt70
+    identifier_key: ssuid
+    attribute: repwgt70
+    label: SSUID
+  - attribute_key: repwgt71
+    identifier_key: ssuid
+    attribute: repwgt71
+    label: SSUID
+  - attribute_key: repwgt72
+    identifier_key: ssuid
+    attribute: repwgt72
+    label: SSUID
+  - attribute_key: repwgt73
+    identifier_key: ssuid
+    attribute: repwgt73
+    label: SSUID
+  - attribute_key: repwgt74
+    identifier_key: ssuid
+    attribute: repwgt74
+    label: SSUID
+  - attribute_key: repwgt75
+    identifier_key: ssuid
+    attribute: repwgt75
+    label: SSUID
+  - attribute_key: repwgt76
+    identifier_key: ssuid
+    attribute: repwgt76
+    label: SSUID
+  - attribute_key: repwgt77
+    identifier_key: ssuid
+    attribute: repwgt77
+    label: SSUID
+  - attribute_key: repwgt78
+    identifier_key: ssuid
+    attribute: repwgt78
+    label: SSUID
+  - attribute_key: repwgt79
+    identifier_key: ssuid
+    attribute: repwgt79
+    label: SSUID
+  - attribute_key: repwgt80
+    identifier_key: ssuid
+    attribute: repwgt80
+    label: SSUID
+  - attribute_key: repwgt81
+    identifier_key: ssuid
+    attribute: repwgt81
+    label: SSUID
+  - attribute_key: repwgt82
+    identifier_key: ssuid
+    attribute: repwgt82
+    label: SSUID
+  - attribute_key: repwgt83
+    identifier_key: ssuid
+    attribute: repwgt83
+    label: SSUID
+  - attribute_key: repwgt84
+    identifier_key: ssuid
+    attribute: repwgt84
+    label: SSUID
+  - attribute_key: repwgt85
+    identifier_key: ssuid
+    attribute: repwgt85
+    label: SSUID
+  - attribute_key: repwgt86
+    identifier_key: ssuid
+    attribute: repwgt86
+    label: SSUID
+  - attribute_key: repwgt87
+    identifier_key: ssuid
+    attribute: repwgt87
+    label: SSUID
+  - attribute_key: repwgt88
+    identifier_key: ssuid
+    attribute: repwgt88
+    label: SSUID
+  - attribute_key: repwgt89
+    identifier_key: ssuid
+    attribute: repwgt89
+    label: SSUID
+  - attribute_key: repwgt90
+    identifier_key: ssuid
+    attribute: repwgt90
+    label: SSUID
+  - attribute_key: repwgt91
+    identifier_key: ssuid
+    attribute: repwgt91
+    label: SSUID
+  - attribute_key: repwgt92
+    identifier_key: ssuid
+    attribute: repwgt92
+    label: SSUID
+  - attribute_key: repwgt93
+    identifier_key: ssuid
+    attribute: repwgt93
+    label: SSUID
+  - attribute_key: repwgt94
+    identifier_key: ssuid
+    attribute: repwgt94
+    label: SSUID
+  - attribute_key: repwgt95
+    identifier_key: ssuid
+    attribute: repwgt95
+    label: SSUID
+  - attribute_key: repwgt96
+    identifier_key: ssuid
+    attribute: repwgt96
+    label: SSUID
+  - attribute_key: repwgt97
+    identifier_key: ssuid
+    attribute: repwgt97
+    label: SSUID
+  - attribute_key: repwgt98
+    identifier_key: ssuid
+    attribute: repwgt98
+    label: SSUID
+  - attribute_key: repwgt99
+    identifier_key: ssuid
+    attribute: repwgt99
+    label: SSUID
+  - attribute_key: repwgt100
+    identifier_key: ssuid
+    attribute: repwgt100
+    label: SSUID
+  - attribute_key: repwgt101
+    identifier_key: ssuid
+    attribute: repwgt101
+    label: SSUID
+  - attribute_key: repwgt102
+    identifier_key: ssuid
+    attribute: repwgt102
+    label: SSUID
+  - attribute_key: repwgt103
+    identifier_key: ssuid
+    attribute: repwgt103
+    label: SSUID
+  - attribute_key: repwgt104
+    identifier_key: ssuid
+    attribute: repwgt104
+    label: SSUID
+  - attribute_key: repwgt105
+    identifier_key: ssuid
+    attribute: repwgt105
+    label: SSUID
+  - attribute_key: repwgt106
+    identifier_key: ssuid
+    attribute: repwgt106
+    label: SSUID
+  - attribute_key: repwgt107
+    identifier_key: ssuid
+    attribute: repwgt107
+    label: SSUID
+  - attribute_key: repwgt108
+    identifier_key: ssuid
+    attribute: repwgt108
+    label: SSUID
+  - attribute_key: repwgt109
+    identifier_key: ssuid
+    attribute: repwgt109
+    label: SSUID
+  - attribute_key: repwgt110
+    identifier_key: ssuid
+    attribute: repwgt110
+    label: SSUID
+  - attribute_key: repwgt111
+    identifier_key: ssuid
+    attribute: repwgt111
+    label: SSUID
+  - attribute_key: repwgt112
+    identifier_key: ssuid
+    attribute: repwgt112
+    label: SSUID
+  - attribute_key: repwgt113
+    identifier_key: ssuid
+    attribute: repwgt113
+    label: SSUID
+  - attribute_key: repwgt114
+    identifier_key: ssuid
+    attribute: repwgt114
+    label: SSUID
+  - attribute_key: repwgt115
+    identifier_key: ssuid
+    attribute: repwgt115
+    label: SSUID
+  - attribute_key: repwgt116
+    identifier_key: ssuid
+    attribute: repwgt116
+    label: SSUID
+  - attribute_key: repwgt117
+    identifier_key: ssuid
+    attribute: repwgt117
+    label: SSUID
+  - attribute_key: repwgt118
+    identifier_key: ssuid
+    attribute: repwgt118
+    label: SSUID
+  - attribute_key: repwgt119
+    identifier_key: ssuid
+    attribute: repwgt119
+    label: SSUID
+  - attribute_key: repwgt120
+    identifier_key: ssuid
+    attribute: repwgt120
+    label: SSUID
+  - attribute_key: repwgt121
+    identifier_key: ssuid
+    attribute: repwgt121
+    label: SSUID
+  - attribute_key: repwgt122
+    identifier_key: ssuid
+    attribute: repwgt122
+    label: SSUID
+  - attribute_key: repwgt123
+    identifier_key: ssuid
+    attribute: repwgt123
+    label: SSUID
+  - attribute_key: repwgt124
+    identifier_key: ssuid
+    attribute: repwgt124
+    label: SSUID
+  - attribute_key: repwgt125
+    identifier_key: ssuid
+    attribute: repwgt125
+    label: SSUID
+  - attribute_key: repwgt126
+    identifier_key: ssuid
+    attribute: repwgt126
+    label: SSUID
+  - attribute_key: repwgt127
+    identifier_key: ssuid
+    attribute: repwgt127
+    label: SSUID
+  - attribute_key: repwgt128
+    identifier_key: ssuid
+    attribute: repwgt128
+    label: SSUID
+  - attribute_key: repwgt129
+    identifier_key: ssuid
+    attribute: repwgt129
+    label: SSUID
+  - attribute_key: repwgt130
+    identifier_key: ssuid
+    attribute: repwgt130
+    label: SSUID
+  - attribute_key: repwgt131
+    identifier_key: ssuid
+    attribute: repwgt131
+    label: SSUID
+  - attribute_key: repwgt132
+    identifier_key: ssuid
+    attribute: repwgt132
+    label: SSUID
+  - attribute_key: repwgt133
+    identifier_key: ssuid
+    attribute: repwgt133
+    label: SSUID
+  - attribute_key: repwgt134
+    identifier_key: ssuid
+    attribute: repwgt134
+    label: SSUID
+  - attribute_key: repwgt135
+    identifier_key: ssuid
+    attribute: repwgt135
+    label: SSUID
+  - attribute_key: repwgt136
+    identifier_key: ssuid
+    attribute: repwgt136
+    label: SSUID
+  - attribute_key: repwgt137
+    identifier_key: ssuid
+    attribute: repwgt137
+    label: SSUID
+  - attribute_key: repwgt138
+    identifier_key: ssuid
+    attribute: repwgt138
+    label: SSUID
+  - attribute_key: repwgt139
+    identifier_key: ssuid
+    attribute: repwgt139
+    label: SSUID
+  - attribute_key: repwgt140
+    identifier_key: ssuid
+    attribute: repwgt140
+    label: SSUID
+  - attribute_key: repwgt141
+    identifier_key: ssuid
+    attribute: repwgt141
+    label: SSUID
+  - attribute_key: repwgt142
+    identifier_key: ssuid
+    attribute: repwgt142
+    label: SSUID
+  - attribute_key: repwgt143
+    identifier_key: ssuid
+    attribute: repwgt143
+    label: SSUID
+  - attribute_key: repwgt144
+    identifier_key: ssuid
+    attribute: repwgt144
+    label: SSUID
+  - attribute_key: repwgt145
+    identifier_key: ssuid
+    attribute: repwgt145
+    label: SSUID
+  - attribute_key: repwgt146
+    identifier_key: ssuid
+    attribute: repwgt146
+    label: SSUID
+  - attribute_key: repwgt147
+    identifier_key: ssuid
+    attribute: repwgt147
+    label: SSUID
+  - attribute_key: repwgt148
+    identifier_key: ssuid
+    attribute: repwgt148
+    label: SSUID
+  - attribute_key: repwgt149
+    identifier_key: ssuid
+    attribute: repwgt149
+    label: SSUID
+  - attribute_key: repwgt150
+    identifier_key: ssuid
+    attribute: repwgt150
+    label: SSUID
+  - attribute_key: repwgt151
+    identifier_key: ssuid
+    attribute: repwgt151
+    label: SSUID
+  - attribute_key: repwgt152
+    identifier_key: ssuid
+    attribute: repwgt152
+    label: SSUID
+  - attribute_key: repwgt153
+    identifier_key: ssuid
+    attribute: repwgt153
+    label: SSUID
+  - attribute_key: repwgt154
+    identifier_key: ssuid
+    attribute: repwgt154
+    label: SSUID
+  - attribute_key: repwgt155
+    identifier_key: ssuid
+    attribute: repwgt155
+    label: SSUID
+  - attribute_key: repwgt156
+    identifier_key: ssuid
+    attribute: repwgt156
+    label: SSUID
+  - attribute_key: repwgt157
+    identifier_key: ssuid
+    attribute: repwgt157
+    label: SSUID
+  - attribute_key: repwgt158
+    identifier_key: ssuid
+    attribute: repwgt158
+    label: SSUID
+  - attribute_key: repwgt159
+    identifier_key: ssuid
+    attribute: repwgt159
+    label: SSUID
+  - attribute_key: repwgt160
+    identifier_key: ssuid
+    attribute: repwgt160
+    label: SSUID
+  - attribute_key: repwgt161
+    identifier_key: ssuid
+    attribute: repwgt161
+    label: SSUID
+  - attribute_key: repwgt162
+    identifier_key: ssuid
+    attribute: repwgt162
+    label: SSUID
+  - attribute_key: repwgt163
+    identifier_key: ssuid
+    attribute: repwgt163
+    label: SSUID
+  - attribute_key: repwgt164
+    identifier_key: ssuid
+    attribute: repwgt164
+    label: SSUID
+  - attribute_key: repwgt165
+    identifier_key: ssuid
+    attribute: repwgt165
+    label: SSUID
+  - attribute_key: repwgt166
+    identifier_key: ssuid
+    attribute: repwgt166
+    label: SSUID
+  - attribute_key: repwgt167
+    identifier_key: ssuid
+    attribute: repwgt167
+    label: SSUID
+  - attribute_key: repwgt168
+    identifier_key: ssuid
+    attribute: repwgt168
+    label: SSUID
+  - attribute_key: repwgt169
+    identifier_key: ssuid
+    attribute: repwgt169
+    label: SSUID
+  - attribute_key: repwgt170
+    identifier_key: ssuid
+    attribute: repwgt170
+    label: SSUID
+  - attribute_key: repwgt171
+    identifier_key: ssuid
+    attribute: repwgt171
+    label: SSUID
+  - attribute_key: repwgt172
+    identifier_key: ssuid
+    attribute: repwgt172
+    label: SSUID
+  - attribute_key: repwgt173
+    identifier_key: ssuid
+    attribute: repwgt173
+    label: SSUID
+  - attribute_key: repwgt174
+    identifier_key: ssuid
+    attribute: repwgt174
+    label: SSUID
+  - attribute_key: repwgt175
+    identifier_key: ssuid
+    attribute: repwgt175
+    label: SSUID
+  - attribute_key: repwgt176
+    identifier_key: ssuid
+    attribute: repwgt176
+    label: SSUID
+  - attribute_key: repwgt177
+    identifier_key: ssuid
+    attribute: repwgt177
+    label: SSUID
+  - attribute_key: repwgt178
+    identifier_key: ssuid
+    attribute: repwgt178
+    label: SSUID
+  - attribute_key: repwgt179
+    identifier_key: ssuid
+    attribute: repwgt179
+    label: SSUID
+  - attribute_key: repwgt180
+    identifier_key: ssuid
+    attribute: repwgt180
+    label: SSUID
+  - attribute_key: repwgt181
+    identifier_key: ssuid
+    attribute: repwgt181
+    label: SSUID
+  - attribute_key: repwgt182
+    identifier_key: ssuid
+    attribute: repwgt182
+    label: SSUID
+  - attribute_key: repwgt183
+    identifier_key: ssuid
+    attribute: repwgt183
+    label: SSUID
+  - attribute_key: repwgt184
+    identifier_key: ssuid
+    attribute: repwgt184
+    label: SSUID
+  - attribute_key: repwgt185
+    identifier_key: ssuid
+    attribute: repwgt185
+    label: SSUID
+  - attribute_key: repwgt186
+    identifier_key: ssuid
+    attribute: repwgt186
+    label: SSUID
+  - attribute_key: repwgt187
+    identifier_key: ssuid
+    attribute: repwgt187
+    label: SSUID
+  - attribute_key: repwgt188
+    identifier_key: ssuid
+    attribute: repwgt188
+    label: SSUID
+  - attribute_key: repwgt189
+    identifier_key: ssuid
+    attribute: repwgt189
+    label: SSUID
+  - attribute_key: repwgt190
+    identifier_key: ssuid
+    attribute: repwgt190
+    label: SSUID
+  - attribute_key: repwgt191
+    identifier_key: ssuid
+    attribute: repwgt191
+    label: SSUID
+  - attribute_key: repwgt192
+    identifier_key: ssuid
+    attribute: repwgt192
+    label: SSUID
+  - attribute_key: repwgt193
+    identifier_key: ssuid
+    attribute: repwgt193
+    label: SSUID
+  - attribute_key: repwgt194
+    identifier_key: ssuid
+    attribute: repwgt194
+    label: SSUID
+  - attribute_key: repwgt195
+    identifier_key: ssuid
+    attribute: repwgt195
+    label: SSUID
+  - attribute_key: repwgt196
+    identifier_key: ssuid
+    attribute: repwgt196
+    label: SSUID
+  - attribute_key: repwgt197
+    identifier_key: ssuid
+    attribute: repwgt197
+    label: SSUID
+  - attribute_key: repwgt198
+    identifier_key: ssuid
+    attribute: repwgt198
+    label: SSUID
+  - attribute_key: repwgt199
+    identifier_key: ssuid
+    attribute: repwgt199
+    label: SSUID
+  - attribute_key: repwgt200
+    identifier_key: ssuid
+    attribute: repwgt200
+    label: SSUID
+  - attribute_key: repwgt201
+    identifier_key: ssuid
+    attribute: repwgt201
+    label: SSUID
+  - attribute_key: repwgt202
+    identifier_key: ssuid
+    attribute: repwgt202
+    label: SSUID
+  - attribute_key: repwgt203
+    identifier_key: ssuid
+    attribute: repwgt203
+    label: SSUID
+  - attribute_key: repwgt204
+    identifier_key: ssuid
+    attribute: repwgt204
+    label: SSUID
+  - attribute_key: repwgt205
+    identifier_key: ssuid
+    attribute: repwgt205
+    label: SSUID
+  - attribute_key: repwgt206
+    identifier_key: ssuid
+    attribute: repwgt206
+    label: SSUID
+  - attribute_key: repwgt207
+    identifier_key: ssuid
+    attribute: repwgt207
+    label: SSUID
+  - attribute_key: repwgt208
+    identifier_key: ssuid
+    attribute: repwgt208
+    label: SSUID
+  - attribute_key: repwgt209
+    identifier_key: ssuid
+    attribute: repwgt209
+    label: SSUID
+  - attribute_key: repwgt210
+    identifier_key: ssuid
+    attribute: repwgt210
+    label: SSUID
+  - attribute_key: repwgt211
+    identifier_key: ssuid
+    attribute: repwgt211
+    label: SSUID
+  - attribute_key: repwgt212
+    identifier_key: ssuid
+    attribute: repwgt212
+    label: SSUID
+  - attribute_key: repwgt213
+    identifier_key: ssuid
+    attribute: repwgt213
+    label: SSUID
+  - attribute_key: repwgt214
+    identifier_key: ssuid
+    attribute: repwgt214
+    label: SSUID
+  - attribute_key: repwgt215
+    identifier_key: ssuid
+    attribute: repwgt215
+    label: SSUID
+  - attribute_key: repwgt216
+    identifier_key: ssuid
+    attribute: repwgt216
+    label: SSUID
+  - attribute_key: repwgt217
+    identifier_key: ssuid
+    attribute: repwgt217
+    label: SSUID
+  - attribute_key: repwgt218
+    identifier_key: ssuid
+    attribute: repwgt218
+    label: SSUID
+  - attribute_key: repwgt219
+    identifier_key: ssuid
+    attribute: repwgt219
+    label: SSUID
+  - attribute_key: repwgt220
+    identifier_key: ssuid
+    attribute: repwgt220
+    label: SSUID
+  - attribute_key: repwgt221
+    identifier_key: ssuid
+    attribute: repwgt221
+    label: SSUID
+  - attribute_key: repwgt222
+    identifier_key: ssuid
+    attribute: repwgt222
+    label: SSUID
+  - attribute_key: repwgt223
+    identifier_key: ssuid
+    attribute: repwgt223
+    label: SSUID
+  - attribute_key: repwgt224
+    identifier_key: ssuid
+    attribute: repwgt224
+    label: SSUID
+  - attribute_key: repwgt225
+    identifier_key: ssuid
+    attribute: repwgt225
+    label: SSUID
+  - attribute_key: repwgt226
+    identifier_key: ssuid
+    attribute: repwgt226
+    label: SSUID
+  - attribute_key: repwgt227
+    identifier_key: ssuid
+    attribute: repwgt227
+    label: SSUID
+  - attribute_key: repwgt228
+    identifier_key: ssuid
+    attribute: repwgt228
+    label: SSUID
+  - attribute_key: repwgt229
+    identifier_key: ssuid
+    attribute: repwgt229
+    label: SSUID
+  - attribute_key: repwgt230
+    identifier_key: ssuid
+    attribute: repwgt230
+    label: SSUID
+  - attribute_key: repwgt231
+    identifier_key: ssuid
+    attribute: repwgt231
+    label: SSUID
+  - attribute_key: repwgt232
+    identifier_key: ssuid
+    attribute: repwgt232
+    label: SSUID
+  - attribute_key: repwgt233
+    identifier_key: ssuid
+    attribute: repwgt233
+    label: SSUID
+  - attribute_key: repwgt234
+    identifier_key: ssuid
+    attribute: repwgt234
+    label: SSUID
+  - attribute_key: repwgt235
+    identifier_key: ssuid
+    attribute: repwgt235
+    label: SSUID
+  - attribute_key: repwgt236
+    identifier_key: ssuid
+    attribute: repwgt236
+    label: SSUID
+  - attribute_key: repwgt237
+    identifier_key: ssuid
+    attribute: repwgt237
+    label: SSUID
+  - attribute_key: repwgt238
+    identifier_key: ssuid
+    attribute: repwgt238
+    label: SSUID
+  - attribute_key: repwgt239
+    identifier_key: ssuid
+    attribute: repwgt239
+    label: SSUID
+  - attribute_key: repwgt240
+    identifier_key: ssuid
+    attribute: repwgt240
+    label: SSUID
+  data_types:
+    ssuid: NonEmptyString
+    pnum: NonEmptyString
+    spanel: NonEmptyString
+    swave: NonEmptyString
+    monthcode: NonEmptyString
+    repwgt0: NonEmptyString
+    repwgt1: NonEmptyString
+    repwgt2: NonEmptyString
+    repwgt3: NonEmptyString
+    repwgt4: NonEmptyString
+    repwgt5: NonEmptyString
+    repwgt6: NonEmptyString
+    repwgt7: NonEmptyString
+    repwgt8: NonEmptyString
+    repwgt9: NonEmptyString
+    repwgt10: NonEmptyString
+    repwgt11: NonEmptyString
+    repwgt12: NonEmptyString
+    repwgt13: NonEmptyString
+    repwgt14: NonEmptyString
+    repwgt15: NonEmptyString
+    repwgt16: NonEmptyString
+    repwgt17: NonEmptyString
+    repwgt18: NonEmptyString
+    repwgt19: NonEmptyString
+    repwgt20: NonEmptyString
+    repwgt21: NonEmptyString
+    repwgt22: NonEmptyString
+    repwgt23: NonEmptyString
+    repwgt24: NonEmptyString
+    repwgt25: NonEmptyString
+    repwgt26: NonEmptyString
+    repwgt27: NonEmptyString
+    repwgt28: NonEmptyString
+    repwgt29: NonEmptyString
+    repwgt30: NonEmptyString
+    repwgt31: NonEmptyString
+    repwgt32: NonEmptyString
+    repwgt33: NonEmptyString
+    repwgt34: NonEmptyString
+    repwgt35: NonEmptyString
+    repwgt36: NonEmptyString
+    repwgt37: NonEmptyString
+    repwgt38: NonEmptyString
+    repwgt39: NonEmptyString
+    repwgt40: NonEmptyString
+    repwgt41: NonEmptyString
+    repwgt42: NonEmptyString
+    repwgt43: NonEmptyString
+    repwgt44: NonEmptyString
+    repwgt45: NonEmptyString
+    repwgt46: NonEmptyString
+    repwgt47: NonEmptyString
+    repwgt48: NonEmptyString
+    repwgt49: NonEmptyString
+    repwgt50: NonEmptyString
+    repwgt51: NonEmptyString
+    repwgt52: NonEmptyString
+    repwgt53: NonEmptyString
+    repwgt54: NonEmptyString
+    repwgt55: NonEmptyString
+    repwgt56: NonEmptyString
+    repwgt57: NonEmptyString
+    repwgt58: NonEmptyString
+    repwgt59: NonEmptyString
+    repwgt60: NonEmptyString
+    repwgt61: NonEmptyString
+    repwgt62: NonEmptyString
+    repwgt63: NonEmptyString
+    repwgt64: NonEmptyString
+    repwgt65: NonEmptyString
+    repwgt66: NonEmptyString
+    repwgt67: NonEmptyString
+    repwgt68: NonEmptyString
+    repwgt69: NonEmptyString
+    repwgt70: NonEmptyString
+    repwgt71: NonEmptyString
+    repwgt72: NonEmptyString
+    repwgt73: NonEmptyString
+    repwgt74: NonEmptyString
+    repwgt75: NonEmptyString
+    repwgt76: NonEmptyString
+    repwgt77: NonEmptyString
+    repwgt78: NonEmptyString
+    repwgt79: NonEmptyString
+    repwgt80: NonEmptyString
+    repwgt81: NonEmptyString
+    repwgt82: NonEmptyString
+    repwgt83: NonEmptyString
+    repwgt84: NonEmptyString
+    repwgt85: NonEmptyString
+    repwgt86: NonEmptyString
+    repwgt87: NonEmptyString
+    repwgt88: NonEmptyString
+    repwgt89: NonEmptyString
+    repwgt90: NonEmptyString
+    repwgt91: NonEmptyString
+    repwgt92: NonEmptyString
+    repwgt93: NonEmptyString
+    repwgt94: NonEmptyString
+    repwgt95: NonEmptyString
+    repwgt96: NonEmptyString
+    repwgt97: NonEmptyString
+    repwgt98: NonEmptyString
+    repwgt99: NonEmptyString
+    repwgt100: NonEmptyString
+    repwgt101: NonEmptyString
+    repwgt102: NonEmptyString
+    repwgt103: NonEmptyString
+    repwgt104: NonEmptyString
+    repwgt105: NonEmptyString
+    repwgt106: NonEmptyString
+    repwgt107: NonEmptyString
+    repwgt108: NonEmptyString
+    repwgt109: NonEmptyString
+    repwgt110: NonEmptyString
+    repwgt111: NonEmptyString
+    repwgt112: NonEmptyString
+    repwgt113: NonEmptyString
+    repwgt114: NonEmptyString
+    repwgt115: NonEmptyString
+    repwgt116: NonEmptyString
+    repwgt117: NonEmptyString
+    repwgt118: NonEmptyString
+    repwgt119: NonEmptyString
+    repwgt120: NonEmptyString
+    repwgt121: NonEmptyString
+    repwgt122: NonEmptyString
+    repwgt123: NonEmptyString
+    repwgt124: NonEmptyString
+    repwgt125: NonEmptyString
+    repwgt126: NonEmptyString
+    repwgt127: NonEmptyString
+    repwgt128: NonEmptyString
+    repwgt129: NonEmptyString
+    repwgt130: NonEmptyString
+    repwgt131: NonEmptyString
+    repwgt132: NonEmptyString
+    repwgt133: NonEmptyString
+    repwgt134: NonEmptyString
+    repwgt135: NonEmptyString
+    repwgt136: NonEmptyString
+    repwgt137: NonEmptyString
+    repwgt138: NonEmptyString
+    repwgt139: NonEmptyString
+    repwgt140: NonEmptyString
+    repwgt141: NonEmptyString
+    repwgt142: NonEmptyString
+    repwgt143: NonEmptyString
+    repwgt144: NonEmptyString
+    repwgt145: NonEmptyString
+    repwgt146: NonEmptyString
+    repwgt147: NonEmptyString
+    repwgt148: NonEmptyString
+    repwgt149: NonEmptyString
+    repwgt150: NonEmptyString
+    repwgt151: NonEmptyString
+    repwgt152: NonEmptyString
+    repwgt153: NonEmptyString
+    repwgt154: NonEmptyString
+    repwgt155: NonEmptyString
+    repwgt156: NonEmptyString
+    repwgt157: NonEmptyString
+    repwgt158: NonEmptyString
+    repwgt159: NonEmptyString
+    repwgt160: NonEmptyString
+    repwgt161: NonEmptyString
+    repwgt162: NonEmptyString
+    repwgt163: NonEmptyString
+    repwgt164: NonEmptyString
+    repwgt165: NonEmptyString
+    repwgt166: NonEmptyString
+    repwgt167: NonEmptyString
+    repwgt168: NonEmptyString
+    repwgt169: NonEmptyString
+    repwgt170: NonEmptyString
+    repwgt171: NonEmptyString
+    repwgt172: NonEmptyString
+    repwgt173: NonEmptyString
+    repwgt174: NonEmptyString
+    repwgt175: NonEmptyString
+    repwgt176: NonEmptyString
+    repwgt177: NonEmptyString
+    repwgt178: NonEmptyString
+    repwgt179: NonEmptyString
+    repwgt180: NonEmptyString
+    repwgt181: NonEmptyString
+    repwgt182: NonEmptyString
+    repwgt183: NonEmptyString
+    repwgt184: NonEmptyString
+    repwgt185: NonEmptyString
+    repwgt186: NonEmptyString
+    repwgt187: NonEmptyString
+    repwgt188: NonEmptyString
+    repwgt189: NonEmptyString
+    repwgt190: NonEmptyString
+    repwgt191: NonEmptyString
+    repwgt192: NonEmptyString
+    repwgt193: NonEmptyString
+    repwgt194: NonEmptyString
+    repwgt195: NonEmptyString
+    repwgt196: NonEmptyString
+    repwgt197: NonEmptyString
+    repwgt198: NonEmptyString
+    repwgt199: NonEmptyString
+    repwgt200: NonEmptyString
+    repwgt201: NonEmptyString
+    repwgt202: NonEmptyString
+    repwgt203: NonEmptyString
+    repwgt204: NonEmptyString
+    repwgt205: NonEmptyString
+    repwgt206: NonEmptyString
+    repwgt207: NonEmptyString
+    repwgt208: NonEmptyString
+    repwgt209: NonEmptyString
+    repwgt210: NonEmptyString
+    repwgt211: NonEmptyString
+    repwgt212: NonEmptyString
+    repwgt213: NonEmptyString
+    repwgt214: NonEmptyString
+    repwgt215: NonEmptyString
+    repwgt216: NonEmptyString
+    repwgt217: NonEmptyString
+    repwgt218: NonEmptyString
+    repwgt219: NonEmptyString
+    repwgt220: NonEmptyString
+    repwgt221: NonEmptyString
+    repwgt222: NonEmptyString
+    repwgt223: NonEmptyString
+    repwgt224: NonEmptyString
+    repwgt225: NonEmptyString
+    repwgt226: NonEmptyString
+    repwgt227: NonEmptyString
+    repwgt228: NonEmptyString
+    repwgt229: NonEmptyString
+    repwgt230: NonEmptyString
+    repwgt231: NonEmptyString
+    repwgt232: NonEmptyString
+    repwgt233: NonEmptyString
+    repwgt234: NonEmptyString
+    repwgt235: NonEmptyString
+    repwgt236: NonEmptyString
+    repwgt237: NonEmptyString
+    repwgt238: NonEmptyString
+    repwgt239: NonEmptyString
 - name: state_county_tract_puma
   uri: file://{MONOREPO_BASE_DIR}/packages/fastopendata/raw_data/state_county_tract_puma.csv
   mappings:
@@ -34,7 +1296,6 @@ data_sources:
     STATEFP: NonEmptyString
     COUNTYFP: NonEmptyString
     TRACTCE: NonEmptyString
-
 - name: acs_2023_microdata_housing
   uri: file://{MONOREPO_BASE_DIR}/packages/fastopendata/raw_data/psam_2023_housing.csv
   mappings:
@@ -1474,7 +2735,6 @@ data_sources:
     PWGTP78: String
     PWGTP79: String
     PWGTP80: String
-#
 - name: acs_2023_microdata_individual
   uri: file://{MONOREPO_BASE_DIR}/packages/fastopendata/raw_data/psam_2023_individual.csv
   mappings:

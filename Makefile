@@ -1,6 +1,11 @@
 PYTHON = 3.12
 BUMP = micro
 
+export GIT_HOME := ${HOME}/git
+export PROJECT_ROOT := ${GIT_HOME}/pycypher
+export DATA_DIR := ${PROJECT_ROOT}/packages/fastopendata/raw_data
+export SOURCE_DIR := ${PROJECT_ROOT}/packages/fastopendata/src/fastopendata
+
 clean_build: veryclean all
 
 all: format build docs tests 
@@ -74,7 +79,19 @@ publish: build
 data: install
 	( \
 		echo "Running DVC pipeline..." && \
-		dvc repro \
+		uv run dvc repro \
+	)
+
+test_env: 
+	( \
+		echo "${DATA_DIR}" && \
+		./test_script.sh \
+	)
+
+fod_ingest: data
+	( \
+		echo "Running fod_ingest..." && \
+		uv run python packages/fastopendata/src/fastopendata/ingest.py \
 	)
 
 .PHONY: clean clean_build tests deps install build docs grammar

@@ -155,9 +155,9 @@ class Session:  # pylint: disable=too-many-instance-attributes
     #         data_source.new_columns[new_column.new_column_name] = new_column
 
     def attribute_table(self):
-        '''Print a table showing the attributes and their descriptions.'''
+        """Print a table showing the attributes and their descriptions."""
         console = Console()
-        
+
         table = Table(title="Attributes")
 
         table.add_column("Name", justify="right", style="cyan", no_wrap=True)
@@ -298,7 +298,7 @@ class Session:  # pylint: disable=too-many-instance-attributes
                 else "---"
             )
             table.add_row(
-                monitored_thread.__class__.__name__,
+                getattr(monitored_thread, 'name', monitored_thread.__class__.__name__),
                 started_at,
                 finished_at,
                 f"{monitored_thread.received_counter} ({received_rate}/s)",

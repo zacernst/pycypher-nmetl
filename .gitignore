@@ -199,3 +199,6 @@ environment.pickle
 test.py
 packages/fastopendata/src/fastopendata/acs_pums_2023_data_dictionary.json
 packages/nmetl/src/nmetl/queue_processor.py.bak
+app.py
+test_script.sh
+user-agent

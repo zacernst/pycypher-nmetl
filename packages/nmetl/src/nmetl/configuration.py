@@ -195,6 +195,7 @@ TYPE_DISPATCH_DICT = {
     "NonEmptyString": TypeAdapter(Annotated[str, Field(min_length=1)]),
     "Date": TypeAdapter(datetime.date),
     "DateTime": TypeAdapter(datetime.datetime),
+    "Dict": TypeAdapter(dict),
 }
 
 TYPE_DISPATCH_DICT = {
@@ -220,6 +221,7 @@ class DataSourceConfig(BaseModel):
     uri: Optional[str] = None
     mappings: List[DataSourceMappingConfig] = []
     data_types: Optional[Dict[str, str]] = {}
+    options: Optional[Dict[str, str]] = {}
 
     def model_post_init(self, *args, **kwargs):  # pylint: disable=unused-argument
         self.uri = self.uri.format(
@@ -279,7 +281,7 @@ def load_session_config(path: str) -> Session:
     session.fact_collection = FactCollection([])
 
     for data_source_config in session_config.data_sources:
-        data_source = DataSource.from_uri(data_source_config.uri)
+        data_source = DataSource.from_uri(data_source_config.uri, config=data_source_config)
         data_source.name = data_source_config.name
 
         for mapping_config in data_source_config.mappings:

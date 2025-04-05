@@ -1,7 +1,10 @@
 """Create data for FastOpenData"""
 # pylint: disable=invalid-name,missing-function-docstring,disallowed-name,protected-access,unused-argument,unused-import,redefined-outer-name,too-many-lines
 
+import base64
 import json
+import os
+import pickle
 
 from nmetl.configuration import load_session_config
 from nmetl.data_asset import DataAsset
@@ -9,16 +12,15 @@ from nmetl.data_source import NewColumn
 from nmetl.trigger import VariableAttribute
 from pycypher.logger import LOGGER
 
+SOURCE_DIR = '/Users/zernst/git/pycypher-nmetl/packages/fastopendata/src/fastopendata/'
+
 LOGGER.setLevel("INFO")
-INGEST_CONFIG_PATH = (
-    "/Users/zernst/git/pycypher-nmetl/packages/"
-    "fastopendata/src/fastopendata/ingest.yaml"
-)
+INGEST_CONFIG_PATH = f"{SOURCE_DIR}/ingest.yaml"
+PUMS_DATA_DICTIONARY_PATH = f"{SOURCE_DIR}/acs_pums_2023_data_dictionary.json"
 session = load_session_config(INGEST_CONFIG_PATH)
 
 with open(
-    "/Users/zernst/git/pycypher-nmetl/packages/fastopendata/src/"
-    "fastopendata/acs_pums_2023_data_dictionary.json",
+    PUMS_DATA_DICTIONARY_PATH,
     "r",
     encoding="utf-8",
 ) as f:
@@ -36,6 +38,12 @@ def state_county_tract(STATEFP, COUNTYFP, TRACTCE) -> NewColumn["tract_fips"]:
 @session.new_column("state_county_tract_puma")
 def state_county(STATEFP, COUNTYFP) -> NewColumn["county_fips"]:
     out = STATEFP + COUNTYFP
+    return out
+
+
+@session.new_column("united_states_nodes")
+def get_osm_tags(encoded_tags) -> NewColumn["tags"]:
+    out = pickle.loads(base64.b64decode(encoded_tags))
     return out
 
 
@@ -110,8 +118,6 @@ def physical_difficulty(
 ) -> VariableAttribute["i", "physical_difficulty"]:
     """Has physical difficulty"""
     return acs_pums_2023_data_dictionary["DPHY"][physical]
-
-
 
 
 LOGGER.setLevel("INFO")
