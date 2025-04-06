@@ -166,8 +166,10 @@ class DataSource(ABC):  # pylint: disable=too-many-instance-attributes
 
     @classmethod
     def from_uri(
-        cls, uri: str | ParseResult, name: Optional[str] = None,
-        config: Optional[Dict[str, Any]] = None
+        cls,
+        uri: str | ParseResult,
+        name: Optional[str] = None,
+        config: Optional[Dict[str, Any]] = None,
     ) -> "DataSource":
         """Factory for creating a ``DataSource`` from a URI."""
         dispatcher = {

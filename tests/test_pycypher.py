@@ -86,6 +86,7 @@ from pycypher.fact import (  # We might get rid of this class entirely
     FactRelationshipHasLabel,
     FactRelationshipHasSourceNode,
     FactRelationshipHasTargetNode,
+    MemcacheFactCollection,
 )
 from pycypher.logger import LOGGER
 from pycypher.node_classes import (
@@ -143,6 +144,8 @@ from pycypher.tree_mixin import TreeMixin
 from pytest_unordered import unordered
 
 TEST_DATA_DIRECTORY = pathlib.Path(__file__).parent / "test_data"
+
+LOGGER.setLevel(logging.DEBUG)
 
 
 def test_parse_match_with_one_node_only_and_with_return():
@@ -4427,7 +4430,6 @@ def test_rows_by_node_label(shapes_session):
 def test_trigger_function_on_relationship_match(session_with_trigger):
     session_with_trigger.start_threads()
     session_with_trigger.block_until_finished()
-
     assert list(session_with_trigger.trigger_dict.values())[0].call_counter > 0
 
 
@@ -4516,7 +4518,6 @@ def test_fact_relationship_has_attribute_with_value_hashable():
 
 
 def test_second_order_trigger_executes(session_with_two_triggers):
-    # LOGGER.setLevel(logging.DEBUG)
     session_with_two_triggers.start_threads()
     session_with_two_triggers.block_until_finished()
     assert (
@@ -5181,7 +5182,6 @@ def test_register_data_asset(session_with_data_asset):
 def test_trigger_function_can_access_data_asset(
     session_with_trigger_using_data_asset,
 ):
-    LOGGER.setLevel(logging.INFO)
     session_with_trigger_using_data_asset.start_threads()
     session_with_trigger_using_data_asset.block_until_finished()
     assert (
@@ -5211,3 +5211,43 @@ def test_trigger_defines_attribute_metadata(
         ].description
         == "test description"
     )
+
+
+def test_get_attribute_entity_pairs_mentioned_in_cypher():
+    cypher = "MATCH (s:Square)-[r:contains]->(c:Circle) "
+    cypher += "WITH s.side_length AS side_length, c.radius AS radius "
+    cypher += "RETURN side_length, radius"
+    parser = CypherParser(cypher)
+    attribute_names = sorted(parser.parse_tree.attribute_names)
+    assert attribute_names == [
+        "radius",
+        "side_length",
+    ]
+
+
+def test_memcache_fact_index_node_has_label():
+    fact_collection = MemcacheFactCollection()
+    fact = FactNodeHasLabel("1", "Thing")
+    index = fact_collection.make_index(fact)
+    assert index == "node_label:1:Thing"
+
+
+def test_memcache_fact_index_node_has_attribute_with_value():
+    fact_collection = MemcacheFactCollection()
+    fact = FactNodeHasAttributeWithValue("1", "foo", "bar")
+    index = fact_collection.make_index(fact)
+    assert index == "node_attribute:1:foo:bar"
+
+
+def test_memcache_fact_index_relationship_has_source_node():
+    fact_collection = MemcacheFactCollection()
+    fact = FactRelationshipHasSourceNode("1", "2")
+    index = fact_collection.make_index(fact)
+    assert index == "relationship_source_node:1:2"
+
+
+def test_memcache_fact_index_relationship_has_target_node():
+    fact_collection = MemcacheFactCollection()
+    fact = FactRelationshipHasTargetNode("1", "2")
+    index = fact_collection.make_index(fact)
+    assert index == "relationship_target_node:1:2"

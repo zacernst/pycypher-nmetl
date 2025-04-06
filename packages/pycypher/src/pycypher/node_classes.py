@@ -1,52 +1,6 @@
 """
 This module defines various classes representing nodes and expressions in an
 Abstract Syntax Tree (AST) for Cypher queries.
-
-The classes include functionality for evaluating expressions, generating tree
-representations, and handling constraints.
-
-Classes:
-
-- **Evaluable**: Abstract base class representing an evaluable entity.
-- **Cypher**: The root node of the AST for Cypher queries.
-- **Aggregation**: Represents an aggregation operation that turns a list into a singleton.
-- **Collection**: Represents a list of values.
-- **Distinct**: Represents the DISTINCT keyword.
-- **Size**: Represents the SIZE keyword.
-- **Collect**: Represents the COLLECT keyword.
-- **Query**: Represents the entire query.
-- **Predicate**: Represents a unary or binary expression with a definite truth value.
-- **BinaryBoolean**: Superclass for the And and Or connective classes.
-- **AliasedName**: Represents a name that has been aliased with an AS statement.
-- **Equals**: Represents the binary infix operator for equality.
-- **LessThan**: Represents the binary infix operator for less than.
-- **GreaterThan**: Represents the binary infix operator for greater than.
-- **Subtraction**: Represents the binary infix operator for subtraction.
-- **Multiplication**: Represents the binary infix operator for multiplication.
-- **Division**: Represents the binary infix operator for division.
-- **ObjectAttributeLookup**: Represents the value of an attribute of a node or relationship.
-- **Alias**: Represents use of an AS statement in the query.
-- **ObjectAsSeries**: Represents a series of object attribute lookups.
-- **WithClause**: Represents the WITH clause of the query.
-- **Match**: Represents the MATCH clause of the query.
-- **Return**: Represents the RETURN clause of the query.
-- Projection: Represents a node variable followed by an attribute or another evaluable expression.
-- **NodeNameLabel**: Represents a node name, optionally followed by a label.
-- **Node**: Represents a node in the graph.
-- **Relationship**: Represents a relationship in the graph.
-- **Mapping**: Represents a dictionary of key-value pairs.
-- **MappingSet**: Represents a list of mappings.
-- **MatchList**: Represents a container for a list of Match objects.
-- **RelationshipLeftRight**: Represents a relationship with the arrow pointing from left to right.
-- **RelationshipRightLeft**: Represents a relationship with the arrow pointing from right to left.
-- **RelationshipChain**: Represents several relationship nodes chained together.
-- **Where**: Represents the WHERE clause of the query.
-- **And**: Represents the logical AND connective.
-- **Or**: Represents the logical OR connective.
-- **Not**: Represents the logical NOT connective.
-- **RelationshipChainList**: Represents a container for a list of relationship chains.
-- **Addition**: Represents the binary infix operator for addition.
-- **Literal**: Represents a container for a value.
 """  # pylint: disable=too-many-lines
 
 from __future__ import annotations
@@ -163,6 +117,21 @@ class Cypher(TreeMixin):
                 cypher attribute of the object.
         """
         return f"Cypher({self.cypher})"
+
+    @property
+    def attribute_names(self) -> List[str]:
+        """
+        Returns a list of attribute names from the Cypher object.
+
+        Returns:
+            List[str]: A list of attribute names.
+        """
+        out = [
+            obj.attribute
+            for obj in self.walk()
+            if isinstance(obj, ObjectAttributeLookup)
+        ]
+        return out
 
     def tree(self) -> Tree:
         """

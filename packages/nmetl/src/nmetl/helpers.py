@@ -1,6 +1,8 @@
 """Place for functions that might be used across the project."""
 
+import base64
 import datetime
+import pickle
 import queue
 import uuid
 from pathlib import Path
@@ -136,3 +138,21 @@ class QueueGenerator:  # pylint: disable=too-few-public-methods,too-many-instanc
         if self.use_cache and hash(item) in self.timed_cache:
             return True
         return False
+
+
+def decode(encoded: str) -> Any:
+    """Decode a base64 encoded string."""
+    try:
+        decoded = pickle.loads(base64.b64decode(encoded))
+    except Exception as e:
+        raise ValueError(f"Error decoding base64 string: {e}") from e
+    return decoded
+
+
+def encode(obj: Any) -> str:
+    """Encode an object as a base64 string."""
+    try:
+        encoded = base64.b64encode(pickle.dumps(obj)).decode("utf-8")
+    except Exception as e:
+        raise ValueError(f"Error encoding object to base64 string: {e}") from e
+    return encoded

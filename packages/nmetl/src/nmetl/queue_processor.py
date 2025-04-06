@@ -162,8 +162,22 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
 
         out = []
         LOGGER.debug("Checking fact %s against triggers", item)
+        # Let's filter out the facts that are irrelevant to this trigger
         for _, trigger in self.session.trigger_dict.items():
+            # Let's bomb out if the attribute in the fact is not in the trigger
+            if (
+                isinstance(item, FactNodeHasAttributeWithValue)
+                and not item.attribute
+                in trigger.cypher.parse_tree.attribute_names
+            ):
+                LOGGER.debug(
+                    "Fact %s does not match trigger %s, skipping",
+                    item,
+                    trigger,
+                )
+                continue
             LOGGER.debug("Checking trigger %s", trigger)
+            # item is a Fact subclass
             for constraint in trigger.constraints:
                 LOGGER.debug(
                     "Checking item: %s, constraint %s, trigger %s result: %s",
@@ -174,7 +188,7 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
                 )
 
                 if sub := item + constraint:
-                    LOGGER.debug("Fact %s matched a trigger", item)
+                    LOGGER.info("Fact %s matched a trigger", item)
                     sub_trigger_pair = SubTriggerPair(sub=sub, trigger=trigger)
                     out.append(sub_trigger_pair)
         return out

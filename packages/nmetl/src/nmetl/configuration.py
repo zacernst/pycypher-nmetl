@@ -178,7 +178,9 @@ import yaml
 from nmetl.config import CWD, MONOREPO_BASE_DIR, SRC_BASE_DIR
 from nmetl.data_source import DataSource, DataSourceMapping
 from nmetl.session import Session
-from pycypher.fact import FactCollection
+from pycypher.fact import FactCollection  # pylint: disable=unused-import
+from pycypher.fact import MemcacheFactCollection
+from pycypher.logger import LOGGER
 from pydantic import BaseModel, Field, TypeAdapter
 
 TYPE_DISPATCH_DICT = {
@@ -273,15 +275,30 @@ def load_session_config(path: str) -> Session:
         config = yaml.safe_load(f)
     session_config = SessionConfig(**config)
 
+    # Check if the fact collection is set to MemcacheFactCollection
+    try:
+        fact_collection_class = globals()[session_config.fact_collection_class]
+    except KeyError:
+        # Default to MemcacheFactCollection if not specified
+        fact_collection_class = FactCollection
+        LOGGER.warning(
+            '"fact_collection_class" not found, using default FactCollection'
+        )
+
+    fact_collection = fact_collection_class()
+
     session = Session(
         run_monitor=session_config.run_monitor,
         logging_level=session_config.logging_level,
+        fact_collection=fact_collection,
     )
 
-    session.fact_collection = FactCollection([])
+    # session.fact_collection = FactCollection([])
 
     for data_source_config in session_config.data_sources:
-        data_source = DataSource.from_uri(data_source_config.uri, config=data_source_config)
+        data_source = DataSource.from_uri(
+            data_source_config.uri, config=data_source_config
+        )
         data_source.name = data_source_config.name
 
         for mapping_config in data_source_config.mappings:

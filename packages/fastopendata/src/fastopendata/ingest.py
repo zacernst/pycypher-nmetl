@@ -12,7 +12,9 @@ from nmetl.data_source import NewColumn
 from nmetl.trigger import VariableAttribute
 from pycypher.logger import LOGGER
 
-SOURCE_DIR = '/Users/zernst/git/pycypher-nmetl/packages/fastopendata/src/fastopendata/'
+SOURCE_DIR = (
+    "/Users/zernst/git/pycypher-nmetl/packages/fastopendata/src/fastopendata/"
+)
 
 LOGGER.setLevel("INFO")
 INGEST_CONFIG_PATH = f"{SOURCE_DIR}/ingest.yaml"

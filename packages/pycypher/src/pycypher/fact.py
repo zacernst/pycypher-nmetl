@@ -9,9 +9,13 @@ atomic pieces of information about nodes, relationships, and their attributes.
 
 from __future__ import annotations
 
+import base64
 import collections
+import pickle
 from typing import Any, Dict, Generator, List, Optional
 
+import pymemcache
+from nmetl.helpers import decode, encode
 from pycypher.query import (
     NullResult,
     Query,
@@ -360,10 +364,10 @@ class FactCollection:
 
     def __init__(
         self,
-        facts: List[AtomicFact],
+        facts: Optional[List[AtomicFact]] = None,
         session: Optional["Session"] = None,  # type: ignore
     ):
-        self.facts: List[AtomicFact] = facts
+        self.facts: List[AtomicFact] = facts or []
         self.session: Optional["Session"] = session  # type: ignore
 
     def __iter__(self) -> Generator[AtomicFact]:
@@ -398,7 +402,7 @@ class FactCollection:
         self.facts.insert(index, value)
         return self
 
-    def append(self, value: AtomicFact) -> FactCollection:
+    def append(self, fact: AtomicFact) -> FactCollection:
         """
         Append an AtomicFact to the facts list.
 
@@ -408,9 +412,9 @@ class FactCollection:
         Returns:
             None
         """
-        value.session = self.session
-        if value not in self:
-            self.facts.append(value)
+        fact.session = self.session
+        if fact not in self:
+            self.facts.append(fact)
         return self
 
     def __iadd__(self, other: AtomicFact) -> FactCollection:
@@ -642,3 +646,54 @@ class FactCollection:
         inventory = list(self.node_label_attribute_inventory()[label])
         for node_id in self.nodes_with_label(label):
             yield self.attributes_for_specific_node(node_id, *inventory)
+
+
+class MemcacheFactCollection(FactCollection):
+    """
+    A collection of AtomicFact objects with various utility methods for
+    querying and manipulating the facts.
+
+    Attributes:
+        facts (List[AtomicFact]): A list of AtomicFact objects.
+        session (Session): The session object associated with the fact collection.
+
+    """
+
+    def __init__(self, *args, **kwargs):
+        self.client = pymemcache.Client(server="localhost:11211")
+
+    def __iter__(self) -> Generator[AtomicFact]:
+        for key in self.client.stats("items"):
+            yield pickle.loads(self.client.get(key))
+
+    def make_index(self, fact: AtomicFact) -> str:
+        """Used for the memcache index"""
+        match fact:
+            case FactNodeHasLabel():
+                return f"node_label:{fact.node_id}:{fact.label}"
+            case FactNodeHasAttributeWithValue():
+                return f"node_attribute:{fact.node_id}:{fact.attribute}:{fact.value}"
+            case FactRelationshipHasLabel():
+                return f"relationship_label:{fact.relationship_id}"
+            case FactRelationshipHasAttributeWithValue():
+                return f"relationship_attribute:{fact.relationship_id}:{fact.attribute}"
+            case FactRelationshipHasSourceNode():
+                return f"relationship_source_node:{fact.relationship_id}:{fact.source_node_id}"
+            case FactRelationshipHasTargetNode():
+                return f"relationship_target_node:{fact.relationship_id}:{fact.target_node_id}"
+            case _:
+                raise ValueError("Unknown fact type")
+
+    def append(self, fact: AtomicFact) -> None:
+        """
+        Insert an AtomicFact into the facts list at the specified index.
+
+        Args:
+            index (int): The position at which to insert the value.
+            value (AtomicFact): The AtomicFact object to be inserted.
+
+        Returns:
+            None
+        """
+        index = self.make_index(fact)
+        self.client.set(index, encode(fact))

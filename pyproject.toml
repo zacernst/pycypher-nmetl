@@ -32,6 +32,7 @@ dependencies = [
     "dvc>=3.59.1",
     "geopandas>=1.0.1",
     "osmium>=4.0.2",
+    "pymemcache>=4.0.0",
 ]
 
 [build-system]

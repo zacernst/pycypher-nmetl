@@ -298,7 +298,11 @@ class Session:  # pylint: disable=too-many-instance-attributes
                 else "---"
             )
             table.add_row(
-                getattr(monitored_thread, 'name', monitored_thread.__class__.__name__),
+                getattr(
+                    monitored_thread,
+                    "name",
+                    monitored_thread.__class__.__name__,
+                ),
                 started_at,
                 finished_at,
                 f"{monitored_thread.received_counter} ({received_rate}/s)",
