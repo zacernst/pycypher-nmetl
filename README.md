@@ -1,10 +1,23 @@
-[![Install and run tests](https://github.com/zacernst/pycypher/actions/workflows/makefile.yml/badge.svg)](https://github.com/zacernst/pycypher/actions/workflows/makefile.yml)
+[![Install and run tests](https://github.com/zacernst/pycypher-nmetl/actions/workflows/makefile.yml/badge.svg)](https://github.com/zacernst/pycypher-nmetl/actions/workflows/makefile.yml)
 
-[![Build Sphinx documentation](https://github.com/zacernst/pycypher/actions/workflows/docs.yml/badge.svg)](https://github.com/zacernst/pycypher/actions/workflows/docs.yml)
+[![Build Sphinx documentation](https://github.com/zacernst/pycypher-nmetl/actions/workflows/docs.yml/badge.svg)](https://github.com/zacernst/pycypher-nmetl/actions/workflows/docs.yml)
 
-[![Deploy documentation to Github Pages](https://github.com/zacernst/pycypher/actions/workflows/pages/pages-build-deployment/badge.svg)](https://github.com/zacernst/pycypher/actions/workflows/pages/pages-build-deployment)
+[![Publish documentation to Github Pages](https://github.com/zacernst/pycypher-nmetl/actions/workflows/publish-docs.yml/badge.svg)](https://github.com/zacernst/pycypher-nmetl/actions/workflows/publish-docs.yml)
 
 # Cypher and Declarative ETL with `pycypher`
+
+## Documentation
+
+The full documentation is available at [https://zacernst.github.io/pycypher-nmetl/](https://zacernst.github.io/pycypher-nmetl/) (once GitHub Pages is enabled).
+
+### Enabling GitHub Pages
+
+To enable GitHub Pages for the documentation:
+
+1. Go to the repository settings on GitHub
+2. Navigate to the "Pages" section
+3. Under "Build and deployment", select "GitHub Actions" as the source
+4. The documentation will be automatically built and published when changes are pushed to the main branch
 
 Modern ETL pipelines are overly complex, brittle, inflexible, and error-prone. These problems are the result of having to specify complex data pipelines that procedurally transform data step-by-step into the specific format you need.
 
@@ -35,7 +48,7 @@ Rather than thinking of your data as tables, columns, key-value pairs, graphs, o
 
 **System Manages State:** All your facts are stored in a `FactCollection` which acts like an embedded database. It is responsible for maintaining the consistency of your facts, looking up facts when necessary, and transforming your data into tables or other output formats. As a data engineer, your only jobs are to define your data sources and define the facts that are derived from those sources.
 
-**Customizable Data Store:** Depending on your use-case, you can use a simple in-memory `FactCollection` or a distributed, highly available key-value store, or anything else, just by changing a configuration value. No code changes are required, and it's not difficult to customize your own `FactCollection` if your requirements aren't met by the built-in options. 
+**Customizable Data Store:** Depending on your use-case, you can use a simple in-memory `FactCollection` or a distributed, highly available key-value store, or anything else, just by changing a configuration value. No code changes are required, and it's not difficult to customize your own `FactCollection` if your requirements aren't met by the built-in options.
 
 ## Data sources
 
@@ -52,7 +65,7 @@ Example:
       attribute: city_name
       label: City
 ```
-This declaration says: 
+This declaration says:
 * Take the `city` column from the data source.
 * Create a `city_name` attribute for nodes identified by the `city_state` key.
 * All these entities should have the label `City`.
@@ -63,11 +76,11 @@ This declaration says:
 
 ## Define Reactions, Not Procedures
 
-**Triggers:** Instead of writing complex pipelines for transforming tables or documents, `pycypher` uses a "trigger" concept that simplifies your ETL significantly. A "trigger" is a simple function that says, "Whenever a condition `C` is met, perform this function and store the result as a new `Fact`." 
+**Triggers:** Instead of writing complex pipelines for transforming tables or documents, `pycypher` uses a "trigger" concept that simplifies your ETL significantly. A "trigger" is a simple function that says, "Whenever a condition `C` is met, perform this function and store the result as a new `Fact`."
 
 **What Happens, Not How:** You define what should happen when specific conditions are met (e.g., a new fact is added) rather than how to detect these conditions or how to update the graph.
 
-**Recursive Updates:** Triggers generate facts, which in turn may cause other triggers to fire. In this way, you can generate new data that has multiple levels of dependencies without having to explicitly define an entire pipeline. 
+**Recursive Updates:** Triggers generate facts, which in turn may cause other triggers to fire. In this way, you can generate new data that has multiple levels of dependencies without having to explicitly define an entire pipeline.
 
 # Using `pycypher`
 
@@ -372,8 +385,8 @@ session = load_session_config(
 )
 
 @session.trigger(
-  'MATCH (s:Square) WHERE EXISTS(s.side_length) 
-  WITH s.side_length AS side_length 
+  'MATCH (s:Square) WHERE EXISTS(s.side_length)
+  WITH s.side_length AS side_length
   RETURN side_length")
 def compute_area(side_length: float) -> VariableAttribute['s', 'area']:
     return side_length ** 2
