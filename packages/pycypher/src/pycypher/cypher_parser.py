@@ -205,8 +205,16 @@ def p_relationship_chain_list(p: yacc.YaccProduction):
 
 
 def p_with_as_series(p: yacc.YaccProduction):
-    """with_as_series : alias
-    | with_as_series COMMA alias"""
+    """
+    Parse a series of aliases in a WITH clause.
+
+    Grammar:
+        with_as_series : alias
+        | with_as_series COMMA alias
+
+    Args:
+        p (yacc.YaccProduction): The production object from PLY.
+    """
     if len(p) == 2:
         p[0] = ObjectAsSeries([p[1]])
     else:
@@ -216,7 +224,18 @@ def p_with_as_series(p: yacc.YaccProduction):
 
 
 def p_collect(p: yacc.YaccProduction):
-    """collect : COLLECT LPAREN object_attribute_lookup RPAREN"""
+    """
+    Parse a COLLECT function call.
+
+    Grammar:
+        collect : COLLECT LPAREN object_attribute_lookup RPAREN
+
+    Args:
+        p (yacc.YaccProduction): The production object from PLY.
+
+    Raises:
+        ValueError: If the argument to COLLECT is not an object attribute lookup.
+    """
     if isinstance(p[3], ObjectAttributeLookup):
         p[0] = Collect(object_attribute_lookup=p[3])
     else:
@@ -225,10 +244,20 @@ def p_collect(p: yacc.YaccProduction):
         )
 
 
-# Revisit this: Distinct isn't really an aggregation
 def p_aggregation(p: yacc.YaccProduction):
-    """aggregation : collect
-    | DISTINCT aggregation"""
+    """
+    Parse an aggregation expression, which can be a collect function or a distinct aggregation.
+
+    Note:
+        Distinct isn't really an aggregation, but it's handled here for simplicity.
+
+    Grammar:
+        aggregation : collect
+        | DISTINCT aggregation
+
+    Args:
+        p (yacc.YaccProduction): The production object from PLY.
+    """
     if len(p) == 2:
         p[0] = Aggregation(aggregation=p[1])
     else:
@@ -236,16 +265,31 @@ def p_aggregation(p: yacc.YaccProduction):
 
 
 def p_with_clause(p: yacc.YaccProduction):
-    """with_clause : WITH with_as_series"""
+    """
+    Parse a WITH clause in a Cypher query.
+
+    Grammar:
+        with_clause : WITH with_as_series
+
+    Args:
+        p (yacc.YaccProduction): The production object from PLY.
+    """
     p[0] = WithClause(p[2])
 
 
 def p_match_pattern(p: yacc.YaccProduction):
-    """match_pattern : MATCH node
-    | MATCH relationship_chain_list
-    | MATCH relationship_chain_list with_clause
-    | MATCH relationship_chain_list where
-    | MATCH relationship_chain_list with_clause where
+    """
+    Parse a MATCH pattern in a Cypher query.
+
+    Grammar:
+        match_pattern : MATCH node
+        | MATCH relationship_chain_list
+        | MATCH relationship_chain_list with_clause
+        | MATCH relationship_chain_list where
+        | MATCH relationship_chain_list with_clause where
+
+    Args:
+        p (yacc.YaccProduction): The production object from PLY.
     """
     if len(p) == 3:
         p[0] = Match(p[2])

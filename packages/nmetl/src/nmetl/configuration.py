@@ -207,7 +207,12 @@ TYPE_DISPATCH_DICT = {
 
 
 class SessionConfig(BaseModel):
-    """The entire configuration"""
+    """
+    Configuration model for the ETL session.
+
+    This class represents the entire configuration for an ETL session,
+    including fact collection settings, monitoring, and data sources.
+    """
 
     fact_collection: Optional[str] = None
     run_monitor: Optional[bool] = True
@@ -217,7 +222,12 @@ class SessionConfig(BaseModel):
 
 
 class DataSourceConfig(BaseModel):
-    """A list of data source mappings"""
+    """
+    Configuration model for a data source.
+
+    This class represents the configuration for a data source,
+    including its URI, mappings, and data types.
+    """
 
     name: Optional[str] = None
     uri: Optional[str] = None
@@ -234,16 +244,33 @@ class DataSourceConfig(BaseModel):
 
 
 class DataSchema(BaseModel):
-    """Information about casting types for each key/value of a DataSource.
+    """
+    Information about casting types for each key/value of a DataSource.
 
-    We will use pydantic TypeAdapter for this."""
+    This class represents the schema for a data source, defining how
+    to cast values to specific types. We use pydantic TypeAdapter for this.
+
+    Attributes:
+        key (Optional[str]): The key in the data source.
+        type (Optional[str]): The type to cast the value to.
+    """
 
     key: Optional[str] = None
     type: Optional[str] = None
 
 
 class DataSourceMappingConfig(BaseModel):
-    """A single data source mapping"""
+    """
+    Configuration model for a data source mapping.
+
+    This class represents a mapping between data source fields and
+    graph elements (nodes, relationships, attributes).
+
+    Attributes:
+        attribute_key (Optional[str]): The key for the attribute in the data source.
+        identifier_key (Optional[str]): The key for the identifier in the data source.
+        attribute (Optional[str]): The name of the attribute in the graph.
+    """
 
     attribute_key: Optional[str] = None
     identifier_key: Optional[str] = None

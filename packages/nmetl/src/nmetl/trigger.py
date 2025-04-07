@@ -1,4 +1,11 @@
-"""testing"""
+"""
+Trigger Module Documentation (trigger.py)
+=====================================
+
+The ``trigger.py`` module within the ``nmetl`` library defines the core classes and protocols
+for creating and managing triggers in the ETL pipeline. Triggers are functions that are executed
+when certain conditions are met in the data processing pipeline.
+"""
 
 from __future__ import annotations
 
@@ -25,7 +32,16 @@ TargetVariable = TypeVar("TargetVariable")
 
 @runtime_checkable
 class VariableAttribute(Protocol[Variable, Attribute]):
-    """Protocol to be used in triggered functions as return signature."""
+    """
+    Protocol to be used in triggered functions as return signature.
+
+    This protocol is used to type-hint functions that return a value to be assigned
+    as an attribute of a variable in the Cypher query.
+
+    Type Parameters:
+        Variable: The type of the variable in the Cypher query.
+        Attribute: The type of the attribute to be assigned.
+    """
 
     def __getitem__(self, *args, **kwargs) -> None: ...
 
@@ -34,7 +50,17 @@ class VariableAttribute(Protocol[Variable, Attribute]):
 
 @runtime_checkable
 class NodeRelationship(Protocol[SourceVariable, Attribute, TargetVariable]):
-    """Protocol to be used in triggered functions as return signature."""
+    """
+    Protocol to be used in triggered functions that create relationships.
+
+    This protocol is used to type-hint functions that return a value to be used
+    as a relationship between two nodes in the Cypher query.
+
+    Type Parameters:
+        SourceVariable: The type of the source node variable in the Cypher query.
+        Attribute: The type of the relationship attribute.
+        TargetVariable: The type of the target node variable in the Cypher query.
+    """
 
     def __getitem__(self, *args, **kwargs) -> None: ...
 
@@ -43,7 +69,12 @@ class NodeRelationship(Protocol[SourceVariable, Attribute, TargetVariable]):
 
 @dataclass
 class AttributeMetadata:
-    """Metadata about the attribute."""
+    """
+    Metadata about an attribute in the ETL pipeline.
+
+    This class stores metadata about attributes, including the function that
+    generates the attribute, the attribute name, and a description.
+    """
 
     function_name: Optional[str]
     attribute_name: Optional[str]
@@ -105,7 +136,12 @@ class CypherTrigger(ABC):  # pylint: disable=too-many-instance-attributes
 
 
 class NodeRelationshipTrigger(CypherTrigger):
-    """First draft"""
+    """
+    Trigger for creating relationships between nodes in the graph.
+
+    This trigger is used to create relationships between nodes based on
+    the results of a Cypher query and a function that processes those results.
+    """
 
     def __init__(
         self,
@@ -140,7 +176,12 @@ class NodeRelationshipTrigger(CypherTrigger):
 
 
 class VariableAttributeTrigger(CypherTrigger):
-    """For setting attributes"""
+    """
+    Trigger for setting attributes on variables in the graph.
+
+    This trigger is used to set attributes on variables based on
+    the results of a Cypher query and a function that processes those results.
+    """
 
     def __init__(  # pylint: disable=too-many-arguments,too-many-positional-arguments
         self,

@@ -107,7 +107,15 @@ class DataSource(ABC):  # pylint: disable=too-many-instance-attributes
         return f"{self.__class__.__name__}({self.name})"
 
     def attach_queue(self, queue_obj: QueueGenerator) -> None:
-        """Attach a queue to the data source."""
+        """
+        Attach a queue to the data source.
+
+        Args:
+            queue_obj (QueueGenerator): The queue to attach to this data source.
+
+        Raises:
+            ValueError: If queue_obj is not a QueueGenerator.
+        """
         if not isinstance(
             queue_obj,
             (
@@ -124,10 +132,18 @@ class DataSource(ABC):  # pylint: disable=too-many-instance-attributes
     def attach_schema(
         self, schema: Dict[str, str], dispatch_dict: Dict
     ) -> DataSource:
-        """Attach a schema to the data source.
+        """
+        Attach a schema to the data source.
 
         Each key in the schema is a key in the data source, and each
         value is a callable type.
+
+        Args:
+            schema (Dict[str, str]): A dictionary mapping column names to type names.
+            dispatch_dict (Dict): A dictionary mapping type names to callable types.
+
+        Returns:
+            DataSource: The data source instance (self) for method chaining.
         """
         self.schema = {
             key: dispatch_dict[value] for key, value in schema.items()
@@ -135,12 +151,27 @@ class DataSource(ABC):  # pylint: disable=too-many-instance-attributes
 
     @abstractmethod
     def rows(self) -> Generator[Dict[str, Any], None, None]:
-        """Basic method to get rows from the data source."""
+        """
+        Basic method to get rows from the data source.
+
+        Returns:
+            Generator[Dict[str, Any], None, None]: A generator yielding dictionaries
+                representing rows from the data source.
+        """
 
     def attach_mapping(
         self, data_source_mapping: DataSourceMapping | List[DataSourceMapping]
     ) -> DataSource:
-        """Attach a mapping to the data source."""
+        """
+        Attach a mapping to the data source.
+
+        Args:
+            data_source_mapping (DataSourceMapping | List[DataSourceMapping]): The mapping(s)
+                to attach to this data source.
+
+        Returns:
+            DataSource: The data source instance (self) for method chaining.
+        """
         # Don't think we'll need to link from mapping to data source, but possible.
         if isinstance(data_source_mapping, list):
             for mapping in data_source_mapping:

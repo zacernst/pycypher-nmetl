@@ -59,7 +59,16 @@ class NewColumnConfig:
 
 
 class Session:  # pylint: disable=too-many-instance-attributes
-    """Holds the triggers and fact collection and makes everything go."""
+    """
+    Manages the ETL pipeline execution, including triggers and fact collection.
+
+    The Session class is the central coordinator for the ETL process. It manages:
+    - Data sources and their mappings
+    - Fact collection for storing processed data
+    - Triggers for data transformations
+    - Processing queues and threads
+    - Monitoring and logging
+    """
 
     def __init__(
         self,
@@ -73,6 +82,29 @@ class Session:  # pylint: disable=too-many-instance-attributes
         status_queue: Optional[queue.Queue] = None,
         run_monitor: Optional[bool] = True,
     ):  # pylint: disable=too-many-arguments
+        """
+        Initialize a new Session instance.
+
+        Args:
+            fact_collection (Optional[FactCollection], optional): Collection to store facts.
+                Defaults to None (creates a new FactCollection).
+            data_assets (Optional[List[DataAsset]], optional): List of data assets.
+                Defaults to None.
+            logging_level (Optional[str], optional): Logging level for the session.
+                Defaults to "WARNING".
+            queue_class (Optional[Type], optional): Class to use for queues.
+                Defaults to QueueGenerator.
+            queue_options (Optional[Dict[str, Any]], optional): Options for queue initialization.
+                Defaults to None.
+            data_sources (Optional[List[DataSource]], optional): List of data sources.
+                Defaults to None.
+            queue_list (Optional[List[QueueGenerator]], optional): List of queues.
+                Defaults to None.
+            status_queue (Optional[queue.Queue], optional): Queue for status messages.
+                Defaults to None.
+            run_monitor (Optional[bool], optional): Whether to run the monitor thread.
+                Defaults to True.
+        """
         # Instantiate the various queues using the queue_class
         self.data_sources = data_sources or []
         self.run_monitor = run_monitor
@@ -144,6 +176,13 @@ class Session:  # pylint: disable=too-many-instance-attributes
             )
 
     def __call__(self, block: bool = True):
+        """
+        Start the session when the instance is called as a function.
+
+        Args:
+            block (bool, optional): Whether to block until all threads are finished.
+                Defaults to True.
+        """
         self.start_threads()
         if block:
             self.block_until_finished()
@@ -155,7 +194,12 @@ class Session:  # pylint: disable=too-many-instance-attributes
     #         data_source.new_columns[new_column.new_column_name] = new_column
 
     def attribute_table(self):
-        """Print a table showing the attributes and their descriptions."""
+        """
+        Print a table showing the attributes and their descriptions.
+
+        This method uses rich.console.Console to print a formatted table
+        of attribute names and descriptions.
+        """
         console = Console()
 
         table = Table(title="Attributes")
@@ -172,7 +216,16 @@ class Session:  # pylint: disable=too-many-instance-attributes
         console.print(table)
 
     def start_threads(self):
-        """Start the threads."""
+        """
+        Start all the processing threads for this session.
+
+        This includes:
+            - Monitor thread (if run_monitor is True)
+            - Data source loading threads
+            - Raw data processor thread
+            - Fact generated queue processor thread
+            - Check fact against triggers queue processor thread
+        """
         # Start the monitor thread
         if self.run_monitor:
             self.monitor_thread.start()
