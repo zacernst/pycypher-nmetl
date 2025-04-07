@@ -23,6 +23,23 @@ concurrency:
 
 jobs:
   # Single deploy job since we're just deploying
+  build_docs:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    - name: Install uv
+      run: curl -LsSf https://astral.sh/uv/install.sh | sh
+    - name: Install dependencies and build docs
+      run: |
+        export PATH="$HOME/.cargo/bin:$PATH"
+        make install
+        make docs
+        cp docs/_build/html/index.html ./docs
   deploy:
     environment:
       name: github-pages
