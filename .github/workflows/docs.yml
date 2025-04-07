@@ -39,21 +39,7 @@ jobs:
         run: echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
       - name: Install dependencies
-        run: |
-          uv pip install sphinx sphinx-rtd-theme sphinx-autoapi sphinx-autodocgen
-
-      - name: Install project in development mode
-        run: |
-          # Install all packages in development mode
-          # uv pip install -e ./packages/pycypher
-          # uv pip install -e ./packages/nmetl
-          # uv pip install -e ./packages/fastopendata
-          uv pip install -e .
-
-      - name: Build documentation
-        run: |
-          cd docs
-          make html
+        run: make docs
 
       - name: Setup Pages
         uses: actions/configure-pages@v3
