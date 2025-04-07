@@ -74,9 +74,9 @@ build:
 # Install packages in development mode
 install: build
 	@echo "Installing packages in development mode..."
-	uv pip install --upgrade -e ${PYCYPHER_DIR}
-	uv pip install --upgrade -e ${NMETL_DIR}
-	uv pip install --upgrade -e .
+	# uv pip install --upgrade -e ${PYCYPHER_DIR}
+	# uv pip install --upgrade -e ${NMETL_DIR}
+	# uv pip install --upgrade -e .
 
 # ------------------------------------------------------------------------------
 # Testing targets
