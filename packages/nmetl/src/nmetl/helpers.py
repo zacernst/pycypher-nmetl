@@ -55,6 +55,19 @@ class QueueGenerator:  # pylint: disable=too-few-public-methods,too-many-instanc
         session: Optional["Session"] = None,  # type: ignore
         **kwargs,
     ) -> None:
+        """
+        Initialize a QueueGenerator instance.
+
+        Args:
+            *args: Variable positional arguments passed to the parent class.
+            inner_queue_timeout (Optional[int]): Timeout for the inner queue. Defaults to INNER_QUEUE_TIMEOUT.
+            end_of_queue_cls (Optional[Type]): Class to use for end-of-queue markers. Defaults to EndOfData.
+            outer_queue_timeout (Optional[int]): Timeout for the outer queue. Defaults to OUTER_QUEUE_TIMEOUT.
+            name (Optional[str]): Name for this queue. Defaults to a random UUID.
+            use_cache (Optional[bool]): Whether to use caching. Defaults to False.
+            session (Optional[Session]): The session this queue belongs to. Defaults to None.
+            **kwargs: Variable keyword arguments passed to the parent class.
+        """
         super().__init__(*args, **kwargs)
         self.queue = queue.Queue()
         self.inner_queue_timeout = inner_queue_timeout

@@ -43,9 +43,35 @@ class VariableAttribute(Protocol[Variable, Attribute]):
         Attribute: The type of the attribute to be assigned.
     """
 
-    def __getitem__(self, *args, **kwargs) -> None: ...
+    def __getitem__(self, *args, **kwargs) -> None:
+        """
+        Protocol method for indexing operations.
 
-    def __setitem__(self, *args, **kwargs) -> None: ...
+        This is a placeholder method required by the Protocol and is not meant to be called directly.
+
+        Args:
+            *args: Variable positional arguments.
+            **kwargs: Variable keyword arguments.
+
+        Returns:
+            None
+        """
+        ...
+
+    def __setitem__(self, *args, **kwargs) -> None:
+        """
+        Protocol method for item assignment operations.
+
+        This is a placeholder method required by the Protocol and is not meant to be called directly.
+
+        Args:
+            *args: Variable positional arguments.
+            **kwargs: Variable keyword arguments.
+
+        Returns:
+            None
+        """
+        ...
 
 
 @runtime_checkable
@@ -62,9 +88,35 @@ class NodeRelationship(Protocol[SourceVariable, Attribute, TargetVariable]):
         TargetVariable: The type of the target node variable in the Cypher query.
     """
 
-    def __getitem__(self, *args, **kwargs) -> None: ...
+    def __getitem__(self, *args, **kwargs) -> None:
+        """
+        Protocol method for indexing operations.
 
-    def __setitem__(self, *args, **kwargs) -> None: ...
+        This is a placeholder method required by the Protocol and is not meant to be called directly.
+
+        Args:
+            *args: Variable positional arguments.
+            **kwargs: Variable keyword arguments.
+
+        Returns:
+            None
+        """
+        ...
+
+    def __setitem__(self, *args, **kwargs) -> None:
+        """
+        Protocol method for item assignment operations.
+
+        This is a placeholder method required by the Protocol and is not meant to be called directly.
+
+        Args:
+            *args: Variable positional arguments.
+            **kwargs: Variable keyword arguments.
+
+        Returns:
+            None
+        """
+        ...
 
 
 @dataclass
@@ -105,6 +157,18 @@ class CypherTrigger(ABC):  # pylint: disable=too-many-instance-attributes
         session: Optional["Session"] = None,
         parameter_names: Optional[List[str]] = None,
     ):
+        """
+        Initialize a CypherTrigger instance.
+
+        Args:
+            function (Optional[Callable]): The function to be called when the trigger fires. Defaults to None.
+            cypher_string (Optional[str]): The Cypher query string that defines the trigger conditions. Defaults to None.
+            session (Optional[Session]): The session this trigger belongs to. Defaults to None.
+            parameter_names (Optional[List[str]]): Names of parameters for the function. Defaults to None.
+
+        Raises:
+            ValueError: If there is an error parsing the Cypher string.
+        """
         self.function = function
         self.cypher_string = cypher_string
         try:
@@ -123,15 +187,39 @@ class CypherTrigger(ABC):  # pylint: disable=too-many-instance-attributes
         self._gather_constraints()
 
     def __repr__(self) -> str:
+        """
+        Return a string representation of the CypherTrigger instance.
+
+        Returns:
+            str: A string representation showing the constraints of this trigger.
+        """
         return f"CypherTrigger(constraints: {self.constraints})"
 
     def _gather_constraints(self):
+        """
+        Gather constraints from the Cypher parse tree.
+
+        This method walks through the Cypher parse tree and collects all constraints
+        from nodes that have a 'constraints' attribute, adding them to the trigger's
+        constraints set.
+        """
         for node in self.cypher.walk():
             if hasattr(node, "constraints"):
                 self.constraints = self.constraints | set(node.constraints)
 
     @abstractmethod
     def __hash__(self):
+        """
+        Generate a hash value for this CypherTrigger instance.
+
+        This is an abstract method that must be implemented by subclasses.
+
+        Returns:
+            int: A hash value for this instance.
+
+        Raises:
+            NotImplementedError: If not implemented by a subclass.
+        """
         pass
 
 
@@ -153,6 +241,18 @@ class NodeRelationshipTrigger(CypherTrigger):
         session: Optional["Session"] = None,
         parameter_names: Optional[List[str]] = None,
     ):
+        """
+        Initialize a NodeRelationshipTrigger instance.
+
+        Args:
+            function (Optional[Callable]): The function to be called when the trigger fires. Defaults to None.
+            cypher_string (Optional[str]): The Cypher query string that defines the trigger conditions. Defaults to None.
+            source_variable (Optional[str]): The name of the source node variable in the Cypher query. Defaults to None.
+            target_variable (Optional[str]): The name of the target node variable in the Cypher query. Defaults to None.
+            relationship_name (Optional[str]): The name of the relationship to create. Defaults to None.
+            session (Optional[Session]): The session this trigger belongs to. Defaults to None.
+            parameter_names (Optional[List[str]]): Names of parameters for the function. Defaults to None.
+        """
         super().__init__(
             function=function,
             cypher_string=cypher_string,
@@ -166,6 +266,15 @@ class NodeRelationshipTrigger(CypherTrigger):
         self.is_attribute_trigger = False
 
     def __hash__(self):
+        """
+        Generate a hash value for this NodeRelationshipTrigger instance.
+
+        The hash is based on the Cypher string, function name, source variable,
+        target variable, and relationship name.
+
+        Returns:
+            int: A hash value for this instance.
+        """
         return hash(
             self.cypher_string
             + self.function.__name__
@@ -192,6 +301,17 @@ class VariableAttributeTrigger(CypherTrigger):
         session: Optional["Session"] = None,
         parameter_names: Optional[List[str]] = None,
     ):
+        """
+        Initialize a VariableAttributeTrigger instance.
+
+        Args:
+            function (Optional[Callable]): The function to be called when the trigger fires. Defaults to None.
+            cypher_string (Optional[str]): The Cypher query string that defines the trigger conditions. Defaults to None.
+            variable_set (Optional[str]): The name of the variable to set the attribute on. Defaults to None.
+            attribute_set (Optional[str]): The name of the attribute to set. Defaults to None.
+            session (Optional[Session]): The session this trigger belongs to. Defaults to None.
+            parameter_names (Optional[List[str]]): Names of parameters for the function. Defaults to None.
+        """
         super().__init__(
             function=function,
             cypher_string=cypher_string,
@@ -215,6 +335,15 @@ class VariableAttributeTrigger(CypherTrigger):
             ] = attribute_metadata
 
     def __hash__(self):
+        """
+        Generate a hash value for this VariableAttributeTrigger instance.
+
+        The hash is based on the Cypher string, function name, variable set,
+        and attribute set.
+
+        Returns:
+            int: A hash value for this instance.
+        """
         return hash(
             self.cypher_string
             + self.function.__name__

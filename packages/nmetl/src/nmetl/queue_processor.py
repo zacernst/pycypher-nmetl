@@ -42,6 +42,14 @@ class SubTriggerPair:
     trigger: CypherTrigger
 
     def __hash__(self):
+        """
+        Generate a hash value for this SubTriggerPair instance.
+
+        The hash is based on the sub dictionary (converted to a tuple) and the trigger.
+
+        Returns:
+            int: A hash value for this instance.
+        """
         return hash(
             (
                 tuple(self.sub),
@@ -60,6 +68,15 @@ class QueueProcessor(ABC):  # pylint: disable=too-few-public-methods,too-many-in
         outgoing_queue: Optional[QueueGenerator] = None,
         status_queue: Optional[queue.Queue] = None,
     ) -> None:
+        """
+        Initialize a QueueProcessor instance.
+
+        Args:
+            session (Optional[Session]): The session this processor belongs to. Defaults to None.
+            incoming_queue (Optional[QueueGenerator]): The queue from which to read items. Defaults to None.
+            outgoing_queue (Optional[QueueGenerator]): The queue to which processed items are sent. Defaults to None.
+            status_queue (Optional[queue.Queue]): The queue for status messages. Defaults to None.
+        """
         self.session = session
         self.processing_thread = threading.Thread(
             target=self.process_queue, name=self.__class__.__name__
@@ -155,6 +172,13 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
     """
 
     def __init__(self, *args, **kwargs):
+        """
+        Initialize a CheckFactAgainstTriggersQueueProcessor instance.
+
+        Args:
+            *args: Variable positional arguments passed to the parent class.
+            **kwargs: Variable keyword arguments passed to the parent class.
+        """
         super().__init__(*args, **kwargs)
 
     def process_item_from_queue(self, item: Any) -> None:
@@ -361,6 +385,17 @@ class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-publi
         """Extract the splat (arguments for the trigger function) from a solution."""
 
         def to_python(x):
+            """
+            Convert a value to a Python native type.
+
+            If the value is a Collection, recursively convert its values.
+
+            Args:
+                x: The value to convert.
+
+            Returns:
+                The converted value.
+            """
             if isinstance(x, Collection):
                 return [to_python(y) for y in x.values]
             return x

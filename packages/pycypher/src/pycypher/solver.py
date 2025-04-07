@@ -198,6 +198,13 @@ class Constraint:
     """
 
     def __init__(self, trigger: Optional["CypherTrigger"] = None):  # type: ignore
+        """
+        Initialize a Constraint instance.
+
+        Args:
+            trigger (Optional[CypherTrigger]): The trigger associated with this constraint.
+                Defaults to None.
+        """
         self.trigger = trigger
 
 
@@ -213,13 +220,37 @@ class IsTrue(Constraint):
     """
 
     def __init__(self, predicate: "Predicate", **kwargs):  # type: ignore
+        """
+        Initialize an IsTrue constraint.
+
+        Args:
+            predicate (Predicate): The predicate to be evaluated.
+            **kwargs: Additional keyword arguments passed to the parent class.
+        """
         self.predicate = predicate  # type: ignore
         super().__init__(**kwargs)
 
     def __repr__(self) -> str:
+        """
+        Return a string representation of the IsTrue constraint.
+
+        Returns:
+            str: A string representation in the format "IsTrue(predicate)".
+        """
         return f"IsTrue({self.predicate})"  # type: ignore
 
     def __eq__(self, other: Any) -> bool:
+        """
+        Check if this IsTrue constraint is equal to another object.
+
+        Two IsTrue constraints are considered equal if they have the same predicate.
+
+        Args:
+            other (Any): The object to compare with.
+
+        Returns:
+            bool: True if the objects are equal, False otherwise.
+        """
         return isinstance(other, IsTrue) and self.predicate == other.predicate
 
 

@@ -1924,13 +1924,32 @@ class Addition(Evaluable, Predicate):
     right_side_types = int | float
 
     def __init__(self, left: TreeMixin, right: TreeMixin):  # pylint: disable=super-init-not-called
+        """
+        Initialize an Addition instance.
+
+        Args:
+            left (TreeMixin): The left operand of the addition.
+            right (TreeMixin): The right operand of the addition.
+        """
         self.left_side = left
         self.right_side = right
 
     def __repr__(self):
+        """
+        Return a string representation of the Addition instance.
+
+        Returns:
+            str: A string representation in the format "Addition(left_side, right_side)".
+        """
         return f"Addition({self.left_side}, {self.right_side})"
 
     def tree(self):
+        """
+        Create a tree representation of this Addition node.
+
+        Returns:
+            Tree: A rich.tree.Tree object representing this node and its children.
+        """
         t = Tree(self.__class__.__name__)
         t.add(self.left_side.tree())
         t.add(self.right_side.tree())
@@ -1938,6 +1957,12 @@ class Addition(Evaluable, Predicate):
 
     @property
     def children(self):
+        """
+        Get the children of this Addition node.
+
+        Yields:
+            TreeMixin: The left and right operands of the addition.
+        """
         yield self.left_side
         yield self.right_side
 
@@ -1946,6 +1971,22 @@ class Addition(Evaluable, Predicate):
         fact_collection: FactCollection,
         projection: Optional[Dict[str, str | List[str]]] = None,
     ) -> Any:
+        """
+        Evaluate this Addition node.
+
+        Computes the sum of the left and right operands.
+
+        Args:
+            fact_collection (FactCollection): The collection of facts to use for evaluation.
+            projection (Optional[Dict[str, str | List[str]]]): A mapping of variable names to values.
+                Defaults to None.
+
+        Returns:
+            Any: The result of adding the left and right operands.
+
+        Raises:
+            TypeError: If the operands are not of compatible types for addition.
+        """
         left_value = self.left_side._evaluate(  # pylint: disable=protected-access
             fact_collection, projection=projection
         )  # pylint: disable=protected-access

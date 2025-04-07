@@ -46,6 +46,13 @@ class AtomicFact:  # pylint: disable=too-few-public-methods
     """
 
     def __init__(self, *_, session: Optional["Session"] = None):  # type: ignore
+        """
+        Initialize an AtomicFact instance.
+
+        Args:
+            *_: Variable positional arguments (ignored).
+            session (Optional[Session]): The session this fact belongs to. Defaults to None.
+        """
         self.session = session
 
 
@@ -60,14 +67,40 @@ class FactNodeHasLabel(AtomicFact):
     """
 
     def __init__(self, node_id: str, label: str, **kwargs):
+        """
+        Initialize a FactNodeHasLabel instance.
+
+        Args:
+            node_id (str): The ID of the node.
+            label (str): The label of the node.
+            **kwargs: Additional keyword arguments passed to the parent class.
+        """
         self.node_id = node_id
         self.label = label
         super().__init__(**kwargs)
 
     def __repr__(self):
+        """
+        Return a string representation of the FactNodeHasLabel instance.
+
+        Returns:
+            str: A string representation in the format "NodeHasLabel: node_id label".
+        """
         return f"NodeHasLabel: {self.node_id} {self.label}"
 
-    def __eq__(self, other: Any):
+    def __eq__(self, other: Any) -> bool:
+        """
+        Check if this FactNodeHasLabel instance is equal to another object.
+
+        Two FactNodeHasLabel instances are considered equal if they have the same
+        node_id and label.
+
+        Args:
+            other (Any): The object to compare with.
+
+        Returns:
+            bool: True if the objects are equal, False otherwise.
+        """
         return (
             isinstance(other, FactNodeHasLabel)
             and self.node_id == other.node_id
@@ -75,6 +108,22 @@ class FactNodeHasLabel(AtomicFact):
         )
 
     def __add__(self, other: Constraint) -> List[Dict[str, str]] | None:
+        """
+        Combine this fact with a constraint to produce a solution mapping.
+
+        This method is used to check if this fact satisfies a constraint and
+        if so, returns a mapping from variable names to values.
+
+        Args:
+            other (Constraint): The constraint to check against this fact.
+
+        Returns:
+            List[Dict[str, str]] | None: A mapping from variable names to values if the
+                constraint is satisfied, None otherwise.
+
+        Raises:
+            ValueError: If the other object is not a Constraint.
+        """
         if not isinstance(other, Constraint):
             raise ValueError("Can only check constraints against facts")
 
@@ -96,6 +145,14 @@ class FactNodeHasLabel(AtomicFact):
         return out
 
     def __hash__(self):
+        """
+        Return a hash value for this FactNodeHasLabel instance.
+
+        The hash is based on the node_id and label attributes.
+
+        Returns:
+            int: A hash value for this instance.
+        """
         return hash((self.node_id, self.label))
 
 
@@ -367,25 +424,81 @@ class FactCollection:
         facts: Optional[List[AtomicFact]] = None,
         session: Optional["Session"] = None,  # type: ignore
     ):
+        """
+        Initialize a FactCollection instance.
+
+        Args:
+            facts (Optional[List[AtomicFact]]): A list of AtomicFact instances. Defaults to an empty list if None is provided.
+            session (Optional[Session]): The session this fact collection belongs to. Defaults to None.
+        """
         self.facts: List[AtomicFact] = facts or []
         self.session: Optional["Session"] = session  # type: ignore
 
     def __iter__(self) -> Generator[AtomicFact]:
+        """
+        Iterate over the facts in this collection.
+
+        Yields:
+            AtomicFact: Each fact in the collection.
+        """
         yield from self.facts
 
     def __repr__(self) -> str:
+        """
+        Return a string representation of the FactCollection instance.
+
+        Returns:
+            str: A string representation showing the number of facts in the collection.
+        """
         return f"FactCollection: {len(self.facts)}"
 
     def __getitem__(self, index: int) -> AtomicFact:
+        """
+        Get a fact by index.
+
+        Args:
+            index (int): The index of the fact to retrieve.
+
+        Returns:
+            AtomicFact: The fact at the specified index.
+
+        Raises:
+            IndexError: If the index is out of range.
+        """
         return self.facts[index]
 
     def __setitem__(self, index: int, value: AtomicFact):
+        """
+        Set a fact at a specific index.
+
+        Args:
+            index (int): The index at which to set the fact.
+            value (AtomicFact): The fact to set at the specified index.
+
+        Raises:
+            IndexError: If the index is out of range.
+        """
         self.facts[index] = value
 
     def __delitem__(self, index: int):
+        """
+        Delete a fact at a specific index.
+
+        Args:
+            index (int): The index of the fact to delete.
+
+        Raises:
+            IndexError: If the index is out of range.
+        """
         del self.facts[index]
 
     def __len__(self):
+        """
+        Get the number of facts in the collection.
+
+        Returns:
+            int: The number of facts in the collection.
+        """
         return len(self.facts)
 
     def insert(self, index: int, value: AtomicFact) -> FactCollection:
@@ -660,9 +773,28 @@ class MemcacheFactCollection(FactCollection):
     """
 
     def __init__(self, *args, **kwargs):
+        """
+        Initialize a MemcacheFactCollection instance.
+
+        Sets up a connection to a local memcached server.
+
+        Args:
+            *args: Variable positional arguments (ignored).
+            **kwargs: Variable keyword arguments (ignored).
+        """
         self.client = pymemcache.Client(server="localhost:11211")
 
     def __iter__(self) -> Generator[AtomicFact]:
+        """
+        Iterate over all facts stored in the memcached server.
+
+        Yields:
+            AtomicFact: Each fact stored in the memcached server.
+
+        Raises:
+            pymemcache.exceptions.MemcacheError: If there's an error communicating with the memcached server.
+            pickle.PickleError: If there's an error unpickling the data.
+        """
         for key in self.client.stats("items"):
             yield pickle.loads(self.client.get(key))
 

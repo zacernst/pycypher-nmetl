@@ -40,6 +40,12 @@ class RawDataThread(threading.Thread):
     """A thread that wraps a data source and loads data into a queue."""
 
     def __init__(self, data_source: DataSource) -> None:
+        """
+        Initialize a RawDataThread instance.
+
+        Args:
+            data_source (DataSource): The data source to wrap in this thread.
+        """
         super().__init__()
         self.data_source = data_source
         self.thread_has_started = False
@@ -70,9 +76,35 @@ ColumnName = TypeVar("ColumnName")
 class NewColumn(Protocol[ColumnName]):
     """Protocol for column names."""
 
-    def __getitem__(self, *args, **kwargs) -> None: ...
+    def __getitem__(self, *args, **kwargs) -> None:
+        """
+        Protocol method for indexing operations.
 
-    def __setitem__(self, *args, **kwargs) -> None: ...
+        This is a placeholder method required by the Protocol and is not meant to be called directly.
+
+        Args:
+            *args: Variable positional arguments.
+            **kwargs: Variable keyword arguments.
+
+        Returns:
+            None
+        """
+        ...
+
+    def __setitem__(self, *args, **kwargs) -> None:
+        """
+        Protocol method for item assignment operations.
+
+        This is a placeholder method required by the Protocol and is not meant to be called directly.
+
+        Args:
+            *args: Variable positional arguments.
+            **kwargs: Variable keyword arguments.
+
+        Returns:
+            None
+        """
+        ...
 
 
 class DataSource(ABC):  # pylint: disable=too-many-instance-attributes
@@ -88,6 +120,13 @@ class DataSource(ABC):  # pylint: disable=too-many-instance-attributes
         self,
         name: Optional[str] = None,
     ) -> None:
+        """
+        Initialize a DataSource instance.
+
+        Args:
+            name (Optional[str]): The name of this data source. If None, a hash of the string
+                representation of this object will be used. Defaults to None.
+        """
         self.raw_input_queue = None
         self.started = False
         self.finished = False
@@ -104,6 +143,12 @@ class DataSource(ABC):  # pylint: disable=too-many-instance-attributes
         self.new_column_configs: Dict[str, NewColumn] = {}
 
     def __repr__(self) -> str:
+        """
+        Return a string representation of the DataSource instance.
+
+        Returns:
+            str: A string representation in the format "ClassName(name)".
+        """
         return f"{self.__class__.__name__}({self.name})"
 
     def attach_queue(self, queue_obj: QueueGenerator) -> None:
@@ -379,6 +424,16 @@ class FixtureDataSource(DataSource):
         loop: Optional[bool] = False,
         **kwargs,
     ):
+        """
+        Initialize a FixtureDataSource instance.
+
+        Args:
+            data (list[Dict[str, Any]]): The data to serve as rows.
+            hang (Optional[bool]): If True, the data source will hang indefinitely. Defaults to False.
+            delay (Optional[float]): The delay in seconds between yielding rows. Defaults to 0.
+            loop (Optional[bool]): If True, the data source will loop through the data indefinitely. Defaults to False.
+            **kwargs: Additional keyword arguments passed to the parent class.
+        """
         self.data = data
         self.hang = hang
         self.delay = delay
@@ -409,6 +464,14 @@ class CSVDataSource(DataSource):
         name: Optional[str] = None,
         **options,
     ):
+        """
+        Initialize a CSVDataSource instance.
+
+        Args:
+            uri (str | ParseResult): The URI of the CSV file to read.
+            name (Optional[str]): The name of this data source. Defaults to None.
+            **options: Additional options passed to the CSV reader.
+        """
         self.uri = ensure_uri(uri)
         self.name = name
         self.file = open(self.uri.path, "r", encoding="utf-8")  # pylint: disable=consider-using-with
@@ -428,6 +491,13 @@ class ParquetFileDataSource(DataSource):
         uri: str | ParseResult,
         name: Optional[str] = None,
     ):
+        """
+        Initialize a ParquetFileDataSource instance.
+
+        Args:
+            uri (str | ParseResult): The URI of the Parquet file to read.
+            name (Optional[str]): The name of this data source. Defaults to None.
+        """
         self.uri = ensure_uri(uri)
         self.name = name
         super().__init__()
