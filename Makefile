@@ -84,7 +84,7 @@ install: build
 # Run tests
 tests: install
 	@echo "Running tests..."
-	uv run pytest -vv ${TESTS_DIR}/
+	uv run pytest -n 8 -vv .
 
 # Run tests with coverage
 coverage: install
