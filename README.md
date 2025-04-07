@@ -4,7 +4,13 @@
 
 [![Publish documentation to Github Pages](https://github.com/zacernst/pycypher-nmetl/actions/workflows/publish-docs.yml/badge.svg)](https://github.com/zacernst/pycypher-nmetl/actions/workflows/publish-docs.yml)
 
-# Cypher and Declarative ETL with `pycypher`
+# PyCypher-NMETL: Declarative ETL Using Cypher
+
+This monorepo contains three complementary packages that work together to provide a powerful, declarative approach to ETL (Extract, Transform, Load) processes:
+
+1. **PyCypher**: A Cypher query parser that converts Cypher queries into Python objects
+2. **NMETL**: A declarative ETL framework built on top of PyCypher
+3. **FastOpenData**: Utilities for working with open data sources
 
 ## Documentation
 
@@ -19,20 +25,95 @@ To enable GitHub Pages for the documentation:
 3. Under "Build and deployment", select "GitHub Actions" as the source
 4. The documentation will be automatically built and published when changes are pushed to the main branch
 
-Modern ETL pipelines are overly complex, brittle, inflexible, and error-prone. These problems are the result of having to specify complex data pipelines that procedurally transform data step-by-step into the specific format you need.
+## Package Overview
 
-`pycypher` takes a completely different approach. It lets you design ETL processes **declaratively**. Instead of designing a long, complex pipeline, you simply define your data sources, the derived data features that you want, and the conditions that have to be met in order for each of those features to be computed. Then you let `pycypher` figure out the rest. There is literally no data pipeline, DAG, job scheduling, or other complexity; you get to focus on what your data *means*, not on how it happens to be formatted.
+### 1. PyCypher
 
-Best of all, this declarative approach is done using familiar Python constructs and simple YAML configurations.
+PyCypher is a Python library that parses Cypher queries (the query language used by Neo4j and other graph databases) into an Abstract Syntax Tree (AST) consisting of Python objects. This allows for programmatic manipulation and execution of Cypher queries.
 
-* Data sources are defined in YAML.
-* Data transformations are defined in simple type-hinted Python functions in which
-  * new features are defined with ordinary Python functions;
-  * the type hints of the function define the dependencies;
-  * the return type defines how the result will be stored and referenced;
-  * decorators containing Cypher queries tell the system when the function is supposed to be applied.
+**Key Features:**
+- Parse Cypher queries into navigable AST structures
+- Manipulate query components programmatically
+- Execute queries against various backends
+- Extensible architecture for custom implementations
 
-Another difference between `pycypher` and traditional ETL processes is that you never think about the format of your output. Instead, `pycypher` is completely agnostic as to format, storing all the data in simple key-value pairs called `Facts`. Whenever you want, a simple command will transform and export those `Facts` into tables, graphs, or what-have-you. The result is that you don't need to make commitments about the format of your output before you've built your ETL system.
+**Example Usage:**
+```python
+from pycypher.cypher_parser import parse_query
+
+# Parse a Cypher query into an AST
+ast = parse_query("MATCH (n:Person)-[:KNOWS]->(m:Person) WHERE n.name = 'Alice' RETURN m.name")
+
+# Traverse and manipulate the AST
+match_clause = ast.get_match_clauses()[0]
+where_clause = ast.get_where_clauses()[0]
+return_clause = ast.get_return_clauses()[0]
+
+# Modify the query programmatically
+where_clause.set_expression(...)
+```
+
+### 2. NMETL (New Methods for ETL)
+
+NMETL is a declarative ETL framework that leverages the PyCypher parser to enable a novel approach to data transformation and loading. Instead of defining complex procedural pipelines, NMETL allows you to define what should happen when specific conditions are met.
+
+**Key Features:**
+- Declarative data modeling using Facts
+- Trigger-based transformations using Cypher queries
+- Automatic dependency resolution
+- YAML-based configuration
+- Format-agnostic data representation
+
+**Example Usage:**
+```python
+from nmetl.configuration import load_session_config
+from nmetl.trigger import VariableAttribute
+
+# Load session from configuration file
+session = load_session_config("config/ingest.yaml")
+
+# Define a trigger to calculate a derived attribute
+@session.trigger(
+    """
+    MATCH (c:Customer)-[:PURCHASED]->(p:Product)
+    WITH c.id AS customer_id, SUM(p.price) AS total_spent
+    RETURN customer_id, total_spent
+    """
+)
+def calculate_total_spending(customer_id, total_spent) -> VariableAttribute["c", "total_spent"]:
+    """Calculate the total amount spent by a customer."""
+    return float(total_spent)
+
+# Run the ETL pipeline
+session.start_threads()
+session.block_until_finished()
+```
+
+### 3. FastOpenData
+
+FastOpenData provides utilities for working with open data sources, making it easier to ingest, transform, and analyze public datasets using the NMETL framework.
+
+**Key Features:**
+- Connectors for common open data sources
+- Data transformation utilities
+- Integration with NMETL for declarative ETL
+- Sample datasets and examples
+
+**Example Usage:**
+```python
+from fastopendata.ingest import state_county
+from nmetl.configuration import load_session_config
+
+# Load census data for states and counties
+data = state_county()
+
+# Configure NMETL session with this data
+session = load_session_config("config/census_data.yaml")
+
+# Process the data using NMETL triggers
+session.start_threads()
+session.block_until_finished()
+```
 
 ## Declarative data modeling with `Facts`
 
