@@ -202,3 +202,5 @@ packages/nmetl/src/nmetl/queue_processor.py.bak
 app.py
 test_script.sh
 user-agent
+out
+.gitignore
