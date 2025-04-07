@@ -2,7 +2,7 @@
 
 import logging
 
-from pycypher.util.config import LOGGING_LEVEL  # pylint: disable=no-name-in-module
+from nmetl.config import LOGGING_LEVEL
 from rich.logging import RichHandler
 
 LOGGER = logging.getLogger(__name__)

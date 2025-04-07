@@ -48,9 +48,6 @@ coverage: install
 clean:
 	( \
 		rm -rfv ./venv && \
-		rm -rfv ./sphinx_docs/_build/html/* \
-		rm -rfv ./sphinx_docs/_build/doctrees/* \
-		rm -rfv ./docs/* \
 		rm -fv ./requirements.txt \
 		rm -rfv ./dist/* \
 		rm -rfv ./coverage_report \
@@ -65,10 +62,8 @@ build:
 docs: install
 	( \
 		echo "Building documentation..." && \
-		cd sphinx_docs && \
-		uv run make html && \
-		uv run make singlehtml && \
-		cp -rfv _build/html/* ../docs/ \
+		cd docs && \
+		uv run make html \
 	)
 
 publish: build

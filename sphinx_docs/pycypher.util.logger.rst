@@ -1,4 +1,0 @@
-﻿Logger
-======
-
-Just a logger.
