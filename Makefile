@@ -2,6 +2,7 @@
 # ------------------------------------------------------------------------------
 # Configuration variables
 PYTHON_VERSION = 3.12
+SUPPORTED_PYTHON_VERSIONS = 3.13 3.12 3.11 3.10
 BUMP = micro
 
 # ------------------------------------------------------------------------------
@@ -69,7 +70,10 @@ requirements.txt: requirements.in
 # Build packages
 build:
 	@echo "Building packages..."
-	uv run hatch build -t wheel
+	@for version in ${SUPPORTED_PYTHON_VERSIONS}; do \
+		echo "Building with Python $$version..." && \
+		uv run --python $$version hatch build -t wheel || exit 1; \
+	done	
 
 # Install packages in development mode
 install: build
@@ -84,7 +88,17 @@ install: build
 # Run tests
 tests: install
 	@echo "Running tests..."
-	uv run pytest -n 8 -vv .
+	uv run --python ${PYTHON_VERSION} pytest -n 16 -vv ${TESTS_DIR}
+
+
+alltests: 
+	@echo "Running tests..."
+	@for version in ${SUPPORTED_PYTHON_VERSIONS}; do \
+		echo "Builds and tests with Python $$version..." && \
+		uv run --python $$version hatch build -t wheel || exit 1; \
+		uv run --python $$version pip install --upgrade -e . || exit 1; \
+		uv run --python $$version pytest -n 4 -vv ${TESTS_DIR} || exit 1; \
+	done	
 
 # Run tests with coverage
 coverage: install

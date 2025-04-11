@@ -20,6 +20,7 @@ from nmetl.helpers import ensure_uri
 from nmetl.session import RawDataProcessor, Session
 from nmetl.trigger import VariableAttribute
 from pycypher.fact import (  # We might get rid of this class entirely
+    Etcd3FactCollection,
     FactCollection,
     FactNodeHasAttributeWithValue,
     FactNodeHasLabel,
@@ -27,6 +28,7 @@ from pycypher.fact import (  # We might get rid of this class entirely
     FactRelationshipHasLabel,
     FactRelationshipHasSourceNode,
     FactRelationshipHasTargetNode,
+    SimpleFactCollection,
 )
 from pycypher.logger import LOGGER
 from pycypher.node_classes import Literal
@@ -161,6 +163,11 @@ def fixture_0_data_source_mapping_list():
     ]
 
 
+@pytest.fixture(params=[SimpleFactCollection, Etcd3FactCollection])
+def fact_collection_factory(request):
+    return request.param()
+
+
 @pytest.fixture
 def fact_collection_0():
     fact1 = FactNodeHasLabel("1", "Thing")
@@ -171,7 +178,7 @@ def fact_collection_0():
     fact6 = FactRelationshipHasLabel("relationship_123", "MyRelationship")
     fact7 = FactRelationshipHasSourceNode("relationship_123", "1")
     fact8 = FactRelationshipHasTargetNode("relationship_123", "2")
-    fact_collection = FactCollection(
+    fact_collection = SimpleFactCollection(
         [
             fact1,
             fact2,
@@ -183,7 +190,6 @@ def fact_collection_0():
             fact8,
         ]
     )
-
     return fact_collection
 
 
@@ -192,7 +198,7 @@ def fact_collection_1():
     fact1 = FactNodeHasLabel("1", "Thing")
     fact2 = FactNodeHasLabel("2", "Thing")
     fact3 = FactNodeHasLabel("3", "OtherThing")
-    fact_collection = FactCollection(
+    fact_collection = SimpleFactCollection(
         [
             fact1,
             fact2,
@@ -237,7 +243,7 @@ def fact_collection_7():  # pylint: disable=too-many-locals
 
     fact19 = FactNodeHasLabel("6", "Irrelevant")
 
-    fact_collection = FactCollection(
+    fact_collection = SimpleFactCollection(
         [
             fact1,
             fact2,
@@ -272,7 +278,7 @@ def fact_collection_7():  # pylint: disable=too-many-locals
 
 @pytest.fixture
 def fact_collection_squares_circles():  # pylint: disable=too-many-locals
-    fact_collection = FactCollection(
+    fact_collection = SimpleFactCollection(
         [
             FactNodeHasLabel("square_1", "Square"),
             FactNodeHasAttributeWithValue("square_1", "length", Literal(2)),
@@ -342,7 +348,7 @@ def fact_collection_2():
     fact7 = FactRelationshipHasTargetNode("relationship_1", "2")
     fact8 = FactRelationshipHasSourceNode("relationship_2", "2")
     fact9 = FactRelationshipHasTargetNode("relationship_2", "3")
-    fact_collection = FactCollection(
+    fact_collection = SimpleFactCollection(
         [
             fact1,
             fact2,
@@ -375,7 +381,7 @@ def fact_collection_3():
     fact12 = FactRelationshipHasSourceNode("relationship_3", "4")
     fact13 = FactRelationshipHasTargetNode("relationship_3", "2")
 
-    fact_collection = FactCollection(
+    fact_collection = SimpleFactCollection(
         [
             fact1,
             fact2,
@@ -418,7 +424,7 @@ def fact_collection_4():
     fact16 = FactRelationshipHasSourceNode("relationship_4", "2")
     fact17 = FactRelationshipHasTargetNode("relationship_4", "5")
 
-    fact_collection = FactCollection(
+    fact_collection = SimpleFactCollection(
         [
             fact1,
             fact2,
@@ -467,7 +473,7 @@ def fact_collection_5():
 
     fact18 = FactNodeHasAttributeWithValue("4", "foo", Literal(2))
 
-    fact_collection = FactCollection(
+    fact_collection = SimpleFactCollection(
         [
             fact1,
             fact2,
@@ -521,7 +527,7 @@ def fact_collection_6():  # pylint: disable=too-many-locals
 
     fact19 = FactNodeHasLabel("6", "Irrelevant")
 
-    fact_collection = FactCollection(
+    fact_collection = SimpleFactCollection(
         [
             fact1,
             fact2,
@@ -788,6 +794,19 @@ def session_with_trigger_using_data_asset(session_with_data_asset):
         return my_data_asset["foo"]
 
     return session_with_data_asset
+
+
+@pytest.fixture
+def etcd3_fact_collection():
+    fact_collection = Etcd3FactCollection()
+    yield fact_collection
+    fact_collection.clear()
+
+
+@pytest.fixture(params=[SimpleFactCollection, Etcd3FactCollection])
+def param_fact_collection(request):
+    obj = request.param()
+    yield obj
 
 
 # Cypher

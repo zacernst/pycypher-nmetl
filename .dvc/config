@@ -1,4 +1,0 @@
-[core]
-    remote = fastopendata
-['remote "fastopendata"']
-    url = gs://fastopendata/data

@@ -7,7 +7,7 @@ name = "nmetl"
 version = "0.0.1"
 description = "Declarative ETL"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.10"
 keywords = [ "cypher", "etl","declarative"]
 classifiers = [ "Development Status :: 3 - Alpha", "Intended Audience :: Developers", "License :: OSI Approved :: MIT License", "Programming Language :: Python :: 3.11", "Programming Language :: Python :: 3.12",]
 dependencies = [
@@ -21,7 +21,6 @@ dependencies = [
  "networkx==3.4.2,<4.0.0",
  "pip-tools>=7.4.1,<8.0.0",
  "ply>=3.11,<4.0.0",
- "pyarrow>=17.0.0,<18.0.0",
  "pydantic>=2.9.2,<3.0.0",
  "pytest-cov>=6.0.0,<7.0.0",
  "pytest-mock>=3.14.0,<4.0.0",
@@ -38,6 +37,7 @@ dependencies = [
  "toml>=0.10.2,<1.0.0",
  "uv>=0.4.1,<1.0.0",
  "pycypher",
+ "pyarrow>=19.0.1",
 ]
 [[project.authors]]
 name = "Zachary Ernst"

@@ -1,4 +1,4 @@
-fact_collection: null
+fact_collection: SimpleFactCollection
 fact_collection_class: null
 run_monitor: false
 logging_level: DEBUG

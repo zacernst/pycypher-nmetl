@@ -7,10 +7,10 @@ name = "pycypher"
 version = "0.0.19"
 description = "Cypher parser and query executor for Python"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.10"
 keywords = [ "neo4j", "cypher",]
 classifiers = [ "Development Status :: 3 - Alpha", "Intended Audience :: Developers", "License :: OSI Approved :: MIT License", "Programming Language :: Python :: 3.11", "Programming Language :: Python :: 3.12",]
-dependencies = [ "pytest-timeout==2.3.1", "gitpython==3.1.44", "pyfiglet==1.0.2", "hatch==1.12.0", "hatchling==1.25", "isort>=5.13.2,<6.0.0", "foundationdb==7.3.63", "networkx==3.4.2,<4.0.0", "pip-tools>=7.4.1,<8.0.0", "ply>=3.11,<4.0.0", "pyarrow>=17.0.0,<18.0.0", "pydantic>=2.9.2,<3.0.0", "pytest-cov>=6.0.0,<7.0.0", "pytest-mock>=3.14.0,<4.0.0", "pytest-unordered==0.6.1,<1.0.0", "pytest-xdist>=3.6.1,<4.0.0", "pytest>=8.3.2,<9.0.0", "python-constraint>=1.4.0,<2.0.0", "rich>=13.8.0,<14.0.0", "ruff>=0.6.3,<1.0.0", "sphinx-autoapi==3.3.1,<4.0.0", "sphinx-autodocgen==1.3", "sphinx-rtd-theme==2.0.0", "sphinx>=5.0.2,<9.0.0", "toml>=0.10.2,<1.0.0", "uv>=0.4.1,<1.0.0",]
+dependencies = [ "pytest-timeout==2.3.1", "gitpython==3.1.44", "pyfiglet==1.0.2", "hatch==1.12.0", "hatchling==1.25", "isort>=5.13.2,<6.0.0", "foundationdb==7.3.63", "networkx==3.4.2,<4.0.0", "pip-tools>=7.4.1,<8.0.0", "ply>=3.11,<4.0.0", "pydantic>=2.9.2,<3.0.0", "pytest-cov>=6.0.0,<7.0.0", "pytest-mock>=3.14.0,<4.0.0", "pytest-unordered==0.6.1,<1.0.0", "pytest-xdist>=3.6.1,<4.0.0", "pytest>=8.3.2,<9.0.0", "python-constraint>=1.4.0,<2.0.0", "rich>=13.8.0,<14.0.0", "ruff>=0.6.3,<1.0.0", "sphinx-autoapi==3.3.1,<4.0.0", "sphinx-autodocgen==1.3", "sphinx-rtd-theme==2.0.0", "sphinx>=5.0.2,<9.0.0", "toml>=0.10.2,<1.0.0", "uv>=0.4.1,<1.0.0",]
 
 [[project.authors]]
 name = "Zachary Ernst"

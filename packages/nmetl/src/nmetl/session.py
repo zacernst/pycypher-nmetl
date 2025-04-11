@@ -41,7 +41,7 @@ from nmetl.trigger import (
     VariableAttributeTrigger,
 )
 from pycypher.cypher_parser import CypherParser
-from pycypher.fact import AtomicFact, FactCollection
+from pycypher.fact import AtomicFact, FactCollection, SimpleFactCollection
 from pycypher.logger import LOGGER
 from pycypher.solver import Constraint
 from rich.console import Console
@@ -137,7 +137,7 @@ class Session:  # pylint: disable=too-many-instance-attributes
         )
 
         self.trigger_dict = {}
-        self.fact_collection = fact_collection or FactCollection(
+        self.fact_collection = fact_collection or SimpleFactCollection(
             facts=[], session=self
         )
         self.raw_data_processor = RawDataProcessor(

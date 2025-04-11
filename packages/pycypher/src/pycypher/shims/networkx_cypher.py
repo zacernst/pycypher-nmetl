@@ -13,6 +13,7 @@ from pycypher.fact import (
     FactRelationshipHasLabel,
     FactRelationshipHasSourceNode,
     FactRelationshipHasTargetNode,
+    SimpleFactCollection,
 )
 from pycypher.node_classes import Literal
 from pycypher.shims import Shim
@@ -114,6 +115,6 @@ class NetworkX(Shim):
                 )
             )
 
-        fact_collection = FactCollection(fact_list)
+        fact_collection = SimpleFactCollection(fact_list)
 
         return fact_collection

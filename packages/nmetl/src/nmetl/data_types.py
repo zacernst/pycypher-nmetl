@@ -16,6 +16,7 @@ class DataType:
     This class defines the interface for data type casting classes.
     Subclasses should implement the `cast` method.
     """
+
     def __call__(self, value: Any):
         """
         Call the cast method on the value.
@@ -33,6 +34,7 @@ class _Anything(DataType):
     """
     Data type that returns the value unchanged.
     """
+
     def cast(self, value: Any):
         """
         Return the value unchanged.
@@ -50,6 +52,7 @@ class _Integer(DataType):
     """
     Data type that casts values to integers.
     """
+
     def cast(self, value: Any):
         """
         Cast the value to an integer.
@@ -70,6 +73,7 @@ class _PositiveInteger(DataType):
     """
     Data type that casts values to positive integers.
     """
+
     def cast(self, value: Any):
         """
         Cast the value to a positive integer.
@@ -90,6 +94,7 @@ class _String(DataType):
     """
     Data type that casts values to strings.
     """
+
     def cast(self, value: Any):
         """
         Cast the value to a string.
@@ -107,6 +112,7 @@ class _Float(DataType):
     """
     Data type that casts values to floats.
     """
+
     def cast(self, value: Any):
         """
         Cast the value to a float.
@@ -127,6 +133,7 @@ class _Boolean(DataType):
     """
     Data type that casts values to booleans.
     """
+
     def cast(self, value: Any):
         """
         Cast the value to a boolean.
