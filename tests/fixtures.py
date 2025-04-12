@@ -167,9 +167,13 @@ def fixture_0_data_source_mapping_list():
 def fact_collection_factory(request):
     return request.param()
 
+@pytest.fixture(params=[SimpleFactCollection, Etcd3FactCollection]) # , Etcd3FactCollection])
+def fact_collection_cls_factory(request):
+    return request.param
+
 
 @pytest.fixture
-def fact_collection_0():
+def fact_collection_0(fact_collection_cls_factory):
     fact1 = FactNodeHasLabel("1", "Thing")
     fact2 = FactNodeHasAttributeWithValue("1", "key", Literal(2))
     fact3 = FactNodeRelatedToNode("1", "2", "MyRelationship")
@@ -178,39 +182,34 @@ def fact_collection_0():
     fact6 = FactRelationshipHasLabel("relationship_123", "MyRelationship")
     fact7 = FactRelationshipHasSourceNode("relationship_123", "1")
     fact8 = FactRelationshipHasTargetNode("relationship_123", "2")
-    fact_collection = SimpleFactCollection(
-        [
-            fact1,
-            fact2,
-            fact3,
-            fact4,
-            fact5,
-            fact6,
-            fact7,
-            fact8,
-        ]
-    )
-    return fact_collection
+    fact_collection = fact_collection_cls_factory()
+    fact_collection.append(fact1)
+    fact_collection.append(fact2)
+    fact_collection.append(fact3)
+    fact_collection.append(fact4)
+    fact_collection.append(fact5)
+    fact_collection.append(fact6)
+    fact_collection.append(fact7)
+    fact_collection.append(fact8)
+    yield fact_collection
+    fact_collection.close()
 
 
 @pytest.fixture
-def fact_collection_1():
+def fact_collection_1(fact_collection_cls_factory):
     fact1 = FactNodeHasLabel("1", "Thing")
     fact2 = FactNodeHasLabel("2", "Thing")
     fact3 = FactNodeHasLabel("3", "OtherThing")
-    fact_collection = SimpleFactCollection(
-        [
-            fact1,
-            fact2,
-            fact3,
-        ]
-    )
-
-    return fact_collection
+    fact_collection = fact_collection_cls_factory()
+    fact_collection.append(fact1)
+    fact_collection.append(fact2)
+    fact_collection.append(fact3)
+    yield fact_collection
+    fact_collection.close()
 
 
 @pytest.fixture
-def fact_collection_7():  # pylint: disable=too-many-locals
+def fact_collection_7(fact_collection_cls_factory):  # pylint: disable=too-many-locals
     fact1 = FactNodeHasLabel("1", "Thing")
     fact2 = FactNodeHasLabel("2", "MiddleThing")
     fact3 = FactNodeHasLabel("3", "OtherThing")
@@ -243,102 +242,86 @@ def fact_collection_7():  # pylint: disable=too-many-locals
 
     fact19 = FactNodeHasLabel("6", "Irrelevant")
 
-    fact_collection = SimpleFactCollection(
-        [
-            fact1,
-            fact2,
-            fact3,
-            fact4,
-            fact5,
-            fact6,
-            fact7,
-            fact8,
-            fact9,
-            fact10,
-            fact11,
-            fact12,
-            fact13,
-            fact14,
-            fact15,
-            fact16,
-            fact17,
-            fact18,
-            fact19,
-            fact20,
-            fact21,
-            fact22,
-            fact23,
-            fact24,
-            fact25,
-        ]
-    )
+    fact_collection = fact_collection_cls_factory()
 
-    return fact_collection
+    fact_collection.append(fact1)
+    fact_collection.append(fact2)
+    fact_collection.append(fact3)
+    fact_collection.append(fact4)
+    fact_collection.append(fact5)
+    fact_collection.append(fact6)
+    fact_collection.append(fact7)
+    fact_collection.append(fact8)
+    fact_collection.append(fact9)
+    fact_collection.append(fact10)
+    fact_collection.append(fact11)
+    fact_collection.append(fact12)
+    fact_collection.append(fact13)
+    fact_collection.append(fact14)
+    fact_collection.append(fact15)
+    fact_collection.append(fact16)
+    fact_collection.append(fact17)
+    fact_collection.append(fact18)
+    fact_collection.append(fact19)
+    fact_collection.append(fact20)
+    fact_collection.append(fact21)
+    fact_collection.append(fact22)
+    fact_collection.append(fact23)
+    fact_collection.append(fact24)
+    fact_collection.append(fact25)
 
-
-@pytest.fixture
-def fact_collection_squares_circles():  # pylint: disable=too-many-locals
-    fact_collection = SimpleFactCollection(
-        [
-            FactNodeHasLabel("square_1", "Square"),
-            FactNodeHasAttributeWithValue("square_1", "length", Literal(2)),
-            FactNodeHasLabel("square_2", "Square"),
-            FactNodeHasAttributeWithValue("square_2", "length", Literal(3)),
-            FactNodeHasLabel("square_3", "Square"),
-            FactNodeHasAttributeWithValue("square_3", "length", Literal(4)),
-            FactNodeHasLabel("square_4", "Square"),
-            FactNodeHasAttributeWithValue("square_4", "length", Literal(5)),
-            FactNodeHasLabel("circle_1", "Circle"),
-            FactNodeHasAttributeWithValue("circle_1", "radius", Literal(2)),
-            FactNodeHasLabel("circle_2", "Circle"),
-            FactNodeHasAttributeWithValue("circle_2", "radius", Literal(3)),
-            FactNodeHasLabel("circle_3", "Circle"),
-            FactNodeHasAttributeWithValue("circle_3", "radius", Literal(4)),
-            FactNodeHasLabel("circle_4", "Circle"),
-            FactNodeHasAttributeWithValue("circle_4", "radius", Literal(5)),
-            FactRelationshipHasLabel("relationship_1", "contains"),
-            FactRelationshipHasSourceNode("relationship_1", "square_1"),
-            FactRelationshipHasTargetNode("relationship_1", "circle_1"),
-            FactRelationshipHasLabel("relationship_2", "contains"),
-            FactRelationshipHasSourceNode("relationship_2", "square_2"),
-            FactRelationshipHasTargetNode("relationship_2", "circle_2"),
-            FactRelationshipHasLabel("relationship_3", "contains"),
-            FactRelationshipHasSourceNode("relationship_3", "square_3"),
-            FactRelationshipHasTargetNode("relationship_3", "circle_3"),
-            FactRelationshipHasLabel("relationship_4", "contains"),
-            FactRelationshipHasSourceNode("relationship_4", "square_3"),
-            FactRelationshipHasTargetNode("relationship_4", "circle_4"),
-            FactNodeHasAttributeWithValue(
-                "square_1", "name", Literal("square_alice")
-            ),
-            FactNodeHasAttributeWithValue(
-                "square_2", "name", Literal("square_bob")
-            ),
-            FactNodeHasAttributeWithValue(
-                "square_3", "name", Literal("square_carol")
-            ),
-            FactNodeHasAttributeWithValue(
-                "square_4", "name", Literal("square_dave")
-            ),
-            FactNodeHasAttributeWithValue(
-                "circle_1", "name", Literal("circle_alice")
-            ),
-            FactNodeHasAttributeWithValue(
-                "circle_2", "name", Literal("circle_bob")
-            ),
-            FactNodeHasAttributeWithValue(
-                "circle_3", "name", Literal("circle_carol")
-            ),
-            FactNodeHasAttributeWithValue(
-                "circle_4", "name", Literal("circle_dave")
-            ),
-        ]
-    )
-    return fact_collection
+    yield fact_collection
+    fact_collection.close()
 
 
 @pytest.fixture
-def fact_collection_2():
+def fact_collection_squares_circles(fact_collection_cls_factory):  # pylint: disable=too-many-locals
+    facts = [
+        FactNodeHasLabel("square_1", "Square"),
+        FactNodeHasAttributeWithValue("square_1", "length", Literal(2)),
+        FactNodeHasLabel("square_2", "Square"),
+        FactNodeHasAttributeWithValue("square_2", "length", Literal(3)),
+        FactNodeHasLabel("square_3", "Square"),
+        FactNodeHasAttributeWithValue("square_3", "length", Literal(4)),
+        FactNodeHasLabel("square_4", "Square"),
+        FactNodeHasAttributeWithValue("square_4", "length", Literal(5)),
+        FactNodeHasLabel("circle_1", "Circle"),
+        FactNodeHasAttributeWithValue("circle_1", "radius", Literal(2)),
+        FactNodeHasLabel("circle_2", "Circle"),
+        FactNodeHasAttributeWithValue("circle_2", "radius", Literal(3)),
+        FactNodeHasLabel("circle_3", "Circle"),
+        FactNodeHasAttributeWithValue("circle_3", "radius", Literal(4)),
+        FactNodeHasLabel("circle_4", "Circle"),
+        FactNodeHasAttributeWithValue("circle_4", "radius", Literal(5)),
+        FactRelationshipHasLabel("relationship_1", "contains"),
+        FactRelationshipHasSourceNode("relationship_1", "square_1"),
+        FactRelationshipHasTargetNode("relationship_1", "circle_1"),
+        FactRelationshipHasLabel("relationship_2", "contains"),
+        FactRelationshipHasSourceNode("relationship_2", "square_2"),
+        FactRelationshipHasTargetNode("relationship_2", "circle_2"),
+        FactRelationshipHasLabel("relationship_3", "contains"),
+        FactRelationshipHasSourceNode("relationship_3", "square_3"),
+        FactRelationshipHasTargetNode("relationship_3", "circle_3"),
+        FactRelationshipHasLabel("relationship_4", "contains"),
+        FactRelationshipHasSourceNode("relationship_4", "square_3"),
+        FactRelationshipHasTargetNode("relationship_4", "circle_4"),
+        FactNodeHasAttributeWithValue( "square_1", "name", Literal("square_alice")),
+        FactNodeHasAttributeWithValue( "square_2", "name", Literal("square_bob")),
+        FactNodeHasAttributeWithValue( "square_3", "name", Literal("square_carol")),
+        FactNodeHasAttributeWithValue( "square_4", "name", Literal("square_dave")),
+        FactNodeHasAttributeWithValue( "circle_1", "name", Literal("circle_alice")),
+        FactNodeHasAttributeWithValue( "circle_2", "name", Literal("circle_bob")),
+        FactNodeHasAttributeWithValue( "circle_3", "name", Literal("circle_carol")),
+        FactNodeHasAttributeWithValue( "circle_4", "name", Literal("circle_dave")),
+    ]
+    fact_collection = fact_collection_cls_factory()
+    fact_collection += facts
+    yield fact_collection
+    fact_collection.close()
+
+
+@pytest.fixture
+def fact_collection_2(fact_collection_cls_factory):
     fact1 = FactNodeHasLabel("1", "Thing")
     fact2 = FactNodeHasLabel("2", "MiddleThing")
     fact3 = FactNodeHasLabel("3", "OtherThing")
@@ -348,8 +331,7 @@ def fact_collection_2():
     fact7 = FactRelationshipHasTargetNode("relationship_1", "2")
     fact8 = FactRelationshipHasSourceNode("relationship_2", "2")
     fact9 = FactRelationshipHasTargetNode("relationship_2", "3")
-    fact_collection = SimpleFactCollection(
-        [
+    facts = [
             fact1,
             fact2,
             fact3,
@@ -360,13 +342,14 @@ def fact_collection_2():
             fact8,
             fact9,
         ]
-    )
-
-    return fact_collection
+    fact_collection = fact_collection_cls_factory()
+    fact_collection += facts
+    yield fact_collection
+    fact_collection.close()
 
 
 @pytest.fixture
-def fact_collection_3():
+def fact_collection_3(fact_collection_cls_factory):
     fact1 = FactNodeHasLabel("1", "Thing")
     fact2 = FactNodeHasLabel("2", "MiddleThing")
     fact3 = FactNodeHasLabel("3", "OtherThing")
@@ -381,8 +364,7 @@ def fact_collection_3():
     fact12 = FactRelationshipHasSourceNode("relationship_3", "4")
     fact13 = FactRelationshipHasTargetNode("relationship_3", "2")
 
-    fact_collection = SimpleFactCollection(
-        [
+    facts = [
             fact1,
             fact2,
             fact3,
@@ -396,14 +378,16 @@ def fact_collection_3():
             fact11,
             fact12,
             fact13,
-        ]
-    )
+    ]
+    fact_collection = fact_collection_cls_factory()
+    fact_collection += facts
 
-    return fact_collection
+    yield fact_collection
+    fact_collection.close()
 
 
 @pytest.fixture
-def fact_collection_4():
+def fact_collection_4(fact_collection_cls_factory):
     fact1 = FactNodeHasLabel("1", "Thing")
     fact2 = FactNodeHasLabel("2", "MiddleThing")
     fact3 = FactNodeHasLabel("3", "OtherThing")
@@ -424,8 +408,7 @@ def fact_collection_4():
     fact16 = FactRelationshipHasSourceNode("relationship_4", "2")
     fact17 = FactRelationshipHasTargetNode("relationship_4", "5")
 
-    fact_collection = SimpleFactCollection(
-        [
+    facts = [
             fact1,
             fact2,
             fact3,
@@ -443,14 +426,16 @@ def fact_collection_4():
             fact15,
             fact16,
             fact17,
-        ]
-    )
+    ]
+    fact_collection = fact_collection_cls_factory()
+    fact_collection += facts
 
-    return fact_collection
+    yield fact_collection
+    fact_collection.close()
 
 
 @pytest.fixture
-def fact_collection_5():
+def fact_collection_5(fact_collection_cls_factory):
     fact1 = FactNodeHasLabel("1", "Thing")
     fact2 = FactNodeHasLabel("2", "MiddleThing")
     fact3 = FactNodeHasLabel("3", "OtherThing")
@@ -473,8 +458,14 @@ def fact_collection_5():
 
     fact18 = FactNodeHasAttributeWithValue("4", "foo", Literal(2))
 
-    fact_collection = SimpleFactCollection(
-        [
+#         'MATCH (n:Thing {foo: "2"})-[r:MyRelationship]->(m:MiddleThing)-'
+#         "[s:OtherRelationship]->(o:OtherThing) "
+#         "RETURN n.foobar"
+# [
+#     {'m': '2', 'r': 'relationship_3', 's': 'relationship_4', 'n': '4', 'o': '5'},
+#     {'m': '2', 'r': 'relationship_3', 's': 'relationship_2', 'n': '4', 'o': '3'}
+# ]
+    facts = [
             fact1,
             fact2,
             fact3,
@@ -494,13 +485,16 @@ def fact_collection_5():
             fact17,
             fact18,
         ]
-    )
 
-    return fact_collection
+    fact_collection = fact_collection_cls_factory()
+    fact_collection += facts
+
+    yield fact_collection
+    fact_collection.close()
 
 
 @pytest.fixture
-def fact_collection_6():  # pylint: disable=too-many-locals
+def fact_collection_6(fact_collection_cls_factory):  # pylint: disable=too-many-locals
     fact1 = FactNodeHasLabel("1", "Thing")
     fact2 = FactNodeHasLabel("2", "MiddleThing")
     fact3 = FactNodeHasLabel("3", "OtherThing")
@@ -527,8 +521,7 @@ def fact_collection_6():  # pylint: disable=too-many-locals
 
     fact19 = FactNodeHasLabel("6", "Irrelevant")
 
-    fact_collection = SimpleFactCollection(
-        [
+    facts = [
             fact1,
             fact2,
             fact3,
@@ -551,9 +544,12 @@ def fact_collection_6():  # pylint: disable=too-many-locals
             fact20,
             fact21,
         ]
-    )
 
-    return fact_collection
+    fact_collection = fact_collection_cls_factory()
+    fact_collection += facts
+
+    yield fact_collection
+    fact_collection.close()
 
 
 @pytest.fixture
@@ -611,10 +607,6 @@ def empty_session():
 def populated_session(
     fixture_0_data_source_mapping_list, empty_session, fixture_data_source_0
 ):
-    # Get data source mappings
-    # Attach data source mappings to data source
-    # Attach data source to session
-
     fixture_data_source_0.attach_mapping(fixture_0_data_source_mapping_list)
     empty_session.attach_data_source(fixture_data_source_0)
     return empty_session
@@ -800,13 +792,7 @@ def session_with_trigger_using_data_asset(session_with_data_asset):
 def etcd3_fact_collection():
     fact_collection = Etcd3FactCollection()
     yield fact_collection
-    fact_collection.clear()
-
-
-@pytest.fixture(params=[SimpleFactCollection, Etcd3FactCollection])
-def param_fact_collection(request):
-    obj = request.param()
-    yield obj
+    fact_collection.close()
 
 
 # Cypher

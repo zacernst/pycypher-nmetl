@@ -305,18 +305,11 @@ def load_session_config(path: str) -> Session:
         config = yaml.safe_load(f)
     session_config = SessionConfig(**config)
 
-    # Check if the fact collection is set to MemcacheFactCollection
-    try:
-        fact_collection_class = globals()[session_config.fact_collection_class]
-    except KeyError:
-        # Default to MemcacheFactCollection if not specified
-        fact_collection_class = SimpleFactCollection
-        LOGGER.warning(
-            '"fact_collection_class" not found, using default FactCollection'
-        )
-
+    fact_collection_class = globals()[session_config.fact_collection_class]
+    
     fact_collection = fact_collection_class()
 
+    LOGGER.info(f"Creating session with fact collection {fact_collection_class.__name__}")
     session = Session(
         run_monitor=session_config.run_monitor,
         logging_level=session_config.logging_level,

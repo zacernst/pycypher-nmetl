@@ -11,10 +11,13 @@ from __future__ import annotations
 
 import collections
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Generator, List, Optional
+from typing import Any, Iterable, Dict, Generator, List, Optional
 
 from nmetl.helpers import decode, encode
 from nmetl.logger import LOGGER
+from nmetl.config import BLOOM_FILTER_SIZE, BLOOM_FILTER_ERROR_RATE
+
+from rbloom import Bloom
 
 try:
     import etcd3
@@ -59,6 +62,15 @@ class AtomicFact:  # pylint: disable=too-few-public-methods
             session (Optional[Session]): The session this fact belongs to. Defaults to None.
         """
         self.session = session
+    
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        del state["session"]
+        return state
+
+    # def __setstate__(self, state):
+    #      self.__dict__.update(state)
+    #      self.c = None
 
 
 class FactNodeHasLabel(AtomicFact):
@@ -455,7 +467,7 @@ class FactCollection(ABC):
         Returns:
             str: A string representation showing the number of facts in the collection.
         """
-        return f"FactCollection: {len(self.facts)}"
+        return f"FactCollection: {len(self)}"
 
     @abstractmethod
     def __len__(self):
@@ -488,9 +500,13 @@ class FactCollection(ABC):
             self.facts.append(fact)
         return self
 
-    def __iadd__(self, other: AtomicFact) -> FactCollection:
+    def __iadd__(self, other: AtomicFact | List[Any]) -> FactCollection:
         """Let us use ``+=`` to add facts to the collection."""
-        self.append(other)
+        if isinstance(other, AtomicFact):
+            self.append(other)
+        elif isinstance(other, list):
+            for thing in other:
+                FactCollection.__iadd__(self, thing)
         return self
 
     def relationship_has_source_node_facts(self):
@@ -504,7 +520,7 @@ class FactCollection(ABC):
             FactRelationshipHasSourceNode: Facts that are instances of
                 FactRelationshipHasSourceNode.
         """
-        for fact in self.facts:
+        for fact in self:
             if isinstance(fact, FactRelationshipHasSourceNode):
                 yield fact
 
@@ -519,7 +535,7 @@ class FactCollection(ABC):
             FactRelationshipHasTargetNode: Facts that are instances of
                 FactRelationshipHasTargetNode.
         """
-        for fact in self.facts:
+        for fact in self:
             if isinstance(fact, FactRelationshipHasTargetNode):
                 yield fact
 
@@ -533,7 +549,7 @@ class FactCollection(ABC):
         Yields:
             FactNodeHasLabel: Facts that are instances of `FactNodeHasLabel`.
         """
-        for fact in self.facts:
+        for fact in self:
             if isinstance(fact, FactNodeHasLabel):
                 yield fact
 
@@ -550,7 +566,7 @@ class FactCollection(ABC):
         """
         return any(
             isinstance(fact, FactNodeHasLabel) and fact.node_id == node_id
-            for fact in self.facts
+            for fact in self
         )
 
     def node_has_attribute_with_value_facts(self):
@@ -564,7 +580,7 @@ class FactCollection(ABC):
             FactNodeHasAttributeWithValue: Facts that are instances of
                 FactNodeHasAttributeWithValue.
         """
-        for fact in self.facts:
+        for fact in self:
             if isinstance(fact, FactNodeHasAttributeWithValue):
                 yield fact
 
@@ -579,10 +595,125 @@ class FactCollection(ABC):
             FactRelationshipHasAttributeWithValue: Facts that are instances of
                 FactRelationshipHasAttributeWithValue.
         """
-        for fact in self.facts:
+        for fact in self:
             if isinstance(fact, FactRelationshipHasAttributeWithValue):
                 yield fact
 
+    def is_empty(self) -> bool:
+        """
+        Check if the fact collection is empty.
+
+        Returns:
+            bool: True if the fact collection is empty, False otherwise.
+        """
+        return len(self) == 0
+
+    def node_label_attribute_inventory(self):
+        """
+        Return a dictionary of all the facts in the collection.
+
+        Returns:
+            dict: A dictionary of all the facts in the collection.
+        """
+        attributes_by_label = collections.defaultdict(set)
+        relationship_labels = set()
+
+        for fact in self:
+            match fact:
+                case FactNodeHasAttributeWithValue():
+                    label = self.query(QueryNodeLabel(node_id=fact.node_id))
+                    attributes_by_label[label].add(fact.attribute)
+                case FactNodeHasLabel():
+                    if fact.label not in attributes_by_label:
+                        attributes_by_label[fact.label] = set()
+                case FactRelationshipHasLabel():
+                    relationship_labels.add(fact.relationship_label)
+                case _:
+                    continue
+
+        return attributes_by_label
+    
+    def query_value_of_node_attribute(self, query: QueryValueOfNodeAttribute):
+        """
+        Query the value of a node's attribute.
+
+        Args:
+            query (QueryValueOfNodeAttribute): Query object containing the node_id
+                and attribute to look up.
+
+        Returns:
+            Any: The value of the requested attribute if found.
+            NullResult: If no matching attribute is found.
+
+        Raises:
+            ValueError: If multiple values are found for the same attribute.
+        """
+        facts = [
+            fact
+            for fact in self.node_has_attribute_with_value_facts()
+            if fact.node_id == query.node_id
+            and fact.attribute == query.attribute
+        ]
+        if len(facts) == 1:
+            return facts[0].value
+        if not facts:
+            return NullResult(query)
+        if len(facts) > 1:
+            raise ValueError(
+                f"Found multiple values for {query}: {facts}"
+            )
+        raise ValueError("Unknown error")
+
+    def query_node_label(self, query: QueryNodeLabel):
+        """Given a query for a node label, return the label if it exists.
+
+            If no label exists, return a NullResult. If multiple labels
+            exist, raise a ValueError.
+
+            Args:
+                query: The query to execute.
+
+            Returns:
+                The label of the node, or a NullResult if no label exists.
+
+            Raises:
+                ValueError: If multiple labels exist for the node.
+            """
+        facts = [
+            fact
+            for fact in self.node_has_label_facts()
+            if fact.node_id == query.node_id
+        ]
+        if len(facts) == 1:
+            return facts[0].label
+        if not facts:
+            return NullResult(query)
+        if len(facts) > 1:
+            raise ValueError(f"Found multiple labels for {query}")
+        raise ValueError("Unknown error")
+
+    def attributes_for_specific_node(
+        self, node_id: str, *attributes: str
+    ) -> Dict[str, Any]:
+        """
+        Return a dictionary of all the attributes for a specific node.
+
+        Args:
+            node_id (str): The ID of the node.
+
+        Returns:
+            dict: A dictionary of all the attributes for the specified node.
+        """
+        row = {attribute: None for attribute in attributes}
+        for fact in self:
+            if (
+                isinstance(fact, FactNodeHasAttributeWithValue)
+                and fact.node_id == node_id
+                and fact.attribute in attributes
+            ):
+                row[fact.attribute] = fact.value
+        return row
+    
     def query(self, query: Query) -> Any:
         """
         Executes a query to retrieve information based on the type of the query.
@@ -602,93 +733,11 @@ class FactCollection(ABC):
         """
         match query:
             case QueryValueOfNodeAttribute():
-                facts = [
-                    fact
-                    for fact in self.node_has_attribute_with_value_facts()
-                    if fact.node_id == query.node_id
-                    and fact.attribute == query.attribute
-                ]
-                if len(facts) == 1:
-                    return facts[0].value
-                if not facts:
-                    return NullResult(query)
-                if len(facts) > 1:
-                    raise ValueError(
-                        f"Found multiple values for {query}: {facts}"
-                    )
-                raise ValueError("Unknown error")
+                self.query_value_of_node_attribute(query)
             case QueryNodeLabel():
-                facts = [
-                    fact
-                    for fact in self.node_has_label_facts()
-                    if fact.node_id == query.node_id
-                ]
-                if len(facts) == 1:
-                    return facts[0].label
-                elif not facts:
-                    return NullResult(query)
-                elif len(facts) > 1:
-                    raise ValueError(f"Found multiple labels for {query}")
-                else:
-                    raise ValueError("Unknown error")
+                self.query_node_label(query)
             case _:
                 raise NotImplementedError(f"Unknown query type {query}")
-
-    def is_empty(self) -> bool:
-        """
-        Check if the fact collection is empty.
-
-        Returns:
-            bool: True if the fact collection is empty, False otherwise.
-        """
-        return len(self.facts) == 0
-
-    def node_label_attribute_inventory(self):
-        """
-        Return a dictionary of all the facts in the collection.
-
-        Returns:
-            dict: A dictionary of all the facts in the collection.
-        """
-        attributes_by_label = collections.defaultdict(set)
-        relationship_labels = set()
-
-        for fact in self.facts:
-            match fact:
-                case FactNodeHasAttributeWithValue():
-                    label = self.query(QueryNodeLabel(node_id=fact.node_id))
-                    attributes_by_label[label].add(fact.attribute)
-                case FactNodeHasLabel():
-                    if fact.label not in attributes_by_label:
-                        attributes_by_label[fact.label] = set()
-                case FactRelationshipHasLabel():
-                    relationship_labels.add(fact.relationship_label)
-                case _:
-                    continue
-
-        return attributes_by_label
-
-    def attributes_for_specific_node(
-        self, node_id: str, *attributes: str
-    ) -> Dict[str, Any]:
-        """
-        Return a dictionary of all the attributes for a specific node.
-
-        Args:
-            node_id (str): The ID of the node.
-
-        Returns:
-            dict: A dictionary of all the attributes for the specified node.
-        """
-        row = {attribute: None for attribute in attributes}
-        for fact in self.facts:
-            if (
-                isinstance(fact, FactNodeHasAttributeWithValue)
-                and fact.node_id == node_id
-                and fact.attribute in attributes
-            ):
-                row[fact.attribute] = fact.value
-        return row
 
     def nodes_with_label(self, label: str) -> Generator[str]:
         """
@@ -717,6 +766,11 @@ class FactCollection(ABC):
         inventory = list(self.node_label_attribute_inventory()[label])
         for node_id in self.nodes_with_label(label):
             yield self.attributes_for_specific_node(node_id, *inventory)
+    
+    @abstractmethod
+    def close(self):
+        """When cleanup is necessary for the class"""
+        pass
 
 
 class SimpleFactCollection(FactCollection):
@@ -752,6 +806,10 @@ class SimpleFactCollection(FactCollection):
             AtomicFact: Each fact in the collection.
         """
         yield from self.facts
+    
+    def close(self):
+        """Vacuously satisfy the interface"""
+        pass
 
     # Not sure we're actually using this
     def __getitem__(self, index: int) -> AtomicFact:
@@ -872,7 +930,7 @@ class SimpleFactCollection(FactCollection):
         Yields:
             FactNodeHasLabel: Facts that are instances of `FactNodeHasLabel`.
         """
-        for fact in self.facts:
+        for fact in self:
             if isinstance(fact, FactNodeHasLabel):
                 yield fact
 
@@ -921,57 +979,11 @@ class SimpleFactCollection(FactCollection):
         for fact in self.facts:
             if isinstance(fact, FactRelationshipHasAttributeWithValue):
                 yield fact
+    
+    
 
-    def query(self, query: Query) -> Any:
-        """
-        Executes a query to retrieve information based on the type of the query.
 
-        Args:
-            query (Query): The query object containing the parameters for the query.
-
-        Returns:
-            Any: The result of the query. The type of the result depends on the query type.
-
-        Raises:
-            ValueError: If the query is of type QueryValueOfNodeAttribute and no matching
-            facts are found, or if multiple matching facts are found, or if an
-            unknown error occurs.
-            NotImplementedError: If the query type is not recognized.
-
-        """
-        match query:
-            case QueryValueOfNodeAttribute():
-                facts = [
-                    fact
-                    for fact in self.node_has_attribute_with_value_facts()
-                    if fact.node_id == query.node_id
-                    and fact.attribute == query.attribute
-                ]
-                if len(facts) == 1:
-                    return facts[0].value
-                if not facts:
-                    return NullResult(query)
-                if len(facts) > 1:
-                    raise ValueError(
-                        f"Found multiple values for {query}: {facts}"
-                    )
-                raise ValueError("Unknown error")
-            case QueryNodeLabel():
-                facts = [
-                    fact
-                    for fact in self.node_has_label_facts()
-                    if fact.node_id == query.node_id
-                ]
-                if len(facts) == 1:
-                    return facts[0].label
-                elif not facts:
-                    return NullResult(query)
-                elif len(facts) > 1:
-                    raise ValueError(f"Found multiple labels for {query}")
-                else:
-                    raise ValueError("Unknown error")
-            case _:
-                raise NotImplementedError(f"Unknown query type {query}")
+    
 
     def is_empty(self) -> bool:
         """
@@ -1069,15 +1081,17 @@ class KeyValue(ABC):
             case FactNodeHasAttributeWithValue():
                 return f"node_attribute:{fact.node_id}:{fact.attribute}:{fact.value}"
             case FactRelationshipHasLabel():
-                return f"relationship_label:{fact.relationship_id}"
+                return f"relationship_label:{fact.relationship_id}:{fact.relationship_label}"
             case FactRelationshipHasAttributeWithValue():
-                return f"relationship_attribute:{fact.relationship_id}:{fact.attribute}"
+                return f"relationship_attribute:{fact.relationship_id}:{fact.attribute}:{fact.value}"
             case FactRelationshipHasSourceNode():
                 return f"relationship_source_node:{fact.relationship_id}:{fact.source_node_id}"
             case FactRelationshipHasTargetNode():
                 return f"relationship_target_node:{fact.relationship_id}:{fact.target_node_id}"
+            case FactNodeRelatedToNode():
+                return f"node_relationship:{fact.node1_id}:{fact.node2_id}:{fact.relationship_label}"
             case _:
-                raise ValueError("Unknown fact type")
+                raise ValueError(f"Unknown fact type {fact}")
 
     @abstractmethod
     def keys(self):
@@ -1121,7 +1135,36 @@ class Etcd3FactCollection(FactCollection, KeyValue):
             **kwargs: Variable keyword arguments (ignored).
         """
         self.client = etcd3.Client("127.0.0.1", 2379)
+        self.bloom = Bloom(BLOOM_FILTER_SIZE, BLOOM_FILTER_ERROR_RATE)
         super().__init__(*args, **kwargs)
+    
+    def query_value_of_node_attribute(self, query: QueryValueOfNodeAttribute):
+        """
+        Query the value of a node's attribute.
+
+        Args:
+            query (QueryValueOfNodeAttribute): Query object containing the node_id
+                and attribute to look up.
+
+        Returns:
+            Any: The value of the requested attribute if found.
+            NullResult: If no matching attribute is found.
+
+        Raises:
+            ValueError: If multiple values are found for the same attribute.
+        """
+        # node_attribute:Tract::01013952900:tract_fips:01013952900
+        prefix = f"node_attribute:{query.node_id}:{query.attribute}:"
+        matches = self.client.range(prefix, prefix + "\0").kvs or []
+        if len(matches) == 1:
+            return matches[0].value.value if hasattr(matches[0].value, "value") else matches[0].value
+        if not matches:
+            return NullResult(query)
+        if len(matches) > 1:
+            raise ValueError(
+                f"Found multiple values for {query}: {matches}"
+            )
+        raise ValueError("Unknown error")
 
     def keys(self) -> Generator[str]:
         """
@@ -1140,6 +1183,10 @@ class Etcd3FactCollection(FactCollection, KeyValue):
                 yield key
         except TypeError:  # Empty
             pass
+    
+    def close(self):
+        """Clear the etcd3 when we're done"""
+        self.clear()
 
     def __delitem__(self, key: str):
         """
@@ -1151,7 +1198,7 @@ class Etcd3FactCollection(FactCollection, KeyValue):
         Raises:
             IndexError: If the index is out of range.
         """
-        self.client.delete_range(key)
+        self.client.delete_range(key=key)
 
     def __len__(self):
         """
@@ -1160,23 +1207,8 @@ class Etcd3FactCollection(FactCollection, KeyValue):
         Returns:
             int: The number of facts in the collection.
         """
-        counter = 0
-        for _ in self.keys():
-            counter += 1
-        return counter
-
-    def __setitem__(self, index: int, value: AtomicFact):
-        """
-        Set a fact at a specific index.
-
-        Args:
-            index (int): The index at which to set the fact.
-            value (AtomicFact): The fact to set at the specified index.
-
-        Raises:
-            IndexError: If the index is out of range.
-        """
-        self.facts[index] = value
+        num_keys = self.client.range(all=True).count
+        return num_keys
 
     def values(self) -> Generator[AtomicFact]:
         """
@@ -1189,6 +1221,7 @@ class Etcd3FactCollection(FactCollection, KeyValue):
             pymemcache.exceptions.MemcacheError: If there's an error communicating with the memcached server.
             pickle.PickleError: If there's an error unpickling the data.
         """
+        # Get number of keys in etcd:
         try:
             for key_value in self.client.range(all=True).kvs:
                 value = key_value.value
@@ -1198,7 +1231,9 @@ class Etcd3FactCollection(FactCollection, KeyValue):
 
     def clear(self):
         """Erase all the keys in the etcd3"""
+        LOGGER.info("Clearing etcd3")
         self.client.delete_range(all=True)
+        # time.sleep(1)
 
     def insert(self, _, value):
         """Vacuously satisfy the interface"""
@@ -1207,7 +1242,22 @@ class Etcd3FactCollection(FactCollection, KeyValue):
     def delete_fact(self, fact):
         """Delete a fact from the etcd3"""
         index = self.make_index_for_fact(fact)
-        self.client.delete_range(index)
+        self.client.delete_range(key=index)
+    
+    def node_has_label_facts(self):
+        """
+        Generator function that yields facts of type `FactNodeHasLabel`.
+
+        Iterates over the `facts` attribute and yields each fact that is an instance
+        of `FactNodeHasLabel`.
+
+        Yields:
+            FactNodeHasLabel: Facts that are instances of `FactNodeHasLabel`.
+        """
+        matches = self.client.range("node_label:").kvs or []
+        for match in matches:
+            fact = decode(match.value)
+            yield fact
 
     def __contains__(self, fact: AtomicFact) -> bool:
         """
@@ -1220,7 +1270,15 @@ class Etcd3FactCollection(FactCollection, KeyValue):
             bool: True if the fact is in the collection, False otherwise.
         """
         index = self.make_index_for_fact(fact)
-        return self.client.range(index).kvs is not None
+
+        # Try to divert from etcd3 with a Bloom filter
+        if index not in self.bloom:
+            return False
+
+        if self.client.range(index, index + "\0").kvs:
+            return True
+
+        return False
 
     def append(self, fact: AtomicFact) -> None:
         """
@@ -1235,6 +1293,7 @@ class Etcd3FactCollection(FactCollection, KeyValue):
         """
         index = self.make_index_for_fact(fact)
         self.client.put(index, encode(fact))
+        self.bloom.add(index)
 
     def __iter__(self) -> Generator[AtomicFact]:
-        yield from self.keys()
+        yield from self.values()

@@ -1177,6 +1177,7 @@ class Match(TreeMixin):
             relationship_domain = Domain(set())
             # Get domains for nodes and relationships
             for fact in fact_collection:
+                LOGGER.debug("fact: %s", fact)
                 if isinstance(fact, FactNodeHasLabel):
                     if fact.node_id not in node_domain:
                         LOGGER.debug("fact.node_id: %s", fact.node_id)
@@ -1198,6 +1199,9 @@ class Match(TreeMixin):
                         relationship_domain.append(fact.relationship_id)
                 else:
                     pass
+
+            LOGGER.debug("node_domain: %s", node_domain)
+            LOGGER.debug("relationship_domain: %s", relationship_domain)
 
             # Assign variables to domains -- TODO: Ensure no duplicates!
             for constraint in constraints:
@@ -1394,8 +1398,6 @@ class Match(TreeMixin):
             if isinstance(fact_collection, FactCollection)
             else fact_collection.make_fact_collection()
         )
-        # import pdb; pdb.set_trace()
-        # Tried to insert duplicated variable...
         problem = _set_up_problem(self)
         solutions = problem.getSolutions()
         return solutions

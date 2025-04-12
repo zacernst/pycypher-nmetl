@@ -1,5 +1,5 @@
 fact_collection: null
-fact_collection_class: MemcacheFactCollection
+fact_collection_class: Etcd3FactCollection
 run_monitor: true
 logging_level: DEBUG
 

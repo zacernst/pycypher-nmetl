@@ -16,6 +16,7 @@ from nmetl.config import (  # pylint: disable=no-name-in-module
 from nmetl.message_types import EndOfData
 from pycypher.logger import LOGGER
 
+from nmetl.config import DEFAULT_QUEUE_SIZE
 
 def ensure_uri(uri: str | ParseResult | Path) -> ParseResult:
     """
@@ -53,6 +54,7 @@ class QueueGenerator:  # pylint: disable=too-few-public-methods,too-many-instanc
         name: Optional[str] = uuid.uuid4().hex,
         use_cache: Optional[bool] = False,
         session: Optional["Session"] = None,  # type: ignore
+        max_queue_size: Optional[int] = DEFAULT_QUEUE_SIZE,
         **kwargs,
     ) -> None:
         """
@@ -69,7 +71,8 @@ class QueueGenerator:  # pylint: disable=too-few-public-methods,too-many-instanc
             **kwargs: Variable keyword arguments passed to the parent class.
         """
         super().__init__(*args, **kwargs)
-        self.queue = queue.Queue()
+        self.max_queue_size = max_queue_size
+        self.queue = queue.Queue(maxsize=self.max_queue_size)
         self.inner_queue_timeout = inner_queue_timeout
         self.end_of_queue_cls = end_of_queue_cls
         self.counter: int = 0
@@ -167,5 +170,6 @@ def encode(obj: Any) -> str:
     try:
         encoded = base64.b64encode(pickle.dumps(obj)).decode("utf-8")
     except Exception as e:
+        LOGGER.error("Error encoding object to base64 string: %s", obj)
         raise ValueError(f"Error encoding object to base64 string: {e}") from e
     return encoded

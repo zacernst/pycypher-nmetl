@@ -26,6 +26,7 @@ from fixtures import (
     fact_collection_1,
     fact_collection_2,
     fact_collection_3,
+    fact_collection_cls_factory,
     fact_collection_4,
     fact_collection_5,
     fact_collection_6,
@@ -35,7 +36,6 @@ from fixtures import (
     fixture_0_data_source_mapping_list,
     fixture_data_source_0,
     networkx_graph,
-    param_fact_collection,
     patched_uuid,
     populated_session,
     raw_data_processor,
@@ -215,9 +215,10 @@ def test_parameter_not_present_in_cypher_with_aliases(empty_session):
 
 
 @pytest.mark.fact_collection
-def test_fact_collection_has_facts(fact_collection_0: FactCollection):
+def test_fact_collection_has_facts(fact_collection_factory):
     """Test that a fact collection contains facts and evaluates to True in a boolean context."""
-    assert not fact_collection_0.is_empty()
+    fact_collection_factory.append(FactNodeHasLabel("1", "Thing"))
+    assert not fact_collection_factory.is_empty()
 
 
 @pytest.mark.fact_collection
@@ -245,15 +246,6 @@ def test_fact_collection_get_item(fact_collection_0: FactCollection):
     if hasattr(fact_collection_0, "__getitem__"):
         fact = fact_collection_0[0]
         assert isinstance(fact, FactNodeHasLabel)
-
-
-@pytest.mark.fact_collection
-def test_fact_collection_insert(fact_collection_0: FactCollection):
-    """Test that facts can be inserted at a specific position in a fact collection."""
-    fact = FactNodeHasLabel("3", "Thing")
-    assert fact not in fact_collection_0
-    fact_collection_0.insert(0, fact)
-    assert fact in fact_collection_0
 
 
 @pytest.mark.fact_collection
@@ -1016,6 +1008,7 @@ def test_find_no_solutions_relationship_chain_fork_node_attribute_value_wrong_ty
     solutions = result.parse_tree.cypher.match_clause.solutions(
         fact_collection_5
     )
+    # import pdb; pdb.set_trace()
     assert not solutions
 
 

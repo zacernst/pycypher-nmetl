@@ -20,6 +20,7 @@ LOGGER.setLevel("INFO")
 INGEST_CONFIG_PATH = f"{SOURCE_DIR}/ingest.yaml"
 PUMS_DATA_DICTIONARY_PATH = f"{SOURCE_DIR}/acs_pums_2023_data_dictionary.json"
 session = load_session_config(INGEST_CONFIG_PATH)
+session.fact_collection.clear()
 
 with open(
     PUMS_DATA_DICTIONARY_PATH,

@@ -291,7 +291,7 @@ class DataSource(ABC):  # pylint: disable=too-many-instance-attributes
                 RawDatum(data_source=self, row=row),
             )
             self.sent_counter += 1
-            if self.sent_counter > 100:  # for testing
+            if self.sent_counter > 1000000:  # for testing
                 break
             if self.halt:
                 LOGGER.debug("DataSource %s is halting", self.name)

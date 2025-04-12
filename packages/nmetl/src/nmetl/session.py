@@ -34,6 +34,13 @@ from nmetl.queue_processor import (
     RawDataProcessor,
     TriggeredLookupProcessor,
 )
+
+from nmetl.config import (  # pylint: disable=no-name-in-module
+    CHECK_FACT_AGAINST_TRIGGERS_QUEUE_SIZE,
+    FACT_GENERATED_QUEUE_SIZE,
+    RAW_INPUT_QUEUE_SIZE,
+    TRIGGERED_LOOKUP_PROCESSOR_QUEUE_SIZE,
+)
 from nmetl.trigger import (
     NodeRelationship,
     NodeRelationshipTrigger,
@@ -41,7 +48,7 @@ from nmetl.trigger import (
     VariableAttributeTrigger,
 )
 from pycypher.cypher_parser import CypherParser
-from pycypher.fact import AtomicFact, FactCollection, SimpleFactCollection
+from pycypher.fact import AtomicFact, FactCollection
 from pycypher.logger import LOGGER
 from pycypher.solver import Constraint
 from rich.console import Console
@@ -117,7 +124,7 @@ class Session:  # pylint: disable=too-many-instance-attributes
         self.new_column_dict = {}
 
         self.raw_input_queue = self.queue_class(
-            session=self, name="RawInput", **self.queue_options
+            session=self, name="RawInput", max_queue_size=RAW_INPUT_QUEUE_SIZE, **self.queue_options
         )
         self.data_assets = data_assets or []
         self.data_asset_names = [
@@ -125,21 +132,21 @@ class Session:  # pylint: disable=too-many-instance-attributes
         ]
 
         self.fact_generated_queue = self.queue_class(
-            session=self, name="FactGenerated", **self.queue_options
+            session=self, name="FactGenerated", max_queue_size=FACT_GENERATED_QUEUE_SIZE, **self.queue_options
         )
         self.check_fact_against_triggers_queue = self.queue_class(
-            session=self, name="CheckFactTrigger", **self.queue_options
+            session=self, name="CheckFactTrigger", max_queue_size=CHECK_FACT_AGAINST_TRIGGERS_QUEUE_SIZE, **self.queue_options
         )
         self.triggered_lookup_processor_queue = self.queue_class(
             session=self,
             name="TriggeredLookupProcessor",
+            max_queue_size=TRIGGERED_LOOKUP_PROCESSOR_QUEUE_SIZE,
             **self.queue_options,
         )
 
         self.trigger_dict = {}
-        self.fact_collection = fact_collection or SimpleFactCollection(
-            facts=[], session=self
-        )
+        LOGGER.info(f"Creating session with fact collection {fact_collection.__class__.__name__}")
+        self.fact_collection = fact_collection
         self.raw_data_processor = RawDataProcessor(
             self,
             incoming_queue=self.raw_input_queue,
@@ -380,6 +387,15 @@ class Session:  # pylint: disable=too-many-instance-attributes
             )
 
         console.print(table)
+
+        # table = Table(title="FactCollection")
+        # table.add_column("FactCollection", justify="right", style="cyan")
+        # table.add_column("Size", style="magenta")
+        # table.add_row(
+        #     f"{self.fact_collection.__class__.__name__}",
+        #     f"{len(self.fact_collection)}",
+        # )
+        # console.print(table)
 
     def attach_fact_collection(self, fact_collection: FactCollection) -> None:
         """Attach a ``FactCollection`` to the machine."""
