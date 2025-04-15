@@ -110,7 +110,7 @@ def vision_difficulty(
     eye, acs_pums_2023_data_dictionary
 ) -> VariableAttribute["i", "vision_difficulty"]:
     """Has vision difficulty"""
-    return acs_pums_2023_data_dictionary["DEYE"][eye]
+    return acs_pums_2023_data_dictionary["DEYE"].get(eye, None)
 
 
 @session.trigger(
@@ -120,7 +120,7 @@ def physical_difficulty(
     physical, acs_pums_2023_data_dictionary
 ) -> VariableAttribute["i", "physical_difficulty"]:
     """Has physical difficulty"""
-    return acs_pums_2023_data_dictionary["DPHY"][physical]
+    return acs_pums_2023_data_dictionary["DPHY"].get(physical, None)
 
 
 LOGGER.setLevel("INFO")

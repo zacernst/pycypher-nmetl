@@ -104,9 +104,9 @@ class QueueGenerator:  # pylint: disable=too-few-public-methods,too-many-instanc
                     break
 
                 try:
-                    item = self.get(timeout=self.inner_queue_timeout)
+                    item = self.get(timeout=.001)
                 except queue.Empty:
-                    break
+                    continue
                 # Need to check ALL of the incoming data sources
                 if isinstance(item, self.end_of_queue_cls):
                     finished_incoming_data_source_counter += 1

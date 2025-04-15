@@ -1,5 +1,4 @@
 version = 1
-revision = 1
 requires-python = ">=3.10"
 resolution-markers = [
     "python_full_version < '3.12'",
@@ -436,7 +435,7 @@ name = "click"
 version = "8.1.8"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "colorama", marker = "sys_platform == 'win32'" },
+    { name = "colorama", marker = "platform_system == 'Windows'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/b9/2e/0090cbf739cee7d23781ad4b89a9894a41538e4fcf4c31dcdd705b78eb8b/click-8.1.8.tar.gz", hash = "sha256:ed53c9d8990d83c2a27deae68e4ee337473f6330c040a31d4225c9574d16096a", size = 226593 }
 wheels = [
@@ -962,7 +961,6 @@ requires-dist = [
     { name = "toml", specifier = ">=0.10.2,<1.0.0" },
     { name = "uv", specifier = ">=0.4.1,<1.0.0" },
 ]
-provides-extras = ["dev"]
 
 [[package]]
 name = "filelock"
@@ -1667,7 +1665,6 @@ requires-dist = [
     { name = "toml", specifier = ">=0.10.2,<1.0.0" },
     { name = "uv", specifier = ">=0.4.1,<1.0.0" },
 ]
-provides-extras = ["dev"]
 
 [[package]]
 name = "omegaconf"
@@ -2099,7 +2096,6 @@ requires-dist = [
     { name = "toml", specifier = ">=0.10.2,<1.0.0" },
     { name = "uv", specifier = ">=0.4.1,<1.0.0" },
 ]
-provides-extras = ["dev"]
 
 [[package]]
 name = "pycypher-nmetl"
@@ -2121,6 +2117,7 @@ dependencies = [
     { name = "pytest-timeout" },
     { name = "pytest-unordered" },
     { name = "pytest-xdist" },
+    { name = "rbloom" },
     { name = "ruff" },
     { name = "sphinx" },
     { name = "sphinx-autoapi" },
@@ -2146,6 +2143,7 @@ requires-dist = [
     { name = "pytest-timeout", specifier = "==2.3.1" },
     { name = "pytest-unordered", specifier = "==0.6.1,<1.0.0" },
     { name = "pytest-xdist", specifier = ">=3.6.1,<4.0.0" },
+    { name = "rbloom", specifier = ">=1.5.2" },
     { name = "ruff", specifier = ">=0.6.3,<1.0.0" },
     { name = "sphinx", specifier = ">=5.0.2,<9.0.0" },
     { name = "sphinx-autoapi", specifier = "==3.3.1,<4.0.0" },
@@ -2530,6 +2528,24 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/fe/0f/25911a9f080464c59fab9027482f822b86bf0608957a5fcc6eaac85aa515/PyYAML-6.0.2-cp313-cp313-musllinux_1_1_x86_64.whl", hash = "sha256:68ccc6023a3400877818152ad9a1033e3db8625d899c72eacb5a668902e4d652", size = 751597 },
     { url = "https://files.pythonhosted.org/packages/14/0d/e2c3b43bbce3cf6bd97c840b46088a3031085179e596d4929729d8d68270/PyYAML-6.0.2-cp313-cp313-win32.whl", hash = "sha256:bc2fa7c6b47d6bc618dd7fb02ef6fdedb1090ec036abab80d4681424b84c1183", size = 140527 },
     { url = "https://files.pythonhosted.org/packages/fa/de/02b54f42487e3d3c6efb3f89428677074ca7bf43aae402517bc7cca949f3/PyYAML-6.0.2-cp313-cp313-win_amd64.whl", hash = "sha256:8388ee1976c416731879ac16da0aff3f63b286ffdd57cdeb95f3f2e085687563", size = 156446 },
+]
+
+[[package]]
+name = "rbloom"
+version = "1.5.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/d8/bb/ecdaf82414e7ae2d7b7db2568cd06ded008f8bd0fbaa788ddc5f2eeb4be0/rbloom-1.5.2.tar.gz", hash = "sha256:e83544300ca741abdf7214f8f880c05afca4b536a9d77be824c1c68625685803", size = 21178 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/89/77/3f672a00d24e56915df5308a7d0ff9d637a732b844d280410df4d5bb1d61/rbloom-1.5.2-cp37-abi3-macosx_10_12_x86_64.whl", hash = "sha256:d2b6879c2bade72565d5f96b4e1f64fc04ddd679574a2994a1bd70377fe674ac", size = 272119 },
+    { url = "https://files.pythonhosted.org/packages/30/9d/49dbb1e0f516467cec135472fad56cff7fd6410bc4641e8ea6bb0ba4cda5/rbloom-1.5.2-cp37-abi3-macosx_11_0_arm64.whl", hash = "sha256:9ae886d880c7ae9ac71cf6704a95043e1a1c826d96257cedad8b157f777581b8", size = 266389 },
+    { url = "https://files.pythonhosted.org/packages/36/9d/cc0ee1cb3ef73cb81f32a741d4aa6a771a8e86b460cc98e66b55120a805e/rbloom-1.5.2-cp37-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:7c6ea4862ff750337f67e0cbb705c6261a1b408d7c0721914a5d92b9c11d43df", size = 310611 },
+    { url = "https://files.pythonhosted.org/packages/47/83/f803ef934c356d99daa87c4dd7a84c75ff0636307c8661c34fddb878763e/rbloom-1.5.2-cp37-abi3-manylinux_2_17_armv7l.manylinux2014_armv7l.whl", hash = "sha256:16cce9f19f27465c8c1c529d4cf7e14556a11f431f63e6b7a23921375ffd18af", size = 315453 },
+    { url = "https://files.pythonhosted.org/packages/46/71/ecf52efad2bd571e45e26ebbd9268679bf970c0d283d28fa6e4c52cc4edb/rbloom-1.5.2-cp37-abi3-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl", hash = "sha256:be472c8854d4e13f4862822c3c6bcae5190bfa0b59142aba26195d8a171e0d3f", size = 342722 },
+    { url = "https://files.pythonhosted.org/packages/65/c6/34abe304c657a3dc4a302b16b47e731213a07e63e1131551bd8db90be7a5/rbloom-1.5.2-cp37-abi3-manylinux_2_17_s390x.manylinux2014_s390x.whl", hash = "sha256:170c34b7a1b26c1d581a6fd537e5af30c9fc18f2ce9cf51b822c390d26b176c6", size = 377790 },
+    { url = "https://files.pythonhosted.org/packages/01/89/2c7c55a419fcf037964d2280b57c87a9bd5f1d262f7c666d16fd07c1a768/rbloom-1.5.2-cp37-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:fe497954ffe769ebfbc6c3df091a878a5eb650e21c955aa606fa516be7c2c6d7", size = 300142 },
+    { url = "https://files.pythonhosted.org/packages/a4/06/4d4c6852c4aedcd309be7c73369270719836329cce2568077df991133563/rbloom-1.5.2-cp37-abi3-manylinux_2_5_i686.manylinux1_i686.whl", hash = "sha256:05a05b6b44486795cb2ee209563a4d2127f7ec07195caba0038503cd174bc7d1", size = 318791 },
+    { url = "https://files.pythonhosted.org/packages/ac/e3/9e39760cb8e6b1181f3732fbc456f8a844f9c000a6d16c14bcf91ae5d6ee/rbloom-1.5.2-cp37-abi3-win32.whl", hash = "sha256:2c59bced1f3d71ad266dbeb5e2b140ed9128f64c083ceddb2a0c94244cc1c923", size = 167143 },
+    { url = "https://files.pythonhosted.org/packages/b8/16/d8637d6a7840af37cf1aae2d1cd64e48840ce7e11e049ad0ee477b139856/rbloom-1.5.2-cp37-abi3-win_amd64.whl", hash = "sha256:7297f2040d4e8882baea29cb0c554b9c008b5db616790620278b9aaaf95cf439", size = 174762 },
 ]
 
 [[package]]
@@ -2994,7 +3010,7 @@ name = "tqdm"
 version = "4.67.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "colorama", marker = "sys_platform == 'win32'" },
+    { name = "colorama", marker = "platform_system == 'Windows'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/a8/4b/29b4ef32e036bb34e4ab51796dd745cdba7ed47ad142a9f4a1eb8e0c744d/tqdm-4.67.1.tar.gz", hash = "sha256:f8aef9c52c08c13a65f30ea34f4e5aac3fd1a34959879d7e59e63027286627f2", size = 169737 }
 wheels = [

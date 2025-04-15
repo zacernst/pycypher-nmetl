@@ -38,6 +38,7 @@ dependencies = [
     "dvc>=3.59.1",
     "pymemcache>=4.0.0",
     "etcd3-py>=0.1.6",
+    "rbloom>=1.5.2",
 ]
 
 [[project.authors]]

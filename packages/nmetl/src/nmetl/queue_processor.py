@@ -14,6 +14,7 @@ import hashlib
 import inspect
 import queue
 import sys
+import time
 import threading
 import traceback
 from abc import ABC, abstractmethod
@@ -93,6 +94,8 @@ class QueueProcessor(ABC):  # pylint: disable=too-few-public-methods,too-many-in
 
         if self.outgoing_queue:
             self.outgoing_queue.incoming_queue_processors.append(self)
+        self.secondary_cache = []
+        self.secondary_cache_max_size = 1_000
 
     def process_queue(self) -> None:
         """Process every item in the queue using the yield_items method."""
@@ -186,6 +189,9 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
 
         out = []
         LOGGER.debug("Checking fact %s against triggers", item)
+        while item not in self.session.fact_collection:
+            LOGGER.debug("Fact %s not in collection, waiting", item)
+            time.sleep(1.0)
         # Let's filter out the facts that are irrelevant to this trigger
         for _, trigger in self.session.trigger_dict.items():
             # Let's bomb out if the attribute in the fact is not in the trigger

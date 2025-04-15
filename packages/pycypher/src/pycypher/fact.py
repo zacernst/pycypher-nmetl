@@ -11,11 +11,13 @@ from __future__ import annotations
 
 import collections
 from abc import ABC, abstractmethod
-from typing import Any, Iterable, Dict, Generator, List, Optional
+import asyncio
+import time
+from typing import Any, Dict, Generator, List, Optional
 
 from nmetl.helpers import decode, encode
 from nmetl.logger import LOGGER
-from nmetl.config import BLOOM_FILTER_SIZE, BLOOM_FILTER_ERROR_RATE
+from nmetl.config import ETCD3_RETRY_DELAY, BLOOM_FILTER_SIZE, BLOOM_FILTER_ERROR_RATE  # pylint: disable=no-name-in-module
 
 from rbloom import Bloom
 
@@ -797,6 +799,7 @@ class SimpleFactCollection(FactCollection):
         """
         self.facts: List[AtomicFact] = facts or []
         self.session: Optional["Session"] = session  # type: ignore
+        super().__init__(facts, session)
 
     def keys(self) -> Generator[AtomicFact]:
         """
@@ -979,11 +982,6 @@ class SimpleFactCollection(FactCollection):
         for fact in self.facts:
             if isinstance(fact, FactRelationshipHasAttributeWithValue):
                 yield fact
-    
-    
-
-
-    
 
     def is_empty(self) -> bool:
         """
@@ -1136,6 +1134,12 @@ class Etcd3FactCollection(FactCollection, KeyValue):
         """
         self.client = etcd3.Client("127.0.0.1", 2379)
         self.bloom = Bloom(BLOOM_FILTER_SIZE, BLOOM_FILTER_ERROR_RATE)
+        self.bloom_filter_diversions = 0
+        self.cache_hits = 0
+        self.secondary_cache = []
+        self.secondary_cache_max_size = 127
+        self.transaction = self.client.Txn()
+        self.event_loop = asyncio.get_event_loop()
         super().__init__(*args, **kwargs)
     
     def query_value_of_node_attribute(self, query: QueryValueOfNodeAttribute):
@@ -1172,10 +1176,6 @@ class Etcd3FactCollection(FactCollection, KeyValue):
 
         Yields:
             str: Each key stored in the memcached server.
-
-        Raises:
-            pymemcache.exceptions.MemcacheError: If there's an error communicating with the memcached server.
-            pickle.PickleError: If there's an error unpickling the data.
         """
         try:
             for key_value in self.client.range(all=True).kvs:
@@ -1273,9 +1273,15 @@ class Etcd3FactCollection(FactCollection, KeyValue):
 
         # Try to divert from etcd3 with a Bloom filter
         if index not in self.bloom:
+            self.bloom_filter_diversions += 1
+            LOGGER.debug(
+                "Bloom filter diversion: %s, cache hits: %s", 
+                self.bloom_filter_diversions, self.cache_hits
+                )
             return False
 
         if self.client.range(index, index + "\0").kvs:
+            self.cache_hits += 1
             return True
 
         return False
@@ -1292,8 +1298,38 @@ class Etcd3FactCollection(FactCollection, KeyValue):
             None
         """
         index = self.make_index_for_fact(fact)
-        self.client.put(index, encode(fact))
+        self.secondary_cache.append((index, fact,))
+        retry_counter = 0
+        while 1:
+            try:
+                self.client.put(index, encode(fact))
+                break
+            except Exception as e:
+                LOGGER.warning("Error writing to etcd3: %s", e)
+                retry_counter += 1
+                if retry_counter > 10:
+                    raise e
+                time.sleep(ETCD3_RETRY_DELAY)
+                continue
+            break
         self.bloom.add(index)
+        if len(self.secondary_cache) <= self.secondary_cache_max_size:
+            return
+        LOGGER.warning("Flushing cache")
+        transaction = self.client.Txn()
+        cached_indexes = []
+        for index, cached_fact in self.secondary_cache:
+            # transaction.compare(True)
+            # self.client.put(index, encode(cached_fact))
+            if index in cached_indexes:
+                LOGGER.warning("Duplicate index %s", index)
+                continue
+            transaction.success(transaction.put(index, encode(cached_fact)))
+            cached_indexes.append(index)
+            self.bloom.add(index)
+        transaction.commit()
+        transaction.clear()
+        self.secondary_cache = []
 
     def __iter__(self) -> Generator[AtomicFact]:
         yield from self.values()
