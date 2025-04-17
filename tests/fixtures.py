@@ -21,6 +21,7 @@ from nmetl.session import RawDataProcessor, Session
 from nmetl.trigger import VariableAttribute
 from pycypher.fact import (  # We might get rid of this class entirely
     Etcd3FactCollection,
+    RocksDBFactCollection,
     FactCollection,
     FactNodeHasAttributeWithValue,
     FactNodeHasLabel,
@@ -34,6 +35,8 @@ from pycypher.logger import LOGGER
 from pycypher.node_classes import Literal
 
 TEST_DATA_DIRECTORY = pathlib.Path(__file__).parent / "test_data"
+
+BACK_END_STORES = [SimpleFactCollection, Etcd3FactCollection, RocksDBFactCollection]
 
 
 class patched_uuid:  # pylint: disable=invalid-name,too-few-public-methods
@@ -163,11 +166,14 @@ def fixture_0_data_source_mapping_list():
     ]
 
 
-@pytest.fixture(params=[SimpleFactCollection, Etcd3FactCollection])
+@pytest.fixture(params=BACK_END_STORES)
 def fact_collection_factory(request):
     return request.param()
 
-@pytest.fixture(params=[SimpleFactCollection, Etcd3FactCollection]) # , Etcd3FactCollection])
+
+@pytest.fixture(
+    params=BACK_END_STORES
+)
 def fact_collection_cls_factory(request):
     return request.param
 
@@ -305,14 +311,30 @@ def fact_collection_squares_circles(fact_collection_cls_factory):  # pylint: dis
         FactRelationshipHasLabel("relationship_4", "contains"),
         FactRelationshipHasSourceNode("relationship_4", "square_3"),
         FactRelationshipHasTargetNode("relationship_4", "circle_4"),
-        FactNodeHasAttributeWithValue( "square_1", "name", Literal("square_alice")),
-        FactNodeHasAttributeWithValue( "square_2", "name", Literal("square_bob")),
-        FactNodeHasAttributeWithValue( "square_3", "name", Literal("square_carol")),
-        FactNodeHasAttributeWithValue( "square_4", "name", Literal("square_dave")),
-        FactNodeHasAttributeWithValue( "circle_1", "name", Literal("circle_alice")),
-        FactNodeHasAttributeWithValue( "circle_2", "name", Literal("circle_bob")),
-        FactNodeHasAttributeWithValue( "circle_3", "name", Literal("circle_carol")),
-        FactNodeHasAttributeWithValue( "circle_4", "name", Literal("circle_dave")),
+        FactNodeHasAttributeWithValue(
+            "square_1", "name", Literal("square_alice")
+        ),
+        FactNodeHasAttributeWithValue(
+            "square_2", "name", Literal("square_bob")
+        ),
+        FactNodeHasAttributeWithValue(
+            "square_3", "name", Literal("square_carol")
+        ),
+        FactNodeHasAttributeWithValue(
+            "square_4", "name", Literal("square_dave")
+        ),
+        FactNodeHasAttributeWithValue(
+            "circle_1", "name", Literal("circle_alice")
+        ),
+        FactNodeHasAttributeWithValue(
+            "circle_2", "name", Literal("circle_bob")
+        ),
+        FactNodeHasAttributeWithValue(
+            "circle_3", "name", Literal("circle_carol")
+        ),
+        FactNodeHasAttributeWithValue(
+            "circle_4", "name", Literal("circle_dave")
+        ),
     ]
     fact_collection = fact_collection_cls_factory()
     fact_collection += facts
@@ -332,16 +354,16 @@ def fact_collection_2(fact_collection_cls_factory):
     fact8 = FactRelationshipHasSourceNode("relationship_2", "2")
     fact9 = FactRelationshipHasTargetNode("relationship_2", "3")
     facts = [
-            fact1,
-            fact2,
-            fact3,
-            fact4,
-            fact5,
-            fact6,
-            fact7,
-            fact8,
-            fact9,
-        ]
+        fact1,
+        fact2,
+        fact3,
+        fact4,
+        fact5,
+        fact6,
+        fact7,
+        fact8,
+        fact9,
+    ]
     fact_collection = fact_collection_cls_factory()
     fact_collection += facts
     yield fact_collection
@@ -365,19 +387,19 @@ def fact_collection_3(fact_collection_cls_factory):
     fact13 = FactRelationshipHasTargetNode("relationship_3", "2")
 
     facts = [
-            fact1,
-            fact2,
-            fact3,
-            fact4,
-            fact5,
-            fact6,
-            fact7,
-            fact8,
-            fact9,
-            fact10,
-            fact11,
-            fact12,
-            fact13,
+        fact1,
+        fact2,
+        fact3,
+        fact4,
+        fact5,
+        fact6,
+        fact7,
+        fact8,
+        fact9,
+        fact10,
+        fact11,
+        fact12,
+        fact13,
     ]
     fact_collection = fact_collection_cls_factory()
     fact_collection += facts
@@ -409,23 +431,23 @@ def fact_collection_4(fact_collection_cls_factory):
     fact17 = FactRelationshipHasTargetNode("relationship_4", "5")
 
     facts = [
-            fact1,
-            fact2,
-            fact3,
-            fact4,
-            fact5,
-            fact6,
-            fact7,
-            fact8,
-            fact9,
-            fact10,
-            fact11,
-            fact12,
-            fact13,
-            fact14,
-            fact15,
-            fact16,
-            fact17,
+        fact1,
+        fact2,
+        fact3,
+        fact4,
+        fact5,
+        fact6,
+        fact7,
+        fact8,
+        fact9,
+        fact10,
+        fact11,
+        fact12,
+        fact13,
+        fact14,
+        fact15,
+        fact16,
+        fact17,
     ]
     fact_collection = fact_collection_cls_factory()
     fact_collection += facts
@@ -458,33 +480,33 @@ def fact_collection_5(fact_collection_cls_factory):
 
     fact18 = FactNodeHasAttributeWithValue("4", "foo", Literal(2))
 
-#         'MATCH (n:Thing {foo: "2"})-[r:MyRelationship]->(m:MiddleThing)-'
-#         "[s:OtherRelationship]->(o:OtherThing) "
-#         "RETURN n.foobar"
-# [
-#     {'m': '2', 'r': 'relationship_3', 's': 'relationship_4', 'n': '4', 'o': '5'},
-#     {'m': '2', 'r': 'relationship_3', 's': 'relationship_2', 'n': '4', 'o': '3'}
-# ]
+    #         'MATCH (n:Thing {foo: "2"})-[r:MyRelationship]->(m:MiddleThing)-'
+    #         "[s:OtherRelationship]->(o:OtherThing) "
+    #         "RETURN n.foobar"
+    # [
+    #     {'m': '2', 'r': 'relationship_3', 's': 'relationship_4', 'n': '4', 'o': '5'},
+    #     {'m': '2', 'r': 'relationship_3', 's': 'relationship_2', 'n': '4', 'o': '3'}
+    # ]
     facts = [
-            fact1,
-            fact2,
-            fact3,
-            fact4,
-            fact5,
-            fact6,
-            fact7,
-            fact8,
-            fact9,
-            fact10,
-            fact11,
-            fact12,
-            fact13,
-            fact14,
-            fact15,
-            fact16,
-            fact17,
-            fact18,
-        ]
+        fact1,
+        fact2,
+        fact3,
+        fact4,
+        fact5,
+        fact6,
+        fact7,
+        fact8,
+        fact9,
+        fact10,
+        fact11,
+        fact12,
+        fact13,
+        fact14,
+        fact15,
+        fact16,
+        fact17,
+        fact18,
+    ]
 
     fact_collection = fact_collection_cls_factory()
     fact_collection += facts
@@ -522,28 +544,28 @@ def fact_collection_6(fact_collection_cls_factory):  # pylint: disable=too-many-
     fact19 = FactNodeHasLabel("6", "Irrelevant")
 
     facts = [
-            fact1,
-            fact2,
-            fact3,
-            fact4,
-            fact5,
-            fact6,
-            fact7,
-            fact8,
-            fact9,
-            fact10,
-            fact11,
-            fact12,
-            fact13,
-            fact14,
-            fact15,
-            fact16,
-            fact17,
-            fact18,
-            fact19,
-            fact20,
-            fact21,
-        ]
+        fact1,
+        fact2,
+        fact3,
+        fact4,
+        fact5,
+        fact6,
+        fact7,
+        fact8,
+        fact9,
+        fact10,
+        fact11,
+        fact12,
+        fact13,
+        fact14,
+        fact15,
+        fact16,
+        fact17,
+        fact18,
+        fact19,
+        fact20,
+        fact21,
+    ]
 
     fact_collection = fact_collection_cls_factory()
     fact_collection += facts
@@ -792,7 +814,7 @@ def session_with_trigger_using_data_asset(session_with_data_asset):
 def etcd3_fact_collection():
     fact_collection = Etcd3FactCollection()
     yield fact_collection
-    fact_collection.close()
+    fact_collection.clear()
 
 
 # Cypher

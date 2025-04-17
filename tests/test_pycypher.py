@@ -117,6 +117,7 @@ from pycypher.fact import (  # We might get rid of this class entirely
     FactRelationshipHasSourceNode,
     FactRelationshipHasTargetNode,
     SimpleFactCollection,
+    RocksDBFactCollection,
 )
 from pycypher.logger import LOGGER
 from pycypher.node_classes import (
@@ -1008,7 +1009,6 @@ def test_find_no_solutions_relationship_chain_fork_node_attribute_value_wrong_ty
     solutions = result.parse_tree.cypher.match_clause.solutions(
         fact_collection_5
     )
-    # import pdb; pdb.set_trace()
     assert not solutions
 
 
@@ -5499,50 +5499,6 @@ def test_get_attribute_entity_pairs_mentioned_in_cypher():
     ]
 
 
-def test_etcd3_fact_index_node_has_label(etcd3_fact_collection):
-    fact = FactNodeHasLabel("1", "Thing")
-    index = etcd3_fact_collection.make_index_for_fact(fact)
-    assert index == "node_label:1:Thing"
-
-
-def test_etcd3_fact_index_node_has_attribute_with_value(
-    etcd3_fact_collection,
-):
-    fact = FactNodeHasAttributeWithValue("1", "foo", "bar")
-    index = etcd3_fact_collection.make_index_for_fact(fact)
-    assert index == "node_attribute:1:foo:bar"
-
-
-def test_etcd3_fact_index_relationship_has_source_node(
-    etcd3_fact_collection,
-):
-    fact = FactRelationshipHasSourceNode("1", "2")
-    index = etcd3_fact_collection.make_index_for_fact(fact)
-    assert index == "relationship_source_node:1:2"
-
-
-def test_etcd3_fact_index_relationship_has_target_node(
-    etcd3_fact_collection,
-):
-    fact = FactRelationshipHasTargetNode("1", "2")
-    index = etcd3_fact_collection.make_index_for_fact(fact)
-    assert index == "relationship_target_node:1:2"
-
-
-def test_etcd3_fact_add_fact(etcd3_fact_collection):
-    fact = FactNodeHasLabel("1", "Thing")
-    etcd3_fact_collection.append(fact)
-    assert fact in etcd3_fact_collection
-
-
-def test_delete_fact_from_etcd3(etcd3_fact_collection):
-    fact = FactNodeHasLabel("1", "Thing")
-    etcd3_fact_collection.append(fact)
-    assert fact in etcd3_fact_collection
-    etcd3_fact_collection.delete_fact(fact)
-    assert fact not in etcd3_fact_collection
-
-
 def test_anything_cast():
     """Test that _Anything.cast returns the value unchanged."""
     anything = _Anything()
@@ -6140,3 +6096,13 @@ def test_is_true_eq():
 def test_fact_collection_factory(fact_collection_factory):
     """Test that FactCollectionFactory can create FactCollection instances."""
     assert isinstance(fact_collection_factory, FactCollection)
+
+
+def test_rocks():
+    from pycypher.fact import RocksDBFactCollection
+
+    fact_collection = RocksDBFactCollection()
+    fact = FactNodeHasLabel("1", "Thing")
+    fact_collection.append(fact)
+    assert fact in fact_collection
+    fact_collection.close()

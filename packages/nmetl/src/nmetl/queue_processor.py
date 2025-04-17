@@ -9,13 +9,14 @@ implementations for specific tasks in the data processing pipeline.
 
 from __future__ import annotations
 
+import cProfile
 import datetime
 import hashlib
 import inspect
 import queue
 import sys
-import time
 import threading
+import time
 import traceback
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -80,7 +81,7 @@ class QueueProcessor(ABC):  # pylint: disable=too-few-public-methods,too-many-in
         """
         self.session = session
         self.processing_thread = threading.Thread(
-            target=self.process_queue, name=self.__class__.__name__
+            target=self.profile_thread_function, name=self.__class__.__name__
         )
         self.started = False
         self.started_at = None
@@ -91,11 +92,22 @@ class QueueProcessor(ABC):  # pylint: disable=too-few-public-methods,too-many-in
         self.incoming_queue = incoming_queue
         self.outgoing_queue = outgoing_queue
         self.status_queue = status_queue
+        self.profiler = None
 
         if self.outgoing_queue:
             self.outgoing_queue.incoming_queue_processors.append(self)
         self.secondary_cache = []
         self.secondary_cache_max_size = 1_000
+
+    def profile_thread_function(self):
+        if self.session.profiler:
+            self.profiler = cProfile.Profile()
+            self.profiler.enable()
+            self.process_queue()
+            self.profiler.disable()
+            self.profiler.dump_stats("profile_output_thread")
+        else:
+            self.process_queue()
 
     def process_queue(self) -> None:
         """Process every item in the queue using the yield_items method."""
@@ -103,6 +115,13 @@ class QueueProcessor(ABC):  # pylint: disable=too-few-public-methods,too-many-in
         self.started_at = datetime.datetime.now()
         for item in self.incoming_queue.yield_items():
             self.received_counter += 1
+            # dump profiler data
+            if (
+                self.profiler
+                and self.received_counter % self.session.dump_profile_interval
+                == 0
+            ):
+                self.profiler.dump_stats(self.__class__.__name__ + ".prof")
             try:
                 out = self._process_item_from_queue(item)
             except Exception as e:  # pylint: disable=broad-except
@@ -190,8 +209,9 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
         out = []
         LOGGER.debug("Checking fact %s against triggers", item)
         while item not in self.session.fact_collection:
-            LOGGER.debug("Fact %s not in collection, waiting", item)
-            time.sleep(1.0)
+            LOGGER.debug("Fact %s not in collection, waiting", item.__dict__)
+            time.sleep(.1)
+        LOGGER.debug('IN COLLECTION: %s', item.__dict__)
         # Let's filter out the facts that are irrelevant to this trigger
         for _, trigger in self.session.trigger_dict.items():
             # Let's bomb out if the attribute in the fact is not in the trigger
@@ -218,7 +238,7 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
                 )
 
                 if sub := item + constraint:
-                    LOGGER.info("Fact %s matched a trigger", item)
+                    LOGGER.debug("Fact %s matched a trigger", item)
                     sub_trigger_pair = SubTriggerPair(sub=sub, trigger=trigger)
                     out.append(sub_trigger_pair)
         return out
@@ -244,7 +264,7 @@ class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-publi
         try:
             return self._process_sub_trigger_pair(item)
         except Exception as e:  # pylint: disable=broad-exception-caught
-            LOGGER.error("Error processing trigger: %s", e)
+            LOGGER.info("Error processing trigger: %s", e)
             self.status_queue.put(e)
         finally:
             self.finished = True

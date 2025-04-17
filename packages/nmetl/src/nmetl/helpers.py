@@ -10,13 +10,13 @@ from typing import Any, Generator, Optional, Type
 from urllib.parse import ParseResult, urlparse
 
 from nmetl.config import (  # pylint: disable=no-name-in-module
+    DEFAULT_QUEUE_SIZE,
     INNER_QUEUE_TIMEOUT,
     OUTER_QUEUE_TIMEOUT,
 )
 from nmetl.message_types import EndOfData
 from pycypher.logger import LOGGER
 
-from nmetl.config import DEFAULT_QUEUE_SIZE
 
 def ensure_uri(uri: str | ParseResult | Path) -> ParseResult:
     """
@@ -104,7 +104,7 @@ class QueueGenerator:  # pylint: disable=too-few-public-methods,too-many-instanc
                     break
 
                 try:
-                    item = self.get(timeout=.001)
+                    item = self.get(timeout=self.inner_queue_timeout)
                 except queue.Empty:
                     continue
                 # Need to check ALL of the incoming data sources

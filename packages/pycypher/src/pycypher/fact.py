@@ -11,15 +11,24 @@ from __future__ import annotations
 
 import collections
 from abc import ABC, abstractmethod
-import asyncio
 import time
+import logging
 from typing import Any, Dict, Generator, List, Optional
 
 from nmetl.helpers import decode, encode
 from nmetl.logger import LOGGER
-from nmetl.config import ETCD3_RETRY_DELAY, BLOOM_FILTER_SIZE, BLOOM_FILTER_ERROR_RATE  # pylint: disable=no-name-in-module
-
+from nmetl.config import (  # pylint: disable=no-name-in-module
+    CLEAR_DB_ON_START,
+    ETCD3_RETRY_DELAY,
+    BLOOM_FILTER_SIZE,
+    BLOOM_FILTER_ERROR_RATE,
+)
 from rbloom import Bloom
+from rocksdict import Rdict, BlockBasedOptions, BlockBasedIndexType,WriteOptions, ReadOptions, Options, DBCompressionType
+
+
+
+LOGGER.setLevel(logging.INFO)
 
 try:
     import etcd3
@@ -64,7 +73,7 @@ class AtomicFact:  # pylint: disable=too-few-public-methods
             session (Optional[Session]): The session this fact belongs to. Defaults to None.
         """
         self.session = session
-    
+
     def __getstate__(self):
         state = self.__dict__.copy()
         del state["session"]
@@ -440,7 +449,6 @@ class FactCollection(ABC):
 
     def __init__(
         self,
-        facts: Optional[List[AtomicFact]] = None,
         session: Optional["Session"] = None,  # type: ignore
     ):
         """
@@ -450,8 +458,12 @@ class FactCollection(ABC):
             facts (Optional[List[AtomicFact]]): A list of AtomicFact instances. Defaults to an empty list if None is provided.
             session (Optional[Session]): The session this fact collection belongs to. Defaults to None.
         """
-        self.facts: List[AtomicFact] = facts or []
+        # self.facts: List[AtomicFact] = facts or []
         self.session: Optional["Session"] = session  # type: ignore
+        self.put_counter = 0
+        self.yielded_counter = 0
+        if CLEAR_DB_ON_START:
+            self.clear()
 
     def __iter__(self) -> Generator[AtomicFact]:
         """
@@ -461,6 +473,10 @@ class FactCollection(ABC):
             AtomicFact: Each fact in the collection.
         """
         yield from self.keys()
+    
+    def clear(self):
+        '''ABC'''
+        pass
 
     def __repr__(self) -> str:
         """
@@ -571,6 +587,31 @@ class FactCollection(ABC):
             for fact in self
         )
 
+    def node_label_attribute_inventory(self):
+        """
+        Return a dictionary of all the facts in the collection.
+
+        Returns:
+            dict: A dictionary of all the facts in the collection.
+        """
+        attributes_by_label = collections.defaultdict(set)
+        relationship_labels = set()
+
+        for fact in self:
+            match fact:
+                case FactNodeHasAttributeWithValue():
+                    label = self.query(QueryNodeLabel(node_id=fact.node_id))
+                    attributes_by_label[label].add(fact.attribute)
+                case FactNodeHasLabel():
+                    if fact.label not in attributes_by_label:
+                        attributes_by_label[fact.label] = set()
+                case FactRelationshipHasLabel():
+                    relationship_labels.add(fact.relationship_label)
+                case _:
+                    continue
+
+        return attributes_by_label
+
     def node_has_attribute_with_value_facts(self):
         """
         Generator method that yields facts of type FactNodeHasAttributeWithValue.
@@ -610,31 +651,6 @@ class FactCollection(ABC):
         """
         return len(self) == 0
 
-    def node_label_attribute_inventory(self):
-        """
-        Return a dictionary of all the facts in the collection.
-
-        Returns:
-            dict: A dictionary of all the facts in the collection.
-        """
-        attributes_by_label = collections.defaultdict(set)
-        relationship_labels = set()
-
-        for fact in self:
-            match fact:
-                case FactNodeHasAttributeWithValue():
-                    label = self.query(QueryNodeLabel(node_id=fact.node_id))
-                    attributes_by_label[label].add(fact.attribute)
-                case FactNodeHasLabel():
-                    if fact.label not in attributes_by_label:
-                        attributes_by_label[fact.label] = set()
-                case FactRelationshipHasLabel():
-                    relationship_labels.add(fact.relationship_label)
-                case _:
-                    continue
-
-        return attributes_by_label
-    
     def query_value_of_node_attribute(self, query: QueryValueOfNodeAttribute):
         """
         Query the value of a node's attribute.
@@ -661,26 +677,24 @@ class FactCollection(ABC):
         if not facts:
             return NullResult(query)
         if len(facts) > 1:
-            raise ValueError(
-                f"Found multiple values for {query}: {facts}"
-            )
+            raise ValueError(f"Found multiple values for {query}: {facts}")
         raise ValueError("Unknown error")
 
     def query_node_label(self, query: QueryNodeLabel):
         """Given a query for a node label, return the label if it exists.
 
-            If no label exists, return a NullResult. If multiple labels
-            exist, raise a ValueError.
+        If no label exists, return a NullResult. If multiple labels
+        exist, raise a ValueError.
 
-            Args:
-                query: The query to execute.
+        Args:
+            query: The query to execute.
 
-            Returns:
-                The label of the node, or a NullResult if no label exists.
+        Returns:
+            The label of the node, or a NullResult if no label exists.
 
-            Raises:
-                ValueError: If multiple labels exist for the node.
-            """
+        Raises:
+            ValueError: If multiple labels exist for the node.
+        """
         facts = [
             fact
             for fact in self.node_has_label_facts()
@@ -715,7 +729,7 @@ class FactCollection(ABC):
             ):
                 row[fact.attribute] = fact.value
         return row
-    
+
     def query(self, query: Query) -> Any:
         """
         Executes a query to retrieve information based on the type of the query.
@@ -735,9 +749,9 @@ class FactCollection(ABC):
         """
         match query:
             case QueryValueOfNodeAttribute():
-                self.query_value_of_node_attribute(query)
+                return self.query_value_of_node_attribute(query)
             case QueryNodeLabel():
-                self.query_node_label(query)
+                return self.query_node_label(query)
             case _:
                 raise NotImplementedError(f"Unknown query type {query}")
 
@@ -768,7 +782,7 @@ class FactCollection(ABC):
         inventory = list(self.node_label_attribute_inventory()[label])
         for node_id in self.nodes_with_label(label):
             yield self.attributes_for_specific_node(node_id, *inventory)
-    
+
     @abstractmethod
     def close(self):
         """When cleanup is necessary for the class"""
@@ -809,7 +823,7 @@ class SimpleFactCollection(FactCollection):
             AtomicFact: Each fact in the collection.
         """
         yield from self.facts
-    
+
     def close(self):
         """Vacuously satisfy the interface"""
         pass
@@ -992,7 +1006,7 @@ class SimpleFactCollection(FactCollection):
         """
         return len(self.facts) == 0
 
-    def node_label_attribute_inventory(self):
+    def node_label_attribute_inventory_bak(self):
         """
         Return a dictionary of all the facts in the collection.
 
@@ -1137,12 +1151,14 @@ class Etcd3FactCollection(FactCollection, KeyValue):
         self.bloom_filter_diversions = 0
         self.cache_hits = 0
         self.secondary_cache = []
-        self.secondary_cache_max_size = 127
+        self.secondary_cache_max_size = 120
         self.transaction = self.client.Txn()
-        self.event_loop = asyncio.get_event_loop()
+        self.put_counter = 0
         super().__init__(*args, **kwargs)
-    
-    def query_value_of_node_attribute(self, query: QueryValueOfNodeAttribute):
+
+    def query_value_of_node_attribute_bak(
+        self, query: QueryValueOfNodeAttribute
+    ):
         """
         Query the value of a node's attribute.
 
@@ -1161,13 +1177,15 @@ class Etcd3FactCollection(FactCollection, KeyValue):
         prefix = f"node_attribute:{query.node_id}:{query.attribute}:"
         matches = self.client.range(prefix, prefix + "\0").kvs or []
         if len(matches) == 1:
-            return matches[0].value.value if hasattr(matches[0].value, "value") else matches[0].value
+            return (
+                matches[0].value.value
+                if hasattr(matches[0].value, "value")
+                else matches[0].value
+            )
         if not matches:
             return NullResult(query)
         if len(matches) > 1:
-            raise ValueError(
-                f"Found multiple values for {query}: {matches}"
-            )
+            raise ValueError(f"Found multiple values for {query}: {matches}")
         raise ValueError("Unknown error")
 
     def keys(self) -> Generator[str]:
@@ -1177,13 +1195,10 @@ class Etcd3FactCollection(FactCollection, KeyValue):
         Yields:
             str: Each key stored in the memcached server.
         """
-        try:
-            for key_value in self.client.range(all=True).kvs:
-                key = key_value.key.decode("utf-8")
-                yield key
-        except TypeError:  # Empty
-            pass
-    
+        for key_value in self.client.range(all=True).kvs:
+            key = key_value.key.decode("utf-8")
+            yield key
+
     def close(self):
         """Clear the etcd3 when we're done"""
         self.clear()
@@ -1221,13 +1236,9 @@ class Etcd3FactCollection(FactCollection, KeyValue):
             pymemcache.exceptions.MemcacheError: If there's an error communicating with the memcached server.
             pickle.PickleError: If there's an error unpickling the data.
         """
-        # Get number of keys in etcd:
-        try:
-            for key_value in self.client.range(all=True).kvs:
-                value = key_value.value
-                yield decode(value)
-        except TypeError:  # Empty
-            pass
+        for key_value in self.client.range(all=True).kvs:
+            value = key_value.value
+            yield decode(value)
 
     def clear(self):
         """Erase all the keys in the etcd3"""
@@ -1243,21 +1254,21 @@ class Etcd3FactCollection(FactCollection, KeyValue):
         """Delete a fact from the etcd3"""
         index = self.make_index_for_fact(fact)
         self.client.delete_range(key=index)
-    
-    def node_has_label_facts(self):
-        """
-        Generator function that yields facts of type `FactNodeHasLabel`.
 
-        Iterates over the `facts` attribute and yields each fact that is an instance
-        of `FactNodeHasLabel`.
+    # def node_has_label_facts_bak(self):
+    #     """
+    #     Generator function that yields facts of type `FactNodeHasLabel`.
 
-        Yields:
-            FactNodeHasLabel: Facts that are instances of `FactNodeHasLabel`.
-        """
-        matches = self.client.range("node_label:").kvs or []
-        for match in matches:
-            fact = decode(match.value)
-            yield fact
+    #     Iterates over the `facts` attribute and yields each fact that is an instance
+    #     of `FactNodeHasLabel`.
+
+    #     Yields:
+    #         FactNodeHasLabel: Facts that are instances of `FactNodeHasLabel`.
+    #     """
+    #     matches = self.client.range("node_label:").kvs or []
+    #     for match in matches:
+    #         fact = decode(match.value)
+    #         yield fact
 
     def __contains__(self, fact: AtomicFact) -> bool:
         """
@@ -1275,16 +1286,91 @@ class Etcd3FactCollection(FactCollection, KeyValue):
         if index not in self.bloom:
             self.bloom_filter_diversions += 1
             LOGGER.debug(
-                "Bloom filter diversion: %s, cache hits: %s", 
-                self.bloom_filter_diversions, self.cache_hits
-                )
+                "Bloom filter diversion: %s, cache hits: %s",
+                self.bloom_filter_diversions,
+                self.cache_hits,
+            )
             return False
 
-        if self.client.range(index, index + "\0").kvs:
+        if key_value_list := self.client.range(index, index + "\0").kvs:
+            key_value = key_value_list[0]
+            LOGGER.debug("Cache hit: %s", self.cache_hits)
             self.cache_hits += 1
-            return True
+            return decode(key_value.value) == fact
 
         return False
+
+    def query_node_label(self, query: QueryNodeLabel):
+        """Given a query for a node label, return the label if it exists.
+
+        If no label exists, return a NullResult. If multiple labels
+        exist, raise a ValueError.
+
+        Args:
+            query: The query to execute.
+
+        Returns:
+            The label of the node, or a NullResult if no label exists.
+
+        Raises:
+            ValueError: If multiple labels exist for the node.
+
+        case FactNodeHasLabel():
+            return f"node_label:{fact.node_id}:{fact.label}"
+        case FactNodeHasAttributeWithValue():
+            return f"node_attribute:{fact.node_id}:{fact.attribute}:{fact.value}"
+        case FactRelationshipHasLabel():
+            return f"relationship_label:{fact.relationship_id}:{fact.relationship_label}"
+        case FactRelationshipHasAttributeWithValue():
+            return f"relationship_attribute:{fact.relationship_id}:{fact.attribute}:{fact.value}"
+        case FactRelationshipHasSourceNode():
+            return f"relationship_source_node:{fact.relationship_id}:{fact.source_node_id}"
+        case FactRelationshipHasTargetNode():
+            return f"relationship_target_node:{fact.relationship_id}:{fact.target_node_id}"
+        case FactNodeRelatedToNode():
+            return f"node_relationship:{fact.node1_id}:{fact.node2_id}:{fact.relationship_label}"
+        """
+
+        facts = [
+            fact
+            for fact in self.node_has_label_facts()
+            if fact.node_id == query.node_id
+        ]
+        if len(facts) == 1:
+            return facts[0].label
+        if not facts:
+            return NullResult(query)
+        if len(facts) > 1:
+            raise ValueError(f"Found multiple labels for {query}")
+        raise ValueError("Unknown error")
+
+    def query_value_of_node_attribute(self, query: QueryValueOfNodeAttribute):
+        """
+        Query the value of a node's attribute.
+
+        Args:
+            query (QueryValueOfNodeAttribute): Query object containing the node_id
+                and attribute to look up.
+
+        Returns:
+            Any: The value of the requested attribute if found.
+            NullResult: If no matching attribute is found.
+
+        Raises:
+            ValueError: If multiple values are found for the same attribute.
+
+        """
+        prefix = f"node_attribute:{query.node_id}:{query.attribute}:"
+
+        key_value_list = (
+            self.client.range(prefix, prefix + "\0").kvs or []
+        )  # Could be None
+        if len(key_value_list) == 1:
+            key_value = key_value_list[0]
+            fact = decode(key_value.value)
+            return fact
+        else:
+            return NullResult(query)
 
     def append(self, fact: AtomicFact) -> None:
         """
@@ -1297,14 +1383,22 @@ class Etcd3FactCollection(FactCollection, KeyValue):
         Returns:
             None
         """
+        self.put_counter += 1
+        if self.put_counter % 1000 == 0:
+            LOGGER.warning("Put counter: %s", self.put_counter)
         index = self.make_index_for_fact(fact)
-        self.secondary_cache.append((index, fact,))
+        self.secondary_cache.append(
+            (
+                index,
+                fact,
+            )
+        )
         retry_counter = 0
         while 1:
             try:
                 self.client.put(index, encode(fact))
                 break
-            except Exception as e:
+            except Exception as e:  # pylint: disable=broad-exception-caught
                 LOGGER.warning("Error writing to etcd3: %s", e)
                 retry_counter += 1
                 if retry_counter > 10:
@@ -1312,15 +1406,12 @@ class Etcd3FactCollection(FactCollection, KeyValue):
                 time.sleep(ETCD3_RETRY_DELAY)
                 continue
             break
-        self.bloom.add(index)
         if len(self.secondary_cache) <= self.secondary_cache_max_size:
             return
-        LOGGER.warning("Flushing cache")
+        LOGGER.debug("Flushing cache")
         transaction = self.client.Txn()
         cached_indexes = []
         for index, cached_fact in self.secondary_cache:
-            # transaction.compare(True)
-            # self.client.put(index, encode(cached_fact))
             if index in cached_indexes:
                 LOGGER.warning("Duplicate index %s", index)
                 continue
@@ -1333,3 +1424,299 @@ class Etcd3FactCollection(FactCollection, KeyValue):
 
     def __iter__(self) -> Generator[AtomicFact]:
         yield from self.values()
+
+
+class RocksDBFactCollection(FactCollection, KeyValue):
+    """
+    ``FactCollection`` that uses RocksDB as a backend.
+
+    Attributes:
+        session (Session): The session object associated with the fact collection.
+    """
+
+    def __init__(self, *args, **kwargs):
+        """
+        Initialize a etcd3 instance.
+
+        Args:
+            *args: Variable positional arguments (ignored).
+            **kwargs: Variable keyword arguments (ignored).
+        """
+        self.db_path = "./rocksdb"
+        self.write_options = WriteOptions()
+        self.write_options.sync = False
+        self.options = Options()
+        self.options.set_unordered_write(True)
+        self.options.create_if_missing(True)
+        self.options.set_max_background_jobs(10)
+        self.options.set_max_write_buffer_number(10)
+        self.options.set_write_buffer_size(1024 * 1024 * 1024)
+
+        self.write_options = WriteOptions()
+        self.write_options.disable_wal = True
+
+        self.db = Rdict(self.db_path, self.options)
+        self.db.set_write_options(self.write_options)
+        block_opts = BlockBasedOptions()
+        block_opts.set_index_type(BlockBasedIndexType.hash_search())
+        block_opts.set_bloom_filter(4196, True)
+        self.options.set_block_based_table_factory(block_opts)
+        self.iter = self.db.iter(ReadOptions())
+        self.LAST_KEY = "\x0c"  # pylint: disable=invalid-name
+        self.diverted_counter = 0
+        self.diversion_miss_counter = 0
+        super().__init__(*args, **kwargs)
+
+
+
+
+    def range_read(self, start_key, end_key) -> Generator[Any, Any]:
+        """
+        Read a range of keys from the database.
+
+        Args:
+            start_key (str): The starting key of the range.
+            end_key (str): The ending key of the range.
+
+        Yields:
+            Any: The values associated with the keys in the range.
+        """
+        # print(f"range_read: {start_key} {end_key}")
+        self.iter.seek(start_key)
+        key = self.iter.key()
+        value = self.iter.value()
+        while end_key is not None and key is not None and key <= end_key:
+            self.yielded_counter += 1
+            yield key, value
+            self.iter.next()
+            key = self.iter.key()
+            value = self.iter.value()
+            if key is None:
+                break
+
+    def keys(self) -> Generator[str]:
+        """
+        Yields:
+            str: Each key
+        """
+
+        for key, _ in self.db.keys():
+            yield key
+
+    def values(self) -> Generator[AtomicFact]:
+        """
+        Iterate over all values stored in the memcached server.
+
+        Yields:
+            AtomicFact: Each value stored in the memcached server.
+
+        Raises:
+            pymemcache.exceptions.MemcacheError: If there's an error communicating with the memcached server.
+            pickle.PickleError: If there's an error unpickling the data.
+        """
+        for value in self.db.values():
+            yield decode(value)
+
+    def close(self):
+        """Clear the etcd3 when we're done"""
+        pass
+
+    def __delitem__(self, key: str):
+        """
+        Delete a fact.
+
+        Raises:
+            IndexError: If the index is out of range.
+        """
+        del self.db[key]
+
+    def __len__(self):
+        """
+        Get the number of facts in the collection.
+
+        Returns:
+            int: The number of facts in the collection.
+        """
+        counter = 0
+        for k in self.db.keys():
+            LOGGER.debug('counting: %s', k)
+            counter += 1
+        return counter
+
+    def clear(self):
+        """Erase all the keys in the db"""
+        LOGGER.warning('Deleting RocksDB')
+        self.db.delete_range("", self.LAST_KEY)
+
+    def __contains__(self, fact: AtomicFact) -> bool:
+        """
+        Check if a fact is in the collection.
+
+        Args:
+            fact (AtomicFact): The fact to check for.
+
+        Returns:
+            bool: True if the fact is in the collection, False otherwise.
+        """
+        index = self.make_index_for_fact(fact)
+        if self.db.key_may_exist(index):
+            value = self.db.get(index)
+            if value is None:
+                self.diversion_miss_counter += 1
+            return value is not None
+        self.diverted_counter += 1
+        return False
+
+    def query_node_label(self, query: QueryNodeLabel):
+        """Given a query for a node label, return the label if it exists.
+
+        If no label exists, return a NullResult. If multiple labels
+        exist, raise a ValueError.
+
+        Args:
+            query: The query to execute.
+
+        Returns:
+            The label of the node, or a NullResult if no label exists.
+
+        Raises:
+            ValueError: If multiple labels exist for the node.
+
+        case FactNodeHasLabel():
+            return f"node_label:{fact.node_id}:{fact.label}"
+        case FactNodeHasAttributeWithValue():
+            return f"node_attribute:{fact.node_id}:{fact.attribute}:{fact.value}"
+        case FactRelationshipHasLabel():
+            return f"relationship_label:{fact.relationship_id}:{fact.relationship_label}"
+        case FactRelationshipHasAttributeWithValue():
+            return f"relationship_attribute:{fact.relationship_id}:{fact.attribute}:{fact.value}"
+        case FactRelationshipHasSourceNode():
+            return f"relationship_source_node:{fact.relationship_id}:{fact.source_node_id}"
+        case FactRelationshipHasTargetNode():
+            return f"relationship_target_node:{fact.relationship_id}:{fact.target_node_id}"
+        case FactNodeRelatedToNode():
+            return f"node_relationship:{fact.node1_id}:{fact.node2_id}:{fact.relationship_label}"
+        """
+
+        facts = [
+            fact
+            for fact in self.node_has_label_facts()
+            if fact.node_id == query.node_id
+        ]
+        if len(facts) == 1:
+            return facts[0].label
+        if not facts:
+            return NullResult(query)
+        if len(facts) > 1:
+            raise ValueError(f"Found multiple labels for {query}")
+        raise ValueError("Unknown error")
+
+    def append(self, fact: AtomicFact) -> None:
+        """
+        Insert an AtomicFact.
+
+        Args:
+            value (AtomicFact): The AtomicFact object to be inserted.
+
+        Returns:
+            None
+        """
+        self.put_counter += 1
+        index = self.make_index_for_fact(fact)
+        self.db.put(index, encode(fact), write_opt=self.write_options)
+        self.db.flush()
+
+    def __iter__(self) -> Generator[AtomicFact]:
+        yield from self.values()
+
+    def __repr__(self):
+        return "Rocks"
+
+    def query_value_of_node_attribute(self, query: QueryValueOfNodeAttribute):
+        """
+        Query the value of a node's attribute.
+
+        Args:
+            query (QueryValueOfNodeAttribute): Query object containing the node_id
+                and attribute to look up.
+
+        Returns:
+            Any: The value of the requested attribute if found.
+            NullResult: If no matching attribute is found.
+
+        Raises:
+            ValueError: If multiple values are found for the same attribute.
+
+        """
+        prefix = f"node_attribute:{query.node_id}:{query.attribute}:"
+
+        result = list(self.range_read(prefix, prefix + self.LAST_KEY))
+        if len(result) == 1:
+            key_value = result[0]
+            fact = decode(key_value[1])
+            return fact
+        else:
+            return NullResult(query)
+    
+    
+    def nodes_with_label(self, label: str) -> Generator[str]:
+        """
+        Return a list of all the nodes with a specific label.
+
+        Args:
+            label (str): The label of the nodes to return.
+
+        Returns:
+            list: A list of all the nodes with the specified label.
+        """
+        for fact in self.node_has_label_facts():
+            if fact.label == label:
+                yield fact.node_id
+
+    
+    def relationship_has_source_node_facts(self):
+        """
+        Generator method that yields facts of type FactRelationshipHasSourceNode.
+
+        This method iterates over the `facts` attribute of the instance and yields
+        each fact that is an instance of the FactRelationshipHasSourceNode class.
+
+        Yields:
+            FactRelationshipHasSourceNode: Facts that are instances of
+                FactRelationshipHasSourceNode.
+        """
+        print("relationship_has_source_node_facts")
+        for fact in self:
+            if isinstance(fact, FactRelationshipHasSourceNode):
+                print(f"relationship_has_source_node_facts: {fact}")
+                yield fact
+
+    def relationship_has_target_node_facts(self):
+        """
+        Generator method that yields facts of type FactRelationshipHasTargetNode.
+
+        Iterates over the `facts` attribute of the instance and yields each fact
+        that is an instance of FactRelationshipHasTargetNode.
+
+        Yields:
+            FactRelationshipHasTargetNode: Facts that are instances of
+                FactRelationshipHasTargetNode.
+        """
+        for fact in self:
+            if isinstance(fact, FactRelationshipHasTargetNode):
+                print(f"relationship_has_target_node_facts: {fact}")
+                yield fact
+
+    def node_has_label_facts(self):
+        """
+        Generator function that yields facts of type `FactNodeHasLabel`.
+
+        Iterates over the `facts` attribute and yields each fact that is an instance
+        of `FactNodeHasLabel`.
+
+        Yields:
+            FactNodeHasLabel: Facts that are instances of `FactNodeHasLabel`.
+        """
+        for fact in self:
+            if isinstance(fact, FactNodeHasLabel):
+                yield fact

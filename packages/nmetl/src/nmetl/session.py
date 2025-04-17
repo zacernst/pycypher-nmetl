@@ -19,7 +19,15 @@ from dataclasses import dataclass
 from hashlib import md5
 from typing import Any, Dict, Generator, Iterable, List, Optional, Type
 
-from nmetl.config import MONITOR_LOOP_DELAY  # pylint: disable=no-name-in-module
+from nmetl.config import (  # pylint: disable=no-name-in-module
+    CHECK_FACT_AGAINST_TRIGGERS_QUEUE_SIZE,
+    DUMP_PROFILE_INTERVAL,
+    FACT_GENERATED_QUEUE_SIZE,
+    MONITOR_LOOP_DELAY,
+    PROFILER,
+    RAW_INPUT_QUEUE_SIZE,
+    TRIGGERED_LOOKUP_PROCESSOR_QUEUE_SIZE,
+)
 from nmetl.data_asset import DataAsset
 from nmetl.data_source import DataSource
 from nmetl.exceptions import (
@@ -34,13 +42,6 @@ from nmetl.queue_processor import (
     RawDataProcessor,
     TriggeredLookupProcessor,
 )
-
-from nmetl.config import (  # pylint: disable=no-name-in-module
-    CHECK_FACT_AGAINST_TRIGGERS_QUEUE_SIZE,
-    FACT_GENERATED_QUEUE_SIZE,
-    RAW_INPUT_QUEUE_SIZE,
-    TRIGGERED_LOOKUP_PROCESSOR_QUEUE_SIZE,
-)
 from nmetl.trigger import (
     NodeRelationship,
     NodeRelationshipTrigger,
@@ -48,7 +49,7 @@ from nmetl.trigger import (
     VariableAttributeTrigger,
 )
 from pycypher.cypher_parser import CypherParser
-from pycypher.fact import AtomicFact, FactCollection
+from pycypher.fact import AtomicFact, FactCollection, SimpleFactCollection
 from pycypher.logger import LOGGER
 from pycypher.solver import Constraint
 from rich.console import Console
@@ -80,6 +81,7 @@ class Session:  # pylint: disable=too-many-instance-attributes
     def __init__(
         self,
         fact_collection: Optional[FactCollection] = None,
+        fact_collection_class: Type[FactCollection] = SimpleFactCollection,
         data_assets: Optional[List[DataAsset]] = None,
         logging_level: Optional[str] = "WARNING",
         queue_class: Optional[Type] = QueueGenerator,
@@ -88,6 +90,8 @@ class Session:  # pylint: disable=too-many-instance-attributes
         queue_list: Optional[List[QueueGenerator]] = None,
         status_queue: Optional[queue.Queue] = None,
         run_monitor: Optional[bool] = True,
+        dump_profile_interval: Optional[int] = DUMP_PROFILE_INTERVAL,
+        profiler: Optional[bool] = PROFILER,
     ):  # pylint: disable=too-many-arguments
         """
         Initialize a new Session instance.
@@ -122,9 +126,14 @@ class Session:  # pylint: disable=too-many-instance-attributes
         # No need for a fancy queue class here
         self.status_queue = status_queue or queue.Queue()
         self.new_column_dict = {}
+        self.dump_profile_interval = dump_profile_interval
+        self.profiler = profiler
 
         self.raw_input_queue = self.queue_class(
-            session=self, name="RawInput", max_queue_size=RAW_INPUT_QUEUE_SIZE, **self.queue_options
+            session=self,
+            name="RawInput",
+            max_queue_size=RAW_INPUT_QUEUE_SIZE,
+            **self.queue_options,
         )
         self.data_assets = data_assets or []
         self.data_asset_names = [
@@ -132,10 +141,16 @@ class Session:  # pylint: disable=too-many-instance-attributes
         ]
 
         self.fact_generated_queue = self.queue_class(
-            session=self, name="FactGenerated", max_queue_size=FACT_GENERATED_QUEUE_SIZE, **self.queue_options
+            session=self,
+            name="FactGenerated",
+            max_queue_size=FACT_GENERATED_QUEUE_SIZE,
+            **self.queue_options,
         )
         self.check_fact_against_triggers_queue = self.queue_class(
-            session=self, name="CheckFactTrigger", max_queue_size=CHECK_FACT_AGAINST_TRIGGERS_QUEUE_SIZE, **self.queue_options
+            session=self,
+            name="CheckFactTrigger",
+            max_queue_size=CHECK_FACT_AGAINST_TRIGGERS_QUEUE_SIZE,
+            **self.queue_options,
         )
         self.triggered_lookup_processor_queue = self.queue_class(
             session=self,
@@ -145,8 +160,11 @@ class Session:  # pylint: disable=too-many-instance-attributes
         )
 
         self.trigger_dict = {}
-        LOGGER.info(f"Creating session with fact collection {fact_collection.__class__.__name__}")
-        self.fact_collection = fact_collection
+        LOGGER.info(
+            "Creating session with fact collection %s",
+            fact_collection.__class__.__name__,
+        )
+        self.fact_collection = fact_collection or fact_collection_class()
         self.raw_data_processor = RawDataProcessor(
             self,
             incoming_queue=self.raw_input_queue,
@@ -306,7 +324,7 @@ class Session:  # pylint: disable=too-many-instance-attributes
         """Generate stats on the ETL process."""
         # Run in daemon thread
         for data_source in self.data_sources:
-            LOGGER.info(
+            LOGGER.debug(
                 "Data source %s has sent %s messages",
                 data_source.name,
                 data_source.sent_counter,
@@ -388,14 +406,20 @@ class Session:  # pylint: disable=too-many-instance-attributes
 
         console.print(table)
 
-        # table = Table(title="FactCollection")
-        # table.add_column("FactCollection", justify="right", style="cyan")
-        # table.add_column("Size", style="magenta")
-        # table.add_row(
-        #     f"{self.fact_collection.__class__.__name__}",
-        #     f"{len(self.fact_collection)}",
-        # )
-        # console.print(table)
+        table = Table(title="FactCollection")
+        table.add_column("FactCollection", justify="right", style="cyan")
+        table.add_column("Puts", style="magenta")
+        table.add_column("Diverted", style="magenta")
+        table.add_column("Yielded", style="magenta")
+        table.add_column("Diversion misses", style="magenta")
+        table.add_row(
+            f"{self.fact_collection.__class__.__name__}",
+            f"{self.fact_collection.put_counter}", # f"{len(self.fact_collection)}",
+            f"{self.fact_collection.diverted_counter}",
+            f"{self.fact_collection.yielded_counter}",
+            f"{self.fact_collection.diversion_miss_counter}",
+        )
+        console.print(table)
 
     def attach_fact_collection(self, fact_collection: FactCollection) -> None:
         """Attach a ``FactCollection`` to the machine."""

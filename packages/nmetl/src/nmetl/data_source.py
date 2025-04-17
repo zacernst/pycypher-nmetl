@@ -10,12 +10,12 @@ such as CSV and Parquet files.
 
 from __future__ import annotations
 
+import cProfile
 import csv
 import datetime
 import hashlib
 import io
 import pstats
-import cProfile
 import threading
 import time
 import uuid
@@ -44,9 +44,10 @@ def profile_thread(func, *args, **kwargs):
     func(*args, **kwargs)
     pr.disable()
     s = io.StringIO()
-    ps = pstats.Stats(pr, stream=s).sort_stats('cumulative')
+    ps = pstats.Stats(pr, stream=s).sort_stats("cumulative")
     ps.print_stats()
     print(s.getvalue())
+
 
 # Not sure this is necessary.
 class RawDataThread(threading.Thread):
@@ -314,8 +315,6 @@ class DataSource(ABC):  # pylint: disable=too-many-instance-attributes
         )
         self.finished = True
         self.finished_at = datetime.datetime.now()
-
-    
 
     def start(self) -> None:
         """Start the loading thread."""

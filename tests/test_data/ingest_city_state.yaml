@@ -1,5 +1,5 @@
-fact_collection: null
-fact_collection_class: null
+fact_collection: SimpleFactCollection
+fact_collection_class: SimpleFactCollection
 run_monitor: false
 logging_level: DEBUG
 

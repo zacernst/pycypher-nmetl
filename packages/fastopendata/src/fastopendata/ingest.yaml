@@ -1,5 +1,5 @@
-fact_collection: null
-fact_collection_class: Etcd3FactCollection
+fact_collection: RocksDBFactCollection
+fact_collection_class: RocksDBFactCollection
 run_monitor: true
 logging_level: DEBUG
 
