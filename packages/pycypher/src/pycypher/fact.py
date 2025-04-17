@@ -1481,10 +1481,11 @@ class RocksDBFactCollection(FactCollection, KeyValue):
         Yields:
             Any: The values associated with the keys in the range.
         """
-        # print(f"range_read: {start_key} {end_key}")
         self.iter.seek(start_key)
         key = self.iter.key()
         value = self.iter.value()
+        self.yielded_counter += 1
+        yield key, value
         while end_key is not None and key is not None and key <= end_key:
             self.yielded_counter += 1
             yield key, value
@@ -1515,6 +1516,7 @@ class RocksDBFactCollection(FactCollection, KeyValue):
             pickle.PickleError: If there's an error unpickling the data.
         """
         for value in self.db.values():
+            self.yielded_counter += 1
             yield decode(value)
 
     def close(self):
