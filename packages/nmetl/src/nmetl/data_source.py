@@ -26,7 +26,7 @@ from urllib.parse import ParseResult
 
 import pyarrow.parquet as pq
 from nmetl.helpers import QueueGenerator, ensure_uri
-from nmetl.message_types import EndOfData, RawDatum
+from nmetl.message_types import RawDatum
 from pycypher.fact import (
     AtomicFact,
     FactNodeHasAttributeWithValue,
@@ -305,14 +305,11 @@ class DataSource(ABC):  # pylint: disable=too-many-instance-attributes
                 RawDatum(data_source=self, row=row),
             )
             self.sent_counter += 1
-            if self.sent_counter > 1000000:  # for testing
+            if self.sent_counter > 1_000_000_000_000:  # for testing
                 break
             if self.halt:
                 LOGGER.debug("DataSource %s is halting", self.name)
                 break
-        self.raw_input_queue.put(
-            EndOfData(data_source=self),
-        )
         self.finished = True
         self.finished_at = datetime.datetime.now()
 

@@ -19,9 +19,9 @@ from nmetl.config import (
 from nmetl.data_source import DataSource, DataSourceMapping
 from nmetl.session import Session
 from pycypher.fact import (  # pylint: disable=unused-import
-    RocksDBFactCollection,
     Etcd3FactCollection,
     FactCollection,
+    RocksDBFactCollection,
     SimpleFactCollection,
 )
 from pycypher.logger import LOGGER

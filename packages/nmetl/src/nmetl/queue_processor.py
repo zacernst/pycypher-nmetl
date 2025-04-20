@@ -9,21 +9,27 @@ implementations for specific tasks in the data processing pipeline.
 
 from __future__ import annotations
 
-import cProfile
+# import cProfile
 import datetime
 import hashlib
 import inspect
-import queue
+import pickle
 import sys
 import threading
+
+# import threading
 import time
 import traceback
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+
+# import queue
+from queue import Queue
 from typing import Any, Dict, List, Optional
 
-from nmetl.helpers import QueueGenerator
+from nmetl.helpers import QueueGenerator, Idle
 from nmetl.trigger import CypherTrigger
+from nmetl.message_types import EndOfData
 from pycypher.fact import (
     AtomicFact,
     FactNodeHasAttributeWithValue,
@@ -68,7 +74,7 @@ class QueueProcessor(ABC):  # pylint: disable=too-few-public-methods,too-many-in
         session: Optional["Session"] = None,
         incoming_queue: Optional[QueueGenerator] = None,
         outgoing_queue: Optional[QueueGenerator] = None,
-        status_queue: Optional[queue.Queue] = None,
+        status_queue: Optional[Queue] = None,
     ) -> None:
         """
         Initialize a QueueProcessor instance.
@@ -77,76 +83,87 @@ class QueueProcessor(ABC):  # pylint: disable=too-few-public-methods,too-many-in
             session (Optional[Session]): The session this processor belongs to. Defaults to None.
             incoming_queue (Optional[QueueGenerator]): The queue from which to read items. Defaults to None.
             outgoing_queue (Optional[QueueGenerator]): The queue to which processed items are sent. Defaults to None.
-            status_queue (Optional[queue.Queue]): The queue for status messages. Defaults to None.
+            status_queue (Optional[Queue]): The queue for status messages. Defaults to None.
         """
         self.session = session
-        self.processing_thread = threading.Thread(
-            target=self.profile_thread_function, name=self.__class__.__name__
-        )
         self.started = False
         self.started_at = None
         self.finished = False
         self.finished_at = None
+        self.halt_signal = False
+        self.processing_thread = threading.Thread(target=self.process_queue, daemon=True)
         self.received_counter = 0
         self.sent_counter = 0
         self.incoming_queue = incoming_queue
         self.outgoing_queue = outgoing_queue
         self.status_queue = status_queue
         self.profiler = None
+        self.idle = False  # True if we're not doing anything -- will use for determining whether to stop
+                           # Stop when all idle and data sources are empty.
 
         if self.outgoing_queue:
             self.outgoing_queue.incoming_queue_processors.append(self)
         self.secondary_cache = []
         self.secondary_cache_max_size = 1_000
 
-    def profile_thread_function(self):
-        if self.session.profiler:
-            self.profiler = cProfile.Profile()
-            self.profiler.enable()
-            self.process_queue()
-            self.profiler.disable()
-            self.profiler.dump_stats("profile_output_thread")
-        else:
-            self.process_queue()
+    # def profile_thread_function(self):
+    #     if self.session.profiler:
+    #         self.profiler = cProfile.Profile()
+    #         self.profiler.enable()
+    #         self.process_queue()
+    #         self.profiler.disable()
+    #         self.profiler.dump_stats("profile_output_thread")
+    #     else:
+    #         self.process_queue()
 
     def process_queue(self) -> None:
         """Process every item in the queue using the yield_items method."""
         self.started = True
         self.started_at = datetime.datetime.now()
-        for item in self.incoming_queue.yield_items():
-            self.received_counter += 1
-            # dump profiler data
-            if (
-                self.profiler
-                and self.received_counter % self.session.dump_profile_interval
-                == 0
-            ):
-                self.profiler.dump_stats(self.__class__.__name__ + ".prof")
-            try:
-                out = self._process_item_from_queue(item)
-            except Exception as e:  # pylint: disable=broad-except
-                exc_type, exc_value, exc_traceback = sys.exc_info()
-                formatted_traceback = traceback.format_exception(
-                    exc_type, exc_value, exc_traceback
-                )
-                formatted_traceback = "\n".join(
-                    [line.strip() for line in formatted_traceback]
-                )
-                error_msg = f"in thread: {threading.current_thread().name}\n"
-                error_msg += f"Error processing item {item}: {e}]\n"
-                error_msg += f"Traceback: {formatted_traceback}]\n"
-                LOGGER.error(error_msg)
-                self.status_queue.put(e)
-                continue
-            if not out:
-                continue
-            if not isinstance(out, list):
-                out = [out]
-            for out_item in out:
-                self.outgoing_queue.put(out_item)
-                self.sent_counter += 1
+        while not self.halt_signal:
+            for item in self.incoming_queue.yield_items():
+                if isinstance(item, Idle):
+                    self.idle = True
+                    time.sleep(.1)
+                    if self.halt_signal:
+                        break
+                    continue
+                self.idle = False
+                self.received_counter += 1
+                # dump profiler data
+                if (
+                    self.profiler
+                    and self.received_counter % self.session.dump_profile_interval
+                    == 0
+                ):
+                    self.profiler.dump_stats(self.__class__.__name__ + ".prof")
+                try:
+                    out = self._process_item_from_queue(item)
+                except Exception as e:  # pylint: disable=broad-except
+                    exc_type, exc_value, exc_traceback = sys.exc_info()
+                    formatted_traceback = traceback.format_exception(
+                        exc_type, exc_value, exc_traceback
+                    )
+                    formatted_traceback = "\n".join(
+                        [line.strip() for line in formatted_traceback]
+                    )
+                    error_msg = f"in thread: {threading.current_thread().name}\n"
+                    error_msg += f"Error processing item {item}: {e}]\n"
+                    error_msg += f"Traceback: {formatted_traceback}]\n"
+                    LOGGER.error(error_msg)
+                    self.status_queue.put(e)
+                    continue
+                if not out:
+                    continue
+                if not isinstance(out, list):
+                    out = [out]
+                for out_item in out:
+                    self.outgoing_queue.put(out_item)
+                    self.sent_counter += 1
+        LOGGER.info("Halt signal received, thread %s is halting", threading.current_thread().name)
         self.finished = True
         self.finished_at = datetime.datetime.now()
+        
 
     @abstractmethod
     def process_item_from_queue(self, item: Any) -> Any:
@@ -210,8 +227,8 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
         LOGGER.debug("Checking fact %s against triggers", item)
         while item not in self.session.fact_collection:
             LOGGER.debug("Fact %s not in collection, waiting", item.__dict__)
-            time.sleep(.1)
-        LOGGER.debug('IN COLLECTION: %s', item.__dict__)
+            time.sleep(0.1)
+        LOGGER.debug("IN COLLECTION: %s", item.__dict__)
         # Let's filter out the facts that are irrelevant to this trigger
         for _, trigger in self.session.trigger_dict.items():
             # Let's bomb out if the attribute in the fact is not in the trigger

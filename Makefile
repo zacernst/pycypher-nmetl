@@ -3,7 +3,7 @@
 # Configuration variables
 PYTHON_VERSION = 3.12
 SUPPORTED_PYTHON_VERSIONS = 3.13 3.12 3.11 3.10
-NUM_TEST_THREADS = 1
+PYTHON_TEST_THREADS = 16
 BUMP = micro
 
 # ------------------------------------------------------------------------------
@@ -89,7 +89,7 @@ install: build
 # Run tests
 tests: install
 	@echo "Running tests..."
-	uv run --python ${PYTHON_VERSION} pytest -n ${NUM_TEST_THREADS} -vv ${TESTS_DIR}
+	uv run --python ${PYTHON_VERSION} pytest -vv ${TESTS_DIR} -n ${PYTHON_TEST_THREADS}
 
 test: tests
 
@@ -99,7 +99,7 @@ alltests:
 		echo "Builds and tests with Python $$version..." && \
 		uv run --python $$version hatch build -t wheel || exit 1; \
 		uv run --python $$version pip install --upgrade -e . || exit 1; \
-		uv run --python $$version pytest -n ${NUM_TEST_THREADS} -vv ${TESTS_DIR} || exit 1; \
+		uv run --python $$version pytest -vv ${TESTS_DIR} -n ${PYTHON_TEST_THREADS} || exit 1; \
 	done	
 
 # Run tests with coverage

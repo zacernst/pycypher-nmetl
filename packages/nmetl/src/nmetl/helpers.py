@@ -18,6 +18,10 @@ from nmetl.message_types import EndOfData
 from pycypher.logger import LOGGER
 
 
+class Idle:
+    pass
+
+
 def ensure_uri(uri: str | ParseResult | Path) -> ParseResult:
     """
     Ensure that the URI is parsed.
@@ -80,6 +84,7 @@ class QueueGenerator:  # pylint: disable=too-few-public-methods,too-many-instanc
         self.no_more_items = False  # ever
         self.exit_code = None
         self.name = name
+        self.idle = False
         self.session = session
         self.incoming_queue_processors = []
         self.timed_cache = {}
@@ -88,44 +93,44 @@ class QueueGenerator:  # pylint: disable=too-few-public-methods,too-many-instanc
         if self.session:
             self.session.queue_list.append(self)
 
-    def yield_items(self) -> Generator[Any, None, None]:
-        """Generate items."""
-        last_time = datetime.datetime.now()
+    def yield_items(self, quit_at_idle: bool = False) -> Generator[Any, None, None]:
+        """Generate items.
+        
+        ``quit_at_idle`` is for testing.
+        """
         running = True
-        exit_code = 0
         finished_incoming_data_source_counter = 0
         while running:
-            while True:
-                if (
-                    datetime.datetime.now() - last_time
-                ).total_seconds() > self.outer_queue_timeout:
+            try:
+                item = self.get(timeout=1.0)
+            except queue.Empty:
+                self.idle = True
+                self.put(Idle())
+                if quit_at_idle:
                     running = False
-                    exit_code = 1
-                    break
-
-                try:
-                    item = self.get(timeout=self.inner_queue_timeout)
-                except queue.Empty:
-                    continue
-                # Need to check ALL of the incoming data sources
-                if isinstance(item, self.end_of_queue_cls):
-                    finished_incoming_data_source_counter += 1
-                    if finished_incoming_data_source_counter == len(
+                    self.exit_code = 1
+                    return
+                continue
+            self.idle = False
+            if isinstance(item, self.end_of_queue_cls):
+                finished_incoming_data_source_counter += 1
+                if finished_incoming_data_source_counter >= len(
+                    self.incoming_queue_processors
+                ):
+                    if finished_incoming_data_source_counter > len(
                         self.incoming_queue_processors
                     ):
-                        running = False
-                        break
-                    else:
-                        continue
-                self.counter += 1
-                last_time = datetime.datetime.now()
-                yield item
-        self.no_more_items = True
-        if exit_code == 1:
-            LOGGER.warning("Exiting generator due to timeout")
-        elif exit_code == 0:
-            LOGGER.warning("Exiting generator normally")
-        self.exit_code = exit_code
+                        LOGGER.warning(
+                            "More EndOfData items than incoming data sources. Okay in unit tests."
+                        )
+                    running = False
+                    self.no_more_items = True
+                    self.exit_code = 0
+                    return
+                continue
+            self.counter += 1
+            yield item
+
 
     @property
     def completed(self) -> bool:

@@ -186,6 +186,10 @@ class CypherTrigger(ABC):  # pylint: disable=too-many-instance-attributes
 
         self._gather_constraints()
 
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        return state
+
     def __repr__(self) -> str:
         """
         Return a string representation of the CypherTrigger instance.

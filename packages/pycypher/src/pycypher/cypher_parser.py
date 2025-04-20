@@ -61,9 +61,7 @@ def p_query(p: Tuple[yacc.YaccProduction, Match, Return]):
         p[0] = Query(p[1], p[2])
     else:
         p[0] = p[1]
-        import pdb
-
-        pdb.set_trace()
+        assert False, "Shouldn't get here"
 
 
 def p_string(p: yacc.YaccProduction):

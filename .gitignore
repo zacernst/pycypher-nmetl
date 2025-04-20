@@ -6,6 +6,12 @@ __pycache__/
 # C extensions
 *.so
 
+*.prof
+*.out
+profile_output_thread
+try_rocks.py
+
+
 # Distribution / packaging
 .Python
 build/

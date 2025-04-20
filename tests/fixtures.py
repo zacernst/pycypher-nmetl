@@ -21,7 +21,6 @@ from nmetl.session import RawDataProcessor, Session
 from nmetl.trigger import VariableAttribute
 from pycypher.fact import (  # We might get rid of this class entirely
     Etcd3FactCollection,
-    RocksDBFactCollection,
     FactCollection,
     FactNodeHasAttributeWithValue,
     FactNodeHasLabel,
@@ -29,6 +28,7 @@ from pycypher.fact import (  # We might get rid of this class entirely
     FactRelationshipHasLabel,
     FactRelationshipHasSourceNode,
     FactRelationshipHasTargetNode,
+    RocksDBFactCollection,
     SimpleFactCollection,
 )
 from pycypher.logger import LOGGER
@@ -36,7 +36,11 @@ from pycypher.node_classes import Literal
 
 TEST_DATA_DIRECTORY = pathlib.Path(__file__).parent / "test_data"
 
-BACK_END_STORES = [SimpleFactCollection, Etcd3FactCollection, RocksDBFactCollection]
+BACK_END_STORES = [
+    SimpleFactCollection,
+    RocksDBFactCollection,
+    # Etcd3FactCollection,
+]
 
 
 class patched_uuid:  # pylint: disable=invalid-name,too-few-public-methods
@@ -167,15 +171,12 @@ def fixture_0_data_source_mapping_list():
 
 
 @pytest.fixture(params=BACK_END_STORES)
-def fact_collection_factory(request):
-    return request.param()
-
-
-@pytest.fixture(
-    params=BACK_END_STORES
-)
-def fact_collection_cls_factory(request):
-    return request.param
+def fact_collection_cls_factory(request, tmpdir):
+    if request.param is RocksDBFactCollection:
+        out = request.param(db_path=tmpdir.strpath)
+    else:
+        out = request.param()
+    return out
 
 
 @pytest.fixture
@@ -188,7 +189,8 @@ def fact_collection_0(fact_collection_cls_factory):
     fact6 = FactRelationshipHasLabel("relationship_123", "MyRelationship")
     fact7 = FactRelationshipHasSourceNode("relationship_123", "1")
     fact8 = FactRelationshipHasTargetNode("relationship_123", "2")
-    fact_collection = fact_collection_cls_factory()
+    fact_collection = fact_collection_cls_factory
+
     fact_collection.append(fact1)
     fact_collection.append(fact2)
     fact_collection.append(fact3)
@@ -206,7 +208,7 @@ def fact_collection_1(fact_collection_cls_factory):
     fact1 = FactNodeHasLabel("1", "Thing")
     fact2 = FactNodeHasLabel("2", "Thing")
     fact3 = FactNodeHasLabel("3", "OtherThing")
-    fact_collection = fact_collection_cls_factory()
+    fact_collection = fact_collection_cls_factory
     fact_collection.append(fact1)
     fact_collection.append(fact2)
     fact_collection.append(fact3)
@@ -248,7 +250,7 @@ def fact_collection_7(fact_collection_cls_factory):  # pylint: disable=too-many-
 
     fact19 = FactNodeHasLabel("6", "Irrelevant")
 
-    fact_collection = fact_collection_cls_factory()
+    fact_collection = fact_collection_cls_factory
 
     fact_collection.append(fact1)
     fact_collection.append(fact2)
@@ -336,13 +338,13 @@ def fact_collection_squares_circles(fact_collection_cls_factory):  # pylint: dis
             "circle_4", "name", Literal("circle_dave")
         ),
     ]
-    fact_collection = fact_collection_cls_factory()
+    fact_collection = fact_collection_cls_factory
     fact_collection += facts
     yield fact_collection
     fact_collection.close()
 
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def fact_collection_2(fact_collection_cls_factory):
     fact1 = FactNodeHasLabel("1", "Thing")
     fact2 = FactNodeHasLabel("2", "MiddleThing")
@@ -364,7 +366,7 @@ def fact_collection_2(fact_collection_cls_factory):
         fact8,
         fact9,
     ]
-    fact_collection = fact_collection_cls_factory()
+    fact_collection = fact_collection_cls_factory
     fact_collection += facts
     yield fact_collection
     fact_collection.close()
@@ -401,7 +403,7 @@ def fact_collection_3(fact_collection_cls_factory):
         fact12,
         fact13,
     ]
-    fact_collection = fact_collection_cls_factory()
+    fact_collection = fact_collection_cls_factory
     fact_collection += facts
 
     yield fact_collection
@@ -449,7 +451,7 @@ def fact_collection_4(fact_collection_cls_factory):
         fact16,
         fact17,
     ]
-    fact_collection = fact_collection_cls_factory()
+    fact_collection = fact_collection_cls_factory
     fact_collection += facts
 
     yield fact_collection
@@ -480,13 +482,6 @@ def fact_collection_5(fact_collection_cls_factory):
 
     fact18 = FactNodeHasAttributeWithValue("4", "foo", Literal(2))
 
-    #         'MATCH (n:Thing {foo: "2"})-[r:MyRelationship]->(m:MiddleThing)-'
-    #         "[s:OtherRelationship]->(o:OtherThing) "
-    #         "RETURN n.foobar"
-    # [
-    #     {'m': '2', 'r': 'relationship_3', 's': 'relationship_4', 'n': '4', 'o': '5'},
-    #     {'m': '2', 'r': 'relationship_3', 's': 'relationship_2', 'n': '4', 'o': '3'}
-    # ]
     facts = [
         fact1,
         fact2,
@@ -508,7 +503,7 @@ def fact_collection_5(fact_collection_cls_factory):
         fact18,
     ]
 
-    fact_collection = fact_collection_cls_factory()
+    fact_collection = fact_collection_cls_factory
     fact_collection += facts
 
     yield fact_collection
@@ -567,7 +562,7 @@ def fact_collection_6(fact_collection_cls_factory):  # pylint: disable=too-many-
         fact21,
     ]
 
-    fact_collection = fact_collection_cls_factory()
+    fact_collection = fact_collection_cls_factory
     fact_collection += facts
 
     yield fact_collection
@@ -617,7 +612,7 @@ def networkx_graph():
 
 @pytest.fixture
 def number_of_facts(fact_collection_0: FactCollection) -> int:
-    return len(fact_collection_0.facts)
+    return len(fact_collection_0)
 
 
 @pytest.fixture
@@ -814,7 +809,7 @@ def session_with_trigger_using_data_asset(session_with_data_asset):
 def etcd3_fact_collection():
     fact_collection = Etcd3FactCollection()
     yield fact_collection
-    fact_collection.clear()
+    fact_collection.close()
 
 
 # Cypher

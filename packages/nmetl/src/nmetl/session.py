@@ -35,7 +35,6 @@ from nmetl.exceptions import (
     UnknownDataSourceError,
 )
 from nmetl.helpers import QueueGenerator
-from nmetl.message_types import EndOfData
 from nmetl.queue_processor import (
     CheckFactAgainstTriggersQueueProcessor,
     FactGeneratedQueueProcessor,
@@ -277,19 +276,14 @@ class Session:  # pylint: disable=too-many-instance-attributes
     def halt(self, level: int = 0):
         """Stop the threads."""
         LOGGER.critical("Halt: Signal received")
-        if level == 0:
-            for data_source in self.data_sources:
-                LOGGER.critical("Halt: Stopping data source %s", data_source)
-                data_source.halt = True
-                data_source.raw_input_queue.put(EndOfData())
-            LOGGER.critical("Halt: Waiting for data sources to finish")
-            for data_source in self.data_sources:
-                data_source.loading_thread.join()
-            LOGGER.critical("Halt: Data sources finished")
-            LOGGER.critical("Halt: Putting EndOfData on raw_input_queue")
-            self.raw_input_queue.put(EndOfData())
-        else:
-            LOGGER.critical("Halting at non-zero level not yet implemented.")
+        for queue_processor in [
+            self.fact_generated_queue_processor,
+            self.check_fact_against_triggers_queue_processor,
+            self.raw_data_processor,
+            self.triggered_lookup_processor,
+        ]:
+            queue_processor.halt_signal = True
+            LOGGER.info("Halt signal sent...")
 
     def block_until_finished(self):
         """Block until all data sources have finished. Re-raise
@@ -307,11 +301,25 @@ class Session:  # pylint: disable=too-many-instance-attributes
             LOGGER.error("Unknown object on status queue: %s", obj)
             raise ValueError(f"Unknown object on status queue {obj}")
 
-        while not self.raw_data_processor.finished:
-            _check_status_queue()
+        while any(not data_source.finished for data_source in self.data_sources):
+            time.sleep(0.1)
+        LOGGER.warning('Data sources are all finished...')
+        
+        while not all(
+            process.idle for process in [
+                self.fact_generated_queue_processor,
+                self.check_fact_against_triggers_queue_processor,
+                self.raw_data_processor,
+            ]
+        ):
+            time.sleep(0.1)
+        
+        LOGGER.info('All threads are idle...')
+        LOGGER.info('Halting...')
+        self.halt()
+        LOGGER.info('Halted.')
 
-        while not self.check_fact_against_triggers_queue_processor.finished:
-            _check_status_queue()
+
 
     def monitor(self):
         """Loop the _monitor function"""
@@ -414,7 +422,7 @@ class Session:  # pylint: disable=too-many-instance-attributes
         table.add_column("Diversion misses", style="magenta")
         table.add_row(
             f"{self.fact_collection.__class__.__name__}",
-            f"{self.fact_collection.put_counter}", # f"{len(self.fact_collection)}",
+            f"{self.fact_collection.put_counter}",  # f"{len(self.fact_collection)}",
             f"{self.fact_collection.diverted_counter}",
             f"{self.fact_collection.yielded_counter}",
             f"{self.fact_collection.diversion_miss_counter}",

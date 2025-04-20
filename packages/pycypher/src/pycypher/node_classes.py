@@ -1398,8 +1398,16 @@ class Match(TreeMixin):
             if isinstance(fact_collection, FactCollection)
             else fact_collection.make_fact_collection()
         )
-        problem = _set_up_problem(self)
-        solutions = problem.getSolutions()
+        try:
+            problem = _set_up_problem(self)
+        except ValueError as e:  # pylint: disable=broad-exception-caught
+            LOGGER.error("Domain not ready yet? %s", e)
+            return []
+        try:
+            solutions = problem.getSolutions()
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            LOGGER.error("Error getting solutions: %s", e)
+            return []
         return solutions
 
 

@@ -10,23 +10,29 @@ atomic pieces of information about nodes, relationships, and their attributes.
 from __future__ import annotations
 
 import collections
-from abc import ABC, abstractmethod
-import time
 import logging
+import time
+from abc import ABC, abstractmethod
 from typing import Any, Dict, Generator, List, Optional
 
-from nmetl.helpers import decode, encode
-from nmetl.logger import LOGGER
 from nmetl.config import (  # pylint: disable=no-name-in-module
+    BLOOM_FILTER_ERROR_RATE,
+    BLOOM_FILTER_SIZE,
     CLEAR_DB_ON_START,
     ETCD3_RETRY_DELAY,
-    BLOOM_FILTER_SIZE,
-    BLOOM_FILTER_ERROR_RATE,
 )
+from nmetl.helpers import decode, encode
+from nmetl.logger import LOGGER
 from rbloom import Bloom
-from rocksdict import Rdict, BlockBasedOptions, BlockBasedIndexType,WriteOptions, ReadOptions, Options, DBCompressionType
-
-
+from rocksdict import (
+    BlockBasedIndexType,
+    BlockBasedOptions,
+    DBCompressionType,
+    Options,
+    Rdict,
+    ReadOptions,
+    WriteOptions,
+)
 
 LOGGER.setLevel(logging.INFO)
 
@@ -449,6 +455,7 @@ class FactCollection(ABC):
 
     def __init__(
         self,
+        facts: Optional[List[AtomicFact]] = None,
         session: Optional["Session"] = None,  # type: ignore
     ):
         """
@@ -462,8 +469,9 @@ class FactCollection(ABC):
         self.session: Optional["Session"] = session  # type: ignore
         self.put_counter = 0
         self.yielded_counter = 0
+        self += facts or []
         if CLEAR_DB_ON_START:
-            self.clear()
+            self.close()
 
     def __iter__(self) -> Generator[AtomicFact]:
         """
@@ -473,10 +481,6 @@ class FactCollection(ABC):
             AtomicFact: Each fact in the collection.
         """
         yield from self.keys()
-    
-    def clear(self):
-        '''ABC'''
-        pass
 
     def __repr__(self) -> str:
         """
@@ -1151,7 +1155,7 @@ class Etcd3FactCollection(FactCollection, KeyValue):
         self.bloom_filter_diversions = 0
         self.cache_hits = 0
         self.secondary_cache = []
-        self.secondary_cache_max_size = 120
+        self.secondary_cache_max_size = 1
         self.transaction = self.client.Txn()
         self.put_counter = 0
         super().__init__(*args, **kwargs)
@@ -1199,10 +1203,6 @@ class Etcd3FactCollection(FactCollection, KeyValue):
             key = key_value.key.decode("utf-8")
             yield key
 
-    def close(self):
-        """Clear the etcd3 when we're done"""
-        self.clear()
-
     def __delitem__(self, key: str):
         """
         Delete a fact at a specific index.
@@ -1240,7 +1240,7 @@ class Etcd3FactCollection(FactCollection, KeyValue):
             value = key_value.value
             yield decode(value)
 
-    def clear(self):
+    def close(self):
         """Erase all the keys in the etcd3"""
         LOGGER.info("Clearing etcd3")
         self.client.delete_range(all=True)
@@ -1434,7 +1434,7 @@ class RocksDBFactCollection(FactCollection, KeyValue):
         session (Session): The session object associated with the fact collection.
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, db_path: str = "rocksdb", **kwargs):
         """
         Initialize a etcd3 instance.
 
@@ -1442,7 +1442,7 @@ class RocksDBFactCollection(FactCollection, KeyValue):
             *args: Variable positional arguments (ignored).
             **kwargs: Variable keyword arguments (ignored).
         """
-        self.db_path = "./rocksdb"
+        self.db_path = db_path
         self.write_options = WriteOptions()
         self.write_options.sync = False
         self.options = Options()
@@ -1462,13 +1462,10 @@ class RocksDBFactCollection(FactCollection, KeyValue):
         block_opts.set_bloom_filter(4196, True)
         self.options.set_block_based_table_factory(block_opts)
         self.iter = self.db.iter(ReadOptions())
-        self.LAST_KEY = "\x0c"  # pylint: disable=invalid-name
+        self.LAST_KEY = "\xff"  # pylint: disable=invalid-name
         self.diverted_counter = 0
         self.diversion_miss_counter = 0
         super().__init__(*args, **kwargs)
-
-
-
 
     def range_read(self, start_key, end_key) -> Generator[Any, Any]:
         """
@@ -1485,15 +1482,12 @@ class RocksDBFactCollection(FactCollection, KeyValue):
         key = self.iter.key()
         value = self.iter.value()
         self.yielded_counter += 1
-        yield key, value
         while end_key is not None and key is not None and key <= end_key:
             self.yielded_counter += 1
             yield key, value
             self.iter.next()
             key = self.iter.key()
             value = self.iter.value()
-            if key is None:
-                break
 
     def keys(self) -> Generator[str]:
         """
@@ -1502,6 +1496,8 @@ class RocksDBFactCollection(FactCollection, KeyValue):
         """
 
         for key, _ in self.db.keys():
+            if key is None:
+                break
             yield key
 
     def values(self) -> Generator[AtomicFact]:
@@ -1516,12 +1512,10 @@ class RocksDBFactCollection(FactCollection, KeyValue):
             pickle.PickleError: If there's an error unpickling the data.
         """
         for value in self.db.values():
+            if value is None:
+                break
             self.yielded_counter += 1
             yield decode(value)
-
-    def close(self):
-        """Clear the etcd3 when we're done"""
-        pass
 
     def __delitem__(self, key: str):
         """
@@ -1541,14 +1535,14 @@ class RocksDBFactCollection(FactCollection, KeyValue):
         """
         counter = 0
         for k in self.db.keys():
-            LOGGER.debug('counting: %s', k)
+            LOGGER.debug("counting: %s", k)
             counter += 1
         return counter
 
-    def clear(self):
+    def close(self):
         """Erase all the keys in the db"""
-        LOGGER.warning('Deleting RocksDB')
-        self.db.delete_range("", self.LAST_KEY)
+        LOGGER.warning("Deleting RocksDB")
+        self.db.delete_range("\x00", "\xff")
 
     def __contains__(self, fact: AtomicFact) -> bool:
         """
@@ -1565,7 +1559,7 @@ class RocksDBFactCollection(FactCollection, KeyValue):
             value = self.db.get(index)
             if value is None:
                 self.diversion_miss_counter += 1
-            return value is not None
+            return decode(value) == fact if value is not None else False
         self.diverted_counter += 1
         return False
 
@@ -1634,7 +1628,7 @@ class RocksDBFactCollection(FactCollection, KeyValue):
     def __repr__(self):
         return "Rocks"
 
-    def query_value_of_node_attribute(self, query: QueryValueOfNodeAttribute):
+    def query_value_of_node_attribute_bak(self, query: QueryValueOfNodeAttribute):
         """
         Query the value of a node's attribute.
 
@@ -1659,8 +1653,7 @@ class RocksDBFactCollection(FactCollection, KeyValue):
             return fact
         else:
             return NullResult(query)
-    
-    
+
     def nodes_with_label(self, label: str) -> Generator[str]:
         """
         Return a list of all the nodes with a specific label.
@@ -1675,7 +1668,6 @@ class RocksDBFactCollection(FactCollection, KeyValue):
             if fact.label == label:
                 yield fact.node_id
 
-    
     def relationship_has_source_node_facts(self):
         """
         Generator method that yields facts of type FactRelationshipHasSourceNode.
@@ -1707,18 +1699,4 @@ class RocksDBFactCollection(FactCollection, KeyValue):
         for fact in self:
             if isinstance(fact, FactRelationshipHasTargetNode):
                 print(f"relationship_has_target_node_facts: {fact}")
-                yield fact
-
-    def node_has_label_facts(self):
-        """
-        Generator function that yields facts of type `FactNodeHasLabel`.
-
-        Iterates over the `facts` attribute and yields each fact that is an instance
-        of `FactNodeHasLabel`.
-
-        Yields:
-            FactNodeHasLabel: Facts that are instances of `FactNodeHasLabel`.
-        """
-        for fact in self:
-            if isinstance(fact, FactNodeHasLabel):
                 yield fact

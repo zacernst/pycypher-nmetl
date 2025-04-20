@@ -51,6 +51,9 @@ email = "zac.ernst@gmail.com"
 name = "Zachary Ernst"
 email = "zac.ernst@gmail.com"
 
+[project.optional-dependencies]
+gui = ["PyQt5"]
+
 [project.license]
 file = "LICENSE.txt"
 
@@ -61,6 +64,8 @@ Documentation = "https://zacernst.github.io/pycypher-nmetl/"
 [build-system]
 requires = ["hatchling>=1.24.2", "hatch-vcs>=0.3.0"]
 build-backend = "hatchling.build"
+
+[tool.uv]
 
 [tool.uv.workspace]
 members = ["packages/*"]
@@ -125,6 +130,8 @@ testpaths = ["tests"]
 markers = [
     "fact_collection: Tests that require a FactCollection"
 ]
+timeout = 30
+
 
 [tool.hatch.build.targets.wheel]
 universal = true
