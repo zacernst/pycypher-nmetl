@@ -93,9 +93,11 @@ class QueueGenerator:  # pylint: disable=too-few-public-methods,too-many-instanc
         if self.session:
             self.session.queue_list.append(self)
 
-    def yield_items(self, quit_at_idle: bool = False) -> Generator[Any, None, None]:
+    def yield_items(
+        self, quit_at_idle: bool = False
+    ) -> Generator[Any, None, None]:
         """Generate items.
-        
+
         ``quit_at_idle`` is for testing.
         """
         running = True
@@ -130,7 +132,6 @@ class QueueGenerator:  # pylint: disable=too-few-public-methods,too-many-instanc
                 continue
             self.counter += 1
             yield item
-
 
     @property
     def completed(self) -> bool:

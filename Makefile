@@ -3,7 +3,7 @@
 # Configuration variables
 PYTHON_VERSION = 3.12
 SUPPORTED_PYTHON_VERSIONS = 3.13 3.12 3.11 3.10
-PYTHON_TEST_THREADS = 16
+PYTHON_TEST_THREADS = 4
 BUMP = micro
 
 # ------------------------------------------------------------------------------
@@ -31,13 +31,10 @@ export COVERAGE_DIR := ${PROJECT_ROOT}/coverage_report
 .PHONY: all clean clean_build veryclean format build install tests coverage docs publish data test_env fod_ingest
 
 # Default target - run the complete build process
-all: format build docs tests
+all: format veryclean build docs alltests
 
 # ------------------------------------------------------------------------------
 # Cleaning targets
-
-# Clean and rebuild everything
-clean_build: veryclean all
 
 # Remove all generated files and virtual environment
 veryclean: clean
@@ -87,9 +84,11 @@ install: build
 # Testing targets
 
 # Run tests
-tests: install
+tests: install 
 	@echo "Running tests..."
-	uv run --python ${PYTHON_VERSION} pytest -vv ${TESTS_DIR} -n ${PYTHON_TEST_THREADS}
+	uv run --python ${PYTHON_VERSION} pytest -vv ${TESTS_DIR} -n ${PYTHON_TEST_THREADS} && \
+	echo "🎉\n"
+
 
 test: tests
 
@@ -100,6 +99,7 @@ alltests:
 		uv run --python $$version hatch build -t wheel || exit 1; \
 		uv run --python $$version pip install --upgrade -e . || exit 1; \
 		uv run --python $$version pytest -vv ${TESTS_DIR} -n ${PYTHON_TEST_THREADS} || exit 1; \
+		echo "🎉\n"; \
 	done	
 
 # Run tests with coverage
@@ -151,7 +151,7 @@ fod_ingest: data
 
 # ------------------------------------------------------------------------------
 # Package-specific targets
-.PHONY: pycypher nmetl fastopendata
+.PHONY: pycypher nmetl fastopendata tada
 
 # Build and install only pycypher
 pycypher:

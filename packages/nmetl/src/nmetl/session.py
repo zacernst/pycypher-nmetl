@@ -301,25 +301,26 @@ class Session:  # pylint: disable=too-many-instance-attributes
             LOGGER.error("Unknown object on status queue: %s", obj)
             raise ValueError(f"Unknown object on status queue {obj}")
 
-        while any(not data_source.finished for data_source in self.data_sources):
+        while any(
+            not data_source.finished for data_source in self.data_sources
+        ):
             time.sleep(0.1)
-        LOGGER.warning('Data sources are all finished...')
-        
+        LOGGER.warning("Data sources are all finished...")
+
         while not all(
-            process.idle for process in [
+            process.idle
+            for process in [
                 self.fact_generated_queue_processor,
                 self.check_fact_against_triggers_queue_processor,
                 self.raw_data_processor,
             ]
         ):
             time.sleep(0.1)
-        
-        LOGGER.info('All threads are idle...')
-        LOGGER.info('Halting...')
+
+        LOGGER.info("All threads are idle...")
+        LOGGER.info("Halting...")
         self.halt()
-        LOGGER.info('Halted.')
-
-
+        LOGGER.info("Halted.")
 
     def monitor(self):
         """Loop the _monitor function"""

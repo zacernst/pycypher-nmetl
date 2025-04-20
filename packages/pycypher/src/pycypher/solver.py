@@ -2,10 +2,10 @@
 Solver Module (solver.py)
 ==========================
 
-The ``solver.py`` module in the `pycypher` library defines a set of classes for 
-representing and evaluating constraints within a graph-like data structure. These 
-constraints are used to determine if certain conditions are met within the graph, 
-particularly in the context of triggering reactive behaviors (e.g., with 
+The ``solver.py`` module in the `pycypher` library defines a set of classes for
+representing and evaluating constraints within a graph-like data structure. These
+constraints are used to determine if certain conditions are met within the graph,
+particularly in the context of triggering reactive behaviors (e.g., with
 ``CypherTrigger``).
 """
 

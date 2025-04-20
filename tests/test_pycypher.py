@@ -77,7 +77,7 @@ from nmetl.exceptions import (
     BadTriggerReturnAnnotationError,
     UnknownDataSourceError,
 )
-from nmetl.helpers import QueueGenerator, Idle, ensure_uri
+from nmetl.helpers import Idle, QueueGenerator, ensure_uri
 from nmetl.message_types import (
     DataSourcesExhausted,
     EndOfData,
@@ -4722,9 +4722,7 @@ def test_trigger_function_on_relationship_match_insert_results(
 ):
     session_with_trigger.start_threads()
 
-
     session_with_trigger.block_until_finished()
-
 
     # Queue processor is stopping after raw data is processed, but there
     # are still computed facts to be processed.

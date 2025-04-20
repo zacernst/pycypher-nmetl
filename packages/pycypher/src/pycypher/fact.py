@@ -1628,7 +1628,9 @@ class RocksDBFactCollection(FactCollection, KeyValue):
     def __repr__(self):
         return "Rocks"
 
-    def query_value_of_node_attribute_bak(self, query: QueryValueOfNodeAttribute):
+    def query_value_of_node_attribute_bak(
+        self, query: QueryValueOfNodeAttribute
+    ):
         """
         Query the value of a node's attribute.
 
