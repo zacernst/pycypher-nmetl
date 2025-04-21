@@ -86,7 +86,7 @@ install: build
 # Run tests
 tests: install 
 	@echo "Running tests..."
-	uv run --python ${PYTHON_VERSION} pytest -vv ${TESTS_DIR} -n ${PYTHON_TEST_THREADS} && \
+	uv run --python ${PYTHON_VERSION} pytest -vv . && \
 	echo "🎉\n"
 
 
