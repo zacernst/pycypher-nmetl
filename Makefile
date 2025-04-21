@@ -60,11 +60,6 @@ format:
 	uv run isort .
 	uv run ruff format .
 
-# Generate requirements.txt from requirements.in
-requirements.txt: requirements.in
-	@echo "Compiling requirements.txt..."
-	uv pip compile --output-file=requirements.txt requirements.in
-
 # Build packages
 build:
 	@echo "Building packages..."
@@ -119,7 +114,9 @@ docs: install
 	cd ${DOCS_DIR} && \
 	uv run make clean && \
 	uv run make html && \
-	uv run make singlehtml
+	uv run make singlehtml && \
+	cp -rfv ${DOCS_DIR}/build/html/* ${DOCS_DIR}/
+	
 
 # ------------------------------------------------------------------------------
 # Release and publishing targets
