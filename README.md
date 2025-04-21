@@ -1,7 +1,6 @@
 # PyCypher-NMETL: Declarative ETL Using Cypher
 
 [![Install and run tests](https://github.com/zacernst/pycypher-nmetl/actions/workflows/makefile.yml/badge.svg)](https://github.com/zacernst/pycypher-nmetl/actions/workflows/makefile.yml)
-[![Build and Deploy Documentation](https://github.com/zacernst/pycypher-nmetl/actions/workflows/docs.yml/badge.svg)](https://github.com/zacernst/pycypher-nmetl/actions/workflows/docs.yml)
 
 A monorepo containing three complementary packages for declarative ETL using Cypher queries:
 
