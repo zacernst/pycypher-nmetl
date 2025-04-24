@@ -1,6 +1,6 @@
 fact_collection: RocksDBFactCollection
 fact_collection_class: RocksDBFactCollection
-run_monitor: true
+run_monitor: false
 logging_level: DEBUG
 
 data_sources:

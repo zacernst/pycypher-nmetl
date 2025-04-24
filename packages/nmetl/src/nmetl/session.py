@@ -19,6 +19,8 @@ from dataclasses import dataclass
 from hashlib import md5
 from typing import Any, Dict, Generator, Iterable, List, Optional, Type
 
+import pyarrow as pa
+import pyarrow.parquet as pq
 from nmetl.config import (  # pylint: disable=no-name-in-module
     CHECK_FACT_AGAINST_TRIGGERS_QUEUE_SIZE,
     DUMP_PROFILE_INTERVAL,
@@ -164,6 +166,9 @@ class Session:  # pylint: disable=too-many-instance-attributes
             fact_collection.__class__.__name__,
         )
         self.fact_collection = fact_collection or fact_collection_class()
+
+        self.fact_collection.session = self
+
         self.raw_data_processor = RawDataProcessor(
             self,
             incoming_queue=self.raw_input_queue,
@@ -284,6 +289,65 @@ class Session:  # pylint: disable=too-many-instance-attributes
         ]:
             queue_processor.halt_signal = True
             LOGGER.info("Halt signal sent...")
+
+    def get_all_known_labels(self):
+        """Search through the data sources and extract all the labels"""
+        mappings = []
+        for data_source in self.data_sources:
+            mappings.extend(data_source.mappings)
+        labels = sorted(
+            list(
+                set(
+                    mapping.label
+                    for mapping in mappings
+                    if mapping.label is not None
+                )
+            )
+        )
+        return labels
+
+    def get_population_with_label(self, label: str):
+        """Search through the data sources and extract all the labels"""
+        population = set()
+        for fact in self.fact_collection.node_has_label_facts():
+            if fact.label == label:
+                population.add(fact.node_id)
+        return population
+
+    def get_all_attributes_for_label(self, label: str):
+        """Search through the data sources and extract all the attributes for a label"""
+        attributes = []
+        population = self.get_population_with_label(label)
+        for fact in self.fact_collection.node_has_attribute_with_value_facts():
+            if fact.node_id in population:
+                attributes.append(fact.attribute)
+        return sorted(list(set(attributes)))
+
+    def pyarrow_from_node_label(self, label: str):
+        """Search through the data sources and extract all the attributes for a label"""
+        LOGGER.info("Creating pyarrow table from node label %s", label)
+        table = pa.Table.from_pylist(list(self.rows_by_node_label(label)))
+        return table
+
+    def parquet_from_node_label(
+        self, label: str, path: Optional[str] = None
+    ) -> None:
+        """Write a parquet file from a node label"""
+        table = self.pyarrow_from_node_label(label)
+        pq.write_table(table, path or f"{label}.parquet")
+
+    def get_all_known_attributes(self):
+        """Search through the data sources and extract all the attributes"""
+        attributes = []
+        for data_source in self.data_sources:
+            attributes.extend(data_source.mappings)
+        attributes = [
+            i.attribute for i in attributes if i.attribute is not None
+        ]
+        for trigger in self.trigger_dict.values():
+            attributes.append(trigger.attribute_set)
+        attributes = sorted(list(set(attributes)))
+        return attributes
 
     def block_until_finished(self):
         """Block until all data sources have finished. Re-raise
@@ -484,6 +548,11 @@ class Session:  # pylint: disable=too-many-instance-attributes
                 f"Expected a DataSource or FactCollection, got {type(other)}"
             )
         return self
+    
+    def dump_entities(self, dir_path: str) -> None:
+        """Loop over all entity labels and dump them to a parquet file."""
+        for label in self.get_all_known_labels():
+            self.parquet_from_node_label(label, f"{dir_path}/{label}.parquet")
 
     def attach_data_source(self, data_source: DataSource) -> None:
         """Attach a DataSource to the machine."""

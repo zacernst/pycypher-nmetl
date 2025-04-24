@@ -1,0 +1,63 @@
+fact_collection: RocksDBFactCollection
+fact_collection_class: RocksDBFactCollection
+run_monitor: false
+logging_level: DEBUG
+
+data_sources:
+- name: squares_table
+  uri: file://{MONOREPO_BASE_DIR}/tests/test_data/squares.csv
+  mappings:
+  - attribute_key: name
+    identifier_key: name
+    attribute: name
+    label: Square
+  - attribute_key: length
+    identifier_key: name
+    attribute: side_length
+    label: Square
+  - attribute_key: color
+    identifier_key: name
+    attribute: square_color
+    label: Square
+  - identifier_key: name
+    label: Square
+  data_types:
+    name: NonEmptyString
+    length: Float
+    color: String
+- name: circles_table
+  uri: file://{MONOREPO_BASE_DIR}/tests/test_data/circles.csv
+  mappings:
+  - attribute_key: circle_name
+    identifier_key: circle_name
+    attribute: identification_string
+    label: Circle
+  - attribute_key: center_x
+    identifier_key: circle_name
+    attribute: x_coordinate
+    label: Circle
+  - attribute_key: center_y
+    identifier_key: circle_name
+    attribute: y_coordinate
+    label: Circle
+  - identifier_key: circle_name
+    label: Circle
+- name: contains_table
+  uri: file://{MONOREPO_BASE_DIR}/tests/test_data/contains.csv
+  mappings:
+  - attribute_key: square
+    identifier_key: square
+    attribute: name
+    label: Square
+  - attribute_key: circle
+    identifier_key: circle
+    attribute: name
+    label: Circle
+  - source_key: square
+    target_key: circle
+    source_label: Square
+    target_label: Circle
+    relationship: contains
+  data_types:
+    square_name: NonEmptyString
+    circle_name: NonEmptyString

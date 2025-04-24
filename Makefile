@@ -93,7 +93,7 @@ alltests:
 		echo "Builds and tests with Python $$version..." && \
 		uv run --python $$version hatch build -t wheel || exit 1; \
 		uv run --python $$version pip install --upgrade -e . || exit 1; \
-		uv run --python $$version pytest -vv ${TESTS_DIR} -n ${PYTHON_TEST_THREADS} || exit 1; \
+		uv run --python $$version pytest -vv ${TESTS_DIR} || exit 1; \
 		echo "🎉\n"; \
 	done	
 

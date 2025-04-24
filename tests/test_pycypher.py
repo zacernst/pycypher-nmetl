@@ -16,6 +16,8 @@ from typing import Callable, Iterable
 from unittest.mock import Mock, patch
 
 import networkx as nx
+import pandas as pd
+import pyarrow.parquet as pq
 import pytest
 import rich  # pylint: disable=unused-import
 from fixtures import (
@@ -34,6 +36,7 @@ from fixtures import (
     fact_collection_squares_circles,
     fixture_0_data_source_mapping_list,
     fixture_data_source_0,
+    ingest_file_factory,
     networkx_graph,
     patched_uuid,
     populated_session,
@@ -99,6 +102,7 @@ from nmetl.trigger import (
     VariableAttributeTrigger,
 )
 from nmetl.writer import CSVTableWriter, ParquetTableWriter, TableWriter
+from numpy import nan
 from pycypher.cypher_parser import CypherParser
 from pycypher.exceptions import (  # pylint: disable=unused-import
     InvalidCastError,
@@ -4698,19 +4702,6 @@ def test_attributes_for_specific_node(shapes_session):
     assert obj == expected
 
 
-def test_rows_by_node_label(shapes_session):
-    obj = list(shapes_session.fact_collection.rows_by_node_label("Square"))
-    obj = sorted(obj, key=lambda x: x["name"])
-    expected = [
-        {"name": "squarename1", "square_color": "blue", "side_length": 1.0},
-        {"name": "squarename2", "square_color": "red", "side_length": 5.0},
-        {"name": "squarename3", "square_color": "blue", "side_length": 3.0},
-        {"name": "squarename4", "square_color": "orange", "side_length": 10.0},
-    ]
-    expected = sorted(expected, key=lambda x: x["name"])
-    assert obj == expected
-
-
 def test_trigger_function_on_relationship_match(session_with_trigger):
     session_with_trigger.start_threads()
     session_with_trigger.block_until_finished()
@@ -6099,3 +6090,177 @@ def test_is_true_eq():
     assert is_true1 == is_true2
     assert is_true1 != is_true3
     assert is_true1 != "not an IsTrue"
+
+
+def test_query_attributes_of_label(session_with_three_triggers):
+    """Test that attributes of a label can be queried from a fact collection."""
+    session_with_three_triggers.start_threads()
+    session_with_three_triggers.block_until_finished()
+    attributes = (
+        session_with_three_triggers.fact_collection.attributes_of_label()
+    )
+    assert dict(attributes) == {
+        "Square": {
+            "square_color",
+            "side_length",
+            "small",
+            "name",
+            "big",
+            "area",
+        },
+        "Circle": {
+            "y_coordinate",
+            "name",
+            "identification_string",
+            "x_coordinate",
+        },
+    }
+
+
+def test_query_attributes_of_node_with_label(session_with_three_triggers):
+    """Test that attributes of a label can be queried from a fact collection."""
+    session_with_three_triggers.start_threads()
+    session_with_three_triggers.block_until_finished()
+    out = list(
+        session_with_three_triggers.fact_collection.attributes_of_node_with_label(
+            "Square"
+        )
+    )
+    assert out
+
+
+def test_get_all_known_labels(session_with_three_triggers):
+    labels = session_with_three_triggers.get_all_known_labels()
+    assert labels == ["Circle", "Square"]
+
+
+def test_get_all_known_attributes(session_with_three_triggers):
+    attributes = session_with_three_triggers.get_all_known_attributes()
+    assert attributes == [
+        "area",
+        "big",
+        "identification_string",
+        "name",
+        "side_length",
+        "small",
+        "square_color",
+        "x_coordinate",
+        "y_coordinate",
+    ]
+
+
+def test_get_all_attributes_for_label(session_with_three_triggers):
+    session_with_three_triggers.start_threads()
+    session_with_three_triggers.block_until_finished()
+    attributes = session_with_three_triggers.get_all_attributes_for_label(
+        "Square"
+    )
+    assert attributes == [
+        "area",
+        "big",
+        "name",
+        "side_length",
+        "small",
+        "square_color",
+    ]
+
+
+def test_rows_by_node_label(session_with_three_triggers):
+    session_with_three_triggers.start_threads()
+    session_with_three_triggers.block_until_finished()
+    rows = list(session_with_three_triggers.rows_by_node_label("Square"))
+    assert rows == [
+        {
+            "name": "squarename1",
+            "area": 1.0,
+            "side_length": 1.0,
+            "big": False,
+            "square_color": "blue",
+            "small": True,
+        },
+        {
+            "name": "squarename2",
+            "area": 25.0,
+            "side_length": 5.0,
+            "big": True,
+            "square_color": "red",
+            "small": False,
+        },
+        {
+            "name": "squarename3",
+            "area": 9.0,
+            "side_length": 3.0,
+            "big": False,
+            "square_color": "blue",
+            "small": True,
+        },
+        {
+            "name": "squarename4",
+            "area": None,
+            "side_length": 10.0,
+            "big": None,
+            "square_color": "orange",
+            "small": None,
+        },
+    ]
+
+
+def test_pyarrow_from_node_label(session_with_three_triggers):
+    session_with_three_triggers.start_threads()
+    session_with_three_triggers.block_until_finished()
+    table = session_with_three_triggers.pyarrow_from_node_label("Square")
+    assert table.to_pylist() == [
+        {
+            "name": "squarename1",
+            "area": 1.0,
+            "side_length": 1.0,
+            "big": False,
+            "square_color": "blue",
+            "small": True,
+        },
+        {
+            "name": "squarename2",
+            "area": 25.0,
+            "side_length": 5.0,
+            "big": True,
+            "square_color": "red",
+            "small": False,
+        },
+        {
+            "name": "squarename3",
+            "area": 9.0,
+            "side_length": 3.0,
+            "big": False,
+            "square_color": "blue",
+            "small": True,
+        },
+        {
+            "name": "squarename4",
+            "area": None,
+            "side_length": 10.0,
+            "big": None,
+            "square_color": "orange",
+            "small": None,
+        },
+    ]
+
+
+def test_parquet_from_node_label_file_exists(
+    session_with_three_triggers, tmp_path
+):
+    session_with_three_triggers.start_threads()
+    session_with_three_triggers.block_until_finished()
+    session_with_three_triggers.parquet_from_node_label(
+        "Square", tmp_path / "square.parquet"
+    )
+    assert os.path.exists(tmp_path / "square.parquet")
+
+
+def test_parquet_from_node_label(session_with_three_triggers, tmp_path):
+    session_with_three_triggers.start_threads()
+    session_with_three_triggers.block_until_finished()
+    session_with_three_triggers.parquet_from_node_label(
+        "Square", tmp_path / "square.parquet"
+    )
+    df = pq.read_table(tmp_path / "square.parquet").to_pandas()
+    assert not df.empty

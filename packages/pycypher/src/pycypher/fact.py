@@ -10,6 +10,7 @@ atomic pieces of information about nodes, relationships, and their attributes.
 from __future__ import annotations
 
 import collections
+import inspect
 import logging
 import time
 from abc import ABC, abstractmethod
@@ -23,24 +24,6 @@ from nmetl.config import (  # pylint: disable=no-name-in-module
 )
 from nmetl.helpers import decode, encode
 from nmetl.logger import LOGGER
-from rbloom import Bloom
-from rocksdict import (
-    BlockBasedIndexType,
-    BlockBasedOptions,
-    DBCompressionType,
-    Options,
-    Rdict,
-    ReadOptions,
-    WriteOptions,
-)
-
-LOGGER.setLevel(logging.INFO)
-
-try:
-    import etcd3
-except ModuleNotFoundError:
-    LOGGER.warning("etcd3-py not installed, etcd3 support disabled")
-
 from pycypher.query import (
     NullResult,
     Query,
@@ -56,6 +39,22 @@ from pycypher.solver import (
     ConstraintRelationshipHasTargetNode,
     ConstraintVariableRefersToSpecificObject,
 )
+from rbloom import Bloom  # pylint: disable=no-name-in-module, import-error
+from rocksdict import (  # pylint: disable=no-name-in-module, import-error
+    BlockBasedIndexType,
+    BlockBasedOptions,
+    Options,
+    Rdict,
+    ReadOptions,
+    WriteOptions,
+)
+
+LOGGER.setLevel(logging.DEBUG)
+
+try:
+    import etcd3
+except ModuleNotFoundError:
+    LOGGER.warning("etcd3-py not installed, etcd3 support disabled")
 
 
 class AtomicFact:  # pylint: disable=too-few-public-methods
@@ -501,10 +500,97 @@ class FactCollection(ABC):
         """
         pass
 
+    def relationship_has_label_facts(self):
+        """
+        Generator function that yields facts of type `FactRelationshipHasLabel`.
+
+        Iterates over the `facts` attribute and yields each fact that is an instance
+        of `FactRelationshipHasLabel`.
+
+        Yields:
+            FactRelationshipHasLabel: Facts that are instances of `FactRelationshipHasLabel`.
+        """
+        for fact in self:
+            if isinstance(fact, FactRelationshipHasLabel):
+                yield fact
+
     @abstractmethod
     def keys(self):
         """ABC"""
         pass
+
+    def node_has_attribute_with_specific_value_facts(
+        self, attribute: str, value: Any
+    ):
+        """
+        Return a generator of facts that have a specific attribute and value.
+        """
+        for fact in self:
+            if (
+                isinstance(fact, FactNodeHasAttributeWithValue)
+                and fact.attribute == attribute
+                and fact.value == value
+            ):
+                yield fact
+
+    def relevant_facts(
+        self, constraints: List[Constraint]
+    ) -> Generator[AtomicFact]:
+        """
+        Return a generator of facts that are relevant to the given constraints.
+
+        Args:
+            constraints (List[Constraint]): A list of Constraint objects.
+
+        Yields:
+            AtomicFact: Facts that are relevant to the given constraints.
+        """
+        relevant_facts = set()
+        for constraint in constraints:
+            match constraint:
+                case ConstraintNodeHasLabel():
+                    for fact in self.nodes_with_label_facts(constraint.label):
+                        if fact in relevant_facts:
+                            continue
+                        yield fact
+                        relevant_facts.add(fact)
+                case ConstraintNodeHasAttributeWithValue():
+                    for (
+                        fact
+                    ) in self.node_has_attribute_with_specific_value_facts(
+                        constraint.attribute, constraint.value
+                    ):
+                        if fact in relevant_facts:
+                            continue
+                        yield fact
+                        relevant_facts.add(fact)
+                case ConstraintRelationshipHasSourceNode():
+                    for fact in self.relationship_has_source_node_facts():
+                        if fact in relevant_facts:
+                            continue
+                        yield fact
+                        relevant_facts.add(fact)
+                case ConstraintRelationshipHasTargetNode():
+                    for fact in self.relationship_has_source_node_facts():
+                        if fact in relevant_facts:
+                            continue
+                        yield fact
+                        relevant_facts.add(fact)
+                case ConstraintRelationshipHasLabel():
+                    for fact in self.relationship_has_label_facts():
+                        if (
+                            fact in relevant_facts
+                            or fact.relationship_label != constraint.label
+                        ):
+                            continue
+                        yield fact
+                        relevant_facts.add(fact)
+                case ConstraintVariableRefersToSpecificObject():
+                    pass
+                case _:
+                    raise ValueError(
+                        f"Expected a ``Constraint``, but got {constraint.__class__.__name__}."
+                    )
 
     @abstractmethod
     def append(self, fact: AtomicFact) -> FactCollection:
@@ -517,10 +603,7 @@ class FactCollection(ABC):
         Returns:
             None
         """
-        fact.session = self.session
-        if fact not in self:
-            self.facts.append(fact)
-        return self
+        pass
 
     def __iadd__(self, other: AtomicFact | List[Any]) -> FactCollection:
         """Let us use ``+=`` to add facts to the collection."""
@@ -545,6 +628,17 @@ class FactCollection(ABC):
         for fact in self:
             if isinstance(fact, FactRelationshipHasSourceNode):
                 yield fact
+
+    def attributes_of_label(self):
+        label_attributes_dict = collections.defaultdict(set)
+        for fact in self:
+            if isinstance(fact, FactNodeHasAttributeWithValue):
+                node_id = fact.node_id
+                attribute = fact.attribute
+                query = QueryNodeLabel(node_id=node_id)
+                label = self.query(query)
+                label_attributes_dict[label].add(attribute)
+        return label_attributes_dict
 
     def relationship_has_target_node_facts(self):
         """
@@ -571,6 +665,10 @@ class FactCollection(ABC):
         Yields:
             FactNodeHasLabel: Facts that are instances of `FactNodeHasLabel`.
         """
+        curframe = inspect.currentframe()
+        calframe = inspect.getouterframes(curframe, 2)
+        LOGGER.debug("node_has_label_facts called: %s", calframe[1][3])
+
         for fact in self:
             if isinstance(fact, FactNodeHasLabel):
                 yield fact
@@ -670,6 +768,7 @@ class FactCollection(ABC):
         Raises:
             ValueError: If multiple values are found for the same attribute.
         """
+        print("Query value of node attribute called...")
         facts = [
             fact
             for fact in self.node_has_attribute_with_value_facts()
@@ -773,6 +872,47 @@ class FactCollection(ABC):
             if fact.label == label:
                 yield fact.node_id
 
+    def attributes_of_node_with_label(self, label: str) -> Generator[str]:
+        """
+        Return a list of all the nodes with a specific label.
+
+        Args:
+            label (str): The label of the nodes to return.
+
+        Returns:
+            list: A list of all the nodes with the specified label.
+        """
+        attributes_of_label_dict = self.attributes_of_label()
+        for node_id in self.nodes_with_label(label):
+            row_dict = {
+                attribute: None
+                for attribute in attributes_of_label_dict[label]
+            }
+            for attribute in attributes_of_label_dict[label]:
+                attribute_value = self.attributes_for_specific_node(
+                    node_id, attribute
+                )
+                row_dict.update(attribute_value)
+            row_dict["__label__"] = label
+            row_dict["__node_id__"] = node_id
+            yield row_dict
+
+    def nodes_with_label_facts(
+        self, label: str
+    ) -> Generator[FactNodeHasLabel]:
+        """
+        Return a list of all the nodes with a specific label.
+
+        Args:
+            label (str): The label of the nodes to return.
+
+        Returns:
+            list: A list of all the nodes with the specified label.
+        """
+        for fact in self.node_has_label_facts():
+            if fact.label == label:
+                yield fact
+
     def rows_by_node_label(self, label: str) -> Generator[Dict[str, Any]]:
         """Docstring for rows_by_node_label
 
@@ -783,7 +923,7 @@ class FactCollection(ABC):
         :return: Description
         :rtype: Generator[Dict[str, Any], None, None]
         """
-        inventory = list(self.node_label_attribute_inventory()[label])
+        inventory = self.session.get_all_attributes_for_label(label)
         for node_id in self.nodes_with_label(label):
             yield self.attributes_for_specific_node(node_id, *inventory)
 
@@ -1070,7 +1210,6 @@ class SimpleFactCollection(FactCollection):
         for fact in self.node_has_label_facts():
             if fact.label == label:
                 yield fact.node_id
-
     def rows_by_node_label(self, label: str) -> Generator[Dict[str, Any]]:
         """Docstring for rows_by_node_label
 
@@ -1081,9 +1220,10 @@ class SimpleFactCollection(FactCollection):
         :return: Description
         :rtype: Generator[Dict[str, Any], None, None]
         """
-        inventory = list(self.node_label_attribute_inventory()[label])
+        inventory = list(self.session.get_all_attributes_for_label(label))
         for node_id in self.nodes_with_label(label):
             yield self.attributes_for_specific_node(node_id, *inventory)
+
 
 
 class KeyValue(ABC):
@@ -1093,7 +1233,7 @@ class KeyValue(ABC):
         """Used for the memcache index"""
         match fact:
             case FactNodeHasLabel():
-                return f"node_label:{fact.node_id}:{fact.label}"
+                return f"node_label:{fact.label}::{fact.node_id}:{fact.label}"
             case FactNodeHasAttributeWithValue():
                 return f"node_attribute:{fact.node_id}:{fact.attribute}:{fact.value}"
             case FactRelationshipHasLabel():
@@ -1179,7 +1319,7 @@ class Etcd3FactCollection(FactCollection, KeyValue):
         """
         # node_attribute:Tract::01013952900:tract_fips:01013952900
         prefix = f"node_attribute:{query.node_id}:{query.attribute}:"
-        matches = self.client.range(prefix, prefix + "\0").kvs or []
+        matches = self.client.range(prefix, prefix + self.LAST_KEY).kvs or []
         if len(matches) == 1:
             return (
                 matches[0].value.value
@@ -1254,21 +1394,6 @@ class Etcd3FactCollection(FactCollection, KeyValue):
         """Delete a fact from the etcd3"""
         index = self.make_index_for_fact(fact)
         self.client.delete_range(key=index)
-
-    # def node_has_label_facts_bak(self):
-    #     """
-    #     Generator function that yields facts of type `FactNodeHasLabel`.
-
-    #     Iterates over the `facts` attribute and yields each fact that is an instance
-    #     of `FactNodeHasLabel`.
-
-    #     Yields:
-    #         FactNodeHasLabel: Facts that are instances of `FactNodeHasLabel`.
-    #     """
-    #     matches = self.client.range("node_label:").kvs or []
-    #     for match in matches:
-    #         fact = decode(match.value)
-    #         yield fact
 
     def __contains__(self, fact: AtomicFact) -> bool:
         """
@@ -1436,7 +1561,7 @@ class RocksDBFactCollection(FactCollection, KeyValue):
 
     def __init__(self, *args, db_path: str = "rocksdb", **kwargs):
         """
-        Initialize a etcd3 instance.
+        Initialize a RocksDB-backed FactCollection.
 
         Args:
             *args: Variable positional arguments (ignored).
@@ -1446,11 +1571,11 @@ class RocksDBFactCollection(FactCollection, KeyValue):
         self.write_options = WriteOptions()
         self.write_options.sync = False
         self.options = Options()
-        self.options.set_unordered_write(True)
+        self.options.set_unordered_write(False)
         self.options.create_if_missing(True)
         self.options.set_max_background_jobs(10)
         self.options.set_max_write_buffer_number(10)
-        self.options.set_write_buffer_size(1024 * 1024 * 1024)
+        self.options.set_write_buffer_size(16 * 1024 * 1024 * 1024)
 
         self.write_options = WriteOptions()
         self.write_options.disable_wal = True
@@ -1459,13 +1584,62 @@ class RocksDBFactCollection(FactCollection, KeyValue):
         self.db.set_write_options(self.write_options)
         block_opts = BlockBasedOptions()
         block_opts.set_index_type(BlockBasedIndexType.hash_search())
-        block_opts.set_bloom_filter(4196, True)
+        block_opts.set_bloom_filter(20, False)
         self.options.set_block_based_table_factory(block_opts)
         self.iter = self.db.iter(ReadOptions())
         self.LAST_KEY = "\xff"  # pylint: disable=invalid-name
         self.diverted_counter = 0
         self.diversion_miss_counter = 0
         super().__init__(*args, **kwargs)
+
+    def _prefix_read_items(self, prefix: str) -> Generator[Any, Any]:
+        """
+        Read a range of keys from the database.
+
+        Args:
+            start_key (str): The starting key of the range.
+            end_key (str): The ending key of the range.
+
+        Yields:
+            Any: The values associated with the keys in the range.
+        """
+        for key in self._prefix_read_keys(prefix):
+            value = decode(self.db.get(key))
+            if value is None:
+                break
+            yield key, value
+
+    def _prefix_read_keys(self, prefix: str) -> Generator[Any, Any]:
+        """
+        Read a range of keys from the database.
+
+        Args:
+            start_key (str): The starting key of the range.
+            end_key (str): The ending key of the range.
+
+        Yields:
+            Any: The values associated with the keys in the range.
+        """
+        for key in self.db.keys(from_key=prefix):
+            if not key.startswith(prefix):
+                return
+            yield key
+
+    def _prefix_read_values(self, prefix: str) -> Generator[Any, Any]:
+        """
+        Read a range of keys from the database.
+
+        Args:
+            prefix (str): The prefix of the keys to read.
+
+        Yields:
+            Any: The values associated with the keys in the range.
+        """
+        for key in self._prefix_read_keys(prefix):
+            value = decode(self.db.get(key))
+            if value is None:
+                break
+            yield value
 
     def range_read(self, start_key, end_key) -> Generator[Any, Any]:
         """
@@ -1478,44 +1652,41 @@ class RocksDBFactCollection(FactCollection, KeyValue):
         Yields:
             Any: The values associated with the keys in the range.
         """
-        self.iter.seek(start_key)
-        key = self.iter.key()
-        value = self.iter.value()
-        self.yielded_counter += 1
-        while end_key is not None and key is not None and key <= end_key:
+        for key in self.db.keys(from_key=start_key):
+            if key > end_key:
+                break
+            value = self.db.get(key)
+            if value is None:
+                break
             self.yielded_counter += 1
-            yield key, value
-            self.iter.next()
-            key = self.iter.key()
-            value = self.iter.value()
+            yield decode(value)
 
     def keys(self) -> Generator[str]:
         """
         Yields:
             str: Each key
         """
-
-        for key, _ in self.db.keys():
-            if key is None:
-                break
-            yield key
+        yield from self._prefix_read_keys("")
 
     def values(self) -> Generator[AtomicFact]:
         """
         Iterate over all values stored in the memcached server.
-
-        Yields:
-            AtomicFact: Each value stored in the memcached server.
-
-        Raises:
-            pymemcache.exceptions.MemcacheError: If there's an error communicating with the memcached server.
-            pickle.PickleError: If there's an error unpickling the data.
         """
-        for value in self.db.values():
-            if value is None:
-                break
-            self.yielded_counter += 1
-            yield decode(value)
+        yield from self._prefix_read_values("")
+
+    def node_has_attribute_with_specific_value_facts(
+        self, attribute: str, value: Any
+    ):
+        """
+        Return a generator of facts that have a specific attribute and value.
+        """
+        for fact in self.range_read("node_attribute:", "node_attribute:\xff"):
+            if (
+                isinstance(fact, FactNodeHasAttributeWithValue)
+                and fact.attribute == attribute
+                and fact.value == value
+            ):
+                yield fact
 
     def __delitem__(self, key: str):
         """
@@ -1554,6 +1725,9 @@ class RocksDBFactCollection(FactCollection, KeyValue):
         Returns:
             bool: True if the fact is in the collection, False otherwise.
         """
+        # curframe = inspect.currentframe()
+        # calframe = inspect.getouterframes(curframe, 2)
+        # LOGGER.debug("__contains__ called: %s", calframe[1][3])
         index = self.make_index_for_fact(fact)
         if self.db.key_may_exist(index):
             value = self.db.get(index)
@@ -1562,6 +1736,26 @@ class RocksDBFactCollection(FactCollection, KeyValue):
             return decode(value) == fact if value is not None else False
         self.diverted_counter += 1
         return False
+    
+    def attributes_for_specific_node(
+        self, node_id: str, *attributes: str
+    ) -> Dict[str, Any]:
+        """
+        Return a dictionary of all the attributes for a specific node.
+
+        Args:
+            node_id (str): The ID of the node.
+
+        Returns:
+            dict: A dictionary of all the attributes for the specified node.
+        """
+        row = {attribute: None for attribute in attributes}
+        for attribute in attributes:
+            prefix = f"node_attribute:{node_id}:{attribute}:"
+            for fact in self._prefix_read_values(prefix):
+                row[fact.attribute] = fact.value
+                break
+        return row
 
     def query_node_label(self, query: QueryNodeLabel):
         """Given a query for a node label, return the label if it exists.
@@ -1593,19 +1787,22 @@ class RocksDBFactCollection(FactCollection, KeyValue):
         case FactNodeRelatedToNode():
             return f"node_relationship:{fact.node1_id}:{fact.node2_id}:{fact.relationship_label}"
         """
-
-        facts = [
-            fact
-            for fact in self.node_has_label_facts()
-            if fact.node_id == query.node_id
-        ]
-        if len(facts) == 1:
-            return facts[0].label
-        if not facts:
-            return NullResult(query)
-        if len(facts) > 1:
-            raise ValueError(f"Found multiple labels for {query}")
-        raise ValueError("Unknown error")
+        if self.session is None:
+            LOGGER.warning("Session is not set. Reverting to brute-force.")
+            return FactCollection.query_node_label(self, query)
+        prefix = "node_label:"
+        labels = self.session.get_all_known_labels()
+        for label in labels:
+            prefix = f"node_label:{label}::{query.node_id}"
+            result = NullResult(query)
+            for fact in self._prefix_read_values(prefix):
+                if (
+                    isinstance(fact, FactNodeHasLabel)
+                    and fact.node_id == query.node_id
+                ):
+                    result = fact.label
+                    break
+        return result
 
     def append(self, fact: AtomicFact) -> None:
         """
@@ -1623,14 +1820,17 @@ class RocksDBFactCollection(FactCollection, KeyValue):
         self.db.flush()
 
     def __iter__(self) -> Generator[AtomicFact]:
+        curframe = inspect.currentframe()
+        calframe = inspect.getouterframes(curframe, 2)
+        LOGGER.warning("__iter__ called: %s", calframe[1][3])
+
         yield from self.values()
+        LOGGER.warning("Done iterating values by brute force.")
 
     def __repr__(self):
         return "Rocks"
 
-    def query_value_of_node_attribute_bak(
-        self, query: QueryValueOfNodeAttribute
-    ):
+    def query_value_of_node_attribute(self, query: QueryValueOfNodeAttribute):
         """
         Query the value of a node's attribute.
 
@@ -1647,14 +1847,13 @@ class RocksDBFactCollection(FactCollection, KeyValue):
 
         """
         prefix = f"node_attribute:{query.node_id}:{query.attribute}:"
-
-        result = list(self.range_read(prefix, prefix + self.LAST_KEY))
+        result = list(self._prefix_read_values(prefix))
         if len(result) == 1:
-            key_value = result[0]
-            fact = decode(key_value[1])
-            return fact
-        else:
-            return NullResult(query)
+            fact = result[0]
+            return fact.value
+        if len(result) > 1:
+            raise ValueError(f"Found multiple values for {query}: {result}")
+        return NullResult(query)
 
     def nodes_with_label(self, label: str) -> Generator[str]:
         """
@@ -1666,9 +1865,23 @@ class RocksDBFactCollection(FactCollection, KeyValue):
         Returns:
             list: A list of all the nodes with the specified label.
         """
-        for fact in self.node_has_label_facts():
-            if fact.label == label:
+        prefix = f"node_label:{label}::"
+        for fact in self._prefix_read_values(prefix):
+            if isinstance(fact, FactNodeHasLabel) and fact.label == label:
                 yield fact.node_id
+
+    def nodes_with_label_facts(self, label: str) -> Generator[str]:
+        """
+        Return a list of all the nodes with a specific label.
+
+        Args:
+            label (str): The label of the nodes to return.
+
+        Returns:
+            list: A list of all the nodes with the specified label.
+        """
+        prefix = f"node_label:{label}::"
+        yield from self._prefix_read_values(prefix)
 
     def relationship_has_source_node_facts(self):
         """
@@ -1681,24 +1894,19 @@ class RocksDBFactCollection(FactCollection, KeyValue):
             FactRelationshipHasSourceNode: Facts that are instances of
                 FactRelationshipHasSourceNode.
         """
-        print("relationship_has_source_node_facts")
-        for fact in self:
-            if isinstance(fact, FactRelationshipHasSourceNode):
-                print(f"relationship_has_source_node_facts: {fact}")
-                yield fact
+        prefix = "relationship_source_node:"
+        yield from self._prefix_read_values(prefix)
 
     def relationship_has_target_node_facts(self):
         """
-        Generator method that yields facts of type FactRelationshipHasTargetNode.
+        Generator method that yields facts of type FactRelationshipHasSourceNode.
 
-        Iterates over the `facts` attribute of the instance and yields each fact
-        that is an instance of FactRelationshipHasTargetNode.
+        This method iterates over the `facts` attribute of the instance and yields
+        each fact that is an instance of the FactRelationshipHasSourceNode class.
 
         Yields:
             FactRelationshipHasTargetNode: Facts that are instances of
                 FactRelationshipHasTargetNode.
         """
-        for fact in self:
-            if isinstance(fact, FactRelationshipHasTargetNode):
-                print(f"relationship_has_target_node_facts: {fact}")
-                yield fact
+        prefix = "relationship_target_node:"
+        yield from self.range_read(prefix, prefix + self.LAST_KEY)

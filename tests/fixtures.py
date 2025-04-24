@@ -42,6 +42,13 @@ BACK_END_STORES = [
     # Etcd3FactCollection,
 ]
 
+INGEST_FILES = ["ingest.yaml"]  # , 'ingest_rocks.yaml']
+
+
+@pytest.fixture(params=INGEST_FILES)
+def ingest_file_factory(request):
+    return request.param
+
 
 class patched_uuid:  # pylint: disable=invalid-name,too-few-public-methods
     """Creates a deterministic value for uuid hex"""
@@ -630,18 +637,21 @@ def populated_session(
 
 
 @pytest.fixture
-def shapes_session():
+def shapes_session(ingest_file_factory):
     LOGGER.setLevel("DEBUG")
-    ingest_file = TEST_DATA_DIRECTORY / "ingest.yaml"
+    ingest_file = TEST_DATA_DIRECTORY / ingest_file_factory
     session = load_session_config(ingest_file)
     session.start_threads()
     session.block_until_finished()
-    return session
+    # kreturn session
+    yield session
+    if isinstance(session.fact_collection, RocksDBFactCollection):
+        session.fact_collection.close()
 
 
 @pytest.fixture
-def session_with_trigger():
-    ingest_file = TEST_DATA_DIRECTORY / "ingest.yaml"
+def session_with_trigger(ingest_file_factory):
+    ingest_file = TEST_DATA_DIRECTORY / ingest_file_factory
     session = load_session_config(ingest_file)
 
     @session.trigger(
@@ -652,12 +662,15 @@ def session_with_trigger():
     def compute_area(side_length) -> VariableAttribute["s", "area"]:  # type: ignore
         return side_length**2
 
-    return session
+    yield session
+    if isinstance(session.fact_collection, RocksDBFactCollection):
+        session.fact_collection.close()
+    # kkkkkkkreturn session
 
 
 @pytest.fixture
-def session_with_two_triggers():
-    ingest_file = TEST_DATA_DIRECTORY / "ingest.yaml"
+def session_with_two_triggers(ingest_file_factory):
+    ingest_file = TEST_DATA_DIRECTORY / ingest_file_factory
     session = load_session_config(ingest_file)
 
     @session.trigger(
@@ -675,12 +688,15 @@ def session_with_two_triggers():
     def compute_bigness(square_area) -> VariableAttribute["s", "big"]:  # type: ignore
         return square_area > 10
 
-    return session
+    yield session
+    if isinstance(session.fact_collection, RocksDBFactCollection):
+        session.fact_collection.close()
+    # return session
 
 
 @pytest.fixture
-def session_with_three_triggers():
-    ingest_file = TEST_DATA_DIRECTORY / "ingest.yaml"
+def session_with_three_triggers(ingest_file_factory):
+    ingest_file = TEST_DATA_DIRECTORY / ingest_file_factory
     session = load_session_config(ingest_file)
 
     @session.trigger(
@@ -707,12 +723,14 @@ def session_with_three_triggers():
     def compute_smallness(bigness) -> VariableAttribute["s", "small"]:  # type: ignore
         return not bigness
 
-    return session
+    yield session
+    if isinstance(session.fact_collection, RocksDBFactCollection):
+        session.fact_collection.close()
 
 
 @pytest.fixture
-def session_with_aggregation_fixture():
-    ingest_file = TEST_DATA_DIRECTORY / "ingest.yaml"
+def session_with_aggregation_fixture(ingest_file_factory):
+    ingest_file = TEST_DATA_DIRECTORY / ingest_file_factory
     session = load_session_config(ingest_file)
 
     @session.trigger(
@@ -750,7 +768,9 @@ def session_with_aggregation_fixture():
     ) -> VariableAttribute["s", "num_circles"]:  # type: ignore
         return len(radii)
 
-    return session
+    yield session
+    if isinstance(session.fact_collection, RocksDBFactCollection):
+        session.fact_collection.close()
 
 
 @pytest.fixture
@@ -762,7 +782,9 @@ def session_with_city_state_fixture():
     def city_state(city: str, state: str) -> NewColumn["city_state"]:
         return "__".join([city, state])
 
-    return session
+    yield session
+    if isinstance(session.fact_collection, RocksDBFactCollection):
+        session.fact_collection.close()
 
 
 @pytest.fixture
@@ -775,11 +797,13 @@ def data_asset_1():
 
 
 @pytest.fixture
-def session_with_data_asset(data_asset_1):
-    ingest_file = TEST_DATA_DIRECTORY / "ingest.yaml"
+def session_with_data_asset(data_asset_1, ingest_file_factory):
+    ingest_file = TEST_DATA_DIRECTORY / ingest_file_factory
     session = load_session_config(ingest_file)
     session.register_data_asset(data_asset_1)
-    return session
+    yield session
+    if isinstance(session.fact_collection, RocksDBFactCollection):
+        session.fact_collection.close()
 
 
 @pytest.fixture

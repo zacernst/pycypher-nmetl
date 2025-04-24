@@ -233,8 +233,9 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
         out = []
         LOGGER.debug("Checking fact %s against triggers", item)
         while item not in self.session.fact_collection:
-            LOGGER.debug("Fact %s not in collection, waiting", item.__dict__)
-            time.sleep(0.1)
+            LOGGER.debug("Fact %s not in collection, requeueing...", item.__dict__)
+
+            self.incoming_queue.put(item)
         LOGGER.debug("IN COLLECTION: %s", item.__dict__)
         # Let's filter out the facts that are irrelevant to this trigger
         for _, trigger in self.session.trigger_dict.items():
@@ -253,7 +254,7 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
             LOGGER.debug("Checking trigger %s", trigger)
             # item is a Fact subclass
             for constraint in trigger.constraints:
-                LOGGER.debug(
+                LOGGER.warning(
                     "Checking item: %s, constraint %s, trigger %s result: %s",
                     item,
                     constraint,
@@ -262,7 +263,7 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
                 )
 
                 if sub := item + constraint:
-                    LOGGER.debug("Fact %s matched a trigger", item)
+                    LOGGER.warning("Fact %s matched a trigger", item)
                     sub_trigger_pair = SubTriggerPair(sub=sub, trigger=trigger)
                     out.append(sub_trigger_pair)
         return out

@@ -44,6 +44,8 @@ from pydantic import (
 )
 from rich.tree import Tree
 
+LOGGER.setLevel("DEBUG")
+
 
 class Evaluable(abc.ABC):  # pylint: disable=too-few-public-methods
     """
@@ -1176,7 +1178,8 @@ class Match(TreeMixin):
             node_domain = Domain(set())
             relationship_domain = Domain(set())
             # Get domains for nodes and relationships
-            for fact in fact_collection:
+            LOGGER.debug("Constraints for problem are: %s", constraints)
+            for fact in fact_collection.relevant_facts(constraints):
                 LOGGER.debug("fact: %s", fact)
                 if isinstance(fact, FactNodeHasLabel):
                     if fact.node_id not in node_domain:
@@ -2038,3 +2041,6 @@ class Literal(TreeMixin, Evaluable):
 
     def __eq__(self, other):
         return isinstance(other, Literal) and self.value == other.value
+
+    def __hash__(self):
+        return hash(self.value)
