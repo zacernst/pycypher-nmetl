@@ -212,3 +212,5 @@ test_script.sh
 user-agent
 out
 .gitignore
+OSM_Node.parquet
+Square.parquet
