@@ -43,6 +43,7 @@ dependencies = [
     "rocksdict>=0.3.25",
     "pandas>=2.2.3",
     "dask[distributed]>=2025.4.0",
+    "pylint>=3.3.6",
 ]
 
 [[project.authors]]

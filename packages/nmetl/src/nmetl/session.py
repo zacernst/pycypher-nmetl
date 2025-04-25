@@ -9,19 +9,20 @@ to executing triggers based on facts and constraints.
 
 from __future__ import annotations
 
-from abc import abstractmethod, ABC
 import datetime
 import functools
 import inspect
 import threading
 import time
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from hashlib import md5
 from multiprocessing import Queue as MULTIPROCESSING_QUEUE_CLASS
 from queue import Queue as THREADING_QUEUE_CLASS
 from typing import (
     Any,
-    Callable,v fg v
+    Callable,
+    Dict,
     Generator,
     Iterable,
     List,
@@ -31,9 +32,9 @@ from typing import (
     Type,
 )
 
-from dask.distributed import Client
 import pyarrow as pa
 import pyarrow.parquet as pq
+from dask.distributed import Client
 from nmetl.config import (  # pylint: disable=no-name-in-module
     CHECK_FACT_AGAINST_TRIGGERS_QUEUE_SIZE,
     DUMP_PROFILE_INTERVAL,
@@ -100,7 +101,7 @@ class MultiProcessingCompute(ComputeBackEnd):
 
     def __init__(self) -> None:
         raise NotImplementedError("MultiProcessingBackEnd not implemented yet")
-    
+
     def setup(self) -> None:
         """Set up the compute backend."""
         pass
@@ -113,7 +114,7 @@ class DaskCompute(ComputeBackEnd):
 
     def __init__(self) -> None:
         raise NotImplementedError("DaskBackEnd not implemented yet")
-    
+
     def setup(self) -> None:
         """Set up the compute backend."""
         self.client = Client()
@@ -126,7 +127,7 @@ class ThreadingCompute(ComputeBackEnd):
 
     def __init__(self) -> None:
         pass
-    
+
     def setup(self) -> None:
         """Set up the compute backend."""
         # Not much to do for this one, it's single-core threads
@@ -156,7 +157,9 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
         run_monitor: Optional[bool] = True,
         dump_profile_interval: Optional[int] = DUMP_PROFILE_INTERVAL,
         profiler: Optional[bool] = PROFILER,
-        compute_class_name: Optional[ComputeClassNameEnum] = ComputeClassNameEnum.THREADING,
+        compute_class_name: Optional[
+            ComputeClassNameEnum
+        ] = ComputeClassNameEnum.THREADING,
         compute_options: Optional[Dict[str, Any]] = None,
     ):  # pylint: disable=too-many-arguments
         """

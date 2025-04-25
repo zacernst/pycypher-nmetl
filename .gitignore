@@ -214,3 +214,4 @@ out
 .gitignore
 OSM_Node.parquet
 Square.parquet
+.pylintrc
