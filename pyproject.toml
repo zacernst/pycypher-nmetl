@@ -42,6 +42,7 @@ dependencies = [
     "snakeviz>=2.2.2",
     "rocksdict>=0.3.25",
     "pandas>=2.2.3",
+    "dask[distributed]>=2025.4.0",
 ]
 
 [[project.authors]]

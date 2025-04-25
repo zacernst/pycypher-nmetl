@@ -3,7 +3,7 @@
 from enum import Enum
 
 
-class BackEndEnum(str, Enum):
+class ComputeClassNameEnum(str, Enum):
     """Enum for the back end to use for the session."""
 
     THREADING = "threading"

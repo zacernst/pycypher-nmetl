@@ -1210,6 +1210,7 @@ class SimpleFactCollection(FactCollection):
         for fact in self.node_has_label_facts():
             if fact.label == label:
                 yield fact.node_id
+
     def rows_by_node_label(self, label: str) -> Generator[Dict[str, Any]]:
         """Docstring for rows_by_node_label
 
@@ -1223,7 +1224,6 @@ class SimpleFactCollection(FactCollection):
         inventory = list(self.session.get_all_attributes_for_label(label))
         for node_id in self.nodes_with_label(label):
             yield self.attributes_for_specific_node(node_id, *inventory)
-
 
 
 class KeyValue(ABC):
@@ -1736,7 +1736,7 @@ class RocksDBFactCollection(FactCollection, KeyValue):
             return decode(value) == fact if value is not None else False
         self.diverted_counter += 1
         return False
-    
+
     def attributes_for_specific_node(
         self, node_id: str, *attributes: str
     ) -> Dict[str, Any]:

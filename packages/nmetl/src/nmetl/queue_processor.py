@@ -13,7 +13,6 @@ from __future__ import annotations
 import datetime
 import hashlib
 import inspect
-import pickle
 import sys
 import threading
 
@@ -28,7 +27,6 @@ from queue import Queue
 from typing import Any, Dict, List, Optional
 
 from nmetl.helpers import Idle, QueueGenerator
-from nmetl.message_types import EndOfData
 from nmetl.trigger import CypherTrigger
 from pycypher.fact import (
     AtomicFact,
@@ -71,10 +69,11 @@ class QueueProcessor(ABC):  # pylint: disable=too-few-public-methods,too-many-in
 
     def __init__(
         self,
-        session: Optional["Session"] = None,
+        session: Optional["Session"] = None,  # type: ignore
         incoming_queue: Optional[QueueGenerator] = None,
         outgoing_queue: Optional[QueueGenerator] = None,
         status_queue: Optional[Queue] = None,
+        compute: Optional[Any] = None,
     ) -> None:
         """
         Initialize a QueueProcessor instance.
@@ -91,9 +90,14 @@ class QueueProcessor(ABC):  # pylint: disable=too-few-public-methods,too-many-in
         self.finished = False
         self.finished_at = None
         self.halt_signal = False
+        ###########################################
+        # The next lines are the ones that need to
+        # be generalized by the compute engine.
+        ###########################################
         self.processing_thread = threading.Thread(
             target=self.process_queue, daemon=True
         )
+        self.compute = compute
         self.received_counter = 0
         self.sent_counter = 0
         self.incoming_queue = incoming_queue
@@ -233,7 +237,9 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
         out = []
         LOGGER.debug("Checking fact %s against triggers", item)
         while item not in self.session.fact_collection:
-            LOGGER.debug("Fact %s not in collection, requeueing...", item.__dict__)
+            LOGGER.debug(
+                "Fact %s not in collection, requeueing...", item.__dict__
+            )
 
             self.incoming_queue.put(item)
         LOGGER.debug("IN COLLECTION: %s", item.__dict__)

@@ -18,8 +18,8 @@ from nmetl.message_types import EndOfData
 from pycypher.logger import LOGGER
 
 
-class Idle:
-    pass
+class Idle:  # pylint: disable=too-few-public-methods
+    """Simply a message that is sent when a queue is idle."""
 
 
 def ensure_uri(uri: str | ParseResult | Path) -> ParseResult:
@@ -51,7 +51,7 @@ class QueueGenerator:  # pylint: disable=too-few-public-methods,too-many-instanc
 
     def __init__(
         self,
-        *args,
+        *args,  # pylint: disable=unused-argument
         inner_queue_timeout: Optional[int] = INNER_QUEUE_TIMEOUT,
         end_of_queue_cls: Optional[Type] = EndOfData,
         outer_queue_timeout: Optional[int] = OUTER_QUEUE_TIMEOUT,
@@ -59,7 +59,8 @@ class QueueGenerator:  # pylint: disable=too-few-public-methods,too-many-instanc
         use_cache: Optional[bool] = False,
         session: Optional["Session"] = None,  # type: ignore
         max_queue_size: Optional[int] = DEFAULT_QUEUE_SIZE,
-        **kwargs,
+        queue_class: Optional[Type] = queue.Queue,
+        **kwargs,  # pylint: disable=unused-argument
     ) -> None:
         """
         Initialize a QueueGenerator instance.
@@ -74,7 +75,8 @@ class QueueGenerator:  # pylint: disable=too-few-public-methods,too-many-instanc
             session (Optional[Session]): The session this queue belongs to. Defaults to None.
             **kwargs: Variable keyword arguments passed to the parent class.
         """
-        super().__init__(*args, **kwargs)
+        # super().__init__(*args, **kwargs)
+        # Look up the queue class from the compute class
         self.max_queue_size = max_queue_size
         self.queue = queue.Queue(maxsize=self.max_queue_size)
         self.inner_queue_timeout = inner_queue_timeout
@@ -88,6 +90,8 @@ class QueueGenerator:  # pylint: disable=too-few-public-methods,too-many-instanc
         self.session = session
         self.incoming_queue_processors = []
         self.timed_cache = {}
+        self.queue_class = queue_class
+        self.queue = self.queue_class()
         self.use_cache = use_cache
 
         if self.session:

@@ -9,16 +9,29 @@ to executing triggers based on facts and constraints.
 
 from __future__ import annotations
 
+from abc import abstractmethod, ABC
 import datetime
 import functools
 import inspect
-import queue
 import threading
 import time
 from dataclasses import dataclass
 from hashlib import md5
-from typing import Any, Dict, Generator, Iterable, List, Optional, Type
+from multiprocessing import Queue as MULTIPROCESSING_QUEUE_CLASS
+from queue import Queue as THREADING_QUEUE_CLASS
+from typing import (
+    Any,
+    Callable,v fg v
+    Generator,
+    Iterable,
+    List,
+    NoReturn,
+    Optional,
+    Set,
+    Type,
+)
 
+from dask.distributed import Client
 import pyarrow as pa
 import pyarrow.parquet as pq
 from nmetl.config import (  # pylint: disable=no-name-in-module
@@ -34,6 +47,7 @@ from nmetl.data_asset import DataAsset
 from nmetl.data_source import DataSource
 from nmetl.exceptions import (
     BadTriggerReturnAnnotationError,
+    EmptyQueueError,
     UnknownDataSourceError,
 )
 from nmetl.helpers import QueueGenerator
@@ -43,6 +57,7 @@ from nmetl.queue_processor import (
     RawDataProcessor,
     TriggeredLookupProcessor,
 )
+from nmetl.session_enums import ComputeClassNameEnum, LoggingLevelEnum
 from nmetl.trigger import (
     NodeRelationship,
     NodeRelationshipTrigger,
@@ -67,7 +82,57 @@ class NewColumnConfig:
     new_column_name: str
 
 
-class Session:  # pylint: disable=too-many-instance-attributes
+class ComputeBackEnd(ABC):
+    """Abstract base class for compute backends."""
+
+    queue_class = None
+
+    @abstractmethod
+    def setup(self) -> None:
+        """Set up the compute backend."""
+        pass
+
+
+class MultiProcessingCompute(ComputeBackEnd):
+    """Class for the multiprocessing back end."""
+
+    queue_class = MULTIPROCESSING_QUEUE_CLASS
+
+    def __init__(self) -> None:
+        raise NotImplementedError("MultiProcessingBackEnd not implemented yet")
+    
+    def setup(self) -> None:
+        """Set up the compute backend."""
+        pass
+
+
+class DaskCompute(ComputeBackEnd):
+    """Class for the dask back end."""
+
+    queue_class = None
+
+    def __init__(self) -> None:
+        raise NotImplementedError("DaskBackEnd not implemented yet")
+    
+    def setup(self) -> None:
+        """Set up the compute backend."""
+        self.client = Client()
+
+
+class ThreadingCompute(ComputeBackEnd):
+    """Class for the threading back end."""
+
+    queue_class = THREADING_QUEUE_CLASS
+
+    def __init__(self) -> None:
+        pass
+    
+    def setup(self) -> None:
+        """Set up the compute backend."""
+        # Not much to do for this one, it's single-core threads
+
+
+class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-methods
     """
     Manages the ETL pipeline execution, including triggers and fact collection.
 
@@ -84,15 +149,15 @@ class Session:  # pylint: disable=too-many-instance-attributes
         fact_collection: Optional[FactCollection] = None,
         fact_collection_class: Type[FactCollection] = SimpleFactCollection,
         data_assets: Optional[List[DataAsset]] = None,
-        logging_level: Optional[str] = "WARNING",
-        queue_class: Optional[Type] = QueueGenerator,
+        logging_level: Optional[LoggingLevelEnum] = LoggingLevelEnum.WARNING,
         queue_options: Optional[Dict[str, Any]] = None,
         data_sources: Optional[List[DataSource]] = None,
         queue_list: Optional[List[QueueGenerator]] = None,
-        status_queue: Optional[queue.Queue] = None,
         run_monitor: Optional[bool] = True,
         dump_profile_interval: Optional[int] = DUMP_PROFILE_INTERVAL,
         profiler: Optional[bool] = PROFILER,
+        compute_class_name: Optional[ComputeClassNameEnum] = ComputeClassNameEnum.THREADING,
+        compute_options: Optional[Dict[str, Any]] = None,
     ):  # pylint: disable=too-many-arguments
         """
         Initialize a new Session instance.
@@ -104,36 +169,50 @@ class Session:  # pylint: disable=too-many-instance-attributes
                 Defaults to None.
             logging_level (Optional[str], optional): Logging level for the session.
                 Defaults to "WARNING".
-            queue_class (Optional[Type], optional): Class to use for queues.
-                Defaults to QueueGenerator.
             queue_options (Optional[Dict[str, Any]], optional): Options for queue initialization.
                 Defaults to None.
             data_sources (Optional[List[DataSource]], optional): List of data sources.
                 Defaults to None.
             queue_list (Optional[List[QueueGenerator]], optional): List of queues.
                 Defaults to None.
-            status_queue (Optional[queue.Queue], optional): Queue for status messages.
-                Defaults to None.
             run_monitor (Optional[bool], optional): Whether to run the monitor thread.
                 Defaults to True.
         """
-        # Instantiate the various queues using the queue_class
         self.data_sources = data_sources or []
         self.run_monitor = run_monitor
-        self.queue_class = queue_class
         self.queue_options = queue_options or {}
         self.queue_list = queue_list or []
-        self.logging_level = logging_level  # Not so sure
+        self.logging_level = logging_level
         # No need for a fancy queue class here
-        self.status_queue = status_queue or queue.Queue()
         self.new_column_dict = {}
         self.dump_profile_interval = dump_profile_interval
         self.profiler = profiler
+        self.compute_class_name = compute_class_name
+        self.compute_options = compute_options or {}
 
-        self.raw_input_queue = self.queue_class(
+        try:
+            self.compute_class = {
+                ComputeClassNameEnum.THREADING: ThreadingCompute,
+                ComputeClassNameEnum.MULTIPROCESSING: MultiProcessingCompute,
+                ComputeClassNameEnum.DASK: DaskCompute,
+            }[self.compute_class_name]
+        except KeyError as e:
+            raise ValueError(
+                f"Unknown compute class name {compute_class_name}"
+            ) from e
+
+        self.compute = self.compute_class(
+            **self.compute_options
+        )  # Initialize the back end compute object -- may be no-op
+
+        self.queue_class = self.compute_class.queue_class
+        self.status_queue = self.compute_class.queue_class()
+
+        self.raw_input_queue = QueueGenerator(
             session=self,
             name="RawInput",
             max_queue_size=RAW_INPUT_QUEUE_SIZE,
+            queue_class=self.compute_class.queue_class,
             **self.queue_options,
         )
         self.data_assets = data_assets or []
@@ -141,22 +220,25 @@ class Session:  # pylint: disable=too-many-instance-attributes
             data_asset.name for data_asset in self.data_assets
         ]
 
-        self.fact_generated_queue = self.queue_class(
+        self.fact_generated_queue = QueueGenerator(
             session=self,
             name="FactGenerated",
             max_queue_size=FACT_GENERATED_QUEUE_SIZE,
+            queue_class=self.queue_class,
             **self.queue_options,
         )
-        self.check_fact_against_triggers_queue = self.queue_class(
+        self.check_fact_against_triggers_queue = QueueGenerator(
             session=self,
             name="CheckFactTrigger",
             max_queue_size=CHECK_FACT_AGAINST_TRIGGERS_QUEUE_SIZE,
+            queue_class=self.queue_class,
             **self.queue_options,
         )
-        self.triggered_lookup_processor_queue = self.queue_class(
+        self.triggered_lookup_processor_queue = QueueGenerator(
             session=self,
             name="TriggeredLookupProcessor",
             max_queue_size=TRIGGERED_LOOKUP_PROCESSOR_QUEUE_SIZE,
+            queue_class=self.queue_class,
             **self.queue_options,
         )
 
@@ -174,12 +256,14 @@ class Session:  # pylint: disable=too-many-instance-attributes
             incoming_queue=self.raw_input_queue,
             outgoing_queue=self.fact_generated_queue,
             status_queue=self.status_queue,
+            compute=self.compute,
         )
         self.fact_generated_queue_processor = FactGeneratedQueueProcessor(
             self,
             incoming_queue=self.fact_generated_queue,
             outgoing_queue=self.check_fact_against_triggers_queue,
             status_queue=self.status_queue,
+            compute=self.compute,
         )
         self.check_fact_against_triggers_queue_processor = (
             CheckFactAgainstTriggersQueueProcessor(
@@ -187,6 +271,7 @@ class Session:  # pylint: disable=too-many-instance-attributes
                 incoming_queue=self.check_fact_against_triggers_queue,
                 outgoing_queue=self.triggered_lookup_processor_queue,
                 status_queue=self.status_queue,
+                compute=self.compute,
             )
         )
         self.triggered_lookup_processor = TriggeredLookupProcessor(
@@ -194,6 +279,7 @@ class Session:  # pylint: disable=too-many-instance-attributes
             incoming_queue=self.triggered_lookup_processor_queue,
             outgoing_queue=None,
             status_queue=self.status_queue,
+            compute=self.compute,
         )
 
         self.attribute_metadata_dict = {}
@@ -204,7 +290,7 @@ class Session:  # pylint: disable=too-many-instance-attributes
                 target=self.monitor, daemon=True, name="MonitorThread"
             )
 
-    def __call__(self, block: bool = True):
+    def __call__(self, block: bool = True) -> None:
         """
         Start the session when the instance is called as a function.
 
@@ -216,13 +302,7 @@ class Session:  # pylint: disable=too-many-instance-attributes
         if block:
             self.block_until_finished()
 
-    # def attach_new_columns_to_data_sources(self):
-    #     """Attach new columns to data sources."""
-    #     for new_column in self.new_column_dict.values():
-    #         data_source = self.data_source_by_name(new_column.data_source_name)
-    #         data_source.new_columns[new_column.new_column_name] = new_column
-
-    def attribute_table(self):
+    def attribute_table(self) -> None:
         """
         Print a table showing the attributes and their descriptions.
 
@@ -244,7 +324,7 @@ class Session:  # pylint: disable=too-many-instance-attributes
 
         console.print(table)
 
-    def start_threads(self):
+    def start_threads(self) -> None:
         """
         Start all the processing threads for this session.
 
@@ -278,9 +358,9 @@ class Session:  # pylint: disable=too-many-instance-attributes
         # Triggered lookup processor
         self.triggered_lookup_processor.processing_thread.start()
 
-    def halt(self, level: int = 0):
+    def halt(self, level: int = 0) -> None:
         """Stop the threads."""
-        LOGGER.critical("Halt: Signal received")
+        LOGGER.critical("Halt: Signal received with level %s", level)
         for queue_processor in [
             self.fact_generated_queue_processor,
             self.check_fact_against_triggers_queue_processor,
@@ -290,7 +370,7 @@ class Session:  # pylint: disable=too-many-instance-attributes
             queue_processor.halt_signal = True
             LOGGER.info("Halt signal sent...")
 
-    def get_all_known_labels(self):
+    def get_all_known_labels(self) -> List[str]:
         """Search through the data sources and extract all the labels"""
         mappings = []
         for data_source in self.data_sources:
@@ -306,7 +386,7 @@ class Session:  # pylint: disable=too-many-instance-attributes
         )
         return labels
 
-    def get_population_with_label(self, label: str):
+    def get_population_with_label(self, label: str) -> Set[str]:
         """Search through the data sources and extract all the labels"""
         population = set()
         for fact in self.fact_collection.node_has_label_facts():
@@ -314,7 +394,7 @@ class Session:  # pylint: disable=too-many-instance-attributes
                 population.add(fact.node_id)
         return population
 
-    def get_all_attributes_for_label(self, label: str):
+    def get_all_attributes_for_label(self, label: str) -> List[str]:
         """Search through the data sources and extract all the attributes for a label"""
         attributes = []
         population = self.get_population_with_label(label)
@@ -323,7 +403,7 @@ class Session:  # pylint: disable=too-many-instance-attributes
                 attributes.append(fact.attribute)
         return sorted(list(set(attributes)))
 
-    def pyarrow_from_node_label(self, label: str):
+    def pyarrow_from_node_label(self, label: str) -> pa.Table:
         """Search through the data sources and extract all the attributes for a label"""
         LOGGER.info("Creating pyarrow table from node label %s", label)
         table = pa.Table.from_pylist(list(self.rows_by_node_label(label)))
@@ -336,7 +416,7 @@ class Session:  # pylint: disable=too-many-instance-attributes
         table = self.pyarrow_from_node_label(label)
         pq.write_table(table, path or f"{label}.parquet")
 
-    def get_all_known_attributes(self):
+    def get_all_known_attributes(self) -> List[str]:
         """Search through the data sources and extract all the attributes"""
         attributes = []
         for data_source in self.data_sources:
@@ -349,15 +429,15 @@ class Session:  # pylint: disable=too-many-instance-attributes
         attributes = sorted(list(set(attributes)))
         return attributes
 
-    def block_until_finished(self):
+    def block_until_finished(self) -> None:
         """Block until all data sources have finished. Re-raise
         exceptions from threads.
         """
 
-        def _check_status_queue():
+        def _check_status_queue() -> None:
             try:
                 obj = self.status_queue.get(timeout=0.1)
-            except queue.Empty:
+            except EmptyQueueError:
                 return
             if isinstance(obj, Exception):
                 LOGGER.error("Error in thread: %s", obj)
@@ -386,7 +466,7 @@ class Session:  # pylint: disable=too-many-instance-attributes
         self.halt()
         LOGGER.info("Halted.")
 
-    def monitor(self):
+    def monitor(self) -> NoReturn:
         """Loop the _monitor function"""
         time.sleep(MONITOR_LOOP_DELAY)
         while True:
@@ -548,7 +628,7 @@ class Session:  # pylint: disable=too-many-instance-attributes
                 f"Expected a DataSource or FactCollection, got {type(other)}"
             )
         return self
-    
+
     def dump_entities(self, dir_path: str) -> None:
         """Loop over all entity labels and dump them to a parquet file."""
         for label in self.get_all_known_labels():
@@ -567,12 +647,12 @@ class Session:  # pylint: disable=too-many-instance-attributes
         """wraps the fact_collection method"""
         return self.fact_collection.node_label_attribute_inventory()
 
-    def trigger(self, arg1: str):
+    def trigger(self, arg1: str) -> Callable:
         """Decorator that registers a trigger with a Cypher string and a function."""
 
-        def decorator(func):
+        def decorator(func) -> Callable:
             @functools.wraps
-            def wrapper(*args, **kwargs):
+            def wrapper(*args, **kwargs) -> Any:
                 result = func(*args, **kwargs)
                 return result
 
@@ -689,12 +769,14 @@ class Session:  # pylint: disable=too-many-instance-attributes
         self,
         data_source_name: str,
         attach_to_data_source: Optional[bool] = True,
-    ):
+    ) -> Callable[..., functools._Wrapper[Callable[..., Any], Any]]:
         """Decorator that registers a function as creating a "new column" from a DataSource."""
 
-        def decorator(func):
+        def decorator(func) -> Callable[..., Any]:
+            """Decorator that registers a function as creating a "new column" from a DataSource."""
+
             @functools.wraps
-            def wrapper(*args):
+            def wrapper(*args) -> Any:
                 result = func(*args)
                 return result
 
