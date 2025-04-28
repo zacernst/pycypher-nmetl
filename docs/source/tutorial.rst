@@ -172,6 +172,15 @@ The third block is also new. It says that the ``vip_status`` column contains the
 
 And of course, we need to tell NMETL what data types those columns contain, so we've added ``vip_status: Boolean`` and ``customer_id: PositiveInteger`` to the ``data_types`` section.
 
+Technically, we could stop here and run the pipeline, but we'd just end up with a table that's more or less just a part of the data source. So let's skip ahead to how we calculate new fetures based on the data we have.
+
+Defining Your Triggers (Transformations)
+----------------------------------------
+
+First, we need a few important terminological distinctions.
+
+
+
 Advanced Features
 -----------------
 
