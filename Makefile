@@ -58,7 +58,7 @@ clean:
 format:
 	@echo "Formatting code..."
 	uv run isort .
-	uv run ruff format .
+	uv run ruff format . --config ./pyproject.toml
 
 # Build packages
 build:

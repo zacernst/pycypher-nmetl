@@ -44,6 +44,8 @@ dependencies = [
     "pandas>=2.2.3",
     "dask[distributed]>=2025.4.0",
     "pylint>=3.3.6",
+    "pyarrow>=19.0.1",
+    "rich>=13.9.4",
 ]
 
 [[project.authors]]
@@ -125,6 +127,8 @@ exclude_also = [
     "if TYPE_CHECKING:",
     "class .*\\bProtocol\\):",
     "@(abc\\.)?abstractmethod",
+    # Add your new exclusion pattern here
+    "path/to/excluded/file.py"
 ]
 
 [tool.pytest.ini_options]

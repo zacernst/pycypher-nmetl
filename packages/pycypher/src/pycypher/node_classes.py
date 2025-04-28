@@ -511,9 +511,7 @@ class Predicate(TreeMixin):
         yield self.right_side
 
     def __repr__(self) -> str:
-        return (
-            f"{self.__class__.__name__}({self.left_side}, {self.right_side})"
-        )
+        return f"{self.__class__.__name__}({self.left_side}, {self.right_side})"
 
     def _type_check_binary(self, left_value, right_value):
         """
@@ -594,9 +592,7 @@ class BinaryBoolean(Predicate, TreeMixin):
         self.right_side = right_side
 
     def __repr__(self):
-        return (
-            f"{self.__class__.__name__}({self.left_side}, {self.right_side})"
-        )
+        return f"{self.__class__.__name__}({self.left_side}, {self.right_side})"
 
     def tree(self) -> Tree:
         t = Tree(self.__class__.__name__)
@@ -805,9 +801,7 @@ class Division(Predicate, Evaluable):
     """
 
     left_side_types = int | float
-    right_side_types = (
-        PositiveFloat | PositiveInt | NegativeFloat | NegativeInt
-    )
+    right_side_types = PositiveFloat | PositiveInt | NegativeFloat | NegativeInt
 
     def tree(self) -> Tree:
         t = Tree(self.__class__.__name__)
@@ -1131,9 +1125,7 @@ class Match(TreeMixin):
         self.constraints = constraints or []
 
     def __repr__(self) -> str:
-        return (
-            f"Match({self.pattern}, {self.where_clause}, {self.with_clause})"
-        )
+        return f"Match({self.pattern}, {self.where_clause}, {self.with_clause})"
 
     def gather_constraints(self) -> None:
         """Gather all the ``Constraint`` objects from inside the ``Match`` clause."""
@@ -1523,9 +1515,7 @@ class Projection(TreeMixin):
 class NodeNameLabel(TreeMixin):
     """A node name, optionally followed by a label, separated by a dot."""
 
-    def __init__(
-        self, name: Optional[str] = None, label: Optional[str] = None
-    ):
+    def __init__(self, name: Optional[str] = None, label: Optional[str] = None):
         self.name = name or uuid.uuid4().hex
         self.label = label
 
@@ -1596,9 +1586,7 @@ class Relationship(TreeMixin):
     """Relationships may contain a variable name, label, or mapping."""
 
     def __init__(self, name_label: NodeNameLabel):
-        self.name_label = (
-            name_label  # This should be ``label`` for consistency
-        )
+        self.name_label = name_label  # This should be ``label`` for consistency
         self.name = None
 
     def __repr__(self):

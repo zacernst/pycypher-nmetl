@@ -417,9 +417,7 @@ class DataSourceMapping:  # pylint: disable=too-few-public-methods,too-many-inst
                 "Only attribute and label mappings are supported for now."
             )
 
-    def __add__(
-        self, row: dict[str, Any]
-    ) -> Generator[AtomicFact, None, None]:
+    def __add__(self, row: dict[str, Any]) -> Generator[AtomicFact, None, None]:
         """Let us use the + operator to process a row against a mapping."""
         yield from self.process_against_raw_datum(row)
 

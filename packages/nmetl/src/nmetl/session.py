@@ -91,7 +91,6 @@ class ComputeBackEnd(ABC):
     @abstractmethod
     def setup(self) -> None:
         """Set up the compute backend."""
-        pass
 
 
 class MultiProcessingCompute(ComputeBackEnd):
@@ -104,7 +103,6 @@ class MultiProcessingCompute(ComputeBackEnd):
 
     def setup(self) -> None:
         """Set up the compute backend."""
-        pass
 
 
 class DaskCompute(ComputeBackEnd):
@@ -113,6 +111,7 @@ class DaskCompute(ComputeBackEnd):
     queue_class = None
 
     def __init__(self) -> None:
+        self.client = None  # initialize later
         raise NotImplementedError("DaskBackEnd not implemented yet")
 
     def setup(self) -> None:
@@ -708,13 +707,9 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
                         "with three arguments."
                     )
 
-                source_variable_name = node_relationship_args[
-                    0
-                ].__forward_arg__
+                source_variable_name = node_relationship_args[0].__forward_arg__
                 relationship_name = node_relationship_args[1].__forward_arg__
-                target_variable_name = node_relationship_args[
-                    2
-                ].__forward_arg__
+                target_variable_name = node_relationship_args[2].__forward_arg__
 
                 all_cypher_variables = CypherParser(
                     arg1

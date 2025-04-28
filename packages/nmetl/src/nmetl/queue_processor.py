@@ -81,7 +81,7 @@ class QueueProcessor(ABC):  # pylint: disable=too-few-public-methods,too-many-in
         Args:
             session (Optional[Session]): The session this processor belongs to. Defaults to None.
             incoming_queue (Optional[QueueGenerator]): The queue from which to read items. Defaults to None.
-            outgoing_queue (Optional[QueueGenerator]): The queue to which processed items are sent. Defaults to None.
+            outgoing_queue (Optional[QueueGenerator]): The queue to which processed items are sent.
             status_queue (Optional[Queue]): The queue for status messages. Defaults to None.
         """
         self.session = session
@@ -284,9 +284,7 @@ class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-publi
     WITH_CLAUSE_PROJECTION_KEY = "__with_clause_projection__"
     MATCH_SOLUTION_KEY = "__match_solution__"
 
-    def process_item_from_queue(
-        self, item: SubTriggerPair
-    ) -> List[Any] | None:
+    def process_item_from_queue(self, item: SubTriggerPair) -> List[Any] | None:
         """Process new facts from the check_fact_against_triggers_queue."""
         self.started = True
         self.started_at = datetime.datetime.now()
@@ -323,9 +321,7 @@ class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-publi
                 relationship_name,
                 return_clause,
             ]
-            process_solution_function = (
-                self._process_solution_node_relationship
-            )
+            process_solution_function = self._process_solution_node_relationship
         elif sub_trigger_pair.trigger.is_attribute_trigger:
             variable_to_set = sub_trigger_pair.trigger.variable_set
             process_solution_args = [  # prepend `solutions` onto this when called later
@@ -424,9 +420,7 @@ class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-publi
         )
         sub_trigger_pair.trigger.call_counter += 1
         target_attribute = sub_trigger_pair.trigger.attribute_set
-        node_id = self._extract_node_id_from_solution(
-            solution, variable_to_set
-        )
+        node_id = self._extract_node_id_from_solution(solution, variable_to_set)
         computed_fact = FactNodeHasAttributeWithValue(
             node_id=node_id,
             attribute=target_attribute,

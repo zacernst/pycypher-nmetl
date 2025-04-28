@@ -103,9 +103,7 @@ def military_after_sept_11(
     return military == "1"
 
 
-@session.trigger(
-    "MATCH (i:PSAM_2023_Individual) WITH i.DEYE AS eye RETURN eye"
-)
+@session.trigger("MATCH (i:PSAM_2023_Individual) WITH i.DEYE AS eye RETURN eye")
 def vision_difficulty(
     eye, acs_pums_2023_data_dictionary
 ) -> VariableAttribute["i", "vision_difficulty"]:
