@@ -215,3 +215,7 @@ out
 OSM_Node.parquet
 Square.parquet
 .pylintrc
+app.py.bak
+filter_us_nodes.py.bak
+fix_rst_imports.py.bak
+generate_rst_files.py.bak
