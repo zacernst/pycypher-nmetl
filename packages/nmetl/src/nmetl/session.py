@@ -160,6 +160,7 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
             ComputeClassNameEnum
         ] = ComputeClassNameEnum.THREADING,
         compute_options: Optional[Dict[str, Any]] = None,
+        session_config: Optional[Any] = None,
     ):  # pylint: disable=too-many-arguments
         """
         Initialize a new Session instance.
@@ -191,7 +192,9 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
         self.profiler = profiler
         self.compute_class_name = compute_class_name
         self.compute_options = compute_options or {}
-
+        self.session_config = session_config
+        # Forget the compute class for the time being. Get the FactCollection
+        # initialized in the workers...
         try:
             self.compute_class = {
                 ComputeClassNameEnum.THREADING: ThreadingCompute,
@@ -215,6 +218,7 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
             name="RawInput",
             max_queue_size=RAW_INPUT_QUEUE_SIZE,
             queue_class=self.compute_class.queue_class,
+            session_config=self.session_config,
             **self.queue_options,
         )
         self.data_assets = data_assets or []
@@ -227,6 +231,7 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
             name="FactGenerated",
             max_queue_size=FACT_GENERATED_QUEUE_SIZE,
             queue_class=self.queue_class,
+            session_config=self.session_config,
             **self.queue_options,
         )
         self.check_fact_against_triggers_queue = QueueGenerator(
@@ -234,6 +239,7 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
             name="CheckFactTrigger",
             max_queue_size=CHECK_FACT_AGAINST_TRIGGERS_QUEUE_SIZE,
             queue_class=self.queue_class,
+            session_config=self.session_config,
             **self.queue_options,
         )
         self.triggered_lookup_processor_queue = QueueGenerator(
@@ -241,6 +247,7 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
             name="TriggeredLookupProcessor",
             max_queue_size=TRIGGERED_LOOKUP_PROCESSOR_QUEUE_SIZE,
             queue_class=self.queue_class,
+            session_config=self.session_config,
             **self.queue_options,
         )
 
@@ -258,6 +265,7 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
             incoming_queue=self.raw_input_queue,
             outgoing_queue=self.fact_generated_queue,
             status_queue=self.status_queue,
+            session_config=self.session_config,
             compute=self.compute,
         )
         self.fact_generated_queue_processor = FactGeneratedQueueProcessor(
@@ -267,6 +275,8 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
             status_queue=self.status_queue,
             compute=self.compute,
         )
+
+        # This can be multithreaded!
         self.check_fact_against_triggers_queue_processor = (
             CheckFactAgainstTriggersQueueProcessor(
                 self,
@@ -276,6 +286,7 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
                 compute=self.compute,
             )
         )
+        
         self.triggered_lookup_processor = TriggeredLookupProcessor(
             self,
             incoming_queue=self.triggered_lookup_processor_queue,
@@ -355,6 +366,8 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
 
         # Check facts against triggers
         time.sleep(0.5)
+        # for i in self.check_fact_against_triggers_queue_processor:
+        #     i.processing_thread.start()
         self.check_fact_against_triggers_queue_processor.processing_thread.start()
 
         # Triggered lookup processor

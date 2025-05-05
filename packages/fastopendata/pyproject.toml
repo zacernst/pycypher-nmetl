@@ -13,7 +13,7 @@ name = "fastopendata"
 version = "0.0.1"
 description = "FastOpenData"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.13"
 keywords = [ "cypher", "etl","declarative"]
 classifiers = [ "Development Status :: 3 - Alpha", "Intended Audience :: Developers", "License :: OSI Approved :: MIT License", "Programming Language :: Python :: 3.11", "Programming Language :: Python :: 3.12",]
 dependencies = [
@@ -23,7 +23,6 @@ dependencies = [
  "hatch==1.12.0",
  "hatchling==1.25",
  "isort>=5.13.2,<6.0.0",
- "foundationdb==7.3.63",
  "networkx==3.4.2,<4.0.0",
  "pip-tools>=7.4.1,<8.0.0",
  "ply>=3.11,<4.0.0",
@@ -68,7 +67,7 @@ Homepage = "https://github.com/zacernst/pycypher-nmetl"
 exclude = [ ".bzr", ".direnv", ".eggs", ".git", ".git-rewrite", ".hg", ".ipynb_checkpoints", ".mypy_cache", ".nox", ".pants.d", ".pyenv", ".pytest_cache", ".pytype", ".ruff_cache", ".svn", ".tox", ".venv", ".vscode", "__pypackages__", "_build", "buck-out", "build", "dist", "node_modules", "site-packages", "venv",]
 line-length = 79
 indent-width = 4
-target-version = "py312"
+target-version = "py313"
 
 [tool.coverage.report]
 exclude_also = [ "def tree", "def print_tree", "def __repr__", "if self.debug:", "if settings.DEBUG", "raise AssertionError", "raise NotImplementedError", "if 0:", "if __name__ == .__main__.:", "if TYPE_CHECKING:", "class .*\\bProtocol\\):", "@(abc\\.)?abstractmethod",]

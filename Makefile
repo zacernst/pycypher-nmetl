@@ -1,8 +1,8 @@
 # pycypher-nmetl Makefile
 # ------------------------------------------------------------------------------
 # Configuration variables
-PYTHON_VERSION = 3.12
-SUPPORTED_PYTHON_VERSIONS = 3.13 3.12 3.11 3.10
+PYTHON_VERSION = 3.13
+SUPPORTED_PYTHON_VERSIONS = 3.13
 PYTHON_TEST_THREADS = 4
 BUMP = micro
 
@@ -25,6 +25,8 @@ export DOCS_DIR := ${PROJECT_ROOT}/docs
 # Test and coverage paths
 export TESTS_DIR := ${PROJECT_ROOT}/tests
 export COVERAGE_DIR := ${PROJECT_ROOT}/coverage_report
+
+export FOUNDATIONDB_VERSION := "7.1.31"
 
 # ------------------------------------------------------------------------------
 # Main targets

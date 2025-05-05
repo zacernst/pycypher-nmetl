@@ -44,7 +44,6 @@ from pydantic import (
 )
 from rich.tree import Tree
 
-LOGGER.setLevel("DEBUG")
 
 
 class Evaluable(abc.ABC):  # pylint: disable=too-few-public-methods

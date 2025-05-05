@@ -30,11 +30,14 @@ from nmetl.helpers import Idle, QueueGenerator
 from nmetl.trigger import CypherTrigger
 from pycypher.fact import (
     AtomicFact,
+    FactCollection,
     FactNodeHasAttributeWithValue,
     FactRelationshipHasLabel,
     FactRelationshipHasSourceNode,
     FactRelationshipHasTargetNode,
     NullResult,
+    RocksDBFactCollection,
+    SimpleFactCollection,
 )
 from pycypher.logger import LOGGER
 from pycypher.node_classes import Collection
@@ -70,10 +73,15 @@ class QueueProcessor(ABC):  # pylint: disable=too-few-public-methods,too-many-in
     def __init__(
         self,
         session: Optional["Session"] = None,  # type: ignore
+        fact_collection: Optional[FactCollection] = None,
         incoming_queue: Optional[QueueGenerator] = None,
         outgoing_queue: Optional[QueueGenerator] = None,
         status_queue: Optional[Queue] = None,
         compute: Optional[Any] = None,
+        num_threads: Optional[int] = 1,
+        session_config: Optional[
+            Any
+        ] = None,  # Should be SessionConfig -- circular import hell
     ) -> None:
         """
         Initialize a QueueProcessor instance.
@@ -85,6 +93,7 @@ class QueueProcessor(ABC):  # pylint: disable=too-few-public-methods,too-many-in
             status_queue (Optional[Queue]): The queue for status messages. Defaults to None.
         """
         self.session = session
+        self.session_config = session_config
         self.started = False
         self.started_at = None
         self.finished = False
@@ -111,6 +120,20 @@ class QueueProcessor(ABC):  # pylint: disable=too-few-public-methods,too-many-in
             self.outgoing_queue.incoming_queue_processors.append(self)
         self.secondary_cache = []
         self.secondary_cache_max_size = 1_000
+        # Re-create the FactCollection object here because we can't serialize
+        # the RocksDBFactCollection object or anything else that uses a network connection.
+        #
+        # If a FactCollection object *is* provided, use that.
+        #
+        # If neither is provided, use a SimpleFactCollection, assuming that this is
+        # actually a pytest run, perhaps.
+
+        match getattr(self.session_config, "fact_collection", None):
+            case "RocksDBFactCollection":
+                self.fact_collection = RocksDBFactCollection()
+            case _:
+                LOGGER.warning("No fact collection provided to QueueProcessor")
+                self.fact_collection = SimpleFactCollection()
 
     # def profile_thread_function(self):
     #     if self.session.profiler:
@@ -236,12 +259,15 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
 
         out = []
         LOGGER.debug("Checking fact %s against triggers", item)
-        while item not in self.session.fact_collection:
+        start_waiting_for_fact = datetime.datetime.now()
+        put_item_success = True
+        if item not in self.session.fact_collection:
             LOGGER.debug(
                 "Fact %s not in collection, requeueing...", item.__dict__
             )
-
             self.incoming_queue.put(item)
+            LOGGER.debug("timeout waiting for fact to be in collection")
+            return
         LOGGER.debug("IN COLLECTION: %s", item.__dict__)
         # Let's filter out the facts that are irrelevant to this trigger
         for _, trigger in self.session.trigger_dict.items():
@@ -260,7 +286,7 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
             LOGGER.debug("Checking trigger %s", trigger)
             # item is a Fact subclass
             for constraint in trigger.constraints:
-                LOGGER.warning(
+                LOGGER.debug(
                     "Checking item: %s, constraint %s, trigger %s result: %s",
                     item,
                     constraint,
@@ -269,10 +295,15 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
                 )
 
                 if sub := item + constraint:
-                    LOGGER.warning("Fact %s matched a trigger", item)
+                    LOGGER.debug("Fact %s matched a trigger", item)
                     sub_trigger_pair = SubTriggerPair(sub=sub, trigger=trigger)
                     out.append(sub_trigger_pair)
         return out
+
+
+# QueueProcessor uses:
+# Session.FactCollection
+# Session.trigger_dict
 
 
 class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-public-methods

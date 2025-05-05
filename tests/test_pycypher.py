@@ -36,6 +36,7 @@ from fixtures import (
     fact_collection_squares_circles,
     fixture_0_data_source_mapping_list,
     fixture_data_source_0,
+    foundationdb_fact_collection,
     ingest_file_factory,
     networkx_graph,
     patched_uuid,
@@ -119,6 +120,7 @@ from pycypher.fact import (  # We might get rid of this class entirely
     FactRelationshipHasLabel,
     FactRelationshipHasSourceNode,
     FactRelationshipHasTargetNode,
+    FoundationDBFactCollection,
     RocksDBFactCollection,
     SimpleFactCollection,
 )
@@ -6264,3 +6266,25 @@ def test_parquet_from_node_label(session_with_three_triggers, tmp_path):
     )
     df = pq.read_table(tmp_path / "square.parquet").to_pandas()
     assert not df.empty
+
+
+def test_foundationdb_fact_collection_initializes(foundationdb_fact_collection):
+    pass
+
+
+def test_foundationdb_fact_collection_adds_fact(foundationdb_fact_collection):
+    fact = FactNodeHasLabel("1", "Thing")
+    foundationdb_fact_collection.append(fact)
+    facts = list(foundationdb_fact_collection.values())
+    assert len(facts) == 1
+    assert facts[0] == fact
+
+
+def test_foundationdb_fact_collection_inserts_fact_with_correct_index(
+    foundationdb_fact_collection,
+):
+    fact = FactNodeHasLabel("1", "Thing")
+    foundationdb_fact_collection.append(fact)
+    keys = list(foundationdb_fact_collection.keys())
+    assert len(keys) == 1
+    assert keys[0] == "node_label:Thing::1:Thing"

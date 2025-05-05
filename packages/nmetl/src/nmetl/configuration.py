@@ -21,6 +21,7 @@ from nmetl.session import Session
 from pycypher.fact import (  # pylint: disable=unused-import
     Etcd3FactCollection,
     FactCollection,
+    FoundationDBFactCollection,
     RocksDBFactCollection,
     SimpleFactCollection,
 )
@@ -157,6 +158,7 @@ def load_session_config(path: str) -> Session:
         fact_collection_class=fact_collection_class,
         dump_profile_interval=DUMP_PROFILE_INTERVAL,
         profiler=PROFILER,
+        session_config=session_config,
     )
 
     for data_source_config in session_config.data_sources:

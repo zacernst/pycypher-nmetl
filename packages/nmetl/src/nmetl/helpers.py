@@ -91,7 +91,6 @@ class QueueGenerator:  # pylint: disable=too-few-public-methods,too-many-instanc
         self.incoming_queue_processors = []
         self.timed_cache = {}
         self.queue_class = queue_class
-        self.queue = self.queue_class()
         self.use_cache = use_cache
 
         if self.session:
@@ -175,11 +174,13 @@ def decode(encoded: str) -> Any:
     return decoded
 
 
-def encode(obj: Any) -> str:
+def encode(obj: Any, to_bytes: bool = False) -> str:
     """Encode an object as a base64 string."""
     try:
         encoded = base64.b64encode(pickle.dumps(obj)).decode("utf-8")
     except Exception as e:
         LOGGER.error("Error encoding object to base64 string: %s", obj)
         raise ValueError(f"Error encoding object to base64 string: {e}") from e
+    if to_bytes:
+        return encoded.encode("utf-8")
     return encoded

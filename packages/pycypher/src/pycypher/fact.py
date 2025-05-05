@@ -1,6 +1,6 @@
 """
 Fact Module Documentation (fact.py)
-==================================
+===================================
 
 The ``fact.py`` module within the ``pycypher`` library defines the core classes for
 representing and managing "facts" within a graph-like data structure. Facts are
@@ -10,8 +10,15 @@ atomic pieces of information about nodes, relationships, and their attributes.
 from __future__ import annotations
 
 import collections
+
+import fdb
+
+fdb.api_version(710)
 import inspect
+# from concurrent.futures import ThreadPoolExecutor
 import logging
+from multiprocessing.pool import ThreadPool
+import threading
 import time
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Generator, List, Optional
@@ -48,8 +55,6 @@ from rocksdict import (  # pylint: disable=no-name-in-module, import-error
     ReadOptions,
     WriteOptions,
 )
-
-LOGGER.setLevel(logging.DEBUG)
 
 try:
     import etcd3
@@ -666,7 +671,7 @@ class FactCollection(ABC):
         curframe = inspect.currentframe()
         calframe = inspect.getouterframes(curframe, 2)
         LOGGER.debug("node_has_label_facts called: %s", calframe[1][3])
-
+        ##### Look here.
         for fact in self:
             if isinstance(fact, FactNodeHasLabel):
                 yield fact
@@ -893,6 +898,20 @@ class FactCollection(ABC):
             row_dict["__label__"] = label
             row_dict["__node_id__"] = node_id
             yield row_dict
+
+    def node_has_label_facts(self):
+        """
+        Generator function that yields facts of type `FactNodeHasLabel`.
+
+        Iterates over the `facts` attribute and yields each fact that is an instance
+        of `FactNodeHasLabel`.
+
+        Yields:
+            FactNodeHasLabel: Facts that are instances of `FactNodeHasLabel`.
+        """
+        for fact in self._prefix_read_values(b"node_label:"):
+            if isinstance(fact, FactNodeHasLabel):
+                yield fact
 
     def nodes_with_label_facts(self, label: str) -> Generator[FactNodeHasLabel]:
         """
@@ -1434,21 +1453,6 @@ class Etcd3FactCollection(FactCollection, KeyValue):
 
         Raises:
             ValueError: If multiple labels exist for the node.
-
-        case FactNodeHasLabel():
-            return f"node_label:{fact.node_id}:{fact.label}"
-        case FactNodeHasAttributeWithValue():
-            return f"node_attribute:{fact.node_id}:{fact.attribute}:{fact.value}"
-        case FactRelationshipHasLabel():
-            return f"relationship_label:{fact.relationship_id}:{fact.relationship_label}"
-        case FactRelationshipHasAttributeWithValue():
-            return f"relationship_attribute:{fact.relationship_id}:{fact.attribute}:{fact.value}"
-        case FactRelationshipHasSourceNode():
-            return f"relationship_source_node:{fact.relationship_id}:{fact.source_node_id}"
-        case FactRelationshipHasTargetNode():
-            return f"relationship_target_node:{fact.relationship_id}:{fact.target_node_id}"
-        case FactNodeRelatedToNode():
-            return f"node_relationship:{fact.node1_id}:{fact.node2_id}:{fact.relationship_label}"
         """
 
         facts = [
@@ -1505,7 +1509,7 @@ class Etcd3FactCollection(FactCollection, KeyValue):
         """
         self.put_counter += 1
         if self.put_counter % 1000 == 0:
-            LOGGER.warning("Put counter: %s", self.put_counter)
+            LOGGER.debug("Put counter: %s", self.put_counter)
         index = self.make_index_for_fact(fact)
         self.secondary_cache.append(
             (
@@ -1519,7 +1523,7 @@ class Etcd3FactCollection(FactCollection, KeyValue):
                 self.client.put(index, encode(fact))
                 break
             except Exception as e:  # pylint: disable=broad-exception-caught
-                LOGGER.warning("Error writing to etcd3: %s", e)
+                LOGGER.debug("Error writing to etcd3: %s", e)
                 retry_counter += 1
                 if retry_counter > 10:
                     raise e
@@ -1615,6 +1619,8 @@ class RocksDBFactCollection(FactCollection, KeyValue):
         Yields:
             Any: The values associated with the keys in the range.
         """
+        if not isinstance(prefix, str):
+            prefix = str(prefix, encoding="utf8")
         for key in self.db.keys(from_key=prefix):
             if not key.startswith(prefix):
                 return
@@ -1905,3 +1911,390 @@ class RocksDBFactCollection(FactCollection, KeyValue):
         """
         prefix = "relationship_target_node:"
         yield from self.range_read(prefix, prefix + self.LAST_KEY)
+
+
+def ensure_bytes(value: Any, **kwargs) -> bytes:
+    """Convert a value to bytes if it is not already."""
+    if isinstance(value, bytes):
+        return value
+    return bytes(value, **kwargs)
+
+def write_fact(db, index, fact):
+    LOGGER.debug('Writing to FoundationDB: %s', index)
+    db[index] = encode(fact, to_bytes=True)
+    return True
+
+
+class FoundationDBFactCollection(FactCollection, KeyValue):
+    """
+    ``FactCollection`` that uses FoundationDB as a backend.
+
+    Attributes:
+        session (Session): The session object associated with the fact collection.
+    """
+
+    def __init__(self, *args, db_path: str = "rocksdb", **kwargs):
+        """
+        Initialize a RocksDB-backed FactCollection.
+
+        Args:
+            *args: Variable positional arguments (ignored).
+            **kwargs: Variable keyword arguments (ignored).
+        """
+
+        self.db = fdb.open()
+        self.diverted_counter = 0
+        self.diversion_miss_counter = 0
+        self.thread_pool = ThreadPool(1024)
+        self.pending_facts = []
+
+        # self.db = Rdict(self.db_path, self.options)
+        super().__init__(*args, **kwargs)
+
+    def _prefix_read_items(
+        self, prefix: str, continue_to_end: Optional[bool] = False
+    ) -> Generator[Any, Any]:
+        """
+        Read a range of keys from the database.
+
+        Yields:
+            Any: The values associated with the keys in the range.
+        """
+        LOGGER.debug('_prefix_read_items called')
+        counter = 0
+        for key_value_obj in self.db.get_range(
+            ensure_bytes(ensure_bytes(prefix), encoding="utf8"), b"\xff"
+        ):
+            value = decode(key_value_obj.value)
+            key = key_value_obj.key
+            key = key.decode("utf8")  # Verify this is right
+            if continue_to_end or key.startswith(str(prefix, encoding="utf8")):
+                counter += 1
+                yield key, value
+            else:
+                break
+        LOGGER.debug('Done with _prefix_read_items: %s: %s', prefix, counter)
+        if counter > 15:
+            import pdb; pdb.set_trace()
+
+    def make_index_for_fact(self, fact: AtomicFact) -> bytes:
+        """Used for the memcache index"""
+        # Call the superclass's version of the method and convert to bytes
+        index = super().make_index_for_fact(fact)
+        return ensure_bytes(index, encoding="utf8")
+
+    def _prefix_read_keys(
+        self, prefix: str, continue_to_end: Optional[bool] = False
+    ) -> Generator[Any, Any]:
+        """
+        Read a range of keys from the database.
+
+        Args:
+            start_key (str): The starting key of the range.
+            end_key (str): The ending key of the range.
+
+        Yields:
+            Any: The values associated with the keys in the range.
+        """
+        LOGGER.debug('_prefix_read_keys called')
+        for key, _ in self._prefix_read_items(
+            ensure_bytes(prefix, encoding="utf8"),
+            continue_to_end=continue_to_end,
+        ):
+            yield key
+
+    def _prefix_read_values(
+        self, prefix: str, continue_to_end: Optional[bool] = False
+    ) -> Generator[Any, Any]:
+        """
+        Read a range of keys from the database.
+
+        Args:
+            prefix (str): The prefix of the keys to read.
+
+        Yields:
+            Any: The values associated with the keys in the range.
+        """
+        LOGGER.debug('_prefix_read_values called')
+        counter = 0
+        for _, value in self._prefix_read_items(
+            ensure_bytes(prefix, encoding="utf8"),
+            continue_to_end=continue_to_end,
+        ):
+            counter += 1
+            yield value
+        LOGGER.debug('Done with _prefix_read_values: %s', counter)
+
+    def keys(self) -> Generator[str]:
+        """
+        Yields:
+            str: Each key
+        """
+        LOGGER.debug("keys called")
+        for key_value_obj in self.db.get_range(b"\x00", b"\xff"):
+            key = key_value_obj.key.decode("utf8")
+            yield key
+
+    def values(self) -> Generator[AtomicFact]:
+        """
+        Iterate over all values stored in the memcached server.
+        """
+        LOGGER.debug("values called")
+        yield from self
+
+    def node_has_attribute_with_specific_value_facts(
+        self, attribute: str, value: Any
+    ):
+        """
+        Return a generator of facts that have a specific attribute and value.
+
+        TODO: This can be refactored for efficiency. Will have to add an index key for certain facts.
+        """
+        LOGGER.debug("node_has_attribute_with_specific_value_facts called")
+        for fact in self._prefix_read_values(
+            b"node_attribute:", b"node_attribute:\xff"
+        ):
+            if (
+                isinstance(fact, FactNodeHasAttributeWithValue)
+                and fact.attribute == attribute
+                and fact.value == value
+            ):
+                yield fact
+        LOGGER.debug('done')
+
+    def __delitem__(self, key: str):
+        """
+        Delete a fact.
+
+        Raises:
+            IndexError: If the index is out of range.
+        """
+        del self.db[ensure_bytes(key, encoding="utf8")]
+
+    def __len__(self):
+        """
+        Get the number of facts in the collection.
+
+        Returns:
+            int: The number of facts in the collection.
+        """
+        counter = 0
+        for k in self.keys():
+            LOGGER.debug("counting: %s", k)
+            counter += 1
+        return counter
+
+    def close(self):
+        """Erase all the keys in the db"""
+        LOGGER.warning("Deleting FoundationDB data")
+        self.db.clear_range(b"\x00", b"\xff")
+
+    def __contains__(self, fact: AtomicFact) -> bool:
+        """
+        Check if a fact is in the collection.
+
+        Args:
+            fact (AtomicFact): The fact to check for.
+
+        Returns:
+            bool: True if the fact is in the collection, False otherwise.
+        """
+        index = self.make_index_for_fact(fact)
+        value = self.db.get(index)
+        return decode(value) == fact if value is not None else False
+        # return False
+
+    def attributes_for_specific_node(
+        self, node_id: str, *attributes: str
+    ) -> Dict[str, Any]:
+        """
+        Return a dictionary of all the attributes for a specific node.
+
+        Args:
+            node_id (str): The ID of the node.
+
+        Returns:
+            dict: A dictionary of all the attributes for the specified node.
+        """
+        row = {attribute: None for attribute in attributes}
+        for attribute in attributes:
+            prefix = ensure_bytes(
+                f"node_attribute:{node_id}:{attribute}:", encoding="utf8"
+            )
+            for fact in self._prefix_read_values(prefix):
+                row[fact.attribute] = fact.value
+                break  # This shouldn't be necessary
+        return row
+
+    def node_has_specific_label_facts(self, label: str):
+        """
+        Generator function that yields facts of type `FactNodeHasLabel`.
+
+        Iterates over the `facts` attribute and yields each fact that is an instance
+        of `FactNodeHasLabel`.
+
+        Yields:
+            FactNodeHasLabel: Facts that are instances of `FactNodeHasLabel`.
+
+        TODO: Also optimizew this by adding an index key on inserts.
+        """
+        LOGGER.warning('Node has specific label facts...')
+        for fact in self._prefix_read_values(b"node_label:"):
+            if isinstance(fact, FactNodeHasLabel) and fact.label == label:
+                yield fact
+
+    def query_node_label(self, query: QueryNodeLabel):
+        """Given a query for a node label, return the label if it exists.
+
+        If no label exists, return a NullResult. If multiple labels
+        exist, raise a ValueError.
+
+        Args:
+            query: The query to execute.
+
+        Returns:
+            The label of the node, or a NullResult if no label exists.
+
+        Raises:
+            ValueError: If multiple labels exist for the node.
+
+        case FactNodeHasLabel():
+            return f"node_label:{fact.node_id}:{fact.label}"
+        case FactNodeHasAttributeWithValue():
+            return f"node_attribute:{fact.node_id}:{fact.attribute}:{fact.value}"
+        case FactRelationshipHasLabel():
+            return f"relationship_label:{fact.relationship_id}:{fact.relationship_label}"
+        case FactRelationshipHasAttributeWithValue():
+            return f"relationship_attribute:{fact.relationship_id}:{fact.attribute}:{fact.value}"
+        case FactRelationshipHasSourceNode():
+            return f"relationship_source_node:{fact.relationship_id}:{fact.source_node_id}"
+        case FactRelationshipHasTargetNode():
+            return f"relationship_target_node:{fact.relationship_id}:{fact.target_node_id}"
+        case FactNodeRelatedToNode():
+            return f"node_relationship:{fact.node1_id}:{fact.node2_id}:{fact.relationship_label}"
+        """
+        LOGGER.warning('Query node label...')
+        node_id_parts = query.node_id.split('::')
+        if len(node_id_parts) == 2:
+            return node_id_parts[0]
+        for fact in self.node_has_label_facts():
+            if (
+                isinstance(fact, FactNodeHasLabel)
+                and fact.node_id == query.node_id
+            ):
+                LOGGER.debug("Found label: %s", fact.label)
+                return fact.label
+        return NullResult(query)
+
+    def append(self, fact: AtomicFact) -> None:
+        """
+        Insert an AtomicFact.
+
+        Args:
+            value (AtomicFact): The AtomicFact object to be inserted.
+
+        Returns:
+            None
+        """
+        self.put_counter += 1
+        index = self.make_index_for_fact(fact)
+        self.thread_pool.apply_async(write_fact, args=(self.db, index, fact,))
+        # t = threading.Thread(target=write_fact, args=(self.db, index, fact,))
+        # t.start()
+        # self.db[index] = encode(fact, to_bytes=True)
+        # Do we need to flush/commit/whatever
+
+    def bak___iter__(self) -> Generator[AtomicFact]:
+        curframe = inspect.currentframe()
+        calframe = inspect.getouterframes(curframe, 2)
+        LOGGER.debug("__iter__ called: %s", calframe[1][3])
+
+        yield from self.values()
+        LOGGER.debug("Done iterating values by brute force.")
+
+    def __repr__(self):
+        return "FoundationDB"
+
+    def query_value_of_node_attribute(self, query: QueryValueOfNodeAttribute):
+        """
+        Query the value of a node's attribute.
+
+        Args:
+            query (QueryValueOfNodeAttribute): Query object containing the node_id
+                and attribute to look up.
+
+        Returns:
+            Any: The value of the requested attribute if found.
+            NullResult: If no matching attribute is found.
+
+        Raises:
+            ValueError: If multiple values are found for the same attribute.
+
+        """
+        prefix = ensure_bytes(
+            f"node_attribute:{query.node_id}:{query.attribute}:",
+            encoding="utf8",
+        )
+        result = list(self._prefix_read_values(prefix))
+        if len(result) == 1:
+            fact = result[0]
+            return fact.value
+        if len(result) > 1:
+            raise ValueError(f"Found multiple values for {query}: {result}")
+        return NullResult(query)
+
+    def nodes_with_label(self, label: str) -> Generator[str]:
+        """
+        Return a list of all the nodes with a specific label.
+
+        Args:
+            label (str): The label of the nodes to return.
+
+        Returns:
+            list: A list of all the nodes with the specified label.
+        """
+        LOGGER.warning("nodes_with_label called")
+        for fact in self:
+            if isinstance(fact, FactNodeHasLabel) and fact.label == label:
+                yield fact.node_id
+
+    def nodes_with_label_facts(self, label: str) -> Generator[str]:
+        """
+        Return a list of all the nodes with a specific label.
+
+        Args:
+            label (str): The label of the nodes to return.
+
+        Returns:
+            list: A list of all the nodes with the specified label.
+        """
+        prefix = f"node_label:{label}::"
+        yield from self._prefix_read_values(prefix)
+
+    def relationship_has_source_node_facts(self):
+        """
+        Generator method that yields facts of type FactRelationshipHasSourceNode.
+
+        This method iterates over the `facts` attribute of the instance and yields
+        each fact that is an instance of the FactRelationshipHasSourceNode class.
+
+        Yields:
+            FactRelationshipHasSourceNode: Facts that are instances of
+                FactRelationshipHasSourceNode.
+        """
+        LOGGER.warning('Relationship has source node facts called...')
+        for fact in self:
+            if isinstance(fact, FactRelationshipHasSourceNode):
+                yield fact
+
+    def __iter__(self):
+        curframe = inspect.currentframe()
+        calframe = inspect.getouterframes(curframe, 2)
+        LOGGER.warning("__iter__ called: %s", calframe[1][3])
+
+
+        for key_value_obj in self.db.get_range(b"\x00", b"\xff"):
+            key = key_value_obj.key.decode("utf8")
+            value = decode(key_value_obj.value)
+            self.yielded_counter += 1
+            yield value

@@ -1,7 +1,7 @@
-fact_collection: RocksDBFactCollection
-fact_collection_class: RocksDBFactCollection
-run_monitor: false
-logging_level: DEBUG
+fact_collection: FoundationDBFactCollection
+fact_collection_class: FoundationDBFactCollection
+run_monitor: true
+logging_level: INFO
 
 data_sources:
 - name: united_states_nodes

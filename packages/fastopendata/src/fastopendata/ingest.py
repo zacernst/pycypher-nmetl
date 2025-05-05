@@ -16,7 +16,6 @@ SOURCE_DIR = (
     "/Users/zernst/git/pycypher-nmetl/packages/fastopendata/src/fastopendata/"
 )
 
-LOGGER.setLevel("DEBUG")
 INGEST_CONFIG_PATH = f"{SOURCE_DIR}/ingest.yaml"
 PUMS_DATA_DICTIONARY_PATH = f"{SOURCE_DIR}/acs_pums_2023_data_dictionary.json"
 session = load_session_config(INGEST_CONFIG_PATH)
@@ -121,6 +120,5 @@ def physical_difficulty(
     return acs_pums_2023_data_dictionary["DPHY"].get(physical, None)
 
 
-LOGGER.setLevel("INFO")
 # session()
 session.start_threads()
