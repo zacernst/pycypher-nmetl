@@ -8,7 +8,7 @@ from typing import List, Optional
 import geopandas
 import pandas as pd
 import pyogrio
-from pycypher.logger import LOGGER
+from shared.logger import LOGGER
 
 
 def concatenate_shapefiles(
@@ -36,9 +36,7 @@ def concatenate_shapefiles(
 
 
 if __name__ == "__main__":
-    DATA_DIR = (
-        "/Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data"
-    )
+    DATA_DIR = "/Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data"
     SHAPE_FILES = [
         filename
         for filename in os.listdir(DATA_DIR)

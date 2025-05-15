@@ -3,7 +3,7 @@ name = "pycypher-nmetl"
 version = "0.0.1"
 description = "Declarative ETL using Cypher queries"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.13"
 keywords = ["neo4j", "cypher", "etl", "declarative"]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -34,14 +34,20 @@ dependencies = [
     "pytest-timeout==2.3.1",
     "pytest-unordered==0.6.1,<1.0.0",
     "pytest-xdist>=3.6.1,<4.0.0",
-    # Data processing
-    "dvc>=3.59.1",
     "pymemcache>=4.0.0",
     "etcd3-py>=0.1.6",
     "rbloom>=1.5.2",
     "snakeviz>=2.2.2",
     "rocksdict>=0.3.25",
     "pandas>=2.2.3",
+    "dask[distributed]>=2025.4.0",
+    "pylint>=3.3.6",
+    "pyarrow>=19.0.1",
+    "rich>=13.9.4",
+    "chardet>=5.2.0",
+    "dvc>=3.59.2",
+    "prometheus-client>=0.21.1",
+    "bandit>=1.8.3",
 ]
 
 [[project.authors]]
@@ -75,6 +81,7 @@ members = ["packages/*"]
 pycypher = { workspace = true }
 nmetl = { workspace = true }
 fastopendata = { workspace = true }
+shared = { workspace = true }
 
 [tool.ruff]
 line-length = 80
@@ -123,6 +130,8 @@ exclude_also = [
     "if TYPE_CHECKING:",
     "class .*\\bProtocol\\):",
     "@(abc\\.)?abstractmethod",
+    # Add your new exclusion pattern here
+    "path/to/excluded/file.py"
 ]
 
 [tool.pytest.ini_options]

@@ -3,42 +3,15 @@ requires = [ "hatchling>=1.24.2", "hatch-vcs>=0.3.0",]
 build-backend = "hatchling.build"
 
 [project]
-name = "nmetl"
+name = "shared"
 version = "0.0.1"
-description = "Declarative ETL"
+description = "Shared modules and utilities"
 readme = "README.md"
-requires-python = ">=3.13"
-keywords = [ "cypher", "etl","declarative"]
+requires-python = ">=3.12"
+keywords = []
 classifiers = [ "Development Status :: 3 - Alpha", "Intended Audience :: Developers", "License :: OSI Approved :: MIT License", "Programming Language :: Python :: 3.11", "Programming Language :: Python :: 3.12",]
-dependencies = [
- "pytest-timeout==2.3.1",
- "gitpython==3.1.44",
- "pyfiglet==1.0.2",
- "hatch==1.12.0",
- "hatchling==1.25",
- "isort>=5.13.2,<6.0.0",
- "networkx==3.4.2,<4.0.0",
- "pip-tools>=7.4.1,<8.0.0",
- "ply>=3.11,<4.0.0",
- "pydantic>=2.9.2,<3.0.0",
- "pytest-cov>=6.0.0,<7.0.0",
- "pytest-mock>=3.14.0,<4.0.0",
- "pytest-unordered==0.6.1,<1.0.0",
- "pytest-xdist>=3.6.1,<4.0.0",
- "pytest>=8.3.2,<9.0.0",
- "python-constraint>=1.4.0,<2.0.0",
- "rich>=13.8.0,<14.0.0",
- "ruff>=0.6.3,<1.0.0",
- "sphinx-autoapi==3.3.1,<4.0.0",
- "sphinx-autodocgen==1.3",
- "sphinx-rtd-theme==2.0.0",
- "sphinx>=5.0.2,<9.0.0",
- "toml>=0.10.2,<1.0.0",
- "uv>=0.4.1,<1.0.0",
- "pycypher",
- "shared",
- "pyarrow>=19.0.1",
-]
+dependencies = []
+
 [[project.authors]]
 name = "Zachary Ernst"
 email = "zac.ernst@gmail.com"
@@ -57,7 +30,6 @@ dev = [ "hatch>=1.12.0,<2.0.0",]
 Homepage = "https://github.com/zacernst/pycypher-nmetl"
 
 [project.scripts]
-nmetl = "nmetl.nmetl_cli:main"
 
 [tool.ruff]
 exclude = [ ".bzr", ".direnv", ".eggs", ".git", ".git-rewrite", ".hg", ".ipynb_checkpoints", ".mypy_cache", ".nox", ".pants.d", ".pyenv", ".pytest_cache", ".pytype", ".ruff_cache", ".svn", ".tox", ".venv", ".vscode", "__pypackages__", "_build", "buck-out", "build", "dist", "node_modules", "site-packages", "venv",]
@@ -68,9 +40,15 @@ target-version = "py313"
 [tool.coverage.report]
 exclude_also = [ "def tree", "def print_tree", "def __repr__", "if self.debug:", "if settings.DEBUG", "raise AssertionError", "raise NotImplementedError", "if 0:", "if __name__ == .__main__.:", "if TYPE_CHECKING:", "class .*\\bProtocol\\):", "@(abc\\.)?abstractmethod",]
 
+[tool.coverage.run]
+omit = [
+    # omit anything in a .local directory anywhere
+    "*/.local/*",
+    "*/fastopendata/src/fastopendata/*",
+    "/*.py",
+    "*/filter_us_nodes.py"
+    ]
+
 [tool.pytest.ini_options]
 addopts = ""
 testpaths = [ "tests",]
-
-[tool.uv.sources]
-pycypher = { workspace = true }

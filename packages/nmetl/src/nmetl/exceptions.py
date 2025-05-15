@@ -1,6 +1,10 @@
 """
-Custom exceptions for PyCypher
+Custom exceptions for PyCypher-NMETL
 """
+
+
+class EmptyQueueError(Exception):
+    """To be thrown when a queue is empty."""
 
 
 class CypherParsingError(Exception):

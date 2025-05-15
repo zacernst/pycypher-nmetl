@@ -7,7 +7,7 @@ import os
 import pickle
 
 import osmium
-from pycypher.logger import LOGGER
+from shared.logger import LOGGER
 
 MAX_NODES = -1
 FOD_UNITED_STATES_NODES_FILE = "/Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data/united_states_nodes.csv"

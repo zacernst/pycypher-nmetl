@@ -12,7 +12,7 @@ A monorepo containing three complementary packages for declarative ETL using Cyp
 
 ### Prerequisites
 
-- Python 3.12 or higher
+- Python 3.10 or higher
 - `uv` package manager (recommended)
 
 ### Installation

@@ -4,6 +4,7 @@ import base64
 import datetime
 import pickle
 import queue
+import time
 import uuid
 from pathlib import Path
 from typing import Any, Generator, Optional, Type
@@ -15,11 +16,11 @@ from nmetl.config import (  # pylint: disable=no-name-in-module
     OUTER_QUEUE_TIMEOUT,
 )
 from nmetl.message_types import EndOfData
-from pycypher.logger import LOGGER
+from shared.logger import LOGGER
 
 
-class Idle:
-    pass
+class Idle:  # pylint: disable=too-few-public-methods
+    """Simply a message that is sent when a queue is idle."""
 
 
 def ensure_uri(uri: str | ParseResult | Path) -> ParseResult:
@@ -51,7 +52,7 @@ class QueueGenerator:  # pylint: disable=too-few-public-methods,too-many-instanc
 
     def __init__(
         self,
-        *args,
+        *args,  # pylint: disable=unused-argument
         inner_queue_timeout: Optional[int] = INNER_QUEUE_TIMEOUT,
         end_of_queue_cls: Optional[Type] = EndOfData,
         outer_queue_timeout: Optional[int] = OUTER_QUEUE_TIMEOUT,
@@ -59,7 +60,8 @@ class QueueGenerator:  # pylint: disable=too-few-public-methods,too-many-instanc
         use_cache: Optional[bool] = False,
         session: Optional["Session"] = None,  # type: ignore
         max_queue_size: Optional[int] = DEFAULT_QUEUE_SIZE,
-        **kwargs,
+        queue_class: Optional[Type] = queue.Queue,
+        **kwargs,  # pylint: disable=unused-argument
     ) -> None:
         """
         Initialize a QueueGenerator instance.
@@ -74,9 +76,9 @@ class QueueGenerator:  # pylint: disable=too-few-public-methods,too-many-instanc
             session (Optional[Session]): The session this queue belongs to. Defaults to None.
             **kwargs: Variable keyword arguments passed to the parent class.
         """
-        super().__init__(*args, **kwargs)
+        # super().__init__(*args, **kwargs)
+        # Look up the queue class from the compute class
         self.max_queue_size = max_queue_size
-        self.queue = queue.Queue(maxsize=self.max_queue_size)
         self.inner_queue_timeout = inner_queue_timeout
         self.end_of_queue_cls = end_of_queue_cls
         self.counter: int = 0
@@ -88,6 +90,8 @@ class QueueGenerator:  # pylint: disable=too-few-public-methods,too-many-instanc
         self.session = session
         self.incoming_queue_processors = []
         self.timed_cache = {}
+        self.queue_class = queue_class
+        self.queue = queue.Queue(maxsize=self.max_queue_size)
         self.use_cache = use_cache
 
         if self.session:
@@ -146,13 +150,13 @@ class QueueGenerator:  # pylint: disable=too-few-public-methods,too-many-instanc
         """Get an item from the queue."""
         return self.queue.get(**kwargs)
 
-    def put(self, item: Any) -> None:
+    def put(self, item: Any, **kwargs) -> None:
         """Put an item on the queue."""
         if self.session:
             item.session = self.session
         if not self.ignore_item(item):
-            LOGGER.debug("QUEUE: %s: %s", self.name, item)
-            self.queue.put(item)
+            self.queue.put(item, **kwargs)
+
             self.timed_cache[hash(item)] = datetime.datetime.now()
 
     def ignore_item(self, item: Any) -> bool:
@@ -171,11 +175,13 @@ def decode(encoded: str) -> Any:
     return decoded
 
 
-def encode(obj: Any) -> str:
+def encode(obj: Any, to_bytes: bool = False) -> str:
     """Encode an object as a base64 string."""
     try:
         encoded = base64.b64encode(pickle.dumps(obj)).decode("utf-8")
     except Exception as e:
         LOGGER.error("Error encoding object to base64 string: %s", obj)
         raise ValueError(f"Error encoding object to base64 string: {e}") from e
+    if to_bytes:
+        return encoded.encode("utf-8")
     return encoded
