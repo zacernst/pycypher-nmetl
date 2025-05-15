@@ -2,6 +2,8 @@ fact_collection: FoundationDBFactCollection
 fact_collection_class: FoundationDBFactCollection
 run_monitor: false
 logging_level: DEBUG
+fact_collection_kwargs:
+  sync_writes: true
 
 data_sources:
 - name: squares_table

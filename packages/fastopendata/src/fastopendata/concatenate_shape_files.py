@@ -8,7 +8,7 @@ from typing import List, Optional
 import geopandas
 import pandas as pd
 import pyogrio
-from pycypher.logger import LOGGER
+from shared.logger import LOGGER
 
 
 def concatenate_shapefiles(

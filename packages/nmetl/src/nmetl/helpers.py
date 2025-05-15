@@ -4,6 +4,7 @@ import base64
 import datetime
 import pickle
 import queue
+import time
 import uuid
 from pathlib import Path
 from typing import Any, Generator, Optional, Type
@@ -15,7 +16,7 @@ from nmetl.config import (  # pylint: disable=no-name-in-module
     OUTER_QUEUE_TIMEOUT,
 )
 from nmetl.message_types import EndOfData
-from pycypher.logger import LOGGER
+from shared.logger import LOGGER
 
 
 class Idle:  # pylint: disable=too-few-public-methods
@@ -78,7 +79,6 @@ class QueueGenerator:  # pylint: disable=too-few-public-methods,too-many-instanc
         # super().__init__(*args, **kwargs)
         # Look up the queue class from the compute class
         self.max_queue_size = max_queue_size
-        self.queue = queue.Queue(maxsize=self.max_queue_size)
         self.inner_queue_timeout = inner_queue_timeout
         self.end_of_queue_cls = end_of_queue_cls
         self.counter: int = 0
@@ -91,6 +91,7 @@ class QueueGenerator:  # pylint: disable=too-few-public-methods,too-many-instanc
         self.incoming_queue_processors = []
         self.timed_cache = {}
         self.queue_class = queue_class
+        self.queue = queue.Queue(maxsize=self.max_queue_size)
         self.use_cache = use_cache
 
         if self.session:
@@ -149,13 +150,13 @@ class QueueGenerator:  # pylint: disable=too-few-public-methods,too-many-instanc
         """Get an item from the queue."""
         return self.queue.get(**kwargs)
 
-    def put(self, item: Any) -> None:
+    def put(self, item: Any, **kwargs) -> None:
         """Put an item on the queue."""
         if self.session:
             item.session = self.session
         if not self.ignore_item(item):
-            LOGGER.debug("QUEUE: %s: %s", self.name, item)
-            self.queue.put(item)
+            self.queue.put(item, **kwargs)
+
             self.timed_cache[hash(item)] = datetime.datetime.now()
 
     def ignore_item(self, item: Any) -> bool:

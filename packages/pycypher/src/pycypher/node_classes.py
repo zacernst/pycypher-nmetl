@@ -7,8 +7,10 @@ from __future__ import annotations
 
 import abc
 import copy
+import datetime
 import uuid
-from functools import partial
+from functools import lru_cache, partial
+from multiprocessing.pool import ThreadPool
 from typing import Any, Dict, Generator, List, Optional
 
 from constraint import Domain, Problem
@@ -21,7 +23,6 @@ from pycypher.fact import (
     FactRelationshipHasSourceNode,
     FactRelationshipHasTargetNode,
 )
-from pycypher.logger import LOGGER
 from pycypher.query import NullResult, QueryValueOfNodeAttribute
 from pycypher.shims import Shim
 from pycypher.solver import (
@@ -43,7 +44,7 @@ from pydantic import (
     TypeAdapter,
 )
 from rich.tree import Tree
-
+from shared.logger import LOGGER
 
 
 class Evaluable(abc.ABC):  # pylint: disable=too-few-public-methods
@@ -866,6 +867,7 @@ class ObjectAttributeLookup(TreeMixin, Evaluable):
         one_query = QueryValueOfNodeAttribute(
             node_id=projection[self.object], attribute=self.attribute
         )
+        LOGGER.debug("about to do one query... %s", one_query)
         value = fact_collection.query(one_query)
         return value
 
@@ -961,6 +963,7 @@ class WithClause(TreeMixin, Evaluable):
 
     def __init__(self, lookups: ObjectAsSeries):
         self.lookups = lookups
+        self.thread_pool = ThreadPool(64)
 
     def __repr__(self):
         return f"WithClause({self.lookups})"
@@ -1084,16 +1087,87 @@ class WithClause(TreeMixin, Evaluable):
         self,
         fact_collection: FactCollection,
         projection: Optional[Any] = None,
+        sub_trigger_pair: Optional[Any] = None,
+    ):
+        LOGGER.debug("Getting solutions...")
+        solutions = projection or self.transform_solutions_by_aggregations(
+            fact_collection
+        )
+        # TODO:
+        # We need to skip all the solutions that don't refer to the entity
+        # or relationship in the triggering fact.
+        # Might look at caching the object-attribute lookup query results?
+        # But cache invalidation will be necessary.
+
+        # SubTriggerPair(sub={'i': 'PSAM_2023_Individual::2023GQ0000113'}, trigger=CypherTrigger(constraints: {ConstraintNodeHasLabel: i PSAM_2023_Individual}))
+        # Get all the names of the objects in the trigger
+        def _flatten(l: List[Any]):
+            out = []
+            for item in l:
+                if isinstance(item, list):
+                    out.extend(_flatten(item))
+                else:
+                    out.append(item)
+            return out
+
+        if sub_trigger_pair:
+            id_list = list(
+                sub_trigger_pair.sub.values()
+            )  # Will this handle both nodes and relationships?
+            LOGGER.debug("id_list: %s", id_list)
+            solutions = [
+                solution
+                for solution in solutions
+                if set(_flatten(list(solution.values()))) & set(id_list)
+            ]
+            LOGGER.debug(sub_trigger_pair)
+            LOGGER.debug(solutions)
+        LOGGER.debug("Done.")
+        LOGGER.debug("getting results...")
+        LOGGER.debug("Getting futures...")
+        futures = [
+            self.thread_pool.apply_async(
+                self._evaluate_one_projection,
+                (fact_collection,),
+                {"projection": one_projection},
+            )
+            for one_projection in solutions
+        ]
+        LOGGER.debug("Solutions: %s: ", solutions)
+        LOGGER.debug("Defined list of futures: %s", len(futures))
+        # results = [
+        #     self._evaluate_one_projection(
+        #         fact_collection, projection=one_projection
+        #     )
+        #     for one_projection in solutions
+        # ]
+        future_wait_start_time = datetime.datetime.now()
+        results = [future.get() for future in futures]
+        future_wait_end_time = datetime.datetime.now()
+        LOGGER.debug("Waited %s", future_wait_end_time - future_wait_start_time)
+
+        LOGGER.debug("results: %s", results)
+        for one_result, one_solution in zip(results, solutions):
+            one_result["__match_solution__"] = one_solution
+
+        return results
+
+    def _evaluate_bak(
+        self,
+        fact_collection: FactCollection,
+        projection: Optional[Any] = None,
     ):
         solutions = projection or self.transform_solutions_by_aggregations(
             fact_collection
         )
+        LOGGER.debug("getting results...")
         results = [
             self._evaluate_one_projection(
                 fact_collection, projection=one_projection
             )
             for one_projection in solutions
         ]
+        LOGGER.debug("results: %s", results)
         for one_result, one_solution in zip(results, solutions):
             one_result["__match_solution__"] = one_solution
 
@@ -1395,12 +1469,12 @@ class Match(TreeMixin):
         try:
             problem = _set_up_problem(self)
         except ValueError as e:  # pylint: disable=broad-exception-caught
-            LOGGER.error("Domain not ready yet? %s", e)
+            LOGGER.debug("Domain not ready yet? %s", e)
             return []
         try:
             solutions = problem.getSolutions()
         except Exception as e:  # pylint: disable=broad-exception-caught
-            LOGGER.error("Error getting solutions: %s", e)
+            LOGGER.debug("Error getting solutions: %s", e)
             return []
         return solutions
 
@@ -1456,15 +1530,25 @@ class Return(TreeMixin):
         self,
         fact_collection: FactCollection,
         projection: Optional[Dict[str, str | List[str]]] = None,
+        sub_trigger_pair: Optional[Any] = None,
     ):
         """For now, just return a subset of the projection from the WITH clause."""
+        LOGGER.debug("-------------")
+        start_time = datetime.datetime.now()
         with_clause_projections = (
             projection
             or self.parent.match_clause.with_clause._evaluate(  # pylint: disable=protected-access
-                fact_collection, projection=None
+                fact_collection,
+                projection=None,
+                sub_trigger_pair=sub_trigger_pair,
             )
         )
+        end_time = datetime.datetime.now()
+        LOGGER.debug(
+            "in with_clause._evaluate spent time: %s", end_time - start_time
+        )
         result = []
+        LOGGER.debug("with_clause_projections: %s", with_clause_projections)
         for with_clause_projection in with_clause_projections:
             one_return_output = {}
             for return_lookup in (

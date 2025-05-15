@@ -45,7 +45,9 @@ dependencies = [
     "pyarrow>=19.0.1",
     "rich>=13.9.4",
     "chardet>=5.2.0",
-    "dvc>=3.59.1",
+    "dvc>=3.59.2",
+    "prometheus-client>=0.21.1",
+    "bandit>=1.8.3",
 ]
 
 [[project.authors]]
@@ -79,6 +81,7 @@ members = ["packages/*"]
 pycypher = { workspace = true }
 nmetl = { workspace = true }
 fastopendata = { workspace = true }
+shared = { workspace = true }
 
 [tool.ruff]
 line-length = 80

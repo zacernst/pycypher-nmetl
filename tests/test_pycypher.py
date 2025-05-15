@@ -124,7 +124,6 @@ from pycypher.fact import (  # We might get rid of this class entirely
     RocksDBFactCollection,
     SimpleFactCollection,
 )
-from pycypher.logger import LOGGER
 from pycypher.node_classes import (
     Addition,
     Aggregation,
@@ -179,6 +178,7 @@ from pycypher.solver import (
 )
 from pycypher.tree_mixin import TreeMixin
 from pytest_unordered import unordered
+from shared.logger import LOGGER
 
 TEST_DATA_DIRECTORY = pathlib.Path(__file__).parent / "test_data"
 

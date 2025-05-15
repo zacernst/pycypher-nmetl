@@ -67,10 +67,10 @@ from nmetl.trigger import (
 )
 from pycypher.cypher_parser import CypherParser
 from pycypher.fact import AtomicFact, FactCollection, SimpleFactCollection
-from pycypher.logger import LOGGER
 from pycypher.solver import Constraint
 from rich.console import Console
 from rich.table import Table
+from shared.logger import LOGGER
 
 
 @dataclass
@@ -161,6 +161,9 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
         ] = ComputeClassNameEnum.THREADING,
         compute_options: Optional[Dict[str, Any]] = None,
         session_config: Optional[Any] = None,
+        fact_collection_kwargs: Optional[Dict[str, Any]] = None,
+        # worker_num: Optional[int] = 0,
+        # num_workers: Optional[int] = 1,
     ):  # pylint: disable=too-many-arguments
         """
         Initialize a new Session instance.
@@ -188,11 +191,14 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
         self.logging_level = logging_level
         # No need for a fancy queue class here
         self.new_column_dict = {}
+        self.fact_collection_kwargs = fact_collection_kwargs or {}
         self.dump_profile_interval = dump_profile_interval
         self.profiler = profiler
         self.compute_class_name = compute_class_name
         self.compute_options = compute_options or {}
         self.session_config = session_config
+        # self.worker_num = worker_num
+        # self.num_workers = num_workers
         # Forget the compute class for the time being. Get the FactCollection
         # initialized in the workers...
         try:
@@ -256,7 +262,9 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
             "Creating session with fact collection %s",
             fact_collection.__class__.__name__,
         )
-        self.fact_collection = fact_collection or fact_collection_class()
+        self.fact_collection = fact_collection or fact_collection_class(
+            **self.fact_collection_kwargs
+        )
 
         self.fact_collection.session = self
 
@@ -286,11 +294,11 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
                 compute=self.compute,
             )
         )
-        
+
         self.triggered_lookup_processor = TriggeredLookupProcessor(
             self,
             incoming_queue=self.triggered_lookup_processor_queue,
-            outgoing_queue=None,
+            outgoing_queue=self.fact_generated_queue,  # Changed
             status_queue=self.status_queue,
             compute=self.compute,
         )
@@ -656,6 +664,9 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
         if not isinstance(data_source, DataSource):
             raise ValueError(f"Expected a DataSource, got {type(data_source)}")
         LOGGER.debug("Attaching data source %s", data_source)
+        # data_source.worker_num = self.worker_num
+        # data_source.num_workers = self.num_workers
+        data_source.session = self
         self.data_sources.append(data_source)
 
     def node_label_attribute_inventory(self):

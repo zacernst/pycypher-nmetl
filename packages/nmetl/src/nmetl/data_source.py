@@ -15,6 +15,7 @@ import csv
 import datetime
 import hashlib
 import io
+import pickle
 import pstats
 import threading
 import time
@@ -35,7 +36,7 @@ from pycypher.fact import (
     FactRelationshipHasSourceNode,
     FactRelationshipHasTargetNode,
 )
-from pycypher.logger import LOGGER
+from shared.logger import LOGGER
 
 
 def profile_thread(func, *args, **kwargs):
@@ -155,6 +156,9 @@ class DataSource(ABC):  # pylint: disable=too-many-instance-attributes
         self.halt = False
         self.schema = {}
         self.new_column_configs: Dict[str, NewColumn] = {}
+        self.back_pressure = 0.00001
+        # self.num_workers = None
+        # self.worker_num = None
 
     def __repr__(self) -> str:
         """
@@ -298,15 +302,31 @@ class DataSource(ABC):  # pylint: disable=too-many-instance-attributes
         self.started = True
         self.started_at = datetime.datetime.now()
         for row in self.rows():
+            if (self.session.fact_generated_queue.queue.qsize() + 
+                self.session.check_fact_against_triggers_queue.queue.qsize() + 
+                self.session.triggered_lookup_processor_queue.queue.qsize() > 1_000_000):
+                while (
+                    self.session.fact_generated_queue.queue.qsize() + 
+                    self.session.check_fact_against_triggers_queue.queue.qsize() + 
+                    self.session.triggered_lookup_processor_queue.queue.qsize() > 128_000):
+                    time.sleep(.5)
+            # LOGGER.error('back_pressure: %s', self.back_pressure)
+            time.sleep(self.back_pressure)
+            # Only queue the rows that this worker is responsible for
+            # row_hash = hash(pickle.dumps(row))
+            # if row_hash < 0:
+            #     row_hash = -row_hash
+            # if row_hash % self.num_workers != self.worker_num:
+            #     continue
+
             row = self.cast_row(row)
             self.add_new_columns(row)
             self.received_counter += 1
+
             self.raw_input_queue.put(
                 RawDatum(data_source=self, row=row),
             )
             self.sent_counter += 1
-            if self.sent_counter > 1_000_000_000_000:  # for testing
-                break
             if self.halt:
                 LOGGER.debug("DataSource %s is halting", self.name)
                 break
@@ -489,7 +509,12 @@ class CSVDataSource(DataSource):
 
     def rows(self) -> Generator[Dict[str, Any], None, None]:
         """Generate rows from the CSV file."""
-        yield from self.reader
+        counter = 0
+        for row in self.reader:
+            counter += 1
+            if counter == -1:
+                break
+            yield row
 
 
 class ParquetFileDataSource(DataSource):

@@ -6,7 +6,7 @@ Configuration Module (configuration.py)
 from __future__ import annotations
 
 import datetime
-from typing import Annotated, Dict, List, Optional
+from typing import Annotated, Any, Dict, List, Optional
 
 import yaml
 from nmetl.config import CWD  # pylint: disable=no-name-in-module
@@ -25,8 +25,8 @@ from pycypher.fact import (  # pylint: disable=unused-import
     RocksDBFactCollection,
     SimpleFactCollection,
 )
-from pycypher.logger import LOGGER
 from pydantic import BaseModel, Field, TypeAdapter
+from shared.logger import LOGGER
 
 TYPE_DISPATCH_DICT = {
     "PositiveInteger": TypeAdapter(Annotated[int, Field(gt=0)]),
@@ -64,6 +64,7 @@ class SessionConfig(BaseModel):
     fact_collection_class: Optional[str] = None
     data_sources: Optional[List[DataSourceConfig]] = []
     logging_level: Optional[str] = "INFO"
+    fact_collection_kwargs: Optional[Dict[str, Any]] = {}
 
 
 class DataSourceConfig(BaseModel):
@@ -128,7 +129,9 @@ class DataSourceMappingConfig(BaseModel):
     relationship: Optional[str] = None
 
 
-def load_session_config(path: str) -> Session:
+def load_session_config(
+    path: str, worker_num: Optional[int] = 0, num_workers: Optional[int] = 1
+) -> Session:
     """
     Load and parse the Session configuration from a YAML file.
 
@@ -156,6 +159,7 @@ def load_session_config(path: str) -> Session:
         run_monitor=session_config.run_monitor,
         logging_level=session_config.logging_level,
         fact_collection_class=fact_collection_class,
+        fact_collection_kwargs=session_config.fact_collection_kwargs,
         dump_profile_interval=DUMP_PROFILE_INTERVAL,
         profiler=PROFILER,
         session_config=session_config,

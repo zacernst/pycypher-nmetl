@@ -15,12 +15,13 @@ import fdb
 
 fdb.api_version(710)
 import inspect
+
 # from concurrent.futures import ThreadPoolExecutor
 import logging
-from multiprocessing.pool import ThreadPool
 import threading
 import time
 from abc import ABC, abstractmethod
+from multiprocessing.pool import ThreadPool
 from typing import Any, Dict, Generator, List, Optional
 
 from nmetl.config import (  # pylint: disable=no-name-in-module
@@ -574,7 +575,7 @@ class FactCollection(ABC):
                         yield fact
                         relevant_facts.add(fact)
                 case ConstraintRelationshipHasTargetNode():
-                    for fact in self.relationship_has_source_node_facts():
+                    for fact in self.relationship_has_target_node_facts():
                         if fact in relevant_facts:
                             continue
                         yield fact
@@ -855,9 +856,11 @@ class FactCollection(ABC):
         """
         match query:
             case QueryValueOfNodeAttribute():
-                return self.query_value_of_node_attribute(query)
+                out = self.query_value_of_node_attribute(query)
+                return out
             case QueryNodeLabel():
-                return self.query_node_label(query)
+                out = self.query_node_label(query)
+                return out
             case _:
                 raise NotImplementedError(f"Unknown query type {query}")
 
@@ -1245,6 +1248,25 @@ class KeyValue(ABC):
 
     def make_index_for_fact(self, fact: AtomicFact) -> str:
         """Used for the memcache index"""
+        match fact:
+            case FactNodeHasLabel():
+                return f"node_label:{fact.label}::{fact.node_id}:{fact.label}"
+            case FactNodeHasAttributeWithValue():
+                return f"node_attribute:{fact.node_id}:{fact.attribute}:{fact.value}"
+            case FactRelationshipHasLabel():
+                return f"relationship_label:{fact.relationship_id}:{fact.relationship_label}"
+            case FactRelationshipHasAttributeWithValue():
+                return f"relationship_attribute:{fact.relationship_id}:{fact.attribute}:{fact.value}"
+            case FactRelationshipHasSourceNode():
+                return f"relationship_source_node:{fact.relationship_id}:{fact.source_node_id}"
+            case FactRelationshipHasTargetNode():
+                return f"relationship_target_node:{fact.relationship_id}:{fact.target_node_id}"
+            case FactNodeRelatedToNode():
+                return f"node_relationship:{fact.node1_id}:{fact.node2_id}:{fact.relationship_label}"
+            case _:
+                raise ValueError(f"Unknown fact type {fact}")
+
+    def make_item_lookup(self, fact: AtomicFact) -> str:
         match fact:
             case FactNodeHasLabel():
                 return f"node_label:{fact.label}::{fact.node_id}:{fact.label}"
@@ -1823,10 +1845,10 @@ class RocksDBFactCollection(FactCollection, KeyValue):
     def __iter__(self) -> Generator[AtomicFact]:
         curframe = inspect.currentframe()
         calframe = inspect.getouterframes(curframe, 2)
-        LOGGER.warning("__iter__ called: %s", calframe[1][3])
+        LOGGER.debug("__iter__ called: %s", calframe[1][3])
 
         yield from self.values()
-        LOGGER.warning("Done iterating values by brute force.")
+        LOGGER.debug("Done iterating values by brute force.")
 
     def __repr__(self):
         return "Rocks"
@@ -1919,9 +1941,11 @@ def ensure_bytes(value: Any, **kwargs) -> bytes:
         return value
     return bytes(value, **kwargs)
 
-def write_fact(db, index, fact):
-    LOGGER.debug('Writing to FoundationDB: %s', index)
+
+def write_fact(db, index, fact, timing_histogram=None):
+    LOGGER.debug("Writing to FoundationDB: %s", index)
     db[index] = encode(fact, to_bytes=True)
+
     return True
 
 
@@ -1933,7 +1957,7 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
         session (Session): The session object associated with the fact collection.
     """
 
-    def __init__(self, *args, db_path: str = "rocksdb", **kwargs):
+    def __init__(self, *args, sync_writes: Optional[bool] = False, **kwargs):
         """
         Initialize a RocksDB-backed FactCollection.
 
@@ -1947,6 +1971,7 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
         self.diversion_miss_counter = 0
         self.thread_pool = ThreadPool(1024)
         self.pending_facts = []
+        self.sync_writes = sync_writes
 
         # self.db = Rdict(self.db_path, self.options)
         super().__init__(*args, **kwargs)
@@ -1960,10 +1985,12 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
         Yields:
             Any: The values associated with the keys in the range.
         """
-        LOGGER.debug('_prefix_read_items called')
+        LOGGER.debug("_prefix_read_items called")
         counter = 0
+        prefix = ensure_bytes(prefix, encoding="utf8")
+        end_key = "\xff" if continue_to_end else prefix + b"\xff"
         for key_value_obj in self.db.get_range(
-            ensure_bytes(ensure_bytes(prefix), encoding="utf8"), b"\xff"
+            ensure_bytes(ensure_bytes(prefix), encoding="utf8"), end_key
         ):
             value = decode(key_value_obj.value)
             key = key_value_obj.key
@@ -1973,9 +2000,7 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
                 yield key, value
             else:
                 break
-        LOGGER.debug('Done with _prefix_read_items: %s: %s', prefix, counter)
-        if counter > 15:
-            import pdb; pdb.set_trace()
+        LOGGER.debug("Done with _prefix_read_items: %s: %s", prefix, counter)
 
     def make_index_for_fact(self, fact: AtomicFact) -> bytes:
         """Used for the memcache index"""
@@ -1996,7 +2021,7 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
         Yields:
             Any: The values associated with the keys in the range.
         """
-        LOGGER.debug('_prefix_read_keys called')
+        LOGGER.debug("_prefix_read_keys called")
         for key, _ in self._prefix_read_items(
             ensure_bytes(prefix, encoding="utf8"),
             continue_to_end=continue_to_end,
@@ -2015,7 +2040,7 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
         Yields:
             Any: The values associated with the keys in the range.
         """
-        LOGGER.debug('_prefix_read_values called')
+        LOGGER.debug("_prefix_read_values called")
         counter = 0
         for _, value in self._prefix_read_items(
             ensure_bytes(prefix, encoding="utf8"),
@@ -2023,7 +2048,7 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
         ):
             counter += 1
             yield value
-        LOGGER.debug('Done with _prefix_read_values: %s', counter)
+        LOGGER.debug("Done with _prefix_read_values: %s", counter)
 
     def keys(self) -> Generator[str]:
         """
@@ -2060,7 +2085,7 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
                 and fact.value == value
             ):
                 yield fact
-        LOGGER.debug('done')
+        LOGGER.debug("done")
 
     def __delitem__(self, key: str):
         """
@@ -2087,7 +2112,8 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
     def close(self):
         """Erase all the keys in the db"""
         LOGGER.warning("Deleting FoundationDB data")
-        self.db.clear_range(b"\x00", b"\xff")
+        # self.db.clear_range(b"\x00", b"\xff")
+        time.sleep(2)
 
     def __contains__(self, fact: AtomicFact) -> bool:
         """
@@ -2138,8 +2164,9 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
 
         TODO: Also optimizew this by adding an index key on inserts.
         """
-        LOGGER.warning('Node has specific label facts...')
-        for fact in self._prefix_read_values(b"node_label:"):
+        LOGGER.debug("Node has specific label facts...")
+        prefix = bytes(f"node_label:{label}::", encoding="utf8")
+        for fact in self._prefix_read_values(prefix):
             if isinstance(fact, FactNodeHasLabel) and fact.label == label:
                 yield fact
 
@@ -2173,10 +2200,10 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
         case FactNodeRelatedToNode():
             return f"node_relationship:{fact.node1_id}:{fact.node2_id}:{fact.relationship_label}"
         """
-        LOGGER.warning('Query node label...')
-        node_id_parts = query.node_id.split('::')
+        node_id_parts = query.node_id.split("::")
         if len(node_id_parts) == 2:
             return node_id_parts[0]
+        LOGGER.debug("Query node label...")
         for fact in self.node_has_label_facts():
             if (
                 isinstance(fact, FactNodeHasLabel)
@@ -2198,7 +2225,21 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
         """
         self.put_counter += 1
         index = self.make_index_for_fact(fact)
-        self.thread_pool.apply_async(write_fact, args=(self.db, index, fact,))
+        if self.sync_writes:
+            LOGGER.debug("Using sync writes")
+            apply_function = self.thread_pool.apply
+        else:
+            LOGGER.debug("Using async writes")
+            apply_function = self.thread_pool.apply_async
+        apply_function(
+            write_fact,
+            args=(
+                self.db,
+                index,
+                fact,
+            ),
+        )
+
         # t = threading.Thread(target=write_fact, args=(self.db, index, fact,))
         # t.start()
         # self.db[index] = encode(fact, to_bytes=True)
@@ -2235,6 +2276,7 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
             f"node_attribute:{query.node_id}:{query.attribute}:",
             encoding="utf8",
         )
+        LOGGER.debug("Querying value of node attribute prefix: %s", prefix)
         result = list(self._prefix_read_values(prefix))
         if len(result) == 1:
             fact = result[0]
@@ -2282,7 +2324,7 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
             FactRelationshipHasSourceNode: Facts that are instances of
                 FactRelationshipHasSourceNode.
         """
-        LOGGER.warning('Relationship has source node facts called...')
+        LOGGER.debug("Relationship has source node facts called...")
         for fact in self:
             if isinstance(fact, FactRelationshipHasSourceNode):
                 yield fact
@@ -2291,7 +2333,6 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
         curframe = inspect.currentframe()
         calframe = inspect.getouterframes(curframe, 2)
         LOGGER.warning("__iter__ called: %s", calframe[1][3])
-
 
         for key_value_obj in self.db.get_range(b"\x00", b"\xff"):
             key = key_value_obj.key.decode("utf8")

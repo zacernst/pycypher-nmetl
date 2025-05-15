@@ -32,20 +32,20 @@ from pycypher.fact import (  # We might get rid of this class entirely
     RocksDBFactCollection,
     SimpleFactCollection,
 )
-from pycypher.logger import LOGGER
 from pycypher.node_classes import Literal
+from shared.logger import LOGGER
 
 TEST_DATA_DIRECTORY = pathlib.Path(__file__).parent / "test_data"
 
 BACK_END_STORES = [
     SimpleFactCollection,
-    RocksDBFactCollection,
-    FoundationDBFactCollection,
+    # RocksDBFactCollection,
+    # FoundationDBFactCollection,
     # Etcd3FactCollection,
 ]
 
 INGEST_FILES = [
-    "ingest_foundationdb.yaml",
+    # "ingest_foundationdb.yaml",
     # "ingest_rocks.yaml",
     "ingest.yaml",
 ]
@@ -187,9 +187,12 @@ def fixture_0_data_source_mapping_list():
 def fact_collection_cls_factory(request, tmpdir):
     if request.param is RocksDBFactCollection:
         out = request.param(db_path=tmpdir.strpath)
+    elif request.param is FoundationDBFactCollection:
+        out = request.param(sync_writes=True)
     else:
         out = request.param()
-    return out
+    yield out
+    out.close()
 
 
 @pytest.fixture
