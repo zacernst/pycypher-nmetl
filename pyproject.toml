@@ -48,6 +48,7 @@ dependencies = [
     "dvc>=3.59.2",
     "prometheus-client>=0.21.1",
     "bandit>=1.8.3",
+    "ty>=0.0.1a6",
 ]
 
 [[project.authors]]
@@ -82,6 +83,9 @@ pycypher = { workspace = true }
 nmetl = { workspace = true }
 fastopendata = { workspace = true }
 shared = { workspace = true }
+
+[tool.pylint.main]
+disable = ["line-too-long", "trailing-whitespace", "missing-docstring"]
 
 [tool.ruff]
 line-length = 80
@@ -148,6 +152,11 @@ universal = true
 
 [tool.hatch.build.targets.sdist]
 formats = ["zip"]
+
+[dependency-groups]
+dev = [
+    "ty>=0.0.1a6",
+]
 
 [tool.hatch.build]
 include = [

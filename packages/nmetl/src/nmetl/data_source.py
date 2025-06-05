@@ -302,14 +302,19 @@ class DataSource(ABC):  # pylint: disable=too-many-instance-attributes
         self.started = True
         self.started_at = datetime.datetime.now()
         for row in self.rows():
-            if (self.session.fact_generated_queue.queue.qsize() + 
-                self.session.check_fact_against_triggers_queue.queue.qsize() + 
-                self.session.triggered_lookup_processor_queue.queue.qsize() > 1_000_000):
+            if hasattr(self, 'session') and (
+                self.session.fact_generated_queue.queue.qsize()
+                + self.session.check_fact_against_triggers_queue.queue.qsize()
+                + self.session.triggered_lookup_processor_queue.queue.qsize()
+                > 32_000
+            ):
                 while (
-                    self.session.fact_generated_queue.queue.qsize() + 
-                    self.session.check_fact_against_triggers_queue.queue.qsize() + 
-                    self.session.triggered_lookup_processor_queue.queue.qsize() > 128_000):
-                    time.sleep(.5)
+                    self.session.fact_generated_queue.queue.qsize()
+                    + self.session.check_fact_against_triggers_queue.queue.qsize()
+                    + self.session.triggered_lookup_processor_queue.queue.qsize()
+                    > 4_000
+                ):
+                    time.sleep(0.5)
             # LOGGER.error('back_pressure: %s', self.back_pressure)
             time.sleep(self.back_pressure)
             # Only queue the rows that this worker is responsible for

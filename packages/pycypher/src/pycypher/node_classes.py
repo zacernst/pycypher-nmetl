@@ -16,13 +16,13 @@ from typing import Any, Dict, Generator, List, Optional
 from constraint import Domain, Problem
 from pycypher.exceptions import WrongCypherTypeError
 from pycypher.fact import (
-    FactCollection,
     FactNodeHasAttributeWithValue,
     FactNodeHasLabel,
     FactRelationshipHasLabel,
     FactRelationshipHasSourceNode,
     FactRelationshipHasTargetNode,
 )
+from pycypher.fact_collection import FactCollection
 from pycypher.query import NullResult, QueryValueOfNodeAttribute
 from pycypher.shims import Shim
 from pycypher.solver import (
@@ -839,7 +839,7 @@ class ObjectAttributeLookup(TreeMixin, Evaluable):
         return f"ObjectAttributeLookup({self.object}, {self.attribute})"
 
     def tree(self) -> Tree:
-        t = Tree(self.__class__.__name__)
+        t: Tree = Tree(self.__class__.__name__)
         if self.object:
             t.add(self.object)
         if self.attribute:
@@ -851,24 +851,24 @@ class ObjectAttributeLookup(TreeMixin, Evaluable):
         yield self.object
         yield self.attribute
 
-    def value(self, fact_collection: FactCollection) -> Any:
-        """
-        Need to find reference of variable from previous Match clause.
-        Then look up the attribute for that object from the FactCollection.
-        """
-        return fact_collection.get_attribute(self.object, self.attribute)
+    # def value(self, fact_collection: FactCollection) -> Any:
+    #     """
+    #     Need to find reference of variable from previous Match clause.
+    #     Then look up the attribute for that object from the FactCollection.
+    #     """
+    #     return fact_collection.get_attribute(self.object, self.attribute)
 
     def _evaluate(
         self,
         fact_collection: FactCollection,
-        projection: Optional[Dict[str, str | List[str]]] = None,
+        projection: dict,
     ) -> Any:
         """TODO: Need to handle the case where the attribute is `None`"""
-        one_query = QueryValueOfNodeAttribute(
+        one_query: QueryValueOfNodeAttribute = QueryValueOfNodeAttribute(
             node_id=projection[self.object], attribute=self.attribute
         )
         LOGGER.debug("about to do one query... %s", one_query)
-        value = fact_collection.query(one_query)
+        value: Any = fact_collection.query(one_query)
         return value
 
 
@@ -1223,7 +1223,7 @@ class Match(TreeMixin):
             yield self.with_clause
 
     def solutions(
-        self, fact_collection: FactCollection | Shim
+        self, fact_collection: FactCollection
     ) -> List[Dict[str, Any]]:
         """
         Generate solutions based on the given fact collection and constraints.
@@ -1333,7 +1333,7 @@ class Match(TreeMixin):
                 )
                 return answer
 
-            def _g(node_id, label=None):
+            def _g(node_id, label):
                 answer = (
                     FactNodeHasLabel(node_id=node_id, label=label)
                     in fact_collection
@@ -1346,8 +1346,8 @@ class Match(TreeMixin):
                 )
                 return answer
 
-            def _h(relationship_id, relationship_label=None):
-                answer = (
+            def _h(relationship_id, relationship_label: str):
+                answer: bool = (
                     FactRelationshipHasLabel(
                         relationship_id=relationship_id,
                         relationship_label=relationship_label,
@@ -1363,8 +1363,8 @@ class Match(TreeMixin):
                 )
                 return answer
 
-            def _i(node_id, attribute=None, value=None):
-                answer = (
+            def _i(node_id, attribute: str = "", value: Any = None):
+                answer: bool = (
                     FactNodeHasAttributeWithValue(
                         node_id=node_id, attribute=attribute, value=value
                     )
@@ -1382,7 +1382,7 @@ class Match(TreeMixin):
 
             # Experimental...
             def _j(node_id, other_node_id=None):
-                answer = node_id == other_node_id
+                answer: bool = node_id == other_node_id
                 LOGGER.debug(
                     "answer _j: %s for node_id: %s",
                     answer,

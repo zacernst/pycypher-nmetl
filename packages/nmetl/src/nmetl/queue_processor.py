@@ -13,6 +13,8 @@ from __future__ import annotations
 import datetime
 import hashlib
 import inspect
+
+# import queue
 import sys
 import threading
 
@@ -21,24 +23,22 @@ import time
 import traceback
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-
-# import queue
-import queue
+from queue import Queue
 from typing import Any, Dict, List, Optional
 
 from nmetl.helpers import Idle, QueueGenerator
 from nmetl.trigger import CypherTrigger
 from pycypher.fact import (
     AtomicFact,
-    FactCollection,
     FactNodeHasAttributeWithValue,
     FactRelationshipHasLabel,
     FactRelationshipHasSourceNode,
     FactRelationshipHasTargetNode,
-    NullResult,
-    RocksDBFactCollection,
-    SimpleFactCollection,
 )
+from pycypher.query import NullResult
+from pycypher.fact_collection import FactCollection
+from pycypher.fact_collection.rocksdb import RocksDBFactCollection
+from pycypher.fact_collection.simple import SimpleFactCollection
 from pycypher.node_classes import Collection
 from shared.logger import LOGGER
 
@@ -76,7 +76,7 @@ class QueueProcessor(ABC):  # pylint: disable=too-few-public-methods,too-many-in
         fact_collection: Optional[FactCollection] = None,
         incoming_queue: Optional[QueueGenerator] = None,
         outgoing_queue: Optional[QueueGenerator] = None,
-        status_queue: Optional[Queue] = None,
+        status_queue: Queue = Queue(),
         compute: Optional[Any] = None,
         num_threads: Optional[int] = 1,
         session_config: Optional[
@@ -95,9 +95,9 @@ class QueueProcessor(ABC):  # pylint: disable=too-few-public-methods,too-many-in
         self.session = session
         self.session_config = session_config
         self.started = False
-        self.started_at = None
+        self.started_at: Optional[datetime.datetime] = None
         self.finished = False
-        self.finished_at = None
+        self.finished_at: Optional[datetime.datetime] = None
         self.halt_signal = False
         ###########################################
         # The next lines are the ones that need to
@@ -276,23 +276,18 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
 
         out = []
         LOGGER.debug("Checking fact %s against triggers", item)
-        start_waiting_for_fact = datetime.datetime.now()
+        start_waiting_for_fact: datetime.datetime = datetime.datetime.now()
         put_item_success = True
         start_time = datetime.datetime.now()
         item_in_collection = item in self.session.fact_collection
         end_time = datetime.datetime.now()
-        LOGGER.debug(
-            "Time spent checking if item in collection: %s, %s",
-            item_in_collection,
-            end_time - start_time,
-        )
         if not item_in_collection:
             LOGGER.debug(
                 "Fact %s not in collection, requeueing...", item.__dict__
             )
             self.incoming_queue.put(item)
-            LOGGER.debug("timeout waiting for fact to be in collection")
             return
+        
         LOGGER.debug("IN COLLECTION: %s", item.__dict__)
         # Let's filter out the facts that are irrelevant to this trigger
         for _, trigger in self.session.trigger_dict.items():
@@ -344,7 +339,6 @@ class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-publi
         """Process new facts from the check_fact_against_triggers_queue."""
         self.started = True
         self.started_at = datetime.datetime.now()
-        self.received_counter += 1
 
         try:
             start_time = datetime.datetime.now()
@@ -374,6 +368,7 @@ class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-publi
             fact_collection, sub_trigger_pair=sub_trigger_pair
         )  # pylint: disable=protected-access
         end_time = datetime.datetime.now()
+        LOGGER.debug("solutions in _process: %s", solutions)
         LOGGER.debug("_evaluate return clause: %s", end_time - start_time)
         if sub_trigger_pair.trigger.is_relationship_trigger:
             source_variable = sub_trigger_pair.trigger.source_variable
@@ -405,6 +400,9 @@ class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-publi
 
         computed_facts = []
         for solution in solutions:
+            LOGGER.debug('Processing args: %s', process_solution_args)
+            LOGGER.debug('Processing solution: %s', solution)
+            LOGGER.debug('Processing solution function: %s', process_solution_function)
             try:
                 computed_facts.append(
                     process_solution_function(solution, *process_solution_args)

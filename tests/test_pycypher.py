@@ -1,5 +1,7 @@
-"""All the tests."""
+# type:ignore
+# """All the tests."""
 # pylint: disable=invalid-name,missing-function-docstring,disallowed-name,protected-access,unused-argument,unused-import,redefined-outer-name,too-many-lines
+# ty: ignore
 
 import collections
 import datetime
@@ -12,7 +14,7 @@ import subprocess
 import tempfile
 import threading
 import time
-from typing import Callable, Iterable
+from typing import Any, Callable, Iterable
 from unittest.mock import Mock, patch
 
 import networkx as nx
@@ -109,10 +111,13 @@ from pycypher.exceptions import (  # pylint: disable=unused-import
     InvalidCastError,
     WrongCypherTypeError,
 )
+from pycypher.fact_collection import    FactCollection
+from pycypher.fact_collection.rocksdb import RocksDBFactCollection
+from pycypher.fact_collection.simple import SimpleFactCollection
+from pycypher.fact_collection.foundationdb import FoundationDBFactCollection
+
 from pycypher.fact import (  # We might get rid of this class entirely
     AtomicFact,
-    Etcd3FactCollection,
-    FactCollection,
     FactNodeHasAttributeWithValue,
     FactNodeHasLabel,
     FactNodeRelatedToNode,
@@ -120,9 +125,7 @@ from pycypher.fact import (  # We might get rid of this class entirely
     FactRelationshipHasLabel,
     FactRelationshipHasSourceNode,
     FactRelationshipHasTargetNode,
-    FoundationDBFactCollection,
-    RocksDBFactCollection,
-    SimpleFactCollection,
+    
 )
 from pycypher.node_classes import (
     Addition,
@@ -4705,6 +4708,7 @@ def test_attributes_for_specific_node(shapes_session):
 
 
 def test_trigger_function_on_relationship_match(session_with_trigger):
+    LOGGER.setLevel("DEBUG")
     session_with_trigger.start_threads()
     session_with_trigger.block_until_finished()
     assert list(session_with_trigger.trigger_dict.values())[0].call_counter > 0
@@ -6283,8 +6287,12 @@ def test_foundationdb_fact_collection_adds_fact(foundationdb_fact_collection):
 def test_foundationdb_fact_collection_inserts_fact_with_correct_index(
     foundationdb_fact_collection,
 ):
-    fact = FactNodeHasLabel("1", "Thing")
+    fact: FactNodeHasLabel = FactNodeHasLabel("1", "Thing")
     foundationdb_fact_collection.append(fact)
-    keys = list(foundationdb_fact_collection.keys())
+    started_at = datetime.datetime.now()
+    while not (keys := list(foundationdb_fact_collection.keys())):
+        time.sleep(0.1)
+        if (datetime.datetime.now() - started_at).total_seconds() > 2:
+            raise TimeoutError
     assert len(keys) == 1
     assert keys[0] == "node_label:Thing::1:Thing"

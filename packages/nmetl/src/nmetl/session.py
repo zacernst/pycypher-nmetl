@@ -66,7 +66,9 @@ from nmetl.trigger import (
     VariableAttributeTrigger,
 )
 from pycypher.cypher_parser import CypherParser
-from pycypher.fact import AtomicFact, FactCollection, SimpleFactCollection
+from pycypher.fact import AtomicFact
+from pycypher.fact_collection import FactCollection
+from pycypher.fact_collection.simple import SimpleFactCollection
 from pycypher.solver import Constraint
 from rich.console import Console
 from rich.table import Table
@@ -146,22 +148,20 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
 
     def __init__(
         self,
+        compute_class_name: ComputeClassNameEnum = ComputeClassNameEnum.THREADING,
+        compute_options: Optional[Dict[str, Any]] = None,
+        data_assets: List[DataAsset] = [],
+        data_sources: List[DataSource] = [],
+        dump_profile_interval: int = DUMP_PROFILE_INTERVAL,
         fact_collection: Optional[FactCollection] = None,
         fact_collection_class: Type[FactCollection] = SimpleFactCollection,
-        data_assets: Optional[List[DataAsset]] = None,
-        logging_level: Optional[LoggingLevelEnum] = LoggingLevelEnum.WARNING,
-        queue_options: Optional[Dict[str, Any]] = None,
-        data_sources: Optional[List[DataSource]] = None,
-        queue_list: Optional[List[QueueGenerator]] = None,
-        run_monitor: Optional[bool] = True,
-        dump_profile_interval: Optional[int] = DUMP_PROFILE_INTERVAL,
-        profiler: Optional[bool] = PROFILER,
-        compute_class_name: Optional[
-            ComputeClassNameEnum
-        ] = ComputeClassNameEnum.THREADING,
-        compute_options: Optional[Dict[str, Any]] = None,
-        session_config: Optional[Any] = None,
         fact_collection_kwargs: Optional[Dict[str, Any]] = None,
+        logging_level: Optional[LoggingLevelEnum] = LoggingLevelEnum.WARNING,
+        profiler: bool = PROFILER,
+        queue_list: List[QueueGenerator] = [],
+        queue_options: Optional[Dict[str, Any]] = None,
+        run_monitor: Optional[bool] = True,
+        session_config: Optional[Any] = None,
         # worker_num: Optional[int] = 0,
         # num_workers: Optional[int] = 1,
     ):  # pylint: disable=too-many-arguments
@@ -489,7 +489,7 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
         self.halt()
         LOGGER.info("Halted.")
 
-    def monitor(self) -> NoReturn:
+    def monitor(self) -> None:
         """Loop the _monitor function"""
         time.sleep(MONITOR_LOOP_DELAY)
         while True:
@@ -515,7 +515,7 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
         table.add_column("Received", justify="right", style="green")
         table.add_column("Sent", justify="right", style="green")
 
-        monitored_threads = [
+        monitored_threads: list[DataSource | CheckFactAgainstTriggersQueueProcessor | FactGeneratedQueueProcessor | RawDataProcessor] = [
             self.fact_generated_queue_processor,
             self.check_fact_against_triggers_queue_processor,
             self.raw_data_processor,

@@ -6,7 +6,7 @@ from typing import Dict, List, Tuple, Type
 
 from ply import yacc  # type: ignore
 from pycypher.cypher_lexer import *  # pylint: disable=wildcard-import,unused-wildcard-import
-from pycypher.fact import FactCollection
+from pycypher.fact_collection import FactCollection
 from pycypher.node_classes import (
     Addition,
     Aggregation,

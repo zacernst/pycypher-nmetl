@@ -1,3 +1,5 @@
+# type: ignore
+#
 """
 Fixtures for the unit tests.
 """
@@ -19,19 +21,20 @@ from nmetl.data_source import (
 from nmetl.helpers import ensure_uri
 from nmetl.session import RawDataProcessor, Session
 from nmetl.trigger import VariableAttribute
-from pycypher.fact import (  # We might get rid of this class entirely
-    Etcd3FactCollection,
+from pycypher.fact_collection import (  # We might get rid of this class entirely
     FactCollection,
-    FactNodeHasAttributeWithValue,
+)
+from pycypher.fact import (    FactNodeHasAttributeWithValue,
     FactNodeHasLabel,
     FactNodeRelatedToNode,
     FactRelationshipHasLabel,
     FactRelationshipHasSourceNode,
     FactRelationshipHasTargetNode,
-    FoundationDBFactCollection,
-    RocksDBFactCollection,
-    SimpleFactCollection,
+    
 )
+from pycypher.fact_collection.rocksdb import RocksDBFactCollection
+from pycypher.fact_collection.simple import SimpleFactCollection
+from pycypher.fact_collection.foundationdb import FoundationDBFactCollection
 from pycypher.node_classes import Literal
 from shared.logger import LOGGER
 
@@ -647,7 +650,6 @@ def populated_session(
 
 @pytest.fixture
 def shapes_session(ingest_file_factory):
-    LOGGER.setLevel("DEBUG")
     ingest_file = TEST_DATA_DIRECTORY / ingest_file_factory
     session = load_session_config(ingest_file)
     session.start_threads()

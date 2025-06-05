@@ -4,7 +4,6 @@ import base64
 import datetime
 import pickle
 import queue
-import time
 import uuid
 from pathlib import Path
 from typing import Any, Generator, Optional, Type
@@ -53,14 +52,14 @@ class QueueGenerator:  # pylint: disable=too-few-public-methods,too-many-instanc
     def __init__(
         self,
         *args,  # pylint: disable=unused-argument
-        inner_queue_timeout: Optional[int] = INNER_QUEUE_TIMEOUT,
-        end_of_queue_cls: Optional[Type] = EndOfData,
-        outer_queue_timeout: Optional[int] = OUTER_QUEUE_TIMEOUT,
-        name: Optional[str] = uuid.uuid4().hex,
-        use_cache: Optional[bool] = False,
+        inner_queue_timeout: int = INNER_QUEUE_TIMEOUT,
+        end_of_queue_cls: Type = EndOfData,
+        outer_queue_timeout: int = OUTER_QUEUE_TIMEOUT,
+        name: str = uuid.uuid4().hex,
+        use_cache: bool = False,
         session: Optional["Session"] = None,  # type: ignore
-        max_queue_size: Optional[int] = DEFAULT_QUEUE_SIZE,
-        queue_class: Optional[Type] = queue.Queue,
+        max_queue_size: int = DEFAULT_QUEUE_SIZE,
+        queue_class: Type = queue.Queue,
         **kwargs,  # pylint: disable=unused-argument
     ) -> None:
         """
@@ -89,7 +88,6 @@ class QueueGenerator:  # pylint: disable=too-few-public-methods,too-many-instanc
         self.idle = False
         self.session = session
         self.incoming_queue_processors = []
-        self.timed_cache = {}
         self.queue_class = queue_class
         self.queue = queue.Queue(maxsize=self.max_queue_size)
         self.use_cache = use_cache
@@ -152,17 +150,13 @@ class QueueGenerator:  # pylint: disable=too-few-public-methods,too-many-instanc
 
     def put(self, item: Any, **kwargs) -> None:
         """Put an item on the queue."""
-        if self.session:
-            item.session = self.session
-        if not self.ignore_item(item):
-            self.queue.put(item, **kwargs)
-
-            self.timed_cache[hash(item)] = datetime.datetime.now()
+        # if self.session:
+        #     item.session = self.session
+        # if not self.ignore_item(item):
+        self.queue.put(item, **kwargs)
 
     def ignore_item(self, item: Any) -> bool:
         """Should the item be ignored?"""
-        if self.use_cache and hash(item) in self.timed_cache:
-            return True
         return False
 
 
@@ -175,7 +169,7 @@ def decode(encoded: str) -> Any:
     return decoded
 
 
-def encode(obj: Any, to_bytes: bool = False) -> str:
+def encode(obj: Any, to_bytes: bool = False) -> str | bytes:
     """Encode an object as a base64 string."""
     try:
         encoded = base64.b64encode(pickle.dumps(obj)).decode("utf-8")
@@ -185,3 +179,12 @@ def encode(obj: Any, to_bytes: bool = False) -> str:
     if to_bytes:
         return encoded.encode("utf-8")
     return encoded
+
+
+def ensure_bytes(value: Any, **kwargs) -> bytes:
+    '''Change the value to a bytestring if it isn't one already. We should be able
+    to get rid of this eventually after everything's been typechecked correctly.
+    '''
+    if isinstance(value, bytes):
+        return value
+    return value.encode(**kwargs)

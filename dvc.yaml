@@ -6,11 +6,11 @@ vars:
 
 stages:
   state_county_tract_puma:
-    cmd: wget https://www2.census.gov/geo/docs/maps-data/data/rel2020/2020_Census_Tract_to_2020_PUMA.txt -O - | sed $'1s/^\uFEFF//' > ${paths.raw_data}/state_county_tract_puma.csv
+    cmd: "wget --no-check-certificate https://www2.census.gov/geo/docs/maps-data/data/rel2020/2020_Census_Tract_to_2020_PUMA.txt -O - | sed $'1s/^\uFEFF//' > ${paths.raw_data}/state_county_tract_puma.csv"
     outs:
     - ${paths.raw_data}/state_county_tract_puma.csv
   census_pus:
-    cmd: "wget --user-agent='Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1)' --no-cache --header='referer: https://www2.census.gov/programs-surveys/acs/data/pums/2027/' https://www2.census.gov/programs-surveys/acs/data/pums/2023/1-Year/csv_pus.zip -O ${paths.raw_data}/csv_pus_1_year.zip"
+    cmd: "wget --no-check-certificate --user-agent='Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1)' --no-cache --header='referer: https://www2.census.gov/programs-surveys/acs/data/pums/2027/' https://www2.census.gov/programs-surveys/acs/data/pums/2023/1-Year/csv_pus.zip -O ${paths.raw_data}/csv_pus_1_year.zip"
     outs:
     - ${paths.raw_data}/csv_pus_1_year.zip
   unzip_psam_p:
@@ -70,11 +70,11 @@ stages:
     - ${paths.raw_data}/psam_2023_housing.csv
     - ${paths.raw_data}/psam_2023_individual.csv
   census_pus_5_year:
-    cmd: "wget --user-agent='Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1)' --no-cache --header='referer: https://www2.census.gov/programs-surveys/acs/data/pums/2027/' https://www2.census.gov/programs-surveys/acs/data/pums/2023/5-Year/csv_pus.zip -O ${paths.raw_data}/csv_pus_5_year.zip"
+    cmd: "wget --no-check-certificate --user-agent='Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1)' --no-cache --header='referer: https://www2.census.gov/programs-surveys/acs/data/pums/2027/' https://www2.census.gov/programs-surveys/acs/data/pums/2023/5-Year/csv_pus.zip -O ${paths.raw_data}/csv_pus_5_year.zip"
     outs:
     - ${paths.raw_data}/csv_pus_5_year.zip
   census_hus_5_year:
-    cmd: "wget --user-agent='Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1)' --no-cache --header='referer: https://www2.census.gov/programs-surveys/acs/data/pums/2027/' https://www2.census.gov/programs-surveys/acs/data/pums/2023/5-Year/csv_hus.zip -O ${paths.raw_data}/csv_hus_5_year.zip"
+    cmd: "wget --no-check-certificate --user-agent='Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1)' --no-cache --header='referer: https://www2.census.gov/programs-surveys/acs/data/pums/2027/' https://www2.census.gov/programs-surveys/acs/data/pums/2023/5-Year/csv_hus.zip -O ${paths.raw_data}/csv_hus_5_year.zip"
     outs:
     - ${paths.raw_data}/csv_hus_5_year.zip
   osm:
@@ -121,11 +121,11 @@ stages:
   #   outs:
   #   - ${paths.raw_data}/psam_p.csv.bz2
   download_puma_shapefiles:
-    cmd: "wget --user-agent='Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1)' --no-cache --header='referer: https://www2.census.gov/programs-surveys/acs/data/pums/2027/' -P ${paths.raw_data} -nH --recursive -np https://www2.census.gov/geo/tiger/TIGER2024/PUMA20/ && /bin/bash -c ${paths.source_dir}/puma_shape_files.sh && python ${paths.source_dir}/concatenate_puma_shape_files.py"
+    cmd: "wget --no-check-certificate --user-agent='Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1)' --no-cache --header='referer: https://www2.census.gov/programs-surveys/acs/data/pums/2027/' -P ${paths.raw_data} -nH --recursive -np https://www2.census.gov/geo/tiger/TIGER2024/PUMA20/ && /bin/bash -c ${paths.source_dir}/puma_shape_files.sh && python ${paths.source_dir}/concatenate_puma_shape_files.py"
     outs:
     - ${paths.raw_data}/puma_combined.shp
   state_boundaries:
-    cmd: "wget --user-agent='Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1)' --no-cache --header='referer: https://www2.census.gov/programs-surveys/acs/data/pums/2027/' -P ${paths.raw_data} -nH --recursive -np https://www2.census.gov/geo/tiger/TIGER2024/STATE/tl_2024_us_state.zip -O ${paths.raw_data}/us_state_boundaries.zip && unzip -o ${paths.raw_data}/us_state_boundaries.zip -d ${paths.raw_data}"
+    cmd: "wget --no-check-certificate --user-agent='Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1)' --no-cache --header='referer: https://www2.census.gov/programs-surveys/acs/data/pums/2027/' -P ${paths.raw_data} -nH --recursive -np https://www2.census.gov/geo/tiger/TIGER2024/STATE/tl_2024_us_state.zip -O ${paths.raw_data}/us_state_boundaries.zip && unzip -o ${paths.raw_data}/us_state_boundaries.zip -d ${paths.raw_data}"
     outs:
     - ${paths.raw_data}/tl_2024_us_state.shp
   filter_us_wikidata:
@@ -136,24 +136,24 @@ stages:
     outs:
     - ${paths.raw_data}/wikidata_us_points.json
   download_sipp_pu_data:
-    cmd: "wget --user-agent='Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1)' --no-cache --header='referer: https://www2.census.gov/programs-surveys/acs/data/pums/2027/' https://www2.census.gov/programs-surveys/sipp/data/datasets/2023/pu2023_csv.zip -O ${paths.raw_data}/pu2023_csv.zip && unzip -o ${paths.raw_data}/pu2023_csv.zip -d ${paths.raw_data}/"
+    cmd: "wget --no-check-certificate --user-agent='Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1)' --no-cache --header='referer: https://www2.census.gov/programs-surveys/acs/data/pums/2027/' https://www2.census.gov/programs-surveys/sipp/data/datasets/2023/pu2023_csv.zip -O ${paths.raw_data}/pu2023_csv.zip && unzip -o ${paths.raw_data}/pu2023_csv.zip -d ${paths.raw_data}/"
     outs:
     - ${paths.raw_data}/pu2023.csv
   download_sipp_pu_data_dictionary:
-    cmd: wget https://www2.census.gov/programs-surveys/sipp/data/datasets/2023/pu2023_schema.json -O ${paths.raw_data}/pu2023_schema.json
+    cmd: "wget --no-check-certificate https://www2.census.gov/programs-surveys/sipp/data/datasets/2023/pu2023_schema.json -O ${paths.raw_data}/pu2023_schema.json"
     outs:
     - ${paths.raw_data}/pu2023_schema.json
   download_sipp_rw_data:
-    cmd: wget https://www2.census.gov/programs-surveys/sipp/data/datasets/2023/rw2023_csv.zip -O ${paths.raw_data}/rw2023_csv.zip && unzip -o ${paths.raw_data}/rw2023_csv.zip -d ${paths.raw_data}/
+    cmd: wget --no-check-certificate https://www2.census.gov/programs-surveys/sipp/data/datasets/2023/rw2023_csv.zip -O ${paths.raw_data}/rw2023_csv.zip && unzip -o ${paths.raw_data}/rw2023_csv.zip -d ${paths.raw_data}/
     outs:
     - ${paths.raw_data}/rw2023.csv
   download_housing_survey:
-    cmd: wget https://www2.census.gov/programs-surveys/ahs/2023/AHS%202023%20Value%20Labels%20Package.zip -O ${paths.raw_data}/ahs_2023.zip && unzip -o ${paths.raw_data}/ahs_2023.zip -d ${paths.raw_data} && wget https://www2.census.gov/programs-surveys/ahs/2023/AHS%202023%20National%20PUF%20v1.1%20Flat%20CSV.zip -O ${paths.raw_data}/ahs_2023_csv.zip && unzip -o ${paths.raw_data}/ahs_2023_csv.zip -d ${paths.raw_data}
+    cmd: wget --no-check-certificate https://www2.census.gov/programs-surveys/ahs/2023/AHS%202023%20Value%20Labels%20Package.zip -O ${paths.raw_data}/ahs_2023.zip && unzip -o ${paths.raw_data}/ahs_2023.zip -d ${paths.raw_data} && wget --no-check-certificate https://www2.census.gov/programs-surveys/ahs/2023/AHS%202023%20National%20PUF%20v1.1%20Flat%20CSV.zip -O ${paths.raw_data}/ahs_2023_csv.zip && unzip -o ${paths.raw_data}/ahs_2023_csv.zip -d ${paths.raw_data}
     outs:
     - "${paths.raw_data}/AHS 2023 Value Labels.csv"
     - "${paths.raw_data}/ahs2023n.csv"
   download_justice_outcomes:
-    cmd: wget https://www2.census.gov/programs-surveys/cjars/datasets/2022/cjars_joe_2022_co.csv.zip -O ${paths.raw_data}/cjars_joe_2022_co.csv.zip
+    cmd: wget --no-check-certificate https://www2.census.gov/programs-surveys/cjars/datasets/2022/cjars_joe_2022_co.csv.zip -O ${paths.raw_data}/cjars_joe_2022_co.csv.zip
     outs:
     - "${paths.raw_data}/cjars_joe_2022_co.csv.zip"
   unzip_justice_outcomes:
