@@ -9,7 +9,9 @@ from __future__ import annotations
 import collections
 import inspect
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional
+import queue
+import threading
+from typing import Any, Dict, Generator, List, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from nmetl.session import Session
@@ -65,16 +67,34 @@ class FactCollection(ABC):
             session (Optional[Session]): The session this fact collection belongs to. Defaults to None.
         """
         # self.facts: List[AtomicFact] = facts or []
-        self.session: Optional["Session"] = session  # type: ignore
+        self.session: Optional[Session] = session  # type: ignore
         self.put_counter: int = 0
         self.yielded_counter: int = 0
         self.diverted_counter: int = 0
         self.diversion_miss_counter: int = 0
         self.start_daemon_process: bool = start_daemon_process
-
+        self.daemon_queue: queue.Queue = queue.Queue()
+        
         self += facts or []
         if CLEAR_DB_ON_START:
             self.close()
+        
+        if self.start_daemon_process:
+            self.daemon_process()
+    
+    def start_daemon(self):_
+        """
+        Kick off a process that waits for things to insert into the fact collection.
+        Use threads to do this because we can't necessarily serialize the things we'd need.
+        """
+        def _daemon() -> None:
+            while 1:
+                pass
+            pass
+
+        daemon_thread: threading.Thread = threading.Thread(target=_daemon)
+        daemon_thread.start()
+
 
     def __iter__(self) -> Generator[AtomicFact]:
         """
