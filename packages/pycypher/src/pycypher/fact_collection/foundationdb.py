@@ -14,7 +14,6 @@ import time
 from multiprocessing.pool import ThreadPool
 from typing import Any, Dict, Generator, Optional
 
-from nmetl.helpers import decode, encode, ensure_bytes
 from nmetl.logger import LOGGER
 from pycypher.fact import (
     AtomicFact,
@@ -25,6 +24,7 @@ from pycypher.fact import (
 from pycypher.fact_collection import FactCollection
 from pycypher.fact_collection.key_value import KeyValue
 from pycypher.query import NullResult, QueryNodeLabel, QueryValueOfNodeAttribute
+from shared.helpers import decode, encode, ensure_bytes
 
 try:
     import fdb
@@ -33,13 +33,10 @@ try:
 except ModuleNotFoundError:
     LOGGER.warning("fdb not installed, fdb support disabled")
 
-
-def write_fact(db, index, fact, cache):
+def write_fact(db, index, fact):
     """Write a ``Fact`` to FoundationDB"""
     LOGGER.debug("Writing to FoundationDB: %s", index)
     db[index] = encode(fact, to_bytes=True)
-    cache.add(index)
-    LOGGER.debug(len(cache))
     return True
 
 
@@ -69,7 +66,6 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
         self.metadata = {
             "labels": set(),
         }
-        self.cache: set[bytes] = set()
 
         # self.db = Rdict(self.db_path, self.options)
         super().__init__(*args, **kwargs)
@@ -91,7 +87,7 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
             ensure_bytes(ensure_bytes(prefix), encoding="utf8"), end_key
         ):
             value: AtomicFact = decode(key_value_obj.value)
-            key: str = key_value_obj.key.decode('utf8')
+            key: str = key_value_obj.key.decode("utf8")
             if continue_to_end or key.startswith(str(prefix, encoding="utf8")):
                 counter += 1
                 yield key, value
@@ -126,7 +122,7 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
             yield key
 
     def _prefix_read_values(
-        self, prefix: str, continue_to_end: Optional[bool] = False
+        self, prefix: bytes, continue_to_end: Optional[bool] = False
     ) -> Generator[Any, Any]:
         """
         Read a range of keys from the database.
@@ -174,7 +170,7 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
         """
         LOGGER.debug("node_has_attribute_with_specific_value_facts called")
         for fact in self._prefix_read_values(
-            b"node_attribute:", b"node_attribute:\xff"
+            b"node_attribute:", continue_to_end=True
         ):
             if (
                 isinstance(fact, FactNodeHasAttributeWithValue)
@@ -223,9 +219,10 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
             bool: True if the fact is in the collection, False otherwise.
         """
         index: bytes = self.make_index_for_fact(fact)
-        output: bool = index in self.cache
-        LOGGER.debug("index: %s: %s", index, output)
-        return output
+        output = list(self._prefix_read_values(index))
+        # size: int = len(list(self._prefix_read_values(b'')))
+        # LOGGER.debug("Checking membership with index: %s: %s: %s", index, output, size)
+        return len(output) > 0
         # value: AtomicFact = self.db.get(index)
         # return decode(value) == fact if value is not None else False
 
@@ -335,11 +332,9 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
                 self.db,
                 index,
                 fact,
-                self.cache,
             ),
         )
 
-        # self.cache.add(index)
         self.put_counter += 1
 
         # t = threading.Thread(target=write_fact, args=(self.db, index, fact,))
@@ -412,7 +407,7 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
         Returns:
             list: A list of all the nodes with the specified label.
         """
-        prefix = f"node_label:{label}::"
+        prefix: bytes = bytes(f"node_label:{label}::", encoding='utf8')
         yield from self._prefix_read_values(prefix)
 
     def relationship_has_source_node_facts(self):
@@ -472,35 +467,39 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
                 keys_found = True
                 counter += 1
             if keys_found:
-                begin = fdb.KeySelector.first_greater_than(last_key)
+                begin = fdb.KeySelector.first_greater_than(
+                    last_key
+                )  # pyrefly: ignore
         LOGGER.debug("Enumerated %s keys", counter)
 
     def first_key_after(self, key: bytes, offset: Optional[int] = 1):
         x = self.db.get_range(
             key,
-            fdb.KeySelector.first_greater_than(key) + offset,  # pylint: disable=E1101
+            fdb.KeySelector.first_greater_than(key) + offset,
         )  # pylint: disable=E1101
         return x[-1].key if x else None
 
     def skip_keys(
         self, offset: Optional[int] = 1000, max_keys: Optional[int] = None
     ):
-        current_key = b""
-        next_key = self.first_key_after(current_key, offset=offset)
+        current_key: bytes = b""
+        next_key: None | bytes = self.first_key_after(
+            current_key, offset=offset
+        )
         counter = 0
         yield next_key
         while current_key != next_key:
             counter += 1
-            current_key = next_key
+            current_key: None | bytes = next_key
             next_key = self.first_key_after(current_key, offset=offset)
             yield current_key
             if max_keys and counter > max_keys:
                 break
 
     def approx_len(
-        self, max_keys: Optional[int] = None, increment: Optional[int] = 10_000
+        self, max_keys: Optional[int] = None, increment: int = 10_000
     ):
-        counter = 0
+        counter: int = 0
         for _ in self.skip_keys(increment, max_keys=max_keys):
             counter += 1
         return counter * increment

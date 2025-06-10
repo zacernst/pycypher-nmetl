@@ -9,17 +9,20 @@ from __future__ import annotations
 import collections
 import inspect
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Generator, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional
 
-from nmetl.config import CLEAR_DB_ON_START  # pylint: disable=no-name-in-module
+if TYPE_CHECKING:
+    from nmetl.session import Session
+
+from nmetl.config import CLEAR_DB_ON_START  # pyrefly: ignore
 from nmetl.logger import LOGGER
 from pycypher.fact import (
-    FactNodeHasLabel, 
-    AtomicFact, 
-    FactRelationshipHasSourceNode, 
-    FactRelationshipHasTargetNode, 
-    FactNodeHasAttributeWithValue, 
+    AtomicFact,
+    FactNodeHasAttributeWithValue,
+    FactNodeHasLabel,
     FactRelationshipHasLabel,
+    FactRelationshipHasSourceNode,
+    FactRelationshipHasTargetNode,
 )
 from pycypher.query import (
     NullResult,
@@ -51,7 +54,8 @@ class FactCollection(ABC):
     def __init__(
         self,
         facts: Optional[List[AtomicFact]] = None,
-        session: Optional["Session"] = None,  # type: ignore
+        start_daemon_process: bool = False,
+        session: Optional[Session] = None,  # type: ignore
     ):
         """
         Initialize a FactCollection instance.
@@ -62,8 +66,12 @@ class FactCollection(ABC):
         """
         # self.facts: List[AtomicFact] = facts or []
         self.session: Optional["Session"] = session  # type: ignore
-        self.put_counter = 0
-        self.yielded_counter = 0
+        self.put_counter: int = 0
+        self.yielded_counter: int = 0
+        self.diverted_counter: int = 0
+        self.diversion_miss_counter: int = 0
+        self.start_daemon_process: bool = start_daemon_process
+
         self += facts or []
         if CLEAR_DB_ON_START:
             self.close()
@@ -76,7 +84,6 @@ class FactCollection(ABC):
             AtomicFact: Each fact in the collection.
         """
         yield from self.values()
-
 
     def __repr__(self) -> str:
         """

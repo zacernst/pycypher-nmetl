@@ -12,13 +12,13 @@ from __future__ import annotations
 import datetime
 import functools
 import inspect
+import multiprocessing as mp
+import queue
 import threading
 import time
-from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from hashlib import md5
-from multiprocessing import Queue as MULTIPROCESSING_QUEUE_CLASS
-from queue import Queue as THREADING_QUEUE_CLASS
+from types import MappingProxyType
 from typing import (
     Any,
     Callable,
@@ -26,22 +26,19 @@ from typing import (
     Generator,
     Iterable,
     List,
-    NoReturn,
     Optional,
     Set,
+    Tuple,
     Type,
 )
 
 import pyarrow as pa
 import pyarrow.parquet as pq
-from dask.distributed import Client
-from nmetl.config import (  # pylint: disable=no-name-in-module
+from nmetl.config import FACT_GENERATED_QUEUE_SIZE  # pyrefly: ignore
+from nmetl.config import MONITOR_LOOP_DELAY  # pyrefly: ignore
+from nmetl.config import RAW_INPUT_QUEUE_SIZE  # pyrefly: ignore
+from nmetl.config import (  # pyrefly: ignore
     CHECK_FACT_AGAINST_TRIGGERS_QUEUE_SIZE,
-    DUMP_PROFILE_INTERVAL,
-    FACT_GENERATED_QUEUE_SIZE,
-    MONITOR_LOOP_DELAY,
-    PROFILER,
-    RAW_INPUT_QUEUE_SIZE,
     TRIGGERED_LOOKUP_PROCESSOR_QUEUE_SIZE,
 )
 from nmetl.data_asset import DataAsset
@@ -51,14 +48,14 @@ from nmetl.exceptions import (
     EmptyQueueError,
     UnknownDataSourceError,
 )
-from nmetl.helpers import QueueGenerator
+from nmetl.queue_generator import QueueGenerator
 from nmetl.queue_processor import (
     CheckFactAgainstTriggersQueueProcessor,
     FactGeneratedQueueProcessor,
     RawDataProcessor,
     TriggeredLookupProcessor,
 )
-from nmetl.session_enums import ComputeClassNameEnum, LoggingLevelEnum
+from nmetl.session_enums import LoggingLevelEnum
 from nmetl.trigger import (
     NodeRelationship,
     NodeRelationshipTrigger,
@@ -85,53 +82,53 @@ class NewColumnConfig:
     new_column_name: str
 
 
-class ComputeBackEnd(ABC):
-    """Abstract base class for compute backends."""
-
-    queue_class = None
-
-    @abstractmethod
-    def setup(self) -> None:
-        """Set up the compute backend."""
-
-
-class MultiProcessingCompute(ComputeBackEnd):
-    """Class for the multiprocessing back end."""
-
-    queue_class = MULTIPROCESSING_QUEUE_CLASS
-
-    def __init__(self) -> None:
-        raise NotImplementedError("MultiProcessingBackEnd not implemented yet")
-
-    def setup(self) -> None:
-        """Set up the compute backend."""
-
-
-class DaskCompute(ComputeBackEnd):
-    """Class for the dask back end."""
-
-    queue_class = None
-
-    def __init__(self) -> None:
-        self.client = None  # initialize later
-        raise NotImplementedError("DaskBackEnd not implemented yet")
-
-    def setup(self) -> None:
-        """Set up the compute backend."""
-        self.client = Client()
-
-
-class ThreadingCompute(ComputeBackEnd):
-    """Class for the threading back end."""
-
-    queue_class = THREADING_QUEUE_CLASS
-
-    def __init__(self) -> None:
-        pass
-
-    def setup(self) -> None:
-        """Set up the compute backend."""
-        # Not much to do for this one, it's single-core threads
+# class ComputeBackEnd(ABC):
+#     """Abstract base class for compute backends."""
+#
+#     queue_class = None
+#
+#     @abstractmethod
+#     def setup(self) -> None:
+#         """Set up the compute backend."""
+#
+#
+# class MultiProcessingCompute(ComputeBackEnd):
+#     """Class for the multiprocessing back end."""
+#
+#     queue_class = MULTIPROCESSING_QUEUE_CLASS
+#
+#     def __init__(self) -> None:
+#         raise NotImplementedError("MultiProcessingBackEnd not implemented yet")
+#
+#     def setup(self) -> None:
+#         """Set up the compute backend."""
+#
+#
+# class DaskCompute(ComputeBackEnd):
+#     """Class for the dask back end."""
+#
+#     queue_class = None
+#
+#     def __init__(self) -> None:
+#         self.client = None  # initialize later
+#         raise NotImplementedError("DaskBackEnd not implemented yet")
+#
+#     def setup(self) -> None:
+#         """Set up the compute backend."""
+#         self.client = Client()
+#
+#
+# class ThreadingCompute(ComputeBackEnd):
+#     """Class for the threading back end."""
+#
+#     queue_class = THREADING_QUEUE_CLASS
+#
+#     def __init__(self) -> None:
+#         pass
+#
+#     def setup(self) -> None:
+#         """Set up the compute backend."""
+#         # Not much to do for this one, it's single-core threads
 
 
 class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-methods
@@ -148,17 +145,15 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
 
     def __init__(
         self,
-        compute_class_name: ComputeClassNameEnum = ComputeClassNameEnum.THREADING,
-        compute_options: Optional[Dict[str, Any]] = None,
-        data_assets: List[DataAsset] = [],
-        data_sources: List[DataSource] = [],
-        dump_profile_interval: int = DUMP_PROFILE_INTERVAL,
+        # compute_class_name: ComputeClassNameEnum = ComputeClassNameEnum.THREADING,
+        # compute_options: Optional[Dict[str, Any]] = None,
+        data_assets: Optional[List[DataAsset]] = None,
+        data_sources: Optional[List[DataSource]] = None,
         fact_collection: Optional[FactCollection] = None,
         fact_collection_class: Type[FactCollection] = SimpleFactCollection,
         fact_collection_kwargs: Optional[Dict[str, Any]] = None,
-        logging_level: Optional[LoggingLevelEnum] = LoggingLevelEnum.WARNING,
-        profiler: bool = PROFILER,
-        queue_list: List[QueueGenerator] = [],
+        logging_level: LoggingLevelEnum = LoggingLevelEnum.WARNING,
+        queue_list: Optional[List[QueueGenerator]] = None,
         queue_options: Optional[Dict[str, Any]] = None,
         run_monitor: Optional[bool] = True,
         session_config: Optional[Any] = None,
@@ -184,50 +179,46 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
             run_monitor (Optional[bool], optional): Whether to run the monitor thread.
                 Defaults to True.
         """
-        self.data_sources = data_sources or []
+        self.data_sources: List[DataSource] = data_sources or []
+        self.data_assets: List[DataAsset] = data_assets or []
         self.run_monitor = run_monitor
         self.queue_options = queue_options or {}
-        self.queue_list = queue_list or []
+        self.queue_list: List[QueueGenerator] = queue_list or []
         self.logging_level = logging_level
         # No need for a fancy queue class here
         self.new_column_dict = {}
         self.fact_collection_kwargs = fact_collection_kwargs or {}
-        self.dump_profile_interval = dump_profile_interval
-        self.profiler = profiler
-        self.compute_class_name = compute_class_name
-        self.compute_options = compute_options or {}
+        # self.compute_class_name = compute_class_name
+        # self.compute_options = compute_options or {}
         self.session_config = session_config
         # self.worker_num = worker_num
         # self.num_workers = num_workers
         # Forget the compute class for the time being. Get the FactCollection
         # initialized in the workers...
-        try:
-            self.compute_class = {
-                ComputeClassNameEnum.THREADING: ThreadingCompute,
-                ComputeClassNameEnum.MULTIPROCESSING: MultiProcessingCompute,
-                ComputeClassNameEnum.DASK: DaskCompute,
-            }[self.compute_class_name]
-        except KeyError as e:
-            raise ValueError(
-                f"Unknown compute class name {compute_class_name}"
-            ) from e
+        # try:
+        #     self.compute_class = {
+        #         ComputeClassNameEnum.THREADING: ThreadingCompute,
+        #         ComputeClassNameEnum.MULTIPROCESSING: MultiProcessingCompute,
+        #         ComputeClassNameEnum.DASK: DaskCompute,
+        #     }[self.compute_class_name]
+        # except KeyError as e:
+        #     raise ValueError(
+        #         f"Unknown compute class name {compute_class_name}"
+        #     ) from e
 
-        self.compute = self.compute_class(
-            **self.compute_options
-        )  # Initialize the back end compute object -- may be no-op
-
-        self.queue_class = self.compute_class.queue_class
-        self.status_queue = self.compute_class.queue_class()
+        # self.compute = self.compute_class(
+        #     **self.compute_options
+        # )  # Initialize the back end compute object -- may be no-op
+        self.status_queue = mp.Queue()
 
         self.raw_input_queue = QueueGenerator(
             session=self,
             name="RawInput",
             max_queue_size=RAW_INPUT_QUEUE_SIZE,
-            queue_class=self.compute_class.queue_class,
             session_config=self.session_config,
+            queue_cls=queue.Queue,
             **self.queue_options,
         )
-        self.data_assets = data_assets or []
         self.data_asset_names = [
             data_asset.name for data_asset in self.data_assets
         ]
@@ -236,24 +227,24 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
             session=self,
             name="FactGenerated",
             max_queue_size=FACT_GENERATED_QUEUE_SIZE,
-            queue_class=self.queue_class,
             session_config=self.session_config,
+            queue_cls=queue.Queue,
             **self.queue_options,
         )
         self.check_fact_against_triggers_queue = QueueGenerator(
             session=self,
             name="CheckFactTrigger",
             max_queue_size=CHECK_FACT_AGAINST_TRIGGERS_QUEUE_SIZE,
-            queue_class=self.queue_class,
             session_config=self.session_config,
+            queue_cls=queue.Queue,
             **self.queue_options,
         )
         self.triggered_lookup_processor_queue = QueueGenerator(
             session=self,
             name="TriggeredLookupProcessor",
             max_queue_size=TRIGGERED_LOOKUP_PROCESSOR_QUEUE_SIZE,
-            queue_class=self.queue_class,
             session_config=self.session_config,
+            queue_cls=queue.Queue,
             **self.queue_options,
         )
 
@@ -269,38 +260,34 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
         self.fact_collection.session = self
 
         self.raw_data_processor = RawDataProcessor(
-            self,
             incoming_queue=self.raw_input_queue,
             outgoing_queue=self.fact_generated_queue,
             status_queue=self.status_queue,
             session_config=self.session_config,
-            compute=self.compute,
         )
         self.fact_generated_queue_processor = FactGeneratedQueueProcessor(
-            self,
             incoming_queue=self.fact_generated_queue,
             outgoing_queue=self.check_fact_against_triggers_queue,
             status_queue=self.status_queue,
-            compute=self.compute,
+            session_config=self.session_config,
         )
 
         # This can be multithreaded!
         self.check_fact_against_triggers_queue_processor = (
             CheckFactAgainstTriggersQueueProcessor(
-                self,
                 incoming_queue=self.check_fact_against_triggers_queue,
                 outgoing_queue=self.triggered_lookup_processor_queue,
                 status_queue=self.status_queue,
-                compute=self.compute,
+                session_config=self.session_config,
+                trigger_dict=self.trigger_dict,
             )
         )
 
         self.triggered_lookup_processor = TriggeredLookupProcessor(
-            self,
             incoming_queue=self.triggered_lookup_processor_queue,
             outgoing_queue=self.fact_generated_queue,  # Changed
             status_queue=self.status_queue,
-            compute=self.compute,
+            session_config=self.session_config,
         )
 
         self.attribute_metadata_dict = {}
@@ -515,19 +502,24 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
         table.add_column("Received", justify="right", style="green")
         table.add_column("Sent", justify="right", style="green")
 
-        monitored_threads: list[DataSource | CheckFactAgainstTriggersQueueProcessor | FactGeneratedQueueProcessor | RawDataProcessor] = [
+        monitored_threads: list[
+            DataSource
+            | CheckFactAgainstTriggersQueueProcessor
+            | FactGeneratedQueueProcessor
+            | RawDataProcessor
+        ] = [
             self.fact_generated_queue_processor,
             self.check_fact_against_triggers_queue_processor,
             self.raw_data_processor,
         ]
         monitored_threads.extend(self.data_sources)
         for monitored_thread in monitored_threads:
-            end_time = (
+            end_time: datetime.datetime | None = (
                 datetime.datetime.now()
                 if not monitored_thread.finished
                 else monitored_thread.finished_at
             )
-            received_rate = round(
+            received_rate: float = round(
                 monitored_thread.received_counter
                 / float(
                     (end_time - monitored_thread.started_at).total_seconds()
@@ -633,7 +625,7 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
 
     def facts_matching_constraints(
         self, fact_generator: Iterable
-    ) -> Generator[AtomicFact, None, None]:
+    ) -> Generator[Tuple[AtomicFact, Constraint, AtomicFact], None, None]:
         """Yield all the facts that match the constraints."""
         for fact in fact_generator:
             for constraint in self.constraints:
@@ -661,8 +653,6 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
         """Attach a DataSource to the machine."""
         LOGGER.debug("Attaching input queue to %s", data_source)
         data_source.attach_queue(self.raw_input_queue)
-        if not isinstance(data_source, DataSource):
-            raise ValueError(f"Expected a DataSource, got {type(data_source)}")
         LOGGER.debug("Attaching data source %s", data_source)
         # data_source.worker_num = self.worker_num
         # data_source.num_workers = self.num_workers
@@ -679,11 +669,13 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
         def decorator(func) -> Callable:
             @functools.wraps
             def wrapper(*args, **kwargs) -> Any:
-                result = func(*args, **kwargs)
+                result: Any = func(*args, **kwargs)
                 return result
 
-            parameters = inspect.signature(func).parameters
-            parameter_names = list(parameters.keys())
+            parameters: MappingProxyType[str, inspect.Parameter] = (
+                inspect.signature(func).parameters
+            )
+            parameter_names: list[str] = list(parameters.keys())
             if not parameter_names:
                 raise ValueError(
                     "CypherTrigger functions require at least one parameter."
@@ -704,13 +696,15 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
                 variable_name = variable_attribute_args[0].__forward_arg__
                 attribute_name = variable_attribute_args[1].__forward_arg__
 
-                trigger = VariableAttributeTrigger(
-                    function=func,
-                    cypher_string=arg1,
-                    variable_set=variable_name,
-                    attribute_set=attribute_name,
-                    parameter_names=parameter_names,
-                    session=self,
+                trigger: VariableAttributeTrigger | NodeRelationshipTrigger = (
+                    VariableAttributeTrigger(
+                        function=func,
+                        cypher_string=arg1,
+                        variable_set=variable_name,
+                        attribute_set=attribute_name,
+                        parameter_names=parameter_names,
+                        session=self,
+                    )
                 )
 
                 if any(
@@ -747,14 +741,16 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
                         f"Variable {target_variable_name} not in {all_cypher_variables}"
                     )
 
-                trigger = NodeRelationshipTrigger(
-                    function=func,
-                    cypher_string=arg1,
-                    source_variable=source_variable_name,
-                    relationship_name=relationship_name,
-                    target_variable=target_variable_name,
-                    parameter_names=parameter_names,
-                    session=self,
+                trigger: VariableAttributeTrigger | NodeRelationshipTrigger = (
+                    NodeRelationshipTrigger(
+                        function=func,
+                        cypher_string=arg1,
+                        source_variable=source_variable_name,
+                        relationship_name=relationship_name,
+                        target_variable=target_variable_name,
+                        parameter_names=parameter_names,
+                        session=self,
+                    )
                 )
 
             else:
@@ -814,8 +810,10 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
                 )
             new_column_name = new_column_annotation.__args__[0].__forward_arg__
 
-            parameters = inspect.signature(func).parameters
-            parameter_names = list(parameters.keys())
+            parameters: MappingProxyType[str, inspect.Parameter] = (
+                inspect.signature(func).parameters
+            )
+            parameter_names: list[str] = list(parameters.keys())
             if not parameter_names:
                 raise ValueError(
                     "Derived column functions require at least one parameter."

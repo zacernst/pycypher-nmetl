@@ -8,7 +8,6 @@ from __future__ import annotations
 import inspect
 from typing import Any, Dict, Generator
 
-from nmetl.helpers import decode, encode
 from nmetl.logger import LOGGER
 from pycypher.fact import (
     AtomicFact,
@@ -26,6 +25,7 @@ from rocksdict import (  # pylint: disable=no-name-in-module, import-error
     ReadOptions,
     WriteOptions,
 )
+from shared.helpers import decode, encode
 
 
 class RocksDBFactCollection(FactCollection, KeyValue):

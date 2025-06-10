@@ -21,20 +21,20 @@ from nmetl.data_source import (
 from nmetl.helpers import ensure_uri
 from nmetl.session import RawDataProcessor, Session
 from nmetl.trigger import VariableAttribute
-from pycypher.fact_collection import (  # We might get rid of this class entirely
-    FactCollection,
-)
-from pycypher.fact import (    FactNodeHasAttributeWithValue,
+from pycypher.fact import (
+    FactNodeHasAttributeWithValue,
     FactNodeHasLabel,
     FactNodeRelatedToNode,
     FactRelationshipHasLabel,
     FactRelationshipHasSourceNode,
     FactRelationshipHasTargetNode,
-    
 )
+from pycypher.fact_collection import (
+    FactCollection,
+)  # We might get rid of this class entirely
+from pycypher.fact_collection.foundationdb import FoundationDBFactCollection
 from pycypher.fact_collection.rocksdb import RocksDBFactCollection
 from pycypher.fact_collection.simple import SimpleFactCollection
-from pycypher.fact_collection.foundationdb import FoundationDBFactCollection
 from pycypher.node_classes import Literal
 from shared.logger import LOGGER
 

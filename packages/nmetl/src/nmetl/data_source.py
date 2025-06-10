@@ -15,7 +15,6 @@ import csv
 import datetime
 import hashlib
 import io
-import pickle
 import pstats
 import threading
 import time
@@ -26,8 +25,12 @@ from typing import Any, Dict, Generator, List, Optional, Protocol, TypeVar
 from urllib.parse import ParseResult
 
 import pyarrow.parquet as pq
-from nmetl.helpers import QueueGenerator, ensure_uri
+from nmetl.config import (  # pyrefly: ignore
+    DATA_SOURCE_HIGH_WATER_MARK,
+    DATA_SOURCE_LOW_WATER_MARK,  # pyrefly: ignore
+)
 from nmetl.message_types import RawDatum
+from nmetl.queue_generator import QueueGenerator
 from pycypher.fact import (
     AtomicFact,
     FactNodeHasAttributeWithValue,
@@ -36,6 +39,7 @@ from pycypher.fact import (
     FactRelationshipHasSourceNode,
     FactRelationshipHasTargetNode,
 )
+from shared.helpers import ensure_uri
 from shared.logger import LOGGER
 
 
@@ -64,8 +68,14 @@ class RawDataThread(threading.Thread):
         super().__init__()
         self.data_source = data_source
         self.thread_has_started = False
-        self.raw_input_queue = None
+        self._raw_input_queue: QueueGenerator | None = None
         self.halt = False
+    
+    @property
+    def raw_input_queue(self) -> QueueGenerator:
+        if not isinstance(self._raw_input_queue, QueueGenerator):
+            raise ValueError('Expected raw_input_queue to be a QueueGenerator')
+        return self._raw_input_queue
 
     def run(self) -> None:
         """Run the thread."""
@@ -142,7 +152,6 @@ class DataSource(ABC):  # pylint: disable=too-many-instance-attributes
             name (Optional[str]): The name of this data source. If None, a hash of the string
                 representation of this object will be used. Defaults to None.
         """
-        self.raw_input_queue = None
         self.started = False
         self.finished = False
         self.loading_thread = threading.Thread(target=self.queue_rows)
@@ -157,8 +166,16 @@ class DataSource(ABC):  # pylint: disable=too-many-instance-attributes
         self.schema = {}
         self.new_column_configs: Dict[str, NewColumn] = {}
         self.back_pressure = 0.00001
+        self.session: Optional[Any] = None
+        self._raw_input_queue: QueueGenerator | None = None
         # self.num_workers = None
         # self.worker_num = None
+    
+    @property
+    def raw_intput_queue(self) -> QueueGenerator:
+        if not isinstance(self._raw_input_queue, QueueGenerator):
+            raise ValueError('Expected raw_input_queue to be defined')
+        return self._raw_input_queue
 
     def __repr__(self) -> str:
         """
@@ -189,12 +206,12 @@ class DataSource(ABC):  # pylint: disable=too-many-instance-attributes
             raise ValueError(
                 f"Expected a QueueGenerator, got {type(queue_obj)}"
             )
-        self.raw_input_queue = queue_obj
-        self.raw_input_queue.incoming_queue_processors.append(self)
+        self._raw_input_queue = queue_obj
+        self._raw_input_queue.incoming_queue_processors.append(self)
 
     def attach_schema(
         self, schema: Dict[str, str], dispatch_dict: Dict
-    ) -> DataSource:
+    ) -> None:
         """
         Attach a schema to the data source.
 
@@ -297,22 +314,22 @@ class DataSource(ABC):  # pylint: disable=too-many-instance-attributes
         right queue after wrapping them in a ``RawDatum``.
         """
         LOGGER.info("Loading from %s", self.name)
-        if self.raw_input_queue is None:
+        if self._raw_input_queue is None:
             raise ValueError("Output queue is not set")
         self.started = True
         self.started_at = datetime.datetime.now()
         for row in self.rows():
-            if hasattr(self, 'session') and (
+            if hasattr(self, "session") and (
                 self.session.fact_generated_queue.queue.qsize()
                 + self.session.check_fact_against_triggers_queue.queue.qsize()
                 + self.session.triggered_lookup_processor_queue.queue.qsize()
-                > 32_000
+                > DATA_SOURCE_HIGH_WATER_MARK
             ):
                 while (
                     self.session.fact_generated_queue.queue.qsize()
                     + self.session.check_fact_against_triggers_queue.queue.qsize()
                     + self.session.triggered_lookup_processor_queue.queue.qsize()
-                    > 4_000
+                    > DATA_SOURCE_LOW_WATER_MARK
                 ):
                     time.sleep(0.5)
             # LOGGER.error('back_pressure: %s', self.back_pressure)
@@ -494,9 +511,9 @@ class CSVDataSource(DataSource):
 
     def __init__(
         self,
-        uri: str | ParseResult,
-        name: Optional[str] = None,
-        **options,
+        uri: str | ParseResult = '',
+        name: str = '',
+        **kwargs,
     ):
         """
         Initialize a CSVDataSource instance.
@@ -509,8 +526,14 @@ class CSVDataSource(DataSource):
         self.uri = ensure_uri(uri)
         self.name = name
         self.file = open(self.uri.path, "r", encoding="utf-8")  # pylint: disable=consider-using-with
-        self.reader = csv.DictReader(self.file, **options)
+        self.reader = csv.DictReader(self.file, **kwargs)
         super().__init__()
+    
+    @property
+    def raw_input_queue(self) -> QueueGenerator:
+        if not isinstance(self._raw_input_queue, QueueGenerator):
+            raise ValueError('Expected raw_input_queue to be defined')
+        return self._raw_input_queue
 
     def rows(self) -> Generator[Dict[str, Any], None, None]:
         """Generate rows from the CSV file."""

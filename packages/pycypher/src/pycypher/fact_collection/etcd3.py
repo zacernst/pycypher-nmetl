@@ -13,12 +13,12 @@ from nmetl.config import (  # pylint: disable=no-name-in-module
     BLOOM_FILTER_SIZE,
     ETCD3_RETRY_DELAY,
 )
-from nmetl.helpers import decode, encode
 from nmetl.logger import LOGGER
 from pycypher.fact_collection import FactCollection
 from pycypher.fact_collection.key_value import KeyValue
 from pycypher.query import QueryValueOfNodeAttribute
 from rbloom import Bloom  # pylint: disable=no-name-in-module, import-error
+from shared.helpers import decode, encode
 
 
 class Etcd3FactCollection(FactCollection, KeyValue):

@@ -4,15 +4,15 @@ system within the pycypher library.
 
 It provides an abstract base class, ``QueueProcessor``, and concrete
 implementations for specific tasks in the data processing pipeline.
-
 """
 
 from __future__ import annotations
 
-# import cProfile
 import datetime
 import hashlib
 import inspect
+import multiprocessing as mp
+import queue
 
 # import queue
 import sys
@@ -24,10 +24,12 @@ import traceback
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from queue import Queue
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
-from nmetl.helpers import Idle, QueueGenerator
+from nmetl.queue_generator import Idle, QueueGenerator
 from nmetl.trigger import CypherTrigger
+if TYPE_CHECKING:
+    from nmetl.configuration import SessionConfig
 from pycypher.fact import (
     AtomicFact,
     FactNodeHasAttributeWithValue,
@@ -35,13 +37,15 @@ from pycypher.fact import (
     FactRelationshipHasSourceNode,
     FactRelationshipHasTargetNode,
 )
-from pycypher.query import NullResult
 from pycypher.fact_collection import FactCollection
+from pycypher.fact_collection.foundationdb import FoundationDBFactCollection
 from pycypher.fact_collection.rocksdb import RocksDBFactCollection
 from pycypher.fact_collection.simple import SimpleFactCollection
 from pycypher.node_classes import Collection
+from pycypher.query import NullResult
 from shared.logger import LOGGER
 
+LOGGER.setLevel('INFO')
 
 @dataclass
 class SubTriggerPair:
@@ -50,7 +54,7 @@ class SubTriggerPair:
     sub: Dict[str, str]
     trigger: CypherTrigger
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         """
         Generate a hash value for this SubTriggerPair instance.
 
@@ -72,16 +76,11 @@ class QueueProcessor(ABC):  # pylint: disable=too-few-public-methods,too-many-in
 
     def __init__(
         self,
-        session: Optional["Session"] = None,  # type: ignore
-        fact_collection: Optional[FactCollection] = None,
         incoming_queue: Optional[QueueGenerator] = None,
         outgoing_queue: Optional[QueueGenerator] = None,
-        status_queue: Queue = Queue(),
-        compute: Optional[Any] = None,
+        status_queue: queue.Queue | mp.Queue = Queue(),
         num_threads: Optional[int] = 1,
-        session_config: Optional[
-            Any
-        ] = None,  # Should be SessionConfig -- circular import hell
+        session_config: Optional[SessionConfig] = None,
     ) -> None:
         """
         Initialize a QueueProcessor instance.
@@ -92,13 +91,15 @@ class QueueProcessor(ABC):  # pylint: disable=too-few-public-methods,too-many-in
             outgoing_queue (Optional[QueueGenerator]): The queue to which processed items are sent.
             status_queue (Optional[Queue]): The queue for status messages. Defaults to None.
         """
-        self.session = session
-        self.session_config = session_config
+        self._session_config = session_config
         self.started = False
         self.started_at: Optional[datetime.datetime] = None
         self.finished = False
         self.finished_at: Optional[datetime.datetime] = None
         self.halt_signal = False
+        self.fact_collection: FactCollection = globals()[self.session_config.fact_collection_class](**(self.session_config.fact_collection_kwargs or {}))
+
+        LOGGER.info(session_config)
         ###########################################
         # The next lines are the ones that need to
         # be generalized by the compute engine.
@@ -106,7 +107,6 @@ class QueueProcessor(ABC):  # pylint: disable=too-few-public-methods,too-many-in
         self.processing_thread = threading.Thread(
             target=self.process_queue, daemon=True
         )
-        self.compute = compute
         self.received_counter = 0
         self.sent_counter = 0
         self.incoming_queue = incoming_queue
@@ -131,20 +131,22 @@ class QueueProcessor(ABC):  # pylint: disable=too-few-public-methods,too-many-in
 
         match getattr(self.session_config, "fact_collection", None):
             case "RocksDBFactCollection":
-                self.fact_collection = RocksDBFactCollection()
+                self.fact_collection = (
+                    self.fact_collection or RocksDBFactCollection()
+                )
+            case "FoundationDBFactCollection":
+                self.fact_collection = (
+                    self.fact_collection or FoundationDBFactCollection()
+                )
             case _:
-                LOGGER.debug("No fact collection provided to QueueProcessor")
-                self.fact_collection = SimpleFactCollection()
-
-    # def profile_thread_function(self):
-    #     if self.session.profiler:
-    #         self.profiler = cProfile.Profile()
-    #         self.profiler.enable()
-    #         self.process_queue()
-    #         self.profiler.disable()
-    #         self.profiler.dump_stats("profile_output_thread")
-    #     else:
-    #         self.process_queue()
+                LOGGER.warning("No fact collection provided to QueueProcessor")
+                self.fact_collection = self.fact_collection or SimpleFactCollection()
+    
+    @property
+    def session_config(self) -> SessionConfig:
+        if  self._session_config.__class__.__name__ != "SessionConfig":
+            raise ValueError(f'Expected a session config: {self._session_config.__class__.__name__}')
+        return self._session_config
 
     def process_queue(self) -> None:
         """Process every item in the queue using the yield_items method."""
@@ -168,10 +170,10 @@ class QueueProcessor(ABC):  # pylint: disable=too-few-public-methods,too-many-in
                     == 0
                 ):
                     self.profiler.dump_stats(self.__class__.__name__ + ".prof")
-
+                out = None
                 try:
                     out = self._process_item_from_queue(item)
-                except Exception as e:  # pylint: disable=broad-except
+                except Exception as e:
                     exc_type, exc_value, exc_traceback = sys.exc_info()
                     formatted_traceback = traceback.format_exception(
                         exc_type, exc_value, exc_traceback
@@ -182,6 +184,7 @@ class QueueProcessor(ABC):  # pylint: disable=too-few-public-methods,too-many-in
                     error_msg = (
                         f"in thread: {threading.current_thread().name}\n"
                     )
+                    raise(e)
                     error_msg += f"Error processing item {item}: {e}]\n"
                     error_msg += f"Traceback: {formatted_traceback}]\n"
                     LOGGER.error(error_msg)
@@ -242,15 +245,16 @@ class FactGeneratedQueueProcessor(QueueProcessor):  # pylint: disable=too-few-pu
         """Process new facts from the fact_generated_queue."""
         LOGGER.debug(item)
 
-        if item in self.session.fact_collection:
+        if item in self.fact_collection:
             LOGGER.debug("Fact %s already in collection", item)
             self.in_counter += 1
             return
         else:
             self.out_counter += 1
         LOGGER.debug("%s: %s", self.in_counter, self.out_counter)
-        item.session = self.session
-        self.session.fact_collection.append(item)
+        self.fact_collection.append(item)
+        # size = len(list(self.fact_collection._prefix_read_items(b'')))
+        # LOGGER.debug('Fact collection elements: %s in FactGeneratedQueueProcessor', size)
         # Put the fact in the queue to be checked for triggers
         self.outgoing_queue.put(item)
 
@@ -261,7 +265,7 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
     by checking them against the triggers.
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, trigger_dict: Optional[Any] = None, **kwargs):
         """
         Initialize a CheckFactAgainstTriggersQueueProcessor instance.
 
@@ -269,6 +273,7 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
             *args: Variable positional arguments passed to the parent class.
             **kwargs: Variable keyword arguments passed to the parent class.
         """
+        self.trigger_dict = trigger_dict
         super().__init__(*args, **kwargs)
 
     def process_item_from_queue(self, item: Any) -> None:
@@ -276,26 +281,23 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
 
         out = []
         LOGGER.debug("Checking fact %s against triggers", item)
-        start_waiting_for_fact: datetime.datetime = datetime.datetime.now()
-        put_item_success = True
-        start_time = datetime.datetime.now()
-        item_in_collection = item in self.session.fact_collection
-        end_time = datetime.datetime.now()
+        item_in_collection = item in self.fact_collection
+        LOGGER.debug("Item %s in fact_collection: %s", item, item in self.fact_collection)
         if not item_in_collection:
             LOGGER.debug(
                 "Fact %s not in collection, requeueing...", item.__dict__
             )
             self.incoming_queue.put(item)
             return
-        
+
         LOGGER.debug("IN COLLECTION: %s", item.__dict__)
         # Let's filter out the facts that are irrelevant to this trigger
-        for _, trigger in self.session.trigger_dict.items():
+        for _, trigger in self.trigger_dict.items():
             # Let's bomb out if the attribute in the fact is not in the trigger
             if (
                 isinstance(item, FactNodeHasAttributeWithValue)
-                and not item.attribute
-                in trigger.cypher.parse_tree.attribute_names
+                and item.attribute
+                not in trigger.cypher.parse_tree.attribute_names
             ):
                 LOGGER.debug(
                     "Fact %s does not match trigger %s, skipping",
@@ -341,9 +343,9 @@ class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-publi
         self.started_at = datetime.datetime.now()
 
         try:
-            start_time = datetime.datetime.now()
-            result = self._process_sub_trigger_pair(item)
-            end_time = datetime.datetime.now()
+            start_time: datetime.datetime = datetime.datetime.now()
+            result: list[Any] = self._process_sub_trigger_pair(item)
+            end_time: datetime.datetime = datetime.datetime.now()
             LOGGER.debug("_process_sub_trigger_pair: %s", end_time - start_time)
             return result
         except Exception as e:  # pylint: disable=broad-exception-caught
@@ -358,7 +360,7 @@ class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-publi
         self, sub_trigger_pair: SubTriggerPair
     ) -> List[Any]:
         """Helper function to process a sub_trigger_pair"""
-        fact_collection = self.session.fact_collection
+        fact_collection = self.fact_collection
         LOGGER.debug(str(sub_trigger_pair))
         return_clause = (
             sub_trigger_pair.trigger.cypher.parse_tree.cypher.return_clause
@@ -400,9 +402,11 @@ class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-publi
 
         computed_facts = []
         for solution in solutions:
-            LOGGER.debug('Processing args: %s', process_solution_args)
-            LOGGER.debug('Processing solution: %s', solution)
-            LOGGER.debug('Processing solution function: %s', process_solution_function)
+            LOGGER.debug("Processing args: %s", process_solution_args)
+            LOGGER.debug("Processing solution: %s", solution)
+            LOGGER.debug(
+                "Processing solution function: %s", process_solution_function
+            )
             try:
                 computed_facts.append(
                     process_solution_function(solution, *process_solution_args)
@@ -454,9 +458,9 @@ class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-publi
                 relationship_id=relationship_id,
                 relationship_label=relationship_name,
             )
-            self.session.fact_generated_queue.put(fact_1)
-            self.session.fact_generated_queue.put(fact_2)
-            self.session.fact_generated_queue.put(fact_3)
+            self.outgoing_queue.put(fact_1)
+            self.outgoing_queue.put(fact_2)
+            self.outgoing_queue.put(fact_3)
 
     def _process_solution_node_attribute(
         self,
@@ -493,7 +497,7 @@ class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-publi
             value=computed_value,
         )
         LOGGER.debug(">>>>>>> Computed fact: %s", computed_fact)
-        self.session.fact_generated_queue.put(computed_fact)
+        self.outgoing_queue.put(computed_fact)
         return computed_fact
 
     def _extract_splat_from_solution(

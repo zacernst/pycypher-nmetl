@@ -3,15 +3,16 @@
 import os
 from pathlib import Path
 
+from typing import Any
 import toml
 
-CWD = Path(os.getcwd())
-SRC_BASE_DIR = Path(__file__).parent.parent.parent
-MONOREPO_BASE_DIR = SRC_BASE_DIR.parent.parent
+CWD: Path = Path(os.getcwd())
+SRC_BASE_DIR: Path = Path(__file__).parent.parent.parent
+MONOREPO_BASE_DIR: Path = SRC_BASE_DIR.parent.parent
 
-config_file = Path(__file__).parent / "config" / "config.toml"
+config_file: Path = Path(__file__).parent / "config" / "config.toml"
 with open(config_file, "r", encoding="utf8") as f:
-    config = toml.load(f)
+    config: dict[Any, Any] = toml.load(f)
 
 for key, value in config["global"].items():
     globals()[key] = value

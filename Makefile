@@ -1,8 +1,8 @@
 # pycypher-nmetl Makefile
 # ------------------------------------------------------------------------------
 # Configuration variables
-PYTHON_VERSION = 3.13
-SUPPORTED_PYTHON_VERSIONS = 3.13
+PYTHON_VERSION = 3.12
+SUPPORTED_PYTHON_VERSIONS = 3.12
 PYTHON_TEST_THREADS = 4
 BUMP = micro
 

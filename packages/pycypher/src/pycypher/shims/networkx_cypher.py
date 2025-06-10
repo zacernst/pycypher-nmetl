@@ -6,8 +6,6 @@ import copy
 import uuid
 
 import networkx as nx
-from pycypher.fact_collection import FactCollection
-from pycypher.fact_collection.simple import SimpleFactCollection
 from pycypher.fact import (
     FactNodeHasAttributeWithValue,
     FactNodeHasLabel,
@@ -15,6 +13,8 @@ from pycypher.fact import (
     FactRelationshipHasSourceNode,
     FactRelationshipHasTargetNode,
 )
+from pycypher.fact_collection import FactCollection
+from pycypher.fact_collection.simple import SimpleFactCollection
 from pycypher.node_classes import Literal
 from pycypher.shims import Shim
 

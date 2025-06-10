@@ -1,6 +1,6 @@
 #! /bin/bash
 
-wget -P /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data/ -e robots=off -nH --recursive -np https://www2.census.gov/geo/tiger/TIGER2024/BG/
+wget --no-check-certificate -P /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data/ -e robots=off -nH --recursive -np https://www2.census.gov/geo/tiger/TIGER2024/BG/
 for i in `ls /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data/geo/tiger/TIGER2024/BG/*zip`
 do
 echo $i

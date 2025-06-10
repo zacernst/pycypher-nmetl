@@ -1,7 +1,7 @@
 fact_collection: FoundationDBFactCollection
 fact_collection_class: FoundationDBFactCollection
 run_monitor: true
-logging_level: ERROR
+logging_level: DEBUG
 
 data_sources:
 - name: united_states_nodes
@@ -31,6 +31,7 @@ data_sources:
     longitude: Float
     encoded_tags: NonEmptyString
     tags: Dict
+
 - name: rw_2023
   uri: file://{MONOREPO_BASE_DIR}/packages/fastopendata/raw_data/rw2023.csv
   options:

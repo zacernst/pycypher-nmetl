@@ -6,22 +6,22 @@ Configuration Module (configuration.py)
 from __future__ import annotations
 
 import datetime
-from typing import Annotated, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Annotated, Type, Any, Dict, List, Optional
 
 import yaml
-from nmetl.config import CWD  # pylint: disable=no-name-in-module
+from nmetl.config import CWD 
 from nmetl.config import (
-    DUMP_PROFILE_INTERVAL,
     MONOREPO_BASE_DIR,
-    PROFILER,
     SRC_BASE_DIR,
 )
 from nmetl.data_source import DataSource, DataSourceMapping
 from nmetl.session import Session
+from nmetl.session_enums import LoggingLevelEnum
 from pycypher.fact_collection import FactCollection
-from pycypher.fact_collection.foundationdb import FoundationDBFactCollection
-from pycypher.fact_collection.rocksdb import RocksDBFactCollection
-from pycypher.fact_collection.simple import SimpleFactCollection
+from pycypher.fact_collection.foundationdb import FoundationDBFactCollection  # noqa: F401
+from pycypher.fact_collection.rocksdb import RocksDBFactCollection            # noqa: F401
+from pycypher.fact_collection.simple import SimpleFactCollection              # noqa: F401
+
 from pydantic import BaseModel, Field, TypeAdapter
 from shared.logger import LOGGER
 
@@ -56,11 +56,11 @@ class SessionConfig(BaseModel):
     including fact collection settings, monitoring, and data sources.
     """
 
-    fact_collection: Optional[str] = None
-    run_monitor: Optional[bool] = True
-    fact_collection_class: Optional[str] = None
+    fact_collection: str = ''
+    run_monitor: bool = True
+    fact_collection_class: str = ''
     data_sources: Optional[List[DataSourceConfig]] = []
-    logging_level: Optional[str] = "INFO"
+    logging_level: LoggingLevelEnum = "INFO"
     fact_collection_kwargs: Optional[Dict[str, Any]] = {}
 
 
@@ -73,7 +73,7 @@ class DataSourceConfig(BaseModel):
     """
 
     name: Optional[str] = None
-    uri: Optional[str] = None
+    uri: str = ""
     mappings: List[DataSourceMappingConfig] = []
     data_types: Optional[Dict[str, str]] = {}
     options: Optional[Dict[str, str]] = {}
@@ -144,10 +144,10 @@ def load_session_config(
         TypeError: If the configuration data does not match the expected structure.
     """
     with open(path, "r", encoding="utf8") as f:
-        config = yaml.safe_load(f)
-    session_config = SessionConfig(**config)
+        config: dict = yaml.safe_load(f) or {}
+    session_config: SessionConfig = SessionConfig(**config)
 
-    fact_collection_class = globals()[session_config.fact_collection_class]
+    fact_collection_class: Type[FactCollection] = globals()[session_config.fact_collection_class]
 
     LOGGER.info(
         f"Creating session with fact collection {fact_collection_class.__name__}"
@@ -157,8 +157,6 @@ def load_session_config(
         logging_level=session_config.logging_level,
         fact_collection_class=fact_collection_class,
         fact_collection_kwargs=session_config.fact_collection_kwargs,
-        dump_profile_interval=DUMP_PROFILE_INTERVAL,
-        profiler=PROFILER,
         session_config=session_config,
     )
 
@@ -169,7 +167,7 @@ def load_session_config(
         data_source.name = data_source_config.name
 
         for mapping_config in data_source_config.mappings:
-            mapping = DataSourceMapping(
+            mapping: DataSourceMapping = DataSourceMapping(
                 attribute_key=mapping_config.attribute_key,
                 identifier_key=mapping_config.identifier_key,
                 attribute=mapping_config.attribute,
@@ -188,3 +186,5 @@ def load_session_config(
         session.attach_data_source(data_source)
 
     return session
+
+SessionConfig.model_rebuild()

@@ -14,8 +14,8 @@ from typing import Any, Dict, Generator, List, Optional
 
 from pycypher.fact import (
     AtomicFact,
-    FactNodeHasLabel,
     FactNodeHasAttributeWithValue,
+    FactNodeHasLabel,
     FactRelationshipHasSourceNode,
     FactRelationshipHasTargetNode,
 )
@@ -56,7 +56,7 @@ class SimpleFactCollection(FactCollection):
             AtomicFact: Each fact in the collection.
         """
         yield from self.facts
-    
+
     def __iter__(self) -> Generator[AtomicFact]:
         """
         Iterate over the facts in this collection.

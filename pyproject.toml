@@ -3,7 +3,7 @@ name = "pycypher-nmetl"
 version = "0.0.1"
 description = "Declarative ETL using Cypher queries"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.12"
 keywords = ["neo4j", "cypher", "etl", "declarative"]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -49,6 +49,10 @@ dependencies = [
     "prometheus-client>=0.21.1",
     "bandit>=1.8.3",
     "ty>=0.0.1a6",
+    "geopandas>=1.1.0",
+    "networkx>=3.4.2",
+    "pyrefly>=0.18.0",
+    "mypy>=1.16.0",
 ]
 
 [[project.authors]]
@@ -119,6 +123,9 @@ exclude = [
     "site-packages",
     "venv",
 ]
+
+[tool.ruff.lint]
+select = ["ALL"]
 
 [tool.coverage.report]
 exclude_also = [

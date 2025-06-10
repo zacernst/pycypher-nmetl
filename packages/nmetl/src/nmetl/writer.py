@@ -91,8 +91,8 @@ from abc import ABC, abstractmethod
 from typing import Optional
 
 import pyarrow as pa
-from nmetl.helpers import ensure_uri
 from nmetl.session import Session
+from shared.helpers import ensure_uri
 
 
 class TableWriter(ABC):

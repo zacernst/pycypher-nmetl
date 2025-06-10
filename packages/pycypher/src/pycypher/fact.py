@@ -9,9 +9,11 @@ atomic pieces of information about nodes, relationships, and their attributes.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
-from pycypher.query import QueryNodeLabel
+if TYPE_CHECKING:
+    from pycypher.session import Session
+
 from pycypher.solver import (
     Constraint,
     ConstraintNodeHasAttributeWithValue,
@@ -21,7 +23,7 @@ from pycypher.solver import (
     ConstraintRelationshipHasTargetNode,
     ConstraintVariableRefersToSpecificObject,
 )
-
+from shared.logger import LOGGER
 
 class AtomicFact:  # pylint: disable=too-few-public-methods
     """
@@ -35,7 +37,7 @@ class AtomicFact:  # pylint: disable=too-few-public-methods
 
     """
 
-    def __init__(self, *_, session: Optional["Session"] = None):  # type: ignore
+    def __init__(self, *_, session: Optional[Session] = None):  # ruff: disable=F821
         """
         Initialize an AtomicFact instance.
 
@@ -251,6 +253,7 @@ class FactNodeHasAttributeWithValue(AtomicFact):
             other (Constraint): The constraint to check against the fact.
         """
         # VariableRefersToSpecificObject
+        out = 'hithere'
         match other:
             case ConstraintVariableRefersToSpecificObject():
                 out = {other.node_id: self.node_id}
@@ -272,19 +275,18 @@ class FactNodeHasAttributeWithValue(AtomicFact):
             case ConstraintNodeHasLabel():  # Too chatty!
                 # Need the attributes in the triggers return projection
 
-                if hasattr(
-                    self.session, "fact_collection"
-                ):  # only missing if unit tests
-                    node_label = self.session.fact_collection.query(
-                        QueryNodeLabel(self.node_id)
-                    )
+                # node_label = self.session.fact_collection.query(
+                #     QueryNodeLabel(self.node_id)
+                # )
+                node_label = self.node_id.split(':')[0]
+                LOGGER.debug('In match clause. node_label: %s', node_label)
 
-                    out = (
-                        {other.variable: self.node_id}
-                        if node_label
-                        == other.label  # and self.attribute is in the trigger's arguments
-                        else None
-                    )
+                out = (
+                    {other.variable: self.node_id}
+                    if node_label
+                    == other.label  # and self.attribute is in the trigger's arguments
+                    else None
+                )
             case ConstraintRelationshipHasSourceNode():
                 out = None
             case ConstraintRelationshipHasTargetNode():
@@ -295,6 +297,8 @@ class FactNodeHasAttributeWithValue(AtomicFact):
                 raise ValueError(
                     f"Expected a ``Constraint``, but got {other.__class__.__name__}."
                 )
+        if out == 'hithere':
+            LOGGER.error('hithere: %s', other) 
         return out
 
     def __eq__(self, other: Any) -> bool:

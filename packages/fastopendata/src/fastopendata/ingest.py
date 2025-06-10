@@ -3,14 +3,12 @@
 
 import base64
 import json
-import os
 import pickle
 
 from nmetl.configuration import load_session_config
 from nmetl.data_asset import DataAsset
 from nmetl.data_source import NewColumn
 from nmetl.trigger import VariableAttribute
-from prometheus_client import start_http_server
 from shared.logger import LOGGER
 
 
@@ -141,3 +139,4 @@ if __name__ == "__main__":
 #         ).start()
 #         for worker_num in range(NUM_WORKERS)
 #     ]
+

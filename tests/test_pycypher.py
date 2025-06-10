@@ -83,7 +83,6 @@ from nmetl.exceptions import (
     BadTriggerReturnAnnotationError,
     UnknownDataSourceError,
 )
-from nmetl.helpers import Idle, QueueGenerator, ensure_uri
 from nmetl.message_types import (
     DataSourcesExhausted,
     EndOfData,
@@ -111,11 +110,6 @@ from pycypher.exceptions import (  # pylint: disable=unused-import
     InvalidCastError,
     WrongCypherTypeError,
 )
-from pycypher.fact_collection import    FactCollection
-from pycypher.fact_collection.rocksdb import RocksDBFactCollection
-from pycypher.fact_collection.simple import SimpleFactCollection
-from pycypher.fact_collection.foundationdb import FoundationDBFactCollection
-
 from pycypher.fact import (  # We might get rid of this class entirely
     AtomicFact,
     FactNodeHasAttributeWithValue,
@@ -125,8 +119,11 @@ from pycypher.fact import (  # We might get rid of this class entirely
     FactRelationshipHasLabel,
     FactRelationshipHasSourceNode,
     FactRelationshipHasTargetNode,
-    
 )
+from pycypher.fact_collection import FactCollection
+from pycypher.fact_collection.foundationdb import FoundationDBFactCollection
+from pycypher.fact_collection.rocksdb import RocksDBFactCollection
+from pycypher.fact_collection.simple import SimpleFactCollection
 from pycypher.node_classes import (
     Addition,
     Aggregation,
@@ -181,6 +178,7 @@ from pycypher.solver import (
 )
 from pycypher.tree_mixin import TreeMixin
 from pytest_unordered import unordered
+from shared.helpers import Idle, QueueGenerator, ensure_uri
 from shared.logger import LOGGER
 
 TEST_DATA_DIRECTORY = pathlib.Path(__file__).parent / "test_data"
