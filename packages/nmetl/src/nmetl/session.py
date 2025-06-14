@@ -12,7 +12,6 @@ from __future__ import annotations
 import datetime
 import functools
 import inspect
-import multiprocessing as mp
 import queue
 import threading
 import time
@@ -32,6 +31,7 @@ from typing import (
     Type,
 )
 
+from dask.distributed import Client
 import pyarrow as pa
 import pyarrow.parquet as pq
 from nmetl.config import FACT_GENERATED_QUEUE_SIZE  # pyrefly: ignore
@@ -39,7 +39,7 @@ from nmetl.config import MONITOR_LOOP_DELAY  # pyrefly: ignore
 from nmetl.config import RAW_INPUT_QUEUE_SIZE  # pyrefly: ignore
 from nmetl.config import (  # pyrefly: ignore
     CHECK_FACT_AGAINST_TRIGGERS_QUEUE_SIZE,
-    TRIGGERED_LOOKUP_PROCESSOR_QUEUE_SIZE,
+    TRIGGERED_LOOKUP_PROCESSOR_QUEUE_SIZE,  # pyrefly: ignore
 )
 from nmetl.data_asset import DataAsset
 from nmetl.data_source import DataSource
@@ -71,6 +71,8 @@ from rich.console import Console
 from rich.table import Table
 from shared.logger import LOGGER
 
+LOGGER.setLevel('INFO')
+
 
 @dataclass
 class NewColumnConfig:
@@ -81,55 +83,14 @@ class NewColumnConfig:
     data_source_name: str
     new_column_name: str
 
-
-# class ComputeBackEnd(ABC):
-#     """Abstract base class for compute backends."""
-#
-#     queue_class = None
-#
-#     @abstractmethod
-#     def setup(self) -> None:
-#         """Set up the compute backend."""
-#
-#
-# class MultiProcessingCompute(ComputeBackEnd):
-#     """Class for the multiprocessing back end."""
-#
-#     queue_class = MULTIPROCESSING_QUEUE_CLASS
-#
-#     def __init__(self) -> None:
-#         raise NotImplementedError("MultiProcessingBackEnd not implemented yet")
-#
-#     def setup(self) -> None:
-#         """Set up the compute backend."""
-#
-#
-# class DaskCompute(ComputeBackEnd):
-#     """Class for the dask back end."""
-#
-#     queue_class = None
-#
-#     def __init__(self) -> None:
-#         self.client = None  # initialize later
-#         raise NotImplementedError("DaskBackEnd not implemented yet")
-#
-#     def setup(self) -> None:
-#         """Set up the compute backend."""
-#         self.client = Client()
-#
-#
-# class ThreadingCompute(ComputeBackEnd):
-#     """Class for the threading back end."""
-#
-#     queue_class = THREADING_QUEUE_CLASS
-#
-#     def __init__(self) -> None:
-#         pass
-#
-#     def setup(self) -> None:
-#         """Set up the compute backend."""
-#         # Not much to do for this one, it's single-core threads
-
+def _make_check_fact_against_triggers_queue_processor(incoming_queue, outgoing_queue, status_queue, session_config, trigger_dict) -> None:
+    CheckFactAgainstTriggersQueueProcessor(
+        incoming_queue=incoming_queue,
+        outgoing_queue=outgoing_queue,
+        status_queue=status_queue,
+        session_config=session_config,
+        trigger_dict=trigger_dict,
+    )
 
 class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-methods
     """
@@ -188,63 +149,63 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
         # No need for a fancy queue class here
         self.new_column_dict = {}
         self.fact_collection_kwargs = fact_collection_kwargs or {}
-        # self.compute_class_name = compute_class_name
-        # self.compute_options = compute_options or {}
         self.session_config = session_config
-        # self.worker_num = worker_num
-        # self.num_workers = num_workers
-        # Forget the compute class for the time being. Get the FactCollection
-        # initialized in the workers...
-        # try:
-        #     self.compute_class = {
-        #         ComputeClassNameEnum.THREADING: ThreadingCompute,
-        #         ComputeClassNameEnum.MULTIPROCESSING: MultiProcessingCompute,
-        #         ComputeClassNameEnum.DASK: DaskCompute,
-        #     }[self.compute_class_name]
-        # except KeyError as e:
-        #     raise ValueError(
-        #         f"Unknown compute class name {compute_class_name}"
-        #     ) from e
+        self.status_queue = queue.Queue()
+        self.dask_client = Client()
 
-        # self.compute = self.compute_class(
-        #     **self.compute_options
-        # )  # Initialize the back end compute object -- may be no-op
-        self.status_queue = mp.Queue()
+        #######################################################
+        # Initialize the queues, which are specialized wrappers
+        # around ordinary queues, which yield their contents and
+        # have logic for starting/stopping.
+        #######################################################
 
+        # The raw input queue will run in the same process as the `Session`.
+        # So we will use queue.Queue
         self.raw_input_queue = QueueGenerator(
             session=self,
             name="RawInput",
             max_queue_size=RAW_INPUT_QUEUE_SIZE,
             session_config=self.session_config,
             queue_cls=queue.Queue,
+            dask_client=self.dask_client,
             **self.queue_options,
         )
         self.data_asset_names = [
             data_asset.name for data_asset in self.data_assets
         ]
 
+        # The fact generated queue will also run in the same process (different thread)
+        # as the `Session` object. But its queue needs to be accessible from other
+        # processes, so we will use an mp queue.
         self.fact_generated_queue = QueueGenerator(
             session=self,
             name="FactGenerated",
             max_queue_size=FACT_GENERATED_QUEUE_SIZE,
             session_config=self.session_config,
             queue_cls=queue.Queue,
+            dask_client=self.dask_client,
             **self.queue_options,
         )
+
+        # Must run in different processes
         self.check_fact_against_triggers_queue = QueueGenerator(
             session=self,
             name="CheckFactTrigger",
             max_queue_size=CHECK_FACT_AGAINST_TRIGGERS_QUEUE_SIZE,
             session_config=self.session_config,
             queue_cls=queue.Queue,
+            dask_client=self.dask_client,
             **self.queue_options,
         )
+
+        # Same -- run in different processes
         self.triggered_lookup_processor_queue = QueueGenerator(
             session=self,
             name="TriggeredLookupProcessor",
             max_queue_size=TRIGGERED_LOOKUP_PROCESSOR_QUEUE_SIZE,
             session_config=self.session_config,
             queue_cls=queue.Queue,
+            dask_client=self.dask_client,
             **self.queue_options,
         )
 
@@ -257,6 +218,7 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
             **self.fact_collection_kwargs
         )
 
+        # Does the fact collection require the session? Maybe get rid of this.
         self.fact_collection.session = self
 
         self.raw_data_processor = RawDataProcessor(
@@ -265,6 +227,7 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
             status_queue=self.status_queue,
             session_config=self.session_config,
         )
+
         self.fact_generated_queue_processor = FactGeneratedQueueProcessor(
             incoming_queue=self.fact_generated_queue,
             outgoing_queue=self.check_fact_against_triggers_queue,
@@ -272,16 +235,32 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
             session_config=self.session_config,
         )
 
-        # This can be multithreaded!
-        self.check_fact_against_triggers_queue_processor = (
-            CheckFactAgainstTriggersQueueProcessor(
+        
+        
+        # check_fact_against_triggers_processes: list[mp.Process] = []
+        # check_fact_against_triggers_processes.append(
+        #     mp.Process(
+        #         target=_make_check_fact_against_triggers_queue_processor,
+        #         args=(
+        #             self.check_fact_against_triggers_queue,
+        #             self.triggered_lookup_processor_queue,
+        #             self.status_queue,
+        #             self.session_config,
+        #             self.trigger_dict,
+        #         ),
+        #         daemon=True,
+        #     )
+        # )
+        # check_fact_against_triggers_processes[0].start()
+
+
+        self.check_fact_against_triggers_queue_processor = CheckFactAgainstTriggersQueueProcessor(
                 incoming_queue=self.check_fact_against_triggers_queue,
                 outgoing_queue=self.triggered_lookup_processor_queue,
                 status_queue=self.status_queue,
                 session_config=self.session_config,
                 trigger_dict=self.trigger_dict,
             )
-        )
 
         self.triggered_lookup_processor = TriggeredLookupProcessor(
             incoming_queue=self.triggered_lookup_processor_queue,
@@ -317,7 +296,7 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
         This method uses rich.console.Console to print a formatted table
         of attribute names and descriptions.
         """
-        console = Console()
+        console: Console = Console()
 
         table = Table(title="Attributes")
 

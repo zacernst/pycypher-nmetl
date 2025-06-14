@@ -5,7 +5,10 @@ from __future__ import annotations
 import multiprocessing as mp
 import queue
 import uuid
-from typing import Any, Generator, Optional, Type
+from typing import TYPE_CHECKING, Any, Generator, Optional, Type
+
+if TYPE_CHECKING:
+    from nmetl.session import Session  # pylint: disable=cyclic-import
 
 from nmetl.config import DEFAULT_QUEUE_SIZE  # pyrefly: ignore
 from nmetl.config import INNER_QUEUE_TIMEOUT  # pyrefly: ignore
@@ -51,6 +54,7 @@ class QueueGenerator:  # pylint: disable=too-few-public-methods,too-many-instanc
         # Look up the queue class from the compute class
         self.max_queue_size = max_queue_size
         self.inner_queue_timeout = inner_queue_timeout
+        self.session = session
         self.end_of_queue_cls = end_of_queue_cls
         self.counter: int = 0
         self.outer_queue_timeout = outer_queue_timeout
@@ -58,10 +62,10 @@ class QueueGenerator:  # pylint: disable=too-few-public-methods,too-many-instanc
         self.exit_code = None
         self.name = name
         self.idle = False
-        self.session = session
+        # self.session = session
         self.incoming_queue_processors = []
         self.queue_cls = queue_cls
-        self.queue = queue_cls(maxsize=self.max_queue_size)
+        self.queue = queue_cls()  # TODO: Add max queue sizes later
         # self.queue = queue.Queue(maxsize=self.max_queue_size)
         self.use_cache = use_cache
 

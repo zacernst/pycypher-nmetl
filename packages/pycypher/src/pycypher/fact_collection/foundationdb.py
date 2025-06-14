@@ -11,7 +11,7 @@ import inspect
 import queue
 import threading
 import time
-from multiprocessing.pool import ThreadPool
+from multiprocessing.pool import ThreadPool, ApplyResult
 from typing import Any, Dict, Generator, Optional
 
 from nmetl.logger import LOGGER
@@ -507,10 +507,10 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
     def parallel_read(
         self,
         max_keys: Optional[int] = None,
-        num_threads: Optional[int] = 32,
+        num_threads: Optional[int] = 128,
         increment: Optional[int] = None,
     ):
-        executor = ThreadPool(num_threads)
+        executor: ThreadPool = ThreadPool(num_threads)
         streaming_queue = queue.Queue()
 
         def _get_range(current_key, next_key):
@@ -518,12 +518,12 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
                 streaming_queue.put((k, v))
             streaming_queue.put(None)
 
-        futures = []
+        futures: list[ApplyResult[None]] = []
 
         def _start_threads():
             current_key = b""
             for next_key in self.skip_keys(offset=increment, max_keys=max_keys):
-                future = executor.apply_async(
+                future: ApplyResult[None] = executor.apply_async(
                     _get_range,
                     (
                         current_key,
@@ -533,19 +533,28 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
                 futures.append(future)
                 current_key = next_key
 
-        queueing_thread = threading.Thread(target=_start_threads)
+        queueing_thread: threading.Thread = threading.Thread(target=_start_threads)
         queueing_thread.start()
 
         endings = 0
         time.sleep(1)
         while (
             not all(future.ready() for future in futures)
-            or endings < len(futures)
-            or not queueing_thread.is_alive()
+            or queueing_thread.is_alive()
+            or endings != len(futures)
         ):
-            thing = streaming_queue.get()
-            if thing is None:
-                endings += 1
-                continue
-            key, value = thing
-            yield endings, len(futures), key, decode(value)
+            got_one: bool = True
+            while got_one:
+                got_one = False
+                try:
+                    thing = streaming_queue.get(timeout=4)
+                except Exception:
+                    break
+                if thing is None:
+                    endings += 1
+                    continue
+                key, value = thing
+                yield endings, len(futures), key, decode(value)
+                # print(all(future.ready() for future in futures))
+            if not queueing_thread.is_alive() and endings == len(futures):
+                break

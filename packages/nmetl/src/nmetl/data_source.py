@@ -161,7 +161,7 @@ class DataSource(ABC):  # pylint: disable=too-many-instance-attributes
         self.received_counter = 0
         self.sent_counter = 0
         self.started_at = None
-        self.finished_at = None
+        self.finished_at: datetime.datetime | None = None
         self.halt = False
         self.schema = {}
         self.new_column_configs: Dict[str, NewColumn] = {}
@@ -319,21 +319,21 @@ class DataSource(ABC):  # pylint: disable=too-many-instance-attributes
         self.started = True
         self.started_at = datetime.datetime.now()
         for row in self.rows():
-            if hasattr(self, "session") and (
-                self.session.fact_generated_queue.queue.qsize()
-                + self.session.check_fact_against_triggers_queue.queue.qsize()
-                + self.session.triggered_lookup_processor_queue.queue.qsize()
-                > DATA_SOURCE_HIGH_WATER_MARK
-            ):
-                while (
-                    self.session.fact_generated_queue.queue.qsize()
-                    + self.session.check_fact_against_triggers_queue.queue.qsize()
-                    + self.session.triggered_lookup_processor_queue.queue.qsize()
-                    > DATA_SOURCE_LOW_WATER_MARK
-                ):
-                    time.sleep(0.5)
-            # LOGGER.error('back_pressure: %s', self.back_pressure)
-            time.sleep(self.back_pressure)
+            # if hasattr(self, "session") and (
+            #     self.session.fact_generated_queue.queue.qsize()
+            #     + self.session.check_fact_against_triggers_queue.queue.qsize()
+            #     + self.session.triggered_lookup_processor_queue.queue.qsize()
+            #     > DATA_SOURCE_HIGH_WATER_MARK
+            # ):
+            #     while (
+            #         self.session.fact_generated_queue.queue.qsize()
+            #         + self.session.check_fact_against_triggers_queue.queue.qsize()
+            #         + self.session.triggered_lookup_processor_queue.queue.qsize()
+            #         > DATA_SOURCE_LOW_WATER_MARK
+            #     ):
+            #         time.sleep(0.5)
+            # # LOGGER.error('back_pressure: %s', self.back_pressure)
+            # time.sleep(self.back_pressure)
             # Only queue the rows that this worker is responsible for
             # row_hash = hash(pickle.dumps(row))
             # if row_hash < 0:

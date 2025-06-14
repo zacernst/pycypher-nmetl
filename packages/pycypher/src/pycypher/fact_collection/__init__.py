@@ -82,7 +82,7 @@ class FactCollection(ABC):
         if self.start_daemon_process:
             self.daemon_process()
     
-    def start_daemon(self):_
+    def start_daemon(self):
         """
         Kick off a process that waits for things to insert into the fact collection.
         Use threads to do this because we can't necessarily serialize the things we'd need.
@@ -225,6 +225,10 @@ class FactCollection(ABC):
         Returns:
             None
         """
+    
+    @abstractmethod
+    def __contains__(self, fact: AtomicFact) -> bool:
+        pass
 
     def __iadd__(self, other: AtomicFact | List[Any]) -> FactCollection:
         """Let us use ``+=`` to add facts to the collection."""
