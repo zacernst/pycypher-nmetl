@@ -14,11 +14,13 @@ import functools
 import inspect
 import queue
 import threading
+import uuid
 import time
 from dataclasses import dataclass
 from hashlib import md5
 from types import MappingProxyType
 from typing import (
+    TYPE_CHECKING,
     Any,
     Callable,
     Dict,
@@ -31,7 +33,6 @@ from typing import (
     Type,
 )
 
-from dask.distributed import Client
 import pyarrow as pa
 import pyarrow.parquet as pq
 from nmetl.config import FACT_GENERATED_QUEUE_SIZE  # pyrefly: ignore
@@ -66,13 +67,21 @@ from pycypher.cypher_parser import CypherParser
 from pycypher.fact import AtomicFact
 from pycypher.fact_collection import FactCollection
 from pycypher.fact_collection.simple import SimpleFactCollection
+from pycypher.fact_collection.foundationdb import FoundationDBFactCollection
 from pycypher.solver import Constraint
 from rich.console import Console
 from rich.table import Table
 from shared.logger import LOGGER
 
-LOGGER.setLevel('INFO')
+if TYPE_CHECKING:
+    from dask.distributed import Client
 
+LOGGER.setLevel('WARNING')
+
+RAW_INPUT_QUEUE_PORT = 5555
+FACT_GENERATED_QUEUE_PORT = 5556
+CHECK_FACT_AGAINST_TRIGGERS_QUEUE_PORT = 5557
+TRIGGERED_LOOKUP_PROCESSOR_QUEUE_PORT = 5558
 
 @dataclass
 class NewColumnConfig:
@@ -108,15 +117,15 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
         self,
         # compute_class_name: ComputeClassNameEnum = ComputeClassNameEnum.THREADING,
         # compute_options: Optional[Dict[str, Any]] = None,
-        data_assets: Optional[List[DataAsset]] = None,
+        dask_client: Client,
+        data_assets: Optional[dict[str, DataAsset]] = None,
         data_sources: Optional[List[DataSource]] = None,
-        fact_collection: Optional[FactCollection] = None,
         fact_collection_class: Type[FactCollection] = SimpleFactCollection,
         fact_collection_kwargs: Optional[Dict[str, Any]] = None,
         logging_level: LoggingLevelEnum = LoggingLevelEnum.WARNING,
         queue_list: Optional[List[QueueGenerator]] = None,
         queue_options: Optional[Dict[str, Any]] = None,
-        run_monitor: Optional[bool] = True,
+        run_monitor: Optional[bool] = False,
         session_config: Optional[Any] = None,
         # worker_num: Optional[int] = 0,
         # num_workers: Optional[int] = 1,
@@ -141,91 +150,62 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
                 Defaults to True.
         """
         self.data_sources: List[DataSource] = data_sources or []
-        self.data_assets: List[DataAsset] = data_assets or []
+        self.data_assets: dict[str, DataAsset] = data_assets or {}
         self.run_monitor = run_monitor
         self.queue_options = queue_options or {}
         self.queue_list: List[QueueGenerator] = queue_list or []
         self.logging_level = logging_level
-        # No need for a fancy queue class here
         self.new_column_dict = {}
         self.fact_collection_kwargs = fact_collection_kwargs or {}
         self.session_config = session_config
         self.status_queue = queue.Queue()
-        self.dask_client = Client()
 
-        #######################################################
-        # Initialize the queues, which are specialized wrappers
-        # around ordinary queues, which yield their contents and
-        # have logic for starting/stopping.
-        #######################################################
+        self.dask_client = dask_client
+        self.fact_collection: FactCollection = fact_collection_class(**self.fact_collection_kwargs)
 
-        # The raw input queue will run in the same process as the `Session`.
-        # So we will use queue.Queue
         self.raw_input_queue = QueueGenerator(
-            session=self,
             name="RawInput",
-            max_queue_size=RAW_INPUT_QUEUE_SIZE,
-            session_config=self.session_config,
-            queue_cls=queue.Queue,
-            dask_client=self.dask_client,
-            **self.queue_options,
+            port=RAW_INPUT_QUEUE_PORT,
         )
-        self.data_asset_names = [
-            data_asset.name for data_asset in self.data_assets
-        ]
 
-        # The fact generated queue will also run in the same process (different thread)
-        # as the `Session` object. But its queue needs to be accessible from other
-        # processes, so we will use an mp queue.
+        self.queue_list.append(self.raw_input_queue)
+
+
         self.fact_generated_queue = QueueGenerator(
-            session=self,
             name="FactGenerated",
-            max_queue_size=FACT_GENERATED_QUEUE_SIZE,
-            session_config=self.session_config,
-            queue_cls=queue.Queue,
-            dask_client=self.dask_client,
-            **self.queue_options,
+            port=FACT_GENERATED_QUEUE_PORT,
         )
+        self.queue_list.append(self.fact_generated_queue)
 
         # Must run in different processes
         self.check_fact_against_triggers_queue = QueueGenerator(
-            session=self,
             name="CheckFactTrigger",
-            max_queue_size=CHECK_FACT_AGAINST_TRIGGERS_QUEUE_SIZE,
-            session_config=self.session_config,
-            queue_cls=queue.Queue,
-            dask_client=self.dask_client,
-            **self.queue_options,
+            port=CHECK_FACT_AGAINST_TRIGGERS_QUEUE_PORT,
         )
+        self.queue_list.append(self.check_fact_against_triggers_queue)
+
 
         # Same -- run in different processes
         self.triggered_lookup_processor_queue = QueueGenerator(
-            session=self,
             name="TriggeredLookupProcessor",
-            max_queue_size=TRIGGERED_LOOKUP_PROCESSOR_QUEUE_SIZE,
-            session_config=self.session_config,
-            queue_cls=queue.Queue,
-            dask_client=self.dask_client,
-            **self.queue_options,
+            port=TRIGGERED_LOOKUP_PROCESSOR_QUEUE_SIZE,
         )
+        self.queue_list.append(self.triggered_lookup_processor_queue)
+
 
         self.trigger_dict = {}
-        LOGGER.info(
-            "Creating session with fact collection %s",
-            fact_collection.__class__.__name__,
-        )
-        self.fact_collection = fact_collection or fact_collection_class(
-            **self.fact_collection_kwargs
-        )
+
+        
 
         # Does the fact collection require the session? Maybe get rid of this.
-        self.fact_collection.session = self
 
         self.raw_data_processor = RawDataProcessor(
             incoming_queue=self.raw_input_queue,
             outgoing_queue=self.fact_generated_queue,
             status_queue=self.status_queue,
             session_config=self.session_config,
+            dask_client=dask_client,
+            priority=-10,
         )
 
         self.fact_generated_queue_processor = FactGeneratedQueueProcessor(
@@ -233,33 +213,17 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
             outgoing_queue=self.check_fact_against_triggers_queue,
             status_queue=self.status_queue,
             session_config=self.session_config,
+            dask_client=dask_client,
+            priority=0,
         )
-
-        
-        
-        # check_fact_against_triggers_processes: list[mp.Process] = []
-        # check_fact_against_triggers_processes.append(
-        #     mp.Process(
-        #         target=_make_check_fact_against_triggers_queue_processor,
-        #         args=(
-        #             self.check_fact_against_triggers_queue,
-        #             self.triggered_lookup_processor_queue,
-        #             self.status_queue,
-        #             self.session_config,
-        #             self.trigger_dict,
-        #         ),
-        #         daemon=True,
-        #     )
-        # )
-        # check_fact_against_triggers_processes[0].start()
-
 
         self.check_fact_against_triggers_queue_processor = CheckFactAgainstTriggersQueueProcessor(
                 incoming_queue=self.check_fact_against_triggers_queue,
                 outgoing_queue=self.triggered_lookup_processor_queue,
                 status_queue=self.status_queue,
                 session_config=self.session_config,
-                trigger_dict=self.trigger_dict,
+                dask_client=dask_client,
+                priority=4,
             )
 
         self.triggered_lookup_processor = TriggeredLookupProcessor(
@@ -267,6 +231,8 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
             outgoing_queue=self.fact_generated_queue,  # Changed
             status_queue=self.status_queue,
             session_config=self.session_config,
+            dask_client=dask_client,
+            priority=8,
         )
 
         self.attribute_metadata_dict = {}
@@ -276,6 +242,14 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
             self.monitor_thread = threading.Thread(
                 target=self.monitor, daemon=True, name="MonitorThread"
             )
+    
+        # fact_collection: FactCollection = globals()[self.session_config.fact_collection_class](**(self.session_config.fact_collection_kwargs or {}))
+        
+    @property
+    def tasks_in_memory(self) -> int:
+        """Gets the number of tasks in memory by inspecting the scheduler's state."""
+        num_tasks: int = self.dask_client.run_on_scheduler(lambda dask_scheduler: len(dask_scheduler.tasks))
+        return num_tasks
 
     def __call__(self, block: bool = True) -> None:
         """
@@ -339,7 +313,6 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
         self.fact_generated_queue_processor.processing_thread.start()
 
         # Check facts against triggers
-        time.sleep(0.5)
         # for i in self.check_fact_against_triggers_queue_processor:
         #     i.processing_thread.start()
         self.check_fact_against_triggers_queue_processor.processing_thread.start()
@@ -439,6 +412,8 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
         ):
             time.sleep(0.1)
         LOGGER.warning("Data sources are all finished...")
+        while 1:
+            pass
 
         while not all(
             process.idle
@@ -538,34 +513,6 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
 
         table = Table(title="Queues")
 
-        table.add_column("Queue", justify="right", style="cyan", no_wrap=True)
-        table.add_column("Size", style="magenta")
-        table.add_column("Total", justify="right", style="green")
-        table.add_column("Completed", justify="right", style="green")
-
-        for session_queue in self.queue_list:
-            table.add_row(
-                session_queue.name,
-                f"{session_queue.queue.qsize()}",
-                f"{session_queue.counter}",
-                f"{session_queue.completed}",
-            )
-
-        console.print(table)
-
-        table = Table(title="FactCollection")
-        table.add_column("FactCollection", justify="right", style="cyan")
-        table.add_column("Puts", style="magenta")
-        table.add_column("Diverted", style="magenta")
-        table.add_column("Yielded", style="magenta")
-        table.add_column("Diversion misses", style="magenta")
-        table.add_row(
-            f"{self.fact_collection.__class__.__name__}",
-            f"{self.fact_collection.put_counter}",  # f"{len(self.fact_collection)}",
-            f"{self.fact_collection.diverted_counter}",
-            f"{self.fact_collection.yielded_counter}",
-            f"{self.fact_collection.diversion_miss_counter}",
-        )
         console.print(table)
 
     def attach_fact_collection(self, fact_collection: FactCollection) -> None:
@@ -675,21 +622,25 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
                 variable_name = variable_attribute_args[0].__forward_arg__
                 attribute_name = variable_attribute_args[1].__forward_arg__
 
+                data_asset_parameters: dict[str, DataAsset] = {parameter: self.data_assets[parameter] for parameter in parameter_names if parameter in self.data_assets}
+                non_data_asset_parameters: list[str] = [parameter for parameter in parameter_names if parameter not in self.data_assets]
+                
+
                 trigger: VariableAttributeTrigger | NodeRelationshipTrigger = (
                     VariableAttributeTrigger(
-                        function=func,
+                        function=functools.partial(func, **data_asset_parameters),
                         cypher_string=arg1,
                         variable_set=variable_name,
                         attribute_set=attribute_name,
-                        parameter_names=parameter_names,
-                        session=self,
+                        parameter_names=non_data_asset_parameters,
+                        # session=self,
                     )
                 )
 
                 if any(
                     param
                     not in trigger.cypher.parse_tree.cypher.return_clause.variables
-                    and param not in self.data_asset_names
+                    and param not in self.data_assets
                     for param in parameter_names
                 ):
                     raise BadTriggerReturnAnnotationError()
@@ -719,7 +670,6 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
                     raise BadTriggerReturnAnnotationError(
                         f"Variable {target_variable_name} not in {all_cypher_variables}"
                     )
-
                 trigger: VariableAttributeTrigger | NodeRelationshipTrigger = (
                     NodeRelationshipTrigger(
                         function=func,
@@ -728,7 +678,7 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
                         relationship_name=relationship_name,
                         target_variable=target_variable_name,
                         parameter_names=parameter_names,
-                        session=self,
+                        # session=self,
                     )
                 )
 
@@ -738,9 +688,7 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
                     "VariableAttribute or NodeRelationship"
                 )
 
-            self.trigger_dict[
-                md5(trigger.cypher_string.encode()).hexdigest()
-            ] = trigger
+            self.trigger_dict[uuid.uuid4().hex] = trigger
 
             return wrapper
 
@@ -750,17 +698,8 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
         """Register a DataAsset with the session."""
         if not isinstance(data_asset, DataAsset):
             raise ValueError(f"Expected a DataAsset, got {type(data_asset)}")
-        self.data_assets.append(data_asset)
-        self.data_asset_names.append(data_asset.name)
-        LOGGER.debug("Registered data asset %s", data_asset.name)
-
-    def get_data_asset_by_name(self, name: str) -> DataAsset:
-        """Get a DataAsset by name."""
-        for data_asset in self.data_assets:
-            if data_asset.name == name:
-                return data_asset
-        LOGGER.error("Data asset %s not found", name)
-        raise ValueError(f"Data asset {name} not found")
+        self.data_assets[data_asset.name] = data_asset.obj
+        LOGGER.info("Registered data asset %s", data_asset.name)
 
     def new_column(
         self,

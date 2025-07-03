@@ -154,7 +154,7 @@ class CypherTrigger(ABC):  # pylint: disable=too-many-instance-attributes
         cypher_string: Optional[str] = None,
         # variable_set: Optional[str] = None,
         # attribute_set: Optional[str] = None,
-        session: Optional["Session"] = None,
+        # session: Optional["Session"] = None,
         parameter_names: Optional[List[str]] = None,
     ):
         """
@@ -177,7 +177,7 @@ class CypherTrigger(ABC):  # pylint: disable=too-many-instance-attributes
             raise ValueError(f"Error parsing Cypher string: {e}") from e
         self.call_counter = 0
         self.error_counter = 0
-        self.session = session
+        # self.session = session
         # self.variable_set: Optional[str] = variable_set
         # self.attribute_set: Optional[str] = attribute_set
         self.parameter_names = parameter_names
@@ -242,7 +242,6 @@ class NodeRelationshipTrigger(CypherTrigger):
         source_variable: Optional[str] = None,
         target_variable: Optional[str] = None,
         relationship_name: Optional[str] = None,
-        session: Optional["Session"] = None,
         parameter_names: Optional[List[str]] = None,
     ):
         """
@@ -258,9 +257,9 @@ class NodeRelationshipTrigger(CypherTrigger):
             parameter_names (Optional[List[str]]): Names of parameters for the function. Defaults to None.
         """
         super().__init__(
+            self,
             function=function,
             cypher_string=cypher_string,
-            session=session,
             parameter_names=parameter_names,
         )
         self.source_variable: Optional[str] = source_variable
@@ -302,7 +301,7 @@ class VariableAttributeTrigger(CypherTrigger):
         cypher_string: Optional[str] = None,
         variable_set: Optional[str] = None,
         attribute_set: Optional[str] = None,
-        session: Optional["Session"] = None,
+        # session: Optional["Session"] = None,
         parameter_names: Optional[List[str]] = None,
     ):
         """
@@ -319,24 +318,13 @@ class VariableAttributeTrigger(CypherTrigger):
         super().__init__(
             function=function,
             cypher_string=cypher_string,
-            session=session,
+            # session=session,
             parameter_names=parameter_names,
         )
         self.variable_set: Optional[str] = variable_set
         self.attribute_set: Optional[str] = attribute_set
         self.is_relationship_trigger = False
         self.is_attribute_trigger = True
-
-        if function.__doc__:
-            attribute_metadata = AttributeMetadata(
-                attribute_name=attribute_set,
-                function_name=function.__name__,
-                description=function.__doc__,
-            )
-
-            self.session.attribute_metadata_dict[
-                self.attribute_set  # should be name of attribute
-            ] = attribute_metadata
 
     def __hash__(self):
         """

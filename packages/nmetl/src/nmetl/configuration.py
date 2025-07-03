@@ -127,7 +127,7 @@ class DataSourceMappingConfig(BaseModel):
 
 
 def load_session_config(
-    path: str, worker_num: Optional[int] = 0, num_workers: Optional[int] = 1
+    path: str, worker_num: Optional[int] = 0, num_workers: Optional[int] = 1, dask_client=None
 ) -> Session:
     """
     Load and parse the Session configuration from a YAML file.
@@ -152,12 +152,13 @@ def load_session_config(
     LOGGER.info(
         f"Creating session with fact collection {fact_collection_class.__name__}"
     )
-    session = Session(
+    session: Session = Session(
         run_monitor=session_config.run_monitor,
         logging_level=session_config.logging_level,
         fact_collection_class=fact_collection_class,
         fact_collection_kwargs=session_config.fact_collection_kwargs,
         session_config=session_config,
+        dask_client=dask_client,
     )
 
     for data_source_config in session_config.data_sources:

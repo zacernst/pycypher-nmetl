@@ -1,6 +1,6 @@
 fact_collection: FoundationDBFactCollection
 fact_collection_class: FoundationDBFactCollection
-run_monitor: true
+run_monitor: false
 logging_level: DEBUG
 
 data_sources:
@@ -1267,6 +1267,7 @@ data_sources:
     repwgt237: NonEmptyString
     repwgt238: NonEmptyString
     repwgt239: NonEmptyString
+
 - name: state_county_tract_puma
   uri: file://{MONOREPO_BASE_DIR}/packages/fastopendata/raw_data/state_county_tract_puma.csv
   mappings:
@@ -1297,6 +1298,7 @@ data_sources:
     STATEFP: NonEmptyString
     COUNTYFP: NonEmptyString
     TRACTCE: NonEmptyString
+
 - name: acs_2023_microdata_housing
   uri: file://{MONOREPO_BASE_DIR}/packages/fastopendata/raw_data/psam_2023_housing.csv
   mappings:
@@ -2736,6 +2738,7 @@ data_sources:
     PWGTP78: String
     PWGTP79: String
     PWGTP80: String
+
 - name: acs_2023_microdata_individual
   uri: file://{MONOREPO_BASE_DIR}/packages/fastopendata/raw_data/psam_2023_individual.csv
   mappings:

@@ -11,9 +11,11 @@ such as CSV and Parquet files.
 from __future__ import annotations
 
 import cProfile
+import random
 import csv
 import datetime
 import hashlib
+import frozendict
 import io
 import pstats
 import threading
@@ -21,14 +23,12 @@ import time
 import uuid
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Dict, Generator, List, Optional, Protocol, TypeVar
+from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional, Protocol, TypeVar
+if TYPE_CHECKING:
+    from nmetl.session import Session
 from urllib.parse import ParseResult
 
 import pyarrow.parquet as pq
-from nmetl.config import (  # pyrefly: ignore
-    DATA_SOURCE_HIGH_WATER_MARK,
-    DATA_SOURCE_LOW_WATER_MARK,  # pyrefly: ignore
-)
 from nmetl.message_types import RawDatum
 from nmetl.queue_generator import QueueGenerator
 from pycypher.fact import (
@@ -41,7 +41,9 @@ from pycypher.fact import (
 )
 from shared.helpers import ensure_uri
 from shared.logger import LOGGER
+from shared.telemetry import pyroscope
 
+LOGGER.setLevel('ERROR')
 
 def profile_thread(func, *args, **kwargs):
     pr = cProfile.Profile()
@@ -160,22 +162,32 @@ class DataSource(ABC):  # pylint: disable=too-many-instance-attributes
         self.name = name or hashlib.md5(str(self).encode()).hexdigest()
         self.received_counter = 0
         self.sent_counter = 0
-        self.started_at = None
+        self.started_at: Optional[datetime.datetime] = None
         self.finished_at: datetime.datetime | None = None
         self.halt = False
         self.schema = {}
         self.new_column_configs: Dict[str, NewColumn] = {}
         self.back_pressure = 0.00001
-        self.session: Optional[Any] = None
+        self._session: Optional[Any] = None
         self._raw_input_queue: QueueGenerator | None = None
         # self.num_workers = None
         # self.worker_num = None
     
-    @property
-    def raw_intput_queue(self) -> QueueGenerator:
-        if not isinstance(self._raw_input_queue, QueueGenerator):
-            raise ValueError('Expected raw_input_queue to be defined')
-        return self._raw_input_queue
+    # Make the data source pickleable
+    def __getstate__(self):
+        return frozendict.deepfreeze({
+            'mapping': self.mappings,
+        })
+    def __dask_tokenize__(self):
+        return self.name
+
+    def __getattr__(self, name: str) -> QueueGenerator | Session:
+        if name not in ['raw_input_queue', 'session']:
+            raise AttributeError()
+        out: QueueGenerator | Session | None = getattr(self, name, None)
+        if not out:
+            raise AttributeError()
+        return out
 
     def __repr__(self) -> str:
         """
@@ -207,7 +219,7 @@ class DataSource(ABC):  # pylint: disable=too-many-instance-attributes
                 f"Expected a QueueGenerator, got {type(queue_obj)}"
             )
         self._raw_input_queue = queue_obj
-        self._raw_input_queue.incoming_queue_processors.append(self)
+        # self._raw_input_queue.incoming_queue_processors.append(self)
 
     def attach_schema(
         self, schema: Dict[str, str], dispatch_dict: Dict
@@ -279,19 +291,17 @@ class DataSource(ABC):  # pylint: disable=too-many-instance-attributes
     def from_uri(
         cls,
         uri: str | ParseResult,
-        name: Optional[str] = None,
-        config: Optional[Dict[str, Any]] = None,
+        config: Any = None,
     ) -> "DataSource":
         """Factory for creating a ``DataSource`` from a URI."""
-        dispatcher = {
+        dispatcher: dict[str, type[CSVDataSource] | type[ParquetFileDataSource]] = {
             "csv": CSVDataSource,
             "parquet": ParquetFileDataSource,
         }
         uri = ensure_uri(uri)
-        filename_extension = uri.path.split(".")[-1]
-        options = config.options if config else {}
-        data_source = dispatcher[filename_extension](uri, **options)
-        data_source.name = name
+        filename_extension: str = uri.path.split(".")[-1]
+        options: dict[str, Any] | Any = config.options if config else {}
+        data_source: CSVDataSource | ParquetFileDataSource = dispatcher[filename_extension](uri, **options)
         return data_source
 
     def cast_row(self, row: Dict[str, Any]) -> Dict[str, Any]:
@@ -319,39 +329,24 @@ class DataSource(ABC):  # pylint: disable=too-many-instance-attributes
         self.started = True
         self.started_at = datetime.datetime.now()
         for row in self.rows():
-            # if hasattr(self, "session") and (
-            #     self.session.fact_generated_queue.queue.qsize()
-            #     + self.session.check_fact_against_triggers_queue.queue.qsize()
-            #     + self.session.triggered_lookup_processor_queue.queue.qsize()
-            #     > DATA_SOURCE_HIGH_WATER_MARK
-            # ):
-            #     while (
-            #         self.session.fact_generated_queue.queue.qsize()
-            #         + self.session.check_fact_against_triggers_queue.queue.qsize()
-            #         + self.session.triggered_lookup_processor_queue.queue.qsize()
-            #         > DATA_SOURCE_LOW_WATER_MARK
-            #     ):
-            #         time.sleep(0.5)
-            # # LOGGER.error('back_pressure: %s', self.back_pressure)
-            # time.sleep(self.back_pressure)
-            # Only queue the rows that this worker is responsible for
-            # row_hash = hash(pickle.dumps(row))
-            # if row_hash < 0:
-            #     row_hash = -row_hash
-            # if row_hash % self.num_workers != self.worker_num:
-            #     continue
+            with pyroscope.tag_wrapper({"nmetl": "queue_row"}):
+                row = self.cast_row(row)
+                self.add_new_columns(row)
+                self.received_counter += 1
 
-            row = self.cast_row(row)
-            self.add_new_columns(row)
-            self.received_counter += 1
-
-            self.raw_input_queue.put(
-                RawDatum(data_source=self, row=row),
-            )
-            self.sent_counter += 1
-            if self.halt:
-                LOGGER.debug("DataSource %s is halting", self.name)
-                break
+                self.raw_input_queue.put(
+                    RawDatum(mappings=self.mappings, row=row),
+                )
+                LOGGER.debug(row)
+                self.sent_counter += 1
+                if self.halt:
+                    LOGGER.debug("DataSource %s is halting", self.name)
+                    break
+                if self.received_counter % 100 == 0:
+                    while self.session.tasks_in_memory > 1:
+                        LOGGER.debug('DataSource waiting...')
+                        time.sleep(random.random())
+                    LOGGER.debug('Number of tasks in memory: %s', self.session.tasks_in_memory)
         self.finished = True
         self.finished_at = datetime.datetime.now()
 
@@ -360,11 +355,12 @@ class DataSource(ABC):  # pylint: disable=too-many-instance-attributes
         self.loading_thread.run()
         self.started = True
 
+    @staticmethod
     def generate_raw_facts_from_row(
-        self, row: Dict[str, Any]
+        row: Dict[str, Any], mappings,
     ) -> Generator[AtomicFact, None, None]:
         """Generate raw facts from a row."""
-        for mapping in self.mappings:
+        for mapping in mappings:
             yield from mapping + row
 
 
@@ -425,29 +421,29 @@ class DataSourceMapping:  # pylint: disable=too-few-public-methods,too-many-inst
     ) -> Generator[AtomicFact, None, None]:
         """Process the mapping against a raw datum."""
         if self.is_attribute_mapping:
-            fact = FactNodeHasAttributeWithValue(
+            fact: FactNodeHasAttributeWithValue = FactNodeHasAttributeWithValue(
                 node_id=f"{self.label}::{row[self.identifier_key]}",
                 attribute=self.attribute,
                 value=row[self.attribute_key],
             )
             yield fact
         elif self.is_label_mapping:
-            fact = FactNodeHasLabel(
+            fact: FactNodeHasLabel = FactNodeHasLabel(
                 node_id=f"{self.label}::{row[self.identifier_key]}",
                 label=self.label,
             )
             yield fact
         elif self.is_relationship_mapping:
             relationship_id = uuid.uuid4().hex
-            source_fact = FactRelationshipHasSourceNode(
+            source_fact: FactRelationshipHasSourceNode = FactRelationshipHasSourceNode(
                 relationship_id=relationship_id,
                 source_node_id=f"{self.source_label}::{row[self.source_key]}",
             )
-            target_fact = FactRelationshipHasTargetNode(
+            target_fact: FactRelationshipHasTargetNode = FactRelationshipHasTargetNode(
                 relationship_id=relationship_id,
                 target_node_id=f"{self.target_label}::{row[self.target_key]}",
             )
-            label_fact = FactRelationshipHasLabel(
+            label_fact: FactRelationshipHasLabel = FactRelationshipHasLabel(
                 relationship_id=relationship_id,
                 relationship_label=self.relationship,
             )
@@ -500,7 +496,6 @@ class FixtureDataSource(DataSource):
         while go:
             go = False
             for row in self.data:
-                time.sleep(self.delay)
                 yield row
             if self.loop:
                 go = True

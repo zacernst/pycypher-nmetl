@@ -45,12 +45,11 @@ class AtomicFact:  # pylint: disable=too-few-public-methods
             *_: Variable positional arguments (ignored).
             session (Optional[Session]): The session this fact belongs to. Defaults to None.
         """
-        self.session = session
+        self.session = None
 
-    def __getstate__(self):
-        state = self.__dict__.copy()
-        del state["session"]
-        return state
+    # def __getstate__(self):
+    #     state = self.__dict__.copy()
+    #     return state
 
     # def __setstate__(self, state):
     #      self.__dict__.update(state)

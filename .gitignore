@@ -227,3 +227,7 @@ fdb_data/4691/processId
 fdb_data/4692/processId
 imampath/info
 imampath/q00000
+scratch.py
+pyro_test.py
+pyroscope*
+

@@ -945,10 +945,18 @@ class ObjectAsSeries(TreeMixin, Evaluable):
         fact_collection: FactCollection,
         projection: Optional[Dict[str, str | List[str]]] = None,
     ) -> Any:
-        result = {
-            obj.alias: obj._evaluate(fact_collection, projection=projection)  # pylint: disable=protected-access
-            for obj in self.lookups
-        }
+        LOGGER.debug('Calling _evaluate on ObjectAsSeries: %s', self.__dict__)
+        try:
+            result = {
+                obj.alias: obj._evaluate(fact_collection, projection=projection)  # pylint: disable=protected-access
+                for obj in self.lookups
+            }
+        except AttributeError as e:
+            LOGGER.error('Error while calling _evaluate on ObjectAsSeries: %s', self.__dict__)
+            LOGGER.error('Projection: %s', projection)
+            LOGGER.error('Error: %s', e)
+            import pdb; pdb.set_trace()
+            raise e
         return result
 
 
@@ -963,7 +971,6 @@ class WithClause(TreeMixin, Evaluable):
 
     def __init__(self, lookups: ObjectAsSeries):
         self.lookups = lookups
-        self.thread_pool = ThreadPool(64)
 
     def __repr__(self):
         return f"WithClause({self.lookups})"
@@ -1125,27 +1132,19 @@ class WithClause(TreeMixin, Evaluable):
         LOGGER.debug("Done.")
         LOGGER.debug("getting results...")
         LOGGER.debug("Getting futures...")
-        futures = [
-            self.thread_pool.apply_async(
-                self._evaluate_one_projection,
-                (fact_collection,),
-                {"projection": one_projection},
-            )
-            for one_projection in solutions
-        ]
-        LOGGER.debug("Solutions: %s: ", solutions)
-        LOGGER.debug("Defined list of futures: %s", len(futures))
-        # results = [
-        #     self._evaluate_one_projection(
-        #         fact_collection, projection=one_projection
+        # futures = [
+        #     self.thread_pool.apply_async(
+        #         self._evaluate_one_projection,
+        #         (fact_collection,),
+        #         {"projection": one_projection},
         #     )
         #     for one_projection in solutions
         # ]
-        future_wait_start_time = datetime.datetime.now()
-        results = [future.get() for future in futures]
-        future_wait_end_time = datetime.datetime.now()
-        LOGGER.debug("Waited %s", future_wait_end_time - future_wait_start_time)
-
+        
+        results = [
+            self._evaluate_one_projection(fact_collection, projection=one_projection)
+            for one_projection in solutions
+        ]
         LOGGER.debug("results: %s", results)
         for one_result, one_solution in zip(results, solutions):
             one_result["__match_solution__"] = one_solution
@@ -1555,10 +1554,12 @@ class Return(TreeMixin):
                 self.projection.lookups
             ):  # Each is a single object/attribute lookup
                 if isinstance(return_lookup, ObjectAttributeLookup):
+                    LOGGER.debug("LOOKUP ObjectAttributeLookup: %s, %s, %s", sub_trigger_pair, with_clause_projection, return_lookup.object)
                     one_return_output[return_lookup.object] = (
                         with_clause_projection[return_lookup.object]
                     )
                 elif isinstance(return_lookup, AliasedName):
+                    LOGGER.debug("LOOKUP AliasedName: %s, %s", with_clause_projection, return_lookup.name)
                     one_return_output[return_lookup.name] = (
                         with_clause_projection[return_lookup.name]
                     )

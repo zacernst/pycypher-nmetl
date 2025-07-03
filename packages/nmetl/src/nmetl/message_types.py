@@ -53,7 +53,7 @@ class RawDatum(Message):  # pylint: disable=too-few-public-methods
 
     def __init__(
         self,
-        data_source: Optional["DataSource"] = None,
+        mappings: Optional[list["DataSourceMapping"]] = None,
         row: Optional[dict[str, Any]] = None,
     ):
         """
@@ -64,7 +64,7 @@ class RawDatum(Message):  # pylint: disable=too-few-public-methods
             row (Optional[dict[str, Any]]): The row of data. Defaults to None.
         """
         self.row = row
-        self.data_source = data_source
+        self.mappings = mappings
 
     def __repr__(self):
         """

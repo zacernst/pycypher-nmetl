@@ -8,6 +8,7 @@ Use FoundationDB as the key-value store of the ``FactCollection``.
 from __future__ import annotations
 
 import inspect
+import pickle
 import queue
 import threading
 import time
@@ -71,7 +72,7 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
         super().__init__(*args, **kwargs)
 
     def _prefix_read_items(
-        self, prefix: bytes, continue_to_end: Optional[bool] = False
+        self, prefix: bytes, continue_to_end: Optional[bool] = False, only_one_result: Optional[bool] = False,
     ) -> Generator[Any, Any]:
         """
         Read a range of keys from the database.
@@ -91,6 +92,8 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
             if continue_to_end or key.startswith(str(prefix, encoding="utf8")):
                 counter += 1
                 yield key, value
+                if only_one_result:
+                    break
             else:
                 break
         LOGGER.debug("Done with _prefix_read_items: %s: %s", prefix, counter)
@@ -98,7 +101,11 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
     def make_index_for_fact(self, fact: AtomicFact) -> bytes:
         """Used for the memcache index"""
         # Call the superclass's version of the method and convert to bytes
-        index: bytes | str = KeyValue.make_index_for_fact(self, fact)
+        try:
+            index: bytes | str = KeyValue.make_index_for_fact(self, fact)
+        except:
+            LOGGER.warning('Could not make index for %s', fact)
+            return None
         return ensure_bytes(index, encoding="utf8")
 
     def _prefix_read_keys(
@@ -122,7 +129,7 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
             yield key
 
     def _prefix_read_values(
-        self, prefix: bytes, continue_to_end: Optional[bool] = False
+        self, prefix: bytes, continue_to_end: Optional[bool] = False, only_one_result: Optional[bool] = False
     ) -> Generator[Any, Any]:
         """
         Read a range of keys from the database.
@@ -138,6 +145,7 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
         for _, value in self._prefix_read_items(
             ensure_bytes(prefix, encoding="utf8"),
             continue_to_end=continue_to_end,
+            only_one_result=only_one_result,
         ):
             counter += 1
             yield value
@@ -219,7 +227,7 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
             bool: True if the fact is in the collection, False otherwise.
         """
         index: bytes = self.make_index_for_fact(fact)
-        output = list(self._prefix_read_values(index))
+        output = list(self._prefix_read_values(index, only_one_result=True))
         # size: int = len(list(self._prefix_read_values(b'')))
         # LOGGER.debug("Checking membership with index: %s: %s: %s", index, output, size)
         return len(output) > 0
@@ -320,12 +328,16 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
         """
         LOGGER.debug("Append called: %s: %s", fact, self.put_counter)
         index: bytes = self.make_index_for_fact(fact)
+        if index is None:
+            LOGGER.warning('Append failed.')
+            return
         if self.sync_writes:
             LOGGER.debug("Using sync writes")
             apply_function = self.thread_pool.apply
         else:
             LOGGER.debug("Using async writes")
             apply_function = self.thread_pool.apply_async
+        # apply_function = self.thread_pool.apply
         apply_function(
             write_fact,
             args=(
@@ -392,7 +404,7 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
         Returns:
             list: A list of all the nodes with the specified label.
         """
-        LOGGER.warning("nodes_with_label called")
+        LOGGER.debug("nodes_with_label called")
         for fact in self:
             if isinstance(fact, FactNodeHasLabel) and fact.label == label:
                 yield fact.node_id
@@ -429,7 +441,7 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
     def __iter__(self):
         curframe = inspect.currentframe()
         calframe = inspect.getouterframes(curframe, 2)
-        LOGGER.warning("__iter__ called: %s", calframe[1][3])
+        LOGGER.debug("__iter__ called: %s", calframe[1][3])
 
         for key_value_obj in self.db.get_range(b"\x00", b"\xff"):
             value = decode(key_value_obj.value)
@@ -547,7 +559,7 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
             while got_one:
                 got_one = False
                 try:
-                    thing = streaming_queue.get(timeout=4)
+                    thing = streaming_queue.get(timeout=4000)
                 except Exception:
                     break
                 if thing is None:
@@ -558,3 +570,10 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
                 # print(all(future.ready() for future in futures))
             if not queueing_thread.is_alive() and endings == len(futures):
                 break
+        
+    def serialize(self) -> None:
+        counter = 0
+        for _, _, key, value in self.parallel_read(increment=1024):
+            print(key, pickle.dumps(value))
+            counter += 1
+
