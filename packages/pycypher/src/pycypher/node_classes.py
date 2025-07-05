@@ -45,6 +45,10 @@ from pydantic import (
 )
 from rich.tree import Tree
 from shared.logger import LOGGER
+from nmetl.prometheus_metrics import SOLUTIONS_TIMER
+
+LOGGER.setLevel("DEBUG")
+
 
 
 class Evaluable(abc.ABC):  # pylint: disable=too-few-public-methods
@@ -947,7 +951,7 @@ class ObjectAsSeries(TreeMixin, Evaluable):
     ) -> Any:
         LOGGER.debug('Calling _evaluate on ObjectAsSeries: %s', self.__dict__)
         try:
-            result = {
+            result: dict[str, Alias | Any] = {
                 obj.alias: obj._evaluate(fact_collection, projection=projection)  # pylint: disable=protected-access
                 for obj in self.lookups
             }
@@ -955,7 +959,6 @@ class ObjectAsSeries(TreeMixin, Evaluable):
             LOGGER.error('Error while calling _evaluate on ObjectAsSeries: %s', self.__dict__)
             LOGGER.error('Projection: %s', projection)
             LOGGER.error('Error: %s', e)
-            import pdb; pdb.set_trace()
             raise e
         return result
 
@@ -1086,9 +1089,13 @@ class WithClause(TreeMixin, Evaluable):
         fact_collection: FactCollection,
         projection: Optional[Dict[str, str | List[str]]] = None,
     ) -> Any:
-        return self.lookups._evaluate(  # pylint: disable=protected-access
-            fact_collection, projection=projection
-        )
+        try:
+            return self.lookups._evaluate(  # pylint: disable=protected-access
+                fact_collection, projection=projection
+            )
+        except Exception as e:
+            LOGGER.error('in _evaluate_one_projection: %s::::%s', projection, self.lookups)
+            raise e
 
     def _evaluate(
         self,
@@ -1221,6 +1228,7 @@ class Match(TreeMixin):
         if self.with_clause:
             yield self.with_clause
 
+    @SOLUTIONS_TIMER.time()
     def solutions(
         self, fact_collection: FactCollection
     ) -> List[Dict[str, Any]]:

@@ -46,6 +46,8 @@ def decode(encoded: str) -> Any:
 
 def encode(obj: Any, to_bytes: bool = False) -> str | bytes:
     """Encode an object as a base64 string."""
+    if hasattr(obj, 'lineage'):
+        print(obj.lineage)
     try:
         encoded = base64.b64encode(pickle.dumps(obj)).decode("utf-8")
     except Exception as e:
@@ -60,6 +62,8 @@ def ensure_bytes(value: Any, **kwargs) -> bytes:
     """Change the value to a bytestring if it isn't one already. We should be able
     to get rid of this eventually after everything's been typechecked correctly.
     """
-    if isinstance(value, bytes):
+    if value is None:
+        return
+    elif isinstance(value, bytes):
         return value
     return value.encode(**kwargs)

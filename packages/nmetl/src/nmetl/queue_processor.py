@@ -10,32 +10,27 @@ from __future__ import annotations
 
 import datetime
 import hashlib
-import inspect
 import multiprocessing as mp
 import queue
 from dask.distributed import get_worker
 # import queue
-import sys
 import threading
 
 # import threading
 import time
-import traceback
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from queue import Queue
 from typing import TYPE_CHECKING, Callable, Type, Any, Dict, List, Optional
 if TYPE_CHECKING:
     from dask.distributed import Client
+    from nmetl.configuration import SessionConfig
     from pycypher.fact_collection import FactCollection
-
 
 from nmetl.queue_generator import QueueGenerator
 from nmetl.trigger import CypherTrigger
-if TYPE_CHECKING:
-    from nmetl.configuration import SessionConfig
+from pycypher.lineage import Appended, FromMapping
 from pycypher.fact import (
-    AtomicFact,
     FactNodeHasAttributeWithValue,
     FactRelationshipHasLabel,
     FactRelationshipHasSourceNode,
@@ -44,22 +39,9 @@ from pycypher.fact import (
 from pycypher.node_classes import Collection
 from pycypher.query import NullResult
 from shared.logger import LOGGER
-import pyroscope
 
 
-pyroscope.configure(
-    application_name    = "nmetl", # replace this with some name for your application
-    server_address      = "http://localhost:4040", # replace this with the address of your Pyroscope server
-    sample_rate         = 100, # default is 100
-    detect_subprocesses = True, # detect subprocesses started by the main process; default is False
-    oncpu               = True, # report cpu time only; default is True
-    gil_only            = False, # only include traces for threads that are holding on to the Global Interpreter Lock; default is True
-    enable_logging      = False, # does enable logging facility; default is False
-)
-
-# Create a metric to track time spent and requests made.
-
-# Decorate function with metric.
+from nmetl.prometheus_metrics import REQUEST_TIME
 
 
 LOGGER.setLevel('DEBUG')
@@ -226,6 +208,9 @@ class QueueProcessor(ABC):  # pylint: disable=too-few-public-methods,too-many-in
         batch_result_list = completed_future.result()
         LOGGER.debug('In handle_result_futures: %s: %s', self.__class__.__name__, batch_result_list)
         for result_list in (batch_result_list or []):
+            if result_list is None:
+                LOGGER.error('result_list is None')
+                raise ValueError('result_list is None')
             if not isinstance(result_list, list):
                 result_list = [result_list]
             for result in result_list:
@@ -237,6 +222,7 @@ class QueueProcessor(ABC):  # pylint: disable=too-few-public-methods,too-many-in
     def process_item_from_queue(buffer: List[Any]) -> Any:
         """Process an item from the queue."""
 
+    @REQUEST_TIME.time()
     def _process_item_from_queue(self) -> Any:
         """Wrap the process call in case we want some logging."""
         LOGGER.debug('Sending buffer to %s (%s)', self.__class__.__name__, len(self.buffer))
@@ -256,13 +242,13 @@ class RawDataProcessor(QueueProcessor):
         """Process raw data from the ``raw_input_queue``, generate facts."""
         all_results: list[list[Any]] = []
         for item in buffer:
-            with pyroscope.tag_wrapper({ "nmetl": "raw_data_item"}):
-                row: dict[str, Any] = item.row
-                out: list[Any] = []
-                for mapping in item.mappings:
-                    for out_item in mapping + row:
-                        out.append(out_item)
-                all_results.append(out)
+            row: dict[str, Any] = item.row
+            out: list[Any] = []
+            for mapping in item.mappings:
+                for out_item in mapping + row:
+                    out_item.lineage = FromMapping()
+                    out.append(out_item)
+            all_results.append(out)
         return all_results
 
 
@@ -271,7 +257,6 @@ class FactGeneratedQueueProcessor(QueueProcessor):  # pylint: disable=too-few-pu
     Reads from the fact_generated_queue and processes the facts
     by inserting them into the ``FactCollection``.
     """
-
     @staticmethod
     def process_item_from_queue(buffer: List[Any]) -> List[List[Any]]:
         """Process new facts from the fact_generated_queue."""
@@ -282,10 +267,12 @@ class FactGeneratedQueueProcessor(QueueProcessor):  # pylint: disable=too-few-pu
         #     self.in_counter += 1
         #     return
         # else:
-        fact_collection = QueueProcessor.get_fact_collection()
+        fact_collection: FactCollection = QueueProcessor.get_fact_collection()
         for item in buffer:
             LOGGER.debug('Writing: %s', item)
+            item.lineage = Appended(lineage=getattr(item, 'lineage', None))
             fact_collection.append(item)
+            # SAMPLE_HISTOGRAM.observe(random.random() * 10)
         # size = len(list(self.fact_collection._prefix_read_items(b'')))
         # LOGGER.debug('Fact collection elements: %s in FactGeneratedQueueProcessor', size)
         # Put the fact in the queue to be checked for triggers

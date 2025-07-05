@@ -19,9 +19,11 @@ from nmetl.trigger import VariableAttribute
 from pycypher.fact_collection import FactCollection
 from pycypher.fact_collection.foundationdb import FoundationDBFactCollection
 from shared.logger import LOGGER
+from prometheus_client import start_http_server
 
 
-LOGGER.setLevel("ERROR")
+
+LOGGER.setLevel("DEBUG")
 
 
 def send_trigger_dict_to_worker(dask_worker, trigger_dict) -> None:
@@ -216,7 +218,7 @@ if __name__ == "__main__":
             occupation, None
         )
         if isinstance(lookup, str):
-            out = lookup[:3] == "MGR"
+            out: bool = lookup[:3] == "MGR"
             return out
         else:
             return False
@@ -231,7 +233,7 @@ if __name__ == "__main__":
             occupation, None
         )
         if isinstance(lookup, str):
-            out = lookup[:3] == "BUS"
+            out: bool = lookup[:3] == "BUS"
             return out
         else:
             return False
@@ -246,7 +248,7 @@ if __name__ == "__main__":
             occupation, None
         )
         if isinstance(lookup, str):
-            out = lookup[:3] == "FIN"
+            out: bool = lookup[:3] == "FIN"
             return out
         else:
             return False
@@ -261,7 +263,7 @@ if __name__ == "__main__":
             occupation, None
         )
         if isinstance(lookup, str):
-            out = lookup[:3] == "CMM"
+            out: bool = lookup[:3] == "CMM"
             return out
         else:
             return False
@@ -276,7 +278,7 @@ if __name__ == "__main__":
             occupation, None
         )
         if isinstance(lookup, str):
-            out = lookup[:3] == "ENG"
+            out: bool = lookup[:3] == "ENG"
             return out
         else:
             return False
@@ -291,7 +293,7 @@ if __name__ == "__main__":
             occupation, None
         )
         if isinstance(lookup, str):
-            out = lookup[:3] == "SCI"
+            out: bool = lookup[:3] == "SCI"
             return out
         else:
             return False
@@ -306,7 +308,7 @@ if __name__ == "__main__":
             occupation, None
         )
         if isinstance(lookup, str):
-            out = lookup[:3] == "CMS"
+            out: bool = lookup[:3] == "CMS"
             return out
         else:
             return False
@@ -321,7 +323,7 @@ if __name__ == "__main__":
             occupation, None
         )
         if isinstance(lookup, str):
-            out = lookup[:3] == "LGL"
+            out: bool = lookup[:3] == "LGL"
             return out
         else:
             return False
@@ -336,7 +338,7 @@ if __name__ == "__main__":
             occupation, None
         )
         if isinstance(lookup, str):
-            out = lookup[:3] == "EDU"
+            out: bool = lookup[:3] == "EDU"
             return out
         else:
             return False
@@ -351,7 +353,7 @@ if __name__ == "__main__":
             occupation, None
         )
         if isinstance(lookup, str):
-            out = lookup[:3] == "ENT"
+            out: bool = lookup[:3] == "ENT"
             return out
         else:
             return False
@@ -370,7 +372,7 @@ if __name__ == "__main__":
             return out
         else:
             return False
-    
+
     @session.trigger(
         "MATCH (i:PSAM_2023_Individual) WITH i.SOCP AS occupation RETURN occupation"
     )
@@ -381,11 +383,11 @@ if __name__ == "__main__":
             occupation, None
         )
         if isinstance(lookup, str):
-            out = lookup[:3] == "HLS"
+            out: bool = lookup[:3] == "HLS"
             return out
         else:
             return False
-    
+
     @session.trigger(
         "MATCH (i:PSAM_2023_Individual) WITH i.SOCP AS occupation RETURN occupation"
     )
@@ -396,11 +398,11 @@ if __name__ == "__main__":
             occupation, None
         )
         if isinstance(lookup, str):
-            out = lookup[:3] == "PRT"
+            out: bool = lookup[:3] == "PRT"
             return out
         else:
             return False
-    
+
     @session.trigger(
         "MATCH (i:PSAM_2023_Individual) WITH i.SOCP AS occupation RETURN occupation"
     )
@@ -411,11 +413,11 @@ if __name__ == "__main__":
             occupation, None
         )
         if isinstance(lookup, str):
-            out = lookup[:3] == "EAT"
+            out: bool = lookup[:3] == "EAT"
             return out
         else:
             return False
-    
+
     @session.trigger(
         "MATCH (i:PSAM_2023_Individual) WITH i.SOCP AS occupation RETURN occupation"
     )
@@ -430,7 +432,7 @@ if __name__ == "__main__":
             return out
         else:
             return False
-    
+
     @session.trigger(
         "MATCH (i:PSAM_2023_Individual) WITH i.SOCP AS occupation RETURN occupation"
     )
@@ -445,7 +447,7 @@ if __name__ == "__main__":
             return out
         else:
             return False
-    
+
     @session.trigger(
         "MATCH (i:PSAM_2023_Individual) WITH i.SOCP AS occupation RETURN occupation"
     )
@@ -471,7 +473,7 @@ if __name__ == "__main__":
             occupation, None
         )
         if isinstance(lookup, str):
-            out = lookup[:3] == "OFF"
+            out: bool = lookup[:3] == "OFF"
             return out
         else:
             return False
@@ -485,7 +487,7 @@ if __name__ == "__main__":
             occupation, None
         )
         if isinstance(lookup, str):
-            out = lookup[:3] == "CON"
+            out: bool = lookup[:3] == "CON"
             return out
         else:
             return False
@@ -499,7 +501,7 @@ if __name__ == "__main__":
             occupation, None
         )
         if isinstance(lookup, str):
-            out = lookup[:3] == "EXT"
+            out: bool = lookup[:3] == "EXT"
             return out
         else:
             return False
@@ -592,7 +594,7 @@ if __name__ == "__main__":
             state, None
         )
         return lookup
-    
+
     @session.trigger(
         "MATCH (i:PSAM_2023_Individual) WITH i.PUMA AS puma RETURN puma"
     )
@@ -600,7 +602,7 @@ if __name__ == "__main__":
         puma
     ) -> VariableAttribute["i", "puma_fips"]:
         return puma
-    
+
     @session.trigger(
         "MATCH (i:PSAM_2023_Individual) WITH i.puma_fips "
         "AS puma_fips, i.state_fips AS state_fips "
@@ -622,5 +624,6 @@ if __name__ == "__main__":
             send_trigger_dict_to_worker, trigger_dict=trigger_dict
         )
     )
+    # start_http_server(8000)
     session.start_threads()
     session.block_until_finished()

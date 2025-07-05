@@ -26,6 +26,8 @@ from pycypher.fact_collection import FactCollection
 from pycypher.fact_collection.key_value import KeyValue
 from pycypher.query import NullResult, QueryNodeLabel, QueryValueOfNodeAttribute
 from shared.helpers import decode, encode, ensure_bytes
+from nmetl.prometheus_metrics import FACTS_APPENDED
+
 
 try:
     import fdb
@@ -38,6 +40,8 @@ def write_fact(db, index, fact):
     """Write a ``Fact`` to FoundationDB"""
     LOGGER.debug("Writing to FoundationDB: %s", index)
     db[index] = encode(fact, to_bytes=True)
+
+    FACTS_APPENDED.inc(1)
     return True
 
 
@@ -72,7 +76,7 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
         super().__init__(*args, **kwargs)
 
     def _prefix_read_items(
-        self, prefix: bytes, continue_to_end: Optional[bool] = False, only_one_result: Optional[bool] = False,
+        self, prefix: bytes | None, continue_to_end: Optional[bool] = False, only_one_result: Optional[bool] = False,
     ) -> Generator[Any, Any]:
         """
         Read a range of keys from the database.
@@ -81,6 +85,8 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
             Any: The values associated with the keys in the range.
         """
         LOGGER.debug("_prefix_read_items called")
+        if prefix is None:
+            return
         counter: int = 0
         prefix: bytes = ensure_bytes(prefix, encoding="utf8")
         end_key: bytes = b"\xff" if continue_to_end else prefix + b"\xff"
@@ -227,7 +233,7 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
             bool: True if the fact is in the collection, False otherwise.
         """
         index: bytes = self.make_index_for_fact(fact)
-        output = list(self._prefix_read_values(index, only_one_result=True))
+        output = list(i for i in self._prefix_read_values(index, only_one_result=True) if i is not None)
         # size: int = len(list(self._prefix_read_values(b'')))
         # LOGGER.debug("Checking membership with index: %s: %s: %s", index, output, size)
         return len(output) > 0

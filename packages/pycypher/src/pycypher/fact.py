@@ -12,8 +12,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 if TYPE_CHECKING:
-    from pycypher.session import Session
-
+    from nmetl.session import Session
+from pycypher.lineage import Lineage
 from pycypher.solver import (
     Constraint,
     ConstraintNodeHasAttributeWithValue,
@@ -46,6 +46,7 @@ class AtomicFact:  # pylint: disable=too-few-public-methods
             session (Optional[Session]): The session this fact belongs to. Defaults to None.
         """
         self.session = None
+        self.lineage: Lineage | None = None
 
     # def __getstate__(self):
     #     state = self.__dict__.copy()

@@ -26,6 +26,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional, Protocol, TypeVar
 if TYPE_CHECKING:
     from nmetl.session import Session
+    from prometheus_client import Histogram
 from urllib.parse import ParseResult
 
 import pyarrow.parquet as pq
@@ -42,8 +43,13 @@ from pycypher.fact import (
 from shared.helpers import ensure_uri
 from shared.logger import LOGGER
 from shared.telemetry import pyroscope
+from nmetl.prometheus_metrics import ROWS_QUEUED, ROW_PROCESSING_TIME 
+
 
 LOGGER.setLevel('ERROR')
+
+
+
 
 def profile_thread(func, *args, **kwargs):
     pr = cProfile.Profile()
@@ -329,7 +335,7 @@ class DataSource(ABC):  # pylint: disable=too-many-instance-attributes
         self.started = True
         self.started_at = datetime.datetime.now()
         for row in self.rows():
-            with pyroscope.tag_wrapper({"nmetl": "queue_row"}):
+            with ROW_PROCESSING_TIME.time():
                 row = self.cast_row(row)
                 self.add_new_columns(row)
                 self.received_counter += 1
@@ -337,12 +343,13 @@ class DataSource(ABC):  # pylint: disable=too-many-instance-attributes
                 self.raw_input_queue.put(
                     RawDatum(mappings=self.mappings, row=row),
                 )
+                ROWS_QUEUED.inc()
                 LOGGER.debug(row)
                 self.sent_counter += 1
                 if self.halt:
                     LOGGER.debug("DataSource %s is halting", self.name)
                     break
-                if self.received_counter % 100 == 0:
+                if self.received_counter % 5 == 0:
                     while self.session.tasks_in_memory > 1:
                         LOGGER.debug('DataSource waiting...')
                         time.sleep(random.random())

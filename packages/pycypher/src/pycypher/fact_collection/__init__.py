@@ -167,7 +167,7 @@ class FactCollection(ABC):
         Yields:
             AtomicFact: Facts that are relevant to the given constraints.
         """
-        relevant_facts = set()
+        relevant_facts: set[AtomicFact] = set()
         for constraint in constraints:
             match constraint:
                 case ConstraintNodeHasLabel():
@@ -177,6 +177,7 @@ class FactCollection(ABC):
                         yield fact
                         relevant_facts.add(fact)
                 case ConstraintNodeHasAttributeWithValue():
+                    LOGGER.warning("relevant_facts: ConstraintNodeHasAttributeWithValue: %s", constraint)
                     for (
                         fact
                     ) in self.node_has_attribute_with_specific_value_facts(
@@ -187,18 +188,21 @@ class FactCollection(ABC):
                         yield fact
                         relevant_facts.add(fact)
                 case ConstraintRelationshipHasSourceNode():
+                    LOGGER.warning("relevant_facts: ConstraintRelationshipHasSourceNode: %s", constraint)
                     for fact in self.relationship_has_source_node_facts():
                         if fact in relevant_facts:
                             continue
                         yield fact
                         relevant_facts.add(fact)
                 case ConstraintRelationshipHasTargetNode():
+                    LOGGER.warning("relevant_facts: ConstraintRelationshipHasTargetNode: %s", constraint)
                     for fact in self.relationship_has_target_node_facts():
                         if fact in relevant_facts:
                             continue
                         yield fact
                         relevant_facts.add(fact)
                 case ConstraintRelationshipHasLabel():
+                    LOGGER.warning("relevant_facts: ConstraintRelationshipHasLabel: %s", constraint)
                     for fact in self.relationship_has_label_facts():
                         if (
                             fact in relevant_facts
@@ -208,6 +212,7 @@ class FactCollection(ABC):
                         yield fact
                         relevant_facts.add(fact)
                 case ConstraintVariableRefersToSpecificObject():
+                    LOGGER.warning("relevant_facts: ConstraintVariableRefersToSpecificObject: %s", constraint)
                     pass
                 case _:
                     raise ValueError(
