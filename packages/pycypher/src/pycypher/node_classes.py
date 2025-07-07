@@ -8,10 +8,11 @@ from __future__ import annotations
 import abc
 import copy
 import datetime
+import itertools
 import uuid
-from functools import lru_cache, partial
-from multiprocessing.pool import ThreadPool
-from typing import Any, Dict, Generator, List, Optional
+import collections
+from functools import partial
+from typing import Set, Type, Any, Dict, Generator, List, Optional
 
 from constraint import Domain, Problem
 from pycypher.exceptions import WrongCypherTypeError
@@ -23,8 +24,7 @@ from pycypher.fact import (
     FactRelationshipHasTargetNode,
 )
 from pycypher.fact_collection import FactCollection
-from pycypher.query import NullResult, QueryValueOfNodeAttribute
-from pycypher.shims import Shim
+from pycypher.query import NullResult, QueryValueOfNodeAttribute, QueryNodeLabel
 from pycypher.solver import (
     Constraint,
     ConstraintNodeHasAttributeWithValue,
@@ -59,8 +59,7 @@ class Evaluable(abc.ABC):  # pylint: disable=too-few-public-methods
     @abc.abstractmethod
     def _evaluate(
         self,
-        fact_collection: FactCollection,
-        projection: Optional[Dict[str, str | List[str]]] = None,
+        *args, **kwargs,
     ) -> Any:
         pass
 
@@ -584,8 +583,8 @@ class BinaryBoolean(Predicate, TreeMixin):
 
     """
 
-    left_side_types = bool
-    right_side_types = bool
+    left_side_types: Type[bool] = bool
+    right_side_types: Type[bool] = bool
 
     def __init__(  # pylint: disable=super-init-not-called
         self,
@@ -633,8 +632,8 @@ class AliasedName(TreeMixin):
 class Equals(BinaryBoolean, Evaluable):
     """Binary infix operator for equality."""
 
-    left_side_types = int | float | str | bool
-    right_side_types = int | float | str | bool
+    left_side_types: type[bool | float | int | str] = int | float | str | bool
+    right_side_types: type[bool | float | int | str] = int | float | str | bool
 
     def tree(self) -> Tree:
         t = Tree(self.__class__.__name__)
@@ -645,17 +644,14 @@ class Equals(BinaryBoolean, Evaluable):
     def _evaluate(
         self,
         fact_collection: FactCollection,
-        projection: Optional[Dict[str, str | List[str]]] = None,
+        start_entity_var_id_mapping: Dict[str, str],
     ) -> Any:
-        left_value = self.left_side.evaluate(
-            fact_collection, projection=projection
+        left_value = self.left_side._evaluate(
+            fact_collection, start_entity_var_id_mapping=start_entity_var_id_mapping
         )  # pylint: disable=protected-access
-        right_value = self.right_side.evaluate(
-            fact_collection, projection=projection
+        right_value = self.right_side._evaluate(
+            fact_collection, start_entity_var_id_mapping=start_entity_var_id_mapping
         )  # pylint: disable=protected-access
-        type_check_result = self.type_check(left_value, right_value)
-        if isinstance(type_check_result, NullResult):
-            return NullResult(self)
         return Literal(left_value == right_value)
 
 
@@ -862,18 +858,18 @@ class ObjectAttributeLookup(TreeMixin, Evaluable):
     #     """
     #     return fact_collection.get_attribute(self.object, self.attribute)
 
+    # HERE
     def _evaluate(
         self,
         fact_collection: FactCollection,
-        projection: dict,
-    ) -> Any:
+        start_entity_var_id_mapping: Dict[str, str],
+    ) -> Literal:
         """TODO: Need to handle the case where the attribute is `None`"""
         one_query: QueryValueOfNodeAttribute = QueryValueOfNodeAttribute(
-            node_id=projection[self.object], attribute=self.attribute
+            node_id=start_entity_var_id_mapping[self.object], attribute=self.attribute
         )
-        LOGGER.debug("about to do one query... %s", one_query)
         value: Any = fact_collection.query(one_query)
-        return value
+        return Literal(value)
 
 
 class Alias(TreeMixin, Evaluable):
@@ -1027,62 +1023,62 @@ class WithClause(TreeMixin, Evaluable):
         """Variables not in a COLLECT, SUM, or other Aggregation."""
         return list(set(self.all_variables) - set(self.aggregated_variables))
 
-    @staticmethod
-    def _unique_non_aggregated_variable_solutions(
-        solutions, non_aggregated_variables
-    ):
-        non_aggregated_variable_solutions = []
-        for solution in solutions:
-            non_aggregated_variable_solution = {}
-            # Below raises error in test_trigger_decorator_function_relationship_function unit test
-            for variable in non_aggregated_variables:
-                non_aggregated_variable_solution[variable] = solution[variable]
-            if (
-                non_aggregated_variable_solution
-                not in non_aggregated_variable_solutions
-            ):
-                non_aggregated_variable_solutions.append(
-                    non_aggregated_variable_solution
-                )
-        return non_aggregated_variable_solutions
+    # @staticmethod
+    # def _unique_non_aggregated_variable_solutions(
+    #     solutions, non_aggregated_variables
+    # ):
+    #     non_aggregated_variable_solutions = []
+    #     for solution in solutions:
+    #         non_aggregated_variable_solution = {}
+    #         # Below raises error in test_trigger_decorator_function_relationship_function unit test
+    #         for variable in non_aggregated_variables:
+    #             non_aggregated_variable_solution[variable] = solution[variable]
+    #         if (
+    #             non_aggregated_variable_solution
+    #             not in non_aggregated_variable_solutions
+    #         ):
+    #             non_aggregated_variable_solutions.append(
+    #                 non_aggregated_variable_solution
+    #             )
+    #     return non_aggregated_variable_solutions
 
-    @staticmethod
-    def _transform_solutions_by_aggregations(
-        solutions, aggregated_variables, non_aggregated_variables
-    ):
-        transformed_solutions = []
-        non_aggregated_combinations = (
-            WithClause._unique_non_aggregated_variable_solutions(
-                solutions, non_aggregated_variables
-            )
-        )
-        for non_aggregated_combination in non_aggregated_combinations:
-            transformed_solution = non_aggregated_combination
-            for solution in solutions:
-                if all(
-                    solution[variable] == non_aggregated_combination[variable]
-                    for variable in non_aggregated_variables
-                ):
-                    for variable in aggregated_variables:
-                        if variable not in transformed_solution:
-                            transformed_solution[variable] = []
-                        transformed_solution[variable].append(
-                            solution[variable]
-                        )
-            transformed_solutions.append(transformed_solution)
-        return transformed_solutions
+    # @staticmethod
+    # def _transform_solutions_by_aggregations(
+    #     solutions, aggregated_variables, non_aggregated_variables
+    # ):
+    #     transformed_solutions = []
+    #     non_aggregated_combinations = (
+    #         WithClause._unique_non_aggregated_variable_solutions(
+    #             solutions, non_aggregated_variables
+    #         )
+    #     )
+    #     for non_aggregated_combination in non_aggregated_combinations:
+    #         transformed_solution = non_aggregated_combination
+    #         for solution in solutions:
+    #             if all(
+    #                 solution[variable] == non_aggregated_combination[variable]
+    #                 for variable in non_aggregated_variables
+    #             ):
+    #                 for variable in aggregated_variables:
+    #                     if variable not in transformed_solution:
+    #                         transformed_solution[variable] = []
+    #                     transformed_solution[variable].append(
+    #                         solution[variable]
+    #                     )
+    #         transformed_solutions.append(transformed_solution)
+    #     return transformed_solutions
 
-    def transform_solutions_by_aggregations(
-        self, fact_collection: FactCollection
-    ):
-        """
-        Transform the solutions by aggregations.
-        """
-        return self._transform_solutions_by_aggregations(
-            self.parent.solutions(fact_collection),
-            self.aggregated_variables,
-            self.non_aggregated_variables,
-        )
+    # def transform_solutions_by_aggregations(
+    #     self, fact_collection: FactCollection
+    # ):
+    #     """
+    #     Transform the solutions by aggregations.
+    #     """
+    #     return self._transform_solutions_by_aggregations(
+    #         self.parent.solutions(fact_collection),
+    #         self.aggregated_variables,
+    #         self.non_aggregated_variables,
+    #     )
 
     def _evaluate_one_projection(
         self,
@@ -1193,11 +1189,11 @@ class Match(TreeMixin):
 
     def __init__(
         self,
-        pattern: TreeMixin,
-        where_clause: Optional[TreeMixin] = None,
-        with_clause: Optional[TreeMixin] = None,
+        pattern: RelationshipChainList,  # This part of the query is mandatory
+        where_clause: Optional[Where] = None,
+        with_clause: Optional[WithClause] = None,
         constraints: Optional[List[Constraint]] = None,
-    ):
+    ) -> None:
         self.pattern = pattern
         self.where_clause = where_clause
         self.with_clause = with_clause
@@ -1205,6 +1201,9 @@ class Match(TreeMixin):
 
     def __repr__(self) -> str:
         return f"Match({self.pattern}, {self.where_clause}, {self.with_clause})"
+    
+    def _evaluate(self, fact_collection: FactCollection, start_entity_var_id_mapping: Dict[str, str] = {}) -> List[Dict[str, str]]:
+        return self.pattern._evaluate(fact_collection, start_entity_var_id_mapping=start_entity_var_id_mapping)
 
     def gather_constraints(self) -> None:
         """Gather all the ``Constraint`` objects from inside the ``Match`` clause."""
@@ -1227,263 +1226,17 @@ class Match(TreeMixin):
             yield self.where_clause
         if self.with_clause:
             yield self.with_clause
-
-    @SOLUTIONS_TIMER.time()
-    def solutions(
-        self, fact_collection: FactCollection
-    ) -> List[Dict[str, Any]]:
-        """
-        Generate solutions based on the given fact collection and constraints.
-
-        Args:
-            fact_collection (FactCollection | Shim):
-                A collection of facts or a shim that can be converted to a fact collection.
-
-        Returns:
-            List[Dict[str, Any]]:
-                A list of dictionaries representing the solutions that satisfy the constraints.
-        """
-
-        def _set_up_problem(match_clause) -> Problem:
-            constraints = match_clause.constraints
-            problem = Problem()
-            node_domain = Domain(set())
-            relationship_domain = Domain(set())
-            # Get domains for nodes and relationships
-            LOGGER.debug("Constraints for problem are: %s", constraints)
-            for fact in fact_collection.relevant_facts(constraints):
-                LOGGER.debug("fact: %s", fact)
-                if isinstance(fact, FactNodeHasLabel):
-                    if fact.node_id not in node_domain:
-                        LOGGER.debug("fact.node_id: %s", fact.node_id)
-                        node_domain.append(fact.node_id)
-                elif isinstance(fact, FactRelationshipHasLabel):
-                    if fact.relationship_id not in relationship_domain:
-                        relationship_domain.append(fact.relationship_id)
-                elif isinstance(fact, FactNodeHasAttributeWithValue):
-                    if fact.node_id not in node_domain:
-                        node_domain.append(fact.node_id)
-                elif isinstance(
-                    fact,
-                    (
-                        FactRelationshipHasSourceNode,
-                        FactRelationshipHasTargetNode,
-                    ),
-                ):
-                    if fact.relationship_id not in relationship_domain:
-                        relationship_domain.append(fact.relationship_id)
-                else:
-                    pass
-
-            LOGGER.debug("node_domain: %s", node_domain)
-            LOGGER.debug("relationship_domain: %s", relationship_domain)
-
-            # Assign variables to domains -- TODO: Ensure no duplicates!
-            for constraint in constraints:
-                if isinstance(constraint, ConstraintNodeHasLabel):
-                    if constraint.variable not in problem._variables:  # pylint: disable=protected-access
-                        problem.addVariable(constraint.variable, node_domain)
-                elif (  # pylint: disable=protected-access
-                    isinstance(constraint, ConstraintRelationshipHasSourceNode)
-                    and constraint.relationship_name not in problem._variables
-                ):
-                    if constraint.variable not in problem._variables:
-                        problem.addVariable(
-                            constraint.relationship_name, relationship_domain
-                        )
-                elif (  # pylint: disable=protected-access
-                    isinstance(constraint, ConstraintRelationshipHasTargetNode)
-                    and constraint.relationship_name not in problem._variables
-                ):
-                    if constraint.variable not in problem._variables:
-                        problem.addVariable(
-                            constraint.relationship_name, relationship_domain
-                        )
-                elif (  # pylint: disable=protected-access
-                    isinstance(constraint, ConstraintRelationshipHasLabel)
-                    and constraint.relationship_name not in problem._variables
-                ):
-                    if constraint.variable not in problem._variables:
-                        problem.addVariable(
-                            constraint.relationship_name, relationship_domain
-                        )
-                elif (  # pylint: disable=protected-access
-                    isinstance(constraint, ConstraintNodeHasAttributeWithValue)
-                    and constraint.variable not in problem._variables
-                ):
-                    if constraint.variable not in problem._variables:
-                        problem.addVariable(constraint.variable, node_domain)
-                elif (
-                    isinstance(
-                        constraint, ConstraintVariableRefersToSpecificObject
-                    )
-                    and constraint.variable not in problem._variables  # pylint: disable=protected-access
-                ):
-                    if constraint.variable not in problem._variables:  # pylint: disable=protected-access
-                        problem.addVariable(constraint.variable, node_domain)
-                else:
-                    pass
-
-            # Add constraints to problem definition
-            def _f(x, y):
-                answer = (
-                    FactRelationshipHasSourceNode(
-                        relationship_id=x, source_node_id=y
-                    )
-                    in fact_collection
-                )
-                LOGGER.debug(
-                    "answer _f: FactRelationshipHasSourceNode: %s for x: %s, y: %s",
-                    answer,
-                    x,
-                    y,
-                )
-                return answer
-
-            def _g(node_id, label):
-                answer = (
-                    FactNodeHasLabel(node_id=node_id, label=label)
-                    in fact_collection
-                )
-                LOGGER.debug(
-                    "answer _g: FactNodeHasLabel: %s for node_id: %s, label: %s",
-                    answer,
-                    node_id,
-                    label,
-                )
-                return answer
-
-            def _h(relationship_id, relationship_label: str):
-                answer: bool = (
-                    FactRelationshipHasLabel(
-                        relationship_id=relationship_id,
-                        relationship_label=relationship_label,
-                    )
-                    in fact_collection
-                )
-                LOGGER.debug(
-                    "answer _h: FactRelationshipHasLabel %s for relationship_id: %s, "
-                    "relationship_label: %s",
-                    answer,
-                    relationship_id,
-                    relationship_label,
-                )
-                return answer
-
-            def _i(node_id, attribute: str = "", value: Any = None):
-                answer: bool = (
-                    FactNodeHasAttributeWithValue(
-                        node_id=node_id, attribute=attribute, value=value
-                    )
-                    in fact_collection
-                )
-                LOGGER.debug(
-                    "answer _i: FactNodeHasAttributeWithValue %s for node_id: %s, "
-                    "attribute: %s, value: %s",
-                    answer,
-                    node_id,
-                    attribute,
-                    value,
-                )
-                return answer
-
-            # Experimental...
-            def _j(node_id, other_node_id=None):
-                answer: bool = node_id == other_node_id
-                LOGGER.debug(
-                    "answer _j: %s for node_id: %s",
-                    answer,
-                    node_id,
-                )
-                return answer
-
-            for constraint in constraints:
-                if isinstance(constraint, ConstraintNodeHasLabel):
-                    LOGGER.debug("Adding constraint: %s", constraint)
-                    problem.addConstraint(
-                        partial(_g, label=constraint.label),
-                        [
-                            constraint.variable,
-                        ],
-                    )
-                elif isinstance(
-                    constraint, ConstraintNodeHasAttributeWithValue
-                ):
-                    LOGGER.debug("Adding constraint: %s", constraint)
-                    problem.addConstraint(
-                        partial(
-                            _i,
-                            attribute=constraint.attribute,
-                            value=constraint.value,
-                        ),
-                        [
-                            constraint.variable,
-                        ],
-                    )
-                # Experimental...
-                elif isinstance(
-                    constraint, ConstraintVariableRefersToSpecificObject
-                ):
-                    LOGGER.debug("Adding constraint: %s", constraint)
-                    problem.addConstraint(
-                        partial(_j, other_node_id=constraint.node_id),
-                        [
-                            constraint.variable,
-                        ],
-                    )
-                elif isinstance(constraint, ConstraintRelationshipHasLabel):
-                    LOGGER.debug("Adding constraint: %s", constraint)
-                    problem.addConstraint(
-                        partial(_h, relationship_label=constraint.label),
-                        [
-                            constraint.relationship_name,
-                        ],
-                    )
-                elif isinstance(
-                    constraint, ConstraintRelationshipHasSourceNode
-                ):
-                    LOGGER.debug("Adding constraint: %s", constraint)
-                    problem.addConstraint(
-                        _f,
-                        [
-                            constraint.relationship_name,
-                            constraint.variable,
-                        ],
-                    )
-                elif isinstance(
-                    constraint, ConstraintRelationshipHasTargetNode
-                ):
-                    LOGGER.debug("Adding constraint: %s", constraint)
-                    problem.addConstraint(
-                        lambda x, y: FactRelationshipHasTargetNode(
-                            relationship_id=x, target_node_id=y
-                        )
-                        in fact_collection,
-                        [
-                            constraint.relationship_name,
-                            constraint.variable,
-                        ],
-                    )
-                else:
-                    pass  # pragma: exclude Add more constraints if necessary
-            return problem
-
-        fact_collection = (
-            fact_collection
-            if isinstance(fact_collection, FactCollection)
-            else fact_collection.make_fact_collection()
-        )
-        try:
-            problem = _set_up_problem(self)
-        except ValueError as e:  # pylint: disable=broad-exception-caught
-            LOGGER.debug("Domain not ready yet? %s", e)
-            return []
-        try:
-            solutions = problem.getSolutions()
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            LOGGER.debug("Error getting solutions: %s", e)
-            return []
-        return solutions
+    
+    def _evaluate(self, fact_collection: FactCollection, start_entity_var_id_mapping: Dict[str, str] = {}) -> List[Dict[str, Any]]:
+        return [
+            substitution for substitution in 
+            self.pattern._evaluate(
+                fact_collection, start_entity_var_id_mapping
+            ) if self.where_clause.predicate._evaluate(
+                fact_collection, 
+                start_entity_var_id_mapping=substitution
+            )
+        ]
 
 
 class Return(TreeMixin):
@@ -1607,7 +1360,7 @@ class Projection(TreeMixin):
 class NodeNameLabel(TreeMixin):
     """A node name, optionally followed by a label, separated by a dot."""
 
-    def __init__(self, name: Optional[str] = None, label: Optional[str] = None):
+    def __init__(self, name: Optional[str] = None, label: Optional[str] = None) -> None:
         self.name = name or uuid.uuid4().hex
         self.label = label
 
@@ -1628,49 +1381,100 @@ class NodeNameLabel(TreeMixin):
         if self.label:
             yield self.label
 
+class Assignment:
+    def __init__(self, variable: str, assignment: str) -> None:
+        self.variable: str = variable
+        self.assignment: str = assignment
+        self.children: List[Assignment] = []
+        self.parent: Optional[Assignment] = None
+    
+    def parents(self) -> List[Assignment]:
+        out: List[Assignment] = []
+        parent: Assignment | None = self.parent
+        while parent:
+            out.append(parent)
+            parent = parent.parent
+        return out
+    
+    def walk(self) -> Generator[Assignment]:
+        yield self
+        for child in self.children:
+            yield from child.walk()
+    
+    def assignments(self) -> Dict[str, str]:
+        out: Dict[str, str] = {self.variable: self.assignment}
+        for parent in self.parents():
+            out[parent.variable] = parent.assignment
+        return out
+    
+    def leaves(self) -> Generator[Assignment]:
+        for node in self.walk():
+            if not node.children:
+                yield node
+    
+    def _leaf_assignments(self) -> Generator[Dict[str, str]]:
+        for leaf in self.leaves():
+            yield leaf.assignments()
+    
+    def leaf_assignments(self) -> List[Dict[str, str]]:
+        return list(self._leaf_assignments())
+    
+    def set_child(self, assignment: Assignment) -> None:
+        self.children.append(assignment)
+        assignment.parent = self
+        
+
+
+
 
 class Node(TreeMixin):
     """A node in the graph, which may contain a variable name, label, or mapping."""
 
     def __init__(
         self,
-        node_name_label: NodeNameLabel,
-        mapping_list: Optional[List[Mapping]] = None,
-    ):
-        self.node_name_label = node_name_label
-        self.mapping_list: List[Mapping] | List[None] = mapping_list or []
+        node_name_label: Optional[NodeNameLabel] = None,
+        mapping_set: Optional[MappingSet] = None,
+    ) -> None:
+        self.node_name_label: NodeNameLabel | None = node_name_label
+        self.mapping_set = mapping_set
+    
+    # Ensure node_name_label always has a variable name and label
+    # And that each Node has a NodeNameLabel
+    def _evaluate(self, fact_collection: FactCollection, start_entity_var_id_mapping: Dict[str, str] = {}) -> List[Dict[str, str]]:
+        out = []
+        if self.node_name_label.name in start_entity_var_id_mapping:
+            entity_id: str = start_entity_var_id_mapping[self.node_name_label.name]
+            entity_label: str = fact_collection.query_node_label(QueryNodeLabel(entity_id))
+            out = [{self.node_name_label.name: entity_id}] if entity_label == self.node_name_label.label else []
+        else:
+            out = [
+                {self.node_name_label.name: entity_id} for entity_id in fact_collection.nodes_with_label(self.node_name_label.label)
+            ]
+        if '_' in start_entity_var_id_mapping:
+            mapping_clone = copy.copy(start_entity_var_id_mapping)
+            mapping_clone[self.node_name_label.name] = mapping_clone['_']
+            del mapping_clone['_']
+            out.append(self._evaluate(fact_collection, start_entity_var_id_mapping=mapping_clone))
+        return out
 
-    @property
-    def constraints(self):
-        """
-        Hi
-        """
-        constraint_list: List[Constraint] = []
-        if self.node_name_label.label:
-            constraint_list.append(
-                ConstraintNodeHasLabel(
-                    self.node_name_label.name, self.node_name_label.label
-                )
-            )
-        return constraint_list or []
-
+            
     def __repr__(self):
-        return f"Node({self.node_name_label}, {self.mapping_list})"
+        return f"Node({self.node_name_label}, {self.mapping_set})"
 
     def tree(self) -> Tree:
         t = Tree(self.__class__.__name__)
         if self.node_name_label:
             t.add(self.node_name_label.tree())
-        if self.mapping_list:
-            t.add(self.mapping_list.tree())
+        if self.mapping_set:
+            t.add(self.mapping_set.tree())
         return t
 
     @property
     def children(self) -> Generator[NodeNameLabel | Mapping]:
         if self.node_name_label:
             yield self.node_name_label
-        if self.mapping_list:
-            for mapping in self.mapping_list.mappings:
+        if self.mapping_set:
+            for mapping in self.mapping_set.mappings:
                 yield mapping
 
 
@@ -1780,36 +1584,6 @@ class RelationshipLeftRight(TreeMixin):
     def children(self) -> Generator[Relationship]:
         yield self.relationship
 
-    @property
-    def constraints(self):
-        """Calculates the ``Constraint`` objects for this ``Relationship``."""
-        constraint_list: List[Constraint] = []
-        relationship_chain: RelationshipChain = self.parent
-        nodes = [
-            (
-                relationship_chain.steps[i - 1],
-                relationship_chain.steps[i + 1],
-            )
-            for i in range(len(relationship_chain.steps))
-            if relationship_chain.steps[i] is self
-        ]
-        source_node_constraint = ConstraintRelationshipHasSourceNode(
-            nodes[0][0].node_name_label.name,
-            self.relationship.name_label.name,
-        )
-        target_node_constraint = ConstraintRelationshipHasTargetNode(
-            nodes[0][1].node_name_label.name,
-            self.relationship.name_label.name,
-        )
-        relationship_label_constraint = ConstraintRelationshipHasLabel(
-            self.relationship.name_label.name,
-            self.relationship.name_label.label,
-        )
-        constraint_list.append(source_node_constraint)
-        constraint_list.append(target_node_constraint)
-        constraint_list.append(relationship_label_constraint)
-        return constraint_list
-
 
 class RelationshipRightLeft(TreeMixin):
     """A ``Relationship`` with the arrow pointing from right to left. Note that there
@@ -1831,6 +1605,15 @@ class RelationshipRightLeft(TreeMixin):
         yield self.relationship
 
 
+def conflicting_vars(*dictionaries) -> Set[str]:
+    vars_values: collections.defaultdict[str, set[str]] = collections.defaultdict(set)
+    for dictionary in dictionaries:
+        for key, value in dictionary.items():
+            vars_values[key].add(value)
+    conflicts: set[str] = {key for key, value in vars_values.items() if len(value) > 1}
+    return conflicts
+
+
 class RelationshipChain(TreeMixin):
     """Several ``Relationship`` nodes chained together, sharing ``Node`` objects
     between them."""
@@ -1840,6 +1623,30 @@ class RelationshipChain(TreeMixin):
 
     def __repr__(self):
         return f"RelationshipChain({self.steps})"
+    
+    def _evaluate(self, fact_collection: FactCollection, start_entity_var_id_mapping: Dict[str, str] = {}) -> List[Dict[str, str]]:
+        """Assume that self.steps is exactly (Node, Relationship, Node,)."""
+        left_node: Node = self.steps[0]
+        right_node: Node = self.steps[2]
+        relationship: Relationship = self.steps[1]
+        left_node_var_id_mapping_list: list[dict[str, str]] = left_node._evaluate(fact_collection, start_entity_var_id_mapping)
+        right_node_var_id_mapping_list: list[dict[str, str]] = right_node._evaluate(fact_collection, start_entity_var_id_mapping)
+        all_solutions: List[Dict[str, str]] = []
+        for left_node_mapping, right_node_mapping in itertools.product(left_node_var_id_mapping_list, right_node_var_id_mapping_list):
+            if conflicting_vars(left_node_mapping, right_node_mapping):
+                continue
+            combined_mapping: dict[str, str] = left_node_mapping.copy()
+            combined_mapping.update(right_node_mapping)
+            left_entity_id: str = combined_mapping[left_node.node_name_label.name]
+            right_entity_id: str = combined_mapping[right_node.node_name_label.name]
+            relationships_satisfying_left_entity_id: set[str] = set(fact.relationship_id for fact in fact_collection.relationships_with_specific_source_node_facts(left_entity_id))
+            relationships_satisfying_right_entity_id: set[str] = set(fact.relationship_id for fact in fact_collection.relationships_with_specific_target_node_facts(right_entity_id))
+            relationship_solutions: set[str] = relationships_satisfying_left_entity_id & relationships_satisfying_right_entity_id
+            for relationship_solution in relationship_solutions:
+                combined_mapping_copy: Dict[str, str] = copy.copy(combined_mapping)
+                combined_mapping_copy[relationship.relationship.name_label.name] = relationship_solution
+                all_solutions.append(combined_mapping_copy)
+        return all_solutions
 
     def tree(self) -> Tree:
         t = Tree(self.__class__.__name__)
@@ -1857,6 +1664,9 @@ class Where(TreeMixin):
 
     def __init__(self, predicate: Predicate):
         self.predicate = predicate
+
+    def _evaluate(self, fact_collection: FactCollection, start_entity_var_id_mapping: Dict[str, str] = {}) -> List[Dict[str, str]]:
+        return self.predicate._evaluate(fact_collection, start_entity_var_id_mapping=start_entity_var_id_mapping)
 
     def __repr__(self):
         return f"Where({self.predicate})"
@@ -1893,12 +1703,11 @@ class And(BinaryBoolean, Evaluable):
         projection: Optional[Dict[str, str | List[str]]] = None,
     ) -> Any:
         left_value = self.left_side._evaluate(  # pylint: disable=protected-access
-            fact_collection, projection=projection
+            fact_collection, start_entity_var_id_mapping=start_entity_var_id_mapping,
         )  # pylint: disable=protected-access
         right_value = self.right_side._evaluate(  # pylint: disable=protected-access
-            fact_collection, projection=projection
+            fact_collection, start_entity_var_id_mapping=start_entity_var_id_mapping,
         )  # pylint: disable=protected-access
-        self.type_check(left_value, right_value)
         return Literal(left_value.value and right_value.value)
 
 
@@ -1917,15 +1726,14 @@ class Or(BinaryBoolean, Evaluable):
     def _evaluate(
         self,
         fact_collection: FactCollection,
-        projection: Optional[Dict[str, str | List[str]]] = None,
+        start_entity_var_id_mapping: Dict[str, str] = {},
     ) -> Any:
         left_value = self.left_side._evaluate(  # pylint: disable=protected-access
-            fact_collection, projection=projection
+            fact_collection, start_entity_var_id_mapping=start_entity_var_id_mapping,
         )  # pylint: disable=protected-access
         right_value = self.right_side._evaluate(  # pylint: disable=protected-access
-            fact_collection, projection=projection
+            fact_collection, start_entity_var_id_mapping=start_entity_var_id_mapping,
         )  # pylint: disable=protected-access
-        self.type_check(left_value, right_value)
         return Literal(left_value.value or right_value.value)
 
 
@@ -1957,20 +1765,16 @@ class Not(Evaluable, Predicate):
         return f"{self.__class__.__name__}({self.argument})"
 
     def tree(self) -> Tree:
-        t = Tree(self.__class__.__name__)
+        t: Tree = Tree(self.__class__.__name__)
         t.add(self.argument.tree())
         return t
 
     def _evaluate(
         self,
         fact_collection: FactCollection,
-        projection: Optional[Dict[str, str | List[str]]] = None,
+        start_entity_var_id_mapping: Dict[str, str] = {}
     ) -> Any:
-        value = self.argument._evaluate(fact_collection, projection=projection)  # pylint: disable=protected-access
-        type_check_result = self.type_check(value)
-        if isinstance(type_check_result, NullResult):
-            return NullResult(self)
-        return Literal(not value.value)
+        return Literal(not self.argument._evaluate(fact_collection, start_entity_var_id_mapping).value)
 
 
 class RelationshipChainList(TreeMixin):
@@ -1999,6 +1803,25 @@ class RelationshipChainList(TreeMixin):
     @property
     def children(self) -> Generator[RelationshipChain]:
         yield from self.relationships
+    
+    def _evaluate(self, fact_collection: FactCollection, start_entity_var_id_mapping: Dict[str, str] = {}) -> List[Dict[str, str]]:
+        evaluations: List[List[Dict[str, str]]] = [
+            relationship._evaluate(fact_collection, start_entity_var_id_mapping) 
+            for relationship in self.relationships
+        ]
+        solutions: List[Dict[str, str]] = []
+        for substitution_combination in itertools.product(*evaluations):
+            if conflicting_vars(*substitution_combination):
+                continue
+            combined_substitution: Dict[str, str] = {}
+            for substitution in substitution_combination:
+                combined_substitution.update(substitution)
+            solutions.append(combined_substitution)
+        return solutions
+
+            
+
+
 
 
 class Addition(Evaluable, Predicate):
@@ -2013,10 +1836,7 @@ class Addition(Evaluable, Predicate):
 
     """
 
-    left_side_types = int | float
-    right_side_types = int | float
-
-    def __init__(self, left: TreeMixin, right: TreeMixin):  # pylint: disable=super-init-not-called
+    def __init__(self, left: Evaluable, right: Evaluable):  # pylint: disable=super-init-not-called
         """
         Initialize an Addition instance.
 
@@ -2061,34 +1881,17 @@ class Addition(Evaluable, Predicate):
 
     def _evaluate(
         self,
-        fact_collection: FactCollection,
-        projection: Optional[Dict[str, str | List[str]]] = None,
+        *args, **kwargs
     ) -> Any:
         """
         Evaluate this Addition node.
-
-        Computes the sum of the left and right operands.
-
-        Args:
-            fact_collection (FactCollection): The collection of facts to use for evaluation.
-            projection (Optional[Dict[str, str | List[str]]]): A mapping of variable names to values.
-                Defaults to None.
-
-        Returns:
-            Any: The result of adding the left and right operands.
-
-        Raises:
-            TypeError: If the operands are not of compatible types for addition.
         """
         left_value = self.left_side._evaluate(  # pylint: disable=protected-access
-            fact_collection, projection=projection
+            fact_collection, start_entity_var_id_mapping=start_entity_var_id_mapping
         )  # pylint: disable=protected-access
         right_value = self.right_side._evaluate(  # pylint: disable=protected-access
-            fact_collection, projection=projection
+            fact_collection, start_entity_var_id_mapping=start_entity_var_id_mapping
         )  # pylint: disable=protected-access
-        type_check_result = self.type_check(left_value, right_value)
-        if isinstance(type_check_result, NullResult):
-            return NullResult(self)
         return Literal(left_value.value + right_value.value)
 
 
@@ -2102,10 +1905,16 @@ class Literal(TreeMixin, Evaluable):
     """
 
     def __init__(self, value: Any):
+        while isinstance(value, Literal):
+            value = value.value
         self.value = value
 
     def __repr__(self):
         return f"Literal({self.value})"
+    
+    def __bool__(self) -> bool:
+        return self.value is True
+
 
     def tree(self):
         t = Tree(self.__class__.__name__)
@@ -2114,13 +1923,10 @@ class Literal(TreeMixin, Evaluable):
 
     def _evaluate(
         self,
-        fact_collection: FactCollection,
-        projection: Optional[Dict[str, str | List[str]]] = None,
+        *_,
+        **__,
     ) -> Any:
-        return Literal(self.value)
+        return self
 
-    def __eq__(self, other):
-        return isinstance(other, Literal) and self.value == other.value
-
-    def __hash__(self):
-        return hash(self.value)
+    def __eq__(self, other) -> Literal:
+        return Literal(isinstance(other, Literal) and self.value == other.value)

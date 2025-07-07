@@ -243,6 +243,24 @@ class FactCollection(ABC):
             for thing in other:
                 FactCollection.__iadd__(self, thing)
         return self
+    
+    def relationships_with_specific_source_node_facts(self, source_node_id: str) -> Generator[FactRelationshipHasSourceNode]:
+        """
+        Return a generator of facts that have a specific source node ID.
+        """
+        for fact in self.relationship_has_source_node_facts():
+            if isinstance(fact, FactRelationshipHasSourceNode) and fact.source_node_id == source_node_id:
+                yield fact
+    
+    def relationships_with_specific_target_node_facts(self, target_node_id: str) -> Generator[FactRelationshipHasTargetNode]:
+        """
+        Return a generator of facts that have a specific target node ID.
+        """
+        for fact in self.relationship_has_target_node_facts():
+            if isinstance(fact, FactRelationshipHasTargetNode) and fact.target_node_id == target_node_id:
+                yield fact
+
+
 
     def relationship_has_source_node_facts(self):
         """
@@ -413,7 +431,7 @@ class FactCollection(ABC):
             raise ValueError(f"Found multiple values for {query}: {facts}")
         raise ValueError("Unknown error")
 
-    def query_node_label(self, query: QueryNodeLabel):
+    def query_node_label(self, query: QueryNodeLabel) -> str:
         """Given a query for a node label, return the label if it exists.
 
         If no label exists, return a NullResult. If multiple labels
