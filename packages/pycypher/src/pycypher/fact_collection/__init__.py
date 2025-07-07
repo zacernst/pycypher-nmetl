@@ -252,6 +252,7 @@ class FactCollection(ABC):
             if isinstance(fact, FactRelationshipHasSourceNode) and fact.source_node_id == source_node_id:
                 yield fact
     
+    
     def relationships_with_specific_target_node_facts(self, target_node_id: str) -> Generator[FactRelationshipHasTargetNode]:
         """
         Return a generator of facts that have a specific target node ID.

@@ -1001,7 +1001,7 @@ class WithClause(TreeMixin, Evaluable):
         Returns:
             list: A list of objects that are attributes of Aggregation instances.
         """
-        out = []
+        out: List[str] = []
         for obj in self.walk():
             if isinstance(obj, Aggregation):
                 for sub_obj in obj.walk():
@@ -1012,7 +1012,7 @@ class WithClause(TreeMixin, Evaluable):
     @property
     def all_variables(self):
         """All the variables in the WITH clause."""
-        out = []
+        out: List[str] = []
         for obj in self.walk():
             if isinstance(obj, ObjectAttributeLookup):
                 out.append(obj.object)
