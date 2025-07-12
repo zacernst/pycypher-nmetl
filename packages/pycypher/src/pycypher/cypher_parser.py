@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Dict, List, Tuple, Type
 
 from ply import yacc  # type: ignore
-from pycypher.cypher_lexer import *  # pylint: disable=wildcard-import,unused-wildcard-import
+from pycypher.cypher_lexer import *  # noqa: F403
 from pycypher.fact_collection import FactCollection
 from pycypher.node_classes import (
     Addition,
@@ -24,9 +24,11 @@ from pycypher.node_classes import (
     MappingSet,
     Match,
     Node,
+    Not,
     NodeNameLabel,
     ObjectAsSeries,
     ObjectAttributeLookup,
+    Or,
     Projection,
     Query,
     Relationship,
@@ -116,7 +118,7 @@ def p_node(p: yacc.YaccProduction):
     """
     if len(p) == 4 and isinstance(p[2], NodeNameLabel):
         node_name_label = p[2]
-        mapping_list = MappingSet([])
+        mapping_list: MappingSet = MappingSet([])
     elif len(p) == 3:
         node_name_label = NodeNameLabel(None, None)
         mapping_list = MappingSet([])
@@ -258,7 +260,7 @@ def p_match_pattern(p: yacc.YaccProduction):
     elif len(p) == 4 and isinstance(p[3], WithClause):
         p[0] = Match(p[2], None, p[3])
     elif len(p) == 5:
-        p[0] = Match(p[2], p[4], p[3])
+        p[0] = Match(p[2], where_clause=p[4], with_clause=p[3])
     else:
         p[0] = Match(p[2], p[3], None)
 
@@ -284,15 +286,27 @@ def p_aliased_name(p: yacc.YaccProduction):
 
 def p_predicate(p: yacc.YaccProduction):
     """predicate : object_attribute_lookup binary_operator literal
+    | literal binary_operator object_attribute_lookup
+    | literal binary_operator literal
     | object_attribute_lookup binary_operator object_attribute_lookup
-    | aliased_name binary_operator literal
-    | object_attribute_lookup binary_operator binary_expression"""
+    | object_attribute_lookup binary_operator binary_expression
+    | predicate binary_operator predicate
+    | NOT predicate
+    """
     predicate_dispatch_dict: Dict[str, Type[TreeMixin]] = {
         "=": Equals,
         "<": LessThan,
         ">": GreaterThan,
+        'OR': Or,
+        'AND': And,
+        'NOT': Not,
     }
-    p[0] = predicate_dispatch_dict[p[2]](p[1], p[3])
+    if len(p) == 4:
+        p[0] = predicate_dispatch_dict[p[2]](p[1], p[3])
+    elif len(p) == 3:
+        p[0] = predicate_dispatch_dict['NOT'](p[2])
+    else:
+        raise ValueError('This should never happen')
 
 
 def p_binary_expression(p: yacc.YaccProduction):
