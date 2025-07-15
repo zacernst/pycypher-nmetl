@@ -12,7 +12,7 @@ from typing import Any
 
 from ply import lex
 
-tokens = [
+tokens: list[str] = [
     "ADDITION",
     "COLON",
     "COMMA",
@@ -28,6 +28,7 @@ tokens = [
     "LCURLY",
     "LESSTHAN",
     "LPAREN",
+    "LENGTH",
     "LSQUARE",
     "RCURLY",
     "RPAREN",
@@ -70,6 +71,7 @@ reserved = {
     "COLLECT": "COLLECT",
     "DISTINCT": "DISTINCT",
     "WITH": "WITH",
+    "COUNT": "COUNT",
 }
 
 

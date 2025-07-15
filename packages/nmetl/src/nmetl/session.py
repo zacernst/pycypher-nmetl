@@ -76,12 +76,13 @@ from shared.logger import LOGGER
 if TYPE_CHECKING:
     from dask.distributed import Client
 
-LOGGER.setLevel('WARNING')
+LOGGER.setLevel("WARNING")
 
 RAW_INPUT_QUEUE_PORT = 5555
 FACT_GENERATED_QUEUE_PORT = 5556
 CHECK_FACT_AGAINST_TRIGGERS_QUEUE_PORT = 5557
 TRIGGERED_LOOKUP_PROCESSOR_QUEUE_PORT = 5558
+
 
 @dataclass
 class NewColumnConfig:
@@ -92,7 +93,10 @@ class NewColumnConfig:
     data_source_name: str
     new_column_name: str
 
-def _make_check_fact_against_triggers_queue_processor(incoming_queue, outgoing_queue, status_queue, session_config, trigger_dict) -> None:
+
+def _make_check_fact_against_triggers_queue_processor(
+    incoming_queue, outgoing_queue, status_queue, session_config, trigger_dict
+) -> None:
     CheckFactAgainstTriggersQueueProcessor(
         incoming_queue=incoming_queue,
         outgoing_queue=outgoing_queue,
@@ -100,6 +104,7 @@ def _make_check_fact_against_triggers_queue_processor(incoming_queue, outgoing_q
         session_config=session_config,
         trigger_dict=trigger_dict,
     )
+
 
 class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-methods
     """
@@ -161,7 +166,9 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
         self.status_queue = queue.Queue()
 
         self.dask_client = dask_client
-        self.fact_collection: FactCollection = fact_collection_class(**self.fact_collection_kwargs)
+        self.fact_collection: FactCollection = fact_collection_class(
+            **self.fact_collection_kwargs
+        )
 
         self.raw_input_queue = QueueGenerator(
             name="RawInput",
@@ -169,7 +176,6 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
         )
 
         self.queue_list.append(self.raw_input_queue)
-
 
         self.fact_generated_queue = QueueGenerator(
             name="FactGenerated",
@@ -184,7 +190,6 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
         )
         self.queue_list.append(self.check_fact_against_triggers_queue)
 
-
         # Same -- run in different processes
         self.triggered_lookup_processor_queue = QueueGenerator(
             name="TriggeredLookupProcessor",
@@ -192,10 +197,7 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
         )
         self.queue_list.append(self.triggered_lookup_processor_queue)
 
-
         self.trigger_dict = {}
-
-        
 
         # Does the fact collection require the session? Maybe get rid of this.
 
@@ -217,7 +219,8 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
             priority=0,
         )
 
-        self.check_fact_against_triggers_queue_processor = CheckFactAgainstTriggersQueueProcessor(
+        self.check_fact_against_triggers_queue_processor = (
+            CheckFactAgainstTriggersQueueProcessor(
                 incoming_queue=self.check_fact_against_triggers_queue,
                 outgoing_queue=self.triggered_lookup_processor_queue,
                 status_queue=self.status_queue,
@@ -225,6 +228,7 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
                 dask_client=dask_client,
                 priority=4,
             )
+        )
 
         self.triggered_lookup_processor = TriggeredLookupProcessor(
             incoming_queue=self.triggered_lookup_processor_queue,
@@ -242,13 +246,15 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
             self.monitor_thread = threading.Thread(
                 target=self.monitor, daemon=True, name="MonitorThread"
             )
-    
+
         # fact_collection: FactCollection = globals()[self.session_config.fact_collection_class](**(self.session_config.fact_collection_kwargs or {}))
-        
+
     @property
     def tasks_in_memory(self) -> int:
         """Gets the number of tasks in memory by inspecting the scheduler's state."""
-        num_tasks: int = self.dask_client.run_on_scheduler(lambda dask_scheduler: len(dask_scheduler.tasks))
+        num_tasks: int = self.dask_client.run_on_scheduler(
+            lambda dask_scheduler: len(dask_scheduler.tasks)
+        )
         return num_tasks
 
     def __call__(self, block: bool = True) -> None:
@@ -622,13 +628,22 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
                 variable_name = variable_attribute_args[0].__forward_arg__
                 attribute_name = variable_attribute_args[1].__forward_arg__
 
-                data_asset_parameters: dict[str, DataAsset] = {parameter: self.data_assets[parameter] for parameter in parameter_names if parameter in self.data_assets}
-                non_data_asset_parameters: list[str] = [parameter for parameter in parameter_names if parameter not in self.data_assets]
-                
+                data_asset_parameters: dict[str, DataAsset] = {
+                    parameter: self.data_assets[parameter]
+                    for parameter in parameter_names
+                    if parameter in self.data_assets
+                }
+                non_data_asset_parameters: list[str] = [
+                    parameter
+                    for parameter in parameter_names
+                    if parameter not in self.data_assets
+                ]
 
                 trigger: VariableAttributeTrigger | NodeRelationshipTrigger = (
                     VariableAttributeTrigger(
-                        function=functools.partial(func, **data_asset_parameters),
+                        function=functools.partial(
+                            func, **data_asset_parameters
+                        ),
                         cypher_string=arg1,
                         variable_set=variable_name,
                         attribute_set=attribute_name,
@@ -655,9 +670,13 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
                         "with three arguments."
                     )
 
-                source_variable_name = node_relationship_args[0].__forward_arg__
+                source_variable_name = node_relationship_args[
+                    0
+                ].__forward_arg__
                 relationship_name = node_relationship_args[1].__forward_arg__
-                target_variable_name = node_relationship_args[2].__forward_arg__
+                target_variable_name = node_relationship_args[
+                    2
+                ].__forward_arg__
 
                 all_cypher_variables = CypherParser(
                     arg1

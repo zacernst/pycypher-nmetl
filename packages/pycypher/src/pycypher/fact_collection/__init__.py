@@ -74,19 +74,20 @@ class FactCollection(ABC):
         self.diversion_miss_counter: int = 0
         self.start_daemon_process: bool = start_daemon_process
         self.daemon_queue: queue.Queue = queue.Queue()
-        
+
         self += facts or []
         if CLEAR_DB_ON_START:
             self.close()
-        
+
         if self.start_daemon_process:
             self.daemon_process()
-    
+
     def start_daemon(self):
         """
         Kick off a process that waits for things to insert into the fact collection.
         Use threads to do this because we can't necessarily serialize the things we'd need.
         """
+
         def _daemon() -> None:
             while 1:
                 pass
@@ -94,7 +95,6 @@ class FactCollection(ABC):
 
         daemon_thread: threading.Thread = threading.Thread(target=_daemon)
         daemon_thread.start()
-
 
     def __iter__(self) -> Generator[AtomicFact]:
         """
@@ -177,7 +177,10 @@ class FactCollection(ABC):
                         yield fact
                         relevant_facts.add(fact)
                 case ConstraintNodeHasAttributeWithValue():
-                    LOGGER.warning("relevant_facts: ConstraintNodeHasAttributeWithValue: %s", constraint)
+                    LOGGER.warning(
+                        "relevant_facts: ConstraintNodeHasAttributeWithValue: %s",
+                        constraint,
+                    )
                     for (
                         fact
                     ) in self.node_has_attribute_with_specific_value_facts(
@@ -188,21 +191,30 @@ class FactCollection(ABC):
                         yield fact
                         relevant_facts.add(fact)
                 case ConstraintRelationshipHasSourceNode():
-                    LOGGER.warning("relevant_facts: ConstraintRelationshipHasSourceNode: %s", constraint)
+                    LOGGER.warning(
+                        "relevant_facts: ConstraintRelationshipHasSourceNode: %s",
+                        constraint,
+                    )
                     for fact in self.relationship_has_source_node_facts():
                         if fact in relevant_facts:
                             continue
                         yield fact
                         relevant_facts.add(fact)
                 case ConstraintRelationshipHasTargetNode():
-                    LOGGER.warning("relevant_facts: ConstraintRelationshipHasTargetNode: %s", constraint)
+                    LOGGER.warning(
+                        "relevant_facts: ConstraintRelationshipHasTargetNode: %s",
+                        constraint,
+                    )
                     for fact in self.relationship_has_target_node_facts():
                         if fact in relevant_facts:
                             continue
                         yield fact
                         relevant_facts.add(fact)
                 case ConstraintRelationshipHasLabel():
-                    LOGGER.warning("relevant_facts: ConstraintRelationshipHasLabel: %s", constraint)
+                    LOGGER.warning(
+                        "relevant_facts: ConstraintRelationshipHasLabel: %s",
+                        constraint,
+                    )
                     for fact in self.relationship_has_label_facts():
                         if (
                             fact in relevant_facts
@@ -212,7 +224,10 @@ class FactCollection(ABC):
                         yield fact
                         relevant_facts.add(fact)
                 case ConstraintVariableRefersToSpecificObject():
-                    LOGGER.warning("relevant_facts: ConstraintVariableRefersToSpecificObject: %s", constraint)
+                    LOGGER.warning(
+                        "relevant_facts: ConstraintVariableRefersToSpecificObject: %s",
+                        constraint,
+                    )
                     pass
                 case _:
                     raise ValueError(
@@ -230,7 +245,7 @@ class FactCollection(ABC):
         Returns:
             None
         """
-    
+
     @abstractmethod
     def __contains__(self, fact: AtomicFact) -> bool:
         pass
@@ -243,25 +258,32 @@ class FactCollection(ABC):
             for thing in other:
                 FactCollection.__iadd__(self, thing)
         return self
-    
-    def relationships_with_specific_source_node_facts(self, source_node_id: str) -> Generator[FactRelationshipHasSourceNode]:
+
+    def relationships_with_specific_source_node_facts(
+        self, source_node_id: str
+    ) -> Generator[FactRelationshipHasSourceNode]:
         """
         Return a generator of facts that have a specific source node ID.
         """
         for fact in self.relationship_has_source_node_facts():
-            if isinstance(fact, FactRelationshipHasSourceNode) and fact.source_node_id == source_node_id:
+            if (
+                isinstance(fact, FactRelationshipHasSourceNode)
+                and fact.source_node_id == source_node_id
+            ):
                 yield fact
-    
-    
-    def relationships_with_specific_target_node_facts(self, target_node_id: str) -> Generator[FactRelationshipHasTargetNode]:
+
+    def relationships_with_specific_target_node_facts(
+        self, target_node_id: str
+    ) -> Generator[FactRelationshipHasTargetNode]:
         """
         Return a generator of facts that have a specific target node ID.
         """
         for fact in self.relationship_has_target_node_facts():
-            if isinstance(fact, FactRelationshipHasTargetNode) and fact.target_node_id == target_node_id:
+            if (
+                isinstance(fact, FactRelationshipHasTargetNode)
+                and fact.target_node_id == target_node_id
+            ):
                 yield fact
-
-
 
     def relationship_has_source_node_facts(self):
         """
@@ -536,7 +558,8 @@ class FactCollection(ABC):
         attributes_of_label_dict = self.attributes_of_label()
         for node_id in self.nodes_with_label(label):
             row_dict = {
-                attribute: None for attribute in attributes_of_label_dict[label]
+                attribute: None
+                for attribute in attributes_of_label_dict[label]
             }
             for attribute in attributes_of_label_dict[label]:
                 attribute_value = self.attributes_for_specific_node(
@@ -547,7 +570,9 @@ class FactCollection(ABC):
             row_dict["__node_id__"] = node_id
             yield row_dict
 
-    def nodes_with_label_facts(self, label: str) -> Generator[FactNodeHasLabel]:
+    def nodes_with_label_facts(
+        self, label: str
+    ) -> Generator[FactNodeHasLabel]:
         """
         Return a list of all the nodes with a specific label.
 

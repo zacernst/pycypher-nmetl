@@ -25,6 +25,7 @@ from pycypher.solver import (
 )
 from shared.logger import LOGGER
 
+
 class AtomicFact:  # pylint: disable=too-few-public-methods
     """
     Abstract base class for specific types of `Fact`.
@@ -167,7 +168,9 @@ class FactRelationshipHasLabel(AtomicFact):
 
     """
 
-    def __init__(self, relationship_id: str, relationship_label: str, **kwargs):
+    def __init__(
+        self, relationship_id: str, relationship_label: str, **kwargs
+    ):
         self.relationship_id = relationship_id
         self.relationship_label = relationship_label
         super().__init__(**kwargs)
@@ -253,7 +256,7 @@ class FactNodeHasAttributeWithValue(AtomicFact):
             other (Constraint): The constraint to check against the fact.
         """
         # VariableRefersToSpecificObject
-        out = 'hithere'
+        out = "hithere"
         match other:
             case ConstraintVariableRefersToSpecificObject():
                 out = {other.node_id: self.node_id}
@@ -278,8 +281,8 @@ class FactNodeHasAttributeWithValue(AtomicFact):
                 # node_label = self.session.fact_collection.query(
                 #     QueryNodeLabel(self.node_id)
                 # )
-                node_label = self.node_id.split(':')[0]
-                LOGGER.debug('In match clause. node_label: %s', node_label)
+                node_label = self.node_id.split(":")[0]
+                LOGGER.debug("In match clause. node_label: %s", node_label)
 
                 out = (
                     {other.variable: self.node_id}
@@ -297,8 +300,8 @@ class FactNodeHasAttributeWithValue(AtomicFact):
                 raise ValueError(
                     f"Expected a ``Constraint``, but got {other.__class__.__name__}."
                 )
-        if out == 'hithere':
-            LOGGER.error('hithere: %s', other) 
+        if out == "hithere":
+            LOGGER.error("hithere: %s", other)
         return out
 
     def __eq__(self, other: Any) -> bool:

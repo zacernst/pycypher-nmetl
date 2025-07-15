@@ -24,7 +24,11 @@ from pycypher.fact import (
 )
 from pycypher.fact_collection import FactCollection
 from pycypher.fact_collection.key_value import KeyValue
-from pycypher.query import NullResult, QueryNodeLabel, QueryValueOfNodeAttribute
+from pycypher.query import (
+    NullResult,
+    QueryNodeLabel,
+    QueryValueOfNodeAttribute,
+)
 from shared.helpers import decode, encode, ensure_bytes
 from nmetl.prometheus_metrics import FACTS_APPENDED
 
@@ -35,6 +39,7 @@ try:
     fdb.api_version(710)
 except ModuleNotFoundError:
     LOGGER.warning("fdb not installed, fdb support disabled")
+
 
 def write_fact(db, index, fact):
     """Write a ``Fact`` to FoundationDB"""
@@ -76,7 +81,10 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
         super().__init__(*args, **kwargs)
 
     def _prefix_read_items(
-        self, prefix: bytes | None, continue_to_end: Optional[bool] = False, only_one_result: Optional[bool] = False,
+        self,
+        prefix: bytes | None,
+        continue_to_end: Optional[bool] = False,
+        only_one_result: Optional[bool] = False,
     ) -> Generator[Any, Any]:
         """
         Read a range of keys from the database.
@@ -110,7 +118,7 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
         try:
             index: bytes | str = KeyValue.make_index_for_fact(self, fact)
         except:
-            LOGGER.warning('Could not make index for %s', fact)
+            LOGGER.warning("Could not make index for %s", fact)
             return None
         return ensure_bytes(index, encoding="utf8")
 
@@ -135,7 +143,10 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
             yield key
 
     def _prefix_read_values(
-        self, prefix: bytes, continue_to_end: Optional[bool] = False, only_one_result: Optional[bool] = False
+        self,
+        prefix: bytes,
+        continue_to_end: Optional[bool] = False,
+        only_one_result: Optional[bool] = False,
     ) -> Generator[Any, Any]:
         """
         Read a range of keys from the database.
@@ -233,7 +244,11 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
             bool: True if the fact is in the collection, False otherwise.
         """
         index: bytes = self.make_index_for_fact(fact)
-        output = list(i for i in self._prefix_read_values(index, only_one_result=True) if i is not None)
+        output = list(
+            i
+            for i in self._prefix_read_values(index, only_one_result=True)
+            if i is not None
+        )
         # size: int = len(list(self._prefix_read_values(b'')))
         # LOGGER.debug("Checking membership with index: %s: %s: %s", index, output, size)
         return len(output) > 0
@@ -335,7 +350,7 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
         LOGGER.debug("Append called: %s: %s", fact, self.put_counter)
         index: bytes = self.make_index_for_fact(fact)
         if index is None:
-            LOGGER.warning('Append failed.')
+            LOGGER.warning("Append failed.")
             return
         if self.sync_writes:
             LOGGER.debug("Using sync writes")
@@ -425,7 +440,7 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
         Returns:
             list: A list of all the nodes with the specified label.
         """
-        prefix: bytes = bytes(f"node_label:{label}::", encoding='utf8')
+        prefix: bytes = bytes(f"node_label:{label}::", encoding="utf8")
         yield from self._prefix_read_values(prefix)
 
     def relationship_has_source_node_facts(self):
@@ -540,7 +555,9 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
 
         def _start_threads():
             current_key = b""
-            for next_key in self.skip_keys(offset=increment, max_keys=max_keys):
+            for next_key in self.skip_keys(
+                offset=increment, max_keys=max_keys
+            ):
                 future: ApplyResult[None] = executor.apply_async(
                     _get_range,
                     (
@@ -551,7 +568,9 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
                 futures.append(future)
                 current_key = next_key
 
-        queueing_thread: threading.Thread = threading.Thread(target=_start_threads)
+        queueing_thread: threading.Thread = threading.Thread(
+            target=_start_threads
+        )
         queueing_thread.start()
 
         endings = 0
@@ -576,10 +595,9 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
                 # print(all(future.ready() for future in futures))
             if not queueing_thread.is_alive() and endings == len(futures):
                 break
-        
+
     def serialize(self) -> None:
         counter = 0
         for _, _, key, value in self.parallel_read(increment=1024):
             print(key, pickle.dumps(value))
             counter += 1
-

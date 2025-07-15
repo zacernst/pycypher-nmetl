@@ -169,7 +169,9 @@ class ConstraintRelationshipHasSourceNode(Constraint):
         __eq__(other: Any): Checks equality between this constraint and another object.
     """
 
-    def __init__(self, source_node_name: str, relationship_name: str, **kwargs):
+    def __init__(
+        self, source_node_name: str, relationship_name: str, **kwargs
+    ):
         self.variable = source_node_name
         self.relationship_name = relationship_name
         super().__init__(**kwargs)
@@ -216,7 +218,9 @@ class ConstraintRelationshipHasTargetNode(Constraint):
         __eq__(other: Any): Checks equality between this constraint and another object.
     """
 
-    def __init__(self, target_node_name: str, relationship_name: str, **kwargs):
+    def __init__(
+        self, target_node_name: str, relationship_name: str, **kwargs
+    ):
         self.variable = target_node_name
         self.relationship_name = relationship_name
         super().__init__(**kwargs)

@@ -2,6 +2,7 @@ import click
 
 from pycypher.fact_collection.foundationdb import FoundationDBFactCollection
 
+
 @click.command()
 def go():
     f = FoundationDBFactCollection()
@@ -11,5 +12,5 @@ def go():
         counter += 1
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     go()

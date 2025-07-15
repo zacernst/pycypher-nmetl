@@ -9,7 +9,7 @@ import datetime
 from typing import TYPE_CHECKING, Annotated, Type, Any, Dict, List, Optional
 
 import yaml
-from nmetl.config import CWD 
+from nmetl.config import CWD
 from nmetl.config import (
     MONOREPO_BASE_DIR,
     SRC_BASE_DIR,
@@ -19,8 +19,8 @@ from nmetl.session import Session
 from nmetl.session_enums import LoggingLevelEnum
 from pycypher.fact_collection import FactCollection
 from pycypher.fact_collection.foundationdb import FoundationDBFactCollection  # noqa: F401
-from pycypher.fact_collection.rocksdb import RocksDBFactCollection            # noqa: F401
-from pycypher.fact_collection.simple import SimpleFactCollection              # noqa: F401
+from pycypher.fact_collection.rocksdb import RocksDBFactCollection  # noqa: F401
+from pycypher.fact_collection.simple import SimpleFactCollection  # noqa: F401
 
 from pydantic import BaseModel, Field, TypeAdapter
 from shared.logger import LOGGER
@@ -56,9 +56,9 @@ class SessionConfig(BaseModel):
     including fact collection settings, monitoring, and data sources.
     """
 
-    fact_collection: str = ''
+    fact_collection: str = ""
     run_monitor: bool = True
-    fact_collection_class: str = ''
+    fact_collection_class: str = ""
     data_sources: Optional[List[DataSourceConfig]] = []
     logging_level: LoggingLevelEnum = "INFO"
     fact_collection_kwargs: Optional[Dict[str, Any]] = {}
@@ -127,7 +127,10 @@ class DataSourceMappingConfig(BaseModel):
 
 
 def load_session_config(
-    path: str, worker_num: Optional[int] = 0, num_workers: Optional[int] = 1, dask_client=None
+    path: str,
+    worker_num: Optional[int] = 0,
+    num_workers: Optional[int] = 1,
+    dask_client=None,
 ) -> Session:
     """
     Load and parse the Session configuration from a YAML file.
@@ -147,7 +150,9 @@ def load_session_config(
         config: dict = yaml.safe_load(f) or {}
     session_config: SessionConfig = SessionConfig(**config)
 
-    fact_collection_class: Type[FactCollection] = globals()[session_config.fact_collection_class]
+    fact_collection_class: Type[FactCollection] = globals()[
+        session_config.fact_collection_class
+    ]
 
     LOGGER.info(
         f"Creating session with fact collection {fact_collection_class.__name__}"
@@ -187,5 +192,6 @@ def load_session_config(
         session.attach_data_source(data_source)
 
     return session
+
 
 SessionConfig.model_rebuild()

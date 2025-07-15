@@ -13,6 +13,7 @@ from pycypher.node_classes import (
     Alias,
     AliasedName,
     And,
+    Collection,
     Collect,
     Cypher,
     Distinct,
@@ -118,13 +119,13 @@ def p_node(p: yacc.YaccProduction):
     """
     if len(p) == 4 and isinstance(p[2], NodeNameLabel):
         node_name_label = p[2]
-        mapping_list: MappingSet = MappingSet([])
+        mapping_list = MappingSet([])
     elif len(p) == 3:
         node_name_label = NodeNameLabel(None, None)
         mapping_list = MappingSet([])
     elif len(p) == 4:
         node_name_label = NodeNameLabel(p[2], None)
-        mapping_list = MappingSet([])
+        mapping_list: MappingSet = MappingSet([])
     elif len(p) == 7 and isinstance(p[2], NodeNameLabel):
         node_name_label: NodeNameLabel = p[2]
         mapping_list = p[4]
@@ -146,6 +147,31 @@ def p_literal(p: yacc.YaccProduction):
     | STRING
     """
     p[0] = Literal(p[1])
+
+def p_collection(p: yacc.YaccProduction):
+    """list : LSQUARE incomplete_list RSQUARE
+    | LSQUARE RSQUARE
+    """
+    if len(p) == 4:
+        p[0] = Collection(values=[p[2]]) 
+    elif len(p) == 3:
+        p[0] = Collection(values=[])
+    else:
+        raise ValueError("What?")
+
+
+def p_incomplete_collection(p: yacc.YaccProduction):
+    """incomplete_list : literal
+    | incomplete_list COMMA literal
+    """
+    if len(p) == 2:
+        p[0] = [p[1]]
+    elif len(p) == 4:
+        p[0] = p[1]
+        p[0].append(p[3])
+    else:
+        raise ValueError("What?")
+
 
 
 def p_relationship(p: yacc.YaccProduction):
@@ -173,23 +199,25 @@ def p_incomplete_relationship_chain(p: yacc.YaccProduction):
     | incomplete_relationship_chain node left_right
     | incomplete_relationship_chain node right_left
     """
-    relationship_chain = RelationshipChain([])
-    p[0] = relationship_chain
     if len(p) == 3:
-        relationship_chain.steps = [p[1], p[2]]
+        p[0] = [p[1], p[2]]
     elif len(p) == 4:
-        relationship_chain.steps = p[1].steps + [p[2], p[3]]
+        p[0] = p[1] + [p[2]] + [p[3]]
     else:
-        pass
+        raise ValueError('This should never happen.')
+    # if len(p) == 3:
+    #     relationship_chain: RelationshipChain = RelationshipChain()
+    #     relationship_chain.steps = [p[1], p[2]]
+    # else:
+    #     pass
 
 
 def p_relationship_chain(p: yacc.YaccProduction):
-    """relationship_chain : incomplete_relationship_chain node
-    | node"""
+    """relationship_chain : incomplete_relationship_chain node"""
     if len(p) == 3:
-        p[0] = RelationshipChain(p[1].steps + [p[2]])
-    elif len(p) == 2:
-        p[0] = RelationshipChain([p[1]])
+        p[0] = RelationshipChain(source_node=p[1][0], relationship=p[1][1], target_node=p[2])
+    # elif len(p) == 2:
+    #     p[0] = RelationshipChain(source_node=p[1], relationship=None, target_node=None)
     else:
         raise ValueError("What?")
 
@@ -258,7 +286,7 @@ def p_match_pattern(p: yacc.YaccProduction):
     if len(p) == 3:
         p[0] = Match(p[2])
     elif len(p) == 4 and isinstance(p[3], WithClause):
-        p[0] = Match(p[2], None, p[3])
+        p[0] = Match(p[2], where_clause=None, with_clause=p[3])
     elif len(p) == 5:
         p[0] = Match(p[2], where_clause=p[4], with_clause=p[3])
     else:

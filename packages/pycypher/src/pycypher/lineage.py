@@ -1,9 +1,12 @@
-'''For recording the lineage of a ``Fact``.'''
+"""For recording the lineage of a ``Fact``."""
+
 import datetime
+
 
 class Lineage:
     def __init__(self) -> None:
         self.time = datetime.datetime.now()
+
     pass
 
 
