@@ -17,11 +17,6 @@ from pycypher.query import (
     QueryValueOfNodeAttribute,
     QueryNodeLabel,
 )
-from pycypher.solver import (
-    Constraint,
-    ConstraintNodeHasAttributeWithValue,
-    IsTrue,
-)
 from pycypher.tree_mixin import TreeMixin
 from rich.tree import Tree
 from shared.logger import LOGGER
@@ -61,20 +56,6 @@ class Cypher(TreeMixin):
 
     def __init__(self, cypher: Query):
         self.cypher: Query = cypher
-
-    def trigger_gather_constraints_to_match(self):
-        """
-        Triggers the gathering of constraints for all nodes of type 'Match' in the current context.
-
-        This method iterates over all nodes returned by the `walk` method. For each node that is an
-        instance of the `Match` class, it calls the `gather_constraints` method on that node.
-
-        Returns:
-            None
-        """
-        for node in self.walk():
-            if isinstance(node, Match):
-                node.gather_constraints()
 
     @property
     def children(self) -> Generator[TreeMixin]:
@@ -310,11 +291,11 @@ class Distinct(Evaluable, TreeMixin):
         Returns:
             Any: A new collection with duplicates removed.
         """
-        collection: List[Literal] = self.collection._evaluate(  # pylint: disable=protected-access
+        collection: List[Evaluable] = self.collection._evaluate(
             fact_collection, start_entity_var_id_mapping=start_entity_var_id_mapping
         )
-        new_values = []
-        for value in collection.values:
+        new_values: list[Evaluable] = []
+        for value in collection:
             if value not in new_values:
                 new_values.append(value)
         return Collection(new_values)
@@ -1003,7 +984,6 @@ class Match(Evaluable, TreeMixin):
     pattern (TreeMixin): The pattern to match in the query.
     where (Optional[TreeMixin]): An optional WHERE clause to filter the results.
     with_clause (Optional[TreeMixin]): An optional WITH clause to chain queries.
-    constraints (Optional[List[Constraint]]): A list of constraints to apply to the match.
     """
 
     def __init__(
@@ -1011,22 +991,15 @@ class Match(Evaluable, TreeMixin):
         pattern: RelationshipChainList,  # This part of the query is mandatory
         with_clause: Optional[WithClause] = None,
         where_clause: Optional[Where] = None,
-        constraints: Optional[List[Constraint]] = None,
     ) -> None:
         self.pattern = pattern
         self.with_clause = with_clause
         self.where_clause = where_clause
-        self.constraints = constraints or []
 
     def __repr__(self) -> str:
         return (
             f"Match({self.pattern}, {self.where_clause}, {self.with_clause})"
         )
-
-    def gather_constraints(self) -> None:
-        """Gather all the ``Constraint`` objects from inside the ``Match`` clause."""
-        for node in self.walk():
-            self.constraints += getattr(node, "constraints", [])
 
     def tree(self) -> Tree:
         t: Tree = Tree(self.__class__.__name__)
@@ -1048,13 +1021,15 @@ class Match(Evaluable, TreeMixin):
     def _evaluate(
         self,
         fact_collection: FactCollection,
-        start_entity_var_id_mapping: Dict[str, str] | List[Dict[str, Any]] = {},
+        start_entity_var_id_mapping: Dict[str, Any] | List[Dict[str, Any]] = [],
     ) -> List[Dict[str, Any]]:
         """First, evaluate the pattern;
         Then evaluate the WithClause;
         Then the WhereClause;
         Send to ReturnClause
         """
+        if isinstance(start_entity_var_id_mapping, list):
+            raise ValueError()
         start_entity_var_id_mapping_post_pattern: List[Dict[str, str]] = (
             self.pattern._evaluate(
                 fact_collection,
@@ -1148,7 +1123,7 @@ class Projection(TreeMixin):
     def __init__(self, lookups: List[AliasedName | Alias] = []):
         self.lookups = lookups
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"Projection({self.lookups})"
 
     def tree(self) -> Tree:
@@ -1292,6 +1267,7 @@ class Node(TreeMixin):
                 )
             ]
         # Filter ``out`` to instances that match mapping
+        # TODO: Move this to MappingSet class so that Relationships can use the same code
         mapping_filtered: List[Dict[str, str]] = []
         for solution in out:
             satisfies_mapping: bool = True
@@ -1308,15 +1284,16 @@ class Node(TreeMixin):
 
         out = mapping_filtered
 
-        if "_" in start_entity_var_id_mapping:
-            mapping_clone: dict[str, str] = copy.copy(start_entity_var_id_mapping)
-            mapping_clone[self.node_name_label.name] = mapping_clone["_"]
-            del mapping_clone["_"]
-            out.append(
-                self._evaluate(
-                    fact_collection, start_entity_var_id_mapping=mapping_clone
-                )
-            )
+        # TODO: Fix the following block
+        # if "_" in start_entity_var_id_mapping:
+        #     mapping_clone: dict[str, str] = copy.copy(start_entity_var_id_mapping)
+        #     mapping_clone[self.node_name_label.name] = mapping_clone["_"]
+        #     del mapping_clone["_"]
+        #     out.append(
+        #         self._evaluate(
+        #             fact_collection, start_entity_var_id_mapping=mapping_clone
+        #         )
+        #     )
         return out
 
     def __repr__(self):
@@ -1376,15 +1353,6 @@ class Mapping(TreeMixin):  # This is not complete
         t.add(self.key)
         t.add(str(self.value))
         return t
-
-    @property
-    def constraints(self):
-        """Generates the ``Constraint`` objects that correspond to this node."""
-        return [
-            ConstraintNodeHasAttributeWithValue(
-                self.parent.node_name_label.name, self.key, self.value
-            )
-        ]
 
     @property
     def children(self):
@@ -1458,7 +1426,7 @@ class RelationshipLeftRight(TreeMixin):
         return f"LeftRight({self.relationship})"
 
     def tree(self) -> Tree:
-        t = Tree(self.__class__.__name__)
+        t: Tree = Tree(self.__class__.__name__)
         t.add(self.relationship.tree())
         return t
 
@@ -1578,12 +1546,10 @@ class RelationshipChain(TreeMixin):
         yield self.target_node
 
 
-
-
 class Where(Evaluable, TreeMixin):
     """The all-important WHERE clause."""
 
-    def __init__(self, predicate: Predicate):
+    def __init__(self, predicate: Evaluable):
         self.predicate = predicate
 
     def _evaluate(
@@ -1603,11 +1569,6 @@ class Where(Evaluable, TreeMixin):
         t = Tree(self.__class__.__name__)
         t.add(self.predicate.tree())
         return t
-
-    @property
-    def constraints(self):
-        """Pointless?"""
-        return [IsTrue(self.predicate)]
 
     @property
     def children(self):
@@ -1689,9 +1650,9 @@ class Not(Evaluable, Predicate):
 
     def __init__(  # pylint: disable=super-init-not-called
         self,
-        argument: Predicate,
+        argument: Evaluable,
     ):
-        self.argument = argument
+        self.argument: Evaluable = argument
 
     def __repr__(self):
         return f"{self.__class__.__name__}({self.argument})"
@@ -1732,7 +1693,7 @@ class RelationshipChainList(TreeMixin):
         return f"RelationshipChainList({self.relationships})"
 
     def tree(self) -> Tree:
-        t = Tree(self.__class__.__name__)
+        t: Tree = Tree(self.__class__.__name__)
         for relationship in self.relationships:
             t.add(relationship.tree())
         return t
@@ -1788,7 +1749,7 @@ class Addition(Evaluable, Predicate):
         """
         return f"Addition({self.left_side}, {self.right_side})"
 
-    def tree(self):
+    def tree(self) -> Tree:
         """
         Create a tree representation of this Addition node.
 
@@ -1801,7 +1762,7 @@ class Addition(Evaluable, Predicate):
         return t
 
     @property
-    def children(self):
+    def children(self) -> Generator[Evaluable, None, None]:
         """
         Get the children of this Addition node.
 
@@ -1844,7 +1805,7 @@ class Literal(Evaluable, TreeMixin):
             value = value.value
         self.value = value
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"Literal({self.value})"
 
     def __bool__(self) -> bool:
@@ -1857,8 +1818,8 @@ class Literal(Evaluable, TreeMixin):
 
     def _evaluate(
         self,
-        *_,
-        **__,
+        fact_collection: FactCollection,
+        start_entity_var_id_mapping: Dict[str, Any] | List[Dict[str, Any]] = {},
     ) -> Any:
         return self
 

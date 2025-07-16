@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Dict, List, Tuple, Type
+from typing import Dict, List, Tuple, Type, Any
 
 from ply import yacc  # type: ignore
 from pycypher.cypher_lexer import *  # noqa: F403
@@ -388,18 +388,12 @@ CYPHER: yacc.LRParser = yacc.yacc()  # type: ignore
 
 class CypherParser:
     """The main class of the ``pycypher`` package.
-
-    This class is responsible for parsing Cypher queries and
-    returning the solutions to those queries. It creates the
-    AST for the Cypher query and then generates a constraint
-    satisfaction problem which solves the query.
     """
 
     def __init__(self, cypher_text: str):
         self.cypher_text = cypher_text
         self.parse_tree: TreeMixin = CYPHER.parse(self.cypher_text)
         [_ for _ in self.parse_tree.walk()]  # pylint: disable=expression-not-assigned
-        self.parse_tree.trigger_gather_constraints_to_match()
 
     def __repr__(self) -> str:
         return self.parse_tree.__str__()
@@ -408,6 +402,6 @@ class CypherParser:
         """Just calls the walk method on the parsed tree."""
         yield from self.parse_tree.walk()
 
-    def solutions(self, fact_collection: FactCollection):
-        """Returns the solutions to the Cypher query."""
-        return self.parse_tree.get_return_clause()._evaluate(fact_collection)  # pylint: disable=protected-access
+    def _evaluate(self, fact_collection: FactCollection, start_entity_var_id_mapping: Dict[str, Any] | List[Dict[str, Any]] = {}) -> List[Dict[str, Any]]:
+        out: List[Dict[str, Any]] = self.parse_tree.cypher._evaluate(fact_collection, start_entity_var_id_mapping=start_entity_var_id_mapping)
+        return out

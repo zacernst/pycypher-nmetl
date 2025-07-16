@@ -14,15 +14,6 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 if TYPE_CHECKING:
     from nmetl.session import Session
 from pycypher.lineage import Lineage
-from pycypher.solver import (
-    Constraint,
-    ConstraintNodeHasAttributeWithValue,
-    ConstraintNodeHasLabel,
-    ConstraintRelationshipHasLabel,
-    ConstraintRelationshipHasSourceNode,
-    ConstraintRelationshipHasTargetNode,
-    ConstraintVariableRefersToSpecificObject,
-)
 from shared.logger import LOGGER
 
 
@@ -109,43 +100,6 @@ class FactNodeHasLabel(AtomicFact):
             and self.label == other.label
         )
 
-    def __add__(self, other: Constraint) -> List[Dict[str, str]] | None:
-        """
-        Combine this fact with a constraint to produce a solution mapping.
-
-        This method is used to check if this fact satisfies a constraint and
-        if so, returns a mapping from variable names to values.
-
-        Args:
-            other (Constraint): The constraint to check against this fact.
-
-        Returns:
-            List[Dict[str, str]] | None: A mapping from variable names to values if the
-                constraint is satisfied, None otherwise.
-
-        Raises:
-            ValueError: If the other object is not a Constraint.
-        """
-        if not isinstance(other, Constraint):
-            raise ValueError("Can only check constraints against facts")
-
-        match other:
-            case ConstraintNodeHasLabel():
-                out = (
-                    {other.variable: self.node_id}
-                    if self.label == other.label
-                    else None
-                )
-            case ConstraintVariableRefersToSpecificObject():
-                out = (
-                    {other.variable: self.node_id}
-                    if self.node_id == other.node_id
-                    else None
-                )
-            case _:
-                out = None
-        return out
-
     def __hash__(self):
         """
         Return a hash value for this FactNodeHasLabel instance.
@@ -183,18 +137,6 @@ class FactRelationshipHasLabel(AtomicFact):
             isinstance(other, FactRelationshipHasLabel)
             and self.relationship_id == other.relationship_id
             and self.relationship_label == other.relationship_label
-        )
-
-    def __add__(self, other: Constraint):
-        if not isinstance(other, Constraint):
-            raise ValueError("Can only check constraints against facts")
-        return (
-            {other.relationship_name: self.relationship_id}
-            if (
-                isinstance(other, ConstraintRelationshipHasLabel)
-                and self.relationship_label == other.label
-            )
-            else None
         )
 
     def __hash__(self):
@@ -246,63 +188,6 @@ class FactNodeHasAttributeWithValue(AtomicFact):
 
     def __repr__(self) -> str:
         return f"NodeHasAttributeWithValue: {self.node_id} {self.attribute} {self.value}"
-
-    def __add__(self, other: Constraint) -> Dict[str, str] | None:
-        """Check the ``Constraint`` against the ``Fact``. Return a mapping from the
-        variable in the constraint to the value in the fact if the constraint is
-        satisfied, otherwise return None.
-
-        Args:
-            other (Constraint): The constraint to check against the fact.
-        """
-        # VariableRefersToSpecificObject
-        out = "hithere"
-        match other:
-            case ConstraintVariableRefersToSpecificObject():
-                out = {other.node_id: self.node_id}
-            case ConstraintNodeHasAttributeWithValue():
-                other_value = (
-                    other.value
-                    if not hasattr(other.value, "value")
-                    else other.value.value
-                )
-                out = (
-                    {other.variable: self.node_id}
-                    if (
-                        isinstance(other, ConstraintNodeHasAttributeWithValue)
-                        and self.attribute == other.attribute
-                        and self.value == other_value
-                    )
-                    else None
-                )
-            case ConstraintNodeHasLabel():  # Too chatty!
-                # Need the attributes in the triggers return projection
-
-                # node_label = self.session.fact_collection.query(
-                #     QueryNodeLabel(self.node_id)
-                # )
-                node_label = self.node_id.split(":")[0]
-                LOGGER.debug("In match clause. node_label: %s", node_label)
-
-                out = (
-                    {other.variable: self.node_id}
-                    if node_label
-                    == other.label  # and self.attribute is in the trigger's arguments
-                    else None
-                )
-            case ConstraintRelationshipHasSourceNode():
-                out = None
-            case ConstraintRelationshipHasTargetNode():
-                out = None
-            case ConstraintRelationshipHasLabel():
-                out = None
-            case _:
-                raise ValueError(
-                    f"Expected a ``Constraint``, but got {other.__class__.__name__}."
-                )
-        if out == "hithere":
-            LOGGER.error("hithere: %s", other)
-        return out
 
     def __eq__(self, other: Any) -> bool:
         return (
@@ -372,10 +257,6 @@ class FactRelationshipHasSourceNode(AtomicFact):
             and self.source_node_id == other.source_node_id
         )
 
-    def __add__(self, other: Constraint):
-        if not isinstance(other, Constraint):
-            raise ValueError("Can only check constraints against facts")
-
     def __hash__(self):
         return hash((self.relationship_id, self.source_node_id))
 
@@ -405,9 +286,5 @@ class FactRelationshipHasTargetNode(AtomicFact):
             and self.target_node_id == other.target_node_id
         )
 
-    def __add__(self, other: Constraint):
-        if not isinstance(other, Constraint):
-            raise ValueError("Can only check constraints against facts")
-
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash((self.relationship_id, self.target_node_id))
