@@ -2,9 +2,6 @@
 Trigger Module Documentation (trigger.py)
 =====================================
 
-The ``trigger.py`` module within the ``nmetl`` library defines the core classes and protocols
-for creating and managing triggers in the ETL pipeline. Triggers are functions that are executed
-when certain conditions are met in the data processing pipeline.
 """
 
 from __future__ import annotations
@@ -16,13 +13,11 @@ from typing import (
     List,
     Optional,
     Protocol,
-    Set,
     TypeVar,
     runtime_checkable,
 )
 
 from pycypher.cypher_parser import CypherParser
-from pycypher.solver import Constraint
 
 Variable = TypeVar("Variable")
 Attribute = TypeVar("Attribute")
@@ -119,26 +114,26 @@ class NodeRelationship(Protocol[SourceVariable, Attribute, TargetVariable]):
         ...
 
 
-@dataclass
-class AttributeMetadata:
-    """
-    Metadata about an attribute in the ETL pipeline.
-
-    This class stores metadata about attributes, including the function that
-    generates the attribute, the attribute name, and a description.
-    """
-
-    function_name: Optional[str]
-    attribute_name: Optional[str]
-    description: Optional[str]
-
-
-@dataclass
-class RelationshipMetadata:
-    """Metadata about the relationship."""
-
-    name: Optional[str]
-    description: Optional[str]
+# @dataclass
+# class AttributeMetadata:
+#     """
+#     Metadata about an attribute in the ETL pipeline.
+# 
+#     This class stores metadata about attributes, including the function that
+#     generates the attribute, the attribute name, and a description.
+#     """
+# 
+#     function_name: Optional[str]
+#     attribute_name: Optional[str]
+#     description: Optional[str]
+# 
+# 
+# @dataclass
+# class RelationshipMetadata:
+#     """Metadata about the relationship."""
+# 
+#     name: Optional[str]
+#     description: Optional[str]
 
 
 @dataclass
@@ -150,12 +145,12 @@ class CypherTrigger(ABC):  # pylint: disable=too-many-instance-attributes
 
     def __init__(
         self,
-        function: Optional[Callable] = None,
-        cypher_string: Optional[str] = None,
+        function: Callable,
+        cypher_string: str,
         # variable_set: Optional[str] = None,
         # attribute_set: Optional[str] = None,
         # session: Optional["Session"] = None,
-        parameter_names: Optional[List[str]] = None,
+        parameter_names: List[str],
     ):
         """
         Initialize a CypherTrigger instance.
@@ -182,10 +177,6 @@ class CypherTrigger(ABC):  # pylint: disable=too-many-instance-attributes
         # self.attribute_set: Optional[str] = attribute_set
         self.parameter_names = parameter_names
 
-        self.constraints: Set[Constraint] = set()
-
-        self._gather_constraints()
-
     def __getstate__(self):
         state = self.__dict__.copy()
         return state
@@ -197,19 +188,7 @@ class CypherTrigger(ABC):  # pylint: disable=too-many-instance-attributes
         Returns:
             str: A string representation showing the constraints of this trigger.
         """
-        return f"CypherTrigger(constraints: {self.constraints})"
-
-    def _gather_constraints(self):
-        """
-        Gather constraints from the Cypher parse tree.
-
-        This method walks through the Cypher parse tree and collects all constraints
-        from nodes that have a 'constraints' attribute, adding them to the trigger's
-        constraints set.
-        """
-        for node in self.cypher.walk():
-            if hasattr(node, "constraints"):
-                self.constraints = self.constraints | set(node.constraints)
+        return self.__class__.__name__
 
     @abstractmethod
     def __hash__(self):
@@ -237,12 +216,12 @@ class NodeRelationshipTrigger(CypherTrigger):
 
     def __init__(
         self,
-        function: Optional[Callable] = None,
-        cypher_string: Optional[str] = None,
-        source_variable: Optional[str] = None,
-        target_variable: Optional[str] = None,
-        relationship_name: Optional[str] = None,
-        parameter_names: Optional[List[str]] = None,
+        function: Callable,
+        cypher_string: str,
+        source_variable: str,
+        target_variable: str,
+        relationship_name: str,
+        parameter_names: List[str] = [],
     ):
         """
         Initialize a NodeRelationshipTrigger instance.
@@ -256,17 +235,17 @@ class NodeRelationshipTrigger(CypherTrigger):
             session (Optional[Session]): The session this trigger belongs to. Defaults to None.
             parameter_names (Optional[List[str]]): Names of parameters for the function. Defaults to None.
         """
+        
+        self.source_variable: str = source_variable
+        self.target_variable: str = target_variable
+        self.relationship_name: str = relationship_name
+        self.is_relationship_trigger = True
+        self.is_attribute_trigger = False
         super().__init__(
-            self,
             function=function,
             cypher_string=cypher_string,
             parameter_names=parameter_names,
         )
-        self.source_variable: Optional[str] = source_variable
-        self.target_variable: Optional[str] = target_variable
-        self.relationship_name: Optional[str] = relationship_name
-        self.is_relationship_trigger = True
-        self.is_attribute_trigger = False
 
     def __hash__(self):
         """
@@ -297,13 +276,12 @@ class VariableAttributeTrigger(CypherTrigger):
 
     def __init__(  # pylint: disable=too-many-arguments,too-many-positional-arguments
         self,
-        function: Optional[Callable] = None,
-        cypher_string: Optional[str] = None,
-        variable_set: Optional[str] = None,
-        attribute_set: Optional[str] = None,
-        # session: Optional["Session"] = None,
-        parameter_names: Optional[List[str]] = None,
-    ):
+        function: Callable,
+        cypher_string: str,
+        variable_set: str,
+        attribute_set: str,
+        parameter_names: List[str] = [],
+    ) -> None:
         """
         Initialize a VariableAttributeTrigger instance.
 
@@ -318,15 +296,14 @@ class VariableAttributeTrigger(CypherTrigger):
         super().__init__(
             function=function,
             cypher_string=cypher_string,
-            # session=session,
             parameter_names=parameter_names,
         )
-        self.variable_set: Optional[str] = variable_set
-        self.attribute_set: Optional[str] = attribute_set
+        self.variable_set: str = variable_set
+        self.attribute_set: str = attribute_set
         self.is_relationship_trigger = False
         self.is_attribute_trigger = True
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         """
         Generate a hash value for this VariableAttributeTrigger instance.
 

@@ -9,10 +9,9 @@ atomic pieces of information about nodes, relationships, and their attributes.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 if TYPE_CHECKING:
-    from nmetl.session import Session
 from pycypher.lineage import Lineage
 from shared.logger import LOGGER
 
@@ -29,24 +28,14 @@ class AtomicFact:  # pylint: disable=too-few-public-methods
 
     """
 
-    def __init__(self, *_, session: Optional[Session] = None):  # ruff: disable=F821
+    def __init__(self, *_):  # ruff: disable=F821
         """
         Initialize an AtomicFact instance.
 
         Args:
             *_: Variable positional arguments (ignored).
-            session (Optional[Session]): The session this fact belongs to. Defaults to None.
         """
-        self.session = None
         self.lineage: Lineage | None = None
-
-    # def __getstate__(self):
-    #     state = self.__dict__.copy()
-    #     return state
-
-    # def __setstate__(self, state):
-    #      self.__dict__.update(state)
-    #      self.c = None
 
 
 class FactNodeHasLabel(AtomicFact):
@@ -160,7 +149,7 @@ class FactRelationshipHasAttributeWithValue(AtomicFact):
 
     def __init__(
         self, relationship_id: str, attribute: str, value: Any, **kwargs
-    ):
+    ) -> None:
         self.relationship_id = relationship_id
         self.attribute = attribute
         self.value = value

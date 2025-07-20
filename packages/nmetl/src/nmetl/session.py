@@ -594,8 +594,8 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
                         "Function must have a return annotation with two arguments."
                     )
 
-                variable_name = variable_attribute_args[0].__forward_arg__
-                attribute_name = variable_attribute_args[1].__forward_arg__
+                variable_name: str = variable_attribute_args[0].__forward_arg__
+                attribute_name: str = variable_attribute_args[1].__forward_arg__
 
                 data_asset_parameters: dict[str, DataAsset] = {
                     parameter: self.data_assets[parameter]

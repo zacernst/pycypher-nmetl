@@ -346,19 +346,25 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
             # Let's filter out the facts that are irrelevant to this trigger
             for _, trigger in QueueProcessor.get_trigger_dict().items():
                 # Let's bomb out if the attribute in the fact is not in the trigger
-                if (
-                    isinstance(item, FactNodeHasAttributeWithValue)
-                    and item.attribute
-                    not in trigger.cypher.parse_tree.attribute_names
-                ):
-                    LOGGER.debug(
-                        "Fact %s does not match trigger %s, skipping",
-                        item,
-                        trigger,
-                    )
-                    continue
+                # TODO: Move this somewhere else, where it can be extended for efficiency
+                # if (
+                #     isinstance(item, FactNodeHasAttributeWithValue)
+                #     and item.attribute
+                #     not in trigger.cypher.parse_tree.attribute_names
+                # ):
+                #     LOGGER.debug(
+                #         "Fact %s does not match trigger %s, skipping",
+                #         item,
+                #         trigger,
+                #     )
+                #     continue
                 LOGGER.debug("Checking trigger %s", trigger)
-                # item is a Fact subclass
+                # Get all the variables in the trigger.
+                # Get the name of the entity in the fact.
+                # Check if there is a solution to the Cypher query which includes the named entity
+                #    when it's substituted for each variable.
+                # If there is, then add the fact to the output list.
+
                 for constraint in trigger.constraints:
                     LOGGER.debug(
                         "Checking item: %s, constraint %s, trigger %s result: %s",
