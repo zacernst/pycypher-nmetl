@@ -11,13 +11,12 @@ such as CSV and Parquet files.
 from __future__ import annotations
 
 import cProfile
-import random
 import csv
 import datetime
 import hashlib
-import frozendict
 import io
 import pstats
+import random
 import threading
 import time
 import uuid
@@ -34,13 +33,17 @@ from typing import (
     TypeVar,
 )
 
+import frozendict
+
 if TYPE_CHECKING:
     from nmetl.session import Session
     from prometheus_client import Histogram
+
 from urllib.parse import ParseResult
 
 import pyarrow.parquet as pq
 from nmetl.message_types import RawDatum
+from nmetl.prometheus_metrics import ROW_PROCESSING_TIME, ROWS_QUEUED
 from nmetl.queue_generator import QueueGenerator
 from pycypher.fact import (
     AtomicFact,
@@ -52,9 +55,6 @@ from pycypher.fact import (
 )
 from shared.helpers import ensure_uri
 from shared.logger import LOGGER
-from shared.telemetry import pyroscope
-from nmetl.prometheus_metrics import ROWS_QUEUED, ROW_PROCESSING_TIME
-
 
 LOGGER.setLevel("ERROR")
 
@@ -365,7 +365,7 @@ class DataSource(ABC):  # pylint: disable=too-many-instance-attributes
                     LOGGER.debug("DataSource %s is halting", self.name)
                     break
                 if self.received_counter % 5 == 0:
-                    while self.session.tasks_in_memory > 1:
+                    while self.session.tasks_in_memory > 64:
                         LOGGER.debug("DataSource waiting...")
                         time.sleep(random.random())
                     LOGGER.debug(
@@ -447,12 +447,10 @@ class DataSourceMapping:  # pylint: disable=too-few-public-methods,too-many-inst
     ) -> Generator[AtomicFact, None, None]:
         """Process the mapping against a raw datum."""
         if self.is_attribute_mapping:
-            fact: FactNodeHasAttributeWithValue = (
-                FactNodeHasAttributeWithValue(
-                    node_id=f"{self.label}::{row[self.identifier_key]}",
-                    attribute=self.attribute,
-                    value=row[self.attribute_key],
-                )
+            fact: FactNodeHasAttributeWithValue = FactNodeHasAttributeWithValue(
+                node_id=f"{self.label}::{row[self.identifier_key]}",
+                attribute=self.attribute,
+                value=row[self.attribute_key],
             )
             yield fact
         elif self.is_label_mapping:
@@ -483,9 +481,7 @@ class DataSourceMapping:  # pylint: disable=too-few-public-methods,too-many-inst
                 "Only attribute and label mappings are supported for now."
             )
 
-    def __add__(
-        self, row: dict[str, Any]
-    ) -> Generator[AtomicFact, None, None]:
+    def __add__(self, row: dict[str, Any]) -> Generator[AtomicFact, None, None]:
         """Let us use the + operator to process a row against a mapping."""
         yield from self.process_against_raw_datum(row)
 

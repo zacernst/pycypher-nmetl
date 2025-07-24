@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import base64
 import multiprocessing as mp
 import pickle
-import base64
 import queue
 import uuid
 from typing import TYPE_CHECKING, Any, Generator, Optional, Type
+
 import zmq
 
 if TYPE_CHECKING:

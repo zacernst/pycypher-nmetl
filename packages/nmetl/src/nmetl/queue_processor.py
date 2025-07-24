@@ -12,7 +12,6 @@ import datetime
 import hashlib
 import multiprocessing as mp
 import queue
-from dask.distributed import get_worker
 
 # import queue
 import threading
@@ -22,34 +21,35 @@ import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from queue import Queue
-from typing import TYPE_CHECKING, Callable, Type, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Type
+
+from dask.distributed import get_worker
 
 if TYPE_CHECKING:
     from dask.distributed import Client
     from nmetl.configuration import SessionConfig
     from pycypher.fact_collection import FactCollection
 
+from nmetl.prometheus_metrics import REQUEST_TIME
 from nmetl.queue_generator import QueueGenerator
 from nmetl.trigger import CypherTrigger
-from pycypher.lineage import Appended, FromMapping
 from pycypher.fact import (
     FactNodeHasAttributeWithValue,
+    FactNodeHasLabel,
     FactRelationshipHasLabel,
     FactRelationshipHasSourceNode,
     FactRelationshipHasTargetNode,
 )
+from pycypher.lineage import Appended, FromMapping
 from pycypher.node_classes import Collection
 from pycypher.query import NullResult
 from shared.logger import LOGGER
 
-
-from nmetl.prometheus_metrics import REQUEST_TIME
-
-
 LOGGER.setLevel("DEBUG")
 
-WITH_CLAUSE_PROJECTION_KEY = "__with_clause_projection__"
-MATCH_SOLUTION_KEY = "__match_solution__"
+WITH_SOLUTION_KEY = "__with_solution__"
+MATCH_SOLUTION_KEY = "__MATCH_SOLUTION_KEY__"
+WHERE_SOLUTION_KEY = '__where_solution__'
 
 
 @dataclass
@@ -87,7 +87,7 @@ class QueueProcessor(ABC):  # pylint: disable=too-few-public-methods,too-many-in
         priority: Optional[int] = 0,
         session_config: Optional[SessionConfig] = None,
         dask_client: Optional[Client] = None,
-        max_buffer_size: int = 1_000,
+        max_buffer_size: int = 16,
         buffer_timeout: float = 2.0,
     ) -> None:
         """
@@ -299,7 +299,7 @@ class FactGeneratedQueueProcessor(QueueProcessor):  # pylint: disable=too-few-pu
         # else:
         fact_collection: FactCollection = QueueProcessor.get_fact_collection()
         for item in buffer:
-            LOGGER.debug("Writing: %s", item)
+            LOGGER.info("Writing: %s", item)
             item.lineage = Appended(lineage=getattr(item, "lineage", None))
             fact_collection.append(item)
             # SAMPLE_HISTOGRAM.observe(random.random() * 10)
@@ -327,9 +327,9 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
         super().__init__(*args, **kwargs)
 
     @staticmethod
-    def process_item_from_queue(buffer: Any) -> None:
+    def process_item_from_queue(buffer: Any) -> List[SubTriggerPair]:
         """Process new facts from the check_fact_against_triggers_queue."""
-        out: list[SubTriggerPair] = []
+        out: List[SubTriggerPair] = []
         for item in buffer:
             LOGGER.debug("Checking fact %s against triggers", item)
             item_in_collection: bool = (
@@ -345,42 +345,20 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
             LOGGER.debug("IN COLLECTION: %s", item.__dict__)
             # Let's filter out the facts that are irrelevant to this trigger
             for _, trigger in QueueProcessor.get_trigger_dict().items():
-                # Let's bomb out if the attribute in the fact is not in the trigger
-                # TODO: Move this somewhere else, where it can be extended for efficiency
-                # if (
-                #     isinstance(item, FactNodeHasAttributeWithValue)
-                #     and item.attribute
-                #     not in trigger.cypher.parse_tree.attribute_names
-                # ):
-                #     LOGGER.debug(
-                #         "Fact %s does not match trigger %s, skipping",
-                #         item,
-                #         trigger,
-                #     )
-                #     continue
-                LOGGER.debug("Checking trigger %s", trigger)
-                # Get all the variables in the trigger.
-                # Get the name of the entity in the fact.
-                # Check if there is a solution to the Cypher query which includes the named entity
-                #    when it's substituted for each variable.
-                # If there is, then add the fact to the output list.
-
-                for constraint in trigger.constraints:
-                    LOGGER.debug(
-                        "Checking item: %s, constraint %s, trigger %s result: %s",
-                        item,
-                        constraint,
-                        trigger,
-                        item + constraint,
-                    )
-
-                    if sub := item + constraint:
-                        LOGGER.debug("Fact %s matched a trigger", item)
-                        sub_trigger_pair: SubTriggerPair = SubTriggerPair(
-                            sub=sub, trigger=trigger
-                        )
-                        out.append(sub_trigger_pair)
-                        LOGGER.debug("SubTriggerPair: %s", sub_trigger_pair)
+                for variable, node in trigger.cypher.parse_tree.get_node_variables():
+                    # Following check might not be necessary
+                    if isinstance(item, (FactNodeHasAttributeWithValue, FactNodeHasLabel,)):
+                        result: list[dict[str, Any]] = trigger.cypher._evaluate(QueueProcessor.get_fact_collection(), start_entity_var_id_mapping={variable: item.node_id})
+                        LOGGER.debug('Result of %s is %s', item, result)
+                        if result:
+                            sub_trigger_pair: SubTriggerPair = SubTriggerPair(sub={variable: item.node_id}, trigger=trigger)
+                            LOGGER.debug('Created SubTriggerPair: %s', sub_trigger_pair)
+                            out.append(sub_trigger_pair)
+                    else:
+                        # Add back Relationship facts here...
+                        continue
+                    
+                    LOGGER.debug("Checking trigger %s", trigger)
         return out
 
 
@@ -395,7 +373,7 @@ class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-publi
         """Process new facts from the check_fact_against_triggers_queue."""
         out: list[list[Any]] = []
         for item in buffer:
-            LOGGER.debug("Got item in TriggeredLookupProcessor")
+            LOGGER.debug("Got item in TriggeredLookupProcessor: %s", item)
             result: list[Any] = (
                 TriggeredLookupProcessor._process_sub_trigger_pair(item)
             )
@@ -409,20 +387,21 @@ class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-publi
         """Helper function to process a sub_trigger_pair"""
         fact_collection: FactCollection = QueueProcessor.get_fact_collection()
         LOGGER.debug(str(sub_trigger_pair))
-        return_clause = (
-            sub_trigger_pair.trigger.cypher.parse_tree.cypher.return_clause
-        )
-        start_time: datetime.datetime = datetime.datetime.now()
-        LOGGER.debug("Calling _evaluate on return clause")
-        solutions = return_clause._evaluate(
-            fact_collection, sub_trigger_pair=sub_trigger_pair
-        )  # pylint: disable=protected-access
+        # return_clause = (
+        #     sub_trigger_pair.trigger.cypher.parse_tree.cypher.return_clause
+        # )
+        try:
+            solutions = sub_trigger_pair.trigger.cypher._evaluate(
+                fact_collection, start_entity_var_id_mapping=sub_trigger_pair.sub
+            )  # pylint: disable=protected-access
+        except KeyError:
+            solutions = []
         LOGGER.debug(
-            "Done with _evaluate: %s",
+            "Done with _evaluate in TriggeredLookupProcessor: %s",
         )
-        end_time: datetime.datetime = datetime.datetime.now()
         LOGGER.debug("solutions in _process: %s", solutions)
-        if sub_trigger_pair.trigger.is_relationship_trigger:
+        LOGGER.debug('Trigger: %s %s', sub_trigger_pair.trigger, sub_trigger_pair.trigger.is_attribute_trigger)
+        if 0 and sub_trigger_pair.trigger.is_relationship_trigger:
             LOGGER.debug(
                 "Processing relationship trigger: %s", sub_trigger_pair
             )
@@ -437,7 +416,6 @@ class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-publi
                 source_variable,
                 target_variable,
                 relationship_name,
-                return_clause,
             ]
             process_solution_function: Callable = (
                 TriggeredLookupProcessor._process_solution_node_relationship
@@ -447,7 +425,6 @@ class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-publi
             process_solution_args = [  # prepend `solutions` onto this when called later
                 sub_trigger_pair,
                 variable_to_set,
-                return_clause,
             ]
             process_solution_function = (
                 TriggeredLookupProcessor._process_solution_node_attribute
@@ -467,6 +444,7 @@ class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-publi
                 "Processing solution function: %s", process_solution_function
             )
             try:
+                ####### Ensure that projection from Match clause is includedin solution dict
                 computed_facts.append(
                     process_solution_function(solution, *process_solution_args)
                 )
@@ -526,23 +504,36 @@ class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-publi
         solution: Dict,
         sub_trigger_pair: SubTriggerPair,
         variable_to_set: str,
-        return_clause,
     ) -> FactNodeHasAttributeWithValue | Type[NullResult]:
         """Process a solution and generate a fact."""
-        splat = TriggeredLookupProcessor._extract_splat_from_solution(
-            solution, return_clause
-        )
+        # splat = TriggeredLookupProcessor._extract_splat_from_solution(
+        #     solution, return_clause
+        # )
+        LOGGER.debug('Called _process_solution_node_attribute with arguments: %s', sub_trigger_pair)
 
-        if any(isinstance(arg, NullResult) for arg in splat):
-            LOGGER.debug("NullResult found in splat %s", splat)
+        if any(isinstance(arg, NullResult) for arg in solution.values()):
+            LOGGER.debug("NullResult found in solution splat %s", solution)
             return NullResult
 
-        computed_value = sub_trigger_pair.trigger.function(*splat)
-        sub_trigger_pair.trigger.call_counter += 1
+        arguments: Dict[str, Any] = {key: value for key, value in solution.items() if not key.startswith('__')}
+        LOGGER.debug('Will compute value with arguments: %s', arguments)
+
+        python_args: Dict[str, Any] = {
+            key: value.value for key, value in arguments.items()
+            if not key.startswith('__')
+        }
+        if any(isinstance(i, NullResult) for i in python_args.values()):
+            return NullResult
+        LOGGER.debug('Will compute value with python arguments: %s', python_args)
+        computed_value = sub_trigger_pair.trigger.function(**python_args)
+        LOGGER.debug('Computed value: %s', computed_value)
         target_attribute = sub_trigger_pair.trigger.attribute_set
+        LOGGER.debug('Target attribute: %s', target_attribute)
+        LOGGER.debug('Solution: %s', solution)
         node_id = TriggeredLookupProcessor._extract_node_id_from_solution(
             solution, variable_to_set
         )
+        LOGGER.debug('node_id: %s', node_id)
         computed_fact: FactNodeHasAttributeWithValue = (
             FactNodeHasAttributeWithValue(
                 node_id=node_id,
@@ -592,10 +583,13 @@ class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-publi
         solution: Dict, variable_to_set: str
     ) -> str:
         """Extract the node ID from the solution."""
+
+        # MATCH_SOLUTION_KEY: str = '__MATCH_SOLUTION_KEY__'
+        LOGGER.debug("_extract_node_id_from_solution: %s", solution)
         try:
-            node_id = solution[WITH_CLAUSE_PROJECTION_KEY][MATCH_SOLUTION_KEY][
+            node_id = solution[MATCH_SOLUTION_KEY][
                 variable_to_set
             ]
             return node_id
         except KeyError as e:
-            raise ValueError(f"Error extracting node ID: {e}") from e
+            raise ValueError(f"Error extracting node ID: {variable_to_set}, {solution}") from e

@@ -1,4 +1,4 @@
-from prometheus_client import Counter, Histogram, Gauge, start_http_server
+from prometheus_client import Counter, Gauge, Histogram, start_http_server
 
 REQUEST_TIME: Histogram = Histogram(
     "request_processing_seconds", "Time spent processing request"

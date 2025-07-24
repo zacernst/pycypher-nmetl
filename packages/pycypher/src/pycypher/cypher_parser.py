@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Dict, List, Tuple, Type, Any
+from typing import Any, Dict, List, Tuple, Type
 
 from ply import yacc  # type: ignore
 from pycypher.cypher_lexer import *  # noqa: F403
@@ -13,8 +13,8 @@ from pycypher.node_classes import (
     Alias,
     AliasedName,
     And,
-    Collection,
     Collect,
+    Collection,
     Cypher,
     Distinct,
     Equals,
@@ -25,8 +25,8 @@ from pycypher.node_classes import (
     MappingSet,
     Match,
     Node,
-    Not,
     NodeNameLabel,
+    Not,
     ObjectAsSeries,
     ObjectAttributeLookup,
     Or,
@@ -55,10 +55,9 @@ def p_cypher(p: List[TreeMixin]):
             "Parser only accepts one query, and no update clauses (for now)."
         )
 
-
+# | relationship_chain_list  Taken from p_query docstring below
 def p_query(p: Tuple[yacc.YaccProduction, Match, Return]):
     """query : match_pattern return
-    | relationship_chain_list
     """
     if len(p) == 3:
         p[0] = Query(p[1], p[2])
@@ -148,12 +147,13 @@ def p_literal(p: yacc.YaccProduction):
     """
     p[0] = Literal(p[1])
 
+
 def p_collection(p: yacc.YaccProduction):
     """list : LSQUARE incomplete_list RSQUARE
     | LSQUARE RSQUARE
     """
     if len(p) == 4:
-        p[0] = Collection(values=[p[2]]) 
+        p[0] = Collection(values=[p[2]])
     elif len(p) == 3:
         p[0] = Collection(values=[])
     else:
@@ -171,7 +171,6 @@ def p_incomplete_collection(p: yacc.YaccProduction):
         p[0].append(p[3])
     else:
         raise ValueError("What?")
-
 
 
 def p_relationship(p: yacc.YaccProduction):
@@ -204,20 +203,18 @@ def p_incomplete_relationship_chain(p: yacc.YaccProduction):
     elif len(p) == 4:
         p[0] = p[1] + [p[2]] + [p[3]]
     else:
-        raise ValueError('This should never happen.')
-    # if len(p) == 3:
-    #     relationship_chain: RelationshipChain = RelationshipChain()
-    #     relationship_chain.steps = [p[1], p[2]]
-    # else:
-    #     pass
+        raise ValueError("This should never happen.")
 
 
 def p_relationship_chain(p: yacc.YaccProduction):
-    """relationship_chain : incomplete_relationship_chain node"""
-    if len(p) == 3:
-        p[0] = RelationshipChain(source_node=p[1][0], relationship=p[1][1], target_node=p[2])
-    # elif len(p) == 2:
-    #     p[0] = RelationshipChain(source_node=p[1], relationship=None, target_node=None)
+    """relationship_chain : incomplete_relationship_chain node
+    | node"""
+    if len(p) == 2:
+        p[0] = RelationshipChain(source_node=p[1], relationship=None, target_node=None)
+    elif len(p) == 3:
+        p[0] = RelationshipChain(
+            source_node=p[1][0], relationship=p[1][1], target_node=p[2]
+        )
     else:
         raise ValueError("What?")
 
@@ -275,10 +272,10 @@ def p_with_clause(p: yacc.YaccProduction):
     p[0] = WithClause(p[2])
 
 
+# Removed MATCH node from below
 def p_match_pattern(p: yacc.YaccProduction):
     """
-    match_pattern : MATCH node
-    | MATCH relationship_chain_list
+    match_pattern : MATCH relationship_chain_list
     | MATCH relationship_chain_list with_clause
     | MATCH relationship_chain_list where
     | MATCH relationship_chain_list with_clause where
@@ -325,16 +322,16 @@ def p_predicate(p: yacc.YaccProduction):
         "=": Equals,
         "<": LessThan,
         ">": GreaterThan,
-        'OR': Or,
-        'AND': And,
-        'NOT': Not,
+        "OR": Or,
+        "AND": And,
+        "NOT": Not,
     }
     if len(p) == 4:
         p[0] = predicate_dispatch_dict[p[2]](p[1], p[3])
     elif len(p) == 3:
-        p[0] = predicate_dispatch_dict['NOT'](p[2])
+        p[0] = predicate_dispatch_dict["NOT"](p[2])
     else:
-        raise ValueError('This should never happen')
+        raise ValueError("This should never happen")
 
 
 def p_binary_expression(p: yacc.YaccProduction):
@@ -387,8 +384,7 @@ CYPHER: yacc.LRParser = yacc.yacc()  # type: ignore
 
 
 class CypherParser:
-    """The main class of the ``pycypher`` package.
-    """
+    """The main class of the ``pycypher`` package."""
 
     def __init__(self, cypher_text: str):
         self.cypher_text = cypher_text
@@ -402,6 +398,13 @@ class CypherParser:
         """Just calls the walk method on the parsed tree."""
         yield from self.parse_tree.walk()
 
-    def _evaluate(self, fact_collection: FactCollection, start_entity_var_id_mapping: Dict[str, Any] | List[Dict[str, Any]] = {}) -> List[Dict[str, Any]]:
-        out: List[Dict[str, Any]] = self.parse_tree.cypher._evaluate(fact_collection, start_entity_var_id_mapping=start_entity_var_id_mapping)
+    def _evaluate(
+        self,
+        fact_collection: FactCollection,
+        start_entity_var_id_mapping: Dict[str, Any] | List[Dict[str, Any]] = {},
+    ) -> List[Dict[str, Any]]:
+        out: List[Dict[str, Any]] = self.parse_tree.cypher._evaluate(
+            fact_collection,
+            start_entity_var_id_mapping=start_entity_var_id_mapping,
+        )
         return out

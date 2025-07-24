@@ -12,8 +12,8 @@ import functools
 import inspect
 import queue
 import threading
-import uuid
 import time
+import uuid
 from dataclasses import dataclass
 from types import MappingProxyType
 from typing import (
@@ -31,9 +31,9 @@ from typing import (
 import pyarrow as pa
 import pyarrow.parquet as pq
 from nmetl.config import MONITOR_LOOP_DELAY  # pyrefly: ignore
-from nmetl.config import (  # pyrefly: ignore
-    TRIGGERED_LOOKUP_PROCESSOR_QUEUE_SIZE,  # pyrefly: ignore
-)
+from nmetl.config import (
+    TRIGGERED_LOOKUP_PROCESSOR_QUEUE_SIZE,
+)  # pyrefly: ignore; pyrefly: ignore
 from nmetl.data_asset import DataAsset
 from nmetl.data_source import DataSource
 from nmetl.exceptions import (
@@ -639,13 +639,9 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
                         "with three arguments."
                     )
 
-                source_variable_name = node_relationship_args[
-                    0
-                ].__forward_arg__
+                source_variable_name = node_relationship_args[0].__forward_arg__
                 relationship_name = node_relationship_args[1].__forward_arg__
-                target_variable_name = node_relationship_args[
-                    2
-                ].__forward_arg__
+                target_variable_name = node_relationship_args[2].__forward_arg__
 
                 all_cypher_variables = CypherParser(
                     arg1

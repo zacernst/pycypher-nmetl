@@ -2,7 +2,6 @@
 
 import pyroscope
 
-
 pyroscope.configure(
     application_name="nmetl",  # replace this with some name for your application
     server_address="http://localhost:4040",  # replace this with the address of your Pyroscope server

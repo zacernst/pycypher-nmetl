@@ -3,14 +3,12 @@
 from __future__ import annotations
 
 import base64
+import uuid
+from typing import Any, Generator, Optional
 
 # import pickle
 import dill as pickle
-import uuid
-
-from typing import Optional, Any, Generator
 import zmq
-
 from nmetl.logger import LOGGER
 
 LOGGER.setLevel("WARNING")

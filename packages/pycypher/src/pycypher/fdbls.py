@@ -1,5 +1,4 @@
 import click
-
 from pycypher.fact_collection.foundationdb import FoundationDBFactCollection
 
 

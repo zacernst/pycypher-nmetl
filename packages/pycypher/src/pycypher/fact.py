@@ -9,11 +9,9 @@ atomic pieces of information about nodes, relationships, and their attributes.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional
+from typing import Any
 
-if TYPE_CHECKING:
 from pycypher.lineage import Lineage
-from shared.logger import LOGGER
 
 
 class AtomicFact:  # pylint: disable=too-few-public-methods
@@ -113,7 +111,7 @@ class FactRelationshipHasLabel(AtomicFact):
 
     def __init__(
         self, relationship_id: str, relationship_label: str, **kwargs
-    ):
+    ) -> None:
         self.relationship_id = relationship_id
         self.relationship_label = relationship_label
         super().__init__(**kwargs)

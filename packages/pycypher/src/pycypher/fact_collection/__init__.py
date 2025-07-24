@@ -8,10 +8,10 @@ from __future__ import annotations
 
 import collections
 import inspect
-from abc import ABC, abstractmethod
 import queue
 import threading
-from typing import Any, Dict, Generator, List, Optional, TYPE_CHECKING
+from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional
 
 if TYPE_CHECKING:
     from nmetl.session import Session
@@ -470,8 +470,7 @@ class FactCollection(ABC):
         attributes_of_label_dict = self.attributes_of_label()
         for node_id in self.nodes_with_label(label):
             row_dict = {
-                attribute: None
-                for attribute in attributes_of_label_dict[label]
+                attribute: None for attribute in attributes_of_label_dict[label]
             }
             for attribute in attributes_of_label_dict[label]:
                 attribute_value = self.attributes_for_specific_node(
@@ -482,9 +481,7 @@ class FactCollection(ABC):
             row_dict["__node_id__"] = node_id
             yield row_dict
 
-    def nodes_with_label_facts(
-        self, label: str
-    ) -> Generator[FactNodeHasLabel]:
+    def nodes_with_label_facts(self, label: str) -> Generator[FactNodeHasLabel]:
         """
         Return a list of all the nodes with a specific label.
 

@@ -11,7 +11,6 @@ from dataclasses import dataclass
 from typing import (
     Callable,
     List,
-    Optional,
     Protocol,
     TypeVar,
     runtime_checkable,
@@ -118,20 +117,20 @@ class NodeRelationship(Protocol[SourceVariable, Attribute, TargetVariable]):
 # class AttributeMetadata:
 #     """
 #     Metadata about an attribute in the ETL pipeline.
-# 
+#
 #     This class stores metadata about attributes, including the function that
 #     generates the attribute, the attribute name, and a description.
 #     """
-# 
+#
 #     function_name: Optional[str]
 #     attribute_name: Optional[str]
 #     description: Optional[str]
-# 
-# 
+#
+#
 # @dataclass
 # class RelationshipMetadata:
 #     """Metadata about the relationship."""
-# 
+#
 #     name: Optional[str]
 #     description: Optional[str]
 
@@ -235,7 +234,7 @@ class NodeRelationshipTrigger(CypherTrigger):
             session (Optional[Session]): The session this trigger belongs to. Defaults to None.
             parameter_names (Optional[List[str]]): Names of parameters for the function. Defaults to None.
         """
-        
+
         self.source_variable: str = source_variable
         self.target_variable: str = target_variable
         self.relationship_name: str = relationship_name
