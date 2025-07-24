@@ -11,26 +11,39 @@ such as CSV and Parquet files.
 from __future__ import annotations
 
 import cProfile
-import random
 import csv
 import datetime
 import hashlib
-import frozendict
 import io
 import pstats
+import random
 import threading
 import time
 import uuid
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional, Protocol, TypeVar
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    Generator,
+    List,
+    Optional,
+    Protocol,
+    TypeVar,
+)
+
+import frozendict
+
 if TYPE_CHECKING:
     from nmetl.session import Session
     from prometheus_client import Histogram
+
 from urllib.parse import ParseResult
 
 import pyarrow.parquet as pq
 from nmetl.message_types import RawDatum
+from nmetl.prometheus_metrics import ROW_PROCESSING_TIME, ROWS_QUEUED
 from nmetl.queue_generator import QueueGenerator
 from pycypher.fact import (
     AtomicFact,
@@ -42,13 +55,8 @@ from pycypher.fact import (
 )
 from shared.helpers import ensure_uri
 from shared.logger import LOGGER
-from shared.telemetry import pyroscope
-from nmetl.prometheus_metrics import ROWS_QUEUED, ROW_PROCESSING_TIME 
 
-
-LOGGER.setLevel('ERROR')
-
-
+LOGGER.setLevel("ERROR")
 
 
 def profile_thread(func, *args, **kwargs):
@@ -78,11 +86,11 @@ class RawDataThread(threading.Thread):
         self.thread_has_started = False
         self._raw_input_queue: QueueGenerator | None = None
         self.halt = False
-    
+
     @property
     def raw_input_queue(self) -> QueueGenerator:
         if not isinstance(self._raw_input_queue, QueueGenerator):
-            raise ValueError('Expected raw_input_queue to be a QueueGenerator')
+            raise ValueError("Expected raw_input_queue to be a QueueGenerator")
         return self._raw_input_queue
 
     def run(self) -> None:
@@ -178,17 +186,20 @@ class DataSource(ABC):  # pylint: disable=too-many-instance-attributes
         self._raw_input_queue: QueueGenerator | None = None
         # self.num_workers = None
         # self.worker_num = None
-    
+
     # Make the data source pickleable
     def __getstate__(self):
-        return frozendict.deepfreeze({
-            'mapping': self.mappings,
-        })
+        return frozendict.deepfreeze(
+            {
+                "mapping": self.mappings,
+            }
+        )
+
     def __dask_tokenize__(self):
         return self.name
 
     def __getattr__(self, name: str) -> QueueGenerator | Session:
-        if name not in ['raw_input_queue', 'session']:
+        if name not in ["raw_input_queue", "session"]:
             raise AttributeError()
         out: QueueGenerator | Session | None = getattr(self, name, None)
         if not out:
@@ -300,14 +311,18 @@ class DataSource(ABC):  # pylint: disable=too-many-instance-attributes
         config: Any = None,
     ) -> "DataSource":
         """Factory for creating a ``DataSource`` from a URI."""
-        dispatcher: dict[str, type[CSVDataSource] | type[ParquetFileDataSource]] = {
+        dispatcher: dict[
+            str, type[CSVDataSource] | type[ParquetFileDataSource]
+        ] = {
             "csv": CSVDataSource,
             "parquet": ParquetFileDataSource,
         }
         uri = ensure_uri(uri)
         filename_extension: str = uri.path.split(".")[-1]
         options: dict[str, Any] | Any = config.options if config else {}
-        data_source: CSVDataSource | ParquetFileDataSource = dispatcher[filename_extension](uri, **options)
+        data_source: CSVDataSource | ParquetFileDataSource = dispatcher[
+            filename_extension
+        ](uri, **options)
         return data_source
 
     def cast_row(self, row: Dict[str, Any]) -> Dict[str, Any]:
@@ -350,10 +365,13 @@ class DataSource(ABC):  # pylint: disable=too-many-instance-attributes
                     LOGGER.debug("DataSource %s is halting", self.name)
                     break
                 if self.received_counter % 5 == 0:
-                    while self.session.tasks_in_memory > 1:
-                        LOGGER.debug('DataSource waiting...')
+                    while self.session.tasks_in_memory > 64:
+                        LOGGER.debug("DataSource waiting...")
                         time.sleep(random.random())
-                    LOGGER.debug('Number of tasks in memory: %s', self.session.tasks_in_memory)
+                    LOGGER.debug(
+                        "Number of tasks in memory: %s",
+                        self.session.tasks_in_memory,
+                    )
         self.finished = True
         self.finished_at = datetime.datetime.now()
 
@@ -364,7 +382,8 @@ class DataSource(ABC):  # pylint: disable=too-many-instance-attributes
 
     @staticmethod
     def generate_raw_facts_from_row(
-        row: Dict[str, Any], mappings,
+        row: Dict[str, Any],
+        mappings,
     ) -> Generator[AtomicFact, None, None]:
         """Generate raw facts from a row."""
         for mapping in mappings:
@@ -513,8 +532,8 @@ class CSVDataSource(DataSource):
 
     def __init__(
         self,
-        uri: str | ParseResult = '',
-        name: str = '',
+        uri: str | ParseResult = "",
+        name: str = "",
         **kwargs,
     ):
         """
@@ -530,11 +549,11 @@ class CSVDataSource(DataSource):
         self.file = open(self.uri.path, "r", encoding="utf-8")  # pylint: disable=consider-using-with
         self.reader = csv.DictReader(self.file, **kwargs)
         super().__init__()
-    
+
     @property
     def raw_input_queue(self) -> QueueGenerator:
         if not isinstance(self._raw_input_queue, QueueGenerator):
-            raise ValueError('Expected raw_input_queue to be defined')
+            raise ValueError("Expected raw_input_queue to be defined")
         return self._raw_input_queue
 
     def rows(self) -> Generator[Dict[str, Any], None, None]:

@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import base64
 import multiprocessing as mp
 import pickle
-import base64
 import queue
 import uuid
 from typing import TYPE_CHECKING, Any, Generator, Optional, Type
+
 import zmq
 
 if TYPE_CHECKING:
@@ -19,11 +20,12 @@ from nmetl.config import OUTER_QUEUE_TIMEOUT  # pyrefly: ignore
 from nmetl.message_types import EndOfData
 from shared.logger import LOGGER
 
-LOGGER.setLevel('DEBUG')
+LOGGER.setLevel("DEBUG")
 
 
 class Idle:  # pylint: disable=too-few-public-methods
     """Simply a message that is sent when a queue is idle."""
+
 
 class QueueGenerator:  # pylint: disable=too-few-public-methods,too-many-instance-attributes
     """A queue that also generates items."""
@@ -121,7 +123,7 @@ class QueueGenerator:  # pylint: disable=too-few-public-methods,too-many-instanc
     def get(self, **kwargs) -> Any:
         """Get an item from the queue."""
         item = self.queue.get(**kwargs)
-        LOGGER.debug('%s-Getting item: %s', self.name, item)
+        LOGGER.debug("%s-Getting item: %s", self.name, item)
         return item
 
     def put(self, item: Any, **kwargs) -> None:
@@ -129,7 +131,7 @@ class QueueGenerator:  # pylint: disable=too-few-public-methods,too-many-instanc
         # if self.session:
         #     item.session = self.session
         # if not self.ignore_item(item):
-        LOGGER.debug('%s-Putting item: %s', self.name, item)
+        LOGGER.debug("%s-Putting item: %s", self.name, item)
         self.queue.put(item, **kwargs)
 
     def ignore_item(self, item: Any) -> bool:

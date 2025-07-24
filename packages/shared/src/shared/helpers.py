@@ -46,8 +46,6 @@ def decode(encoded: str) -> Any:
 
 def encode(obj: Any, to_bytes: bool = False) -> str | bytes:
     """Encode an object as a base64 string."""
-    if hasattr(obj, 'lineage'):
-        print(obj.lineage)
     try:
         encoded = base64.b64encode(pickle.dumps(obj)).decode("utf-8")
     except Exception as e:

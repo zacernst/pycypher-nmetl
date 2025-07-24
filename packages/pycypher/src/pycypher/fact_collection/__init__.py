@@ -8,10 +8,10 @@ from __future__ import annotations
 
 import collections
 import inspect
-from abc import ABC, abstractmethod
 import queue
 import threading
-from typing import Any, Dict, Generator, List, Optional, TYPE_CHECKING
+from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional
 
 if TYPE_CHECKING:
     from nmetl.session import Session
@@ -31,15 +31,6 @@ from pycypher.query import (
     Query,
     QueryNodeLabel,
     QueryValueOfNodeAttribute,
-)
-from pycypher.solver import (
-    Constraint,
-    ConstraintNodeHasAttributeWithValue,
-    ConstraintNodeHasLabel,
-    ConstraintRelationshipHasLabel,
-    ConstraintRelationshipHasSourceNode,
-    ConstraintRelationshipHasTargetNode,
-    ConstraintVariableRefersToSpecificObject,
 )
 
 
@@ -74,19 +65,20 @@ class FactCollection(ABC):
         self.diversion_miss_counter: int = 0
         self.start_daemon_process: bool = start_daemon_process
         self.daemon_queue: queue.Queue = queue.Queue()
-        
+
         self += facts or []
         if CLEAR_DB_ON_START:
             self.close()
-        
+
         if self.start_daemon_process:
             self.daemon_process()
-    
+
     def start_daemon(self):
         """
         Kick off a process that waits for things to insert into the fact collection.
         Use threads to do this because we can't necessarily serialize the things we'd need.
         """
+
         def _daemon() -> None:
             while 1:
                 pass
@@ -94,7 +86,6 @@ class FactCollection(ABC):
 
         daemon_thread: threading.Thread = threading.Thread(target=_daemon)
         daemon_thread.start()
-
 
     def __iter__(self) -> Generator[AtomicFact]:
         """
@@ -155,70 +146,6 @@ class FactCollection(ABC):
             ):
                 yield fact
 
-    def relevant_facts(
-        self, constraints: List[Constraint]
-    ) -> Generator[AtomicFact]:
-        """
-        Return a generator of facts that are relevant to the given constraints.
-
-        Args:
-            constraints (List[Constraint]): A list of Constraint objects.
-
-        Yields:
-            AtomicFact: Facts that are relevant to the given constraints.
-        """
-        relevant_facts: set[AtomicFact] = set()
-        for constraint in constraints:
-            match constraint:
-                case ConstraintNodeHasLabel():
-                    for fact in self.nodes_with_label_facts(constraint.label):
-                        if fact in relevant_facts:
-                            continue
-                        yield fact
-                        relevant_facts.add(fact)
-                case ConstraintNodeHasAttributeWithValue():
-                    LOGGER.warning("relevant_facts: ConstraintNodeHasAttributeWithValue: %s", constraint)
-                    for (
-                        fact
-                    ) in self.node_has_attribute_with_specific_value_facts(
-                        constraint.attribute, constraint.value
-                    ):
-                        if fact in relevant_facts:
-                            continue
-                        yield fact
-                        relevant_facts.add(fact)
-                case ConstraintRelationshipHasSourceNode():
-                    LOGGER.warning("relevant_facts: ConstraintRelationshipHasSourceNode: %s", constraint)
-                    for fact in self.relationship_has_source_node_facts():
-                        if fact in relevant_facts:
-                            continue
-                        yield fact
-                        relevant_facts.add(fact)
-                case ConstraintRelationshipHasTargetNode():
-                    LOGGER.warning("relevant_facts: ConstraintRelationshipHasTargetNode: %s", constraint)
-                    for fact in self.relationship_has_target_node_facts():
-                        if fact in relevant_facts:
-                            continue
-                        yield fact
-                        relevant_facts.add(fact)
-                case ConstraintRelationshipHasLabel():
-                    LOGGER.warning("relevant_facts: ConstraintRelationshipHasLabel: %s", constraint)
-                    for fact in self.relationship_has_label_facts():
-                        if (
-                            fact in relevant_facts
-                            or fact.relationship_label != constraint.label
-                        ):
-                            continue
-                        yield fact
-                        relevant_facts.add(fact)
-                case ConstraintVariableRefersToSpecificObject():
-                    LOGGER.warning("relevant_facts: ConstraintVariableRefersToSpecificObject: %s", constraint)
-                    pass
-                case _:
-                    raise ValueError(
-                        f"Expected a ``Constraint``, but got {constraint.__class__.__name__}."
-                    )
-
     @abstractmethod
     def append(self, fact: AtomicFact) -> None:
         """
@@ -230,7 +157,7 @@ class FactCollection(ABC):
         Returns:
             None
         """
-    
+
     @abstractmethod
     def __contains__(self, fact: AtomicFact) -> bool:
         pass
@@ -243,6 +170,32 @@ class FactCollection(ABC):
             for thing in other:
                 FactCollection.__iadd__(self, thing)
         return self
+
+    def relationships_with_specific_source_node_facts(
+        self, source_node_id: str
+    ) -> Generator[FactRelationshipHasSourceNode]:
+        """
+        Return a generator of facts that have a specific source node ID.
+        """
+        for fact in self.relationship_has_source_node_facts():
+            if (
+                isinstance(fact, FactRelationshipHasSourceNode)
+                and fact.source_node_id == source_node_id
+            ):
+                yield fact
+
+    def relationships_with_specific_target_node_facts(
+        self, target_node_id: str
+    ) -> Generator[FactRelationshipHasTargetNode]:
+        """
+        Return a generator of facts that have a specific target node ID.
+        """
+        for fact in self.relationship_has_target_node_facts():
+            if (
+                isinstance(fact, FactRelationshipHasTargetNode)
+                and fact.target_node_id == target_node_id
+            ):
+                yield fact
 
     def relationship_has_source_node_facts(self):
         """
@@ -413,7 +366,7 @@ class FactCollection(ABC):
             raise ValueError(f"Found multiple values for {query}: {facts}")
         raise ValueError("Unknown error")
 
-    def query_node_label(self, query: QueryNodeLabel):
+    def query_node_label(self, query: QueryNodeLabel) -> str:
         """Given a query for a node label, return the label if it exists.
 
         If no label exists, return a NullResult. If multiple labels

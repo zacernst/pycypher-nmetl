@@ -231,3 +231,8 @@ scratch.py
 pyro_test.py
 pyroscope*
 
+node_exporter-1.9.1.darwin-arm64.tar
+out.error
+test_eval.py
+node_exporter-1.9.1.darwin-arm64/node_exporter
+node_exporter-1.9.1.darwin-arm64/NOTICE

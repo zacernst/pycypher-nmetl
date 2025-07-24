@@ -2,9 +2,7 @@
 Session Class Documentation
 ===========================
 
-The ``Session`` class is the central orchestrator within the ``pycypher``
-library. It manages the entire data processing pipeline, from ingesting raw data
-to executing triggers based on facts and constraints.
+TODO
 """
 
 from __future__ import annotations
@@ -14,10 +12,9 @@ import functools
 import inspect
 import queue
 import threading
-import uuid
 import time
+import uuid
 from dataclasses import dataclass
-from hashlib import md5
 from types import MappingProxyType
 from typing import (
     TYPE_CHECKING,
@@ -25,23 +22,18 @@ from typing import (
     Callable,
     Dict,
     Generator,
-    Iterable,
     List,
     Optional,
     Set,
-    Tuple,
     Type,
 )
 
 import pyarrow as pa
 import pyarrow.parquet as pq
-from nmetl.config import FACT_GENERATED_QUEUE_SIZE  # pyrefly: ignore
 from nmetl.config import MONITOR_LOOP_DELAY  # pyrefly: ignore
-from nmetl.config import RAW_INPUT_QUEUE_SIZE  # pyrefly: ignore
-from nmetl.config import (  # pyrefly: ignore
-    CHECK_FACT_AGAINST_TRIGGERS_QUEUE_SIZE,
-    TRIGGERED_LOOKUP_PROCESSOR_QUEUE_SIZE,  # pyrefly: ignore
-)
+from nmetl.config import (
+    TRIGGERED_LOOKUP_PROCESSOR_QUEUE_SIZE,
+)  # pyrefly: ignore; pyrefly: ignore
 from nmetl.data_asset import DataAsset
 from nmetl.data_source import DataSource
 from nmetl.exceptions import (
@@ -64,11 +56,8 @@ from nmetl.trigger import (
     VariableAttributeTrigger,
 )
 from pycypher.cypher_parser import CypherParser
-from pycypher.fact import AtomicFact
 from pycypher.fact_collection import FactCollection
 from pycypher.fact_collection.simple import SimpleFactCollection
-from pycypher.fact_collection.foundationdb import FoundationDBFactCollection
-from pycypher.solver import Constraint
 from rich.console import Console
 from rich.table import Table
 from shared.logger import LOGGER
@@ -76,12 +65,13 @@ from shared.logger import LOGGER
 if TYPE_CHECKING:
     from dask.distributed import Client
 
-LOGGER.setLevel('WARNING')
+LOGGER.setLevel("WARNING")
 
 RAW_INPUT_QUEUE_PORT = 5555
 FACT_GENERATED_QUEUE_PORT = 5556
 CHECK_FACT_AGAINST_TRIGGERS_QUEUE_PORT = 5557
 TRIGGERED_LOOKUP_PROCESSOR_QUEUE_PORT = 5558
+
 
 @dataclass
 class NewColumnConfig:
@@ -92,7 +82,10 @@ class NewColumnConfig:
     data_source_name: str
     new_column_name: str
 
-def _make_check_fact_against_triggers_queue_processor(incoming_queue, outgoing_queue, status_queue, session_config, trigger_dict) -> None:
+
+def _make_check_fact_against_triggers_queue_processor(
+    incoming_queue, outgoing_queue, status_queue, session_config, trigger_dict
+) -> None:
     CheckFactAgainstTriggersQueueProcessor(
         incoming_queue=incoming_queue,
         outgoing_queue=outgoing_queue,
@@ -100,6 +93,7 @@ def _make_check_fact_against_triggers_queue_processor(incoming_queue, outgoing_q
         session_config=session_config,
         trigger_dict=trigger_dict,
     )
+
 
 class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-methods
     """
@@ -161,7 +155,9 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
         self.status_queue = queue.Queue()
 
         self.dask_client = dask_client
-        self.fact_collection: FactCollection = fact_collection_class(**self.fact_collection_kwargs)
+        self.fact_collection: FactCollection = fact_collection_class(
+            **self.fact_collection_kwargs
+        )
 
         self.raw_input_queue = QueueGenerator(
             name="RawInput",
@@ -169,7 +165,6 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
         )
 
         self.queue_list.append(self.raw_input_queue)
-
 
         self.fact_generated_queue = QueueGenerator(
             name="FactGenerated",
@@ -184,7 +179,6 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
         )
         self.queue_list.append(self.check_fact_against_triggers_queue)
 
-
         # Same -- run in different processes
         self.triggered_lookup_processor_queue = QueueGenerator(
             name="TriggeredLookupProcessor",
@@ -192,10 +186,7 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
         )
         self.queue_list.append(self.triggered_lookup_processor_queue)
 
-
         self.trigger_dict = {}
-
-        
 
         # Does the fact collection require the session? Maybe get rid of this.
 
@@ -217,7 +208,8 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
             priority=0,
         )
 
-        self.check_fact_against_triggers_queue_processor = CheckFactAgainstTriggersQueueProcessor(
+        self.check_fact_against_triggers_queue_processor = (
+            CheckFactAgainstTriggersQueueProcessor(
                 incoming_queue=self.check_fact_against_triggers_queue,
                 outgoing_queue=self.triggered_lookup_processor_queue,
                 status_queue=self.status_queue,
@@ -225,6 +217,7 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
                 dask_client=dask_client,
                 priority=4,
             )
+        )
 
         self.triggered_lookup_processor = TriggeredLookupProcessor(
             incoming_queue=self.triggered_lookup_processor_queue,
@@ -242,13 +235,15 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
             self.monitor_thread = threading.Thread(
                 target=self.monitor, daemon=True, name="MonitorThread"
             )
-    
+
         # fact_collection: FactCollection = globals()[self.session_config.fact_collection_class](**(self.session_config.fact_collection_kwargs or {}))
-        
+
     @property
     def tasks_in_memory(self) -> int:
         """Gets the number of tasks in memory by inspecting the scheduler's state."""
-        num_tasks: int = self.dask_client.run_on_scheduler(lambda dask_scheduler: len(dask_scheduler.tasks))
+        num_tasks: int = self.dask_client.run_on_scheduler(
+            lambda dask_scheduler: len(dask_scheduler.tasks)
+        )
         return num_tasks
 
     def __call__(self, block: bool = True) -> None:
@@ -530,11 +525,6 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
             not data_source.finished for data_source in self.data_sources
         )
 
-    def walk_constraints(self) -> Generator[Constraint, None, None]:
-        """Yield all the triggers' constraints."""
-        for trigger in self.trigger_dict.values():
-            yield from trigger.constraints
-
     def data_source_by_name(self, name: str) -> Optional[DataSource]:
         """Return the data source with the given name."""
         for data_source in self.data_sources:
@@ -542,21 +532,6 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
                 return data_source
         LOGGER.error("Data source %s not found", name)
         raise ValueError(f"Data source {name} not found")
-
-    @property
-    def constraints(self) -> List[Constraint]:
-        """Return all the constraints from the triggers."""
-        constraints = list(self.walk_constraints())
-        return constraints
-
-    def facts_matching_constraints(
-        self, fact_generator: Iterable
-    ) -> Generator[Tuple[AtomicFact, Constraint, AtomicFact], None, None]:
-        """Yield all the facts that match the constraints."""
-        for fact in fact_generator:
-            for constraint in self.constraints:
-                if sub := fact + constraint:
-                    yield fact, constraint, sub
 
     def __iadd__(self, other: FactCollection | DataSource) -> Session:
         """Add a ``FactCollection`` or ``DataSource``."""
@@ -619,16 +594,25 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
                         "Function must have a return annotation with two arguments."
                     )
 
-                variable_name = variable_attribute_args[0].__forward_arg__
-                attribute_name = variable_attribute_args[1].__forward_arg__
+                variable_name: str = variable_attribute_args[0].__forward_arg__
+                attribute_name: str = variable_attribute_args[1].__forward_arg__
 
-                data_asset_parameters: dict[str, DataAsset] = {parameter: self.data_assets[parameter] for parameter in parameter_names if parameter in self.data_assets}
-                non_data_asset_parameters: list[str] = [parameter for parameter in parameter_names if parameter not in self.data_assets]
-                
+                data_asset_parameters: dict[str, DataAsset] = {
+                    parameter: self.data_assets[parameter]
+                    for parameter in parameter_names
+                    if parameter in self.data_assets
+                }
+                non_data_asset_parameters: list[str] = [
+                    parameter
+                    for parameter in parameter_names
+                    if parameter not in self.data_assets
+                ]
 
                 trigger: VariableAttributeTrigger | NodeRelationshipTrigger = (
                     VariableAttributeTrigger(
-                        function=functools.partial(func, **data_asset_parameters),
+                        function=functools.partial(
+                            func, **data_asset_parameters
+                        ),
                         cypher_string=arg1,
                         variable_set=variable_name,
                         attribute_set=attribute_name,

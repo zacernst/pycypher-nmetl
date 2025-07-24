@@ -2,8 +2,8 @@
 
 import os
 from pathlib import Path
-
 from typing import Any
+
 import toml
 
 CWD: Path = Path(os.getcwd())

@@ -3,16 +3,16 @@
 from __future__ import annotations
 
 import base64
+import uuid
+from typing import Any, Generator, Optional
+
 # import pickle
 import dill as pickle
-import uuid
-
-from typing import Optional, Any, Generator
 import zmq
-
 from nmetl.logger import LOGGER
 
-LOGGER.setLevel('WARNING')
+LOGGER.setLevel("WARNING")
+
 
 class Shutdown:
     pass
@@ -35,7 +35,9 @@ class ZMQMessage:
     def decode(cls, obj: bytes) -> ZMQMessage:
         out: Any = pickle.loads(base64.b64decode(obj.decode()))
         if not isinstance(out, ZMQMessage):
-            raise TypeError(f"Expected to decode a ZMQMessage, got: {out.__class__}")
+            raise TypeError(
+                f"Expected to decode a ZMQMessage, got: {out.__class__}"
+            )
         return out
 
 
@@ -47,13 +49,13 @@ class QueueGenerator:  # pylint: disable=too-few-public-methods,too-many-instanc
         *args,  # pylint: disable=unused-argument
         name: str = uuid.uuid4().hex,
         port: Optional[int | str] = None,
-        host: str = 'localhost',
+        host: str = "localhost",
         put_high_water_mark: int = 0,
         **kwargs,  # pylint: disable=unused-argument
     ) -> None:
         if not port:
-            raise ValueError('`port` argument is required for QueueGenerator')
-        
+            raise ValueError("`port` argument is required for QueueGenerator")
+
         self._port: str = str(port)
         self.host: str = host
 
@@ -71,10 +73,10 @@ class QueueGenerator:  # pylint: disable=too-few-public-methods,too-many-instanc
     def get(self, **kwargs) -> Any:
         """Get an item from the queue."""
         message: ZMQMessage = ZMQMessage.decode(self.get_socket.recv())
-        LOGGER.debug(f'Received {message.contents}:::{self.name}')
+        LOGGER.debug(f"Received {message.contents}:::{self.name}")
         while message.queue_name != self.name:
             message = ZMQMessage.decode(self.get_socket.recv())
-            LOGGER.debug(f'Received {message.contents}')
+            LOGGER.debug(f"Received {message.contents}")
         item: Any = message.contents
         return item
 
@@ -82,12 +84,12 @@ class QueueGenerator:  # pylint: disable=too-few-public-methods,too-many-instanc
         """Put an item on the queue."""
         message: ZMQMessage = ZMQMessage(queue_name=self.name, contents=item)
         encoded_message: str = ZMQMessage.encode(message)
-        LOGGER.info('Putting message on %s', message.queue_name)
+        LOGGER.info("Putting message on %s", message.queue_name)
         self.put_socket.send_string(encoded_message)
 
     def yield_items(self) -> Generator[Any, None, None]:
         """Generate items."""
-        LOGGER.info('YIELD ITEMS CALLED %s', self.name)
+        LOGGER.info("YIELD ITEMS CALLED %s", self.name)
         while 1:
             item: Any = self.get()
             if isinstance(item, Shutdown):
@@ -95,9 +97,9 @@ class QueueGenerator:  # pylint: disable=too-few-public-methods,too-many-instanc
             yield item
 
 
-if __name__ == '__main__':
-    q: QueueGenerator = QueueGenerator(name='hithere')
-    message: ZMQMessage = ZMQMessage(queue_name='hithere', contents='whatever')
+if __name__ == "__main__":
+    q: QueueGenerator = QueueGenerator(name="hithere")
+    message: ZMQMessage = ZMQMessage(queue_name="hithere", contents="whatever")
     for _ in range(1000):
         q.put(message)
     q.put(Shutdown())

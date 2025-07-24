@@ -1,10 +1,9 @@
 """
-Fact Module Documentation (fact.py)
-===================================
+Simple FactCollection
+=====================
 
-The ``fact.py`` module within the ``pycypher`` library defines the core classes for
-representing and managing "facts" within a graph-like data structure. Facts are
-atomic pieces of information about nodes, relationships, and their attributes.
+This is just a list of facts, used only for dev testing. If you're not developing
+``pycypher``, you almost certainly have no use for this class.
 """
 
 from __future__ import annotations
