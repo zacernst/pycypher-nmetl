@@ -177,6 +177,7 @@ class FactCollection(ABC):
         """
         Return a generator of facts that have a specific source node ID.
         """
+        LOGGER.warning('Inefficient')
         for fact in self.relationship_has_source_node_facts():
             if (
                 isinstance(fact, FactRelationshipHasSourceNode)
@@ -190,6 +191,7 @@ class FactCollection(ABC):
         """
         Return a generator of facts that have a specific target node ID.
         """
+        LOGGER.warning('Inefficient')
         for fact in self.relationship_has_target_node_facts():
             if (
                 isinstance(fact, FactRelationshipHasTargetNode)

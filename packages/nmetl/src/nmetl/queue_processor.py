@@ -1,9 +1,19 @@
 """
-This module defines the core components for processing items in a queue-based
-system within the pycypher library.
+Queue Processing Components
+==========================
 
-It provides an abstract base class, ``QueueProcessor``, and concrete
-implementations for specific tasks in the data processing pipeline.
+This module defines the core components for processing items in a distributed
+queue-based data processing pipeline within the nmetl library.
+
+The module provides:
+- ``QueueProcessor``: Abstract base class for all queue processors
+- ``RawDataProcessor``: Processes raw data from data sources into facts
+- ``FactGeneratedQueueProcessor``: Inserts generated facts into the fact collection
+- ``CheckFactAgainstTriggersQueueProcessor``: Checks facts against registered triggers
+- ``TriggeredLookupProcessor``: Executes triggered computations and generates new facts
+- ``SubTriggerPair``: Data structure pairing substitutions with triggers
+
+All processors use Dask for distributed computation and ZMQ for inter-process communication.
 """
 
 from __future__ import annotations
@@ -54,7 +64,16 @@ WHERE_SOLUTION_KEY = '__where_solution__'
 
 @dataclass
 class SubTriggerPair:
-    """A pair of a sub and a trigger."""
+    """
+    Represents a pairing of variable substitutions with a Cypher trigger.
+    
+    This class is used to track which variable bindings should be applied
+    when evaluating a specific trigger in the fact processing pipeline.
+    
+    Attributes:
+        sub: Dictionary mapping variable names to their bound values
+        trigger: The CypherTrigger to be evaluated with the substitutions
+    """
 
     sub: Dict[str, str]
     trigger: CypherTrigger
@@ -63,7 +82,8 @@ class SubTriggerPair:
         """
         Generate a hash value for this SubTriggerPair instance.
 
-        The hash is based on the sub dictionary (converted to a tuple) and the trigger.
+        The hash is computed from both the variable substitutions (as a sorted tuple)
+        and the trigger object to ensure unique identification of trigger evaluations.
 
         Returns:
             int: A hash value for this instance.
@@ -77,7 +97,17 @@ class SubTriggerPair:
 
 
 class QueueProcessor(ABC):  # pylint: disable=too-few-public-methods,too-many-instance-attributes
-    """ABC that processes items from a queue and places the results onto another queue."""
+    """
+    Abstract base class for distributed queue-based data processors.
+    
+    This class provides the foundation for processing items from input queues,
+    applying transformations using Dask distributed computing, and forwarding
+    results to output queues. All concrete implementations must define the
+    ``process_item_from_queue`` method.
+    
+    The processor uses buffering to batch items for efficient distributed processing
+    and provides monitoring capabilities through status queues and counters.
+    """
 
     def __init__(
         self,
@@ -87,17 +117,21 @@ class QueueProcessor(ABC):  # pylint: disable=too-few-public-methods,too-many-in
         priority: Optional[int] = 0,
         session_config: Optional[SessionConfig] = None,
         dask_client: Optional[Client] = None,
-        max_buffer_size: int = 16,
+        max_buffer_size: int = 1_024,
         buffer_timeout: float = 2.0,
     ) -> None:
         """
         Initialize a QueueProcessor instance.
 
         Args:
-            session (Optional[Session]): The session this processor belongs to. Defaults to None.
-            incoming_queue (Optional[QueueGenerator]): The queue from which to read items. Defaults to None.
-            outgoing_queue (Optional[QueueGenerator]): The queue to which processed items are sent.
-            status_queue (Optional[Queue]): The queue for status messages. Defaults to None.
+            incoming_queue: The queue from which to read items for processing.
+            outgoing_queue: The queue to which processed items are sent.
+            status_queue: Queue for status messages and error reporting.
+            priority: Processing priority for Dask task scheduling (higher = more priority).
+            session_config: Configuration object containing session settings.
+            dask_client: Dask distributed client for task execution.
+            max_buffer_size: Maximum number of items to buffer before processing.
+            buffer_timeout: Maximum time (seconds) to wait before processing partial buffer.
         """
         LOGGER.info("Initializing QueuePreocessor: %s", self)
         self._session_config = session_config
@@ -167,7 +201,16 @@ class QueueProcessor(ABC):  # pylint: disable=too-few-public-methods,too-many-in
         return self._session_config  # pyrefly: ignore (it's correct, actually)
 
     def process_queue(self) -> None:
-        """Process every item in the queue using the yield_items method."""
+        """
+        Main processing loop that consumes items from the incoming queue.
+        
+        This method runs in a separate thread and continuously processes items
+        from the incoming queue, buffering them for efficient batch processing.
+        The loop continues until a halt signal is received.
+        
+        The method handles buffering logic, timing constraints, and delegates
+        actual processing to the abstract ``process_item_from_queue`` method.
+        """
         LOGGER.debug("process_queue %s", self.name)
         self.started = True
         self.started_at = datetime.datetime.now()
@@ -241,11 +284,31 @@ class QueueProcessor(ABC):  # pylint: disable=too-few-public-methods,too-many-in
     @staticmethod
     @abstractmethod
     def process_item_from_queue(buffer: List[Any]) -> Any:
-        """Process an item from the queue."""
+        """
+        Process a buffer of items from the queue.
+        
+        This abstract method must be implemented by all concrete queue processors.
+        It receives a buffer of items and should return processed results that will
+        be forwarded to the outgoing queue.
+        
+        Args:
+            buffer: List of items to process in this batch.
+            
+        Returns:
+            Processed results to be sent to the outgoing queue.
+        """
 
     @REQUEST_TIME.time()
     def _process_item_from_queue(self) -> Any:
-        """Wrap the process call in case we want some logging."""
+        """
+        Submit buffered items for distributed processing via Dask.
+        
+        This method wraps the abstract ``process_item_from_queue`` method,
+        submitting the current buffer to the Dask cluster for processing.
+        It handles the distributed execution and result callback setup.
+        
+        The method is decorated with timing metrics for monitoring performance.
+        """
         LOGGER.debug(
             "Sending buffer to %s (%s)",
             self.__class__.__name__,
@@ -264,18 +327,36 @@ class QueueProcessor(ABC):  # pylint: disable=too-few-public-methods,too-many-in
 
 
 class RawDataProcessor(QueueProcessor):
-    """Runs in a thread to process raw data from all the DataSource objects."""
+    """
+    Processes raw data from data sources and converts it into facts.
+    
+    This processor takes raw data items from data sources, applies the configured
+    mappings to transform the data into fact objects, and prepares them for
+    insertion into the fact collection.
+    """
 
     @staticmethod
     def process_item_from_queue(buffer: List[Any]) -> List[List[Any]]:
-        """Process raw data from the ``raw_input_queue``, generate facts."""
+        """
+        Transform raw data items into facts using configured mappings.
+        
+        For each raw data item in the buffer, this method applies all associated
+        data source mappings to generate the corresponding fact objects.
+        
+        Args:
+            buffer: List of raw data items from data sources.
+            
+        Returns:
+            List of lists, where each inner list contains the facts generated
+            from one raw data item.
+        """
         all_results: list[list[Any]] = []
         for item in buffer:
             row: dict[str, Any] = item.row
             out: list[Any] = []
             for mapping in item.mappings:
                 for out_item in mapping + row:
-                    out_item.lineage = FromMapping()
+                    out_item.lineage = None  # FromMapping()
                     out.append(out_item)
             all_results.append(out)
         return all_results
@@ -283,13 +364,27 @@ class RawDataProcessor(QueueProcessor):
 
 class FactGeneratedQueueProcessor(QueueProcessor):  # pylint: disable=too-few-public-methods
     """
-    Reads from the fact_generated_queue and processes the facts
-    by inserting them into the ``FactCollection``.
+    Inserts generated facts into the distributed fact collection.
+    
+    This processor takes newly generated facts and persists them to the
+    configured fact collection backend (FoundationDB, RocksDB, etc.).
+    It ensures facts are properly stored and available for trigger evaluation.
     """
 
     @staticmethod
     def process_item_from_queue(buffer: List[Any]) -> List[List[Any]]:
-        """Process new facts from the fact_generated_queue."""
+        """
+        Insert facts from the buffer into the fact collection.
+        
+        Each fact in the buffer is appended to the distributed fact collection,
+        making it available for querying and trigger evaluation.
+        
+        Args:
+            buffer: List of fact objects to be inserted.
+            
+        Returns:
+            The original buffer of facts that were inserted.
+        """
         LOGGER.debug("FGQP: %s", buffer)
 
         # if item in self.fact_collection:
@@ -300,7 +395,7 @@ class FactGeneratedQueueProcessor(QueueProcessor):  # pylint: disable=too-few-pu
         fact_collection: FactCollection = QueueProcessor.get_fact_collection()
         for item in buffer:
             LOGGER.info("Writing: %s", item)
-            item.lineage = Appended(lineage=getattr(item, "lineage", None))
+            item.lineage = None  # Appended(lineage=getattr(item, "lineage", None))
             fact_collection.append(item)
             # SAMPLE_HISTOGRAM.observe(random.random() * 10)
         # size = len(list(self.fact_collection._prefix_read_items(b'')))
@@ -312,8 +407,12 @@ class FactGeneratedQueueProcessor(QueueProcessor):  # pylint: disable=too-few-pu
 
 class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable=too-few-public-methods
     """
-    Reads from the check_fact_against_triggers_queue and processes the facts
-    by checking them against the triggers.
+    Evaluates facts against registered Cypher triggers to identify matches.
+    
+    This processor examines each fact to determine which triggers it might
+    activate. It performs initial filtering based on attribute names and
+    node types, then creates SubTriggerPair objects for triggers that
+    should be evaluated.
     """
 
     def __init__(self, *args, **kwargs):
@@ -326,30 +425,52 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
         """
         super().__init__(*args, **kwargs)
 
+    # TODO: Divide the following method into smaller functions
     @staticmethod
     def process_item_from_queue(buffer: Any) -> List[SubTriggerPair]:
-        """Process new facts from the check_fact_against_triggers_queue."""
+        """
+        Check facts against all registered triggers and create trigger pairs.
+        
+        For each fact in the buffer, this method:
+        1. Filters triggers based on attribute relevance
+        2. Evaluates trigger conditions with the fact as a starting point
+        3. Creates SubTriggerPair objects for successful matches
+        
+        Args:
+            buffer: List of facts to check against triggers.
+            
+        Returns:
+            List of SubTriggerPair objects representing triggered evaluations.
+        """
         out: List[SubTriggerPair] = []
         for item in buffer:
             LOGGER.debug("Checking fact %s against triggers", item)
-            item_in_collection: bool = (
-                item in QueueProcessor.get_fact_collection()
-            )
-            # LOGGER.debug("Item %s in fact_collection: %s", item, item in QueueProcessor.get_fact_collection())
-            while not item_in_collection:
-                LOGGER.info(
-                    "Fact %s not in collection, requeueing...", item.__dict__
-                )
-                time.sleep(0.1)
+            # item_in_collection: bool = (
+            #     item in QueueProcessor.get_fact_collection()
+            # )
+            # # LOGGER.debug("Item %s in fact_collection: %s", item, item in QueueProcessor.get_fact_collection())
+            PARANOID = True
+            if PARANOID:
+                while item not in QueueProcessor.get_fact_collection():
+                    LOGGER.info(
+                        "Fact %s not in collection, requeueing...", item.__dict__
+                    )
+                    time.sleep(0.1)
 
             LOGGER.debug("IN COLLECTION: %s", item.__dict__)
             # Let's filter out the facts that are irrelevant to this trigger
             for _, trigger in QueueProcessor.get_trigger_dict().items():
+                # Get the attributes that are in the Match clause
+                attribute_names_in_trigger: List[str] = trigger.cypher.parse_tree.attribute_names 
+                if isinstance(item, FactNodeHasAttributeWithValue) and item.attribute not in attribute_names_in_trigger:
+                    continue
+                elif isinstance(item, FactNodeHasLabel):
+                    continue
                 for variable, node in trigger.cypher.parse_tree.get_node_variables():
-                    # Following check might not be necessary
-                    if isinstance(item, (FactNodeHasAttributeWithValue, FactNodeHasLabel,)):
+                    # FactNodeHasLabel might not be enough to trigger
+                    if isinstance(item, (FactNodeHasAttributeWithValue,)):
                         result: list[dict[str, Any]] = trigger.cypher._evaluate(QueueProcessor.get_fact_collection(), start_entity_var_id_mapping={variable: item.node_id})
-                        LOGGER.debug('Result of %s is %s', item, result)
+                        LOGGER.debug('Result of %s is %s, %s, %s', item, result, variable, item.node_id)
                         if result:
                             sub_trigger_pair: SubTriggerPair = SubTriggerPair(sub={variable: item.node_id}, trigger=trigger)
                             LOGGER.debug('Created SubTriggerPair: %s', sub_trigger_pair)
@@ -359,18 +480,34 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
                         continue
                     
                     LOGGER.debug("Checking trigger %s", trigger)
+                LOGGER.debug('Setting processed = True')
         return out
 
 
 class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-public-methods
     """
-    Reads from the check_fact_against_triggers_queue and processes the facts
-    by checking them against the triggers.
+    Executes triggered Cypher queries and generates computed facts.
+    
+    This processor takes SubTriggerPair objects, evaluates the associated
+    Cypher triggers with the provided variable bindings, and executes
+    the trigger functions to compute new attribute values or relationships.
     """
 
     @staticmethod
     def process_item_from_queue(buffer: list) -> List[Any]:
-        """Process new facts from the check_fact_against_triggers_queue."""
+        """
+        Process SubTriggerPair objects to execute triggered computations.
+        
+        For each SubTriggerPair in the buffer, this method evaluates the
+        trigger's Cypher query and executes the associated Python function
+        to generate new facts.
+        
+        Args:
+            buffer: List of SubTriggerPair objects to process.
+            
+        Returns:
+            List of lists containing the computed facts from each trigger execution.
+        """
         out: list[list[Any]] = []
         for item in buffer:
             LOGGER.debug("Got item in TriggeredLookupProcessor: %s", item)
@@ -384,7 +521,19 @@ class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-publi
     def _process_sub_trigger_pair(
         sub_trigger_pair: SubTriggerPair,
     ) -> List[Any]:
-        """Helper function to process a sub_trigger_pair"""
+        """
+        Evaluate a single SubTriggerPair and generate computed facts.
+        
+        This method executes the Cypher query with the provided variable
+        bindings, then calls the trigger function with the results to
+        compute new fact values.
+        
+        Args:
+            sub_trigger_pair: The trigger and variable bindings to evaluate.
+            
+        Returns:
+            List of computed facts generated by the trigger function.
+        """
         fact_collection: FactCollection = QueueProcessor.get_fact_collection()
         LOGGER.debug(str(sub_trigger_pair))
         # return_clause = (
@@ -449,7 +598,7 @@ class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-publi
                     process_solution_function(solution, *process_solution_args)
                 )
             except Exception as e:  # pylint: disable=broad-exception-caught
-                LOGGER.error("Error processing solution: %s", e)
+                LOGGER.error("In TriggeredLookupProcessor: Error processing solution: %s, %s, %s", e, solution, process_solution_args)
 
         LOGGER.debug("Computed facts: %s", computed_facts)
         return computed_facts
@@ -505,7 +654,22 @@ class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-publi
         sub_trigger_pair: SubTriggerPair,
         variable_to_set: str,
     ) -> FactNodeHasAttributeWithValue | Type[NullResult]:
-        """Process a solution and generate a fact."""
+        """
+        Process a Cypher solution to generate a node attribute fact.
+        
+        This method extracts the necessary arguments from the solution,
+        calls the trigger function to compute the new attribute value,
+        and creates a FactNodeHasAttributeWithValue object.
+        
+        Args:
+            solution: Dictionary containing variable bindings from Cypher evaluation.
+            sub_trigger_pair: The trigger and substitutions being processed.
+            variable_to_set: The variable name identifying the target node.
+            
+        Returns:
+            A new FactNodeHasAttributeWithValue object, or NullResult if
+            the computation cannot be completed.
+        """
         # splat = TriggeredLookupProcessor._extract_splat_from_solution(
         #     solution, return_clause
         # )
@@ -582,7 +746,23 @@ class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-publi
     def _extract_node_id_from_solution(
         solution: Dict, variable_to_set: str
     ) -> str:
-        """Extract the node ID from the solution."""
+        """
+        Extract the node ID for a specific variable from the Cypher solution.
+        
+        This method looks up the node ID associated with a variable name
+        in the solution's match results, which are stored under the
+        MATCH_SOLUTION_KEY.
+        
+        Args:
+            solution: Dictionary containing variable bindings from Cypher evaluation.
+            variable_to_set: The variable name whose node ID should be extracted.
+            
+        Returns:
+            The node ID string for the specified variable.
+            
+        Raises:
+            ValueError: If the variable is not found in the solution.
+        """
 
         # MATCH_SOLUTION_KEY: str = '__MATCH_SOLUTION_KEY__'
         LOGGER.debug("_extract_node_id_from_solution: %s", solution)
@@ -593,3 +773,6 @@ class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-publi
             return node_id
         except KeyError as e:
             raise ValueError(f"Error extracting node ID: {variable_to_set}, {solution}") from e
+        # Match solution key is empty for `solution` if the MATCH clause has a relationship.
+        # Perhaps I didn't update the code to propagate the solution through a RelationshipChain or
+        # RelationshipChainList?`

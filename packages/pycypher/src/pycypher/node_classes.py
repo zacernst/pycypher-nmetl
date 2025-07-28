@@ -18,7 +18,7 @@ from pycypher.tree_mixin import TreeMixin
 from rich.tree import Tree
 from shared.logger import LOGGER
 
-LOGGER.setLevel("DEBUG")
+LOGGER.setLevel("WARNING")
 
 MATCH_SOLUTION_KEY: str = '__MATCH_SOLUTION_KEY__'
 WITH_SOLUTION_KEY: str = '__WITH_SOLUTION_KEY__'
@@ -56,6 +56,7 @@ class Cypher(TreeMixin):
 
     def __init__(self, cypher: Query):
         self.cypher: Query = cypher
+        self._attribute_names: List[str] = []
 
     @property
     def children(self) -> Generator[TreeMixin]:
@@ -91,12 +92,17 @@ class Cypher(TreeMixin):
         Returns:
             List[str]: A list of attribute names.
         """
-        out: list[str] = [
-            obj.attribute
-            for obj in self.walk()
-            if isinstance(obj, ObjectAttributeLookup)
-        ]
-        return out
+        if not self._attribute_names:
+            LOGGER.debug('Walking for attribute names...')
+            self._attribute_names: List[str] = [
+                obj.attribute
+                for obj in self.walk()
+                if isinstance(obj, ObjectAttributeLookup)
+            ]
+        else:
+            LOGGER.debug('Cached attribute names...')
+        LOGGER.debug('Attribute names: %s', self._attribute_names)
+        return self._attribute_names
 
     def tree(self) -> Tree:
         """
@@ -187,6 +193,7 @@ class Collection(Evaluable, TreeMixin):  # i.e. a list
 
     def __init__(self, values: List[Evaluable]):
         self.values = values
+        self.value = values # Make this consistent later...
 
     @property
     def children(self) -> Generator[Evaluable, Any, Any]:
@@ -1525,10 +1532,14 @@ class RelationshipChain(TreeMixin):
                     right_entity_id
                 )
             )
+            LOGGER.debug('Start entity var id mapping: %s', left_entity_id)
+            LOGGER.debug('Relationships satisfying left entity id %s: %s', left_entity_id, relationships_satisfying_left_entity_id)
+            LOGGER.debug('Relationships satisfying right entity id %s: %s', right_entity_id, relationships_satisfying_right_entity_id)
             relationship_solutions: set[str] = (
                 relationships_satisfying_left_entity_id
                 & relationships_satisfying_right_entity_id
             )
+            LOGGER.debug('Relationship solutions: %s', relationship_solutions)
             for relationship_solution in relationship_solutions:
                 combined_mapping_copy: Dict[str, str] = copy.copy(
                     combined_mapping

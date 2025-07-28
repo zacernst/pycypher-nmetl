@@ -11,6 +11,8 @@ import inspect
 import pickle
 import queue
 import threading
+import redis
+import gzip
 import time
 from multiprocessing.pool import ApplyResult, ThreadPool
 from typing import Any, Dict, Generator, Optional
@@ -35,7 +37,6 @@ try:
 except ModuleNotFoundError:
     LOGGER.warning("fdb not installed, fdb support disabled")
 
-
 def write_fact(db, index, fact):
     """Write a ``Fact`` to FoundationDB"""
     LOGGER.debug("Writing to FoundationDB: %s", index)
@@ -43,6 +44,16 @@ def write_fact(db, index, fact):
 
     # FACTS_APPENDED.inc(1)
     return True
+
+
+def write_fact_secondary(db, index, fact):
+    """Write a ``Fact`` to FoundationDB"""
+    LOGGER.debug("Writing to FoundationDB: %s", index)
+    db[index] = encode(fact, to_bytes=True)
+
+    # FACTS_APPENDED.inc(1)
+    return True
+
 
 
 class FoundationDBFactCollection(FactCollection, KeyValue):
@@ -55,11 +66,14 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
 
     def __init__(self, *args, sync_writes: Optional[bool] = False, **kwargs):
         """
-        Initialize a RocksDB-backed FactCollection.
+        Initialize a FoundationDB-backed FactCollection.
 
         Args:
-            *args: Variable positional arguments (ignored).
-            **kwargs: Variable keyword arguments (ignored).
+            *args: Variable positional arguments passed to parent class.
+            sync_writes: If True, use synchronous writes to FoundationDB. 
+                        If False, use asynchronous writes for better performance.
+                        Defaults to False.
+            **kwargs: Variable keyword arguments passed to parent class.
         """
 
         self.db = fdb.open()
@@ -71,13 +85,16 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
         self.metadata = {
             "labels": set(),
         }
+        # self.key_cache = redis.Redis()
+        LOGGER.info('Flushing Redis cache')
+        # self.key_cache.flushall()
 
         # self.db = Rdict(self.db_path, self.options)
         super().__init__(*args, **kwargs)
 
     def _prefix_read_items(
         self,
-        prefix: bytes | None,
+        prefix: bytes,
         continue_to_end: Optional[bool] = False,
         only_one_result: Optional[bool] = False,
     ) -> Generator[Any, Any]:
@@ -114,6 +131,16 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
             index: bytes | str = KeyValue.make_index_for_fact(self, fact)
         except:
             LOGGER.warning("Could not make index for %s", fact)
+            return None
+        return ensure_bytes(index, encoding="utf8")
+    
+    def make_secondary_index_for_fact(self, fact: AtomicFact) -> bytes:
+        """Used for the memcache index"""
+        # Call the superclass's version of the method and convert to bytes
+        try:
+            index: bytes | str = KeyValue.make_secondary_index_for_fact(self, fact)
+        except:
+            LOGGER.warning("Could not make secondary index for %s", fact)
             return None
         return ensure_bytes(index, encoding="utf8")
 
@@ -179,6 +206,26 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
         """
         LOGGER.debug("values called")
         yield from self
+    
+    def relationships_with_specific_source_node_facts(self, source_node_id: str) -> Generator[str, None, None]:
+        """
+        Return a generator of facts that have a specific source node.
+        """
+        LOGGER.debug("relationships_with_specific_source_node_facts called: %s", source_node_id)
+        for fact in self._prefix_read_values(
+            f"relationship_source_node_secondary:{source_node_id}:", continue_to_end=False
+        ):
+            yield fact
+
+    def relationships_with_specific_target_node_facts(self, target_node_id: str) -> Generator[str, None, None]:
+        """
+        Return a generator of facts that have a specific target node.
+        """
+        LOGGER.debug("relationships_with_specific_target_node_facts called: %s", target_node_id)
+        for fact in self._prefix_read_values(
+            f"relationship_target_node_secondary:{target_node_id}:", continue_to_end=False
+        ):
+            yield fact
 
     def node_has_attribute_with_specific_value_facts(
         self, attribute: str, value: Any
@@ -239,16 +286,20 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
             bool: True if the fact is in the collection, False otherwise.
         """
         index: bytes = self.make_index_for_fact(fact)
-        output = list(
-            i
-            for i in self._prefix_read_values(index, only_one_result=True)
-            if i is not None
-        )
-        # size: int = len(list(self._prefix_read_values(b'')))
-        # LOGGER.debug("Checking membership with index: %s: %s: %s", index, output, size)
-        return len(output) > 0
-        # value: AtomicFact = self.db.get(index)
-        # return decode(value) == fact if value is not None else False
+        index = ensure_bytes(index, encoding="utf8")
+        #### return self.key_cache.exists(index)
+        # return self.db.get(index) is not None
+
+        # output = list(
+        #     i
+        #     for i in self._prefix_read_values(index, only_one_result=True)
+        #     if i is not None
+        # )
+        # # size: int = len(list(self._prefix_read_values(b'')))
+        # # LOGGER.debug("Checking membership with index: %s: %s: %s", index, output, size)
+        # return len(output) > 0
+        value: AtomicFact = self.db.get(index)
+        return value is not None #decode(value) == fact if value is not None else False
 
     def attributes_for_specific_node(
         self, node_id: str, *attributes: str
@@ -344,6 +395,7 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
         """
         LOGGER.debug("Append called: %s: %s", fact, self.put_counter)
         index: bytes = self.make_index_for_fact(fact)
+        index1: bytes = self.make_secondary_index_for_fact(fact)
         if index is None:
             LOGGER.warning("Append failed.")
             return
@@ -362,8 +414,13 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
                 fact,
             ),
         )
+        apply_function(
+            write_fact_secondary,
+            args=(self.db, index1, fact)
+        )
 
         self.put_counter += 1
+        # self.key_cache.set(self.make_index_for_fact(fact), 1)
 
         # t = threading.Thread(target=write_fact, args=(self.db, index, fact,))
         # t.start()
@@ -402,7 +459,9 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
             encoding="utf8",
         )
         LOGGER.debug("Querying value of node attribute prefix: %s", prefix)
-        result = list(self._prefix_read_values(prefix))
+        result = list(self._prefix_read_values(prefix, only_one_result=True))
+        if result is None:
+            raise ValueError('Could not find expected fact...')
         if len(result) == 1:
             fact = result[0]
             return fact.value
@@ -420,10 +479,13 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
         Returns:
             list: A list of all the nodes with the specified label.
         """
-        LOGGER.debug("nodes_with_label called")
-        for fact in self:
-            if isinstance(fact, FactNodeHasLabel) and fact.label == label:
-                yield fact.node_id
+        prefix = ensure_bytes(
+            f"node_label:{label}:",
+            encoding="utf8",
+        )
+        result: list[AtomicFact] = list(self._prefix_read_values(prefix, only_one_result=False))
+        for fact in result:
+            yield fact.node_id
 
     def nodes_with_label_facts(self, label: str) -> Generator[str]:
         """
@@ -588,6 +650,14 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
                 # print(all(future.ready() for future in futures))
             if not queueing_thread.is_alive() and endings == len(futures):
                 break
+
+    def dump_facts_to_file(self, filename: str):
+        """Dump all facts to a file"""
+        LOGGER.debug("Dumping facts to file: %s", filename)
+        with gzip.open(filename, "wb") as f:
+            for _, _, key, value in self:
+                f.write(pickle.dumps((key, value)))
+                f.write(b"\n")
 
     def serialize(self) -> None:
         counter = 0
