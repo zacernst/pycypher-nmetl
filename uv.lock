@@ -2331,6 +2331,7 @@ dependencies = [
     { name = "pytest-xdist" },
     { name = "pyzmq" },
     { name = "rbloom" },
+    { name = "redis" },
     { name = "rich" },
     { name = "rocksdict" },
     { name = "ruff" },
@@ -2387,6 +2388,7 @@ requires-dist = [
     { name = "pytest-xdist", specifier = ">=3.6.1,<4.0.0" },
     { name = "pyzmq", specifier = ">=27.0.0" },
     { name = "rbloom", specifier = ">=1.5.2" },
+    { name = "redis", specifier = ">=6.2.0" },
     { name = "rich", specifier = ">=13.9.4" },
     { name = "rocksdict", specifier = ">=0.3.25" },
     { name = "ruff", specifier = ">=0.6.3,<1.0.0" },
@@ -2943,6 +2945,15 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/a4/06/4d4c6852c4aedcd309be7c73369270719836329cce2568077df991133563/rbloom-1.5.2-cp37-abi3-manylinux_2_5_i686.manylinux1_i686.whl", hash = "sha256:05a05b6b44486795cb2ee209563a4d2127f7ec07195caba0038503cd174bc7d1", size = 318791, upload-time = "2024-10-01T11:51:02.613Z" },
     { url = "https://files.pythonhosted.org/packages/ac/e3/9e39760cb8e6b1181f3732fbc456f8a844f9c000a6d16c14bcf91ae5d6ee/rbloom-1.5.2-cp37-abi3-win32.whl", hash = "sha256:2c59bced1f3d71ad266dbeb5e2b140ed9128f64c083ceddb2a0c94244cc1c923", size = 167143, upload-time = "2024-10-01T11:51:09.839Z" },
     { url = "https://files.pythonhosted.org/packages/b8/16/d8637d6a7840af37cf1aae2d1cd64e48840ce7e11e049ad0ee477b139856/rbloom-1.5.2-cp37-abi3-win_amd64.whl", hash = "sha256:7297f2040d4e8882baea29cb0c554b9c008b5db616790620278b9aaaf95cf439", size = 174762, upload-time = "2024-10-01T11:51:08.672Z" },
+]
+
+[[package]]
+name = "redis"
+version = "6.2.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/ea/9a/0551e01ba52b944f97480721656578c8a7c46b51b99d66814f85fe3a4f3e/redis-6.2.0.tar.gz", hash = "sha256:e821f129b75dde6cb99dd35e5c76e8c49512a5a0d8dfdc560b2fbd44b85ca977", size = 4639129, upload-time = "2025-05-28T05:01:18.91Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/13/67/e60968d3b0e077495a8fee89cf3f2373db98e528288a48f1ee44967f6e8c/redis-6.2.0-py3-none-any.whl", hash = "sha256:c8ddf316ee0aab65f04a11229e94a64b2618451dab7a67cb2f77eb799d872d5e", size = 278659, upload-time = "2025-05-28T05:01:16.955Z" },
 ]
 
 [[package]]

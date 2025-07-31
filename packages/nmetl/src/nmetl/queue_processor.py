@@ -54,6 +54,7 @@ from pycypher.lineage import Appended, FromMapping
 from pycypher.node_classes import Collection
 from pycypher.query import NullResult
 from shared.logger import LOGGER
+from shared.helpers import ensure_bytes
 
 LOGGER.setLevel("DEBUG")
 
@@ -222,6 +223,8 @@ class QueueProcessor(ABC):  # pylint: disable=too-few-public-methods,too-many-in
                 )
                 item.session = None
                 item.data_source = None
+                if item is None:
+                    continue
                 self.buffer.append(item)
                 if (
                     len(self.buffer) <= self.max_buffer_size
@@ -394,7 +397,7 @@ class FactGeneratedQueueProcessor(QueueProcessor):  # pylint: disable=too-few-pu
         # else:
         fact_collection: FactCollection = QueueProcessor.get_fact_collection()
         for item in buffer:
-            LOGGER.info("Writing: %s", item)
+            LOGGER.debug("Writing: %s", item)
             item.lineage = None  # Appended(lineage=getattr(item, "lineage", None))
             fact_collection.append(item)
             # SAMPLE_HISTOGRAM.observe(random.random() * 10)
@@ -444,6 +447,11 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
         """
         out: List[SubTriggerPair] = []
         for item in buffer:
+            try:
+                assert isinstance(ensure_bytes(QueueProcessor.get_fact_collection().make_index_for_fact(item)), bytes)
+            except Exception as e:
+                LOGGER.warning('Bad item in CheckFact... %s', item)
+                continue
             LOGGER.debug("Checking fact %s against triggers", item)
             # item_in_collection: bool = (
             #     item in QueueProcessor.get_fact_collection()
@@ -452,7 +460,7 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
             PARANOID = True
             if PARANOID:
                 while item not in QueueProcessor.get_fact_collection():
-                    LOGGER.info(
+                    LOGGER.warning(
                         "Fact %s not in collection, requeueing...", item.__dict__
                     )
                     time.sleep(0.1)
@@ -594,9 +602,13 @@ class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-publi
             )
             try:
                 ####### Ensure that projection from Match clause is includedin solution dict
-                computed_facts.append(
-                    process_solution_function(solution, *process_solution_args)
-                )
+                # computed_facts.append(
+                #     process_solution_function(solution, *process_solution_args)
+                # )
+                computed_fact = process_solution_function(solution, *process_solution_args)
+                if computed_fact:
+                    computed_facts.append(computed_fact)
+                
             except Exception as e:  # pylint: disable=broad-exception-caught
                 LOGGER.error("In TriggeredLookupProcessor: Error processing solution: %s, %s, %s", e, solution, process_solution_args)
 
@@ -694,9 +706,12 @@ class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-publi
         target_attribute = sub_trigger_pair.trigger.attribute_set
         LOGGER.debug('Target attribute: %s', target_attribute)
         LOGGER.debug('Solution: %s', solution)
-        node_id = TriggeredLookupProcessor._extract_node_id_from_solution(
-            solution, variable_to_set
-        )
+        try:
+            node_id = TriggeredLookupProcessor._extract_node_id_from_solution(
+                solution, variable_to_set
+            )
+        except Exception as e:
+            return None
         LOGGER.debug('node_id: %s', node_id)
         computed_fact: FactNodeHasAttributeWithValue = (
             FactNodeHasAttributeWithValue(
@@ -738,7 +753,8 @@ class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-publi
             ]
 
         except Exception as e:
-            raise ValueError(f"Error extracting splat: {e}") from e
+            # raise ValueError(f"Error extracting splat: {e}") from e
+            out = []
 
         return out
 
@@ -776,3 +792,7 @@ class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-publi
         # Match solution key is empty for `solution` if the MATCH clause has a relationship.
         # Perhaps I didn't update the code to propagate the solution through a RelationshipChain or
         # RelationshipChainList?`
+        #
+        # Look at how this is done for Nodes without relationships becaue that seems to work fine.
+        # What step in the propagation of the solution is missing? Compare.:w
+

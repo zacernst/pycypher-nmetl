@@ -39,6 +39,8 @@ except ModuleNotFoundError:
 
 def write_fact(db, index, fact):
     """Write a ``Fact`` to FoundationDB"""
+    if index is None:
+        return True
     LOGGER.debug("Writing to FoundationDB: %s", index)
     db[index] = encode(fact, to_bytes=True)
 
@@ -48,6 +50,8 @@ def write_fact(db, index, fact):
 
 def write_fact_secondary(db, index, fact):
     """Write a ``Fact`` to FoundationDB"""
+    if index is None:
+        return True
     LOGGER.debug("Writing to FoundationDB: %s", index)
     db[index] = encode(fact, to_bytes=True)
 

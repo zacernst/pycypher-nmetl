@@ -364,8 +364,8 @@ class DataSource(ABC):  # pylint: disable=too-many-instance-attributes
                 if self.halt:
                     LOGGER.debug("DataSource %s is halting", self.name)
                     break
-                if self.received_counter % 50 == 0:
-                    while self.session.tasks_in_memory > 1:
+                if 1 or self.received_counter % 50 == 0:
+                    while self.session.tasks_in_memory > 64:
                         LOGGER.debug("DataSource waiting...")
                         time.sleep(random.random())
                     LOGGER.debug(
@@ -473,6 +473,10 @@ class DataSourceMapping:  # pylint: disable=too-few-public-methods,too-many-inst
                 relationship_id=relationship_id,
                 relationship_label=self.relationship,
             )
+            LOGGER.debug('source_fact: %s', source_fact)
+            LOGGER.debug('target_fact: %s', target_fact)
+            LOGGER.debug('label_fact: %s', label_fact)
+
             yield source_fact
             yield target_fact
             yield label_fact

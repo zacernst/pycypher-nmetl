@@ -921,7 +921,21 @@ class WithClause(Evaluable, TreeMixin):
                 fact_collection,
                 start_entity_var_id_mapping=start_entity_var_id_mapping,
             )]
+            result = [one_result for one_result in result if one_result]
+            if not result:
+                return result
+            for index, one_result in enumerate(result):
+                if len(one_result) == 0 or not start_entity_var_id_mapping:
+                    continue
+                LOGGER.warning("result in is_aggregation block: %s ::::: %s ::::: %s", one_result, index, start_entity_var_id_mapping)
+                LOGGER.warning("result: %s", result)
+                try:
+                    one_result[MATCH_SOLUTION_KEY] = start_entity_var_id_mapping[index]
+                except Exception as e:
+                    LOGGER.warning("Error in is_aggregation block: %s ::::: %s ::::: %s", one_result, index, start_entity_var_id_mapping)
+                    raise e
             # result[MATCH_SOLUTION_KEY] = start_entity_var_id_mapping
+            # LOGGER.debug("result in is_aggregation block: %s", result)
         elif not self.is_aggregation:
             result: List[Dict[str, Any]] = []
             for item in start_entity_var_id_mapping:
@@ -943,6 +957,7 @@ class WithClause(Evaluable, TreeMixin):
         if not isinstance(start_entity_var_id_mapping, list):
             raise EvaluationError(f"Error while evaluating WithClause: {self}")
         projection: Dict[str, Any] = {}
+        LOGGER.warning("_evaluate_aggregation: %s", start_entity_var_id_mapping)
         for lookup in self.lookups.lookups:
             value: Any = lookup._evaluate(
                 fact_collection=fact_collection,
@@ -1502,10 +1517,14 @@ class RelationshipChain(TreeMixin):
         # If this is a degenerate chain (no target node), we're done.
         if not self.target_node:
             return left_node_var_id_mapping_list
+        
         right_node_var_id_mapping_list: list[dict[str, str]] = ( self.target_node._evaluate(
                 fact_collection, start_entity_var_id_mapping
             )
         )
+        LOGGER.warning('start_entity_var_id_mapping: %s\nright_node_var_id_mapping_list: %s\nleft_node_var_id_mapping_list: %s', start_entity_var_id_mapping, right_node_var_id_mapping_list, left_node_var_id_mapping_list)
+        # LOGGER.warning("right_node_var_id_mapping_list: %s", right_node_var_id_mapping_list)
+        # LOGGER.warning("left_node_var_id_mapping_list: %s", left_node_var_id_mapping_list)
         all_solutions: List[Dict[str, str]] = []
         for left_node_mapping, right_node_mapping in itertools.product(
             left_node_var_id_mapping_list, right_node_var_id_mapping_list
@@ -1539,8 +1558,9 @@ class RelationshipChain(TreeMixin):
                 relationships_satisfying_left_entity_id
                 & relationships_satisfying_right_entity_id
             )
-            LOGGER.debug('Relationship solutions: %s', relationship_solutions)
+            LOGGER.warning('Relationship solutions: %s', relationship_solutions)
             for relationship_solution in relationship_solutions:
+                LOGGER.debug('relationship_solution: %s, %s', relationship_solution, combined_mapping)
                 combined_mapping_copy: Dict[str, str] = copy.copy(
                     combined_mapping
                 )
@@ -1548,6 +1568,8 @@ class RelationshipChain(TreeMixin):
                     self.relationship.relationship.name_label.name  # Used to be relationship.relationship
                 ] = relationship_solution
                 all_solutions.append(combined_mapping_copy)
+                LOGGER.debug('combined_mapping_copy: %s', combined_mapping_copy)
+        LOGGER.debug('all_solutions: %s', all_solutions)
         return all_solutions
 
     def tree(self) -> Tree:
@@ -1731,14 +1753,20 @@ class RelationshipChainList(TreeMixin):
             relationship._evaluate(fact_collection, start_entity_var_id_mapping)
             for relationship in self.relationships
         ]
+        LOGGER.warning('RelationshipChainList evaluations: %s', evaluations)
+        # RelationshipChainList evaluations: [[{'i': 'Tract::01001020805', 'c': 'County::01001', 'r': '36085b73ab5d48c194d0daa7d859e9a7'}]]
         solutions: List[Dict[str, str]] = []
         for substitution_combination in itertools.product(*evaluations):
+            # substitution_combination = substitution_combination[0]
+            LOGGER.debug("substitution_combination: %s", substitution_combination)
             if conflicting_vars(*substitution_combination):
                 continue
+            LOGGER.debug("After conflicting variable test... %s", substitution_combination)
             combined_substitution: Dict[str, str] = {}
             for substitution in substitution_combination:
                 combined_substitution.update(substitution)
             solutions.append(combined_substitution)
+        LOGGER.warning('In RelationshipChainList solutions: %s', solutions)
         return solutions
 
 

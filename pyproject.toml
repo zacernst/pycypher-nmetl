@@ -57,6 +57,7 @@ dependencies = [
     "pyzmq>=27.0.0",
     "grafana-client>=4.3.2",
     "pyroscope-io>=0.8.11",
+    "redis>=6.2.0",
 ]
 
 [[project.authors]]

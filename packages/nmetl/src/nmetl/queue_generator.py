@@ -10,6 +10,8 @@ from typing import Any, Generator, Optional
 import dill as pickle
 import zmq
 from nmetl.logger import LOGGER
+from pycypher.query import NullResult
+
 
 LOGGER.setLevel("WARNING")
 
@@ -82,6 +84,8 @@ class QueueGenerator:  # pylint: disable=too-few-public-methods,too-many-instanc
 
     def put(self, item: Any) -> None:
         """Put an item on the queue."""
+        if item is None or isinstance(item, NullResult):
+            return
         message: ZMQMessage = ZMQMessage(queue_name=self.name, contents=item)
         encoded_message: str = ZMQMessage.encode(message)
         LOGGER.info("Putting message on %s", message.queue_name)
@@ -92,6 +96,8 @@ class QueueGenerator:  # pylint: disable=too-few-public-methods,too-many-instanc
         LOGGER.info("YIELD ITEMS CALLED %s", self.name)
         while 1:
             item: Any = self.get()
+            if item is None:
+                continue
             if isinstance(item, Shutdown):
                 break
             yield item
