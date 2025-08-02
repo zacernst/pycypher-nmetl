@@ -447,10 +447,12 @@ class DataSourceMapping:  # pylint: disable=too-few-public-methods,too-many-inst
     ) -> Generator[AtomicFact, None, None]:
         """Process the mapping against a raw datum."""
         if self.is_attribute_mapping:
-            fact: FactNodeHasAttributeWithValue = FactNodeHasAttributeWithValue(
-                node_id=f"{self.label}::{row[self.identifier_key]}",
-                attribute=self.attribute,
-                value=row[self.attribute_key],
+            fact: FactNodeHasAttributeWithValue = (
+                FactNodeHasAttributeWithValue(
+                    node_id=f"{self.label}::{row[self.identifier_key]}",
+                    attribute=self.attribute,
+                    value=row[self.attribute_key],
+                )
             )
             yield fact
         elif self.is_label_mapping:
@@ -473,9 +475,9 @@ class DataSourceMapping:  # pylint: disable=too-few-public-methods,too-many-inst
                 relationship_id=relationship_id,
                 relationship_label=self.relationship,
             )
-            LOGGER.debug('source_fact: %s', source_fact)
-            LOGGER.debug('target_fact: %s', target_fact)
-            LOGGER.debug('label_fact: %s', label_fact)
+            LOGGER.debug("source_fact: %s", source_fact)
+            LOGGER.debug("target_fact: %s", target_fact)
+            LOGGER.debug("label_fact: %s", label_fact)
 
             yield source_fact
             yield target_fact
@@ -485,7 +487,9 @@ class DataSourceMapping:  # pylint: disable=too-few-public-methods,too-many-inst
                 "Only attribute and label mappings are supported for now."
             )
 
-    def __add__(self, row: dict[str, Any]) -> Generator[AtomicFact, None, None]:
+    def __add__(
+        self, row: dict[str, Any]
+    ) -> Generator[AtomicFact, None, None]:
         """Let us use the + operator to process a row against a mapping."""
         yield from self.process_against_raw_datum(row)
 

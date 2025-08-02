@@ -7,17 +7,18 @@ Use FoundationDB as the key-value store of the ``FactCollection``.
 
 from __future__ import annotations
 
+import gzip
 import inspect
 import pickle
 import queue
 import threading
-import redis
-import gzip
 import time
 from multiprocessing.pool import ApplyResult, ThreadPool
 from typing import Any, Dict, Generator, Optional
 
+import redis
 from nmetl.logger import LOGGER
+
 # from nmetl.prometheus_metrics import FACTS_APPENDED
 from pycypher.fact import (
     AtomicFact,
@@ -27,7 +28,11 @@ from pycypher.fact import (
 )
 from pycypher.fact_collection import FactCollection
 from pycypher.fact_collection.key_value import KeyValue
-from pycypher.query import NullResult, QueryNodeLabel, QueryValueOfNodeAttribute
+from pycypher.query import (
+    NullResult,
+    QueryNodeLabel,
+    QueryValueOfNodeAttribute,
+)
 from shared.helpers import decode, encode, ensure_bytes
 
 try:
@@ -36,6 +41,7 @@ try:
     fdb.api_version(710)
 except ModuleNotFoundError:
     LOGGER.warning("fdb not installed, fdb support disabled")
+
 
 def write_fact(db, index, fact):
     """Write a ``Fact`` to FoundationDB"""
@@ -59,7 +65,6 @@ def write_fact_secondary(db, index, fact):
     return True
 
 
-
 class FoundationDBFactCollection(FactCollection, KeyValue):
     """
     ``FactCollection`` that uses FoundationDB as a backend.
@@ -74,7 +79,7 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
 
         Args:
             *args: Variable positional arguments passed to parent class.
-            sync_writes: If True, use synchronous writes to FoundationDB. 
+            sync_writes: If True, use synchronous writes to FoundationDB.
                         If False, use asynchronous writes for better performance.
                         Defaults to False.
             **kwargs: Variable keyword arguments passed to parent class.
@@ -90,7 +95,7 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
             "labels": set(),
         }
         # self.key_cache = redis.Redis()
-        LOGGER.info('Flushing Redis cache')
+        LOGGER.info("Flushing Redis cache")
         # self.key_cache.flushall()
 
         # self.db = Rdict(self.db_path, self.options)
@@ -137,12 +142,14 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
             LOGGER.warning("Could not make index for %s", fact)
             return None
         return ensure_bytes(index, encoding="utf8")
-    
+
     def make_secondary_index_for_fact(self, fact: AtomicFact) -> bytes:
         """Used for the memcache index"""
         # Call the superclass's version of the method and convert to bytes
         try:
-            index: bytes | str = KeyValue.make_secondary_index_for_fact(self, fact)
+            index: bytes | str = KeyValue.make_secondary_index_for_fact(
+                self, fact
+            )
         except:
             LOGGER.warning("Could not make secondary index for %s", fact)
             return None
@@ -210,24 +217,36 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
         """
         LOGGER.debug("values called")
         yield from self
-    
-    def relationships_with_specific_source_node_facts(self, source_node_id: str) -> Generator[str, None, None]:
+
+    def relationships_with_specific_source_node_facts(
+        self, source_node_id: str
+    ) -> Generator[str, None, None]:
         """
         Return a generator of facts that have a specific source node.
         """
-        LOGGER.debug("relationships_with_specific_source_node_facts called: %s", source_node_id)
+        LOGGER.debug(
+            "relationships_with_specific_source_node_facts called: %s",
+            source_node_id,
+        )
         for fact in self._prefix_read_values(
-            f"relationship_source_node_secondary:{source_node_id}:", continue_to_end=False
+            f"relationship_source_node_secondary:{source_node_id}:",
+            continue_to_end=False,
         ):
             yield fact
 
-    def relationships_with_specific_target_node_facts(self, target_node_id: str) -> Generator[str, None, None]:
+    def relationships_with_specific_target_node_facts(
+        self, target_node_id: str
+    ) -> Generator[str, None, None]:
         """
         Return a generator of facts that have a specific target node.
         """
-        LOGGER.debug("relationships_with_specific_target_node_facts called: %s", target_node_id)
+        LOGGER.debug(
+            "relationships_with_specific_target_node_facts called: %s",
+            target_node_id,
+        )
         for fact in self._prefix_read_values(
-            f"relationship_target_node_secondary:{target_node_id}:", continue_to_end=False
+            f"relationship_target_node_secondary:{target_node_id}:",
+            continue_to_end=False,
         ):
             yield fact
 
@@ -303,7 +322,9 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
         # # LOGGER.debug("Checking membership with index: %s: %s: %s", index, output, size)
         # return len(output) > 0
         value: AtomicFact = self.db.get(index)
-        return value is not None #decode(value) == fact if value is not None else False
+        return (
+            value is not None
+        )  # decode(value) == fact if value is not None else False
 
     def attributes_for_specific_node(
         self, node_id: str, *attributes: str
@@ -418,10 +439,7 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
                 fact,
             ),
         )
-        apply_function(
-            write_fact_secondary,
-            args=(self.db, index1, fact)
-        )
+        apply_function(write_fact_secondary, args=(self.db, index1, fact))
 
         self.put_counter += 1
         # self.key_cache.set(self.make_index_for_fact(fact), 1)
@@ -465,7 +483,7 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
         LOGGER.debug("Querying value of node attribute prefix: %s", prefix)
         result = list(self._prefix_read_values(prefix, only_one_result=True))
         if result is None:
-            raise ValueError('Could not find expected fact...')
+            raise ValueError("Could not find expected fact...")
         if len(result) == 1:
             fact = result[0]
             return fact.value
@@ -487,7 +505,9 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
             f"node_label:{label}:",
             encoding="utf8",
         )
-        result: list[AtomicFact] = list(self._prefix_read_values(prefix, only_one_result=False))
+        result: list[AtomicFact] = list(
+            self._prefix_read_values(prefix, only_one_result=False)
+        )
         for fact in result:
             yield fact.node_id
 
@@ -616,7 +636,9 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
 
         def _start_threads():
             current_key = b""
-            for next_key in self.skip_keys(offset=increment, max_keys=max_keys):
+            for next_key in self.skip_keys(
+                offset=increment, max_keys=max_keys
+            ):
                 future: ApplyResult[None] = executor.apply_async(
                     _get_range,
                     (

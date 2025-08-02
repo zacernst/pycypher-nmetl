@@ -6,7 +6,7 @@ the AST.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Generator, Type, Tuple
+from typing import Generator, Tuple, Type
 
 from rich import print as rprint
 from rich.tree import Tree
@@ -39,10 +39,12 @@ class TreeMixin(ABC):
         """Generates a tree representation of the AST which can be pretty-printed
         with the ``rich`` library.
         """
-    
-    def get_node_variables(self) -> Generator[Tuple[str, TreeMixin], None, None]:
+
+    def get_node_variables(
+        self,
+    ) -> Generator[Tuple[str, TreeMixin], None, None]:
         for vertex in self.walk():
-            if node_name_label := getattr(vertex, 'node_name_label', None):
+            if node_name_label := getattr(vertex, "node_name_label", None):
                 yield node_name_label.name, vertex
 
     def walk(self) -> Generator[TreeMixin]:

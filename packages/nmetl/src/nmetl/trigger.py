@@ -8,13 +8,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import (
-    Callable,
-    List,
-    Protocol,
-    TypeVar,
-    runtime_checkable,
-)
+from typing import Callable, List, Protocol, TypeVar, runtime_checkable
 
 from pycypher.cypher_parser import CypherParser
 

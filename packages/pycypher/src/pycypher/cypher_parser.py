@@ -55,10 +55,10 @@ def p_cypher(p: List[TreeMixin]):
             "Parser only accepts one query, and no update clauses (for now)."
         )
 
+
 # | relationship_chain_list  Taken from p_query docstring below
 def p_query(p: Tuple[yacc.YaccProduction, Match, Return]):
-    """query : match_pattern return
-    """
+    """query : match_pattern return"""
     if len(p) == 3:
         p[0] = Query(p[1], p[2])
     else:
@@ -210,7 +210,9 @@ def p_relationship_chain(p: yacc.YaccProduction):
     """relationship_chain : incomplete_relationship_chain node
     | node"""
     if len(p) == 2:
-        p[0] = RelationshipChain(source_node=p[1], relationship=None, target_node=None)
+        p[0] = RelationshipChain(
+            source_node=p[1], relationship=None, target_node=None
+        )
     elif len(p) == 3:
         p[0] = RelationshipChain(
             source_node=p[1][0], relationship=p[1][1], target_node=p[2]
@@ -401,7 +403,8 @@ class CypherParser:
     def _evaluate(
         self,
         fact_collection: FactCollection,
-        start_entity_var_id_mapping: Dict[str, Any] | List[Dict[str, Any]] = {},
+        start_entity_var_id_mapping: Dict[str, Any]
+        | List[Dict[str, Any]] = {},
     ) -> List[Dict[str, Any]]:
         out: List[Dict[str, Any]] = self.parse_tree.cypher._evaluate(
             fact_collection,
