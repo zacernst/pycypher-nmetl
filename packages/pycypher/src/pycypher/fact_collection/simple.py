@@ -8,16 +8,9 @@ This is just a list of facts, used only for dev testing. If you're not developin
 
 from __future__ import annotations
 
-import collections
-from typing import Any, Dict, Generator, List, Optional
+from typing import Generator, List, Optional
 
-from pycypher.fact import (
-    AtomicFact,
-    FactNodeHasAttributeWithValue,
-    FactNodeHasLabel,
-    FactRelationshipHasSourceNode,
-    FactRelationshipHasTargetNode,
-)
+from pycypher.fact import AtomicFact
 from pycypher.fact_collection import FactCollection
 
 
@@ -34,7 +27,6 @@ class SimpleFactCollection(FactCollection):
     def __init__(
         self,
         facts: Optional[List[AtomicFact]] = None,
-        session: Optional["Session"] = None,  # type: ignore
     ):
         """
         Initialize a FactCollection instance.
@@ -44,8 +36,7 @@ class SimpleFactCollection(FactCollection):
             session (Optional[Session]): The session this fact collection belongs to. Defaults to None.
         """
         self.facts: List[AtomicFact] = facts or []
-        self.session: Optional["Session"] = session  # type: ignore
-        super().__init__(facts, session)
+        # super().__init__(facts)
 
     def keys(self) -> Generator[AtomicFact]:
         """
@@ -56,6 +47,18 @@ class SimpleFactCollection(FactCollection):
         """
         yield from self.facts
 
+    def __contains__(self, fact: AtomicFact) -> bool:
+        """
+        Check if a fact is present in the collection.
+
+        Args:
+            fact (AtomicFact): The fact to check for.
+
+        Returns:
+            bool: True if the fact is present, False otherwise.
+        """
+        return fact in self.facts
+
     def __iter__(self) -> Generator[AtomicFact]:
         """
         Iterate over the facts in this collection.
@@ -64,35 +67,6 @@ class SimpleFactCollection(FactCollection):
 
     def close(self):
         """Vacuously satisfy the interface"""
-
-    # Not sure we're actually using this
-    def __getitem__(self, index: int) -> AtomicFact:
-        """
-        Get a fact by index.
-
-        Args:
-            index (int): The index of the fact to retrieve.
-
-        Returns:
-            AtomicFact: The fact at the specified index.
-
-        Raises:
-            IndexError: If the index is out of range.
-        """
-        return self.facts[index]
-
-    def __setitem__(self, index: int, value: AtomicFact):
-        """
-        Set a fact at a specific index.
-
-        Args:
-            index (int): The index at which to set the fact.
-            value (AtomicFact): The fact to set at the specified index.
-
-        Raises:
-            IndexError: If the index is out of range.
-        """
-        self.facts[index] = value
 
     def __delitem__(self, index: int):
         """
@@ -129,7 +103,7 @@ class SimpleFactCollection(FactCollection):
         self.facts.insert(index, value)
         return self
 
-    def append(self, fact: AtomicFact) -> FactCollection:
+    def append(self, fact: AtomicFact):
         """
         Append an AtomicFact to the facts list.
 
@@ -139,100 +113,7 @@ class SimpleFactCollection(FactCollection):
         Returns:
             None
         """
-        fact.session = self.session
-        if fact not in self:
-            self.facts.append(fact)
-        return self
-
-    def relationship_has_source_node_facts(self):
-        """
-        Generator method that yields facts of type FactRelationshipHasSourceNode.
-
-        This method iterates over the `facts` attribute of the instance and yields
-        each fact that is an instance of the FactRelationshipHasSourceNode class.
-
-        Yields:
-            FactRelationshipHasSourceNode: Facts that are instances of
-                FactRelationshipHasSourceNode.
-        """
-        for fact in self.facts:
-            if isinstance(fact, FactRelationshipHasSourceNode):
-                yield fact
-
-    def relationship_has_target_node_facts(self):
-        """
-        Generator method that yields facts of type FactRelationshipHasTargetNode.
-
-        Iterates over the `facts` attribute of the instance and yields each fact
-        that is an instance of FactRelationshipHasTargetNode.
-
-        Yields:
-            FactRelationshipHasTargetNode: Facts that are instances of
-                FactRelationshipHasTargetNode.
-        """
-        for fact in self.facts:
-            if isinstance(fact, FactRelationshipHasTargetNode):
-                yield fact
-
-    def node_has_label_facts(self):
-        """
-        Generator function that yields facts of type `FactNodeHasLabel`.
-
-        Iterates over the `facts` attribute and yields each fact that is an instance
-        of `FactNodeHasLabel`.
-
-        Yields:
-            FactNodeHasLabel: Facts that are instances of `FactNodeHasLabel`.
-        """
-        for fact in self:
-            if isinstance(fact, FactNodeHasLabel):
-                yield fact
-
-    def node_with_id_exists(self, node_id: str) -> bool:
-        """
-        Check if a node with a specific ID exists in the fact collection.
-
-        Args:
-            node_id (str): The ID of the node to check for.
-
-        Returns:
-            bool: True if a node with the specified ID exists in the fact collection,
-                False otherwise.
-        """
-        return any(
-            isinstance(fact, FactNodeHasLabel) and fact.node_id == node_id
-            for fact in self.facts
-        )
-
-    def node_has_attribute_with_value_facts(self):
-        """
-        Generator method that yields facts of type FactNodeHasAttributeWithValue.
-
-        Iterates over the list of facts and yields each fact that is an instance
-        of FactNodeHasAttributeWithValue.
-
-        Yields:
-            FactNodeHasAttributeWithValue: Facts that are instances of
-                FactNodeHasAttributeWithValue.
-        """
-        for fact in self.facts:
-            if isinstance(fact, FactNodeHasAttributeWithValue):
-                yield fact
-
-    def relationship_has_attribute_with_value_facts(self):
-        """
-        Generator function that yields facts of type FactRelationshipHasAttributeWithValue.
-
-        Iterates over the `facts` attribute and yields each fact that is an instance of
-        FactRelationshipHasAttributeWithValue.
-
-        Yields:
-            FactRelationshipHasAttributeWithValue: Facts that are instances of
-                FactRelationshipHasAttributeWithValue.
-        """
-        for fact in self.facts:
-            if isinstance(fact, FactRelationshipHasAttributeWithValue):
-                yield fact
+        self.facts.append(fact)
 
     def is_empty(self) -> bool:
         """
@@ -242,78 +123,3 @@ class SimpleFactCollection(FactCollection):
             bool: True if the fact collection is empty, False otherwise.
         """
         return len(self.facts) == 0
-
-    def node_label_attribute_inventory_bak(self):
-        """
-        Return a dictionary of all the facts in the collection.
-
-        Returns:
-            dict: A dictionary of all the facts in the collection.
-        """
-        attributes_by_label = collections.defaultdict(set)
-        relationship_labels = set()
-
-        for fact in self.facts:
-            match fact:
-                case FactNodeHasAttributeWithValue():
-                    label = self.query(QueryNodeLabel(node_id=fact.node_id))
-                    attributes_by_label[label].add(fact.attribute)
-                case FactNodeHasLabel():
-                    if fact.label not in attributes_by_label:
-                        attributes_by_label[fact.label] = set()
-                case FactRelationshipHasLabel():
-                    relationship_labels.add(fact.relationship_label)
-                case _:
-                    continue
-
-        return attributes_by_label
-
-    def attributes_for_specific_node(
-        self, node_id: str, *attributes: str
-    ) -> Dict[str, Any]:
-        """
-        Return a dictionary of all the attributes for a specific node.
-
-        Args:
-            node_id (str): The ID of the node.
-
-        Returns:
-            dict: A dictionary of all the attributes for the specified node.
-        """
-        row = {attribute: None for attribute in attributes}
-        for fact in self.facts:
-            if (
-                isinstance(fact, FactNodeHasAttributeWithValue)
-                and fact.node_id == node_id
-                and fact.attribute in attributes
-            ):
-                row[fact.attribute] = fact.value
-        return row
-
-    def nodes_with_label(self, label: str) -> Generator[str]:
-        """
-        Return a list of all the nodes with a specific label.
-
-        Args:
-            label (str): The label of the nodes to return.
-
-        Returns:
-            list: A list of all the nodes with the specified label.
-        """
-        for fact in self.node_has_label_facts():
-            if fact.label == label:
-                yield fact.node_id
-
-    def rows_by_node_label(self, label: str) -> Generator[Dict[str, Any]]:
-        """Docstring for rows_by_node_label
-
-        :param self: Description
-        :type self:
-        :param label: Description
-        :type label: str
-        :return: Description
-        :rtype: Generator[Dict[str, Any], None, None]
-        """
-        inventory = list(self.session.get_all_attributes_for_label(label))
-        for node_id in self.nodes_with_label(label):
-            yield self.attributes_for_specific_node(node_id, *inventory)

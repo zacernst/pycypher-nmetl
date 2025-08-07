@@ -46,7 +46,7 @@ class KeyValue(ABC):
                 return f"node_relationship:{fact.node1_id}:{fact.node2_id}:{fact.relationship_label}"
             case _:
                 raise ValueError(f"Unknown fact type {fact}")
-    
+
     def make_secondary_index_for_fact(self, fact: AtomicFact) -> str | bytes:
         """Used for the memcache index"""
         match fact:

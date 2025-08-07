@@ -16,7 +16,11 @@ from pycypher.fact import (
 )
 from pycypher.fact_collection import FactCollection
 from pycypher.fact_collection.key_value import KeyValue
-from pycypher.query import NullResult, QueryNodeLabel, QueryValueOfNodeAttribute
+from pycypher.query import (
+    NullResult,
+    QueryNodeLabel,
+    QueryValueOfNodeAttribute,
+)
 from rocksdict import (  # pylint: disable=no-name-in-module, import-error
     BlockBasedIndexType,
     BlockBasedOptions,

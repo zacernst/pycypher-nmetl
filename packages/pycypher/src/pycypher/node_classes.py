@@ -7,22 +7,85 @@ from __future__ import annotations
 
 import abc
 import collections
-import copy
-import itertools
 import uuid
+import itertools
 from typing import Any, Dict, Generator, List, Optional, Set
 
 from pycypher.fact_collection import FactCollection
-from pycypher.query import QueryNodeLabel, QueryValueOfNodeAttribute
+from pycypher.query import (
+    NullResult,
+    QuerySourceNodeOfRelationship,
+    QueryTargetNodeOfRelationship,
+    QueryNodeLabel,
+    QueryValueOfNodeAttribute,
+)
+from pycypher.solutions import Projection, ProjectionList
 from pycypher.tree_mixin import TreeMixin
 from rich.tree import Tree
 from shared.logger import LOGGER
 
 LOGGER.setLevel("WARNING")
 
-MATCH_SOLUTION_KEY: str = '__MATCH_SOLUTION_KEY__'
-WITH_SOLUTION_KEY: str = '__WITH_SOLUTION_KEY__'
-WHERE_SOLUTION_KEY: str = '__WHERE_SOLUTION_KEY__'
+
+def get_free_variable_substitutions(
+    fact_collection: FactCollection,
+    relationship_chain_list: RelationshipChainList,
+    projection: Projection,
+):
+    free_variables: dict[str, list[Node]] = (
+        relationship_chain_list.free_variables(projection=projection)
+    )
+    possible_variable_substitutions: dict[str, list[str]] = {}
+    for variable_name, vertices in free_variables.items():
+        possible_variable_substitutions[variable_name] = []
+        for vertex in vertices:
+            if hasattr(vertex, "name_label") and hasattr(
+                vertex.name_label, "label"
+            ):
+                for node_with_label in fact_collection.nodes_with_label(
+                    vertex.name_label.label,
+                ):
+                    possible_variable_substitutions[variable_name].append(
+                        node_with_label,
+                    )
+                for (
+                    relationship_with_label
+                ) in fact_collection.relationships_with_label(
+                    vertex.name_label.label,
+                ):
+                    possible_variable_substitutions[variable_name].append(
+                        relationship_with_label,
+                    )
+
+    return possible_variable_substitutions
+
+
+def get_all_substitutions(
+    fact_collection: FactCollection, relationship_chain_list, projection_list
+) -> ProjectionList:
+    free_variable_substitutions = get_free_variable_substitutions(
+        fact_collection,
+        relationship_chain_list,
+        projection_list[0],
+    )
+
+    projection_list_output: ProjectionList = ProjectionList([])
+
+    for projection in projection_list:
+        for variable, value in projection.projection.items():
+            free_variable_substitutions[variable] = [value]
+        for substitution_tuple in itertools.product(
+            *free_variable_substitutions.values()
+        ):
+            variable_list: list[str] = list(free_variable_substitutions.keys())
+            substitution_dict: dict[str, str] = dict(
+                zip(variable_list, substitution_tuple)
+            )
+            substitution_projection: Projection = Projection(
+                projection=substitution_dict,
+            )
+            projection_list_output += substitution_projection
+    return projection_list_output
 
 
 class EvaluationError(Exception):
@@ -36,13 +99,15 @@ class Evaluable(TreeMixin, abc.ABC):  # pylint: disable=too-few-public-methods
     Abstract base class representing an evaluable entity.
     """
 
-    @abc.abstractmethod
-    def _evaluate(
-        self,
-        fact_collection: FactCollection,
-        start_entity_var_id_mapping: Dict[str, Any] | List[Dict[str, Any]] = {},
-    ) -> Any:
-        pass
+    @property
+    def is_aggregation(self) -> bool:
+        """
+        Returns whether the WithClause contains aggregation functions.
+        """
+        for obj in self.walk():
+            if isinstance(obj, Aggregation):
+                return True
+        return False
 
 
 class Cypher(TreeMixin):
@@ -93,15 +158,15 @@ class Cypher(TreeMixin):
             List[str]: A list of attribute names.
         """
         if not self._attribute_names:
-            LOGGER.debug('Walking for attribute names...')
-            self._attribute_names: List[str] = [
+            LOGGER.debug("Walking for attribute names...")
+            self._attribute_names = [
                 obj.attribute
                 for obj in self.walk()
                 if isinstance(obj, ObjectAttributeLookup)
             ]
         else:
-            LOGGER.debug('Cached attribute names...')
-        LOGGER.debug('Attribute names: %s', self._attribute_names)
+            LOGGER.debug("Cached attribute names...")
+        LOGGER.debug("Attribute names: %s", self._attribute_names)
         return self._attribute_names
 
     def tree(self) -> Tree:
@@ -115,71 +180,78 @@ class Cypher(TreeMixin):
         t.add(self.cypher.tree())
         return t
 
+class Aggregation:
+    pass  # mix-in class for functions that aggregate values into lists
 
-class Aggregation(Evaluable, TreeMixin):
-    """
-    Represents an aggregation operation that transforms a list into a singleton value.
 
-    Attributes:
-        aggregation: The aggregation operation to be performed.
-
-    """
-
-    def __init__(self, aggregation):
-        self.aggregation = aggregation
-
-    @property
-    def children(self) -> Generator[Evaluable]:
-        """
-        Generator function that yields the aggregation attribute.
-
-        Yields:
-            The aggregation attribute of the instance.
-        """
-        yield self.aggregation
-
-    def __repr__(self) -> str:
-        """
-        Return a string representation of the Aggregation object.
-
-        Returns:
-            str: A string in the format "Aggregation(<aggregation_value>)".
-        """
-        return f"Aggregation({self.aggregation})"
-
-    def tree(self):
-        """
-        Generates a tree representation of the current node class.
-
-        Returns:
-            Tree: A tree object representing the current node class and its aggregation.
-        """
-        t: Tree = Tree(self.__class__.__name__)
-        t.add(self.aggregation.tree())
-        return t
-
-    def _evaluate(
-        self,
-        fact_collection: FactCollection,
-        start_entity_var_id_mapping: Dict[str, Any] | List[Dict[str, Any]] = [],
-    ) -> Any:
-        """
-        Evaluates the aggregation using the provided fact collection and projection.
-
-        Args:
-            fact_collection (FactCollection): The collection of facts to be used in the evaluation.
-            projection (Optional[Dict[str, str | List[str]]]): An optional dictionary specifying
-                the projection to be applied during the evaluation. The keys are the projection
-                names, and the values are either a single string or a list of strings representing
-                the projection fields.
-
-        Returns:
-            Any: The result of the aggregation evaluation.
-        """
-        return self.aggregation._evaluate(  # pylint: disable=protected-access
-            fact_collection,
-            start_entity_var_id_mapping=start_entity_var_id_mapping,
-        )
+# class Aggregation(Evaluable, TreeMixin):
+#     """
+#     Represents an aggregation operation that transforms a list into a singleton value.
+# 
+#     Attributes:
+#         aggregation: The aggregation operation to be performed.
+# 
+#     """
+# 
+#     def __init__(self, aggregation):
+#         self.aggregation = aggregation
+# 
+#     def disaggregate(self) -> Evaluable:
+#         return self.aggregation.object_attribute_lookup
+# 
+#     @property
+#     def children(self) -> Generator[Evaluable]:
+#         """
+#         Generator function that yields the aggregation attribute.
+# 
+#         Yields:
+#             The aggregation attribute of the instance.
+#         """
+#         yield self.aggregation
+# 
+#     def __repr__(self) -> str:
+#         """
+#         Return a string representation of the Aggregation object.
+# 
+#         Returns:
+#             str: A string in the format "Aggregation(<aggregation_value>)".
+#         """
+#         return f"Aggregation({self.aggregation})"
+# 
+#     def tree(self) -> Tree:
+#         """
+#         Generates a tree representation of the current node class.
+# 
+#         Returns:
+#             Tree: A tree object representing the current node class and its aggregation.
+#         """
+#         t: Tree = Tree(self.__class__.__name__)
+#         t.add(self.aggregation.tree())
+#         return t
+# 
+#     def _evaluate(
+#         self,
+#         fact_collection: FactCollection,
+#         start_entity_var_id_mapping: Dict[str, Any]
+#         | List[Dict[str, Any]] = [],
+#     ) -> Any:
+#         """
+#         Evaluates the aggregation using the provided fact collection and projection.
+# 
+#         Args:
+#             fact_collection (FactCollection): The collection of facts to be used in the evaluation.
+#             projection (Optional[Dict[str, str | List[str]]]): An optional dictionary specifying
+#                 the projection to be applied during the evaluation. The keys are the projection
+#                 names, and the values are either a single string or a list of strings representing
+#                 the projection fields.
+# 
+#         Returns:
+#             Any: The result of the aggregation evaluation.
+#         """
+#         return self.aggregation._evaluate(  # pylint: disable=protected-access
+#             fact_collection,
+#             start_entity_var_id_mapping=start_entity_var_id_mapping,
+#         )
 
 
 class Collection(Evaluable, TreeMixin):  # i.e. a list
@@ -193,7 +265,7 @@ class Collection(Evaluable, TreeMixin):  # i.e. a list
 
     def __init__(self, values: List[Evaluable]):
         self.values = values
-        self.value = values # Make this consistent later...
+        self.value = values  # Make this consistent later...
 
     @property
     def children(self) -> Generator[Evaluable, Any, Any]:
@@ -218,10 +290,11 @@ class Collection(Evaluable, TreeMixin):  # i.e. a list
             t.add(value.tree())
         return t
 
-    def _evaluate(
+    def bak_evaluate(
         self,
         fact_collection: FactCollection,
-        start_entity_var_id_mapping: Dict[str, Any] | List[Dict[str, Any]] = {},
+        start_entity_var_id_mapping: Dict[str, Any]
+        | List[Dict[str, Any]] = {},
     ) -> Any:
         """
         Evaluates the current node using the provided fact collection and projection.
@@ -232,15 +305,13 @@ class Collection(Evaluable, TreeMixin):  # i.e. a list
         Returns:
             Any: The result of the evaluation, wrapped in a Collection.
         """
-        return Collection(
-            [
-                value._evaluate(
-                    fact_collection,
-                    start_entity_var_id_mapping=start_entity_var_id_mapping,
-                )
-                for value in self.values
-            ]
-        )
+        return Collection([
+            value._evaluate(
+                fact_collection,
+                start_entity_var_id_mapping=start_entity_var_id_mapping,
+            )
+            for value in self.values
+        ])
 
     def __eq__(self, other):
         return isinstance(other, Collection) and self.values == other.values
@@ -288,7 +359,8 @@ class Distinct(Evaluable, TreeMixin):
     def _evaluate(
         self,
         fact_collection: FactCollection,
-        start_entity_var_id_mapping: Dict[str, Any] | List[Dict[str, Any]] = [],
+        start_entity_var_id_mapping: Dict[str, Any]
+        | List[Dict[str, Any]] = [],
     ) -> Any:
         """
         Evaluate the collection and remove duplicates.
@@ -312,46 +384,47 @@ class Distinct(Evaluable, TreeMixin):
         return Collection(new_values)
 
 
-class Size(Evaluable, TreeMixin):
+class Size(Evaluable, TreeMixin, Aggregation):
     """
-    Represents a size operation on a collection, like a ``len`` in Python.
+    Represents a size operation on a collection, like a ``len`` in Python. The difference
+    is that we don't count NULL values.
 
     Attributes:
         collection (Collection): The collection whose size is to be evaluated.
 
     """
 
-    def __init__(self, collection: Collection):
-        self.collection = collection
+    def __init__(self, collect: Collect):
+        self.collect = collect
 
     @property
     def children(self):
-        yield self.collection
+        yield self.collect
 
     def __repr__(self) -> str:
-        return f"Size({self.collection})"
+        return f"Size({self.collect})"
 
     def tree(self):
         t = Tree(self.__class__.__name__)
-        t.add(self.collection.tree())
+        t.add(self.collect.tree())
         return t
 
     def _evaluate(
         self,
         fact_collection: FactCollection,
-        start_entity_var_id_mapping: Dict[str, Any] | List[Dict[str, Any]] = {},
-    ) -> Any:
+        projection_list: ProjectionList = ProjectionList([])
+    ) -> Literal:
+        collection: Collection = self.collect._evaluate(fact_collection, projection_list=projection_list)
         return Literal(
-            len(
-                self.collection._evaluate(  # pylint: disable=protected-access
-                    fact_collection,
-                    start_entity_var_id_mapping=start_entity_var_id_mapping,
-                ).values
-            )
+            value=len([i for i in collection.values if not isinstance(i, NullResult)])
         )
+    
+    def disaggregate(self):
+        return self.collect.disaggregate()
+        
 
 
-class Collect(Evaluable, TreeMixin):
+class Collect(Evaluable, TreeMixin, Aggregation):
     """
     A class that represents a collection of objects based on an attribute lookup.
 
@@ -363,6 +436,9 @@ class Collect(Evaluable, TreeMixin):
 
     def __init__(self, object_attribute_lookup: ObjectAttributeLookup):
         self.object_attribute_lookup = object_attribute_lookup
+    
+    def disaggregate(self):
+        return self.object_attribute_lookup
 
     @property
     def children(self):
@@ -399,17 +475,15 @@ class Collect(Evaluable, TreeMixin):
     def _evaluate(
         self,
         fact_collection: FactCollection,
-        start_entity_var_id_mapping: Dict[str, Any] | List[Dict[str, Any]] = [],
+        projection_list: ProjectionList,
     ) -> Collection:
         """ """
-        if not isinstance(start_entity_var_id_mapping, list):
-            raise EvaluationError(f"Error while evaluating Collect: {self}")
         result: Collection = Collection(
             values=[
                 self.object_attribute_lookup._evaluate(
-                    fact_collection, start_entity_var_id_mapping=mapping
+                    fact_collection, projection=projection
                 )
-                for mapping in start_entity_var_id_mapping
+                for projection in projection_list
             ]
         )
 
@@ -447,21 +521,10 @@ class Query(Evaluable, TreeMixin):
     def _evaluate(
         self,
         fact_collection,
-        start_entity_var_id_mapping: Dict[str, Any] | List[dict[str, Any]] = {},
-    ) -> List[Dict[str, Any]]:
-        match_clause_results: list[dict[str, Any]] = (
-            self.match_clause._evaluate(
-                fact_collection,
-                start_entity_var_id_mapping=start_entity_var_id_mapping,
-            )
-        )
-        return_clause_results: list[dict[str, Any]] = [
-            self.return_clause._evaluate(
-                fact_collection,
-                start_entity_var_id_mapping=start_entity_var_id_mapping,
-            )
-            for start_entity_var_id_mapping in match_clause_results
-        ]
+        projection_list: ProjectionList = ProjectionList([]),
+    ) -> ProjectionList:
+        match_clause_results: ProjectionList = self.match_clause._evaluate(fact_collection, projection_list=projection_list)
+        return_clause_results: ProjectionList = self.return_clause._evaluate(fact_collection, projection_list=match_clause_results)
         return return_clause_results
 
 
@@ -488,7 +551,9 @@ class Predicate(TreeMixin):
             yield self.right_side
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}({self.left_side}, {self.right_side})"
+        return (
+            f"{self.__class__.__name__}({self.left_side}, {self.right_side})"
+        )
 
 
 class BinaryBoolean(Predicate, TreeMixin):
@@ -510,7 +575,9 @@ class BinaryBoolean(Predicate, TreeMixin):
         self.right_side = right_side
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}({self.left_side}, {self.right_side})"
+        return (
+            f"{self.__class__.__name__}({self.left_side}, {self.right_side})"
+        )
 
     def tree(self) -> Tree:
         t: Tree = Tree(self.__class__.__name__)
@@ -546,11 +613,9 @@ class AliasedName(Evaluable, TreeMixin):
     def _evaluate(
         self,
         fact_collection: FactCollection,
-        start_entity_var_id_mapping: Dict[str, Any] | List[Dict[str, Any]] = {},
-    ) -> Literal:
-        if isinstance(start_entity_var_id_mapping, list):
-            raise EvaluationError(f"Error while evaluating AliasedName: {self}")
-        return Literal(start_entity_var_id_mapping[self.name])
+        projection: Projection,
+    ) -> Projection:
+        return projection[self.name]
 
 
 class Equals(BinaryBoolean, Evaluable):
@@ -565,17 +630,15 @@ class Equals(BinaryBoolean, Evaluable):
     def _evaluate(
         self,
         fact_collection: FactCollection,
-        start_entity_var_id_mapping: Dict[str, Any] | List[Dict[str, Any]] = {},
+        projection: Projection,
     ) -> Literal:
-        if isinstance(start_entity_var_id_mapping, list):
-            raise EvaluationError(f"Error while evaluating Equals: {self}")
         left_value = self.left_side._evaluate(
             fact_collection,
-            start_entity_var_id_mapping=start_entity_var_id_mapping,
+            projection=projection,
         )  # pylint: disable=protected-access
         right_value = self.right_side._evaluate(
             fact_collection,
-            start_entity_var_id_mapping=start_entity_var_id_mapping,
+            projection=projection,
         )  # pylint: disable=protected-access
         return Literal(left_value == right_value)
 
@@ -592,7 +655,8 @@ class LessThan(Predicate, Evaluable):
     def _evaluate(
         self,
         fact_collection: FactCollection,
-        start_entity_var_id_mapping: Dict[str, str] | List[Dict[str, Any]] = {},
+        start_entity_var_id_mapping: Dict[str, str]
+        | List[Dict[str, Any]] = {},
     ) -> Any:
         if isinstance(start_entity_var_id_mapping, list):
             raise EvaluationError(f"Error while evaluating LessThan: {self}")
@@ -622,10 +686,13 @@ class GreaterThan(Predicate, Evaluable):
     def _evaluate(
         self,
         fact_collection: FactCollection,
-        start_entity_var_id_mapping: Dict[str, str] | List[Dict[str, Any]] = {},
+        start_entity_var_id_mapping: Dict[str, str]
+        | List[Dict[str, Any]] = {},
     ) -> Any:
         if isinstance(start_entity_var_id_mapping, list):
-            raise EvaluationError(f"Error while evaluating GreaterThan: {self}")
+            raise EvaluationError(
+                f"Error while evaluating GreaterThan: {self}"
+            )
         left_value = self.left_side._evaluate(
             fact_collection,
             start_entity_var_id_mapping=start_entity_var_id_mapping,
@@ -652,10 +719,13 @@ class Subtraction(Predicate, Evaluable):
     def _evaluate(
         self,
         fact_collection: FactCollection,
-        start_entity_var_id_mapping: Dict[str, str] | List[Dict[str, Any]] = {},
+        start_entity_var_id_mapping: Dict[str, str]
+        | List[Dict[str, Any]] = {},
     ) -> Any:
         if isinstance(start_entity_var_id_mapping, list):
-            raise EvaluationError(f"Error while evaluating Subtraction: {self}")
+            raise EvaluationError(
+                f"Error while evaluating Subtraction: {self}"
+            )
         left_value = self.left_side._evaluate(
             fact_collection,
             start_entity_var_id_mapping=start_entity_var_id_mapping,
@@ -686,7 +756,8 @@ class Multiplication(Predicate, Evaluable):
     def _evaluate(
         self,
         fact_collection: FactCollection,
-        start_entity_var_id_mapping: Dict[str, str] | List[Dict[str, Any]] = {},
+        start_entity_var_id_mapping: Dict[str, str]
+        | List[Dict[str, Any]] = {},
     ) -> Any:
         if isinstance(start_entity_var_id_mapping, list):
             raise EvaluationError(
@@ -722,7 +793,8 @@ class Division(Predicate, Evaluable):
     def _evaluate(
         self,
         fact_collection: FactCollection,
-        start_entity_var_id_mapping: Dict[str, str] | List[Dict[str, Any]] = {},
+        start_entity_var_id_mapping: Dict[str, str]
+        | List[Dict[str, Any]] = {},
     ) -> Any:
         if isinstance(start_entity_var_id_mapping, list):
             raise EvaluationError(f"Error while evaluating Division: {self}")
@@ -765,19 +837,15 @@ class ObjectAttributeLookup(Evaluable, TreeMixin):
     def _evaluate(
         self,
         fact_collection: FactCollection,
-        start_entity_var_id_mapping: Dict[str, str] | List[Dict[str, Any]] = {},
+        projection: Projection,
     ) -> Literal:
         """TODO: Need to handle the case where the attribute is `None`"""
-        if isinstance(start_entity_var_id_mapping, list):
-            raise EvaluationError(
-                f"Error while evaluating ObjectAttributeLookup: {self}"
-            )
         one_query: QueryValueOfNodeAttribute = QueryValueOfNodeAttribute(
-            node_id=start_entity_var_id_mapping[self.object],
+            node_id=projection[self.object],
             attribute=self.attribute,
         )
         value: Any = fact_collection.query(one_query)
-        return Literal(value)
+        return value
 
 
 class Alias(Evaluable, TreeMixin):
@@ -797,6 +865,9 @@ class Alias(Evaluable, TreeMixin):
     def __repr__(self):
         return f"Alias({self.reference}, {self.alias})"
 
+    def disaggregate(self) -> Alias:
+        return Alias(reference=self.reference.disaggregate(), alias=self.alias)
+
     def tree(self) -> Tree:
         t: Tree = Tree(self.__class__.__name__)
         t.add(
@@ -810,14 +881,14 @@ class Alias(Evaluable, TreeMixin):
     def _evaluate(
         self,
         fact_collection: FactCollection,
-        start_entity_var_id_mapping: Dict[str, str] | List[Dict[str, Any]] = {},
-    ) -> Dict[str, Any]:
+        projection: Projection,
+    ) -> Projection:
         """Get the value of the reference and assign it to the alias."""
         result = self.reference._evaluate(  # pylint: disable=protected-access
             fact_collection,
-            start_entity_var_id_mapping=start_entity_var_id_mapping,
+            projection=projection,
         )
-        mapping: Dict[str, Any] = {self.alias: result}
+        mapping: Projection = Projection(projection={self.alias: result})
         return mapping
 
     @property
@@ -825,6 +896,36 @@ class Alias(Evaluable, TreeMixin):
         yield self.reference
         yield self.alias
 
+class ReturnProjection(Evaluable, TreeMixin):
+    """ """
+
+    def __init__(self, lookups: List[Alias]):
+        self.lookups = lookups
+
+    def __repr__(self):
+        return f"ReturnProjection({self.lookups})"
+
+    def tree(self) -> Tree:
+        t: Tree = Tree(self.__class__.__name__)
+        for object_attribute_lookup in self.lookups:
+            t.add(object_attribute_lookup.tree())
+        return t
+
+    @property
+    def children(self) -> Generator[Projection | Alias]:
+        yield from self.lookups
+
+    def _evaluate(
+        self,
+        fact_collection: FactCollection,
+        projection: Projection,
+    ) -> Projection:
+        # import pdb; pdb.set_trace()
+        result: Projection = Projection({
+            lookup.alias: projection[lookup.reference]
+            for lookup in self.lookups
+        })
+        return result
 
 class ObjectAsSeries(Evaluable, TreeMixin):
     """ """
@@ -848,23 +949,16 @@ class ObjectAsSeries(Evaluable, TreeMixin):
     def _evaluate(
         self,
         fact_collection: FactCollection,
-        start_entity_var_id_mapping: Dict[str, str] | List[Dict[str, Any]] = {},
-    ) -> Dict[str, Any]:
-        if isinstance(start_entity_var_id_mapping, list):
-            raise EvaluationError(
-                f"Error while evaluating ObjectAsSeries: {self}"
-            )
-        result_list: List[Dict[str, Any]] = [
-            lookup._evaluate(
+        projection: Projection,
+    ) -> Projection:
+        result: Projection = Projection({
+            lookup.alias: lookup.reference._evaluate(
                 fact_collection,
-                start_entity_var_id_mapping=start_entity_var_id_mapping,
+                projection=projection,
             )
             for lookup in self.lookups
-        ]
-        out: dict[str, Any] = {}
-        for result in result_list:
-            out.update(result)
-        return out
+        })
+        return result
 
 
 class WithClause(Evaluable, TreeMixin):
@@ -878,6 +972,7 @@ class WithClause(Evaluable, TreeMixin):
 
     def __init__(self, lookups: ObjectAsSeries):
         self.lookups = lookups
+        self.incoming_projection_list: ProjectionList = ProjectionList([])
 
     def __repr__(self):
         return f"WithClause({self.lookups})"
@@ -886,6 +981,17 @@ class WithClause(Evaluable, TreeMixin):
         t: Tree = Tree(self.__class__.__name__)
         t.add(self.lookups.tree())
         return t
+
+    def disaggregated_with_clause(self) -> WithClause:
+        disaggregated_with_clause: WithClause = WithClause(
+            lookups=ObjectAsSeries(
+                lookups=[ # Need to change this to walk until we find Aggregation
+                    alias.disaggregate() if alias.is_aggregation else alias
+                    for alias in self.lookups.lookups
+                ]
+            )
+        )
+        return disaggregated_with_clause
 
     @property
     def children(self) -> Generator[ObjectAsSeries]:
@@ -898,87 +1004,116 @@ class WithClause(Evaluable, TreeMixin):
 
         yield self.lookups
 
-    @property
-    def is_aggregation(self) -> bool:
-        """
-        Returns whether the WithClause contains aggregation functions.
-        """
-        for obj in self.walk():
-            if isinstance(obj, Aggregation):
-                return True
-        return False
-
     def _evaluate(
         self,
         fact_collection: FactCollection,
-        start_entity_var_id_mapping: Dict[str, Any] | List[Dict[str, Any]] = [],
-    ) -> List[Dict[str, Any]]:
-        if isinstance(start_entity_var_id_mapping, dict):
-            raise EvaluationError(f"Error while evaluating WithClause: {self}")
-
+        projection_list: ProjectionList,
+    ) -> ProjectionList:
         if self.is_aggregation:  # Skipping for now
-            result: List[Dict[str, Any]] = [self._evaluate_aggregation(
-                fact_collection,
-                start_entity_var_id_mapping=start_entity_var_id_mapping,
-            )]
-            result = [one_result for one_result in result if one_result]
-            if not result:
-                return result
-            for index, one_result in enumerate(result):
-                if len(one_result) == 0 or not start_entity_var_id_mapping:
-                    continue
-                LOGGER.warning("result in is_aggregation block: %s ::::: %s ::::: %s", one_result, index, start_entity_var_id_mapping)
-                LOGGER.warning("result: %s", result)
-                try:
-                    one_result[MATCH_SOLUTION_KEY] = start_entity_var_id_mapping[index]
-                except Exception as e:
-                    LOGGER.warning("Error in is_aggregation block: %s ::::: %s ::::: %s", one_result, index, start_entity_var_id_mapping)
-                    raise e
-            # result[MATCH_SOLUTION_KEY] = start_entity_var_id_mapping
-            # LOGGER.debug("result in is_aggregation block: %s", result)
-        elif not self.is_aggregation:
-            result: List[Dict[str, Any]] = []
-            for item in start_entity_var_id_mapping:
-                evaluation = self._evaluate_non_aggregation(fact_collection, item)
-                evaluation[MATCH_SOLUTION_KEY] = item  # Changed to ``item``
-                result.append(evaluation)
+            result: ProjectionList = self._evaluate_aggregation(
+                fact_collection, projection_list
+            )
         else:
-            raise Exception('This should never happen')
+            result: ProjectionList = self._evaluate_non_aggregation(
+                fact_collection, projection_list
+            )
         return result
+
+    def aggregated_aliases(self) -> List[Alias]:
+        aggregation_alias_list: List[Alias] = []
+        for alias in self.lookups.lookups:
+            if alias.is_aggregation:
+                aggregation_alias_list.append(alias)
+        return aggregation_alias_list
+
+    def non_aggregated_aliases(self) -> List[Alias]:
+        non_aggregation_alias_list: List[Alias] = []
+        for alias in self.lookups.lookups:
+            if not alias.is_aggregation:
+                non_aggregation_alias_list.append(alias)
+        return non_aggregation_alias_list
 
     def _evaluate_aggregation(
         self,
         fact_collection: FactCollection,
-        start_entity_var_id_mapping: Dict[str, Any] | List[Dict[str, Any]] = [],
-    ) -> Dict[str, Any]:
-        """
-        If it's an aggregation, we need to feed the subclauses *all* of the solutions at once.
-        """
-        if not isinstance(start_entity_var_id_mapping, list):
-            raise EvaluationError(f"Error while evaluating WithClause: {self}")
-        projection: Dict[str, Any] = {}
-        LOGGER.warning("_evaluate_aggregation: %s", start_entity_var_id_mapping)
-        for lookup in self.lookups.lookups:
-            value: Any = lookup._evaluate(
-                fact_collection=fact_collection,
-                start_entity_var_id_mapping=start_entity_var_id_mapping,
+        projection_list: ProjectionList,
+    ) -> ProjectionList:
+        # Get the aliases that have aggregations and the ones that don't
+        self.incoming_projection_list = projection_list
+
+        aggregated_alias_list: List[Alias] = self.aggregated_aliases()
+
+        non_aggregated_alias_list: List[Alias] = self.non_aggregated_aliases()
+        non_aggregated_projection_list: ProjectionList = ProjectionList([])
+
+        for projection in projection_list:
+            sub_projection: Projection = Projection({})
+            for alias in non_aggregated_alias_list:
+                sub_projection.update(
+                    alias._evaluate(fact_collection, projection=projection)
+                )
+            non_aggregated_projection_list += sub_projection
+
+        non_aggregated_projection_list.unique()
+
+        disaggregated_with_clause: WithClause = (
+            self.disaggregated_with_clause()
+        )
+
+        disaggregated_projection_solutions: ProjectionList = (
+            disaggregated_with_clause._evaluate(
+                fact_collection, projection_list=projection_list
             )
-            projection.update(value)
-        return projection
+        )
+
+        bucketed: Dict[Projection, ProjectionList] = {}
+        for projection in non_aggregated_projection_list:
+            bucketed[projection] = ProjectionList([])
+
+        for solution in disaggregated_projection_solutions.zip(
+            self.incoming_projection_list
+        ):
+            for p, v in bucketed.items():
+                if p < solution:
+                    v += solution
+
+        # zip together the disaggregated_projection_solutions wtih the self.incoming_projection_list
+
+        # for each ProjectionList in the values of bucketed:
+        #    for each alias in aggregated_alias_list:
+        #        evaluate the alias relative to the ProjectionList
+        for bucket, projection_list in bucketed.items():
+            aggregation_evaluations = {}
+            for alias in aggregated_alias_list:
+                aggregation: Evaluable = alias.reference # getattr(alias.reference, dispatch_dict[alias.reference.__class__])
+                evaluation = aggregation._evaluate(
+                    fact_collection, projection_list=projection_list
+                )
+                aggregation_evaluations[alias.alias] = evaluation
+            bucket.projection.update(aggregation_evaluations)
+
+        solutions: ProjectionList = ProjectionList(
+            projection_list=list(bucketed.keys())
+        )
+
+        return solutions
 
     def _evaluate_non_aggregation(
         self,
         fact_collection: FactCollection,
-        start_entity_var_id_mapping: Dict[str, str] = {},
-    ) -> Dict[str, Any]:
-        projection: Dict[str, Any] = {}
-        for lookup in self.lookups.lookups:
-            value: Any = lookup._evaluate(
-                fact_collection=fact_collection,
-                start_entity_var_id_mapping=start_entity_var_id_mapping,
-            )
-            projection.update(value)
-        return projection
+        projection_list: ProjectionList,
+    ) -> ProjectionList:
+        new_projection_list: ProjectionList = ProjectionList([])
+        for projection in projection_list:
+            new_projection: Projection = Projection({})
+            for lookup in self.lookups.lookups:
+                value: Any = lookup.reference._evaluate(
+                    fact_collection=fact_collection,
+                    projection=projection,
+                )
+                new_projection[lookup.alias] = value
+            new_projection_list += new_projection
+        return new_projection_list
 
 
 class Match(Evaluable, TreeMixin):
@@ -1002,7 +1137,9 @@ class Match(Evaluable, TreeMixin):
         self.where_clause = where_clause
 
     def __repr__(self) -> str:
-        return f"Match({self.pattern}, {self.where_clause}, {self.with_clause})"
+        return (
+            f"Match({self.pattern}, {self.where_clause}, {self.with_clause})"
+        )
 
     def tree(self) -> Tree:
         t: Tree = Tree(self.__class__.__name__)
@@ -1024,50 +1161,32 @@ class Match(Evaluable, TreeMixin):
     def _evaluate(
         self,
         fact_collection: FactCollection,
-        start_entity_var_id_mapping: Dict[str, Any] | List[Dict[str, Any]] = [],
-    ) -> List[Dict[str, Any]]:
+        projection_list: ProjectionList,
+    ) -> ProjectionList:
         """First, evaluate the pattern;
         Then evaluate the WithClause;
         Then the WhereClause;
         Send to ReturnClause
         """
-        if isinstance(start_entity_var_id_mapping, list):
-            raise ValueError()
-        start_entity_var_id_mapping_post_pattern: List[Dict[str, str]] = (
+        pattern_step_input: ProjectionList = get_all_substitutions(
+            fact_collection, self.pattern, projection_list
+        )
+        pattern_step_output: ProjectionList = ProjectionList(projection_list=[
+            projection for projection in pattern_step_input if 
             self.pattern._evaluate(
-                fact_collection,
-                start_entity_var_id_mapping=start_entity_var_id_mapping,
+                fact_collection, 
+                projection=projection
             )
+        ]
         )
-        start_entity_var_id_mapping_post_with: List[Dict[str, Any]] = (
-            self.with_clause._evaluate(
-                fact_collection,
-                start_entity_var_id_mapping=start_entity_var_id_mapping_post_pattern,
+
+        if self.with_clause:
+            projection_list_step: ProjectionList = self.with_clause._evaluate(
+                fact_collection, pattern_step_output
             )
-            if self.with_clause
-            else start_entity_var_id_mapping_post_pattern
-        )
-        out: list = (
-            [
-                start_entity_var_id_mapping
-                for start_entity_var_id_mapping in start_entity_var_id_mapping_post_with
-                if self.where_clause._evaluate(
-                    fact_collection,
-                    start_entity_var_id_mapping=start_entity_var_id_mapping,
-                )
-            ]
-            if self.where_clause
-            else start_entity_var_id_mapping_post_with
-        )
-        LOGGER.info(f'start_entity_var_id_mapping_post_pattern: {start_entity_var_id_mapping_post_pattern}')
-        LOGGER.info(f'start_entity_var_id_mapping_post_with: {start_entity_var_id_mapping_post_with}')
-        LOGGER.info(f'start_entity_var_id_mapping_out: {out}')
-        for post_pattern, post_with, post_where in zip(start_entity_var_id_mapping_post_pattern, start_entity_var_id_mapping_post_with, out):
-            LOGGER.info(f'Post pattern: {post_pattern}')
-            LOGGER.info(f'Post with: {post_with}')
-            LOGGER.info(f'Post out: {post_where}')
-        LOGGER.debug(f'Solution at end of MATCH WITH WHERE: {out}')
-        return out
+        if self.where_clause:
+            pass
+        return projection_list_step
 
 
 class Return(TreeMixin):
@@ -1080,15 +1199,14 @@ class Return(TreeMixin):
 
     """
 
-    def __init__(self, node: Projection):
-        self.projection = node
-        self.variables = self.gather_variables()
+    def __init__(self, projection: ObjectAsSeries):
+        self.projection = projection
 
     def __repr__(self):
-        return f"Return({self.projection})"
+        return f"Return[{self.projection}]"
 
-    def tree(self):
-        t = Tree(self.__class__.__name__)
+    def tree(self) -> Tree:
+        t: Tree = Tree(self.__class__.__name__)
         t.add(self.projection.tree())
         return t
 
@@ -1096,42 +1214,24 @@ class Return(TreeMixin):
     def children(self):
         yield self.projection
 
-    def gather_variables(self):
-        """Get the variables from the projection"""
-        _: list[TreeMixin] = [_ for _ in self.walk()]  # Inefficient.
-        variables: List[str] = []
-        for child in self.walk():
-            if isinstance(child, ObjectAttributeLookup) and not isinstance(
-                child.parent, Alias
-            ):
-                variable = child.object
-                if variable not in variables:
-                    variables.append(variable)
-            elif isinstance(child, Alias):
-                variable = child.alias
-                if variable not in variables:
-                    variables.append(variable)
-            elif isinstance(child, AliasedName):
-                variable = child.name
-                if variable not in variables:
-                    variables.append(variable)
-        return variables
-
     def _evaluate(
         self,
         fact_collection: FactCollection,
-        start_entity_var_id_mapping: Dict[str, str] = {},
-    ) -> Dict[str, Any]:
-        LOGGER.debug('In _evaluate of Return: %s', start_entity_var_id_mapping)
-        out = self.projection._evaluate(
-            fact_collection,
-            start_entity_var_id_mapping=start_entity_var_id_mapping,
+        projection_list: ProjectionList,
+    ) -> ProjectionList:
+        out: ProjectionList = ProjectionList(
+            projection_list=[
+                self.projection._evaluate(
+                    fact_collection,
+                    projection=incoming_projection,
+                )
+                for incoming_projection in projection_list
+            ]
         )
-        out[MATCH_SOLUTION_KEY] = start_entity_var_id_mapping.get(MATCH_SOLUTION_KEY, {})
         return out
 
 
-class Projection(TreeMixin):
+class BakProjection(TreeMixin):
     """ """
 
     def __init__(self, lookups: List[AliasedName | Alias] = []):
@@ -1249,85 +1349,52 @@ class Node(TreeMixin):
 
     def __init__(
         self,
-        node_name_label: NodeNameLabel | None = None,
+        name_label: NodeNameLabel | None = None,
         mapping_set: MappingSet | None = None,
     ) -> None:
-        self.node_name_label: NodeNameLabel = node_name_label or NodeNameLabel()
+        self.name_label: NodeNameLabel = name_label or NodeNameLabel()
         self.mapping_set: MappingSet = mapping_set or MappingSet([])
 
-    # Ensure node_name_label always has a variable name and label
-    # And that each Node has a NodeNameLabel
     def _evaluate(
         self,
         fact_collection: FactCollection,
-        start_entity_var_id_mapping: Dict[str, str] | List[Dict[str, Any]] = {},
-    ) -> List[Dict[str, str]]:
-        if isinstance(start_entity_var_id_mapping, list):
-            raise EvaluationError(f"Error while evaluating Node: {self}")
-        if self.node_name_label.name in start_entity_var_id_mapping:
-            entity_id: str = start_entity_var_id_mapping[
-                self.node_name_label.name
-            ]
-            entity_label: str = fact_collection.query_node_label(
-                QueryNodeLabel(entity_id)
+        projection: Projection,
+    ) -> Literal:
+        if hasattr(self, "name_label") and hasattr(self.name_label, "name"):
+            query: QueryNodeLabel = QueryNodeLabel(
+                projection[self.name_label.name]
             )
-            out: List[Dict[str, str]] = (
-                [{self.node_name_label.name: entity_id}]
-                if entity_label == self.node_name_label.label
-                else []
+            node_label: str = fact_collection.query(query)
+            if node_label != self.name_label.label:
+                return Literal(False)
+
+        for mapping in self.mapping_set.mappings:
+            attribute: str = mapping.key
+            node_id: str = projection[self.name_label.name]
+            attribute_query: QueryValueOfNodeAttribute = (
+                QueryValueOfNodeAttribute(node_id=node_id, attribute=attribute)
             )
-        else:
-            out: List[Dict[str, str]] = [
-                {self.node_name_label.name: entity_id}
-                for entity_id in fact_collection.nodes_with_label(
-                    self.node_name_label.label
-                )
-            ]
-        # Filter ``out`` to instances that match mapping
-        # TODO: Move this to MappingSet class so that Relationships can use the same code
-        mapping_filtered: List[Dict[str, str]] = []
-        for solution in out:
-            satisfies_mapping: bool = True
-            for mapping in self.mapping_set.mappings:
-                query: QueryValueOfNodeAttribute = QueryValueOfNodeAttribute(
-                    node_id=solution[self.node_name_label.name],
-                    attribute=mapping.key,
-                )
-                value: Any = fact_collection.query(query)
-                if value != mapping.value.value:
-                    satisfies_mapping = False
-            if satisfies_mapping:
-                mapping_filtered.append(solution)
+            attribute_value: Literal = fact_collection.query(attribute_query)
+            if attribute_value != mapping.value:
+                return Literal(False)
 
-        out = mapping_filtered
-
-        # TODO: Fix the following block
-        # if "_" in start_entity_var_id_mapping:
-        #     mapping_clone: dict[str, str] = copy.copy(start_entity_var_id_mapping)
-        #     mapping_clone[self.node_name_label.name] = mapping_clone["_"]
-        #     del mapping_clone["_"]
-        #     out.append(
-        #         self._evaluate(
-        #             fact_collection, start_entity_var_id_mapping=mapping_clone
-        #         )
-        #     )
-        return out
+        return Literal(True)
 
     def __repr__(self):
-        return f"Node({self.node_name_label}, {self.mapping_set})"
+        return f"Node({self.name_label}, {self.mapping_set})"
 
     def tree(self) -> Tree:
         t: Tree = Tree(self.__class__.__name__)
-        if self.node_name_label:
-            t.add(self.node_name_label.tree())
+        if self.name_label:
+            t.add(self.name_label.tree())
         if self.mapping_set:
             t.add(self.mapping_set.tree())
         return t
 
     @property
     def children(self) -> Generator[NodeNameLabel | Mapping]:
-        if self.node_name_label:
-            yield self.node_name_label
+        if self.name_label:
+            yield self.name_label
         if self.mapping_set:
             for mapping in self.mapping_set.mappings:
                 yield mapping
@@ -1337,7 +1404,9 @@ class Relationship(TreeMixin):
     """Relationships may contain a variable name, label, or mapping."""
 
     def __init__(self, name_label: NodeNameLabel):
-        self.name_label = name_label  # This should be ``label`` for consistency
+        self.name_label = (
+            name_label  # This should be ``label`` for consistency
+        )
         self.name = None
 
     def __repr__(self):
@@ -1405,7 +1474,7 @@ class MappingSet(TreeMixin):
         return f"MappingSet({self.mappings})"
 
     def tree(self) -> Tree:
-        t = Tree(self.__class__.__name__)
+        t: Tree = Tree(self.__class__.__name__)
         for mapping in self.mappings:
             t.add(mapping.tree())
         return t
@@ -1493,7 +1562,7 @@ class RelationshipChain(TreeMixin):
         source_node: Node,
         relationship: RelationshipLeftRight | RelationshipRightLeft,
         target_node: Node,
-    ):
+    ) -> None:
         self.source_node: Node = source_node
         self.relationship: RelationshipLeftRight | RelationshipRightLeft = (
             relationship
@@ -1506,71 +1575,45 @@ class RelationshipChain(TreeMixin):
     def _evaluate(
         self,
         fact_collection: FactCollection,
-        start_entity_var_id_mapping: Dict[str, str] = {},
-    ) -> List[Dict[str, str]]:
+        projection: Projection,
+    ) -> Literal:
         """Assume that self.steps is exactly (Node, Relationship, Node,)."""
-        left_node_var_id_mapping_list: list[dict[str, str]] = (
-            self.source_node._evaluate(
-                fact_collection, start_entity_var_id_mapping
-            )
+        source_node_eval: Literal = self.source_node._evaluate(
+            fact_collection=fact_collection, projection=projection
         )
-        # If this is a degenerate chain (no target node), we're done.
+
         if not self.target_node:
-            return left_node_var_id_mapping_list
-        
-        right_node_var_id_mapping_list: list[dict[str, str]] = ( self.target_node._evaluate(
-                fact_collection, start_entity_var_id_mapping
-            )
+            return source_node_eval
+
+        target_node_eval: Literal = self.target_node._evaluate(
+            fact_collection=fact_collection, projection=projection
         )
-        LOGGER.warning('start_entity_var_id_mapping: %s\nright_node_var_id_mapping_list: %s\nleft_node_var_id_mapping_list: %s', start_entity_var_id_mapping, right_node_var_id_mapping_list, left_node_var_id_mapping_list)
-        # LOGGER.warning("right_node_var_id_mapping_list: %s", right_node_var_id_mapping_list)
-        # LOGGER.warning("left_node_var_id_mapping_list: %s", left_node_var_id_mapping_list)
-        all_solutions: List[Dict[str, str]] = []
-        for left_node_mapping, right_node_mapping in itertools.product(
-            left_node_var_id_mapping_list, right_node_var_id_mapping_list
-        ):
-            if conflicting_vars(left_node_mapping, right_node_mapping):
-                continue
-            combined_mapping: dict[str, str] = left_node_mapping.copy()
-            combined_mapping.update(right_node_mapping)
-            left_entity_id: str = combined_mapping[
-                self.source_node.node_name_label.name
-            ]
-            right_entity_id: str = combined_mapping[
-                self.target_node.node_name_label.name
-            ]
-            relationships_satisfying_left_entity_id: set[str] = set(
-                fact.relationship_id
-                for fact in fact_collection.relationships_with_specific_source_node_facts(
-                    left_entity_id
-                )
-            )
-            relationships_satisfying_right_entity_id: set[str] = set(
-                fact.relationship_id
-                for fact in fact_collection.relationships_with_specific_target_node_facts(
-                    right_entity_id
-                )
-            )
-            LOGGER.debug('Start entity var id mapping: %s', left_entity_id)
-            LOGGER.debug('Relationships satisfying left entity id %s: %s', left_entity_id, relationships_satisfying_left_entity_id)
-            LOGGER.debug('Relationships satisfying right entity id %s: %s', right_entity_id, relationships_satisfying_right_entity_id)
-            relationship_solutions: set[str] = (
-                relationships_satisfying_left_entity_id
-                & relationships_satisfying_right_entity_id
-            )
-            LOGGER.warning('Relationship solutions: %s', relationship_solutions)
-            for relationship_solution in relationship_solutions:
-                LOGGER.debug('relationship_solution: %s, %s', relationship_solution, combined_mapping)
-                combined_mapping_copy: Dict[str, str] = copy.copy(
-                    combined_mapping
-                )
-                combined_mapping_copy[
-                    self.relationship.relationship.name_label.name  # Used to be relationship.relationship
-                ] = relationship_solution
-                all_solutions.append(combined_mapping_copy)
-                LOGGER.debug('combined_mapping_copy: %s', combined_mapping_copy)
-        LOGGER.debug('all_solutions: %s', all_solutions)
-        return all_solutions
+        source_node_id: str = projection[self.source_node.name_label.name]
+        target_node_id: str = projection[self.target_node.name_label.name]
+        relationship_id: str = projection[
+            self.relationship.relationship.name_label.name
+        ]
+        relationship_source_node_query: QuerySourceNodeOfRelationship = (
+            QuerySourceNodeOfRelationship(relationship_id=relationship_id)
+        )
+        relationship_target_node_query: QueryTargetNodeOfRelationship = (
+            QueryTargetNodeOfRelationship(relationship_id=relationship_id)
+        )
+        actual_source_node_id: str = fact_collection.query(
+            relationship_source_node_query
+        )
+        actual_target_node_id: str = fact_collection.query(
+            relationship_target_node_query
+        )
+        # TODO: Looks like relationship is evaluating to True regardless!
+        out = Literal(
+            source_node_eval
+            and target_node_eval
+            and actual_source_node_id == source_node_id
+            and actual_target_node_id == target_node_id
+        )
+        return out
+        # If this is a degenerate chain (no target node), we're done.
 
     def tree(self) -> Tree:
         t: Tree = Tree(self.__class__.__name__)
@@ -1597,18 +1640,25 @@ class Where(Evaluable, TreeMixin):
     def _evaluate(
         self,
         fact_collection: FactCollection,
-        start_entity_var_id_mapping: Dict[str, Any] | List[Dict[str, Any]] = {},
-    ) -> List[Dict[str, str]]:
-        return self.predicate._evaluate(
+        projection: Projection,
+    ) -> Literal:
+        evaluation: Any = self.predicate._evaluate(
             fact_collection,
-            start_entity_var_id_mapping=start_entity_var_id_mapping,
+            projection=projection,
         )
+        if not isinstance(evaluation, Literal) or not isinstance(
+            evaluation.value, bool
+        ):
+            raise ValueError(
+                "Expected WHERE clause to evaluate to Literal[bool]."
+            )
+        return evaluation
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"Where({self.predicate})"
 
     def tree(self) -> Tree:
-        t = Tree(self.__class__.__name__)
+        t: Tree = Tree(self.__class__.__name__)
         t.add(self.predicate.tree())
         return t
 
@@ -1631,15 +1681,15 @@ class And(BinaryBoolean, Evaluable):
     def _evaluate(
         self,
         fact_collection: FactCollection,
-        start_entity_var_id_mapping: Dict[str, Any] | List[Dict[str, Any]] = {},
+        projection: Projection,
     ) -> Any:
         left_value = self.left_side._evaluate(  # pylint: disable=protected-access
             fact_collection,
-            start_entity_var_id_mapping=start_entity_var_id_mapping,
+            projection=projection,
         )  # pylint: disable=protected-access
         right_value = self.right_side._evaluate(  # pylint: disable=protected-access
             fact_collection,
-            start_entity_var_id_mapping=start_entity_var_id_mapping,
+            projection=projection,
         )  # pylint: disable=protected-access
         return Literal(left_value.value and right_value.value)
 
@@ -1659,15 +1709,15 @@ class Or(BinaryBoolean, Evaluable):
     def _evaluate(
         self,
         fact_collection: FactCollection,
-        start_entity_var_id_mapping: Dict[str, Any] | List[Dict[str, Any]] = {},
+        projection: Projection,
     ) -> Any:
         left_value = self.left_side._evaluate(  # pylint: disable=protected-access
             fact_collection,
-            start_entity_var_id_mapping=start_entity_var_id_mapping,
+            projection=projection,
         )  # pylint: disable=protected-access
         right_value = self.right_side._evaluate(  # pylint: disable=protected-access
             fact_collection,
-            start_entity_var_id_mapping=start_entity_var_id_mapping,
+            projection=projection,
         )  # pylint: disable=protected-access
         return Literal(left_value.value or right_value.value)
 
@@ -1707,12 +1757,12 @@ class Not(Evaluable, Predicate):
     def _evaluate(
         self,
         fact_collection: FactCollection,
-        start_entity_var_id_mapping: Dict[str, Any] | List[Dict[str, Any]] = {},
+        projection: Projection,
     ) -> Any:
         return Literal(
             not self.argument._evaluate(
                 fact_collection,
-                start_entity_var_id_mapping=start_entity_var_id_mapping,
+                projection=projection,
             ).value
         )
 
@@ -1731,7 +1781,7 @@ class RelationshipChainList(TreeMixin):
     def __init__(self, relationships: List[RelationshipChain]):
         self.relationships = relationships
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"RelationshipChainList({self.relationships})"
 
     def tree(self) -> Tree:
@@ -1747,27 +1797,24 @@ class RelationshipChainList(TreeMixin):
     def _evaluate(
         self,
         fact_collection: FactCollection,
-        start_entity_var_id_mapping: Dict[str, str] = {},
-    ) -> List[Dict[str, str]]:
-        evaluations: List[List[Dict[str, str]]] = [
-            relationship._evaluate(fact_collection, start_entity_var_id_mapping)
+        projection: Projection,
+    ) -> bool:
+        evaluation: bool = all(
+            relationship._evaluate(fact_collection, projection=projection)
             for relationship in self.relationships
-        ]
-        LOGGER.warning('RelationshipChainList evaluations: %s', evaluations)
-        # RelationshipChainList evaluations: [[{'i': 'Tract::01001020805', 'c': 'County::01001', 'r': '36085b73ab5d48c194d0daa7d859e9a7'}]]
-        solutions: List[Dict[str, str]] = []
-        for substitution_combination in itertools.product(*evaluations):
-            # substitution_combination = substitution_combination[0]
-            LOGGER.debug("substitution_combination: %s", substitution_combination)
-            if conflicting_vars(*substitution_combination):
-                continue
-            LOGGER.debug("After conflicting variable test... %s", substitution_combination)
-            combined_substitution: Dict[str, str] = {}
-            for substitution in substitution_combination:
-                combined_substitution.update(substitution)
-            solutions.append(combined_substitution)
-        LOGGER.warning('In RelationshipChainList solutions: %s', solutions)
-        return solutions
+        )
+        return evaluation
+
+    def free_variables(
+        self, projection: Projection
+    ) -> Dict[str, List[TreeMixin]]:
+        free_variable_dict: Dict[str, List[TreeMixin]] = (
+            collections.defaultdict(list)
+        )
+        for variable_name, vertex in self.get_node_variables():
+            if variable_name not in projection.projection.keys():
+                free_variable_dict[variable_name].append(vertex)
+        return free_variable_dict
 
 
 class Addition(Evaluable, Predicate):
@@ -1802,7 +1849,7 @@ class Addition(Evaluable, Predicate):
         Returns:
             Tree: A rich.tree.Tree object representing this node and its children.
         """
-        t = Tree(self.__class__.__name__)
+        t: Tree = Tree(self.__class__.__name__)
         t.add(self.left_side.tree())
         t.add(self.right_side.tree())
         return t
@@ -1821,7 +1868,8 @@ class Addition(Evaluable, Predicate):
     def _evaluate(
         self,
         fact_collection: FactCollection,
-        start_entity_var_id_mapping: Dict[str, str] | List[Dict[str, Any]] = {},
+        start_entity_var_id_mapping: Dict[str, str]
+        | List[Dict[str, Any]] = {},
     ) -> Any:
         """
         Evaluate this Addition node.
@@ -1851,6 +1899,9 @@ class Literal(Evaluable, TreeMixin):
             value = value.value
         self.value = value
 
+    def __hash__(self) -> int:
+        return hash(self.value)
+
     def __repr__(self) -> str:
         return f"Literal({self.value})"
 
@@ -1865,9 +1916,52 @@ class Literal(Evaluable, TreeMixin):
     def _evaluate(
         self,
         fact_collection: FactCollection,
-        start_entity_var_id_mapping: Dict[str, Any] | List[Dict[str, Any]] = {},
-    ) -> Any:
+        projection: Projection,
+    ) -> Literal:
         return self
 
     def __eq__(self, other) -> Literal:
-        return Literal(isinstance(other, Literal) and self.value == other.value)
+        return Literal(
+            isinstance(other, Literal) and self.value == other.value
+        )
+
+    def __and__(self, other) -> bool:
+        if not isinstance(
+            other,
+            (
+                Literal,
+                bool,
+            ),
+        ):
+            raise ValueError()
+        other_value = other if isinstance(other, bool) else other.value
+        return self.value and other_value
+
+    def __or__(self, other) -> bool:
+        if not isinstance(
+            other,
+            (
+                Literal,
+                bool,
+            ),
+        ):
+            raise ValueError()
+        other_value = other if isinstance(other, bool) else other.value
+        return self.value or other_value
+
+    def __add__(self, other: Literal) -> int | float:
+        if not isinstance(
+            self.value,
+            (
+                int,
+                float,
+            ),
+        ) or not isinstance(
+            other.value,
+            (
+                int,
+                float,
+            ),
+        ):
+            raise ValueError()
+        return self.value + other.value

@@ -595,7 +595,9 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
                     )
 
                 variable_name: str = variable_attribute_args[0].__forward_arg__
-                attribute_name: str = variable_attribute_args[1].__forward_arg__
+                attribute_name: str = variable_attribute_args[
+                    1
+                ].__forward_arg__
 
                 data_asset_parameters: dict[str, DataAsset] = {
                     parameter: self.data_assets[parameter]
@@ -639,9 +641,13 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
                         "with three arguments."
                     )
 
-                source_variable_name = node_relationship_args[0].__forward_arg__
+                source_variable_name = node_relationship_args[
+                    0
+                ].__forward_arg__
                 relationship_name = node_relationship_args[1].__forward_arg__
-                target_variable_name = node_relationship_args[2].__forward_arg__
+                target_variable_name = node_relationship_args[
+                    2
+                ].__forward_arg__
 
                 all_cypher_variables = CypherParser(
                     arg1

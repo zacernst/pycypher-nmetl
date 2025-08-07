@@ -31,6 +31,8 @@ from pycypher.query import (
     Query,
     QueryNodeLabel,
     QueryValueOfNodeAttribute,
+    QuerySourceNodeOfRelationship,
+    QueryTargetNodeOfRelationship,
 )
 
 
@@ -177,7 +179,7 @@ class FactCollection(ABC):
         """
         Return a generator of facts that have a specific source node ID.
         """
-        LOGGER.warning('Inefficient')
+        LOGGER.warning("Inefficient")
         for fact in self.relationship_has_source_node_facts():
             if (
                 isinstance(fact, FactRelationshipHasSourceNode)
@@ -191,7 +193,7 @@ class FactCollection(ABC):
         """
         Return a generator of facts that have a specific target node ID.
         """
-        LOGGER.warning('Inefficient')
+        LOGGER.warning("Inefficient")
         for fact in self.relationship_has_target_node_facts():
             if (
                 isinstance(fact, FactRelationshipHasTargetNode)
@@ -338,6 +340,107 @@ class FactCollection(ABC):
         """
         return len(self) == 0
 
+    def query_relationship_source(
+        self, query: QuerySourceNodeOfRelationship
+    ) -> str | NullResult:
+        """
+        Query the source node of a relationship.
+
+        Args:
+            query (QueryRelationshipSource): Query object containing the relationship_id.
+
+        Returns:
+            str: The source node ID of the relationship.
+        """
+        facts: list[FactRelationshipHasSourceNode] = [
+            fact
+            for fact in self.relationship_has_source_node_facts()
+            if fact.relationship_id == query.relationship_id
+        ]
+        if len(facts) == 1:
+            return facts[0].source_node_id
+        elif len(facts) == 0:
+            return NullResult(query)
+        else:
+            raise ValueError(
+                f"Found multiple source nodes for {query}: {facts}"
+            )
+
+    def query_relationship_target(
+        self, query: QueryTargetNodeOfRelationship
+    ) -> str | NullResult:
+        """
+        Query the target node of a relationship.
+
+        Args:
+            query (QueryRelationshipTarget): Query object containing the relationship_id.
+
+        Returns:
+            str: The target node ID of the relationship.
+        """
+        facts: list[FactRelationshipHasTargetNode] = [
+            fact
+            for fact in self.relationship_has_target_node_facts()
+            if fact.relationship_id == query.relationship_id
+        ]
+        if len(facts) == 1:
+            return facts[0].target_node_id
+        elif len(facts) == 0:
+            return NullResult(query)
+        else:
+            raise ValueError(
+                f"Found multiple source nodes for {query}: {facts}"
+            )
+
+    def query_source_node_of_relationship(
+        self, query: QuerySourceNodeOfRelationship
+    ) -> str:
+        """
+        Query the source node of a relationship.
+
+        Args:
+            query (QuerySourceNodeOfRelationship): Query object containing the relationship_id.
+
+        Returns:
+            str: The source node ID of the relationship.
+        """
+        facts = [
+            fact
+            for fact in self.relationship_has_source_node_facts()
+            if fact.relationship_id == query.relationship_id
+        ]
+        if len(facts) == 1:
+            return facts[0].source_node_id
+        elif len(facts) == 0:
+            return NullResult(query)
+        else:
+            raise ValueError(
+                f"Found multiple source nodes for {query}: {facts}"
+            )
+
+    def query_target_node_of_relationship(
+        self, query: QueryTargetNodeOfRelationship
+    ) -> str:
+        """
+        Query the target node of a relationship.
+
+        Args:
+            query (QueryTargetNodeOfRelationship): Query object containing the relationship_id.
+
+        Returns:
+            str: The target node ID of the relationship.
+        """
+        facts = [
+            fact
+            for fact in self.relationship_has_target_node_facts()
+            if fact.relationship_id == query.relationship_id
+        ]
+        if len(facts) == 1:
+            return facts[0].target_node_id
+        elif len(facts) == 0:
+            return NullResult()
+        raise ValueError(f"Found multiple source nodes for {query}: {facts}")
+
     def query_value_of_node_attribute(self, query: QueryValueOfNodeAttribute):
         """
         Query the value of a node's attribute.
@@ -368,7 +471,7 @@ class FactCollection(ABC):
             raise ValueError(f"Found multiple values for {query}: {facts}")
         raise ValueError("Unknown error")
 
-    def query_node_label(self, query: QueryNodeLabel) -> str:
+    def query_node_label(self, query: QueryNodeLabel) -> str | NullResult:
         """Given a query for a node label, return the label if it exists.
 
         If no label exists, return a NullResult. If multiple labels
@@ -442,6 +545,12 @@ class FactCollection(ABC):
             case QueryNodeLabel():
                 out = self.query_node_label(query)
                 return out
+            case QuerySourceNodeOfRelationship():
+                out: str = self.query_relationship_source(query)
+                return out
+            case QueryTargetNodeOfRelationship():
+                out: str = self.query_relationship_target(query)
+                return out
             case _:
                 raise NotImplementedError(f"Unknown query type {query}")
 
@@ -458,6 +567,20 @@ class FactCollection(ABC):
         for fact in self.node_has_label_facts():
             if fact.label == label:
                 yield fact.node_id
+    
+    def relationships_with_label(self, label: str) -> Generator[str]:
+        """
+        Return a list of all the nodes with a specific label.
+
+        Args:
+            label (str): The label of the nodes to return.
+
+        Returns:
+            list: A list of all the nodes with the specified label.
+        """
+        for fact in self.relationship_has_label_facts():
+            if fact.relationship_label == label:
+                yield fact.relationship_id
 
     def attributes_of_node_with_label(self, label: str) -> Generator[str]:
         """
@@ -472,7 +595,8 @@ class FactCollection(ABC):
         attributes_of_label_dict = self.attributes_of_label()
         for node_id in self.nodes_with_label(label):
             row_dict = {
-                attribute: None for attribute in attributes_of_label_dict[label]
+                attribute: None
+                for attribute in attributes_of_label_dict[label]
             }
             for attribute in attributes_of_label_dict[label]:
                 attribute_value = self.attributes_for_specific_node(
@@ -483,7 +607,9 @@ class FactCollection(ABC):
             row_dict["__node_id__"] = node_id
             yield row_dict
 
-    def nodes_with_label_facts(self, label: str) -> Generator[FactNodeHasLabel]:
+    def nodes_with_label_facts(
+        self, label: str
+    ) -> Generator[FactNodeHasLabel]:
         """
         Return a list of all the nodes with a specific label.
 

@@ -12,7 +12,6 @@ import zmq
 from nmetl.logger import LOGGER
 from pycypher.query import NullResult
 
-
 LOGGER.setLevel("WARNING")
 
 
