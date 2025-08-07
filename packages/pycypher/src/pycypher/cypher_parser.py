@@ -6,10 +6,11 @@ from typing import Any, Dict, List, Tuple, Type
 
 from ply import yacc  # type: ignore
 from pycypher.cypher_lexer import *  # noqa: F403
+from rich.tree import Tree
 from pycypher.fact_collection import FactCollection
 from pycypher.node_classes import (
     Addition,
-    Aggregation,
+    # Aggregation,
     Alias,
     AliasedName,
     And,
@@ -30,7 +31,6 @@ from pycypher.node_classes import (
     ObjectAsSeries,
     ObjectAttributeLookup,
     Or,
-    Projection,
     Query,
     Relationship,
     RelationshipChain,
@@ -38,6 +38,8 @@ from pycypher.node_classes import (
     RelationshipLeftRight,
     RelationshipRightLeft,
     Return,
+    ReturnProjection,
+    Size,
     Where,
     WithClause,
 )
@@ -117,26 +119,27 @@ def p_node(p: yacc.YaccProduction):
     | LPAREN WORD RPAREN
     """
     if len(p) == 4 and isinstance(p[2], NodeNameLabel):
-        node_name_label = p[2]
+        name_label = p[2]
         mapping_list = MappingSet([])
     elif len(p) == 3:
-        node_name_label = NodeNameLabel(None, None)
+        name_label = NodeNameLabel(None, None)
         mapping_list = MappingSet([])
     elif len(p) == 4:
-        node_name_label = NodeNameLabel(p[2], None)
+        name_label = NodeNameLabel(p[2], None)
         mapping_list: MappingSet = MappingSet([])
     elif len(p) == 7 and isinstance(p[2], NodeNameLabel):
-        node_name_label: NodeNameLabel = p[2]
+        name_label: NodeNameLabel = p[2]
         mapping_list = p[4]
     else:
         raise ValueError("What?")
-    p[0] = Node(node_name_label, mapping_list)
+    p[0] = Node(name_label, mapping_list)
 
 
 def p_alias(p: yacc.YaccProduction):
     """alias : WORD AS WORD
+    | collect AS WORD
     | object_attribute_lookup AS WORD
-    | aggregation AS WORD"""
+    | size AS WORD"""
     p[0] = Alias(p[1], p[3])
 
 
@@ -255,16 +258,22 @@ def p_collect(p: yacc.YaccProduction):
             "We're assuming for now that the collect is on an object attribute lookup."
         )
 
+def p_size(p: yacc.YaccProduction) -> None:
+    """
+    size : SIZE LPAREN collect RPAREN
+    """
+    p[0] = Size(collect=p[3])
 
-def p_aggregation(p: yacc.YaccProduction):
-    """
-    aggregation : collect
-    | DISTINCT aggregation
-    """
-    if len(p) == 2:
-        p[0] = Aggregation(aggregation=p[1])
-    else:
-        p[0] = Distinct(p[2])
+
+# def p_aggregation(p: yacc.YaccProduction):
+#     """
+#     aggregation : collect
+#     | DISTINCT aggregation
+#     """
+#     if len(p) == 2:
+#         p[0] = Aggregation(aggregation=p[1])
+#     else:
+#         p[0] = Distinct(p[2])
 
 
 def p_with_clause(p: yacc.YaccProduction):
@@ -365,20 +374,20 @@ def p_where(p: yacc.YaccProduction):
         p[0] = Where(And(p[1].predicate, p[3]))
 
 
-def p_projection(p: yacc.YaccProduction):
-    """projection : object_attribute_lookup
+def p_return_projection(p: yacc.YaccProduction):
+    """return_projection : object_attribute_lookup
     | alias
-    | projection COMMA alias
-    | projection COMMA object_attribute_lookup"""
+    | return_projection COMMA alias
+    | return_projection COMMA object_attribute_lookup"""
     if len(p) == 2:
-        p[0] = Projection([p[1]])
+        p[0] = ReturnProjection([p[1]])
     else:
         p[0] = p[1]
         p[0].lookups.append(p[3])
 
 
 def p_return(p: yacc.YaccProduction):
-    """return : RETURN projection"""
+    """return : RETURN return_projection"""
     p[0] = Return(p[2])
 
 
@@ -399,6 +408,10 @@ class CypherParser:
     def walk(self):
         """Just calls the walk method on the parsed tree."""
         yield from self.parse_tree.walk()
+    
+    def tree(self) -> Tree:
+        """Returns a tree representation of the parsed tree."""
+        return self.parse_tree.tree()
 
     def _evaluate(
         self,

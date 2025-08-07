@@ -567,6 +567,20 @@ class FactCollection(ABC):
         for fact in self.node_has_label_facts():
             if fact.label == label:
                 yield fact.node_id
+    
+    def relationships_with_label(self, label: str) -> Generator[str]:
+        """
+        Return a list of all the nodes with a specific label.
+
+        Args:
+            label (str): The label of the nodes to return.
+
+        Returns:
+            list: A list of all the nodes with the specified label.
+        """
+        for fact in self.relationship_has_label_facts():
+            if fact.relationship_label == label:
+                yield fact.relationship_id
 
     def attributes_of_node_with_label(self, label: str) -> Generator[str]:
         """

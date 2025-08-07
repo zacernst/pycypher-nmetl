@@ -2,12 +2,20 @@ from __future__ import annotations
 
 
 from typing import Dict, Any, List, Generator
+from rich.tree import Tree
 
 
 class Projection:
     '''Basically a dictionary mapping strings to other strings or literals, etc.'''
     def __init__(self, projection: Dict[str, Any]):
         self.projection: Dict[str, Any] = projection
+    
+    def tree(self) -> Tree:
+        '''Returns a rich tree representation of the projection.'''
+        tree: Tree = Tree(f'Projection[{len(self)}]')
+        for key, value in self.projection:
+            tree.add(f'{key} = {value}')
+        return tree
     
     def keys(self) -> Generator[str, None, None]:
         yield from self.projection.keys()
@@ -83,6 +91,14 @@ class ProjectionList:
         else:
             self.projection_list.append(other)
         return self
+    
+    def tree(self) -> Tree:
+        '''Returns a rich tree representation of the projection list.'''
+        tree = Tree(f'ProjectionList[{len(self)}]')
+        import pdb; pdb.set_trace()
+        for projection in self.projection_list:
+            tree.add(projection.tree())
+        return tree
     
     def __repr__(self) -> str:
         return f'ProjectionList[{self.projection_list}]'

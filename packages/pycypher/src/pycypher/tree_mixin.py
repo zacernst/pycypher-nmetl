@@ -44,8 +44,8 @@ class TreeMixin(ABC):
         self,
     ) -> Generator[Tuple[str, TreeMixin], None, None]:
         for vertex in self.walk():
-            if node_name_label := getattr(vertex, "node_name_label", None):
-                yield node_name_label.name, vertex
+            if name_label := (getattr(vertex, "name_label", None) or getattr(vertex, "name_label", None)):
+                yield name_label.name, vertex
 
     def walk(self) -> Generator[TreeMixin]:
         """Generator that yields every node of the AST.
