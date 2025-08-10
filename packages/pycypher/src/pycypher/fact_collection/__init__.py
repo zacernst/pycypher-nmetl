@@ -580,6 +580,7 @@ class FactCollection(ABC):
         """
         for fact in self.relationship_has_label_facts():
             if fact.relationship_label == label:
+                LOGGER.info('Yielding fact.relationship_id: %s', fact.relationship_id)
                 yield fact.relationship_id
 
     def attributes_of_node_with_label(self, label: str) -> Generator[str]:

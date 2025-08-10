@@ -17,7 +17,6 @@ from pycypher.node_classes import (
     Collect,
     Collection,
     Cypher,
-    Distinct,
     Equals,
     GreaterThan,
     LessThan,
@@ -43,6 +42,7 @@ from pycypher.node_classes import (
     Where,
     WithClause,
 )
+from pycypher.solutions import ProjectionList
 from pycypher.tree_mixin import TreeMixin
 
 start = "cypher"  # pylint: disable=invalid-name
@@ -416,11 +416,10 @@ class CypherParser:
     def _evaluate(
         self,
         fact_collection: FactCollection,
-        start_entity_var_id_mapping: Dict[str, Any]
-        | List[Dict[str, Any]] = {},
-    ) -> List[Dict[str, Any]]:
+        projection_list: ProjectionList,
+    ) -> ProjectionList:
         out: List[Dict[str, Any]] = self.parse_tree.cypher._evaluate(
             fact_collection,
-            start_entity_var_id_mapping=start_entity_var_id_mapping,
+            projection_list=projection_list,
         )
         return out

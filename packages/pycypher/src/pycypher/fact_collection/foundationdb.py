@@ -16,7 +16,6 @@ import time
 from multiprocessing.pool import ApplyResult, ThreadPool
 from typing import Any, Dict, Generator, Optional
 
-import redis
 from nmetl.logger import LOGGER
 
 # from nmetl.prometheus_metrics import FACTS_APPENDED
@@ -32,6 +31,8 @@ from pycypher.query import (
     NullResult,
     QueryNodeLabel,
     QueryValueOfNodeAttribute,
+    QueryTargetNodeOfRelationship,
+    QuerySourceNodeOfRelationship,
 )
 from shared.helpers import decode, encode, ensure_bytes
 
@@ -94,11 +95,6 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
         self.metadata = {
             "labels": set(),
         }
-        # self.key_cache = redis.Redis()
-        LOGGER.info("Flushing Redis cache")
-        # self.key_cache.flushall()
-
-        # self.db = Rdict(self.db_path, self.options)
         super().__init__(*args, **kwargs)
 
     def _prefix_read_items(
@@ -224,7 +220,7 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
         """
         Return a generator of facts that have a specific source node.
         """
-        LOGGER.debug(
+        LOGGER.info(
             "relationships_with_specific_source_node_facts called: %s",
             source_node_id,
         )
@@ -233,6 +229,52 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
             continue_to_end=False,
         ):
             yield fact
+    
+    # TODO 
+    def query_relationship_source(
+        self, query: QuerySourceNodeOfRelationship
+    ) -> str | NullResult:
+        """
+        Query the source node of a relationship.
+
+        Args:
+            query (QueryRelationshipSource): Query object containing the relationship_id.
+
+        Returns:
+            str: The source node ID of the relationship.
+        """
+        # b'relationship_source_node:d22f4848b11c4bb0a541d58a73b8d926:Tract::01015002300', RelationshipHasSourceNode: d22f4848b11c4bb0a541d58a73b8d926 Tract::01015002300)
+        prefix: bytes = ensure_bytes(f'relationship_source_node:{query.relationship_id}:', encoding='utf8')
+        LOGGER.info("query_relationship_source called: %s", query.relationship_id)
+        fact_list: list[AtomicFact] = list(self._prefix_read_values(prefix, continue_to_end=False))
+        if len(fact_list) == 0:
+            raise ValueError(f"Found no source nodes for {query}")
+        elif len(fact_list) > 1:
+            raise ValueError(f"Found multiple source nodes for {query}: {fact_list}")
+        else:
+            return fact_list[0].source_node_id
+    
+    def query_relationship_target(
+        self, query: QueryTargetNodeOfRelationship
+    ) -> str | NullResult:
+        """
+        Query the target node of a relationship.
+
+        Args:
+            query (QueryRelationshipTarget): Query object containing the relationship_id.
+
+        Returns:
+            str: The target node ID of the relationship.
+        """
+        prefix: bytes = ensure_bytes(f'relationship_target_node:{query.relationship_id}:', encoding='utf8')
+        LOGGER.info("query_relationship_source called: %s", query.relationship_id)
+        fact_list: list[AtomicFact] = list(self._prefix_read_values(prefix, continue_to_end=False))
+        if len(fact_list) == 0:
+            raise ValueError(f"Found no source nodes for {query}")
+        elif len(fact_list) > 1:
+            raise ValueError(f"Found multiple source nodes for {query}: {fact_list}")
+        else:
+            return fact_list[0].target_node_id
 
     def relationships_with_specific_target_node_facts(
         self, target_node_id: str
@@ -240,7 +282,7 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
         """
         Return a generator of facts that have a specific target node.
         """
-        LOGGER.debug(
+        LOGGER.info(
             "relationships_with_specific_target_node_facts called: %s",
             target_node_id,
         )

@@ -19,6 +19,7 @@ from types import MappingProxyType
 from typing import (
     TYPE_CHECKING,
     Any,
+    Self,
     Callable,
     Dict,
     Generator,
@@ -121,6 +122,7 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
         queue_options: Optional[Dict[str, Any]] = None,
         run_monitor: Optional[bool] = False,
         session_config: Optional[Any] = None,
+        create_queue_generators: bool = True,
         # worker_num: Optional[int] = 0,
         # num_workers: Optional[int] = 1,
     ):  # pylint: disable=too-many-arguments
@@ -159,74 +161,74 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
             **self.fact_collection_kwargs
         )
 
-        self.raw_input_queue = QueueGenerator(
-            name="RawInput",
-            port=RAW_INPUT_QUEUE_PORT,
-        )
-
-        self.queue_list.append(self.raw_input_queue)
-
-        self.fact_generated_queue = QueueGenerator(
-            name="FactGenerated",
-            port=FACT_GENERATED_QUEUE_PORT,
-        )
-        self.queue_list.append(self.fact_generated_queue)
-
-        # Must run in different processes
-        self.check_fact_against_triggers_queue = QueueGenerator(
-            name="CheckFactTrigger",
-            port=CHECK_FACT_AGAINST_TRIGGERS_QUEUE_PORT,
-        )
-        self.queue_list.append(self.check_fact_against_triggers_queue)
-
-        # Same -- run in different processes
-        self.triggered_lookup_processor_queue = QueueGenerator(
-            name="TriggeredLookupProcessor",
-            port=TRIGGERED_LOOKUP_PROCESSOR_QUEUE_SIZE,
-        )
-        self.queue_list.append(self.triggered_lookup_processor_queue)
-
         self.trigger_dict = {}
+        if create_queue_generators:
 
-        # Does the fact collection require the session? Maybe get rid of this.
+            self.raw_input_queue = QueueGenerator(
+                name="RawInput",
+                port=RAW_INPUT_QUEUE_PORT,
+            )
 
-        self.raw_data_processor = RawDataProcessor(
-            incoming_queue=self.raw_input_queue,
-            outgoing_queue=self.fact_generated_queue,
-            status_queue=self.status_queue,
-            session_config=self.session_config,
-            dask_client=dask_client,
-            priority=-10,
-        )
+            self.queue_list.append(self.raw_input_queue)
 
-        self.fact_generated_queue_processor = FactGeneratedQueueProcessor(
-            incoming_queue=self.fact_generated_queue,
-            outgoing_queue=self.check_fact_against_triggers_queue,
-            status_queue=self.status_queue,
-            session_config=self.session_config,
-            dask_client=dask_client,
-            priority=0,
-        )
+            self.fact_generated_queue = QueueGenerator(
+                name="FactGenerated",
+                port=FACT_GENERATED_QUEUE_PORT,
+            )
+            self.queue_list.append(self.fact_generated_queue)
 
-        self.check_fact_against_triggers_queue_processor = (
-            CheckFactAgainstTriggersQueueProcessor(
-                incoming_queue=self.check_fact_against_triggers_queue,
-                outgoing_queue=self.triggered_lookup_processor_queue,
+            # Must run in different processes
+            self.check_fact_against_triggers_queue = QueueGenerator(
+                name="CheckFactTrigger",
+                port=CHECK_FACT_AGAINST_TRIGGERS_QUEUE_PORT,
+            )
+            self.queue_list.append(self.check_fact_against_triggers_queue)
+
+            # Same -- run in different processes
+            self.triggered_lookup_processor_queue = QueueGenerator(
+                name="TriggeredLookupProcessor",
+                port=TRIGGERED_LOOKUP_PROCESSOR_QUEUE_SIZE,
+            )
+            self.queue_list.append(self.triggered_lookup_processor_queue)
+
+
+            self.raw_data_processor = RawDataProcessor(
+                incoming_queue=self.raw_input_queue,
+                outgoing_queue=self.fact_generated_queue,
                 status_queue=self.status_queue,
                 session_config=self.session_config,
                 dask_client=dask_client,
-                priority=4,
+                priority=-10,
             )
-        )
 
-        self.triggered_lookup_processor = TriggeredLookupProcessor(
-            incoming_queue=self.triggered_lookup_processor_queue,
-            outgoing_queue=self.fact_generated_queue,  # Changed
-            status_queue=self.status_queue,
-            session_config=self.session_config,
-            dask_client=dask_client,
-            priority=8,
-        )
+            self.fact_generated_queue_processor = FactGeneratedQueueProcessor(
+                incoming_queue=self.fact_generated_queue,
+                outgoing_queue=self.check_fact_against_triggers_queue,
+                status_queue=self.status_queue,
+                session_config=self.session_config,
+                dask_client=dask_client,
+                priority=0,
+            )
+
+            self.check_fact_against_triggers_queue_processor = (
+                CheckFactAgainstTriggersQueueProcessor(
+                    incoming_queue=self.check_fact_against_triggers_queue,
+                    outgoing_queue=self.triggered_lookup_processor_queue,
+                    status_queue=self.status_queue,
+                    session_config=self.session_config,
+                    dask_client=dask_client,
+                    priority=4,
+                )
+            )
+
+            self.triggered_lookup_processor = TriggeredLookupProcessor(
+                incoming_queue=self.triggered_lookup_processor_queue,
+                outgoing_queue=self.fact_generated_queue,  # Changed
+                status_queue=self.status_queue,
+                session_config=self.session_config,
+                dask_client=dask_client,
+                priority=8,
+            )
 
         self.attribute_metadata_dict = {}
 
@@ -510,13 +512,14 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
 
         console.print(table)
 
-    def attach_fact_collection(self, fact_collection: FactCollection) -> None:
+    def attach_fact_collection(self, fact_collection: FactCollection) -> Self:
         """Attach a ``FactCollection`` to the machine."""
         if not isinstance(fact_collection, FactCollection):
             raise ValueError(
                 f"Expected a FactCollection, got {type(fact_collection)}"
             )
         self.fact_collection = fact_collection
+        return self
 
     def has_unfinished_data_source(self) -> bool:
         """Checks whether any of the data sources are still loading data."""
@@ -564,7 +567,106 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
         """wraps the fact_collection method"""
         return self.fact_collection.node_label_attribute_inventory()
 
-    def trigger(self, arg1: str) -> Callable:
+    def process_variable_attribute_annotation(
+        self, return_annotation, parameter_names, trigger_argument, func
+    ):
+        variable_attribute_args = return_annotation.__args__
+        if len(variable_attribute_args) != 2:
+            raise ValueError(
+                "Function must have a return annotation with two arguments."
+            )
+
+        variable_name: str = variable_attribute_args[0].__forward_arg__
+        attribute_name: str = variable_attribute_args[1].__forward_arg__
+
+        data_asset_parameters: dict[str, DataAsset] = {
+            parameter: self.data_assets[parameter]
+            for parameter in parameter_names
+            if parameter in self.data_assets
+        }
+        non_data_asset_parameters: list[str] = [
+            parameter
+            for parameter in parameter_names
+            if parameter not in self.data_assets
+        ]
+
+        trigger: VariableAttributeTrigger | NodeRelationshipTrigger = (
+            VariableAttributeTrigger(
+                function=functools.partial(func, **data_asset_parameters),
+                cypher_string=trigger_argument,
+                variable_set=variable_name,
+                attribute_set=attribute_name,
+                parameter_names=non_data_asset_parameters,
+                # session=self,
+            )
+        )
+
+        return trigger
+
+    def process_relationship_annotation(
+        self, return_annotation, parameter_names, trigger_argument, func
+    ) -> VariableAttributeTrigger | NodeRelationshipTrigger:
+        node_relationship_args = return_annotation.__args__
+        # This might be outdated:
+
+        source_variable_name = node_relationship_args[0].__forward_arg__
+        relationship_name = node_relationship_args[1].__forward_arg__
+        target_variable_name = node_relationship_args[2].__forward_arg__
+
+        all_cypher_variables = CypherParser(
+            trigger_argument
+        ).parse_tree.cypher.match_clause.with_clause.all_variables
+        if source_variable_name not in all_cypher_variables:
+            raise BadTriggerReturnAnnotationError(
+                f"Variable {source_variable_name} not in {all_cypher_variables}."
+            )
+        if target_variable_name not in all_cypher_variables:
+            raise BadTriggerReturnAnnotationError(
+                f"Variable {target_variable_name} not in {all_cypher_variables}"
+            )
+        trigger: VariableAttributeTrigger | NodeRelationshipTrigger = (
+            NodeRelationshipTrigger(
+                function=func,
+                cypher_string=trigger_argument,
+                source_variable=source_variable_name,
+                relationship_name=relationship_name,
+                target_variable=target_variable_name,
+                parameter_names=parameter_names,
+                # session=self,
+            )
+        )
+
+        return trigger
+
+    def process_return_annotation(self, func: Callable, trigger_argument: str):
+        parameters: MappingProxyType[str, inspect.Parameter] = (
+            inspect.signature(func).parameters
+        )
+        parameter_names: list[str] = list(parameters.keys())
+        if not parameter_names:
+            raise ValueError(
+                "CypherTrigger functions require at least one parameter."
+            )
+
+        return_annotation = inspect.signature(func).return_annotation
+
+        if return_annotation is inspect.Signature.empty:
+            raise ValueError("Function must have a return annotation.")
+
+        if return_annotation.__origin__ is VariableAttribute:
+            trigger = self.process_variable_attribute_annotation(
+                return_annotation, parameter_names, trigger_argument, func
+            )
+        elif return_annotation.__origin__ is NodeRelationship:
+            trigger = self.process_relationship_annotation(
+                return_annotation, parameter_names, trigger_argument, func
+            )
+        else:
+            raise ValueError()
+
+        return trigger
+
+    def trigger(self, trigger_argument: str) -> Callable:
         """Decorator that registers a trigger with a Cypher string and a function."""
 
         def decorator(func) -> Callable:
@@ -573,110 +675,9 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
                 result: Any = func(*args, **kwargs)
                 return result
 
-            parameters: MappingProxyType[str, inspect.Parameter] = (
-                inspect.signature(func).parameters
+            trigger: NodeRelationshipTrigger | VariableAttributeTrigger = (
+                self.process_return_annotation(func, trigger_argument)
             )
-            parameter_names: list[str] = list(parameters.keys())
-            if not parameter_names:
-                raise ValueError(
-                    "CypherTrigger functions require at least one parameter."
-                )
-
-            return_annotation = inspect.signature(func).return_annotation
-
-            if return_annotation is inspect.Signature.empty:
-                raise ValueError("Function must have a return annotation.")
-
-            if return_annotation.__origin__ is VariableAttribute:
-                variable_attribute_args = return_annotation.__args__
-                if len(variable_attribute_args) != 2:
-                    raise ValueError(
-                        "Function must have a return annotation with two arguments."
-                    )
-
-                variable_name: str = variable_attribute_args[0].__forward_arg__
-                attribute_name: str = variable_attribute_args[
-                    1
-                ].__forward_arg__
-
-                data_asset_parameters: dict[str, DataAsset] = {
-                    parameter: self.data_assets[parameter]
-                    for parameter in parameter_names
-                    if parameter in self.data_assets
-                }
-                non_data_asset_parameters: list[str] = [
-                    parameter
-                    for parameter in parameter_names
-                    if parameter not in self.data_assets
-                ]
-
-                trigger: VariableAttributeTrigger | NodeRelationshipTrigger = (
-                    VariableAttributeTrigger(
-                        function=functools.partial(
-                            func, **data_asset_parameters
-                        ),
-                        cypher_string=arg1,
-                        variable_set=variable_name,
-                        attribute_set=attribute_name,
-                        parameter_names=non_data_asset_parameters,
-                        # session=self,
-                    )
-                )
-
-                if any(
-                    param
-                    not in trigger.cypher.parse_tree.cypher.return_clause.variables
-                    and param not in self.data_assets
-                    for param in parameter_names
-                ):
-                    raise BadTriggerReturnAnnotationError()
-
-            elif return_annotation.__origin__ is NodeRelationship:
-                node_relationship_args = return_annotation.__args__
-                if (
-                    len(node_relationship_args) != 3
-                ):  # This might be impossible path
-                    raise BadTriggerReturnAnnotationError(
-                        "NodeRelationship annotation must have a return annotation "
-                        "with three arguments."
-                    )
-
-                source_variable_name = node_relationship_args[
-                    0
-                ].__forward_arg__
-                relationship_name = node_relationship_args[1].__forward_arg__
-                target_variable_name = node_relationship_args[
-                    2
-                ].__forward_arg__
-
-                all_cypher_variables = CypherParser(
-                    arg1
-                ).parse_tree.cypher.match_clause.with_clause.all_variables
-                if source_variable_name not in all_cypher_variables:
-                    raise BadTriggerReturnAnnotationError(
-                        f"Variable {source_variable_name} not in {all_cypher_variables}."
-                    )
-                if target_variable_name not in all_cypher_variables:
-                    raise BadTriggerReturnAnnotationError(
-                        f"Variable {target_variable_name} not in {all_cypher_variables}"
-                    )
-                trigger: VariableAttributeTrigger | NodeRelationshipTrigger = (
-                    NodeRelationshipTrigger(
-                        function=func,
-                        cypher_string=arg1,
-                        source_variable=source_variable_name,
-                        relationship_name=relationship_name,
-                        target_variable=target_variable_name,
-                        parameter_names=parameter_names,
-                        # session=self,
-                    )
-                )
-
-            else:
-                raise ValueError(
-                    "Trigger function must have a return annotation of type "
-                    "VariableAttribute or NodeRelationship"
-                )
 
             self.trigger_dict[uuid.uuid4().hex] = trigger
 

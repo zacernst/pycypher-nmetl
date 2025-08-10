@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Generator, List, Optional
 
-from pycypher.fact import AtomicFact
+from pycypher.fact import AtomicFact, FactNodeHasLabel, FactNodeHasAttributeWithValue, FactNodeRelatedToNode, FactRelationshipHasAttributeWithValue, FactRelationshipHasLabel, FactRelationshipHasSourceNode, FactRelationshipHasTargetNode
 from pycypher.fact_collection import FactCollection
 
 
@@ -123,3 +123,32 @@ class SimpleFactCollection(FactCollection):
             bool: True if the fact collection is empty, False otherwise.
         """
         return len(self.facts) == 0
+    
+    def make_index_for_fact(self, fact: AtomicFact) -> bytes:
+        """
+        Create an index for a given fact.
+
+        Args:
+            fact (AtomicFact): The fact for which to create an index.
+
+        Returns:
+            bytes: The index for the fact.
+        """
+        match fact:
+            case FactNodeHasLabel():
+                return f"node_label:{fact.label}::{fact.node_id}:{fact.label}"
+            case FactNodeHasAttributeWithValue():
+                return f"node_attribute:{fact.node_id}:{fact.attribute}:{fact.value}"
+            case FactRelationshipHasLabel():
+                return f"relationship_label:{fact.relationship_id}:{fact.relationship_label}"
+            case FactRelationshipHasAttributeWithValue():
+                return f"relationship_attribute:{fact.relationship_id}:{fact.attribute}:{fact.value}"
+            case FactRelationshipHasSourceNode():
+                return f"relationship_source_node:{fact.relationship_id}:{fact.source_node_id}"
+            case FactRelationshipHasTargetNode():
+                return f"relationship_target_node:{fact.relationship_id}:{fact.target_node_id}"
+            case FactNodeRelatedToNode():
+                return f"node_relationship:{fact.node1_id}:{fact.node2_id}:{fact.relationship_label}"
+            case _:
+                raise ValueError(f"Unknown fact type {fact}")
+        

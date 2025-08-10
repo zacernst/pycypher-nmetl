@@ -21,7 +21,7 @@ from pycypher.fact_collection import FactCollection
 from pycypher.fact_collection.foundationdb import FoundationDBFactCollection
 from shared.logger import LOGGER
 
-LOGGER.setLevel("WARNING")
+LOGGER.setLevel("INFO")
 
 
 def send_trigger_dict_to_worker(dask_worker, trigger_dict) -> None:
@@ -115,55 +115,55 @@ if __name__ == "__main__":
         LOGGER.warning('In active_duty function with arguments: %s', military)
         return military == "1"
 
-    @session.trigger(
-        "MATCH (i:PSAM_2023_Individual) WITH i.MIL AS military RETURN military"
-    )
-    def active_duty_in_past(
-        military,
-    ) -> VariableAttribute["i", "active_duty_in_past"]:
-        return military == "2"
+    # @session.trigger(
+    #     "MATCH (i:PSAM_2023_Individual) WITH i.MIL AS military RETURN military"
+    # )
+    # def active_duty_in_past(
+    #     military,
+    # ) -> VariableAttribute["i", "active_duty_in_past"]:
+    #     return military == "2"
 
-    @session.trigger(
-        "MATCH (i:PSAM_2023_Individual) WITH i.MIL AS military RETURN military"
-    )
-    def reserves_national_guard(
-        military,
-    ) -> VariableAttribute["i", "reserves_national_guard"]:
-        return military == "3"
+    # @session.trigger(
+    #     "MATCH (i:PSAM_2023_Individual) WITH i.MIL AS military RETURN military"
+    # )
+    # def reserves_national_guard(
+    #     military,
+    # ) -> VariableAttribute["i", "reserves_national_guard"]:
+    #     return military == "3"
 
-    @session.trigger(
-        "MATCH (i:PSAM_2023_Individual) WITH i.MIL AS military RETURN military"
-    )
-    def never_served_in_military(
-        military,
-    ) -> VariableAttribute["i", "never_served_in_military"]:
-        """Never served in the military"""
-        return military == "3"
+    # @session.trigger(
+    #     "MATCH (i:PSAM_2023_Individual) WITH i.MIL AS military RETURN military"
+    # )
+    # def never_served_in_military(
+    #     military,
+    # ) -> VariableAttribute["i", "never_served_in_military"]:
+    #     """Never served in the military"""
+    #     return military == "3"
 
-    @session.trigger(
-        "MATCH (i:PSAM_2023_Individual) WITH i.MIL AS military RETURN military"
-    )
-    def some_military(military) -> VariableAttribute["i", "some_military"]:
-        """Currently serving or served in the military previously"""
-        return military in ["1", "2", "3"]
+    # @session.trigger(
+    #     "MATCH (i:PSAM_2023_Individual) WITH i.MIL AS military RETURN military"
+    # )
+    # def some_military(military) -> VariableAttribute["i", "some_military"]:
+    #     """Currently serving or served in the military previously"""
+    #     return military in ["1", "2", "3"]
 
-    @session.trigger(
-        "MATCH (i:PSAM_2023_Individual) WITH i.MLPA AS military RETURN military"
-    )
-    def military_after_sept_11(
-        military,
-    ) -> VariableAttribute["i", "military_after_sept_11"]:
-        """Served in the military after September 11, 2001"""
-        return military == "1"
+    # @session.trigger(
+    #     "MATCH (i:PSAM_2023_Individual) WITH i.MLPA AS military RETURN military"
+    # )
+    # def military_after_sept_11(
+    #     military,
+    # ) -> VariableAttribute["i", "military_after_sept_11"]:
+    #     """Served in the military after September 11, 2001"""
+    #     return military == "1"
 
-    @session.trigger(
-        "MATCH (i:PSAM_2023_Individual) WITH i.DEYE AS eye RETURN eye"
-    )
-    def vision_difficulty(
-        eye, acs_pums_2023_data_dictionary
-    ) -> VariableAttribute["i", "vision_difficulty"]:
-        """Has vision difficulty"""
-        return acs_pums_2023_data_dictionary["DEYE"].get(eye, None)
+    # @session.trigger(
+    #     "MATCH (i:PSAM_2023_Individual) WITH i.DEYE AS eye RETURN eye"
+    # )
+    # def vision_difficulty(
+    #     eye, acs_pums_2023_data_dictionary
+    # ) -> VariableAttribute["i", "vision_difficulty"]:
+    #     """Has vision difficulty"""
+    #     return acs_pums_2023_data_dictionary["DEYE"].get(eye, None)
 
     # @session.trigger(
     #     "MATCH (i:PSAM_2023_Individual) WITH i.DPHY AS physical RETURN physical"
@@ -574,40 +574,40 @@ if __name__ == "__main__":
     #     else:
     #         return False
 
-    @session.trigger(
-        "MATCH (i:PSAM_2023_Individual) WITH i.STATE AS state RETURN state"
-    )
-    def psam_state_fips(
-        state
-    ) -> VariableAttribute["i", "state_fips"]:
-        return state
+    # @session.trigger(
+    #     "MATCH (i:PSAM_2023_Individual) WITH i.STATE AS state RETURN state"
+    # )
+    # def psam_state_fips(
+    #     state
+    # ) -> VariableAttribute["i", "state_fips"]:
+    #     return state
 
-    @session.trigger(
-        "MATCH (i:PSAM_2023_Individual) WITH i.STATE AS state RETURN state"
-    )
-    def psam_state_name(
-        state, acs_pums_2023_data_dictionary
-    ) -> VariableAttribute["i", "state_name"]:
-        lookup: str | None = acs_pums_2023_data_dictionary["STATE"].get(
-            state, None
-        )
-        return lookup
+    # @session.trigger(
+    #     "MATCH (i:PSAM_2023_Individual) WITH i.STATE AS state RETURN state"
+    # )
+    # def psam_state_name(
+    #     state, acs_pums_2023_data_dictionary
+    # ) -> VariableAttribute["i", "state_name"]:
+    #     lookup: str | None = acs_pums_2023_data_dictionary["STATE"].get(
+    #         state, None
+    #     )
+    #     return lookup
 
-    @session.trigger(
-        "MATCH (i:PSAM_2023_Individual) WITH i.PUMA AS puma RETURN puma"
-    )
-    def puma_fips(
-        puma
-    ) -> VariableAttribute["i", "puma_fips"]:
-        return puma
+    # @session.trigger(
+    #     "MATCH (i:PSAM_2023_Individual) WITH i.PUMA AS puma RETURN puma"
+    # )
+    # def puma_fips(
+    #     puma
+    # ) -> VariableAttribute["i", "puma_fips"]:
+    #     return puma
 
-    @session.trigger(
-        "MATCH (i:PSAM_2023_Individual) WITH i.puma_fips "
-        "AS puma_fips, i.state_fips AS state_fips "
-        "RETURN puma_fips, state_fips"
-    )
-    def state_puma_fips(puma_fips, state_fips) -> VariableAttribute["i", "state_puma_fips"]:
-        return state_fips + puma_fips
+    # @session.trigger(
+    #     "MATCH (i:PSAM_2023_Individual) WITH i.puma_fips "
+    #     "AS puma_fips, i.state_fips AS state_fips "
+    #     "RETURN puma_fips, state_fips"
+    # )
+    # def state_puma_fips(puma_fips, state_fips) -> VariableAttribute["i", "state_puma_fips"]:
+    #     return state_fips + puma_fips
     
     @session.trigger(
         "MATCH (i:Tract)-[r:in]->(c:County) WITH COLLECT(i.tract_fips) AS tract_list RETURN tract_list"

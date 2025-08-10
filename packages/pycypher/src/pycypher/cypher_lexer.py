@@ -34,7 +34,6 @@ tokens: list[str] = [
     "RPAREN",
     "RSQUARE",
     # "STAR",
-    "SIZE",
     "STRING",
     "WORD",
 ]
@@ -73,7 +72,6 @@ reserved = {
     "DISTINCT": "DISTINCT",
     "WITH": "WITH",
     "SIZE": "SIZE",
-    "LENGTH": "LENGTH",
     "COUNT": "COUNT",
 }
 

@@ -9,9 +9,12 @@ atomic pieces of information about nodes, relationships, and their attributes.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Optional, Any
+from shared.logger import LOGGER
+
 
 from pycypher.lineage import Lineage
+from pycypher.solutions import Projection, ProjectionList
 
 
 class AtomicFact:  # pylint: disable=too-few-public-methods
@@ -26,14 +29,16 @@ class AtomicFact:  # pylint: disable=too-few-public-methods
 
     """
 
-    def __init__(self, *_):  # ruff: disable=F821
+    def __init__(self, *_, parent_projection: Optional[Projection | ProjectionList] = None):  # ruff: disable=F821
         """
         Initialize an AtomicFact instance.
 
         Args:
             *_: Variable positional arguments (ignored).
         """
-        self.lineage: Lineage | None = None
+        self.lineage: Optional[Lineage | None] = None
+        self.parent_projection: Optional[Projection | ProjectionList] = parent_projection
+        
 
 
 class FactNodeHasLabel(AtomicFact):
@@ -232,6 +237,7 @@ class FactRelationshipHasSourceNode(AtomicFact):
     def __init__(self, relationship_id: str, source_node_id: str, **kwargs):
         self.relationship_id = relationship_id
         self.source_node_id = source_node_id
+        LOGGER.info("FactRelationshipHasSourceNode: %s %s", relationship_id, source_node_id)
         super().__init__(**kwargs)
 
     def __repr__(self) -> str:

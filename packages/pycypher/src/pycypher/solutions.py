@@ -1,15 +1,40 @@
 from __future__ import annotations
 
 
-from typing import Dict, Any, List, Generator
+from abc import ABC
+from typing import Optional, Dict, Any, List, Generator
 from rich.tree import Tree
 
-
-class Projection:
-    '''Basically a dictionary mapping strings to other strings or literals, etc.'''
-    def __init__(self, projection: Dict[str, Any]):
-        self.projection: Dict[str, Any] = projection
+class ProjectionTree(ABC):
     
+    @property
+    def root(self) -> Projection | ProjectionList:
+        '''Returns the root of the projection tree.'''
+        if hasattr(self, 'parent') and self.parent is not None:
+            return self.parent.root
+        if self.parent is None:
+            return self
+        return self.parent.root
+    
+    def find_variable(self, variable: str) -> Optional[Projection]:
+        '''Returns the projection that contains the given variable.'''
+        if variable in self:
+            return self[variable]
+        if hasattr(self, 'parent') and self.parent is not None:
+            return self.parent.find_variable(variable)
+        return None
+
+
+class Projection(ProjectionTree):
+    '''Basically a dictionary mapping strings to other strings or literals, etc.'''
+    def __init__(self, projection: Dict[str, Any], parent: Optional[Projection | ProjectionList] = None):
+        self.projection: Dict[str, Any] = projection
+        self.parent: Optional[Projection | ProjectionList] = parent
+    
+    def pythonify(self) -> dict[str, Any]:
+        '''Returns a python dictionary representation of the projection.'''
+        return {key: value.pythonify() if hasattr(value, 'pythonify') else value for key, value in self.projection.items()}
+
     def tree(self) -> Tree:
         '''Returns a rich tree representation of the projection.'''
         tree: Tree = Tree(f'Projection[{len(self)}]')
@@ -80,11 +105,16 @@ class Projection:
         return True
 
 
-class ProjectionList:
+class ProjectionList(ProjectionTree):
     '''A list of projections.'''
-    def __init__(self, projection_list: List[Projection]):
+    def __init__(self, projection_list: List[Projection], parent: Optional[Projection | ProjectionList] = None):
         self.projection_list: List[Projection] = projection_list
-    
+        self.parent: Optional[Projection | ProjectionList] = parent
+
+    def pythonify(self) -> list[dict[str, Any]]:
+        '''Returns a python list representation of the projection list.'''
+        return [projection.pythonify() for projection in self.projection_list] 
+
     def __iadd__(self, other: ProjectionList | Projection):
         if isinstance(other, ProjectionList):
             self.projection_list.extend(other.projection_list)
@@ -92,10 +122,14 @@ class ProjectionList:
             self.projection_list.append(other)
         return self
     
+    def __contains__(self, other: Projection) -> bool:
+        if not isinstance(other, Projection):
+            raise TypeError(f'Cannot compare ProjectionList to {type(other)}')
+        return other in self.projection_list
+    
     def tree(self) -> Tree:
         '''Returns a rich tree representation of the projection list.'''
         tree = Tree(f'ProjectionList[{len(self)}]')
-        import pdb; pdb.set_trace()
         for projection in self.projection_list:
             tree.add(projection.tree())
         return tree
@@ -110,7 +144,16 @@ class ProjectionList:
         return self.projection_list[index]
     
     def __eq__(self, other: ProjectionList) -> bool:
-        return isinstance(other, ProjectionList) and self.projection_list == other.projection_list
+        if not isinstance(other, ProjectionList):
+            raise ValueError(f'Cannot compare ProjectionList to {type(other)}')
+        left_outer: List[Projection] = [
+            projection for projection in self.projection_list if projection not in other.projection_list
+        ]
+        right_outer: List[Projection] = [
+            projection for projection in other.projection_list if projection not in self.projection_list
+        ]
+        return not left_outer and not right_outer
+
     
     def is_empty(self) -> bool:
         return len(self) == 0
@@ -130,4 +173,3 @@ class ProjectionList:
         for index, projection in enumerate(self.projection_list):
             new_projection_list += projection + other_list.projection_list[index]
         return new_projection_list
-
