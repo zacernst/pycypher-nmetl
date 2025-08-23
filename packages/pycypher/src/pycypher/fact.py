@@ -237,7 +237,7 @@ class FactRelationshipHasSourceNode(AtomicFact):
     def __init__(self, relationship_id: str, source_node_id: str, **kwargs):
         self.relationship_id = relationship_id
         self.source_node_id = source_node_id
-        LOGGER.info("FactRelationshipHasSourceNode: %s %s", relationship_id, source_node_id)
+        LOGGER.debug("FactRelationshipHasSourceNode: %s %s", relationship_id, source_node_id)
         super().__init__(**kwargs)
 
     def __repr__(self) -> str:

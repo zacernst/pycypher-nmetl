@@ -456,7 +456,6 @@ class FactCollection(ABC):
         Raises:
             ValueError: If multiple values are found for the same attribute.
         """
-        print("Query value of node attribute called...")
         facts = [
             fact
             for fact in self.node_has_attribute_with_value_facts()
@@ -554,6 +553,7 @@ class FactCollection(ABC):
             case _:
                 raise NotImplementedError(f"Unknown query type {query}")
 
+    # Replace this?
     def nodes_with_label(self, label: str) -> Generator[str]:
         """
         Return a list of all the nodes with a specific label.
@@ -608,7 +608,7 @@ class FactCollection(ABC):
             row_dict["__node_id__"] = node_id
             yield row_dict
 
-    def nodes_with_label_facts(
+    def bak_nodes_with_label_facts(
         self, label: str
     ) -> Generator[FactNodeHasLabel]:
         """

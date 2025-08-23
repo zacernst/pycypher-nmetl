@@ -27,6 +27,7 @@ from typing import (
     Any,
     Dict,
     Generator,
+    Literal,
     List,
     Optional,
     Protocol,
@@ -58,6 +59,7 @@ from shared.logger import LOGGER
 
 LOGGER.setLevel("ERROR")
 
+MAX_ROWS: Literal[-1] = -1
 
 def profile_thread(func, *args, **kwargs):
     pr = cProfile.Profile()
@@ -569,7 +571,7 @@ class CSVDataSource(DataSource):
         counter = 0
         for row in self.reader:
             counter += 1
-            if counter == -1:
+            if counter == MAX_ROWS:
                 break
             yield row
 

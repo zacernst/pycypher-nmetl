@@ -132,7 +132,7 @@ class QueueProcessor(ABC):  # pylint: disable=too-few-public-methods,too-many-in
             max_buffer_size: Maximum number of items to buffer before processing.
             buffer_timeout: Maximum time (seconds) to wait before processing partial buffer.
         """
-        LOGGER.info("Initializing QueuePreocessor: %s", self)
+        LOGGER.debug("Initializing QueuePreocessor: %s", self)
         self._session_config = session_config
         self.started = False
         self.priority = priority
@@ -141,7 +141,7 @@ class QueueProcessor(ABC):  # pylint: disable=too-few-public-methods,too-many-in
         self.finished_at: Optional[datetime.datetime] = None
         self.halt_signal = False
 
-        LOGGER.info(session_config)
+        LOGGER.debug(session_config)
 
         self.processing_thread = threading.Thread(
             target=self.process_queue, daemon=True
@@ -399,6 +399,7 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
     def evaluate_fact_against_trigger(
         trigger, item, variable
     ) -> ProjectionList:
+        LOGGER.debug('evaluate_fact_against_trigger: %s:::%s', item, variable)
         result: ProjectionList = trigger.cypher._evaluate(
             QueueProcessor.get_fact_collection(),
             projection_list=ProjectionList(
@@ -407,8 +408,10 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
                 ]
             ),
         )
+        # Can we filter out bad results here.
+        import pdb; pdb.set_trace()
         LOGGER.debug(
-            "Result of %s is %s, %s, %s",
+            "Result of evaluate_fact_against_trigger %s is %s, %s, %s",
             item,
             result,
             variable,
@@ -444,14 +447,14 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
                     bytes,
                 )
             except Exception as e:
-                LOGGER.warning("Bad item in CheckFact... %s", item)
+                LOGGER.debug("Bad item in CheckFact... %s", item)
                 continue
             LOGGER.debug("Checking fact %s against triggers", item)
             
             PARANOID = True
             if PARANOID:
                 while item not in QueueProcessor.get_fact_collection():
-                    LOGGER.warning(
+                    LOGGER.debug(
                         "Fact %s not in collection, requeueing...",
                         item.__dict__,
                     )
@@ -477,6 +480,8 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
                 elif isinstance(item, FactNodeHasLabel):
                     LOGGER.debug("FactNodeHasLabel %s, skipping", item)
                     continue
+                else:
+                    pass
                 for (
                     variable,
                     node,
@@ -487,7 +492,15 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
                         trigger,
                         item,
                     )
-                    if isinstance(item, (FactNodeHasAttributeWithValue,)):
+                    LOGGER.debug(
+                        "variable node loop: %s %s",
+                        variable,
+                        node,
+                    )
+                    # Seem to be checking FactNodeHasAttributeWithValue against relationship node,
+                    # which is suspicious.
+                    #### KLUDGE
+                    if isinstance(item, (FactNodeHasAttributeWithValue,)) and variable != 'r':
                         result: ProjectionList = CheckFactAgainstTriggersQueueProcessor.evaluate_fact_against_trigger(
                             trigger, item, variable
                         )
@@ -495,16 +508,16 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
                             # Here look into the projection, pull out the variable in the return signature
                             # We expect that there was only one projection passed to the cypher object
                             if len(result.root.projection_list) != 1:
-                                # import pdb; pdb.set_trace()
                                 raise ValueError(
-                                    "Expected only one projection passed to Cypher query"
+                                    "Expected only one projection passed to Cypher query, got: %s", result.root.projection_list
                                 )
+                            # Maybe shouldn't be for all variables -- just what's in the return statement
                             sub_trigger_pair: SubTriggerPair = SubTriggerPair(
-                                sub={variable: item.node_id},
+                                sub={variable: item.node_id},  # item.node_id is wrong
                                 trigger=trigger,
                                 projection_list=result,
                             )
-                            LOGGER.info(
+                            LOGGER.debug(
                                 "Created SubTriggerPair: %s", sub_trigger_pair
                             )
                             out.append(sub_trigger_pair)
@@ -628,7 +641,7 @@ class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-publi
                     value=function_result,
                 )
             )
-            return computed_fact  # import pdb; pdb.set_trace()
+            return computed_fact
 
     def _process_solution_node_relationship(
         self,

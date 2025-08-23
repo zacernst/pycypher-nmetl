@@ -233,10 +233,10 @@ class NodeRelationshipTrigger(CypherTrigger):
         self.source_variable: str = source_variable
         self.target_variable: str = target_variable
         self.relationship_name: str = relationship_name
-        LOGGER.info("Creating NodeRelationshipTrigger: %s", self)
-        LOGGER.info("Source variable: %s", self.source_variable)
-        LOGGER.info("Target variable: %s", self.target_variable)
-        LOGGER.info("Relationship name: %s", self.relationship_name)
+        LOGGER.debug("Creating NodeRelationshipTrigger: %s", self)
+        LOGGER.debug("Source variable: %s", self.source_variable)
+        LOGGER.debug("Target variable: %s", self.target_variable)
+        LOGGER.debug("Relationship name: %s", self.relationship_name)
         self.is_relationship_trigger = True
         self.is_attribute_trigger = False
         super().__init__(

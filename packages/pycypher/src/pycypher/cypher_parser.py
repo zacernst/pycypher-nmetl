@@ -418,8 +418,13 @@ class CypherParser:
         fact_collection: FactCollection,
         projection_list: ProjectionList,
     ) -> ProjectionList:
-        out: List[Dict[str, Any]] = self.parse_tree.cypher._evaluate(
+        out: ProjectionList = self.parse_tree.cypher._evaluate(
             fact_collection,
             projection_list=projection_list,
         )
+        tmp = []
+        for projection in out:
+            if projection not in tmp:
+                tmp.append(projection) 
+        out: ProjectionList = ProjectionList(projection_list=tmp)
         return out

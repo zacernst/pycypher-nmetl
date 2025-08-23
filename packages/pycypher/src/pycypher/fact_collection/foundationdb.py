@@ -114,18 +114,24 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
             return
         counter: int = 0
         prefix: bytes = ensure_bytes(prefix, encoding="utf8")
+        if 0 and only_one_result:
+            key = fdb.KeySelector.first_greater_or_equal(ensure_bytes(prefix, encoding='utf8'))
+            value = self.db[key]
+            yield key, value
+            return
+
         end_key: bytes = b"\xff" if continue_to_end else prefix + b"\xff"
         for key_value_obj in self.db.get_range(
-            ensure_bytes(ensure_bytes(prefix), encoding="utf8"), end_key
+            ensure_bytes(ensure_bytes(prefix), encoding="utf8"), end_key, 1 if only_one_result else 0
         ):
             value: AtomicFact = decode(key_value_obj.value)
             key: str = key_value_obj.key.decode("utf8")
             if continue_to_end or key.startswith(str(prefix, encoding="utf8")):
                 counter += 1
                 yield key, value
-                if only_one_result:
-                    break
             else:
+                break
+            if only_one_result:
                 break
         LOGGER.debug("Done with _prefix_read_items: %s: %s", prefix, counter)
 
@@ -152,7 +158,7 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
         return ensure_bytes(index, encoding="utf8")
 
     def _prefix_read_keys(
-        self, prefix: str, continue_to_end: Optional[bool] = False
+        self, prefix: str, only_one_item: bool = False, continue_to_end: Optional[bool] = False
     ) -> Generator[Any, Any]:
         """
         Read a range of keys from the database.
@@ -168,6 +174,7 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
         for key, _ in self._prefix_read_items(
             ensure_bytes(prefix, encoding="utf8"),
             continue_to_end=continue_to_end,
+            only_one_item=only_one_item,
         ):
             yield key
 
@@ -245,14 +252,20 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
         """
         # b'relationship_source_node:d22f4848b11c4bb0a541d58a73b8d926:Tract::01015002300', RelationshipHasSourceNode: d22f4848b11c4bb0a541d58a73b8d926 Tract::01015002300)
         prefix: bytes = ensure_bytes(f'relationship_source_node:{query.relationship_id}:', encoding='utf8')
-        LOGGER.info("query_relationship_source called: %s", query.relationship_id)
-        fact_list: list[AtomicFact] = list(self._prefix_read_values(prefix, continue_to_end=False))
-        if len(fact_list) == 0:
-            raise ValueError(f"Found no source nodes for {query}")
-        elif len(fact_list) > 1:
-            raise ValueError(f"Found multiple source nodes for {query}: {fact_list}")
-        else:
-            return fact_list[0].source_node_id
+        LOGGER.debug("query_relationship_source called: %s", query.relationship_id)
+        key = self.db.get_key(fdb.KeySelector.first_greater_than(prefix))
+        LOGGER.debug("key: %s", key)
+        value = self.db[key]
+        LOGGER.debug('value: %s', value)
+        return decode(value).source_node_id
+
+        # fact_list: list[AtomicFact] = list(self._prefix_read_values(prefix, continue_to_end=False, only_one_result=True))
+        # if len(fact_list) == 0:
+        #     raise ValueError(f"Found no source nodes for {query}")
+        # elif len(fact_list) > 1:
+        #     raise ValueError(f"Found multiple source nodes for {query}: {fact_list}")
+        # else:
+        #     return fact_list[0].source_node_id
     
     def query_relationship_target(
         self, query: QueryTargetNodeOfRelationship
@@ -267,8 +280,8 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
             str: The target node ID of the relationship.
         """
         prefix: bytes = ensure_bytes(f'relationship_target_node:{query.relationship_id}:', encoding='utf8')
-        LOGGER.info("query_relationship_source called: %s", query.relationship_id)
-        fact_list: list[AtomicFact] = list(self._prefix_read_values(prefix, continue_to_end=False))
+        LOGGER.info("query_relationship_target called: %s", query.relationship_id)
+        fact_list: list[AtomicFact] = list(self._prefix_read_values(prefix, continue_to_end=False, only_one_result=True))
         if len(fact_list) == 0:
             raise ValueError(f"Found no source nodes for {query}")
         elif len(fact_list) > 1:
@@ -552,6 +565,27 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
         )
         for fact in result:
             yield fact.node_id
+    
+    
+    def relationships_with_label(self, label: str) -> Generator[str]:
+        """
+        Return a list of all the nodes with a specific label.
+
+        Args:
+            label (str): The label of the nodes to return.
+
+        Returns:
+            list: A list of all the nodes with the specified label.
+        """
+        prefix = ensure_bytes(
+            f"relationship_label_secondary:{label}:",
+            encoding="utf8",
+        )
+        result: list[AtomicFact] = list(
+            self._prefix_read_values(prefix, only_one_result=False)
+        )
+        for fact in result:
+            yield fact.relationship_id
 
     def nodes_with_label_facts(self, label: str) -> Generator[str]:
         """

@@ -10,6 +10,7 @@ from typing import Generator, Tuple, Type
 
 from rich import print as rprint
 from rich.tree import Tree
+from shared.logger import LOGGER
 
 
 class TreeMixin(ABC):
@@ -46,6 +47,14 @@ class TreeMixin(ABC):
         for vertex in self.walk():
             if name_label := (getattr(vertex, "name_label", None) or getattr(vertex, "name_label", None)):
                 yield name_label.name, vertex
+
+    def get_vertex_variables(
+        self,
+    ) -> Generator[Tuple[str, TreeMixin], None, None]:
+        for vertex in self.walk():
+            if 'Node' == vertex.__class__.__name__:
+                yield vertex.name_label.name, vertex
+                LOGGER.warning('Got node')  
 
     def walk(self) -> Generator[TreeMixin]:
         """Generator that yields every node of the AST.
