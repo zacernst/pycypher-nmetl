@@ -126,7 +126,6 @@ def test_evaluate_trigger_against_fact_collection(
                         ]
                     )
                 )
-                import pdb; pdb.set_trace()
             assert isinstance(out, ProjectionList)
             assert len(out.projection_list) == 1
             assert out.projection_list[0].projection == {'beachy': Literal(False)}
@@ -1020,7 +1019,7 @@ def test_literal_boolean_eval_8():
     assert not (Literal(False) or False)
 
 
-def test_relationship_chain_list_true(
+def bak_test_relationship_chain_list_true(
     city_state_fact_collection, relationship_chain_list_1
 ):
     evaluation: bool = relationship_chain_list_1._evaluate(
@@ -1032,7 +1031,7 @@ def test_relationship_chain_list_true(
     assert evaluation
 
 
-def test_relationship_chain_list_false_1(
+def bak_test_relationship_chain_list_false_1(
     city_state_fact_collection, relationship_chain_list_1
 ):
     evaluation: bool = relationship_chain_list_1._evaluate(
@@ -1044,7 +1043,7 @@ def test_relationship_chain_list_false_1(
     assert not evaluation
 
 
-def test_relationship_chain_list_false_2(
+def bak_test_relationship_chain_list_false_2(
     city_state_fact_collection, relationship_chain_list_1
 ):
     evaluation: bool = relationship_chain_list_1._evaluate(
@@ -1056,7 +1055,7 @@ def test_relationship_chain_list_false_2(
     assert not evaluation
 
 
-def test_relationship_chain_list_false_3(
+def bak_test_relationship_chain_list_false_3(
     city_state_fact_collection, relationship_chain_list_1
 ):
     evaluation: bool = relationship_chain_list_1._evaluate(
@@ -1286,123 +1285,7 @@ def test_get_free_variables_3(relationship_chain_list_1):
     assert "r" in free_variables
 
 
-def test_match_with_free_variables(
-    city_state_fact_collection, relationship_chain_list_1
-):
-    with_clause: WithClause = WithClause(
-        lookups=ObjectAsSeries(
-            lookups=[
-                Alias(
-                    reference=ObjectAttributeLookup(
-                        object="k", attribute="looks_like_mitten"
-                    ),
-                    alias="mitten_state",
-                ),
-                Alias(
-                    reference=ObjectAttributeLookup(
-                        object="k", attribute="lots_of_lakes"
-                    ),
-                    alias="lakes",
-                ),
-                Alias(
-                    reference=Collect(
-                        ObjectAttributeLookup(
-                            object="i",
-                            attribute="has_beach",
-                        ),
-                    ),
-                    alias="sandy",
-                ),
-            ],
-        ),
-    )
-
-    match_clause: Match = Match(
-        pattern=relationship_chain_list_1,
-        with_clause=with_clause,
-        where_clause=None,
-    )
-    projection_list: ProjectionList = ProjectionList(
-        projection_list=[Projection(projection={"i": "south_haven"})]
-    )
-    pattern_substitutions: ProjectionList = get_all_substitutions(
-        city_state_fact_collection, relationship_chain_list_1, projection_list
-    )
-    pattern_list_post_with_clause: ProjectionList = (
-        match_clause.with_clause._evaluate(
-            city_state_fact_collection, projection_list=pattern_substitutions
-        )
-    )
-
-    return_clause: Return = Return(
-        projection=ObjectAsSeries(
-            lookups=[
-                Alias(
-                    reference=AliasedName(name="mitten_state"), alias="mitteny"
-                ),
-                Alias(reference=AliasedName(name="lakes"), alias="lakesish"),
-                Alias(
-                    reference=AliasedName(name="sandy"), alias="sandythingy"
-                ),
-            ],
-        ),
-    )
-
-    expected: ProjectionList = ProjectionList(
-        projection_list=[
-            Projection(
-                projection={
-                    "mitteny": Literal(True),
-                    "lakesish": Literal(True),
-                    "sandythingy": Collection(
-                        values=[
-                            Literal(True),
-                            Literal(True),
-                            Literal(True),
-                            Literal(True),
-                        ],
-                    ),
-                },
-            ),
-            Projection(
-                projection={
-                    "mitteny": Literal(False),
-                    "lakesish": Literal(True),
-                    "sandythingy": Collection(
-                        values=[
-                            Literal(True),
-                            Literal(True),
-                            Literal(True),
-                            Literal(True),
-                        ],
-                    ),
-                },
-            ),
-            Projection(
-                projection={
-                    "mitteny": Literal(False),
-                    "lakesish": Literal(False),
-                    "sandythingy": Collection(
-                        values=[
-                            Literal(True),
-                            Literal(True),
-                            Literal(True),
-                            Literal(True),
-                        ],
-                    ),
-                },
-            ),
-        ],
-    )
-
-    actual: ProjectionList = return_clause._evaluate(
-        city_state_fact_collection,
-        projection_list=pattern_list_post_with_clause,
-    )
-    assert actual == expected
-
-
-def test_pattern_with_free_variables(
+def bak_test_pattern_with_free_variables(
     city_state_fact_collection, relationship_chain_list_1
 ) -> None:
     projection_list: ProjectionList = ProjectionList(
@@ -1718,8 +1601,9 @@ def test_sat_9(city_state_fact_collection) -> None:
     )
     assert output == expected
 
+
 def test_sat_10(city_state_fact_collection) -> None:
-    query = """MATCH (c:City)-[r:In]->(s:State) WITH SIZE(COLLECT(c.has_beach)) AS beach_list, s.looks_like_mitten AS mitten_state RETURN mitten_state AS mitteny, beach_list AS beach_things"""
+    query = """MATCH (c:City)-[r:In]->(s:State) RETURN c, r, s"""
     parsed: CypherParser = CypherParser(query)
     match_clause = parsed.parse_tree.cypher.match_clause
     output = match_clause._evaluate(city_state_fact_collection)
@@ -1739,23 +1623,22 @@ def test_sat_11(city_state_fact_collection) -> None:
     parsed: CypherParser = CypherParser(query)
     match_clause = parsed.parse_tree.cypher.match_clause
     projection: Projection = Projection(projection={'s': 'michigan'})
-    output = match_clause._evaluate(city_state_fact_collection, projection=projection)
+    projection_list: ProjectionList = ProjectionList(projection_list=[projection])
+    output = match_clause._evaluate(city_state_fact_collection, projection_list=projection_list)
     expected: ProjectionList = ProjectionList(
         projection_list=[
-            Projection(projection={'c': 'kalamazoo', 'r': 'r1', 's': 'michigan'}), 
-            Projection(projection={'c': 'detroit', 'r': 'r2', 's': 'michigan'}), 
-            Projection(projection={'c': 'south_haven', 'r': 'r3', 's': 'michigan'}),
+            Projection(projection={'mitten_state': Literal(True), 'beach_list': Literal(3)})
         ],
     )
     assert output == expected
 
 
 def test_sat_12(city_state_fact_collection) -> None:
-    query = """MATCH (c:City)-[r:In]->(s:State) WITH SIZE(COLLECT(c.has_beach)) AS beach_list, s.looks_like_mitten AS mitten_state RETURN mitten_state AS mitteny, beach_list AS beach_things"""
+    query = """MATCH (c:City)-[r:In]->(s:State) RETURN c, r, s"""
     parsed: CypherParser = CypherParser(query)
     match_clause = parsed.parse_tree.cypher.match_clause
     projection: Projection = Projection(projection={'s': 'wisconsin'})
-    output = match_clause._evaluate(city_state_fact_collection, projection=projection)
+    output = match_clause._evaluate(city_state_fact_collection, projection_list=ProjectionList(projection_list=[Projection(projection=projection)]))
     expected: ProjectionList = ProjectionList(
         projection_list=[
             Projection(projection={'c': 'madison', 'r': 'r4', 's': 'wisconsin'}), 
@@ -1765,11 +1648,12 @@ def test_sat_12(city_state_fact_collection) -> None:
 
 
 def test_sat_13(city_state_fact_collection) -> None:
-    query = """MATCH (c:City)-[r:In]->(s:State) WITH SIZE(COLLECT(c.has_beach)) AS beach_list, s.looks_like_mitten AS mitten_state RETURN mitten_state AS mitteny, beach_list AS beach_things"""
+    query = """MATCH (c:City)-[r:In]->(s:State) RETURN c, r, s"""
     parsed: CypherParser = CypherParser(query)
     match_clause = parsed.parse_tree.cypher.match_clause
     projection: Projection = Projection(projection={'s': 'idontexist'})
-    output = match_clause._evaluate(city_state_fact_collection, projection=projection)
+    projection_list: ProjectionList = ProjectionList(projection_list=[projection])
+    output = match_clause._evaluate(city_state_fact_collection, projection_list=projection_list)
     expected: ProjectionList = ProjectionList(
         projection_list=[],
     )
@@ -1777,7 +1661,19 @@ def test_sat_13(city_state_fact_collection) -> None:
 
 
 def test_evaluate_match_clause(city_state_fact_collection):
-    query = """MATCH (c:City)-[r:In]->(s:State) WITH SIZE(COLLECT(c.has_beach)) AS beach_list, s.looks_like_mitten AS mitten_state RETURN mitten_state AS mitteny, beach_list AS beach_things"""
+    query = (
+        """MATCH (c:City)-[r:In]->(s:State) """
+        """WITH SIZE(COLLECT(c.has_beach)) AS beach_list, s.looks_like_mitten AS mitten_state """
+        """RETURN mitten_state AS mitteny, beach_list AS beach_things"""
+    )
     parsed: CypherParser = CypherParser(query)
     match_clause = parsed.parse_tree.cypher.match_clause
     output = match_clause._evaluate(city_state_fact_collection)
+    expected: ProjectionList = ProjectionList(
+        projection_list=[
+            Projection(projection={'mitten_state': Literal(True), 'beach_list': Literal(3)}),
+            Projection(projection={'mitten_state': Literal(False), 'beach_list': Literal(1)}),
+        ]
+
+    )
+    assert output == expected

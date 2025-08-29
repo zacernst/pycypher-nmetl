@@ -6,52 +6,108 @@ from typing import Optional, Dict, Any, List, Generator
 from rich.tree import Tree
 
 class ProjectionTree(ABC):
+    """Abstract base class for projection tree structures.
+    
+    Provides common functionality for managing hierarchical projection relationships.
+    
+    Attributes:
+        children: List of child ProjectionTree nodes.
+        parent: Optional parent ProjectionTree node.
+    """
+    
+    def __init__(self, parent: Optional[Projection | ProjectionList] = None):
+        """Initialize a ProjectionTree node.
+        
+        Args:
+            parent: Optional parent node in the projection tree.
+        """
+        self.children: List[ProjectionTree] = []
+        self.parent: Optional[Projection | ProjectionList] = parent
+        if parent:
+            self.parent.children.append(self)
     
     @property
     def root(self) -> Projection | ProjectionList:
-        '''Returns the root of the projection tree.'''
+        """Get the root node of the projection tree.
+        
+        Returns:
+            The root Projection or ProjectionList node.
+        """
         if hasattr(self, 'parent') and self.parent is not None:
             return self.parent.root
         if self.parent is None:
             return self
         return self.parent.root
     
-    def find_variable(self, variable: str) -> Optional[Projection]:
-        '''Returns the projection that contains the given variable.'''
-        if variable in self:
-            return self[variable]
-        if hasattr(self, 'parent') and self.parent is not None:
-            return self.parent.find_variable(variable)
-        return None
-
 
 class Projection(ProjectionTree):
-    '''Basically a dictionary mapping strings to other strings or literals, etc.'''
+    """A dictionary-like mapping of variable names to values.
+    
+    Represents a single row of query results, mapping variable names
+    to their corresponding values in the current context.
+    
+    Attributes:
+        projection: Dictionary mapping variable names to values.
+    """
     def __init__(self, projection: Dict[str, Any], parent: Optional[Projection | ProjectionList] = None):
+        """Initialize a Projection with variable mappings.
+        
+        Args:
+            projection: Dictionary mapping variable names to values.
+            parent: Optional parent node in the projection tree.
+        """
         self.projection: Dict[str, Any] = projection
-        self.parent: Optional[Projection | ProjectionList] = parent
+        super().__init__(parent=parent)
     
     def pythonify(self) -> dict[str, Any]:
-        '''Returns a python dictionary representation of the projection.'''
+        """Convert projection to a plain Python dictionary.
+        
+        Returns:
+            Dictionary with pythonified values where applicable.
+        """
         return {key: value.pythonify() if hasattr(value, 'pythonify') else value for key, value in self.projection.items()}
 
     def tree(self) -> Tree:
-        '''Returns a rich tree representation of the projection.'''
+        """Create a visual tree representation of the projection.
+        
+        Returns:
+            Rich Tree object for display purposes.
+        """
         tree: Tree = Tree(f'Projection[{len(self)}]')
         for key, value in self.projection:
             tree.add(f'{key} = {value}')
         return tree
     
     def keys(self) -> Generator[str, None, None]:
+        """Generate all variable names in this projection.
+        
+        Yields:
+            Variable names as strings.
+        """
         yield from self.projection.keys()
     
     def __hash__(self) -> int:
+        """Return hash value based on projection contents.
+        
+        Returns:
+            Hash value for this projection.
+        """
         return hash(tuple(sorted(self.projection.items())))
     
     def items(self) -> Generator[tuple[str, Any], None, None]:
+        """Generate all key-value pairs in this projection.
+        
+        Yields:
+            Tuples of (variable_name, value).
+        """
         yield from self.projection.items()
     
     def values(self) -> Generator[Any, None, None]:
+        """Generate all values in this projection.
+        
+        Yields:
+            Values from the projection dictionary.
+        """
         yield from self.projection.values()
     
     def __repr__(self) -> str:
@@ -103,13 +159,35 @@ class Projection(ProjectionTree):
             if key not in other.projection or self.projection[key] != other.projection[key]:
                 return False
         return True
+    
+    def find_variable(self, variable: str) -> Any:
+        if variable in self.projection:
+            yield self.projection[variable]
+        elif self.parent is None:
+            yield None
+        elif isinstance(self.parent, (Projection, ProjectionList)):
+            for i in self.parent.find_variable(variable):
+                yield i
+        else:
+            raise ValueError('This should never happen')
 
 
 class ProjectionList(ProjectionTree):
     '''A list of projections.'''
     def __init__(self, projection_list: List[Projection], parent: Optional[Projection | ProjectionList] = None):
         self.projection_list: List[Projection] = projection_list
-        self.parent: Optional[Projection | ProjectionList] = parent
+        super().__init__(parent=parent)
+    
+    def find_variable(self, variable: str) -> Any:
+        '''Returns the value of the variable in the projection list.'''
+        for projection in self.projection_list:
+            for i in projection.find_variable(variable):
+                yield i
+        if self.parent is None:
+            yield None
+        else:
+            for i in self.parent.find_variable(variable):
+                yield i
 
     def pythonify(self) -> list[dict[str, Any]]:
         '''Returns a python list representation of the projection list.'''

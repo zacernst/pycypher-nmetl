@@ -1,6 +1,8 @@
-"""
-This is a mixin class that provides methods for walking and printing
-the AST.
+"""TreeMixin module for Abstract Syntax Tree operations.
+
+This module provides the TreeMixin abstract base class that enables
+tree traversal, printing, and navigation operations for AST nodes.
+It's designed to be mixed into classes that represent tree structures.
 """
 
 from __future__ import annotations
@@ -14,36 +16,60 @@ from shared.logger import LOGGER
 
 
 class TreeMixin(ABC):
-    """
-    TreeMixin is an abstract base class that provides a mixin for tree structures,
-    typically used for Abstract Syntax Trees (ASTs). It includes methods for
-    printing, walking, and navigating the tree.
+    """Abstract base class providing tree structure operations for AST nodes.
+
+    This mixin class provides common functionality for tree-like data structures,
+    particularly Abstract Syntax Trees. It includes methods for tree traversal,
+    pretty printing, and parent-child navigation.
 
     Attributes:
-        parent: The parent node of the current node.
-
+        parent: Reference to the parent node in the tree structure.
     """
 
     parent = None
 
     def print_tree(self):
-        """Uses ``rich`` to print the tree representation of the AST."""
+        """Print a visual representation of the tree using Rich formatting.
+        
+        Uses the Rich library to display a formatted tree structure
+        in the console with colors and indentation.
+        """
         rprint(self.tree())  # pragma: no cover
 
     @property
     def children(self) -> Generator[TreeMixin | str | None]:
-        """Each node should have a children property that returns a generator of its children."""
+        """Generate child nodes of this tree node.
+        
+        This property should be overridden by subclasses to yield
+        their actual child nodes.
+        
+        Yields:
+            Child nodes, strings, or None values.
+        """
         yield None
 
     @abstractmethod
     def tree(self) -> Tree:  # pragma: no cover
-        """Generates a tree representation of the AST which can be pretty-printed
-        with the ``rich`` library.
+        """Generate a Rich Tree representation of this node.
+        
+        This method must be implemented by subclasses to provide
+        a visual tree representation suitable for Rich formatting.
+        
+        Returns:
+            Rich Tree object representing this node and its children.
         """
 
     def get_node_variables(
         self,
     ) -> Generator[Tuple[str, TreeMixin], None, None]:
+        """Extract variable names and their corresponding nodes from the tree.
+        
+        Walks through the tree to find nodes with name_label attributes
+        and yields tuples of (variable_name, node).
+        
+        Yields:
+            Tuples of (variable_name, tree_node) for nodes with labels.
+        """
         for vertex in self.walk():
             if name_label := (getattr(vertex, "name_label", None) or getattr(vertex, "name_label", None)):
                 yield name_label.name, vertex
@@ -51,16 +77,31 @@ class TreeMixin(ABC):
     def get_vertex_variables(
         self,
     ) -> Generator[Tuple[str, TreeMixin], None, None]:
+        """Extract vertex variables specifically from Node objects in the tree.
+        
+        Walks through the tree to find Node class instances and yields
+        tuples of their variable names and node objects.
+        
+        Yields:
+            Tuples of (variable_name, node) for Node class instances.
+        """
         for vertex in self.walk():
             if 'Node' == vertex.__class__.__name__:
                 yield vertex.name_label.name, vertex
                 LOGGER.warning('Got node')  
 
     def walk(self) -> Generator[TreeMixin]:
-        """Generator that yields every node of the AST.
+        """Perform depth-first traversal of the tree.
 
-        Note that this will **not** work if there is a list directly inside another list.
-        But that shouldn't happen in an AST anyway.
+        Recursively walks through all child nodes in the tree, yielding each
+        node encountered. Handles both individual nodes and lists of nodes.
+        Sets parent references during traversal.
+        
+        Note: This will not work correctly if there are nested lists of nodes,
+        but this should not occur in a well-formed AST.
+        
+        Yields:
+            TreeMixin: Each node in the tree in depth-first order.
         """
         for child in self.children:
             if child is None:

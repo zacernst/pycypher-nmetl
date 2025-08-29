@@ -35,6 +35,7 @@ class AtomicFact:  # pylint: disable=too-few-public-methods
 
         Args:
             *_: Variable positional arguments (ignored).
+            parent_projection: Optional parent projection for lineage tracking.
         """
         self.lineage: Optional[Lineage | None] = None
         self.parent_projection: Optional[Projection | ProjectionList] = parent_projection
@@ -117,14 +118,34 @@ class FactRelationshipHasLabel(AtomicFact):
     def __init__(
         self, relationship_id: str, relationship_label: str, **kwargs
     ) -> None:
+        """Initialize a FactRelationshipHasLabel instance.
+        
+        Args:
+            relationship_id: The ID of the relationship.
+            relationship_label: The label of the relationship.
+            **kwargs: Additional keyword arguments passed to parent class.
+        """
         self.relationship_id = relationship_id
         self.relationship_label = relationship_label
         super().__init__(**kwargs)
 
     def __repr__(self):
+        """Return string representation of the relationship label fact.
+        
+        Returns:
+            String representation in format "RelationshipHasLabel: id label".
+        """
         return f"RelationshipHasLabel: {self.relationship_id} {self.relationship_label}"
 
     def __eq__(self, other: Any) -> bool:
+        """Check equality with another FactRelationshipHasLabel.
+        
+        Args:
+            other: Object to compare with.
+            
+        Returns:
+            True if both objects have same relationship_id and relationship_label.
+        """
         return (
             isinstance(other, FactRelationshipHasLabel)
             and self.relationship_id == other.relationship_id
@@ -132,6 +153,11 @@ class FactRelationshipHasLabel(AtomicFact):
         )
 
     def __hash__(self):
+        """Return hash value based on relationship_id and relationship_label.
+        
+        Returns:
+            Hash value for this instance.
+        """
         return hash((self.relationship_id, self.relationship_label))
 
 
@@ -153,12 +179,25 @@ class FactRelationshipHasAttributeWithValue(AtomicFact):
     def __init__(
         self, relationship_id: str, attribute: str, value: Any, **kwargs
     ) -> None:
+        """Initialize a FactRelationshipHasAttributeWithValue instance.
+        
+        Args:
+            relationship_id: The ID of the relationship.
+            attribute: The attribute name.
+            value: The attribute value.
+            **kwargs: Additional keyword arguments passed to parent class.
+        """
         self.relationship_id = relationship_id
         self.attribute = attribute
         self.value = value
         super().__init__(**kwargs)
 
     def __hash__(self):
+        """Return hash value based on relationship_id, attribute, and value.
+        
+        Returns:
+            Hash value for this instance.
+        """
         return hash((self.relationship_id, self.attribute, self.value))
 
 
@@ -173,15 +212,36 @@ class FactNodeHasAttributeWithValue(AtomicFact):
     """
 
     def __init__(self, node_id: str, attribute: str, value: Any, **kwargs):
+        """Initialize a FactNodeHasAttributeWithValue instance.
+        
+        Args:
+            node_id: The identifier of the node.
+            attribute: The attribute name.
+            value: The attribute value.
+            **kwargs: Additional keyword arguments passed to parent class.
+        """
         self.node_id = node_id
         self.attribute = attribute
         self.value = value
         super().__init__(**kwargs)
 
     def __repr__(self) -> str:
+        """Return string representation of the node attribute fact.
+        
+        Returns:
+            String representation in format "NodeHasAttributeWithValue: id attr value".
+        """
         return f"NodeHasAttributeWithValue: {self.node_id} {self.attribute} {self.value}"
 
     def __eq__(self, other: Any) -> bool:
+        """Check equality with another FactNodeHasAttributeWithValue.
+        
+        Args:
+            other: Object to compare with.
+            
+        Returns:
+            True if both objects have same node_id, attribute, and value.
+        """
         return (
             isinstance(other, FactNodeHasAttributeWithValue)
             and (self.node_id == other.node_id)
@@ -190,6 +250,11 @@ class FactNodeHasAttributeWithValue(AtomicFact):
         )
 
     def __hash__(self):
+        """Return hash value based on node_id, attribute, and value.
+        
+        Returns:
+            Hash value for this instance.
+        """
         return hash((self.node_id, self.attribute, self.value))
 
 
