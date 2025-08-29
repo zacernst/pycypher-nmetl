@@ -52,7 +52,7 @@ from pycypher.fact import (
 )
 from pycypher.node_classes import Collection
 from pycypher.query import NullResult
-from pycypher.solutions import ProjectionList, Projection
+from pycypher.solutions import Projection, ProjectionList
 from shared.helpers import ensure_bytes
 from shared.logger import LOGGER
 
@@ -89,10 +89,12 @@ class SubTriggerPair:
         Returns:
             int: A hash value for this instance.
         """
-        return hash((
-            tuple(self.sub),
-            self.trigger,
-        ))
+        return hash(
+            (
+                tuple(self.sub),
+                self.trigger,
+            )
+        )
 
 
 class QueueProcessor(ABC):  # pylint: disable=too-few-public-methods,too-many-instance-attributes
@@ -117,7 +119,7 @@ class QueueProcessor(ABC):  # pylint: disable=too-few-public-methods,too-many-in
         session_config: Optional[SessionConfig] = None,
         dask_client: Optional[Client] = None,
         max_buffer_size: int = 16,
-        buffer_timeout: float = .5,
+        buffer_timeout: float = 0.5,
     ) -> None:
         """
         Initialize a QueueProcessor instance.
@@ -400,7 +402,7 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
     def evaluate_fact_against_trigger(
         trigger, item, variable
     ) -> ProjectionList:
-        LOGGER.debug('evaluate_fact_against_trigger: %s:::%s', item, variable)
+        LOGGER.debug("evaluate_fact_against_trigger: %s:::%s", item, variable)
         result: ProjectionList = trigger.cypher._evaluate(
             QueueProcessor.get_fact_collection(),
             projection_list=ProjectionList(
@@ -450,7 +452,7 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
                 LOGGER.debug("Bad item in CheckFact... %s", item)
                 continue
             LOGGER.debug("Checking fact %s against triggers", item)
-            
+
             PARANOID = True
             if PARANOID:
                 while item not in QueueProcessor.get_fact_collection():
@@ -500,7 +502,10 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
                     # Seem to be checking FactNodeHasAttributeWithValue against relationship node,
                     # which is suspicious.
                     #### KLUDGE
-                    if isinstance(item, (FactNodeHasAttributeWithValue,)) and variable != 'r':
+                    if (
+                        isinstance(item, (FactNodeHasAttributeWithValue,))
+                        and variable != "r"
+                    ):
                         result: ProjectionList = CheckFactAgainstTriggersQueueProcessor.evaluate_fact_against_trigger(
                             trigger, item, variable
                         )
@@ -509,11 +514,14 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
                             # We expect that there was only one projection passed to the cypher object
                             if len(result.root.projection_list) != 1:
                                 raise ValueError(
-                                    "Expected only one projection passed to Cypher query, got: %s", result.root.projection_list
+                                    "Expected only one projection passed to Cypher query, got: %s",
+                                    result.root.projection_list,
                                 )
                             # Maybe shouldn't be for all variables -- just what's in the return statement
                             sub_trigger_pair: SubTriggerPair = SubTriggerPair(
-                                sub={variable: item.node_id},  # item.node_id is wrong
+                                sub={
+                                    variable: item.node_id
+                                },  # item.node_id is wrong
                                 trigger=trigger,
                                 projection_list=result,
                             )
@@ -586,41 +594,51 @@ class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-publi
         out = sub_trigger_pair.trigger.cypher._evaluate(
             QueueProcessor.get_fact_collection(),
             ProjectionList(
-                projection_list=[
-                    Projection(projection=sub_trigger_pair.sub)
-                ]
-            )
+                projection_list=[Projection(projection=sub_trigger_pair.sub)]
+            ),
         )
 
         # out.projection_list[0].parent.parent (contains s)
-        variable_to_set_substitution_list: list[str] = list(i for i in out.find_variable(sub_trigger_pair.trigger.variable_set) if i is not None)
-        if variable_to_set_substitution_list: 
+        variable_to_set_substitution_list: list[str] = list(
+            i
+            for i in out.find_variable(sub_trigger_pair.trigger.variable_set)
+            if i is not None
+        )
+        if variable_to_set_substitution_list:
             out = sub_trigger_pair.trigger.cypher._evaluate(
                 QueueProcessor.get_fact_collection(),
                 ProjectionList(
                     projection_list=[
-                        Projection(projection={sub_trigger_pair.trigger.variable_set: variable_to_set_substitution_list[0]})
+                        Projection(
+                            projection={
+                                sub_trigger_pair.trigger.variable_set: variable_to_set_substitution_list[
+                                    0
+                                ]
+                            }
+                        )
                     ]
-                )
+                ),
             )
         else:
             out = None
         if not out:
-            return None 
+            return None
         func_arg_dict = {
-            key: value.pythonify() if hasattr(value, 'pythonify') else value 
+            key: value.pythonify() if hasattr(value, "pythonify") else value
             for key, value in out[0].projection.items()
         }
-            
+
         function_result: Any = sub_trigger_pair.trigger.function(
             **func_arg_dict
         )
 
         # Convert to a Fact
-        computed_fact: FactNodeHasAttributeWithValue = FactNodeHasAttributeWithValue(
-            node_id=variable_to_set_substitution_list[0],
-            attribute=sub_trigger_pair.trigger.attribute_set,
-            value=function_result,
+        computed_fact: FactNodeHasAttributeWithValue = (
+            FactNodeHasAttributeWithValue(
+                node_id=variable_to_set_substitution_list[0],
+                attribute=sub_trigger_pair.trigger.attribute_set,
+                value=function_result,
+            )
         )
 
         return computed_fact
@@ -670,7 +688,6 @@ class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-publi
     #         self.outgoing_queue.put(fact_1)
     #         self.outgoing_queue.put(fact_2)
     #         self.outgoing_queue.put(fact_3)
-
 
     # @staticmethod
     # def _extract_splat_from_solution(

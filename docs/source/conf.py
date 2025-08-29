@@ -52,6 +52,7 @@ autoapi_dirs = [
     "../../packages/pycypher/src",
     "../../packages/nmetl/src",
     "../../packages/fastopendata/src",
+    "../../packages/shared/src",
 ]
 autoapi_options = [
     "members",

@@ -41,7 +41,7 @@ Development Setup
 7. Open a pull request on GitHub
 
 Code Style
----------
+----------
 
 We use ruff for code formatting and linting. Before submitting a pull request, please run:
 
@@ -60,7 +60,7 @@ We use pytest for testing. To run the tests:
     uv run pytest
 
 Documentation
-------------
+-------------
 
 We use Sphinx for documentation. To build the documentation:
 

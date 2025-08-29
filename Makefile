@@ -30,10 +30,10 @@ export FOUNDATIONDB_VERSION := "7.1.31"
 
 # ------------------------------------------------------------------------------
 # Main targets
-.PHONY: all clean clean_build veryclean format build install tests coverage docs publish data test_env fod_ingest
+.PHONY: pycypher nmetl fastopendata test tada docs
 
 # Default target - run the complete build process
-all: format veryclean build docs alltests
+all: format veryclean build docs test
 
 # ------------------------------------------------------------------------------
 # Cleaning targets
@@ -53,6 +53,9 @@ clean:
 	rm -rfv ./dist/*
 	rm -rfv ${COVERAGE_DIR}
 
+test:
+	(uv run pytest ./tests/test_eval.py)
+
 # ------------------------------------------------------------------------------
 # Development targets
 
@@ -66,8 +69,8 @@ format:
 build:
 	@echo "Building packages..."
 	@for version in ${SUPPORTED_PYTHON_VERSIONS}; do \
-		echo "Building with Python $$version..." && \
-		uv run --python $$version hatch build -t wheel || exit 1; \
+		echo "Building with Python version ${PYTHON_VERSION}..." && \
+		uv run --python $version hatch build -t wheel || exit 1; \
 	done	
 
 # Install packages in development mode
@@ -80,45 +83,17 @@ install: build
 # ------------------------------------------------------------------------------
 # Testing targets
 
-# Run tests
-tests: install 
-	@echo "Running tests..."
-	uv run --python ${PYTHON_VERSION} pytest -vv . && \
-	echo "🎉\n"
-
-
-test: tests
-
-alltests: 
-	@echo "Running tests..."
-	@for version in ${SUPPORTED_PYTHON_VERSIONS}; do \
-		echo "Builds and tests with Python $$version..." && \
-		uv run --python $$version hatch build -t wheel || exit 1; \
-		uv run --python $$version pip install --upgrade -e . || exit 1; \
-		uv run --python $$version pytest -vv ${TESTS_DIR} || exit 1; \
-		echo "🎉\n"; \
-	done	
-
 # Run tests with coverage
 coverage: install
 	@echo "Running tests with coverage..."
-	uv run pytest \
-		--cov=${PACKAGES_DIR}/pycypher/src/pycypher \
-		--cov=${PACKAGES_DIR}/nmetl/src/nmetl \
-		--cov-report=html:${COVERAGE_DIR}
+	uv run pytest --cov-report html:${COVERAGE_DIR} --cov
 
 # ------------------------------------------------------------------------------
 # Documentation targets
 
-# Build documentation
-docs: install
+docs:
 	@echo "Building documentation..."
-	cd ${DOCS_DIR} && \
-	uv run make clean && \
-	uv run make html && \
-	uv run make singlehtml && \
-	cp -rfv ${DOCS_DIR}/build/html/* ${DOCS_DIR}/
-	
+	cd ${DOCS_DIR} && uv run make html
 
 # ------------------------------------------------------------------------------
 # Release and publishing targets
@@ -150,7 +125,6 @@ fod_ingest: data
 
 # ------------------------------------------------------------------------------
 # Package-specific targets
-.PHONY: pycypher nmetl fastopendata tada
 
 # Build and install only pycypher
 pycypher:

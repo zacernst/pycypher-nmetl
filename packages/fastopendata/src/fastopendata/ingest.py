@@ -6,7 +6,7 @@ import base64
 import functools
 import json
 import pickle
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, LiteralString
 
 import dask
 import dill
@@ -20,7 +20,6 @@ from prometheus_client import start_http_server
 from pycypher.fact_collection import FactCollection
 from pycypher.fact_collection.foundationdb import FoundationDBFactCollection
 from shared.logger import LOGGER
-from typing import LiteralString
 
 LOGGER.setLevel("INFO")
 

@@ -1,67 +1,39 @@
 # """All the tests."""
 
-from unittest.mock import patch
 import logging
 import pathlib
-from typing import Dict, TYPE_CHECKING, Any, List
-    
-from pysat.solvers import Glucose42
+from typing import TYPE_CHECKING, Any, Dict, List
+from unittest.mock import patch
 
 import pytest
-from pycypher.fact import (
-    AtomicFact,
-    FactNodeHasAttributeWithValue,
-    FactNodeHasLabel,
-    FactRelationshipHasLabel,
-    FactRelationshipHasSourceNode,
-    FactRelationshipHasTargetNode,
-)
+from nmetl.queue_processor import (CheckFactAgainstTriggersQueueProcessor,
+                                   SubTriggerPair, TriggeredLookupProcessor)
+from nmetl.session import Session
+from nmetl.trigger import (NodeRelationship, NodeRelationshipTrigger,
+                           VariableAttribute, VariableAttributeTrigger)
+from pycypher.cypher_parser import CypherParser
+from pycypher.fact import (AtomicFact, FactNodeHasAttributeWithValue,
+                           FactNodeHasLabel, FactRelationshipHasLabel,
+                           FactRelationshipHasSourceNode,
+                           FactRelationshipHasTargetNode)
 from pycypher.fact_collection import FactCollection
 from pycypher.fact_collection.simple import SimpleFactCollection
-from pycypher.cypher_parser import CypherParser
-from pycypher.query import QuerySourceNodeOfRelationship, QueryTargetNodeOfRelationship
-from pycypher.node_classes import (
-    Aggregation,
-    Alias,
-    AliasedName,
-    And,
-    Collect,
-    Collection,
-    Literal,
-    Mapping,
-    MappingSet,
-    Match,
-    Node,
-    NodeNameLabel,
-    Not,
-    ObjectAsSeries,
-    ObjectAttributeLookup,
-    Or,
-    Relationship,
-    RelationshipChain,
-    RelationshipChainList,
-    RelationshipLeftRight,
-    Return,
-    Size,
-    Where,
-    WithClause,
-    get_all_substitutions,
-    get_variable_substitutions,
-    model_to_projection,
-    models_to_projection_list,
-)
-from pycypher.query import NullResult
+from pycypher.node_classes import (Aggregation, Alias, AliasedName, And,
+                                   Collect, Collection, Literal, Mapping,
+                                   MappingSet, Match, Node, NodeNameLabel, Not,
+                                   ObjectAsSeries, ObjectAttributeLookup, Or,
+                                   Relationship, RelationshipChain,
+                                   RelationshipChainList,
+                                   RelationshipLeftRight, Return, Size, Where,
+                                   WithClause, get_all_substitutions,
+                                   get_variable_substitutions,
+                                   model_to_projection,
+                                   models_to_projection_list)
+from pycypher.query import (NullResult, QuerySourceNodeOfRelationship,
+                            QueryTargetNodeOfRelationship)
 from pycypher.solutions import Projection, ProjectionList
+from pysat.solvers import Glucose42
 from shared.logger import LOGGER
-from nmetl.session import Session
-from nmetl.trigger import (
-    VariableAttribute,
-    VariableAttributeTrigger,
-    NodeRelationship,
-    VariableAttributeTrigger,
-    NodeRelationshipTrigger,
-)
-from nmetl.queue_processor import TriggeredLookupProcessor, CheckFactAgainstTriggersQueueProcessor, SubTriggerPair
 
 if TYPE_CHECKING:
     from pycypher.solutions import Projection, ProjectionList
@@ -1677,3 +1649,69 @@ def test_evaluate_match_clause(city_state_fact_collection):
 
     )
     assert output == expected
+
+
+def test_collect_aggregated_aliases_in_with_clause_1():
+    query = (
+        """MATCH (c:City)-[r:In]->(s:State) """
+        """WITH SIZE(COLLECT(c.has_beach)) AS beach_list, s.looks_like_mitten AS mitten_state """
+        """RETURN mitten_state AS mitteny, beach_list AS beach_things"""
+    )
+    parsed: CypherParser = CypherParser(query)
+    output = parsed.parse_tree.cypher.match_clause.with_clause.aggregated_aliases()
+    assert len(output) == 1
+    assert isinstance(output[0], Alias)
+    assert output[0].alias == 'beach_list'
+    assert isinstance(output[0].reference, Size)
+    assert isinstance(output[0].reference.collect, Collect)
+    assert output[0].reference.collect.object_attribute_lookup.object == 'c'
+    assert output[0].reference.collect.object_attribute_lookup.attribute == 'has_beach'
+
+
+def test_collect_aggregated_aliases_in_with_clause_2():
+    query = (
+        """MATCH (c:City)-[r:In]->(s:State) """
+        """WITH c.has_beach AS beachythingy, s.looks_like_mitten AS mitten_state """
+        """RETURN mitten_state AS mitteny, beachythingy AS beach_things"""
+    )
+    parsed: CypherParser = CypherParser(query)
+    output = parsed.parse_tree.cypher.match_clause.with_clause.aggregated_aliases()
+    assert not output
+
+
+def test_collect_aggregated_aliases_in_with_clause_3():
+    query = (
+        """MATCH (c:City)-[r:In]->(s:State) """
+        """WITH COLLECT(c.has_beach) AS beachythingy, SIZE(COLLECT(c.has_beach)) AS otherbeachythingy, s.looks_like_mitten AS mitten_state """
+        """RETURN mitten_state AS mitteny, beachythingy AS beach_things"""
+    )
+    parsed: CypherParser = CypherParser(query)
+    output = parsed.parse_tree.cypher.match_clause.with_clause.aggregated_aliases()
+    assert len(output) == 2
+
+
+def test_collect_non_aggregated_aliases_in_with_clause_1():
+    query = (
+        """MATCH (c:City)-[r:In]->(s:State) """
+        """WITH c.has_beach AS beachythingy, s.looks_like_mitten AS mitten_state """
+        """RETURN mitten_state AS mitteny, beachythingy AS beach_things"""
+    )
+    parsed: CypherParser = CypherParser(query)
+    output = parsed.parse_tree.cypher.match_clause.with_clause.non_aggregated_aliases()
+    assert len(output) == 2
+    assert isinstance(output[0], Alias)
+    assert output[0].alias == 'beachythingy'
+
+
+def test_collect_aggregated_aliases_in_with_clause_2():
+    query = (
+        """MATCH (c:City)-[r:In]->(s:State) """
+        """WITH c.has_beach AS beachythingy, s.looks_like_mitten AS mitten_state """
+        """RETURN mitten_state AS mitteny, beachythingy AS beach_things"""
+    )
+    parsed: CypherParser = CypherParser(query)
+    output = parsed.parse_tree.cypher.match_clause.with_clause.non_aggregated_aliases()
+    assert len(output) == 2
+    assert isinstance(output[0], Alias)
+    assert output[0].alias == 'beachythingy'
+    assert output[0].reference.is_aggregation is False

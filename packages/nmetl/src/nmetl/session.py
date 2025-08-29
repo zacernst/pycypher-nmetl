@@ -19,12 +19,12 @@ from types import MappingProxyType
 from typing import (
     TYPE_CHECKING,
     Any,
-    Self,
     Callable,
     Dict,
     Generator,
     List,
     Optional,
+    Self,
     Set,
     Type,
 )
@@ -163,7 +163,6 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
 
         self.trigger_dict = {}
         if create_queue_generators:
-
             self.raw_input_queue = QueueGenerator(
                 name="RawInput",
                 port=RAW_INPUT_QUEUE_PORT,
@@ -190,7 +189,6 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
                 port=TRIGGERED_LOOKUP_PROCESSOR_QUEUE_SIZE,
             )
             self.queue_list.append(self.triggered_lookup_processor_queue)
-
 
             self.raw_data_processor = RawDataProcessor(
                 incoming_queue=self.raw_input_queue,

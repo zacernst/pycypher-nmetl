@@ -41,13 +41,13 @@ def ensure_uri(uri: str | ParseResult | Path) -> ParseResult:
 
 def decode(encoded: str) -> Any:
     """Decode a base64 encoded pickled object.
-    
+
     Args:
         encoded: Base64 encoded string containing pickled object data.
-        
+
     Returns:
         The decoded Python object.
-        
+
     Raises:
         ValueError: If decoding fails due to invalid data.
     """
@@ -60,14 +60,14 @@ def decode(encoded: str) -> Any:
 
 def encode(obj: Any, to_bytes: bool = False) -> str | bytes:
     """Encode a Python object as a base64 string.
-    
+
     Args:
         obj: Python object to encode.
         to_bytes: If True, return bytes instead of string.
-        
+
     Returns:
         Base64 encoded representation as string or bytes.
-        
+
     Raises:
         ValueError: If encoding fails due to unpickleable object.
     """
@@ -83,14 +83,14 @@ def encode(obj: Any, to_bytes: bool = False) -> str | bytes:
 
 def ensure_bytes(value: Any, **kwargs) -> bytes:
     """Convert a value to bytes if it isn't already.
-    
+
     This is a utility function to ensure consistent byte representation
     of values. Should be removed once proper type checking is in place.
-    
+
     Args:
         value: Value to convert to bytes.
         **kwargs: Additional arguments passed to encode() method.
-        
+
     Returns:
         Byte representation of the value, or None if value is None.
     """

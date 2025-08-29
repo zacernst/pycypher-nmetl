@@ -30,7 +30,7 @@ class TreeMixin(ABC):
 
     def print_tree(self):
         """Print a visual representation of the tree using Rich formatting.
-        
+
         Uses the Rich library to display a formatted tree structure
         in the console with colors and indentation.
         """
@@ -39,10 +39,10 @@ class TreeMixin(ABC):
     @property
     def children(self) -> Generator[TreeMixin | str | None]:
         """Generate child nodes of this tree node.
-        
+
         This property should be overridden by subclasses to yield
         their actual child nodes.
-        
+
         Yields:
             Child nodes, strings, or None values.
         """
@@ -51,10 +51,10 @@ class TreeMixin(ABC):
     @abstractmethod
     def tree(self) -> Tree:  # pragma: no cover
         """Generate a Rich Tree representation of this node.
-        
+
         This method must be implemented by subclasses to provide
         a visual tree representation suitable for Rich formatting.
-        
+
         Returns:
             Rich Tree object representing this node and its children.
         """
@@ -63,32 +63,35 @@ class TreeMixin(ABC):
         self,
     ) -> Generator[Tuple[str, TreeMixin], None, None]:
         """Extract variable names and their corresponding nodes from the tree.
-        
+
         Walks through the tree to find nodes with name_label attributes
         and yields tuples of (variable_name, node).
-        
+
         Yields:
             Tuples of (variable_name, tree_node) for nodes with labels.
         """
         for vertex in self.walk():
-            if name_label := (getattr(vertex, "name_label", None) or getattr(vertex, "name_label", None)):
+            if name_label := (
+                getattr(vertex, "name_label", None)
+                or getattr(vertex, "name_label", None)
+            ):
                 yield name_label.name, vertex
 
     def get_vertex_variables(
         self,
     ) -> Generator[Tuple[str, TreeMixin], None, None]:
         """Extract vertex variables specifically from Node objects in the tree.
-        
+
         Walks through the tree to find Node class instances and yields
         tuples of their variable names and node objects.
-        
+
         Yields:
             Tuples of (variable_name, node) for Node class instances.
         """
         for vertex in self.walk():
-            if 'Node' == vertex.__class__.__name__:
+            if "Node" == vertex.__class__.__name__:
                 yield vertex.name_label.name, vertex
-                LOGGER.warning('Got node')  
+                LOGGER.warning("Got node")
 
     def walk(self) -> Generator[TreeMixin]:
         """Perform depth-first traversal of the tree.
@@ -96,10 +99,10 @@ class TreeMixin(ABC):
         Recursively walks through all child nodes in the tree, yielding each
         node encountered. Handles both individual nodes and lists of nodes.
         Sets parent references during traversal.
-        
+
         Note: This will not work correctly if there are nested lists of nodes,
         but this should not occur in a well-formed AST.
-        
+
         Yields:
             TreeMixin: Each node in the tree in depth-first order.
         """

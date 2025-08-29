@@ -58,6 +58,7 @@ dependencies = [
     "grafana-client>=4.3.2",
     "pyroscope-io>=0.8.11",
     "redis>=6.2.0",
+    "python-sat>=1.8.dev20",
 ]
 
 [[project.authors]]

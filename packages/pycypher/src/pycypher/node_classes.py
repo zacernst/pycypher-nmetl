@@ -4,27 +4,27 @@ Abstract Syntax Tree (AST) for Cypher queries.
 """  # pylint: disable=too-many-lines
 
 from __future__ import annotations
+
 import abc
 import collections
-import uuid
-from pysat.solvers import Glucose42
-import itertools
 import datetime
+import itertools
+import uuid
 from typing import Any, Dict, Generator, List, Optional, Set
 
 from pycypher.fact_collection import FactCollection
 from pycypher.query import (
     NullResult,
+    QueryNodeLabel,
     QuerySourceNodeOfRelationship,
     QueryTargetNodeOfRelationship,
-    QueryNodeLabel,
     QueryValueOfNodeAttribute,
 )
 from pycypher.solutions import Projection, ProjectionList
 from pycypher.tree_mixin import TreeMixin
+from pysat.solvers import Glucose42
 from rich.tree import Tree
 from shared.logger import LOGGER
-
 
 LOGGER.setLevel("WARNING")
 
@@ -45,7 +45,9 @@ def model_to_projection(
     """
     assertions: List[int] = [x for x in found_model if x > 0]
     replacement_dict: dict[str, str] = {
-        assignment_dict[x][0]: assignment_dict[x][1] for x in assertions if x in assignment_dict
+        assignment_dict[x][0]: assignment_dict[x][1]
+        for x in assertions
+        if x in assignment_dict
     }
     projection: Projection = Projection(projection=replacement_dict)
     return projection
@@ -80,11 +82,11 @@ def get_variable_substitutions(
     relationship_chain_list: RelationshipChainList,
 ):
     """Get possible variable substitutions for a relationship chain list.
-    
+
     Args:
         fact_collection: The collection of facts to query.
         relationship_chain_list: The list of relationship chains to analyze.
-        
+
     Returns:
         Dict mapping variable names to lists of possible substitution values.
     """
@@ -122,12 +124,12 @@ def get_free_variable_substitutions(
     projection: Projection,
 ):
     """Get possible substitutions for free variables in a relationship chain list.
-    
+
     Args:
         fact_collection: The collection of facts to query.
         relationship_chain_list: The list of relationship chains to analyze.
         projection: Current projection containing bound variables.
-        
+
     Returns:
         Dict mapping free variable names to lists of possible substitution values.
     """
@@ -177,12 +179,12 @@ def get_all_substitutions(
     fact_collection: FactCollection, relationship_chain_list, projection_list
 ) -> ProjectionList:
     """Get all possible variable substitutions for a relationship chain list.
-    
+
     Args:
         fact_collection: The collection of facts to query.
         relationship_chain_list: The list of relationship chains to analyze.
         projection_list: List of projections to consider.
-        
+
     Returns:
         ProjectionList containing all possible substitutions.
     """
@@ -205,9 +207,9 @@ def get_all_substitutions(
     LOGGER.debug("projection_list: %s", projection_list)
     var_sub_dict = {}
     inverse_var_sub_dict = {}
-    free_variable_substitutions.update({
-        i: [j] for i, j in projection_list[0].projection.items()
-    })
+    free_variable_substitutions.update(
+        {i: [j] for i, j in projection_list[0].projection.items()}
+    )
     LOGGER.debug(
         "with stipulated free_variable_substitutions: %s",
         free_variable_substitutions,
@@ -232,7 +234,7 @@ def get_all_substitutions(
 
 class EvaluationError(Exception):
     """Custom exception class for evaluation errors.
-    
+
     Raised when an error occurs during the evaluation of expressions
     in the Cypher query processing pipeline.
     """
@@ -240,10 +242,10 @@ class EvaluationError(Exception):
 
 class Evaluable(TreeMixin, abc.ABC):  # pylint: disable=too-few-public-methods
     """Abstract base class representing an evaluable entity.
-    
+
     This class provides the foundation for all objects that can be evaluated
     within the context of a fact collection and projection.
-    
+
     Attributes:
         parent_projection: Optional parent projection or projection list.
     """
@@ -252,7 +254,7 @@ class Evaluable(TreeMixin, abc.ABC):  # pylint: disable=too-few-public-methods
         self, parent_projection: Optional[Projection | ProjectionList] = None
     ):
         """Initialize an Evaluable instance.
-        
+
         Args:
             parent_projection: Optional parent projection or projection list.
         """
@@ -263,7 +265,7 @@ class Evaluable(TreeMixin, abc.ABC):  # pylint: disable=too-few-public-methods
     @property
     def is_aggregation(self) -> bool:
         """Check if this evaluable contains aggregation functions.
-        
+
         Returns:
             True if any child node is an Aggregation, False otherwise.
         """
@@ -286,7 +288,7 @@ class Cypher(TreeMixin):
 
     def __init__(self, cypher: Query):
         """Initialize a Cypher AST root node.
-        
+
         Args:
             cypher: The root Query node of the AST.
         """
@@ -372,10 +374,11 @@ class Cypher(TreeMixin):
 
 class Aggregation:
     """Mix-in class for functions that aggregate values into lists.
-    
+
     This class serves as a marker interface to identify aggregation functions
     like COLLECT, COUNT, SUM, etc. in the query AST.
     """
+
     pass
 
 
@@ -390,7 +393,7 @@ class Collection(Evaluable, TreeMixin):  # i.e. a list
 
     def __init__(self, values: List[Evaluable], **kwargs):
         """Initialize a Collection with evaluable items.
-        
+
         Args:
             values: List of evaluable items to include in the collection.
             **kwargs: Additional keyword arguments passed to parent classes.
@@ -449,7 +452,7 @@ class Distinct(Evaluable, TreeMixin):
 
     def __init__(self, collection: Collection, **kwargs):
         """Initialize a Distinct operation.
-        
+
         Args:
             collection: The collection to filter for distinct values.
             **kwargs: Additional keyword arguments passed to parent classes.
@@ -488,8 +491,7 @@ class Distinct(Evaluable, TreeMixin):
     def _evaluate(
         self,
         fact_collection: FactCollection,
-        start_entity_var_id_mapping: Dict[str, Any]
-        | List[Dict[str, Any]] = [],
+        start_entity_var_id_mapping: Dict[str, Any] | List[Dict[str, Any]] = [],
     ) -> Any:
         """
         Evaluate the collection and remove duplicates.
@@ -525,7 +527,7 @@ class Size(Evaluable, TreeMixin, Aggregation):
 
     def __init__(self, collect: Collect, **kwargs):
         """Initialize a Size operation.
-        
+
         Args:
             collect: The Collect operation whose size to evaluate.
             **kwargs: Additional keyword arguments passed to parent classes.
@@ -555,11 +557,7 @@ class Size(Evaluable, TreeMixin, Aggregation):
         )
         return Literal(
             value=len(
-                [
-                    i
-                    for i in collection.values
-                    if not isinstance(i, NullResult)
-                ],
+                [i for i in collection.values if not isinstance(i, NullResult)],
             ),
             parent_projection=projection_list,
         )
@@ -582,7 +580,7 @@ class Collect(Evaluable, TreeMixin, Aggregation):
         self, object_attribute_lookup: ObjectAttributeLookup, **kwargs
     ):
         """Initialize a Collect operation.
-        
+
         Args:
             object_attribute_lookup: The attribute lookup to collect values from.
             **kwargs: Additional keyword arguments passed to parent classes.
@@ -592,7 +590,7 @@ class Collect(Evaluable, TreeMixin, Aggregation):
 
     def disaggregate(self):
         """Return the disaggregated form of this collection.
-        
+
         Returns:
             The underlying object attribute lookup.
         """
@@ -660,7 +658,7 @@ class Query(Evaluable, TreeMixin):
 
     def __init__(self, match_clause: Match, return_clause: Return, **kwargs):
         """Initialize a Query with MATCH and RETURN clauses.
-        
+
         Args:
             match_clause: The MATCH clause of the query.
             return_clause: The RETURN clause of the query.
@@ -713,7 +711,7 @@ class Predicate(TreeMixin):
 
     def __init__(self, left_side: Evaluable, right_side: Evaluable):
         """Initialize a Predicate with left and right sides.
-        
+
         Args:
             left_side: The left side of the predicate.
             right_side: The right side of the predicate.
@@ -728,9 +726,7 @@ class Predicate(TreeMixin):
             yield self.right_side
 
     def __repr__(self) -> str:
-        return (
-            f"{self.__class__.__name__}({self.left_side}, {self.right_side})"
-        )
+        return f"{self.__class__.__name__}({self.left_side}, {self.right_side})"
 
 
 class BinaryBoolean(Predicate, TreeMixin):
@@ -749,7 +745,7 @@ class BinaryBoolean(Predicate, TreeMixin):
         right_side: Evaluable,
     ) -> None:
         """Initialize a BinaryBoolean operation.
-        
+
         Args:
             left_side: The left operand of the binary operation.
             right_side: The right operand of the binary operation.
@@ -758,9 +754,7 @@ class BinaryBoolean(Predicate, TreeMixin):
         self.right_side = right_side
 
     def __repr__(self) -> str:
-        return (
-            f"{self.__class__.__name__}({self.left_side}, {self.right_side})"
-        )
+        return f"{self.__class__.__name__}({self.left_side}, {self.right_side})"
 
     def tree(self) -> Tree:
         t: Tree = Tree(self.__class__.__name__)
@@ -780,7 +774,7 @@ class AliasedName(Evaluable, TreeMixin):
 
     def __init__(self, name: str, **kwargs):
         """Initialize an AliasedName.
-        
+
         Args:
             name: The name to be aliased.
             **kwargs: Additional keyword arguments passed to parent classes.
@@ -810,7 +804,7 @@ class AliasedName(Evaluable, TreeMixin):
 
 class Equals(BinaryBoolean, Evaluable):
     """Binary infix operator for equality.
-    
+
     Evaluates whether two expressions are equal to each other.
     """
 
@@ -838,7 +832,7 @@ class Equals(BinaryBoolean, Evaluable):
 
 class LessThan(Predicate, Evaluable):
     """Binary infix operator for less than comparison.
-    
+
     Evaluates whether the left expression is less than the right expression.
     """
 
@@ -851,8 +845,7 @@ class LessThan(Predicate, Evaluable):
     def _evaluate(
         self,
         fact_collection: FactCollection,
-        start_entity_var_id_mapping: Dict[str, str]
-        | List[Dict[str, Any]] = {},
+        start_entity_var_id_mapping: Dict[str, str] | List[Dict[str, Any]] = {},
     ) -> Any:
         if isinstance(start_entity_var_id_mapping, list):
             raise EvaluationError(f"Error while evaluating LessThan: {self}")
@@ -872,9 +865,9 @@ class LessThan(Predicate, Evaluable):
 
 class GreaterThan(Predicate, Evaluable):
     """Binary infix operator for greater than comparison.
-    
+
     Evaluates whether the left expression is greater than the right expression.
-    
+
     Attributes:
         left_side_types: Expected types for the left operand (int or float).
         right_side_types: Expected types for the right operand (int or float).
@@ -892,13 +885,10 @@ class GreaterThan(Predicate, Evaluable):
     def _evaluate(
         self,
         fact_collection: FactCollection,
-        start_entity_var_id_mapping: Dict[str, str]
-        | List[Dict[str, Any]] = {},
+        start_entity_var_id_mapping: Dict[str, str] | List[Dict[str, Any]] = {},
     ) -> Any:
         if isinstance(start_entity_var_id_mapping, list):
-            raise EvaluationError(
-                f"Error while evaluating GreaterThan: {self}"
-            )
+            raise EvaluationError(f"Error while evaluating GreaterThan: {self}")
         left_value = self.left_side._evaluate(
             fact_collection,
             start_entity_var_id_mapping=start_entity_var_id_mapping,
@@ -912,9 +902,9 @@ class GreaterThan(Predicate, Evaluable):
 
 class Subtraction(Predicate, Evaluable):
     """Binary subtraction operator.
-    
+
     Performs arithmetic subtraction between two numeric expressions.
-    
+
     Attributes:
         left_side_types: Expected types for the left operand (float or int).
         right_side_types: Expected types for the right operand (float or int).
@@ -932,13 +922,10 @@ class Subtraction(Predicate, Evaluable):
     def _evaluate(
         self,
         fact_collection: FactCollection,
-        start_entity_var_id_mapping: Dict[str, str]
-        | List[Dict[str, Any]] = {},
+        start_entity_var_id_mapping: Dict[str, str] | List[Dict[str, Any]] = {},
     ) -> Any:
         if isinstance(start_entity_var_id_mapping, list):
-            raise EvaluationError(
-                f"Error while evaluating Subtraction: {self}"
-            )
+            raise EvaluationError(f"Error while evaluating Subtraction: {self}")
         left_value = self.left_side._evaluate(
             fact_collection,
             start_entity_var_id_mapping=start_entity_var_id_mapping,
@@ -969,8 +956,7 @@ class Multiplication(Predicate, Evaluable):
     def _evaluate(
         self,
         fact_collection: FactCollection,
-        start_entity_var_id_mapping: Dict[str, str]
-        | List[Dict[str, Any]] = {},
+        start_entity_var_id_mapping: Dict[str, str] | List[Dict[str, Any]] = {},
     ) -> Any:
         if isinstance(start_entity_var_id_mapping, list):
             raise EvaluationError(
@@ -1006,8 +992,7 @@ class Division(Predicate, Evaluable):
     def _evaluate(
         self,
         fact_collection: FactCollection,
-        start_entity_var_id_mapping: Dict[str, str]
-        | List[Dict[str, Any]] = {},
+        start_entity_var_id_mapping: Dict[str, str] | List[Dict[str, Any]] = {},
     ) -> Any:
         if isinstance(start_entity_var_id_mapping, list):
             raise EvaluationError(f"Error while evaluating Division: {self}")
@@ -1024,10 +1009,10 @@ class Division(Predicate, Evaluable):
 
 class ObjectAttributeLookup(Evaluable, TreeMixin):
     """A node that represents the value of an attribute of a node or relationship.
-    
+
     Represents expressions of the form ``node.attribute`` where we want to
     retrieve the value of a specific attribute from a node or relationship.
-    
+
     Attributes:
         object: The name of the object (node or relationship variable).
         attribute: The name of the attribute to look up.
@@ -1035,7 +1020,7 @@ class ObjectAttributeLookup(Evaluable, TreeMixin):
 
     def __init__(self, object: str, attribute: str, **kwargs):
         """Initialize an ObjectAttributeLookup.
-        
+
         Args:
             object: The name of the object (node or relationship variable).
             attribute: The name of the attribute to look up.
@@ -1087,7 +1072,7 @@ class Alias(Evaluable, TreeMixin):
 
     def __init__(self, reference: Evaluable, alias: str, **kwargs):
         """Initialize an Alias.
-        
+
         Args:
             reference: The original reference to be aliased.
             alias: The alias name for the reference.
@@ -1102,7 +1087,7 @@ class Alias(Evaluable, TreeMixin):
 
     def disaggregate(self) -> Alias:
         """Return a disaggregated version of this alias.
-        
+
         Returns:
             A new Alias with the reference disaggregated.
         """
@@ -1141,10 +1126,10 @@ class Alias(Evaluable, TreeMixin):
 
 class ReturnProjection(Evaluable, TreeMixin):
     """Represents a projection in a RETURN clause.
-    
+
     This class handles the projection of specific fields or expressions
     in the RETURN clause of a Cypher query.
-    
+
     Attributes:
         lookups: List of aliases representing the fields to project.
     """
@@ -1188,10 +1173,10 @@ class ReturnProjection(Evaluable, TreeMixin):
 
 class ObjectAsSeries(Evaluable, TreeMixin):
     """Represents a series of object projections.
-    
+
     This class handles multiple object attribute lookups that are
     projected as a series in WITH or RETURN clauses.
-    
+
     Attributes:
         lookups: List of aliases representing the object projections.
     """
@@ -1218,13 +1203,15 @@ class ObjectAsSeries(Evaluable, TreeMixin):
         fact_collection: FactCollection,
         projection: Projection,
     ) -> Projection:
-        result: Projection = Projection({
-            lookup.alias: lookup.reference._evaluate(
-                fact_collection,
-                projection=projection,
-            )
-            for lookup in self.lookups
-        })
+        result: Projection = Projection(
+            {
+                lookup.alias: lookup.reference._evaluate(
+                    fact_collection,
+                    projection=projection,
+                )
+                for lookup in self.lookups
+            }
+        )
         return result
 
 
@@ -1239,8 +1226,8 @@ class WithClause(Evaluable, TreeMixin):
 
     def __init__(self, lookups: ObjectAsSeries, **kwargs):
         self.lookups = lookups
-        self.incoming_projection_list: ProjectionList = (
-            ProjectionList([])
+        self.incoming_projection_list: ProjectionList = ProjectionList(
+            []
         )  # Only for unit testing
         Evaluable.__init__(self, **kwargs)
 
@@ -1327,9 +1314,7 @@ class WithClause(Evaluable, TreeMixin):
 
         non_aggregated_projection_list.unique()
 
-        disaggregated_with_clause: WithClause = (
-            self.disaggregated_with_clause()
-        )
+        disaggregated_with_clause: WithClause = self.disaggregated_with_clause()
 
         disaggregated_projection_solutions: ProjectionList = (
             disaggregated_with_clause._evaluate(
@@ -1343,13 +1328,17 @@ class WithClause(Evaluable, TreeMixin):
 
         try:
             for solution in disaggregated_projection_solutions.zip(
-                self.incoming_projection_list # sshould this be `projectin_list`?
+                self.incoming_projection_list  # sshould this be `projectin_list`?
             ):
                 for p, v in bucketed.items():
                     if p < solution:
                         v += solution
         except:
-            LOGGER.error("Error while bucketing solutions... disaggregated_projection_solutions: %s\nincoming_projection_list %s\n", disaggregated_projection_solutions, self.incoming_projection_list)
+            LOGGER.error(
+                "Error while bucketing solutions... disaggregated_projection_solutions: %s\nincoming_projection_list %s\n",
+                disaggregated_projection_solutions,
+                self.incoming_projection_list,
+            )
 
         # zip together the disaggregated_projection_solutions wtih the self.incoming_projection_list
 
@@ -1413,9 +1402,7 @@ class Match(Evaluable, TreeMixin):
         Evaluable.__init__(self, **kwargs)
 
     def __repr__(self) -> str:
-        return (
-            f"Match({self.pattern}, {self.where_clause}, {self.with_clause})"
-        )
+        return f"Match({self.pattern}, {self.where_clause}, {self.with_clause})"
 
     def tree(self) -> Tree:
         t: Tree = Tree(self.__class__.__name__)
@@ -1575,22 +1562,22 @@ class Match(Evaluable, TreeMixin):
         # projection: Projection = projection_list[0] if len(projection_list) > 0 else Projection(projection={}) # Assuming only one projection in ProjectionList
         if projection_list:
             for variable, instance in projection_list[0].projection.items():
-                projection_assumption_tuple: tuple[str, str] = tuple([
-                    variable,
-                    instance,
-                ])
+                projection_assumption_tuple: tuple[str, str] = tuple(
+                    [
+                        variable,
+                        instance,
+                    ]
+                )
                 for (
                     assertion,
                     assumption_tuple,
                 ) in variable_substitution_dict.items():
                     if projection_assumption_tuple == assumption_tuple:
                         assumptions.append(assertion)
-        
+
         # There are elements in the projection_list but nothing satisfies them:
         if projection_list and not assumptions:
             return ProjectionList(projection_list=[])
-            
-
 
         all_assertions: list[tuple[int, ...]] = (
             [[i] for i in assumptions]
@@ -1887,9 +1874,7 @@ class Relationship(TreeMixin):
     """Relationships may contain a variable name, label, or mapping."""
 
     def __init__(self, name_label: NodeNameLabel):
-        self.name_label = (
-            name_label  # This should be ``label`` for consistency
-        )
+        self.name_label = name_label  # This should be ``label`` for consistency
         self.name = None
 
     def __repr__(self):
@@ -2303,7 +2288,9 @@ class RelationshipChainList(TreeMixin):
         fact_collection: FactCollection,
         projection: Projection,
     ) -> bool:
-        raise Exception('Called _evaluate on RelationshipChainList. Have to refactor Match._evaluate later...')
+        raise Exception(
+            "Called _evaluate on RelationshipChainList. Have to refactor Match._evaluate later..."
+        )
         evaluation: bool = all(
             relationship._evaluate(fact_collection, projection=projection)
             for relationship in self.relationships
@@ -2382,8 +2369,7 @@ class Addition(Evaluable, Predicate):
     def _evaluate(
         self,
         fact_collection: FactCollection,
-        start_entity_var_id_mapping: Dict[str, str]
-        | List[Dict[str, Any]] = {},
+        start_entity_var_id_mapping: Dict[str, str] | List[Dict[str, Any]] = {},
     ) -> Any:
         """
         Evaluate this Addition node.
@@ -2440,9 +2426,7 @@ class Literal(Evaluable, TreeMixin):
         return self
 
     def __eq__(self, other) -> Literal:
-        return Literal(
-            isinstance(other, Literal) and self.value == other.value
-        )
+        return Literal(isinstance(other, Literal) and self.value == other.value)
 
     def __and__(self, other) -> bool:
         if not isinstance(

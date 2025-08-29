@@ -27,8 +27,8 @@ from typing import (
     Any,
     Dict,
     Generator,
-    Literal,
     List,
+    Literal,
     Optional,
     Protocol,
     TypeVar,
@@ -61,9 +61,10 @@ LOGGER.setLevel("ERROR")
 
 MAX_ROWS: Literal[-1] = -1
 
+
 def profile_thread(func, *args, **kwargs):
     """Profile a function execution in a thread.
-    
+
     Args:
         func: Function to profile.
         *args: Positional arguments for the function.
@@ -82,10 +83,10 @@ def profile_thread(func, *args, **kwargs):
 # Not sure this is necessary.
 class RawDataThread(threading.Thread):
     """A thread that wraps a data source and loads data into a queue.
-    
+
     This class provides a threaded wrapper around a DataSource to enable
     concurrent data loading operations.
-    
+
     Attributes:
         data_source: The DataSource instance to wrap.
         thread_has_started: Flag indicating if the thread has started.
@@ -113,7 +114,7 @@ class RawDataThread(threading.Thread):
 
     def run(self) -> None:
         """Run the thread to start data loading.
-        
+
         Sets the thread_has_started flag and initiates the data source's
         queue_rows method.
         """
@@ -122,7 +123,7 @@ class RawDataThread(threading.Thread):
 
     def block(self) -> None:
         """Block until the thread has finished loading data onto queue.
-        
+
         This method will wait until either the data source has finished
         loading all data or the halt flag is set.
         """
@@ -142,10 +143,10 @@ ColumnName = TypeVar("ColumnName")
 
 class NewColumn(Protocol[ColumnName]):
     """Protocol for defining new column operations.
-    
+
     This protocol defines the interface for objects that can be used
     to create new columns in data processing pipelines.
-    
+
     Type Parameters:
         ColumnName: The type used for column names.
     """
@@ -189,7 +190,7 @@ class DataSource(ABC):  # pylint: disable=too-many-instance-attributes
     The key characteristic is that it generates shallow dictionaries representing
     data rows. There is no semantic difference between finite sources (like files)
     and infinite streams.
-    
+
     Attributes:
         name: Unique identifier for this data source.
         mappings: List of DataSourceMapping objects defining how to process rows.
@@ -237,7 +238,7 @@ class DataSource(ABC):  # pylint: disable=too-many-instance-attributes
 
     def __getstate__(self):
         """Make the data source pickleable for distributed processing.
-        
+
         Returns:
             Frozen dictionary containing serializable state.
         """
@@ -249,7 +250,7 @@ class DataSource(ABC):  # pylint: disable=too-many-instance-attributes
 
     def __dask_tokenize__(self):
         """Provide a token for Dask distributed computing.
-        
+
         Returns:
             String token identifying this data source.
         """
@@ -257,13 +258,13 @@ class DataSource(ABC):  # pylint: disable=too-many-instance-attributes
 
     def __getattr__(self, name: str) -> QueueGenerator | Session:
         """Dynamic attribute access for queue and session.
-        
+
         Args:
             name: Attribute name to access.
-            
+
         Returns:
             The requested attribute value.
-            
+
         Raises:
             AttributeError: If attribute is not found or not allowed.
         """
@@ -395,10 +396,10 @@ class DataSource(ABC):  # pylint: disable=too-many-instance-attributes
 
     def cast_row(self, row: Dict[str, Any]) -> Dict[str, Any]:
         """Cast row values according to the attached schema.
-        
+
         Args:
             row: Dictionary representing a data row.
-            
+
         Returns:
             Row with values cast to appropriate types.
         """
@@ -410,7 +411,7 @@ class DataSource(ABC):  # pylint: disable=too-many-instance-attributes
 
     def add_new_columns(self, row: Dict[str, Any]) -> None:
         """Add dynamically computed columns to the row.
-        
+
         Args:
             row: Dictionary representing a data row to modify.
         """
@@ -421,7 +422,7 @@ class DataSource(ABC):  # pylint: disable=too-many-instance-attributes
 
     def queue_rows(self) -> None:
         """Load rows from the data source and place them on the output queue.
-        
+
         This method processes each row through schema casting and new column
         addition, then wraps it in a RawDatum and places it on the queue.
         """
@@ -458,7 +459,7 @@ class DataSource(ABC):  # pylint: disable=too-many-instance-attributes
 
     def start(self) -> None:
         """Start the data loading process.
-        
+
         Initiates the loading thread to begin processing rows.
         """
         self.loading_thread.run()
@@ -470,11 +471,11 @@ class DataSource(ABC):  # pylint: disable=too-many-instance-attributes
         mappings,
     ) -> Generator[AtomicFact, None, None]:
         """Generate atomic facts from a data row using mappings.
-        
+
         Args:
             row: Dictionary representing a data row.
             mappings: List of DataSourceMapping objects.
-            
+
         Yields:
             AtomicFact objects generated from the row.
         """
@@ -490,9 +491,9 @@ class DataSourceMapping:  # pylint: disable=too-few-public-methods,too-many-inst
     as nodes, relationships, labels, or attributes in the graph structure.
     It supports three types of mappings:
     - Label mappings: Create node labels
-    - Attribute mappings: Set node attributes  
+    - Attribute mappings: Set node attributes
     - Relationship mappings: Create relationships between nodes
-    
+
     Attributes:
         attribute_key: Column name containing attribute values.
         identifier_key: Column name containing node identifiers.
@@ -518,7 +519,7 @@ class DataSourceMapping:  # pylint: disable=too-few-public-methods,too-many-inst
     @property
     def is_attribute_mapping(self) -> bool:
         """Check if this is an attribute mapping.
-        
+
         Returns:
             True if this mapping sets node attributes, False otherwise.
         """
@@ -532,7 +533,7 @@ class DataSourceMapping:  # pylint: disable=too-few-public-methods,too-many-inst
     @property
     def is_label_mapping(self) -> bool:
         """Check if this is a label mapping.
-        
+
         Returns:
             True if this mapping assigns node labels, False otherwise.
         """
@@ -546,7 +547,7 @@ class DataSourceMapping:  # pylint: disable=too-few-public-methods,too-many-inst
     @property
     def is_relationship_mapping(self) -> bool:
         """Check if this is a relationship mapping.
-        
+
         Returns:
             True if this mapping creates relationships, False otherwise.
         """
@@ -562,23 +563,21 @@ class DataSourceMapping:  # pylint: disable=too-few-public-methods,too-many-inst
         self, row: Dict[str, Any]
     ) -> Generator[AtomicFact, None, None]:
         """Process a data row according to this mapping to generate facts.
-        
+
         Args:
             row: Dictionary representing a data row.
-            
+
         Yields:
             AtomicFact objects generated from the row.
-            
+
         Raises:
             NotImplementedError: If mapping type is not supported.
         """
         if self.is_attribute_mapping:
-            fact: FactNodeHasAttributeWithValue = (
-                FactNodeHasAttributeWithValue(
-                    node_id=f"{self.label}::{row[self.identifier_key]}",
-                    attribute=self.attribute,
-                    value=row[self.attribute_key],
-                )
+            fact: FactNodeHasAttributeWithValue = FactNodeHasAttributeWithValue(
+                node_id=f"{self.label}::{row[self.identifier_key]}",
+                attribute=self.attribute,
+                value=row[self.attribute_key],
             )
             yield fact
         elif self.is_label_mapping:
@@ -613,14 +612,12 @@ class DataSourceMapping:  # pylint: disable=too-few-public-methods,too-many-inst
                 "Only attribute and label mappings are supported for now."
             )
 
-    def __add__(
-        self, row: dict[str, Any]
-    ) -> Generator[AtomicFact, None, None]:
+    def __add__(self, row: dict[str, Any]) -> Generator[AtomicFact, None, None]:
         """Process a row using the + operator for convenience.
-        
+
         Args:
             row: Dictionary representing a data row.
-            
+
         Yields:
             AtomicFact objects generated from the row.
         """
@@ -629,10 +626,10 @@ class DataSourceMapping:  # pylint: disable=too-few-public-methods,too-many-inst
 
 class FixtureDataSource(DataSource):
     """A DataSource that serves data from an in-memory list.
-    
+
     This implementation is primarily useful for testing and development,
     providing a simple way to create a DataSource from a list of dictionaries.
-    
+
     Attributes:
         data: List of dictionaries representing rows.
         hang: If True, the data source will hang indefinitely.
@@ -666,7 +663,7 @@ class FixtureDataSource(DataSource):
 
     def rows(self) -> Generator[Dict[str, Any], None, None]:
         """Generate rows from the in-memory data.
-        
+
         Yields:
             Dictionary representing each data row.
         """
@@ -684,10 +681,10 @@ class FixtureDataSource(DataSource):
 
 class CSVDataSource(DataSource):
     """DataSource implementation for reading CSV files.
-    
+
     Provides functionality to read data from CSV files using Python's
     csv.DictReader, with support for various CSV options.
-    
+
     Attributes:
         uri: URI of the CSV file to read.
         file: Open file handle for the CSV.
@@ -722,7 +719,7 @@ class CSVDataSource(DataSource):
 
     def rows(self) -> Generator[Dict[str, Any], None, None]:
         """Generate rows from the CSV file.
-        
+
         Yields:
             Dictionary representing each CSV row.
         """
@@ -736,10 +733,10 @@ class CSVDataSource(DataSource):
 
 class ParquetFileDataSource(DataSource):
     """DataSource implementation for reading Parquet files.
-    
+
     Provides functionality to read data from Parquet files using PyArrow,
     with efficient batch processing for large files.
-    
+
     Attributes:
         uri: URI of the Parquet file to read.
     """
@@ -762,10 +759,10 @@ class ParquetFileDataSource(DataSource):
 
     def rows(self) -> Generator[Dict[str, Any], None, None]:
         """Stream rows from the Parquet file in batches.
-        
+
         Reads the Parquet file in batches for memory efficiency,
         converting each batch to pandas DataFrame and yielding individual rows.
-        
+
         Yields:
             Dictionary representing each Parquet row.
         """

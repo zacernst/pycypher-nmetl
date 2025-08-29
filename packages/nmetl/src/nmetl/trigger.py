@@ -133,11 +133,11 @@ class NodeRelationship(Protocol[SourceVariable, Attribute, TargetVariable]):
 @dataclass
 class CypherTrigger(ABC):  # pylint: disable=too-many-instance-attributes
     """Abstract base class for Cypher-based triggers in the ETL pipeline.
-    
+
     Triggers are reactive components that execute functions when specific
     patterns are matched in the graph data. They monitor facts and constraints
     to determine when to fire and execute associated functions.
-    
+
     Attributes:
         function: The function to execute when the trigger fires.
         cypher_string: Cypher query defining trigger conditions.
@@ -183,7 +183,7 @@ class CypherTrigger(ABC):  # pylint: disable=too-many-instance-attributes
 
     def __getstate__(self):
         """Get state for pickling/serialization.
-        
+
         Returns:
             Dictionary containing the trigger's state.
         """
@@ -222,7 +222,7 @@ class NodeRelationshipTrigger(CypherTrigger):
     the results of a Cypher query and a function that processes those results.
     When the trigger fires, it creates a relationship with the specified name
     between the source and target nodes.
-    
+
     Attributes:
         source_variable: Name of the source node variable in the Cypher query.
         target_variable: Name of the target node variable in the Cypher query.
@@ -293,7 +293,7 @@ class VariableAttributeTrigger(CypherTrigger):
     This trigger type is used to set attributes on graph nodes based on
     the results of a Cypher query and a function that processes those results.
     When the trigger fires, it sets the specified attribute on the target variable.
-    
+
     Attributes:
         variable_set: Name of the variable to set the attribute on.
         attribute_set: Name of the attribute to set.
