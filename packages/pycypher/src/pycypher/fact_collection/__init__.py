@@ -30,9 +30,9 @@ from pycypher.query import (
     NullResult,
     Query,
     QueryNodeLabel,
-    QueryValueOfNodeAttribute,
     QuerySourceNodeOfRelationship,
     QueryTargetNodeOfRelationship,
+    QueryValueOfNodeAttribute,
 )
 
 
@@ -567,7 +567,7 @@ class FactCollection(ABC):
         for fact in self.node_has_label_facts():
             if fact.label == label:
                 yield fact.node_id
-    
+
     def relationships_with_label(self, label: str) -> Generator[str]:
         """
         Return a list of all the nodes with a specific label.
@@ -580,7 +580,9 @@ class FactCollection(ABC):
         """
         for fact in self.relationship_has_label_facts():
             if fact.relationship_label == label:
-                LOGGER.info('Yielding fact.relationship_id: %s', fact.relationship_id)
+                LOGGER.info(
+                    "Yielding fact.relationship_id: %s", fact.relationship_id
+                )
                 yield fact.relationship_id
 
     def attributes_of_node_with_label(self, label: str) -> Generator[str]:
@@ -596,8 +598,7 @@ class FactCollection(ABC):
         attributes_of_label_dict = self.attributes_of_label()
         for node_id in self.nodes_with_label(label):
             row_dict = {
-                attribute: None
-                for attribute in attributes_of_label_dict[label]
+                attribute: None for attribute in attributes_of_label_dict[label]
             }
             for attribute in attributes_of_label_dict[label]:
                 attribute_value = self.attributes_for_specific_node(

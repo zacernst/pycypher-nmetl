@@ -10,7 +10,16 @@ from __future__ import annotations
 
 from typing import Generator, List, Optional
 
-from pycypher.fact import AtomicFact, FactNodeHasLabel, FactNodeHasAttributeWithValue, FactNodeRelatedToNode, FactRelationshipHasAttributeWithValue, FactRelationshipHasLabel, FactRelationshipHasSourceNode, FactRelationshipHasTargetNode
+from pycypher.fact import (
+    AtomicFact,
+    FactNodeHasAttributeWithValue,
+    FactNodeHasLabel,
+    FactNodeRelatedToNode,
+    FactRelationshipHasAttributeWithValue,
+    FactRelationshipHasLabel,
+    FactRelationshipHasSourceNode,
+    FactRelationshipHasTargetNode,
+)
 from pycypher.fact_collection import FactCollection
 
 
@@ -123,7 +132,7 @@ class SimpleFactCollection(FactCollection):
             bool: True if the fact collection is empty, False otherwise.
         """
         return len(self.facts) == 0
-    
+
     def make_index_for_fact(self, fact: AtomicFact) -> bytes:
         """
         Create an index for a given fact.
@@ -151,4 +160,3 @@ class SimpleFactCollection(FactCollection):
                 return f"node_relationship:{fact.node1_id}:{fact.node2_id}:{fact.relationship_label}"
             case _:
                 raise ValueError(f"Unknown fact type {fact}")
-        

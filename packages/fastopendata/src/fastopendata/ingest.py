@@ -6,7 +6,7 @@ import base64
 import functools
 import json
 import pickle
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, LiteralString
 
 import dask
 import dill
@@ -32,8 +32,8 @@ SOURCE_DIR = (
     "/Users/zernst/git/pycypher-nmetl/packages/fastopendata/src/fastopendata/"
 )
 
-INGEST_CONFIG_PATH = f"{SOURCE_DIR}/ingest.yaml"
-PUMS_DATA_DICTIONARY_PATH = f"{SOURCE_DIR}/acs_pums_2023_data_dictionary.json"
+INGEST_CONFIG_PATH: LiteralString = f"{SOURCE_DIR}/ingest.yaml"
+PUMS_DATA_DICTIONARY_PATH: LiteralString = f"{SOURCE_DIR}/acs_pums_2023_data_dictionary.json"
 
 dask.config.set(
     task_serialization="dill",
@@ -50,7 +50,7 @@ if __name__ == "__main__":
         dask_worker.fact_collection = FoundationDBFactCollection()
 
     # LOCAL_CLUSTER = LocalCluster(processes=True)
-    cluster = LocalCluster(n_workers=10, threads_per_worker=1, processes=True)
+    cluster = LocalCluster(n_workers=10, threads_per_worker=5, processes=True)
     DASK_CLIENT: Client = Client(cluster)
     fact_collection_kwargs = {}
 

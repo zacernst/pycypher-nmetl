@@ -2,7 +2,7 @@ Installation
 ============
 
 Prerequisites
-------------
+-------------
 
 * Python 3.10 or higher
 * uv package manager (recommended)

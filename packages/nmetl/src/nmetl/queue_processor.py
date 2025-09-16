@@ -52,7 +52,7 @@ from pycypher.fact import (
 )
 from pycypher.node_classes import Collection
 from pycypher.query import NullResult
-from pycypher.solutions import ProjectionList, Projection
+from pycypher.solutions import Projection, ProjectionList
 from shared.helpers import ensure_bytes
 from shared.logger import LOGGER
 
@@ -89,10 +89,12 @@ class SubTriggerPair:
         Returns:
             int: A hash value for this instance.
         """
-        return hash((
-            tuple(self.sub),
-            self.trigger,
-        ))
+        return hash(
+            (
+                tuple(self.sub),
+                self.trigger,
+            )
+        )
 
 
 class QueueProcessor(ABC):  # pylint: disable=too-few-public-methods,too-many-instance-attributes
@@ -116,8 +118,8 @@ class QueueProcessor(ABC):  # pylint: disable=too-few-public-methods,too-many-in
         priority: Optional[int] = 0,
         session_config: Optional[SessionConfig] = None,
         dask_client: Optional[Client] = None,
-        max_buffer_size: int = 1_024,
-        buffer_timeout: float = 2.0,
+        max_buffer_size: int = 16,
+        buffer_timeout: float = 0.5,
     ) -> None:
         """
         Initialize a QueueProcessor instance.
@@ -247,8 +249,9 @@ class QueueProcessor(ABC):  # pylint: disable=too-few-public-methods,too-many-in
         )
         for result_list in batch_result_list or []:
             if result_list is None:
-                LOGGER.error("result_list is None")
-                raise ValueError("result_list is None")
+                LOGGER.debug("result_list is None")
+                continue
+                # raise ValueError("result_list is None")
             if not isinstance(result_list, list):
                 result_list = [result_list]
             for result in result_list:
@@ -399,7 +402,7 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
     def evaluate_fact_against_trigger(
         trigger, item, variable
     ) -> ProjectionList:
-        LOGGER.debug('evaluate_fact_against_trigger: %s:::%s', item, variable)
+        LOGGER.debug("evaluate_fact_against_trigger: %s:::%s", item, variable)
         result: ProjectionList = trigger.cypher._evaluate(
             QueueProcessor.get_fact_collection(),
             projection_list=ProjectionList(
@@ -409,7 +412,6 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
             ),
         )
         # Can we filter out bad results here.
-        import pdb; pdb.set_trace()
         LOGGER.debug(
             "Result of evaluate_fact_against_trigger %s is %s, %s, %s",
             item,
@@ -450,7 +452,7 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
                 LOGGER.debug("Bad item in CheckFact... %s", item)
                 continue
             LOGGER.debug("Checking fact %s against triggers", item)
-            
+
             PARANOID = True
             if PARANOID:
                 while item not in QueueProcessor.get_fact_collection():
@@ -500,7 +502,10 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
                     # Seem to be checking FactNodeHasAttributeWithValue against relationship node,
                     # which is suspicious.
                     #### KLUDGE
-                    if isinstance(item, (FactNodeHasAttributeWithValue,)) and variable != 'r':
+                    if (
+                        isinstance(item, (FactNodeHasAttributeWithValue,))
+                        and variable != "r"
+                    ):
                         result: ProjectionList = CheckFactAgainstTriggersQueueProcessor.evaluate_fact_against_trigger(
                             trigger, item, variable
                         )
@@ -509,11 +514,14 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
                             # We expect that there was only one projection passed to the cypher object
                             if len(result.root.projection_list) != 1:
                                 raise ValueError(
-                                    "Expected only one projection passed to Cypher query, got: %s", result.root.projection_list
+                                    "Expected only one projection passed to Cypher query, got: %s",
+                                    result.root.projection_list,
                                 )
                             # Maybe shouldn't be for all variables -- just what's in the return statement
                             sub_trigger_pair: SubTriggerPair = SubTriggerPair(
-                                sub={variable: item.node_id},  # item.node_id is wrong
+                                sub={
+                                    variable: item.node_id
+                                },  # item.node_id is wrong
                                 trigger=trigger,
                                 projection_list=result,
                             )
@@ -566,7 +574,7 @@ class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-publi
     @staticmethod
     def _process_sub_trigger_pair(
         sub_trigger_pair: SubTriggerPair,
-    ) -> List[Any]:
+    ) -> FactNodeHasAttributeWithValue | None:
         """
         Evaluate a single SubTriggerPair and generate computed facts.
 
@@ -580,257 +588,175 @@ class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-publi
         Returns:
             List of computed facts generated by the trigger function.
         """
-        fact_collection: FactCollection = QueueProcessor.get_fact_collection()
+        # Find the value of `variable_set` that would be updated with the variable and
+        # trigger in `item`.
 
-        variable_to_set: str = sub_trigger_pair.trigger.variable_set
-        attribute_to_set: str = sub_trigger_pair.trigger.attribute_set
-        instance_of_variable_to_set: str = sub_trigger_pair.projection_list[
-            0
-        ].root[0][variable_to_set]
-        re_query_projection_list: ProjectionList = ProjectionList(
-            projection_list=[
-                Projection(
-                    projection={variable_to_set: instance_of_variable_to_set}
-                )
-            ]
-        )
-        re_query_output: ProjectionList = (
-            sub_trigger_pair.trigger.cypher._evaluate(
-                fact_collection, projection_list=re_query_projection_list
-            )
+        out = sub_trigger_pair.trigger.cypher._evaluate(
+            QueueProcessor.get_fact_collection(),
+            ProjectionList(
+                projection_list=[Projection(projection=sub_trigger_pair.sub)]
+            ),
         )
 
-        initial_trigger_projection: Projection = re_query_output[
-            0
-        ]  # Always a singleton, theoretically
-
-        variable_to_set: str = sub_trigger_pair.trigger.variable_set
-        attribute_to_set: str = sub_trigger_pair.trigger.attribute_set
-
-        # TODO: Check if it is necessary to have a loop here at all.
-        #       initial_trigger_projection is supposed to be a
-        #       singleton, I *think*.
-        for projection in initial_trigger_projection.root:
-            projection_pythonified = projection.pythonify()
-            func_projection_list: ProjectionList = ProjectionList(
-                projection_list=[
-                    Projection(
-                        projection={
-                            variable_to_set: projection_pythonified[
-                                variable_to_set
-                            ]
-                        }
-                    )
-                ]
-            )
-            func_arg_dict: Dict[str, Any] = (
-                sub_trigger_pair.trigger.cypher._evaluate(
-                    fact_collection, projection_list=func_projection_list
-                )[0].pythonify()
-            )
-            function_result: Any = sub_trigger_pair.trigger.function(
-                **func_arg_dict
-            )
-            instance_of_variable_to_set: str = (
-                sub_trigger_pair.projection_list[0].root[0][variable_to_set]
-            )
-            computed_fact: FactNodeHasAttributeWithValue = (
-                FactNodeHasAttributeWithValue(
-                    node_id=instance_of_variable_to_set,
-                    attribute=attribute_to_set,
-                    value=function_result,
-                )
-            )
-            return computed_fact
-
-    def _process_solution_node_relationship(
-        self,
-        solution: Dict,
-        sub_trigger_pair: SubTriggerPair,
-        source_variable: str,
-        target_variable: str,
-        relationship_name: str,
-        return_clause,
-    ) -> None:
-        """Process a solution and generate a list of facts."""
-        assert False
-        splat: list[Any] = self._extract_splat_from_solution(
-            solution, return_clause
+        # out.projection_list[0].parent.parent (contains s)
+        variable_to_set_substitution_list: list[str] = list(
+            i
+            for i in out.find_variable(sub_trigger_pair.trigger.variable_set)
+            if i is not None
         )
-        computed_value = sub_trigger_pair.trigger.function(*splat)
-        if computed_value:
-            sub_trigger_pair.trigger.call_counter += 1
-            source_node_id = self._extract_node_id_from_solution(
-                solution, source_variable
+        if variable_to_set_substitution_list:
+            out = sub_trigger_pair.trigger.cypher._evaluate(
+                QueueProcessor.get_fact_collection(),
+                ProjectionList(
+                    projection_list=[
+                        Projection(
+                            projection={
+                                sub_trigger_pair.trigger.variable_set: variable_to_set_substitution_list[
+                                    0
+                                ]
+                            }
+                        )
+                    ]
+                ),
             )
-            target_node_id = self._extract_node_id_from_solution(
-                solution, target_variable
-            )
-            relationship_id = hashlib.md5(
-                f"{source_node_id}{target_node_id}{relationship_name}".encode()
-            ).hexdigest()
-            fact_1: FactRelationshipHasSourceNode = (
-                FactRelationshipHasSourceNode(
-                    source_node_id=source_node_id,
-                    relationship_id=relationship_id,
-                )
-            )
-            fact_2: FactRelationshipHasTargetNode = (
-                FactRelationshipHasTargetNode(
-                    target_node_id=target_node_id,
-                    relationship_id=relationship_id,
-                )
-            )
-            fact_3: FactRelationshipHasLabel = FactRelationshipHasLabel(
-                relationship_id=relationship_id,
-                relationship_label=relationship_name,
-            )
-            self.outgoing_queue.put(fact_1)
-            self.outgoing_queue.put(fact_2)
-            self.outgoing_queue.put(fact_3)
-
-    def _process_solution_node_attribute(
-        solution: Dict,
-        sub_trigger_pair: SubTriggerPair,
-        variable_to_set: str,
-    ) -> FactNodeHasAttributeWithValue | Type[NullResult]:
-        """
-        Process a Cypher solution to generate a node attribute fact.
-
-        This method extracts the necessary arguments from the solution,
-        calls the trigger function to compute the new attribute value,
-        and creates a FactNodeHasAttributeWithValue object.
-
-        Args:
-            solution: Dictionary containing variable bindings from Cypher evaluation.
-            sub_trigger_pair: The trigger and substitutions being processed.
-            variable_to_set: The variable name identifying the target node.
-
-        Returns:
-            A new FactNodeHasAttributeWithValue object, or NullResult if
-            the computation cannot be completed.
-        """
-        # splat = TriggeredLookupProcessor._extract_splat_from_solution(
-        #     solution, return_clause
-        # )
-        LOGGER.debug(
-            "Called _process_solution_node_attribute with arguments: %s",
-            sub_trigger_pair,
-        )
-
-        if any(isinstance(arg, NullResult) for arg in solution.values()):
-            LOGGER.debug("NullResult found in solution splat %s", solution)
-            return NullResult
-
-        arguments: Dict[str, Any] = {
-            key: value
-            for key, value in solution.items()
-            if not key.startswith("__")
-        }
-        LOGGER.debug("Will compute value with arguments: %s", arguments)
-
-        python_args: Dict[str, Any] = {
-            key: value.value
-            for key, value in arguments.items()
-            if not key.startswith("__")
-        }
-        if any(isinstance(i, NullResult) for i in python_args.values()):
-            return NullResult
-        LOGGER.debug(
-            "Will compute value with python arguments: %s", python_args
-        )
-        computed_value = sub_trigger_pair.trigger.function(**python_args)
-        LOGGER.debug("Computed value: %s", computed_value)
-        target_attribute = sub_trigger_pair.trigger.attribute_set
-        LOGGER.debug("Target attribute: %s", target_attribute)
-        LOGGER.debug("Solution: %s", solution)
-        try:
-            node_id = TriggeredLookupProcessor._extract_node_id_from_solution(
-                solution, variable_to_set
-            )
-        except Exception as e:
+        else:
+            out = None
+        if not out:
             return None
-        LOGGER.debug("node_id: %s", node_id)
+        func_arg_dict = {
+            key: value.pythonify() if hasattr(value, "pythonify") else value
+            for key, value in out[0].projection.items()
+        }
+
+        function_result: Any = sub_trigger_pair.trigger.function(
+            **func_arg_dict
+        )
+
+        # Convert to a Fact
         computed_fact: FactNodeHasAttributeWithValue = (
             FactNodeHasAttributeWithValue(
-                node_id=node_id,
-                attribute=target_attribute,
-                value=computed_value,
-                # parent_projection=sub_trigger_pair.trigger.
+                node_id=variable_to_set_substitution_list[0],
+                attribute=sub_trigger_pair.trigger.attribute_set,
+                value=function_result,
             )
         )
-        LOGGER.debug(">>>>>>> Computed fact: %s", computed_fact)
-        # self.outgoing_queue.put(computed_fact)
+
         return computed_fact
 
-    @staticmethod
-    def _extract_splat_from_solution(
-        solution: Dict, return_clause
-    ) -> List[Any]:
-        """Extract the splat (arguments for the trigger function) from a solution."""
+    # def _process_solution_node_relationship(
+    #     self,
+    #     solution: Dict,
+    #     sub_trigger_pair: SubTriggerPair,
+    #     source_variable: str,
+    #     target_variable: str,
+    #     relationship_name: str,
+    #     return_clause,
+    # ) -> None:
+    #     """Process a solution and generate a list of facts."""
+    #     assert False
+    #     splat: list[Any] = self._extract_splat_from_solution(
+    #         solution, return_clause
+    #     )
+    #     computed_value = sub_trigger_pair.trigger.function(*splat)
+    #     if computed_value:
+    #         sub_trigger_pair.trigger.call_counter += 1
+    #         source_node_id = self._extract_node_id_from_solution(
+    #             solution, source_variable
+    #         )
+    #         target_node_id = self._extract_node_id_from_solution(
+    #             solution, target_variable
+    #         )
+    #         relationship_id = hashlib.md5(
+    #             f"{source_node_id}{target_node_id}{relationship_name}".encode()
+    #         ).hexdigest()
+    #         fact_1: FactRelationshipHasSourceNode = (
+    #             FactRelationshipHasSourceNode(
+    #                 source_node_id=source_node_id,
+    #                 relationship_id=relationship_id,
+    #             )
+    #         )
+    #         fact_2: FactRelationshipHasTargetNode = (
+    #             FactRelationshipHasTargetNode(
+    #                 target_node_id=target_node_id,
+    #                 relationship_id=relationship_id,
+    #             )
+    #         )
+    #         fact_3: FactRelationshipHasLabel = FactRelationshipHasLabel(
+    #             relationship_id=relationship_id,
+    #             relationship_label=relationship_name,
+    #         )
+    #         self.outgoing_queue.put(fact_1)
+    #         self.outgoing_queue.put(fact_2)
+    #         self.outgoing_queue.put(fact_3)
 
-        def to_python(x):
-            """
-            Convert a value to a Python native type.
+    # @staticmethod
+    # def _extract_splat_from_solution(
+    #     solution: Dict, return_clause
+    # ) -> List[Any]:
+    #     """Extract the splat (arguments for the trigger function) from a solution."""
 
-            If the value is a Collection, recursively convert its values.
+    #     def to_python(x):
+    #         """
+    #         Convert a value to a Python native type.
 
-            Args:
-                x: The value to convert.
+    #         If the value is a Collection, recursively convert its values.
 
-            Returns:
-                The converted value.
-            """
-            if isinstance(x, Collection):
-                return [to_python(y) for y in x.values]
-            return x
+    #         Args:
+    #             x: The value to convert.
 
-        try:
-            out = [
-                to_python(solution.get(alias.name))
-                for alias in return_clause.projection.lookups
-            ]
+    #         Returns:
+    #             The converted value.
+    #         """
+    #         if isinstance(x, Collection):
+    #             return [to_python(y) for y in x.values]
+    #         return x
 
-        except Exception as e:
-            # raise ValueError(f"Error extracting splat: {e}") from e
-            out = []
+    #     try:
+    #         out = [
+    #             to_python(solution.get(alias.name))
+    #             for alias in return_clause.projection.lookups
+    #         ]
 
-        return out
+    #     except Exception as e:
+    #         # raise ValueError(f"Error extracting splat: {e}") from e
+    #         out = []
 
-    @staticmethod
-    def _extract_node_id_from_solution(
-        solution: Dict, variable_to_set: str
-    ) -> str:
-        """
-        Extract the node ID for a specific variable from the Cypher solution.
+    #     return out
 
-        This method looks up the node ID associated with a variable name
-        in the solution's match results, which are stored under the
-        MATCH_SOLUTION_KEY.
+    # @staticmethod
+    # def _extract_node_id_from_solution(
+    #     solution: Dict, variable_to_set: str
+    # ) -> str:
+    #     """
+    #     Extract the node ID for a specific variable from the Cypher solution.
 
-        Args:
-            solution: Dictionary containing variable bindings from Cypher evaluation.
-            variable_to_set: The variable name whose node ID should be extracted.
+    #     This method looks up the node ID associated with a variable name
+    #     in the solution's match results, which are stored under the
+    #     MATCH_SOLUTION_KEY.
 
-        Returns:
-            The node ID string for the specified variable.
+    #     Args:
+    #         solution: Dictionary containing variable bindings from Cypher evaluation.
+    #         variable_to_set: The variable name whose node ID should be extracted.
 
-        Raises:
-            ValueError: If the variable is not found in the solution.
-        """
+    #     Returns:
+    #         The node ID string for the specified variable.
 
-        # MATCH_SOLUTION_KEY: str = '__MATCH_SOLUTION_KEY__'
-        LOGGER.debug("_extract_node_id_from_solution: %s", solution)
-        try:
-            node_id = solution[MATCH_SOLUTION_KEY][variable_to_set]
-            return node_id
-        except KeyError as e:
-            raise ValueError(
-                f"Error extracting node ID: {variable_to_set}, {solution}"
-            ) from e
-        # Match solution key is empty for `solution` if the MATCH clause has a relationship.
-        # Perhaps I didn't update the code to propagate the solution through a RelationshipChain or
-        # RelationshipChainList?`
-        #
-        # Look at how this is done for Nodes without relationships becaue that seems to work fine.
-        # What step in the propagation of the solution is missing? Compare.:w
+    #     Raises:
+    #         ValueError: If the variable is not found in the solution.
+    #     """
+
+    #     # MATCH_SOLUTION_KEY: str = '__MATCH_SOLUTION_KEY__'
+    #     LOGGER.debug("_extract_node_id_from_solution: %s", solution)
+    #     try:
+    #         node_id = solution[MATCH_SOLUTION_KEY][variable_to_set]
+    #         return node_id
+    #     except KeyError as e:
+    #         raise ValueError(
+    #             f"Error extracting node ID: {variable_to_set}, {solution}"
+    #         ) from e
+    #     # Match solution key is empty for `solution` if the MATCH clause has a relationship.
+    #     # Perhaps I didn't update the code to propagate the solution through a RelationshipChain or
+    #     # RelationshipChainList?`
+    #     #
+    #     # Look at how this is done for Nodes without relationships becaue that seems to work fine.
+    #     # What step in the propagation of the solution is missing? Compare.:w

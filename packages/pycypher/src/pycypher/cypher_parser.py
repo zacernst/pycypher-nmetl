@@ -6,12 +6,10 @@ from typing import Any, Dict, List, Tuple, Type
 
 from ply import yacc  # type: ignore
 from pycypher.cypher_lexer import *  # noqa: F403
-from rich.tree import Tree
 from pycypher.fact_collection import FactCollection
+from pycypher.node_classes import Alias  # Aggregation,
 from pycypher.node_classes import (
     Addition,
-    # Aggregation,
-    Alias,
     AliasedName,
     And,
     Collect,
@@ -44,12 +42,15 @@ from pycypher.node_classes import (
 )
 from pycypher.solutions import ProjectionList
 from pycypher.tree_mixin import TreeMixin
+from rich.tree import Tree
 
 start = "cypher"  # pylint: disable=invalid-name
 
 
 def p_cypher(p: List[TreeMixin]):
-    """cypher : query"""
+    """
+    cypher : query
+    """
     if len(p) == 2:
         p[0] = Cypher(p[1])
     else:
@@ -60,7 +61,9 @@ def p_cypher(p: List[TreeMixin]):
 
 # | relationship_chain_list  Taken from p_query docstring below
 def p_query(p: Tuple[yacc.YaccProduction, Match, Return]):
-    """query : match_pattern return"""
+    """
+    query : match_pattern return
+    """
     if len(p) == 3:
         p[0] = Query(p[1], p[2])
     else:
@@ -69,26 +72,34 @@ def p_query(p: Tuple[yacc.YaccProduction, Match, Return]):
 
 
 def p_string(p: yacc.YaccProduction):
-    """string : STRING"""
+    """
+    string : STRING
+    """
     p[0] = p[1]
 
 
 def p_integer(p: yacc.YaccProduction):
-    """integer : INTEGER"""
+    """
+    integer : INTEGER
+    """
     p[0] = int(p[1])
 
 
 def p_float(p: yacc.YaccProduction):
-    """float : FLOAT"""
+    """
+    float : FLOAT
+    """
     p[0] = float(p[1])
 
 
 def p_name_label(
     p: Tuple[yacc.YaccProduction, str] | Tuple[yacc.YaccProduction, str, str],
 ):
-    """name_label : WORD
-    | WORD COLON WORD
-    | COLON WORD"""
+    """
+    name_label : WORD
+                | WORD COLON WORD
+                | COLON WORD
+    """
     if len(p) == 2:
         p[0] = NodeNameLabel(p[1], None)
     elif len(p) == 4:
@@ -100,8 +111,9 @@ def p_name_label(
 
 
 def p_mapping_list(p: List[TreeMixin]):
-    """mapping_list : WORD COLON literal
-    | mapping_list COMMA WORD COLON literal
+    """
+    mapping_list : WORD COLON literal
+                | mapping_list COMMA WORD COLON literal
     """
     if len(p) == 4:
         p[0] = MappingSet([Mapping(p[1], p[3])])
@@ -113,10 +125,11 @@ def p_mapping_list(p: List[TreeMixin]):
 
 
 def p_node(p: yacc.YaccProduction):
-    """node : LPAREN name_label RPAREN
-    | LPAREN name_label LCURLY mapping_list RCURLY RPAREN
-    | LPAREN RPAREN
-    | LPAREN WORD RPAREN
+    """
+    node : LPAREN name_label RPAREN
+        | LPAREN name_label LCURLY mapping_list RCURLY RPAREN
+        | LPAREN RPAREN
+        | LPAREN WORD RPAREN
     """
     if len(p) == 4 and isinstance(p[2], NodeNameLabel):
         name_label = p[2]
@@ -136,7 +149,8 @@ def p_node(p: yacc.YaccProduction):
 
 
 def p_alias(p: yacc.YaccProduction):
-    """alias : WORD AS WORD
+    """
+    alias : WORD AS WORD
     | collect AS WORD
     | object_attribute_lookup AS WORD
     | size AS WORD"""
@@ -257,6 +271,7 @@ def p_collect(p: yacc.YaccProduction):
         raise ValueError(
             "We're assuming for now that the collect is on an object attribute lookup."
         )
+
 
 def p_size(p: yacc.YaccProduction) -> None:
     """
@@ -395,9 +410,22 @@ CYPHER: yacc.LRParser = yacc.yacc()  # type: ignore
 
 
 class CypherParser:
-    """The main class of the ``pycypher`` package."""
+    """The main parser class for Cypher query language.
+
+    This class provides the primary interface for parsing Cypher query strings
+    into Abstract Syntax Trees (AST) that can be evaluated against fact collections.
+
+    Attributes:
+        cypher_text: The original Cypher query string.
+        parse_tree: The parsed AST representation of the query.
+    """
 
     def __init__(self, cypher_text: str):
+        """Initialize a CypherParser with a query string.
+
+        Args:
+            cypher_text: The Cypher query string to parse.
+        """
         self.cypher_text = cypher_text
         self.parse_tree: TreeMixin = CYPHER.parse(self.cypher_text)
         [_ for _ in self.parse_tree.walk()]  # pylint: disable=expression-not-assigned
@@ -406,11 +434,19 @@ class CypherParser:
         return self.parse_tree.__str__()
 
     def walk(self):
-        """Just calls the walk method on the parsed tree."""
+        """Walk through all nodes in the parsed AST.
+
+        Yields:
+            TreeMixin: Each node in the AST in depth-first order.
+        """
         yield from self.parse_tree.walk()
-    
+
     def tree(self) -> Tree:
-        """Returns a tree representation of the parsed tree."""
+        """Get a visual tree representation of the parsed AST.
+
+        Returns:
+            Tree: A rich.tree.Tree object for visual display.
+        """
         return self.parse_tree.tree()
 
     def _evaluate(
@@ -418,6 +454,15 @@ class CypherParser:
         fact_collection: FactCollection,
         projection_list: ProjectionList,
     ) -> ProjectionList:
+        """Evaluate the parsed query against a fact collection.
+
+        Args:
+            fact_collection: The collection of facts to query against.
+            projection_list: Input projections to start evaluation with.
+
+        Returns:
+            ProjectionList: The results of evaluating the query.
+        """
         out: ProjectionList = self.parse_tree.cypher._evaluate(
             fact_collection,
             projection_list=projection_list,
@@ -425,6 +470,6 @@ class CypherParser:
         tmp = []
         for projection in out:
             if projection not in tmp:
-                tmp.append(projection) 
+                tmp.append(projection)
         out: ProjectionList = ProjectionList(projection_list=tmp)
         return out

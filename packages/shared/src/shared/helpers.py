@@ -1,4 +1,8 @@
-"""Place for functions that might be used across the project."""
+"""Shared utility functions used across the PyCypher-NMETL project.
+
+This module provides common helper functions for URI handling, encoding/decoding
+objects, and data type conversions that are used throughout the project.
+"""
 
 from __future__ import annotations
 
@@ -36,7 +40,17 @@ def ensure_uri(uri: str | ParseResult | Path) -> ParseResult:
 
 
 def decode(encoded: str) -> Any:
-    """Decode a base64 encoded string."""
+    """Decode a base64 encoded pickled object.
+
+    Args:
+        encoded: Base64 encoded string containing pickled object data.
+
+    Returns:
+        The decoded Python object.
+
+    Raises:
+        ValueError: If decoding fails due to invalid data.
+    """
     try:
         decoded = pickle.loads(base64.b64decode(encoded))
     except Exception as e:
@@ -45,7 +59,18 @@ def decode(encoded: str) -> Any:
 
 
 def encode(obj: Any, to_bytes: bool = False) -> str | bytes:
-    """Encode an object as a base64 string."""
+    """Encode a Python object as a base64 string.
+
+    Args:
+        obj: Python object to encode.
+        to_bytes: If True, return bytes instead of string.
+
+    Returns:
+        Base64 encoded representation as string or bytes.
+
+    Raises:
+        ValueError: If encoding fails due to unpickleable object.
+    """
     try:
         encoded = base64.b64encode(pickle.dumps(obj)).decode("utf-8")
     except Exception as e:
@@ -57,8 +82,17 @@ def encode(obj: Any, to_bytes: bool = False) -> str | bytes:
 
 
 def ensure_bytes(value: Any, **kwargs) -> bytes:
-    """Change the value to a bytestring if it isn't one already. We should be able
-    to get rid of this eventually after everything's been typechecked correctly.
+    """Convert a value to bytes if it isn't already.
+
+    This is a utility function to ensure consistent byte representation
+    of values. Should be removed once proper type checking is in place.
+
+    Args:
+        value: Value to convert to bytes.
+        **kwargs: Additional arguments passed to encode() method.
+
+    Returns:
+        Byte representation of the value, or None if value is None.
     """
     if value is None:
         return

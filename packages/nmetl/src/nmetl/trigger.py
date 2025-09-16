@@ -132,9 +132,19 @@ class NodeRelationship(Protocol[SourceVariable, Attribute, TargetVariable]):
 
 @dataclass
 class CypherTrigger(ABC):  # pylint: disable=too-many-instance-attributes
-    """
-    We check the ``Fact`` and ``Constraint`` objects to see if they
-    indicate that the trigger should be fired.
+    """Abstract base class for Cypher-based triggers in the ETL pipeline.
+
+    Triggers are reactive components that execute functions when specific
+    patterns are matched in the graph data. They monitor facts and constraints
+    to determine when to fire and execute associated functions.
+
+    Attributes:
+        function: The function to execute when the trigger fires.
+        cypher_string: Cypher query defining trigger conditions.
+        cypher: Parsed CypherParser instance.
+        call_counter: Number of times this trigger has been called.
+        error_counter: Number of errors encountered during execution.
+        parameter_names: Names of parameters for the trigger function.
     """
 
     def __init__(
@@ -172,6 +182,11 @@ class CypherTrigger(ABC):  # pylint: disable=too-many-instance-attributes
         self.parameter_names = parameter_names
 
     def __getstate__(self):
+        """Get state for pickling/serialization.
+
+        Returns:
+            Dictionary containing the trigger's state.
+        """
         state = self.__dict__.copy()
         return state
 
@@ -201,11 +216,19 @@ class CypherTrigger(ABC):  # pylint: disable=too-many-instance-attributes
 
 
 class NodeRelationshipTrigger(CypherTrigger):
-    """
-    Trigger for creating relationships between nodes in the graph.
+    """Trigger for creating relationships between nodes in the graph.
 
-    This trigger is used to create relationships between nodes based on
+    This trigger type is used to create relationships between nodes based on
     the results of a Cypher query and a function that processes those results.
+    When the trigger fires, it creates a relationship with the specified name
+    between the source and target nodes.
+
+    Attributes:
+        source_variable: Name of the source node variable in the Cypher query.
+        target_variable: Name of the target node variable in the Cypher query.
+        relationship_name: Name of the relationship type to create.
+        is_relationship_trigger: Always True for this trigger type.
+        is_attribute_trigger: Always False for this trigger type.
     """
 
     def __init__(
@@ -265,11 +288,17 @@ class NodeRelationshipTrigger(CypherTrigger):
 
 
 class VariableAttributeTrigger(CypherTrigger):
-    """
-    Trigger for setting attributes on variables in the graph.
+    """Trigger for setting attributes on variables in the graph.
 
-    This trigger is used to set attributes on variables based on
+    This trigger type is used to set attributes on graph nodes based on
     the results of a Cypher query and a function that processes those results.
+    When the trigger fires, it sets the specified attribute on the target variable.
+
+    Attributes:
+        variable_set: Name of the variable to set the attribute on.
+        attribute_set: Name of the attribute to set.
+        is_relationship_trigger: Always False for this trigger type.
+        is_attribute_trigger: Always True for this trigger type.
     """
 
     def __init__(  # pylint: disable=too-many-arguments,too-many-positional-arguments
