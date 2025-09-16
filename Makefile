@@ -30,7 +30,7 @@ export FOUNDATIONDB_VERSION := "7.1.31"
 
 # ------------------------------------------------------------------------------
 # Main targets
-.PHONY: pycypher nmetl fastopendata test tada docs
+.PHONY: pycypher ingest nmetl fastopendata test tada docs
 
 # Default target - run the complete build process
 all: format veryclean build docs test
@@ -42,6 +42,10 @@ all: format veryclean build docs test
 veryclean: clean
 	@echo "Deep cleaning project..."
 	uv cache clean && rm -rfv ./.venv
+
+ingest: 
+	@echo "Ingesting data..."
+	(uv run python ${SOURCE_DIR}/ingest.py)
 
 # Clean up build artifacts
 clean:
@@ -123,6 +127,11 @@ fod_ingest: data
 	@echo "Running FastOpenData ingest..."
 	uv run python ${FASTOPENDATA_DIR}/src/fastopendata/ingest.py
 
+# Run FastOpenData ingest
+ingest:
+	@echo "Running FastOpenData ingest..."
+	uv run python ${FASTOPENDATA_DIR}/src/fastopendata/ingest.py
+
 # ------------------------------------------------------------------------------
 # Package-specific targets
 
@@ -143,3 +152,7 @@ fastopendata: nmetl
 	@echo "Building and installing fastopendata package..."
 	cd ${FASTOPENDATA_DIR} && uv run hatch build -t wheel
 	uv pip install --upgrade -e ${FASTOPENDATA_DIR}
+
+fdbclear:
+	@echo "Clearing FoundationDB data..."
+	fdbcli --exec "writemode on; clearrange \"\" \"\\xFF\""
