@@ -1,3 +1,5 @@
+[![Install and run tests](https://github.com/zacernst/pycypher-nmetl/actions/workflows/makefile.yml/badge.svg)](https://github.com/zacernst/pycypher-nmetl/actions/workflows/makefile.yml)
+
 # PyCypher-NMETL
 
 A distributed graph data processing framework that combines Cypher query language capabilities with reactive ETL pipelines.
