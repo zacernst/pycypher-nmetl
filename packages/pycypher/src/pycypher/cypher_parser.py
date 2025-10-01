@@ -426,8 +426,8 @@ class CypherParser:
         Args:
             cypher_text: The Cypher query string to parse.
         """
-        self.cypher_text = cypher_text
-        self.parse_tree: TreeMixin = CYPHER.parse(self.cypher_text)
+        self.cypher_text: str = cypher_text
+        self.parse_tree: Cypher = CYPHER.parse(self.cypher_text)
         [_ for _ in self.parse_tree.walk()]  # pylint: disable=expression-not-assigned
 
     def __repr__(self) -> str:

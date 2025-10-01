@@ -37,6 +37,7 @@ from pycypher.node_classes import (
     And,
     Collect,
     Collection,
+    Cypher,
     Evaluable,
     Literal,
     Mapping,
@@ -335,8 +336,6 @@ def test_re_query(
             out = check_fact_against_triggers_queue_processor.process_item_from_queue(
                 buffer,
             )
-            # import pdb; pdb.set_trace()
-            # [SubTriggerPair(sub={'c': 'kalamazoo'}, trigger=VariableAttributeTrigger)]
             sub_trigger_pair: SubTriggerPair = out[
                 0
             ]  # Always a singleton, theoretically
@@ -2326,83 +2325,41 @@ def test_disaggregation_in_with_clause_collect() -> None:
     assert aggregated_alias.disaggregate() == expected
 
 
-def test_generate_full_non_aggregated_aliases(
+def test_end_to_end_query_with_aggregation(
     city_state_fact_collection,
 ) -> None:
-    query = (
+    query: str = (
         """MATCH (c:City)-[r:In]->(s:State) """
         """WITH COLLECT(c.has_beach) AS beachstats, s.looks_like_mitten AS mitten_state """
-        """RETURN mitten_state AS mitteny, beachystats AS beach_thingy_list"""
+        """RETURN mitten_state AS mitteny, beachstats AS beach_thingy_list"""
     )
     parsed: CypherParser = CypherParser(query)
-    match_clause: Match = parsed.parse_tree.cypher.match_clause
-    with_clause: WithClause = match_clause.with_clause
-    group_by_aliases: List[Alias] = with_clause.non_aggregated_aliases()
-    aggregated_aliases: List[Alias] = with_clause.aggregated_aliases()
-    aggregated_aliases_dict: dict[str, Evaluable] = {
-        alias.alias: alias.reference for alias in aggregated_aliases
-    }
-    disaggregated_aliases: List[Alias] = group_by_aliases + [
-        alias.disaggregate() for alias in aggregated_aliases
-    ]
-    disaggregated_with_clause: WithClause = WithClause(
-        lookups=ObjectAsSeries(lookups=disaggregated_aliases)
-    )
-    pattern_evaluation: ProjectionList = match_clause.pattern._evaluate(
-        fact_collection=city_state_fact_collection
-    )
-    disaggregated_with_clause_projection_list: ProjectionList = (
-        disaggregated_with_clause._evaluate(
-            fact_collection=city_state_fact_collection,
-            projection_list=pattern_evaluation,
-        )
-    )
-    aggregated_alias_names: list[str] = [
-        alias.alias for alias in aggregated_aliases
-    ]
-    non_aggregated_alias_names: list[str] = [
-        alias.alias for alias in group_by_aliases
-    ]
-    non_unique_group_by_projections: ProjectionList = ProjectionList(
+    ast: Cypher = parsed.parse_tree
+    evaluation: ProjectionList = ast._evaluate(fact_collection=city_state_fact_collection)
+    expected: ProjectionList = ProjectionList(
         projection_list=[
-            disaggregated_projection.subset(non_aggregated_alias_names)
-            for disaggregated_projection in disaggregated_with_clause_projection_list
-        ]
+            Projection(
+                projection={
+                    'mitteny': Literal(value=True),
+                    'beach_thingy_list': Collection(
+                        values=[
+                            Literal(value=False),
+                            Literal(value=False),
+                            Literal(value=True),
+                        ],
+                    ),
+                },
+            ),
+            Projection(
+                projection={
+                    'mitteny': Literal(value=False),
+                    'beach_thingy_list': Collection(
+                        values=[
+                            Literal(value=True),
+                        ],
+                    ),
+                },
+            ),
+        ],
     )
-    unique_group_by_projections: ProjectionList = copy.deepcopy(
-        non_unique_group_by_projections,
-    )
-    unique_group_by_projections.unique()  # Changes in-place
-    sorted_disaggregated_projection_list_dict: dict[
-        Projection, ProjectionList,
-    ] = {}
-    for unique_group_by_projection in unique_group_by_projections:
-        sorted_disaggregated_projection_list_dict[
-            unique_group_by_projection
-        ] = ProjectionList(projection_list=[])
-        for (
-            disaggregated_with_clause_projection
-        ) in disaggregated_with_clause_projection_list:
-            if (
-                unique_group_by_projection
-                < disaggregated_with_clause_projection
-            ):
-                sorted_disaggregated_projection_list_dict[
-                    unique_group_by_projection
-                ].append(disaggregated_with_clause_projection)
-
-    output_projection_list: ProjectionList = ProjectionList(projection_list=[])
-    for (
-        group_by_projection,
-        projection_list,
-    ) in sorted_disaggregated_projection_list_dict.items():
-        output_projection: Projection = copy.copy(group_by_projection)
-        for aggregated_alias_name in aggregated_alias_names:
-            # group_by_projection -> Projection[{'mitten_state': Literal(False)}]
-            # projection_list -> ProjectionList[[Projection[{'mitten_state': Literal(False), 'beachstats': Literal(True)}]]]
-            # Need to find the original (non-disaggregated) predicate (Collect)
-            aggregation_evaluation = aggregated_aliases_dict[aggregated_alias_name]._inner_evaluate(target_alias=aggregated_alias_name, projection_list=projection_list)
-            output_projection[aggregated_alias_name] = aggregation_evaluation
-            output_projection_list += output_projection
-    import pdb; pdb.set_trace()
-
+    assert evaluation == expected

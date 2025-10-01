@@ -31,19 +31,18 @@ class AtomicFact:  # pylint: disable=too-few-public-methods
     def __init__(
         self,
         *_,
-        parent_projection: Optional[Projection | ProjectionList] = None,
+        **__,
     ):  # ruff: disable=F821
         """
         Initialize an AtomicFact instance.
 
         Args:
             *_: Variable positional arguments (ignored).
-            parent_projection: Optional parent projection for lineage tracking.
         """
         self.lineage: Optional[Lineage | None] = None
-        self.parent_projection: Optional[Projection | ProjectionList] = (
-            parent_projection
-        )
+        # self.parent_projection: Optional[Projection | ProjectionList] = (
+        #     parent_projection
+        # )
 
 
 class FactNodeHasLabel(AtomicFact):
