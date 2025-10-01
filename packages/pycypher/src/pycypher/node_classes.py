@@ -121,7 +121,7 @@ def get_free_variable_substitutions(
     fact_collection: FactCollection,
     relationship_chain_list: RelationshipChainList,
     projection: Projection,
-):
+) -> dict[str, list[str]]:
     """Get possible substitutions for free variables in a relationship chain list.
 
     Args:
@@ -252,13 +252,7 @@ class Evaluable(TreeMixin, abc.ABC):  # pylint: disable=too-few-public-methods
         self#, parent_projection: Optional[Projection | ProjectionList] = None
     ):
         """Initialize an Evaluable instance.
-
-        Args:
-            parent_projection: Optional parent projection or projection list.
         """
-        # self.parent_projection: Optional[Projection | ProjectionList] = (
-        #     parent_projection
-        # )
 
     @property
     def is_aggregation(self) -> bool:
@@ -283,19 +277,25 @@ class Where(Evaluable, TreeMixin):
     def _evaluate(
         self,
         fact_collection: FactCollection,
-        projection: Projection,
-    ) -> Literal:
-        evaluation: Any = self.predicate._evaluate(
-            fact_collection,
-            projection=projection,
-        )
-        if not isinstance(evaluation, Literal) or not isinstance(
-            evaluation.value, bool
-        ):
-            raise ValueError(
-                "Expected WHERE clause to evaluate to Literal[bool]."
+        projection_list: ProjectionList,
+    ) -> ProjectionList:
+        if not self.predicate:
+            return projection_list
+        filtered_projection_list: ProjectionList = ProjectionList(projection_list=[])
+        for projection in projection_list:
+            evaluation: Any = self.predicate._evaluate(
+                fact_collection,
+                projection=projection,
             )
-        return evaluation
+            if not isinstance(evaluation, Literal) or not isinstance(
+                evaluation.value, bool
+            ):
+                raise ValueError(
+                    "Expected WHERE clause to evaluate to Literal[bool]."
+                )
+            if evaluation.value:
+                filtered_projection_list.append(projection)
+        return filtered_projection_list
 
     def __repr__(self) -> str:
         return f"Where({self.predicate})"
@@ -1750,26 +1750,29 @@ class Match(Evaluable, TreeMixin):
         for clause in all_assertions:
             solver.add_clause(clause)
         models: list[list[int]] = list(solver.enum_models())
-        pattern_step_output: ProjectionList = models_to_projection_list(
+        query_output: ProjectionList = models_to_projection_list(
             fact_collection, variable_substitution_dict, models
         )
-        pattern_step_output.parent = projection_list
-        out: ProjectionList = pattern_step_output
+        query_output.parent = projection_list
 
+        # These will have to be changed to allow for WITH and WHERE to be
+        # in a different order. But for now, no problem.
         if self.with_clause:
             projection_list_step: ProjectionList = self.with_clause._evaluate(
-                fact_collection, pattern_step_output
+                fact_collection, query_output
             )
-            projection_list_step.parent = pattern_step_output
-            out = projection_list_step
+            projection_list_step.parent = query_output
+            query_output: ProjectionList = projection_list_step
 
-        # TODO: Fill in the where clause evaluation logic
         if self.where_clause:
-            pass
-        else:
-            pass
+            where_clause_output: ProjectionList = self.where_clause._evaluate(
+                fact_collection,
+                query_output,
+            )
+            where_clause_output.parent = query_output
+            query_output = where_clause_output
 
-        return out
+        return query_output
 
     def bak_evaluate(
         self,

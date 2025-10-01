@@ -233,6 +233,7 @@ class DataSource(ABC):  # pylint: disable=too-many-instance-attributes
         self.back_pressure = 0.00001
         self._session: Optional[Any] = None
         self._raw_input_queue: QueueGenerator | None = None
+        self.session: Optional[Session] = None
         # self.num_workers = None
         # self.worker_num = None
 
@@ -369,7 +370,7 @@ class DataSource(ABC):  # pylint: disable=too-many-instance-attributes
 
         return self
 
-    def __lt__(self, other: DataSource) -> DataSource:
+    def __lt__(self, other: DataSourceMapping) -> DataSource:
         """For attaching mappings to data sources."""
         return self.attach_mapping(other)
 

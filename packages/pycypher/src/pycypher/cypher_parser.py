@@ -1,5 +1,5 @@
 """Main parser module."""
-
+# type: ignore
 from __future__ import annotations
 
 from typing import Any, Dict, List, Tuple, Type
@@ -427,8 +427,8 @@ class CypherParser:
             cypher_text: The Cypher query string to parse.
         """
         self.cypher_text: str = cypher_text
-        self.parse_tree: Cypher = CYPHER.parse(self.cypher_text)
-        [_ for _ in self.parse_tree.walk()]  # pylint: disable=expression-not-assigned
+        self.parse_tree: Cypher = CYPHER.parse(self.cypher_text)  # type: ignore
+        [_ for _ in self.parse_tree.walk()]
 
     def __repr__(self) -> str:
         return self.parse_tree.__str__()

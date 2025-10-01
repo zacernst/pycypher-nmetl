@@ -39,6 +39,11 @@ line-length = 79
 indent-width = 4
 target-version = "py313"
 
+[tool.pyrefly]
+project_excludes = [
+    "**/cypher_parser.py"  # Excluded because PLY magic confuses type checker
+]
+
 [tool.coverage.report]
 exclude_also = [ "def tree", "def print_tree", "def __repr__", "if self.debug:", "if settings.DEBUG", "raise AssertionError", "raise NotImplementedError", "if 0:", "if __name__ == .__main__.:", "if TYPE_CHECKING:", "class .*\\bProtocol\\):", "@(abc\\.)?abstractmethod",]
 

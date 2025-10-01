@@ -31,9 +31,9 @@ from typing import (
 
 import pyarrow as pa
 import pyarrow.parquet as pq
-from nmetl.config import MONITOR_LOOP_DELAY  # pyrefly: ignore
+from nmetl.config import MONITOR_LOOP_DELAY  # type: ignore
 from nmetl.config import (
-    TRIGGERED_LOOKUP_PROCESSOR_QUEUE_SIZE,
+    TRIGGERED_LOOKUP_PROCESSOR_QUEUE_SIZE,  # type: ignore
 )  # pyrefly: ignore; pyrefly: ignore
 from nmetl.data_asset import DataAsset
 from nmetl.data_source import DataSource
@@ -112,7 +112,7 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
         self,
         # compute_class_name: ComputeClassNameEnum = ComputeClassNameEnum.THREADING,
         # compute_options: Optional[Dict[str, Any]] = None,
-        dask_client: Client,
+        dask_client: Client | None,
         data_assets: Optional[dict[str, DataAsset]] = None,
         data_sources: Optional[List[DataSource]] = None,
         fact_collection_class: Type[FactCollection] = SimpleFactCollection,
