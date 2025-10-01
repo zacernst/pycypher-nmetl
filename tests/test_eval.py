@@ -83,7 +83,7 @@ LOGGER.setLevel(logging.INFO)
 def session(city_state_fact_collection):
     """A session fixture."""
 
-    session = Session(dask_client=None, create_queue_generators=False)
+    session: Session = Session(dask_client=None, create_queue_generators=False)
     yield session.attach_fact_collection(city_state_fact_collection)
     # Clean up here?
 
@@ -105,7 +105,7 @@ def test_evaluate_trigger_against_fact_collection(
         @session.trigger(
             "MATCH (c:City) WITH c.has_beach AS beachy RETURN beachy"
         )
-        def has_sand(beachy) -> VariableAttribute["c", "sandy"]:
+        def has_sand(beachy) -> VariableAttribute["c", "sandy"]:  # type: ignore
             return beachy
 
         mocked_function.return_value = session.trigger_dict
@@ -156,7 +156,7 @@ def test_check_fact_against_triggers_queue_processor_return_no_sub_trigger_pair_
         @session.trigger(
             "MATCH (c:City) WITH c.idontexist AS beachy RETURN beachy"
         )
-        def has_sand(beachy) -> VariableAttribute["c", "sandy"]:
+        def has_sand(beachy) -> VariableAttribute["c", "sandy"]:  # type: ignore
             return beachy
 
         mocked_function.return_value = session.trigger_dict
@@ -199,7 +199,7 @@ def test_check_fact_against_triggers_queue_processor_return_sub_trigger_pair(
         @session.trigger(
             "MATCH (c:City) WITH c.has_beach AS beachy RETURN beachy"
         )
-        def has_sand(beachy) -> VariableAttribute["c", "sandy"]:
+        def has_sand(beachy) -> VariableAttribute["c", "sandy"]:  # type: ignore
             return beachy
 
         mocked_function.return_value = session.trigger_dict
@@ -231,16 +231,6 @@ def test_check_fact_against_triggers_queue_processor_return_sub_trigger_pair(
             assert sub_trigger_pair.sub == {"c": "kalamazoo"}
 
 
-#################################################
-### This is where the error shows up
-### Each `Projection` and `ProjectionList`
-### needs to track the `Projection` or
-### `ProjecionList` that was used as an input.
-###
-### Then look up the projection of the `VariableAttribute`
-### and re-evaluate the Cypher clause to get the inputs
-### to the trigger function.
-#################################################
 def test_check_fact_against_trigger_with_aggregation_queue_processor_return_sub_trigger_pair(
     session,
     check_fact_against_triggers_queue_processor,
@@ -258,7 +248,7 @@ def test_check_fact_against_trigger_with_aggregation_queue_processor_return_sub_
         )
         def beach_collection_length(
             beachy_collection,
-        ) -> VariableAttribute["s", "num_beaches"]:
+        ) -> VariableAttribute["s", "num_beaches"]:  # type: ignore
             return len(beachy_collection) > 0
 
         mocked_function.return_value = session.trigger_dict
@@ -313,7 +303,7 @@ def test_re_query(
         )
         def beach_collection_length(
             beachy_collection,
-        ) -> VariableAttribute["s", "num_beaches"]:
+        ) -> VariableAttribute["s", "num_beaches"]:  # type: ignore
             return len([i for i in beachy_collection if i])
 
         mocked_function.return_value = session.trigger_dict
@@ -340,7 +330,7 @@ def test_re_query(
                 0
             ]  # Always a singleton, theoretically
 
-            generated_fact: FactNodeHasAttributeWithValue = (
+            generated_fact: FactNodeHasAttributeWithValue | None = (
                 TriggeredLookupProcessor._process_sub_trigger_pair(
                     sub_trigger_pair
                 )
@@ -381,7 +371,7 @@ def test_trigger_initialization_variable_attribute_calls_initializer(
         @session.trigger(
             "MATCH (c:City) WITH c.has_beach AS beachy RETURN beachy"
         )
-        def has_sand(beachy) -> VariableAttribute["c", "sandy"]:
+        def has_sand(beachy) -> VariableAttribute["c", "sandy"]:  # type: ignore
             return beachy
 
         mocked_function.assert_called_once()
@@ -397,7 +387,7 @@ def test_trigger_initialization_variable_attribute_calls_process_variable_attrib
         @session.trigger(
             "MATCH (c:City) WITH c.has_beach AS beachy RETURN beachy"
         )
-        def has_sand(beachy) -> VariableAttribute["c", "sandy"]:
+        def has_sand(beachy) -> VariableAttribute["c", "sandy"]:  # type: ignore
             return beachy
 
         mocked_function.assert_called_once()
@@ -407,7 +397,7 @@ def test_trigger_initialization_creates_trigger_object_attribute_value(
     session,
 ) -> None:
     @session.trigger("MATCH (c:City) WITH c.has_beach AS beachy RETURN beachy")
-    def has_sand(beachy) -> VariableAttribute["c", "sandy"]:
+    def has_sand(beachy) -> VariableAttribute["c", "sandy"]:  # type: ignore
         return beachy
 
     assert session.trigger_dict
@@ -428,7 +418,7 @@ def test_trigger_initialization_creates_trigger_attribute_with_collection(
     )
     def beachy_collection_function(
         beachy_collection,
-    ) -> VariableAttribute["s", "num_beachy_cities"]:
+    ) -> VariableAttribute["s", "num_beachy_cities"]:  # type: ignore
         return len(beachy_collection)
 
     assert session.trigger_dict
@@ -1268,10 +1258,20 @@ def test_simple_where_clause(city_state_fact_collection):
     where_clause: Where = Where(
         predicate=ObjectAttributeLookup(object="city", attribute="has_beach")
     )
-    assert where_clause._evaluate(
+    actual_output: ProjectionList = where_clause._evaluate(
         fact_collection=city_state_fact_collection,
-        projection=Projection(projection={"city": "south_haven"}),
-    ) == Literal(True)
+        projection_list=ProjectionList(
+            projection_list=[
+                Projection(projection={"city": "south_haven"})
+            ]
+        )
+    )
+    expected: ProjectionList = ProjectionList(
+        projection_list=[
+            Projection({'city': 'south_haven'})
+        ]
+    )
+    assert actual_output == expected
 
 
 def test_return_clause_one_projection(city_state_fact_collection):
@@ -1874,12 +1874,12 @@ def test_sat_11(city_state_fact_collection) -> None:
 def test_sat_12(city_state_fact_collection) -> None:
     query = """MATCH (c:City)-[r:In]->(s:State) RETURN c, r, s"""
     parsed: CypherParser = CypherParser(query)
-    match_clause = parsed.parse_tree.cypher.match_clause
+    match_clause: Match = parsed.parse_tree.cypher.match_clause
     projection: Projection = Projection(projection={"s": "wisconsin"})
-    output = match_clause._evaluate(
+    output: ProjectionList = match_clause._evaluate(
         city_state_fact_collection,
         projection_list=ProjectionList(
-            projection_list=[Projection(projection=projection)]
+            projection_list=[Projection(projection={"s": "wisconsin"})]
         ),
     )
     expected: ProjectionList = ProjectionList(
@@ -1992,7 +1992,7 @@ def test_collect_non_aggregated_aliases_in_with_clause_1():
         """RETURN mitten_state AS mitteny, beachythingy AS beach_things"""
     )
     parsed: CypherParser = CypherParser(query)
-    output = parsed.parse_tree.cypher.match_clause.with_clause.non_aggregated_aliases()
+    output: list[Alias] = parsed.parse_tree.cypher.match_clause.with_clause.non_aggregated_aliases()
     assert len(output) == 2
     assert isinstance(output[0], Alias)
     assert output[0].alias == "beachythingy"
@@ -2007,7 +2007,7 @@ def test_get_variable_substitutions_from_relationship_chain_list(
         """RETURN mitten_state AS mitteny, beachythingy AS beach_things"""
     )
     parsed: CypherParser = CypherParser(query)
-    match_clause: RelationshipChainList = parsed.parse_tree.cypher.match_clause
+    match_clause: Match = parsed.parse_tree.cypher.match_clause
     relationship_chain_list: RelationshipChainList = match_clause.pattern
     variable_substitutions: dict[str, list[str]] = get_variable_substitutions(
         city_state_fact_collection, relationship_chain_list
@@ -2028,7 +2028,7 @@ def test_get_variable_substitution_dict_from_relationship_chain_list(
         """RETURN mitten_state AS mitteny, beachythingy AS beach_things"""
     )
     parsed: CypherParser = CypherParser(query)
-    match_clause: RelationshipChainList = parsed.parse_tree.cypher.match_clause
+    match_clause: Match = parsed.parse_tree.cypher.match_clause
     relationship_chain_list: RelationshipChainList = match_clause.pattern
     variable_substitution_dict: dict[int, tuple[str, str]] = (
         relationship_chain_list.get_variable_substitution_dict(
@@ -2060,7 +2060,7 @@ def test_get_instance_disjunctions_from_relationship_chain_list(
         """RETURN mitten_state AS mitteny, beachythingy AS beach_things"""
     )
     parsed: CypherParser = CypherParser(query)
-    match_clause: RelationshipChainList = parsed.parse_tree.cypher.match_clause
+    match_clause: Match = parsed.parse_tree.cypher.match_clause
     relationship_chain_list: RelationshipChainList = match_clause.pattern
     instance_disjunctions = relationship_chain_list.get_instance_disjunctions(
         city_state_fact_collection
@@ -2078,7 +2078,7 @@ def test_get_mutual_exclusions_from_relationship_chain_list(
         """RETURN mitten_state AS mitteny, beachythingy AS beach_things"""
     )
     parsed: CypherParser = CypherParser(query)
-    match_clause: RelationshipChainList = parsed.parse_tree.cypher.match_clause
+    match_clause: Match = parsed.parse_tree.cypher.match_clause
     relationship_chain_list: RelationshipChainList = match_clause.pattern
     mutual_exclusions: list[tuple[int, int]] = (
         relationship_chain_list.get_mutual_exclusions(
@@ -2129,7 +2129,7 @@ def test_get_relationship_assertions_from_relationship_chain_list(
         """RETURN mitten_state AS mitteny, beachythingy AS beach_things"""
     )
     parsed: CypherParser = CypherParser(query)
-    match_clause: RelationshipChainList = parsed.parse_tree.cypher.match_clause
+    match_clause: Match = parsed.parse_tree.cypher.match_clause
     relationship_chain_list: RelationshipChainList = match_clause.pattern
     relationship_assertions: list[tuple[int, int]] = (
         relationship_chain_list.get_relationship_assertions(
@@ -2158,7 +2158,7 @@ def test_evalate_relationship_chain_list_no_assumptions(
         """RETURN mitten_state AS mitteny, beachythingy AS beach_things"""
     )
     parsed: CypherParser = CypherParser(query)
-    match_clause: RelationshipChainList = parsed.parse_tree.cypher.match_clause
+    match_clause: Match = parsed.parse_tree.cypher.match_clause
     relationship_chain_list: RelationshipChainList = match_clause.pattern
     out: ProjectionList = relationship_chain_list._evaluate(
         fact_collection=city_state_fact_collection,
@@ -2192,7 +2192,7 @@ def test_evalate_relationship_chain_list_assumption_1(
         """RETURN mitten_state AS mitteny, beachythingy AS beach_things"""
     )
     parsed: CypherParser = CypherParser(query)
-    match_clause: RelationshipChainList = parsed.parse_tree.cypher.match_clause
+    match_clause: Match = parsed.parse_tree.cypher.match_clause
     relationship_chain_list: RelationshipChainList = match_clause.pattern
     out: ProjectionList = relationship_chain_list._evaluate(
         fact_collection=city_state_fact_collection,
@@ -2217,7 +2217,7 @@ def test_evalate_relationship_chain_list_assumption_2(
         """RETURN mitten_state AS mitteny, beachythingy AS beach_things"""
     )
     parsed: CypherParser = CypherParser(query)
-    match_clause: RelationshipChainList = parsed.parse_tree.cypher.match_clause
+    match_clause: Match = parsed.parse_tree.cypher.match_clause
     relationship_chain_list: RelationshipChainList = match_clause.pattern
     out: ProjectionList = relationship_chain_list._evaluate(
         fact_collection=city_state_fact_collection,
@@ -2248,7 +2248,7 @@ def test_evalate_relationship_chain_list_assumption_3(
         """RETURN mitten_state AS mitteny, beachythingy AS beach_things"""
     )
     parsed: CypherParser = CypherParser(query)
-    match_clause: RelationshipChainList = parsed.parse_tree.cypher.match_clause
+    match_clause: Match = parsed.parse_tree.cypher.match_clause
     relationship_chain_list: RelationshipChainList = match_clause.pattern
     out: ProjectionList = relationship_chain_list._evaluate(
         fact_collection=city_state_fact_collection,
@@ -2271,7 +2271,7 @@ def test_identify_aggregated_aliases_in_with_clause() -> None:
         """RETURN mitten_state AS mitteny, beachystats AS beach_thingy_list"""
     )
     parsed: CypherParser = CypherParser(query)
-    match_clause: RelationshipChainList = parsed.parse_tree.cypher.match_clause
+    match_clause: Match = parsed.parse_tree.cypher.match_clause
     with_clause: WithClause = match_clause.with_clause
     out: list[Alias] = with_clause.aggregated_aliases()
     expected: list[Alias] = [
@@ -2294,7 +2294,7 @@ def test_identify_non_aggregated_aliases_in_with_clause() -> None:
         """RETURN mitten_state AS mitteny, beachystats AS beach_thingy_list"""
     )
     parsed: CypherParser = CypherParser(query)
-    match_clause: RelationshipChainList = parsed.parse_tree.cypher.match_clause
+    match_clause: Match = parsed.parse_tree.cypher.match_clause
     with_clause: WithClause = match_clause.with_clause
     out: list[Alias] = with_clause.non_aggregated_aliases()
     expected: list[Alias] = [
