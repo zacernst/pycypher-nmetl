@@ -31,13 +31,18 @@ from pycypher.fact import (
 from pycypher.fact_collection import FactCollection
 from pycypher.fact_collection.simple import SimpleFactCollection
 from pycypher.node_classes import (
+    Addition,
     Aggregation,
     Alias,
+    Multiplication,
     AliasedName,
     And,
     Collect,
     Collection,
+    TRUE,
+    FALSE,
     Cypher,
+    Equals,
     Evaluable,
     Literal,
     Mapping,
@@ -1826,8 +1831,8 @@ def test_sat_9(city_state_fact_collection) -> None:
 def test_sat_10(city_state_fact_collection) -> None:
     query = """MATCH (c:City)-[r:In]->(s:State) RETURN c, r, s"""
     parsed: CypherParser = CypherParser(query)
-    match_clause = parsed.parse_tree.cypher.match_clause
-    output = match_clause._evaluate(city_state_fact_collection)
+    match_clause: Match = parsed.parse_tree.cypher.match_clause
+    output: ProjectionList = match_clause._evaluate(city_state_fact_collection)
     expected: ProjectionList = ProjectionList(
         projection_list=[
             Projection(
@@ -2362,4 +2367,101 @@ def test_end_to_end_query_with_aggregation(
             ),
         ],
     )
+    assert evaluation == expected
+
+
+def test_addition_0(city_state_fact_collection) -> None:
+    expr: Addition = Addition(left_side=Literal(2), right_side=Literal(2))
+    actual: Literal = expr._evaluate(fact_collection=city_state_fact_collection, projection=Projection(projection={}))
+    expected: Literal = Literal(4)
+    assert actual == expected
+
+
+def test_addition_1(city_state_fact_collection) -> None:
+    expr: Addition = Addition(
+        left_side=Addition(left_side=Literal(2), right_side=Literal(2)), 
+        right_side=Literal(10)
+    )
+    actual: Literal = expr._evaluate(fact_collection=city_state_fact_collection, projection=Projection(projection={}))
+    expected: Literal = Literal(14)
+    assert actual == expected
+
+def test_multiplication_0(city_state_fact_collection) -> None:
+    expr: Addition = Multiplication(left_side=Literal(3), right_side=Literal(2))
+    actual: Literal = expr._evaluate(fact_collection=city_state_fact_collection, projection=Projection(projection={}))
+    expected: Literal = Literal(6)
+    assert actual == expected
+
+
+def test_multiplication_1(city_state_fact_collection) -> None:
+    expr: Multiplication = Multiplication(
+        left_side=Addition(left_side=Literal(2), right_side=Literal(2)), 
+        right_side=Literal(10)
+    )
+    actual: Literal = expr._evaluate(fact_collection=city_state_fact_collection, projection=Projection(projection={}))
+    expected: Literal = Literal(40)
+    assert actual == expected
+
+def test_multiplication_2(city_state_fact_collection) -> None:
+    expr: Multiplication = Multiplication(
+        left_side=Addition(left_side=Addition(left_side=Literal(1), right_side=Literal(1)), right_side=Literal(2)), 
+        right_side=Literal(10)
+    )
+    actual: Literal = expr._evaluate(fact_collection=city_state_fact_collection, projection=Projection(projection={}))
+    expected: Literal = Literal(40)
+    assert actual == expected
+
+def test_equals_true(city_state_fact_collection) -> None:
+    expr: Equals = Equals(left_side=Literal(2), right_side=Literal(2))
+    actual: Literal = expr._evaluate(projection=Projection(projection={}), fact_collection=city_state_fact_collection)
+    assert actual
+
+def test_equals_false(city_state_fact_collection) -> None:
+    expr: Equals = Equals(left_side=Literal(3), right_side=Literal(2))
+    actual: Literal = expr._evaluate(projection=Projection(projection={}), fact_collection=city_state_fact_collection)
+    assert not actual
+
+def test_true_is_true() -> None:
+    assert TRUE
+
+def test_false_is_false() -> None:
+    assert not FALSE
+
+def test_true_and_true(city_state_fact_collection) -> None:
+    assert And(left_side=TRUE, right_side=TRUE)._evaluate(fact_collection=city_state_fact_collection, projection=Projection(projection={}))
+
+def test_true_and_false(city_state_fact_collection) -> None:
+    assert not And(left_side=TRUE, right_side=FALSE)._evaluate(fact_collection=city_state_fact_collection, projection=Projection(projection={}))
+
+def test_false_and_true(city_state_fact_collection) -> None:
+    assert not And(left_side=FALSE, right_side=TRUE)._evaluate(fact_collection=city_state_fact_collection, projection=Projection(projection={}))
+
+def test_false_and_false(city_state_fact_collection) -> None:
+    assert not And(left_side=FALSE, right_side=FALSE)._evaluate(fact_collection=city_state_fact_collection, projection=Projection(projection={}))
+
+def test_true_or_true(city_state_fact_collection) -> None:
+    assert Or(left_side=TRUE, right_side=TRUE)._evaluate(fact_collection=city_state_fact_collection, projection=Projection(projection={}))
+
+def test_true_or_false(city_state_fact_collection) -> None:
+    assert Or(left_side=TRUE, right_side=FALSE)._evaluate(fact_collection=city_state_fact_collection, projection=Projection(projection={}))
+
+def test_false_or_true(city_state_fact_collection) -> None:
+    assert Or(left_side=FALSE, right_side=TRUE)._evaluate(fact_collection=city_state_fact_collection, projection=Projection(projection={}))
+
+def test_false_or_false(city_state_fact_collection) -> None:
+    assert not Or(left_side=FALSE, right_side=FALSE)._evaluate(fact_collection=city_state_fact_collection, projection=Projection(projection={}))
+
+
+def test_complex_where_clause(city_state_fact_collection):
+    query: str = (
+        """MATCH (c:City)-[r:In]->(s:State) """
+        """WITH SIZE(COLLECT(c.has_beach)) AS numbeach, s.looks_like_mitten AS mitten_state """
+        """WHERE numbeach = 3 """
+        """RETURN mitten_state AS mitteny, numbeach AS beach_thingy_list"""
+    )
+    parsed: CypherParser = CypherParser(query)
+    ast: Cypher = parsed.parse_tree
+    
+    evaluation: ProjectionList = ast._evaluate(fact_collection=city_state_fact_collection)
+    expected: ProjectionList = ProjectionList(projection_list=[Projection(projection={'mitteny': Literal(True), 'beach_thingy_list': Literal(3)})])
     assert evaluation == expected

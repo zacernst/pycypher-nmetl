@@ -276,6 +276,7 @@ def p_collect(p: yacc.YaccProduction):
 def p_size(p: yacc.YaccProduction) -> None:
     """
     size : SIZE LPAREN collect RPAREN
+    | SIZE LPAREN WORD RPAREN
     """
     p[0] = Size(collect=p[3])
 
@@ -335,15 +336,27 @@ def p_aliased_name(p: yacc.YaccProduction):
     p[0] = AliasedName(p[1])
 
 
-def p_predicate(p: yacc.YaccProduction):
-    """predicate : object_attribute_lookup binary_operator literal
-    | literal binary_operator object_attribute_lookup
-    | literal binary_operator literal
-    | object_attribute_lookup binary_operator object_attribute_lookup
-    | object_attribute_lookup binary_operator binary_expression
-    | predicate binary_operator predicate
-    | NOT predicate
+def p_predicate_argument(p: yacc.YaccProduction) -> None:
+    """predicate_argument : object_attribute_lookup 
+    | literal
+    | binary_expression
+    | predicate
+    | size
+    | LPAREN predicate_argument RPAREN
     """
+    if len(p) == 2:
+        p[0] = p[1]
+    elif len(p) == 4:
+        p[0] = p[2]
+    else:
+        raise Exception('This should never happen')
+
+
+def p_predicate(p: yacc.YaccProduction):
+    '''predicate : predicate_argument binary_operator predicate_argument
+    | NOT predicate_argument
+    '''
+    
     predicate_dispatch_dict: Dict[str, Type[TreeMixin]] = {
         "=": Equals,
         "<": LessThan,
@@ -352,6 +365,15 @@ def p_predicate(p: yacc.YaccProduction):
         "AND": And,
         "NOT": Not,
     }
+
+    # """predicate : object_attribute_lookup binary_operator literal
+    # | literal binary_operator object_attribute_lookup
+    # | literal binary_operator literal
+    # | object_attribute_lookup binary_operator object_attribute_lookup
+    # | object_attribute_lookup binary_operator binary_expression
+    # | predicate binary_operator predicate
+    # | NOT predicate
+    # """
     if len(p) == 4:
         p[0] = predicate_dispatch_dict[p[2]](p[1], p[3])
     elif len(p) == 3:
@@ -428,6 +450,7 @@ class CypherParser:
         """
         self.cypher_text: str = cypher_text
         self.parse_tree: Cypher = CYPHER.parse(self.cypher_text)  # type: ignore
+        assert self.parse_tree
         [_ for _ in self.parse_tree.walk()]
 
     def __repr__(self) -> str:

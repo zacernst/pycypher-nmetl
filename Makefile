@@ -43,10 +43,6 @@ veryclean: clean
 	@echo "Deep cleaning project..."
 	uv cache clean && rm -rfv ./.venv
 
-ingest: 
-	@echo "Ingesting data..."
-	(uv run python ${SOURCE_DIR}/ingest.py)
-
 # Clean up build artifacts
 clean:
 	@echo "Cleaning build artifacts..."
@@ -138,7 +134,7 @@ ingest:
 # Build and install only pycypher
 pycypher:
 	@echo "Building and installing pycypher package..."
-	cd ${PYCYPHER_DIR} && uv run hatch build -t wheel
+	cd ${PYCYPHER_DIR} && uv build
 	uv pip install --upgrade -e ${PYCYPHER_DIR}
 
 # Build and install only nmetl (depends on pycypher)

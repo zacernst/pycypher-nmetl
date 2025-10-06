@@ -265,6 +265,13 @@ class Evaluable(TreeMixin, abc.ABC):  # pylint: disable=too-few-public-methods
             if isinstance(obj, Aggregation):
                 return True
         return False
+    
+    def _evaluate(
+        self,
+        fact_collection: FactCollection,
+        projection: Projection | ProjectionList,
+    ) -> Any:
+        raise NotImplementedError(f'Called _evaluate with {self.__class__.__name__}')
 
 
 class Where(Evaluable, TreeMixin):
@@ -1022,32 +1029,43 @@ class Multiplication(Predicate, Evaluable):
         right_side_types (type): The allowed types for the right operand (float or int).
 
     """
+    
+    def __init__(self, left_side: Evaluable, right_side: Evaluable, **kwargs):  # pylint: disable=super-init-not-called
+        """
+        Initialize an Addition instance.
+
+        Args:
+            left (TreeMixin): The left operand of the addition.
+            right (TreeMixin): The right operand of the addition.
+        """
+        self.left_side = left_side
+        self.right_side = right_side
+        Evaluable.__init__(self, **kwargs)
 
     def tree(self) -> Tree:
         t: Tree = Tree(self.__class__.__name__)
         t.add(self.left_side.tree())
         t.add(self.right_side.tree())
         return t
-
+    
     def _evaluate(
         self,
         fact_collection: FactCollection,
-        start_entity_var_id_mapping: Dict[str, str]
-        | List[Dict[str, Any]] = {},
+        projection: Projection,
     ) -> Any:
-        if isinstance(start_entity_var_id_mapping, list):
-            raise EvaluationError(
-                f"Error while evaluating Multiplication: {self}"
-            )
-        left_value = self.left_side._evaluate(
+        """
+        Evaluate this Addition node.
+        """
+        left_value = self.left_side._evaluate(  # pylint: disable=protected-access
             fact_collection,
-            start_entity_var_id_mapping=start_entity_var_id_mapping,
+            projection=projection,
         )  # pylint: disable=protected-access
-        right_value = self.right_side._evaluate(
+        right_value = self.right_side._evaluate(  # pylint: disable=protected-access
             fact_collection,
-            start_entity_var_id_mapping=start_entity_var_id_mapping,
+            projection=projection,
         )  # pylint: disable=protected-access
-        return Literal(left_value * right_value)
+        return Literal(left_value.value * right_value.value)
+
 
 
 class Division(Predicate, Evaluable):
@@ -1059,30 +1077,42 @@ class Division(Predicate, Evaluable):
         right_side_types (Union[PositiveFloat, PositiveInt]): Allowed types for the right operand.
 
     """
+    def __init__(self, left_side: Evaluable, right_side: Evaluable, **kwargs):  # pylint: disable=super-init-not-called
+        """
+        Initialize an Addition instance.
+
+        Args:
+            left (TreeMixin): The left operand of the addition.
+            right (TreeMixin): The right operand of the addition.
+        """
+        self.left_side = left_side
+        self.right_side = right_side
+        Evaluable.__init__(self, **kwargs)
 
     def tree(self) -> Tree:
         t = Tree(self.__class__.__name__)
         t.add(self.left_side.tree())
         t.add(self.right_side.tree())
         return t
-
+    
     def _evaluate(
         self,
         fact_collection: FactCollection,
-        start_entity_var_id_mapping: Dict[str, str]
-        | List[Dict[str, Any]] = {},
+        projection: Projection,
     ) -> Any:
-        if isinstance(start_entity_var_id_mapping, list):
-            raise EvaluationError(f"Error while evaluating Division: {self}")
+        """
+        Evaluate this Addition node.
+        """
         left_value = self.left_side._evaluate(  # pylint: disable=protected-access
             fact_collection,
-            start_entity_var_id_mapping=start_entity_var_id_mapping,
+            projection=projection,
         )  # pylint: disable=protected-access
         right_value = self.right_side._evaluate(  # pylint: disable=protected-access
             fact_collection,
-            start_entity_var_id_mapping=start_entity_var_id_mapping,
+            projection=projection,
         )  # pylint: disable=protected-access
         return Literal(left_value.value / right_value.value)
+
 
 
 class ObjectAttributeLookup(Evaluable, TreeMixin):
@@ -1573,6 +1603,10 @@ class Literal(Evaluable, TreeMixin):
         ):
             raise ValueError()
         return self.value + other.value
+
+TRUE: Literal = Literal(True)
+FALSE: Literal = Literal(False)
+
 class Match(Evaluable, TreeMixin):
     """
     Represents a MATCH clause in a Cypher query.
@@ -2376,7 +2410,6 @@ class And(BinaryBoolean, Evaluable):
         )  # pylint: disable=protected-access
         return Literal(
             left_value.value and right_value.value,
-            # parent_projection=projection,
         )
 
 
@@ -2695,7 +2728,7 @@ class Addition(Evaluable, Predicate):
     Represents an addition operation between two evaluable tree nodes.
     """
 
-    def __init__(self, left: Evaluable, right: Evaluable, **kwargs):  # pylint: disable=super-init-not-called
+    def __init__(self, left_side: Evaluable, right_side: Evaluable, **kwargs):  # pylint: disable=super-init-not-called
         """
         Initialize an Addition instance.
 
@@ -2703,8 +2736,8 @@ class Addition(Evaluable, Predicate):
             left (TreeMixin): The left operand of the addition.
             right (TreeMixin): The right operand of the addition.
         """
-        self.left_side = left
-        self.right_side = right
+        self.left_side = left_side
+        self.right_side = right_side
         Evaluable.__init__(self, **kwargs)
 
     def __repr__(self):
@@ -2742,19 +2775,18 @@ class Addition(Evaluable, Predicate):
     def _evaluate(
         self,
         fact_collection: FactCollection,
-        start_entity_var_id_mapping: Dict[str, str]
-        | List[Dict[str, Any]] = {},
+        projection: Projection,
     ) -> Any:
         """
         Evaluate this Addition node.
         """
         left_value = self.left_side._evaluate(  # pylint: disable=protected-access
             fact_collection,
-            start_entity_var_id_mapping=start_entity_var_id_mapping,
+            projection=projection,
         )  # pylint: disable=protected-access
         right_value = self.right_side._evaluate(  # pylint: disable=protected-access
             fact_collection,
-            start_entity_var_id_mapping=start_entity_var_id_mapping,
+            projection=projection,
         )  # pylint: disable=protected-access
         return Literal(left_value.value + right_value.value)
 
