@@ -36,7 +36,9 @@ def concatenate_shapefiles(
 
 
 if __name__ == "__main__":
-    DATA_DIR = "/Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data"
+    DATA_DIR = (
+        "/Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data"
+    )
     SHAPE_FILES = [
         filename
         for filename in os.listdir(DATA_DIR)

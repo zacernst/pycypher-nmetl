@@ -734,7 +734,9 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
 
         def _start_threads():
             current_key = b""
-            for next_key in self.skip_keys(offset=increment, max_keys=max_keys):
+            for next_key in self.skip_keys(
+                offset=increment, max_keys=max_keys
+            ):
                 future: ApplyResult[None] = executor.apply_async(
                     _get_range,
                     (

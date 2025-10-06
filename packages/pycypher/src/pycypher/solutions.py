@@ -190,14 +190,19 @@ class Projection(ProjectionTree):
                 yield i
         else:
             raise ValueError("This should never happen")
-    
+
     def __lt__(self, other: Projection) -> bool:
         if not isinstance(other, Projection):
-            raise ValueError(f'Cannot compare Projection to non-Projection {other}')
+            raise ValueError(
+                f"Cannot compare Projection to non-Projection {other}"
+            )
         # self is the subset
         # self < other
         for key in self.projection:
-            if key not in other.projection or self.projection[key] != other.projection[key]:
+            if (
+                key not in other.projection
+                or self.projection[key] != other.projection[key]
+            ):
                 return False
         return True
 
@@ -223,7 +228,7 @@ class ProjectionList(ProjectionTree):
         else:
             for i in self.parent.find_variable(variable):
                 yield i
-    
+
     def append(self, projection: Projection) -> None:
         self.projection_list.append(projection)
 

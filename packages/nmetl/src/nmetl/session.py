@@ -33,8 +33,8 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 from nmetl.config import MONITOR_LOOP_DELAY  # type: ignore
 from nmetl.config import (
-    TRIGGERED_LOOKUP_PROCESSOR_QUEUE_SIZE,  # type: ignore
-)  # pyrefly: ignore; pyrefly: ignore
+    TRIGGERED_LOOKUP_PROCESSOR_QUEUE_SIZE,
+)  # pyrefly: ignore; pyrefly: ignore; type: ignore
 from nmetl.data_asset import DataAsset
 from nmetl.data_source import DataSource
 from nmetl.exceptions import (

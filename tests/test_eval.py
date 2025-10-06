@@ -1,7 +1,7 @@
 # """All the tests."""
 
-import logging
 import copy
+import logging
 import pathlib
 from typing import TYPE_CHECKING, Any, Dict, List, Tuple
 from unittest.mock import patch
@@ -31,16 +31,15 @@ from pycypher.fact import (
 from pycypher.fact_collection import FactCollection
 from pycypher.fact_collection.simple import SimpleFactCollection
 from pycypher.node_classes import (
+    FALSE,
+    TRUE,
     Addition,
     Aggregation,
     Alias,
-    Multiplication,
     AliasedName,
     And,
     Collect,
     Collection,
-    TRUE,
-    FALSE,
     Cypher,
     Equals,
     Evaluable,
@@ -48,6 +47,7 @@ from pycypher.node_classes import (
     Mapping,
     MappingSet,
     Match,
+    Multiplication,
     Node,
     NodeNameLabel,
     Not,
@@ -107,20 +107,16 @@ def test_evaluate_trigger_against_fact_collection(
         "nmetl.queue_processor.CheckFactAgainstTriggersQueueProcessor.get_trigger_dict"
     ) as mocked_function:
 
-        @session.trigger(
-            "MATCH (c:City) WITH c.has_beach AS beachy RETURN beachy"
-        )
+        @session.trigger("MATCH (c:City) WITH c.has_beach AS beachy RETURN beachy")
         def has_sand(beachy) -> VariableAttribute["c", "sandy"]:  # type: ignore
             return beachy
 
         mocked_function.return_value = session.trigger_dict
 
-        kalamazoo: FactNodeHasAttributeWithValue = (
-            FactNodeHasAttributeWithValue(
-                node_id="kalamazoo",
-                attribute="has_beach",
-                value=Literal(False),
-            )
+        kalamazoo: FactNodeHasAttributeWithValue = FactNodeHasAttributeWithValue(
+            node_id="kalamazoo",
+            attribute="has_beach",
+            value=Literal(False),
         )
         batch: list[AtomicFact] = [kalamazoo]
 
@@ -136,16 +132,12 @@ def test_evaluate_trigger_against_fact_collection(
                 out = trigger.cypher._evaluate(
                     session.fact_collection,
                     projection_list=ProjectionList(
-                        projection_list=[
-                            Projection(projection={"c": "kalamazoo"})
-                        ]
+                        projection_list=[Projection(projection={"c": "kalamazoo"})]
                     ),
                 )
             assert isinstance(out, ProjectionList)
             assert len(out.projection_list) == 1
-            assert out.projection_list[0].projection == {
-                "beachy": Literal(False)
-            }
+            assert out.projection_list[0].projection == {"beachy": Literal(False)}
 
 
 def test_check_fact_against_triggers_queue_processor_return_no_sub_trigger_pair_if_no_match(
@@ -158,20 +150,16 @@ def test_check_fact_against_triggers_queue_processor_return_no_sub_trigger_pair_
         "nmetl.queue_processor.QueueProcessor.get_trigger_dict"
     ) as mocked_function:
 
-        @session.trigger(
-            "MATCH (c:City) WITH c.idontexist AS beachy RETURN beachy"
-        )
+        @session.trigger("MATCH (c:City) WITH c.idontexist AS beachy RETURN beachy")
         def has_sand(beachy) -> VariableAttribute["c", "sandy"]:  # type: ignore
             return beachy
 
         mocked_function.return_value = session.trigger_dict
 
-        kalamazoo: FactNodeHasAttributeWithValue = (
-            FactNodeHasAttributeWithValue(
-                node_id="kalamazoo",
-                attribute="has_beach",
-                value=Literal(False),
-            )
+        kalamazoo: FactNodeHasAttributeWithValue = FactNodeHasAttributeWithValue(
+            node_id="kalamazoo",
+            attribute="has_beach",
+            value=Literal(False),
         )
         buffer: list[AtomicFact] = [kalamazoo]
 
@@ -184,8 +172,10 @@ def test_check_fact_against_triggers_queue_processor_return_no_sub_trigger_pair_
             with patch(
                 "nmetl.queue_processor.CheckFactAgainstTriggersQueueProcessor.evaluate_fact_against_trigger"
             ) as mocked_function:
-                out = check_fact_against_triggers_queue_processor.process_item_from_queue(
-                    buffer,
+                out = (
+                    check_fact_against_triggers_queue_processor.process_item_from_queue(
+                        buffer,
+                    )
                 )
                 # [SubTriggerPair(sub={'c': 'kalamazoo'}, trigger=VariableAttributeTrigger)]
                 assert not out
@@ -201,20 +191,16 @@ def test_check_fact_against_triggers_queue_processor_return_sub_trigger_pair(
         "nmetl.queue_processor.QueueProcessor.get_trigger_dict"
     ) as mocked_function:
 
-        @session.trigger(
-            "MATCH (c:City) WITH c.has_beach AS beachy RETURN beachy"
-        )
+        @session.trigger("MATCH (c:City) WITH c.has_beach AS beachy RETURN beachy")
         def has_sand(beachy) -> VariableAttribute["c", "sandy"]:  # type: ignore
             return beachy
 
         mocked_function.return_value = session.trigger_dict
 
-        kalamazoo: FactNodeHasAttributeWithValue = (
-            FactNodeHasAttributeWithValue(
-                node_id="kalamazoo",
-                attribute="has_beach",
-                value=Literal(False),
-            )
+        kalamazoo: FactNodeHasAttributeWithValue = FactNodeHasAttributeWithValue(
+            node_id="kalamazoo",
+            attribute="has_beach",
+            value=Literal(False),
         )
         buffer: list[AtomicFact] = [kalamazoo]
 
@@ -230,9 +216,7 @@ def test_check_fact_against_triggers_queue_processor_return_sub_trigger_pair(
             sub_trigger_pair: SubTriggerPair = out[0]
             assert isinstance(sub_trigger_pair, SubTriggerPair)
             assert isinstance(sub_trigger_pair.sub, dict)
-            assert isinstance(
-                sub_trigger_pair.trigger, VariableAttributeTrigger
-            )
+            assert isinstance(sub_trigger_pair.trigger, VariableAttributeTrigger)
             assert sub_trigger_pair.sub == {"c": "kalamazoo"}
 
 
@@ -258,12 +242,10 @@ def test_check_fact_against_trigger_with_aggregation_queue_processor_return_sub_
 
         mocked_function.return_value = session.trigger_dict
 
-        kalamazoo: FactNodeHasAttributeWithValue = (
-            FactNodeHasAttributeWithValue(
-                node_id="kalamazoo",
-                attribute="has_beach",
-                value=Literal(False),
-            )
+        kalamazoo: FactNodeHasAttributeWithValue = FactNodeHasAttributeWithValue(
+            node_id="kalamazoo",
+            attribute="has_beach",
+            value=Literal(False),
         )
         buffer: list[AtomicFact] = [kalamazoo]
 
@@ -281,9 +263,7 @@ def test_check_fact_against_trigger_with_aggregation_queue_processor_return_sub_
             sub_trigger_pair: SubTriggerPair = out[0]
             assert isinstance(sub_trigger_pair, SubTriggerPair)
             assert isinstance(sub_trigger_pair.sub, dict)
-            assert isinstance(
-                sub_trigger_pair.trigger, VariableAttributeTrigger
-            )
+            assert isinstance(sub_trigger_pair.trigger, VariableAttributeTrigger)
             assert sub_trigger_pair.sub == {"c": "kalamazoo"}
 
             # variable_to_set: str = sub_trigger_pair.trigger.variable_set
@@ -313,12 +293,10 @@ def test_re_query(
 
         mocked_function.return_value = session.trigger_dict
 
-        kalamazoo: FactNodeHasAttributeWithValue = (
-            FactNodeHasAttributeWithValue(
-                node_id="kalamazoo",
-                attribute="has_beach",
-                value=Literal(False),
-            )
+        kalamazoo: FactNodeHasAttributeWithValue = FactNodeHasAttributeWithValue(
+            node_id="kalamazoo",
+            attribute="has_beach",
+            value=Literal(False),
         )
         buffer: list[AtomicFact] = [kalamazoo]
 
@@ -336,17 +314,13 @@ def test_re_query(
             ]  # Always a singleton, theoretically
 
             generated_fact: FactNodeHasAttributeWithValue | None = (
-                TriggeredLookupProcessor._process_sub_trigger_pair(
-                    sub_trigger_pair
-                )
+                TriggeredLookupProcessor._process_sub_trigger_pair(sub_trigger_pair)
             )
 
-        expected_fact: FactNodeHasAttributeWithValue = (
-            FactNodeHasAttributeWithValue(
-                node_id="michigan",
-                attribute="num_beaches",
-                value=1,
-            )
+        expected_fact: FactNodeHasAttributeWithValue = FactNodeHasAttributeWithValue(
+            node_id="michigan",
+            attribute="num_beaches",
+            value=1,
         )
 
         assert generated_fact == expected_fact
@@ -369,13 +343,9 @@ def test_pythonify_collection():
 def test_trigger_initialization_variable_attribute_calls_initializer(
     session,
 ) -> None:
-    with patch(
-        "nmetl.session.Session.process_return_annotation"
-    ) as mocked_function:
+    with patch("nmetl.session.Session.process_return_annotation") as mocked_function:
 
-        @session.trigger(
-            "MATCH (c:City) WITH c.has_beach AS beachy RETURN beachy"
-        )
+        @session.trigger("MATCH (c:City) WITH c.has_beach AS beachy RETURN beachy")
         def has_sand(beachy) -> VariableAttribute["c", "sandy"]:  # type: ignore
             return beachy
 
@@ -389,9 +359,7 @@ def test_trigger_initialization_variable_attribute_calls_process_variable_attrib
         "nmetl.session.Session.process_variable_attribute_annotation"
     ) as mocked_function:
 
-        @session.trigger(
-            "MATCH (c:City) WITH c.has_beach AS beachy RETURN beachy"
-        )
+        @session.trigger("MATCH (c:City) WITH c.has_beach AS beachy RETURN beachy")
         def has_sand(beachy) -> VariableAttribute["c", "sandy"]:  # type: ignore
             return beachy
 
@@ -626,18 +594,10 @@ def city_state_fact_collection() -> FactCollection:
                 attribute="has_beach",
                 value=Literal(True),
             ),
-            FactRelationshipHasLabel(
-                relationship_id="r1", relationship_label="In"
-            ),
-            FactRelationshipHasLabel(
-                relationship_id="r2", relationship_label="In"
-            ),
-            FactRelationshipHasLabel(
-                relationship_id="r3", relationship_label="In"
-            ),
-            FactRelationshipHasLabel(
-                relationship_id="r4", relationship_label="In"
-            ),
+            FactRelationshipHasLabel(relationship_id="r1", relationship_label="In"),
+            FactRelationshipHasLabel(relationship_id="r2", relationship_label="In"),
+            FactRelationshipHasLabel(relationship_id="r3", relationship_label="In"),
+            FactRelationshipHasLabel(relationship_id="r4", relationship_label="In"),
             FactRelationshipHasSourceNode(
                 relationship_id="r1", source_node_id="kalamazoo"
             ),
@@ -750,9 +710,7 @@ def test_init_simple_fact_collection(simple_fact_collection):
 
 def test_contains_simple_fact_collection(simple_fact_collection):
     assert (
-        FactNodeHasAttributeWithValue(
-            node_id="a", attribute="attr", value=Literal(1)
-        )
+        FactNodeHasAttributeWithValue(node_id="a", attribute="attr", value=Literal(1))
         in simple_fact_collection
     )
 
@@ -804,9 +762,7 @@ def test_evaluate_alias(simple_fact_collection) -> None:
     object_attribute_lookup: ObjectAttributeLookup = ObjectAttributeLookup(
         object="name", attribute="attr"
     )
-    alias: Alias = Alias(
-        reference=object_attribute_lookup, alias="aliased_name"
-    )
+    alias: Alias = Alias(reference=object_attribute_lookup, alias="aliased_name")
     result: Projection = alias._evaluate(
         fact_collection=simple_fact_collection,
         projection=Projection(projection={"name": "a"}),
@@ -870,9 +826,7 @@ def test_evaluate_boolean_and_2(city_state_fact_collection):
     obj3: And = And(left_side=obj1, right_side=obj2)
     evaluation: Any = obj3._evaluate(
         fact_collection=city_state_fact_collection,
-        projection=Projection(
-            projection={"city1": "detroit", "city2": "kalamazoo"}
-        ),
+        projection=Projection(projection={"city1": "detroit", "city2": "kalamazoo"}),
     )
     assert evaluation == Literal(False)
 
@@ -947,9 +901,7 @@ def test_evaluate_boolean_not_and_2(city_state_fact_collection):
     obj4: Not = Not(obj3)
     evaluation: Any = obj4._evaluate(
         fact_collection=city_state_fact_collection,
-        projection=Projection(
-            projection={"city1": "detroit", "city2": "kalamazoo"}
-        ),
+        projection=Projection(projection={"city1": "detroit", "city2": "kalamazoo"}),
     )
     assert evaluation == Literal(True)
 
@@ -1181,10 +1133,7 @@ def test_get_aggregated_aliases():
         aggregated_aliases[0].reference.object_attribute_lookup,
         ObjectAttributeLookup,
     )
-    assert (
-        aggregated_aliases[0].reference.object_attribute_lookup.object
-        == "city"
-    )
+    assert aggregated_aliases[0].reference.object_attribute_lookup.object == "city"
 
 
 def test_get_non_aggregated_aliases():
@@ -1231,9 +1180,7 @@ def test_aggregated_with_clause(city_state_fact_collection, with_clause):
     projection_list: ProjectionList = ProjectionList(
         [
             Projection(projection={"state": "michigan", "city": "kalamazoo"}),
-            Projection(
-                projection={"state": "michigan", "city": "south_haven"}
-            ),
+            Projection(projection={"state": "michigan", "city": "south_haven"}),
             Projection(projection={"state": "michigan", "city": "detroit"}),
             Projection(projection={"state": "wisconsin", "city": "madison"}),
         ],
@@ -1266,15 +1213,11 @@ def test_simple_where_clause(city_state_fact_collection):
     actual_output: ProjectionList = where_clause._evaluate(
         fact_collection=city_state_fact_collection,
         projection_list=ProjectionList(
-            projection_list=[
-                Projection(projection={"city": "south_haven"})
-            ]
-        )
+            projection_list=[Projection(projection={"city": "south_haven"})]
+        ),
     )
     expected: ProjectionList = ProjectionList(
-        projection_list=[
-            Projection({'city': 'south_haven'})
-        ]
+        projection_list=[Projection({"city": "south_haven"})]
     )
     assert actual_output == expected
 
@@ -1286,9 +1229,7 @@ def test_return_clause_one_projection(city_state_fact_collection):
     object_as_series: ObjectAsSeries = ObjectAsSeries(
         lookups=[
             Alias(
-                reference=ObjectAttributeLookup(
-                    object="city", attribute="has_beach"
-                ),
+                reference=ObjectAttributeLookup(object="city", attribute="has_beach"),
                 alias="beachy",
             ),
             Alias(
@@ -1314,11 +1255,9 @@ def test_return_clause_one_projection(city_state_fact_collection):
 
 
 def test_get_free_variables_1(relationship_chain_list_1):
-    projection: Projection = Projection(
-        projection={"i": "south_haven", "r": "r3"}
-    )
-    free_variables: Dict[str, List[Node]] = (
-        relationship_chain_list_1.free_variables(projection=projection)
+    projection: Projection = Projection(projection={"i": "south_haven", "r": "r3"})
+    free_variables: Dict[str, List[Node]] = relationship_chain_list_1.free_variables(
+        projection=projection
     )
     assert len(free_variables) == 1
     assert "k" in free_variables
@@ -1328,16 +1267,16 @@ def test_get_free_variables_2(relationship_chain_list_1):
     projection: Projection = Projection(
         projection={"i": "south_haven", "k": "thing", "r": "whatever"}
     )
-    free_variables: Dict[str, List[Node]] = (
-        relationship_chain_list_1.free_variables(projection=projection)
+    free_variables: Dict[str, List[Node]] = relationship_chain_list_1.free_variables(
+        projection=projection
     )
     assert not free_variables
 
 
 def test_get_free_variables_3(relationship_chain_list_1):
     projection: Projection = Projection(projection={"w": "thing"})
-    free_variables: Dict[str, List[Node]] = (
-        relationship_chain_list_1.free_variables(projection=projection)
+    free_variables: Dict[str, List[Node]] = relationship_chain_list_1.free_variables(
+        projection=projection
     )
     assert len(free_variables) == 3
     assert "i" in free_variables
@@ -1358,42 +1297,18 @@ def bak_test_pattern_with_free_variables(
     )
     expected: ProjectionList = ProjectionList(
         projection_list=[
-            Projection(
-                projection={"r": "r1", "k": "michigan", "i": "south_haven"}
-            ),
-            Projection(
-                projection={"r": "r1", "k": "wisconsin", "i": "south_haven"}
-            ),
-            Projection(
-                projection={"r": "r1", "k": "texas", "i": "south_haven"}
-            ),
-            Projection(
-                projection={"r": "r2", "k": "michigan", "i": "south_haven"}
-            ),
-            Projection(
-                projection={"r": "r2", "k": "wisconsin", "i": "south_haven"}
-            ),
-            Projection(
-                projection={"r": "r2", "k": "texas", "i": "south_haven"}
-            ),
-            Projection(
-                projection={"r": "r3", "k": "michigan", "i": "south_haven"}
-            ),
-            Projection(
-                projection={"r": "r3", "k": "wisconsin", "i": "south_haven"}
-            ),
-            Projection(
-                projection={"r": "r3", "k": "texas", "i": "south_haven"}
-            ),
-            Projection(
-                projection={"r": "r4", "k": "michigan", "i": "south_haven"}
-            ),
-            Projection(
-                projection={"r": "r4", "k": "wisconsin", "i": "south_haven"}
-            ),
-            Projection(
-                projection={"r": "r4", "k": "texas", "i": "south_haven"}
-            ),
+            Projection(projection={"r": "r1", "k": "michigan", "i": "south_haven"}),
+            Projection(projection={"r": "r1", "k": "wisconsin", "i": "south_haven"}),
+            Projection(projection={"r": "r1", "k": "texas", "i": "south_haven"}),
+            Projection(projection={"r": "r2", "k": "michigan", "i": "south_haven"}),
+            Projection(projection={"r": "r2", "k": "wisconsin", "i": "south_haven"}),
+            Projection(projection={"r": "r2", "k": "texas", "i": "south_haven"}),
+            Projection(projection={"r": "r3", "k": "michigan", "i": "south_haven"}),
+            Projection(projection={"r": "r3", "k": "wisconsin", "i": "south_haven"}),
+            Projection(projection={"r": "r3", "k": "texas", "i": "south_haven"}),
+            Projection(projection={"r": "r4", "k": "michigan", "i": "south_haven"}),
+            Projection(projection={"r": "r4", "k": "wisconsin", "i": "south_haven"}),
+            Projection(projection={"r": "r4", "k": "texas", "i": "south_haven"}),
         ]
     )
     assert all_substitutions == expected
@@ -1482,9 +1397,7 @@ def test_parse_cypher_clause_3(city_state_fact_collection):
 
 def test_size_of_small_collection(city_state_fact_collection):
     collection: Literal = Size(
-        collect=Collect(
-            ObjectAttributeLookup(object="i", attribute="has_beach")
-        )
+        collect=Collect(ObjectAttributeLookup(object="i", attribute="has_beach"))
     )._evaluate(
         city_state_fact_collection,
         projection_list=ProjectionList(
@@ -1500,9 +1413,7 @@ def test_size_of_small_collection(city_state_fact_collection):
 
 def test_size_of_collection_with_null_result(city_state_fact_collection):
     collection: Literal = Size(
-        collect=Collect(
-            ObjectAttributeLookup(object="i", attribute="has_beach")
-        )
+        collect=Collect(ObjectAttributeLookup(object="i", attribute="has_beach"))
     )._evaluate(
         city_state_fact_collection,
         projection_list=ProjectionList(
@@ -1519,9 +1430,7 @@ def test_size_of_collection_with_null_result(city_state_fact_collection):
 
 def test_size_of_empty_collection(city_state_fact_collection):
     collection: Literal = Size(
-        collect=Collect(
-            ObjectAttributeLookup(object="i", attribute="has_beach")
-        )
+        collect=Collect(ObjectAttributeLookup(object="i", attribute="has_beach"))
     )._evaluate(
         city_state_fact_collection,
         projection_list=ProjectionList(
@@ -1679,9 +1588,7 @@ def test_sat_6(city_state_fact_collection):
     relationship_assertions = match_clause.get_relationship_assertions(
         city_state_fact_collection
     )
-    disjunctions = match_clause.get_instance_disjunctions(
-        city_state_fact_collection
-    )
+    disjunctions = match_clause.get_instance_disjunctions(city_state_fact_collection)
     exclusions = match_clause.get_mutual_exclusions(city_state_fact_collection)
 
     all_assertions = relationship_assertions + disjunctions + exclusions
@@ -1741,9 +1648,7 @@ def test_sat_7(city_state_fact_collection):
     relationship_assertions = match_clause.get_relationship_assertions(
         city_state_fact_collection
     )
-    disjunctions = match_clause.get_instance_disjunctions(
-        city_state_fact_collection
-    )
+    disjunctions = match_clause.get_instance_disjunctions(city_state_fact_collection)
     exclusions = match_clause.get_mutual_exclusions(city_state_fact_collection)
 
     all_assertions = relationship_assertions + disjunctions + exclusions
@@ -1811,18 +1716,10 @@ def test_sat_9(city_state_fact_collection) -> None:
     )
     expected: ProjectionList = ProjectionList(
         projection_list=[
-            Projection(
-                projection={"c": "kalamazoo", "r": "r1", "s": "michigan"}
-            ),
-            Projection(
-                projection={"c": "detroit", "r": "r2", "s": "michigan"}
-            ),
-            Projection(
-                projection={"c": "madison", "r": "r4", "s": "wisconsin"}
-            ),
-            Projection(
-                projection={"c": "south_haven", "r": "r3", "s": "michigan"}
-            ),
+            Projection(projection={"c": "kalamazoo", "r": "r1", "s": "michigan"}),
+            Projection(projection={"c": "detroit", "r": "r2", "s": "michigan"}),
+            Projection(projection={"c": "madison", "r": "r4", "s": "wisconsin"}),
+            Projection(projection={"c": "south_haven", "r": "r3", "s": "michigan"}),
         ],
     )
     assert output == expected
@@ -1835,18 +1732,10 @@ def test_sat_10(city_state_fact_collection) -> None:
     output: ProjectionList = match_clause._evaluate(city_state_fact_collection)
     expected: ProjectionList = ProjectionList(
         projection_list=[
-            Projection(
-                projection={"c": "kalamazoo", "r": "r1", "s": "michigan"}
-            ),
-            Projection(
-                projection={"c": "detroit", "r": "r2", "s": "michigan"}
-            ),
-            Projection(
-                projection={"c": "madison", "r": "r4", "s": "wisconsin"}
-            ),
-            Projection(
-                projection={"c": "south_haven", "r": "r3", "s": "michigan"}
-            ),
+            Projection(projection={"c": "kalamazoo", "r": "r1", "s": "michigan"}),
+            Projection(projection={"c": "detroit", "r": "r2", "s": "michigan"}),
+            Projection(projection={"c": "madison", "r": "r4", "s": "wisconsin"}),
+            Projection(projection={"c": "south_haven", "r": "r3", "s": "michigan"}),
         ],
     )
     assert output == expected
@@ -1857,9 +1746,7 @@ def test_sat_11(city_state_fact_collection) -> None:
     parsed: CypherParser = CypherParser(query)
     match_clause = parsed.parse_tree.cypher.match_clause
     projection: Projection = Projection(projection={"s": "michigan"})
-    projection_list: ProjectionList = ProjectionList(
-        projection_list=[projection]
-    )
+    projection_list: ProjectionList = ProjectionList(projection_list=[projection])
     output = match_clause._evaluate(
         city_state_fact_collection, projection_list=projection_list
     )
@@ -1889,9 +1776,7 @@ def test_sat_12(city_state_fact_collection) -> None:
     )
     expected: ProjectionList = ProjectionList(
         projection_list=[
-            Projection(
-                projection={"c": "madison", "r": "r4", "s": "wisconsin"}
-            ),
+            Projection(projection={"c": "madison", "r": "r4", "s": "wisconsin"}),
         ],
     )
     assert output == expected
@@ -1902,9 +1787,7 @@ def test_sat_13(city_state_fact_collection) -> None:
     parsed: CypherParser = CypherParser(query)
     match_clause = parsed.parse_tree.cypher.match_clause
     projection: Projection = Projection(projection={"s": "idontexist"})
-    projection_list: ProjectionList = ProjectionList(
-        projection_list=[projection]
-    )
+    projection_list: ProjectionList = ProjectionList(projection_list=[projection])
     output = match_clause._evaluate(
         city_state_fact_collection, projection_list=projection_list
     )
@@ -1949,19 +1832,14 @@ def test_collect_aggregated_aliases_in_with_clause_1():
         """RETURN mitten_state AS mitteny, beach_list AS beach_things"""
     )
     parsed: CypherParser = CypherParser(query)
-    output = (
-        parsed.parse_tree.cypher.match_clause.with_clause.aggregated_aliases()
-    )
+    output = parsed.parse_tree.cypher.match_clause.with_clause.aggregated_aliases()
     assert len(output) == 1
     assert isinstance(output[0], Alias)
     assert output[0].alias == "beach_list"
     assert isinstance(output[0].reference, Size)
     assert isinstance(output[0].reference.collect, Collect)
     assert output[0].reference.collect.object_attribute_lookup.object == "c"
-    assert (
-        output[0].reference.collect.object_attribute_lookup.attribute
-        == "has_beach"
-    )
+    assert output[0].reference.collect.object_attribute_lookup.attribute == "has_beach"
 
 
 def test_collect_aggregated_aliases_in_with_clause_2():
@@ -1971,9 +1849,7 @@ def test_collect_aggregated_aliases_in_with_clause_2():
         """RETURN mitten_state AS mitteny, beachythingy AS beach_things"""
     )
     parsed: CypherParser = CypherParser(query)
-    output = (
-        parsed.parse_tree.cypher.match_clause.with_clause.aggregated_aliases()
-    )
+    output = parsed.parse_tree.cypher.match_clause.with_clause.aggregated_aliases()
     assert not output
 
 
@@ -1984,9 +1860,7 @@ def test_collect_aggregated_aliases_in_with_clause_3():
         """RETURN mitten_state AS mitteny, beachythingy AS beach_things"""
     )
     parsed: CypherParser = CypherParser(query)
-    output = (
-        parsed.parse_tree.cypher.match_clause.with_clause.aggregated_aliases()
-    )
+    output = parsed.parse_tree.cypher.match_clause.with_clause.aggregated_aliases()
     assert len(output) == 2
 
 
@@ -1997,7 +1871,9 @@ def test_collect_non_aggregated_aliases_in_with_clause_1():
         """RETURN mitten_state AS mitteny, beachythingy AS beach_things"""
     )
     parsed: CypherParser = CypherParser(query)
-    output: list[Alias] = parsed.parse_tree.cypher.match_clause.with_clause.non_aggregated_aliases()
+    output: list[Alias] = (
+        parsed.parse_tree.cypher.match_clause.with_clause.non_aggregated_aliases()
+    )
     assert len(output) == 2
     assert isinstance(output[0], Alias)
     assert output[0].alias == "beachythingy"
@@ -2086,9 +1962,7 @@ def test_get_mutual_exclusions_from_relationship_chain_list(
     match_clause: Match = parsed.parse_tree.cypher.match_clause
     relationship_chain_list: RelationshipChainList = match_clause.pattern
     mutual_exclusions: list[tuple[int, int]] = (
-        relationship_chain_list.get_mutual_exclusions(
-            city_state_fact_collection
-        )
+        relationship_chain_list.get_mutual_exclusions(city_state_fact_collection)
     )
     expected_sorted: list[tuple[int, int]] = [
         (-11, -10),
@@ -2137,20 +2011,20 @@ def test_get_relationship_assertions_from_relationship_chain_list(
     match_clause: Match = parsed.parse_tree.cypher.match_clause
     relationship_chain_list: RelationshipChainList = match_clause.pattern
     relationship_assertions: list[tuple[int, int]] = (
-        relationship_chain_list.get_relationship_assertions(
-            city_state_fact_collection
-        )
+        relationship_chain_list.get_relationship_assertions(city_state_fact_collection)
     )
-    sorted_expected: list[tuple[int, int]] = sorted([
-        (-5, 1),
-        (-5, 9),
-        (-6, 2),
-        (-6, 9),
-        (-7, 3),
-        (-7, 9),
-        (-8, 4),
-        (-8, 10),
-    ])
+    sorted_expected: list[tuple[int, int]] = sorted(
+        [
+            (-5, 1),
+            (-5, 9),
+            (-6, 2),
+            (-6, 9),
+            (-7, 3),
+            (-7, 9),
+            (-8, 4),
+            (-8, 10),
+        ]
+    )
     assert sorted(relationship_assertions) == sorted_expected
 
 
@@ -2171,18 +2045,10 @@ def test_evalate_relationship_chain_list_no_assumptions(
     )
     expected: ProjectionList = ProjectionList(
         projection_list=[
-            Projection(
-                projection={"c": "kalamazoo", "r": "r1", "s": "michigan"}
-            ),
-            Projection(
-                projection={"c": "detroit", "r": "r2", "s": "michigan"}
-            ),
-            Projection(
-                projection={"c": "madison", "r": "r4", "s": "wisconsin"}
-            ),
-            Projection(
-                projection={"c": "south_haven", "r": "r3", "s": "michigan"}
-            ),
+            Projection(projection={"c": "kalamazoo", "r": "r1", "s": "michigan"}),
+            Projection(projection={"c": "detroit", "r": "r2", "s": "michigan"}),
+            Projection(projection={"c": "madison", "r": "r4", "s": "wisconsin"}),
+            Projection(projection={"c": "south_haven", "r": "r3", "s": "michigan"}),
         ]
     )
     assert out == expected
@@ -2205,9 +2071,7 @@ def test_evalate_relationship_chain_list_assumption_1(
     )
     expected: ProjectionList = ProjectionList(
         projection_list=[
-            Projection(
-                projection={"c": "madison", "r": "r4", "s": "wisconsin"}
-            ),
+            Projection(projection={"c": "madison", "r": "r4", "s": "wisconsin"}),
         ]
     )
     assert out == expected
@@ -2230,15 +2094,9 @@ def test_evalate_relationship_chain_list_assumption_2(
     )
     expected: ProjectionList = ProjectionList(
         projection_list=[
-            Projection(
-                projection={"c": "kalamazoo", "r": "r1", "s": "michigan"}
-            ),
-            Projection(
-                projection={"c": "detroit", "r": "r2", "s": "michigan"}
-            ),
-            Projection(
-                projection={"c": "south_haven", "r": "r3", "s": "michigan"}
-            ),
+            Projection(projection={"c": "kalamazoo", "r": "r1", "s": "michigan"}),
+            Projection(projection={"c": "detroit", "r": "r2", "s": "michigan"}),
+            Projection(projection={"c": "south_haven", "r": "r3", "s": "michigan"}),
         ]
     )
     assert out == expected
@@ -2261,9 +2119,7 @@ def test_evalate_relationship_chain_list_assumption_3(
     )
     expected: ProjectionList = ProjectionList(
         projection_list=[
-            Projection(
-                projection={"c": "detroit", "r": "r2", "s": "michigan"}
-            ),
+            Projection(projection={"c": "detroit", "r": "r2", "s": "michigan"}),
         ]
     )
     assert out == expected
@@ -2304,9 +2160,7 @@ def test_identify_non_aggregated_aliases_in_with_clause() -> None:
     out: list[Alias] = with_clause.non_aggregated_aliases()
     expected: list[Alias] = [
         Alias(
-            reference=ObjectAttributeLookup(
-                object="s", attribute="looks_like_mitten"
-            ),
+            reference=ObjectAttributeLookup(object="s", attribute="looks_like_mitten"),
             alias="mitten_state",
         )
     ]
@@ -2340,13 +2194,15 @@ def test_end_to_end_query_with_aggregation(
     )
     parsed: CypherParser = CypherParser(query)
     ast: Cypher = parsed.parse_tree
-    evaluation: ProjectionList = ast._evaluate(fact_collection=city_state_fact_collection)
+    evaluation: ProjectionList = ast._evaluate(
+        fact_collection=city_state_fact_collection
+    )
     expected: ProjectionList = ProjectionList(
         projection_list=[
             Projection(
                 projection={
-                    'mitteny': Literal(value=True),
-                    'beach_thingy_list': Collection(
+                    "mitteny": Literal(value=True),
+                    "beach_thingy_list": Collection(
                         values=[
                             Literal(value=False),
                             Literal(value=False),
@@ -2357,8 +2213,8 @@ def test_end_to_end_query_with_aggregation(
             ),
             Projection(
                 projection={
-                    'mitteny': Literal(value=False),
-                    'beach_thingy_list': Collection(
+                    "mitteny": Literal(value=False),
+                    "beach_thingy_list": Collection(
                         values=[
                             Literal(value=True),
                         ],
@@ -2372,87 +2228,134 @@ def test_end_to_end_query_with_aggregation(
 
 def test_addition_0(city_state_fact_collection) -> None:
     expr: Addition = Addition(left_side=Literal(2), right_side=Literal(2))
-    actual: Literal = expr._evaluate(fact_collection=city_state_fact_collection, projection=Projection(projection={}))
+    actual: Literal = expr._evaluate(
+        fact_collection=city_state_fact_collection, projection=Projection(projection={})
+    )
     expected: Literal = Literal(4)
     assert actual == expected
 
 
 def test_addition_1(city_state_fact_collection) -> None:
     expr: Addition = Addition(
-        left_side=Addition(left_side=Literal(2), right_side=Literal(2)), 
-        right_side=Literal(10)
+        left_side=Addition(left_side=Literal(2), right_side=Literal(2)),
+        right_side=Literal(10),
     )
-    actual: Literal = expr._evaluate(fact_collection=city_state_fact_collection, projection=Projection(projection={}))
+    actual: Literal = expr._evaluate(
+        fact_collection=city_state_fact_collection, projection=Projection(projection={})
+    )
     expected: Literal = Literal(14)
     assert actual == expected
 
+
 def test_multiplication_0(city_state_fact_collection) -> None:
     expr: Addition = Multiplication(left_side=Literal(3), right_side=Literal(2))
-    actual: Literal = expr._evaluate(fact_collection=city_state_fact_collection, projection=Projection(projection={}))
+    actual: Literal = expr._evaluate(
+        fact_collection=city_state_fact_collection, projection=Projection(projection={})
+    )
     expected: Literal = Literal(6)
     assert actual == expected
 
 
 def test_multiplication_1(city_state_fact_collection) -> None:
     expr: Multiplication = Multiplication(
-        left_side=Addition(left_side=Literal(2), right_side=Literal(2)), 
-        right_side=Literal(10)
+        left_side=Addition(left_side=Literal(2), right_side=Literal(2)),
+        right_side=Literal(10),
     )
-    actual: Literal = expr._evaluate(fact_collection=city_state_fact_collection, projection=Projection(projection={}))
+    actual: Literal = expr._evaluate(
+        fact_collection=city_state_fact_collection, projection=Projection(projection={})
+    )
     expected: Literal = Literal(40)
     assert actual == expected
+
 
 def test_multiplication_2(city_state_fact_collection) -> None:
     expr: Multiplication = Multiplication(
-        left_side=Addition(left_side=Addition(left_side=Literal(1), right_side=Literal(1)), right_side=Literal(2)), 
-        right_side=Literal(10)
+        left_side=Addition(
+            left_side=Addition(left_side=Literal(1), right_side=Literal(1)),
+            right_side=Literal(2),
+        ),
+        right_side=Literal(10),
     )
-    actual: Literal = expr._evaluate(fact_collection=city_state_fact_collection, projection=Projection(projection={}))
+    actual: Literal = expr._evaluate(
+        fact_collection=city_state_fact_collection, projection=Projection(projection={})
+    )
     expected: Literal = Literal(40)
     assert actual == expected
 
+
 def test_equals_true(city_state_fact_collection) -> None:
     expr: Equals = Equals(left_side=Literal(2), right_side=Literal(2))
-    actual: Literal = expr._evaluate(projection=Projection(projection={}), fact_collection=city_state_fact_collection)
+    actual: Literal = expr._evaluate(
+        projection=Projection(projection={}), fact_collection=city_state_fact_collection
+    )
     assert actual
+
 
 def test_equals_false(city_state_fact_collection) -> None:
     expr: Equals = Equals(left_side=Literal(3), right_side=Literal(2))
-    actual: Literal = expr._evaluate(projection=Projection(projection={}), fact_collection=city_state_fact_collection)
+    actual: Literal = expr._evaluate(
+        projection=Projection(projection={}), fact_collection=city_state_fact_collection
+    )
     assert not actual
+
 
 def test_true_is_true() -> None:
     assert TRUE
 
+
 def test_false_is_false() -> None:
     assert not FALSE
 
+
 def test_true_and_true(city_state_fact_collection) -> None:
-    assert And(left_side=TRUE, right_side=TRUE)._evaluate(fact_collection=city_state_fact_collection, projection=Projection(projection={}))
+    assert And(left_side=TRUE, right_side=TRUE)._evaluate(
+        fact_collection=city_state_fact_collection, projection=Projection(projection={})
+    )
+
 
 def test_true_and_false(city_state_fact_collection) -> None:
-    assert not And(left_side=TRUE, right_side=FALSE)._evaluate(fact_collection=city_state_fact_collection, projection=Projection(projection={}))
+    assert not And(left_side=TRUE, right_side=FALSE)._evaluate(
+        fact_collection=city_state_fact_collection, projection=Projection(projection={})
+    )
+
 
 def test_false_and_true(city_state_fact_collection) -> None:
-    assert not And(left_side=FALSE, right_side=TRUE)._evaluate(fact_collection=city_state_fact_collection, projection=Projection(projection={}))
+    assert not And(left_side=FALSE, right_side=TRUE)._evaluate(
+        fact_collection=city_state_fact_collection, projection=Projection(projection={})
+    )
+
 
 def test_false_and_false(city_state_fact_collection) -> None:
-    assert not And(left_side=FALSE, right_side=FALSE)._evaluate(fact_collection=city_state_fact_collection, projection=Projection(projection={}))
+    assert not And(left_side=FALSE, right_side=FALSE)._evaluate(
+        fact_collection=city_state_fact_collection, projection=Projection(projection={})
+    )
+
 
 def test_true_or_true(city_state_fact_collection) -> None:
-    assert Or(left_side=TRUE, right_side=TRUE)._evaluate(fact_collection=city_state_fact_collection, projection=Projection(projection={}))
+    assert Or(left_side=TRUE, right_side=TRUE)._evaluate(
+        fact_collection=city_state_fact_collection, projection=Projection(projection={})
+    )
+
 
 def test_true_or_false(city_state_fact_collection) -> None:
-    assert Or(left_side=TRUE, right_side=FALSE)._evaluate(fact_collection=city_state_fact_collection, projection=Projection(projection={}))
+    assert Or(left_side=TRUE, right_side=FALSE)._evaluate(
+        fact_collection=city_state_fact_collection, projection=Projection(projection={})
+    )
+
 
 def test_false_or_true(city_state_fact_collection) -> None:
-    assert Or(left_side=FALSE, right_side=TRUE)._evaluate(fact_collection=city_state_fact_collection, projection=Projection(projection={}))
+    assert Or(left_side=FALSE, right_side=TRUE)._evaluate(
+        fact_collection=city_state_fact_collection, projection=Projection(projection={})
+    )
+
 
 def test_false_or_false(city_state_fact_collection) -> None:
-    assert not Or(left_side=FALSE, right_side=FALSE)._evaluate(fact_collection=city_state_fact_collection, projection=Projection(projection={}))
+    assert not Or(left_side=FALSE, right_side=FALSE)._evaluate(
+        fact_collection=city_state_fact_collection, projection=Projection(projection={})
+    )
 
 
-def test_complex_where_clause(city_state_fact_collection):
+def test_complex_where_clause_with_result(city_state_fact_collection):
     query: str = (
         """MATCH (c:City)-[r:In]->(s:State) """
         """WITH SIZE(COLLECT(c.has_beach)) AS numbeach, s.looks_like_mitten AS mitten_state """
@@ -2461,7 +2364,32 @@ def test_complex_where_clause(city_state_fact_collection):
     )
     parsed: CypherParser = CypherParser(query)
     ast: Cypher = parsed.parse_tree
-    
-    evaluation: ProjectionList = ast._evaluate(fact_collection=city_state_fact_collection)
-    expected: ProjectionList = ProjectionList(projection_list=[Projection(projection={'mitteny': Literal(True), 'beach_thingy_list': Literal(3)})])
+
+    evaluation: ProjectionList = ast._evaluate(
+        fact_collection=city_state_fact_collection
+    )
+    expected: ProjectionList = ProjectionList(
+        projection_list=[
+            Projection(
+                projection={"mitteny": Literal(True), "beach_thingy_list": Literal(3)}
+            )
+        ]
+    )
+    assert evaluation == expected
+
+
+def test_complex_where_clause_with_no_result(city_state_fact_collection):
+    query: str = (
+        """MATCH (c:City)-[r:In]->(s:State) """
+        """WITH SIZE(COLLECT(c.has_beach)) AS numbeach, s.looks_like_mitten AS mitten_state """
+        """WHERE numbeach = 100 """
+        """RETURN mitten_state AS mitteny, numbeach AS beach_thingy_list"""
+    )
+    parsed: CypherParser = CypherParser(query)
+    ast: Cypher = parsed.parse_tree
+
+    evaluation: ProjectionList = ast._evaluate(
+        fact_collection=city_state_fact_collection
+    )
+    expected: ProjectionList = ProjectionList(projection_list=[])
     assert evaluation == expected

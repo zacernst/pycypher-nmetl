@@ -598,7 +598,8 @@ class FactCollection(ABC):
         attributes_of_label_dict = self.attributes_of_label()
         for node_id in self.nodes_with_label(label):
             row_dict = {
-                attribute: None for attribute in attributes_of_label_dict[label]
+                attribute: None
+                for attribute in attributes_of_label_dict[label]
             }
             for attribute in attributes_of_label_dict[label]:
                 attribute_value = self.attributes_for_specific_node(

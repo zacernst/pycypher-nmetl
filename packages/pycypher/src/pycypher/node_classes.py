@@ -208,9 +208,9 @@ def get_all_substitutions(
     LOGGER.debug("projection_list: %s", projection_list)
     var_sub_dict = {}
     inverse_var_sub_dict = {}
-    free_variable_substitutions.update({
-        i: [j] for i, j in projection_list[0].projection.items()
-    })
+    free_variable_substitutions.update(
+        {i: [j] for i, j in projection_list[0].projection.items()}
+    )
     LOGGER.debug(
         "with stipulated free_variable_substitutions: %s",
         free_variable_substitutions,
@@ -249,10 +249,9 @@ class Evaluable(TreeMixin, abc.ABC):  # pylint: disable=too-few-public-methods
     """
 
     def __init__(
-        self#, parent_projection: Optional[Projection | ProjectionList] = None
+        self,  # , parent_projection: Optional[Projection | ProjectionList] = None
     ):
-        """Initialize an Evaluable instance.
-        """
+        """Initialize an Evaluable instance."""
 
     @property
     def is_aggregation(self) -> bool:
@@ -265,13 +264,15 @@ class Evaluable(TreeMixin, abc.ABC):  # pylint: disable=too-few-public-methods
             if isinstance(obj, Aggregation):
                 return True
         return False
-    
+
     def _evaluate(
         self,
         fact_collection: FactCollection,
         projection: Projection | ProjectionList,
     ) -> Any:
-        raise NotImplementedError(f'Called _evaluate with {self.__class__.__name__}')
+        raise NotImplementedError(
+            f"Called _evaluate with {self.__class__.__name__}"
+        )
 
 
 class Where(Evaluable, TreeMixin):
@@ -288,7 +289,9 @@ class Where(Evaluable, TreeMixin):
     ) -> ProjectionList:
         if not self.predicate:
             return projection_list
-        filtered_projection_list: ProjectionList = ProjectionList(projection_list=[])
+        filtered_projection_list: ProjectionList = ProjectionList(
+            projection_list=[]
+        )
         for projection in projection_list:
             evaluation: Any = self.predicate._evaluate(
                 fact_collection,
@@ -903,7 +906,9 @@ class Equals(BinaryBoolean, Evaluable):
             fact_collection,
             projection=projection,
         )  # pylint: disable=protected-access
-        return Literal(left_value == right_value) # , parent_projection=projection)
+        return Literal(
+            left_value == right_value
+        )  # , parent_projection=projection)
 
 
 class LessThan(Predicate, Evaluable):
@@ -936,7 +941,7 @@ class LessThan(Predicate, Evaluable):
         )  # pylint: disable=protected-access
         return Literal(
             left_value < right_value,
-            #parent_projection=start_entity_var_id_mapping,
+            # parent_projection=start_entity_var_id_mapping,
         )
 
 
@@ -1029,7 +1034,7 @@ class Multiplication(Predicate, Evaluable):
         right_side_types (type): The allowed types for the right operand (float or int).
 
     """
-    
+
     def __init__(self, left_side: Evaluable, right_side: Evaluable, **kwargs):  # pylint: disable=super-init-not-called
         """
         Initialize an Addition instance.
@@ -1047,7 +1052,7 @@ class Multiplication(Predicate, Evaluable):
         t.add(self.left_side.tree())
         t.add(self.right_side.tree())
         return t
-    
+
     def _evaluate(
         self,
         fact_collection: FactCollection,
@@ -1067,7 +1072,6 @@ class Multiplication(Predicate, Evaluable):
         return Literal(left_value.value * right_value.value)
 
 
-
 class Division(Predicate, Evaluable):
     """
     Represents a division operation in an expression tree.
@@ -1077,6 +1081,7 @@ class Division(Predicate, Evaluable):
         right_side_types (Union[PositiveFloat, PositiveInt]): Allowed types for the right operand.
 
     """
+
     def __init__(self, left_side: Evaluable, right_side: Evaluable, **kwargs):  # pylint: disable=super-init-not-called
         """
         Initialize an Addition instance.
@@ -1094,7 +1099,7 @@ class Division(Predicate, Evaluable):
         t.add(self.left_side.tree())
         t.add(self.right_side.tree())
         return t
-    
+
     def _evaluate(
         self,
         fact_collection: FactCollection,
@@ -1112,7 +1117,6 @@ class Division(Predicate, Evaluable):
             projection=projection,
         )  # pylint: disable=protected-access
         return Literal(left_value.value / right_value.value)
-
 
 
 class ObjectAttributeLookup(Evaluable, TreeMixin):
@@ -1325,13 +1329,15 @@ class ObjectAsSeries(Evaluable, TreeMixin):
         fact_collection: FactCollection,
         projection: Projection,
     ) -> Projection:
-        result: Projection = Projection({
-            lookup.alias: lookup.reference._evaluate(
-                fact_collection,
-                projection=projection,
-            )
-            for lookup in self.lookups
-        })
+        result: Projection = Projection(
+            {
+                lookup.alias: lookup.reference._evaluate(
+                    fact_collection,
+                    projection=projection,
+                )
+                for lookup in self.lookups
+            }
+        )
         return result
 
 
@@ -1346,8 +1352,8 @@ class WithClause(Evaluable, TreeMixin):
 
     def __init__(self, lookups: ObjectAsSeries, **kwargs):
         self.lookups = lookups
-        self.incoming_projection_list: ProjectionList = (
-            ProjectionList([])
+        self.incoming_projection_list: ProjectionList = ProjectionList(
+            []
         )  # Only for unit testing
         Evaluable.__init__(self, **kwargs)
 
@@ -1481,7 +1487,7 @@ class WithClause(Evaluable, TreeMixin):
         for bucket, projection_list in bucketed.items():
             aggregation_evaluations = {}
             for alias in aggregated_alias_list:
-                aggregation  = alias.reference  # getattr(alias.reference, dispatch_dict[alias.reference.__class__])
+                aggregation = alias.reference  # getattr(alias.reference, dispatch_dict[alias.reference.__class__])
                 evaluation = aggregation._evaluate(
                     fact_collection, projection_list=projection_list
                 )
@@ -1493,7 +1499,7 @@ class WithClause(Evaluable, TreeMixin):
         )
 
         return solutions
-    
+
     @property
     def empty(self) -> bool:
         return self.lookups is None
@@ -1604,8 +1610,10 @@ class Literal(Evaluable, TreeMixin):
             raise ValueError()
         return self.value + other.value
 
+
 TRUE: Literal = Literal(True)
 FALSE: Literal = Literal(False)
+
 
 class Match(Evaluable, TreeMixin):
     """
@@ -1759,10 +1767,12 @@ class Match(Evaluable, TreeMixin):
 
         if projection_list:
             for variable, instance in projection_list[0].projection.items():
-                projection_assumption_tuple: tuple[str, str] = tuple([
-                    variable,
-                    instance,
-                ])
+                projection_assumption_tuple: tuple[str, str] = tuple(
+                    [
+                        variable,
+                        instance,
+                    ]
+                )
                 for (
                     assertion,
                     assumption_tuple,
@@ -1834,10 +1844,12 @@ class Match(Evaluable, TreeMixin):
         # projection: Projection = projection_list[0] if len(projection_list) > 0 else Projection(projection={}) # Assuming only one projection in ProjectionList
         if projection_list:
             for variable, instance in projection_list[0].projection.items():
-                projection_assumption_tuple: tuple[str, str] = tuple([
-                    variable,
-                    instance,
-                ])
+                projection_assumption_tuple: tuple[str, str] = tuple(
+                    [
+                        variable,
+                        instance,
+                    ]
+                )
                 for (
                     assertion,
                     assumption_tuple,
@@ -2105,7 +2117,7 @@ class Node(TreeMixin):
             )
             node_label: str = fact_collection.query(query)
             if node_label != self.name_label.label:
-                return Literal(False) # , parent_projection=projection)
+                return Literal(False)  # , parent_projection=projection)
 
         for mapping in self.mapping_set.mappings:
             attribute: str = mapping.key
@@ -2115,9 +2127,9 @@ class Node(TreeMixin):
             )
             attribute_value: Literal = fact_collection.query(attribute_query)
             if attribute_value != mapping.value:
-                return Literal(False) # , parent_projection=projection)
+                return Literal(False)  # , parent_projection=projection)
 
-        out = Literal(True) # , parent_projection=projection)
+        out = Literal(True)  # , parent_projection=projection)
         return out
 
     def __repr__(self):
@@ -2383,7 +2395,6 @@ class RelationshipChain(TreeMixin):
         yield self.target_node
 
 
-
 class And(BinaryBoolean, Evaluable):
     """
     Represents a logical AND operation between two boolean expressions.
@@ -2439,7 +2450,8 @@ class Or(BinaryBoolean, Evaluable):
             projection=projection,
         )  # pylint: disable=protected-access
         return Literal(
-            left_value.value or right_value.value# , parent_projection=projection
+            left_value.value
+            or right_value.value  # , parent_projection=projection
         )
 
 
@@ -2666,10 +2678,12 @@ class RelationshipChainList(TreeMixin):
 
         if projection:
             for variable, instance in projection.projection.items():
-                projection_assumption_tuple: tuple[str, str] = tuple([
-                    variable,
-                    instance,
-                ])
+                projection_assumption_tuple: tuple[str, str] = tuple(
+                    [
+                        variable,
+                        instance,
+                    ]
+                )
                 for (
                     assertion,
                     assumption_tuple,
@@ -2694,9 +2708,9 @@ class RelationshipChainList(TreeMixin):
         projection_list: ProjectionList = ProjectionList(
             projection_list=[
                 Projection(
-                    projection=dict([
-                        variable_substitution_dict[i] for i in model if i > 0
-                    ])
+                    projection=dict(
+                        [variable_substitution_dict[i] for i in model if i > 0]
+                    )
                 )
                 for model in solver.enum_models()
             ]
@@ -2789,6 +2803,3 @@ class Addition(Evaluable, Predicate):
             projection=projection,
         )  # pylint: disable=protected-access
         return Literal(left_value.value + right_value.value)
-
-
-

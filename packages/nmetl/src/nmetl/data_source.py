@@ -575,10 +575,12 @@ class DataSourceMapping:  # pylint: disable=too-few-public-methods,too-many-inst
             NotImplementedError: If mapping type is not supported.
         """
         if self.is_attribute_mapping:
-            fact: FactNodeHasAttributeWithValue = FactNodeHasAttributeWithValue(
-                node_id=f"{self.label}::{row[self.identifier_key]}",
-                attribute=self.attribute,
-                value=row[self.attribute_key],
+            fact: FactNodeHasAttributeWithValue = (
+                FactNodeHasAttributeWithValue(
+                    node_id=f"{self.label}::{row[self.identifier_key]}",
+                    attribute=self.attribute,
+                    value=row[self.attribute_key],
+                )
             )
             yield fact
         elif self.is_label_mapping:
@@ -613,7 +615,9 @@ class DataSourceMapping:  # pylint: disable=too-few-public-methods,too-many-inst
                 "Only attribute and label mappings are supported for now."
             )
 
-    def __add__(self, row: dict[str, Any]) -> Generator[AtomicFact, None, None]:
+    def __add__(
+        self, row: dict[str, Any]
+    ) -> Generator[AtomicFact, None, None]:
         """Process a row using the + operator for convenience.
 
         Args:

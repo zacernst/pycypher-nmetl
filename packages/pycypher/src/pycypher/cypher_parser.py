@@ -1,4 +1,5 @@
 """Main parser module."""
+
 # type: ignore
 from __future__ import annotations
 
@@ -337,7 +338,7 @@ def p_aliased_name(p: yacc.YaccProduction):
 
 
 def p_predicate_argument(p: yacc.YaccProduction) -> None:
-    """predicate_argument : object_attribute_lookup 
+    """predicate_argument : object_attribute_lookup
     | literal
     | binary_expression
     | predicate
@@ -349,14 +350,14 @@ def p_predicate_argument(p: yacc.YaccProduction) -> None:
     elif len(p) == 4:
         p[0] = p[2]
     else:
-        raise Exception('This should never happen')
+        raise Exception("This should never happen")
 
 
 def p_predicate(p: yacc.YaccProduction):
-    '''predicate : predicate_argument binary_operator predicate_argument
+    """predicate : predicate_argument binary_operator predicate_argument
     | NOT predicate_argument
-    '''
-    
+    """
+
     predicate_dispatch_dict: Dict[str, Type[TreeMixin]] = {
         "=": Equals,
         "<": LessThan,
