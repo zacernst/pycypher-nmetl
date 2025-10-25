@@ -123,8 +123,6 @@ class DataSourceMappingConfig(BaseModel):
 
 def load_session_config(
     path: str,
-    worker_num: int = 0,
-    num_workers: int = 1,
     dask_client=None,
 ) -> Session:
     """

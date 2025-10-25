@@ -21,7 +21,7 @@ from pycypher.fact_collection import FactCollection
 from pycypher.fact_collection.foundationdb import FoundationDBFactCollection
 from shared.logger import LOGGER
 
-LOGGER.setLevel("INFO")
+LOGGER.setLevel("WARNING")
 
 
 def send_trigger_dict_to_worker(dask_worker, trigger_dict) -> None:
@@ -50,9 +50,9 @@ if __name__ == "__main__":
         dask_worker.fact_collection = FoundationDBFactCollection()
 
     # LOCAL_CLUSTER = LocalCluster(processes=True)
-    cluster = LocalCluster(n_workers=10, threads_per_worker=5, processes=True)
+    cluster = LocalCluster(n_workers=10, threads_per_worker=2, processes=True)
     DASK_CLIENT: Client = Client(cluster)
-    fact_collection_kwargs = {}
+    fact_collection_kwargs: dict[str, str | int | float | bool] = {}
 
     fact_collection: FactCollection = FoundationDBFactCollection(
         **fact_collection_kwargs
@@ -62,8 +62,6 @@ if __name__ == "__main__":
 
     session: Session = load_session_config(
         INGEST_CONFIG_PATH,
-        worker_num=0,
-        num_workers=1,
         dask_client=DASK_CLIENT,
     )
     # session.fact_collection.clear()
@@ -95,16 +93,19 @@ if __name__ == "__main__":
     def state_county_tract(
         STATEFP, COUNTYFP, TRACTCE
     ) -> NewColumn["tract_fips"]:
+        '''FIPS code for the tract, including county and state'''
         out = STATEFP + COUNTYFP + TRACTCE
         return out
 
     @session.new_column("state_county_tract_puma")
     def state_county(STATEFP, COUNTYFP) -> NewColumn["county_fips"]:
+        '''FIPS code for the county, including state'''
         out = STATEFP + COUNTYFP
         return out
 
     @session.new_column("united_states_nodes")
     def get_osm_tags(encoded_tags) -> NewColumn["tags"]:
+        '''All the OSM tags for the point'''
         out = pickle.loads(base64.b64decode(encoded_tags))
         return out
 
@@ -112,7 +113,8 @@ if __name__ == "__main__":
         "MATCH (i:PSAM_2023_Individual) WITH i.MIL AS military RETURN military"
     )
     def active_duty(military) -> VariableAttribute["i", "active_duty"]:
-        LOGGER.warning('In active_duty function with arguments: %s', military)
+        '''Actively serving in the military'''
+        LOGGER.warning('In active_duty trigger: %s', military)
         return military == "1"
 
     # @session.trigger(
@@ -121,6 +123,7 @@ if __name__ == "__main__":
     # def active_duty_in_past(
     #     military,
     # ) -> VariableAttribute["i", "active_duty_in_past"]:
+    #     '''Has served in the military in the past'''
     #     return military == "2"
 
     # @session.trigger(
@@ -129,6 +132,7 @@ if __name__ == "__main__":
     # def reserves_national_guard(
     #     military,
     # ) -> VariableAttribute["i", "reserves_national_guard"]:
+    #     '''Actively serving in the reserves or the national guard'''
     #     return military == "3"
 
     # @session.trigger(
@@ -171,7 +175,7 @@ if __name__ == "__main__":
     # def physical_difficulty(
     #     physical, acs_pums_2023_data_dictionary
     # ) -> VariableAttribute["i", "physical_difficulty"]:
-    #     """Has physical difficulty"""
+    #     """Has some kind of physical difficulty"""
     #     return acs_pums_2023_data_dictionary["DPHY"].get(physical, None)
 
     # @session.trigger(
@@ -180,6 +184,7 @@ if __name__ == "__main__":
     # def english_very_well(
     #     english, acs_pums_2023_data_dictionary
     # ) -> VariableAttribute["i", "speaks_english_very_well"]:
+    #     '''Speaks english very well'''
     #     return english == "1"
 
     # @session.trigger(
@@ -188,6 +193,7 @@ if __name__ == "__main__":
     # def english_well(
     #     english, acs_pums_2023_data_dictionary
     # ) -> VariableAttribute["i", "speaks_english_well"]:
+    #     '''Speaks english well, but not very well'''
     #     return english == "2"
 
     # @session.trigger(
@@ -196,6 +202,7 @@ if __name__ == "__main__":
     # def english_not_well(
     #     english, acs_pums_2023_data_dictionary
     # ) -> VariableAttribute["i", "speaks_english_not_well"]:
+    #     '''Speaks some english, but not well'''
     #     return english == "3"
 
     # @session.trigger(
@@ -204,6 +211,7 @@ if __name__ == "__main__":
     # def english_not_at_all(
     #     english, acs_pums_2023_data_dictionary
     # ) -> VariableAttribute["i", "speaks_english_not_at_all"]:
+    #     '''Speaks no english'''
     #     return english == "4"
 
     # @session.trigger(
@@ -212,6 +220,7 @@ if __name__ == "__main__":
     # def occupation_mgr(
     #     occupation, acs_pums_2023_data_dictionary
     # ) -> VariableAttribute["i", "occupation_management"]:
+    #     '''Occupation in management'''
     #     lookup: str | None = acs_pums_2023_data_dictionary["SOCP"].get(
     #         occupation, None
     #     )
@@ -227,6 +236,7 @@ if __name__ == "__main__":
     # def occupation_bus(
     #     occupation, acs_pums_2023_data_dictionary
     # ) -> VariableAttribute["i", "occupation_business"]:
+    #     '''Occupation in business'''
     #     lookup: str | None = acs_pums_2023_data_dictionary["SOCP"].get(
     #         occupation, None
     #     )
@@ -242,6 +252,7 @@ if __name__ == "__main__":
     # def occupation_fin(
     #     occupation, acs_pums_2023_data_dictionary
     # ) -> VariableAttribute["i", "occupation_financial"]:
+    #     '''Occupation in the financial sector'''
     #     lookup: str | None = acs_pums_2023_data_dictionary["SOCP"].get(
     #         occupation, None
     #     )
@@ -257,6 +268,7 @@ if __name__ == "__main__":
     # def occupation_cmm(
     #     occupation, acs_pums_2023_data_dictionary
     # ) -> VariableAttribute["i", "occupation_computer"]:
+    #     '''Occupation in computer industry'''
     #     lookup: str | None = acs_pums_2023_data_dictionary["SOCP"].get(
     #         occupation, None
     #     )
@@ -272,6 +284,7 @@ if __name__ == "__main__":
     # def occupation_eng(
     #     occupation, acs_pums_2023_data_dictionary
     # ) -> VariableAttribute["i", "occupation_engineering"]:
+    #     '''Occupation in engineering'''
     #     lookup: str | None = acs_pums_2023_data_dictionary["SOCP"].get(
     #         occupation, None
     #     )
@@ -287,6 +300,7 @@ if __name__ == "__main__":
     # def occupation_sci(
     #     occupation, acs_pums_2023_data_dictionary
     # ) -> VariableAttribute["i", "occupation_science"]:
+    #     '''Occupation in science research'''
     #     lookup: str | None = acs_pums_2023_data_dictionary["SOCP"].get(
     #         occupation, None
     #     )
@@ -302,6 +316,7 @@ if __name__ == "__main__":
     # def occupation_cms(
     #     occupation, acs_pums_2023_data_dictionary
     # ) -> VariableAttribute["i", "occupation_counseling"]:
+    #     '''Occupation in counseling'''
     #     lookup: str | None = acs_pums_2023_data_dictionary["SOCP"].get(
     #         occupation, None
     #     )
@@ -317,6 +332,7 @@ if __name__ == "__main__":
     # def occupation_lgl(
     #     occupation, acs_pums_2023_data_dictionary
     # ) -> VariableAttribute["i", "occupation_legal"]:
+    #     '''Occupation in the legal profession'''
     #     lookup: str | None = acs_pums_2023_data_dictionary["SOCP"].get(
     #         occupation, None
     #     )
@@ -332,6 +348,7 @@ if __name__ == "__main__":
     # def occupation_edu(
     #     occupation, acs_pums_2023_data_dictionary
     # ) -> VariableAttribute["i", "occupation_education"]:
+    #     '''Occupation in education'''
     #     lookup: str | None = acs_pums_2023_data_dictionary["SOCP"].get(
     #         occupation, None
     #     )
@@ -347,6 +364,7 @@ if __name__ == "__main__":
     # def occupation_ent(
     #     occupation, acs_pums_2023_data_dictionary
     # ) -> VariableAttribute["i", "occupation_entertainment"]:
+    #     '''Occupation in the entertainment industry'''
     #     lookup: str | None = acs_pums_2023_data_dictionary["SOCP"].get(
     #         occupation, None
     #     )
@@ -362,6 +380,7 @@ if __name__ == "__main__":
     # def occupation_med(
     #     occupation, acs_pums_2023_data_dictionary
     # ) -> VariableAttribute["i", "occupation_medicine"]:
+    #     '''Occupation in medicine'''
     #     lookup: str | None = acs_pums_2023_data_dictionary["SOCP"].get(
     #         occupation, None
     #     )
@@ -377,6 +396,7 @@ if __name__ == "__main__":
     # def occupation_hls(
     #     occupation, acs_pums_2023_data_dictionary
     # ) -> VariableAttribute["i", "occupation_health_services"]:
+    #     '''Occupation in health services'''
     #     lookup: str | None = acs_pums_2023_data_dictionary["SOCP"].get(
     #         occupation, None
     #     )
@@ -392,6 +412,7 @@ if __name__ == "__main__":
     # def occupation_prt(
     #     occupation, acs_pums_2023_data_dictionary
     # ) -> VariableAttribute["i", "occupation_protection"]:
+    #     '''Occupation in personal protection industry'''
     #     lookup: str | None = acs_pums_2023_data_dictionary["SOCP"].get(
     #         occupation, None
     #     )
@@ -407,6 +428,7 @@ if __name__ == "__main__":
     # def occupation_eat(
     #     occupation, acs_pums_2023_data_dictionary
     # ) -> VariableAttribute["i", "occupation_food_service"]:
+    #     '''Occupation in food service'''
     #     lookup: str | None = acs_pums_2023_data_dictionary["SOCP"].get(
     #         occupation, None
     #     )
@@ -422,6 +444,7 @@ if __name__ == "__main__":
     # def occupation_cln(
     #     occupation, acs_pums_2023_data_dictionary
     # ) -> VariableAttribute["i", "occupation_cleaning"]:
+    #     '''Occupation as a cleaner'''
     #     lookup: str | None = acs_pums_2023_data_dictionary["SOCP"].get(
     #         occupation, None
     #     )
@@ -437,6 +460,7 @@ if __name__ == "__main__":
     # def occupation_prs(
     #     occupation, acs_pums_2023_data_dictionary
     # ) -> VariableAttribute["i", "occupation_personal_service"]:
+    #     '''Occupation in personal service'''
     #     lookup: str | None = acs_pums_2023_data_dictionary["SOCP"].get(
     #         occupation, None
     #     )
@@ -452,6 +476,7 @@ if __name__ == "__main__":
     # def occupation_sal(
     #     occupation, acs_pums_2023_data_dictionary
     # ) -> VariableAttribute["i", "occupation_sales"]:
+    #     '''Occupation in sales'''
     #     lookup: str | None = acs_pums_2023_data_dictionary["SOCP"].get(
     #         occupation, None
     #     )
@@ -467,6 +492,7 @@ if __name__ == "__main__":
     # def occupation_off(
     #     occupation, acs_pums_2023_data_dictionary
     # ) -> VariableAttribute["i", "occupation_office_work"]:
+    #     '''Occupation in office work'''
     #     lookup: str | None = acs_pums_2023_data_dictionary["SOCP"].get(
     #         occupation, None
     #     )
@@ -481,6 +507,7 @@ if __name__ == "__main__":
     # def occupation_con(
     #     occupation, acs_pums_2023_data_dictionary
     # ) -> VariableAttribute["i", "occupation_construction"]:
+    #     '''Occupation in construction'''
     #     lookup: str | None = acs_pums_2023_data_dictionary["SOCP"].get(
     #         occupation, None
     #     )
@@ -495,6 +522,7 @@ if __name__ == "__main__":
     # def occupation_ext(
     #     occupation, acs_pums_2023_data_dictionary
     # ) -> VariableAttribute["i", "occupation_extraction"]:
+    #     '''Occupation in mineral or other natural resource extraction'''
     #     lookup: str | None = acs_pums_2023_data_dictionary["SOCP"].get(
     #         occupation, None
     #     )
@@ -509,6 +537,7 @@ if __name__ == "__main__":
     # def occupation_rpr(
     #     occupation, acs_pums_2023_data_dictionary
     # ) -> VariableAttribute["i", "occupation_repair"]:
+    #     '''Occupation in machinery repair'''
     #     lookup: str | None = acs_pums_2023_data_dictionary["SOCP"].get(
     #         occupation, None
     #     )
@@ -523,6 +552,7 @@ if __name__ == "__main__":
     # def occupation_prd(
     #     occupation, acs_pums_2023_data_dictionary
     # ) -> VariableAttribute["i", "occupation_production"]:
+    #     '''Occupation in production'''
     #     lookup: str | None = acs_pums_2023_data_dictionary["SOCP"].get(
     #         occupation, None
     #     )
@@ -537,6 +567,7 @@ if __name__ == "__main__":
     # def occupation_trn(
     #     occupation, acs_pums_2023_data_dictionary
     # ) -> VariableAttribute["i", "occupation_transportation"]:
+    #     '''Occupation in transportation'''
     #     lookup: str | None = acs_pums_2023_data_dictionary["SOCP"].get(
     #         occupation, None
     #     )
@@ -551,6 +582,7 @@ if __name__ == "__main__":
     # def occupation_mil(
     #     occupation, acs_pums_2023_data_dictionary
     # ) -> VariableAttribute["i", "occupation_military"]:
+    #     '''Occupation in the military'''
     #     lookup: str | None = acs_pums_2023_data_dictionary["SOCP"].get(
     #         occupation, None
     #     )
@@ -565,6 +597,7 @@ if __name__ == "__main__":
     # def occupation_sal(
     #     occupation, acs_pums_2023_data_dictionary
     # ) -> VariableAttribute["i", "occupation_unemployed"]:
+    #     '''Not currently employed'''
     #     lookup: str | None = acs_pums_2023_data_dictionary["SOCP"].get(
     #         occupation, None
     #     )
@@ -580,41 +613,45 @@ if __name__ == "__main__":
     # def psam_state_fips(
     #     state
     # ) -> VariableAttribute["i", "state_fips"]:
+    #     '''State FIPS code (two digits)'''
     #     return state
 
-    # @session.trigger(
-    #     "MATCH (i:PSAM_2023_Individual) WITH i.STATE AS state RETURN state"
-    # )
-    # def psam_state_name(
-    #     state, acs_pums_2023_data_dictionary
-    # ) -> VariableAttribute["i", "state_name"]:
-    #     lookup: str | None = acs_pums_2023_data_dictionary["STATE"].get(
-    #         state, None
-    #     )
-    #     return lookup
-
-    # @session.trigger(
-    #     "MATCH (i:PSAM_2023_Individual) WITH i.PUMA AS puma RETURN puma"
-    # )
-    # def puma_fips(
-    #     puma
-    # ) -> VariableAttribute["i", "puma_fips"]:
-    #     return puma
-
-    # @session.trigger(
-    #     "MATCH (i:PSAM_2023_Individual) WITH i.puma_fips "
-    #     "AS puma_fips, i.state_fips AS state_fips "
-    #     "RETURN puma_fips, state_fips"
-    # )
-    # def state_puma_fips(puma_fips, state_fips) -> VariableAttribute["i", "state_puma_fips"]:
-    #     return state_fips + puma_fips
-    
     @session.trigger(
-        "MATCH (i:Tract)-[r:in]->(c:County) WITH COLLECT(i.tract_fips) AS tract_list RETURN tract_list"
+        "MATCH (i:PSAM_2023_Individual) WITH i.STATE AS state RETURN state"
     )
-    def relationship_trigger(tract_list) -> VariableAttribute["c", "number_of_tracts"]:
-        LOGGER.warning('relationship_trigger: %s', tract_list)
-        return len(tract_list)
+    def psam_state_name(
+        state, acs_pums_2023_data_dictionary
+    ) -> VariableAttribute["i", "state_name"]:
+        '''State name'''
+        lookup: str | None = acs_pums_2023_data_dictionary["STATE"].get(
+            state, None
+        )
+        return lookup
+
+    @session.trigger(
+        "MATCH (i:PSAM_2023_Individual) WITH i.PUMA AS puma RETURN puma"
+    )
+    def puma_fips(
+        puma
+    ) -> VariableAttribute["i", "puma_fips"]:
+        '''FIPS code for PUMA (public use microdata area)'''
+        return puma
+
+    @session.trigger(
+        "MATCH (i:PSAM_2023_Individual) WITH i.puma_fips "
+        "AS puma_fips, i.state_fips AS state_fips "
+        "RETURN puma_fips, state_fips"
+    )
+    def state_puma_fips(puma_fips, state_fips) -> VariableAttribute["i", "state_puma_fips"]:
+        '''FIPS code for PUMA including two-digit state FIPS code'''
+        return state_fips + puma_fips
+    
+    # @session.trigger(
+    #     "MATCH (i:Tract)-[r:in]->(c:County) WITH COLLECT(i.tract_fips) AS tract_list RETURN tract_list"
+    # )
+    # def relationship_trigger(tract_list) -> VariableAttribute["c", "number_of_tracts"]:
+    #     '''Number of tracts in the county'''
+    #     return len(tract_list)
 
 
     trigger_dict: bytes = dill.dumps(session.trigger_dict)
@@ -625,4 +662,6 @@ if __name__ == "__main__":
     )
     # start_http_server(8000)
     session.start_threads()
+    session.attribute_table()
+
     session.block_until_finished()

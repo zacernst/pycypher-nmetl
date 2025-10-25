@@ -1,6 +1,6 @@
 """
 Trigger Module Documentation (trigger.py)
-=====================================
+=========================================
 
 """
 
@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Callable, List, Protocol, TypeVar, runtime_checkable
+from typing import Optional, Callable, List, Protocol, TypeVar, runtime_checkable
 
 from pycypher.cypher_parser import CypherParser
 from shared.logger import LOGGER
@@ -239,6 +239,7 @@ class NodeRelationshipTrigger(CypherTrigger):
         target_variable: str,
         relationship_name: str,
         parameter_names: List[str] = [],
+        docstring: Optional[str] = None,
     ):
         """
         Initialize a NodeRelationshipTrigger instance.
@@ -262,6 +263,7 @@ class NodeRelationshipTrigger(CypherTrigger):
         LOGGER.debug("Relationship name: %s", self.relationship_name)
         self.is_relationship_trigger = True
         self.is_attribute_trigger = False
+        self.docstring = docstring
         super().__init__(
             function=function,
             cypher_string=cypher_string,
@@ -308,6 +310,7 @@ class VariableAttributeTrigger(CypherTrigger):
         variable_set: str,
         attribute_set: str,
         parameter_names: List[str] = [],
+        docstring: Optional[str] = None,
     ) -> None:
         """
         Initialize a VariableAttributeTrigger instance.
@@ -320,6 +323,7 @@ class VariableAttributeTrigger(CypherTrigger):
             session (Optional[Session]): The session this trigger belongs to. Defaults to None.
             parameter_names (Optional[List[str]]): Names of parameters for the function. Defaults to None.
         """
+        self.docstring = docstring
         super().__init__(
             function=function,
             cypher_string=cypher_string,

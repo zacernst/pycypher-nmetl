@@ -87,9 +87,7 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
         """
 
         self.db = fdb.open()
-        self.diverted_counter = 0
-        self.diversion_miss_counter = 0
-        self.thread_pool = ThreadPool(1024)
+        self.thread_pool = ThreadPool(4096)
         self.pending_facts = []
         self.sync_writes = sync_writes
         self.metadata = {
@@ -114,13 +112,6 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
             return
         counter: int = 0
         prefix: bytes = ensure_bytes(prefix, encoding="utf8")
-        if 0 and only_one_result:
-            key = fdb.KeySelector.first_greater_or_equal(
-                ensure_bytes(prefix, encoding="utf8")
-            )
-            value = self.db[key]
-            yield key, value
-            return
 
         end_key: bytes = b"\xff" if continue_to_end else prefix + b"\xff"
         for key_value_obj in self.db.get_range(
@@ -520,20 +511,6 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
         apply_function(write_fact_secondary, args=(self.db, index1, fact))
 
         self.put_counter += 1
-        # self.key_cache.set(self.make_index_for_fact(fact), 1)
-
-        # t = threading.Thread(target=write_fact, args=(self.db, index, fact,))
-        # t.start()
-        # self.db[index] = encode(fact, to_bytes=True)
-        # Do we need to flush/commit/whatever
-
-    def bak___iter__(self) -> Generator[AtomicFact]:
-        curframe = inspect.currentframe()
-        calframe = inspect.getouterframes(curframe, 2)
-        LOGGER.debug("__iter__ called: %s", calframe[1][3])
-
-        yield from self.values()
-        LOGGER.debug("Done iterating values by brute force.")
 
     def __repr__(self):
         return "FoundationDB"

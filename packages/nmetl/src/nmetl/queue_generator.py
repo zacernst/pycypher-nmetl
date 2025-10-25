@@ -51,7 +51,6 @@ class QueueGenerator:  # pylint: disable=too-few-public-methods,too-many-instanc
         name: str = uuid.uuid4().hex,
         port: Optional[int | str] = None,
         host: str = "localhost",
-        put_high_water_mark: int = 0,
         **kwargs,  # pylint: disable=unused-argument
     ) -> None:
         if not port:

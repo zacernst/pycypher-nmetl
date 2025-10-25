@@ -12,12 +12,15 @@ def main():
 
 
 @main.command()
-@click.argument("query")
-def parse(query: str):
+@click.argument("cypher_query")
+def parse(cypher_query: str):
     """
-    Parse a Cypher query
+    Parse a Cypher query and display its parse tree.
+    
+    Args:
+        cypher_query: The Cypher query string to parse
     """
-    CypherParser(query).parse_tree.print_tree()
+    CypherParser(cypher_query).parse_tree.print_tree()
 
 
 @main.command()

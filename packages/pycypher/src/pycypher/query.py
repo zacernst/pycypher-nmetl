@@ -55,6 +55,10 @@ class NullResult:  # pylint: disable=too-few-public-methods
             Self, maintaining the null result through evaluation chains.
         """
         return self
+    
+    def __bool__(self) -> bool:
+        """Make this falsey"""
+        return False
 
 
 class QueryValueOfNodeAttribute(Query):

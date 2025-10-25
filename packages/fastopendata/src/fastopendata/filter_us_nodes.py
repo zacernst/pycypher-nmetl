@@ -9,7 +9,7 @@ import orjson as json
 from rich.progress import Progress
 from shapely import Point
 
-LOGGER = logging.getLogger(__name__)
+LOGGER: logging.Logger = logging.getLogger(__name__)
 LOGGER.setLevel(logging.INFO)
 
 gdf = gpd.read_file(
@@ -30,7 +30,7 @@ def in_us(longitude, latitude):
 
 
 def gen_us_points(jobs_queue):
-    f = bz2.open(
+    f: bz2.BZ2File = bz2.open(
         "/Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data/location_entities.json.bz2"
     )
     counter = 0
@@ -38,10 +38,6 @@ def gen_us_points(jobs_queue):
         line = line.rstrip(b",\n")
         jobs_queue.put(line + b":::::::::::::::: " + str(counter).encode())
         counter += 1
-        if 0 and counter > 10000:
-            break
-    for _ in range(10):
-        jobs_queue.put(None)
 
 
 def worker(jobs_queue, write_queue):

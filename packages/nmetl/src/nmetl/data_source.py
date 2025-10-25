@@ -447,14 +447,13 @@ class DataSource(ABC):  # pylint: disable=too-many-instance-attributes
                 if self.halt:
                     LOGGER.debug("DataSource %s is halting", self.name)
                     break
-                if 1 or self.received_counter % 50 == 0:
-                    while self.session.tasks_in_memory > 64:
-                        LOGGER.debug("DataSource waiting...")
-                        time.sleep(random.random())
-                    LOGGER.debug(
-                        "Number of tasks in memory: %s",
-                        self.session.tasks_in_memory,
-                    )
+                while self.session.tasks_in_memory > 16:
+                    LOGGER.debug("DataSource waiting...")
+                    time.sleep(random.random())
+                LOGGER.debug(
+                    "Number of tasks in memory: %s",
+                    self.session.tasks_in_memory,
+                )
         self.finished = True
         self.finished_at = datetime.datetime.now()
 

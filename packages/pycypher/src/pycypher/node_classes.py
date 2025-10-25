@@ -100,20 +100,22 @@ def get_variable_substitutions(
             if hasattr(vertex, "name_label") and hasattr(
                 vertex.name_label, "label"
             ):
-                for node_with_label in fact_collection.nodes_with_label(
-                    vertex.name_label.label,
-                ):
-                    possible_variable_substitutions[variable_name].append(
-                        node_with_label,
-                    )
-                for (
-                    relationship_with_label
-                ) in fact_collection.relationships_with_label(
-                    vertex.name_label.label,
-                ):
-                    possible_variable_substitutions[variable_name].append(
-                        relationship_with_label,
-                    )
+                if isinstance(vertex, Node):
+                    for node_with_label in fact_collection.nodes_with_label(
+                        vertex.name_label.label,
+                    ):
+                        possible_variable_substitutions[variable_name].append(
+                            node_with_label,
+                        )
+                else:  # it's a relationship
+                    for (
+                        relationship_with_label
+                    ) in fact_collection.relationships_with_label(
+                        vertex.name_label.label,
+                    ):
+                        possible_variable_substitutions[variable_name].append(
+                            relationship_with_label,
+                        )
     return possible_variable_substitutions
 
 
@@ -339,6 +341,10 @@ class Cypher(TreeMixin):
         """
         self.cypher: Query = cypher
         self._attribute_names: List[str] = []
+    
+    def tree(self) -> Tree:
+        return self.cypher.tree()
+
 
     def pythonify(self) -> Any:
         """
@@ -769,6 +775,8 @@ class Query(Evaluable, TreeMixin):
                 projection_list=match_clause_projection_list,
             )
         )
+        LOGGER.debug('Query: %s', self)
+        LOGGER.debug('return_clause_projection_list: %s', return_clause_projection_list)
         return return_clause_projection_list
 
 
@@ -1171,10 +1179,14 @@ class ObjectAttributeLookup(Evaluable, TreeMixin):
         projection: Projection,
     ) -> Literal:
         """TODO: Need to handle the case where the attribute is `None`"""
-        one_query: QueryValueOfNodeAttribute = QueryValueOfNodeAttribute(
-            node_id=projection[self.object],
-            attribute=self.attribute,
-        )
+        try:
+            one_query: QueryValueOfNodeAttribute = QueryValueOfNodeAttribute(
+                node_id=projection[self.object],
+                attribute=self.attribute,
+            )
+        except KeyError as err:
+            LOGGER.error('KeyError: %s:\n%s\n%s', err, self.attribute, projection)
+            LOGGER.error('KeyError: %s', err)
         value: Any = fact_collection.query(one_query)
         return value
 
@@ -1417,12 +1429,7 @@ class WithClause(Evaluable, TreeMixin):
                 non_aggregation_alias_list.append(alias)
         return non_aggregation_alias_list
 
-    def _group_by(
-        self, fact_collection: FactCollection, projection_list: ProjectionList
-    ) -> dict[str, ProjectionList]:
-        aggregation_aliases: List[Alias] = self.aggregated_aliases()
-        group_by_aliases: List[Alias] = self.non_aggregated_aliases()
-
+    # TODO: This method is suspiciously disorganized. Check it.
     def _evaluate_aggregation(
         self,
         fact_collection: FactCollection,
@@ -1449,17 +1456,12 @@ class WithClause(Evaluable, TreeMixin):
         disaggregated_with_clause: WithClause = (
             self.disaggregated_with_clause()
         )
-
-        try:
-            disaggregated_projection_solutions: ProjectionList = (
-                disaggregated_with_clause._evaluate(
-                    fact_collection, projection_list=projection_list
-                )
+            
+        disaggregated_projection_solutions: ProjectionList = (
+            disaggregated_with_clause._evaluate(
+                fact_collection, projection_list=projection_list
             )
-        except Exception as e:
-            LOGGER.error("projection_list: %s", projection_list)
-            LOGGER.error("disaggregated_with_clause: %s", projection_list)
-            LOGGER.error("pre-disaggregated_with_clause: %s", self)
+        )
 
         bucketed: Dict[Projection, ProjectionList] = {}
         for projection in non_aggregated_projection_list:
@@ -1472,11 +1474,12 @@ class WithClause(Evaluable, TreeMixin):
                 for p, v in bucketed.items():
                     if p < solution:
                         v += solution
-        except:
+        except Exception as err:
             LOGGER.error(
-                "Error while bucketing solutions... disaggregated_projection_solutions: %s\nincoming_projection_list %s\n",
+                "Error while bucketing solutions... disaggregated_projection_solutions: %s\nincoming_projection_list %s\n%s",
                 disaggregated_projection_solutions,
                 self.incoming_projection_list,
+                err,
             )
 
         # zip together the disaggregated_projection_solutions wtih the self.incoming_projection_list
@@ -1651,16 +1654,11 @@ class Match(Evaluable, TreeMixin):
             t.add(self.where_clause.tree())
         return t
 
-    def get_relationship_assertions(self, fact_collection):
-        variable_substitutions = get_variable_substitutions(
-            fact_collection, self.pattern
-        )
+    def get_relationship_assertions(self, fact_collection, variable_substitution_dict):
 
         inverse_variable_substitution_dict = {
             v: k
-            for k, v in self.get_variable_substitution_dict(
-                fact_collection
-            ).items()
+            for k, v in variable_substitution_dict.items()
         }
 
         relationship_assertions: list[tuple[int, int]] = []
@@ -1674,7 +1672,7 @@ class Match(Evaluable, TreeMixin):
                 )
                 source_node_variable: str = node.source_node.name_label.name
                 target_node_variable: str = node.target_node.name_label.name
-                for relationship_instance in variable_substitutions[
+                for relationship_instance in variable_substitution_dict[
                     relationship_variable
                 ]:
                     source_node_query: QuerySourceNodeOfRelationship = (
@@ -1739,11 +1737,11 @@ class Match(Evaluable, TreeMixin):
     def get_variable_substitution_dict(self, fact_collection: FactCollection):
         return self.pattern.get_variable_substitution_dict(fact_collection)
 
-    def get_instance_disjunctions(self, fact_collection: FactCollection):
-        return self.pattern.get_instance_disjunctions(fact_collection)
+    def get_instance_disjunctions(self, fact_collection: FactCollection, variable_substitution_dict):
+        return self.pattern.get_instance_disjunctions(fact_collection, variable_substitution_dict)
 
-    def get_mutual_exclusions(self, fact_collection: FactCollection):
-        return self.pattern.get_mutual_exclusions(fact_collection)
+    def get_mutual_exclusions(self, fact_collection: FactCollection, instance_disjunctions):
+        return self.pattern.get_mutual_exclusions(fact_collection, instance_disjunctions)
 
     def _evaluate(
         self,
@@ -1754,14 +1752,14 @@ class Match(Evaluable, TreeMixin):
             self.get_variable_substitution_dict(fact_collection)
         )
         instance_disjunctions: list[tuple[int, ...]] = (
-            self.get_instance_disjunctions(fact_collection)
+            self.get_instance_disjunctions(fact_collection, variable_substitution_dict)
         )
 
         mutual_exclusions: list[tuple[int, int]] = self.get_mutual_exclusions(
-            fact_collection
+            fact_collection, instance_disjunctions
         )
         relationship_assertions: list[tuple[int, int]] = (
-            self.get_relationship_assertions(fact_collection)
+            self.get_relationship_assertions(fact_collection, variable_substitution_dict)
         )
         assumptions: list[int] = []
 
@@ -1817,114 +1815,6 @@ class Match(Evaluable, TreeMixin):
             query_output = where_clause_output
 
         return query_output
-
-    def bak_evaluate(
-        self,
-        fact_collection: FactCollection,
-        projection_list: ProjectionList = ProjectionList(projection_list=[]),
-    ) -> ProjectionList:
-        variable_substitutions: dict[str, list[str]] = (
-            get_variable_substitutions(fact_collection, self.pattern)
-        )
-        variable_substitution_dict: dict[int, tuple[str, str]] = (
-            self.get_variable_substitution_dict(fact_collection)
-        )
-        instance_disjunctions: list[tuple[int, ...]] = (
-            self.get_instance_disjunctions(fact_collection)
-        )
-
-        mutual_exclusions: list[tuple[int, int]] = self.get_mutual_exclusions(
-            fact_collection
-        )
-        relationship_assertions: list[tuple[int, int]] = (
-            self.get_relationship_assertions(fact_collection)
-        )
-        assumptions: list[int] = []
-
-        # projection: Projection = projection_list[0] if len(projection_list) > 0 else Projection(projection={}) # Assuming only one projection in ProjectionList
-        if projection_list:
-            for variable, instance in projection_list[0].projection.items():
-                projection_assumption_tuple: tuple[str, str] = tuple(
-                    [
-                        variable,
-                        instance,
-                    ]
-                )
-                for (
-                    assertion,
-                    assumption_tuple,
-                ) in variable_substitution_dict.items():
-                    if projection_assumption_tuple == assumption_tuple:
-                        assumptions.append(assertion)
-
-        # There are elements in the projection_list but nothing satisfies them:
-        if projection_list and not assumptions:
-            return ProjectionList(projection_list=[])
-
-        all_assertions: list[tuple[int, ...]] = (
-            [[i] for i in assumptions]
-            + instance_disjunctions
-            + mutual_exclusions
-            + relationship_assertions
-        )
-        solver: Glucose42 = Glucose42()
-        for clause in all_assertions:
-            solver.add_clause(clause)
-        models: list[list[int]] = list(solver.enum_models())
-        pattern_step_output: ProjectionList = models_to_projection_list(
-            fact_collection, variable_substitution_dict, models
-        )
-        pattern_step_output.parent = projection_list
-        out: ProjectionList = pattern_step_output
-
-        if self.with_clause:
-            projection_list_step: ProjectionList = self.with_clause._evaluate(
-                fact_collection, pattern_step_output
-            )
-            projection_list_step.parent = pattern_step_output
-            out = projection_list_step
-
-        # TODO: Fill in the where clause evaluation logic
-        if self.where_clause:
-            pass
-        else:
-            pass
-
-        return out
-
-    def bak_evaluate(
-        self,
-        fact_collection: FactCollection,
-        projection_list: ProjectionList,
-    ) -> ProjectionList:
-        """First, evaluate the pattern;
-        Then evaluate the WithClause;
-        Then the WhereClause;
-        Send to ReturnClause
-        """
-        LOGGER.debug("_evaluate projection_list: %s", projection_list)
-        pattern_step_input: ProjectionList = get_all_substitutions(
-            fact_collection, self.pattern, projection_list
-        )
-        LOGGER.debug("pattern_step_input: %s", pattern_step_input)
-        pattern_step_output: ProjectionList = ProjectionList(
-            projection_list=[
-                projection
-                for projection in pattern_step_input
-                if self.pattern._evaluate(
-                    fact_collection, projection=projection
-                )
-            ]
-        )
-
-        if self.with_clause:
-            projection_list_step: ProjectionList = self.with_clause._evaluate(
-                fact_collection, pattern_step_output
-            )
-            projection_list_step.parent = pattern_step_output
-        if self.where_clause:
-            pass
-        return projection_list_step
 
 
 class Return(TreeMixin):
@@ -2358,16 +2248,16 @@ class RelationshipChain(TreeMixin):
                 relationship_target_node_query
             )
         except:
-            LOGGER.debug(
+            LOGGER.error(
                 "relationship_source_node_query: %s",
                 relationship_source_node_query,
             )
-            LOGGER.debug(
+            LOGGER.error(
                 "relationship_target_node_query: %s",
                 relationship_target_node_query,
             )
-            LOGGER.debug("relationship_id: %s", relationship_id)
-            LOGGER.debug("projection: %s", projection)
+            LOGGER.error("relationship_id: %s", relationship_id)
+            LOGGER.error("projection: %s", projection)
             raise ValueError("Error in query")
         # TODO: Looks like relationship is evaluating to True regardless!
         out = Literal(
@@ -2546,26 +2436,29 @@ class RelationshipChainList(TreeMixin):
         return substitution_dict
 
     def get_instance_disjunctions(
-        self, fact_collection: FactCollection
+        self, fact_collection: FactCollection, variable_substitution_dict
     ) -> list[tuple[Any, ...]]:
+        LOGGER.debug(f'get_instance_disjunctions: {self}')
         disjunction_dict: collections.defaultdict = collections.defaultdict(
             list
         )
-        for atom, sub_tuple in self.get_variable_substitution_dict(
-            fact_collection
-        ).items():
+        for atom, sub_tuple in variable_substitution_dict.items():
             variable, _ = sub_tuple
             disjunction_dict[variable].append(atom)
-        return list(
+        out = list(
             {
                 key: tuple(value) for key, value in disjunction_dict.items()
             }.values()
         )  # thisisdumb
+        LOGGER.debug(f'disjunction length: {len(out)}')
+        LOGGER.debug(f'disjunction: {out}')
+        return out
 
     def get_mutual_exclusions(
-        self, fact_collection: FactCollection
+        self, fact_collection: FactCollection, instance_disjunctions
     ) -> list[tuple[int, int]]:
-        disjunction_dict = self.get_instance_disjunctions(fact_collection)
+        LOGGER.debug('in get_mutual_exclusions: %s', self)
+        disjunction_dict = instance_disjunctions # self.get_instance_disjunctions(fact_collection)
         exclusion_list: list[tuple[int, int]] = []
         for disjunction_list in disjunction_dict:
             for var_1, var_2 in itertools.product(
@@ -2577,10 +2470,7 @@ class RelationshipChainList(TreeMixin):
                 exclusion_list.append(disjunction)
         return exclusion_list
 
-    def get_relationship_assertions(self, fact_collection):
-        variable_substitutions = get_variable_substitutions(
-            fact_collection, self
-        )
+    def get_relationship_assertions(self, fact_collection, variable_substitution_dict):
 
         inverse_variable_substitution_dict = {
             v: k
@@ -2600,7 +2490,7 @@ class RelationshipChainList(TreeMixin):
                 )
                 source_node_variable: str = node.source_node.name_label.name
                 target_node_variable: str = node.target_node.name_label.name
-                for relationship_instance in variable_substitutions[
+                for relationship_instance in variable_substitution_dict[
                     relationship_variable
                 ]:
                     source_node_query: QuerySourceNodeOfRelationship = (
@@ -2659,20 +2549,21 @@ class RelationshipChainList(TreeMixin):
         fact_collection: FactCollection,
         projection: Projection = Projection(projection={}),
     ) -> ProjectionList:
-        variable_substitutions: dict[str, list[str]] = (
-            get_variable_substitutions(fact_collection, self)
-        )
+        # variable_substitutions: dict[str, list[str]] = (
+        #     get_variable_substitutions(fact_collection, self)
+        # )
         variable_substitution_dict: dict[int, tuple[str, str]] = (
             self.get_variable_substitution_dict(fact_collection)
         )
+        LOGGER.debug('Projection to disjunctions: %s', projection)
         instance_disjunctions: list[tuple[int, ...]] = list(
-            self.get_instance_disjunctions(fact_collection)
+            self.get_instance_disjunctions(fact_collection, variable_substitution_dict)
         )
         mutual_exclusions: list[tuple[int, int]] = self.get_mutual_exclusions(
-            fact_collection
+            fact_collection, instance_disjunctions
         )
         relationship_assertions: list[tuple[int, int]] = (
-            self.get_relationship_assertions(fact_collection)
+            self.get_relationship_assertions(fact_collection, variable_substitution_dict)
         )
         assumptions: list[int] = []
 

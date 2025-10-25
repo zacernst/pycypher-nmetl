@@ -265,7 +265,6 @@ class Etcd3FactCollection(FactCollection, KeyValue):
                     raise e
                 time.sleep(ETCD3_RETRY_DELAY)
                 continue
-            break
         if len(self.secondary_cache) <= self.secondary_cache_max_size:
             return
         LOGGER.debug("Flushing cache")

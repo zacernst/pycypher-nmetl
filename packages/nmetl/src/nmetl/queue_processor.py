@@ -118,8 +118,8 @@ class QueueProcessor(ABC):  # pylint: disable=too-few-public-methods,too-many-in
         priority: Optional[int] = 0,
         session_config: Optional[SessionConfig] = None,
         dask_client: Optional[Client] = None,
-        max_buffer_size: int = 16,
-        buffer_timeout: float = 0.5,
+        max_buffer_size: int = 64,
+        buffer_timeout: float = 1.25,
     ) -> None:
         """
         Initialize a QueueProcessor instance.
@@ -159,8 +159,8 @@ class QueueProcessor(ABC):  # pylint: disable=too-few-public-methods,too-many-in
 
         # if self.outgoing_queue:
         #     self.outgoing_queue.incoming_queue_processors.append(self)
-        self.secondary_cache = []
-        self.secondary_cache_max_size = 1_000
+        # self.secondary_cache = []
+        # self.secondary_cache_max_size = 1_000
         self.dask_client = dask_client
 
         self.name = self.__class__.__name__
@@ -453,10 +453,10 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
                 continue
             LOGGER.debug("Checking fact %s against triggers", item)
 
-            PARANOID = True
+            PARANOID = False
             if PARANOID:
                 while item not in QueueProcessor.get_fact_collection():
-                    LOGGER.debug(
+                    LOGGER.error(
                         "Fact %s not in collection, requeueing...",
                         item.__dict__,
                     )
@@ -466,6 +466,11 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
             # Let's filter out the facts that are irrelevant to this trigger
             for _, trigger in QueueProcessor.get_trigger_dict().items():
                 # Get the attributes that are in the Match clause
+                # TODO: Find out why parse_tree is ever None
+                LOGGER.debug("Checking trigger: %s", trigger.cypher.cypher_query)
+                if trigger.cypher.parse_tree is None:
+                    continue
+                LOGGER.debug("Trigger parse tree: %s", trigger.cypher.parse_tree)
                 attribute_names_in_trigger: List[str] = (
                     trigger.cypher.parse_tree.attribute_names
                 )
@@ -506,9 +511,20 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
                         isinstance(item, (FactNodeHasAttributeWithValue,))
                         and variable != "r"
                     ):
-                        result: ProjectionList = CheckFactAgainstTriggersQueueProcessor.evaluate_fact_against_trigger(
-                            trigger, item, variable
-                        )
+                        successful: bool = False
+                        attempts: int = 0
+                        while not successful:
+                            try:
+                                result: ProjectionList = CheckFactAgainstTriggersQueueProcessor.evaluate_fact_against_trigger(
+                                    trigger, item, variable
+                                )
+                                successful = True
+                            except Exception as e:
+                                LOGGER.warning(f'Key error or something like that... {attempts}')
+                                LOGGER.warning(f'Error: {e}')
+                                time.sleep(1)
+                                attempts += 1
+                        
                         if result:
                             # Here look into the projection, pull out the variable in the return signature
                             # We expect that there was only one projection passed to the cypher object
@@ -529,9 +545,12 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
                                 "Created SubTriggerPair: %s", sub_trigger_pair
                             )
                             out.append(sub_trigger_pair)
-                    else:
-                        # Add back Relationship facts here...
-                        continue
+                            successful = True
+                        else:
+                            # Add back Relationship facts here...
+                            continue
+                            
+                            
 
                     LOGGER.debug("Checking trigger %s", trigger)
                 LOGGER.debug("Setting processed = True")
@@ -590,48 +609,64 @@ class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-publi
         """
         # Find the value of `variable_set` that would be updated with the variable and
         # trigger in `item`.
-
-        out = sub_trigger_pair.trigger.cypher._evaluate(
-            QueueProcessor.get_fact_collection(),
-            ProjectionList(
-                projection_list=[Projection(projection=sub_trigger_pair.sub)]
-            ),
-        )
-
-        # out.projection_list[0].parent.parent (contains s)
-        variable_to_set_substitution_list: list[str] = list(
-            i
-            for i in out.find_variable(sub_trigger_pair.trigger.variable_set)
-            if i is not None
-        )
-        if variable_to_set_substitution_list:
-            out = sub_trigger_pair.trigger.cypher._evaluate(
+        success: bool = False
+        while not success:
+            out: ProjectionList = sub_trigger_pair.trigger.cypher._evaluate(
                 QueueProcessor.get_fact_collection(),
                 ProjectionList(
-                    projection_list=[
-                        Projection(
-                            projection={
-                                sub_trigger_pair.trigger.variable_set: variable_to_set_substitution_list[
-                                    0
-                                ]
-                            }
-                        )
-                    ]
+                    projection_list=[Projection(projection=sub_trigger_pair.sub)]
                 ),
             )
-        else:
-            out = None
-        if not out:
-            return None
-        func_arg_dict = {
-            key: value.pythonify() if hasattr(value, "pythonify") else value
-            for key, value in out[0].projection.items()
-        }
 
-        function_result: Any = sub_trigger_pair.trigger.function(
-            **func_arg_dict
-        )
+            # out.projection_list[0].parent.parent (contains s)
+            variable_to_set_substitution_list: list[str] = list(
+                i
+                for i in out.find_variable(sub_trigger_pair.trigger.variable_set)
+                if i is not None
+            )
+            if variable_to_set_substitution_list:
+                out = sub_trigger_pair.trigger.cypher._evaluate(
+                    QueueProcessor.get_fact_collection(),
+                    ProjectionList(
+                        projection_list=[
+                            Projection(
+                                projection={
+                                    sub_trigger_pair.trigger.variable_set: variable_to_set_substitution_list[
+                                        0
+                                    ]
+                                }
+                            )
+                        ]
+                    ),
+                )
+            else:
+                out = None
+            if not out:
+                return None
+            func_arg_dict = {
+                key: value.pythonify() if hasattr(value, "pythonify") else value
+                for key, value in out[0].projection.items()
+            }
+            # Check no NullResult in arguments
+            if any(isinstance(value, NullResult) for value in func_arg_dict.values()):
+                LOGGER.error('Found NullResult')
+                LOGGER.error(f'func_arg_dict: {func_arg_dict}')
+                LOGGER.error(f'SubTrigger object: {sub_trigger_pair}')
+                return None
 
+
+            try:
+                function_result: Any = sub_trigger_pair.trigger.function(
+                    **func_arg_dict
+                )
+                success = True
+                # Following might not work because of how we're serializing
+                # triggers for Dask...
+                sub_trigger_pair.trigger.call_counter += 1
+            except TypeError as one_error:
+                LOGGER.error(f'TypeError thingy... waiting and restarting... {func_arg_dict}: {one_error}')
+                LOGGER.error(f'SubTrigger object: {sub_trigger_pair}')
+                time.sleep(5)
         # Convert to a Fact
         computed_fact: FactNodeHasAttributeWithValue = (
             FactNodeHasAttributeWithValue(
@@ -642,121 +677,3 @@ class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-publi
         )
 
         return computed_fact
-
-    # def _process_solution_node_relationship(
-    #     self,
-    #     solution: Dict,
-    #     sub_trigger_pair: SubTriggerPair,
-    #     source_variable: str,
-    #     target_variable: str,
-    #     relationship_name: str,
-    #     return_clause,
-    # ) -> None:
-    #     """Process a solution and generate a list of facts."""
-    #     assert False
-    #     splat: list[Any] = self._extract_splat_from_solution(
-    #         solution, return_clause
-    #     )
-    #     computed_value = sub_trigger_pair.trigger.function(*splat)
-    #     if computed_value:
-    #         sub_trigger_pair.trigger.call_counter += 1
-    #         source_node_id = self._extract_node_id_from_solution(
-    #             solution, source_variable
-    #         )
-    #         target_node_id = self._extract_node_id_from_solution(
-    #             solution, target_variable
-    #         )
-    #         relationship_id = hashlib.md5(
-    #             f"{source_node_id}{target_node_id}{relationship_name}".encode()
-    #         ).hexdigest()
-    #         fact_1: FactRelationshipHasSourceNode = (
-    #             FactRelationshipHasSourceNode(
-    #                 source_node_id=source_node_id,
-    #                 relationship_id=relationship_id,
-    #             )
-    #         )
-    #         fact_2: FactRelationshipHasTargetNode = (
-    #             FactRelationshipHasTargetNode(
-    #                 target_node_id=target_node_id,
-    #                 relationship_id=relationship_id,
-    #             )
-    #         )
-    #         fact_3: FactRelationshipHasLabel = FactRelationshipHasLabel(
-    #             relationship_id=relationship_id,
-    #             relationship_label=relationship_name,
-    #         )
-    #         self.outgoing_queue.put(fact_1)
-    #         self.outgoing_queue.put(fact_2)
-    #         self.outgoing_queue.put(fact_3)
-
-    # @staticmethod
-    # def _extract_splat_from_solution(
-    #     solution: Dict, return_clause
-    # ) -> List[Any]:
-    #     """Extract the splat (arguments for the trigger function) from a solution."""
-
-    #     def to_python(x):
-    #         """
-    #         Convert a value to a Python native type.
-
-    #         If the value is a Collection, recursively convert its values.
-
-    #         Args:
-    #             x: The value to convert.
-
-    #         Returns:
-    #             The converted value.
-    #         """
-    #         if isinstance(x, Collection):
-    #             return [to_python(y) for y in x.values]
-    #         return x
-
-    #     try:
-    #         out = [
-    #             to_python(solution.get(alias.name))
-    #             for alias in return_clause.projection.lookups
-    #         ]
-
-    #     except Exception as e:
-    #         # raise ValueError(f"Error extracting splat: {e}") from e
-    #         out = []
-
-    #     return out
-
-    # @staticmethod
-    # def _extract_node_id_from_solution(
-    #     solution: Dict, variable_to_set: str
-    # ) -> str:
-    #     """
-    #     Extract the node ID for a specific variable from the Cypher solution.
-
-    #     This method looks up the node ID associated with a variable name
-    #     in the solution's match results, which are stored under the
-    #     MATCH_SOLUTION_KEY.
-
-    #     Args:
-    #         solution: Dictionary containing variable bindings from Cypher evaluation.
-    #         variable_to_set: The variable name whose node ID should be extracted.
-
-    #     Returns:
-    #         The node ID string for the specified variable.
-
-    #     Raises:
-    #         ValueError: If the variable is not found in the solution.
-    #     """
-
-    #     # MATCH_SOLUTION_KEY: str = '__MATCH_SOLUTION_KEY__'
-    #     LOGGER.debug("_extract_node_id_from_solution: %s", solution)
-    #     try:
-    #         node_id = solution[MATCH_SOLUTION_KEY][variable_to_set]
-    #         return node_id
-    #     except KeyError as e:
-    #         raise ValueError(
-    #             f"Error extracting node ID: {variable_to_set}, {solution}"
-    #         ) from e
-    #     # Match solution key is empty for `solution` if the MATCH clause has a relationship.
-    #     # Perhaps I didn't update the code to propagate the solution through a RelationshipChain or
-    #     # RelationshipChainList?`
-    #     #
-    #     # Look at how this is done for Nodes without relationships becaue that seems to work fine.
-    #     # What step in the propagation of the solution is missing? Compare.:w

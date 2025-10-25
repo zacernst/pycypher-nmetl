@@ -9,8 +9,10 @@ from __future__ import annotations
 
 import datetime
 import functools
+from docstring_parser import parse as parse_docstring
 import inspect
 import queue
+import random
 import threading
 import time
 import uuid
@@ -228,8 +230,6 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
                 priority=8,
             )
 
-        self.attribute_metadata_dict = {}
-
         # Instantiate threads
         if self.run_monitor:
             self.monitor_thread = threading.Thread(
@@ -267,18 +267,42 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
         """
         console: Console = Console()
 
-        table = Table(title="Attributes")
+        table = Table(title="Derived attributes")
 
         table.add_column("Name", justify="right", style="cyan", no_wrap=True)
         table.add_column("Description", style="green")
+        table.add_column("Called", style="green")
 
-        for attribute_metadata in self.attribute_metadata_dict.values():
-            table.add_row(
-                attribute_metadata.attribute_name,
-                attribute_metadata.description,
-            )
+        # for attribute_metadata in self.attribute_metadata_dict.values():
+        #     table.add_row(
+        #         attribute_metadata.attribute_name,
+        #         attribute_metadata.description,
+        #     )
+        
+        for trigger in self.trigger_dict.values():
+            feature_name: str = trigger.attribute_set
+            short_description: str = parse_docstring(trigger.docstring).short_description
+            table.add_row(feature_name, short_description, str(trigger.call_counter))
 
         console.print(table)
+
+        table = Table(title='Source attributes')
+        
+        table.add_column("Name", justify="right", style="cyan", no_wrap=True)
+        table.add_column("Entity Type", style="green")
+
+        row_list = []
+        for data_source in self.data_sources:
+            for mapping in data_source.mappings:
+                if not mapping.attribute_key:
+                    continue # Relationships not supported yet for docs table
+                row = [mapping.attribute_key, mapping.label]
+                row_list.append(row)
+        for row in row_list:
+            table.add_row(*row)
+        
+        console.print(table)
+
 
     def start_threads(self) -> None:
         """
@@ -407,6 +431,7 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
         ):
             time.sleep(0.1)
         LOGGER.warning("Data sources are all finished...")
+
         while 1:
             pass
 
@@ -656,11 +681,13 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
                 return_annotation, parameter_names, trigger_argument, func
             )
         elif return_annotation.__origin__ is NodeRelationship:
-            trigger = self.process_relationship_annotation(
+            trigger: NodeRelationshipTrigger | VariableAttributeTrigger = self.process_relationship_annotation(
                 return_annotation, parameter_names, trigger_argument, func
             )
         else:
             raise ValueError()
+        
+        trigger.docstring = func.__doc__
 
         return trigger
 

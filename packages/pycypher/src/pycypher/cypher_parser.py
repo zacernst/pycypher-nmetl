@@ -45,7 +45,7 @@ from pycypher.solutions import ProjectionList
 from pycypher.tree_mixin import TreeMixin
 from rich.tree import Tree
 
-start = "cypher"  # pylint: disable=invalid-name
+START_SYMBOL = "cypher"  # pylint: disable=invalid-name
 
 
 def p_cypher(p: List[TreeMixin]):
@@ -429,71 +429,36 @@ def p_return(p: yacc.YaccProduction):
     p[0] = Return(p[2])
 
 
-CYPHER: yacc.LRParser = yacc.yacc()  # type: ignore
+CYPHER_PARSER_INSTANCE: yacc.LRParser = yacc.yacc()  # type: ignore
 
 
 class CypherParser:
-    """The main parser class for Cypher query language.
-
-    This class provides the primary interface for parsing Cypher query strings
-    into Abstract Syntax Trees (AST) that can be evaluated against fact collections.
-
-    Attributes:
-        cypher_text: The original Cypher query string.
-        parse_tree: The parsed AST representation of the query.
-    """
-
-    def __init__(self, cypher_text: str):
-        """Initialize a CypherParser with a query string.
-
+    """Parser for Cypher query language."""
+    
+    def __init__(self, cypher_query: str):
+        """Initialize parser with a Cypher query string.
+        
         Args:
-            cypher_text: The Cypher query string to parse.
+            cypher_query: The Cypher query to parse
         """
-        self.cypher_text: str = cypher_text
-        self.parse_tree: Cypher = CYPHER.parse(self.cypher_text)  # type: ignore
-        assert self.parse_tree
-        [_ for _ in self.parse_tree.walk()]
+        self.cypher_query = cypher_query
+        self.parse_tree = None
+        self.parse()
+        
+    def parse(self) -> Any:
+        """Parse the Cypher query and return the parse tree."""
+        parsed_result = CYPHER_PARSER_INSTANCE.parse(self.cypher_query)
+        self.parse_tree = parsed_result
+        return parsed_result
 
-    def __repr__(self) -> str:
-        return self.parse_tree.__str__()
-
-    def walk(self):
-        """Walk through all nodes in the parsed AST.
-
-        Yields:
-            TreeMixin: Each node in the AST in depth-first order.
-        """
-        yield from self.parse_tree.walk()
-
-    def tree(self) -> Tree:
-        """Get a visual tree representation of the parsed AST.
-
-        Returns:
-            Tree: A rich.tree.Tree object for visual display.
-        """
-        return self.parse_tree.tree()
-
-    def _evaluate(
-        self,
-        fact_collection: FactCollection,
-        projection_list: ProjectionList,
-    ) -> ProjectionList:
-        """Evaluate the parsed query against a fact collection.
-
-        Args:
-            fact_collection: The collection of facts to query against.
-            projection_list: Input projections to start evaluation with.
-
-        Returns:
-            ProjectionList: The results of evaluating the query.
-        """
-        out: ProjectionList = self.parse_tree.cypher._evaluate(
-            fact_collection,
-            projection_list=projection_list,
-        )
-        tmp = []
-        for projection in out:
-            if projection not in tmp:
-                tmp.append(projection)
-        out: ProjectionList = ProjectionList(projection_list=tmp)
-        return out
+    def evaluate(self, *args, **kwargs) -> Any:
+        """Evaluate the parse tree with given arguments."""
+        if self.parse_tree is None:
+            raise ValueError("Parse tree is not available. Please parse the query first.")
+        return self.parse_tree.evaluate(*args, **kwargs)
+    
+    def _evaluate(self, *args, **kwargs) -> Any:
+        """Internal method to evaluate the parse tree with given arguments."""
+        if self.parse_tree is None:
+            raise ValueError("Parse tree is not available. Please parse the query first.")
+        return self.parse_tree._evaluate(*args, **kwargs)

@@ -610,22 +610,6 @@ class FactCollection(ABC):
             row_dict["__node_id__"] = node_id
             yield row_dict
 
-    def bak_nodes_with_label_facts(
-        self, label: str
-    ) -> Generator[FactNodeHasLabel]:
-        """
-        Return a list of all the nodes with a specific label.
-
-        Args:
-            label (str): The label of the nodes to return.
-
-        Returns:
-            list: A list of all the nodes with the specified label.
-        """
-        for fact in self.node_has_label_facts():
-            if fact.label == label:
-                yield fact
-
     def rows_by_node_label(self, label: str) -> Generator[Dict[str, Any]]:
         """Docstring for rows_by_node_label
 

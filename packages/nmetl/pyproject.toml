@@ -37,6 +37,7 @@ dependencies = [
  "pycypher",
  "shared",
  "pyarrow>=19.0.1",
+ "docstring-parser>=0.17.0",
 ]
 [[project.authors]]
 name = "Zachary Ernst"
