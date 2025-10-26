@@ -13,8 +13,9 @@ import pickle
 import queue
 import threading
 import time
-from multiprocessing.pool import ApplyResult, ThreadPool
+from concurrent.futures import ThreadPoolExecutor as ThreadPool
 from typing import Any, Dict, Generator, Optional
+
 
 from nmetl.logger import LOGGER
 
@@ -87,7 +88,7 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
         """
 
         self.db = fdb.open()
-        self.thread_pool = ThreadPool(4096)
+        self.thread_pool = ThreadPool(16)
         self.pending_facts = []
         self.sync_writes = sync_writes
         self.metadata = {
@@ -490,26 +491,20 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
         LOGGER.debug("Append called: %s: %s", fact, self.put_counter)
         index: bytes = self.make_index_for_fact(fact)
         index1: bytes = self.make_secondary_index_for_fact(fact)
-        if index is None:
-            LOGGER.warning("Append failed.")
-            return
-        if self.sync_writes:
-            LOGGER.debug("Using sync writes")
-            apply_function = self.thread_pool.apply
-        else:
-            LOGGER.debug("Using async writes")
-            apply_function = self.thread_pool.apply_async
-        # apply_function = self.thread_pool.apply
-        apply_function(
+        # self.db[index] = encode(fact, to_bytes=True)
+        # self.db[index1] = encode(fact, to_bytes=True)
+        # if index is None:
+        #     LOGGER.warning("Append failed.")
+        #     return
+        # # apply_function = self.thread_pool.apply
+        self.thread_pool.submit(
             write_fact,
-            args=(
-                self.db,
-                index,
-                fact,
-            ),
-        )
-        apply_function(write_fact_secondary, args=(self.db, index1, fact))
-
+                db=self.db,
+                index=index,
+                fact=fact,
+            )
+        self.thread_pool.submit(write_fact_secondary, db=self.db, index=index1, fact=fact)
+        LOGGER.debug("Submitted to thread pool")
         self.put_counter += 1
 
     def __repr__(self):
@@ -696,7 +691,7 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
     def parallel_read(
         self,
         max_keys: Optional[int] = None,
-        num_threads: Optional[int] = 128,
+        num_threads: Optional[int] = 4,
         increment: Optional[int] = None,
     ):
         executor: ThreadPool = ThreadPool(num_threads)
@@ -707,19 +702,17 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
                 streaming_queue.put((k, v))
             streaming_queue.put(None)
 
-        futures: list[ApplyResult[None]] = []
+        futures =[]
 
         def _start_threads():
             current_key = b""
             for next_key in self.skip_keys(
                 offset=increment, max_keys=max_keys
             ):
-                future: ApplyResult[None] = executor.apply_async(
+                future = executor.submit(
                     _get_range,
-                    (
-                        current_key,
-                        next_key,
-                    ),
+                    current_key=current_key,
+                    next_key=next_key,
                 )
                 futures.append(future)
                 current_key = next_key
@@ -732,7 +725,7 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
         endings = 0
         time.sleep(1)
         while (
-            not all(future.ready() for future in futures)
+            not all(future.done() for future in futures)
             or queueing_thread.is_alive()
             or endings != len(futures)
         ):

@@ -1,11 +1,8 @@
-"""
-Session Class Documentation
-===========================
-
-TODO
-"""
-
 from __future__ import annotations
+
+from nmetl.thread_manager import ThreadManager
+
+
 
 import datetime
 import functools
@@ -65,15 +62,8 @@ from rich.console import Console
 from rich.table import Table
 from shared.logger import LOGGER
 
-if TYPE_CHECKING:
-    from dask.distributed import Client
 
 LOGGER.setLevel("WARNING")
-
-RAW_INPUT_QUEUE_PORT = 5555
-FACT_GENERATED_QUEUE_PORT = 5556
-CHECK_FACT_AGAINST_TRIGGERS_QUEUE_PORT = 5557
-TRIGGERED_LOOKUP_PROCESSOR_QUEUE_PORT = 5558
 
 
 @dataclass
@@ -86,16 +76,17 @@ class NewColumnConfig:
     new_column_name: str
 
 
-def _make_check_fact_against_triggers_queue_processor(
-    incoming_queue, outgoing_queue, status_queue, session_config, trigger_dict
-) -> None:
-    CheckFactAgainstTriggersQueueProcessor(
-        incoming_queue=incoming_queue,
-        outgoing_queue=outgoing_queue,
-        status_queue=status_queue,
-        session_config=session_config,
-        trigger_dict=trigger_dict,
-    )
+# def _make_check_fact_against_triggers_queue_processor(
+#     incoming_queue, outgoing_queue, status_queue, session_config, trigger_dict
+# ) -> None:
+#     CheckFactAgainstTriggersQueueProcessor(
+#         incoming_queue=incoming_queue,
+#         outgoing_queue=outgoing_queue,
+#         status_queue=status_queue,
+#         session_config=session_config,
+#         trigger_dict=trigger_dict,
+#         data_assets=self.data_assets,
+#     )
 
 
 class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-methods
@@ -114,7 +105,6 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
         self,
         # compute_class_name: ComputeClassNameEnum = ComputeClassNameEnum.THREADING,
         # compute_options: Optional[Dict[str, Any]] = None,
-        dask_client: Client | None,
         data_assets: Optional[dict[str, DataAsset]] = None,
         data_sources: Optional[List[DataSource]] = None,
         fact_collection_class: Type[FactCollection] = SimpleFactCollection,
@@ -125,6 +115,11 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
         run_monitor: Optional[bool] = False,
         session_config: Optional[Any] = None,
         create_queue_generators: bool = True,
+        thread_manager: Optional[ThreadManager] = None,
+        max_workers: int = 10,
+        trigger_dict: Optional[Dict[str, Any]] = {},
+        max_buffer_size: int = 1000,
+        max_buffer_size_raw_data: int = 1_000,
         # worker_num: Optional[int] = 0,
         # num_workers: Optional[int] = 1,
     ):  # pylint: disable=too-many-arguments
@@ -158,37 +153,37 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
         self.session_config = session_config
         self.status_queue = queue.Queue()
 
-        self.dask_client = dask_client
         self.fact_collection: FactCollection = fact_collection_class(
             **self.fact_collection_kwargs
         )
 
-        self.trigger_dict = {}
+
+        self.trigger_dict = trigger_dict
         if create_queue_generators:
             self.raw_input_queue = QueueGenerator(
                 name="RawInput",
-                port=RAW_INPUT_QUEUE_PORT,
+                maxsize=1,
             )
 
             self.queue_list.append(self.raw_input_queue)
 
             self.fact_generated_queue = QueueGenerator(
                 name="FactGenerated",
-                port=FACT_GENERATED_QUEUE_PORT,
+                maxsize=max_buffer_size,
             )
             self.queue_list.append(self.fact_generated_queue)
 
             # Must run in different processes
             self.check_fact_against_triggers_queue = QueueGenerator(
                 name="CheckFactTrigger",
-                port=CHECK_FACT_AGAINST_TRIGGERS_QUEUE_PORT,
+                maxsize=max_buffer_size,
             )
             self.queue_list.append(self.check_fact_against_triggers_queue)
 
             # Same -- run in different processes
             self.triggered_lookup_processor_queue = QueueGenerator(
                 name="TriggeredLookupProcessor",
-                port=TRIGGERED_LOOKUP_PROCESSOR_QUEUE_SIZE,
+                maxsize=max_buffer_size,
             )
             self.queue_list.append(self.triggered_lookup_processor_queue)
 
@@ -197,17 +192,22 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
                 outgoing_queue=self.fact_generated_queue,
                 status_queue=self.status_queue,
                 session_config=self.session_config,
-                dask_client=dask_client,
                 priority=-10,
+                fact_collection = self.fact_collection,
+                trigger_dict = self.trigger_dict,
+                data_assets=self.data_assets,
             )
 
-            self.fact_generated_queue_processor = FactGeneratedQueueProcessor(
+            self.fact_generated_queue_processor= FactGeneratedQueueProcessor(
                 incoming_queue=self.fact_generated_queue,
                 outgoing_queue=self.check_fact_against_triggers_queue,
                 status_queue=self.status_queue,
                 session_config=self.session_config,
-                dask_client=dask_client,
                 priority=0,
+                fact_collection = self.fact_collection,
+                trigger_dict = self.trigger_dict,
+                data_assets=self.data_assets,
+                max_buffer_size=1,
             )
 
             self.check_fact_against_triggers_queue_processor = (
@@ -216,18 +216,24 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
                     outgoing_queue=self.triggered_lookup_processor_queue,
                     status_queue=self.status_queue,
                     session_config=self.session_config,
-                    dask_client=dask_client,
                     priority=4,
+                    fact_collection = self.fact_collection,
+                    trigger_dict = self.trigger_dict,
+                    data_assets=self.data_assets,
+                    max_buffer_size=1,
                 )
             )
 
-            self.triggered_lookup_processor = TriggeredLookupProcessor(
+            self.triggered_lookup_processor= TriggeredLookupProcessor(
                 incoming_queue=self.triggered_lookup_processor_queue,
                 outgoing_queue=self.fact_generated_queue,  # Changed
                 status_queue=self.status_queue,
                 session_config=self.session_config,
-                dask_client=dask_client,
                 priority=8,
+                fact_collection = self.fact_collection,
+                trigger_dict = self.trigger_dict,
+                data_assets=self.data_assets,
+                max_buffer_size=1,
             )
 
         # Instantiate threads
@@ -238,13 +244,13 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
 
         # fact_collection: FactCollection = globals()[self.session_config.fact_collection_class](**(self.session_config.fact_collection_kwargs or {}))
 
-    @property
-    def tasks_in_memory(self) -> int:
-        """Gets the number of tasks in memory by inspecting the scheduler's state."""
-        num_tasks: int = self.dask_client.run_on_scheduler(
-            lambda dask_scheduler: len(dask_scheduler.tasks)
-        )
-        return num_tasks
+    # @property
+    # def tasks_in_memory(self) -> int:
+    #     """Gets the number of tasks in memory by inspecting the scheduler's state."""
+    #     num_tasks: int = self.dask_client.run_on_scheduler(
+    #         lambda dask_scheduler: len(dask_scheduler.tasks)
+    #     )
+    #     return num_tasks
 
     def __call__(self, block: bool = True) -> None:
         """
@@ -323,7 +329,8 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
 
         # Start the data source threads
         for data_source in self.data_sources:
-            data_source.loading_thread.start()
+            LOGGER.error('Starting...')
+            data_source.start_processing()
 
         # Process rows into Facts
         self.raw_data_processor.processing_thread.start()
@@ -579,7 +586,7 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
     def attach_data_source(self, data_source: DataSource) -> None:
         """Attach a DataSource to the machine."""
         LOGGER.debug("Attaching input queue to %s", data_source)
-        data_source.attach_queue(self.raw_input_queue)
+        data_source.attach_output_queue(self.raw_input_queue)
         LOGGER.debug("Attaching data source %s", data_source)
         # data_source.worker_num = self.worker_num
         # data_source.num_workers = self.num_workers
@@ -733,16 +740,16 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
                 return result
 
             new_column_annotation = inspect.signature(func).return_annotation
-            if new_column_annotation is inspect.Signature.empty:
+            if not new_column_annotation:
                 raise ValueError(
                     "new_column_annotation function must have a return annotation."
                 )
 
-            if len(new_column_annotation.__args__) != 1:
-                raise ValueError(
-                    "Function must have a return annotation with exactly one argument."
-                )
-            new_column_name = new_column_annotation.__args__[0].__forward_arg__
+            # if len(new_column_annotation.__args__) != 1:
+            #     raise ValueError(
+            #         "Function must have a return annotation with exactly one argument."
+            #     )
+            new_column_name = new_column_annotation.column_name
 
             parameters: MappingProxyType[str, inspect.Parameter] = (
                 inspect.signature(func).parameters

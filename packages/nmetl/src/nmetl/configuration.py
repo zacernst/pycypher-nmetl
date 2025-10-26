@@ -15,7 +15,6 @@ from nmetl.session import Session
 from nmetl.session_enums import LoggingLevelEnum
 from pycypher.fact_collection import FactCollection
 from pycypher.fact_collection.foundationdb import FoundationDBFactCollection  # noqa: F401
-from pycypher.fact_collection.rocksdb import RocksDBFactCollection  # noqa: F401
 from pycypher.fact_collection.simple import SimpleFactCollection  # noqa: F401
 from pydantic import BaseModel, Field, TypeAdapter
 from shared.logger import LOGGER
@@ -123,7 +122,6 @@ class DataSourceMappingConfig(BaseModel):
 
 def load_session_config(
     path: str,
-    dask_client=None,
 ) -> Session:
     """
     Load and parse the Session configuration from a YAML file.
@@ -156,7 +154,6 @@ def load_session_config(
         fact_collection_class=fact_collection_class,
         fact_collection_kwargs=session_config.fact_collection_kwargs,
         session_config=session_config,
-        dask_client=dask_client,
     )
 
     for data_source_config in session_config.data_sources:
