@@ -64,9 +64,13 @@ def encode(source_object: Any, to_bytes: bool = False) -> str | bytes:
         ValueError: If encoding fails due to unpickleable object.
     """
     try:
-        encoded_result = base64.b64encode(pickle.dumps(source_object)).decode("utf-8")
+        encoded_result = base64.b64encode(pickle.dumps(source_object)).decode(
+            "utf-8"
+        )
     except Exception as e:
-        LOGGER.error("Error encoding object to base64 string: %s", source_object)
+        LOGGER.error(
+            "Error encoding object to base64 string: %s", source_object
+        )
         raise ValueError(f"Error encoding object to base64 string: {e}") from e
     if to_bytes:
         return encoded_result.encode("utf-8")

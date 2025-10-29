@@ -16,7 +16,7 @@ def main():
 def parse(cypher_query: str):
     """
     Parse a Cypher query and display its parse tree.
-    
+
     Args:
         cypher_query: The Cypher query string to parse
     """

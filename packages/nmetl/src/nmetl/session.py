@@ -1,12 +1,7 @@
 from __future__ import annotations
 
-from nmetl.thread_manager import ThreadManager
-
-
-
 import datetime
 import functools
-from docstring_parser import parse as parse_docstring
 import inspect
 import queue
 import random
@@ -15,53 +10,33 @@ import time
 import uuid
 from dataclasses import dataclass
 from types import MappingProxyType
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Dict,
-    Generator,
-    List,
-    Optional,
-    Self,
-    Set,
-    Type,
-)
+from typing import (TYPE_CHECKING, Any, Callable, Dict, Generator, List,
+                    Optional, Self, Set, Type)
 
 import pyarrow as pa
 import pyarrow.parquet as pq
+from docstring_parser import parse as parse_docstring
 from nmetl.config import MONITOR_LOOP_DELAY  # type: ignore
-from nmetl.config import (
-    TRIGGERED_LOOKUP_PROCESSOR_QUEUE_SIZE,
-)  # pyrefly: ignore; pyrefly: ignore; type: ignore
+from nmetl.config import \
+    TRIGGERED_LOOKUP_PROCESSOR_QUEUE_SIZE  # pyrefly: ignore; pyrefly: ignore; type: ignore
 from nmetl.data_asset import DataAsset
 from nmetl.data_source import DataSource
-from nmetl.exceptions import (
-    BadTriggerReturnAnnotationError,
-    EmptyQueueError,
-    UnknownDataSourceError,
-)
+from nmetl.exceptions import (BadTriggerReturnAnnotationError, EmptyQueueError,
+                              UnknownDataSourceError)
 from nmetl.queue_generator import QueueGenerator
-from nmetl.queue_processor import (
-    CheckFactAgainstTriggersQueueProcessor,
-    FactGeneratedQueueProcessor,
-    RawDataProcessor,
-    TriggeredLookupProcessor,
-)
+from nmetl.queue_processor import (CheckFactAgainstTriggersQueueProcessor,
+                                   FactGeneratedQueueProcessor,
+                                   RawDataProcessor, TriggeredLookupProcessor)
 from nmetl.session_enums import LoggingLevelEnum
-from nmetl.trigger import (
-    NodeRelationship,
-    NodeRelationshipTrigger,
-    VariableAttribute,
-    VariableAttributeTrigger,
-)
+from nmetl.thread_manager import ThreadManager
+from nmetl.trigger import (NodeRelationship, NodeRelationshipTrigger,
+                           VariableAttribute, VariableAttributeTrigger)
 from pycypher.cypher_parser import CypherParser
 from pycypher.fact_collection import FactCollection
 from pycypher.fact_collection.simple import SimpleFactCollection
 from rich.console import Console
 from rich.table import Table
 from shared.logger import LOGGER
-
 
 LOGGER.setLevel("WARNING")
 
@@ -157,7 +132,6 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
             **self.fact_collection_kwargs
         )
 
-
         self.trigger_dict = trigger_dict
         if create_queue_generators:
             self.raw_input_queue = QueueGenerator(
@@ -193,19 +167,19 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
                 status_queue=self.status_queue,
                 session_config=self.session_config,
                 priority=-10,
-                fact_collection = self.fact_collection,
-                trigger_dict = self.trigger_dict,
+                fact_collection=self.fact_collection,
+                trigger_dict=self.trigger_dict,
                 data_assets=self.data_assets,
             )
 
-            self.fact_generated_queue_processor= FactGeneratedQueueProcessor(
+            self.fact_generated_queue_processor = FactGeneratedQueueProcessor(
                 incoming_queue=self.fact_generated_queue,
                 outgoing_queue=self.check_fact_against_triggers_queue,
                 status_queue=self.status_queue,
                 session_config=self.session_config,
                 priority=0,
-                fact_collection = self.fact_collection,
-                trigger_dict = self.trigger_dict,
+                fact_collection=self.fact_collection,
+                trigger_dict=self.trigger_dict,
                 data_assets=self.data_assets,
                 max_buffer_size=1,
             )
@@ -217,21 +191,21 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
                     status_queue=self.status_queue,
                     session_config=self.session_config,
                     priority=4,
-                    fact_collection = self.fact_collection,
-                    trigger_dict = self.trigger_dict,
+                    fact_collection=self.fact_collection,
+                    trigger_dict=self.trigger_dict,
                     data_assets=self.data_assets,
                     max_buffer_size=1,
                 )
             )
 
-            self.triggered_lookup_processor= TriggeredLookupProcessor(
+            self.triggered_lookup_processor = TriggeredLookupProcessor(
                 incoming_queue=self.triggered_lookup_processor_queue,
                 outgoing_queue=self.fact_generated_queue,  # Changed
                 status_queue=self.status_queue,
                 session_config=self.session_config,
                 priority=8,
-                fact_collection = self.fact_collection,
-                trigger_dict = self.trigger_dict,
+                fact_collection=self.fact_collection,
+                trigger_dict=self.trigger_dict,
                 data_assets=self.data_assets,
                 max_buffer_size=1,
             )
@@ -284,16 +258,20 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
         #         attribute_metadata.attribute_name,
         #         attribute_metadata.description,
         #     )
-        
+
         for trigger in self.trigger_dict.values():
             feature_name: str = trigger.attribute_set
-            short_description: str = parse_docstring(trigger.docstring).short_description
-            table.add_row(feature_name, short_description, str(trigger.call_counter))
+            short_description: str = parse_docstring(
+                trigger.docstring
+            ).short_description
+            table.add_row(
+                feature_name, short_description, str(trigger.call_counter)
+            )
 
         console.print(table)
 
-        table = Table(title='Source attributes')
-        
+        table = Table(title="Source attributes")
+
         table.add_column("Name", justify="right", style="cyan", no_wrap=True)
         table.add_column("Entity Type", style="green")
 
@@ -301,14 +279,13 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
         for data_source in self.data_sources:
             for mapping in data_source.mappings:
                 if not mapping.attribute_key:
-                    continue # Relationships not supported yet for docs table
+                    continue  # Relationships not supported yet for docs table
                 row = [mapping.attribute_key, mapping.label]
                 row_list.append(row)
         for row in row_list:
             table.add_row(*row)
-        
-        console.print(table)
 
+        console.print(table)
 
     def start_threads(self) -> None:
         """
@@ -329,7 +306,7 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
 
         # Start the data source threads
         for data_source in self.data_sources:
-            LOGGER.error('Starting...')
+            LOGGER.error("Starting...")
             data_source.start_processing()
 
         # Process rows into Facts
@@ -688,12 +665,14 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
                 return_annotation, parameter_names, trigger_argument, func
             )
         elif return_annotation.__origin__ is NodeRelationship:
-            trigger: NodeRelationshipTrigger | VariableAttributeTrigger = self.process_relationship_annotation(
-                return_annotation, parameter_names, trigger_argument, func
+            trigger: NodeRelationshipTrigger | VariableAttributeTrigger = (
+                self.process_relationship_annotation(
+                    return_annotation, parameter_names, trigger_argument, func
+                )
             )
         else:
             raise ValueError()
-        
+
         trigger.docstring = func.__doc__
 
         return trigger

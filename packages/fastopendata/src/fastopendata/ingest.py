@@ -18,12 +18,12 @@ from pycypher.fact_collection import FactCollection
 from pycypher.fact_collection.foundationdb import FoundationDBFactCollection
 from shared.logger import LOGGER
 
-LOGGER.setLevel("INFO")
+LOGGER.setLevel("DEBUG")
 
 
 
 SOURCE_DIR = (
-    "/Users/zernst/git/pycypher-nmetl/packages/fastopendata/src/fastopendata/"
+    "/app/packages/fastopendata/src/fastopendata/"
 )
 
 INGEST_CONFIG_PATH: LiteralString = f"{SOURCE_DIR}/ingest.yaml"
@@ -100,7 +100,7 @@ if __name__ == "__main__":
     )
     def active_duty(military) -> VariableAttribute["i", "active_duty"]:
         '''Actively serving in the military'''
-        LOGGER.debug('In active_duty trigger: %s', military)
+        LOGGER.warning('In active_duty trigger: %s', military)
         return military == "1"
 
     @session.trigger(

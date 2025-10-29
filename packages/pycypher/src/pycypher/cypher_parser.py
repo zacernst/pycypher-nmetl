@@ -434,17 +434,17 @@ CYPHER_PARSER_INSTANCE: yacc.LRParser = yacc.yacc()  # type: ignore
 
 class CypherParser:
     """Parser for Cypher query language."""
-    
+
     def __init__(self, cypher_query: str):
         """Initialize parser with a Cypher query string.
-        
+
         Args:
             cypher_query: The Cypher query to parse
         """
         self.cypher_query = cypher_query
         self.parse_tree = None
         self.parse()
-        
+
     def parse(self) -> Any:
         """Parse the Cypher query and return the parse tree."""
         parsed_result = CYPHER_PARSER_INSTANCE.parse(self.cypher_query)
@@ -454,11 +454,15 @@ class CypherParser:
     def evaluate(self, *args, **kwargs) -> Any:
         """Evaluate the parse tree with given arguments."""
         if self.parse_tree is None:
-            raise ValueError("Parse tree is not available. Please parse the query first.")
+            raise ValueError(
+                "Parse tree is not available. Please parse the query first."
+            )
         return self.parse_tree.evaluate(*args, **kwargs)
-    
+
     def _evaluate(self, *args, **kwargs) -> Any:
         """Internal method to evaluate the parse tree with given arguments."""
         if self.parse_tree is None:
-            raise ValueError("Parse tree is not available. Please parse the query first.")
+            raise ValueError(
+                "Parse tree is not available. Please parse the query first."
+            )
         return self.parse_tree._evaluate(*args, **kwargs)

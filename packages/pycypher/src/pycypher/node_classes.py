@@ -341,10 +341,9 @@ class Cypher(TreeMixin):
         """
         self.cypher: Query = cypher
         self._attribute_names: List[str] = []
-    
+
     def tree(self) -> Tree:
         return self.cypher.tree()
-
 
     def pythonify(self) -> Any:
         """
@@ -775,8 +774,10 @@ class Query(Evaluable, TreeMixin):
                 projection_list=match_clause_projection_list,
             )
         )
-        LOGGER.debug('Query: %s', self)
-        LOGGER.debug('return_clause_projection_list: %s', return_clause_projection_list)
+        LOGGER.debug("Query: %s", self)
+        LOGGER.debug(
+            "return_clause_projection_list: %s", return_clause_projection_list
+        )
         return return_clause_projection_list
 
 
@@ -1185,8 +1186,10 @@ class ObjectAttributeLookup(Evaluable, TreeMixin):
                 attribute=self.attribute,
             )
         except KeyError as err:
-            LOGGER.error('KeyError: %s:\n%s\n%s', err, self.attribute, projection)
-            LOGGER.error('KeyError: %s', err)
+            LOGGER.error(
+                "KeyError: %s:\n%s\n%s", err, self.attribute, projection
+            )
+            LOGGER.error("KeyError: %s", err)
         value: Any = fact_collection.query(one_query)
         return value
 
@@ -1456,7 +1459,7 @@ class WithClause(Evaluable, TreeMixin):
         disaggregated_with_clause: WithClause = (
             self.disaggregated_with_clause()
         )
-            
+
         disaggregated_projection_solutions: ProjectionList = (
             disaggregated_with_clause._evaluate(
                 fact_collection, projection_list=projection_list
@@ -1654,11 +1657,11 @@ class Match(Evaluable, TreeMixin):
             t.add(self.where_clause.tree())
         return t
 
-    def get_relationship_assertions(self, fact_collection, variable_substitution_dict):
-
+    def get_relationship_assertions(
+        self, fact_collection, variable_substitution_dict
+    ):
         inverse_variable_substitution_dict = {
-            v: k
-            for k, v in variable_substitution_dict.items()
+            v: k for k, v in variable_substitution_dict.items()
         }
 
         relationship_assertions: list[tuple[int, int]] = []
@@ -1737,11 +1740,19 @@ class Match(Evaluable, TreeMixin):
     def get_variable_substitution_dict(self, fact_collection: FactCollection):
         return self.pattern.get_variable_substitution_dict(fact_collection)
 
-    def get_instance_disjunctions(self, fact_collection: FactCollection, variable_substitution_dict):
-        return self.pattern.get_instance_disjunctions(fact_collection, variable_substitution_dict)
+    def get_instance_disjunctions(
+        self, fact_collection: FactCollection, variable_substitution_dict
+    ):
+        return self.pattern.get_instance_disjunctions(
+            fact_collection, variable_substitution_dict
+        )
 
-    def get_mutual_exclusions(self, fact_collection: FactCollection, instance_disjunctions):
-        return self.pattern.get_mutual_exclusions(fact_collection, instance_disjunctions)
+    def get_mutual_exclusions(
+        self, fact_collection: FactCollection, instance_disjunctions
+    ):
+        return self.pattern.get_mutual_exclusions(
+            fact_collection, instance_disjunctions
+        )
 
     def _evaluate(
         self,
@@ -1752,14 +1763,18 @@ class Match(Evaluable, TreeMixin):
             self.get_variable_substitution_dict(fact_collection)
         )
         instance_disjunctions: list[tuple[int, ...]] = (
-            self.get_instance_disjunctions(fact_collection, variable_substitution_dict)
+            self.get_instance_disjunctions(
+                fact_collection, variable_substitution_dict
+            )
         )
 
         mutual_exclusions: list[tuple[int, int]] = self.get_mutual_exclusions(
             fact_collection, instance_disjunctions
         )
         relationship_assertions: list[tuple[int, int]] = (
-            self.get_relationship_assertions(fact_collection, variable_substitution_dict)
+            self.get_relationship_assertions(
+                fact_collection, variable_substitution_dict
+            )
         )
         assumptions: list[int] = []
 
@@ -2438,7 +2453,7 @@ class RelationshipChainList(TreeMixin):
     def get_instance_disjunctions(
         self, fact_collection: FactCollection, variable_substitution_dict
     ) -> list[tuple[Any, ...]]:
-        LOGGER.debug(f'get_instance_disjunctions: {self}')
+        LOGGER.debug(f"get_instance_disjunctions: {self}")
         disjunction_dict: collections.defaultdict = collections.defaultdict(
             list
         )
@@ -2450,15 +2465,15 @@ class RelationshipChainList(TreeMixin):
                 key: tuple(value) for key, value in disjunction_dict.items()
             }.values()
         )  # thisisdumb
-        LOGGER.debug(f'disjunction length: {len(out)}')
-        LOGGER.debug(f'disjunction: {out}')
+        LOGGER.debug(f"disjunction length: {len(out)}")
+        LOGGER.debug(f"disjunction: {out}")
         return out
 
     def get_mutual_exclusions(
         self, fact_collection: FactCollection, instance_disjunctions
     ) -> list[tuple[int, int]]:
-        LOGGER.debug('in get_mutual_exclusions: %s', self)
-        disjunction_dict = instance_disjunctions # self.get_instance_disjunctions(fact_collection)
+        LOGGER.debug("in get_mutual_exclusions: %s", self)
+        disjunction_dict = instance_disjunctions  # self.get_instance_disjunctions(fact_collection)
         exclusion_list: list[tuple[int, int]] = []
         for disjunction_list in disjunction_dict:
             for var_1, var_2 in itertools.product(
@@ -2470,8 +2485,9 @@ class RelationshipChainList(TreeMixin):
                 exclusion_list.append(disjunction)
         return exclusion_list
 
-    def get_relationship_assertions(self, fact_collection, variable_substitution_dict):
-
+    def get_relationship_assertions(
+        self, fact_collection, variable_substitution_dict
+    ):
         inverse_variable_substitution_dict = {
             v: k
             for k, v in self.get_variable_substitution_dict(
@@ -2555,15 +2571,19 @@ class RelationshipChainList(TreeMixin):
         variable_substitution_dict: dict[int, tuple[str, str]] = (
             self.get_variable_substitution_dict(fact_collection)
         )
-        LOGGER.debug('Projection to disjunctions: %s', projection)
+        LOGGER.debug("Projection to disjunctions: %s", projection)
         instance_disjunctions: list[tuple[int, ...]] = list(
-            self.get_instance_disjunctions(fact_collection, variable_substitution_dict)
+            self.get_instance_disjunctions(
+                fact_collection, variable_substitution_dict
+            )
         )
         mutual_exclusions: list[tuple[int, int]] = self.get_mutual_exclusions(
             fact_collection, instance_disjunctions
         )
         relationship_assertions: list[tuple[int, int]] = (
-            self.get_relationship_assertions(fact_collection, variable_substitution_dict)
+            self.get_relationship_assertions(
+                fact_collection, variable_substitution_dict
+            )
         )
         assumptions: list[int] = []
 

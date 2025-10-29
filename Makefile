@@ -8,8 +8,8 @@ BUMP = micro
 
 # ------------------------------------------------------------------------------
 # Project paths
-export GIT_HOME := ${HOME}/git
-export PROJECT_ROOT := ${GIT_HOME}/pycypher-nmetl
+# export GIT_HOME := ${HOME}/git
+export PROJECT_ROOT := /app # /pycypher-nmetl
 export PACKAGES_DIR := ${PROJECT_ROOT}/packages
 
 # Package-specific paths
@@ -34,6 +34,8 @@ export FOUNDATIONDB_VERSION := "7.1.31"
 
 # Default target - run the complete build process
 all: format veryclean build docs test
+
+start: veryclean install 
 
 # ------------------------------------------------------------------------------
 # Cleaning targets

@@ -16,7 +16,6 @@ import time
 from concurrent.futures import ThreadPoolExecutor as ThreadPool
 from typing import Any, Dict, Generator, Optional
 
-
 from nmetl.logger import LOGGER
 
 # from nmetl.prometheus_metrics import FACTS_APPENDED
@@ -40,7 +39,7 @@ from shared.helpers import decode, encode, ensure_bytes
 try:
     import fdb
 
-    fdb.api_version(710)
+    fdb.api_version(740)
 except ModuleNotFoundError:
     LOGGER.warning("fdb not installed, fdb support disabled")
 
@@ -87,7 +86,7 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
             **kwargs: Variable keyword arguments passed to parent class.
         """
 
-        self.db = fdb.open()
+        self.db = fdb.open('/app/fdb.cluster')
         self.thread_pool = ThreadPool(16)
         self.pending_facts = []
         self.sync_writes = sync_writes
@@ -499,11 +498,13 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
         # # apply_function = self.thread_pool.apply
         self.thread_pool.submit(
             write_fact,
-                db=self.db,
-                index=index,
-                fact=fact,
-            )
-        self.thread_pool.submit(write_fact_secondary, db=self.db, index=index1, fact=fact)
+            db=self.db,
+            index=index,
+            fact=fact,
+        )
+        self.thread_pool.submit(
+            write_fact_secondary, db=self.db, index=index1, fact=fact
+        )
         LOGGER.debug("Submitted to thread pool")
         self.put_counter += 1
 
@@ -702,7 +703,7 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
                 streaming_queue.put((k, v))
             streaming_queue.put(None)
 
-        futures =[]
+        futures = []
 
         def _start_threads():
             current_key = b""

@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 import base64
-import uuid
-import threading
 import queue
-from typing import Any, Generator, Optional, List, Callable
+import threading
+import uuid
+from typing import Any, Callable, Generator, List, Optional
 
 # import pickle
 import dill as pickle
-import zmq
 from nmetl.logger import LOGGER
 from pycypher.query import NullResult
 
@@ -21,7 +20,7 @@ class Shutdown:
 
 class QueueGenerator:
     """Thread-safe queue with enhanced coordination."""
-    
+
     def __init__(self, name: str, maxsize: int = 1):
         self.name = name
         self.queue = queue.Queue(maxsize=maxsize)
@@ -29,12 +28,12 @@ class QueueGenerator:
         self._stats_lock = threading.Lock()
         self.items_processed = 0
         self.items_queued = 0
-    
+
     def put(self, item: Any, timeout: Optional[float] = None):
         """Put item in queue with optional timeout."""
         if self._shutdown_event.is_set():
             return False
-        
+
         try:
             self.queue.put(item, timeout=timeout)
             with self._stats_lock:
@@ -42,12 +41,12 @@ class QueueGenerator:
             return True
         except queue.Full:
             return False
-    
+
     def get(self, timeout: Optional[float] = None) -> Optional[Any]:
         """Get item from queue with optional timeout."""
         if self._shutdown_event.is_set() and self.queue.empty():
             return None
-        
+
         try:
             item = self.queue.get(timeout=timeout)
             with self._stats_lock:
@@ -55,7 +54,7 @@ class QueueGenerator:
             return item
         except queue.Empty:
             return None
-    
+
     def yield_items(self) -> Generator[Any, None, None]:
         """Generate items."""
         LOGGER.info("YIELD ITEMS CALLED %s", self.name)

@@ -8,7 +8,8 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Optional, Callable, List, Protocol, TypeVar, runtime_checkable
+from typing import (Callable, List, Optional, Protocol, TypeVar,
+                    runtime_checkable)
 
 from pycypher.cypher_parser import CypherParser
 from shared.logger import LOGGER

@@ -1,0 +1,27 @@
+services:
+  nmetl:
+    platform: linux/aarch64
+    build: .
+      # ports:
+      # - "8000:8000"
+    volumes:
+      - ./packages/fastopendata/raw_data:/app/packages/fastopendata/raw_data # Mounts the current directory as /app inside the container
+    depends_on:
+      - fdb
+
+  fdb:
+    image: foundationdb/foundationdb:7.4.4
+    platform: linux/aarch64
+    ports:
+      - "4550:4550"
+    environment:
+      VARIABLE: value
+    command: ["fdbcli --no-status --exec \"configure new single ssd\""]
+  
+      # fdb_service:
+      #   platform: linux/aarch64
+      #   build: ../fdb_client
+      #     # volumes:
+      #     #   - ./packages/fastopendata/raw_data:/app/packages/fastopendata/raw_data # Mounts the current directory as /app inside the container
+      #   depends_on:
+      #     - fdb

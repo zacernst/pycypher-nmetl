@@ -5,7 +5,7 @@ import logging
 import multiprocessing as mp
 
 import geopandas as gpd
-import orjson as json
+import json
 from rich.progress import Progress
 from shapely import Point
 

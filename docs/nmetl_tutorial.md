@@ -40,7 +40,7 @@ Thus, all of the syntactic considerations are dealt with immediately upon ingest
 
 A "model" is just a way of organizing and thinking about a domain. That domain could contain a set of financial transactions, customer interactions, surveys, weather patterns, or (in Pythagoras' case) a set of geometric shapes. Regardless of the domain, our data model will boil down to a few key concepts: Entities, Relationships, and Attributes.
 
-```{note} Conventions
+```{note} 
 For clarity, we'll use a few conventions throughout the tutorial. When referring to
 an Entity type, such as "Customer" or "Transaction", we'll capitalize the word. In contrast,
 if we're just referring to an actual customer -- the human being, not the abstract entity --
@@ -246,7 +246,90 @@ NMETL aims to reduce complexity, period. Once you've made the mental shift to th
 
 So far, Pythagoras has ingested some data about specific shapes, including one relationship and a couple of attributes. But he'd like to calculate some attributes that depend on relationships and aggregations.
 
+Let's take a specific example. Recall that sometimes a Square may be Inside a Circle; and sometimes, more than one Square can be inside a Circle. So let's suppose that Pythagoras wants to count, for each Circle, how many Squares are inside it. He'll call this count `num_squares`.
+
 When Pythagoras was learning SQL, he learned that the `GROUP BY` operator was often used for these tasks. If you wanted to know the average population of the hamlets in each city-state, you'd select the average of the hamlet population `GROUP BY` city-state. But that's an operation done on tables, and there are no tables in NMETL. So what does Pythagoras do?
 
-Let's take a specific example. Recall that sometimes a Square may be Inside a Circle; and sometimes, more than one Square can be inside a Circle.
+The answer is to represent the relationships and entities in the same kind of trigger as he used before, but with a couple of simple additions.
+
+```python
+@session.trigger("(s: Square)-[:Inside]->(c: Circle) WITH COLLECT(s.id) AS square_list RETURN square_list")
+def number_of_squares(square_list: list[str]) -> VariableAttribute[c, num_squares]:
+    return len(square_list)
+```
+
+This new trigger is very similar to the simpler one we've already seen, but the text inside the decorator is a bit more involved. So let's dive into that first.
+
+At this point, we should note that the text inside the trigger ("`(s: Square)-[:...`") is in a query language called "Cypher", which is more commonly used for graph databases (especially Neo4j). NMETL doesn't support the entire Cypher language, but its parser already supports enough of it to get the vast majority of real-world requirements.
+
+Cypher is distinguished by the fact that it sort of uses ASCII art to describe the pattern(s) it searches for. Earlier, that pattern was simply:
+
+```
+(c: Circle)
+```
+
+which means, roughly, "an Entity that is a Circle, which we shall call "`c'". The parentheses around the expression represent the fact that is an Entity.
+
+In our new example,  the expression begins with:
+
+```
+(s: Square)-[:Inside]->(c: Circle)
+```
+
+which is meant to suggest a diagram of a Square and Circle connected by an Inside relationship. Note the arrow pointing to the Circle -- this is necessary because relationships in NMETL are always *directed*, that is, they have a source and a target. Here, the source is the Square, and the target is the Circle, which mirrors the way we explained the relationship before: "the Square is Inside the Circle".
+
+As we know, each Entity can have a large number of different attributes and relationships to other Entities. We are rarely interested in all of those attributes and relationships, so the next clause beginning `WITH` narrows down the attributes we're interested in, and possibly transforms them in various ways. Here, the `WITH` clause is:
+
+```
+WITH COLLECT(s.id) AS square_list
+```
+
+This simple clause actually does a lot of work for us. It can be interpreted as, "For each of the Circles, collect together all the `id` attributes of each Square that is inside it, and pass that as a list into the next part of the query."
+
+This pattern is essentially playing the role of a `GROUP BY` clause in SQL, but it is more concise. Because the Circles aren't even mentioned anywhere in the `WITH` clause, and there's an expression -- `COLLECT` -- which aggregates values from the Squares, NMETL infers that you want to "group" the `id`s of the Squares "by" the Circles they are `INSIDE`. This is an elegant feature of Cypher, but because so much is implicit, it often feels counterintuitive to people (like Pythagoras) who come from a SQL background.
+
+When incoming data matches the trigger, the function is invoked automatically to handle the calculation. The only difference between this example and the previous ones is that because we're passing in the result of a `COLLECT` aggregation, the value of `square_list` will be a (possibly empty) list (of `id`s). The function taks the length of that list and returns it, and finally the trigger inserts it as the attribute `num_squares` on the Circle.
+
+## Trivial operations on incoming data
+
+Sometimes, it's convenient to do something very simple immediately after the raw data is read. For example, sometimes the "identifier" of an entity is spread out over two columns, and it would be better to have those combined into one column.
+
+NMETL has a simple mechanism for doing this using a decorated function called `new_column`. With it, you can definite a function that's applied to a data source row-by-row as soon as the row is read. It will append a new column to the row by using other columns' data as input. For example, suppose that in order to uniquely identify a city, you'd have to combine the name of the city and the name of the state (since two different states can have cities with the same name). In this case, you might have the following function defined:
+
+```python
+@session.new_column("city_data_source")
+def combine_city_state(
+  city_name, state_name
+) -> NewColumn["city_id"]:
+    '''FIPS code for the tract, including county and state'''
+    return state_name + '_' + city_name
+```
+
+Like the triggers, this mechanism uses decorators and type annotations to do its work. The `new_column` decorator takes one argument, which is the name of the data source. It reads the names of the arguments in the function (here, `city_name`, `state_name`) as column names that appear in the `city_data_source` data source. Finally, the `NewColumn` annotation in the return declaration gives the name of the new column where NMETL will put the results of this function, in this case `city_id`.
+
+So if the `city_data_source` looks like this:
+
+```{table} city_state.csv
+| city_name | state_name | other_thing |
+|---|---|---|
+| omaha | nebraska | 10 |
+| boston | massachusetts | 11 |
+| detroit | michigan | 41 |
+```
+
+With that snippet of code in place, NMETL will create a new column as this data is being read, so that it is as if the original table looked like this:
+
+
+```{table} city_state_2.csv
+| city_name | state_name | other_thing | city_id
+|---|---|---|---|
+| omaha | nebraska | 10 | omaha_nebraska |
+| boston | massachusetts | 11 | boston_massachusetts |
+| detroit | michigan | 41 | detroit_michigan |
+```
+
+
+```{warning} 
+The `new_column` decorator is intended to be used for very simple operations like the one in the example. It would be possible to use it to do a lot of complicated stuff, but it is strongly recommended that you *not* do that. Use it only when it would be very convenient for another columns to be contained in the data source and computing the value of that column is very simple using only information from the other columns of the same row.
+```
 

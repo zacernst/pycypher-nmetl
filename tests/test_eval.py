@@ -7,71 +7,32 @@ from typing import TYPE_CHECKING, Any, Dict, List, Tuple
 from unittest.mock import patch
 
 import pytest
-from nmetl.queue_processor import (
-    CheckFactAgainstTriggersQueueProcessor,
-    SubTriggerPair,
-    TriggeredLookupProcessor,
-)
+from nmetl.queue_processor import (CheckFactAgainstTriggersQueueProcessor,
+                                   SubTriggerPair, TriggeredLookupProcessor)
 from nmetl.session import Session
-from nmetl.trigger import (
-    NodeRelationship,
-    NodeRelationshipTrigger,
-    VariableAttribute,
-    VariableAttributeTrigger,
-)
+from nmetl.trigger import (NodeRelationship, NodeRelationshipTrigger,
+                           VariableAttribute, VariableAttributeTrigger)
 from pycypher.cypher_parser import CypherParser
-from pycypher.fact import (
-    AtomicFact,
-    FactNodeHasAttributeWithValue,
-    FactNodeHasLabel,
-    FactRelationshipHasLabel,
-    FactRelationshipHasSourceNode,
-    FactRelationshipHasTargetNode,
-)
+from pycypher.fact import (AtomicFact, FactNodeHasAttributeWithValue,
+                           FactNodeHasLabel, FactRelationshipHasLabel,
+                           FactRelationshipHasSourceNode,
+                           FactRelationshipHasTargetNode)
 from pycypher.fact_collection import FactCollection
 from pycypher.fact_collection.simple import SimpleFactCollection
-from pycypher.node_classes import (
-    FALSE,
-    TRUE,
-    Addition,
-    Aggregation,
-    Alias,
-    AliasedName,
-    And,
-    Collect,
-    Collection,
-    Cypher,
-    Equals,
-    Evaluable,
-    Literal,
-    Mapping,
-    MappingSet,
-    Match,
-    Multiplication,
-    Node,
-    NodeNameLabel,
-    Not,
-    ObjectAsSeries,
-    ObjectAttributeLookup,
-    Or,
-    Relationship,
-    RelationshipChain,
-    RelationshipChainList,
-    RelationshipLeftRight,
-    Return,
-    Size,
-    Where,
-    WithClause,
-    get_all_substitutions,
-    get_variable_substitutions,
-    model_to_projection,
-    models_to_projection_list,
-)
-from pycypher.query import (
-    NullResult,
-    QuerySourceNodeOfRelationship,
-    QueryTargetNodeOfRelationship,
-)
+from pycypher.node_classes import (FALSE, TRUE, Addition, Aggregation, Alias,
+                                   AliasedName, And, Collect, Collection,
+                                   Cypher, Equals, Evaluable, Literal, Mapping,
+                                   MappingSet, Match, Multiplication, Node,
+                                   NodeNameLabel, Not, ObjectAsSeries,
+                                   ObjectAttributeLookup, Or, Relationship,
+                                   RelationshipChain, RelationshipChainList,
+                                   RelationshipLeftRight, Return, Size, Where,
+                                   WithClause, get_all_substitutions,
+                                   get_variable_substitutions,
+                                   model_to_projection,
+                                   models_to_projection_list)
+from pycypher.query import (NullResult, QuerySourceNodeOfRelationship,
+                            QueryTargetNodeOfRelationship)
 from pycypher.solutions import Projection, ProjectionList
 from pysat.solvers import Glucose42
 from shared.logger import LOGGER

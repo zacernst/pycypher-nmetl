@@ -14,7 +14,8 @@ from nmetl.data_source import DataSource, DataSourceMapping
 from nmetl.session import Session
 from nmetl.session_enums import LoggingLevelEnum
 from pycypher.fact_collection import FactCollection
-from pycypher.fact_collection.foundationdb import FoundationDBFactCollection  # noqa: F401
+from pycypher.fact_collection.foundationdb import \
+    FoundationDBFactCollection  # noqa: F401
 from pycypher.fact_collection.simple import SimpleFactCollection  # noqa: F401
 from pydantic import BaseModel, Field, TypeAdapter
 from shared.logger import LOGGER

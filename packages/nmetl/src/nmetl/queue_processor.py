@@ -13,7 +13,6 @@ The module provides:
 - ``TriggeredLookupProcessor``: Executes triggered computations and generates new facts
 - ``SubTriggerPair``: Data structure pairing substitutions with triggers
 
-All processors use Dask for distributed computation and ZMQ for inter-process communication.
 """
 
 from __future__ import annotations
@@ -26,29 +25,25 @@ import random
 import threading
 import time
 from abc import ABC, abstractmethod
+from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass
 from queue import Queue
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Type
 
 from nmetl.prometheus_metrics import REQUEST_TIME
 from nmetl.queue_generator import QueueGenerator
+from nmetl.thread_manager import ThreadManager
 from nmetl.trigger import CypherTrigger
+from pycypher.fact import (FactNodeHasAttributeWithValue, FactNodeHasLabel,
+                           FactRelationshipHasLabel,
+                           FactRelationshipHasSourceNode,
+                           FactRelationshipHasTargetNode)
 from pycypher.fact_collection import FactCollection
-from pycypher.fact import (
-    FactNodeHasAttributeWithValue,
-    FactNodeHasLabel,
-    FactRelationshipHasLabel,
-    FactRelationshipHasSourceNode,
-    FactRelationshipHasTargetNode,
-)
 from pycypher.node_classes import Collection
 from pycypher.query import NullResult
 from pycypher.solutions import Projection, ProjectionList
 from shared.helpers import ensure_bytes
 from shared.logger import LOGGER
-
-from concurrent.futures import Future, ThreadPoolExecutor
-from nmetl.thread_manager import ThreadManager
 
 LOGGER.setLevel("DEBUG")
 
@@ -116,7 +111,7 @@ class QueueProcessor(ABC):  # pylint: disable=too-few-public-methods,too-many-in
         buffer_timeout: float = 1.25,
         fact_collection: Optional[FactCollection] = None,
         trigger_dict: Optional[Dict[str, Any]] = None,
-        data_assets: dict = {}
+        data_assets: dict = {},
     ) -> None:
         """
         Initialize a QueueProcessor instance.
@@ -177,7 +172,6 @@ class QueueProcessor(ABC):  # pylint: disable=too-few-public-methods,too-many-in
     #     )  # pyrefly: ignore
     #     return _fact_collection
 
-
     # @property
     # def fact_collection(self) -> FactCollection:
     #     _fact_collection: FactCollection = (
@@ -215,42 +209,22 @@ class QueueProcessor(ABC):  # pylint: disable=too-few-public-methods,too-many-in
                 # item.data_source = None
                 if not item:
                     continue
-                self.buffer.append(item)
-                if (
-                    len(self.buffer) <= self.max_buffer_size
-                    and (time.time() - last_item_received_at)
-                    <= self.buffer_timeout
-                ):
-                    continue
-                last_item_received_at = time.time()
-                self.received_counter += 1
-                LOGGER.debug("GET: self.name: %s, ITEM: %s", self.name, item)
-                # LOGGER.debug(item.__dict__)
-                self._process_item_from_queue()
+                self._process_item_from_queue(item)  # HERE
         self.finished = True
         self.finished_at = datetime.datetime.now()
 
     def handle_result_future(self, completed_future):
-        batch_result_list = completed_future.result()
+        result = completed_future.result()
         LOGGER.debug(
             "In handle_result_futures: %s: %s",
             self.__class__.__name__,
-            batch_result_list,
+            result,
         )
-        for result_list in batch_result_list or []:
-            if result_list is None:
-                LOGGER.debug("result_list is None")
-                continue
-                # raise ValueError("result_list is None")
-            if not isinstance(result_list, list):
-                result_list = [result_list]
-            for result in result_list:
-                LOGGER.debug(
-                    "PUT:  queue: %s, ITEM: %s",
-                    self.outgoing_queue.name,
-                    result,
-                )
-                self.outgoing_queue.put(result)
+        if not result:
+            LOGGER.debug("result is None")
+            return
+            # raise ValueError("result_list is None")
+        self.outgoing_queue.put(result)
 
     @abstractmethod
     def process_item_from_queue(self, buffer: List[Any]) -> Any:
@@ -269,7 +243,7 @@ class QueueProcessor(ABC):  # pylint: disable=too-few-public-methods,too-many-in
         """
 
     @REQUEST_TIME.time()
-    def _process_item_from_queue(self) -> Any:
+    def _process_item_from_queue(self, item) -> Any:
         """
         Submit buffered items for distributed processing via Dask.
 
@@ -284,12 +258,16 @@ class QueueProcessor(ABC):  # pylint: disable=too-few-public-methods,too-many-in
         #     self.__class__.__name__,
         #     len(self.buffer),
         # )
-        future = self.thread_manager.submit_task(
-            self.__class__.process_item_from_queue,
-            self, self.buffer,
-        )
-        self.buffer = []
-        future.add_done_callback(self.handle_result_future)
+        if not isinstance(item, list):
+            item = [item]
+        # I'm ashamed of this
+        for sub_item in item:
+            future = self.thread_manager.submit_task(
+                self.__class__.process_item_from_queue,
+                self,
+                sub_item,
+            )
+            future.add_done_callback(self.handle_result_future)
         # result = future.result()
         # LOGGER.info('Got result: %s', result)
         # return result
@@ -308,39 +286,23 @@ class RawDataProcessor(QueueProcessor):
     insertion into the fact collection.
     """
 
-    def process_buffer(self, buffer: List[Any]) -> List[Any]:
-        """Process buffer using threads instead of Dask futures."""
-        futures = []
-        results = []     
-        for item in buffer:
-            results.extend(self._process_single_item(item))
-        #     future = self.submit_work(self._process_single_item, item)
-        #     futures.append(future)
-        
-        # # Wait for all futures to complete
-        # results = []
-        # for future in futures:
-        #     try:
-        #         result = future.result(timeout=30)  # Add reasonable timeout
-        #         if result:
-        #             results.extend(result)
-        #     except Exception as e:
-        #         LOGGER.error(f"Error processing item: {e}")
-        #         self.status_queue.put(("error", str(e)))
-        
-        return results
+    # def process_buffer(self, buffer: List[Any]) -> List[Any]:
+    #     """Process buffer using threads instead of Dask futures."""
+    #     for item in buffer:
+    #         results = self._process_single_item(item)
+    #     return results
 
-    @staticmethod
-    def _process_single_item(item: Any) -> List[Any]:
-        row: dict[str, Any] = item.row
-        out: list[Any] = []
-        for mapping in item.mappings:
-            for out_item in mapping + row:
-                out_item.lineage = None  # FromMapping()
-                out.append(out_item)
-        return out
+    # @staticmethod
+    # def _process_single_item(item: Any) -> List[Any]:
+    #     row: dict[str, Any] = item.row
+    #     out: list[Any] = []
+    #     for mapping in item.mappings:
+    #         for out_item in mapping + row:
+    #             out_item.lineage = None  # FromMapping()
+    #             out.append(out_item)
+    #     return out
 
-    def process_item_from_queue(self, buffer: List[Any]) -> List[List[Any]]:
+    def process_item_from_queue(self, item):
         """
         Transform raw data items into facts using configured mappings.
 
@@ -354,51 +316,46 @@ class RawDataProcessor(QueueProcessor):
             List of lists, where each inner list contains the facts generated
             from one raw data item.
         """
-        all_results: list[Any] = []
-        for item in buffer:
-            match item['type']:
-                case 'attribute':
-                    fact = FactNodeHasAttributeWithValue(
-                        node_id=item['entity_id'],
-                        attribute=item['attribute'],
-                        value=item['value'],
-                    )
-                    all_results.append(fact)
+        all_results = []
+        match item["type"]:
+            case "attribute":
+                fact = FactNodeHasAttributeWithValue(
+                    node_id=item["entity_id"],
+                    attribute=item["attribute"],
+                    value=item["value"],
+                )
+                all_results.append(fact)
 
-                    fact = FactNodeHasLabel(
-                        node_id=item['entity_id'],
-                        label=item['entity_label'],
-                    )
-                    all_results.append(fact)
-                case 'relationship':
-                    relationship_id: str = hashlib.sha256(bytes(str(random.random()), encoding='utf8')).hexdigest()
+                fact = FactNodeHasLabel(
+                    node_id=item["entity_id"],
+                    label=item["entity_label"],
+                )
+                all_results.append(fact)
+            case "relationship":
+                relationship_id: str = hashlib.sha256(
+                    bytes(str(random.random()), encoding="utf8")
+                ).hexdigest()
 
-                    fact = FactRelationshipHasSourceNode(
-                        relationship_id=relationship_id,
-                        source_node_id=item['source_id'],
-                    )
-                    all_results.append(fact)
+                fact = FactRelationshipHasSourceNode(
+                    relationship_id=relationship_id,
+                    source_node_id=item["source_id"],
+                )
+                all_results.append(fact)
 
-                    fact = FactRelationshipHasTargetNode(
-                        relationship_id=relationship_id,
-                        target_node_id=item['target_id'],
-                    )
-                    all_results.append(fact)
+                fact = FactRelationshipHasTargetNode(
+                    relationship_id=relationship_id,
+                    target_node_id=item["target_id"],
+                )
+                all_results.append(fact)
 
-                    fact = FactRelationshipHasLabel(
-                        relationship_id=relationship_id,
-                        relationship_label=item['relationship'],
-                    )
+                fact = FactRelationshipHasLabel(
+                    relationship_id=relationship_id,
+                    relationship_label=item["relationship"],
+                )
 
-                    all_results.append(fact)
+                all_results.append(fact)
 
-            # row: dict[str, Any] = item.row
-            # out: list[Any] = []
-            # for mapping in item.mappings:
-            #     for out_item in mapping + row:
-            #         out_item.lineage = None  # FromMapping()
-            #         out.append(out_item)
-            # all_results.append(out)
+        LOGGER.warning(all_results)
         return all_results
 
 
@@ -411,40 +368,40 @@ class FactGeneratedQueueProcessor(QueueProcessor):  # pylint: disable=too-few-pu
     It ensures facts are properly stored and available for trigger evaluation.
     """
 
-    def process_buffer(self, buffer: List[Any]) -> List[Any]:
-        """Process facts using thread pool."""
-        # Group facts for batch processing
-        fact_batches = self._create_batches(buffer, batch_size=100)
-         
-        futures = []
-        for batch in fact_batches:
-            future = self.submit_work(self._process_fact_batch, batch)
-            futures.append(future)
-        
-        # Wait for completion
-        for future in futures:
-            try:
-                future.result(timeout=60)
-            except Exception as e:
-                LOGGER.error(f"Error processing fact batch: {e}")
-        
-        return buffer
+    # def process_buffer(self, buffer: List[Any]) -> List[Any]:
+    #     """Process facts using thread pool."""
+    #     # Group facts for batch processing
+    #     fact_batches = self._create_batches(buffer, batch_size=100)
+    #
+    #     futures = []
+    #     for batch in fact_batches:
+    #         future = self.submit_work(self._process_fact_batch, batch)
+    #         futures.append(future)
+    #
+    #     # Wait for completion
+    #     for future in futures:
+    #         try:
+    #             future.result(timeout=60)
+    #         except Exception as e:
+    #             LOGGER.error(f"Error processing fact batch: {e}")
+    #
+    #     return buffer
 
-    def _create_batches(self, buffer: List[Any], batch_size: int) -> List[List[Any]]:
-        """Create batches of facts for processing."""
-        return [buffer[i:i + batch_size] for i in range(0, len(buffer), batch_size)]
+    # def _create_batches(self, buffer: List[Any], batch_size: int) -> List[List[Any]]:
+    #     """Create batches of facts for processing."""
+    #     return [buffer[i:i + batch_size] for i in range(0, len(buffer), batch_size)]
 
-    def _process_fact_batch(self, batch: List[Any]) -> None:
-        """Process a batch of facts."""
-        fact_collection: FactCollection = self.fact_collection
-        for item in batch:
-            LOGGER.debug("Writing: %s", item)
-            item.lineage = (
-                None  # Appended(lineage=getattr(item, "lineage", None))
-            )
-            fact_collection.append(item)
+    # def _process_fact_batch(self, batch: List[Any]) -> None:
+    #     """Process a batch of facts."""
+    #     fact_collection: FactCollection = self.fact_collection
+    #     for item in batch:
+    #         LOGGER.debug("Writing: %s", item)
+    #         item.lineage = (
+    #             None  # Appended(lineage=getattr(item, "lineage", None))
+    #         )
+    #         fact_collection.append(item)
 
-    def process_item_from_queue(self, buffer: List[Any]) -> List[List[Any]]:
+    def process_item_from_queue(self, item) -> List[List[Any]]:
         """
         Insert facts from the buffer into the fact collection.
 
@@ -457,15 +414,13 @@ class FactGeneratedQueueProcessor(QueueProcessor):  # pylint: disable=too-few-pu
         Returns:
             The original buffer of facts that were inserted.
         """
-        LOGGER.debug("FGQP: %s", buffer)
-
-        for item in buffer:
-            LOGGER.debug("Writing: %s", item)
-            # item.lineage = (
-            #     None  # Appended(lineage=getattr(item, "lineage", None))
-            # )
+        LOGGER.debug("Writing: %s", item)
+        if not isinstance(item, list):
             self.fact_collection.append(item)
-        return buffer
+        else:
+            for fact in item:
+                self.process_item_from_queue(fact)
+        return item
 
 
 class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable=too-few-public-methods
@@ -510,7 +465,7 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
         )
         return result
 
-    def process_item_from_queue(self, buffer: Any) -> List[SubTriggerPair]:
+    def process_item_from_queue(self, item) -> SubTriggerPair:
         """
         Check facts against all registered triggers and create trigger pairs.
 
@@ -525,134 +480,145 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
         Returns:
             List of SubTriggerPair objects representing triggered evaluations.
         """
-        LOGGER.debug("Processing item from queue: %s", buffer)
         out: List[SubTriggerPair] = []
-        for item in buffer:
-            try:
-                assert isinstance(
-                    ensure_bytes(
-                        self.fact_collection.make_index_for_fact(
-                            item
-                        )
-                    ),
-                    bytes,
+        try:
+            assert isinstance(
+                ensure_bytes(
+                    self.fact_collection.make_index_for_fact(item)
+                ),
+                bytes,
+            )
+        except Exception as e:
+            LOGGER.debug("Bad item in CheckFact... %s", item)
+            return
+        LOGGER.debug("Checking fact %s against triggers", item)
+
+        PARANOID = True
+        if PARANOID:
+            counter: int = 0
+            while item not in self.fact_collection and counter < 100:
+                LOGGER.debug(
+                    "Fact %s not in collection, requeueing... (%s)",
+                    item.__dict__,
+                    str(counter),
                 )
-            except Exception as e:
-                LOGGER.debug("Bad item in CheckFact... %s", item)
+                counter += 1
+                time.sleep(1.0)
+            if counter >= 100:
+                LOGGER.error(
+                    "Fact %s not in collection after 100 attempts, skipping",
+                    item.__dict__,
+                )
+                return
+
+        LOGGER.debug("IN COLLECTION: %s", item.__dict__)
+        # Let's filter out the facts that are irrelevant to this trigger
+        for _, trigger in self.trigger_dict.items():
+            # Get the attributes that are in the Match clause
+            # TODO: Find out why parse_tree is ever None
+            LOGGER.debug(
+                "Checking trigger: %s", trigger.cypher.cypher_query
+            )
+            if trigger.cypher.parse_tree is None:
                 continue
-            LOGGER.debug("Checking fact %s against triggers", item)
-
-            PARANOID = True
-            if PARANOID:
-                counter: int = 0
-                while item not in self.fact_collection and counter < 100:
-                    LOGGER.debug(
-                        "Fact %s not in collection, requeueing... (%s)",
-                        item.__dict__, str(counter)
-                    )
-                    counter += 1
-                    time.sleep(1.0)
-                if counter >= 100:
-                    LOGGER.error(
-                        "Fact %s not in collection after 100 attempts, skipping",
-                        item.__dict__
-                    )
-                    continue
-
-            LOGGER.debug("IN COLLECTION: %s", item.__dict__)
-            # Let's filter out the facts that are irrelevant to this trigger
-            for _, trigger in self.trigger_dict.items():
-                # Get the attributes that are in the Match clause
-                # TODO: Find out why parse_tree is ever None
-                LOGGER.debug("Checking trigger: %s", trigger.cypher.cypher_query)
-                if trigger.cypher.parse_tree is None:
-                    continue
-                LOGGER.debug("Trigger parse tree: %s", trigger.cypher.parse_tree)
-                attribute_names_in_trigger: List[str] = (
-                    trigger.cypher.parse_tree.attribute_names
+            LOGGER.debug(
+                "Trigger parse tree: %s", trigger.cypher.parse_tree
+            )
+            attribute_names_in_trigger: List[str] = (
+                trigger.cypher.parse_tree.attribute_names
+            )
+            if (
+                isinstance(item, FactNodeHasAttributeWithValue)
+                and item.attribute not in attribute_names_in_trigger
+            ):
+                LOGGER.debug(
+                    "Attribute %s not in trigger %s, skipping",
+                    item.attribute,
+                    trigger,
                 )
-                if (
-                    isinstance(item, FactNodeHasAttributeWithValue)
-                    and item.attribute not in attribute_names_in_trigger
-                ):
-                    LOGGER.debug(
-                        "Attribute %s not in trigger %s, skipping",
-                        item.attribute,
-                        trigger,
-                    )
-                    continue
-                elif isinstance(item, FactNodeHasLabel):
-                    LOGGER.debug("FactNodeHasLabel %s, skipping", item)
-                    continue
-                else:
-                    pass
-                for (
+                continue
+            elif isinstance(item, FactNodeHasLabel):
+                LOGGER.debug("FactNodeHasLabel %s, skipping", item)
+                continue
+            else:
+                pass
+            for (
+                variable,
+                node,
+            ) in trigger.cypher.parse_tree.get_node_variables():
+                # FactNodeHasLabel might not be enough to trigger
+                LOGGER.debug(
+                    "Checking trigger %s against fact %s",
+                    trigger,
+                    item,
+                )
+                LOGGER.debug(
+                    "variable node loop: %s %s",
                     variable,
                     node,
-                ) in trigger.cypher.parse_tree.get_node_variables():
-                    # FactNodeHasLabel might not be enough to trigger
-                    LOGGER.debug(
-                        "Checking trigger %s against fact %s",
-                        trigger,
-                        item,
-                    )
-                    LOGGER.debug(
-                        "variable node loop: %s %s",
-                        variable,
-                        node,
-                    )
-                    # Seem to be checking FactNodeHasAttributeWithValue against relationship node,
-                    # which is suspicious.
-                    #### KLUDGE
-                    if (
-                        isinstance(item, (FactNodeHasAttributeWithValue,))
-                        and variable != "r"
-                    ):
-                        successful: bool = False
-                        attempts: int = 0
-                        while not successful:
-                            try:
-                                result: ProjectionList = self.evaluate_fact_against_trigger(
+                )
+                # Seem to be checking FactNodeHasAttributeWithValue against relationship node,
+                # which is suspicious.
+                #### KLUDGE
+                if (
+                    isinstance(item, (FactNodeHasAttributeWithValue,))
+                    and variable != "r"
+                ):
+                    successful: bool = False
+                    attempts: int = 0
+                    while not successful:
+                        try:
+                            result: ProjectionList = (
+                                self.evaluate_fact_against_trigger(
                                     trigger, item, variable
                                 )
-                                successful = True
-                            except Exception as e:
-                                LOGGER.warning(f'Key error or something like that... {attempts}')
-                                LOGGER.warning(f'Error: {e}')
-                                time.sleep(1)
-                                attempts += 1
-                        
-                        LOGGER.debug(">>>>>>>>> Result of evaluate_fact_against_trigger %s is %s", item, result)
-                        if result:
-                            # Here look into the projection, pull out the variable in the return signature
-                            # We expect that there was only one projection passed to the cypher object
-                            LOGGER.debug("++++++++++++++ Result of evaluate_fact_against_trigger %s is %s", item, result)
-                            if len(result.root.projection_list) != 1:
-                                raise ValueError(
-                                    "Expected only one projection passed to Cypher query, got: %s",
-                                    result.root.projection_list,
-                                )
-                            # Maybe shouldn't be for all variables -- just what's in the return statement
-                            sub_trigger_pair: SubTriggerPair = SubTriggerPair(
-                                sub={
-                                    variable: item.node_id
-                                },  # item.node_id is wrong
-                                trigger=trigger,
-                                projection_list=result,
                             )
-                            LOGGER.debug(
-                                "Created SubTriggerPair: %s", sub_trigger_pair
-                            )
-                            out.append(sub_trigger_pair)
                             successful = True
-                        else:
-                            # Add back Relationship facts here...
-                            continue
-                            
-                            
+                        except Exception as e:
+                            LOGGER.warning(
+                                f"Key error or something like that... {attempts}"
+                            )
+                            LOGGER.warning(f"Error: {e}")
+                            time.sleep(1)
+                            attempts += 1
 
-                    LOGGER.debug("Checking trigger %s", trigger)
-                LOGGER.debug("Setting processed = True")
+                    # LOGGER.debug(
+                    #     ">>>>>>>>> Result of evaluate_fact_against_trigger %s is %s",
+                    #     item,
+                    #     result,
+                    # )
+                    if result:
+                        # Here look into the projection, pull out the variable in the return signature
+                        # We expect that there was only one projection passed to the cypher object
+                        LOGGER.debug(
+                            "++++++++++++++ Result of evaluate_fact_against_trigger %s is %s",
+                            item,
+                            result,
+                        )
+                        if len(result.root.projection_list) != 1:
+                            raise ValueError(
+                                "Expected only one projection passed to Cypher query, got: %s",
+                                result.root.projection_list,
+                            )
+                        # Maybe shouldn't be for all variables -- just what's in the return statement
+                        sub_trigger_pair: SubTriggerPair = SubTriggerPair(
+                            sub={
+                                variable: item.node_id
+                            },  # item.node_id is wrong
+                            trigger=trigger,
+                            projection_list=result,
+                        )
+                        LOGGER.debug(
+                            "Created SubTriggerPair: %s", sub_trigger_pair
+                        )
+                        out.append(sub_trigger_pair)
+                        successful = True
+                    else:
+                        # Add back Relationship facts here...
+                        continue
+
+                LOGGER.debug("Checking trigger %s", trigger)
+            LOGGER.debug("Setting processed = True")
         return out
 
 
@@ -665,7 +631,7 @@ class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-publi
     the trigger functions to compute new attribute values or relationships.
     """
 
-    def process_item_from_queue(self, buffer: list) -> List[Any]:
+    def process_item_from_queue(self, item):
         """
         Process SubTriggerPair objects to execute triggered computations.
 
@@ -679,17 +645,13 @@ class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-publi
         Returns:
             List of lists containing the computed facts from each trigger execution.
         """
-        out: list[list[Any]] = []
-        for item in buffer:
-            LOGGER.debug("Got item in TriggeredLookupProcessor: %s", item)
-            result: list[Any] = (
-                self._process_sub_trigger_pair(item)
-            )
-            out.append(result)
-        return out
+        LOGGER.debug("Got item in TriggeredLookupProcessor: %s", item)
+        result: list[Any] = self._process_sub_trigger_pair(item)
+        return result
 
     def _process_sub_trigger_pair(
-        self, sub_trigger_pair: SubTriggerPair,
+        self,
+        sub_trigger_pair: SubTriggerPair,
     ) -> FactNodeHasAttributeWithValue | None:
         """
         Evaluate a single SubTriggerPair and generate computed facts.
@@ -707,21 +669,31 @@ class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-publi
         # Find the value of `variable_set` that would be updated with the variable and
         # trigger in `item`.
         success: bool = False
+        if isinstance(sub_trigger_pair, list) and len(sub_trigger_pair) > 1:
+            LOGGER.error(f"sub_trigger_pair: {len(sub_trigger_pair)}")
+        elif isinstance(sub_trigger_pair, list) and len(sub_trigger_pair) == 1:
+            sub_trigger_pair = sub_trigger_pair[0]
         while not success:
             out: ProjectionList = sub_trigger_pair.trigger.cypher._evaluate(
                 self.fact_collection,
                 ProjectionList(
-                    projection_list=[Projection(projection=sub_trigger_pair.sub)]
+                    projection_list=[
+                        Projection(projection=sub_trigger_pair.sub)
+                    ]
                 ),
             )
 
             # out.projection_list[0].parent.parent (contains s)
             variable_to_set_substitution_list: list[str] = list(
                 i
-                for i in out.find_variable(sub_trigger_pair.trigger.variable_set)
+                for i in out.find_variable(
+                    sub_trigger_pair.trigger.variable_set
+                )
                 if i is not None
             )
-            LOGGER.debug('variables: %s', sub_trigger_pair.trigger.variable_set)
+            LOGGER.debug(
+                "variables: %s", sub_trigger_pair.trigger.variable_set
+            )
             if variable_to_set_substitution_list:
                 out = sub_trigger_pair.trigger.cypher._evaluate(
                     self.fact_collection,
@@ -742,22 +714,28 @@ class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-publi
             if not out:
                 return None
             func_arg_dict = {
-                key: value.pythonify() if hasattr(value, "pythonify") else value
+                key: value.pythonify()
+                if hasattr(value, "pythonify")
+                else value
                 for key, value in out[0].projection.items()
             }
             for parameter_name in sub_trigger_pair.trigger.parameter_names:
                 if parameter_name in self.data_assets.keys():
-                    import pdb; pdb.set_trace()
+                    import pdb
+
+                    pdb.set_trace()
                     func_arg_dict[parameter_name] = self.data_assets[
                         parameter_name
                     ]
             # Check no NullResult in arguments
-            if any(isinstance(value, NullResult) for value in func_arg_dict.values()):
-                LOGGER.debug('Found NullResult')
-                LOGGER.debug(f'func_arg_dict: {func_arg_dict}')
-                LOGGER.debug(f'SubTrigger object: {sub_trigger_pair}')
+            if any(
+                isinstance(value, NullResult)
+                for value in func_arg_dict.values()
+            ):
+                LOGGER.debug("Found NullResult")
+                LOGGER.debug(f"func_arg_dict: {func_arg_dict}")
+                LOGGER.debug(f"SubTrigger object: {sub_trigger_pair}")
                 return None
-
 
             try:
                 function_result: Any = sub_trigger_pair.trigger.function(
@@ -768,9 +746,13 @@ class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-publi
                 # triggers for Dask...
                 sub_trigger_pair.trigger.call_counter += 1
             except TypeError as one_error:
-                LOGGER.error(f'TypeError thingy... waiting and restarting... {func_arg_dict}: {one_error}')
-                LOGGER.error(f'SubTrigger object: {sub_trigger_pair}::{self.data_assets.keys()}')
-                time.sleep(.1)
+                LOGGER.error(
+                    f"TypeError thingy... waiting and restarting... {func_arg_dict}: {one_error}"
+                )
+                LOGGER.error(
+                    f"SubTrigger object: {sub_trigger_pair}::{self.data_assets.keys()}"
+                )
+                time.sleep(0.1)
         # Convert to a Fact
         computed_fact: FactNodeHasAttributeWithValue = (
             FactNodeHasAttributeWithValue(
