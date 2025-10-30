@@ -71,7 +71,7 @@ class DataSource(ABC):
         self.finished = False
 
         self._processing_thread = threading.Thread(
-            target=self.queue_rows(), daemon=True
+            target=self.queue_rows(), daemon=False
         )
 
     @classmethod
@@ -120,6 +120,8 @@ class DataSource(ABC):
         """Process a single row according to mappings."""
         processed_items = []
 
+         
+
         try:
             # Apply data type conversions
             typed_row = {}
@@ -154,6 +156,29 @@ class DataSource(ABC):
 
                 elif mapping.source_key and mapping.target_key:
                     # Relationship mapping
+                    LOGGER.info('in DataSource mapping for relationship')
+                    LOGGER.info('mapping: %s', mapping.__dict__)
+                    LOGGER.info('typed_row: %s', typed_row)
+                    LOGGER.info('new_column_configs: %s', self.new_column_configs)
+                    """
+                    func
+                    parameter_names []
+                    data_source_name
+                    new_column_name
+                    """
+                    # Get the new column configs for this DataSource
+                    relevant_new_column_configs = {
+                        key: value for key, value in self.new_column_configs.items()
+                        if value.data_source_name == self.name
+                    }
+                    LOGGER.info('relevant_new_column_configs: %s', relevant_new_column_configs)
+                    for new_column_name, config in relevant_new_column_configs.items():
+                        argument_list = [
+                            typed_row[parameter_name] for parameter_name in config.parameter_names
+                        ]
+                        new_column_value = config.func(*argument_list)
+                        typed_row[new_column_name] = new_column_value
+
                     if (
                         mapping.source_key in typed_row
                         and mapping.target_key in typed_row
@@ -169,6 +194,8 @@ class DataSource(ABC):
                                 "source": self.name,
                             }
                         )
+                        LOGGER.info('appended a relationship')
+                        LOGGER.info(processed_items)
 
         except Exception as e:
             LOGGER.error(f"Error processing row in {self.name}: {e}")
@@ -194,6 +221,7 @@ class DataSource(ABC):
 
                 for item in processed_items:
                     success = self._raw_input_queue.put(item)
+                    LOGGER.info(item)
                     if success:
                         with self._lock:
                             self._rows_queued += 1
@@ -210,10 +238,10 @@ class DataSource(ABC):
 
         except Exception as e:
             LOGGER.error(f"Error queuing rows from {self.name}: {e}")
-        finally:
-            # Signal completion
-            if self._raw_input_queue:
-                self._raw_input_queue.put(Shutdown(), timeout=1.0)
+        # finally:
+        #     # Signal completion
+        #     if self._raw_input_queue:
+        #         self._raw_input_queue.put(Shutdown(), timeout=1.0)
 
     def start_processing(self):
         """Start processing this data source in a separate thread."""
@@ -222,7 +250,7 @@ class DataSource(ABC):
             return
 
         self._processing_thread = threading.Thread(
-            target=self.queue_rows, name=f"DataSource-{self.name}", daemon=True
+            target=self.queue_rows, name=f"DataSource-{self.name}", daemon=False
         )
         self._processing_thread.start()
         LOGGER.info(f"Started processing thread for {self.name}")
@@ -273,7 +301,7 @@ class CSVDataSource(DataSource):
                     yield cleaned_row
 
                     if row_num % 1000 == 0:
-                        LOGGER.debug(
+                        LOGGER.info(
                             f"Processed {row_num} rows from {file_path}"
                         )
 

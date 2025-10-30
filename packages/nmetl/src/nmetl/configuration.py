@@ -180,6 +180,7 @@ def load_session_config(
                 data_source_config.data_types, TYPE_DISPATCH_DICT
             )
 
+        LOGGER.info('Adding data source: %s', data_source.name)
         session.attach_data_source(data_source)
 
     return session

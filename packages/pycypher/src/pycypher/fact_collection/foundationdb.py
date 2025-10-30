@@ -10,6 +10,7 @@ from __future__ import annotations
 import gzip
 import inspect
 import pickle
+import datetime
 import queue
 import threading
 import time
@@ -18,7 +19,7 @@ from typing import Any, Dict, Generator, Optional
 
 from nmetl.logger import LOGGER
 
-# from nmetl.prometheus_metrics import FACTS_APPENDED
+from nmetl.prometheus_metrics import FDB_WRITE_TIME, NUMBER_OF_KEYS_SCANNED, TIME_IN_FDB_ITERATOR, FACTS_APPENDED
 from pycypher.fact import (
     AtomicFact,
     FactNodeHasAttributeWithValue,
@@ -44,12 +45,15 @@ except ModuleNotFoundError:
     LOGGER.warning("fdb not installed, fdb support disabled")
 
 
+
+@FDB_WRITE_TIME.time()
 def write_fact(db, index, fact):
     """Write a ``Fact`` to FoundationDB"""
     if index is None:
         return True
     LOGGER.debug("Writing to FoundationDB: %s", index)
     db[index] = encode(fact, to_bytes=True)
+    FACTS_APPENDED.inc(1)
 
     # FACTS_APPENDED.inc(1)
     return True
@@ -61,8 +65,8 @@ def write_fact_secondary(db, index, fact):
         return True
     LOGGER.debug("Writing to FoundationDB: %s", index)
     db[index] = encode(fact, to_bytes=True)
+    FACTS_APPENDED.inc(1)
 
-    # FACTS_APPENDED.inc(1)
     return True
 
 
@@ -90,9 +94,6 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
         self.thread_pool = ThreadPool(16)
         self.pending_facts = []
         self.sync_writes = sync_writes
-        self.metadata = {
-            "labels": set(),
-        }
         super().__init__(*args, **kwargs)
 
     def _prefix_read_items(
@@ -108,6 +109,7 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
             Any: The values associated with the keys in the range.
         """
         LOGGER.debug("_prefix_read_items called")
+        start_time: datetime.datetime = datetime.datetime.now()
         if prefix is None:
             return
         counter: int = 0
@@ -129,6 +131,11 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
             if only_one_result:
                 break
         LOGGER.debug("Done with _prefix_read_items: %s: %s", prefix, counter)
+        end_time: datetime.datetime = datetime.datetime.now()
+        seconds_in_iterator: float = (end_time - start_time).total_seconds()
+        TIME_IN_FDB_ITERATOR.observe(seconds_in_iterator)
+        NUMBER_OF_KEYS_SCANNED.observe(counter)
+
 
     def make_index_for_fact(self, fact: AtomicFact) -> bytes:
         """Used for the memcache index"""

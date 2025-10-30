@@ -234,6 +234,8 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
             block (bool, optional): Whether to block until all threads are finished.
                 Defaults to True.
         """
+        LOGGER.warning('Clearing FDB') 
+        self.fact_collection.db.clear_range(b'', b'\xFF')
         self.start_threads()
         if block:
             self.block_until_finished()
@@ -303,10 +305,13 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
             self.monitor_thread.start()
         else:
             LOGGER.warning("Not starting monitor thread")
+        
+        LOGGER.warning('Clearing FDB') 
+        self.fact_collection.db.clear_range(b'', b'\xFF')
 
         # Start the data source threads
         for data_source in self.data_sources:
-            LOGGER.error("Starting...")
+            LOGGER.error("Starting: %s", data_source.name)
             data_source.start_processing()
 
         # Process rows into Facts

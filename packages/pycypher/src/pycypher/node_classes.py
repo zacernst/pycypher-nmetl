@@ -24,6 +24,7 @@ from pycypher.tree_mixin import TreeMixin
 from pysat.solvers import Glucose42
 from rich.tree import Tree
 from shared.logger import LOGGER
+from nmetl.prometheus_metrics import SOLUTIONS_TIMER
 
 LOGGER.setLevel("WARNING")
 
@@ -2568,6 +2569,7 @@ class RelationshipChainList(TreeMixin):
         # variable_substitutions: dict[str, list[str]] = (
         #     get_variable_substitutions(fact_collection, self)
         # )
+        start_time: datetime.datetime.now()
         variable_substitution_dict: dict[int, tuple[str, str]] = (
             self.get_variable_substitution_dict(fact_collection)
         )
@@ -2626,6 +2628,8 @@ class RelationshipChainList(TreeMixin):
                 for model in solver.enum_models()
             ]
         )
+        end_time: datetime.datetime.now()
+        SOLUTIONS_TIMER.observe((end_time - start_time).total_seconds())
         return projection_list
 
     def free_variables(

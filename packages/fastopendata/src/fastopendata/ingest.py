@@ -18,7 +18,7 @@ from pycypher.fact_collection import FactCollection
 from pycypher.fact_collection.foundationdb import FoundationDBFactCollection
 from shared.logger import LOGGER
 
-LOGGER.setLevel("DEBUG")
+LOGGER.setLevel("INFO")
 
 
 

@@ -16,12 +16,40 @@ services:
       - "4550:4550"
     environment:
       VARIABLE: value
-    command: ["fdbcli --no-status --exec \"configure new single ssd\""]
+    command:
+      - 'fdbcli --no-status --exec "configure new single ssd"'
   
-      # fdb_service:
-      #   platform: linux/aarch64
-      #   build: ../fdb_client
-      #     # volumes:
-      #     #   - ./packages/fastopendata/raw_data:/app/packages/fastopendata/raw_data # Mounts the current directory as /app inside the container
-      #   depends_on:
-      #     - fdb
+  fdb_service:
+    platform: linux/aarch64
+    build: ../fdb_client
+    depends_on:
+      - fdb
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    ports:
+      - 9090:9090
+    restart: unless-stopped
+    volumes:
+      - ./prometheus:/etc/prometheus
+      - ./prometheus_data:/prometheus
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - grafana:/etc/grafana/provisioning/datasources
+    ports:
+      - 3000:3000
+    restart: unless-stopped
+    # environment:
+    #   - GF_SECURITY_ADMIN_USER=admin
+    #   - GF_SECURITY_ADMIN_PASSWORD=grafana
+    command:
+      - 'grafana cli admin reset-admin-password admin'
+volumes:
+  prom_data:
+  grafana-data:
+  grafana:

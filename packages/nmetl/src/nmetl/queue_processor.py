@@ -24,13 +24,14 @@ import queue
 import random
 import threading
 import time
+from prometheus_client import Counter
 from abc import ABC, abstractmethod
 from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass
 from queue import Queue
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Type
 
-from nmetl.prometheus_metrics import REQUEST_TIME
+from nmetl.prometheus_metrics import RAW_DATA_COUNTER, REQUEST_TIME
 from nmetl.queue_generator import QueueGenerator
 from nmetl.thread_manager import ThreadManager
 from nmetl.trigger import CypherTrigger
@@ -164,6 +165,7 @@ class QueueProcessor(ABC):  # pylint: disable=too-few-public-methods,too-many-in
         self.buffer_timeout: float = buffer_timeout
 
         self.thread_manager: ThreadManager = ThreadManager()
+        self.item_counter: Counter = Counter(self.__class__.__name__, self.__class__.__name__)
 
     # @classmethod
     # def get_fact_collection(cls) -> FactCollection:
@@ -262,6 +264,7 @@ class QueueProcessor(ABC):  # pylint: disable=too-few-public-methods,too-many-in
             item = [item]
         # I'm ashamed of this
         for sub_item in item:
+            self.item_counter.inc(1)
             future = self.thread_manager.submit_task(
                 self.__class__.process_item_from_queue,
                 self,
@@ -332,6 +335,7 @@ class RawDataProcessor(QueueProcessor):
                 )
                 all_results.append(fact)
             case "relationship":
+                LOGGER.info('in relationship')
                 relationship_id: str = hashlib.sha256(
                     bytes(str(random.random()), encoding="utf8")
                 ).hexdigest()
@@ -352,10 +356,16 @@ class RawDataProcessor(QueueProcessor):
                     relationship_id=relationship_id,
                     relationship_label=item["relationship"],
                 )
-
                 all_results.append(fact)
+            case _:
+                raise Exception('Unknown item dict type')
 
-        LOGGER.warning(all_results)
+
+
+        LOGGER.debug(all_results)
+        if all_results:
+            RAW_DATA_COUNTER.inc(len(all_results))
+
         return all_results
 
 
