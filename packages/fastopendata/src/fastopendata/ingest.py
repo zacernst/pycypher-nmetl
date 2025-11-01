@@ -81,6 +81,7 @@ if __name__ == "__main__":
     ) -> NewColumn["tract_fips"]:
         '''FIPS code for the tract, including county and state'''
         out = STATEFP + COUNTYFP + TRACTCE
+        LOGGER.debug('state_county_tract')
         return out
 
     @session.new_column("state_county_tract_puma")
@@ -124,6 +125,14 @@ if __name__ == "__main__":
     ) -> VariableAttribute["i", "puma_fips"]:
         '''FIPS code for PUMA (public use microdata area)'''
         return puma
+
+    @session.trigger(
+        "MATCH (t:Tract)-[r:in]->(c:County) WITH COLLECT(t.tract_fips) AS tracts RETURN tracts"
+    )
+    def number_of_tracts(tracts) -> VariableAttribute["c", "num_tracts"]:
+        '''Count the number of tracts in the county'''
+        LOGGER.warning('Calculating the number of tracts')
+        return len(tracts)
 
     @session.trigger(
         "MATCH (i:PSAM_2023_Individual) WITH i.puma_fips "

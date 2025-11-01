@@ -9,13 +9,14 @@ from __future__ import annotations
 
 import gzip
 import inspect
+from queue import Queue
 import pickle
 import datetime
 import queue
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor as ThreadPool
-from typing import Any, Dict, Generator, Optional
+from typing import Literal, Any, Dict, Generator, Optional
 
 from nmetl.logger import LOGGER
 
@@ -44,28 +45,42 @@ try:
 except ModuleNotFoundError:
     LOGGER.warning("fdb not installed, fdb support disabled")
 
+LOGGER.setLevel('INFO')
+
+EXPERIMENTAL_WRITE_QUEUE: Queue = Queue(maxsize=4_192)
+
+def write_queue_worker(db):
+    counter: int = 0
+    while 1:
+        index, obj = EXPERIMENTAL_WRITE_QUEUE.get()
+        db[index] = obj # encode(fact, to_bytes=True)
+        if counter % 1000 == 0:
+            LOGGER.debug('Written %s items, queue is %s', counter, EXPERIMENTAL_WRITE_QUEUE.qsize())
+        counter += 1
+        FACTS_APPENDED.inc(1.)
 
 
-@FDB_WRITE_TIME.time()
-def write_fact(db, index, fact):
+def write_fact(db, index, fact) -> Literal[True]:
     """Write a ``Fact`` to FoundationDB"""
     if index is None:
         return True
     LOGGER.debug("Writing to FoundationDB: %s", index)
-    db[index] = encode(fact, to_bytes=True)
-    FACTS_APPENDED.inc(1)
+    # db[index] = encode(fact, to_bytes=True)
+    obj = encode(fact, to_bytes=True)
+    EXPERIMENTAL_WRITE_QUEUE.put((index, obj,))
 
     # FACTS_APPENDED.inc(1)
     return True
 
 
-def write_fact_secondary(db, index, fact):
+def write_fact_secondary(db, index, fact) -> Literal[True]:
     """Write a ``Fact`` to FoundationDB"""
     if index is None:
         return True
     LOGGER.debug("Writing to FoundationDB: %s", index)
-    db[index] = encode(fact, to_bytes=True)
-    FACTS_APPENDED.inc(1)
+    # db[index] = encode(fact, to_bytes=True)
+    obj = encode(fact, to_bytes=True)
+    EXPERIMENTAL_WRITE_QUEUE.put((index, obj,))
 
     return True
 
@@ -94,6 +109,8 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
         self.thread_pool = ThreadPool(16)
         self.pending_facts = []
         self.sync_writes = sync_writes
+        self.write_queue_worker = threading.Thread(target=write_queue_worker, args=(self.db,), daemon=True)
+        self.write_queue_worker.start()
         super().__init__(*args, **kwargs)
 
     def _prefix_read_items(
@@ -232,7 +249,7 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
         """
         Return a generator of facts that have a specific source node.
         """
-        LOGGER.info(
+        LOGGER.debug(
             "relationships_with_specific_source_node_facts called: %s",
             source_node_id,
         )
@@ -293,7 +310,7 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
             f"relationship_target_node:{query.relationship_id}:",
             encoding="utf8",
         )
-        LOGGER.info(
+        LOGGER.debug(
             "query_relationship_target called: %s", query.relationship_id
         )
         fact_list: list[AtomicFact] = list(
@@ -316,7 +333,7 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
         """
         Return a generator of facts that have a specific target node.
         """
-        LOGGER.info(
+        LOGGER.debug(
             "relationships_with_specific_target_node_facts called: %s",
             target_node_id,
         )

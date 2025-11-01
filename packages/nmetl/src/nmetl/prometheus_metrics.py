@@ -4,6 +4,7 @@ REQUEST_TIME: Histogram = Histogram(
     "request_processing_seconds", "Time spent processing request"
 )
 ROWS_QUEUED: Counter = Counter("rows_queued", "Rows queued")
+TRIGGER_CHECK_COUNT: Counter = Counter("triggers_checked", "Triggers checked")
 ROW_PROCESSING_TIME: Histogram = Histogram(
     "row_processing_seconds", "Time spent processing row"
 )

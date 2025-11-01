@@ -136,7 +136,7 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
         if create_queue_generators:
             self.raw_input_queue = QueueGenerator(
                 name="RawInput",
-                maxsize=1,
+                maxsize=max_buffer_size,
             )
 
             self.queue_list.append(self.raw_input_queue)
@@ -170,6 +170,7 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
                 fact_collection=self.fact_collection,
                 trigger_dict=self.trigger_dict,
                 data_assets=self.data_assets,
+                max_buffer_size=max_buffer_size,
             )
 
             self.fact_generated_queue_processor = FactGeneratedQueueProcessor(
@@ -181,7 +182,7 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
                 fact_collection=self.fact_collection,
                 trigger_dict=self.trigger_dict,
                 data_assets=self.data_assets,
-                max_buffer_size=1,
+                max_buffer_size=max_buffer_size,
             )
 
             self.check_fact_against_triggers_queue_processor = (
@@ -194,7 +195,7 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
                     fact_collection=self.fact_collection,
                     trigger_dict=self.trigger_dict,
                     data_assets=self.data_assets,
-                    max_buffer_size=1,
+                    max_buffer_size=max_buffer_size,
                 )
             )
 
@@ -207,7 +208,7 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
                 fact_collection=self.fact_collection,
                 trigger_dict=self.trigger_dict,
                 data_assets=self.data_assets,
-                max_buffer_size=1,
+                max_buffer_size=max_buffer_size,
             )
 
         # Instantiate threads
@@ -311,6 +312,8 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
 
         # Start the data source threads
         for data_source in self.data_sources:
+            if data_source.name != 'state_county_tract_puma':
+                continue
             LOGGER.error("Starting: %s", data_source.name)
             data_source.start_processing()
 

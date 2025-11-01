@@ -134,6 +134,18 @@ class DataSource(ABC):
                         typed_row[key] = value
                 else:
                     typed_row[key] = value
+                    
+            relevant_new_column_configs = {
+                key: value for key, value in self.new_column_configs.items()
+                if value.data_source_name == self.name
+            }
+            LOGGER.debug('relevant_new_column_configs: %s', relevant_new_column_configs)
+            for new_column_name, config in relevant_new_column_configs.items():
+                argument_list = [
+                    typed_row[parameter_name] for parameter_name in config.parameter_names
+                ]
+                new_column_value = config.func(*argument_list)
+                typed_row[new_column_name] = new_column_value
 
             # Process mappings
             for mapping in self.mappings:
@@ -156,10 +168,10 @@ class DataSource(ABC):
 
                 elif mapping.source_key and mapping.target_key:
                     # Relationship mapping
-                    LOGGER.info('in DataSource mapping for relationship')
-                    LOGGER.info('mapping: %s', mapping.__dict__)
-                    LOGGER.info('typed_row: %s', typed_row)
-                    LOGGER.info('new_column_configs: %s', self.new_column_configs)
+                    LOGGER.debug('in DataSource mapping for relationship')
+                    LOGGER.debug('mapping: %s', mapping.__dict__)
+                    LOGGER.debug('typed_row: %s', typed_row)
+                    LOGGER.debug('new_column_configs: %s', self.new_column_configs)
                     """
                     func
                     parameter_names []
@@ -167,17 +179,7 @@ class DataSource(ABC):
                     new_column_name
                     """
                     # Get the new column configs for this DataSource
-                    relevant_new_column_configs = {
-                        key: value for key, value in self.new_column_configs.items()
-                        if value.data_source_name == self.name
-                    }
-                    LOGGER.info('relevant_new_column_configs: %s', relevant_new_column_configs)
-                    for new_column_name, config in relevant_new_column_configs.items():
-                        argument_list = [
-                            typed_row[parameter_name] for parameter_name in config.parameter_names
-                        ]
-                        new_column_value = config.func(*argument_list)
-                        typed_row[new_column_name] = new_column_value
+                    
 
                     if (
                         mapping.source_key in typed_row
@@ -194,8 +196,8 @@ class DataSource(ABC):
                                 "source": self.name,
                             }
                         )
-                        LOGGER.info('appended a relationship')
-                        LOGGER.info(processed_items)
+                        LOGGER.debug('appended a relationship')
+                        LOGGER.debug(processed_items)
 
         except Exception as e:
             LOGGER.error(f"Error processing row in {self.name}: {e}")
@@ -210,18 +212,19 @@ class DataSource(ABC):
             return
 
         LOGGER.info(f"Starting to queue rows from {self.name}")
+        max_rows = 64_000_000_000
         try:
             for row in self._load_data():
                 if self._shutdown_event.is_set():
                     break
-                if 0 and self._rows_queued >= max_rows:
+                if 1 and self._rows_queued >= max_rows:
                     LOGGER.warning(f"Max rows reached for {self.name}")
                     break
                 processed_items = self._process_row(row)
 
                 for item in processed_items:
                     success = self._raw_input_queue.put(item)
-                    LOGGER.info(item)
+                    LOGGER.debug(item)
                     if success:
                         with self._lock:
                             self._rows_queued += 1
@@ -301,7 +304,7 @@ class CSVDataSource(DataSource):
                     yield cleaned_row
 
                     if row_num % 1000 == 0:
-                        LOGGER.info(
+                        LOGGER.debug(
                             f"Processed {row_num} rows from {file_path}"
                         )
 

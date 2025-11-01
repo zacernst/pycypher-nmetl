@@ -31,7 +31,7 @@ from dataclasses import dataclass
 from queue import Queue
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Type
 
-from nmetl.prometheus_metrics import RAW_DATA_COUNTER, REQUEST_TIME
+from nmetl.prometheus_metrics import TRIGGER_CHECK_COUNT, RAW_DATA_COUNTER, REQUEST_TIME
 from nmetl.queue_generator import QueueGenerator
 from nmetl.thread_manager import ThreadManager
 from nmetl.trigger import CypherTrigger
@@ -108,7 +108,7 @@ class QueueProcessor(ABC):  # pylint: disable=too-few-public-methods,too-many-in
         priority: Optional[int] = 0,
         session_config: Optional[SessionConfig] = None,
         thread_manager: Optional[ThreadManager] = None,
-        max_buffer_size: int = 1,
+        max_buffer_size: int = 1_000_000,
         buffer_timeout: float = 1.25,
         fact_collection: Optional[FactCollection] = None,
         trigger_dict: Optional[Dict[str, Any]] = None,
@@ -271,9 +271,6 @@ class QueueProcessor(ABC):  # pylint: disable=too-few-public-methods,too-many-in
                 sub_item,
             )
             future.add_done_callback(self.handle_result_future)
-        # result = future.result()
-        # LOGGER.info('Got result: %s', result)
-        # return result
 
     def submit_work(self, func: Callable, *args, **kwargs) -> Future:
         """Submit work to thread pool instead of Dask."""
@@ -320,6 +317,7 @@ class RawDataProcessor(QueueProcessor):
             from one raw data item.
         """
         all_results = []
+        LOGGER.debug(item)
         match item["type"]:
             case "attribute":
                 fact = FactNodeHasAttributeWithValue(
@@ -335,7 +333,6 @@ class RawDataProcessor(QueueProcessor):
                 )
                 all_results.append(fact)
             case "relationship":
-                LOGGER.info('in relationship')
                 relationship_id: str = hashlib.sha256(
                     bytes(str(random.random()), encoding="utf8")
                 ).hexdigest()
@@ -456,7 +453,8 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
     def evaluate_fact_against_trigger(
         self, trigger, item, variable
     ) -> ProjectionList:
-        LOGGER.debug("evaluate_fact_against_trigger: %s:::%s", item, variable)
+        if variable == 't':
+            LOGGER.warning("evaluate_fact_against_trigger: %s:::%s", item, variable)
         result: ProjectionList = trigger.cypher._evaluate(
             self.fact_collection,
             projection_list=ProjectionList(
@@ -465,8 +463,10 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
                 ]
             ),
         )
+        TRIGGER_CHECK_COUNT.inc(1)
         # Can we filter out bad results here.
-        LOGGER.debug(
+        LOGGER.info('Evaluated trigger: %s', trigger.cypher)
+        LOGGER.info(
             "Result of evaluate_fact_against_trigger %s is %s, %s, %s",
             item,
             result,
@@ -526,7 +526,7 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
         for _, trigger in self.trigger_dict.items():
             # Get the attributes that are in the Match clause
             # TODO: Find out why parse_tree is ever None
-            LOGGER.debug(
+            LOGGER.info(
                 "Checking trigger: %s", trigger.cypher.cypher_query
             )
             if trigger.cypher.parse_tree is None:
@@ -537,6 +537,7 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
             attribute_names_in_trigger: List[str] = (
                 trigger.cypher.parse_tree.attribute_names
             )
+            LOGGER.info('attribute_names_in_trigger: %s', attribute_names_in_trigger)
             if (
                 isinstance(item, FactNodeHasAttributeWithValue)
                 and item.attribute not in attribute_names_in_trigger
@@ -572,7 +573,7 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
                 #### KLUDGE
                 if (
                     isinstance(item, (FactNodeHasAttributeWithValue,))
-                    and variable != "r"
+                    and (variable != "r")
                 ):
                     successful: bool = False
                     attempts: int = 0
@@ -585,8 +586,9 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
                             )
                             successful = True
                         except Exception as e:
+                            raise e
                             LOGGER.warning(
-                                f"Key error or something like that... {attempts}"
+                                f"Key error or something like that... {attempts}:{variable}:{type(variable)}"
                             )
                             LOGGER.warning(f"Error: {e}")
                             time.sleep(1)

@@ -334,6 +334,10 @@ class VariableAttributeTrigger(CypherTrigger):
         self.attribute_set: str = attribute_set
         self.is_relationship_trigger = False
         self.is_attribute_trigger = True
+    
+    def __repr__(self) -> str:
+        out = f'Trigger: {self.cypher_string}'
+        return out
 
     def __hash__(self) -> int:
         """

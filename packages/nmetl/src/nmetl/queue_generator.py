@@ -6,6 +6,8 @@ import base64
 import queue
 import threading
 import uuid
+import time
+from prometheus_client import Gauge
 from typing import Any, Callable, Generator, List, Optional
 
 # import pickle
@@ -21,13 +23,24 @@ class Shutdown:
 class QueueGenerator:
     """Thread-safe queue with enhanced coordination."""
 
-    def __init__(self, name: str, maxsize: int = 1):
+    def __init__(self, name: str, maxsize: int = 1000000):
         self.name = name
         self.queue = queue.Queue(maxsize=maxsize)
         self._shutdown_event = threading.Event()
         self._stats_lock = threading.Lock()
         self.items_processed = 0
         self.items_queued = 0
+        try:
+            self.prometheus_gauge: Gauge = Gauge(name=self.name + 'Gauge', documentation='Number of items on the queue')
+            self.gauge_thread: threading.Thread = threading.Thread(target=self.monitor_thread)
+            self.gauge_thread.start()
+        except:
+            pass
+    
+    def monitor_thread(self) -> None:
+        while 1:
+            time.sleep(1)
+            self.prometheus_gauge.set(self.queue.qsize())
 
     def put(self, item: Any, timeout: Optional[float] = None):
         """Put item in queue with optional timeout."""

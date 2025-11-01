@@ -1676,9 +1676,16 @@ class Match(Evaluable, TreeMixin):
                 )
                 source_node_variable: str = node.source_node.name_label.name
                 target_node_variable: str = node.target_node.name_label.name
-                for relationship_instance in variable_substitution_dict[
-                    relationship_variable
-                ]:
+                ###########################################
+                ### ERRROR IS HERE
+                ### Relationship_assertions assumes that there is a specific instance
+                ### of the relationship. If it's just an unsaturated variable, we'd need
+                ### to fix this.
+                ###
+                ### Could do this by simply getting ALL the IDs of the right type of
+                ### relationship and adding them all to the variable_substitution_dict
+                ###########################################
+                for relationship_instance in variable_substitution_dict.get(relationship_variable, []):
                     source_node_query: QuerySourceNodeOfRelationship = (
                         QuerySourceNodeOfRelationship(
                             relationship_id=relationship_instance
