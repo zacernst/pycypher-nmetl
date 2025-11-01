@@ -198,4 +198,5 @@ include = [
 ]
 exclude = [
     "packages/fastopendata/raw_data/**",
+    "raw_data/**",
 ]

@@ -6,6 +6,25 @@ RUN apt-get update && \
     apt-get install -y python3 python3-pip wget bash && \
     rm -rf /var/lib/apt/lists/*
 
+RUN apt update
+RUN apt install -y -V ca-certificates lsb-release wget
+RUN wget https://packages.apache.org/artifactory/arrow/$(lsb_release --id --short | tr 'A-Z' 'a-z')/apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
+RUN apt install -y -V ./apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
+RUN apt update
+RUN apt install -y -V libarrow-dev # For C++
+RUN apt install -y -V libarrow-glib-dev # For GLib (C)
+RUN apt install -y -V libarrow-dataset-dev # For Apache Arrow Dataset C++
+RUN apt install -y -V libarrow-dataset-glib-dev # For Apache Arrow Dataset GLib (C)
+RUN apt install -y -V libarrow-acero-dev # For Apache Arrow Acero
+RUN apt install -y -V libarrow-flight-dev # For Apache Arrow Flight C++
+RUN apt install -y -V libarrow-flight-glib-dev # For Apache Arrow Flight GLib (C)
+RUN apt install -y -V libarrow-flight-sql-dev # For Apache Arrow Flight SQL C++
+RUN apt install -y -V libarrow-flight-sql-glib-dev # For Apache Arrow Flight SQL GLib (C)
+RUN apt install -y -V libgandiva-dev # For Gandiva C++
+RUN apt install -y -V libgandiva-glib-dev # For Gandiva GLib (C)
+RUN apt install -y -V libparquet-dev # For Apache Parquet C++
+RUN apt install -y -V libparquet-glib-dev # For Apache Parquet GLib (C)
+
 
 # Set the working directory inside the container
 

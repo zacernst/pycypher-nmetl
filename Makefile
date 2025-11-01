@@ -70,9 +70,9 @@ format:
 # Build packages
 build:
 	@echo "Building packages..."
-	@for version in ${SUPPORTED_PYTHON_VERSIONS}; do \
+	@for v in ${SUPPORTED_PYTHON_VERSIONS}; do \
 		echo "Building with Python version ${PYTHON_VERSION}..." && \
-		uv run --python $version hatch build -t wheel || exit 1; \
+		uv run --python $v hatch build -t wheel || exit 1; \
 	done	
 
 # Install packages in development mode

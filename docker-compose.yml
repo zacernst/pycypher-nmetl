@@ -19,6 +19,7 @@ services:
     command:
       - 'fdbcli --no-status --exec "configure new single ssd"'
   
+<<<<<<< HEAD
   fdb_service:
     platform: linux/aarch64
     build: ../fdb_client
@@ -53,3 +54,12 @@ volumes:
   prom_data:
   grafana-data:
   grafana:
+=======
+      # fdb_service:
+      #   platform: linux/aarch64
+      #   build: ../fdb_client
+      #     # volumes:
+      #     #   - ./packages/fastopendata/raw_data:/app/packages/fastopendata/raw_data # Mounts the current directory as /app inside the container
+      #   depends_on:
+      #     - fdb
+>>>>>>> 6d5c347 (Update configs for Fedora)
