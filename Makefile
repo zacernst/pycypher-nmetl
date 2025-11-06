@@ -209,9 +209,9 @@ united_states_nodes_csv: osm
 #     outs:
 #     - ${paths.raw_data}/combined.shp
 download_wikidata:
-	wget https://dumps.wikimedia.org/wikidatawiki/entities/latest-all.json.bz2 -O ${DATA_DIR}/latest-all.json.bz2
-extract_entities_from_wikidata: download_wikidata
-	cat ${DATA_DIR}/latest-all.json.bz2 | pv -s `ls -l ${DATA_DIR}/latest-all.json.bz2 | awk '{print $5}'` | bunzip2 -c | grep latitude | bzip2 -c > ${DATA_DIR}/location_entities.json.bz2
+	wget https://dumps.wikimedia.org/wikidatawiki/entities/latest-all.json.bz2 -O - | bunzip2 -c | uv run python ${SOURCE_DIR}/compress_wikidata.py | bzip2 -c > ${DATA_DIR}/wikidata_compressed.json.bz2
+# extract_entities_from_wikidata: download_wikidata
+# 	cat ${DATA_DIR}/latest-all.json.bz2 | pv -s `ls -l ${DATA_DIR}/latest-all.json.bz2 | awk '{print $5}'` | bunzip2 -c | grep latitude | bzip2 -c > ${DATA_DIR}/location_entities.json.bz2
 #     deps:
 #     - ${paths.raw_data}/latest-all.json.bz2
 #     outs:
