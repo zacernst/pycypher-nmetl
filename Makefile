@@ -153,7 +153,7 @@ fdbclear:
 	@echo "Clearing FoundationDB data..."
 	fdbcli --exec "writemode on; clearrange \"\" \"\\xFF\""
 
-data: state_county_tract_puma unzip_psam_p_1_year unzip_psam_p_5_year unzip_psam_h_1_year unzip_psam_h_5_year united_states_nodes_csv download_wikidata unzip_justice_outcomes download_housing_survey
+data: state_county_tract_puma unzip_psam_p_1_year unzip_psam_p_5_year state_boundaries unzip_psam_h_1_year unzip_psam_h_5_year united_states_nodes_csv download_wikidata unzip_justice_outcomes download_housing_survey download_sipp_rw_data
 
 #####################################
 # vars:
@@ -203,7 +203,7 @@ split_psam_to_housing_and_individual:
 osm:
 	wget https://download.geofabrik.de/north-america/us-latest.osm.pbf -O ${DATA_DIR}/us-latest.osm.pbf
 united_states_nodes_csv: osm
-	uv run python ${DATA_DIR}/extract_osm_nodes.py
+	uv run DATA_DIR=${DATA_DIR} python ${SOURCE_DIR}/extract_osm_nodes.py
 census_block_shape_files:
 	${SOURCE_DIR}/block_shape_files.sh
 download_wikidata:
@@ -229,8 +229,9 @@ download_puma_shapefiles:
 	wget --no-check-certificate -e robots=off -w 3 --user-agent='Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1)' --no-cache --header='referer: https://www2.census.gov/programs-surveys/acs/data/pums/2027/' -P ${paths.raw_data} -nH --recursive -np https://www2.census.gov/geo/tiger/TIGER2024/PUMA20/
 	${SOURCE_DIR}/puma_shape_files.sh
 	uv run python ${SOURCE_DIR}/concatenate_puma_shape_files.py
-#   state_boundaries:
-#     cmd: "wget --no-check-certificate --user-agent='Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1)' --no-cache --header='referer: https://www2.census.gov/programs-surveys/acs/data/pums/2027/' -P ${paths.raw_data} -nH --recursive -np https://www2.census.gov/geo/tiger/TIGER2024/STATE/tl_2024_us_state.zip -O ${paths.raw_data}/us_state_boundaries.zip && unzip -o ${paths.raw_data}/us_state_boundaries.zip -d ${paths.raw_data}"
+state_boundaries:
+	wget --no-check-certificate --user-agent='Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1)' --no-cache --header='referer: https://www2.census.gov/programs-surveys/acs/data/pums/2027/' -P ${DATA_DIR} -nH --recursive -np https://www2.census.gov/geo/tiger/TIGER2024/STATE/tl_2024_us_state.zip -O ${DATA_DIR}/us_state_boundaries.zip
+	unzip -o ${DATA_DIR}/us_state_boundaries.zip -d ${DATA_DIR}
 #     outs:
 #     - ${paths.raw_data}/tl_2024_us_state.shp
 #   filter_us_wikidata:
@@ -248,10 +249,8 @@ download_puma_shapefiles:
 #     cmd: "wget --no-check-certificate https://www2.census.gov/programs-surveys/sipp/data/datasets/2023/pu2023_schema.json -O ${paths.raw_data}/pu2023_schema.json"
 #     outs:
 #     - ${paths.raw_data}/pu2023_schema.json
-#   download_sipp_rw_data:
-#     cmd: wget --no-check-certificate https://www2.census.gov/programs-surveys/sipp/data/datasets/2023/rw2023_csv.zip -O ${paths.raw_data}/rw2023_csv.zip && unzip -o ${paths.raw_data}/rw2023_csv.zip -d ${paths.raw_data}/
-#     outs:
-#     - ${paths.raw_data}/rw2023.csv
+download_sipp_rw_data:
+	wget --no-check-certificate https://www2.census.gov/programs-surveys/sipp/data/datasets/2023/rw2023_csv.zip -O ${DATA_DIR}/rw2023_csv.zip && unzip -o ${DATA_DIR}/rw2023_csv.zip -d ${DATA_DIR}/
 download_housing_survey:
 	wget --no-check-certificate https://www2.census.gov/programs-surveys/ahs/2023/AHS%202023%20Value%20Labels%20Package.zip -O ${DATA_DIR}/ahs_2023.zip
 	unzip -o ${DATA_DIR}/ahs_2023.zip -d ${DATA_DIR}
@@ -261,14 +260,3 @@ download_justice_outcomes:
 	wget --no-check-certificate https://www2.census.gov/programs-surveys/cjars/datasets/2022/cjars_joe_2022_co.csv.zip -O ${DATA_DIR}/cjars_joe_2022_co.csv.zip
 unzip_justice_outcomes: download_justice_outcomes
 	unzip -o ${DATA_DIR}/cjars_joe_2022_co.csv.zip -d ${DATA_DIR} && mv ${DATA_DIR}/output/cjars_joe_2022_co.csv ${DATA_DIR}/cjars_joe_2022_co.csv
-#     deps:
-#     - ${paths.raw_data}/cjars_joe_2022_co.csv.zip
-#     outs:
-#     - ${paths.raw_data}/cjars_joe_2022_co.csv
-#   bzip_justice_outcomes:
-#     cmd: lbzip2 -k ${paths.raw_data}/cjars_joe_2022_co.csv
-#     deps:
-#     - ${paths.raw_data}/cjars_joe_2022_co.csv
-#     outs:
-#     - ${paths.raw_data}/cjars_joe_2022_co.csv.bz2
-
