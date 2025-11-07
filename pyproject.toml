@@ -58,6 +58,7 @@ dependencies = [
     "python-sat>=1.8.dev20",
     # "orjson>=3.10.18",
     "myst-parser>=4.0.1",
+    "geopandas>=1.1.1",
 ]
 
 [[project.authors]]

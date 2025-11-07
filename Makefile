@@ -9,7 +9,7 @@ BUMP = micro
 # ------------------------------------------------------------------------------
 # Project paths
 # export GIT_HOME := ${HOME}/git
-export PACKAGES_DIR := /Users/zernst/git/pycypher-nmetl/packages
+export PACKAGES_DIR := ${HOME}/git/pycypher-nmetl/packages
 # Package-specific paths
 export PYCYPHER_DIR := ${PACKAGES_DIR}/pycypher
 export NMETL_DIR := ${PACKAGES_DIR}/nmetl
@@ -153,8 +153,6 @@ fdbclear:
 	@echo "Clearing FoundationDB data..."
 	fdbcli --exec "writemode on; clearrange \"\" \"\\xFF\""
 
-data: state_county_tract_puma unzip_psam_p_1_year unzip_psam_p_5_year state_boundaries unzip_psam_h_1_year unzip_psam_h_5_year united_states_nodes_csv download_wikidata unzip_justice_outcomes download_housing_survey download_sipp_rw_data
-
 #####################################
 # vars:
 #   - paths:
@@ -162,37 +160,72 @@ data: state_county_tract_puma unzip_psam_p_1_year unzip_psam_p_5_year state_boun
 #       raw_data: /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data/
 #       source_dir: /Users/zernst/git/pycypher-nmetl/packages/fastopendata/src/fastopendata/
 # 
-state_county_tract_puma:
+${DATA_DIR}/state_county_tract_puma.csv:
 	wget --no-check-certificate https://www2.census.gov/geo/docs/maps-data/data/rel2020/2020_Census_Tract_to_2020_PUMA.txt -O ${DATA_DIR}/state_county_unedited.txt
 	cat ${DATA_DIR}/state_county_unedited.txt | sed 's/^\uFEFF//' > ${DATA_DIR}/state_county_tract_puma.csv
-census_pus_1_year:
+
+${DATA_DIR}/csv_pus_1_year.zip:
 	wget --no-check-certificate --user-agent='Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1)' --no-cache --header='referer: https://www2.census.gov/programs-surveys/acs/data/pums/2027/' https://www2.census.gov/programs-surveys/acs/data/pums/2023/1-Year/csv_pus.zip -O ${DATA_DIR}/csv_pus_1_year.zip
-census_pus_5_year:
+
+${DATA_DIR}/csv_pus_5_year.zip:
 	wget --no-check-certificate --user-agent='Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1)' --no-cache --header='referer: https://www2.census.gov/programs-surveys/acs/data/pums/2027/' https://www2.census.gov/programs-surveys/acs/data/pums/2023/5-Year/csv_pus.zip -O ${DATA_DIR}/csv_pus_5_year.zip
-census_hus_5_year:
+
+${DATA_DIR}/csv_hus_5_year.zip:
 	wget --no-check-certificate --user-agent='Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1)' --no-cache --header='referer: https://www2.census.gov/programs-surveys/acs/data/pums/2027/' https://www2.census.gov/programs-surveys/acs/data/pums/2023/5-Year/csv_hus.zip -O ${DATA_DIR}/csv_hus_5_year.zip
-census_hus_1_year:
+
+${DATA_DIR}/csv_hus_1_year.zip:
 	wget --no-check-certificate --user-agent='Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1)' --no-cache --header='referer: https://www2.census.gov/programs-surveys/acs/data/pums/2027/' https://www2.census.gov/programs-surveys/acs/data/pums/2023/1-Year/csv_hus.zip -O ${DATA_DIR}/csv_hus_1_year.zip
-unzip_psam_p_1_year: census_pus_1_year
+
+${DATA_DIR}/pus_1/psam_pusa.csv ${DATA_DIR}/pus_1/psam_pusb.csv: ${DATA_DIR}/csv_pus_1_year.zip
 	unzip -o ${DATA_DIR}/csv_pus_1_year.zip -d ${DATA_DIR}/pus_1
-unzip_psam_h_1_year: census_hus_1_year
+
+${DATA_DIR}/hus_1/psam_husb.csv: ${DATA_DIR}/csv_hus_1_year.zip
 	unzip -o ${DATA_DIR}/csv_hus_1_year.zip -d ${DATA_DIR}/hus_1
-unzip_psam_p_5_year: census_pus_5_year
+
+${DATA_DIR}/pus_5/psam_pusd.csv: ${DATA_DIR}/csv_pus_5_year.zip
 	unzip -o ${DATA_DIR}/csv_pus_5_year.zip -d ${DATA_DIR}/pus_5
-unzip_psam_h_5_year: census_hus_5_year
+
+${DATA_DIR}/hus_5/psam_husd.csv: ${DATA_DIR}/csv_hus_5_year.zip
 	unzip -o ${DATA_DIR}/csv_hus_5_year.zip -d ${DATA_DIR}/hus_5
-combine_psam_p_1:
-	cat ${DATA_DIR}/psam_pusa.csv > ${DATA_DIR}/psam_pus.csv
-	cat ${DATA_DIR}/psam_pusb.csv | tail +2 >> ${DATA_DIR}/psam_pus.csv
-combine_psam_h_1:
-	cat ${DATA_DIR}/psam_husa.csv > ${DATA_DIR}/psam_hus.csv
-	cat ${DATA_DIR}/psam_husb.csv | tail +2 >> ${DATA_DIR}/psam_hus.csv
-split_psam_to_housing_and_individual:
+
+${DATA_DIR}/pus_1/psam_pus.csv: ${DATA_DIR}/pus_1/psam_pusb.csv
+	cat ${DATA_DIR}/pus_1/psam_pusa.csv > ${DATA_DIR}/pus_1/psam_pus.csv
+	cat ${DATA_DIR}/pus_1/psam_pusb.csv | tail -n +2 >> ${DATA_DIR}/pus_1/psam_pus.csv
+
+${DATA_DIR}/hus_1/psam_hus.csv: ${DATA_DIR}/hus_1/psam_husb.csv
+	cat ${DATA_DIR}/hus_1/psam_husa.csv > ${DATA_DIR}/hus_1/psam_hus.csv
+	cat ${DATA_DIR}/hus_1/psam_husb.csv | tail -n +2 >> ${DATA_DIR}/hus_1/psam_hus.csv
+
+${DATA_DIR}/pus_5/psam_pus.csv: ${DATA_DIR}/pus_5/psam_pusd.csv
+	cat ${DATA_DIR}/pus_5/psam_pusa.csv > ${DATA_DIR}/pus_5/psam_pus.csv
+	cat ${DATA_DIR}/pus_5/psam_pusb.csv | tail -n +2 >> ${DATA_DIR}/pus_5/psam_pus.csv
+	cat ${DATA_DIR}/pus_5/psam_pusc.csv | tail -n +2 >> ${DATA_DIR}/pus_5/psam_pus.csv
+	cat ${DATA_DIR}/pus_5/psam_pusd.csv | tail -n +2 >> ${DATA_DIR}/pus_5/psam_pus.csv
+
+${DATA_DIR}/hus_5/psam_hus.csv: ${DATA_DIR}/hus_5/psam_husd.csv
+	cat ${DATA_DIR}/hus_5/psam_husa.csv > ${DATA_DIR}/hus_5/psam_hus.csv
+	cat ${DATA_DIR}/hus_5/psam_husb.csv | tail -n +2 >> ${DATA_DIR}/hus_5/psam_hus.csv
+	cat ${DATA_DIR}/hus_5/psam_husc.csv | tail -n +2 >> ${DATA_DIR}/hus_5/psam_hus.csv
+	cat ${DATA_DIR}/hus_5/psam_husd.csv | tail -n +2 >> ${DATA_DIR}/hus_5/psam_hus.csv
+
+data: ${DATA_DIR}/hus_5/psam_hus.csv ${DATA_DIR}/pus_1/psam_pus.csv ${DATA_DIR}/hus_1/psam_hus.csv ${DATA_DIR}/pus_5/psam_pus.csv ${DATA_DIR}/wikidata_compressed.json.bz2 ${DATA_DIR}/united_states_nodes.csv ${DATA_DIR}/tl_2024_us_state.shp ${DATA_DIR}/ahs_2023_csv.zip ${DATA_DIR}/rw2023_csv.zip ${DATA_DIR}/pu2023_schema.json
+	echo "done"
+
+${DATA_DIR}/hus_5/psam_hus.csv: ${DATA_DIR}/hus_5/psam_husd.csv
+	cat ${DATA_DIR}/hus_5/psam_husa.csv > ${DATA_DIR}/hus_5/psam_hus.csv
+	cat ${DATA_DIR}/hus_5/psam_husb.csv | tail -n +2 >> ${DATA_DIR}/hus_5/psam_hus.csv
+	cat ${DATA_DIR}/hus_5/psam_husc.csv | tail -n +2 >> ${DATA_DIR}/hus_5/psam_hus.csv
+	cat ${DATA_DIR}/hus_5/psam_husd.csv | tail -n +2 >> ${DATA_DIR}/hus_5/psam_hus.csv
+
+${DATA_DIR}/psam_2023_individual.csv: ${DATA_DIR}/psam_pus.csv
 	head -1 ${DATA_DIR}/psam_pus.csv > ${DATA_DIR}/psam_2023_individual.csv
 	grep 2023GQ ${DATA_DIR}/psam_pus.csv >> ${DATA_DIR}/psam_2023_individual.csv
+
+${DATA_DIR}/psam_2023_housing.csv: ${DATA_DIR}/psam_pus.csv
 	head -1 ${DATA_DIR}/psam_pus.csv > ${DATA_DIR}/psam_2023_housing.csv
 	grep 2023HU ${DATA_DIR}/psam_pus.csv >> ${DATA_DIR}/psam_2023_housing.csv
-#   census_pus_5_year:
+#
+#census_pus_5_year:
 #     cmd: "wget --no-check-certificate --user-agent='Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1)' --no-cache --header='referer: https://www2.census.gov/programs-surveys/acs/data/pums/2027/' https://www2.census.gov/programs-surveys/acs/data/pums/2023/5-Year/csv_pus.zip -O ${paths.raw_data}/csv_pus_5_year.zip"
 #     outs:
 #     - ${paths.raw_data}/csv_pus_5_year.zip
@@ -200,13 +233,17 @@ split_psam_to_housing_and_individual:
 #     cmd: "wget --no-check-certificate --user-agent='Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1)' --no-cache --header='referer: https://www2.census.gov/programs-surveys/acs/data/pums/2027/' https://www2.census.gov/programs-surveys/acs/data/pums/2023/5-Year/csv_hus.zip -O ${paths.raw_data}/csv_hus_5_year.zip"
 #     outs:
 #     - ${paths.raw_data}/csv_hus_5_year.zip
-osm:
+
+${DATA_DIR}/us-latest.osm.pbf:
 	wget https://download.geofabrik.de/north-america/us-latest.osm.pbf -O ${DATA_DIR}/us-latest.osm.pbf
-united_states_nodes_csv: osm
-	uv run DATA_DIR=${DATA_DIR} python ${SOURCE_DIR}/extract_osm_nodes.py
+
+${DATA_DIR}/united_states_nodes.csv: ${DATA_DIR}/us-latest.osm.pbf
+	DATA_DIR=${DATA_DIR} uv run python ${SOURCE_DIR}/extract_osm_nodes.py
+
 census_block_shape_files:
 	${SOURCE_DIR}/block_shape_files.sh
-download_wikidata:
+
+${DATA_DIR}/wikidata_compressed.json.bz2:
 	wget https://dumps.wikimedia.org/wikidatawiki/entities/latest-all.json.bz2 -O - | bunzip2 -c | uv run python ${SOURCE_DIR}/compress_wikidata.py | bzip2 -c > ${DATA_DIR}/wikidata_compressed.json.bz2
 #   download_pums_5_year:
 #     cmd: wget -P '${paths.raw_data}' -nH --recursive -np https://www2.census.gov/programs-surveys/acs/data/pums/2023/5-Year/ && /bin/bash -c ${paths.source_dir}/pums_5_year.sh
@@ -225,13 +262,17 @@ download_wikidata:
 #     - ${paths.raw_data}/psam_p.csv
 #     outs:
 #     - ${paths.raw_data}/psam_p.csv.bz2
-download_puma_shapefiles:
-	wget --no-check-certificate -e robots=off -w 3 --user-agent='Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1)' --no-cache --header='referer: https://www2.census.gov/programs-surveys/acs/data/pums/2027/' -P ${paths.raw_data} -nH --recursive -np https://www2.census.gov/geo/tiger/TIGER2024/PUMA20/
+
+${DATA_DIR}/combined.shp:
+	wget --no-check-certificate -e robots=off -w 3 --user-agent='Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1)' --no-cache --header='referer: https://www2.census.gov/programs-surveys/acs/data/pums/2027/' -P ${DATA_DIR} -nH --recursive -np https://www2.census.gov/geo/tiger/TIGER2024/PUMA20/
 	${SOURCE_DIR}/puma_shape_files.sh
 	uv run python ${SOURCE_DIR}/concatenate_puma_shape_files.py
-state_boundaries:
-	wget --no-check-certificate --user-agent='Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1)' --no-cache --header='referer: https://www2.census.gov/programs-surveys/acs/data/pums/2027/' -P ${DATA_DIR} -nH --recursive -np https://www2.census.gov/geo/tiger/TIGER2024/STATE/tl_2024_us_state.zip -O ${DATA_DIR}/us_state_boundaries.zip
-	unzip -o ${DATA_DIR}/us_state_boundaries.zip -d ${DATA_DIR}
+
+${DATA_DIR}/us_state_boundaries.zip:
+	wget --no-check-certificate -e robots=off --user-agent='Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1)' --no-cache --header='referer: https://www2.census.gov/programs-surveys/acs/data/pums/2027/' https://www2.census.gov/geo/tiger/TIGER2024/STATE/tl_2024_us_state.zip -O ${DATA_DIR}/us_state_boundaries.zip
+
+${DATA_DIR}/tl_2024_us_state.shp: ${DATA_DIR}/us_state_boundaries.zip
+	unzip ${DATA_DIR}/us_state_boundaries.zip -d ${DATA_DIR}/
 #     outs:
 #     - ${paths.raw_data}/tl_2024_us_state.shp
 #   filter_us_wikidata:
@@ -245,18 +286,30 @@ state_boundaries:
 #     cmd: "wget --no-check-certificate --user-agent='Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1)' --no-cache --header='referer: https://www2.census.gov/programs-surveys/acs/data/pums/2027/' https://www2.census.gov/programs-surveys/sipp/data/datasets/2023/pu2023_csv.zip -O ${paths.raw_data}/pu2023_csv.zip && unzip -o ${paths.raw_data}/pu2023_csv.zip -d ${paths.raw_data}/"
 #     outs:
 #     - ${paths.raw_data}/pu2023.csv
-#   download_sipp_pu_data_dictionary:
-#     cmd: "wget --no-check-certificate https://www2.census.gov/programs-surveys/sipp/data/datasets/2023/pu2023_schema.json -O ${paths.raw_data}/pu2023_schema.json"
-#     outs:
-#     - ${paths.raw_data}/pu2023_schema.json
-download_sipp_rw_data:
-	wget --no-check-certificate https://www2.census.gov/programs-surveys/sipp/data/datasets/2023/rw2023_csv.zip -O ${DATA_DIR}/rw2023_csv.zip && unzip -o ${DATA_DIR}/rw2023_csv.zip -d ${DATA_DIR}/
-download_housing_survey:
+
+${DATA_DIR}/pu2023_schema.json:
+	wget --no-check-certificate https://www2.census.gov/programs-surveys/sipp/data/datasets/2023/pu2023_schema.json -O ${DATA_DIR}/pu2023_schema.json
+
+${DATA_DIR}/rw2023_csv.zip:
+	wget --no-check-certificate https://www2.census.gov/programs-surveys/sipp/data/datasets/2023/rw2023_csv.zip -O ${DATA_DIR}/rw2023_csv.zip
+	unzip -o ${DATA_DIR}/rw2023_csv.zip -d ${DATA_DIR}/
+
+${DATA_DIR}/ahs_2023_csv.zip:
 	wget --no-check-certificate https://www2.census.gov/programs-surveys/ahs/2023/AHS%202023%20Value%20Labels%20Package.zip -O ${DATA_DIR}/ahs_2023.zip
-	unzip -o ${DATA_DIR}/ahs_2023.zip -d ${DATA_DIR}
+	unzip -o ${DATA_DIR}/ahs_2023.zip -d ${DATA_DIR}/ahs_2023
 	wget --no-check-certificate https://www2.census.gov/programs-surveys/ahs/2023/AHS%202023%20National%20PUF%20v1.1%20Flat%20CSV.zip -O ${DATA_DIR}/ahs_2023_csv.zip
-	unzip -o ${DATA_DIR}/ahs_2023_csv.zip -d ${DATA_DIR}
-download_justice_outcomes:
+	unzip -o ${DATA_DIR}/ahs_2023_csv.zip -d ${DATA_DIR}/ahs_2023
+
+${DATA_DIR}/cjars_joe_2022_co.csv.zip:
 	wget --no-check-certificate https://www2.census.gov/programs-surveys/cjars/datasets/2022/cjars_joe_2022_co.csv.zip -O ${DATA_DIR}/cjars_joe_2022_co.csv.zip
-unzip_justice_outcomes: download_justice_outcomes
-	unzip -o ${DATA_DIR}/cjars_joe_2022_co.csv.zip -d ${DATA_DIR} && mv ${DATA_DIR}/output/cjars_joe_2022_co.csv ${DATA_DIR}/cjars_joe_2022_co.csv
+
+${DATA_DIR}/cjars_joe_2022_co.csv: ${DATA_DIR}/cjars_joe_2022_co.csv.zip
+	unzip -o ${DATA_DIR}/cjars_joe_2022_co.csv.zip -d ${DATA_DIR}
+	mv ${DATA_DIR}/output/cjars_joe_2022_co.csv ${DATA_DIR}/cjars_joe_2022_co.csv
+
+
+
+
+
+#####################################################
+
