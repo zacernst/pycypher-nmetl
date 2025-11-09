@@ -12,6 +12,7 @@ from pycypher.fact_collection import FactCollection
 if TYPE_CHECKING:
     from pycypher.cypher_parser import CypherParser
 
+from nmetl.prometheus_metrics import SOLUTIONS_TIMER
 from pycypher.query import (
     NullResult,
     QueryNodeLabel,
@@ -24,7 +25,6 @@ from pycypher.tree_mixin import TreeMixin
 from pysat.solvers import Glucose42
 from rich.tree import Tree
 from shared.logger import LOGGER
-from nmetl.prometheus_metrics import SOLUTIONS_TIMER
 
 LOGGER.setLevel("WARNING")
 
@@ -1685,7 +1685,9 @@ class Match(Evaluable, TreeMixin):
                 ### Could do this by simply getting ALL the IDs of the right type of
                 ### relationship and adding them all to the variable_substitution_dict
                 ###########################################
-                for relationship_instance in variable_substitution_dict.get(relationship_variable, []):
+                for relationship_instance in variable_substitution_dict.get(
+                    relationship_variable, []
+                ):
                     source_node_query: QuerySourceNodeOfRelationship = (
                         QuerySourceNodeOfRelationship(
                             relationship_id=relationship_instance

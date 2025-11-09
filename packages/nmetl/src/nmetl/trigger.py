@@ -8,8 +8,14 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import (Callable, List, Optional, Protocol, TypeVar,
-                    runtime_checkable)
+from typing import (
+    Callable,
+    List,
+    Optional,
+    Protocol,
+    TypeVar,
+    runtime_checkable,
+)
 
 from pycypher.cypher_parser import CypherParser
 from shared.logger import LOGGER
@@ -334,9 +340,9 @@ class VariableAttributeTrigger(CypherTrigger):
         self.attribute_set: str = attribute_set
         self.is_relationship_trigger = False
         self.is_attribute_trigger = True
-    
+
     def __repr__(self) -> str:
-        out = f'Trigger: {self.cypher_string}'
+        out = f"Trigger: {self.cypher_string}"
         return out
 
     def __hash__(self) -> int:

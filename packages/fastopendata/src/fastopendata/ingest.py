@@ -8,7 +8,6 @@ import json
 import pickle
 from typing import TYPE_CHECKING, LiteralString
 
-from nmetl.configuration import load_session_config
 from nmetl.data_asset import DataAsset
 from nmetl.data_source import NewColumn
 from nmetl.session import Session
@@ -18,16 +17,12 @@ from pycypher.fact_collection import FactCollection
 from pycypher.fact_collection.foundationdb import FoundationDBFactCollection
 from shared.logger import LOGGER
 
-LOGGER.setLevel("INFO")
-
-
-
 SOURCE_DIR = (
-    "/app/packages/fastopendata/src/fastopendata/"
+    "/app/packages/fastopendata/"
 )
 
-INGEST_CONFIG_PATH: LiteralString = f"{SOURCE_DIR}/ingest.yaml"
-PUMS_DATA_DICTIONARY_PATH: LiteralString = f"{SOURCE_DIR}/acs_pums_2023_data_dictionary.json"
+INGEST_CONFIG_PATH: LiteralString = f"packages/fastopendata/ingest.yaml"
+PUMS_DATA_DICTIONARY_PATH: LiteralString = f"packages/fastopendata/data_assets/acs_pums_2023_data_dictionary.json"
 
 if __name__ == "__main__":
 
@@ -44,10 +39,9 @@ if __name__ == "__main__":
     #     WorkerContext.set_global_data('trigger_dict', trigger_dict_bytes)
 
     # Use thread manager instead
+
+    session = Session(session_config_file="packages/fastopendata/sample_session_config.toml")
     
-    session: Session = load_session_config(
-        INGEST_CONFIG_PATH,
-    )
     
     # Setup worker data
     # setup_worker_data(session)
@@ -90,11 +84,11 @@ if __name__ == "__main__":
         out = STATEFP + COUNTYFP
         return out
 
-    @session.new_column("united_states_nodes")
-    def get_osm_tags(encoded_tags) -> NewColumn["tags"]:
-        '''All the OSM tags for the point'''
-        out = pickle.loads(base64.b64decode(encoded_tags))
-        return out
+    # @session.new_column("united_states_nodes")
+    # def get_osm_tags(encoded_tags) -> NewColumn["tags"]:
+    #     '''All the OSM tags for the point'''
+    #     out = pickle.loads(base64.b64decode(encoded_tags))
+    #     return out
 
     @session.trigger(
         "MATCH (i:PSAM_2023_Individual) WITH i.MIL AS military RETURN military"

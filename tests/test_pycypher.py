@@ -22,76 +22,164 @@ import pandas as pd
 import pyarrow.parquet as pq
 import pytest
 import rich  # pylint: disable=unused-import
-from fixtures import (data_asset_1, empty_session, etcd3_fact_collection,
-                      fact_collection_0, fact_collection_1, fact_collection_2,
-                      fact_collection_3, fact_collection_4, fact_collection_5,
-                      fact_collection_6, fact_collection_7,
-                      fact_collection_cls_factory,
-                      fact_collection_squares_circles,
-                      fixture_0_data_source_mapping_list,
-                      fixture_data_source_0, foundationdb_fact_collection,
-                      ingest_file_factory, networkx_graph, patched_uuid,
-                      populated_session, raw_data_processor,
-                      session_with_aggregation_fixture,
-                      session_with_city_state_fixture, session_with_data_asset,
-                      session_with_three_triggers, session_with_trigger,
-                      session_with_trigger_using_data_asset,
-                      session_with_two_triggers, shapes_session,
-                      squares_csv_data_source)
+from fixtures import (
+    data_asset_1,
+    empty_session,
+    etcd3_fact_collection,
+    fact_collection_0,
+    fact_collection_1,
+    fact_collection_2,
+    fact_collection_3,
+    fact_collection_4,
+    fact_collection_5,
+    fact_collection_6,
+    fact_collection_7,
+    fact_collection_cls_factory,
+    fact_collection_squares_circles,
+    fixture_0_data_source_mapping_list,
+    fixture_data_source_0,
+    foundationdb_fact_collection,
+    ingest_file_factory,
+    networkx_graph,
+    patched_uuid,
+    populated_session,
+    raw_data_processor,
+    session_with_aggregation_fixture,
+    session_with_city_state_fixture,
+    session_with_data_asset,
+    session_with_three_triggers,
+    session_with_trigger,
+    session_with_trigger_using_data_asset,
+    session_with_two_triggers,
+    shapes_session,
+    squares_csv_data_source,
+)
 from nmetl.configuration import (  # pylint: disable=unused-import
-    MONOREPO_BASE_DIR, TYPE_DISPATCH_DICT, DataSourceMappingConfig,
-    SessionConfig, load_session_config)
+    MONOREPO_BASE_DIR,
+    TYPE_DISPATCH_DICT,
+    DataSourceMappingConfig,
+    SessionConfig,
+    load_session_config,
+)
 from nmetl.data_asset import DataAsset
-from nmetl.data_source import (CSVDataSource, DataSource, DataSourceMapping,
-                               FixtureDataSource, NewColumn,
-                               ParquetFileDataSource, RawDataThread)
-from nmetl.data_types import (_Anything, _Boolean, _Float, _Integer,
-                              _PositiveInteger, _String)
-from nmetl.exceptions import (BadTriggerReturnAnnotationError,
-                              UnknownDataSourceError)
-from nmetl.message_types import (DataSourcesExhausted, EndOfData, Message,
-                                 RawDatum)
-from nmetl.queue_processor import (CheckFactAgainstTriggersQueueProcessor,
-                                   QueueProcessor, SubTriggerPair)
+from nmetl.data_source import (
+    CSVDataSource,
+    DataSource,
+    DataSourceMapping,
+    FixtureDataSource,
+    NewColumn,
+    ParquetFileDataSource,
+    RawDataThread,
+)
+from nmetl.data_types import (
+    _Anything,
+    _Boolean,
+    _Float,
+    _Integer,
+    _PositiveInteger,
+    _String,
+)
+from nmetl.exceptions import (
+    BadTriggerReturnAnnotationError,
+    UnknownDataSourceError,
+)
+from nmetl.message_types import (
+    DataSourcesExhausted,
+    EndOfData,
+    Message,
+    RawDatum,
+)
+from nmetl.queue_processor import (
+    CheckFactAgainstTriggersQueueProcessor,
+    QueueProcessor,
+    SubTriggerPair,
+)
 from nmetl.session import NewColumnConfig, Session
-from nmetl.trigger import (AttributeMetadata, CypherTrigger, NodeRelationship,
-                           NodeRelationshipTrigger, VariableAttribute,
-                           VariableAttributeTrigger)
+from nmetl.trigger import (
+    AttributeMetadata,
+    CypherTrigger,
+    NodeRelationship,
+    NodeRelationshipTrigger,
+    VariableAttribute,
+    VariableAttributeTrigger,
+)
 from nmetl.writer import CSVTableWriter, ParquetTableWriter, TableWriter
 from numpy import nan
 from pycypher.cypher_parser import CypherParser
 from pycypher.exceptions import (  # pylint: disable=unused-import
-    InvalidCastError, WrongCypherTypeError)
+    InvalidCastError,
+    WrongCypherTypeError,
+)
 from pycypher.fact import (  # We might get rid of this class entirely
-    AtomicFact, FactNodeHasAttributeWithValue, FactNodeHasLabel,
-    FactNodeRelatedToNode, FactRelationshipHasAttributeWithValue,
-    FactRelationshipHasLabel, FactRelationshipHasSourceNode,
-    FactRelationshipHasTargetNode)
+    AtomicFact,
+    FactNodeHasAttributeWithValue,
+    FactNodeHasLabel,
+    FactNodeRelatedToNode,
+    FactRelationshipHasAttributeWithValue,
+    FactRelationshipHasLabel,
+    FactRelationshipHasSourceNode,
+    FactRelationshipHasTargetNode,
+)
 from pycypher.fact_collection import FactCollection
 from pycypher.fact_collection.foundationdb import FoundationDBFactCollection
 from pycypher.fact_collection.rocksdb import RocksDBFactCollection
 from pycypher.fact_collection.simple import SimpleFactCollection
-from pycypher.node_classes import (Addition, Aggregation, Alias, AliasedName,
-                                   And, Collect, Collection, Cypher, Distinct,
-                                   Division, Equals, Evaluable, GreaterThan,
-                                   LessThan, Literal, Mapping, MappingSet,
-                                   Match, Multiplication, Node, NodeNameLabel,
-                                   Not, ObjectAsSeries, ObjectAttributeLookup,
-                                   Or, Predicate, Projection, Query,
-                                   Relationship, RelationshipChain,
-                                   RelationshipChainList,
-                                   RelationshipLeftRight,
-                                   RelationshipRightLeft, Return, Size,
-                                   Subtraction, Where, WithClause)
-from pycypher.query import (NullResult, QueryNodeLabel,
-                            QueryValueOfNodeAttribute)
+from pycypher.node_classes import (
+    Addition,
+    Aggregation,
+    Alias,
+    AliasedName,
+    And,
+    Collect,
+    Collection,
+    Cypher,
+    Distinct,
+    Division,
+    Equals,
+    Evaluable,
+    GreaterThan,
+    LessThan,
+    Literal,
+    Mapping,
+    MappingSet,
+    Match,
+    Multiplication,
+    Node,
+    NodeNameLabel,
+    Not,
+    ObjectAsSeries,
+    ObjectAttributeLookup,
+    Or,
+    Predicate,
+    Projection,
+    Query,
+    Relationship,
+    RelationshipChain,
+    RelationshipChainList,
+    RelationshipLeftRight,
+    RelationshipRightLeft,
+    Return,
+    Size,
+    Subtraction,
+    Where,
+    WithClause,
+)
+from pycypher.query import (
+    NullResult,
+    QueryNodeLabel,
+    QueryValueOfNodeAttribute,
+)
 from pycypher.shims.networkx_cypher import NetworkX
-from pycypher.solver import (Constraint, ConstraintNodeHasAttributeWithValue,
-                             ConstraintNodeHasLabel,
-                             ConstraintRelationshipHasLabel,
-                             ConstraintRelationshipHasSourceNode,
-                             ConstraintRelationshipHasTargetNode,
-                             ConstraintVariableRefersToSpecificObject, IsTrue)
+from pycypher.solver import (
+    Constraint,
+    ConstraintNodeHasAttributeWithValue,
+    ConstraintNodeHasLabel,
+    ConstraintRelationshipHasLabel,
+    ConstraintRelationshipHasSourceNode,
+    ConstraintRelationshipHasTargetNode,
+    ConstraintVariableRefersToSpecificObject,
+    IsTrue,
+)
 from pycypher.tree_mixin import TreeMixin
 from pytest_unordered import unordered
 from shared.helpers import Idle, QueueGenerator, ensure_uri

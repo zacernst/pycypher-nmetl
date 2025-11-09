@@ -24,21 +24,28 @@ import queue
 import random
 import threading
 import time
-from prometheus_client import Counter
 from abc import ABC, abstractmethod
 from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass
 from queue import Queue
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Type
 
-from nmetl.prometheus_metrics import TRIGGER_CHECK_COUNT, RAW_DATA_COUNTER, REQUEST_TIME
+from nmetl.prometheus_metrics import (
+    RAW_DATA_COUNTER,
+    REQUEST_TIME,
+    TRIGGER_CHECK_COUNT,
+)
 from nmetl.queue_generator import QueueGenerator
 from nmetl.thread_manager import ThreadManager
 from nmetl.trigger import CypherTrigger
-from pycypher.fact import (FactNodeHasAttributeWithValue, FactNodeHasLabel,
-                           FactRelationshipHasLabel,
-                           FactRelationshipHasSourceNode,
-                           FactRelationshipHasTargetNode)
+from prometheus_client import Counter
+from pycypher.fact import (
+    FactNodeHasAttributeWithValue,
+    FactNodeHasLabel,
+    FactRelationshipHasLabel,
+    FactRelationshipHasSourceNode,
+    FactRelationshipHasTargetNode,
+)
 from pycypher.fact_collection import FactCollection
 from pycypher.node_classes import Collection
 from pycypher.query import NullResult
@@ -102,17 +109,10 @@ class QueueProcessor(ABC):  # pylint: disable=too-few-public-methods,too-many-in
 
     def __init__(
         self,
+        session: Session,
         incoming_queue: Optional[QueueGenerator] = None,
         outgoing_queue: Optional[QueueGenerator] = None,
-        status_queue: queue.Queue = None,
-        priority: Optional[int] = 0,
-        session_config: Optional[SessionConfig] = None,
         thread_manager: Optional[ThreadManager] = None,
-        max_buffer_size: int = 1_000_000,
-        buffer_timeout: float = 1.25,
-        fact_collection: Optional[FactCollection] = None,
-        trigger_dict: Optional[Dict[str, Any]] = None,
-        data_assets: dict = {},
     ) -> None:
         """
         Initialize a QueueProcessor instance.
@@ -120,26 +120,16 @@ class QueueProcessor(ABC):  # pylint: disable=too-few-public-methods,too-many-in
         Args:
             incoming_queue: The queue from which to read items for processing.
             outgoing_queue: The queue to which processed items are sent.
-            status_queue: Queue for status messages and error reporting.
-            priority: Processing priority for Dask task scheduling (higher = more priority).
             session_config: Configuration object containing session settings.
             thread_manager: ThreadManager for task execution.
-            max_buffer_size: Maximum number of items to buffer before processing.
-            buffer_timeout: Maximum time (seconds) to wait before processing partial buffer.
         """
         LOGGER.debug("Initializing QueuePreocessor: %s", self)
-        self._session_config = session_config
+        self.session = session
         self.started = False
-        self.priority = priority
         self.started_at: Optional[datetime.datetime] = None
         self.finished = False
         self.finished_at: Optional[datetime.datetime] = None
         self.halt_signal = False
-        self.fact_collection = fact_collection
-        self.trigger_dict = trigger_dict
-        self.data_assets = data_assets
-
-        LOGGER.debug(session_config)
 
         self.processing_thread = threading.Thread(
             target=self.process_queue, daemon=True
@@ -148,46 +138,15 @@ class QueueProcessor(ABC):  # pylint: disable=too-few-public-methods,too-many-in
         self.sent_counter = 0
         self.incoming_queue = incoming_queue
         self.outgoing_queue = outgoing_queue
-        self.status_queue = status_queue
-        self.profiler = None
-        self.idle = False  # True if we're not doing anything -- will use for determining whether to stop
-        # Stop when all idle and data sources are empty.
-
-        # if self.outgoing_queue:
-        #     self.outgoing_queue.incoming_queue_processors.append(self)
-        # self.secondary_cache = []
-        # self.secondary_cache_max_size = 1_000
 
         self.name = self.__class__.__name__
 
-        self.buffer: list[Any] = []
-        self.max_buffer_size: int = max_buffer_size
-        self.buffer_timeout: float = buffer_timeout
+        self.item_counter: Counter = Counter(
+            self.__class__.__name__, self.__class__.__name__
+        )
 
-        self.thread_manager: ThreadManager = ThreadManager()
-        self.item_counter: Counter = Counter(self.__class__.__name__, self.__class__.__name__)
-
-    # @classmethod
-    # def get_fact_collection(cls) -> FactCollection:
-    #     _fact_collection: FactCollection = (
-    #         get_worker().fact_collection
-    #     )  # pyrefly: ignore
-    #     return _fact_collection
-
-    # @property
-    # def fact_collection(self) -> FactCollection:
-    #     _fact_collection: FactCollection = (
-    #         get_worker().fact_collection
-    #     )  # pyrefly: ignore
-    #     return _fact_collection
-
-    @property
-    def session_config(self) -> SessionConfig:
-        if self._session_config.__class__ is not SessionConfig:
-            raise ValueError(
-                f"Expected a session config: {self._session_config.__class__.__name__}"
-            )
-        return self._session_config  # pyrefly: ignore (it's correct, actually)
+    def __getattr__(self, attr: str) -> Any:
+        return getattr(self.session, attr)
 
     def process_queue(self) -> None:
         """
@@ -225,7 +184,6 @@ class QueueProcessor(ABC):  # pylint: disable=too-few-public-methods,too-many-in
         if not result:
             LOGGER.debug("result is None")
             return
-            # raise ValueError("result_list is None")
         self.outgoing_queue.put(result)
 
     @abstractmethod
@@ -255,11 +213,6 @@ class QueueProcessor(ABC):  # pylint: disable=too-few-public-methods,too-many-in
 
         The method is decorated with timing metrics for monitoring performance.
         """
-        # LOGGER.debug(
-        #     "Sending buffer to %s (%s)",
-        #     self.__class__.__name__,
-        #     len(self.buffer),
-        # )
         if not isinstance(item, list):
             item = [item]
         # I'm ashamed of this
@@ -272,10 +225,6 @@ class QueueProcessor(ABC):  # pylint: disable=too-few-public-methods,too-many-in
             )
             future.add_done_callback(self.handle_result_future)
 
-    def submit_work(self, func: Callable, *args, **kwargs) -> Future:
-        """Submit work to thread pool instead of Dask."""
-        return self.thread_manager.submit_task(func, *args, **kwargs)
-
 
 class RawDataProcessor(QueueProcessor):
     """
@@ -285,22 +234,6 @@ class RawDataProcessor(QueueProcessor):
     mappings to transform the data into fact objects, and prepares them for
     insertion into the fact collection.
     """
-
-    # def process_buffer(self, buffer: List[Any]) -> List[Any]:
-    #     """Process buffer using threads instead of Dask futures."""
-    #     for item in buffer:
-    #         results = self._process_single_item(item)
-    #     return results
-
-    # @staticmethod
-    # def _process_single_item(item: Any) -> List[Any]:
-    #     row: dict[str, Any] = item.row
-    #     out: list[Any] = []
-    #     for mapping in item.mappings:
-    #         for out_item in mapping + row:
-    #             out_item.lineage = None  # FromMapping()
-    #             out.append(out_item)
-    #     return out
 
     def process_item_from_queue(self, item):
         """
@@ -355,9 +288,7 @@ class RawDataProcessor(QueueProcessor):
                 )
                 all_results.append(fact)
             case _:
-                raise Exception('Unknown item dict type')
-
-
+                raise Exception("Unknown item dict type")
 
         LOGGER.debug(all_results)
         if all_results:
@@ -374,39 +305,6 @@ class FactGeneratedQueueProcessor(QueueProcessor):  # pylint: disable=too-few-pu
     configured fact collection backend (FoundationDB, RocksDB, etc.).
     It ensures facts are properly stored and available for trigger evaluation.
     """
-
-    # def process_buffer(self, buffer: List[Any]) -> List[Any]:
-    #     """Process facts using thread pool."""
-    #     # Group facts for batch processing
-    #     fact_batches = self._create_batches(buffer, batch_size=100)
-    #
-    #     futures = []
-    #     for batch in fact_batches:
-    #         future = self.submit_work(self._process_fact_batch, batch)
-    #         futures.append(future)
-    #
-    #     # Wait for completion
-    #     for future in futures:
-    #         try:
-    #             future.result(timeout=60)
-    #         except Exception as e:
-    #             LOGGER.error(f"Error processing fact batch: {e}")
-    #
-    #     return buffer
-
-    # def _create_batches(self, buffer: List[Any], batch_size: int) -> List[List[Any]]:
-    #     """Create batches of facts for processing."""
-    #     return [buffer[i:i + batch_size] for i in range(0, len(buffer), batch_size)]
-
-    # def _process_fact_batch(self, batch: List[Any]) -> None:
-    #     """Process a batch of facts."""
-    #     fact_collection: FactCollection = self.fact_collection
-    #     for item in batch:
-    #         LOGGER.debug("Writing: %s", item)
-    #         item.lineage = (
-    #             None  # Appended(lineage=getattr(item, "lineage", None))
-    #         )
-    #         fact_collection.append(item)
 
     def process_item_from_queue(self, item) -> List[List[Any]]:
         """
@@ -453,8 +351,10 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
     def evaluate_fact_against_trigger(
         self, trigger, item, variable
     ) -> ProjectionList:
-        if variable == 't':
-            LOGGER.warning("evaluate_fact_against_trigger: %s:::%s", item, variable)
+        if variable == "t":
+            LOGGER.warning(
+                "evaluate_fact_against_trigger: %s:::%s", item, variable
+            )
         result: ProjectionList = trigger.cypher._evaluate(
             self.fact_collection,
             projection_list=ProjectionList(
@@ -465,7 +365,7 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
         )
         TRIGGER_CHECK_COUNT.inc(1)
         # Can we filter out bad results here.
-        LOGGER.info('Evaluated trigger: %s', trigger.cypher)
+        LOGGER.info("Evaluated trigger: %s", trigger.cypher)
         LOGGER.info(
             "Result of evaluate_fact_against_trigger %s is %s, %s, %s",
             item,
@@ -493,9 +393,7 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
         out: List[SubTriggerPair] = []
         try:
             assert isinstance(
-                ensure_bytes(
-                    self.fact_collection.make_index_for_fact(item)
-                ),
+                ensure_bytes(self.fact_collection.make_index_for_fact(item)),
                 bytes,
             )
         except Exception as e:
@@ -526,18 +424,16 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
         for _, trigger in self.trigger_dict.items():
             # Get the attributes that are in the Match clause
             # TODO: Find out why parse_tree is ever None
-            LOGGER.info(
-                "Checking trigger: %s", trigger.cypher.cypher_query
-            )
+            LOGGER.info("Checking trigger: %s", trigger.cypher.cypher_query)
             if trigger.cypher.parse_tree is None:
                 continue
-            LOGGER.debug(
-                "Trigger parse tree: %s", trigger.cypher.parse_tree
-            )
+            LOGGER.debug("Trigger parse tree: %s", trigger.cypher.parse_tree)
             attribute_names_in_trigger: List[str] = (
                 trigger.cypher.parse_tree.attribute_names
             )
-            LOGGER.info('attribute_names_in_trigger: %s', attribute_names_in_trigger)
+            LOGGER.info(
+                "attribute_names_in_trigger: %s", attribute_names_in_trigger
+            )
             if (
                 isinstance(item, FactNodeHasAttributeWithValue)
                 and item.attribute not in attribute_names_in_trigger
@@ -571,9 +467,8 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
                 # Seem to be checking FactNodeHasAttributeWithValue against relationship node,
                 # which is suspicious.
                 #### KLUDGE
-                if (
-                    isinstance(item, (FactNodeHasAttributeWithValue,))
-                    and (variable != "r")
+                if isinstance(item, (FactNodeHasAttributeWithValue,)) and (
+                    variable != "r"
                 ):
                     successful: bool = False
                     attempts: int = 0

@@ -1,8 +1,3 @@
-fact_collection: FoundationDBFactCollection
-fact_collection_class: FoundationDBFactCollection
-run_monitor: false
-logging_level: DEBUG
-
 data_sources:
 - name: state_county_tract_puma
   uri: file://{MONOREPO_BASE_DIR}/packages/fastopendata/raw_data/state_county_tract_puma.csv

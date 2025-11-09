@@ -1,5 +1,5 @@
 [build-system]
-requires = [ "hatchling>=1.24.2", "hatch-vcs>=0.3.0",]
+requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
@@ -38,6 +38,11 @@ dependencies = [
  "shared",
  "pyarrow>=19.0.1",
  "docstring-parser>=0.17.0",
+ "pandas>=2.3.3",
+ "dill>=0.4.0",
+ "prometheus-client>=0.23.1",
+ "pysat[solvers]>=3.2.2",
+ "python-sat>=1.8.dev24",
 ]
 [[project.authors]]
 name = "Zachary Ernst"

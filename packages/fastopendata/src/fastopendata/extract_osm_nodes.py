@@ -9,8 +9,10 @@ import pickle
 import osmium
 from shared.logger import LOGGER
 
+LOGGER.setLevel("INFO")
+
 MAX_NODES = -1
-FOD_UNITED_STATES_NODES_FILE = os.environ["DATA_DIR"] + '/us-latest.osm.pbf'
+FOD_UNITED_STATES_NODES_FILE = os.environ["DATA_DIR"] + "/us-latest.osm.pbf"
 
 
 class NodeHandler(osmium.SimpleHandler):
@@ -19,7 +21,11 @@ class NodeHandler(osmium.SimpleHandler):
         self.start_time = datetime.datetime.now()
         self.node_count = 0
         self.filtered_node_count = 0
-        self.file = open(os.environ['DATA_DIR'] + '/united_states_nodes.csv', "w", encoding="utf8")
+        self.file = open(
+            os.environ["DATA_DIR"] + "/united_states_nodes.csv",
+            "w",
+            encoding="utf8",
+        )
         self.writer = csv.DictWriter(
             self.file,
             fieldnames=[
@@ -104,7 +110,7 @@ if __name__ == "__main__":
     LOGGER.info("Extracting point data from OSM...")
     h = NodeHandler()
     h.apply_file(
-        os.environ['DATA_DIR'] + "/us-latest.osm.pbf",
+        os.environ["DATA_DIR"] + "/us-latest.osm.pbf",
         locations=True,
     )
     h.file.close()

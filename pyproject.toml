@@ -11,55 +11,6 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3.12",
 ]
-dependencies = [
-    # Core dependencies only - specific packages have their own dependencies
-    "pycypher",
-    "nmetl",
-    "fastopendata",
-    # Development tools
-    "hatch>=1.12.0,<2.0.0",
-    "hatchling==1.25",
-    "isort>=5.13.2,<6.0.0",
-    "ruff>=0.6.3,<1.0.0",
-    "uv>=0.4.1,<1.0.0",
-    # Documentation
-    "sphinx>=5.0.2,<9.0.0",
-    "sphinx-autoapi==3.3.1,<4.0.0",
-    "sphinx-autodocgen==1.3",
-    "sphinx-rtd-theme==2.0.0",
-    # Testing
-    "pytest>=8.3.2,<9.0.0",
-    "pytest-cov>=6.0.0,<7.0.0",
-    "pytest-mock>=3.14.0,<4.0.0",
-    "pytest-timeout==2.3.1",
-    "pytest-unordered==0.6.1,<1.0.0",
-    "pytest-xdist>=3.6.1,<4.0.0",
-    "pymemcache>=4.0.0",
-    "etcd3-py>=0.1.6",
-    "rbloom>=1.5.2",
-    "snakeviz>=2.2.2",
-    "pandas>=2.2.3",
-    "pylint>=3.3.6",
-    "pyarrow>=19.0.1",
-    "rich>=13.9.4",
-    "chardet>=5.2.0",
-    # "dvc>=3.59.2",
-    "prometheus-client>=0.21.1",
-    "bandit>=1.8.3",
-    "ty>=0.0.1a6",
-    "networkx>=3.4.2",
-    "pyrefly>=0.18.0",
-    "mypy>=1.16.0",
-    "frozendict>=2.4.6",
-    # "pyzmq>=27.0.0",
-    "grafana-client>=4.3.2",
-    # "pyroscope-io>=0.8.11",
-    # "redis>=6.2.0",
-    "python-sat>=1.8.dev20",
-    # "orjson>=3.10.18",
-    "myst-parser>=4.0.1",
-    "geopandas>=1.1.1",
-]
 
 [[project.authors]]
 name = "Zachary Ernst"
@@ -78,12 +29,6 @@ file = "LICENSE.txt"
 [project.urls]
 Homepage = "https://github.com/zacernst/pycypher-nmetl"
 Documentation = "https://zacernst.github.io/pycypher-nmetl/"
-
-[build-system]
-requires = ["hatchling>=1.24.2", "hatch-vcs>=0.3.0"]
-build-backend = "hatchling.build"
-
-[tool.uv]
 
 [tool.uv.workspace]
 members = ["packages/*"]
@@ -128,6 +73,7 @@ exclude = [
     "node_modules",
     "site-packages",
     "venv",
+    "raw_data",
 ]
 extend-exclude = ["packages/fastopendata/src/fastopendata/ingest.py"]
 
@@ -159,45 +105,42 @@ markers = [
 timeout = 30
 
 
-[tool.hatch.build.targets.wheel]
-universal = true
-
-[tool.hatch.build.targets.sdist]
-formats = ["zip"]
-
 [dependency-groups]
 dev = [
     "ty>=0.0.1a6",
 ]
 
-[tool.hatch.build]
-include = [
-    "README.md",
-    "LICENSE.txt",
-    "pyproject.toml",
-    "packages/pycypher/**/*.py",
-    "packages/pycypher/**/*.txt",
-    "packages/pycypher/**/*.json",
-    "packages/pycypher/**/*.yml",
-    "packages/pycypher/**/*.yaml",
-    "packages/pycypher/**/*.csv",
-    "packages/pycypher/**/*.parquet",
-    "packages/nmetl/**/*.py",
-    "packages/nmetl/**/*.txt",
-    "packages/nmetl/**/*.json",
-    "packages/nmetl/**/*.yml",
-    "packages/nmetl/**/*.yaml",
-    "packages/nmetl/**/*.csv",
-    "packages/nmetl/**/*.parquet",
-    "packages/fastopendata/**/*.py",
-    "packages/fastopendata/**/*.txt",
-    "packages/fastopendata/**/*.json",
-    "packages/fastopendata/**/*.yml",
-    "packages/fastopendata/**/*.yaml",
-    "packages/fastopendata/**/*.csv",
-    "packages/fastopendata/**/*.parquet",
-]
-exclude = [
-    "packages/fastopendata/raw_data/**",
-    "raw_data/**",
-]
+# [build-system]
+# requires = ["hatchling"]
+# build-backend = "hatchling.build"
+# [tool.hatch]
+# include = [
+#     "README.md",
+#     "LICENSE.txt",
+#     "pyproject.toml",
+#     "packages/pycypher/**/*.py",
+#     "packages/pycypher/**/*.txt",
+#     "packages/pycypher/**/*.json",
+#     "packages/pycypher/**/*.yml",
+#     "packages/pycypher/**/*.yaml",
+#     "packages/pycypher/**/*.csv",
+#     "packages/pycypher/**/*.parquet",
+#     "packages/nmetl/**/*.py",
+#     "packages/nmetl/**/*.txt",
+#     "packages/nmetl/**/*.json",
+#     "packages/nmetl/**/*.yml",
+#     "packages/nmetl/**/*.yaml",
+#     "packages/nmetl/**/*.csv",
+#     "packages/nmetl/**/*.parquet",
+#     "packages/fastopendata/**/*.py",
+#     "packages/fastopendata/**/*.txt",
+#     "packages/fastopendata/**/*.json",
+#     "packages/fastopendata/**/*.yml",
+#     "packages/fastopendata/**/*.yaml",
+#     "packages/fastopendata/**/*.csv",
+#     "packages/fastopendata/**/*.parquet",
+# ]
+# exclude = [
+#     "packages/fastopendata/raw_data/**",
+#     "raw_data/**",
+# ]

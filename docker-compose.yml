@@ -11,7 +11,7 @@ services:
 
   fdb:
     image: foundationdb/foundationdb:7.4.4
-    platform: linux/aarch64
+    platform: linux/amd64
     ports:
       - "4550:4550"
     environment:
@@ -32,9 +32,9 @@ services:
     ports:
       - 9090:9090
     restart: unless-stopped
-    volumes:
-      - ./prometheus:/etc/prometheus
-      - ./prometheus_data:/prometheus
+    # volumes:
+    #   - ./prometheus:/etc/prometheus
+    #   - ./prometheus_data:/prometheus/data
   grafana:
     image: grafana/grafana
     container_name: grafana
@@ -49,7 +49,38 @@ services:
     #   - GF_SECURITY_ADMIN_PASSWORD=grafana
     command:
       - 'grafana cli admin reset-admin-password admin'
+
+
+  nominatim:
+    container_name: nominatim
+    image: mediagis/nominatim:5.2
+    ports:
+      - "8080:8080"
+    environment:
+      # see https://github.com/mediagis/nominatim-docker/tree/master/5.2#configuration for more options
+      # PBF_URL: https://download.geofabrik.de/europe/monaco-latest.osm.pbf
+      PBF_PATH: /nominatim/osm/georgia-251107.osm.pbf
+      IMPORT_WIKIPEDIA: false   
+      REPLICATION_URL: https://download.geofabrik.de/europe/monaco-updates/
+      NOMINATIM_PASSWORD: very_secure_password
+    volumes:
+    - type: bind
+      source: /home/zac/git/pycypher-nmetl/packages/fastopendata/nominatim_volumes/osm-maps
+      target: /nominatim/osm
+    - type: bind
+      source: /home/zac/git/pycypher-nmetl/packages/fastopendata/nominatim_volumes/nominatim-data
+      target: /var/lib/postgresql/16/main 
+    shm_size: 1gb
+
 volumes:
   prom_data:
   grafana-data:
   grafana:
+  # osm:
+  #   type: bind
+  #   source: packages/fastopendata/nominatim_volumes/osm-maps
+  #   target: /nominatim/osm
+  # pg:
+  #   type: bind
+  #   source: packages/fastopendata/nominatim_volumes/nominatim-data
+  #   target: /var/lib/postgresql/16/main

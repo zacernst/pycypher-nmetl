@@ -7,20 +7,24 @@ Use FoundationDB as the key-value store of the ``FactCollection``.
 
 from __future__ import annotations
 
+import datetime
 import gzip
 import inspect
-from queue import Queue
 import pickle
-import datetime
 import queue
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor as ThreadPool
-from typing import Literal, Any, Dict, Generator, Optional
+from queue import Queue
+from typing import Any, Dict, Generator, Literal, Optional
 
 from nmetl.logger import LOGGER
-
-from nmetl.prometheus_metrics import FDB_WRITE_TIME, NUMBER_OF_KEYS_SCANNED, TIME_IN_FDB_ITERATOR, FACTS_APPENDED
+from nmetl.prometheus_metrics import (
+    FACTS_APPENDED,
+    FDB_WRITE_TIME,
+    NUMBER_OF_KEYS_SCANNED,
+    TIME_IN_FDB_ITERATOR,
+)
 from pycypher.fact import (
     AtomicFact,
     FactNodeHasAttributeWithValue,
@@ -45,19 +49,24 @@ try:
 except ModuleNotFoundError:
     LOGGER.warning("fdb not installed, fdb support disabled")
 
-LOGGER.setLevel('INFO')
+LOGGER.setLevel("INFO")
 
 EXPERIMENTAL_WRITE_QUEUE: Queue = Queue(maxsize=4_192)
+
 
 def write_queue_worker(db):
     counter: int = 0
     while 1:
         index, obj = EXPERIMENTAL_WRITE_QUEUE.get()
-        db[index] = obj # encode(fact, to_bytes=True)
+        db[index] = obj  # encode(fact, to_bytes=True)
         if counter % 1000 == 0:
-            LOGGER.debug('Written %s items, queue is %s', counter, EXPERIMENTAL_WRITE_QUEUE.qsize())
+            LOGGER.debug(
+                "Written %s items, queue is %s",
+                counter,
+                EXPERIMENTAL_WRITE_QUEUE.qsize(),
+            )
         counter += 1
-        FACTS_APPENDED.inc(1.)
+        FACTS_APPENDED.inc(1.0)
 
 
 def write_fact(db, index, fact) -> Literal[True]:
@@ -67,7 +76,12 @@ def write_fact(db, index, fact) -> Literal[True]:
     LOGGER.debug("Writing to FoundationDB: %s", index)
     # db[index] = encode(fact, to_bytes=True)
     obj = encode(fact, to_bytes=True)
-    EXPERIMENTAL_WRITE_QUEUE.put((index, obj,))
+    EXPERIMENTAL_WRITE_QUEUE.put(
+        (
+            index,
+            obj,
+        )
+    )
 
     # FACTS_APPENDED.inc(1)
     return True
@@ -80,7 +94,12 @@ def write_fact_secondary(db, index, fact) -> Literal[True]:
     LOGGER.debug("Writing to FoundationDB: %s", index)
     # db[index] = encode(fact, to_bytes=True)
     obj = encode(fact, to_bytes=True)
-    EXPERIMENTAL_WRITE_QUEUE.put((index, obj,))
+    EXPERIMENTAL_WRITE_QUEUE.put(
+        (
+            index,
+            obj,
+        )
+    )
 
     return True
 
@@ -105,11 +124,13 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
             **kwargs: Variable keyword arguments passed to parent class.
         """
 
-        self.db = fdb.open('/app/fdb.cluster')
+        self.db = fdb.open("/app/fdb.cluster")
         self.thread_pool = ThreadPool(16)
         self.pending_facts = []
         self.sync_writes = sync_writes
-        self.write_queue_worker = threading.Thread(target=write_queue_worker, args=(self.db,), daemon=True)
+        self.write_queue_worker = threading.Thread(
+            target=write_queue_worker, args=(self.db,), daemon=True
+        )
         self.write_queue_worker.start()
         super().__init__(*args, **kwargs)
 
@@ -152,7 +173,6 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
         seconds_in_iterator: float = (end_time - start_time).total_seconds()
         TIME_IN_FDB_ITERATOR.observe(seconds_in_iterator)
         NUMBER_OF_KEYS_SCANNED.observe(counter)
-
 
     def make_index_for_fact(self, fact: AtomicFact) -> bytes:
         """Used for the memcache index"""

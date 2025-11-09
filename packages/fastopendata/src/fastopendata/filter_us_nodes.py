@@ -1,11 +1,11 @@
 """Check lat/long against map of the US"""
 
 import bz2
+import json
 import logging
 import multiprocessing as mp
 
 import geopandas as gpd
-import json
 from rich.progress import Progress
 from shapely import Point
 

@@ -1,18 +1,16 @@
-"""Just a test."""
-
 from __future__ import annotations
 
 import base64
 import queue
 import threading
-import uuid
 import time
-from prometheus_client import Gauge
-from typing import Any, Callable, Generator, List, Optional
+import uuid
+from typing import TYPE_CHECKING, Any, Callable, Generator, List, Optional
 
 # import pickle
 import dill as pickle
 from nmetl.logger import LOGGER
+from prometheus_client import Gauge
 from pycypher.query import NullResult
 
 
@@ -23,20 +21,31 @@ class Shutdown:
 class QueueGenerator:
     """Thread-safe queue with enhanced coordination."""
 
-    def __init__(self, name: str, maxsize: int = 1000000):
+    def __init__(self, name: str, session: "Session"):
         self.name = name
-        self.queue = queue.Queue(maxsize=maxsize)
+        self.session = session
+        self.queue = queue.Queue(maxsize=self.session.configuration)
         self._shutdown_event = threading.Event()
         self._stats_lock = threading.Lock()
         self.items_processed = 0
         self.items_queued = 0
         try:
-            self.prometheus_gauge: Gauge = Gauge(name=self.name + 'Gauge', documentation='Number of items on the queue')
-            self.gauge_thread: threading.Thread = threading.Thread(target=self.monitor_thread)
+            self.prometheus_gauge: Gauge = Gauge(
+                name=self.name + "Gauge",
+                documentation="Number of items on the queue",
+            )
+            self.gauge_thread: threading.Thread = threading.Thread(
+                target=self.monitor_thread
+            )
             self.gauge_thread.start()
         except:
             pass
-    
+
+    def bak__getattr__(self, attr: str) -> Any:
+        if hasattr(self.session, attr):
+            return getattr(self.session, attr)
+        raise ValueError(f"Unknown attr: {attr}")
+
     def monitor_thread(self) -> None:
         while 1:
             time.sleep(1)

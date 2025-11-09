@@ -7,38 +7,60 @@ import queue
 import random
 import threading
 import time
+import tomllib
 import uuid
 from dataclasses import dataclass
 from types import MappingProxyType
-from typing import (TYPE_CHECKING, Any, Callable, Dict, Generator, List,
-                    Optional, Self, Set, Type)
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    Generator,
+    List,
+    Optional,
+    Self,
+    Set,
+    Type,
+)
 
 import pyarrow as pa
 import pyarrow.parquet as pq
+import yaml
 from docstring_parser import parse as parse_docstring
 from nmetl.config import MONITOR_LOOP_DELAY  # type: ignore
-from nmetl.config import \
-    TRIGGERED_LOOKUP_PROCESSOR_QUEUE_SIZE  # pyrefly: ignore; pyrefly: ignore; type: ignore
+from nmetl.configuration import TYPE_DISPATCH_DICT
 from nmetl.data_asset import DataAsset
-from nmetl.data_source import DataSource
-from nmetl.exceptions import (BadTriggerReturnAnnotationError, EmptyQueueError,
-                              UnknownDataSourceError)
+from nmetl.data_source import DataSource, DataSourceMapping
+from nmetl.data_source_config import DataSourceConfig, SessionConfig
+from nmetl.exceptions import (
+    BadTriggerReturnAnnotationError,
+    EmptyQueueError,
+    UnknownDataSourceError,
+)
 from nmetl.queue_generator import QueueGenerator
-from nmetl.queue_processor import (CheckFactAgainstTriggersQueueProcessor,
-                                   FactGeneratedQueueProcessor,
-                                   RawDataProcessor, TriggeredLookupProcessor)
+from nmetl.queue_processor import (
+    CheckFactAgainstTriggersQueueProcessor,
+    FactGeneratedQueueProcessor,
+    RawDataProcessor,
+    TriggeredLookupProcessor,
+)
 from nmetl.session_enums import LoggingLevelEnum
 from nmetl.thread_manager import ThreadManager
-from nmetl.trigger import (NodeRelationship, NodeRelationshipTrigger,
-                           VariableAttribute, VariableAttributeTrigger)
+from nmetl.trigger import (
+    NodeRelationship,
+    NodeRelationshipTrigger,
+    VariableAttribute,
+    VariableAttributeTrigger,
+)
 from pycypher.cypher_parser import CypherParser
 from pycypher.fact_collection import FactCollection
+from pycypher.fact_collection.foundationdb import FoundationDBFactCollection
 from pycypher.fact_collection.simple import SimpleFactCollection
+from pydantic import FilePath
 from rich.console import Console
 from rich.table import Table
 from shared.logger import LOGGER
-
-LOGGER.setLevel("WARNING")
 
 
 @dataclass
@@ -49,19 +71,6 @@ class NewColumnConfig:
     parameter_names: List[str]
     data_source_name: str
     new_column_name: str
-
-
-# def _make_check_fact_against_triggers_queue_processor(
-#     incoming_queue, outgoing_queue, status_queue, session_config, trigger_dict
-# ) -> None:
-#     CheckFactAgainstTriggersQueueProcessor(
-#         incoming_queue=incoming_queue,
-#         outgoing_queue=outgoing_queue,
-#         status_queue=status_queue,
-#         session_config=session_config,
-#         trigger_dict=trigger_dict,
-#         data_assets=self.data_assets,
-#     )
 
 
 class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-methods
@@ -78,154 +87,117 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
 
     def __init__(
         self,
-        # compute_class_name: ComputeClassNameEnum = ComputeClassNameEnum.THREADING,
-        # compute_options: Optional[Dict[str, Any]] = None,
-        data_assets: Optional[dict[str, DataAsset]] = None,
-        data_sources: Optional[List[DataSource]] = None,
-        fact_collection_class: Type[FactCollection] = SimpleFactCollection,
-        fact_collection_kwargs: Optional[Dict[str, Any]] = None,
-        logging_level: LoggingLevelEnum = LoggingLevelEnum.WARNING,
-        queue_list: Optional[List[QueueGenerator]] = None,
-        queue_options: Optional[Dict[str, Any]] = None,
-        run_monitor: Optional[bool] = False,
-        session_config: Optional[Any] = None,
-        create_queue_generators: bool = True,
-        thread_manager: Optional[ThreadManager] = None,
-        max_workers: int = 10,
-        trigger_dict: Optional[Dict[str, Any]] = {},
-        max_buffer_size: int = 1000,
-        max_buffer_size_raw_data: int = 1_000,
-        # worker_num: Optional[int] = 0,
-        # num_workers: Optional[int] = 1,
+        session_config_file: FilePath,
     ):  # pylint: disable=too-many-arguments
         """
         Initialize a new Session instance.
-
-        Args:
-            fact_collection (Optional[FactCollection], optional): Collection to store facts.
-                Defaults to None (creates a new FactCollection).
-            data_assets (Optional[List[DataAsset]], optional): List of data assets.
-                Defaults to None.
-            logging_level (Optional[str], optional): Logging level for the session.
-                Defaults to "WARNING".
-            queue_options (Optional[Dict[str, Any]], optional): Options for queue initialization.
-                Defaults to None.
-            data_sources (Optional[List[DataSource]], optional): List of data sources.
-                Defaults to None.
-            queue_list (Optional[List[QueueGenerator]], optional): List of queues.
-                Defaults to None.
-            run_monitor (Optional[bool], optional): Whether to run the monitor thread.
-                Defaults to True.
         """
-        self.data_sources: List[DataSource] = data_sources or []
-        self.data_assets: dict[str, DataAsset] = data_assets or {}
-        self.run_monitor = run_monitor
-        self.queue_options = queue_options or {}
-        self.queue_list: List[QueueGenerator] = queue_list or []
-        self.logging_level = logging_level
+        self.data_sources: List[DataSource] = []
+        self.data_assets: dict[str, DataAsset] = {}
+        self.queue_list: List[QueueGenerator] = []
         self.new_column_dict = {}
-        self.fact_collection_kwargs = fact_collection_kwargs or {}
-        self.session_config = session_config
         self.status_queue = queue.Queue()
+        self.trigger_dict = {}
 
-        self.fact_collection: FactCollection = fact_collection_class(
-            **self.fact_collection_kwargs
+        # Read configuration
+        with open(session_config_file, "r") as config_file:
+            config_string: str = config_file.read()
+            self.configuration = SessionConfig.model_validate(
+                tomllib.loads(config_string)
+            )
+
+        # Create FactCollection
+        fact_collection_class: Type = globals()[
+            self.configuration.fact_collection_class
+        ]
+        self.fact_collection: FactCollection = fact_collection_class()
+
+        # Load the data source configs
+        data_source_config_list: list[DataSourceConfig] = []
+        with open(
+            self.configuration.data_source_config_file, "r"
+        ) as data_source_config_file:
+            for data_source_config_dict in yaml.safe_load(
+                data_source_config_file
+            )["data_sources"]:
+                data_source_config_dict["session_config"] = self.configuration
+                data_source_config = DataSourceConfig.model_validate(
+                    data_source_config_dict
+                )
+                data_source_config_list.append(data_source_config)
+
+        # Create queues
+        self.raw_input_queue = QueueGenerator(
+            name="RawInput",
+            session=self,
         )
 
-        self.trigger_dict = trigger_dict
-        if create_queue_generators:
-            self.raw_input_queue = QueueGenerator(
-                name="RawInput",
-                maxsize=max_buffer_size,
+        self.queue_list.append(self.raw_input_queue)
+
+        self.fact_generated_queue = QueueGenerator(
+            name="FactGenerated",
+            session=self,
+        )
+        self.queue_list.append(self.fact_generated_queue)
+
+        self.check_fact_against_triggers_queue = QueueGenerator(
+            name="CheckFactTrigger",
+            session=self,
+        )
+        self.queue_list.append(self.check_fact_against_triggers_queue)
+
+        # Attach data sources
+        for data_source_config in data_source_config_list:
+            data_source = DataSource.from_uri(
+                data_source_config.uri, config=data_source_config
             )
+            data_source.name = data_source_config.name
 
-            self.queue_list.append(self.raw_input_queue)
-
-            self.fact_generated_queue = QueueGenerator(
-                name="FactGenerated",
-                maxsize=max_buffer_size,
-            )
-            self.queue_list.append(self.fact_generated_queue)
-
-            # Must run in different processes
-            self.check_fact_against_triggers_queue = QueueGenerator(
-                name="CheckFactTrigger",
-                maxsize=max_buffer_size,
-            )
-            self.queue_list.append(self.check_fact_against_triggers_queue)
-
-            # Same -- run in different processes
-            self.triggered_lookup_processor_queue = QueueGenerator(
-                name="TriggeredLookupProcessor",
-                maxsize=max_buffer_size,
-            )
-            self.queue_list.append(self.triggered_lookup_processor_queue)
-
-            self.raw_data_processor = RawDataProcessor(
-                incoming_queue=self.raw_input_queue,
-                outgoing_queue=self.fact_generated_queue,
-                status_queue=self.status_queue,
-                session_config=self.session_config,
-                priority=-10,
-                fact_collection=self.fact_collection,
-                trigger_dict=self.trigger_dict,
-                data_assets=self.data_assets,
-                max_buffer_size=max_buffer_size,
-            )
-
-            self.fact_generated_queue_processor = FactGeneratedQueueProcessor(
-                incoming_queue=self.fact_generated_queue,
-                outgoing_queue=self.check_fact_against_triggers_queue,
-                status_queue=self.status_queue,
-                session_config=self.session_config,
-                priority=0,
-                fact_collection=self.fact_collection,
-                trigger_dict=self.trigger_dict,
-                data_assets=self.data_assets,
-                max_buffer_size=max_buffer_size,
-            )
-
-            self.check_fact_against_triggers_queue_processor = (
-                CheckFactAgainstTriggersQueueProcessor(
-                    incoming_queue=self.check_fact_against_triggers_queue,
-                    outgoing_queue=self.triggered_lookup_processor_queue,
-                    status_queue=self.status_queue,
-                    session_config=self.session_config,
-                    priority=4,
-                    fact_collection=self.fact_collection,
-                    trigger_dict=self.trigger_dict,
-                    data_assets=self.data_assets,
-                    max_buffer_size=max_buffer_size,
+            for mapping_config in data_source_config.mappings:
+                mapping: DataSourceMapping = DataSourceMapping(
+                    attribute_key=mapping_config.attribute_key,
+                    identifier_key=mapping_config.identifier_key,
+                    attribute=mapping_config.attribute,
+                    label=mapping_config.label,
+                    source_key=mapping_config.source_key,
+                    target_key=mapping_config.target_key,
+                    source_label=mapping_config.source_label,
+                    target_label=mapping_config.target_label,
+                    relationship=mapping_config.relationship,
                 )
-            )
+                data_source.attach_mapping(mapping)
+                data_source.attach_schema(
+                    data_source_config.data_types, TYPE_DISPATCH_DICT
+                )
 
-            self.triggered_lookup_processor = TriggeredLookupProcessor(
-                incoming_queue=self.triggered_lookup_processor_queue,
-                outgoing_queue=self.fact_generated_queue,  # Changed
-                status_queue=self.status_queue,
-                session_config=self.session_config,
-                priority=8,
-                fact_collection=self.fact_collection,
-                trigger_dict=self.trigger_dict,
-                data_assets=self.data_assets,
-                max_buffer_size=max_buffer_size,
-            )
+            LOGGER.info("Adding data source: %s", data_source.name)
+            self.attach_data_source(data_source)
 
-        # Instantiate threads
-        if self.run_monitor:
-            self.monitor_thread = threading.Thread(
-                target=self.monitor, daemon=True, name="MonitorThread"
-            )
+        self.triggered_lookup_processor_queue = QueueGenerator(
+            name="TriggeredLookupProcessor",
+            session=self,
+        )
+        self.queue_list.append(self.triggered_lookup_processor_queue)
 
-        # fact_collection: FactCollection = globals()[self.session_config.fact_collection_class](**(self.session_config.fact_collection_kwargs or {}))
+        # Create QueueProcessor objects
+        self.raw_data_processor = RawDataProcessor(session=self)
 
-    # @property
-    # def tasks_in_memory(self) -> int:
-    #     """Gets the number of tasks in memory by inspecting the scheduler's state."""
-    #     num_tasks: int = self.dask_client.run_on_scheduler(
-    #         lambda dask_scheduler: len(dask_scheduler.tasks)
-    #     )
-    #     return num_tasks
+        self.fact_generated_queue_processor = FactGeneratedQueueProcessor(
+            session=self
+        )
+
+        self.check_fact_against_triggers_queue_processor = (
+            CheckFactAgainstTriggersQueueProcessor(session=self)
+        )
+
+        self.triggered_lookup_processor = TriggeredLookupProcessor(
+            session=self
+        )
+
+    def __getattr__(self, attr: str) -> Any:
+        if hasattr(self.configuration, attr):
+            return getattr(self.configuration, attr)
+        raise ValueError(f"No such attribute: {attr}")
 
     def __call__(self, block: bool = True) -> None:
         """
@@ -235,11 +207,73 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
             block (bool, optional): Whether to block until all threads are finished.
                 Defaults to True.
         """
-        LOGGER.warning('Clearing FDB') 
-        self.fact_collection.db.clear_range(b'', b'\xFF')
         self.start_threads()
-        if block:
-            self.block_until_finished()
+
+    @classmethod
+    def load_session_config(
+        cls,
+        path: str,
+    ) -> Session:
+        """
+        Load and parse the Session configuration from a YAML file.
+
+        Args:
+            path (str): The file path to the YAML configuration file.
+
+        Returns:
+            Session: An instance of the Session class configured according to the YAML file.
+
+        Raises:
+            FileNotFoundError: If the specified file does not exist.
+            yaml.YAMLError: If there is an error parsing the YAML file.
+            TypeError: If the configuration data does not match the expected structure.
+        """
+        with open(path, "r", encoding="utf8") as f:
+            config: dict = yaml.safe_load(f) or {}
+        session_config: SessionConfig = SessionConfig(**config)
+
+        fact_collection_class: Type[FactCollection] = globals()[
+            session_config.fact_collection_class
+        ]
+
+        LOGGER.info(
+            f"Creating session with fact collection {fact_collection_class.__name__}"
+        )
+        session: Session = Session(
+            run_monitor=session_config.run_monitor,
+            logging_level=session_config.logging_level,
+            fact_collection_class=fact_collection_class,
+            fact_collection_kwargs=session_config.fact_collection_kwargs,
+            session_config=session_config,
+        )
+
+        for data_source_config in session_config.data_sources:
+            data_source = DataSource.from_uri(
+                data_source_config.uri, config=data_source_config
+            )
+            data_source.name = data_source_config.name
+
+            for mapping_config in data_source_config.mappings:
+                mapping: DataSourceMapping = DataSourceMapping(
+                    attribute_key=mapping_config.attribute_key,
+                    identifier_key=mapping_config.identifier_key,
+                    attribute=mapping_config.attribute,
+                    label=mapping_config.label,
+                    source_key=mapping_config.source_key,
+                    target_key=mapping_config.target_key,
+                    source_label=mapping_config.source_label,
+                    target_label=mapping_config.target_label,
+                    relationship=mapping_config.relationship,
+                )
+                data_source.attach_mapping(mapping)
+                data_source.attach_schema(
+                    data_source_config.data_types, TYPE_DISPATCH_DICT
+                )
+
+            LOGGER.info("Adding data source: %s", data_source.name)
+            session.attach_data_source(data_source)
+
+        return session
 
     def attribute_table(self) -> None:
         """
@@ -255,12 +289,6 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
         table.add_column("Name", justify="right", style="cyan", no_wrap=True)
         table.add_column("Description", style="green")
         table.add_column("Called", style="green")
-
-        # for attribute_metadata in self.attribute_metadata_dict.values():
-        #     table.add_row(
-        #         attribute_metadata.attribute_name,
-        #         attribute_metadata.description,
-        #     )
 
         for trigger in self.trigger_dict.values():
             feature_name: str = trigger.attribute_set
@@ -295,24 +323,18 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
         Start all the processing threads for this session.
 
         This includes:
-            - Monitor thread (if run_monitor is True)
             - Data source loading threads
             - Raw data processor thread
             - Fact generated queue processor thread
             - Check fact against triggers queue processor thread
         """
-        # Start the monitor thread
-        if self.run_monitor:
-            self.monitor_thread.start()
-        else:
-            LOGGER.warning("Not starting monitor thread")
-        
-        LOGGER.warning('Clearing FDB') 
-        self.fact_collection.db.clear_range(b'', b'\xFF')
+
+        LOGGER.warning("Clearing FDB")
+        self.fact_collection.db.clear_range(b"", b"\xff")
 
         # Start the data source threads
         for data_source in self.data_sources:
-            if data_source.name != 'state_county_tract_puma':
+            if data_source.name != "state_county_tract_puma":
                 continue
             LOGGER.error("Starting: %s", data_source.name)
             data_source.start_processing()
@@ -442,100 +464,6 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
         self.halt()
         LOGGER.info("Halted.")
 
-    def monitor(self) -> None:
-        """Loop the _monitor function"""
-        time.sleep(MONITOR_LOOP_DELAY)
-        while True:
-            self._monitor()
-            time.sleep(MONITOR_LOOP_DELAY)
-
-    def _monitor(self):
-        """Generate stats on the ETL process."""
-        # Run in daemon thread
-        for data_source in self.data_sources:
-            LOGGER.debug(
-                "Data source %s has sent %s messages",
-                data_source.name,
-                data_source.sent_counter,
-            )
-
-        console = Console()
-        table = Table(title="Thread queues")
-
-        table.add_column("Thread", justify="right", style="cyan", no_wrap=True)
-        table.add_column("Started", style="magenta")
-        table.add_column("Finished", justify="right", style="green")
-        table.add_column("Received", justify="right", style="green")
-        table.add_column("Sent", justify="right", style="green")
-
-        monitored_threads: list[
-            DataSource
-            | CheckFactAgainstTriggersQueueProcessor
-            | FactGeneratedQueueProcessor
-            | RawDataProcessor
-        ] = [
-            self.fact_generated_queue_processor,
-            self.check_fact_against_triggers_queue_processor,
-            self.raw_data_processor,
-        ]
-        monitored_threads.extend(self.data_sources)
-        for monitored_thread in monitored_threads:
-            end_time: datetime.datetime | None = (
-                datetime.datetime.now()
-                if not monitored_thread.finished
-                else monitored_thread.finished_at
-            )
-            received_rate: float = round(
-                monitored_thread.received_counter
-                / float(
-                    (end_time - monitored_thread.started_at).total_seconds()
-                ),
-                1,
-            )
-            sent_rate = round(
-                monitored_thread.sent_counter
-                / float(
-                    (end_time - monitored_thread.started_at).total_seconds()
-                ),
-                1,
-            )
-            started_at = (
-                monitored_thread.started_at.strftime("%H:%M:%S")
-                if monitored_thread.started_at
-                else "---"
-            )
-            finished_at = (
-                monitored_thread.finished_at.strftime("%H:%M:%S")
-                if monitored_thread.finished_at
-                else "---"
-            )
-            table.add_row(
-                getattr(
-                    monitored_thread,
-                    "name",
-                    monitored_thread.__class__.__name__,
-                ),
-                started_at,
-                finished_at,
-                f"{monitored_thread.received_counter} ({received_rate}/s)",
-                f"{monitored_thread.sent_counter} ({sent_rate}/s)",
-            )
-
-        console.print(table)
-
-        table = Table(title="Queues")
-
-        console.print(table)
-
-    def attach_fact_collection(self, fact_collection: FactCollection) -> Self:
-        """Attach a ``FactCollection`` to the machine."""
-        if not isinstance(fact_collection, FactCollection):
-            raise ValueError(
-                f"Expected a FactCollection, got {type(fact_collection)}"
-            )
-        self.fact_collection = fact_collection
-        return self
-
     def has_unfinished_data_source(self) -> bool:
         """Checks whether any of the data sources are still loading data."""
         LOGGER.debug("Checking if any data sources are still loading data")
@@ -553,14 +481,10 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
 
     def __iadd__(self, other: FactCollection | DataSource) -> Session:
         """Add a ``FactCollection`` or ``DataSource``."""
-        if isinstance(other, FactCollection):
-            self.attach_fact_collection(other)
-        elif isinstance(other, DataSource):
+        if isinstance(other, DataSource):
             self.attach_data_source(other)
         else:
-            raise ValueError(
-                f"Expected a DataSource or FactCollection, got {type(other)}"
-            )
+            raise ValueError(f"Expected a DataSource, got {type(other)}")
         return self
 
     def dump_entities(self, dir_path: str) -> None:
@@ -573,8 +497,6 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
         LOGGER.debug("Attaching input queue to %s", data_source)
         data_source.attach_output_queue(self.raw_input_queue)
         LOGGER.debug("Attaching data source %s", data_source)
-        # data_source.worker_num = self.worker_num
-        # data_source.num_workers = self.num_workers
         data_source.session = self
         self.data_sources.append(data_source)
 

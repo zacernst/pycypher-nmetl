@@ -69,10 +69,14 @@ class DataSource(ABC):
         self._lock = threading.RLock()
         self.new_column_configs = {}
         self.finished = False
+        self.session: Optional["Session"] = None
 
         self._processing_thread = threading.Thread(
             target=self.queue_rows(), daemon=False
         )
+
+    def __getattr__(self, attr: str) -> Any:
+        return getattr(self.session, attr)
 
     @classmethod
     def from_uri(cls, uri: str, config: Optional[Any] = None) -> "DataSource":
@@ -120,8 +124,6 @@ class DataSource(ABC):
         """Process a single row according to mappings."""
         processed_items = []
 
-         
-
         try:
             # Apply data type conversions
             typed_row = {}
@@ -134,15 +136,19 @@ class DataSource(ABC):
                         typed_row[key] = value
                 else:
                     typed_row[key] = value
-                    
+
             relevant_new_column_configs = {
-                key: value for key, value in self.new_column_configs.items()
+                key: value
+                for key, value in self.new_column_configs.items()
                 if value.data_source_name == self.name
             }
-            LOGGER.debug('relevant_new_column_configs: %s', relevant_new_column_configs)
+            LOGGER.debug(
+                "relevant_new_column_configs: %s", relevant_new_column_configs
+            )
             for new_column_name, config in relevant_new_column_configs.items():
                 argument_list = [
-                    typed_row[parameter_name] for parameter_name in config.parameter_names
+                    typed_row[parameter_name]
+                    for parameter_name in config.parameter_names
                 ]
                 new_column_value = config.func(*argument_list)
                 typed_row[new_column_name] = new_column_value
@@ -168,10 +174,12 @@ class DataSource(ABC):
 
                 elif mapping.source_key and mapping.target_key:
                     # Relationship mapping
-                    LOGGER.debug('in DataSource mapping for relationship')
-                    LOGGER.debug('mapping: %s', mapping.__dict__)
-                    LOGGER.debug('typed_row: %s', typed_row)
-                    LOGGER.debug('new_column_configs: %s', self.new_column_configs)
+                    LOGGER.debug("in DataSource mapping for relationship")
+                    LOGGER.debug("mapping: %s", mapping.__dict__)
+                    LOGGER.debug("typed_row: %s", typed_row)
+                    LOGGER.debug(
+                        "new_column_configs: %s", self.new_column_configs
+                    )
                     """
                     func
                     parameter_names []
@@ -179,7 +187,6 @@ class DataSource(ABC):
                     new_column_name
                     """
                     # Get the new column configs for this DataSource
-                    
 
                     if (
                         mapping.source_key in typed_row
@@ -196,7 +203,7 @@ class DataSource(ABC):
                                 "source": self.name,
                             }
                         )
-                        LOGGER.debug('appended a relationship')
+                        LOGGER.debug("appended a relationship")
                         LOGGER.debug(processed_items)
 
         except Exception as e:
@@ -212,14 +219,14 @@ class DataSource(ABC):
             return
 
         LOGGER.info(f"Starting to queue rows from {self.name}")
-        max_rows = 64_000_000_000
         try:
             for row in self._load_data():
                 if self._shutdown_event.is_set():
                     break
-                if 1 and self._rows_queued >= max_rows:
-                    LOGGER.warning(f"Max rows reached for {self.name}")
+                if self._rows_queued >= self.max_rows_per_data_source:
+                    LOGGER.warning("Max rows reached for %s", self.name)
                     break
+
                 processed_items = self._process_row(row)
 
                 for item in processed_items:
@@ -241,10 +248,6 @@ class DataSource(ABC):
 
         except Exception as e:
             LOGGER.error(f"Error queuing rows from {self.name}: {e}")
-        # finally:
-        #     # Signal completion
-        #     if self._raw_input_queue:
-        #         self._raw_input_queue.put(Shutdown(), timeout=1.0)
 
     def start_processing(self):
         """Start processing this data source in a separate thread."""
@@ -253,7 +256,9 @@ class DataSource(ABC):
             return
 
         self._processing_thread = threading.Thread(
-            target=self.queue_rows, name=f"DataSource-{self.name}", daemon=False
+            target=self.queue_rows,
+            name=f"DataSource-{self.name}",
+            daemon=False,
         )
         self._processing_thread.start()
         LOGGER.info(f"Started processing thread for {self.name}")
