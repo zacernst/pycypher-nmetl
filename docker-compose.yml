@@ -7,17 +7,17 @@ services:
     volumes:
       - ./packages/fastopendata/raw_data:/app/packages/fastopendata/raw_data # Mounts the current directory as /app inside the container
     depends_on:
-      - fdb
+      - fdb_build
 
-  fdb:
-    image: foundationdb/foundationdb:7.4.4
-    platform: linux/amd64
-    ports:
-      - "4550:4550"
-    environment:
-      VARIABLE: value
-    command:
-      - 'fdbcli --no-status --exec "configure new single ssd"'
+  # fdb:
+  #   image: foundationdb/foundationdb:7.4.4
+  #   platform: linux/amd64
+  #   ports:
+  #     - "4550:4550"
+  #   environment:
+  #     VARIABLE: value
+  #   command:
+  #     - 'fdbcli --no-status --exec "configure new single ssd"'
   
   # fdb_service:
   #   platform: linux/aarch64
@@ -71,6 +71,26 @@ services:
       source: /home/zac/git/pycypher-nmetl/packages/fastopendata/nominatim_volumes/nominatim-data
       target: /var/lib/postgresql/16/main 
     shm_size: 1gb
+  
+  fdb_build:
+    platform: linux/arm64
+    build: ../fdb_build
+      # ports:
+      # - "8000:8000"
+  
+  fastopendata_service:
+    platform: linux/arm64
+    build: ../fastopendata_service
+      # ports:
+      # - "8000:8000"
+
+  neo4j:
+    container_name: neo4j
+    image: neo4j:community-bullseye
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+
 
 volumes:
   prom_data:
