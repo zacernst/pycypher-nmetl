@@ -53,10 +53,6 @@ from pycypher.solutions import Projection, ProjectionList
 from shared.helpers import ensure_bytes
 from shared.logger import LOGGER
 
-LOGGER.setLevel("DEBUG")
-
-MATCH_SOLUTION_KEY = "__MATCH_SOLUTION_KEY__"
-WHERE_SOLUTION_KEY = "__where_solution__"
 
 
 @dataclass
@@ -412,7 +408,7 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
                 )
                 counter += 1
                 time.sleep(1.0)
-            if counter >= 100:
+            if counter >= self.session.configuration.get_item_max_attempts:
                 LOGGER.error(
                     "Fact %s not in collection after 100 attempts, skipping",
                     item.__dict__,
@@ -424,7 +420,7 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
         for _, trigger in self.trigger_dict.items():
             # Get the attributes that are in the Match clause
             # TODO: Find out why parse_tree is ever None
-            LOGGER.info("Checking trigger: %s", trigger.cypher.cypher_query)
+            LOGGER.debug("Checking trigger: %s", trigger.cypher.cypher_query)
             if trigger.cypher.parse_tree is None:
                 continue
             LOGGER.debug("Trigger parse tree: %s", trigger.cypher.parse_tree)
@@ -486,7 +482,7 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
                                 f"Key error or something like that... {attempts}:{variable}:{type(variable)}"
                             )
                             LOGGER.warning(f"Error: {e}")
-                            time.sleep(1)
+                            time.sleep(self.session.configuration.sleep_seconds_between_retries)
                             attempts += 1
 
                     # LOGGER.debug(

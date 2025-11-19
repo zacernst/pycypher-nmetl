@@ -110,7 +110,7 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
         fact_collection_class: Type = globals()[
             self.configuration.fact_collection_class
         ]
-        self.fact_collection: FactCollection = fact_collection_class()
+        self.fact_collection: FactCollection = fact_collection_class(foundationdb_cluster_file=self.configuration.foundationdb_cluster_file, sync_writes=self.configuration.sync_writes)
 
         # Load the data source configs
         data_source_config_list: list[DataSourceConfig] = []
@@ -209,71 +209,70 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
         """
         self.start_threads()
 
-    @classmethod
-    def load_session_config(
-        cls,
-        path: str,
-    ) -> Session:
-        """
-        Load and parse the Session configuration from a YAML file.
+    # @classmethod
+    # def load_session_config(
+    #     cls,
+    #     path: str,
+    # ) -> Session:
+    #     """
+    #     Load and parse the Session configuration from a YAML file.
 
-        Args:
-            path (str): The file path to the YAML configuration file.
+    #     Args:
+    #         path (str): The file path to the YAML configuration file.
 
-        Returns:
-            Session: An instance of the Session class configured according to the YAML file.
+    #     Returns:
+    #         Session: An instance of the Session class configured according to the YAML file.
 
-        Raises:
-            FileNotFoundError: If the specified file does not exist.
-            yaml.YAMLError: If there is an error parsing the YAML file.
-            TypeError: If the configuration data does not match the expected structure.
-        """
-        with open(path, "r", encoding="utf8") as f:
-            config: dict = yaml.safe_load(f) or {}
-        session_config: SessionConfig = SessionConfig(**config)
+    #     Raises:
+    #         FileNotFoundError: If the specified file does not exist.
+    #         yaml.YAMLError: If there is an error parsing the YAML file.
+    #         TypeError: If the configuration data does not match the expected structure.
+    #     """
+    #     with open(path, "r", encoding="utf8") as f:
+    #         config: dict = yaml.safe_load(f) or {}
+    #     session_config: SessionConfig = SessionConfig.model_validate(config)
 
-        fact_collection_class: Type[FactCollection] = globals()[
-            session_config.fact_collection_class
-        ]
+    #     fact_collection_class: Type[FactCollection] = globals()[
+    #         session_config.fact_collection_class
+    #     ]
 
-        LOGGER.info(
-            f"Creating session with fact collection {fact_collection_class.__name__}"
-        )
-        session: Session = Session(
-            run_monitor=session_config.run_monitor,
-            logging_level=session_config.logging_level,
-            fact_collection_class=fact_collection_class,
-            fact_collection_kwargs=session_config.fact_collection_kwargs,
-            session_config=session_config,
-        )
+    #     LOGGER.info(
+    #         f"Creating session with fact collection {fact_collection_class.__name__}"
+    #     )
+    #     session: Session = Session(
+    #         run_monitor=session_config.run_monitor,
+    #         logging_level=session_config.logging_level,
+    #         fact_collection_class=fact_collection_class,
+    #         session_config=session_config,
+    #     )
 
-        for data_source_config in session_config.data_sources:
-            data_source = DataSource.from_uri(
-                data_source_config.uri, config=data_source_config
-            )
-            data_source.name = data_source_config.name
+    #     for data_source_config in session_config.data_sources:
+    #         data_source = DataSource.from_uri(
+    #             data_source_config.uri, config=data_source_config
+    #         )
+    #         data_source.name = data_source_config.name
 
-            for mapping_config in data_source_config.mappings:
-                mapping: DataSourceMapping = DataSourceMapping(
-                    attribute_key=mapping_config.attribute_key,
-                    identifier_key=mapping_config.identifier_key,
-                    attribute=mapping_config.attribute,
-                    label=mapping_config.label,
-                    source_key=mapping_config.source_key,
-                    target_key=mapping_config.target_key,
-                    source_label=mapping_config.source_label,
-                    target_label=mapping_config.target_label,
-                    relationship=mapping_config.relationship,
-                )
-                data_source.attach_mapping(mapping)
-                data_source.attach_schema(
-                    data_source_config.data_types, TYPE_DISPATCH_DICT
-                )
+    #         for mapping_config in data_source_config.mappings:
+    #             mapping: DataSourceMapping = DataSourceMapping(
+    #                 attribute_key=mapping_config.attribute_key,
+    #                 identifier_key=mapping_config.identifier_key,
+    #                 attribute=mapping_config.attribute,
+    #                 label=mapping_config.label,
+    #                 source_key=mapping_config.source_key,
+    #                 target_key=mapping_config.target_key,
+    #                 source_label=mapping_config.source_label,
+    #                 target_label=mapping_config.target_label,
+    #                 relationship=mapping_config.relationship,
+    #             )
+    #             data_source.attach_mapping(mapping)
+    #             data_source.attach_schema(
+    #                 data_source_config.data_types, TYPE_DISPATCH_DICT
+    #             )
 
-            LOGGER.info("Adding data source: %s", data_source.name)
-            session.attach_data_source(data_source)
+    #         LOGGER.info("Adding data source: %s", data_source.name)
+    #         session.attach_data_source(data_source)
 
-        return session
+    #     return session
 
     def attribute_table(self) -> None:
         """

@@ -3,7 +3,7 @@ FROM ubuntu:22.04
 
 # Update the package lists and install Python 3 and pip
 RUN apt-get update && \
-    apt-get install -y python3 python3-pip wget bash libgdal-dev && \
+    apt-get install -y neovim python3 python3-pip wget bash libgdal-dev unzip && \
     rm -rf /var/lib/apt/lists/*
 
 RUN apt update
@@ -32,11 +32,10 @@ COPY . /app
 
 WORKDIR /app
 
-RUN wget https://github.com/apple/foundationdb/releases/download/7.4.4/foundationdb-clients_7.4.4-1_aarch64.deb
-RUN dpkg -i foundationdb-clients_7.4.4-1_aarch64.deb
-
+RUN wget https://github.com/apple/foundationdb/releases/download/7.3.69/foundationdb-clients_7.3.69-1_aarch64.deb
+RUN dpkg -i foundationdb-clients_7.3.69-1_aarch64.deb
 RUN pip install uv
-RUN uv venv
+RUN uv venv -p 3.14t
 RUN uv pip install packages/pycypher
 RUN uv pip install packages/nmetl
 RUN uv pip install packages/fastopendata
@@ -46,5 +45,7 @@ RUN uv pip install packages/fastopendata
 # RUN uv sync
 # RUN uv build
 
-CMD ["fdbcli --no-status --exec \"configure new single ssd\";writemode on;clearrange \"\" \"\\xFF\""]
-CMD ["uv", "run", "packages/fastopendata/src/fastopendata/ingest.py"]
+# CMD ["fdbcli --no-status --exec \"configure new single ssd\";writemode on;clearrange \"\" \"\\xFF\""]
+# CMD ["uv", "run", "python", "packages/fastopendata/src/fastopendata/ingest.py"]
+# CMD ["sleep 1000000"]
+CMD ["make", "-j8", "ingest"]

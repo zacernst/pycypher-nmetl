@@ -41,6 +41,8 @@ if __name__ == "__main__":
     # Use thread manager instead
 
     session = Session(session_config_file="packages/fastopendata/sample_session_config.toml")
+    LOGGER.setLevel(session.configuration.logging_level.value)
+    LOGGER.info('Loaded session...')
     
     
     # Setup worker data
@@ -49,8 +51,7 @@ if __name__ == "__main__":
     fact_collection_kwargs: dict[str, str | int | float | bool] = {}
 
     fact_collection: FactCollection = FoundationDBFactCollection(
-        **fact_collection_kwargs
-    )
+        foundationdb_cluster_file=session.configuration.foundationdb_cluster_file)
 
     with open(
         PUMS_DATA_DICTIONARY_PATH,
@@ -146,6 +147,6 @@ if __name__ == "__main__":
     # )
     # start_http_server(8000)
     session.start_threads()
-    session.attribute_table()
+    # session.attribute_table()
 
     session.block_until_finished()

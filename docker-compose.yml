@@ -8,7 +8,14 @@ services:
       - ./packages/fastopendata/raw_data:/app/packages/fastopendata/raw_data # Mounts the current directory as /app inside the container
     depends_on:
       - fdb_build
-
+    network_mode: "service:fdb_build"
+    develop:
+      watch:
+        - action: sync
+          path: ./packages
+          target: /app/packages/
+          initial_sync: true
+  
   # fdb:
   #   image: foundationdb/foundationdb:7.4.4
   #   platform: linux/amd64
@@ -73,10 +80,11 @@ services:
     shm_size: 1gb
   
   fdb_build:
+    container_name: fdb_build
     platform: linux/arm64
-    build: ../fdb_build
-      # ports:
-      # - "8000:8000"
+    build: ./fdb_build
+    ports:
+    - "5050:5050"
   
   fastopendata_service:
     platform: linux/arm64
