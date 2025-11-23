@@ -2,7 +2,7 @@ services:
   nmetl:
     platform: linux/aarch64
     environment:
-      GITHUB_TOKEN=${GITHUB_TOKEN}
+      GITHUB_TOKEN: ${GITHUB_TOKEN}
     build: .
       # ports:
       # - "8000:8000"
