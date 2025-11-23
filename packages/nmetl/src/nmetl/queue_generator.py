@@ -24,7 +24,9 @@ class QueueGenerator:
     def __init__(self, name: str, session: "Session"):
         self.name = name
         self.session = session
-        self.queue = queue.Queue(maxsize=self.session.configuration.max_queue_size)
+        self.queue = queue.Queue(
+            maxsize=self.session.configuration.max_queue_size
+        )
         self._shutdown_event = threading.Event()
         self._stats_lock = threading.Lock()
         self.items_processed = 0

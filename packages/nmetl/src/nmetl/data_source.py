@@ -224,7 +224,10 @@ class DataSource(ABC):
             for row in self._load_data():
                 if self._shutdown_event.is_set():
                     break
-                if self._rows_queued >= self.session.configuration.max_rows_per_data_source:
+                if (
+                    self._rows_queued
+                    >= self.session.configuration.max_rows_per_data_source
+                ):
                     LOGGER.warning("Max rows reached for %s", self.name)
                     break
 

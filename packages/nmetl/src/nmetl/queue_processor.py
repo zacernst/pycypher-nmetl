@@ -53,7 +53,6 @@ from shared.helpers import ensure_bytes
 from shared.logger import LOGGER
 
 
-
 @dataclass
 class SubTriggerPair:
     """
@@ -481,7 +480,9 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
                                 f"Key error or something like that... {attempts}:{variable}:{type(variable)}"
                             )
                             LOGGER.warning(f"Error: {e}")
-                            time.sleep(self.session.configuration.sleep_seconds_between_retries)
+                            time.sleep(
+                                self.session.configuration.sleep_seconds_between_retries
+                            )
                             attempts += 1
 
                     # LOGGER.debug(
@@ -492,7 +493,7 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
                     if result:
                         # Here look into the projection, pull out the variable in the return signature
                         # We expect that there was only one projection passed to the cypher object
-                        LOGGER.debug(
+                        LOGGER.info(
                             "++++++++++++++ Result of evaluate_fact_against_trigger %s is %s",
                             item,
                             result,
@@ -510,7 +511,7 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
                             trigger=trigger,
                             projection_list=result,
                         )
-                        LOGGER.debug(
+                        LOGGER.info(
                             "Created SubTriggerPair: %s", sub_trigger_pair
                         )
                         out.append(sub_trigger_pair)

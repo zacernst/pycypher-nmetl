@@ -11,6 +11,9 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3.12",
 ]
+dependencies = [
+    "osmium>=4.2.0",
+]
 
 [[project.authors]]
 name = "Zachary Ernst"

@@ -1485,6 +1485,7 @@ class WithClause(Evaluable, TreeMixin):
                 self.incoming_projection_list,
                 err,
             )
+            raise err
 
         # zip together the disaggregated_projection_solutions wtih the self.incoming_projection_list
 

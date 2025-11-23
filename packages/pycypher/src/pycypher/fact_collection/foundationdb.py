@@ -112,7 +112,13 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
         session (Session): The session object associated with the fact collection.
     """
 
-    def __init__(self, *args, foundationdb_cluster_file: str, sync_writes: bool = False, **kwargs):
+    def __init__(
+        self,
+        *args,
+        foundationdb_cluster_file: str,
+        sync_writes: bool = False,
+        **kwargs,
+    ):
         """
         Initialize a FoundationDB-backed FactCollection.
 

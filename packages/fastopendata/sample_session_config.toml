@@ -1,11 +1,11 @@
 run_monitor = false
 fact_collection_class = "FoundationDBFactCollection"
-logging_level = "INFO"
+logging_level = "DEBUG"
 raw_data_base_dir = "packages/fastopendata/raw_data"
 data_source_config_file = "packages/fastopendata/data_sources.yml"
 thread_pool_size = 10
 max_queue_size = 1000
-max_raw_data_queue_size = 16
+max_raw_data_queue_size = 1
 max_rows_per_data_source = 1_000
 buffer_timeout = 1.0
 foundationdb_cluster_file = "/pycypher-nmetl/fdb.cluster"

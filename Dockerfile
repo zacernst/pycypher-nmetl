@@ -27,6 +27,7 @@ RUN uv venv -p 3.14t
 RUN uv pip install packages/pycypher
 RUN uv pip install packages/nmetl
 RUN uv pip install packages/fastopendata
+RUN uv pip install packages/shared
 
 # RUN fdbcli --no-status -C "/app/fdb.cluster" --exec "configure new single ssd"
 # RUN uv venv -p 3.14t
