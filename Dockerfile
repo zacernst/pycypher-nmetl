@@ -3,7 +3,7 @@ FROM ubuntu:22.04
 
 # Update the package lists and install Python 3 and pip
 RUN apt-get update && \
-    apt-get install -y neovim python3 python3-pip wget bash libgdal-dev unzip && \
+    apt-get install -y neovim python3 python3-pip wget bash libgdal-dev unzip git && \
     rm -rf /var/lib/apt/lists/*
 
 RUN apt update
@@ -28,9 +28,10 @@ RUN apt install -y -V libparquet-glib-dev # For Apache Parquet GLib (C)
 
 # Set the working directory inside the container
 
-COPY . /app
+# COPY . /app
 
-WORKDIR /app
+WORKDIR /pycypher-nmetl
+RUN git clone https://github.com/zacernst/pycypher-nmetl.git
 
 RUN wget https://github.com/apple/foundationdb/releases/download/7.3.69/foundationdb-clients_7.3.69-1_aarch64.deb
 RUN dpkg -i foundationdb-clients_7.3.69-1_aarch64.deb
