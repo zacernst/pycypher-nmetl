@@ -98,6 +98,7 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
         self.new_column_dict = {}
         self.status_queue = queue.Queue()
         self.trigger_dict = {}
+        self.thread_manager: ThreadManager = ThreadManager(max_workers=10)
 
         # Read configuration
         with open(session_config_file, "r") as config_file:

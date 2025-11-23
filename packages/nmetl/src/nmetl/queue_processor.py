@@ -36,7 +36,6 @@ from nmetl.prometheus_metrics import (
     TRIGGER_CHECK_COUNT,
 )
 from nmetl.queue_generator import QueueGenerator
-from nmetl.thread_manager import ThreadManager
 from nmetl.trigger import CypherTrigger
 from prometheus_client import Counter
 from pycypher.fact import (
@@ -108,7 +107,6 @@ class QueueProcessor(ABC):  # pylint: disable=too-few-public-methods,too-many-in
         session: Session,
         incoming_queue: Optional[QueueGenerator] = None,
         outgoing_queue: Optional[QueueGenerator] = None,
-        thread_manager: Optional[ThreadManager] = None,
     ) -> None:
         """
         Initialize a QueueProcessor instance.
@@ -120,7 +118,8 @@ class QueueProcessor(ABC):  # pylint: disable=too-few-public-methods,too-many-in
             thread_manager: ThreadManager for task execution.
         """
         LOGGER.debug("Initializing QueuePreocessor: %s", self)
-        self.session = session
+        self.session: Session = session
+        self.thread_manager = self.session.thread_manager
         self.started = False
         self.started_at: Optional[datetime.datetime] = None
         self.finished = False
