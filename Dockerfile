@@ -17,8 +17,8 @@ RUN apt install -y -V libarrow-dev libarrow-glib-dev libarrow-dataset-dev libarr
 
 # COPY . /app
 
-WORKDIR /pycypher-nmetl
 RUN git clone https://github.com/zacernst/pycypher-nmetl.git
+WORKDIR /pycypher-nmetl
 
 RUN wget https://github.com/apple/foundationdb/releases/download/7.3.69/foundationdb-clients_7.3.69-1_aarch64.deb
 RUN dpkg -i foundationdb-clients_7.3.69-1_aarch64.deb
