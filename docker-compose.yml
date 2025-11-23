@@ -5,16 +5,16 @@ services:
       # ports:
       # - "8000:8000"
     volumes:
-      - ./packages/fastopendata/raw_data:/app/packages/fastopendata/raw_data # Mounts the current directory as /app inside the container
+      - ./packages/fastopendata/raw_data:/pycypher-nmetl/packages/fastopendata/raw_data # Mounts the current directory as /app inside the container
     depends_on:
       - fdb_build
     network_mode: "service:fdb_build"
-    develop:
-      watch:
-        - action: sync
-          path: ./packages
-          target: /app/packages/
-          initial_sync: true
+    # develop:
+    #   watch:
+    #     - action: sync
+    #       path: ./packages
+    #       target: /app/packages/
+    #       initial_sync: true
   
   # fdb:
   #   image: foundationdb/foundationdb:7.4.4
