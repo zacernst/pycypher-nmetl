@@ -36,4 +36,4 @@ RUN uv pip install packages/fastopendata
 # CMD ["fdbcli --no-status --exec \"configure new single ssd\";writemode on;clearrange \"\" \"\\xFF\""]
 # CMD ["uv", "run", "python", "packages/fastopendata/src/fastopendata/ingest.py"]
 # CMD ["sleep 1000000"]
-CMD ["make", "-j8", "ingest"]
+CMD ["tail", "-f", "/dev/null"]
