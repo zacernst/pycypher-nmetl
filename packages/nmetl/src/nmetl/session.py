@@ -180,18 +180,18 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
         self.queue_list.append(self.triggered_lookup_processor_queue)
 
         # Create QueueProcessor objects
-        self.raw_data_processor = RawDataProcessor(session=self)
+        self.raw_data_processor = RawDataProcessor(session=self, incoming_queue=self.raw_input_queue, outgoing_queue=self.fact_generated_queue)
 
         self.fact_generated_queue_processor = FactGeneratedQueueProcessor(
-            session=self
+            session=self, incoming_queue=self.fact_generated_queue, outgoing_queue=self.check_fact_against_triggers_queue
         )
 
         self.check_fact_against_triggers_queue_processor = (
-            CheckFactAgainstTriggersQueueProcessor(session=self)
+            CheckFactAgainstTriggersQueueProcessor(session=self, incoming_queue=self.check_fact_against_triggers_queue, outgoing_queue=self.triggered_lookup_processor_queue)
         )
 
         self.triggered_lookup_processor = TriggeredLookupProcessor(
-            session=self
+            session=self, incoming_queue=self.triggered_lookup_processor_queue, outgoing_queue=self.fact_generated_queue
         )
 
     def __getattr__(self, attr: str) -> Any:

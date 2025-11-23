@@ -51,7 +51,7 @@ if __name__ == "__main__":
     fact_collection_kwargs: dict[str, str | int | float | bool] = {}
 
     fact_collection: FactCollection = FoundationDBFactCollection(
-        session.configuration.foundationdb_cluster_file)
+        foundationdb_cluster_file=session.configuration.foundationdb_cluster_file)
 
     with open(
         PUMS_DATA_DICTIONARY_PATH,

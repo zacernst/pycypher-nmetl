@@ -124,7 +124,7 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
             **kwargs: Variable keyword arguments passed to parent class.
         """
 
-        self.db = fdb.open(cluster_file=foundationdb_cluster_file)
+        self.db = fdb.open(foundationdb_cluster_file)
         self.thread_pool = ThreadPool(16)
         self.pending_facts = []
         self.sync_writes = sync_writes

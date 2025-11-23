@@ -123,7 +123,7 @@ class DataSource(ABC):
     def _process_row(self, row: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Process a single row according to mappings."""
         processed_items = []
-
+        LOGGER.info(f"Row data: {row}")
         try:
             # Apply data type conversions
             typed_row = {}
@@ -207,6 +207,7 @@ class DataSource(ABC):
                         LOGGER.debug(processed_items)
 
         except Exception as e:
+            raise e
             LOGGER.error(f"Error processing row in {self.name}: {e}")
             LOGGER.debug(f"Row data: {row}")
 
@@ -223,7 +224,7 @@ class DataSource(ABC):
             for row in self._load_data():
                 if self._shutdown_event.is_set():
                     break
-                if self._rows_queued >= self.max_rows_per_data_source:
+                if self._rows_queued >= self.session.configuration.max_rows_per_data_source:
                     LOGGER.warning("Max rows reached for %s", self.name)
                     break
 
@@ -248,6 +249,7 @@ class DataSource(ABC):
 
         except Exception as e:
             LOGGER.error(f"Error queuing rows from {self.name}: {e}")
+            raise e
 
     def start_processing(self):
         """Start processing this data source in a separate thread."""

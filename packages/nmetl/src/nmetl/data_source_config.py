@@ -27,25 +27,26 @@ class SessionConfig(BaseModel):
     including fact collection settings, monitoring, and data sources.
     """
 
-    run_monitor: bool = False
-    fact_collection_class: str = "FoundationDBFactCollection"
-    logging_level: LoggingLevelEnum = LoggingLevelEnum.INFO
-    fact_collection_kwargs: Optional[Dict[str, Any]] = {}
-    raw_data_base_dir: Optional[DirectoryPath] = None
-    data_source_config_file: Optional[FilePath] = None
-    data_assets_dir: Optional[DirectoryPath] = None
-    thread_pool_size: int = 10
-    max_queue_size: int = 1_000
-    max_raw_data_queue_size: int = 16
-    foundationdb_cluster_file: str = ''
-    prometheus_host: str = ''
-    prometheus_port: int = 0
-    get_item_max_attempts: int = 100
     compute_mode: str = 'thread'
-    sync_writes: bool = False
-    sleep_seconds_between_retries: int = 1
+    data_assets_dir: Optional[DirectoryPath] = None
+    data_source_config_file: Optional[FilePath] = None
+    fact_collection_class: str = "FoundationDBFactCollection"
+    fact_collection_kwargs: Optional[Dict[str, Any]] = {}
+    foundationdb_cluster_file: str = ''
+    get_item_max_attempts: int = 100
     grafana_host: str = ''
     grafana_port: int = 0
+    logging_level: LoggingLevelEnum = LoggingLevelEnum.INFO
+    max_queue_size: int = 1_000
+    max_raw_data_queue_size: int = 16
+    max_rows_per_data_source: int = 1_000_000_000
+    prometheus_host: str = ''
+    prometheus_port: int = 0
+    raw_data_base_dir: Optional[DirectoryPath] = None
+    run_monitor: bool = False
+    sleep_seconds_between_retries: int = 1
+    sync_writes: bool = False
+    thread_pool_size: int = 10
 
 
 

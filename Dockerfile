@@ -3,7 +3,7 @@ FROM ubuntu:22.04
 
 # Update the package lists and install Python 3 and pip
 RUN apt-get update && \
-    apt-get install -y neovim python3 python3-pip wget bash libgdal-dev unzip git && \
+    apt-get install -y neovim python3 python3-pip wget bash libgdal-dev unzip dos2unix git && \
     rm -rf /var/lib/apt/lists/*
 
 RUN apt update
@@ -11,20 +11,7 @@ RUN apt install -y -V ca-certificates lsb-release wget
 RUN wget https://packages.apache.org/artifactory/arrow/$(lsb_release --id --short | tr 'A-Z' 'a-z')/apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
 RUN apt install -y -V ./apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
 RUN apt update
-RUN apt install -y -V libarrow-dev # For C++
-RUN apt install -y -V libarrow-glib-dev # For GLib (C)
-RUN apt install -y -V libarrow-dataset-dev # For Apache Arrow Dataset C++
-RUN apt install -y -V libarrow-dataset-glib-dev # For Apache Arrow Dataset GLib (C)
-RUN apt install -y -V libarrow-acero-dev # For Apache Arrow Acero
-RUN apt install -y -V libarrow-flight-dev # For Apache Arrow Flight C++
-RUN apt install -y -V libarrow-flight-glib-dev # For Apache Arrow Flight GLib (C)
-RUN apt install -y -V libarrow-flight-sql-dev # For Apache Arrow Flight SQL C++
-RUN apt install -y -V libarrow-flight-sql-glib-dev # For Apache Arrow Flight SQL GLib (C)
-RUN apt install -y -V libgandiva-dev # For Gandiva C++
-RUN apt install -y -V libgandiva-glib-dev # For Gandiva GLib (C)
-RUN apt install -y -V libparquet-dev # For Apache Parquet C++
-RUN apt install -y -V libparquet-glib-dev # For Apache Parquet GLib (C)
-
+RUN apt install -y -V libarrow-dev libarrow-glib-dev libarrow-dataset-dev libarrow-dataset-glib-dev libarrow-acero-dev libarrow-flight-dev libarrow-flight-glib-dev libarrow-flight-sql-dev libarrow-flight-sql-glib-dev libgandiva-dev libgandiva-glib-dev libparquet-dev libparquet-glib-dev 
 
 # Set the working directory inside the container
 
