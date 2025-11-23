@@ -10,7 +10,7 @@ services:
       - ./packages/fastopendata/raw_data:/pycypher-nmetl/packages/fastopendata/raw_data # Mounts the current directory as /app inside the container
     # depends_on:
     #   - fdb_build
-    network_mode: "service:fdb_build"
+    # network_mode: "service:fdb_build"
     # develop:
     #   watch:
     #     - action: sync
