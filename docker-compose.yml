@@ -6,8 +6,8 @@ services:
       # - "8000:8000"
     volumes:
       - ./packages/fastopendata/raw_data:/pycypher-nmetl/packages/fastopendata/raw_data # Mounts the current directory as /app inside the container
-    depends_on:
-      - fdb_build
+    # depends_on:
+    #   - fdb_build
     network_mode: "service:fdb_build"
     # develop:
     #   watch:
