@@ -45,7 +45,7 @@ from shared.helpers import decode, encode, ensure_bytes
 try:
     import fdb
 
-    fdb.api_version(740)
+    fdb.api_version(730)
 except ModuleNotFoundError:
     LOGGER.warning("fdb not installed, fdb support disabled")
 
