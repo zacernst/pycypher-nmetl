@@ -329,9 +329,7 @@ def test_parser_handles_where_clause_predicate():
     """Test that the parser correctly identifies and creates a predicate within a Where clause."""
     query = """MATCH (n:Thingy) WHERE n.foo = 5 RETURN n.foobar"""
     obj = CypherParser(query)
-    assert isinstance(
-        obj.parse_tree.cypher.match_clause.where_clause.predicate, Equals
-    )
+    assert isinstance(obj.parse_tree.cypher.match_clause.where_clause.predicate, Equals)
 
 
 def test_parser_handles_where_clause_predicate_lookup():
@@ -360,19 +358,14 @@ def test_parser_generates_alias_in_return_statement():
     """Test that the parser correctly identifies and creates an Alias object in a RETURN clause."""
     query = """MATCH (n:Thingy) WHERE n.foo = 5 RETURN n.foobar AS myfoobar"""
     obj = CypherParser(query)
-    assert isinstance(
-        obj.parse_tree.cypher.return_clause.projection.lookups[0], Alias
-    )
+    assert isinstance(obj.parse_tree.cypher.return_clause.projection.lookups[0], Alias)
 
 
 def test_parser_generates_alias_with_correct_name_in_return_statement():
     """Test that the parser correctly extracts the alias name from a RETURN clause."""
     query = """MATCH (n:Thingy) WHERE n.foo = 5 RETURN n.foobar AS myfoobar"""
     obj = CypherParser(query)
-    assert (
-        obj.parse_tree.cypher.return_clause.projection.lookups[0].alias
-        == "myfoobar"
-    )
+    assert obj.parse_tree.cypher.return_clause.projection.lookups[0].alias == "myfoobar"
 
 
 def test_node_has_label_equality():
@@ -562,9 +555,7 @@ def test_find_solution_node_has_label(fact_collection_0: FactCollection):
     """Test that a simple node label match finds the correct solution."""
     cypher = "MATCH (n:Thing) RETURN n.foobar"
     result = CypherParser(cypher)
-    solutions = result.parse_tree.cypher.match_clause.solutions(
-        fact_collection_0
-    )
+    solutions = result.parse_tree.cypher.match_clause.solutions(fact_collection_0)
     expected = [{"n": "1"}]
     assert solutions == expected
 
@@ -574,9 +565,7 @@ def test_find_solution_node_has_wrong_label(fact_collection_0: FactCollection):
     """Test that a node label mismatch returns no solutions."""
     cypher = "MATCH (n:WrongLabel) RETURN n.foobar"
     result = CypherParser(cypher)
-    solutions = result.parse_tree.cypher.match_clause.solutions(
-        fact_collection_0
-    )
+    solutions = result.parse_tree.cypher.match_clause.solutions(fact_collection_0)
     assert not solutions
 
 
@@ -586,13 +575,9 @@ def test_find_solution_node_with_relationship(
 ):
     """Test that a pattern with a relationship finds the correct solution with all variables bound."""
     # Hash variable for relationship not being added to variable list
-    cypher = (
-        "MATCH (n:Thing)-[r:MyRelationship]->(m:OtherThing) RETURN n.foobar"
-    )
+    cypher = "MATCH (n:Thing)-[r:MyRelationship]->(m:OtherThing) RETURN n.foobar"
     result = CypherParser(cypher)
-    solutions = result.parse_tree.cypher.match_clause.solutions(
-        fact_collection_0
-    )
+    solutions = result.parse_tree.cypher.match_clause.solutions(fact_collection_0)
     expected = [{"n": "1", "m": "2", "r": "relationship_123"}]
     assert solutions == expected
 
@@ -603,11 +588,11 @@ def test_find_solution_node_with_relationship_nonexistant(
 ):
     """Test that a pattern with a non-existent relationship type returns no solutions."""
     # Hash variable for relationship not being added to variable list
-    cypher = "MATCH (n:Thing)-[r:NotExistingRelationship]->(m:OtherThing) RETURN n.foobar"
-    result = CypherParser(cypher)
-    solutions = result.parse_tree.cypher.match_clause.solutions(
-        fact_collection_0
+    cypher = (
+        "MATCH (n:Thing)-[r:NotExistingRelationship]->(m:OtherThing) RETURN n.foobar"
     )
+    result = CypherParser(cypher)
+    solutions = result.parse_tree.cypher.match_clause.solutions(fact_collection_0)
     expected = []
     assert solutions == expected
 
@@ -619,9 +604,7 @@ def test_find_solution_node_with_attribute_value(
     """Test that a pattern with a node property constraint finds the correct solution."""
     cypher = "MATCH (n:Thing {key: 2}) RETURN n.foobar"
     result = CypherParser(cypher)
-    solutions = result.parse_tree.cypher.match_clause.solutions(
-        fact_collection_0
-    )
+    solutions = result.parse_tree.cypher.match_clause.solutions(fact_collection_0)
     expected = [{"n": "1"}]
     assert solutions == expected
 
@@ -633,9 +616,7 @@ def test_find_no_solution_node_with_wrong_attribute_value(
     """Test that a pattern with an incorrect node property value returns no solutions."""
     cypher = "MATCH (n:Thing {key: 123}) RETURN n.foobar"
     result = CypherParser(cypher)
-    solutions = result.parse_tree.cypher.match_clause.solutions(
-        fact_collection_0
-    )
+    solutions = result.parse_tree.cypher.match_clause.solutions(fact_collection_0)
     expected = []
     assert solutions == expected
 
@@ -645,11 +626,11 @@ def test_find_solution_node_with_attribute_and_relationship(
     fact_collection_0: FactCollection,
 ):
     """Test that a pattern with both node property and relationship constraints finds the correct solution."""
-    cypher = "MATCH (n:Thing {key: 2})-[r:MyRelationship]->(m:OtherThing) RETURN n.foobar"
-    result = CypherParser(cypher)
-    solutions = result.parse_tree.cypher.match_clause.solutions(
-        fact_collection_0
+    cypher = (
+        "MATCH (n:Thing {key: 2})-[r:MyRelationship]->(m:OtherThing) RETURN n.foobar"
     )
+    result = CypherParser(cypher)
+    solutions = result.parse_tree.cypher.match_clause.solutions(fact_collection_0)
     expected = [{"n": "1", "m": "2", "r": "relationship_123"}]
     assert solutions == expected
 
@@ -659,11 +640,11 @@ def test_find_no_solution_node_with_wrong_attribute_and_relationship(
     fact_collection_0: FactCollection,
 ):
     """Test that a pattern with an incorrect node property value and a relationship returns no solutions."""
-    cypher = "MATCH (n:Thing {key: 3})-[r:MyRelationship]->(m:OtherThing) RETURN n.foobar"
-    result = CypherParser(cypher)
-    solutions = result.parse_tree.cypher.match_clause.solutions(
-        fact_collection_0
+    cypher = (
+        "MATCH (n:Thing {key: 3})-[r:MyRelationship]->(m:OtherThing) RETURN n.foobar"
     )
+    result = CypherParser(cypher)
+    solutions = result.parse_tree.cypher.match_clause.solutions(fact_collection_0)
     expected = []
     assert solutions == expected
 
@@ -673,11 +654,11 @@ def test_find_no_solution_node_with_wrong_attribute_type_and_relationship(
     fact_collection_0: FactCollection,
 ):
     """Test that a pattern with a node property of incorrect type returns no solutions."""
-    cypher = 'MATCH (n:Thing {key: "3"})-[r:MyRelationship]->(m:OtherThing) RETURN n.foobar'
-    result = CypherParser(cypher)
-    solutions = result.parse_tree.cypher.match_clause.solutions(
-        fact_collection_0
+    cypher = (
+        'MATCH (n:Thing {key: "3"})-[r:MyRelationship]->(m:OtherThing) RETURN n.foobar'
     )
+    result = CypherParser(cypher)
+    solutions = result.parse_tree.cypher.match_clause.solutions(fact_collection_0)
     expected = []
     assert solutions == expected
 
@@ -688,9 +669,7 @@ def test_find_solution_node_with_attribute_type_and_relationship_target_node_att
     """Test that a pattern with properties on both source and target nodes finds the correct solution."""
     cypher = "MATCH (n:Thing {key: 2})-[r:MyRelationship]->(m:OtherThing {key: 5}) RETURN n.foobar"
     result = CypherParser(cypher)
-    solutions = result.parse_tree.cypher.match_clause.solutions(
-        fact_collection_0
-    )
+    solutions = result.parse_tree.cypher.match_clause.solutions(fact_collection_0)
     expected = [{"n": "1", "m": "2", "r": "relationship_123"}]
     assert solutions == expected
 
@@ -705,9 +684,7 @@ def test_find_no_solution_node_with_attribute_type_and_wrong_relationship_target
         "RETURN n.foobar"
     )
     result = CypherParser(cypher)
-    solutions = result.parse_tree.cypher.match_clause.solutions(
-        fact_collection_0
-    )
+    solutions = result.parse_tree.cypher.match_clause.solutions(fact_collection_0)
     expected = []
     assert solutions == expected
 
@@ -717,9 +694,7 @@ def test_find_two_solutions_node_has_label(fact_collection_1: FactCollection):
     """Test that a simple node label match finds multiple solutions when multiple matching nodes exist."""
     cypher = "MATCH (n:Thing) RETURN n.foobar"
     result = CypherParser(cypher)
-    solutions = result.parse_tree.cypher.match_clause.solutions(
-        fact_collection_1
-    )
+    solutions = result.parse_tree.cypher.match_clause.solutions(fact_collection_1)
     expected = [{"n": "1"}, {"n": "2"}]
     assert solutions == unordered(expected)
 
@@ -816,9 +791,7 @@ def test_find_solution_relationship_chain_two_forks(
         "RETURN n.foobar"
     )
     result = CypherParser(cypher)
-    solutions = result.parse_tree.cypher.match_clause.solutions(
-        fact_collection_2
-    )
+    solutions = result.parse_tree.cypher.match_clause.solutions(fact_collection_2)
     expected = [
         {
             "m": "2",
@@ -842,9 +815,7 @@ def test_find_solution_relationship_chain_fork(
         "RETURN n.foobar"
     )
     result = CypherParser(cypher)
-    solutions = result.parse_tree.cypher.match_clause.solutions(
-        fact_collection_3
-    )
+    solutions = result.parse_tree.cypher.match_clause.solutions(fact_collection_3)
     expected = [
         {
             "m": "2",
@@ -875,9 +846,7 @@ def test_find_solution_relationship_chain_fork_2(
         "RETURN n.foobar"
     )
     result = CypherParser(cypher)
-    solutions = result.parse_tree.cypher.match_clause.solutions(
-        fact_collection_4
-    )
+    solutions = result.parse_tree.cypher.match_clause.solutions(fact_collection_4)
     expected = [
         {
             "m": "2",
@@ -966,9 +935,7 @@ def test_find_no_solution_relationship_chain_fork_missing_node_attribute(
         "RETURN n.foobar"
     )
     result = CypherParser(cypher)
-    solutions = result.parse_tree.cypher.match_clause.solutions(
-        fact_collection_4
-    )
+    solutions = result.parse_tree.cypher.match_clause.solutions(fact_collection_4)
     assert not solutions
 
 
@@ -983,9 +950,7 @@ def test_find_two_solutions_relationship_chain_fork_require_node_attribute_value
         "RETURN n.foobar"
     )
     result = CypherParser(cypher)
-    solutions = result.parse_tree.cypher.match_clause.solutions(
-        fact_collection_5
-    )
+    solutions = result.parse_tree.cypher.match_clause.solutions(fact_collection_5)
     expected = [
         {
             "m": "2",
@@ -1016,9 +981,7 @@ def test_find_no_solutions_relationship_chain_fork_node_attribute_value_wrong_ty
         "RETURN n.foobar"
     )
     result = CypherParser(cypher)
-    solutions = result.parse_tree.cypher.match_clause.solutions(
-        fact_collection_5
-    )
+    solutions = result.parse_tree.cypher.match_clause.solutions(fact_collection_5)
     assert not solutions
 
 
@@ -1032,9 +995,7 @@ def test_find_two_solutions_relationship_chain_fork_red_herring_node(
         "RETURN n.foobar"
     )
     result = CypherParser(cypher)
-    solutions = result.parse_tree.cypher.match_clause.solutions(
-        fact_collection_6
-    )
+    solutions = result.parse_tree.cypher.match_clause.solutions(fact_collection_6)
     expected = [
         {
             "m": "2",
@@ -1064,9 +1025,7 @@ def test_find_no_solutions_relationship_chain_fork_node_attribute_value_wrong_ty
         """RETURN n.foobar"""
     )
     result = CypherParser(cypher)
-    solutions = result.parse_tree.cypher.match_clause.solutions(
-        fact_collection_6
-    )
+    solutions = result.parse_tree.cypher.match_clause.solutions(fact_collection_6)
     assert not solutions
 
 
@@ -1086,9 +1045,7 @@ def test_parser_creates_with_clause():
     """Test that the parser correctly creates a WITH clause in the parse tree."""
     query = """MATCH (n:Thingy)-[r:Thingy]->(m) WITH n.foo AS bar, m.baz AS qux RETURN n.foobar"""
     obj = CypherParser(query)
-    assert isinstance(
-        obj.parse_tree.cypher.match_clause.with_clause, WithClause
-    )
+    assert isinstance(obj.parse_tree.cypher.match_clause.with_clause, WithClause)
 
 
 def test_parser_creates_with_clause_object_as_series():
@@ -1109,10 +1066,7 @@ def test_parser_creates_with_clause_object_as_series_members():
         obj.parse_tree.cypher.match_clause.with_clause.lookups.lookups,
         list,
     )
-    assert (
-        len(obj.parse_tree.cypher.match_clause.with_clause.lookups.lookups)
-        == 2
-    )
+    assert len(obj.parse_tree.cypher.match_clause.with_clause.lookups.lookups) == 2
 
 
 def test_parser_creates_with_clause_object_as_series_members_are_alias():
@@ -1134,15 +1088,11 @@ def test_parser_creates_with_clause_object_alias_has_lookup():
     query = """MATCH (n:Thingy)-[r:Thingy]->(m) WITH n.foo AS bar, m.baz AS qux RETURN n.foobar"""
     obj = CypherParser(query)
     assert isinstance(
-        obj.parse_tree.cypher.match_clause.with_clause.lookups.lookups[
-            0
-        ].reference,
+        obj.parse_tree.cypher.match_clause.with_clause.lookups.lookups[0].reference,
         ObjectAttributeLookup,
     )
     assert isinstance(
-        obj.parse_tree.cypher.match_clause.with_clause.lookups.lookups[
-            0
-        ].alias,
+        obj.parse_tree.cypher.match_clause.with_clause.lookups.lookups[0].alias,
         str,
     )
 
@@ -1152,8 +1102,7 @@ def test_parser_creates_with_clause_object_alias_correct_value():
     query = """MATCH (n:Thingy)-[r:Thingy]->(m) WITH n.foo AS bar, m.baz AS qux RETURN n.foobar"""
     obj = CypherParser(query)
     assert (
-        obj.parse_tree.cypher.match_clause.with_clause.lookups.lookups[0].alias
-        == "bar"
+        obj.parse_tree.cypher.match_clause.with_clause.lookups.lookups[0].alias == "bar"
     )
 
 
@@ -1161,9 +1110,7 @@ def test_parser_creates_with_clause_single_element():
     """Test that the parser correctly handles a WITH clause with a single element."""
     query = """MATCH (n:Thingy)-[r:Thingy]->(m) WITH n.foo AS bar RETURN n.foobar"""
     obj = CypherParser(query)
-    assert isinstance(
-        obj.parse_tree.cypher.match_clause.with_clause, WithClause
-    )
+    assert isinstance(obj.parse_tree.cypher.match_clause.with_clause, WithClause)
 
 
 def test_parser_handles_collect_aggregation_in_return():
@@ -1174,10 +1121,7 @@ def test_parser_handles_collect_aggregation_in_return():
         """RETURN COLLECT(n.foobar) AS whatever"""
     )
     obj = CypherParser(query)
-    assert (
-        obj.parse_tree.cypher.return_clause.projection.lookups[0].alias
-        == "whatever"
-    )
+    assert obj.parse_tree.cypher.return_clause.projection.lookups[0].alias == "whatever"
 
 
 def test_parser_handles_collect_in_aggregation_in_return():
@@ -1189,9 +1133,7 @@ def test_parser_handles_collect_in_aggregation_in_return():
     )
     obj = CypherParser(query)
     assert isinstance(
-        obj.parse_tree.cypher.return_clause.projection.lookups[
-            0
-        ].reference.aggregation,
+        obj.parse_tree.cypher.return_clause.projection.lookups[0].reference.aggregation,
         Collect,
     )
 
@@ -1205,9 +1147,7 @@ def test_parser_handles_collect_in_aggregation_in_with_clause():
     )
     obj = CypherParser(query)
     assert isinstance(
-        obj.parse_tree.cypher.return_clause.projection.lookups[
-            0
-        ].reference.aggregation,
+        obj.parse_tree.cypher.return_clause.projection.lookups[0].reference.aggregation,
         Collect,
     )
 
@@ -1222,9 +1162,7 @@ def test_parser_handles_collect_in_aggregation_in_with_clause_node_only():
     )
     obj = CypherParser(query)
     assert isinstance(
-        obj.parse_tree.cypher.return_clause.projection.lookups[
-            0
-        ].reference.aggregation,
+        obj.parse_tree.cypher.return_clause.projection.lookups[0].reference.aggregation,
         Collect,
     )
 
@@ -1238,9 +1176,7 @@ def test_parser_handles_collect_in_aggregation_in_return_twice():
     )
     obj = CypherParser(query)
     assert isinstance(
-        obj.parse_tree.cypher.return_clause.projection.lookups[
-            0
-        ].reference.aggregation,
+        obj.parse_tree.cypher.return_clause.projection.lookups[0].reference.aggregation,
         Collect,
     )
     assert isinstance(
@@ -1270,9 +1206,7 @@ def test_parser_handles_with_where_clause_with_class():
         """RETURN COLLECT(n.foobar) AS whatever"""
     )
     obj = CypherParser(query)
-    assert isinstance(
-        obj.parse_tree.cypher.match_clause.with_clause, WithClause
-    )
+    assert isinstance(obj.parse_tree.cypher.match_clause.with_clause, WithClause)
 
 
 def test_nodes_have_parent():
@@ -1478,9 +1412,7 @@ def test_evaluate_nested_addition():
     literal1 = Literal(6)
     literal2 = Literal(5)
     literal3 = Literal(4)
-    assert (
-        Addition(Addition(literal1, literal2), literal3).evaluate(None) == 15
-    )
+    assert Addition(Addition(literal1, literal2), literal3).evaluate(None) == 15
 
 
 def test_cannot_evaluate_addition_strings_right_side():
@@ -1496,10 +1428,7 @@ def test_evaluate_nested_subtraction():
     literal1 = Literal(6)
     literal2 = Literal(5)
     literal3 = Literal(4)
-    assert (
-        Subtraction(Subtraction(literal1, literal2), literal3).evaluate(None)
-        == -3
-    )
+    assert Subtraction(Subtraction(literal1, literal2), literal3).evaluate(None) == -3
 
 
 def test_evaluate_nested_addition_multiplication():
@@ -1507,10 +1436,7 @@ def test_evaluate_nested_addition_multiplication():
     literal1 = Literal(6)
     literal2 = Literal(5)
     literal3 = Literal(4)
-    assert (
-        Addition(Multiplication(literal1, literal2), literal3).evaluate(None)
-        == 34
-    )
+    assert Addition(Multiplication(literal1, literal2), literal3).evaluate(None) == 34
 
 
 def test_cannot_evaluate_addition_strings_left_side():
@@ -1748,9 +1674,7 @@ def test_object_attribute_lookup_in_addition(fact_collection_6):
     lookup = ObjectAttributeLookup(object_name="n", attribute="foo")
     literal = Literal(3)
     assert (
-        Addition(lookup, literal).evaluate(
-            fact_collection_6, projection={"n": "4"}
-        )
+        Addition(lookup, literal).evaluate(fact_collection_6, projection={"n": "4"})
         == 5
     )
 
@@ -1806,10 +1730,7 @@ def test_collect_aggregated_variables_in_with_clause():
         """RETURN COLLECT(n.foobar) AS whatever"""
     )
     obj = CypherParser(query)
-    assert (
-        obj.parse_tree.cypher.match_clause.with_clause.aggregated_variables
-        == ["n"]
-    )
+    assert obj.parse_tree.cypher.match_clause.with_clause.aggregated_variables == ["n"]
 
 
 def test_collect_all_variables_in_with_clause():
@@ -1820,9 +1741,7 @@ def test_collect_all_variables_in_with_clause():
         """RETURN COLLECT(n.foobar) AS whatever"""
     )
     obj = CypherParser(query)
-    assert sorted(
-        obj.parse_tree.cypher.match_clause.with_clause.all_variables
-    ) == [
+    assert sorted(obj.parse_tree.cypher.match_clause.with_clause.all_variables) == [
         "m",
         "n",
     ]
@@ -1836,10 +1755,9 @@ def test_collect_non_aggregated_variables_in_with_clause():
         """RETURN COLLECT(n.foobar) AS whatever"""
     )
     obj = CypherParser(query)
-    assert (
-        obj.parse_tree.cypher.match_clause.with_clause.non_aggregated_variables
-        == ["m"]
-    )
+    assert obj.parse_tree.cypher.match_clause.with_clause.non_aggregated_variables == [
+        "m"
+    ]
 
 
 def test_unique_non_aggregated_variable_solutions_one_aggregation():
@@ -2064,23 +1982,23 @@ def test_apply_substitutions_to_projection_list(
 
 def test_distinct_evaluation_removes_duplicates():
     """Test that DISTINCT removes duplicate values from a collection."""
-    assert Distinct(
-        Collection([Literal(1), Literal(2), Literal(2)])
-    )._evaluate(None) == Collection([Literal(1), Literal(2)])
+    assert Distinct(Collection([Literal(1), Literal(2), Literal(2)]))._evaluate(
+        None
+    ) == Collection([Literal(1), Literal(2)])
 
 
 def test_distinct_evaluation_removes_nothing_if_no_duplicates():
     """Test that DISTINCT preserves a collection with no duplicate values."""
-    assert Distinct(
-        Collection([Literal(1), Literal(2), Literal(3)])
-    )._evaluate(None) == Collection([Literal(1), Literal(2), Literal(3)])
+    assert Distinct(Collection([Literal(1), Literal(2), Literal(3)]))._evaluate(
+        None
+    ) == Collection([Literal(1), Literal(2), Literal(3)])
 
 
 def test_distinct_evaluation_removes_nothing_if_different_types():
     """Test that DISTINCT preserves values of different types even if they have the same string representation."""
-    assert Distinct(
-        Collection([Literal(1), Literal(2), Literal("2")])
-    )._evaluate(None) == Collection([Literal(1), Literal(2), Literal("2")])
+    assert Distinct(Collection([Literal(1), Literal(2), Literal("2")]))._evaluate(
+        None
+    ) == Collection([Literal(1), Literal(2), Literal("2")])
 
 
 def test_size_of_list():
@@ -2097,9 +2015,9 @@ def test_size_of_empty_list_is_zero():
 
 def test_size_around_distinct():
     """Test that SIZE correctly counts elements after DISTINCT is applied."""
-    assert Size(
-        Distinct(Collection([Literal(1), Literal(2), Literal(2)]))
-    )._evaluate(None) == Literal(2)
+    assert Size(Distinct(Collection([Literal(1), Literal(2), Literal(2)])))._evaluate(
+        None
+    ) == Literal(2)
 
 
 @pytest.mark.fact_collection
@@ -2212,9 +2130,7 @@ def test_tree_mixing_get_parse_object():
     """Test that the tree method correctly represents the parse tree structure."""
     query = "MATCH (n:Thingy)-[r:Thingy]->(m) WITH n.foo AS bar, m.baz AS qux RETURN n.foobar"
     obj = CypherParser(query)
-    assert (
-        obj.parse_tree.cypher.match_clause.pattern.parse_obj is obj.parse_tree
-    )
+    assert obj.parse_tree.cypher.match_clause.pattern.parse_obj is obj.parse_tree
 
 
 def test_collection_children():
@@ -2380,9 +2296,7 @@ def test_collect_evaluate():
     mock_object_attribute_lookup._evaluate = mock_evaluate
 
     # Evaluate the collect instance
-    result = collect._evaluate(
-        mock_fact_collection, projection=mock_projection
-    )
+    result = collect._evaluate(mock_fact_collection, projection=mock_projection)
 
     # Assert that the result is a Collection with the expected values
     assert isinstance(result, Collection)
@@ -2413,9 +2327,7 @@ def test_collect_evaluate_empty_projection():
     mock_object_attribute_lookup._evaluate = mock_evaluate
 
     # Evaluate the collect instance
-    result = collect._evaluate(
-        mock_fact_collection, projection=mock_projection
-    )
+    result = collect._evaluate(mock_fact_collection, projection=mock_projection)
 
     # Assert that the result is a Collection with no values
     assert isinstance(result, Collection)
@@ -2446,9 +2358,7 @@ def test_collect_evaluate_with_projection():
     mock_object_attribute_lookup._evaluate = mock_evaluate
 
     # Evaluate the collect instance
-    result = collect._evaluate(
-        mock_fact_collection, projection=mock_projection
-    )
+    result = collect._evaluate(mock_fact_collection, projection=mock_projection)
 
     # Assert that the result is a Collection with the expected values
     assert isinstance(result, Collection)
@@ -2479,9 +2389,7 @@ def test_trigger_gather_constraints_to_match():
     )
     obj = CypherParser(query)
     obj.parse_tree.trigger_gather_constraints_to_match()
-    assert (
-        len(obj.parse_tree.cypher.match_clause.constraints) == 18
-    )  # check this
+    assert len(obj.parse_tree.cypher.match_clause.constraints) == 18  # check this
 
 
 def test_trigger_gather_constraints_to_match_no_match():
@@ -2543,9 +2451,7 @@ def test_match_children_with_pattern_and_where():
     mock_where = Collection(values=[])
 
     # Create a Match instance with pattern and where attributes
-    match = Match(
-        pattern=mock_pattern, where_clause=mock_where, with_clause=None
-    )
+    match = Match(pattern=mock_pattern, where_clause=mock_where, with_clause=None)
 
     # Get the children of the match instance
     children = list(match.children)
@@ -2560,9 +2466,7 @@ def test_match_children_with_pattern_and_with_clause():
     mock_with_clause = Collection(values=[])
 
     # Create a Match instance with pattern and with_clause attributes
-    match = Match(
-        pattern=mock_pattern, where_clause=None, with_clause=mock_with_clause
-    )
+    match = Match(pattern=mock_pattern, where_clause=None, with_clause=mock_with_clause)
 
     # Get the children of the match instance
     children = list(match.children)
@@ -2723,9 +2627,7 @@ def test_evaluate_with_given_projection():
     ]
 
     # Evaluate the return instance with the given projection
-    result = return_clause._evaluate(
-        mock_fact_collection, projection=given_projection
-    )
+    result = return_clause._evaluate(mock_fact_collection, projection=given_projection)
 
     # Assert that the result is as expected
     expected_result = [
@@ -2838,9 +2740,7 @@ def test_relationship_left_right_children():
     )
 
     # Create a RelationshipLeftRight instance with the mock relationship
-    relationship_left_right = RelationshipLeftRight(
-        relationship=mock_relationship
-    )
+    relationship_left_right = RelationshipLeftRight(relationship=mock_relationship)
 
     # Get the children of the relationship left-right instance
     children = list(relationship_left_right.children)
@@ -2856,9 +2756,7 @@ def test_relationship_right_left_children():
     )
 
     # Create a RelationshipRightLeft instance with the mock relationship
-    relationship_right_left = RelationshipRightLeft(
-        relationship=mock_relationship
-    )
+    relationship_right_left = RelationshipRightLeft(relationship=mock_relationship)
 
     # Get the children of the relationship right-left instance
     children = list(relationship_right_left.children)
@@ -3098,9 +2996,7 @@ def test_evaluate_less_than_with_projection():
     mock_projection = {"key": "value"}
 
     # Evaluate the less_than instance with the projection
-    result = less_than._evaluate(
-        mock_fact_collection, projection=mock_projection
-    )
+    result = less_than._evaluate(mock_fact_collection, projection=mock_projection)
 
     # Assert that the result is a Literal with the value True
     assert isinstance(result, Literal)
@@ -3123,9 +3019,7 @@ def test_evaluate_less_than_with_projection_false():
     mock_projection = {"key": "value"}
 
     # Evaluate the less_than instance with the projection
-    result = less_than._evaluate(
-        mock_fact_collection, projection=mock_projection
-    )
+    result = less_than._evaluate(mock_fact_collection, projection=mock_projection)
 
     # Assert that the result is a Literal with the value False
     assert isinstance(result, Literal)
@@ -3188,9 +3082,7 @@ def test_evaluate_greater_than_with_projection():
     mock_projection = {"key": "value"}
 
     # Evaluate the greater_than instance with the projection
-    result = greater_than._evaluate(
-        mock_fact_collection, projection=mock_projection
-    )
+    result = greater_than._evaluate(mock_fact_collection, projection=mock_projection)
 
     # Assert that the result is a Literal with the value True
     assert isinstance(result, Literal)
@@ -3213,9 +3105,7 @@ def test_evaluate_greater_than_with_projection_false():
     mock_projection = {"key": "value"}
 
     # Evaluate the greater_than instance with the projection
-    result = greater_than._evaluate(
-        mock_fact_collection, projection=mock_projection
-    )
+    result = greater_than._evaluate(mock_fact_collection, projection=mock_projection)
 
     # Assert that the result is a Literal with the value False
     assert isinstance(result, Literal)
@@ -3277,9 +3167,7 @@ def test_evaluate_subtraction_with_projection():
     mock_projection = {"key": "value"}
 
     # Evaluate the subtraction instance with the projection
-    result = subtraction._evaluate(
-        mock_fact_collection, projection=mock_projection
-    )
+    result = subtraction._evaluate(mock_fact_collection, projection=mock_projection)
 
     # Assert that the result is a Literal with the value 5
     assert isinstance(result, Literal)
@@ -3302,9 +3190,7 @@ def test_evaluate_subtraction_with_projection_negative_result():
     mock_projection = {"key": "value"}
 
     # Evaluate the subtraction instance with the projection
-    result = subtraction._evaluate(
-        mock_fact_collection, projection=mock_projection
-    )
+    result = subtraction._evaluate(mock_fact_collection, projection=mock_projection)
 
     # Assert that the result is a Literal with the value -5
     assert isinstance(result, Literal)
@@ -3347,9 +3233,7 @@ def test_evaluate_multiplication_with_projection():
     mock_projection = {"key": "value"}
 
     # Evaluate the multiplication instance with the projection
-    result = multiplication._evaluate(
-        mock_fact_collection, projection=mock_projection
-    )
+    result = multiplication._evaluate(mock_fact_collection, projection=mock_projection)
 
     # Assert that the result is a Literal with the value 50
     assert isinstance(result, Literal)
@@ -3412,9 +3296,7 @@ def test_evaluate_multiplication_with_projection_negative():
     mock_projection = {"key": "value"}
 
     # Evaluate the multiplication instance with the projection
-    result = multiplication._evaluate(
-        mock_fact_collection, projection=mock_projection
-    )
+    result = multiplication._evaluate(mock_fact_collection, projection=mock_projection)
 
     # Assert that the result is a Literal with the value -50
     assert isinstance(result, Literal)
@@ -3457,9 +3339,7 @@ def test_evaluate_division_with_projection():
     mock_projection = {"key": "value"}
 
     # Evaluate the division instance with the projection
-    result = division._evaluate(
-        mock_fact_collection, projection=mock_projection
-    )  # pylint: disable=protected-access
+    result = division._evaluate(mock_fact_collection, projection=mock_projection)  # pylint: disable=protected-access
 
     # Assert that the result is a Literal with the value 5
     assert isinstance(result, Literal)
@@ -3520,9 +3400,7 @@ def test_evaluate_division_with_projection_negative():
     mock_projection = {"key": "value"}
 
     # Evaluate the division instance with the projection
-    result = division._evaluate(
-        mock_fact_collection, projection=mock_projection
-    )
+    result = division._evaluate(mock_fact_collection, projection=mock_projection)
 
     # Assert that the result is a Literal with the value -5
     assert isinstance(result, Literal)
@@ -3634,9 +3512,7 @@ def test_argument_propagates_from_function_signature(
     def test_function(n) -> VariableAttribute["n", "bar"]:  # type: ignore
         return 1
 
-    assert list(empty_session.trigger_dict.values())[0].parameter_names == [
-        "n"
-    ]
+    assert list(empty_session.trigger_dict.values())[0].parameter_names == ["n"]
 
 
 def test_trigger_decorator_function_works(empty_session):
@@ -3685,9 +3561,7 @@ def test_relationship_trigger_decorator_function_has_return_target_variable(
     @empty_session.trigger(
         "MATCH (n)-[m:relationshipthingy]->(m) WITH n.foo AS foo, m.bar AS bar RETURN foo, bar"
     )
-    def test_function(
-        foo, bar
-    ) -> NodeRelationship["n", "relationshipthingy", "m"]:  # pylint: disable=unused-argument
+    def test_function(foo, bar) -> NodeRelationship["n", "relationshipthingy", "m"]:  # pylint: disable=unused-argument
         return 1
 
     assert list(empty_session.trigger_dict.values())[0].target_variable == "m"
@@ -3699,9 +3573,7 @@ def test_relationship_trigger_decorator_function_has_return_relationship_name(
     @empty_session.trigger(
         "MATCH (n)-[s:relationshipthingy]->(t) WITH n.foo AS foo, t.bar AS bar RETURN foo, bar"
     )
-    def test_function(
-        foo, bar
-    ) -> NodeRelationship["n", "relationshipthingy", "t"]:  # type: ignore
+    def test_function(foo, bar) -> NodeRelationship["n", "relationshipthingy", "t"]:  # type: ignore
         return 1
 
     assert (
@@ -3753,9 +3625,7 @@ def test_session_decorator_registers_trigger(empty_session):
         list(empty_session.trigger_dict.values())[0].function.__name__
         == "test_function"
     )
-    assert (
-        list(empty_session.trigger_dict.values())[0].function("hithere") == 1
-    )
+    assert list(empty_session.trigger_dict.values())[0].function("hithere") == 1
 
 
 @pytest.mark.fact_collection
@@ -3763,9 +3633,7 @@ def test_iadd_session_fact_collection(mocker, empty_session):
     mocker.patch.object(empty_session, "attach_fact_collection")
     fact_collection = SimpleFactCollection()
     empty_session += fact_collection
-    empty_session.attach_fact_collection.assert_called_once_with(
-        fact_collection
-    )
+    empty_session.attach_fact_collection.assert_called_once_with(fact_collection)
 
 
 def test_iadd_raises_value_error(empty_session):
@@ -4045,9 +3913,7 @@ def test_attach_non_data_source_mapping_raises_error(fixture_data_source_0):
         fixture_data_source_0.attach_mapping("not a mapping")
 
 
-def test_start_loading_thread_from_session(
-    empty_session, fixture_data_source_0
-):
+def test_start_loading_thread_from_session(empty_session, fixture_data_source_0):
     empty_session.attach_data_source(fixture_data_source_0)
     empty_session.start_threads()
     assert isinstance(fixture_data_source_0.loading_thread, threading.Thread)
@@ -4140,9 +4006,7 @@ def test_queue_generator_not_completed_during_generation():
 
 def test_queue_generator_yields_correct_items():
     q = QueueGenerator()
-    q.incoming_queue_processors.append(
-        Mock()
-    )  # otherwise will exit immediately
+    q.incoming_queue_processors.append(Mock())  # otherwise will exit immediately
     q.put("hi")
     q.put("there")
     q.put("you")
@@ -4163,9 +4027,7 @@ def test_queue_generator_exit_code_1_if_timeout():
     q.put("hi")
     q.put("there")
     q.put("you")
-    q.incoming_queue_processors.append(
-        Mock()
-    )  # otherwise will exit immediately
+    q.incoming_queue_processors.append(Mock())  # otherwise will exit immediately
     for _ in q.yield_items():
         pass
     time.sleep(0.4)
@@ -4178,9 +4040,7 @@ def test_queue_generator_exit_0_if_normal_stop():
     q.put("there")
     q.put("you")
     q.put(EndOfData())
-    q.incoming_queue_processors.append(
-        Mock()
-    )  # otherwise will exit immediately
+    q.incoming_queue_processors.append(Mock())  # otherwise will exit immediately
     for _ in q.yield_items():
         pass
     assert q.exit_code == 0
@@ -4216,9 +4076,7 @@ def test_data_source_mapping_against_row_from_data_source(
     fixture_data_source_0.attach_mapping(fixture_0_data_source_mapping_list)
     empty_session.attach_data_source(fixture_data_source_0)
     row = fixture_data_source_0.data[0]
-    fact_list = list(
-        empty_session.data_sources[0].generate_raw_facts_from_row(row)
-    )
+    fact_list = list(empty_session.data_sources[0].generate_raw_facts_from_row(row))
     expected_fact_list = [
         FactNodeHasAttributeWithValue(
             node_id="Person::001", attribute="Identifier", value="001"
@@ -4226,9 +4084,7 @@ def test_data_source_mapping_against_row_from_data_source(
         FactNodeHasAttributeWithValue(
             node_id="Person::001", attribute="Name", value="Alice"
         ),
-        FactNodeHasAttributeWithValue(
-            node_id="Person::001", attribute="Age", value=25
-        ),
+        FactNodeHasAttributeWithValue(node_id="Person::001", attribute="Age", value=25),
         FactNodeHasAttributeWithValue(
             node_id="Person::001", attribute="ZipCode", value="02056"
         ),
@@ -4279,9 +4135,7 @@ def test_find_solution_node_has_label_with_node_identity_constraint(
     added_constraint = ConstraintVariableRefersToSpecificObject("n", "1")
     result.parse_tree.cypher.match_clause.constraints.append(added_constraint)
 
-    solutions = result.parse_tree.cypher.match_clause.solutions(
-        fact_collection_0
-    )
+    solutions = result.parse_tree.cypher.match_clause.solutions(fact_collection_0)
     expected = [{"n": "1"}]
     assert solutions == expected
 
@@ -4293,14 +4147,10 @@ def test_find_solution_node_has_label_with_node_identity_constraint_unsatisfiabl
     cypher = "MATCH (n:Thing) RETURN n.foobar"
     result = CypherParser(cypher)
 
-    added_constraint = ConstraintVariableRefersToSpecificObject(
-        "n", "idontexist"
-    )
+    added_constraint = ConstraintVariableRefersToSpecificObject("n", "idontexist")
     result.parse_tree.cypher.match_clause.constraints.append(added_constraint)
 
-    solutions = result.parse_tree.cypher.match_clause.solutions(
-        fact_collection_0
-    )
+    solutions = result.parse_tree.cypher.match_clause.solutions(fact_collection_0)
     expected = []
     assert solutions == expected
 
@@ -4741,25 +4591,19 @@ def test_trigger_function_on_relationship_match_insert_results(
 
     assert (
         session_with_trigger.fact_collection.query(
-            QueryValueOfNodeAttribute(
-                node_id="Square::squarename1", attribute="area"
-            )
+            QueryValueOfNodeAttribute(node_id="Square::squarename1", attribute="area")
         )
         == 1.0
     )
     assert (
         session_with_trigger.fact_collection.query(
-            QueryValueOfNodeAttribute(
-                node_id="Square::squarename2", attribute="area"
-            )
+            QueryValueOfNodeAttribute(node_id="Square::squarename2", attribute="area")
         )
         == 25.0
     )
     assert (
         session_with_trigger.fact_collection.query(
-            QueryValueOfNodeAttribute(
-                node_id="Square::squarename3", attribute="area"
-            )
+            QueryValueOfNodeAttribute(node_id="Square::squarename3", attribute="area")
         )
         == 9.0
     )
@@ -4772,9 +4616,7 @@ def test_trigger_function_on_relationship_match_no_insert_no_match(
     session_with_trigger.block_until_finished()
 
     result = session_with_trigger.fact_collection.query(
-        QueryValueOfNodeAttribute(
-            node_id="Square::squarename4", attribute="area"
-        )
+        QueryValueOfNodeAttribute(node_id="Square::squarename4", attribute="area")
     )
     assert isinstance(result, NullResult)
 
@@ -4823,9 +4665,7 @@ def test_second_order_trigger_executes(session_with_two_triggers):
     session_with_two_triggers.block_until_finished()
     assert (
         session_with_two_triggers.fact_collection.query(
-            QueryValueOfNodeAttribute(
-                node_id="Square::squarename1", attribute="big"
-            )
+            QueryValueOfNodeAttribute(node_id="Square::squarename1", attribute="big")
         )
         is False
     )
@@ -4836,14 +4676,14 @@ def test_third_order_trigger_executes(session_with_three_triggers):
     session_with_three_triggers.block_until_finished()
     assert (
         session_with_three_triggers.fact_collection.query(
-            QueryValueOfNodeAttribute(
-                node_id="Square::squarename1", attribute="small"
-            )
+            QueryValueOfNodeAttribute(node_id="Square::squarename1", attribute="small")
         )
         is True
     )
 
-    inventory = session_with_three_triggers.fact_collection.node_label_attribute_inventory()
+    inventory = (
+        session_with_three_triggers.fact_collection.node_label_attribute_inventory()
+    )
     expected = {
         "Circle": {
             "y_coordinate",
@@ -4885,9 +4725,7 @@ def test_raise_error_on_unsupported_uri():
 def test_nodes_with_label_generator(session_with_three_triggers):
     session_with_three_triggers.start_threads()
     session_with_three_triggers.block_until_finished()
-    nodes = session_with_three_triggers.fact_collection.nodes_with_label(
-        "Square"
-    )
+    nodes = session_with_three_triggers.fact_collection.nodes_with_label("Square")
     nodes = list(nodes)
     assert nodes == [
         "Square::squarename1",
@@ -4900,9 +4738,7 @@ def test_nodes_with_label_generator(session_with_three_triggers):
 def test_generate_rows_for_entity_type(session_with_three_triggers):
     session_with_three_triggers.start_threads()
     session_with_three_triggers.block_until_finished()
-    rows = session_with_three_triggers.fact_collection.rows_by_node_label(
-        "Square"
-    )
+    rows = session_with_three_triggers.fact_collection.rows_by_node_label("Square")
     rows = list(rows)
     expected = [
         {
@@ -4995,9 +4831,7 @@ def test_write_csv_table_with_one_entity(
     writer = TableWriter.get_writer(uri)
     writer.write_entity_table(session_with_three_triggers, "Square")
     outfile = tmp_path.with_suffix(".csv").as_uri().replace("file://", "")
-    assert filecmp.cmp(
-        outfile, TEST_DATA_DIRECTORY / "square_entity_output.csv"
-    )
+    assert filecmp.cmp(outfile, TEST_DATA_DIRECTORY / "square_entity_output.csv")
 
 
 def test_parser_gets_solutions_from_fact_collection(
@@ -5034,9 +4868,7 @@ def test_evaluate_call_on_return_with_alias(
         "WITH s.side_length AS side_length RETURN side_length"
     )
     parser = CypherParser(cypher)
-    parser.parse_tree.get_return_clause()._evaluate(
-        fact_collection_squares_circles
-    )
+    parser.parse_tree.get_return_clause()._evaluate(fact_collection_squares_circles)
 
 
 def test_test_gather_variables_on_return_with_alias():
@@ -5045,9 +4877,7 @@ def test_test_gather_variables_on_return_with_alias():
         "RETURN s.side_length AS side_length"
     )
     parser = CypherParser(cypher)
-    assert parser.parse_tree.get_return_clause().gather_variables() == [
-        "side_length"
-    ]
+    assert parser.parse_tree.get_return_clause().gather_variables() == ["side_length"]
 
 
 # @pytest.mark.xfail
@@ -5109,9 +4939,7 @@ def test_new_column_annotation_has_callable_function(empty_session):
     def new_column(column1, column2) -> NewColumn["new_column"]:
         return column1 + column2
 
-    assert isinstance(
-        empty_session.new_column_dict["new_column"].func, Callable
-    )
+    assert isinstance(empty_session.new_column_dict["new_column"].func, Callable)
 
 
 def test_new_column_annotation_has_parameters_from_function(empty_session):
@@ -5131,8 +4959,7 @@ def test_new_column_annotation_has_data_source_name(empty_session):
         return column1 + column2
 
     assert (
-        empty_session.new_column_dict["new_column"].data_source_name
-        == "imadatasource"
+        empty_session.new_column_dict["new_column"].data_source_name == "imadatasource"
     )
 
 
@@ -5496,9 +5323,7 @@ def test_trigger_defines_attribute_metadata(
 
     assert "imanattribute" in session_with_trigger.attribute_metadata_dict
     assert (
-        session_with_trigger.attribute_metadata_dict[
-            "imanattribute"
-        ].description
+        session_with_trigger.attribute_metadata_dict["imanattribute"].description
         == "test description"
     )
 
@@ -6118,9 +5943,7 @@ def test_query_attributes_of_label(session_with_three_triggers):
     """Test that attributes of a label can be queried from a fact collection."""
     session_with_three_triggers.start_threads()
     session_with_three_triggers.block_until_finished()
-    attributes = (
-        session_with_three_triggers.fact_collection.attributes_of_label()
-    )
+    attributes = session_with_three_triggers.fact_collection.attributes_of_label()
     assert dict(attributes) == {
         "Square": {
             "square_color",
@@ -6174,9 +5997,7 @@ def test_get_all_known_attributes(session_with_three_triggers):
 def test_get_all_attributes_for_label(session_with_three_triggers):
     session_with_three_triggers.start_threads()
     session_with_three_triggers.block_until_finished()
-    attributes = session_with_three_triggers.get_all_attributes_for_label(
-        "Square"
-    )
+    attributes = session_with_three_triggers.get_all_attributes_for_label("Square")
     assert attributes == [
         "area",
         "big",
@@ -6267,9 +6088,7 @@ def test_pyarrow_from_node_label(session_with_three_triggers):
     ]
 
 
-def test_parquet_from_node_label_file_exists(
-    session_with_three_triggers, tmp_path
-):
+def test_parquet_from_node_label_file_exists(session_with_three_triggers, tmp_path):
     session_with_three_triggers.start_threads()
     session_with_three_triggers.block_until_finished()
     session_with_three_triggers.parquet_from_node_label(

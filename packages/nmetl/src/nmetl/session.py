@@ -124,6 +124,9 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
             for data_source_config_dict in yaml.safe_load(
                 data_source_config_file
             )["data_sources"]:
+                import pdb
+
+                pdb.set_trace()
                 data_source_config_dict["session_config"] = self.configuration
                 data_source_config = DataSourceConfig.model_validate(
                     data_source_config_dict

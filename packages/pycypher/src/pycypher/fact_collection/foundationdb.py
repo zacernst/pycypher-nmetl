@@ -180,6 +180,49 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
         TIME_IN_FDB_ITERATOR.observe(seconds_in_iterator)
         NUMBER_OF_KEYS_SCANNED.observe(counter)
 
+    def to_constraints(self) -> Dict[str, Dict[int, AtomicFact]]:
+        """Assign each fact to  a specific integer for constraint solving"""
+        # Fact node has label
+
+        class FactConstraint:
+            def __init__(self, fact: AtomicFact, constraint_id: int):
+                self.fact = fact
+                self.constraint_id = constraint_id
+
+        all_constraints: list[FactConstraint] = []
+
+        constraint_id: int = 1
+        for fact in self.node_has_label_facts():
+            all_constraints.append(
+                FactConstraint(fact=fact, constraint_id=constraint_id)
+            )
+            constraint_id += 1
+        # Fact node has attribute with value
+        for fact in self.node_has_attribute_with_value_facts():
+            all_constraints.append(
+                FactConstraint(fact=fact, constraint_id=constraint_id)
+            )
+            constraint_id += 1
+        # Fact relationship has source node
+        for fact in self.relationship_has_source_node_facts():
+            all_constraints.append(
+                FactConstraint(fact=fact, constraint_id=constraint_id)
+            )
+            constraint_id += 1
+        # Fact relationship has target node
+        for fact in self.relationship_has_target_node_facts():
+            all_constraints.append(
+                FactConstraint(fact=fact, constraint_id=constraint_id)
+            )
+            constraint_id += 1
+        # Fact relationship has label
+        for fact in self.relationship_has_label_facts():
+            all_constraints.append(
+                FactConstraint(fact=fact, constraint_id=constraint_id)
+            )
+            constraint_id += 1
+        return all_constraints
+
     def make_index_for_fact(self, fact: AtomicFact) -> bytes:
         """Used for the memcache index"""
         # Call the superclass's version of the method and convert to bytes
@@ -645,22 +688,6 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
         prefix: bytes = bytes(f"node_label:{label}::", encoding="utf8")
         yield from self._prefix_read_values(prefix)
 
-    def relationship_has_source_node_facts(self):
-        """
-        Generator method that yields facts of type FactRelationshipHasSourceNode.
-
-        This method iterates over the `facts` attribute of the instance and yields
-        each fact that is an instance of the FactRelationshipHasSourceNode class.
-
-        Yields:
-            FactRelationshipHasSourceNode: Facts that are instances of
-                FactRelationshipHasSourceNode.
-        """
-        LOGGER.debug("Relationship has source node facts called...")
-        for fact in self:
-            if isinstance(fact, FactRelationshipHasSourceNode):
-                yield fact
-
     def __iter__(self):
         curframe = inspect.currentframe()
         calframe = inspect.getouterframes(curframe, 2)
@@ -682,7 +709,49 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
             FactNodeHasAttributeWithValue: Facts that are instances of
                 FactNodeHasAttributeWithValue.
         """
-        for fact in self._prefix_read_items(b"node_attribute:OSM_Node::"):
+        for fact in self._prefix_read_items(b"node_attribute:"):
+            yield fact
+
+    def relationship_has_label_facts(self):
+        """
+        Generator method that yields facts of type FactNodeHasAttributeWithValue.
+
+        Iterates over the list of facts and yields each fact that is an instance
+        of FactNodeHasAttributeWithValue.
+
+        Yields:
+            FactNodeHasAttributeWithValue: Facts that are instances of
+                FactNodeHasAttributeWithValue.
+        """
+        for fact in self._prefix_read_values(b"relationship_label:"):
+            yield fact
+
+    def relationship_has_source_node_facts(self):
+        """
+        Generator method that yields facts of type FactNodeHasAttributeWithValue.
+
+        Iterates over the list of facts and yields each fact that is an instance
+        of FactNodeHasAttributeWithValue.
+
+        Yields:
+            FactNodeHasAttributeWithValue: Facts that are instances of
+                FactNodeHasAttributeWithValue.
+        """
+        for fact in self._prefix_read_values(b"relationship_source_node:"):
+            yield fact
+
+    def relationship_has_target_node_facts(self):
+        """
+        Generator method that yields facts of type FactNodeHasAttributeWithValue.
+
+        Iterates over the list of facts and yields each fact that is an instance
+        of FactNodeHasAttributeWithValue.
+
+        Yields:
+            FactNodeHasAttributeWithValue: Facts that are instances of
+                FactNodeHasAttributeWithValue.
+        """
+        for fact in self._prefix_read_values(b"relationship_target_node:"):
             yield fact
 
     def enumerate_in_batches(

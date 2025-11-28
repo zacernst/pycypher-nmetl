@@ -624,9 +624,9 @@ class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-publi
             }
             for parameter_name in sub_trigger_pair.trigger.parameter_names:
                 if parameter_name in self.data_assets.keys():
-                    import pdb
+                    # import pdb
 
-                    pdb.set_trace()
+                    # pdb.set_trace()
                     func_arg_dict[parameter_name] = self.data_assets[
                         parameter_name
                     ]

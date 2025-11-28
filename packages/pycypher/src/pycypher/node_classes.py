@@ -1447,6 +1447,8 @@ class WithClause(Evaluable, TreeMixin):
         non_aggregated_alias_list: List[Alias] = self.non_aggregated_aliases()
         non_aggregated_projection_list: ProjectionList = ProjectionList([])
 
+        # import pdb; pdb.set_trace()
+
         for projection in projection_list:
             sub_projection: Projection = Projection({}, parent=projection_list)
             for alias in non_aggregated_alias_list:
@@ -1738,6 +1740,7 @@ class Match(Evaluable, TreeMixin):
                         relationship_target_node_implication
                     )
 
+        import pdb; pdb.set_trace()
         return relationship_assertions
 
     @property
@@ -2445,6 +2448,8 @@ class RelationshipChainList(TreeMixin):
     @property
     def children(self) -> Generator[RelationshipChain]:
         yield from self.relationships
+    
+    
 
     def get_variable_substitution_dict(self, fact_collection: FactCollection):
         variable_sub_dict: dict[str, list[str]] = get_variable_substitutions(
