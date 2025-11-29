@@ -1447,8 +1447,6 @@ class WithClause(Evaluable, TreeMixin):
         non_aggregated_alias_list: List[Alias] = self.non_aggregated_aliases()
         non_aggregated_projection_list: ProjectionList = ProjectionList([])
 
-        # import pdb; pdb.set_trace()
-
         for projection in projection_list:
             sub_projection: Projection = Projection({}, parent=projection_list)
             for alias in non_aggregated_alias_list:
@@ -1740,7 +1738,6 @@ class Match(Evaluable, TreeMixin):
                         relationship_target_node_implication
                     )
 
-        import pdb; pdb.set_trace()
         return relationship_assertions
 
     @property
