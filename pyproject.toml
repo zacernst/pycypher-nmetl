@@ -13,6 +13,7 @@ classifiers = [
 ]
 dependencies = [
     "osmium>=4.2.0",
+    "pycosat>=0.6.6",
 ]
 
 [[project.authors]]
