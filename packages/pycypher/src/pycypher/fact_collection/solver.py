@@ -1,10 +1,14 @@
 from __future__ import annotations
 
-from pycypher.node_classes import Node, RelationshipChain
+from pycypher.node_classes import TreeMixin, Node, RelationshipChain
 from pycypher.cypher_parser import CypherParser
-from pycypher.fact_collection.foundationdb import FoundationDBFactCollection
+from typing import TYPE_CHECKING, Any, Generator, Optional
+if TYPE_CHECKING:
+    from pycypher.fact_collection.foundationdb import FoundationDBFactCollection
+from pycypher.solutions import Projection, ProjectionList
 
-from typing import Any, Generator
+from pysat.solvers import Glucose3
+import pycosat
 import itertools
 import copy
 
@@ -170,10 +174,7 @@ class ConstraintBag:
             This is a placeholder for SAT solver integration. In production,
             this should interface with an actual SAT solver library.
         """
-        # Placeholder for SAT solver integrationr
         cnf = self.cnf()
-        print("CNF Form:", cnf)
-        # Here you would integrate with a SAT solver library
         return cnf.sat(atomic_constraint_mapping=self.atomic_constraint_mapping)
 
 
@@ -964,62 +965,825 @@ class Conjunction:
         return "\n".join(lines)
 
 
-if __name__ == '__main__':
-    query: str = "MATCH (t:Tract)-[r:in]->(c:County) RETURN t, c"
-    parser = CypherParser(query)
-    all_relationship_chains: list[RelationshipChain] = []
-    all_nodes: list[Node] = []
-    for child in parser.parse_tree.walk():
-        match child:
-            case Node():
-                all_nodes.append(child)
-            case RelationshipChain():
-                all_relationship_chains.append(child)
-            case _:
-                pass
-
-    constraint_bag = ConstraintBag()
-
-    fact_collection = FoundationDBFactCollection(foundationdb_cluster_file='/pycypher-nmetl/fdb.cluster')
-    for node in all_nodes:
-        node_variable = node.name_label.name
-        node_assignment_disjunction = Disjunction([])
-        for item in fact_collection.node_has_specific_label_facts(node.name_label.label):
-            print(f"Variable {node_variable} can map to Node ID {item.node_id} with Label {item.label}")
-            variable_assigned_to_node = VariableAssignedToNode(node_variable, item.node_id)
-            node_assignment_disjunction += variable_assigned_to_node
-        constraint_bag += ExactlyOne(node_assignment_disjunction)
-
-    for relationship_variable in all_relationship_chains:
-        relationship_variable = relationship_variable.relationship.relationship.name_label.name
-        relationship_assignment_disjunction = Disjunction([])
-        for item in fact_collection.relationship_has_label_facts():
-            print(f"Variable {relationship_variable} can map to Relationship ID {item.relationship_id} with Label {item.relationship_label}")
-            variable_assigned_to_relationship = VariableAssignedToRelationship(relationship_variable, item.relationship_id)
-            relationship_assignment_disjunction += variable_assigned_to_relationship
-        constraint_bag += ExactlyOne(relationship_assignment_disjunction)
-
-    for relationship_chain in all_relationship_chains:
-        # for each relationship assignment, find source and target node assignments
-        relationship_variable = relationship_chain.relationship.relationship.name_label.name
-        relationship_source_node_variable = relationship_chain.source_node.name_label.name
-        relationship_target_node_variable = relationship_chain.target_node.name_label.name
-        # if r is X then s is Y
-
-        # For each possible assignment of the relationship variable, find the source node assignment
-        for relationship_assignment in constraint_bag.assignments_of_variable(relationship_variable):
-            source_node_conjunction = Conjunction([])
-            target_node_conjunction = Conjunction([])
-            for fact in fact_collection.relationship_has_source_node_facts():
-                if fact.relationship_id == relationship_assignment.relationship_id:
-                    source_node_assignment = VariableAssignedToNode(relationship_source_node_variable, fact.source_node_id)
-                    if_then_constraint = IfThen(relationship_assignment, source_node_assignment)
-                    source_node_conjunction += if_then_constraint
-            for fact in fact_collection.relationship_has_target_node_facts():
-                if fact.relationship_id == relationship_assignment.relationship_id:
-                    target_node_assignment = VariableAssignedToNode(relationship_target_node_variable, fact.target_node_id)
-                    if_then_constraint = IfThen(relationship_assignment, target_node_assignment)
-                    target_node_conjunction += if_then_constraint
-            constraint_bag += source_node_conjunction
-            constraint_bag += target_node_conjunction
+class CypherQuerySolver:
+    """
+    SAT-based solver for Cypher graph queries.
     
+    This class converts Cypher graph pattern matching queries into boolean
+    constraint satisfaction problems that can be solved using SAT solvers.
+    It extracts nodes and relationships from the query, maps them to possible
+    database entities, and generates constraints in CNF.
+    
+    The solving process:
+    1. Parse Cypher query to extract graph patterns
+    2. For each query variable, find possible database entity matches
+    3. Create "exactly one" constraints for variable assignments
+    4. Create implication constraints for relationship endpoints
+    5. Convert all constraints to CNF
+    6. Output in DIMACS format for SAT solver
+    
+    Attributes:
+        fact_collection: Database fact collection for querying graph data
+    
+    Example:
+        >>> solver = CypherQuerySolver(fact_collection)
+        >>> cnf = solver.solve_query("MATCH (n:Person)-[r:KNOWS]->(m:Person) RETURN n, m")
+        >>> dimacs = solver.to_dimacs(cnf)
+    """
+    
+    def __init__(self, fact_collection: FoundationDBFactCollection):
+        """
+        Initialize the Cypher query solver.
+        
+        Args:
+            fact_collection: FoundationDB fact collection for graph data access
+        """
+        self.fact_collection = fact_collection
+    
+    def extract_query_elements(self, ast: TreeMixin) -> tuple[list[Node], list[RelationshipChain]]:
+        """
+        Parse Cypher query and extract nodes and relationship chains.
+        
+        Walks through the parsed query AST and collects all Node and
+        RelationshipChain objects that represent the graph pattern to match.
+        
+        Args:
+            query: Cypher query string to parse
+            
+        Returns:
+            Tuple of (list of nodes, list of relationship chains)
+            
+        Example:
+            >>> nodes, chains = solver.extract_query_elements(
+            ...     "MATCH (n:Person)-[r:KNOWS]->(m:Person) RETURN n, m"
+            ... )
+            >>> len(nodes)
+            2
+            >>> len(chains)
+            1
+        """
+        all_nodes: list[Node] = []
+        all_relationship_chains: list[RelationshipChain] = []
+        
+        for child in ast.walk():
+            match child:
+                case Node():
+                    all_nodes.append(child)
+                case RelationshipChain():
+                    all_relationship_chains.append(child)
+                case _:
+                    pass
+        
+        return all_nodes, all_relationship_chains
+    
+    def create_node_constraints(
+        self, 
+        nodes: list[Node], 
+        constraint_bag: ConstraintBag
+    ) -> None:
+        """
+        Create constraints for node variable assignments.
+        
+        For each node in the query pattern, finds all matching nodes in the
+        database (by label) and creates an ExactlyOne constraint ensuring
+        the query variable is assigned to exactly one database node.
+        
+        Args:
+            nodes: List of Node objects from the parsed query
+            constraint_bag: ConstraintBag to add constraints to (modified in-place)
+            
+        Side Effects:
+            - Adds ExactlyOne constraints to constraint_bag
+            - Prints possible node assignments (for debugging)
+            
+        Example:
+            For query "MATCH (n:Person)", if database has persons with IDs
+            [p1, p2, p3], creates constraint: ExactlyOne(n=p1 ∨ n=p2 ∨ n=p3)
+        """
+        for node in nodes:
+            node_variable = node.name_label.name
+            node_assignment_disjunction = Disjunction([])
+            
+            # Find all database nodes matching this label
+            for item in self.fact_collection.node_has_specific_label_facts(node.name_label.label):
+                print(f"Variable {node_variable} can map to Node ID {item.node_id} with Label {item.label}")
+                variable_assigned_to_node = VariableAssignedToNode(node_variable, item.node_id)
+                node_assignment_disjunction += variable_assigned_to_node
+            
+            # Each variable must be assigned to exactly one node
+            constraint_bag += ExactlyOne(node_assignment_disjunction)
+    
+    def create_relationship_constraints(
+        self,
+        relationship_chains: list[RelationshipChain],
+        constraint_bag: ConstraintBag
+    ) -> None:
+        """
+        Create constraints for relationship variable assignments.
+        
+        For each relationship in the query pattern, finds all matching
+        relationships in the database (by label) and creates an ExactlyOne
+        constraint ensuring the relationship variable is assigned to exactly
+        one database relationship.
+        
+        Args:
+            relationship_chains: List of RelationshipChain objects from parsed query
+            constraint_bag: ConstraintBag to add constraints to (modified in-place)
+            
+        Side Effects:
+            - Adds ExactlyOne constraints to constraint_bag
+            - Prints possible relationship assignments (for debugging)
+            
+        Example:
+            For query "MATCH ()-[r:KNOWS]->()", if database has relationships
+            [r1, r2], creates constraint: ExactlyOne(r=r1 ∨ r=r2)
+        """
+        for relationship_chain in relationship_chains:
+            if relationship_chain.relationship is None:
+                continue  # Skip if no relationship variable
+            relationship_variable = relationship_chain.relationship.relationship.name_label.name
+            relationship_assignment_disjunction = Disjunction([])
+            
+            # Find all database relationships matching this label
+            for item in self.fact_collection.relationship_has_label_facts():
+                print(f"Variable {relationship_variable} can map to Relationship ID {item.relationship_id} with Label {item.relationship_label}")
+                variable_assigned_to_relationship = VariableAssignedToRelationship(
+                    relationship_variable, 
+                    item.relationship_id
+                )
+                relationship_assignment_disjunction += variable_assigned_to_relationship
+            
+            # Each relationship variable must be assigned to exactly one relationship
+            constraint_bag += ExactlyOne(relationship_assignment_disjunction)
+    
+    def create_relationship_endpoint_constraints(
+        self,
+        relationship_chains: list[RelationshipChain],
+        constraint_bag: ConstraintBag
+    ) -> None:
+        """
+        Create implication constraints for relationship source and target nodes.
+        
+        For each relationship chain (pattern like (a)-[r]->(b)), creates
+        implication constraints ensuring that:
+        - If r is assigned to relationship X, then a must be X's source node
+        - If r is assigned to relationship X, then b must be X's target node
+        
+        This ensures structural consistency: relationships can only connect
+        their actual endpoint nodes from the database.
+        
+        Args:
+            relationship_chains: List of RelationshipChain objects from parsed query
+            constraint_bag: ConstraintBag to add constraints to (modified in-place)
+            
+        Side Effects:
+            - Adds IfThen implication constraints to constraint_bag
+            
+        Example:
+            For pattern (n)-[r]->(m), if r could be relationship R1 with
+            source S and target T, adds constraints:
+            - If r=R1 then n=S
+            - If r=R1 then m=T
+        """
+        for relationship_chain in relationship_chains:
+            if relationship_chain.relationship is None:
+                continue  # Skip if no relationship variable
+            relationship_variable = relationship_chain.relationship.relationship.name_label.name
+            relationship_source_node_variable = relationship_chain.source_node.name_label.name
+            relationship_target_node_variable = relationship_chain.target_node.name_label.name
+            
+            # For each possible relationship assignment, constrain source and target nodes
+            for relationship_assignment in constraint_bag.assignments_of_variable(relationship_variable):
+                source_node_conjunction = Conjunction([])
+                target_node_conjunction = Conjunction([])
+                
+                # Find source node for this relationship assignment
+                for fact in self.fact_collection.relationship_has_source_node_facts():
+                    if fact.relationship_id == relationship_assignment.relationship_id:
+                        source_node_assignment = VariableAssignedToNode(
+                            relationship_source_node_variable, 
+                            fact.source_node_id
+                        )
+                        # If relationship is X, then source must be Y
+                        if_then_constraint = IfThen(relationship_assignment, source_node_assignment)
+                        source_node_conjunction += if_then_constraint
+                
+                # Find target node for this relationship assignment
+                for fact in self.fact_collection.relationship_has_target_node_facts():
+                    if fact.relationship_id == relationship_assignment.relationship_id:
+                        target_node_assignment = VariableAssignedToNode(
+                            relationship_target_node_variable, 
+                            fact.target_node_id
+                        )
+                        # If relationship is X, then target must be Z
+                        if_then_constraint = IfThen(relationship_assignment, target_node_assignment)
+                        target_node_conjunction += if_then_constraint
+                
+                constraint_bag += source_node_conjunction
+                constraint_bag += target_node_conjunction
+    
+    def solve_query(self, ast: TreeMixin) -> Conjunction:
+        """
+        Convert Cypher query to CNF constraints for SAT solving.
+        
+        This is the main entry point that orchestrates the full solving process:
+        1. Parse query to extract graph patterns
+        2. Create node assignment constraints
+        3. Create relationship assignment constraints
+        4. Create relationship endpoint constraints
+        5. Convert all constraints to CNF
+        
+        Args:
+            query: Cypher query string to solve
+            
+        Returns:
+            Conjunction in CNF form representing all query constraints
+            
+        Example:
+            >>> solver = CypherQuerySolver(fact_collection)
+            >>> cnf = solver.solve_query("MATCH (n:Person)-[r:KNOWS]->(m:Person) RETURN n, m")
+            >>> # cnf now contains boolean constraints that can be fed to SAT solver
+        """
+        # Extract query elements
+        nodes, relationship_chains = self.extract_query_elements(ast)
+        
+        # Initialize constraint collection
+        constraint_bag = ConstraintBag()
+        
+        # Build constraints for nodes
+        self.create_node_constraints(nodes, constraint_bag)
+        
+        # Build constraints for relationships
+        self.create_relationship_constraints(relationship_chains, constraint_bag)
+        
+        # Build constraints for relationship endpoints
+        self.create_relationship_endpoint_constraints(relationship_chains, constraint_bag)
+        
+        # Convert to CNF
+        cnf = constraint_bag.cnf()
+        
+        return cnf
+    
+    def get_clauses(
+        self, 
+        cnf: Conjunction
+    ) -> tuple[list[list[int]], dict[int, AtomicConstraint], dict[AtomicConstraint, int]]:
+        """
+        Extract clauses and mappings for SAT solver input.
+        
+        Converts the CNF conjunction into a list of clauses (lists of integers)
+        suitable for direct use with SAT solver libraries like python-sat or pycosat.
+        Also provides bidirectional mappings between variable IDs and constraints
+        for interpreting solutions.
+        
+        Args:
+            cnf: Conjunction in CNF form from solve_query()
+            
+        Returns:
+            Tuple of (clauses, reverse_mapping, forward_mapping):
+            - clauses: List of lists of integers, each inner list is a clause
+            - reverse_mapping: Dict mapping variable IDs (int) back to AtomicConstraints
+            - forward_mapping: Dict mapping AtomicConstraints to variable IDs (int)
+            
+        Example:
+            >>> from pysat.solvers import Glucose3
+            >>> 
+            >>> solver = CypherQuerySolver(fact_collection)
+            >>> cnf = solver.solve_query(query)
+            >>> clauses, reverse_map, forward_map = solver.get_clauses(cnf)
+            >>> 
+            >>> # Use with python-sat
+            >>> with Glucose3() as sat:
+            ...     for clause in clauses:
+            ...         sat.add_clause(clause)
+            ...     if sat.solve():
+            ...         model = sat.get_model()
+            ...         for var_id in model:
+            ...             if var_id > 0:
+            ...                 print(f"True: {reverse_map[var_id]}")
+        """
+        # Build atomic constraint mapping
+        constraint_bag = ConstraintBag()
+        for constraint in cnf.walk():
+            if isinstance(constraint, AtomicConstraint):
+                constraint_bag.add_constraint(constraint)
+        
+        forward_mapping = constraint_bag.atomic_constraint_mapping
+        reverse_mapping = {v: k for k, v in forward_mapping.items()}
+        
+        # Extract clauses from the CNF
+        clauses = []
+        for constraint in cnf.constraints:
+            if isinstance(constraint, Disjunction):
+                clause = constraint.sat(forward_mapping)
+                if isinstance(clause, list):
+                    clauses.append(clause)
+                else:
+                    clauses.append([clause])
+            elif isinstance(constraint, (AtomicConstraint, Negation)):
+                literal = constraint.sat(forward_mapping)
+                clauses.append([literal])
+            else:
+                # Handle other constraint types
+                result = constraint.sat(forward_mapping)
+                if isinstance(result, list):
+                    clauses.append(result)
+                else:
+                    clauses.append([result])
+        
+        return clauses, reverse_mapping, forward_mapping
+    
+    def to_dimacs(self, cnf: Conjunction) -> str:
+        """
+        Convert CNF constraints to DIMACS format for SAT solvers.
+        
+        Args:
+            cnf: Conjunction in CNF form from solve_query()
+            
+        Returns:
+            String in DIMACS CNF format ready for SAT solver
+            
+        Example:
+            >>> cnf = solver.solve_query(query)
+            >>> dimacs = solver.to_dimacs(cnf)
+            >>> with open('problem.cnf', 'w') as f:
+            ...     f.write(dimacs)
+        """
+        # Build atomic constraint mapping
+        constraint_bag = ConstraintBag()
+        for constraint in cnf.walk():
+            if isinstance(constraint, AtomicConstraint):
+                constraint_bag.add_constraint(constraint)
+        
+        return cnf.to_dimacs(constraint_bag.atomic_constraint_mapping)
+    
+    def solutions(self, query: str) -> Generator[list[AtomicConstraint], None, None]:
+        """
+        Generate all satisfying assignments for the given Cypher query.
+        
+        Uses the python-sat library to find all solutions to the CNF
+        constraints generated from the query. Yields each solution as
+        a list of AtomicConstraints that are assigned True.
+        
+        Args:
+            query: Cypher query string to solve
+            
+        Yields:
+            Lists of AtomicConstraints representing each solution
+        """
+        
+        cnf = self.solve_query(query)
+        clauses, reverse_map, forward_map = self.get_clauses(cnf)
+        
+        with Glucose3() as sat_solver:
+            for clause in clauses:
+                sat_solver.add_clause(clause)
+            
+            for solution in sat_solver.enum_models():
+                true_assignments = [
+                    reverse_map[var_id] 
+                    for var_id in solution 
+                    if var_id > 0
+                ]
+                
+                yield true_assignments
+    
+    def solution_to_projection(
+        self, 
+        solution: list[AtomicConstraint]
+    ) -> Projection:
+        """
+        Convert a single solution to a Projection object.
+        
+        Takes a list of true AtomicConstraints from a SAT solution and
+        converts it to a Projection (dictionary mapping variable names to values).
+        
+        Args:
+            solution: List of AtomicConstraints that are True in this solution
+            
+        Returns:
+            Projection object mapping variable names to node/relationship IDs
+            
+        Example:
+            >>> for solution in solver.solutions(query):
+            ...     projection = solver.solution_to_projection(solution)
+            ...     print(projection.pythonify())
+            {'n': 'node_123', 'r': 'rel_456', 'm': 'node_789'}
+        """
+        projection_dict = {}
+        
+        for constraint in solution:
+            if isinstance(constraint, VariableAssignedToNode):
+                projection_dict[constraint.variable] = constraint.node_id
+            elif isinstance(constraint, VariableAssignedToRelationship):
+                projection_dict[constraint.variable] = constraint.relationship_id
+        
+        return Projection(projection_dict)
+    
+    def solutions_to_projection_list(self, ast: TreeMixin) -> ProjectionList:
+        """
+        Generate a ProjectionList containing all solutions to the query.
+        
+        Solves the Cypher query using SAT solver, converts each solution to
+        a Projection, and returns them all in a ProjectionList.
+        
+        Args:
+            query: Cypher query string to solve
+            
+        Returns:
+            ProjectionList containing all solutions as Projection objects
+            
+        Example:
+            >>> solver = CypherQuerySolver(fact_collection)
+            >>> projection_list = solver.solutions_to_projection_list(
+            ...     "MATCH (n:Person)-[r:KNOWS]->(m:Person) RETURN n, r, m"
+            ... )
+            >>> print(f"Found {len(projection_list)} solutions")
+            >>> for projection in projection_list:
+            ...     print(projection.pythonify())
+        """
+        projections = []
+        
+        for solution in self.solutions(ast):
+            projection = self.solution_to_projection(solution)
+            projections.append(projection)
+        
+        return ProjectionList(projections)
+    
+    def solutions_to_projection_list_filtered(
+        self,
+        query: str,
+        return_variables: list[str] | None = None
+    ) -> ProjectionList:
+        """
+        Generate a ProjectionList with only specified variables from RETURN clause.
+        
+        Like solutions_to_projection_list, but filters each Projection to include
+        only the variables specified in return_variables (mimicking SQL SELECT).
+        
+        Args:
+            query: Cypher query string to solve
+            return_variables: List of variable names to include in projections.
+                            If None, extracts from query's RETURN clause.
+            
+        Returns:
+            ProjectionList with filtered Projection objects
+            
+        Example:
+            >>> # Only return 'n' and 'm', exclude 'r'
+            >>> projection_list = solver.solutions_to_projection_list_filtered(
+            ...     "MATCH (n:Person)-[r:KNOWS]->(m:Person) RETURN n, m",
+            ...     return_variables=['n', 'm']
+            ... )
+            >>> for projection in projection_list:
+            ...     print(projection.pythonify())  # Only has 'n' and 'm'
+            {'n': 'node_123', 'm': 'node_789'}
+        """
+        # Extract RETURN variables from query if not provided
+        if return_variables is None:
+            return_variables = self._extract_return_variables(query)
+        
+        projections = []
+        
+        for solution in self.solutions(query):
+            full_projection = self.solution_to_projection(solution)
+            
+            # Filter to only include return variables
+            filtered_dict = {
+                var: full_projection[var]
+                for var in return_variables
+                if var in full_projection
+            }
+            
+            filtered_projection = Projection(filtered_dict)
+            projections.append(filtered_projection)
+        
+        return ProjectionList(projections)
+    
+    def _extract_return_variables(self, query: str) -> list[str]:
+        """
+        Extract variable names from the RETURN clause of a Cypher query.
+        
+        Args:
+            query: Cypher query string
+            
+        Returns:
+            List of variable names mentioned in RETURN clause
+            
+        Example:
+            >>> vars = solver._extract_return_variables("MATCH (n)-[r]->(m) RETURN n, m")
+            >>> print(vars)
+            ['n', 'm']
+        """
+        # Simple extraction - looks for RETURN keyword and splits on commas
+        # This is a basic implementation; a full parser would be more robust
+        query_upper = query.upper()
+        if 'RETURN' not in query_upper:
+            return []
+        
+        return_part = query.split('RETURN', 1)[1].strip()
+        
+        # Remove ORDER BY, LIMIT, etc.
+        for keyword in ['ORDER BY', 'LIMIT', 'SKIP', 'WHERE']:
+            if keyword in return_part.upper():
+                return_part = return_part.upper().split(keyword)[0]
+        
+        # Split on comma and clean up
+        variables = [var.strip() for var in return_part.split(',')]
+        
+        # Remove any aggregation functions, property access, etc.
+        # For now, just take variable names (letters, numbers, underscore)
+        import re
+        clean_variables = []
+        for var in variables:
+            # Extract just the variable name (before any dots or parens)
+            match = re.match(r'^([a-zA-Z_][a-zA-Z0-9_]*)', var)
+            if match:
+                clean_variables.append(match.group(1))
+        
+        return clean_variables
+# # Example query
+# query: str = "MATCH (t:Tract)-[r:in]->(c:County), (s:Tract)-[r:in]->(c:County) RETURN t, c"
+# 
+# # Initialize fact collection
+# fact_collection = FoundationDBFactCollection(
+#     foundationdb_cluster_file='/pycypher-nmetl/fdb.cluster'
+# )
+# 
+# # Create solver and solve query
+# solver = CypherQuerySolver(fact_collection)
+# cnf = solver.solve_query(query)
+# clauses, reverse_map, forward_map = solver.get_clauses(cnf)
+# 
+# print(f"Number of clauses: {len(clauses)}")
+# print(f"Number of variables: {len(forward_map)}")
+# 
+# print("\nSolving with pycosat...")
+# for solution in pycosat.itersolve(clauses):
+# 
+#     if solution != "UNSAT":
+#         print("✓ SAT - Solution found!")
+#         print("\nTrue assignments:")
+#         for var_id in solution:
+#             if var_id > 0:
+#                 constraint = reverse_map[var_id]
+#                 print(f"  {var_id}: {constraint}")
+#         
+#         print(f"\nTotal true variables: {sum(1 for v in solution if v > 0)}")
+#     else:
+#         print("✗ UNSAT - No solution exists")
+
+
+def cypher_query_to_cnf(
+    query: str, 
+    fact_collection: FoundationDBFactCollection
+) -> Conjunction:
+    """
+    High-level function to convert a Cypher query to CNF constraints.
+    
+    This is a convenience function that creates a CypherQuerySolver and
+    uses it to convert a Cypher query into boolean constraints in
+    Conjunctive Normal Form suitable for SAT solvers.
+    
+    Args:
+        query: Cypher query string (e.g., "MATCH (n:Person) RETURN n")
+        fact_collection: FoundationDB fact collection for graph data
+        
+    Returns:
+        Conjunction representing the query constraints in CNF
+        
+    Example:
+        >>> fact_collection = FoundationDBFactCollection(cluster_file='fdb.cluster')
+        >>> cnf = cypher_query_to_cnf(
+        ...     "MATCH (n:Person)-[r:KNOWS]->(m:Person) RETURN n, m",
+        ...     fact_collection
+        ... )
+        >>> # Use cnf.to_dimacs() to get SAT solver input
+    """
+    solver = CypherQuerySolver(fact_collection)
+    return solver.solve_query(query)
+
+        
+
+
+
+
+if __name__ == '__main__':
+    """
+    Example usage demonstrating the CypherQuerySolver.
+    
+    This example shows multiple ways to use the solver output:
+    1. Basic CNF output
+    2. DIMACS format for file-based SAT solvers
+    3. Direct integration with python-sat library
+    4. Direct integration with pycosat library
+    """
+    
+    # Example query
+    query: str = "MATCH (t:Tract)-[r:in]->(c:County), (s:Tract)-[r:in]->(c:County) RETURN t, c"
+
+    from pycypher.parsing.cypher_parser import parse_cypher_query 
+    from pycypher.fact_collection.foundationdb import FoundationDBFactCollection
+    # Initialize fact collection
+    fact_collection = FoundationDBFactCollection(
+        foundationdb_cluster_file='/pycypher-nmetl/fdb.cluster'
+    )
+
+    ast = parse_cypher_query(query)
+    
+    # Create solver and solve query
+    solver = CypherQuerySolver(fact_collection)
+    cnf = solver.solve_query(ast)
+    
+    # ===================================================================
+    # Method 1: Basic CNF output
+    # ===================================================================
+    print("\n" + "="*70)
+    print("METHOD 1: CNF Form (for inspection)")
+    print("="*70)
+    print(f"CNF: {cnf}")
+    print(f"Number of constraints: {len(cnf.constraints)}")
+    
+    # ===================================================================
+    # Method 2: DIMACS format (for external SAT solvers)
+    # ===================================================================
+    print("\n" + "="*70)
+    print("METHOD 2: DIMACS Format (for MiniSat, CryptoMiniSat, etc.)")
+    print("="*70)
+    dimacs = solver.to_dimacs(cnf)
+    print(dimacs)
+    print("\nTo use with external solver:")
+    print("  1. Save to file: with open('problem.cnf', 'w') as f: f.write(dimacs)")
+    print("  2. Run solver: minisat problem.cnf solution.txt")
+    print("  3. Check exit code: 10=SAT, 20=UNSAT")
+    
+    # ===================================================================
+    # Method 3: python-sat library (recommended)
+    # ===================================================================
+    print("\n" + "="*70)
+    print("METHOD 3: python-sat Library (Recommended)")
+    print("="*70)
+    
+    try:
+        from pysat.solvers import Glucose3
+        
+        clauses, reverse_map, forward_map = solver.get_clauses(cnf)
+        
+        print(f"Number of clauses: {len(clauses)}")
+        print(f"Number of variables: {len(forward_map)}")
+        print(f"\nFirst few clauses: {clauses[:5]}")
+        
+        # Create and solve with Glucose3
+        with Glucose3() as sat_solver:
+            for clause in clauses:
+                sat_solver.add_clause(clause)
+            
+            print("\nSolving with Glucose3...")
+            if sat_solver.solve():
+                print("✓ SAT - Solution found!")
+                model = sat_solver.get_model()
+                
+                print("\nTrue assignments:")
+                for var_id in model:
+                    if var_id > 0:  # Positive literals are true
+                        constraint = reverse_map[var_id]
+                        print(f"  {var_id}: {constraint}")
+                
+                print(f"\nTotal true variables: {sum(1 for v in model if v > 0)}")
+            else:
+                print("✗ UNSAT - No solution exists")
+    
+    except ImportError:
+        print("python-sat not installed. Install with: pip install python-sat")
+        print("\nExample usage code:")
+        print("""
+    from pysat.solvers import Glucose3
+    
+    solver = CypherQuerySolver(fact_collection)
+    cnf = solver.solve_query(query)
+    clauses, reverse_map, forward_map = solver.get_clauses(cnf)
+    
+    with Glucose3() as sat:
+        for clause in clauses:
+            sat.add_clause(clause)
+        
+        if sat.solve():
+            model = sat.get_model()
+            for var_id in model:
+                if var_id > 0:
+                    print(f"True: {reverse_map[var_id]}")
+        """)
+    
+    # ===================================================================
+    # Method 4: pycosat library (fast C-based solver)
+    # ===================================================================
+    print("\n" + "="*70)
+    print("METHOD 4: pycosat Library (Fast C-based)")
+    print("="*70)
+    
+    try:
+        import pycosat
+        
+        clauses, reverse_map, forward_map = solver.get_clauses(cnf)
+        
+        print(f"Number of clauses: {len(clauses)}")
+        print(f"Number of variables: {len(forward_map)}")
+        
+        print("\nSolving with pycosat...")
+        solution_count = 0
+        for solution in pycosat.itersolve(clauses):
+            if solution != "UNSAT":
+                solution_count += 1
+                if solution_count <= 3:  # Only print first 3 solutions
+                    print(f"\n✓ SAT - Solution {solution_count} found!")
+                    print("True assignments:")
+                    for var_id in solution:
+                        if var_id > 0:
+                            constraint = reverse_map[var_id]
+                            print(f"  {var_id}: {constraint}")
+        
+        print(f"\nTotal solutions found: {solution_count}")
+    
+    except ImportError:
+        print("pycosat not installed. Install with: pip install pycosat")
+        print("\nExample usage code:")
+        print("""
+    import pycosat
+    
+    solver = CypherQuerySolver(fact_collection)
+    cnf = solver.solve_query(query)
+    clauses, reverse_map, _ = solver.get_clauses(cnf)
+    
+    solution = pycosat.solve(clauses)
+    if solution != "UNSAT":
+        for var_id in solution:
+            if var_id > 0:
+                print(f"True: {reverse_map[var_id]}")
+        """)
+    
+    # ===================================================================
+    # Method 5: ProjectionList conversion (recommended for integration)
+    # ===================================================================
+    print("\n" + "="*70)
+    print("METHOD 5: Convert to ProjectionList (Recommended for Integration)")
+    print("="*70)
+    
+    print("\nConverting solutions to ProjectionList...")
+    print("This provides a clean interface matching the rest of the pycypher system.\n")
+    
+    # Get all solutions as ProjectionList
+    projection_list = solver.solutions_to_projection_list(query)
+    
+    print(f"Number of solutions: {len(projection_list)}")
+    
+    if len(projection_list) > 0:
+        print("\nFirst few solutions:")
+        for i, projection in enumerate(projection_list[:3]):
+            print(f"\n  Solution {i+1}:")
+            for key, value in projection.items():
+                print(f"    {key} = {value}")
+        
+        # Show pythonified version
+        print("\nAs Python dictionaries (pythonify):")
+        for i, projection in enumerate(projection_list[:3]):
+            print(f"  Solution {i+1}: {projection.pythonify()}")
+        
+        # Filter to only RETURN variables
+        print("\n--- Filtered to RETURN variables only ---")
+        filtered_list = solver.solutions_to_projection_list_filtered(
+            query,
+            return_variables=['t', 'c']  # Only return t and c
+        )
+        print(f"Filtered solutions: {len(filtered_list)}")
+        for i, projection in enumerate(filtered_list[:3]):
+            print(f"  Solution {i+1}: {projection.pythonify()}")
+    
+    # ===================================================================
+    # Summary
+    # ===================================================================
+    print("\n" + "="*70)
+    print("SUMMARY: Recommended Workflow")
+    print("="*70)
+    print("""
+1. For pycypher integration (BEST for this system):
+   - Use solutions_to_projection_list() or solutions_to_projection_list_filtered()
+   - Returns ProjectionList compatible with rest of pycypher
+   - Easy to work with as Python dictionaries via .pythonify()
+
+2. For Python SAT integration:
+   - Use python-sat library with get_clauses() method
+   - Fast, flexible, multiple solver backends
+   - Easy to interpret results with reverse_map
+
+3. For maximum performance:
+   - Use pycosat library (C-based PicoSAT)
+   - Fastest for large problems
+   - Similar API to python-sat
+
+4. For external tools:
+   - Use to_dimacs() to generate DIMACS CNF file
+   - Compatible with MiniSat, CryptoMiniSat, Z3, etc.
+   - Good for integration with other systems
+    """)
+
+

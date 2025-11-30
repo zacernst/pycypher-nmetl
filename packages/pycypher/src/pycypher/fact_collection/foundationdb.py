@@ -19,20 +19,14 @@ from queue import Queue
 from typing import Any, Dict, Generator, Literal, Optional
 
 from nmetl.logger import LOGGER
-from nmetl.prometheus_metrics import (
-    FACTS_APPENDED,
-    FDB_WRITE_TIME,
-    NUMBER_OF_KEYS_SCANNED,
-    TIME_IN_FDB_ITERATOR,
-)
 from pycypher.fact import (
     AtomicFact,
     FactNodeHasAttributeWithValue,
     FactNodeHasLabel,
-    FactRelationshipHasSourceNode,
 )
 from pycypher.fact_collection import FactCollection
 from pycypher.fact_collection.key_value import KeyValue
+from pycypher.fact_collection.solver import CypherQuerySolver
 from pycypher.query import (
     NullResult,
     QueryNodeLabel,
@@ -66,7 +60,6 @@ def write_queue_worker(db):
                 EXPERIMENTAL_WRITE_QUEUE.qsize(),
             )
         counter += 1
-        FACTS_APPENDED.inc(1.0)
 
 
 def write_fact(db, index, fact) -> Literal[True]:
@@ -83,7 +76,6 @@ def write_fact(db, index, fact) -> Literal[True]:
         )
     )
 
-    # FACTS_APPENDED.inc(1)
     return True
 
 
@@ -175,10 +167,6 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
             if only_one_result:
                 break
         LOGGER.debug("Done with _prefix_read_items: %s: %s", prefix, counter)
-        end_time: datetime.datetime = datetime.datetime.now()
-        seconds_in_iterator: float = (end_time - start_time).total_seconds()
-        TIME_IN_FDB_ITERATOR.observe(seconds_in_iterator)
-        NUMBER_OF_KEYS_SCANNED.observe(counter)
 
     def to_constraints(self) -> Dict[str, Dict[int, AtomicFact]]:
         """Assign each fact to  a specific integer for constraint solving"""
@@ -354,14 +342,6 @@ class FoundationDBFactCollection(FactCollection, KeyValue):
         value = self.db[key]
         LOGGER.debug("value: %s", value)
         return decode(value).source_node_id
-
-        # fact_list: list[AtomicFact] = list(self._prefix_read_values(prefix, continue_to_end=False, only_one_result=True))
-        # if len(fact_list) == 0:
-        #     raise ValueError(f"Found no source nodes for {query}")
-        # elif len(fact_list) > 1:
-        #     raise ValueError(f"Found multiple source nodes for {query}: {fact_list}")
-        # else:
-        #     return fact_list[0].source_node_id
 
     def query_relationship_target(
         self, query: QueryTargetNodeOfRelationship

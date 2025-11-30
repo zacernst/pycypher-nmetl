@@ -1,5 +1,11 @@
 from __future__ import annotations
-
+        # fact_list: list[AtomicFact] = list(self._prefix_read_values(prefix, continue_to_end=False, only_one_result=True))
+        # if len(fact_list) == 0:
+        #     raise ValueError(f"Found no source nodes for {query}")
+        # elif len(fact_list) > 1:
+        #     raise ValueError(f"Found multiple source nodes for {query}: {fact_list}")
+        # else:
+        #     return fact_list[0].source_node_id
 import abc
 import collections
 import datetime
@@ -7,12 +13,9 @@ import itertools
 import uuid
 from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional, Set
 
-from pycypher.fact_collection import FactCollection
-
 if TYPE_CHECKING:
-    from pycypher.cypher_parser import CypherParser
+    from pycypher.fact_collection import FactCollection
 
-from nmetl.prometheus_metrics import SOLUTIONS_TIMER
 from pycypher.query import (
     NullResult,
     QueryNodeLabel,
@@ -25,8 +28,6 @@ from pycypher.tree_mixin import TreeMixin
 from pysat.solvers import Glucose42
 from rich.tree import Tree
 from shared.logger import LOGGER
-
-LOGGER.setLevel("WARNING")
 
 
 def model_to_projection(
@@ -1659,86 +1660,86 @@ class Match(Evaluable, TreeMixin):
             t.add(self.where_clause.tree())
         return t
 
-    def get_relationship_assertions(
-        self, fact_collection, variable_substitution_dict
-    ):
-        inverse_variable_substitution_dict = {
-            v: k for k, v in variable_substitution_dict.items()
-        }
+    # def get_relationship_assertions(
+    #     self, fact_collection, variable_substitution_dict
+    # ):
+    #     inverse_variable_substitution_dict = {
+    #         v: k for k, v in variable_substitution_dict.items()
+    #     }
 
-        relationship_assertions: list[tuple[int, int]] = []
-        for node in self.walk():
-            if (
-                isinstance(node, RelationshipChain)
-                and node.relationship is not None
-            ):
-                relationship_variable = (
-                    node.relationship.relationship.name_label.name
-                )
-                source_node_variable: str = node.source_node.name_label.name
-                target_node_variable: str = node.target_node.name_label.name
-                ###########################################
-                ### ERRROR IS HERE
-                ### Relationship_assertions assumes that there is a specific instance
-                ### of the relationship. If it's just an unsaturated variable, we'd need
-                ### to fix this.
-                ###
-                ### Could do this by simply getting ALL the IDs of the right type of
-                ### relationship and adding them all to the variable_substitution_dict
-                ###########################################
-                for relationship_instance in variable_substitution_dict.get(
-                    relationship_variable, []
-                ):
-                    source_node_query: QuerySourceNodeOfRelationship = (
-                        QuerySourceNodeOfRelationship(
-                            relationship_id=relationship_instance
-                        )
-                    )
-                    target_node_query: QueryTargetNodeOfRelationship = (
-                        QueryTargetNodeOfRelationship(
-                            relationship_id=relationship_instance
-                        )
-                    )
-                    relationship_source_node_id: str = fact_collection.query(
-                        source_node_query
-                    )
-                    relationship_target_node_id: str = fact_collection.query(
-                        target_node_query
-                    )
+    #     relationship_assertions: list[tuple[int, int]] = []
+    #     for node in self.walk():
+    #         if (
+    #             isinstance(node, RelationshipChain)
+    #             and node.relationship is not None
+    #         ):
+    #             relationship_variable = (
+    #                 node.relationship.relationship.name_label.name
+    #             )
+    #             source_node_variable: str = node.source_node.name_label.name
+    #             target_node_variable: str = node.target_node.name_label.name
+    #             ###########################################
+    #             ### ERRROR IS HERE
+    #             ### Relationship_assertions assumes that there is a specific instance
+    #             ### of the relationship. If it's just an unsaturated variable, we'd need
+    #             ### to fix this.
+    #             ###
+    #             ### Could do this by simply getting ALL the IDs of the right type of
+    #             ### relationship and adding them all to the variable_substitution_dict
+    #             ###########################################
+    #             for relationship_instance in variable_substitution_dict.get(
+    #                 relationship_variable, []
+    #             ):
+    #                 source_node_query: QuerySourceNodeOfRelationship = (
+    #                     QuerySourceNodeOfRelationship(
+    #                         relationship_id=relationship_instance
+    #                     )
+    #                 )
+    #                 target_node_query: QueryTargetNodeOfRelationship = (
+    #                     QueryTargetNodeOfRelationship(
+    #                         relationship_id=relationship_instance
+    #                     )
+    #                 )
+    #                 relationship_source_node_id: str = fact_collection.query(
+    #                     source_node_query
+    #                 )
+    #                 relationship_target_node_id: str = fact_collection.query(
+    #                     target_node_query
+    #                 )
 
-                    relationship_assertion_number: int = (
-                        inverse_variable_substitution_dict[
-                            relationship_variable, relationship_instance
-                        ]
-                    )
-                    source_node_assertion_number: int = (
-                        inverse_variable_substitution_dict[
-                            source_node_variable, relationship_source_node_id
-                        ]
-                    )
-                    target_node_assertion_number: int = (
-                        inverse_variable_substitution_dict[
-                            target_node_variable, relationship_target_node_id
-                        ]
-                    )
+    #                 relationship_assertion_number: int = (
+    #                     inverse_variable_substitution_dict[
+    #                         relationship_variable, relationship_instance
+    #                     ]
+    #                 )
+    #                 source_node_assertion_number: int = (
+    #                     inverse_variable_substitution_dict[
+    #                         source_node_variable, relationship_source_node_id
+    #                     ]
+    #                 )
+    #                 target_node_assertion_number: int = (
+    #                     inverse_variable_substitution_dict[
+    #                         target_node_variable, relationship_target_node_id
+    #                     ]
+    #                 )
 
-                    relationship_source_node_implication: tuple[int, int] = (
-                        -1 * relationship_assertion_number,
-                        source_node_assertion_number,
-                    )
-                    relationship_target_node_implication: tuple[int, int] = (
-                        -1 * relationship_assertion_number,
-                        target_node_assertion_number,
-                    )
+    #                 relationship_source_node_implication: tuple[int, int] = (
+    #                     -1 * relationship_assertion_number,
+    #                     source_node_assertion_number,
+    #                 )
+    #                 relationship_target_node_implication: tuple[int, int] = (
+    #                     -1 * relationship_assertion_number,
+    #                     target_node_assertion_number,
+    #                 )
 
-                    relationship_assertions.append(
-                        relationship_source_node_implication
-                    )
-                    relationship_assertions.append(
-                        relationship_target_node_implication
-                    )
+    #                 relationship_assertions.append(
+    #                     relationship_source_node_implication
+    #                 )
+    #                 relationship_assertions.append(
+    #                     relationship_target_node_implication
+    #                 )
 
-        return relationship_assertions
+    #     return relationship_assertions
 
     @property
     def children(self):
@@ -1748,83 +1749,89 @@ class Match(Evaluable, TreeMixin):
         if self.with_clause:
             yield self.with_clause
 
-    def get_variable_substitution_dict(self, fact_collection: FactCollection):
-        return self.pattern.get_variable_substitution_dict(fact_collection)
+    # def get_variable_substitution_dict(self, fact_collection: FactCollection):
+    #     return self.pattern.get_variable_substitution_dict(fact_collection)
 
-    def get_instance_disjunctions(
-        self, fact_collection: FactCollection, variable_substitution_dict
-    ):
-        return self.pattern.get_instance_disjunctions(
-            fact_collection, variable_substitution_dict
-        )
+    # def get_instance_disjunctions(
+    #     self, fact_collection: FactCollection, variable_substitution_dict
+    # ):
+    #     return self.pattern.get_instance_disjunctions(
+    #         fact_collection, variable_substitution_dict
+    #     )
 
-    def get_mutual_exclusions(
-        self, fact_collection: FactCollection, instance_disjunctions
-    ):
-        return self.pattern.get_mutual_exclusions(
-            fact_collection, instance_disjunctions
-        )
+    # def get_mutual_exclusions(
+    #     self, fact_collection: FactCollection, instance_disjunctions
+    # ):
+    #     return self.pattern.get_mutual_exclusions(
+    #         fact_collection, instance_disjunctions
+    #     )
 
     def _evaluate(
         self,
         fact_collection: FactCollection,
         projection_list: ProjectionList = ProjectionList(projection_list=[]),
     ) -> ProjectionList:
-        variable_substitution_dict: dict[int, tuple[str, str]] = (
-            self.get_variable_substitution_dict(fact_collection)
-        )
-        instance_disjunctions: list[tuple[int, ...]] = (
-            self.get_instance_disjunctions(
-                fact_collection, variable_substitution_dict
-            )
-        )
+        # variable_substitution_dict: dict[int, tuple[str, str]] = (
+        #     self.get_variable_substitution_dict(fact_collection)
+        # )
+        # instance_disjunctions: list[tuple[int, ...]] = (
+        #     self.get_instance_disjunctions(
+        #         fact_collection, variable_substitution_dict
+        #     )
+        # )
 
-        mutual_exclusions: list[tuple[int, int]] = self.get_mutual_exclusions(
-            fact_collection, instance_disjunctions
-        )
-        relationship_assertions: list[tuple[int, int]] = (
-            self.get_relationship_assertions(
-                fact_collection, variable_substitution_dict
-            )
-        )
-        assumptions: list[int] = []
+        # mutual_exclusions: list[tuple[int, int]] = self.get_mutual_exclusions(
+        #     fact_collection, instance_disjunctions
+        # )
+        # relationship_assertions: list[tuple[int, int]] = (
+        #     self.get_relationship_assertions(
+        #         fact_collection, variable_substitution_dict
+        #     )
+        # )
+        # assumptions: list[int] = []
 
-        if projection_list:
-            for variable, instance in projection_list[0].projection.items():
-                projection_assumption_tuple: tuple[str, str] = tuple(
-                    [
-                        variable,
-                        instance,
-                    ]
-                )
-                for (
-                    assertion,
-                    assumption_tuple,
-                ) in variable_substitution_dict.items():
-                    if projection_assumption_tuple == assumption_tuple:
-                        assumptions.append(assertion)
+        # if projection_list:
+        #     for variable, instance in projection_list[0].projection.items():
+        #         projection_assumption_tuple: tuple[str, str] = tuple(
+        #             [
+        #                 variable,
+        #                 instance,
+        #             ]
+        #         )
+        #         for (
+        #             assertion,
+        #             assumption_tuple,
+        #         ) in variable_substitution_dict.items():
+        #             if projection_assumption_tuple == assumption_tuple:
+        #                 assumptions.append(assertion)
 
-        # There are elements in the projection_list but nothing satisfies them:
-        if projection_list and not assumptions:
-            return ProjectionList(projection_list=[])
+        # # There are elements in the projection_list but nothing satisfies them:
+        # if projection_list and not assumptions:
+        #     return ProjectionList(projection_list=[])
 
-        all_assertions: list[tuple[int, ...]] = (
-            [[i] for i in assumptions]
-            + instance_disjunctions
-            + mutual_exclusions
-            + relationship_assertions
-        )
-        solver: Glucose42 = Glucose42()
-        for clause in all_assertions:
-            solver.add_clause(clause)
-        models: list[list[int]] = list(solver.enum_models())
-        query_output: ProjectionList = models_to_projection_list(
-            fact_collection, variable_substitution_dict, models
-        )
-        query_output.parent = projection_list
+        # all_assertions: list[tuple[int, ...]] = (
+        #     [[i] for i in assumptions]
+        #     + instance_disjunctions
+        #     + mutual_exclusions
+        #     + relationship_assertions
+        # )
+        # solver: Glucose42 = Glucose42()
+        # for clause in all_assertions:
+        #     solver.add_clause(clause)
+        # models: list[list[int]] = list(solver.enum_models())
+        # query_output: ProjectionList = models_to_projection_list(
+        #     fact_collection, variable_substitution_dict, models
+        # )
+        # query_output.parent = projection_list
 
         # These will have to be changed to allow for WITH and WHERE to be
         # in a different order. But for now, no problem.
+        
+        projection_list: ProjectionList = fact_collection.sat_solver.solutions_to_projection_list(
+            ast=self,
+        )
+        query_output: ProjectionList = projection_list
+
         if self.with_clause:
             projection_list_step: ProjectionList = self.with_clause._evaluate(
                 fact_collection, query_output
@@ -2448,130 +2455,130 @@ class RelationshipChainList(TreeMixin):
     
     
 
-    def get_variable_substitution_dict(self, fact_collection: FactCollection):
-        variable_sub_dict: dict[str, list[str]] = get_variable_substitutions(
-            fact_collection, self
-        )
-        counter: int = 1
-        substitution_dict: dict[int, tuple[str, str]] = {}
-        for variable, instance_list in variable_sub_dict.items():
-            for instance in instance_list:
-                substitution_dict[counter] = (
-                    variable,
-                    instance,
-                )
-                counter += 1
-        return substitution_dict
+    # def get_variable_substitution_dict(self, fact_collection: FactCollection):
+    #     variable_sub_dict: dict[str, list[str]] = get_variable_substitutions(
+    #         fact_collection, self
+    #     )
+    #     counter: int = 1
+    #     substitution_dict: dict[int, tuple[str, str]] = {}
+    #     for variable, instance_list in variable_sub_dict.items():
+    #         for instance in instance_list:
+    #             substitution_dict[counter] = (
+    #                 variable,
+    #                 instance,
+    #             )
+    #             counter += 1
+    #     return substitution_dict
 
-    def get_instance_disjunctions(
-        self, fact_collection: FactCollection, variable_substitution_dict
-    ) -> list[tuple[Any, ...]]:
-        LOGGER.debug(f"get_instance_disjunctions: {self}")
-        disjunction_dict: collections.defaultdict = collections.defaultdict(
-            list
-        )
-        for atom, sub_tuple in variable_substitution_dict.items():
-            variable, _ = sub_tuple
-            disjunction_dict[variable].append(atom)
-        out = list(
-            {
-                key: tuple(value) for key, value in disjunction_dict.items()
-            }.values()
-        )  # thisisdumb
-        LOGGER.debug(f"disjunction length: {len(out)}")
-        LOGGER.debug(f"disjunction: {out}")
-        return out
+    # def get_instance_disjunctions(
+    #     self, fact_collection: FactCollection, variable_substitution_dict
+    # ) -> list[tuple[Any, ...]]:
+    #     LOGGER.debug(f"get_instance_disjunctions: {self}")
+    #     disjunction_dict: collections.defaultdict = collections.defaultdict(
+    #         list
+    #     )
+    #     for atom, sub_tuple in variable_substitution_dict.items():
+    #         variable, _ = sub_tuple
+    #         disjunction_dict[variable].append(atom)
+    #     out = list(
+    #         {
+    #             key: tuple(value) for key, value in disjunction_dict.items()
+    #         }.values()
+    #     )  # thisisdumb
+    #     LOGGER.debug(f"disjunction length: {len(out)}")
+    #     LOGGER.debug(f"disjunction: {out}")
+    #     return out
 
-    def get_mutual_exclusions(
-        self, fact_collection: FactCollection, instance_disjunctions
-    ) -> list[tuple[int, int]]:
-        LOGGER.debug("in get_mutual_exclusions: %s", self)
-        disjunction_dict = instance_disjunctions  # self.get_instance_disjunctions(fact_collection)
-        exclusion_list: list[tuple[int, int]] = []
-        for disjunction_list in disjunction_dict:
-            for var_1, var_2 in itertools.product(
-                disjunction_list, disjunction_list
-            ):
-                if var_1 == var_2:
-                    continue
-                disjunction: tuple[int, int] = (-1 * var_1, -1 * var_2)
-                exclusion_list.append(disjunction)
-        return exclusion_list
+    # def get_mutual_exclusions(
+    #     self, fact_collection: FactCollection, instance_disjunctions
+    # ) -> list[tuple[int, int]]:
+    #     LOGGER.debug("in get_mutual_exclusions: %s", self)
+    #     disjunction_dict = instance_disjunctions  # self.get_instance_disjunctions(fact_collection)
+    #     exclusion_list: list[tuple[int, int]] = []
+    #     for disjunction_list in disjunction_dict:
+    #         for var_1, var_2 in itertools.product(
+    #             disjunction_list, disjunction_list
+    #         ):
+    #             if var_1 == var_2:
+    #                 continue
+    #             disjunction: tuple[int, int] = (-1 * var_1, -1 * var_2)
+    #             exclusion_list.append(disjunction)
+    #     return exclusion_list
 
-    def get_relationship_assertions(
-        self, fact_collection, variable_substitution_dict
-    ):
-        inverse_variable_substitution_dict = {
-            v: k
-            for k, v in self.get_variable_substitution_dict(
-                fact_collection
-            ).items()
-        }
+    # def get_relationship_assertions(
+    #     self, fact_collection, variable_substitution_dict
+    # ):
+    #     inverse_variable_substitution_dict = {
+    #         v: k
+    #         for k, v in self.get_variable_substitution_dict(
+    #             fact_collection
+    #         ).items()
+    #     }
 
-        relationship_assertions: list[tuple[int, int]] = []
-        for node in self.walk():
-            if (
-                isinstance(node, RelationshipChain)
-                and node.relationship is not None
-            ):
-                relationship_variable = (
-                    node.relationship.relationship.name_label.name
-                )
-                source_node_variable: str = node.source_node.name_label.name
-                target_node_variable: str = node.target_node.name_label.name
-                for relationship_instance in variable_substitution_dict[
-                    relationship_variable
-                ]:
-                    source_node_query: QuerySourceNodeOfRelationship = (
-                        QuerySourceNodeOfRelationship(
-                            relationship_id=relationship_instance
-                        )
-                    )
-                    target_node_query: QueryTargetNodeOfRelationship = (
-                        QueryTargetNodeOfRelationship(
-                            relationship_id=relationship_instance
-                        )
-                    )
-                    relationship_source_node_id: str = fact_collection.query(
-                        source_node_query
-                    )
-                    relationship_target_node_id: str = fact_collection.query(
-                        target_node_query
-                    )
+    #     relationship_assertions: list[tuple[int, int]] = []
+    #     for node in self.walk():
+    #         if (
+    #             isinstance(node, RelationshipChain)
+    #             and node.relationship is not None
+    #         ):
+    #             relationship_variable = (
+    #                 node.relationship.relationship.name_label.name
+    #             )
+    #             source_node_variable: str = node.source_node.name_label.name
+    #             target_node_variable: str = node.target_node.name_label.name
+    #             for relationship_instance in variable_substitution_dict[
+    #                 relationship_variable
+    #             ]:
+    #                 source_node_query: QuerySourceNodeOfRelationship = (
+    #                     QuerySourceNodeOfRelationship(
+    #                         relationship_id=relationship_instance
+    #                     )
+    #                 )
+    #                 target_node_query: QueryTargetNodeOfRelationship = (
+    #                     QueryTargetNodeOfRelationship(
+    #                         relationship_id=relationship_instance
+    #                     )
+    #                 )
+    #                 relationship_source_node_id: str = fact_collection.query(
+    #                     source_node_query
+    #                 )
+    #                 relationship_target_node_id: str = fact_collection.query(
+    #                     target_node_query
+    #                 )
 
-                    relationship_assertion_number: int = (
-                        inverse_variable_substitution_dict[
-                            relationship_variable, relationship_instance
-                        ]
-                    )
-                    source_node_assertion_number: int = (
-                        inverse_variable_substitution_dict[
-                            source_node_variable, relationship_source_node_id
-                        ]
-                    )
-                    target_node_assertion_number: int = (
-                        inverse_variable_substitution_dict[
-                            target_node_variable, relationship_target_node_id
-                        ]
-                    )
+    #                 relationship_assertion_number: int = (
+    #                     inverse_variable_substitution_dict[
+    #                         relationship_variable, relationship_instance
+    #                     ]
+    #                 )
+    #                 source_node_assertion_number: int = (
+    #                     inverse_variable_substitution_dict[
+    #                         source_node_variable, relationship_source_node_id
+    #                     ]
+    #                 )
+    #                 target_node_assertion_number: int = (
+    #                     inverse_variable_substitution_dict[
+    #                         target_node_variable, relationship_target_node_id
+    #                     ]
+    #                 )
 
-                    relationship_source_node_implication: tuple[int, int] = (
-                        -1 * relationship_assertion_number,
-                        source_node_assertion_number,
-                    )
-                    relationship_target_node_implication: tuple[int, int] = (
-                        -1 * relationship_assertion_number,
-                        target_node_assertion_number,
-                    )
+    #                 relationship_source_node_implication: tuple[int, int] = (
+    #                     -1 * relationship_assertion_number,
+    #                     source_node_assertion_number,
+    #                 )
+    #                 relationship_target_node_implication: tuple[int, int] = (
+    #                     -1 * relationship_assertion_number,
+    #                     target_node_assertion_number,
+    #                 )
 
-                    relationship_assertions.append(
-                        relationship_source_node_implication
-                    )
-                    relationship_assertions.append(
-                        relationship_target_node_implication
-                    )
+    #                 relationship_assertions.append(
+    #                     relationship_source_node_implication
+    #                 )
+    #                 relationship_assertions.append(
+    #                     relationship_target_node_implication
+    #                 )
 
-        return relationship_assertions
+    #     return relationship_assertions
 
     def _evaluate(
         self,
@@ -2581,68 +2588,71 @@ class RelationshipChainList(TreeMixin):
         # variable_substitutions: dict[str, list[str]] = (
         #     get_variable_substitutions(fact_collection, self)
         # )
-        start_time: datetime.datetime.now()
-        variable_substitution_dict: dict[int, tuple[str, str]] = (
-            self.get_variable_substitution_dict(fact_collection)
+        projection_list: ProjectionList = fact_collection.sat_solver.solutions_to_projection_list(
+            ast=self,
         )
-        LOGGER.debug("Projection to disjunctions: %s", projection)
-        instance_disjunctions: list[tuple[int, ...]] = list(
-            self.get_instance_disjunctions(
-                fact_collection, variable_substitution_dict
-            )
-        )
-        mutual_exclusions: list[tuple[int, int]] = self.get_mutual_exclusions(
-            fact_collection, instance_disjunctions
-        )
-        relationship_assertions: list[tuple[int, int]] = (
-            self.get_relationship_assertions(
-                fact_collection, variable_substitution_dict
-            )
-        )
-        assumptions: list[int] = []
+        query_output: ProjectionList = projection_list
+        return query_output
+        # start_time: datetime.datetime.now()
+        # variable_substitution_dict: dict[int, tuple[str, str]] = (
+        #     self.get_variable_substitution_dict(fact_collection)
+        # )
+        # LOGGER.debug("Projection to disjunctions: %s", projection)
+        # instance_disjunctions: list[tuple[int, ...]] = list(
+        #     self.get_instance_disjunctions(
+        #         fact_collection, variable_substitution_dict
+        #     )
+        # )
+        # mutual_exclusions: list[tuple[int, int]] = self.get_mutual_exclusions(
+        #     fact_collection, instance_disjunctions
+        # )
+        # relationship_assertions: list[tuple[int, int]] = (
+        #     self.get_relationship_assertions(
+        #         fact_collection, variable_substitution_dict
+        #     )
+        # )
+        # assumptions: list[int] = []
 
-        if projection:
-            for variable, instance in projection.projection.items():
-                projection_assumption_tuple: tuple[str, str] = tuple(
-                    [
-                        variable,
-                        instance,
-                    ]
-                )
-                for (
-                    assertion,
-                    assumption_tuple,
-                ) in variable_substitution_dict.items():
-                    if projection_assumption_tuple == assumption_tuple:
-                        assumptions.append(assertion)
+        # if projection:
+        #     for variable, instance in projection.projection.items():
+        #         projection_assumption_tuple: tuple[str, str] = tuple(
+        #             [
+        #                 variable,
+        #                 instance,
+        #             ]
+        #         )
+        #         for (
+        #             assertion,
+        #             assumption_tuple,
+        #         ) in variable_substitution_dict.items():
+        #             if projection_assumption_tuple == assumption_tuple:
+        #                 assumptions.append(assertion)
 
-        # There are elements in the projection_list but nothing satisfies them:
-        if projection and not assumptions:
-            return ProjectionList(projection_list=[])
+        # # There are elements in the projection_list but nothing satisfies them:
+        # if projection and not assumptions:
+        #     return ProjectionList(projection_list=[])
 
-        all_assertions: list[list[int, ...]] = (
-            [[i] for i in assumptions]
-            + instance_disjunctions
-            + mutual_exclusions
-            + relationship_assertions
-        )
+        # all_assertions: list[list[int, ...]] = (
+        #     [[i] for i in assumptions]
+        #     + instance_disjunctions
+        #     + mutual_exclusions
+        #     + relationship_assertions
+        # )
 
-        solver: Glucose42 = Glucose42()
-        for clause in all_assertions:
-            solver.add_clause(clause)
-        projection_list: ProjectionList = ProjectionList(
-            projection_list=[
-                Projection(
-                    projection=dict(
-                        [variable_substitution_dict[i] for i in model if i > 0]
-                    )
-                )
-                for model in solver.enum_models()
-            ]
-        )
-        end_time: datetime.datetime.now()
-        SOLUTIONS_TIMER.observe((end_time - start_time).total_seconds())
-        return projection_list
+        # solver: Glucose42 = Glucose42()
+        # for clause in all_assertions:
+        #     solver.add_clause(clause)
+        # projection_list: ProjectionList = ProjectionList(
+        #     projection_list=[
+        #         Projection(
+        #             projection=dict(
+        #                 [variable_substitution_dict[i] for i in model if i > 0]
+        #             )
+        #         )
+        #         for model in solver.enum_models()
+        #     ]
+        # )
+        # return projection_list
 
     def free_variables(
         self, projection: Projection

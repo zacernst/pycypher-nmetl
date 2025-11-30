@@ -57,6 +57,7 @@ from pycypher.cypher_parser import CypherParser
 from pycypher.fact_collection import FactCollection
 from pycypher.fact_collection.foundationdb import FoundationDBFactCollection
 from pycypher.fact_collection.simple import SimpleFactCollection
+from pycypher.fact_collection.solver import CypherQuerySolver
 from pydantic import FilePath
 from rich.console import Console
 from rich.table import Table
@@ -116,6 +117,10 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
             sync_writes=self.configuration.sync_writes,
         )
 
+        # Create the SAT solver
+        # Make it part of the fact collection object
+        # self.sat_solver = CypherQuerySolver(self.fact_collection)
+
         # Load the data source configs
         data_source_config_list: list[DataSourceConfig] = []
         with open(
@@ -124,9 +129,6 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
             for data_source_config_dict in yaml.safe_load(
                 data_source_config_file
             )["data_sources"]:
-                import pdb
-
-                pdb.set_trace()
                 data_source_config_dict["session_config"] = self.configuration
                 data_source_config = DataSourceConfig.model_validate(
                     data_source_config_dict
@@ -212,6 +214,9 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
             incoming_queue=self.triggered_lookup_processor_queue,
             outgoing_queue=self.fact_generated_queue,
         )
+    
+    def attach_fact_collection(self, fact_collection: FactCollection) -> None:
+        self.fact_collection = fact_collection
 
     def __getattr__(self, attr: str) -> Any:
         if hasattr(self.configuration, attr):

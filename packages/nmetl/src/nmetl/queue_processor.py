@@ -19,25 +19,15 @@ from __future__ import annotations
 
 import datetime
 import hashlib
-import multiprocessing as mp
-import queue
 import random
 import threading
 import time
 from abc import ABC, abstractmethod
-from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass
-from queue import Queue
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Type
+from typing import Any, Dict, List, Optional
 
-from nmetl.prometheus_metrics import (
-    RAW_DATA_COUNTER,
-    REQUEST_TIME,
-    TRIGGER_CHECK_COUNT,
-)
 from nmetl.queue_generator import QueueGenerator
 from nmetl.trigger import CypherTrigger
-from prometheus_client import Counter
 from pycypher.fact import (
     FactNodeHasAttributeWithValue,
     FactNodeHasLabel,
@@ -45,8 +35,6 @@ from pycypher.fact import (
     FactRelationshipHasSourceNode,
     FactRelationshipHasTargetNode,
 )
-from pycypher.fact_collection import FactCollection
-from pycypher.node_classes import Collection
 from pycypher.query import NullResult
 from pycypher.solutions import Projection, ProjectionList
 from shared.helpers import ensure_bytes
@@ -135,9 +123,6 @@ class QueueProcessor(ABC):  # pylint: disable=too-few-public-methods,too-many-in
 
         self.name = self.__class__.__name__
 
-        self.item_counter: Counter = Counter(
-            self.__class__.__name__, self.__class__.__name__
-        )
 
     def __getattr__(self, attr: str) -> Any:
         return getattr(self.session, attr)
@@ -196,7 +181,6 @@ class QueueProcessor(ABC):  # pylint: disable=too-few-public-methods,too-many-in
             Processed results to be sent to the outgoing queue.
         """
 
-    @REQUEST_TIME.time()
     def _process_item_from_queue(self, item) -> Any:
         """
         Submit buffered items for distributed processing via Dask.
@@ -211,7 +195,6 @@ class QueueProcessor(ABC):  # pylint: disable=too-few-public-methods,too-many-in
             item = [item]
         # I'm ashamed of this
         for sub_item in item:
-            self.item_counter.inc(1)
             future = self.thread_manager.submit_task(
                 self.__class__.process_item_from_queue,
                 self,
@@ -285,8 +268,6 @@ class RawDataProcessor(QueueProcessor):
                 raise Exception("Unknown item dict type")
 
         LOGGER.debug(all_results)
-        if all_results:
-            RAW_DATA_COUNTER.inc(len(all_results))
 
         return all_results
 
@@ -357,7 +338,6 @@ class CheckFactAgainstTriggersQueueProcessor(QueueProcessor):  # pylint: disable
                 ]
             ),
         )
-        TRIGGER_CHECK_COUNT.inc(1)
         # Can we filter out bad results here.
         LOGGER.info("Evaluated trigger: %s", trigger.cypher)
         LOGGER.info(
@@ -624,9 +604,6 @@ class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-publi
             }
             for parameter_name in sub_trigger_pair.trigger.parameter_names:
                 if parameter_name in self.data_assets.keys():
-                    # import pdb
-
-                    # pdb.set_trace()
                     func_arg_dict[parameter_name] = self.data_assets[
                         parameter_name
                     ]
@@ -645,8 +622,6 @@ class TriggeredLookupProcessor(QueueProcessor):  # pylint: disable=too-few-publi
                     **func_arg_dict
                 )
                 success = True
-                # Following might not work because of how we're serializing
-                # triggers for Dask...
                 sub_trigger_pair.trigger.call_counter += 1
             except TypeError as one_error:
                 LOGGER.error(

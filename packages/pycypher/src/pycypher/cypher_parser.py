@@ -7,10 +7,9 @@ from typing import Any, Dict, List, Tuple, Type
 
 from ply import yacc  # type: ignore
 from pycypher.cypher_lexer import *  # noqa: F403
-from pycypher.fact_collection import FactCollection
-from pycypher.node_classes import Alias  # Aggregation,
 from pycypher.node_classes import (
     Addition,
+    Alias,
     AliasedName,
     And,
     Collect,
@@ -41,9 +40,7 @@ from pycypher.node_classes import (
     Where,
     WithClause,
 )
-from pycypher.solutions import ProjectionList
 from pycypher.tree_mixin import TreeMixin
-from rich.tree import Tree
 
 START_SYMBOL = "cypher"  # pylint: disable=invalid-name
 

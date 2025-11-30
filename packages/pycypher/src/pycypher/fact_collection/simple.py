@@ -45,6 +45,7 @@ class SimpleFactCollection(FactCollection):
             session (Optional[Session]): The session this fact collection belongs to. Defaults to None.
         """
         self.facts: List[AtomicFact] = facts or []
+        super().__init__()
         # super().__init__(facts)
 
     def keys(self) -> Generator[AtomicFact]:
