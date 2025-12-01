@@ -101,40 +101,29 @@ def test_check_fact_against_triggers_queue_processor_return_no_sub_trigger_pair_
     check_fact_against_triggers_queue_processor,
     city_state_fact_collection,
 ):
-    # Need to patch QueueProcessor.get_trigger_dict to return session's trigger_dict
+    @session.trigger("MATCH (c:City) WITH c.idontexist AS beachy RETURN beachy")
+    def has_sand(beachy) -> VariableAttribute["c", "sandy"]:  # type: ignore
+        return beachy
+
+    kalamazoo: FactNodeHasAttributeWithValue = FactNodeHasAttributeWithValue(
+        node_id="kalamazoo",
+        attribute="has_beach",
+        value=Literal(False),
+    )
+    buffer: list[AtomicFact] = [kalamazoo]
+
+    trigger = list(session.trigger_dict.values())[0]
+
+    
     with patch(
-        "nmetl.queue_processor.QueueProcessor.get_trigger_dict"
+        "nmetl.queue_processor.CheckFactAgainstTriggersQueueProcessor.evaluate_fact_against_trigger"
     ) as mocked_function:
-
-        @session.trigger("MATCH (c:City) WITH c.idontexist AS beachy RETURN beachy")
-        def has_sand(beachy) -> VariableAttribute["c", "sandy"]:  # type: ignore
-            return beachy
-
-        mocked_function.return_value = session.trigger_dict
-
-        kalamazoo: FactNodeHasAttributeWithValue = FactNodeHasAttributeWithValue(
-            node_id="kalamazoo",
-            attribute="has_beach",
-            value=Literal(False),
+        out = (
+            check_fact_against_triggers_queue_processor.process_item_from_queue(
+                buffer,
+            )
         )
-        buffer: list[AtomicFact] = [kalamazoo]
-
-        trigger = list(session.trigger_dict.values())[0]
-        with patch(
-            "nmetl.queue_processor.QueueProcessor.get_fact_collection"
-        ) as mocked_function_trigger:
-            mocked_function_trigger.return_value = city_state_fact_collection
-
-            with patch(
-                "nmetl.queue_processor.CheckFactAgainstTriggersQueueProcessor.evaluate_fact_against_trigger"
-            ) as mocked_function:
-                out = (
-                    check_fact_against_triggers_queue_processor.process_item_from_queue(
-                        buffer,
-                    )
-                )
-                # [SubTriggerPair(sub={'c': 'kalamazoo'}, trigger=VariableAttributeTrigger)]
-                assert not out
+        assert not out
 
 
 def test_check_fact_against_triggers_queue_processor_return_sub_trigger_pair(
@@ -142,38 +131,29 @@ def test_check_fact_against_triggers_queue_processor_return_sub_trigger_pair(
     check_fact_against_triggers_queue_processor,
     city_state_fact_collection,
 ):
-    # Need to patch QueueProcessor.get_trigger_dict to return session's trigger_dict
-    with patch(
-        "nmetl.queue_processor.QueueProcessor.get_trigger_dict"
-    ) as mocked_function:
+    @session.trigger("MATCH (c:City) WITH c.has_beach AS beachy RETURN beachy")
+    def has_sand(beachy) -> VariableAttribute["c", "sandy"]:  # type: ignore
+        return beachy
 
-        @session.trigger("MATCH (c:City) WITH c.has_beach AS beachy RETURN beachy")
-        def has_sand(beachy) -> VariableAttribute["c", "sandy"]:  # type: ignore
-            return beachy
+    mocked_function.return_value = session.trigger_dict
 
-        mocked_function.return_value = session.trigger_dict
+    kalamazoo: FactNodeHasAttributeWithValue = FactNodeHasAttributeWithValue(
+        node_id="kalamazoo",
+        attribute="has_beach",
+        value=Literal(False),
+    )
+    buffer: list[AtomicFact] = [kalamazoo]
 
-        kalamazoo: FactNodeHasAttributeWithValue = FactNodeHasAttributeWithValue(
-            node_id="kalamazoo",
-            attribute="has_beach",
-            value=Literal(False),
-        )
-        buffer: list[AtomicFact] = [kalamazoo]
+    trigger = list(session.trigger_dict.values())[0]
 
-        trigger = list(session.trigger_dict.values())[0]
-        with patch(
-            "nmetl.queue_processor.QueueProcessor.get_fact_collection"
-        ) as mocked_function_trigger:
-            mocked_function_trigger.return_value = city_state_fact_collection
-
-            out = check_fact_against_triggers_queue_processor.process_item_from_queue(
-                buffer,
-            )
-            sub_trigger_pair: SubTriggerPair = out[0]
-            assert isinstance(sub_trigger_pair, SubTriggerPair)
-            assert isinstance(sub_trigger_pair.sub, dict)
-            assert isinstance(sub_trigger_pair.trigger, VariableAttributeTrigger)
-            assert sub_trigger_pair.sub == {"c": "kalamazoo"}
+    out = check_fact_against_triggers_queue_processor.process_item_from_queue(
+        buffer,
+    )
+    sub_trigger_pair: SubTriggerPair = out[0]
+    assert isinstance(sub_trigger_pair, SubTriggerPair)
+    assert isinstance(sub_trigger_pair.sub, dict)
+    assert isinstance(sub_trigger_pair.trigger, VariableAttributeTrigger)
+    assert sub_trigger_pair.sub == {"c": "kalamazoo"}
 
 
 def test_check_fact_against_trigger_with_aggregation_queue_processor_return_sub_trigger_pair(
@@ -181,52 +161,36 @@ def test_check_fact_against_trigger_with_aggregation_queue_processor_return_sub_
     check_fact_against_triggers_queue_processor,
     city_state_fact_collection,
 ):
-    # Need to patch QueueProcessor.get_trigger_dict to return session's trigger_dict
-    with patch(
-        "nmetl.queue_processor.QueueProcessor.get_trigger_dict"
-    ) as mocked_function:
+    @session.trigger(
+        "MATCH (c:City)-[r:In]->(s:State) "
+        "WITH COLLECT(c.has_beach) AS beachy_list "
+        "RETURN beachy_list AS beachy_collection"
+    )
+    def beach_collection_length(
+        beachy_collection,
+    ) -> VariableAttribute["s", "num_beaches"]:  # type: ignore
+        return len(beachy_collection) > 0
 
-        @session.trigger(
-            "MATCH (c:City)-[r:In]->(s:State) "
-            "WITH COLLECT(c.has_beach) AS beachy_list "
-            "RETURN beachy_list AS beachy_collection"
-        )
-        def beach_collection_length(
-            beachy_collection,
-        ) -> VariableAttribute["s", "num_beaches"]:  # type: ignore
-            return len(beachy_collection) > 0
+    kalamazoo: FactNodeHasAttributeWithValue = FactNodeHasAttributeWithValue(
+        node_id="kalamazoo",
+        attribute="has_beach",
+        value=Literal(False),
+    )
+    out = check_fact_against_triggers_queue_processor.process_item_from_queue(
+        kalamazoo,
+    )
+    import pdb; pdb.set_trace()
+    sub_trigger_pair: SubTriggerPair = out[0]
+    assert isinstance(sub_trigger_pair, SubTriggerPair)
+    assert isinstance(sub_trigger_pair.sub, dict)
+    assert isinstance(sub_trigger_pair.trigger, VariableAttributeTrigger)
+    assert sub_trigger_pair.sub == {"c": "kalamazoo"}
 
-        mocked_function.return_value = session.trigger_dict
-
-        kalamazoo: FactNodeHasAttributeWithValue = FactNodeHasAttributeWithValue(
-            node_id="kalamazoo",
-            attribute="has_beach",
-            value=Literal(False),
-        )
-        buffer: list[AtomicFact] = [kalamazoo]
-
-        trigger = list(session.trigger_dict.values())[0]
-        with patch(
-            "nmetl.queue_processor.QueueProcessor.get_fact_collection"
-        ) as mocked_function_trigger:
-            mocked_function_trigger.return_value = city_state_fact_collection
-
-            # with patch('nmetl.queue_processor.CheckFactAgainstTriggersQueueProcessor.evaluate_fact_against_trigger') as mocked_function:
-            out = check_fact_against_triggers_queue_processor.process_item_from_queue(
-                buffer,
-            )
-            # [SubTriggerPair(sub={'c': 'kalamazoo'}, trigger=VariableAttributeTrigger)]
-            sub_trigger_pair: SubTriggerPair = out[0]
-            assert isinstance(sub_trigger_pair, SubTriggerPair)
-            assert isinstance(sub_trigger_pair.sub, dict)
-            assert isinstance(sub_trigger_pair.trigger, VariableAttributeTrigger)
-            assert sub_trigger_pair.sub == {"c": "kalamazoo"}
-
-            # variable_to_set: str = sub_trigger_pair.trigger.variable_set
-            # attribute_to_set: str = sub_trigger_pair.trigger.attribute_set
-            # instance_of_variable_to_set: str = sub_trigger_pair.projection_list[0].root[0][variable_to_set]
-            # re_query_projection_list: ProjectionList = ProjectionList(projection_list=[Projection(projection={variable_to_set: instance_of_variable_to_set})])
-            # sub_trigger_pair.trigger.cypher._evaluate(city_state_fact_collection, projection_list=re_query_projection_list)
+    # variable_to_set: str = sub_trigger_pair.trigger.variable_set
+    # attribute_to_set: str = sub_trigger_pair.trigger.attribute_set
+    # instance_of_variable_to_set: str = sub_trigger_pair.projection_list[0].root[0][variable_to_set]
+    # re_query_projection_list: ProjectionList = ProjectionList(projection_list=[Projection(projection={variable_to_set: instance_of_variable_to_set})])
+    # sub_trigger_pair.trigger.cypher._evaluate(city_state_fact_collection, projection_list=re_query_projection_list)
 
 
 def test_re_query(
