@@ -64,6 +64,9 @@ class Projection(ProjectionTree):
         """
         self.projection: Dict[str, Any] = projection
         super().__init__(parent=parent)
+    
+    def __bool__(self) -> bool:
+        return not self.is_empty()
 
     def pythonify(self) -> dict[str, Any]:
         """Convert projection to a plain Python dictionary.
@@ -178,7 +181,8 @@ class Projection(ProjectionTree):
                 or self.projection[key] != other.projection[key]
             ):
                 return False
-        return True
+        else:
+            return True
 
     def find_variable(self, variable: str) -> Any:
         if variable in self.projection:
@@ -278,6 +282,9 @@ class ProjectionList(ProjectionTree):
             if projection not in self.projection_list
         ]
         return not left_outer and not right_outer
+    
+    def __bool__(self) -> bool:
+        return not self.is_empty()
 
     def is_empty(self) -> bool:
         return len(self) == 0

@@ -9,7 +9,6 @@ from __future__ import annotations
 import abc
 import collections
 import datetime
-import itertools
 import uuid
 from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional, Set
 
@@ -1771,83 +1770,47 @@ class Match(Evaluable, TreeMixin):
         fact_collection: FactCollection,
         projection_list: ProjectionList = ProjectionList(projection_list=[]),
     ) -> ProjectionList:
-        # variable_substitution_dict: dict[int, tuple[str, str]] = (
-        #     self.get_variable_substitution_dict(fact_collection)
-        # )
-        # instance_disjunctions: list[tuple[int, ...]] = (
-        #     self.get_instance_disjunctions(
-        #         fact_collection, variable_substitution_dict
-        #     )
-        # )
-
-        # mutual_exclusions: list[tuple[int, int]] = self.get_mutual_exclusions(
-        #     fact_collection, instance_disjunctions
-        # )
-        # relationship_assertions: list[tuple[int, int]] = (
-        #     self.get_relationship_assertions(
-        #         fact_collection, variable_substitution_dict
-        #     )
-        # )
-        # assumptions: list[int] = []
-
-        # if projection_list:
-        #     for variable, instance in projection_list[0].projection.items():
-        #         projection_assumption_tuple: tuple[str, str] = tuple(
-        #             [
-        #                 variable,
-        #                 instance,
-        #             ]
-        #         )
-        #         for (
-        #             assertion,
-        #             assumption_tuple,
-        #         ) in variable_substitution_dict.items():
-        #             if projection_assumption_tuple == assumption_tuple:
-        #                 assumptions.append(assertion)
-
-        # # There are elements in the projection_list but nothing satisfies them:
-        # if projection_list and not assumptions:
-        #     return ProjectionList(projection_list=[])
-
-        # all_assertions: list[tuple[int, ...]] = (
-        #     [[i] for i in assumptions]
-        #     + instance_disjunctions
-        #     + mutual_exclusions
-        #     + relationship_assertions
-        # )
-        # solver: Glucose42 = Glucose42()
-        # for clause in all_assertions:
-        #     solver.add_clause(clause)
-        # models: list[list[int]] = list(solver.enum_models())
-        # query_output: ProjectionList = models_to_projection_list(
-        #     fact_collection, variable_substitution_dict, models
-        # )
-        # query_output.parent = projection_list
-
-        # These will have to be changed to allow for WITH and WHERE to be
-        # in a different order. But for now, no problem.
-        
-        projection_list: ProjectionList = fact_collection.sat_solver.solutions_to_projection_list(
-            ast=self,
+        '''Evaluate the RelationshipChainList against the FactCollection.'''
+        projection_list: ProjectionList = self.pattern._evaluate(
+            fact_collection, projection_list=projection_list
         )
-        query_output: ProjectionList = projection_list
+        # if len(projection_list) > 1:
+        #     raise NotImplementedError(
+        #         "MATCH with multiple incoming projections not supported yet."
+        #     )
+        
+        # solution_projection_list: ProjectionList = fact_collection.sat_solver.solutions_to_projection_list(
+        #     ast=self,
+        # )
+        # # Filter projection_list to only include projections that match the incoming projection_list
+        # # This is rather inefficient -- better to filter them out at the boolean SAT solving stage
+        # if projection_list:
+        #     projection_filter = projection_list[0]
+        #     projection_list = ProjectionList(
+        #         projection_list=[
+        #             projection for projection in solution_projection_list
+        #             if projection_filter < projection
+        #         ]
+        #     )
+        # else:
+        #     projection_list = solution_projection_list
 
         if self.with_clause:
             projection_list_step: ProjectionList = self.with_clause._evaluate(
-                fact_collection, query_output
+                fact_collection, projection_list
             )
-            projection_list_step.parent = query_output
-            query_output: ProjectionList = projection_list_step
+            projection_list_step.parent = projection_list
+            projection_list = projection_list_step
 
         if self.where_clause:
             where_clause_output: ProjectionList = self.where_clause._evaluate(
                 fact_collection,
-                query_output,
+                projection_list,
             )
-            where_clause_output.parent = query_output
-            query_output = where_clause_output
+            where_clause_output.parent = projection_list
+            projection_list = where_clause_output
 
-        return query_output
+        return projection_list
 
 
 class Return(TreeMixin):
@@ -2580,79 +2543,35 @@ class RelationshipChainList(TreeMixin):
 
     #     return relationship_assertions
 
+    # Not clear we need this now that Match is doing the evaluation
     def _evaluate(
         self,
         fact_collection: FactCollection,
-        projection: Projection = Projection(projection={}),
+        projection_list: ProjectionList = ProjectionList(projection_list=[]),
     ) -> ProjectionList:
-        # variable_substitutions: dict[str, list[str]] = (
-        #     get_variable_substitutions(fact_collection, self)
-        # )
-        projection_list: ProjectionList = fact_collection.sat_solver.solutions_to_projection_list(
+        '''Evaluate the RelationshipChainList against the FactCollection.'''
+        if len(projection_list) > 1:
+            raise NotImplementedError(
+                "RelationshipChainList._evaluate called with multiple incoming projections not supported yet."
+            )
+
+        solution_projection_list: ProjectionList = fact_collection.sat_solver.solutions_to_projection_list(
             ast=self,
         )
-        query_output: ProjectionList = projection_list
-        return query_output
-        # start_time: datetime.datetime.now()
-        # variable_substitution_dict: dict[int, tuple[str, str]] = (
-        #     self.get_variable_substitution_dict(fact_collection)
-        # )
-        # LOGGER.debug("Projection to disjunctions: %s", projection)
-        # instance_disjunctions: list[tuple[int, ...]] = list(
-        #     self.get_instance_disjunctions(
-        #         fact_collection, variable_substitution_dict
-        #     )
-        # )
-        # mutual_exclusions: list[tuple[int, int]] = self.get_mutual_exclusions(
-        #     fact_collection, instance_disjunctions
-        # )
-        # relationship_assertions: list[tuple[int, int]] = (
-        #     self.get_relationship_assertions(
-        #         fact_collection, variable_substitution_dict
-        #     )
-        # )
-        # assumptions: list[int] = []
-
-        # if projection:
-        #     for variable, instance in projection.projection.items():
-        #         projection_assumption_tuple: tuple[str, str] = tuple(
-        #             [
-        #                 variable,
-        #                 instance,
-        #             ]
-        #         )
-        #         for (
-        #             assertion,
-        #             assumption_tuple,
-        #         ) in variable_substitution_dict.items():
-        #             if projection_assumption_tuple == assumption_tuple:
-        #                 assumptions.append(assertion)
-
-        # # There are elements in the projection_list but nothing satisfies them:
-        # if projection and not assumptions:
-        #     return ProjectionList(projection_list=[])
-
-        # all_assertions: list[list[int, ...]] = (
-        #     [[i] for i in assumptions]
-        #     + instance_disjunctions
-        #     + mutual_exclusions
-        #     + relationship_assertions
-        # )
-
-        # solver: Glucose42 = Glucose42()
-        # for clause in all_assertions:
-        #     solver.add_clause(clause)
-        # projection_list: ProjectionList = ProjectionList(
-        #     projection_list=[
-        #         Projection(
-        #             projection=dict(
-        #                 [variable_substitution_dict[i] for i in model if i > 0]
-        #             )
-        #         )
-        #         for model in solver.enum_models()
-        #     ]
-        # )
-        # return projection_list
+        # Filter projection_list to only include projections that match the incoming projection_list
+        # This is rather inefficient -- better to filter them out at the boolean SAT solving stage
+        if projection_list:
+            projection_filter = projection_list[0]
+            projection_list = ProjectionList(
+                projection_list=[
+                    projection for projection in solution_projection_list
+                    if projection_filter < projection
+                ]
+            )
+        else:
+            projection_list = solution_projection_list
+        
+        return projection_list
 
     def free_variables(
         self, projection: Projection

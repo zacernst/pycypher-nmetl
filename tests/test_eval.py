@@ -179,7 +179,6 @@ def test_check_fact_against_trigger_with_aggregation_queue_processor_return_sub_
     out = check_fact_against_triggers_queue_processor.process_item_from_queue(
         kalamazoo,
     )
-    import pdb; pdb.set_trace()
     sub_trigger_pair: SubTriggerPair = out[0]
     assert isinstance(sub_trigger_pair, SubTriggerPair)
     assert isinstance(sub_trigger_pair.sub, dict)
@@ -1969,7 +1968,6 @@ def test_evaluate_relationship_chain_list_no_assumptions(
     relationship_chain_list: RelationshipChainList = match_clause.pattern
     out: ProjectionList = relationship_chain_list._evaluate(
         fact_collection=city_state_fact_collection,
-        projection=Projection(projection={}),
     )
     expected: ProjectionList = ProjectionList(
         projection_list=[
@@ -1992,15 +1990,14 @@ def test_evaluate_relationship_chain_list_assumption_1(
     )
     parsed: CypherParser = CypherParser(query)
     match_clause: Match = parsed.parse_tree.cypher.match_clause
-    relationship_chain_list: RelationshipChainList = match_clause.pattern
-    out: ProjectionList = relationship_chain_list._evaluate(
+    out: ProjectionList = match_clause.pattern._evaluate(
         fact_collection=city_state_fact_collection,
-        projection=Projection(projection={"c": "madison"}),
+        projection_list=ProjectionList(projection_list=[Projection(projection={"c": "madison"})]),
     )
     expected: ProjectionList = ProjectionList(
         projection_list=[
             Projection(projection={"c": "madison", "r": "r4", "s": "wisconsin"}),
-        ]
+        ],
     )
     assert out == expected
 
@@ -2015,17 +2012,16 @@ def test_evaluate_relationship_chain_list_assumption_2(
     )
     parsed: CypherParser = CypherParser(query)
     match_clause: Match = parsed.parse_tree.cypher.match_clause
-    relationship_chain_list: RelationshipChainList = match_clause.pattern
-    out: ProjectionList = relationship_chain_list._evaluate(
+    out: ProjectionList = match_clause._evaluate(
         fact_collection=city_state_fact_collection,
-        projection=Projection(projection={"s": "michigan"}),
+        projection_list=ProjectionList(projection_list=[Projection(projection={"s": "michigan"})]),
     )
     expected: ProjectionList = ProjectionList(
         projection_list=[
             Projection(projection={"c": "kalamazoo", "r": "r1", "s": "michigan"}),
             Projection(projection={"c": "detroit", "r": "r2", "s": "michigan"}),
             Projection(projection={"c": "south_haven", "r": "r3", "s": "michigan"}),
-        ]
+        ],
     )
     assert out == expected
 
@@ -2043,14 +2039,14 @@ def test_evaluate_relationship_chain_list_assumption_3(
     relationship_chain_list: RelationshipChainList = match_clause.pattern
     out: ProjectionList = relationship_chain_list._evaluate(
         fact_collection=city_state_fact_collection,
-        projection=Projection(projection={"r": "r2"}),
+        projection_list=ProjectionList(projection_list=[Projection(projection={"r": "r2"})]),
     )
     expected: ProjectionList = ProjectionList(
         projection_list=[
             Projection(projection={"c": "detroit", "r": "r2", "s": "michigan"}),
         ]
     )
-    assert out == expected
+    assert out == expected  # noqa: S101
 
 
 def test_identify_aggregated_aliases_in_with_clause() -> None:
