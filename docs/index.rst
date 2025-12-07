@@ -40,8 +40,34 @@ Other features of NMETL include:
 - **Iteration:** NMETL supports quick iteration in development. None of us are perfect, and no ETL project was ever done perfectly the first time. Because of its streaming design, you'll usually see examples of each computation almost immediately, even before any data sources have finished loading their raw data. This allows you to experiment with new ideas and iterate on your ETL process without having to wait for all your data to load or for previous computations to complete.
 - **Small blast radius:** We've all seen examples where a single row of a big table happens to have an error, which causes a job involving the entire table to fail. As a result, the entire table has to be reloaded from scratch, wasting valuable time. NMETL doesn't create such a wide blast radius. Errors regarding a single data point affect only that data point and other data points that depend on it, not the entire data source.
 
+Documentation Contents
+======================
+
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
+   :caption: Getting Started:
 
    nmetl_tutorial
+   quickref
+   examples
+
+.. toctree::
+   :maxdepth: 3
+   :caption: API Reference:
+
+   api/index
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Advanced Guides:
+
+   architecture
+   SAT_SOLVER_INTEGRATION
+   TEST_COVERAGE_CYPHER_QUERY_SOLVER
+
+Indices and tables
+==================
+
+* :ref:`genindex`
+* :ref:`modindex`
+* :ref:`search`
