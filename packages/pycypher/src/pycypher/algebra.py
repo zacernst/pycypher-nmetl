@@ -429,7 +429,7 @@ if __name__ == "__main__":
     )
 
     lives_in: Relationship = Relationship(
-        variable="r",
+        variable="livesin",
         label="LIVES_IN",
         source_node=person_node,
         target_node=city_node,
@@ -458,7 +458,7 @@ if __name__ == "__main__":
     )
     
     city_in_state: Relationship = Relationship(
-        variable="s",
+        variable="citystate",
         label="CITY_IN_STATE",
         source_node=city_node,
         target_node=state_node,
@@ -496,5 +496,8 @@ if __name__ == "__main__":
         },
     )
 
-    lives_in_alg: Algebraic = lives_in.to_algebra(context)
-    rich.print(lives_in_alg)
+    # lives_in_alg: Algebraic = lives_in.to_algebra(context)
+    # rich.print(lives_in_alg)
+
+    city_in_state_alg: Algebraic = city_in_state.to_algebra(context)
+    rich.print(city_in_state_alg)
