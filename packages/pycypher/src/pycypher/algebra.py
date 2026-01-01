@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from pydantic import field_validator, BaseModel
 from typing import Any, List, Optional
@@ -22,26 +23,23 @@ class JoinType(str, Enum):
     FULL = "FULL"
 
 
-class GraphObjectType:
+class GraphObjectType(BaseModel):
     pass
 
 
-class ConvertableToPandas(ABC):
+class Algebraic(BaseModel, ABC):
+    variables_to_columns: dict[str, str] = {}
+    column_name_to_hash: dict[str, str] = {}
+    hash_to_column_name: dict[str, str] = {}
+    variables_to_columns: dict[str, str] = {}
+
     @abstractmethod
     def to_pandas(self, context: Context) -> pd.DataFrame:
-        raise NotImplementedError(
-            "Classes declared as ConvertableToPandas must implement to_pandas method"
-        )
-
-
-class Algebraic(BaseModel):
-    pass
-
+        ...
+    
 
 class Table(Algebraic):
     identifier: str = ""
-    column_name_to_hash: dict[str, str] = {}
-    hash_to_column_name: dict[str, str] = {}
 
     @field_validator("identifier", mode="after")
     @classmethod
@@ -51,11 +49,10 @@ class Table(Algebraic):
         return v
 
 
-class EntityTable(Table, ConvertableToPandas):
+class EntityTable(Algebraic):
     entity_type: str
     attributes: List[str]
     entity_identifier_attribute: str
-    variables_to_columns: dict[str, str] = {}
 
     def __init__(self, **data: Any):
         super().__init__(**data)
@@ -72,7 +69,7 @@ class EntityTable(Table, ConvertableToPandas):
         return df
 
 
-class RelationshipTable(Table, ConvertableToPandas):
+class RelationshipTable(Table):
     relationship_type: str
     source_entity_type: str
     target_entity_type: str
@@ -80,7 +77,6 @@ class RelationshipTable(Table, ConvertableToPandas):
     relationship_identifier_attribute: Optional[str] = (
         None  # Maybe use later for rel attributes?
     )
-    variables_to_columns: dict[str, str] = {}
 
     def __init__(self, **data: Any) -> None:
         super().__init__(**data)
@@ -127,7 +123,7 @@ class HasAttributeValue(Boolean):
     value: str | int | float | bool | None
 
 
-class Node(BaseModel, GraphObjectType):
+class Node(GraphObjectType):
     variable: str
     label: str
     attributes: dict = {}
@@ -156,15 +152,15 @@ class Node(BaseModel, GraphObjectType):
         return f"({self.label}:{self.variable})"
 
 
-class DropColumn(Algebraic, ConvertableToPandas):
-    table: EntityTable | Join | DropColumn | SelectColumns
+class DropColumn(Algebraic):
+    table: Algebraic | EntityTable | Join | DropColumn | SelectColumns
     column_name: str
-    column_name_to_hash: dict[str, str] = {}
-    hash_to_column_name: dict[str, str] = {}
-    variables_to_columns: dict[str, str] = {}
+    execute: bool = True
 
     def to_pandas(self, context: Context) -> pd.DataFrame:
         df: pd.DataFrame = self.table.to_pandas(context)
+        if not self.execute:
+            return df
         if self.column_name in df.columns:
             df_dropped: pd.DataFrame = df.drop(columns=[self.column_name])
             return df_dropped
@@ -172,12 +168,9 @@ class DropColumn(Algebraic, ConvertableToPandas):
             return df
 
 
-class SelectColumns(Algebraic, ConvertableToPandas):
+class SelectColumns(Algebraic):
     table: EntityTable | Join | DropColumn | SelectColumns
     column_names: list[str]  # list of hashed column names
-    column_name_to_hash: dict[str, str] = {}
-    hash_to_column_name: dict[str, str] = {}
-    variables_to_columns: dict[str, str] = {}
 
     def to_pandas(self, context: Context) -> pd.DataFrame:
         df: pd.DataFrame = self.table.to_pandas(context)
@@ -188,17 +181,63 @@ class SelectColumns(Algebraic, ConvertableToPandas):
 class RelationshipConjunction(GraphObjectType):
     relationships: List[Relationship]
 
+    def _join_two_relationships(self, relationship_1_alg: Algebraic, relationship_2_alg: Algebraic) -> DropColumn:
+        # Identify the variables for relationship_1 and relationship_2
+        relationship_1_variables: set[str] = set(relationship_1_alg.variables_to_columns.keys())
+        relationship_2_variables: set[str] = set(relationship_2_alg.variables_to_columns.keys())
+        # Will join on the common_variables
+        common_variables: set[str] = relationship_1_variables & relationship_2_variables
+        if not common_variables:
+            raise ValueError("Nobody likes a Cartesian product!")
+        # Find the columns corresponding to the common variables in both relationships
+        left_join_combos: List[str] = []
+        right_join_combos: List[str] = []
+        for var in common_variables:
+            left_on: str = relationship_1_alg.variables_to_columns[var]
+            right_on: str = relationship_2_alg.variables_to_columns[var]
+            left_join_combos.append(left_on)
+            right_join_combos.append(right_on)
+        assert left_join_combos
+        assert right_join_combos
+        join: MultiJoin = MultiJoin(
+            left=relationship_1_alg,
+            right=relationship_2_alg,
+            left_on=left_join_combos,
+            right_on=right_join_combos,
+            join_type=JoinType.INNER,
+            variables_to_columns={**relationship_1_alg.variables_to_columns, **relationship_2_alg.variables_to_columns},
+            column_name_to_hash={**relationship_1_alg.column_name_to_hash, **relationship_2_alg.column_name_to_hash},
+            hash_to_column_name={**relationship_1_alg.hash_to_column_name, **relationship_2_alg.hash_to_column_name},
+        )
+        for duplicate_var in right_join_combos:
+            dropped: DropColumn = DropColumn(
+                table=join,
+                column_name=duplicate_var,
+                column_name_to_hash=join.column_name_to_hash,
+                hash_to_column_name=join.hash_to_column_name,
+                variables_to_columns=join.variables_to_columns,
+                execute=False,  # Skip the Drop!
+            )
+        return dropped  # pyrefly:ignore[unbound-name]
 
-class Join(Algebraic, ConvertableToPandas):
-    left: EntityTable | RelationshipTable | Filter | Join
-    right: EntityTable | RelationshipTable | Filter | Join
+    def to_algebra(self, context: Context) -> Algebraic:
+        assert len(self.relationships) >= 2, "Need at least two relationships to form a conjunction"
+        left_rel: Relationship = self.relationships[0]
+        left_obj: RenameColumn | DropColumn= left_rel.to_algebra(context)
+        for rel in self.relationships[1:]:
+            rel_alg: RenameColumn | DropColumn = rel.to_algebra(context)
+            conjoined: DropColumn = self._join_two_relationships(left_obj, rel_alg)
+            left_obj = conjoined
+        return conjoined  # pyrefly:ignore[unbound-name]
+
+
+class MultiJoin(Algebraic):
+    left: EntityTable | RelationshipTable | Filter | Join | Algebraic
+    right: EntityTable | RelationshipTable | Filter | Join | Algebraic
     join_type: JoinType = JoinType.INNER
-    left_on: str
-    right_on: str
+    left_on: List[str]
+    right_on: List[str]
     variable_list: List[str] = []
-    variables_to_columns: dict[str, str] = {}
-    column_name_to_hash: dict[str, str] = {}
-    hash_to_column_name: dict[str, str] = {}
 
     def to_pandas(self, context: Context) -> pd.DataFrame:
         left_df: pd.DataFrame = self.left.to_pandas(context)
@@ -217,12 +256,34 @@ class Join(Algebraic, ConvertableToPandas):
         return merged_df
 
 
-class Filter(Algebraic, ConvertableToPandas):
+class Join(Algebraic):
+    left: EntityTable | RelationshipTable | Filter | Join | Algebraic
+    right: EntityTable | RelationshipTable | Filter | Join | Algebraic
+    join_type: JoinType = JoinType.INNER
+    left_on: str
+    right_on: str
+    variable_list: List[str] = []
+
+    def to_pandas(self, context: Context) -> pd.DataFrame:
+        left_df: pd.DataFrame = self.left.to_pandas(context)
+        right_df: pd.DataFrame = self.right.to_pandas(context)
+        if self.join_type == JoinType.INNER:
+            merged_df: pd.DataFrame = pd.merge(
+                left_df,
+                right_df,
+                how="inner",
+                left_on=self.left_on,
+                right_on=self.right_on,
+                suffixes=("_left", "_right"),
+            )
+        else:
+            raise ValueError(f"Unsupported join type: {self.join_type}")
+        return merged_df
+
+
+class Filter(Algebraic):
     table: Join | Filter | DropColumn | EntityTable | RelationshipTable
     condition: HasAttributeValue
-    variables_to_columns: dict[str, str] = {}
-    column_name_to_hash: dict[str, str] = {}
-    hash_to_column_name: dict[str, str] = {}
 
     def to_pandas(self, context: Context) -> pd.DataFrame:
         df: pd.DataFrame = self.table.to_pandas(context)
@@ -241,7 +302,7 @@ class Filter(Algebraic, ConvertableToPandas):
         return filtered_df
 
 
-class Relationship(BaseModel, GraphObjectType):
+class Relationship(GraphObjectType):
     variable: str
     label: str
     attributes: Optional[dict] = None
@@ -273,9 +334,6 @@ class Relationship(BaseModel, GraphObjectType):
             column_name_to_hash=source_table.column_name_to_hash,
             hash_to_column_name=source_table.hash_to_column_name,
         )
-        import pdb
-
-        pdb.set_trace()
         left_join.variables_to_columns[self.variable] = (
             relationship_table.variables_to_columns[self.variable]
         )  # TODO
@@ -344,12 +402,10 @@ class Relationship(BaseModel, GraphObjectType):
         return f"({self.source_node.variable})-[:{self.label}]->({self.target_node.variable})"
 
 
-class RenameColumn(Algebraic, ConvertableToPandas):
+class RenameColumn(Algebraic):
     table: EntityTable | Join | DropColumn | SelectColumns
     old_column_name: str
     new_column_name: str
-    column_name_to_hash: dict[str, str] = {}
-    hash_to_column_name: dict[str, str] = {}
     variables_to_columns: dict[str, str] = {}
 
     def to_pandas(self, context: Context) -> pd.DataFrame:
@@ -358,6 +414,7 @@ class RenameColumn(Algebraic, ConvertableToPandas):
             columns={self.old_column_name: self.new_column_name}
         )
         return renamed_df
+
 
 
 if __name__ == "__main__":
@@ -435,7 +492,6 @@ if __name__ == "__main__":
         target_node=city_node,
     )
     
-    
 
     lives_in_df: pd.DataFrame = pd.DataFrame(
         data=[
@@ -501,3 +557,10 @@ if __name__ == "__main__":
 
     city_in_state_alg: Algebraic = city_in_state.to_algebra(context)
     rich.print(city_in_state_alg)
+
+    relationship_conjunction: RelationshipConjunction = RelationshipConjunction(
+        relationships=[lives_in, city_in_state]
+    )
+    conjunction_alg: Algebraic = relationship_conjunction.to_algebra(context)
+    rich.print(conjunction_alg)
+    
