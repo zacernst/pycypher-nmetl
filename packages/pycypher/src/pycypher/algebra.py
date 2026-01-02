@@ -1,3 +1,26 @@
+"""Relational algebra system for graph-based query processing.
+
+This module provides the algebraic foundation for translating graph patterns
+(nodes and relationships) into relational operations that can be executed on
+pandas DataFrames. It implements the core operators needed for graph query
+processing: joins, filters, projections, and column operations.
+
+The module uses column hashing to avoid naming conflicts during complex multi-way
+joins and maintains variable-to-column mappings to support Cypher-style variable
+binding across query patterns.
+
+Example:
+    >>> person_node = Node(variable="p", label="Person", attributes={"name": "Alice"})
+    >>> city_node = Node(variable="c", label="City", attributes={})
+    >>> lives_in = Relationship(
+    ...     variable="r",
+    ...     label="LIVES_IN",
+    ...     source_node=person_node,
+    ...     target_node=city_node
+    ... )
+    >>> algebra = lives_in.to_algebra(context)
+    >>> result_df = algebra.to_pandas(context)
+"""
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -11,12 +34,28 @@ import pandas as pd
 
 
 def random_hash() -> str:
+    """Generate a random hash string for column naming.
+    
+    Creates a unique identifier by hashing a random float. Used to generate
+    collision-resistant column names during algebraic operations.
+    
+    Returns:
+        str: A 32-character hexadecimal hash string.
+    """
     return hashlib.md5(
         bytes(str(random.random()), encoding="utf-8")
     ).hexdigest()
 
 
 class JoinType(str, Enum):
+    """Enumeration of supported SQL join types.
+    
+    Attributes:
+        INNER: Inner join - returns only matching rows from both tables.
+        LEFT: Left outer join - returns all rows from left table.
+        RIGHT: Right outer join - returns all rows from right table.
+        FULL: Full outer join - returns all rows from both tables.
+    """
     INNER = "INNER"
     LEFT = "LEFT"
     RIGHT = "RIGHT"
@@ -24,37 +63,93 @@ class JoinType(str, Enum):
 
 
 class GraphObjectType(BaseModel):
+    """Base class for graph-level objects (nodes and relationships).
+    
+    Serves as a marker class to distinguish graph objects from algebraic operators.
+    Graph objects can be converted to algebraic operations via `to_algebra()` methods.
+    """
     pass
 
 
 class Algebraic(BaseModel, ABC):
+    """Abstract base class for all relational algebra operators.
+    
+    All algebraic operators maintain mappings between variable names, column names,
+    and hashed column identifiers to support complex multi-way joins without naming
+    conflicts. These operators can be composed to build complex query plans.
+    
+    Attributes:
+        variables_to_columns: Maps Cypher variable names to hashed column names.
+        column_name_to_hash: Maps original column names to their hashed versions.
+        hash_to_column_name: Reverse mapping from hashed names to original names.
+    """
     variables_to_columns: dict[str, str] = {}
     column_name_to_hash: dict[str, str] = {}
     hash_to_column_name: dict[str, str] = {}
-    variables_to_columns: dict[str, str] = {}
 
     @abstractmethod
     def to_pandas(self, context: Context) -> pd.DataFrame:
+        """Convert this algebraic expression to a pandas DataFrame.
+        
+        Args:
+            context: The execution context containing entity and relationship data.
+            
+        Returns:
+            pd.DataFrame: The result of executing this algebraic operation.
+        """
         ...
     
 
 class Table(Algebraic):
+    """Base class for table representations.
+    
+    Provides a unique identifier for each table instance, automatically generating
+    a random hash if no identifier is provided.
+    
+    Attributes:
+        identifier: Unique identifier for this table instance.
+    """
     identifier: str = ""
 
     @field_validator("identifier", mode="after")
     @classmethod
     def set_identifier(cls, v: str) -> str:
+        """Generate a random identifier if none was provided.
+        
+        Args:
+            v: The identifier value (may be empty string).
+            
+        Returns:
+            str: The provided identifier or a newly generated hash.
+        """
         if v == "":
             return random_hash()
         return v
 
 
 class EntityTable(Algebraic):
+    """Represents a table of graph entities (nodes).
+    
+    EntityTable stores data about a particular type of node in the graph, along
+    with its attributes. It maintains column name mappings to support collision-free
+    joins with other tables.
+    
+    Attributes:
+        entity_type: The type/label of entities in this table (e.g., "Person").
+        attributes: List of attribute names for this entity type.
+        entity_identifier_attribute: The attribute that uniquely identifies entities.
+    """
     entity_type: str
     attributes: List[str]
     entity_identifier_attribute: str
 
     def __init__(self, **data: Any):
+        """Initialize the entity table and create column hash mappings.
+        
+        Args:
+            **data: Keyword arguments for entity_type, attributes, and
+                entity_identifier_attribute.
+        """
         super().__init__(**data)
         for attribute in self.attributes:
             column_hash: str = random_hash()
@@ -62,6 +157,14 @@ class EntityTable(Algebraic):
             self.hash_to_column_name[column_hash] = attribute
 
     def to_pandas(self, context: Context) -> pd.DataFrame:
+        """Convert this entity table to a pandas DataFrame with hashed column names.
+        
+        Args:
+            context: The execution context containing the actual entity data.
+            
+        Returns:
+            pd.DataFrame: The entity data with columns renamed to their hashed versions.
+        """
         df: pd.DataFrame = context.obj_map[self.entity_type].rename(
             mapper=self.column_name_to_hash,
             axis=1,
@@ -70,6 +173,18 @@ class EntityTable(Algebraic):
 
 
 class RelationshipTable(Table):
+    """Represents a table of graph relationships (edges).
+    
+    RelationshipTable stores data about connections between entities, including
+    the source and target entity types. Each relationship can have its own attributes.
+    
+    Attributes:
+        relationship_type: The type/label of this relationship (e.g., "LIVES_IN").
+        source_entity_type: The entity type at the source of the relationship.
+        target_entity_type: The entity type at the target of the relationship.
+        attributes: List of attribute names for this relationship type.
+        relationship_identifier_attribute: Optional unique identifier for relationships.
+    """
     relationship_type: str
     source_entity_type: str
     target_entity_type: str
@@ -79,6 +194,12 @@ class RelationshipTable(Table):
     )
 
     def __init__(self, **data: Any) -> None:
+        """Initialize the relationship table and create column hash mappings.
+        
+        Args:
+            **data: Keyword arguments for relationship_type, source_entity_type,
+                target_entity_type, and attributes.
+        """
         super().__init__(**data)
         for attribute in self.attributes:
             column_hash: str = random_hash()
@@ -86,16 +207,45 @@ class RelationshipTable(Table):
             self.hash_to_column_name[column_hash] = attribute
 
     def to_pandas(self, context: Context) -> pd.DataFrame:
+        """Convert this relationship table to a pandas DataFrame.
+        
+        Args:
+            context: The execution context containing the actual relationship data.
+            
+        Returns:
+            pd.DataFrame: The relationship data.
+        """
         df: pd.DataFrame = context.obj_map[self.relationship_type]
         return df
 
 
 class Context(BaseModel):
+    """Execution context for algebraic operations.
+    
+    Context maintains the schema information (entity and relationship tables) and
+    the actual data (as pandas DataFrames) needed to execute algebraic expressions.
+    
+    Attributes:
+        entity_tables: List of entity table schemas.
+        relationship_tables: List of relationship table schemas.
+        obj_map: Dictionary mapping entity/relationship types to their DataFrame data.
+    """
     entity_tables: List[EntityTable]
     relationship_tables: List[RelationshipTable]
     obj_map: dict[str, Any] = {}
 
     def get_entity_table(self, entity_type: str) -> EntityTable:
+        """Retrieve an entity table by type.
+        
+        Args:
+            entity_type: The type/label of the entity table to retrieve.
+            
+        Returns:
+            EntityTable: The matching entity table schema.
+            
+        Raises:
+            ValueError: If no entity table with the given type is found.
+        """
         for entity_table in self.entity_tables:
             if entity_table.entity_type == entity_type:
                 return entity_table
@@ -105,6 +255,17 @@ class Context(BaseModel):
     def get_relationship_table(
         self, relationship_type: str
     ) -> RelationshipTable:
+        """Retrieve a relationship table by type.
+        
+        Args:
+            relationship_type: The type/label of the relationship table to retrieve.
+            
+        Returns:
+            RelationshipTable: The matching relationship table schema.
+            
+        Raises:
+            ValueError: If no relationship table with the given type is found.
+        """
         for relationship_table in self.relationship_tables:
             if relationship_table.relationship_type == relationship_type:
                 return relationship_table
@@ -115,20 +276,58 @@ class Context(BaseModel):
 
 
 class Boolean(BaseModel):
+    """Base class for boolean conditions used in filters.
+    
+    Marker class for representing boolean predicates that can be evaluated
+    against rows in a DataFrame.
+    """
     pass
 
 
 class HasAttributeValue(Boolean):
+    """Condition that checks if an attribute has a specific value.
+    
+    Used in Filter operations to select rows where a particular attribute
+    matches the specified value.
+    
+    Attributes:
+        attribute: The name of the attribute to check.
+        value: The value to match against (can be string, number, boolean, or None).
+    """
     attribute: str
     value: str | int | float | bool | None
 
 
 class Node(GraphObjectType):
+    """Represents a node (vertex) in a graph pattern.
+    
+    Nodes have a label (entity type), a variable name for binding in queries,
+    and optionally a set of attribute constraints. When converted to algebra,
+    a node becomes an EntityTable optionally filtered by its attributes.
+    
+    Attributes:
+        variable: The variable name to bind this node to (e.g., "p" for person).
+        label: The entity type/label (e.g., "Person").
+        attributes: Dictionary of attribute name-value pairs for filtering.
+    """
     variable: str
     label: str
     attributes: dict = {}
 
     def to_algebra(self, context: Context) -> Filter | EntityTable:
+        """Convert this node to an algebraic expression.
+        
+        Creates an EntityTable for the node's label, then applies Filter operations
+        for each attribute constraint. The variable is mapped to the entity's
+        identifier column.
+        
+        Args:
+            context: The execution context containing entity table schemas.
+            
+        Returns:
+            Filter | EntityTable: An EntityTable if no attributes, otherwise a Filter
+                chain wrapping the EntityTable.
+        """
         entity_table: EntityTable = context.get_entity_table(self.label)
         entity_table.variables_to_columns[self.variable] = (
             entity_table.column_name_to_hash[
@@ -149,15 +348,40 @@ class Node(GraphObjectType):
         return out or entity_table
 
     def __str__(self) -> str:
+        """Return a Cypher-like string representation of this node.
+        
+        Returns:
+            str: Node representation in the format "(label:variable)".
+        """
         return f"({self.label}:{self.variable})"
 
 
 class DropColumn(Algebraic):
+    """Algebraic operation to remove a column from a table.
+    
+    Implements the relational projection operation that excludes a specific column.
+    The execute flag can be set to False to defer execution, which is useful when
+    building up complex query plans.
+    
+    Attributes:
+        table: The input table to drop a column from.
+        column_name: The name of the column to drop.
+        execute: Whether to actually execute the drop (default True).
+    """
     table: Algebraic | EntityTable | Join | DropColumn | SelectColumns
     column_name: str
     execute: bool = True
 
     def to_pandas(self, context: Context) -> pd.DataFrame:
+        """Execute the column drop operation.
+        
+        Args:
+            context: The execution context.
+            
+        Returns:
+            pd.DataFrame: The input DataFrame with the specified column removed,
+                or unchanged if execute=False or column doesn't exist.
+        """
         df: pd.DataFrame = self.table.to_pandas(context)
         if not self.execute:
             return df
@@ -169,19 +393,62 @@ class DropColumn(Algebraic):
 
 
 class SelectColumns(Algebraic):
+    """Algebraic operation to select specific columns from a table.
+    
+    Implements the relational projection operation that keeps only the specified
+    columns, discarding all others.
+    
+    Attributes:
+        table: The input table to select columns from.
+        column_names: List of (hashed) column names to keep.
+    """
     table: EntityTable | Join | DropColumn | SelectColumns
     column_names: list[str]  # list of hashed column names
 
     def to_pandas(self, context: Context) -> pd.DataFrame:
+        """Execute the column selection.
+        
+        Args:
+            context: The execution context.
+            
+        Returns:
+            pd.DataFrame: A DataFrame containing only the specified columns.
+        """
         df: pd.DataFrame = self.table.to_pandas(context)
         selected_df: pd.DataFrame = df[self.column_names]  # pyrefly:ignore[bad-assignment]
         return selected_df
 
 
 class RelationshipConjunction(GraphObjectType):
+    """Represents a conjunction of multiple relationships in a graph pattern.
+    
+    This class implements graph pattern matching by joining multiple relationship
+    traversals together. Relationships are joined on their common variables,
+    effectively representing connected paths through the graph.
+    
+    Attributes:
+        relationships: List of relationships to conjoin (must have >= 2 elements).
+    """
     relationships: List[Relationship]
 
     def _join_two_relationships(self, relationship_1_alg: Algebraic, relationship_2_alg: Algebraic) -> DropColumn:
+        """Join two relationship algebraic expressions on their common variables.
+        
+        Identifies variables that appear in both relationships and performs an
+        inner join on the corresponding columns. Drops duplicate columns from
+        the right table after the join.
+        
+        Args:
+            relationship_1_alg: The first relationship's algebraic expression.
+            relationship_2_alg: The second relationship's algebraic expression.
+            
+        Returns:
+            DropColumn: An algebraic expression representing the joined relationships.
+            
+        Raises:
+            ValueError: If the relationships have no common variables (would result
+                in a Cartesian product).
+        """
         # Identify the variables for relationship_1 and relationship_2
         relationship_1_variables: set[str] = set(relationship_1_alg.variables_to_columns.keys())
         relationship_2_variables: set[str] = set(relationship_2_alg.variables_to_columns.keys())
@@ -221,6 +488,20 @@ class RelationshipConjunction(GraphObjectType):
         return dropped  # pyrefly:ignore[unbound-name]
 
     def to_algebra(self, context: Context) -> Algebraic:
+        """Convert this relationship conjunction to an algebraic expression.
+        
+        Iteratively joins all relationships in the conjunction, starting with the
+        first two and progressively adding each subsequent relationship.
+        
+        Args:
+            context: The execution context containing table schemas.
+            
+        Returns:
+            Algebraic: An algebraic expression representing all joined relationships.
+            
+        Raises:
+            AssertionError: If fewer than 2 relationships are provided.
+        """
         assert len(self.relationships) >= 2, "Need at least two relationships to form a conjunction"
         left_rel: Relationship = self.relationships[0]
         left_obj: RenameColumn | DropColumn= left_rel.to_algebra(context)
@@ -232,6 +513,20 @@ class RelationshipConjunction(GraphObjectType):
 
 
 class MultiJoin(Algebraic):
+    """Multi-column join operation between two tables.
+    
+    Performs a join on multiple column pairs simultaneously. This is used when
+    joining relationships that share multiple variables, requiring all corresponding
+    columns to match.
+    
+    Attributes:
+        left: The left table in the join.
+        right: The right table in the join.
+        join_type: The type of join to perform (currently only INNER is implemented).
+        left_on: List of column names from the left table to join on.
+        right_on: List of column names from the right table to join on.
+        variable_list: Optional list of variables involved in this join.
+    """
     left: EntityTable | RelationshipTable | Filter | Join | Algebraic
     right: EntityTable | RelationshipTable | Filter | Join | Algebraic
     join_type: JoinType = JoinType.INNER
@@ -240,6 +535,17 @@ class MultiJoin(Algebraic):
     variable_list: List[str] = []
 
     def to_pandas(self, context: Context) -> pd.DataFrame:
+        """Execute the multi-column join.
+        
+        Args:
+            context: The execution context.
+            
+        Returns:
+            pd.DataFrame: The result of joining the two tables on multiple columns.
+            
+        Raises:
+            ValueError: If an unsupported join type is specified.
+        """
         left_df: pd.DataFrame = self.left.to_pandas(context)
         right_df: pd.DataFrame = self.right.to_pandas(context)
         if self.join_type == JoinType.INNER:
@@ -257,6 +563,19 @@ class MultiJoin(Algebraic):
 
 
 class Join(Algebraic):
+    """Single-column join operation between two tables.
+    
+    Performs a standard relational join on a single column pair. This is the
+    fundamental operation for combining entity and relationship tables.
+    
+    Attributes:
+        left: The left table in the join.
+        right: The right table in the join.
+        join_type: The type of join to perform (currently only INNER is implemented).
+        left_on: The column name from the left table to join on.
+        right_on: The column name from the right table to join on.
+        variable_list: Optional list of variables involved in this join.
+    """
     left: EntityTable | RelationshipTable | Filter | Join | Algebraic
     right: EntityTable | RelationshipTable | Filter | Join | Algebraic
     join_type: JoinType = JoinType.INNER
@@ -265,6 +584,17 @@ class Join(Algebraic):
     variable_list: List[str] = []
 
     def to_pandas(self, context: Context) -> pd.DataFrame:
+        """Execute the join operation.
+        
+        Args:
+            context: The execution context.
+            
+        Returns:
+            pd.DataFrame: The result of joining the two tables.
+            
+        Raises:
+            ValueError: If an unsupported join type is specified.
+        """
         left_df: pd.DataFrame = self.left.to_pandas(context)
         right_df: pd.DataFrame = self.right.to_pandas(context)
         if self.join_type == JoinType.INNER:
@@ -282,10 +612,30 @@ class Join(Algebraic):
 
 
 class Filter(Algebraic):
+    """Relational selection operation that filters rows based on a condition.
+    
+    Implements the relational selection operator (σ in relational algebra), which
+    selects only those rows that satisfy a given boolean condition.
+    
+    Attributes:
+        table: The table to filter.
+        condition: The boolean condition to evaluate for each row.
+    """
     table: Join | Filter | DropColumn | EntityTable | RelationshipTable
     condition: HasAttributeValue
 
     def to_pandas(self, context: Context) -> pd.DataFrame:
+        """Execute the filter operation.
+        
+        Args:
+            context: The execution context.
+            
+        Returns:
+            pd.DataFrame: A DataFrame containing only rows that satisfy the condition.
+            
+        Raises:
+            ValueError: If an unsupported condition type is provided.
+        """
         df: pd.DataFrame = self.table.to_pandas(context)
         match self.condition:
             case HasAttributeValue():
@@ -303,6 +653,19 @@ class Filter(Algebraic):
 
 
 class Relationship(GraphObjectType):
+    """Represents a directed relationship (edge) in a graph pattern.
+    
+    A relationship connects two nodes (source and target) and has a label indicating
+    the relationship type. When converted to algebra, it becomes a series of joins
+    between the source entity table, the relationship table, and the target entity table.
+    
+    Attributes:
+        variable: The variable name to bind this relationship to.
+        label: The relationship type/label (e.g., "LIVES_IN").
+        attributes: Optional dictionary of attribute constraints (not currently used).
+        source_node: The node at the source end of the relationship.
+        target_node: The node at the target end of the relationship.
+    """
     variable: str
     label: str
     attributes: Optional[dict] = None
@@ -310,6 +673,23 @@ class Relationship(GraphObjectType):
     target_node: Node
 
     def to_algebra(self, context: Context) -> RenameColumn:
+        """Convert this relationship to an algebraic expression.
+        
+        Creates a complex join pattern:
+        1. Converts source and target nodes to algebra (EntityTable or Filter)
+        2. Joins source node with relationship table on source_name
+        3. Joins result with target node on target_name
+        4. Drops the source_name and target_name columns
+        5. Selects only relevant columns
+        6. Renames relationship_id to a hashed column name
+        
+        Args:
+            context: The execution context containing table schemas.
+            
+        Returns:
+            RenameColumn: An algebraic expression representing the complete
+                relationship traversal.
+        """
         relationship_table: RelationshipTable = context.get_relationship_table(
             self.label
         )
@@ -399,16 +779,41 @@ class Relationship(GraphObjectType):
         return renamed
 
     def __str__(self) -> str:
+        """Return a Cypher-like string representation of this relationship.
+        
+        Returns:
+            str: Relationship representation in the format
+                "(source_var)-[:LABEL]->(target_var)".
+        """
         return f"({self.source_node.variable})-[:{self.label}]->({self.target_node.variable})"
 
 
 class RenameColumn(Algebraic):
+    """Algebraic operation to rename a column in a table.
+    
+    Changes the name of a column while preserving all data. This is used to
+    maintain consistent naming conventions and avoid conflicts in complex queries.
+    
+    Attributes:
+        table: The table containing the column to rename.
+        old_column_name: The current name of the column.
+        new_column_name: The new name for the column.
+        variables_to_columns: Mapping of variables to column names.
+    """
     table: EntityTable | Join | DropColumn | SelectColumns
     old_column_name: str
     new_column_name: str
     variables_to_columns: dict[str, str] = {}
 
     def to_pandas(self, context: Context) -> pd.DataFrame:
+        """Execute the column rename operation.
+        
+        Args:
+            context: The execution context.
+            
+        Returns:
+            pd.DataFrame: The DataFrame with the renamed column.
+        """
         df: pd.DataFrame = self.table.to_pandas(context)
         renamed_df: pd.DataFrame = df.rename(
             columns={self.old_column_name: self.new_column_name}
