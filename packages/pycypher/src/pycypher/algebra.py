@@ -275,7 +275,15 @@ class Context(BaseModel):
             )
 
 
-class Boolean(BaseModel):
+class Evaluable(Algebraic):
+    """Base class for evaluable expressions.
+    
+    Marker class for expressions that can be evaluated to produce a value.
+    """
+    pass
+
+
+class Boolean(Algebraic):
     """Base class for boolean conditions used in filters.
     
     Marker class for representing boolean predicates that can be evaluated
@@ -296,6 +304,150 @@ class HasAttributeValue(Boolean):
     """
     attribute: str
     value: str | int | float | bool | None
+
+
+class VariableAttributeValue(Evaluable):
+    """Expression that retrieves the value of an attribute for a given variable.
+    
+    Used to reference attribute values in expressions, such as in equality checks.
+    
+    Attributes:
+        variable: The variable name whose attribute is being accessed.
+        attribute: The name of the attribute to retrieve.
+    """
+    variable: str
+    attribute: str
+
+
+THE_TRUE: Boolean = Boolean()
+THE_FALSE: Boolean = Boolean()
+
+
+class PrimitiveValue(Evaluable):
+    """Expression that represents a primitive constant value.
+    
+    Used in expressions to represent literal values such as strings, numbers,
+    booleans, or None.
+    
+    Attributes:
+        value: The primitive value (string, number, boolean, or None).
+    """
+    value: str | int | float | bool | None
+
+
+class Float(PrimitiveValue):
+    """Expression that represents a floating-point constant value.
+    
+    Attributes:
+        value: The float value.
+    """
+    value: float
+
+
+class Integer(PrimitiveValue):
+    """Expression that represents an integer constant value.
+    
+    Attributes:
+        value: The integer value.
+    """
+    value: int
+
+
+class String(PrimitiveValue):
+    """Expression that represents a string constant value.
+    
+    Attributes:
+        value: The string value.
+    """
+    value: str
+
+
+class Conjunction(Boolean):
+    """Condition that represents a logical AND of multiple boolean conditions.
+    
+    Used in Filter operations to combine multiple predicates that must all be
+    satisfied for a row to be included.
+    
+    Attributes:
+        conditions: List of boolean conditions to combine.
+    """
+    left: Boolean
+    right: Boolean
+
+    def evaluate(self, context: Context) -> bool:
+        """Evaluate the conjunction of the left and right conditions.
+        
+        Returns:
+            bool: True if both conditions are True, False otherwise.
+        """
+        return self.left.evaluate() and self.right.evaluate()
+
+
+class Disjunction(Boolean):
+    """Condition that represents a logical OR of multiple boolean conditions.
+    
+    Used in Filter operations to combine multiple predicates where at least one
+    must be satisfied for a row to be included.
+    
+    Attributes:
+        conditions: List of boolean conditions to combine.
+    """
+    left: Boolean
+    right: Boolean
+
+
+class Negation(Boolean):
+    """Condition that represents the logical NOT of a boolean condition.
+    
+    Used in Filter operations to invert a predicate, selecting rows that do not
+    satisfy the given condition.
+    
+    Attributes:
+        condition: The boolean condition to negate.
+    """
+    condition: Boolean
+
+
+class IsEqual(Boolean):
+    """Condition that checks if two attributes are equal.
+    
+    Used in Filter operations to select rows where the values of two attributes
+    are equal.
+    
+    Attributes:
+        attribute_1: The name of the first attribute.
+        attribute_2: The name of the second attribute.
+    """
+    left: Evaluable
+    right: Evaluable
+
+
+class IsGreaterThan(Boolean):
+    """Condition that checks if one attribute is greater than another.
+    
+    Used in Filter operations to select rows where the value of one attribute
+    exceeds that of another.
+    
+    Attributes:
+        attribute_1: The name of the first attribute.
+        attribute_2: The name of the second attribute.
+    """
+    left: Evaluable
+    right: Evaluable
+
+
+class IsLessThan(Boolean):
+    """Condition that checks if one attribute is less than another.
+    
+    Used in Filter operations to select rows where the value of one attribute
+    is less than that of another.
+    
+    Attributes:
+        attribute_1: The name of the first attribute.
+        attribute_2: The name of the second attribute.
+    """
+    left: Evaluable
+    right: Evaluable
 
 
 class Node(GraphObjectType):
