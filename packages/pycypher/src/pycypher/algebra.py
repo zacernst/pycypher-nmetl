@@ -31,6 +31,8 @@ import random
 import hashlib
 import rich
 import pandas as pd
+import ibis
+from ibis.expr.types import Table as IbisTable
 
 
 def random_hash() -> str:
@@ -96,6 +98,18 @@ class Algebraic(BaseModel, ABC):
             
         Returns:
             pd.DataFrame: The result of executing this algebraic operation.
+        """
+        ...
+
+    @abstractmethod
+    def to_ibis(self, context: Context) -> IbisTable:
+        """Convert this algebraic expression to an Ibis table.
+        
+        Args:
+            context: The execution context containing entity and relationship data.
+            
+        Returns:
+            IbisTable: The result of executing this algebraic operation as an Ibis table.
         """
         ...
     
@@ -171,6 +185,22 @@ class EntityTable(Algebraic):
         )
         return df
 
+    def to_ibis(self, context: Context) -> IbisTable:
+        """Convert this entity table to an Ibis table with hashed column names.
+        
+        Args:
+            context: The execution context containing the actual entity data.
+            
+        Returns:
+            IbisTable: The entity data with columns renamed to their hashed versions.
+        """
+        # Convert pandas DataFrame to Ibis table
+        table: IbisTable = ibis.memtable(context.obj_map[self.entity_type])
+        # Rename columns according to the hash mapping
+        for old_name, new_name in self.column_name_to_hash.items():
+            table = table.rename({new_name: old_name})
+        return table
+
 
 class RelationshipTable(Table):
     """Represents a table of graph relationships (edges).
@@ -217,6 +247,18 @@ class RelationshipTable(Table):
         """
         df: pd.DataFrame = context.obj_map[self.relationship_type]
         return df
+
+    def to_ibis(self, context: Context) -> IbisTable:
+        """Convert this relationship table to an Ibis table.
+        
+        Args:
+            context: The execution context containing the actual relationship data.
+            
+        Returns:
+            IbisTable: The relationship data as an Ibis table.
+        """
+        table: IbisTable = ibis.memtable(context.obj_map[self.relationship_type])
+        return table
 
 
 class Context(BaseModel):
@@ -289,7 +331,22 @@ class Boolean(Algebraic):
     Marker class for representing boolean predicates that can be evaluated
     against rows in a DataFrame.
     """
-    pass
+    
+    def to_pandas(self, context: Context) -> pd.DataFrame:
+        """Boolean conditions do not directly convert to DataFrames.
+        
+        Raises:
+            NotImplementedError: Always, since boolean conditions are not tables.
+        """
+        raise NotImplementedError("Boolean conditions cannot be converted to DataFrames")
+
+    def to_ibis(self, context: Context) -> IbisTable:
+        """Boolean conditions do not directly convert to Ibis tables.
+        
+        Raises:
+            NotImplementedError: Always, since boolean conditions are not tables.
+        """
+        raise NotImplementedError("Boolean conditions cannot be converted to Ibis tables")
 
 
 class HasAttributeValue(Boolean):
@@ -543,6 +600,25 @@ class DropColumn(Algebraic):
         else:
             return df
 
+    def to_ibis(self, context: Context) -> IbisTable:
+        """Execute the column drop operation on an Ibis table.
+        
+        Args:
+            context: The execution context.
+            
+        Returns:
+            IbisTable: The input table with the specified column removed,
+                or unchanged if execute=False or column doesn't exist.
+        """
+        table: IbisTable = self.table.to_ibis(context)
+        if not self.execute:
+            return table
+        if self.column_name in table.columns:
+            table_dropped: IbisTable = table.drop(self.column_name)
+            return table_dropped
+        else:
+            return table
+
 
 class SelectColumns(Algebraic):
     """Algebraic operation to select specific columns from a table.
@@ -569,6 +645,19 @@ class SelectColumns(Algebraic):
         df: pd.DataFrame = self.table.to_pandas(context)
         selected_df: pd.DataFrame = df[self.column_names]  # pyrefly:ignore[bad-assignment]
         return selected_df
+
+    def to_ibis(self, context: Context) -> IbisTable:
+        """Execute the column selection on an Ibis table.
+        
+        Args:
+            context: The execution context.
+            
+        Returns:
+            IbisTable: An Ibis table containing only the specified columns.
+        """
+        table: IbisTable = self.table.to_ibis(context)
+        selected_table: IbisTable = table.select(self.column_names)
+        return selected_table
 
 
 class RelationshipConjunction(GraphObjectType):
@@ -713,6 +802,39 @@ class MultiJoin(Algebraic):
             raise ValueError(f"Unsupported join type: {self.join_type}")
         return merged_df
 
+    def to_ibis(self, context: Context) -> IbisTable:
+        """Execute the multi-column join on Ibis tables.
+        
+        Args:
+            context: The execution context.
+            
+        Returns:
+            IbisTable: The result of joining the two tables on multiple columns.
+            
+        Raises:
+            ValueError: If an unsupported join type is specified.
+        """
+        left_table: IbisTable = self.left.to_ibis(context)
+        right_table: IbisTable = self.right.to_ibis(context)
+        if self.join_type == JoinType.INNER:
+            # Build join predicates for multiple columns
+            predicates = [
+                left_table[left_col] == right_table[right_col]
+                for left_col, right_col in zip(self.left_on, self.right_on)
+            ]
+            # Combine predicates with AND
+            combined_predicate = predicates[0]
+            for pred in predicates[1:]:
+                combined_predicate = combined_predicate & pred
+            merged_table: IbisTable = left_table.join(
+                right_table,
+                combined_predicate,
+                how="inner"
+            )
+        else:
+            raise ValueError(f"Unsupported join type: {self.join_type}")
+        return merged_table
+
 
 class Join(Algebraic):
     """Single-column join operation between two tables.
@@ -762,6 +884,30 @@ class Join(Algebraic):
             raise ValueError(f"Unsupported join type: {self.join_type}")
         return merged_df
 
+    def to_ibis(self, context: Context) -> IbisTable:
+        """Execute the join operation on Ibis tables.
+        
+        Args:
+            context: The execution context.
+            
+        Returns:
+            IbisTable: The result of joining the two tables.
+            
+        Raises:
+            ValueError: If an unsupported join type is specified.
+        """
+        left_table: IbisTable = self.left.to_ibis(context)
+        right_table: IbisTable = self.right.to_ibis(context)
+        if self.join_type == JoinType.INNER:
+            merged_table: IbisTable = left_table.join(
+                right_table,
+                left_table[self.left_on] == right_table[self.right_on],
+                how="inner"
+            )
+        else:
+            raise ValueError(f"Unsupported join type: {self.join_type}")
+        return merged_table
+
 
 class Filter(Algebraic):
     """Relational selection operation that filters rows based on a condition.
@@ -802,6 +948,33 @@ class Filter(Algebraic):
                     f"Unsupported condition type: {type(self.condition)}"
                 )
         return filtered_df
+
+    def to_ibis(self, context: Context) -> IbisTable:
+        """Execute the filter operation on an Ibis table.
+        
+        Args:
+            context: The execution context.
+            
+        Returns:
+            IbisTable: An Ibis table containing only rows that satisfy the condition.
+            
+        Raises:
+            ValueError: If an unsupported condition type is provided.
+        """
+        table: IbisTable = self.table.to_ibis(context)
+        match self.condition:
+            case HasAttributeValue():
+                column_name: str = self.table.column_name_to_hash[
+                    self.condition.attribute
+                ]
+                filtered_table: IbisTable = table.filter(
+                    table[column_name] == self.condition.value
+                )
+            case _:
+                raise ValueError(
+                    f"Unsupported condition type: {type(self.condition)}"
+                )
+        return filtered_table
 
 
 class Relationship(GraphObjectType):
@@ -971,6 +1144,21 @@ class RenameColumn(Algebraic):
             columns={self.old_column_name: self.new_column_name}
         )
         return renamed_df
+
+    def to_ibis(self, context: Context) -> IbisTable:
+        """Execute the column rename operation on an Ibis table.
+        
+        Args:
+            context: The execution context.
+            
+        Returns:
+            IbisTable: The Ibis table with the renamed column.
+        """
+        table: IbisTable = self.table.to_ibis(context)
+        renamed_table: IbisTable = table.rename(
+            {self.new_column_name: self.old_column_name}
+        )
+        return renamed_table
 
 
 
