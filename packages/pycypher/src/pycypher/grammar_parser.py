@@ -604,6 +604,10 @@ class CypherASTTransformer(Transformer):
                     prefix_clauses.append(arg)
                     
         return {"type": "UpdateStatement", "prefix": prefix_clauses, "updates": update_clauses, "return": return_clause}
+    
+    def update_clause(self, args):
+        """Pass through the update clause (create/merge/delete/set/remove)."""
+        return args[0] if args else None
 
     def statement(self, args):
         return args[0] if args else None
@@ -802,6 +806,9 @@ class CypherASTTransformer(Transformer):
                     limit = arg
                 elif body is None:
                     body = arg
+            elif isinstance(arg, list) and body is None:
+                # return_body returns a list of items
+                body = {"type": "ReturnBody", "items": arg}
             elif arg == "*":
                 body = "*"
         
@@ -898,7 +905,16 @@ class CypherASTTransformer(Transformer):
         filler = {}
         for arg in args:
             if isinstance(arg, dict):
-                filler.update(arg)
+                # Check if this is a labels or where dict (has known keys)
+                if 'labels' in arg or 'where' in arg:
+                    filler.update(arg)
+                # Check if this is a properties object (no special keys)
+                elif 'type' not in arg and arg:
+                    # This is a properties dict - store it as 'properties'
+                    filler["properties"] = arg
+                else:
+                    # Other structured objects
+                    filler.update(arg)
             elif isinstance(arg, str) and "variable" not in filler:
                 filler["variable"] = arg
         return filler
