@@ -2342,6 +2342,35 @@ class CypherASTTransformer(Transformer):
         return {"type": "Unary", "operator": sign, "operand": operand}
 
     def postfix_expression(self, args):
+        """Transform postfix expressions (property access, indexing, slicing).
+        
+        Postfix operators apply after an expression and associate left-to-right,
+        building a chain of access operations. Examples:
+        - Property access: person.name
+        - Index access: list[0]
+        - Slicing: list[1..3]
+        - Chained: person.addresses[0].city
+        
+        This method iteratively applies postfix operations to build a left-associative
+        tree. Each operation uses the previous result as its base object. This
+        structure is necessary for:
+        1. Type checking - verifying each intermediate result supports the next operation
+        2. Execution planning - determining optimal access paths
+        3. Null safety - detecting where null pointer exceptions could occur
+        
+        The transformation converts intermediate PropertyLookup/IndexLookup/Slicing
+        nodes into final PropertyAccess/IndexAccess/Slice nodes that include both
+        the object being accessed and the accessor (property name, index, or range).
+        
+        Single operands without postfix operations pass through unchanged.
+        
+        Args:
+            args: [atom_expression, postfix_op1, postfix_op2, ...].
+        
+        Returns:
+            Single atom unchanged, or nested access nodes (PropertyAccess, IndexAccess,
+            Slice) forming a left-to-right chain of operations.
+        """
         if len(args) == 1:
             return args[0]
         result = args[0]
@@ -2355,15 +2384,109 @@ class CypherASTTransformer(Transformer):
         return result
 
     def postfix_op(self, args):
+        """Pass through postfix operator nodes without modification.
+        
+        The grammar defines postfix_op as a union of property_lookup, index_lookup,
+        and slicing. This method acts as a simple pass-through to avoid adding
+        unnecessary wrapper nodes in the AST.
+        
+        Pass-through is necessary because the actual semantic transformation happens
+        in postfix_expression, which combines the operator with its target object.
+        This separation of parsing (recognizing the operator) from transformation
+        (building the access node) keeps the grammar clean and the AST well-structured.
+        
+        Args:
+            args: Single postfix operation node (PropertyLookup, IndexLookup, or Slicing).
+        
+        Returns:
+            The postfix operation unchanged.
+        """
         return args[0] if args else None
 
     def property_lookup(self, args):
+        """Transform property lookup syntax (.property_name) into intermediate node.
+        
+        Property lookup accesses a named property on a node, relationship, or map.
+        Example: person.name, edge.weight, config.timeout
+        
+        This method creates an intermediate PropertyLookup node containing just the
+        property name. The actual PropertyAccess node (which includes the object
+        being accessed) is created by postfix_expression when it combines this with
+        the target object.
+        
+        This two-step transformation is necessary because:
+        1. The grammar parses .name separately from the object
+        2. Multiple property accesses can chain: obj.prop1.prop2
+        3. postfix_expression needs to build the chain left-to-right
+        
+        The property name comes from the property_name rule, which has already
+        stripped backticks and normalized the identifier.
+        
+        Args:
+            args: Property name string from property_name rule.
+        
+        Returns:
+            Dict with type "PropertyLookup" and the property name.
+        """
         return {"type": "PropertyLookup", "property": args[0] if args else None}
 
     def index_lookup(self, args):
+        """Transform index lookup syntax ([index]) into intermediate node.
+        
+        Index lookup accesses an element by position in a list or by key in a map.
+        Examples: list[0], map['key'], items[i+1]
+        
+        The index expression is evaluated at runtime and can be:
+        - Integer for list access (0-based indexing)
+        - String for map key access
+        - Any expression that evaluates to an appropriate index type
+        
+        This method creates an intermediate IndexLookup node containing just the
+        index expression. The actual IndexAccess node (which includes the collection
+        being indexed) is created by postfix_expression when combining with the target.
+        
+        The two-step approach is necessary for the same reasons as property_lookup:
+        enabling chained access operations and left-to-right evaluation.
+        
+        Negative indices and out-of-bounds access are runtime errors that cannot
+        be detected during parsing, so validation is deferred to execution time.
+        
+        Args:
+            args: Index expression that evaluates to the position/key.
+        
+        Returns:
+            Dict with type "IndexLookup" and the index expression.
+        """
         return {"type": "IndexLookup", "index": args[0] if args else None}
 
     def slicing(self, args):
+        """Transform list slicing syntax ([from..to]) into intermediate node.
+        
+        Slicing extracts a sub-list from a list using range notation. Examples:
+        - list[1..3] - elements at indices 1 and 2 (end exclusive)
+        - list[..5] - first 5 elements (indices 0-4)
+        - list[2..] - from index 2 to end
+        - list[..] - entire list (copy)
+        
+        Both from and to expressions are optional. When omitted:
+        - Missing from defaults to start of list (0)
+        - Missing to defaults to end of list
+        - Both missing creates a copy of the entire list
+        
+        This method creates an intermediate Slicing node with the range bounds.
+        The actual Slice node (including the list being sliced) is created by
+        postfix_expression. This separation is necessary for supporting chained
+        operations like list[1..3][0] (get first element of a slice).
+        
+        Negative indices, reverse ranges, and out-of-bounds handling are runtime
+        behaviors that vary by implementation and cannot be validated during parsing.
+        
+        Args:
+            args: [from_expr, to_expr] where either can be None for open ranges.
+        
+        Returns:
+            Dict with type "Slicing" containing from and to range expressions (may be None).
+        """
         from_expr = args[0] if args and args[0] is not None else None
         to_expr = args[1] if len(args) > 1 and args[1] is not None else None
         return {"type": "Slicing", "from": from_expr, "to": to_expr}
@@ -2373,6 +2496,28 @@ class CypherASTTransformer(Transformer):
     # ========================================================================
     
     def count_star(self, args):
+        """Transform COUNT(*) aggregate function into a special AST node.
+        
+        COUNT(*) counts all rows/matches, including duplicates and null values.
+        This is different from COUNT(expression) which excludes nulls. The special
+        handling is necessary because * is not a regular expression - it's a syntactic
+        marker meaning "count everything."
+        
+        This method creates a dedicated CountStar node rather than treating it as
+        a regular function invocation. This distinction is important for:
+        1. Query optimization - COUNT(*) can often be computed more efficiently
+        2. Type checking - CountStar always returns an integer, no expression to validate
+        3. Execution planning - Some databases have optimized COUNT(*) implementations
+        
+        COUNT(*) is typically used in aggregate queries with GROUP BY or as a simple
+        row count: MATCH (n:Person) RETURN COUNT(*)
+        
+        Args:
+            args: Not used (COUNT(*) has no arguments, * is syntactic).
+        
+        Returns:
+            Dict with type "CountStar" indicating a count-all operation.
+        """
         return {"type": "CountStar"}
 
     # ========================================================================
@@ -2380,10 +2525,57 @@ class CypherASTTransformer(Transformer):
     # ========================================================================
     
     def exists_expression(self, args):
+        """Transform EXISTS { ... } subquery expression.
+        
+        EXISTS evaluates to true if the subquery returns any results, false otherwise.
+        This is essential for pattern existence checks without needing to collect
+        actual matched data. Example:
+        
+        MATCH (person:Person)
+        WHERE EXISTS { MATCH (person)-[:KNOWS]->(friend) }
+        RETURN person
+        
+        The subquery can contain:
+        - Pattern matching: EXISTS { (a)-[:KNOWS]->(b) }
+        - Full queries: EXISTS { MATCH (n) WHERE n.age > 30 RETURN n }
+        
+        EXISTS is necessary for efficient existence checks because:
+        1. It short-circuits on first match (doesn't need to find all results)
+        2. It doesn't materialize data (no memory overhead for large result sets)
+        3. It can use specialized indexes for existence tests
+        
+        This is analogous to SQL's EXISTS (SELECT ...) but uses Cypher pattern syntax.
+        
+        Args:
+            args: Single exists_content node containing the subquery specification.
+        
+        Returns:
+            Dict with type "Exists" containing the subquery content.
+        """
         content = args[0] if args else None
         return {"type": "Exists", "content": content}
 
     def exists_content(self, args):
+        """Extract the content of an EXISTS subquery.
+        
+        EXISTS content can be either:
+        1. A simple pattern with optional WHERE clause (implicit match)
+        2. A full query with MATCH/UNWIND/WITH clauses and optional RETURN
+        
+        This method passes through the parsed content without modification, as the
+        structure has already been built by the appropriate clause transformers.
+        Pass-through is necessary to avoid double-wrapping the subquery.
+        
+        The grammar allows both forms to provide flexibility:
+        - Simple: EXISTS { (a)-[:KNOWS]->(b) WHERE b.age > 30 }
+        - Full: EXISTS { MATCH (a)-[:KNOWS]->(b) WHERE b.age > 30 RETURN b }
+        
+        Args:
+            args: Parsed subquery content (pattern or query clauses).
+        
+        Returns:
+            The subquery content unchanged.
+        """
         return args[0] if args else None
 
     # ========================================================================
@@ -2391,27 +2583,160 @@ class CypherASTTransformer(Transformer):
     # ========================================================================
     
     def function_invocation(self, args):
+        """Transform function invocation (built-in or user-defined functions).
+        
+        Functions are called with parentheses syntax: function_name(arg1, arg2, ...).
+        Functions can be:
+        - Built-in: count(), sum(), avg(), min(), max(), collect(), etc.
+        - User-defined: custom functions registered in the database
+        - Namespaced: db.labels(), apoc.create.node(), etc.
+        
+        This method creates a FunctionInvocation node containing:
+        1. Function name (may include namespace for qualified names)
+        2. Arguments (list of expressions, may include DISTINCT flag)
+        
+        The separation of name and arguments is necessary for:
+        - Function resolution (finding the right function implementation)
+        - Type checking (validating argument types match function signature)
+        - Query optimization (some functions can be pre-computed or optimized)
+        
+        The "unknown" default for missing names handles edge cases in malformed queries
+        and provides a fallback for error reporting.
+        
+        Args:
+            args: [function_name, function_args] where args may be None for no arguments.
+        
+        Returns:
+            Dict with type "FunctionInvocation" containing name and arguments.
+        """
         name = args[0] if args else "unknown"
         func_args = args[1] if len(args) > 1 else None
         return {"type": "FunctionInvocation", "name": name, "arguments": func_args}
 
     def function_args(self, args):
+        """Transform function arguments with optional DISTINCT modifier.
+        
+        Function arguments can have a DISTINCT modifier for aggregation functions:
+        - COUNT(DISTINCT n.name) - counts unique values only
+        - COLLECT(DISTINCT n.label) - collects unique values into a list
+        
+        The DISTINCT modifier is only meaningful for certain aggregate functions
+        (COUNT, COLLECT, SUM, AVG), but the parser allows it on any function.
+        Semantic validation of appropriate DISTINCT usage happens during type checking.
+        
+        This method extracts:
+        1. distinct flag - whether DISTINCT keyword is present
+        2. arguments list - the actual expression arguments
+        
+        Separating these components is necessary because the execution behavior
+        differs significantly: DISTINCT requires deduplication logic which affects
+        performance and memory usage.
+        
+        Args:
+            args: Mix of "DISTINCT" keyword string and function_arg_list.
+        
+        Returns:
+            Dict with "distinct" boolean flag and "arguments" list.
+        """
         distinct = any(str(a).upper() == "DISTINCT" for a in args if isinstance(a, str))
         arg_list = next((a for a in args if isinstance(a, list)), [])
         return {"distinct": distinct, "arguments": arg_list}
 
     def function_arg_list(self, args):
+        """Transform comma-separated function argument expressions into a list.
+        
+        Function arguments are arbitrary expressions that can include:
+        - Literals: sum(1, 2, 3)
+        - Variables: max(n.age, m.age)
+        - Nested function calls: round(avg(n.score), 2)
+        - Complex expressions: count(n.x + n.y * 2)
+        
+        Converting to a list is necessary for:
+        1. Consistent iteration during execution
+        2. Arity checking (validating correct number of arguments)
+        3. Type checking each argument against function signature
+        
+        Empty argument lists are represented as [] rather than None, which simplifies
+        downstream code that needs to iterate over arguments (no null checks needed).
+        
+        Args:
+            args: Individual expression nodes for each argument.
+        
+        Returns:
+            List of argument expressions (empty list if no arguments).
+        """
         return list(args)
 
     def function_name(self, args):
+        """Transform function name with optional namespace qualification.
+        
+        Function names can be simple (sum, count) or namespaced (db.labels, apoc.create.node).
+        Namespaces organize functions into logical groups and prevent naming conflicts:
+        - db.* - database introspection functions
+        - apoc.* - APOC procedure library (third-party)
+        - custom.* - user-defined namespaces
+        
+        This method returns:
+        - Simple string for unqualified names: "count"
+        - Dict with namespace and name for qualified names: {namespace: "db", name: "labels"}
+        
+        The distinction is necessary for:
+        1. Function resolution - different namespaces may have same function name
+        2. Permission checking - namespaced functions may have different access controls
+        3. Error reporting - qualified names provide better context in error messages
+        
+        The "unknown" fallback handles malformed queries gracefully.
+        
+        Args:
+            args: [namespace_name, simple_name] or just [simple_name].
+        
+        Returns:
+            Simple name string, or dict with namespace and name for qualified functions.
+        """
         namespace = args[0] if len(args) > 1 else None
         simple_name = args[-1] if args else "unknown"
         return {"namespace": namespace, "name": simple_name} if namespace else simple_name
 
     def namespace_name(self, args):
+        """Transform namespace path into a dot-separated string.
+        
+        Namespaces can be multi-level: db.schema.nodeTypeProperties
+        The grammar parses these as multiple identifiers separated by dots.
+        This method joins them with dots and strips backticks from each part.
+        
+        Joining is necessary to create a canonical namespace string for function
+        lookup. Stripping backticks normalizes identifiers (backticks allow special
+        characters but aren't part of the actual name).
+        
+        Example: `my-custom`.`my-function` becomes "my-custom.my-function"
+        
+        Args:
+            args: List of identifier tokens forming the namespace path.
+        
+        Returns:
+            Dot-separated namespace string with backticks removed.
+        """
         return ".".join(str(a).strip('`') for a in args)
 
     def function_simple_name(self, args):
+        """Extract the unqualified function name identifier.
+        
+        The simple name is the final component of a potentially namespaced function.
+        For example, in db.labels(), "labels" is the simple name.
+        
+        Stripping backticks is necessary to normalize identifier representation.
+        Backticks allow identifiers with special characters or reserved words,
+        but the backticks themselves are not part of the semantic name.
+        
+        Converting to string handles both Token objects from the parser and any
+        other string-like representations.
+        
+        Args:
+            args: Single identifier token for the function name.
+        
+        Returns:
+            Function name as a string with backticks removed.
+        """
         return str(args[0]).strip('`')
 
     # ========================================================================
@@ -2419,33 +2744,209 @@ class CypherASTTransformer(Transformer):
     # ========================================================================
     
     def case_expression(self, args):
+        """Transform CASE expression (simple or searched form).
+        
+        CASE expressions provide conditional logic similar to if-then-else or switch
+        statements. There are two forms:
+        
+        1. Simple CASE - compares one expression against multiple values:
+           CASE n.status WHEN 'active' THEN 1 WHEN 'pending' THEN 0 ELSE -1 END
+        
+        2. Searched CASE - evaluates multiple boolean conditions:
+           CASE WHEN n.age < 18 THEN 'minor' WHEN n.age < 65 THEN 'adult' ELSE 'senior' END
+        
+        This method acts as a pass-through because the grammar has already dispatched
+        to the appropriate specific handler (simple_case or searched_case). Pass-through
+        is necessary to avoid adding unnecessary wrapper nodes in the AST.
+        
+        CASE expressions are essential for data transformation and conditional logic
+        within queries, enabling computed columns and complex filtering.
+        
+        Args:
+            args: Single node (SimpleCase or SearchedCase) from the specific rule.
+        
+        Returns:
+            The SimpleCase or SearchedCase node unchanged.
+        """
         return args[0] if args else None
 
     def simple_case(self, args):
+        """Transform simple CASE expression that matches an operand against values.
+        
+        Simple CASE syntax: CASE expression WHEN value1 THEN result1 [WHEN ...] [ELSE default] END
+        
+        The operand expression is evaluated once, then compared against each WHEN value
+        sequentially until a match is found. The corresponding THEN result is returned.
+        If no WHEN matches, the ELSE value is returned (or NULL if no ELSE clause).
+        
+        This is analogous to a switch statement in programming languages. It's more
+        concise than searched CASE when you're comparing one expression against
+        multiple constant values.
+        
+        The structure separates:
+        - operand: the expression being compared (evaluated once)
+        - when clauses: list of value-result pairs (evaluated sequentially)
+        - else clause: default result if no matches (optional)
+        
+        This separation is necessary for:
+        1. Optimized execution (operand evaluated only once)
+        2. Type checking (all WHEN values must be comparable to operand)
+        3. Short-circuit evaluation (stop at first match)
+        
+        Args:
+            args: [operand_expression, when_clause1, when_clause2, ..., optional_else_clause].
+        
+        Returns:
+            Dict with type "SimpleCase" containing operand, when clauses list, and optional else.
+        """
         operand = args[0] if args else None
         when_clauses = [a for a in args[1:] if isinstance(a, dict) and a.get("type") == "SimpleWhen"]
         else_clause = next((a for a in args if isinstance(a, dict) and a.get("type") == "Else"), None)
         return {"type": "SimpleCase", "operand": operand, "when": when_clauses, "else": else_clause}
 
     def searched_case(self, args):
+        """Transform searched CASE expression that evaluates boolean conditions.
+        
+        Searched CASE syntax: CASE WHEN condition1 THEN result1 [WHEN ...] [ELSE default] END
+        
+        Each WHEN clause contains a boolean condition that is evaluated sequentially.
+        The first condition that evaluates to true determines the result. If no
+        conditions are true, the ELSE value is returned (or NULL if no ELSE clause).
+        
+        This is analogous to if-else-if chains in programming languages. It's more
+        flexible than simple CASE because each condition can be a completely different
+        boolean expression (not just equality tests).
+        
+        The structure contains:
+        - when clauses: list of condition-result pairs (evaluated sequentially)
+        - else clause: default result if no conditions are true (optional)
+        
+        This separation is necessary for:
+        1. Short-circuit evaluation (stop at first true condition)
+        2. Type checking (all THEN results should have compatible types)
+        3. Optimization (conditions can be reordered if independent)
+        
+        Args:
+            args: [when_clause1, when_clause2, ..., optional_else_clause].
+        
+        Returns:
+            Dict with type "SearchedCase" containing when clauses list and optional else.
+        """
         when_clauses = [a for a in args if isinstance(a, dict) and a.get("type") == "SearchedWhen"]
         else_clause = next((a for a in args if isinstance(a, dict) and a.get("type") == "Else"), None)
         return {"type": "SearchedCase", "when": when_clauses, "else": else_clause}
 
     def simple_when(self, args):
+        """Transform a WHEN clause in a simple CASE expression.
+        
+        Simple WHEN syntax: WHEN value1, value2, ... THEN result
+        
+        In simple CASE, a WHEN clause can match multiple values (comma-separated).
+        The operand is compared against each value, and if any match, the result
+        is returned. This is a shorthand for multiple WHEN clauses with the same result.
+        
+        Example:
+        CASE n.status
+          WHEN 'active', 'verified' THEN 'good'
+          WHEN 'pending', 'new' THEN 'waiting'
+        END
+        
+        The structure contains:
+        - operands: list of values to compare against (evaluated left to right)
+        - result: expression to return if any operand matches
+        
+        This separation is necessary for:
+        1. Efficient matching (can use IN-style lookups for multiple values)
+        2. Type checking (all operands must be comparable to CASE operand)
+        3. Execution planning (can optimize multiple equality tests)
+        
+        Args:
+            args: [when_operands_list, result_expression].
+        
+        Returns:
+            Dict with type "SimpleWhen" containing operands list and result expression.
+        """
         operands = args[0] if args else []
         result = args[1] if len(args) > 1 else None
         return {"type": "SimpleWhen", "operands": operands, "result": result}
 
     def searched_when(self, args):
+        """Transform a WHEN clause in a searched CASE expression.
+        
+        Searched WHEN syntax: WHEN condition THEN result
+        
+        In searched CASE, each WHEN clause has a boolean condition that is
+        evaluated independently. The first WHEN with a true condition determines
+        the result. This provides maximum flexibility for conditional logic.
+        
+        Example:
+        CASE
+          WHEN n.age < 18 THEN 'minor'
+          WHEN n.age >= 65 THEN 'senior'
+          WHEN n.employed = true THEN 'working adult'
+          ELSE 'adult'
+        END
+        
+        The structure contains:
+        - condition: boolean expression to evaluate
+        - result: expression to return if condition is true
+        
+        This separation is necessary for:
+        1. Short-circuit evaluation (stop evaluating after first true)
+        2. Independent condition evaluation (each can access different variables)
+        3. Type checking (condition must be boolean, result type must match other WHENs)
+        
+        Args:
+            args: [condition_expression, result_expression].
+        
+        Returns:
+            Dict with type "SearchedWhen" containing condition and result expressions.
+        """
         condition = args[0] if args else None
         result = args[1] if len(args) > 1 else None
         return {"type": "SearchedWhen", "condition": condition, "result": result}
 
     def when_operands(self, args):
+        """Transform comma-separated operands in a simple CASE WHEN clause.
+        
+        Multiple operands allow matching against any of several values in one WHEN.
+        This is a convenience feature that reduces verbosity when multiple values
+        should produce the same result.
+        
+        Converting to a list is necessary for:
+        1. Iteration during execution (test each value for match)
+        2. Type checking (all values must be comparable to CASE operand)
+        3. Optimization (can use set-based lookup for many values)
+        
+        Args:
+            args: Individual expression nodes for each value to test.
+        
+        Returns:
+            List of operand expressions.
+        """
         return list(args)
 
     def else_clause(self, args):
+        """Transform the ELSE clause in a CASE expression.
+        
+        The ELSE clause provides a default value when no WHEN conditions match.
+        If ELSE is omitted and no WHEN matches, the result is NULL.
+        
+        Wrapping in a typed dict is necessary to distinguish the ELSE value from
+        regular expressions during AST traversal. The "Else" type marker helps
+        the transformer identify and extract this special clause.
+        
+        The ELSE value can be any expression, including:
+        - Literals: ELSE 'unknown'
+        - Variables: ELSE n.default_value
+        - Nested expressions: ELSE CASE ... END (nested CASE)
+        
+        Args:
+            args: Single expression for the default value.
+        
+        Returns:
+            Dict with type "Else" containing the default value expression.
+        """
         return {"type": "Else", "value": args[0] if args else None}
 
     # ========================================================================
@@ -2453,6 +2954,38 @@ class CypherASTTransformer(Transformer):
     # ========================================================================
     
     def list_comprehension(self, args):
+        """Transform list comprehension expression for filtering and mapping lists.
+        
+        List comprehension syntax: [variable IN list WHERE condition | projection]
+        
+        List comprehensions provide a concise way to transform lists by:
+        1. Iterating over elements (variable IN list)
+        2. Optionally filtering (WHERE condition)
+        3. Optionally transforming (| projection)
+        
+        Examples:
+        - [x IN [1,2,3] WHERE x > 1] -> [2, 3]  (filter only)
+        - [x IN [1,2,3] | x * 2] -> [2, 4, 6]  (map only)
+        - [x IN range(1,5) WHERE x % 2 = 0 | x^2] -> [4, 16]  (filter and map)
+        
+        This is similar to list comprehensions in Python/JavaScript and provides
+        functional programming capabilities within Cypher. It's necessary for:
+        - Data transformation without external functions
+        - Inline filtering of collected results
+        - Building computed lists in RETURN clauses
+        
+        The structure contains:
+        - variable: iteration variable name
+        - in: source list expression
+        - where: optional filter condition
+        - projection: optional transformation expression
+        
+        Args:
+            args: [variable, source_list, optional_filter, optional_projection].
+        
+        Returns:
+            Dict with type "ListComprehension" containing all components.
+        """
         variable = args[0] if args else None
         source = args[1] if len(args) > 1 else None
         filter_expr = args[2] if len(args) > 2 else None
@@ -2461,12 +2994,57 @@ class CypherASTTransformer(Transformer):
                 "where": filter_expr, "projection": projection}
 
     def list_variable(self, args):
+        """Extract the iteration variable name from a list comprehension.
+        
+        The list variable is the identifier used to reference each element during
+        iteration. It's scoped to the comprehension and shadows any outer variable
+        with the same name.
+        
+        Pass-through is necessary because variable_name has already normalized the
+        identifier (stripped backticks, etc.), and we don't want to add extra wrapping.
+        
+        Args:
+            args: Variable name string from variable_name rule.
+        
+        Returns:
+            Variable name unchanged.
+        """
         return args[0] if args else None
 
     def list_filter(self, args):
+        """Extract the WHERE filter expression from a list comprehension.
+        
+        The filter expression determines which elements from the source list are
+        included in the result. It's a boolean expression that can reference the
+        iteration variable and any outer scope variables.
+        
+        Pass-through is necessary to avoid double-wrapping the expression.
+        
+        Args:
+            args: Boolean filter expression.
+        
+        Returns:
+            Filter expression unchanged.
+        """
         return args[0] if args else None
 
     def list_projection(self, args):
+        """Extract the projection expression from a list comprehension.
+        
+        The projection (after |) transforms each element before adding it to the
+        result list. Without a projection, elements are included as-is (identity mapping).
+        
+        The projection expression can reference the iteration variable and perform
+        any computation: arithmetic, string operations, property access, etc.
+        
+        Pass-through is necessary to avoid double-wrapping the expression.
+        
+        Args:
+            args: Projection expression to transform each element.
+        
+        Returns:
+            Projection expression unchanged.
+        """
         return args[0] if args else None
 
     # ========================================================================
@@ -2474,6 +3052,39 @@ class CypherASTTransformer(Transformer):
     # ========================================================================
     
     def pattern_comprehension(self, args):
+        """Transform pattern comprehension for collecting results from pattern matching.
+        
+        Pattern comprehension syntax: [path_var = pattern WHERE condition | projection]
+        
+        Pattern comprehensions match a graph pattern multiple times and collect
+        results into a list. This is essential for inline subqueries without OPTIONAL MATCH.
+        
+        Examples:
+        - [(person)-[:KNOWS]->(friend) | friend.name]
+          Collects names of all friends
+        - [p = (a)-[:KNOWS*1..3]->(b) WHERE b.age > 30 | length(p)]
+          Collects path lengths to people over 30 within 3 hops
+        
+        The structure contains:
+        - variable: optional variable for the entire path
+        - pattern: graph pattern to match repeatedly
+        - where: optional filter on matched patterns
+        - projection: expression to collect (required, unlike list comprehension)
+        
+        This is necessary for:
+        - Collecting related data without explicit MATCH/COLLECT
+        - Nested pattern matching within expressions
+        - Building complex aggregations inline
+        
+        Pattern comprehensions are more powerful than list comprehensions because
+        they can match graph structures, not just iterate over lists.
+        
+        Args:
+            args: Mix of optional variable, pattern element, optional where, and projection.
+        
+        Returns:
+            Dict with type "PatternComprehension" containing all components.
+        """
         variable = None
         pattern = None
         filter_expr = None
@@ -2494,12 +3105,52 @@ class CypherASTTransformer(Transformer):
                 "where": filter_expr, "projection": projection}
 
     def pattern_comp_variable(self, args):
+        """Extract the optional path variable from a pattern comprehension.
+        
+        The path variable captures the entire matched path, which can be useful
+        for computing path properties (length, nodes, relationships) in the projection.
+        
+        Pass-through is necessary to avoid extra wrapping.
+        
+        Args:
+            args: Variable name string.
+        
+        Returns:
+            Variable name unchanged.
+        """
         return args[0] if args else None
 
     def pattern_filter(self, args):
+        """Extract the WHERE filter from a pattern comprehension.
+        
+        The filter expression determines which matched patterns are included in
+        the collected results. It can reference variables bound in the pattern.
+        
+        Pass-through is necessary to avoid double-wrapping.
+        
+        Args:
+            args: Boolean filter expression.
+        
+        Returns:
+            Filter expression unchanged.
+        """
         return args[0] if args else None
 
     def pattern_projection(self, args):
+        """Extract the projection expression from a pattern comprehension.
+        
+        The projection specifies what to collect from each matched pattern.
+        It's required (unlike list comprehension where it's optional) because
+        collecting the entire pattern match isn't meaningful by default.
+        
+        Pass-through is necessary to avoid double-wrapping.
+        
+        Args:
+            args: Projection expression.
+        
+        Returns:
+            Projection expression unchanged.
+        """
         return args[0] if args else None
 
     # ========================================================================
