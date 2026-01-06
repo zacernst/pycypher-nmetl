@@ -573,6 +573,16 @@ class CypherASTTransformer(Transformer):
     
     This transformer converts Lark's parse tree into a clean abstract
     syntax tree that covers the complete openCypher specification.
+    
+    The transformer implements the visitor pattern, with each method corresponding
+    to a grammar rule. Methods are called automatically by Lark during tree traversal,
+    receiving the child nodes as arguments and returning transformed AST nodes.
+    
+    The transformation process:
+    1. Parse tree nodes are visited bottom-up (leaves first)
+    2. Each transformer method processes its children (already transformed)
+    3. Methods construct typed AST dictionaries with semantic information
+    4. The final result is a complete AST ready for type checking and analysis
     """
 
     # ========================================================================
@@ -580,17 +590,64 @@ class CypherASTTransformer(Transformer):
     # ========================================================================
     
     def cypher_query(self, args):
+        """Transform the root query node.
+        
+        This is the entry point for all Cypher queries. It wraps all statements
+        in a Query container, which is necessary for handling multi-statement
+        queries (e.g., multiple queries joined by UNION).
+        
+        Args:
+            args: List of statement nodes from the statement_list rule.
+            
+        Returns:
+            Dict with type "Query" containing all statements in the query.
+        """
         return {"type": "Query", "statements": args}
 
     def statement_list(self, args):
+        """Transform a list of statements.
+        
+        Statements can be connected via UNION or UNION ALL operators.
+        This method normalizes the list structure for easier processing.
+        
+        Args:
+            args: Individual statement nodes.
+            
+        Returns:
+            List of statement dictionaries.
+        """
         return list(args)
 
     def query_statement(self, args):
+        """Transform a read-only query statement (MATCH...RETURN).
+        
+        Query statements consist of read clauses (MATCH, UNWIND, WITH) followed
+        by an optional RETURN clause. This separation is necessary for the AST
+        to distinguish between read-only queries and update operations.
+        
+        Args:
+            args: Mix of read clause nodes and an optional ReturnStatement.
+            
+        Returns:
+            Dict with type "QueryStatement" containing separated clauses and return.
+        """
         read_clauses = [a for a in args if not isinstance(a, dict) or a.get("type") != "ReturnStatement"]
         return_clause = next((a for a in args if isinstance(a, dict) and a.get("type") == "ReturnStatement"), None)
         return {"type": "QueryStatement", "clauses": read_clauses, "return": return_clause}
 
     def update_statement(self, args):
+        """Transform an update statement (CREATE/MERGE/DELETE/SET/REMOVE).
+        
+        Update statements can have prefix clauses (MATCH/WITH for context),
+        one or more update operations, and an optional RETURN clause.
+        Proper categorization is necessary for execution planning and validation.
+        
+        Args:
+            args: Mix of prefix clauses, update clauses, and optional return.
+            
+        Returns:
+            Dict with type "UpdateStatement" containing categorized clauses.
+        """
         prefix_clauses = []
         update_clauses = []
         return_clause = None
@@ -607,15 +664,57 @@ class CypherASTTransformer(Transformer):
         return {"type": "UpdateStatement", "prefix": prefix_clauses, "updates": update_clauses, "return": return_clause}
     
     def update_clause(self, args):
-        """Pass through the update clause (create/merge/delete/set/remove)."""
+        """Pass through update clauses without modification.
+        
+        This method exists because the grammar has an update_clause rule that
+        acts as a union of different update types. Pass-through is necessary
+        to avoid adding unnecessary wrapper nodes in the AST.
+        
+        Args:
+            args: Single update clause node (CREATE/MERGE/DELETE/SET/REMOVE).
+            
+        Returns:
+            The update clause node unchanged.
+        """
         return args[0] if args else None
     
     def read_clause(self, args):
-        """Pass through the read clause (match/unwind/with)."""
+        """Pass through read clauses without modification.
+        
+        This method exists because the grammar has a read_clause rule that
+        acts as a union of different read types. Pass-through is necessary
+        to avoid adding unnecessary wrapper nodes in the AST.
+        
+        Args:
+            args: Single read clause node (MATCH/UNWIND/WITH/CALL).
+            
+        Returns:
+            The read clause node unchanged.
+        """
         return args[0] if args else None
     
     def _ambig(self, args):
-        """Handle ambiguous parses - prefer the most specific parse."""
+        """Handle ambiguous parses by selecting the most specific interpretation.
+        
+        The Earley parser can produce multiple valid parse trees for ambiguous
+        grammar rules. This method implements a disambiguation strategy that
+        prefers structured semantic nodes over primitive values, ensuring the
+        AST contains the most useful representation for type checking.
+        
+        Priority order:
+        1. Not expression nodes (highest priority for negation)
+        2. Other structured dictionary nodes (semantic information)
+        3. Primitive values (fallback)
+        
+        This is necessary to resolve conflicts like "NOT" being both a keyword
+        and a potential identifier, or property lookups vs. simple variables.
+        
+        Args:
+            args: List of alternative parse results for the same input.
+            
+        Returns:
+            The most semantically rich parse result.
+        """
         if not args:
             return None
         # Prefer dicts (structured data) over primitives
@@ -631,6 +730,17 @@ class CypherASTTransformer(Transformer):
         return args[0]
 
     def statement(self, args):
+        """Pass through statement nodes.
+        
+        Statements can be query statements, update statements, or call statements.
+        Pass-through avoids adding wrapper nodes.
+        
+        Args:
+            args: Single statement node.
+            
+        Returns:
+            The statement node unchanged.
+        """
         return args[0] if args else None
 
     # ========================================================================
@@ -638,33 +748,123 @@ class CypherASTTransformer(Transformer):
     # ========================================================================
     
     def call_statement(self, args):
+        """Transform a standalone CALL statement for procedure invocation.
+        
+        CALL statements invoke stored procedures, which can have arguments and
+        yield results. This is necessary for extending Cypher with custom logic.
+        
+        Args:
+            args: [procedure_reference, optional explicit_args, optional yield_clause]
+            
+        Returns:
+            Dict with type "CallStatement" containing procedure info, args, and yield.
+        """
         return {"type": "CallStatement", "procedure": args[0] if args else None, 
                 "args": args[1] if len(args) > 1 else None, "yield": args[2] if len(args) > 2 else None}
 
     def call_clause(self, args):
+        """Transform a CALL clause within a larger query.
+        
+        Call clauses can appear as read clauses, allowing procedure results to
+        be used in subsequent query parts. Different type from call_statement
+        is necessary to distinguish standalone vs. embedded calls.
+        
+        Args:
+            args: [procedure_reference, explicit_args, yield_clause]
+            
+        Returns:
+            Dict with type "CallClause" containing procedure info, args, and yield.
+        """
         return {"type": "CallClause", "procedure": args[0] if args else None,
                 "args": args[1] if len(args) > 1 else None, "yield": args[2] if len(args) > 2 else None}
 
     def procedure_reference(self, args):
+        """Extract procedure name reference.
+        
+        Procedures are referenced by their function name, which may include
+        namespace qualification. Pass-through is necessary to avoid wrapping.
+        
+        Args:
+            args: Function name (possibly namespaced).
+            
+        Returns:
+            Procedure name string or dict.
+        """
         return args[0] if args else None
 
     def explicit_args(self, args):
+        """Transform explicit procedure arguments list.
+        
+        Procedures can accept arguments just like functions. Converting to
+        a list is necessary for consistent handling of variadic arguments.
+        
+        Args:
+            args: Expression nodes for each argument.
+            
+        Returns:
+            List of argument expressions.
+        """
         return list(args) if args else []
 
     def yield_clause(self, args):
+        """Transform a YIELD clause that selects procedure output fields.
+        
+        YIELD specifies which fields from procedure results to expose, with
+        optional WHERE filtering. This structure is necessary for controlling
+        procedure output visibility.
+        
+        Args:
+            args: [yield_items or "*", optional where_clause]
+            
+        Returns:
+            Dict with type "YieldClause" containing items and optional where filter.
+        """
         items = args[0] if args else None
         where = args[1] if len(args) > 1 else None
         return {"type": "YieldClause", "items": items, "where": where}
 
     def yield_items(self, args):
+        """Transform list of yielded fields.
+        
+        Multiple fields can be yielded from a procedure. List normalization
+        is necessary for consistent iteration during execution.
+        
+        Args:
+            args: Individual yield_item nodes.
+            
+        Returns:
+            List of yield item dictionaries.
+        """
         return list(args) if args else []
 
     def yield_item(self, args):
+        """Transform a single yielded field with optional alias.
+        
+        Fields can be renamed using AS. Separating field and alias is
+        necessary for proper symbol table construction.
+        
+        Args:
+            args: [field_name] or [field_name, alias]
+            
+        Returns:
+            Dict with field name and optional alias.
+        """
         if len(args) == 1:
             return {"field": args[0]}
         return {"field": args[0], "alias": args[1]}
 
     def field_name(self, args):
+        """Extract field name identifier.
+        
+        Field names in YIELD clauses reference procedure output columns.
+        Stripping backticks is necessary to normalize identifier representation.
+        
+        Args:
+            args: IDENTIFIER token.
+            
+        Returns:
+            Field name string with backticks removed.
+        """
         return str(args[0]).strip('`')
 
     # ========================================================================
@@ -672,6 +872,18 @@ class CypherASTTransformer(Transformer):
     # ========================================================================
     
     def match_clause(self, args):
+        """Transform a MATCH clause for pattern matching.
+        
+        MATCH finds existing graph patterns. The OPTIONAL modifier makes the match
+        non-failing (like SQL LEFT JOIN). WHERE filters matched patterns.
+        Separating these components is necessary for query optimization and execution.
+        
+        Args:
+            args: Mix of OPTIONAL keyword, pattern, and optional where_clause.
+            
+        Returns:
+            Dict with type "MatchClause" containing optional flag, pattern, and where.
+        """
         optional = any(str(a).upper() == "OPTIONAL" for a in args if isinstance(a, str))
         pattern = next((a for a in args if isinstance(a, dict) and a.get("type") == "Pattern"), None)
         where = next((a for a in args if isinstance(a, dict) and a.get("type") == "WhereClause"), None)
@@ -682,6 +894,18 @@ class CypherASTTransformer(Transformer):
     # ========================================================================
     
     def create_clause(self, args):
+        """Transform a CREATE clause for creating new graph elements.
+        
+        CREATE adds new nodes and relationships to the graph based on a pattern.
+        Wrapping the pattern in a typed node is necessary to distinguish CREATE
+        from MATCH and other pattern-using clauses during execution.
+        
+        Args:
+            args: Pattern to create.
+            
+        Returns:
+            Dict with type "CreateClause" containing the creation pattern.
+        """
         return {"type": "CreateClause", "pattern": args[0] if args else None}
 
     # ========================================================================
@@ -689,11 +913,36 @@ class CypherASTTransformer(Transformer):
     # ========================================================================
     
     def merge_clause(self, args):
+        """Transform a MERGE clause for create-or-match operations.
+        
+        MERGE ensures a pattern exists, creating it if necessary. This is atomic
+        and prevents duplicates. ON MATCH/CREATE actions allow different behavior
+        based on whether the pattern existed. This structure is necessary for
+        conditional update logic.
+        
+        Args:
+            args: [pattern, optional merge_action nodes]
+            
+        Returns:
+            Dict with type "MergeClause" containing pattern and conditional actions.
+        """
         pattern = args[0] if args else None
         actions = args[1:] if len(args) > 1 else []
         return {"type": "MergeClause", "pattern": pattern, "actions": actions}
 
     def merge_action(self, args):
+        """Transform ON MATCH or ON CREATE action within MERGE.
+        
+        These actions execute conditionally based on whether MERGE found or
+        created the pattern. Distinguishing the trigger type is necessary for
+        correct execution semantics.
+        
+        Args:
+            args: ["MATCH" or "CREATE" keyword, set_clause]
+            
+        Returns:
+            Dict with type "MergeAction" specifying trigger type and SET operation.
+        """
         on_type = "match" if any(str(a).upper() == "MATCH" for a in args if isinstance(a, str)) else "create"
         set_clause = next((a for a in args if isinstance(a, dict)), None)
         return {"type": "MergeAction", "on": on_type, "set": set_clause}
@@ -703,11 +952,34 @@ class CypherASTTransformer(Transformer):
     # ========================================================================
     
     def delete_clause(self, args):
+        """Transform a DELETE clause for removing graph elements.
+        
+        DELETE removes nodes and relationships. DETACH DELETE also removes
+        relationships connected to deleted nodes, preventing orphaned edges.
+        This distinction is necessary for safe cascading deletion.
+        
+        Args:
+            args: [optional "DETACH" keyword, delete_items]
+            
+        Returns:
+            Dict with type "DeleteClause" containing detach flag and items to delete.
+        """
         detach = any(str(a).upper() == "DETACH" for a in args if isinstance(a, str))
         items = next((a for a in args if isinstance(a, dict) and "items" in str(a)), {"items": []})
         return {"type": "DeleteClause", "detach": detach, "items": items.get("items", [])}
 
     def delete_items(self, args):
+        """Transform comma-separated list of expressions to delete.
+        
+        Multiple items can be deleted in one clause. Wrapping in a dict is
+        necessary to distinguish the list from other argument types.
+        
+        Args:
+            args: Expression nodes identifying items to delete.
+            
+        Returns:
+            Dict containing list of items.
+        """
         return {"items": list(args)}
 
     # ========================================================================
@@ -715,32 +987,110 @@ class CypherASTTransformer(Transformer):
     # ========================================================================
     
     def set_clause(self, args):
+        """Transform a SET clause for updating graph properties.
+        
+        SET modifies node/relationship properties and labels. Multiple set
+        operations can be combined in one clause. Extracting the items list
+        is necessary for execution planning.
+        
+        Args:
+            args: set_items wrapper containing list of set operations.
+            
+        Returns:
+            Dict with type "SetClause" containing list of set operations.
+        """
         items = next((a for a in args if isinstance(a, dict) and "items" in str(a)), {"items": []})
         return {"type": "SetClause", "items": items.get("items", [])}
 
     def set_items(self, args):
+        """Transform comma-separated list of SET operations.
+        
+        Wrapping in a dict is necessary to pass the list through the
+        transformer chain without flattening.
+        
+        Args:
+            args: Individual set_item nodes.
+            
+        Returns:
+            Dict containing list of set operations.
+        """
         return {"items": list(args)}
 
     def set_item(self, args):
+        """Pass through individual SET operation.
+        
+        The grammar has set_item as a union of different set types.
+        Pass-through avoids adding wrapper nodes.
+        
+        Args:
+            args: Single set operation (property/labels/all properties/add properties).
+            
+        Returns:
+            The set operation node unchanged.
+        """
         return args[0] if args else None
 
     def set_property_item(self, args):
+        """Transform a single property assignment (e.g., SET n.age = 30).
+        
+        Property updates are the most common SET operation. Separating variable,
+        property name, and value is necessary for validation and execution.
+        
+        Args:
+            args: [variable_name, property_lookup, expression]
+            
+        Returns:
+            Dict with type "SetProperty" containing variable, property, and value.
+        """
         variable = args[0] if args else None
         prop = args[1] if len(args) > 1 else None
         value = args[2] if len(args) > 2 else None
         return {"type": "SetProperty", "variable": variable, "property": prop, "value": value}
 
     def set_labels_item(self, args):
+        """Transform label assignment (e.g., SET n:Person:Employee).
+        
+        Labels are added to nodes for categorization. Separate handling is
+        necessary because labels are not stored as properties.
+        
+        Args:
+            args: [variable_name, node_labels]
+            
+        Returns:
+            Dict with type "SetLabels" containing variable and label list.
+        """
         variable = args[0] if args else None
         labels = args[1] if len(args) > 1 else None
         return {"type": "SetLabels", "variable": variable, "labels": labels}
 
     def set_all_properties_item(self, args):
+        """Transform property map replacement (e.g., SET n = {name: 'Alice'}).
+        
+        This replaces ALL properties on a node/relationship with a new map.
+        Distinct type is necessary to warn users about potential data loss.
+        
+        Args:
+            args: [variable_name, expression]
+            
+        Returns:
+            Dict with type "SetAllProperties" for complete property replacement.
+        """
         variable = args[0] if args else None
         value = args[1] if len(args) > 1 else None
         return {"type": "SetAllProperties", "variable": variable, "value": value}
 
     def add_all_properties_item(self, args):
+        """Transform property map merge (e.g., SET n += {age: 30}).
+        
+        This merges new properties with existing ones without removing others.
+        Distinct type from SetAllProperties is necessary for different semantics.
+        
+        Args:
+            args: [variable_name, expression]
+            
+        Returns:
+            Dict with type "AddAllProperties" for additive property merge.
+        """
         variable = args[0] if args else None
         value = args[1] if len(args) > 1 else None
         return {"type": "AddAllProperties", "variable": variable, "value": value}
@@ -750,21 +1100,76 @@ class CypherASTTransformer(Transformer):
     # ========================================================================
     
     def remove_clause(self, args):
+        """Transform a REMOVE clause for deleting properties or labels.
+        
+        REMOVE deletes properties or labels without deleting the node/relationship
+        itself. This is distinct from DELETE which removes entire elements.
+        
+        Args:
+            args: remove_items wrapper containing list of remove operations.
+            
+        Returns:
+            Dict with type "RemoveClause" containing list of remove operations.
+        """
         items = next((a for a in args if isinstance(a, dict) and "items" in str(a)), {"items": []})
         return {"type": "RemoveClause", "items": items.get("items", [])}
 
     def remove_items(self, args):
+        """Transform comma-separated list of REMOVE operations.
+        
+        Wrapping in a dict is necessary to pass the list through the
+        transformer chain.
+        
+        Args:
+            args: Individual remove_item nodes.
+            
+        Returns:
+            Dict containing list of remove operations.
+        """
         return {"items": list(args)}
 
     def remove_item(self, args):
+        """Pass through individual REMOVE operation.
+        
+        The grammar has remove_item as a union of property and label removal.
+        Pass-through avoids adding wrapper nodes.
+        
+        Args:
+            args: Single remove operation (property or labels).
+            
+        Returns:
+            The remove operation node unchanged.
+        """
         return args[0] if args else None
 
     def remove_property_item(self, args):
+        """Transform property removal (e.g., REMOVE n.age).
+        
+        Removes a single property from a node/relationship. Separating variable
+        and property is necessary for validation.
+        
+        Args:
+            args: [variable_name, property_lookup]
+            
+        Returns:
+            Dict with type "RemoveProperty" containing variable and property name.
+        """
         variable = args[0] if args else None
         prop = args[1] if len(args) > 1 else None
         return {"type": "RemoveProperty", "variable": variable, "property": prop}
 
     def remove_labels_item(self, args):
+        """Transform label removal (e.g., REMOVE n:Person).
+        
+        Removes labels from a node. Separate handling from properties is
+        necessary because labels are metadata, not property values.
+        
+        Args:
+            args: [variable_name, node_labels]
+            
+        Returns:
+            Dict with type "RemoveLabels" containing variable and labels to remove.
+        """
         variable = args[0] if args else None
         labels = args[1] if len(args) > 1 else None
         return {"type": "RemoveLabels", "variable": variable, "labels": labels}
@@ -774,6 +1179,18 @@ class CypherASTTransformer(Transformer):
     # ========================================================================
     
     def unwind_clause(self, args):
+        """Transform an UNWIND clause for list expansion.
+        
+        UNWIND expands a list into individual rows, creating a new variable for
+        each element. This is necessary for processing collections in Cypher,
+        similar to SQL's UNNEST or CROSS JOIN LATERAL.
+        
+        Args:
+            args: [expression (the list), variable_name (for each element)]
+            
+        Returns:
+            Dict with type "UnwindClause" containing source expression and variable.
+        """
         expr = args[0] if args else None
         var = args[1] if len(args) > 1 else None
         return {"type": "UnwindClause", "expression": expr, "variable": var}
@@ -783,6 +1200,21 @@ class CypherASTTransformer(Transformer):
     # ========================================================================
     
     def with_clause(self, args):
+        """Transform a WITH clause for query chaining and variable passing.
+        
+        WITH acts like a pipe operator, passing selected variables to the next
+        query part while filtering, sorting, and limiting. This is necessary for
+        multi-stage queries where intermediate results need transformation.
+        
+        Unlike RETURN (which ends a query), WITH continues processing. The DISTINCT,
+        WHERE, ORDER BY, SKIP, and LIMIT modifiers control what gets passed forward.
+        
+        Args:
+            args: Mix of DISTINCT keyword, return body, and optional clauses.
+            
+        Returns:
+            Dict with type "WithClause" containing all components for variable passing.
+        """
         distinct = any(str(a).upper() == "DISTINCT" for a in args if isinstance(a, str))
         body = None
         where = None
@@ -811,6 +1243,21 @@ class CypherASTTransformer(Transformer):
     # ========================================================================
     
     def return_clause(self, args):
+        """Transform a RETURN clause for query output specification.
+        
+        RETURN determines what a query outputs, similar to SQL SELECT. It can
+        return specific expressions (with aliases), or * for all variables.
+        DISTINCT, ORDER BY, SKIP, and LIMIT control the result set.
+        
+        This structure is necessary to separate output specification from ordering
+        and pagination, enabling query optimization and execution planning.
+        
+        Args:
+            args: Mix of DISTINCT keyword, return body/items/*, and optional clauses.
+            
+        Returns:
+            Dict with type "ReturnStatement" containing all output specifications.
+        """
         distinct = any(str(a).upper() == "DISTINCT" for a in args if isinstance(a, str))
         body = None
         order = None
@@ -837,20 +1284,65 @@ class CypherASTTransformer(Transformer):
                 "order": order, "skip": skip, "limit": limit}
 
     def return_body(self, args):
+        """Extract the body of a RETURN clause (items or *).
+        
+        This handles the special case of RETURN * vs. RETURN item1, item2.
+        Pass-through is necessary to avoid double-wrapping the items list.
+        
+        Args:
+            args: Either "*" string or return_items list.
+            
+        Returns:
+            Either "*" string or list of return items.
+        """
         if args and args[0] == "*":
             return "*"
         # args[0] is already a list from return_items
         return args[0] if args else []
 
     def return_items(self, args):
+        """Transform comma-separated list of return items.
+        
+        Normalizing to a list is necessary for consistent iteration during
+        output construction.
+        
+        Args:
+            args: Individual return_item nodes.
+            
+        Returns:
+            List of return item dictionaries.
+        """
         return list(args) if args else []
 
     def return_item(self, args):
+        """Transform a single return item with optional alias.
+        
+        Return items can be aliased using AS (e.g., RETURN n.name AS fullName).
+        Wrapping with type "ReturnItem" is necessary for type checking to
+        distinguish expressions from their return metadata.
+        
+        Args:
+            args: [expression] or [expression, alias]
+            
+        Returns:
+            Dict with type "ReturnItem" containing expression and optional alias.
+        """
         if len(args) == 1:
             return {"type": "ReturnItem", "expression": args[0], "alias": None}
         return {"type": "ReturnItem", "expression": args[0], "alias": args[1]}
 
     def return_alias(self, args):
+        """Extract return item alias identifier.
+        
+        Aliases define the output column names. Stripping backticks is necessary
+        to normalize identifier representation.
+        
+        Args:
+            args: IDENTIFIER token.
+            
+        Returns:
+            Alias string with backticks removed.
+        """
         return str(args[0]).strip('`')
 
     # ========================================================================
@@ -858,6 +1350,17 @@ class CypherASTTransformer(Transformer):
     # ========================================================================
     
     def where_clause(self, args):
+        """Transform a WHERE clause for filtering.
+        
+        WHERE filters graph patterns (in MATCH) or intermediate results (in WITH).
+        Wrapping the condition is necessary to attach it to the appropriate clause.
+        
+        Args:
+            args: Single boolean expression for the filter condition.
+            
+        Returns:
+            Dict with type "WhereClause" containing the filter expression.
+        """
         return {"type": "WhereClause", "condition": args[0] if args else None}
 
     # ========================================================================
@@ -865,18 +1368,61 @@ class CypherASTTransformer(Transformer):
     # ========================================================================
     
     def order_clause(self, args):
+        """Transform an ORDER BY clause for result sorting.
+        
+        ORDER BY sorts results by one or more expressions, each with a direction.
+        This structure is necessary for execution planning and index utilization.
+        
+        Args:
+            args: order_items wrapper containing list of sort specifications.
+            
+        Returns:
+            Dict with type "OrderClause" containing list of order items.
+        """
         items = next((a for a in args if isinstance(a, dict) and "items" in str(a)), {"items": []})
         return {"type": "OrderClause", "items": items.get("items", [])}
 
     def order_items(self, args):
+        """Transform comma-separated list of ORDER BY items.
+        
+        Wrapping in a dict is necessary to pass the list through the transformer.
+        
+        Args:
+            args: Individual order_item nodes.
+            
+        Returns:
+            Dict containing list of order specifications.
+        """
         return {"items": list(args)}
 
     def order_item(self, args):
+        """Transform a single ORDER BY item with optional direction.
+        
+        Each item specifies an expression and sort direction (ASC/DESC).
+        Default is ascending. Separating these is necessary for sort planning.
+        
+        Args:
+            args: [expression, optional direction]
+            
+        Returns:
+            Dict with expression and direction ("asc" or "desc").
+        """
         expr = args[0] if args else None
         direction = args[1] if len(args) > 1 else "asc"
         return {"expression": expr, "direction": direction}
 
     def order_direction(self, args):
+        """Normalize ORDER BY direction keywords.
+        
+        Supports ASC/ASCENDING and DESC/DESCENDING. Normalization is necessary
+        for consistent execution regardless of which keyword form is used.
+        
+        Args:
+            args: Direction keyword token.
+            
+        Returns:
+            Normalized direction string: "asc" or "desc".
+        """
         d = str(args[0]).upper()
         return "desc" if d in ["DESC", "DESCENDING"] else "asc"
 
@@ -885,9 +1431,31 @@ class CypherASTTransformer(Transformer):
     # ========================================================================
     
     def skip_clause(self, args):
+        """Transform a SKIP clause for result pagination.
+        
+        SKIP skips the first N results, enabling pagination. The expression
+        is evaluated at runtime, allowing parameterized pagination.
+        
+        Args:
+            args: Expression evaluating to number of rows to skip.
+            
+        Returns:
+            Dict with type "SkipClause" containing skip count expression.
+        """
         return {"type": "SkipClause", "value": args[0] if args else None}
 
     def limit_clause(self, args):
+        """Transform a LIMIT clause for result set size restriction.
+        
+        LIMIT restricts output to N results. Combined with SKIP, this enables
+        efficient pagination. Expression evaluation is necessary for parameterization.
+        
+        Args:
+            args: Expression evaluating to maximum number of rows to return.
+            
+        Returns:
+            Dict with type "LimitClause" containing limit count expression.
+        """
         return {"type": "LimitClause", "value": args[0] if args else None}
 
     # ========================================================================
@@ -895,9 +1463,35 @@ class CypherASTTransformer(Transformer):
     # ========================================================================
     
     def pattern(self, args):
+        """Transform a graph pattern (one or more paths).
+        
+        Patterns describe graph structures to match or create. Multiple comma-separated
+        paths can be specified in one pattern (e.g., (a)-[]->(b), (c)-[]->(d)).
+        
+        This wrapper is necessary to distinguish pattern collections from individual
+        paths during matching and creation operations.
+        
+        Args:
+            args: List of path_pattern nodes.
+            
+        Returns:
+            Dict with type "Pattern" containing list of paths.
+        """
         return {"type": "Pattern", "paths": list(args)}
 
     def path_pattern(self, args):
+        """Transform a single path pattern with optional variable assignment.
+        
+        Paths can be assigned to variables (e.g., p = (a)-[]->(b)) for later reference.
+        This is necessary for algorithms that operate on entire paths rather than
+        individual nodes/relationships.
+        
+        Args:
+            args: Optional variable name followed by pattern_element.
+            
+        Returns:
+            Dict with type "PathPattern" containing optional variable and element.
+        """
         variable = None
         element = None
         for arg in args:
@@ -908,9 +1502,33 @@ class CypherASTTransformer(Transformer):
         return {"type": "PathPattern", "variable": variable, "element": element}
 
     def pattern_element(self, args):
+        """Transform a pattern element (sequence of nodes and relationships).
+        
+        Pattern elements describe connected graph structures, alternating between
+        nodes and relationships. The parts list maintains order, which is necessary
+        for directional relationship matching.
+        
+        Args:
+            args: Alternating node_pattern and relationship_pattern nodes.
+            
+        Returns:
+            Dict with type "PatternElement" containing ordered list of parts.
+        """
         return {"type": "PatternElement", "parts": list(args)}
 
     def shortest_path(self, args):
+        """Transform SHORTESTPATH or ALLSHORTESTPATHS function.
+        
+        Shortest path functions find minimal-length paths between nodes.
+        ALLSHORTESTPATHS finds all paths with minimal length. This distinction
+        is necessary for different algorithmic execution strategies.
+        
+        Args:
+            args: Mix of function name keyword and pattern parts.
+            
+        Returns:
+            Dict with type "ShortestPath" containing all flag and pattern parts.
+        """
         all_shortest = any("ALL" in str(a).upper() for a in args if isinstance(a, str))
         nodes_and_rel = [a for a in args if isinstance(a, dict)]
         return {"type": "ShortestPath", "all": all_shortest, "parts": nodes_and_rel}
@@ -920,10 +1538,37 @@ class CypherASTTransformer(Transformer):
     # ========================================================================
     
     def node_pattern(self, args):
+        """Transform a node pattern (node in parentheses).
+        
+        Node patterns describe nodes to match or create, with optional variable,
+        labels, properties, and WHERE clause. Parentheses syntax () is required.
+        
+        The filler dict is merged into the node pattern to avoid extra nesting.
+        This flattening is necessary for simpler AST traversal.
+        
+        Args:
+            args: Optional node_pattern_filler dict with node components.
+            
+        Returns:
+            Dict with type "NodePattern" containing variable, labels, properties, where.
+        """
         filler = args[0] if args else {}
         return {"type": "NodePattern", **filler} if isinstance(filler, dict) else {"type": "NodePattern", "filler": filler}
 
     def node_pattern_filler(self, args):
+        """Extract components from inside node parentheses.
+        
+        Node patterns can contain: variable, labels, properties, and WHERE.
+        These components are parsed separately and need to be combined into
+        a single dict for the node pattern. Type detection is necessary to
+        distinguish properties from other structured components.
+        
+        Args:
+            args: Mix of variable name string and component dicts (labels/properties/where).
+            
+        Returns:
+            Dict containing all node components with appropriate keys.
+        """
         filler = {}
         for arg in args:
             if isinstance(arg, dict):
@@ -942,31 +1587,119 @@ class CypherASTTransformer(Transformer):
         return filler
 
     def node_labels(self, args):
+        """Transform node label expressions.
+        
+        Nodes can have multiple labels (e.g., :Person:Employee). Labels can also
+        use boolean logic (e.g., :Person|Employee for OR). Wrapping in a dict is
+        necessary to distinguish labels from other node components.
+        
+        Args:
+            args: List of label_expression nodes.
+            
+        Returns:
+            Dict with "labels" key containing list of label expressions.
+        """
         return {"labels": list(args)}
 
     def label_expression(self, args):
+        """Transform a single label expression.
+        
+        Labels can be prefixed with : or IS. For simple cases, just return the
+        label. Complex cases with multiple parts need wrapping.
+        
+        Args:
+            args: Label term(s) from the expression.
+            
+        Returns:
+            Single label term or dict with type "LabelExpression" for complex cases.
+        """
         if len(args) == 1:
             return args[0]
         return {"type": "LabelExpression", "parts": list(args)}
 
     def label_term(self, args):
+        """Transform label OR expressions (e.g., Person|Employee).
+        
+        Label terms can use | for alternation (match either label). Single labels
+        pass through; multiple labels are wrapped in a LabelOr node.
+        
+        Args:
+            args: Label factor nodes separated by |.
+            
+        Returns:
+            Single factor or dict with type "LabelOr" for multiple factors.
+        """
         if len(args) == 1:
             return args[0]
         return {"type": "LabelOr", "terms": list(args)}
 
     def label_factor(self, args):
+        """Pass through label factors (possibly negated with !).
+        
+        Label factors can have ! negation prefix. Pass-through avoids extra wrapping.
+        
+        Args:
+            args: Single label_primary node.
+            
+        Returns:
+            The label primary unchanged.
+        """
         return args[0] if args else None
 
     def label_primary(self, args):
+        """Pass through primary label expressions.
+        
+        Primary labels are either names, parenthesized expressions, or % (any label).
+        Pass-through avoids unnecessary nesting.
+        
+        Args:
+            args: Label name or grouped expression.
+            
+        Returns:
+            The label value unchanged.
+        """
         return args[0] if args else None
 
     def label_name(self, args):
+        """Extract label name identifier.
+        
+        Label names can have leading : from grammar rules. Stripping both : and
+        backticks is necessary for normalized label comparison.
+        
+        Args:
+            args: IDENTIFIER token possibly with leading :.
+            
+        Returns:
+            Label name string with : and backticks removed.
+        """
         return str(args[0]).lstrip(":").strip('`')
 
     def node_properties(self, args):
+        """Pass through node properties or WHERE clause.
+        
+        Node properties can be specified as a map literal or extracted via WHERE.
+        Pass-through avoids extra wrapping.
+        
+        Args:
+            args: Properties dict or WHERE clause.
+            
+        Returns:
+            The properties/where node unchanged.
+        """
         return args[0] if args else None
 
     def node_where(self, args):
+        """Transform inline WHERE clause within node pattern.
+        
+        WHERE can filter node properties inline (e.g., (n WHERE n.age > 30)).
+        Wrapping in a dict is necessary to distinguish from property maps.
+        
+        Args:
+            args: Expression for the WHERE condition.
+            
+        Returns:
+            Dict with "where" key containing the condition expression.
+        """
         return {"where": args[0] if args else None}
 
     # ========================================================================
@@ -974,28 +1707,105 @@ class CypherASTTransformer(Transformer):
     # ========================================================================
     
     def relationship_pattern(self, args):
+        """Pass through relationship patterns.
+        
+        Relationships are parsed by direction-specific rules (left/right/both/any).
+        Pass-through avoids adding wrapper nodes.
+        
+        Args:
+            args: Single relationship node from directional rules.
+            
+        Returns:
+            The relationship pattern unchanged.
+        """
         return args[0] if args else None
 
     def full_rel_left(self, args):
+        """Transform left-pointing relationship (<--).
+        
+        Left direction means the relationship points from right to left in the
+        pattern. This distinction is necessary for directed graph traversal.
+        
+        Args:
+            args: Optional rel_detail dict with relationship components.
+            
+        Returns:
+            Dict with type "RelationshipPattern", direction "left", and details.
+        """
         detail = args[0] if args else {}
         return {"type": "RelationshipPattern", "direction": "left", **detail}
 
     def full_rel_right(self, args):
+        """Transform right-pointing relationship (-->).
+        
+        Right direction means the relationship points from left to right in the
+        pattern. This is the most common relationship direction.
+        
+        Args:
+            args: Optional rel_detail dict with relationship components.
+            
+        Returns:
+            Dict with type "RelationshipPattern", direction "right", and details.
+        """
         detail = args[0] if args else {}
         return {"type": "RelationshipPattern", "direction": "right", **detail}
 
     def full_rel_both(self, args):
+        """Transform bidirectional relationship (<-->).
+        
+        Both direction means the relationship can be traversed in either direction.
+        This is uncommon but supported for specific use cases.
+        
+        Args:
+            args: Optional rel_detail dict with relationship components.
+            
+        Returns:
+            Dict with type "RelationshipPattern", direction "both", and details.
+        """
         detail = args[0] if args else {}
         return {"type": "RelationshipPattern", "direction": "both", **detail}
 
     def full_rel_any(self, args):
+        """Transform undirected relationship (---).
+        
+        Any direction means the relationship can point either way. This is useful
+        for matching symmetric relationships where direction doesn't matter.
+        
+        Args:
+            args: Optional rel_detail dict with relationship components.
+            
+        Returns:
+            Dict with type "RelationshipPattern", direction "any", and details.
+        """
         detail = args[0] if args else {}
         return {"type": "RelationshipPattern", "direction": "any", **detail}
 
     def rel_detail(self, args):
+        """Extract details from inside relationship brackets [...].
+        
+        Pass-through is necessary to avoid adding wrapper nodes.
+        
+        Args:
+            args: rel_filler dict with relationship components.
+            
+        Returns:
+            The filler dict unchanged, or empty dict if no details.
+        """
         return args[0] if args else {}
 
     def rel_filler(self, args):
+        """Extract components from inside relationship brackets.
+        
+        Relationships can have: variable, types, properties, path length, and WHERE.
+        These are combined into a single dict. This merging is necessary to
+        flatten the AST structure.
+        
+        Args:
+            args: Mix of variable name string and component dicts.
+            
+        Returns:
+            Dict containing all relationship components.
+        """
         filler = {}
         for arg in args:
             if isinstance(arg, dict):
@@ -1005,37 +1815,120 @@ class CypherASTTransformer(Transformer):
         return filler
 
     def rel_types(self, args):
+        """Transform relationship type constraints.
+        
+        Relationships can be constrained to one or more types (e.g., [:KNOWS|:LIKES]).
+        Wrapping in a dict is necessary to distinguish from other components.
+        
+        Args:
+            args: List of relationship type names.
+            
+        Returns:
+            Dict with "types" key containing list of type names.
+        """
         return {"types": list(args)}
 
     def rel_type(self, args):
+        """Extract relationship type name.
+        
+        Type names are identifiers. Stripping backticks is necessary for
+        normalized type comparison.
+        
+        Args:
+            args: IDENTIFIER token.
+            
+        Returns:
+            Type name string with backticks removed.
+        """
         return str(args[0]).strip('`')
 
     def rel_properties(self, args):
+        """Transform relationship property constraints.
+        
+        Relationships can have property filters just like nodes. Wrapping in a
+        dict distinguishes properties from other components.
+        
+        Args:
+            args: Properties map.
+            
+        Returns:
+            Dict with "properties" key containing the property map.
+        """
         return {"properties": args[0] if args else None}
 
     def rel_where(self, args):
+        """Transform inline WHERE clause within relationship pattern.
+        
+        WHERE can filter relationship properties (e.g., [:KNOWS WHERE r.since > 2020]).
+        Wrapping in a dict distinguishes from property maps.
+        
+        Args:
+            args: Expression for the WHERE condition.
+            
+        Returns:
+            Dict with "where" key containing the condition expression.
+        """
         return {"where": args[0] if args else None}
 
     def path_length(self, args):
+        """Transform variable-length path specification (*).
+        
+        Variable-length paths match multiple hops (e.g., *1..3 or * for unlimited).
+        This is necessary for traversing graph paths of unknown length.
+        
+        Args:
+            args: Optional path_length_range specification.
+            
+        Returns:
+            Dict with "pathLength" key containing range spec or True for unlimited.
+        """
         range_spec = args[0] if args else None
         return {"pathLength": range_spec}
 
     def path_length_range(self, args):
-        if len(args) == 1:
-            return {"fixed": int(str(args[0]))}
-        elif len(args) == 2:
-            return {"min": int(str(args[0])) if args[0] else None, "max": int(str(args[1])) if args[1] else None}
-        return {"unbounded": True}
+        """Transform path length range specification.
+        
+        Ranges can be: exact (5), minimum (5..), maximum (..5), or bounded (5..10).
+        These distinctions are necessary for path matching algorithms.
+        
+        Args:
+            args: One or two integer arguments for range bounds.
+            
+        Returns:
+            Dict with "fixed", "min"/"max", or "unbounded" keys.
+        """
 
     # ========================================================================
     # Properties
     # ========================================================================
     
     def properties(self, args):
+        """Extract property map from curly braces {...}.
+        
+        Property maps are key-value pairs for node/relationship properties.
+        Extracting the inner dict is necessary to unwrap the intermediate structure.
+        
+        Args:
+            args: property_list wrapper containing props dict.
+            
+        Returns:
+            Dict mapping property names to values.
+        """
         props = next((a for a in args if isinstance(a, dict) and "props" in str(a)), {"props": {}})
         return props.get("props", {})
 
     def property_list(self, args):
+        """Transform comma-separated property key-value pairs.
+        
+        Combines individual property assignments into a single map. Wrapping
+        in a dict with "props" key is necessary to pass through transformer.
+        
+        Args:
+            args: List of property_key_value dicts.
+            
+        Returns:
+            Dict with "props" key containing merged property map.
+        """
         result = {}
         for arg in args:
             if isinstance(arg, dict) and "key" in arg:
@@ -1043,9 +1936,30 @@ class CypherASTTransformer(Transformer):
         return {"props": result}
 
     def property_key_value(self, args):
+        """Transform a single property assignment (key: value).
+        
+        Separating key and value is necessary for validation and execution.
+        
+        Args:
+            args: [property_name, expression]
+            
+        Returns:
+            Dict with "key" and "value" for the property assignment.
+        """
         return {"key": str(args[0]), "value": args[1] if len(args) > 1 else None}
 
     def property_name(self, args):
+        """Extract property name identifier.
+        
+        Property names are identifiers. Stripping backticks is necessary for
+        normalized property name comparison.
+        
+        Args:
+            args: IDENTIFIER token.
+            
+        Returns:
+            Property name string with backticks removed.
+        """
         return str(args[0]).strip('`')
 
     # ========================================================================
@@ -1053,21 +1967,78 @@ class CypherASTTransformer(Transformer):
     # ========================================================================
     
     def or_expression(self, args):
+        """Transform OR boolean expression with short-circuit evaluation.
+        
+        OR has lowest precedence among boolean operators. Multiple OR operations
+        are collected into a single node for easier optimization. Single operands
+        pass through to avoid unnecessary wrapping.
+        
+        Args:
+            args: One or more XOR expression operands.
+            
+        Returns:
+            Single operand, or dict with type "Or" containing all operands.
+        """
         if len(args) == 1:
             return args[0]
         return {"type": "Or", "operands": list(args)}
 
     def xor_expression(self, args):
+        """Transform XOR (exclusive OR) boolean expression.
+        
+        XOR returns true only if operands differ. Multiple XORs are collected
+        for easier analysis. This is less common than AND/OR but necessary for
+        complete boolean logic support.
+        
+        Args:
+            args: One or more AND expression operands.
+            
+        Returns:
+            Single operand, or dict with type "Xor" containing all operands.
+        """
         if len(args) == 1:
             return args[0]
         return {"type": "Xor", "operands": list(args)}
 
     def and_expression(self, args):
+        """Transform AND boolean expression with short-circuit evaluation.
+        
+        AND has higher precedence than OR/XOR. Multiple ANDs are collected into
+        a single node for easier optimization and execution planning.
+        
+        Args:
+            args: One or more NOT expression operands.
+            
+        Returns:
+            Single operand, or dict with type "And" containing all operands.
+        """
         if len(args) == 1:
             return args[0]
         return {"type": "And", "operands": list(args)}
 
     def not_expression(self, args):
+        """Transform NOT expression with proper boolean negation handling.
+        
+        NOT is a unary boolean operator that negates its operand. Multiple NOTs
+        can be chained (e.g., NOT NOT x), so we count them and apply modulo 2
+        logic: odd count = negate, even count = no-op (double negation cancels).
+        
+        The NOT_KEYWORD terminal has higher priority than IDENTIFIER in the grammar,
+        ensuring "NOT" is parsed as a keyword rather than a variable name. These
+        terminals are passed as Lark Token objects, so we filter them separately
+        from the expression being negated.
+        
+        This careful handling is necessary because:
+        1. NOT can be ambiguous with variable names in some contexts
+        2. Terminal priorities must be explicit to avoid parse errors
+        3. Multiple negations need semantic simplification
+        
+        Args:
+            args: Mix of NOT_KEYWORD Token objects and the comparison expression.
+            
+        Returns:
+            The expression unchanged (even NOTs), or wrapped in Not node (odd NOTs).
+        """
         # NOT_KEYWORD terminals will be passed as Token objects
         from lark import Token
         not_count = sum(1 for a in args if isinstance(a, Token) and a.type == 'NOT_KEYWORD')
@@ -1082,6 +2053,23 @@ class CypherASTTransformer(Transformer):
             return expr
 
     def comparison_expression(self, args):
+        """Transform comparison expression with operators like =, <>, <, >, <=, >=.
+        
+        Comparison expressions allow comparing values for equality or ordering.
+        Multiple comparisons can be chained (e.g., a < b < c), which is transformed
+        into nested comparison nodes. This structure is necessary for type checking
+        and ensuring all operands are comparable.
+        
+        Single operands pass through to avoid unnecessary wrapping. This is necessary
+        for efficient AST traversal and avoiding deep nesting for simple expressions.
+        
+        Args:
+            args: Alternating operands and operators [left, op1, right1, op2, right2, ...].
+        
+        Returns:
+            Single operand unchanged, or nested dict nodes with type "Comparison"
+            containing operator, left operand, and right operand for each comparison.
+        """
         if len(args) == 1:
             return args[0]
         result = args[0]
@@ -1092,6 +2080,24 @@ class CypherASTTransformer(Transformer):
         return result
 
     def null_predicate_expression(self, args):
+        """Transform IS NULL or IS NOT NULL predicate expressions.
+        
+        Null predicates check whether an expression evaluates to NULL, which is
+        necessary because NULL cannot be compared with = or <> in SQL/Cypher
+        semantics (NULL = NULL is false, not true). IS NULL and IS NOT NULL
+        are the only correct ways to test for null values.
+        
+        This method wraps the expression in a NullCheck node only when a null
+        operator is present. Otherwise, it passes through the expression unchanged
+        to avoid unnecessary wrapper nodes in the AST.
+        
+        Args:
+            args: [expression] or [expression, null_check_operator].
+        
+        Returns:
+            Expression unchanged if no null check, or dict with type "NullCheck"
+            containing the operator ("IS NULL" or "IS NOT NULL") and operand.
+        """
         expr = args[0] if args else None
         if len(args) > 1:
             # Has a null check
@@ -1104,6 +2110,24 @@ class CypherASTTransformer(Transformer):
         return None
 
     def string_predicate_expression(self, args):
+        """Transform string predicate expressions (STARTS WITH, ENDS WITH, CONTAINS, =~, IN).
+        
+        String predicates provide specialized string matching operations that are more
+        efficient and expressive than using regular expressions for common patterns.
+        The IN operator tests set membership. These operations are necessary for
+        text search, filtering, and pattern matching in graph queries.
+        
+        Multiple string predicates can be chained, creating nested nodes for
+        complex string filtering logic. Single operands pass through to avoid
+        unnecessary AST depth.
+        
+        Args:
+            args: Alternating operands and operators [left, op1, right1, op2, right2, ...].
+        
+        Returns:
+            Single operand unchanged, or nested dict nodes with type "StringPredicate"
+            containing operator, left operand, and right operand for each predicate.
+        """
         if len(args) == 1:
             return args[0]
         result = args[0]
@@ -1114,20 +2138,107 @@ class CypherASTTransformer(Transformer):
         return result
 
     def comparison_op(self, args):
+        """Extract and normalize comparison operator token.
+        
+        Comparison operators include: = (equality), <> (inequality), < (less than),
+        > (greater than), <= (less than or equal), >= (greater than or equal).
+        
+        This method extracts the operator symbol from the parsed token. The default
+        of "=" handles edge cases where the operator is missing (though this should
+        not happen in valid queries). Converting to string is necessary to normalize
+        Token objects into consistent string representations for the AST.
+        
+        Args:
+            args: Single comparison operator token.
+        
+        Returns:
+            Comparison operator as a string, defaulting to "=" if missing.
+        """
         if not args:
             return "="
         return str(args[0])
 
     def string_predicate_op(self, args):
+        """Extract and normalize string predicate operator keywords.
+        
+        String predicate operators can be multi-word keywords (STARTS WITH, ENDS WITH)
+        or single tokens (CONTAINS, IN, =~). This method joins multi-word operators
+        with spaces and uppercases them for consistent AST representation.
+        
+        Normalization to uppercase is necessary because Cypher is case-insensitive
+        for keywords, and consistent casing enables reliable pattern matching and
+        operator dispatch during query execution.
+        
+        Args:
+            args: One or more keyword tokens forming the operator.
+        
+        Returns:
+            Space-separated, uppercased operator string (e.g., "STARTS WITH").
+        """
         return " ".join(str(a).upper() for a in args)
 
     def is_null(self, args):
+        """Return the IS NULL operator constant.
+        
+        This method is called when the grammar matches the IS NULL pattern.
+        It returns a consistent string representation that can be used by
+        null_predicate_expression to create the appropriate NullCheck node.
+        
+        Returning a constant string is necessary because the grammar rule produces
+        this as an alias for null_check_op, and the parent expression handler needs
+        a standardized operator value to construct the AST node.
+        
+        Args:
+            args: Not used (rule has no child nodes).
+        
+        Returns:
+            String constant "IS NULL".
+        """
         return "IS NULL"
 
     def is_not_null(self, args):
+        """Return the IS NOT NULL operator constant.
+        
+        This method is called when the grammar matches the IS NOT NULL pattern.
+        It returns a consistent string representation that can be used by
+        null_predicate_expression to create the appropriate NullCheck node.
+        
+        Returning a constant string is necessary because the grammar rule produces
+        this as an alias for null_check_op, and the parent expression handler needs
+        a standardized operator value to construct the AST node. The distinction
+        from IS NULL is critical for correct null checking semantics.
+        
+        Args:
+            args: Not used (rule has no child nodes).
+        
+        Returns:
+            String constant "IS NOT NULL".
+        """
         return "IS NOT NULL"
 
     def add_expression(self, args):
+        """Transform addition and subtraction arithmetic expressions.
+        
+        Addition and subtraction have equal precedence and associate left-to-right.
+        This method builds a left-associative tree of Arithmetic nodes, which is
+        necessary for correct evaluation order (e.g., a - b + c = (a - b) + c).
+        
+        Multiple operations are chained by iterating through operator-operand pairs
+        and nesting the previous result as the left operand. This structure enables
+        type checking to verify that all operands are numeric, and allows optimization
+        passes to simplify constant expressions.
+        
+        Single operands pass through unchanged to avoid wrapping simple values in
+        unnecessary AST nodes, improving efficiency for common cases like literals
+        or variables without arithmetic operations.
+        
+        Args:
+            args: Alternating operands and operators [left, op1, right1, op2, right2, ...].
+        
+        Returns:
+            Single operand unchanged, or nested dict nodes with type "Arithmetic"
+            containing operator ("+" or "-"), left operand, and right operand.
+        """
         if len(args) == 1:
             return args[0]
         result = args[0]
@@ -1138,6 +2249,27 @@ class CypherASTTransformer(Transformer):
         return result
 
     def mult_expression(self, args):
+        """Transform multiplication, division, and modulo arithmetic expressions.
+        
+        Multiplication, division, and modulo have equal precedence, higher than
+        addition/subtraction, and associate left-to-right. This method builds
+        a left-associative tree to preserve evaluation order (e.g., a / b * c = (a / b) * c).
+        
+        Higher precedence than addition is enforced by the grammar structure where
+        mult_expression is a child of add_expression. This precedence hierarchy is
+        necessary to correctly parse expressions like 2 + 3 * 4 as 2 + (3 * 4).
+        
+        Division by zero and modulo by zero are runtime errors that cannot be
+        detected during parsing, so the AST structure allows these operations and
+        defers validation to execution time or static analysis passes.
+        
+        Args:
+            args: Alternating operands and operators [left, op1, right1, op2, right2, ...].
+        
+        Returns:
+            Single operand unchanged, or nested dict nodes with type "Arithmetic"
+            containing operator ("*", "/", or "%"), left operand, and right operand.
+        """
         if len(args) == 1:
             return args[0]
         result = args[0]
@@ -1148,6 +2280,28 @@ class CypherASTTransformer(Transformer):
         return result
 
     def power_expression(self, args):
+        """Transform exponentiation (power) arithmetic expressions using ^ operator.
+        
+        Exponentiation has the highest precedence among arithmetic operators and
+        associates left-to-right (though mathematically it's often right-associative,
+        Cypher follows left-to-right). This method builds a left-associative tree
+        for expressions like a ^ b ^ c, evaluating as (a ^ b) ^ c.
+        
+        Higher precedence than multiplication is enforced by the grammar where
+        power_expression is a child of mult_expression. This ensures 2 * 3 ^ 4
+        is correctly parsed as 2 * (3 ^ 4), not (2 * 3) ^ 4.
+        
+        The ^ operator can produce very large numbers or complex mathematical edge
+        cases (negative base with fractional exponent), so validation and runtime
+        overflow handling may be needed during execution.
+        
+        Args:
+            args: Alternating operands and operators [left, op1, right1, op2, right2, ...].
+        
+        Returns:
+            Single operand unchanged, or nested dict nodes with type "Arithmetic"
+            containing operator "^", left operand (base), and right operand (exponent).
+        """
         if len(args) == 1:
             return args[0]
         result = args[0]
@@ -1158,6 +2312,29 @@ class CypherASTTransformer(Transformer):
         return result
 
     def unary_expression(self, args):
+        """Transform unary plus (+) and minus (-) expressions.
+        
+        Unary operators apply to a single operand and have the highest precedence
+        among all operators (including exponentiation). The unary minus negates a
+        value (e.g., -5, -x), while unary plus is a no-op that promotes to numeric
+        type (e.g., +"5" might convert a string to number in some contexts).
+        
+        This method creates a Unary node only when a sign operator is present.
+        Without a unary operator, it passes through the postfix expression unchanged,
+        avoiding unnecessary wrapping. This is necessary for efficient AST structure
+        since most expressions don't have unary operators.
+        
+        Multiple unary operators can be chained (e.g., --5, +-3), though this is
+        rare in practice. The current implementation handles this by nesting Unary
+        nodes, though optimization passes could simplify these (-- becomes identity).
+        
+        Args:
+            args: [operator, operand] for unary expressions, or [operand] without operator.
+        
+        Returns:
+            Operand unchanged if no operator, or dict with type "Unary" containing
+            operator ("+" or "-") and the operand expression.
+        """
         if len(args) == 1:
             return args[0]
         sign = str(args[0])
