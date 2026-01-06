@@ -920,9 +920,13 @@ class ASTConverter:
     
     def _convert_SetProperty(self, node: dict) -> SetItem:
         """Convert SetProperty node to SetItem."""
+        # Extract property name from PropertyLookup dict if needed
+        prop = node.get('property')
+        if isinstance(prop, dict) and prop.get('type') == 'PropertyLookup':
+            prop = prop.get('property')
         return SetItem(
             variable=node.get('variable'),
-            property=node.get('property'),
+            property=prop,
             expression=self.convert(node.get('value')),
             labels=[]
         )
@@ -966,9 +970,13 @@ class ASTConverter:
     
     def _convert_RemoveProperty(self, node: dict) -> RemoveItem:
         """Convert RemoveProperty node to RemoveItem."""
+        # Extract property name from PropertyLookup dict if needed
+        prop = node.get('property')
+        if isinstance(prop, dict) and prop.get('type') == 'PropertyLookup':
+            prop = prop.get('property')
         return RemoveItem(
             variable=node.get('variable'),
-            property=node.get('property'),
+            property=prop,
             labels=[]
         )
     
@@ -1248,6 +1256,42 @@ class ASTConverter:
             when_clauses=[w for w in when_clauses if w],
             else_expr=self.convert(node.get('else'))
         )
+    
+    def _convert_SearchedCase(self, node: dict) -> CaseExpression:
+        """Convert SearchedCase to CaseExpression."""
+        when_clauses = [self.convert(w) for w in node.get('when', [])]
+        else_node = node.get('else')
+        else_expr = None
+        if else_node:
+            if isinstance(else_node, dict) and else_node.get('type') == 'Else':
+                else_expr = self.convert(else_node.get('value'))
+            else:
+                else_expr = self.convert(else_node)
+        return CaseExpression(
+            expression=None,  # Searched case has no test expression
+            when_clauses=[w for w in when_clauses if w],
+            else_expr=else_expr
+        )
+    
+    def _convert_SimpleCase(self, node: dict) -> CaseExpression:
+        """Convert SimpleCase to CaseExpression."""
+        when_clauses = [self.convert(w) for w in node.get('when', [])]
+        else_node = node.get('else')
+        else_expr = None
+        if else_node:
+            if isinstance(else_node, dict) and else_node.get('type') == 'Else':
+                else_expr = self.convert(else_node.get('value'))
+            else:
+                else_expr = self.convert(else_node)
+        return CaseExpression(
+            expression=self.convert(node.get('operand')),
+            when_clauses=[w for w in when_clauses if w],
+            else_expr=else_expr
+        )
+    
+    def _convert_Else(self, node: dict):
+        """Convert Else node - just extract the value."""
+        return self.convert(node.get('value'))
     
     def _convert_SimpleWhen(self, node: dict) -> WhenClause:
         """Convert SimpleWhen to WhenClause."""

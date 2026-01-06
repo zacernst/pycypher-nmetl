@@ -290,7 +290,7 @@ property_name: IDENTIFIER
 
 ?and_expression: not_expression ("AND"i not_expression)*
 
-?not_expression: ("NOT"i)* comparison_expression
+not_expression: NOT_KEYWORD* comparison_expression
 
 ?comparison_expression: null_predicate_expression (comparison_op null_predicate_expression)*
 
@@ -515,6 +515,7 @@ variable_name: IDENTIFIER
 IDENTIFIER: REGULAR_IDENTIFIER
           | ESCAPED_IDENTIFIER
 
+NOT_KEYWORD.2: "NOT"i  // Higher priority than IDENTIFIER
 REGULAR_IDENTIFIER: /[a-zA-Z_][a-zA-Z0-9_]*/
 
 ESCAPED_IDENTIFIER: /`[^`]+`/
@@ -608,6 +609,26 @@ class CypherASTTransformer(Transformer):
     def update_clause(self, args):
         """Pass through the update clause (create/merge/delete/set/remove)."""
         return args[0] if args else None
+    
+    def read_clause(self, args):
+        """Pass through the read clause (match/unwind/with)."""
+        return args[0] if args else None
+    
+    def _ambig(self, args):
+        """Handle ambiguous parses - prefer the most specific parse."""
+        if not args:
+            return None
+        # Prefer dicts (structured data) over primitives
+        structured = [a for a in args if isinstance(a, dict)]
+        if structured:
+            # Prefer nodes with 'Not' type (for NOT expressions)
+            not_nodes = [a for a in structured if a.get('type') == 'Not']
+            if not_nodes:
+                return not_nodes[0]
+            # Otherwise return first structured node
+            return structured[0]
+        # Return first argument if no structured data
+        return args[0]
 
     def statement(self, args):
         return args[0] if args else None
@@ -818,15 +839,16 @@ class CypherASTTransformer(Transformer):
     def return_body(self, args):
         if args and args[0] == "*":
             return "*"
-        return list(args) if args else []
+        # args[0] is already a list from return_items
+        return args[0] if args else []
 
     def return_items(self, args):
         return list(args) if args else []
 
     def return_item(self, args):
         if len(args) == 1:
-            return {"expression": args[0]}
-        return {"expression": args[0], "alias": args[1]}
+            return {"type": "ReturnItem", "expression": args[0], "alias": None}
+        return {"type": "ReturnItem", "expression": args[0], "alias": args[1]}
 
     def return_alias(self, args):
         return str(args[0]).strip('`')
@@ -1046,9 +1068,11 @@ class CypherASTTransformer(Transformer):
         return {"type": "And", "operands": list(args)}
 
     def not_expression(self, args):
-        # Count NOTs
-        not_count = sum(1 for a in args if isinstance(a, str) and str(a).upper() == "NOT")
-        expr = next((a for a in args if not (isinstance(a, str) and str(a).upper() == "NOT")), None)
+        # NOT_KEYWORD terminals will be passed as Token objects
+        from lark import Token
+        not_count = sum(1 for a in args if isinstance(a, Token) and a.type == 'NOT_KEYWORD')
+        # Expression is the non-Token arg
+        expr = next((a for a in args if not isinstance(a, Token)), None)
         
         if not_count == 0:
             return expr
