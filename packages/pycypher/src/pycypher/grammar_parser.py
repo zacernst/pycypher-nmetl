@@ -1219,7 +1219,7 @@ class CypherASTTransformer(Transformer):
             Dict with type "WithClause" containing all components for variable passing.
         """
         distinct = any(str(a).upper() == "DISTINCT" for a in args if isinstance(a, str))
-        body = None
+        items = []
         where = None
         order = None
         skip = None
@@ -1227,7 +1227,10 @@ class CypherASTTransformer(Transformer):
         
         for arg in args:
             if isinstance(arg, dict):
-                if arg.get("type") == "WhereClause":
+                if arg.get("type") == "ReturnBody":
+                    # Extract items from the return body
+                    items = arg.get("items", [])
+                elif arg.get("type") == "WhereClause":
                     where = arg
                 elif arg.get("type") == "OrderClause":
                     order = arg
@@ -1235,10 +1238,13 @@ class CypherASTTransformer(Transformer):
                     skip = arg
                 elif arg.get("type") == "LimitClause":
                     limit = arg
-                elif body is None:
-                    body = arg
+            elif isinstance(arg, list) and not items:
+                # return_body returns a list of items directly
+                items = arg
+            elif arg == "*":
+                items = "*"
                     
-        return {"type": "WithClause", "distinct": distinct, "body": body, "where": where, 
+        return {"type": "WithClause", "distinct": distinct, "items": items, "where": where, 
                 "order": order, "skip": skip, "limit": limit}
 
     # ========================================================================

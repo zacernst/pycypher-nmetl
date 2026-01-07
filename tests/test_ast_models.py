@@ -237,7 +237,7 @@ class TestQueryConversion:
         tree = parser.parse(query)
         ast_dict = parser.transformer.transform(tree)
         typed_ast = converter.convert(ast_dict)
-        
+
         assert typed_ast is not None
 
 
@@ -314,6 +314,8 @@ class TestExpressions:
         # Verify right operand is integer literal (30)
         assert isinstance(where_condition.right, IntegerLiteral)
         assert where_condition.right.value == 30
+
+
 
 
 # =============================================================================

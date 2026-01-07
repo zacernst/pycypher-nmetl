@@ -34,6 +34,7 @@ import pandas as pd
 import ibis
 from ibis.expr.types import Table as IbisTable
 
+from pycypher.ast_models import ASTNode, ASTConverter
 
 def random_hash() -> str:
     """Generate a random hash string for column naming.
@@ -45,7 +46,7 @@ def random_hash() -> str:
         str: A 32-character hexadecimal hash string.
     """
     return hashlib.md5(
-        bytes(str(random.random()), encoding="utf-8")
+        data=bytes(str(object=random.random()), encoding="utf-8")
     ).hexdigest()
 
 
@@ -1163,149 +1164,7 @@ class RenameColumn(Algebraic):
 
 
 if __name__ == "__main__":
-    # Define tables
-    person_table: EntityTable = EntityTable(
-        name="Person",
-        entity_type="Person",
-        attributes=["name", "age"],
-        entity_identifier_attribute="name",
-    )
-
-    city_table = EntityTable(
-        name="City",
-        entity_type="City",
-        attributes=["name", "population"],
-        entity_identifier_attribute="name",
-    )
-
-    state_table = EntityTable(
-        name="State",
-        entity_type="State",
-        attributes=["name", "mittenlike", "humid"],
-        entity_identifier_attribute="name",
-    )
-
-    lives_in_table = RelationshipTable(
-        name="LIVES_IN",
-        relationship_type="LIVES_IN",
-        source_entity_type="Person",
-        target_entity_type="City",
-        attributes=[],
-    )
-    
-    city_in_state_table = RelationshipTable(
-        name="CITY_IN_STATE",
-        relationship_type="CITY_IN_STATE",
-        source_entity_type="City",
-        target_entity_type="State",
-        attributes=[],
-    )
-
-    # Define nodes and relationship
-    person_node: Node = Node(
-        variable="p", label="Person", attributes={"name": "Alice"}
-    )
-    person_df = pd.DataFrame(
-        data=[
-            {"name": "Alice", "age": 30},
-            {"name": "Bob", "age": 25},
-            {"name": "carol", "age": 22},
-        ]
-    )
-
-    city_node: Node = Node(variable="c", label="City", attributes={})
-    city_df = pd.DataFrame(
-        data=[
-            {"name": "Cairo", "population": 100},
-            {"name": "Alexandria", "population": 50},
-        ],
-    )
-    
-    state_node: Node = Node(variable="s", label="State", attributes={})
-    state_df = pd.DataFrame(
-        data=[
-            {"name": "Georgia", "humid": True, "mittenlike": False},
-            {"name": "Virginia", "humid": False, "mittenlike": False},
-            {"name": "Michigan", "humid": False, "mittenlike": True},
-        ],
-    )
-
-    lives_in: Relationship = Relationship(
-        variable="livesin",
-        label="LIVES_IN",
-        source_node=person_node,
-        target_node=city_node,
-    )
-    
-
-    lives_in_df: pd.DataFrame = pd.DataFrame(
-        data=[
-            {
-                "source_name": "Alice",
-                "target_name": "Cairo",
-                "relationship_id": "r1",
-            },
-            {
-                "source_name": "Bob",
-                "target_name": "Alexandria",
-                "relationship_id": "r2",
-            },
-            {
-                "source_name": "carol",
-                "target_name": "Cairo",
-                "relationship_id": "r3",
-            },
-        ],
-    )
-    
-    city_in_state: Relationship = Relationship(
-        variable="citystate",
-        label="CITY_IN_STATE",
-        source_node=city_node,
-        target_node=state_node,
-    )
-    
-    city_in_state_df: pd.DataFrame = pd.DataFrame(
-        data=[
-            {
-                "source_name": "Cairo",
-                "target_name": "Georgia",
-                "relationship_id": "in1",
-            },
-            {
-                "source_name": "Alexandria",
-                "target_name": "Virginia",
-                "relationship_id": "in2",
-            },
-            {
-                "source_name": "Kalamazoo",
-                "target_name": "Michigan",
-                "relationship_id": "in3",
-            },
-        ],
-    )
-
-    context: Context = Context(
-        entity_tables=[city_table, state_table, person_table],
-        relationship_tables=[lives_in_table, city_in_state_table],
-        obj_map={
-            "Person": person_df,
-            "City": city_df,
-            "LIVES_IN": lives_in_df,
-            "State": state_df,
-            "CITY_IN_STATE": city_in_state_df,
-        },
-    )
-
-    # lives_in_alg: Algebraic = lives_in.to_algebra(context)
-    # rich.print(lives_in_alg)
-
-    city_in_state_alg: Algebraic = city_in_state.to_algebra(context)
-    rich.print(city_in_state_alg)
-
-    relationship_conjunction: RelationshipConjunction = RelationshipConjunction(
-        relationships=[lives_in, city_in_state]
-    )
-    conjunction_alg: Algebraic = relationship_conjunction.to_algebra(context)
-    rich.print(conjunction_alg)
-    
+    node_obj: ASTNode = ASTConverter().from_cypher(cypher="MATCH (p:Person)-[r:LIVES_IN]->(c:City) RETURN p, r, c")
+    cypher_query_1: str = "MATCH (p:Person)-[r:LIVES_IN]->(c:City) WHERE c.population > 1000 WITH p.name AS person_name RETURN person_name"
+    node_obj_1: ASTNode = ASTConverter().from_cypher(cypher=cypher_query_1)
+    rich.print(node_obj_1)

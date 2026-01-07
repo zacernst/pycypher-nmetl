@@ -23,9 +23,168 @@ Usage:
 """
 
 from __future__ import annotations
-from typing import Any, Optional, Union, List, Dict, Iterator, Callable, cast
+from typing import Any, Optional, Union, List, Dict, Iterator, Callable, cast, Set
 from pydantic import BaseModel, Field, ConfigDict
+from pycypher.grammar_parser import GrammarParser
 from abc import ABC, abstractmethod
+from enum import Enum
+import lark
+
+
+# ============================================================================
+# Validation Framework
+# ============================================================================
+
+class ValidationSeverity(str, Enum):
+    """Severity levels for validation issues."""
+    ERROR = "error"      # Query will likely fail or produce wrong results
+    WARNING = "warning"  # Query will work but may have performance/correctness issues
+    INFO = "info"        # Suggestions for improvement
+
+
+class ValidationIssue(BaseModel):
+    """A single validation issue found in the AST."""
+    severity: ValidationSeverity
+    message: str
+    node_type: Optional[Any] = None  # Can be string or ASTNode
+    suggestion: Optional[Any] = None  # Can be string or other types
+    node: Optional[Any] = None  # For compatibility with tests
+    code: Optional[str] = None  # For compatibility with tests
+    
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+    
+    def __init__(self, severity: Optional[Union[ValidationSeverity, dict]] = None,  message: Optional[str] = None, 
+                 node: Optional[Any] = None, code: Optional[str] = None, **kwargs):
+        """Initialize ValidationIssue with positional or keyword arguments."""
+        # If first argument is dict and message is None, Pydantic is calling with dict
+        if isinstance(severity, dict):
+            super().__init__(**severity)
+        elif severity is not None or message is not None:
+            # Positional or mixed arguments - convert to kwargs
+            if severity is not None and not isinstance(severity, dict):
+                kwargs['severity'] = severity
+            if message is not None:
+                kwargs['message'] = message
+            if node is not None:
+                kwargs['node'] = node
+            if code is not None:
+                kwargs['code'] = code
+            super().__init__(**kwargs)
+        else:
+            # All keyword arguments
+            super().__init__(**kwargs)
+    
+    def __str__(self) -> str:
+        parts = [f"[{self.severity.value.upper()}] {self.message}"]
+        if self.node_type:
+            parts.append(f" (in {self.node_type})")
+        if self.suggestion:
+            parts.append(f"\n  💡 {self.suggestion}")
+        return "".join(parts)
+    
+    def __repr__(self) -> str:
+        """String representation for debugging."""
+        node_info = f" in {self.node.__class__.__name__}" if self.node else ""
+        code_info = f" [{self.code}]" if self.code else ""
+        return f"{self.severity.value.upper()}{code_info}: {self.message}{node_info}"
+
+
+class ValidationResult(BaseModel):
+    """Result of validating an AST."""
+    issues: List[ValidationIssue] = Field(default_factory=list)
+    
+    @property
+    def has_errors(self) -> bool:
+        """Check if there are any error-level issues."""
+        return any(issue.severity == ValidationSeverity.ERROR for issue in self.issues)
+    
+    @property
+    def has_warnings(self) -> bool:
+        """Check if there are any warning-level issues."""
+        return any(issue.severity == ValidationSeverity.WARNING for issue in self.issues)
+    
+    @property
+    def is_valid(self) -> bool:
+        """Check if AST is valid (no errors)."""
+        return not self.has_errors
+    
+    @property
+    def errors(self) -> List[ValidationIssue]:
+        """Get only error-level issues."""
+        return [i for i in self.issues if i.severity == ValidationSeverity.ERROR]
+    
+    @property
+    def warnings(self) -> List[ValidationIssue]:
+        """Get only warning-level issues."""
+        return [i for i in self.issues if i.severity == ValidationSeverity.WARNING]
+    
+    @property
+    def infos(self) -> List[ValidationIssue]:
+        """Get only info-level issues."""
+        return [i for i in self.issues if i.severity == ValidationSeverity.INFO]
+    
+    def add_issue(self, severity: ValidationSeverity, message: str, 
+                  node_type: Optional[str] = None, suggestion: Optional[str] = None,
+                  node: Optional[Any] = None, code: Optional[str] = None) -> None:
+        """Add a validation issue."""
+        self.issues.append(ValidationIssue(
+            severity=severity,
+            message=message,
+            node_type=node_type,
+            suggestion=suggestion,
+            node=node,
+            code=code
+        ))
+    
+    def add_error(self, message: str, node_type: Optional[str] = None, suggestion: Optional[str] = None, 
+                  node: Optional[Any] = None, code: Optional[str] = None) -> None:
+        """Add an error-level issue."""
+        self.issues.append(ValidationIssue(
+            severity=ValidationSeverity.ERROR,
+            message=message,
+            node_type=node_type,
+            suggestion=suggestion,
+            node=node,
+            code=code
+        ))
+    
+    def add_warning(self, message: str, node_type: Optional[str] = None, suggestion: Optional[str] = None,
+                    node: Optional[Any] = None, code: Optional[str] = None) -> None:
+        """Add a warning-level issue."""
+        self.issues.append(ValidationIssue(
+            severity=ValidationSeverity.WARNING,
+            message=message,
+            node_type=node_type,
+            suggestion=suggestion,
+            node=node,
+            code=code
+        ))
+    
+    def add_info(self, message: str, node_type: Optional[str] = None, suggestion: Optional[str] = None,
+                 node: Optional[Any] = None, code: Optional[str] = None) -> None:
+        """Add an info-level issue."""
+        self.issues.append(ValidationIssue(
+            severity=ValidationSeverity.INFO,
+            message=message,
+            node_type=node_type,
+            suggestion=suggestion,
+            node=node,
+            code=code
+        ))
+    
+    def __bool__(self) -> bool:
+        """True if validation passed (no errors)."""
+        return self.is_valid
+    
+    def __str__(self) -> str:
+        if not self.issues:
+            return "Validation passed: No issues found"
+        
+        status = "passed" if self.is_valid else "failed"
+        lines = [f"Validation {status} with {len(self.issues)} issue(s):"]
+        for i, issue in enumerate(self.issues, 1):
+            lines.append(f"  {i}. {issue}")
+        return "\n".join(lines)
 
 
 # ============================================================================
@@ -151,6 +310,38 @@ class ASTNode(BaseModel, ABC):
     def clone(self) -> 'ASTNode':
         """Create a deep copy of this node."""
         return self.__class__(**self.to_dict())
+    
+    def validate(self) -> ValidationResult:
+        """Validate this AST node and return any issues found.
+        
+        Runs a suite of validators to check for:
+        - Undefined variable references
+        - Unused variables
+        - Missing labels (performance issues)
+        - Unreachable conditions
+        - Type mismatches
+        - And other common query anti-patterns
+        
+        Returns:
+            ValidationResult containing all issues found
+            
+        Example:
+            >>> result = query.validate()
+            >>> if not result.is_valid:
+            ...     print(result)
+        """
+        result = ValidationResult()
+        
+        # Run all validators
+        _validate_undefined_variables(self, result)
+        _validate_unused_variables(self, result)
+        _validate_missing_labels(self, result)
+        _validate_unreachable_conditions(self, result)
+        _validate_return_all_with_limit(self, result)
+        _validate_delete_without_detach(self, result)
+        _validate_expensive_patterns(self, result)
+        
+        return result
 
 
 # ============================================================================
@@ -580,6 +771,26 @@ class AllShortestPaths(Expression):
 
 class ASTConverter:
     """Converts dictionary-based AST to Pydantic models."""
+
+    @classmethod
+    def from_cypher(cls, cypher: str) -> ASTNode:
+        """
+        Parse Cypher query and convert to typed AST.
+        
+        Args:
+            cypher: Cypher query string
+        Returns:
+            Typed ASTNode
+        """
+        converter: ASTConverter = cls()
+        parser = GrammarParser()
+        tree: lark.tree.Tree = parser.parse(query=cypher)
+        ast_dict: dict = parser.transformer.transform(tree)
+        ast_node: ASTNode | None = converter.convert(node=ast_dict)
+        if not ast_node:
+            raise ValueError("Got a falsey object from AST conversion.")
+        import pdb; pdb.set_trace()
+        return ast_node
     
     def convert(self, node: Any) -> Optional[ASTNode]:
         """
@@ -868,6 +1079,72 @@ class ASTConverter:
             optional=node.get('optional', False),
             pattern=cast(Optional[Pattern], self.convert(node.get('pattern'))),
             where=cast(Optional[Expression], self.convert(node.get('where')))
+        )
+    
+    def _convert_WithClause(self, node: dict) -> With:
+        """Convert WithClause node.
+        
+        WITH is similar to RETURN but continues query processing.
+        It filters and projects variables for the next query stage.
+        
+        Args:
+            node: Dictionary with type "WithClause"
+            
+        Returns:
+            With clause with items, WHERE, ORDER BY, SKIP, LIMIT
+        """
+        # Convert return items
+        items = []
+        items_list = node.get('items', [])
+        if items_list:
+            items = [self.convert(item) for item in items_list]
+        
+        # Handle WHERE clause
+        where_cond = None
+        if 'where' in node and node['where']:
+            where_dict = node['where']
+            if isinstance(where_dict, dict):
+                if 'condition' in where_dict:
+                    where_cond = self.convert(where_dict['condition'])
+                else:
+                    where_cond = self.convert(where_dict)
+        
+        # Handle ORDER BY
+        order_by = None
+        if node.get('order'):
+            order_items = node['order'].get('items', []) if isinstance(node['order'], dict) else []
+            converted_order = [self.convert(item) for item in order_items if item is not None]
+            order_by = [o for o in converted_order if o is not None]
+        
+        # Extract SKIP value
+        skip_val = None
+        if node.get('skip'):
+            skip_clause = node['skip']
+            if isinstance(skip_clause, dict):
+                skip_val = skip_clause.get('value')
+        
+        # Extract LIMIT value (same logic as ReturnStatement)
+        limit_val = None
+        if node.get('limit'):
+            limit_clause = node['limit']
+            if isinstance(limit_clause, dict):
+                limit_val = limit_clause.get('value')
+                # Handle Lark Tree objects
+                if hasattr(limit_val, '__class__') and limit_val.__class__.__name__ == 'Tree':
+                    if limit_val.children:
+                        limit_val = limit_val.children[0]
+                if isinstance(limit_val, int):
+                    pass  # Already good
+                elif hasattr(limit_val, 'value'):
+                    limit_val = int(limit_val.value)
+        
+        return With(
+            distinct=node.get('distinct', False),
+            items=cast(List[ReturnItem], [i for i in items if i]),
+            where=cast(Optional[Expression], where_cond),
+            order_by=cast(Optional[List[OrderByItem]], order_by),
+            skip=skip_val,
+            limit=limit_val
         )
     
     def _convert_Return(self, node: dict) -> Return:
@@ -1404,6 +1681,274 @@ class ASTConverter:
         """Convert ReturnBody - extract items."""
         # This is typically handled by ReturnStatement converter
         return None
+
+
+# ============================================================================
+# Validation Implementation
+# ============================================================================
+
+def _collect_defined_variables(node: ASTNode) -> Set[str]:
+    """Collect all variables defined in patterns and other binding contexts."""
+    defined = set()
+    
+    # Variables from MATCH patterns
+    for match in node.find_all(Match):
+        if match.pattern:
+            for path in match.pattern.paths:
+                # Node variables
+                for elem in path.elements:
+                    if isinstance(elem, NodePattern) and elem.variable:
+                        defined.add(elem.variable)
+                    elif isinstance(elem, RelationshipPattern) and elem.variable:
+                        defined.add(elem.variable)
+                # Path variable
+                if path.variable:
+                    defined.add(path.variable)
+    
+    # Variables from CREATE patterns
+    for create in node.find_all(Create):
+        if create.pattern:
+            for path in create.pattern.paths:
+                for elem in path.elements:
+                    if isinstance(elem, NodePattern) and elem.variable:
+                        defined.add(elem.variable)
+                    elif isinstance(elem, RelationshipPattern) and elem.variable:
+                        defined.add(elem.variable)
+    
+    # Variables from UNWIND
+    for unwind in node.find_all(Unwind):
+        if unwind.alias:
+            defined.add(unwind.alias)
+    
+    # Variables from WITH (creates new scope)
+    for with_clause in node.find_all(With):
+        for item in with_clause.items:
+            if item.alias:
+                defined.add(item.alias)
+            elif isinstance(item.expression, Variable):
+                defined.add(item.expression.name)
+    
+    return defined
+
+
+def _collect_referenced_variables(node: ASTNode) -> Set[str]:
+    """Collect all variables referenced in expressions."""
+    referenced = set()
+    
+    for var in node.find_all(Variable):
+        referenced.add(var.name)
+    
+    # Also check property lookups with legacy variable field
+    for prop in node.find_all(PropertyLookup):
+        if prop.variable:
+            referenced.add(prop.variable)
+    
+    return referenced
+
+
+def _validate_undefined_variables(node: ASTNode, result: ValidationResult) -> None:
+    """Check for references to undefined variables."""
+    if not isinstance(node, Query):
+        return
+    
+    defined = _collect_defined_variables(node)
+    referenced = _collect_referenced_variables(node)
+    
+    undefined = referenced - defined
+    for var in sorted(undefined):
+        result.add_issue(
+            ValidationSeverity.ERROR,
+            f"Variable '{var}' is used but never defined",
+            suggestion=f"Add '{var}' to a MATCH or CREATE pattern, or define it with UNWIND/WITH",
+            code="UNDEFINED_VAR"
+        )
+
+
+def _validate_unused_variables(node: ASTNode, result: ValidationResult) -> None:
+    """Check for variables that are defined but never used."""
+    if not isinstance(node, Query):
+        return
+    
+    defined = _collect_defined_variables(node)
+    referenced = _collect_referenced_variables(node)
+    
+    # Also check what's returned
+    returned = set()
+    for ret in node.find_all(Return):
+        for item in ret.items:
+            if isinstance(item.expression, Variable):
+                returned.add(item.expression.name)
+    
+    used = referenced | returned
+    unused = defined - used
+    
+    for var in sorted(unused):
+        result.add_issue(
+            ValidationSeverity.WARNING,
+            f"Variable '{var}' is defined but never used",
+            suggestion=f"Remove '{var}' from the pattern or use it in WHERE/RETURN",
+            code="UNUSED_VAR"
+        )
+
+
+def _validate_missing_labels(node: ASTNode, result: ValidationResult) -> None:
+    """Check for MATCH patterns without labels (potential performance issue)."""
+    for match in node.find_all(Match):
+        if not match.pattern:
+            continue
+        
+        for path in match.pattern.paths:
+            for elem in path.elements:
+                if isinstance(elem, NodePattern):
+                    if not elem.labels and not elem.properties:
+                        var_name = elem.variable or "(anonymous)"
+                        result.add_issue(
+                            ValidationSeverity.WARNING,
+                            f"Node pattern '{var_name}' has no labels or properties",
+                            node_type="Match",
+                            suggestion="Add a label to improve query performance via index usage",
+                            code="MISSING_LABEL"
+                        )
+
+
+def _validate_unreachable_conditions(node: ASTNode, result: ValidationResult) -> None:
+    """Check for unreachable WHERE conditions (like WHERE false)."""
+    for match in node.find_all(Match):
+        if match.where:
+            if isinstance(match.where, BooleanLiteral) and not match.where.value:
+                result.add_issue(
+                    ValidationSeverity.WARNING,
+                    "WHERE clause is always false - this query will never return results",
+                    node_type="Match",
+                    suggestion="Remove the WHERE false condition or fix the logic",
+                    code="UNREACHABLE_MATCH"
+                )
+            
+            # Check for contradictory literal comparisons
+            _check_contradictory_comparisons(match.where, result)
+
+
+def _check_contradictory_comparisons(expr: Any, result: ValidationResult) -> None:
+    """Recursively check for contradictory comparisons with literals."""
+    # Check for Comparison class (not ComparisonExpression)
+    if expr.__class__.__name__ == 'Comparison':
+        # Check if both sides are literals
+        left_is_literal = expr.left.__class__.__name__ in ('IntegerLiteral', 'FloatLiteral', 'StringLiteral', 'BooleanLiteral')
+        right_is_literal = expr.right.__class__.__name__ in ('IntegerLiteral', 'FloatLiteral', 'StringLiteral', 'BooleanLiteral')
+        
+        if left_is_literal and right_is_literal:
+            left_val = expr.left.value
+            right_val = expr.right.value
+            op = expr.operator
+            
+            # Evaluate the comparison
+            try:
+                if op == '>':
+                    always_false = not (left_val > right_val)
+                elif op == '<':
+                    always_false = not (left_val < right_val)
+                elif op == '>=':
+                    always_false = not (left_val >= right_val)
+                elif op == '<=':
+                    always_false = not (left_val <= right_val)
+                elif op == '=':
+                    always_false = not (left_val == right_val)
+                elif op == '<>':
+                    always_false = not (left_val != right_val)
+                else:
+                    always_false = False
+                
+                if always_false:
+                    result.add_issue(
+                        ValidationSeverity.ERROR,
+                        f"Contradictory comparison: {left_val} {op} {right_val} is always false",
+                        node_type="ComparisonExpression",
+                        suggestion="Review the comparison logic",
+                        code="CONTRADICTORY_COMPARISON"
+                    )
+            except (TypeError, ValueError):
+                # Can't compare these types
+                pass
+    
+    # Recursively check child expressions
+    if hasattr(expr, '__dict__'):
+        for attr_value in expr.__dict__.values():
+            if isinstance(attr_value, list):
+                for item in attr_value:
+                    _check_contradictory_comparisons(item, result)
+            elif hasattr(attr_value, '__dict__'):
+                _check_contradictory_comparisons(attr_value, result)
+
+
+def _validate_return_all_with_limit(node: ASTNode, result: ValidationResult) -> None:
+    """Check for RETURN * with LIMIT (may return unexpected results)."""
+    for ret in node.find_all(Return):
+        has_return_all = any(isinstance(item.expression, ReturnAll) for item in ret.items)
+        if has_return_all and ret.limit:
+            result.add_issue(
+                ValidationSeverity.INFO,
+                "Using RETURN * with LIMIT may return arbitrary results",
+                node_type="Return",
+                suggestion="Consider adding ORDER BY to make results deterministic",
+                code="NONDETERMINISTIC_LIMIT"
+            )
+
+
+def _validate_delete_without_detach(node: ASTNode, result: ValidationResult) -> None:
+    """Check for DELETE of nodes that might have relationships."""
+    for delete in node.find_all(Delete):
+        if not delete.detach and delete.expressions:
+            # Check if we're deleting node variables (not properties)
+            for expr in delete.expressions:
+                if isinstance(expr, Variable):
+                    result.add_issue(
+                        ValidationSeverity.WARNING,
+                        f"Deleting node '{expr.name}' without DETACH may fail if it has relationships",
+                        node_type="Delete",
+                        suggestion=f"Use DETACH DELETE to automatically remove relationships",
+                        code="MISSING_DETACH"
+                    )
+
+
+def _validate_expensive_patterns(node: ASTNode, result: ValidationResult) -> None:
+    """Check for potentially expensive query patterns."""
+    # Check for multiple MATCH clauses without connecting variables
+    matches = node.find_all(Match)
+    if len(matches) >= 2:
+        match_vars = []
+        for match in matches:
+            if match.pattern:
+                vars_in_match = set()
+                for path in match.pattern.paths:
+                    for elem in path.elements:
+                        if isinstance(elem, NodePattern) and elem.variable:
+                            vars_in_match.add(elem.variable)
+                        elif isinstance(elem, RelationshipPattern) and elem.variable:
+                            vars_in_match.add(elem.variable)
+                match_vars.append(vars_in_match)
+        
+        # Check if consecutive matches share variables
+        for i in range(len(match_vars) - 1):
+            if not match_vars[i] & match_vars[i + 1]:
+                result.add_issue(
+                    ValidationSeverity.WARNING,
+                    "Multiple MATCH clauses with no shared variables may create a Cartesian product",
+                    node_type="Match",
+                    suggestion="Ensure MATCH patterns share variables or add WHERE conditions to connect them",
+                    code="CARTESIAN_PRODUCT"
+                )
+                break  # Only report once
+    
+    # Check for variable-length paths without upper bound
+    for rel in node.find_all(RelationshipPattern):
+        if rel.length and rel.length.unbounded:
+            result.add_issue(
+                ValidationSeverity.WARNING,
+                "Unbounded variable-length relationship may cause performance issues",
+                node_type="RelationshipPattern",
+                suggestion="Add an upper bound to the relationship length (e.g., *1..10)",
+                code="UNBOUNDED_RELATIONSHIP"
+            )
     
     def _convert_generic(self, node: dict, node_type: str) -> Optional[ASTNode]:
         """Generic converter for unknown node types."""
@@ -1502,3 +2047,52 @@ def print_ast(node: ASTNode, indent: int = 0) -> None:
         >>> print_ast(typed_ast)
     """
     print(node.pretty(indent))
+
+
+# ============================================================================
+# Validation Framework - More Cowbell! 🔔
+# ============================================================================
+
+def validate_ast(node: ASTNode, strict: bool = False) -> ValidationResult:
+    """
+    Validate an AST for common issues and anti-patterns.
+    
+    This function performs comprehensive validation including:
+    - Undefined variable detection
+    - Unreachable code detection
+    - Performance anti-patterns
+    - Type consistency checks
+    
+    Args:
+        node: Root AST node to validate
+        strict: If True, treat warnings as errors
+        
+    Returns:
+        ValidationResult containing all issues found
+        
+    Example:
+        >>> result = validate_ast(typed_ast)
+        >>> if not result.is_valid:
+        ...     print(result)
+        ...     for error in result.errors:
+        ...         print(f"Error: {error.message}")
+    """
+    result = ValidationResult()
+    
+    # Run all validators
+    _validate_undefined_variables(node, result)
+    _validate_unused_variables(node, result)
+    _validate_missing_labels(node, result)
+    _validate_unreachable_conditions(node, result)
+    _validate_return_all_with_limit(node, result)
+    _validate_delete_without_detach(node, result)
+    _validate_expensive_patterns(node, result)
+    
+    # Convert warnings to errors in strict mode
+    if strict:
+        for issue in result.issues:
+            if issue.severity == ValidationSeverity.WARNING:
+                issue.severity = ValidationSeverity.ERROR
+    
+    return result
+

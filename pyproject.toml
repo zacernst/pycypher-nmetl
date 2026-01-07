@@ -12,8 +12,10 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
+    "ibis-framework>=11.0.0",
     "osmium>=4.2.0",
     "pycosat>=0.6.6",
+    "ty>=0.0.8",
 ]
 
 [[project.authors]]
