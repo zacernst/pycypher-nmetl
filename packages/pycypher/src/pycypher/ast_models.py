@@ -23,7 +23,7 @@ Usage:
 """
 
 from __future__ import annotations
-from typing import Any, Optional, Union, List, Dict, Iterator
+from typing import Any, Optional, Union, List, Dict, Iterator, Callable, cast
 from pydantic import BaseModel, Field, ConfigDict
 from abc import ABC, abstractmethod
 
@@ -52,31 +52,39 @@ class ASTNode(BaseModel, ABC):
             if child is not None:
                 yield from child.traverse(depth + 1)
     
-    def find_all(self, node_type: type) -> List['ASTNode']:
+    def find_all(self, predicate: Union[type, Callable[['ASTNode'], bool]]) -> List['ASTNode']:
         """
-        Find all nodes of a specific type.
+        Find all nodes matching a predicate or type.
         
         Args:
-            node_type: The type of node to find
+            predicate: Either a type to match or a callable predicate function
             
         Returns:
             List of matching nodes
         """
-        return [node for node in self.traverse() if isinstance(node, node_type)]
+        if callable(predicate) and not isinstance(predicate, type):
+            return [node for node in self.traverse() if predicate(node)]
+        else:
+            return [node for node in self.traverse() if isinstance(node, predicate)]
     
-    def find_first(self, node_type: type) -> Optional['ASTNode']:
+    def find_first(self, predicate: Union[type, Callable[['ASTNode'], bool]]) -> Optional['ASTNode']:
         """
-        Find the first node of a specific type.
+        Find the first node matching a predicate or type.
         
         Args:
-            node_type: The type of node to find
+            predicate: Either a type to match or a callable predicate function
             
         Returns:
             First matching node or None
         """
-        for node in self.traverse():
-            if isinstance(node, node_type):
-                return node
+        if callable(predicate) and not isinstance(predicate, type):
+            for node in self.traverse():
+                if predicate(node):
+                    return node
+        else:
+            for node in self.traverse():
+                if isinstance(node, predicate):
+                    return node
         return None
     
     def _get_children(self) -> List['ASTNode']:
@@ -595,8 +603,20 @@ class ASTConverter:
             return None
         
         if not isinstance(node, dict):
-            # Primitive value
-            return self._convert_primitive(node)
+            # Primitive value  
+            result = self._convert_primitive(node)
+            # Wrap primitives in appropriate AST nodes when in expression context
+            match result:
+                case str() if result:  # Non-empty string
+                    return Variable(name=result)
+                case bool():
+                    return BooleanLiteral(value=result)
+                case int():
+                    return IntegerLiteral(value=result)
+                case float():
+                    return FloatLiteral(value=result)
+                case _:
+                    return result
         
         node_type = node.get('type')
         if not node_type:
@@ -610,26 +630,42 @@ class ASTConverter:
         # Generic fallback
         return self._convert_generic(node, node_type)
     
-    def _convert_primitive(self, value: Any) -> Optional[ASTNode]:
-        """Convert primitive values to appropriate literals."""
-        if isinstance(value, bool):
-            return BooleanLiteral(value=value)
-        elif isinstance(value, int):
-            return IntegerLiteral(value=value)
-        elif isinstance(value, float):
-            return FloatLiteral(value=value)
-        elif isinstance(value, str):
-            # Could be a variable reference
-            return Variable(name=value)
-        elif isinstance(value, list):
-            elements = [self.convert(item) for item in value]
-            return ListLiteral(value=value, elements=[e for e in elements if e])
-        elif isinstance(value, dict) and 'type' not in value:
-            # Plain dictionary - convert to MapLiteral
-            entries = {k: self.convert(v) for k, v in value.items()}
-            return MapLiteral(value=value, entries={k: v for k, v in entries.items() if v})
+    def _convert_primitive(self, value: Any) -> Any:
+        """Convert primitive values, returning them as-is for simple types.
         
-        return None
+        For primitive types (bool, int, float, str, None), returns the value directly.
+        For complex types (list, dict), converts to AST nodes.
+        """
+        # Return primitives as-is using match-case pattern matching
+        match value:
+            case None:
+                return None
+            case bool():
+                return value
+            case int():
+                return value
+            case float():
+                return value
+            case str():
+                return value
+            case list():
+                # Return empty list as-is, otherwise convert elements
+                if not value:
+                    return []
+                elements = [self.convert(item) for item in value]
+                return ListLiteral(value=value, elements=cast(List[Expression], [e for e in elements if e]))
+            case dict():
+                # Return empty dict as-is
+                if not value:
+                    return {}
+                # If it has 'type' field, it's an AST dict, not a primitive
+                if 'type' in value:
+                    return None
+                # Plain dictionary - convert to MapLiteral
+                entries = {k: self.convert(v) for k, v in value.items()}
+                return MapLiteral(value=value, entries=cast(Dict[str, Expression], {k: v for k, v in entries.items() if v}))
+            case _:
+                return None
     
     def _convert_Query(self, node: dict) -> Query:
         """Convert Query node."""
@@ -701,12 +737,12 @@ class ASTConverter:
     
     def _convert_CreateClause(self, node: dict) -> Create:
         """Convert CreateClause node."""
-        return Create(pattern=self.convert(node.get('pattern')))
+        return Create(pattern=cast(Optional[Pattern], self.convert(node.get('pattern'))))
     
     def _convert_SetClause(self, node: dict) -> Set:
         """Convert SetClause node."""
         items = [self.convert(item) for item in node.get('items', [])]
-        return Set(items=[i for i in items if i])
+        return Set(items=cast(List[SetItem], [i for i in items if i]))
     
     def _convert_DeleteClause(self, node: dict) -> Delete:
         """Convert DeleteClause node."""
@@ -714,13 +750,13 @@ class ASTConverter:
         exprs = [self.convert(e) for e in items]
         return Delete(
             detach=node.get('detach', False),
-            expressions=[e for e in exprs if e]
+            expressions=cast(List[Expression], [e for e in exprs if e])
         )
     
     def _convert_RemoveClause(self, node: dict) -> Remove:
         """Convert RemoveClause node."""
         items = [self.convert(item) for item in node.get('items', [])]
-        return Remove(items=[i for i in items if i])
+        return Remove(items=cast(List[RemoveItem], [i for i in items if i]))
     
     def _convert_MergeClause(self, node: dict) -> Merge:
         """Convert MergeClause node."""
@@ -743,9 +779,9 @@ class ASTConverter:
                             on_match.append(converted)
         
         return Merge(
-            pattern=self.convert(node.get('pattern')),
-            on_create=on_create if on_create else None,
-            on_match=on_match if on_match else None
+            pattern=cast(Optional[Pattern], self.convert(node.get('pattern'))),
+            on_create=cast(Optional[List[SetItem]], on_create) if on_create else None,
+            on_match=cast(Optional[List[SetItem]], on_match) if on_match else None
         )
     
     def _convert_MatchClause(self, node: dict) -> Match:
@@ -760,8 +796,8 @@ class ASTConverter:
         
         return Match(
             optional=node.get('optional', False),
-            pattern=self.convert(node.get('pattern')),
-            where=where_cond
+            pattern=cast(Optional[Pattern], self.convert(node.get('pattern'))),
+            where=cast(Optional[Expression], where_cond)
         )
     
     def _convert_ReturnStatement(self, node: dict) -> Return:
@@ -820,8 +856,8 @@ class ASTConverter:
         
         return Return(
             distinct=node.get('distinct', False),
-            items=[i for i in items if i],
-            order_by=order_by if order_by else None,
+            items=cast(List[ReturnItem], [i for i in items if i]),
+            order_by=cast(Optional[List[OrderByItem]], order_by) if order_by else None,
             skip=skip_val,
             limit=limit_val
         )
@@ -830,8 +866,8 @@ class ASTConverter:
         """Convert Match node."""
         return Match(
             optional=node.get('optional', False),
-            pattern=self.convert(node.get('pattern')),
-            where=self.convert(node.get('where'))
+            pattern=cast(Optional[Pattern], self.convert(node.get('pattern'))),
+            where=cast(Optional[Expression], self.convert(node.get('where')))
         )
     
     def _convert_Return(self, node: dict) -> Return:
@@ -843,8 +879,8 @@ class ASTConverter:
         
         return Return(
             distinct=node.get('distinct', False),
-            items=[i for i in items if i],
-            order_by=order_by,
+            items=cast(List[ReturnItem], [i for i in items if i]),
+            order_by=cast(Optional[List[OrderByItem]], order_by),
             skip=node.get('skip'),
             limit=node.get('limit')
         )
@@ -852,7 +888,7 @@ class ASTConverter:
     def _convert_ReturnItem(self, node: dict) -> ReturnItem:
         """Convert ReturnItem node."""
         return ReturnItem(
-            expression=self.convert(node.get('expression')),
+            expression=cast(Optional[Expression], self.convert(node.get('expression'))),
             alias=node.get('alias')
         )
     
@@ -869,16 +905,16 @@ class ASTConverter:
         
         return With(
             distinct=node.get('distinct', False),
-            items=[i for i in items if i],
-            where=self.convert(node.get('where')),
-            order_by=order_by,
+            items=cast(List[ReturnItem], [i for i in items if i]),
+            where=cast(Optional[Expression], self.convert(node.get('where'))),
+            order_by=cast(Optional[List[OrderByItem]], order_by),
             skip=node.get('skip'),
             limit=node.get('limit')
         )
     
     def _convert_Create(self, node: dict) -> Create:
         """Convert Create node."""
-        return Create(pattern=self.convert(node.get('pattern')))
+        return Create(pattern=cast(Optional[Pattern], self.convert(node.get('pattern'))))
     
     def _convert_Merge(self, node: dict) -> Merge:
         """Convert Merge node."""
@@ -891,9 +927,9 @@ class ASTConverter:
             on_match = [self.convert(item) for item in node['on_match']]
         
         return Merge(
-            pattern=self.convert(node.get('pattern')),
-            on_create=on_create,
-            on_match=on_match
+            pattern=cast(Optional[Pattern], self.convert(node.get('pattern'))),
+            on_create=cast(Optional[List[SetItem]], on_create),
+            on_match=cast(Optional[List[SetItem]], on_match)
         )
     
     def _convert_Delete(self, node: dict) -> Delete:
@@ -901,20 +937,20 @@ class ASTConverter:
         exprs = [self.convert(e) for e in node.get('expressions', [])]
         return Delete(
             detach=node.get('detach', False),
-            expressions=[e for e in exprs if e]
+            expressions=cast(List[Expression], [e for e in exprs if e])
         )
     
     def _convert_Set(self, node: dict) -> Set:
         """Convert Set node."""
         items = [self.convert(item) for item in node.get('items', [])]
-        return Set(items=[i for i in items if i])
+        return Set(items=cast(List[SetItem], [i for i in items if i]))
     
     def _convert_SetItem(self, node: dict) -> SetItem:
         """Convert SetItem node."""
         return SetItem(
             variable=node.get('variable'),
             property=node.get('property'),
-            expression=self.convert(node.get('expression')),
+            expression=cast(Optional[Expression], self.convert(node.get('expression'))),
             labels=node.get('labels', [])
         )
     
@@ -927,7 +963,7 @@ class ASTConverter:
         return SetItem(
             variable=node.get('variable'),
             property=prop,
-            expression=self.convert(node.get('value')),
+            expression=cast(Optional[Expression], self.convert(node.get('value'))),
             labels=[]
         )
     
@@ -951,14 +987,14 @@ class ASTConverter:
         return SetItem(
             variable=node.get('variable'),
             property='*',  # Indicates all properties
-            expression=self.convert(node.get('value')),
+            expression=cast(Optional[Expression], self.convert(node.get('value'))),
             labels=[]
         )
     
     def _convert_Remove(self, node: dict) -> Remove:
         """Convert Remove node."""
         items = [self.convert(item) for item in node.get('items', [])]
-        return Remove(items=[i for i in items if i])
+        return Remove(items=cast(List[RemoveItem], [i for i in items if i]))
     
     def _convert_RemoveItem(self, node: dict) -> RemoveItem:
         """Convert RemoveItem node."""
@@ -997,7 +1033,7 @@ class ASTConverter:
     def _convert_Unwind(self, node: dict) -> Unwind:
         """Convert Unwind node."""
         return Unwind(
-            expression=self.convert(node.get('expression')),
+            expression=cast(Optional[Expression], self.convert(node.get('expression'))),
             alias=node.get('alias')
         )
     
@@ -1008,9 +1044,9 @@ class ASTConverter:
         
         return Call(
             procedure_name=node.get('procedure_name'),
-            arguments=[a for a in args if a],
-            yield_items=[y for y in yield_items if y],
-            where=self.convert(node.get('where'))
+            arguments=cast(List[Expression], [a for a in args if a]),
+            yield_items=cast(List[YieldItem], [y for y in yield_items if y]),
+            where=cast(Optional[Expression], self.convert(node.get('where')))
         )
     
     def _convert_Pattern(self, node: dict) -> Pattern:
@@ -1071,7 +1107,7 @@ class ASTConverter:
         elements = [self.convert(e) for e in node.get('elements', [])]
         return PatternPath(
             variable=node.get('variable'),
-            elements=[e for e in elements if e]
+            elements=cast(List[Union[NodePattern, RelationshipPattern]], [e for e in elements if e])
         )
     
     def _convert_NodePattern(self, node: dict) -> NodePattern:
@@ -1089,8 +1125,8 @@ class ASTConverter:
             types=node.get('types', []),
             properties=node.get('properties'),
             direction=node.get('direction', 'right'),
-            length=self.convert(node.get('length')),
-            where=self.convert(node.get('where'))
+            length=cast(Optional[PathLength], self.convert(node.get('length'))),
+            where=cast(Optional[Expression], self.convert(node.get('where')))
         )
     
     def _convert_PathLength(self, node: dict) -> PathLength:
@@ -1104,64 +1140,64 @@ class ASTConverter:
     def _convert_Or(self, node: dict) -> Or:
         """Convert Or node."""
         operands = [self.convert(op) for op in node.get('operands', [])]
-        return Or(operands=[o for o in operands if o], operator="OR")
+        return Or(operands=cast(List[Expression], [o for o in operands if o]), operator="OR")
     
     def _convert_Xor(self, node: dict) -> Xor:
         """Convert Xor node."""
         operands = [self.convert(op) for op in node.get('operands', [])]
-        return Xor(operands=[o for o in operands if o], operator="XOR")
+        return Xor(operands=cast(List[Expression], [o for o in operands if o]), operator="XOR")
     
     def _convert_And(self, node: dict) -> And:
         """Convert And node."""
         operands = [self.convert(op) for op in node.get('operands', [])]
-        return And(operands=[o for o in operands if o], operator="AND")
+        return And(operands=cast(List[Expression], [o for o in operands if o]), operator="AND")
     
     def _convert_Not(self, node: dict) -> Not:
         """Convert Not node."""
-        return Not(operand=self.convert(node.get('operand')))
+        return Not(operand=cast(Optional[Expression], self.convert(node.get('operand'))))
     
     def _convert_Comparison(self, node: dict) -> Comparison:
         """Convert Comparison node."""
         return Comparison(
             operator=node.get('operator', '='),
-            left=self.convert(node.get('left')),
-            right=self.convert(node.get('right'))
+            left=cast(Optional[Expression], self.convert(node.get('left'))),
+            right=cast(Optional[Expression], self.convert(node.get('right')))
         )
     
     def _convert_StringPredicate(self, node: dict) -> StringPredicate:
         """Convert StringPredicate node."""
         return StringPredicate(
             operator=node.get('operator', 'CONTAINS'),
-            left=self.convert(node.get('left')),
-            right=self.convert(node.get('right'))
+            left=cast(Optional[Expression], self.convert(node.get('left'))),
+            right=cast(Optional[Expression], self.convert(node.get('right')))
         )
     
     def _convert_NullCheck(self, node: dict) -> NullCheck:
         """Convert NullCheck node."""
         return NullCheck(
             operator=node.get('operator', 'IS NULL'),
-            operand=self.convert(node.get('operand'))
+            operand=cast(Optional[Expression], self.convert(node.get('operand')))
         )
     
     def _convert_Arithmetic(self, node: dict) -> Arithmetic:
         """Convert Arithmetic node."""
         return Arithmetic(
             operator=node.get('operator', '+'),
-            left=self.convert(node.get('left')),
-            right=self.convert(node.get('right'))
+            left=cast(Optional[Expression], self.convert(node.get('left'))),
+            right=cast(Optional[Expression], self.convert(node.get('right')))
         )
     
     def _convert_Unary(self, node: dict) -> Unary:
         """Convert Unary node."""
         return Unary(
             operator=node.get('operator', '+'),
-            operand=self.convert(node.get('operand'))
+            operand=cast(Optional[Expression], self.convert(node.get('operand')))
         )
     
     def _convert_PropertyLookup(self, node: dict) -> PropertyLookup:
         """Convert PropertyLookup node."""
         return PropertyLookup(
-            expression=self.convert(node.get('expression')),
+            expression=cast(Optional[Expression], self.convert(node.get('expression'))),
             property=node.get('property'),
             variable=node.get('variable')  # Legacy support
         )
@@ -1169,23 +1205,23 @@ class ASTConverter:
     def _convert_PropertyAccess(self, node: dict) -> PropertyLookup:
         """Convert PropertyAccess node (alternative name for PropertyLookup)."""
         return PropertyLookup(
-            expression=self.convert(node.get('object')),
+            expression=cast(Optional[Expression], self.convert(node.get('object'))),
             property=node.get('property')
         )
     
     def _convert_IndexLookup(self, node: dict) -> IndexLookup:
         """Convert IndexLookup node."""
         return IndexLookup(
-            expression=self.convert(node.get('expression')),
-            index=self.convert(node.get('index'))
+            expression=cast(Optional[Expression], self.convert(node.get('expression'))),
+            index=cast(Optional[Expression], self.convert(node.get('index')))
         )
     
     def _convert_Slicing(self, node: dict) -> Slicing:
         """Convert Slicing node."""
         return Slicing(
-            expression=self.convert(node.get('expression')),
-            start=self.convert(node.get('start')),
-            end=self.convert(node.get('end'))
+            expression=cast(Optional[Expression], self.convert(node.get('expression'))),
+            start=cast(Optional[Expression], self.convert(node.get('start'))),
+            end=cast(Optional[Expression], self.convert(node.get('end')))
         )
     
     def _convert_FunctionInvocation(self, node: dict) -> FunctionInvocation:
@@ -1202,24 +1238,24 @@ class ASTConverter:
     
     def _convert_Exists(self, node: dict) -> Exists:
         """Convert Exists node."""
-        return Exists(content=self.convert(node.get('content')))
+        return Exists(content=cast(Optional[Union[Pattern, Query]], self.convert(node.get('content'))))
     
     def _convert_ListComprehension(self, node: dict) -> ListComprehension:
         """Convert ListComprehension node."""
         return ListComprehension(
             variable=node.get('variable'),
-            list_expr=self.convert(node.get('in')),  # 'in' from grammar
-            where=self.convert(node.get('where')),
-            map_expr=self.convert(node.get('projection'))  # 'projection' from grammar
+            list_expr=cast(Optional[Expression], self.convert(node.get('in'))),  # 'in' from grammar
+            where=cast(Optional[Expression], self.convert(node.get('where'))),
+            map_expr=cast(Optional[Expression], self.convert(node.get('projection')))  # 'projection' from grammar
         )
     
     def _convert_PatternComprehension(self, node: dict) -> PatternComprehension:
         """Convert PatternComprehension node."""
         return PatternComprehension(
             variable=node.get('variable'),
-            pattern=self.convert(node.get('pattern')),
-            where=self.convert(node.get('where')),
-            map_expr=self.convert(node.get('map'))
+            pattern=cast(Optional[Pattern], self.convert(node.get('pattern'))),
+            where=cast(Optional[Expression], self.convert(node.get('where'))),
+            map_expr=cast(Optional[Expression], self.convert(node.get('map')))
         )
     
     def _convert_Quantifier(self, node: dict) -> Quantifier:
@@ -1227,8 +1263,8 @@ class ASTConverter:
         return Quantifier(
             quantifier=node.get('quantifier', 'ALL'),
             variable=node.get('variable'),
-            list_expr=self.convert(node.get('in')),
-            where=self.convert(node.get('where'))
+            list_expr=cast(Optional[Expression], self.convert(node.get('in'))),
+            where=cast(Optional[Expression], self.convert(node.get('where')))
         )
     
     def _convert_MapProjection(self, node: dict) -> MapProjection:
@@ -1236,7 +1272,7 @@ class ASTConverter:
         elements = [self.convert(e) for e in node.get('elements', [])]
         return MapProjection(
             variable=node.get('variable'),
-            elements=[e for e in elements if e],
+            elements=cast(List[MapElement], [e for e in elements if e]),
             include_all=node.get('include_all', False)
         )
     
@@ -1244,7 +1280,7 @@ class ASTConverter:
         """Convert MapElement node."""
         return MapElement(
             property=node.get('property'),
-            expression=self.convert(node.get('expression')),
+            expression=cast(Optional[Expression], self.convert(node.get('expression'))),
             all_properties=node.get('all_properties', False)
         )
     
@@ -1252,9 +1288,9 @@ class ASTConverter:
         """Convert CaseExpression node."""
         when_clauses = [self.convert(w) for w in node.get('when_clauses', [])]
         return CaseExpression(
-            expression=self.convert(node.get('expression')),
-            when_clauses=[w for w in when_clauses if w],
-            else_expr=self.convert(node.get('else'))
+            expression=cast(Optional[Expression], self.convert(node.get('expression'))),
+            when_clauses=cast(List[WhenClause], [w for w in when_clauses if w]),
+            else_expr=cast(Optional[Expression], self.convert(node.get('else')))
         )
     
     def _convert_SearchedCase(self, node: dict) -> CaseExpression:
@@ -1269,8 +1305,8 @@ class ASTConverter:
                 else_expr = self.convert(else_node)
         return CaseExpression(
             expression=None,  # Searched case has no test expression
-            when_clauses=[w for w in when_clauses if w],
-            else_expr=else_expr
+            when_clauses=cast(List[WhenClause], [w for w in when_clauses if w]),
+            else_expr=cast(Optional[Expression], else_expr)
         )
     
     def _convert_SimpleCase(self, node: dict) -> CaseExpression:
@@ -1284,9 +1320,9 @@ class ASTConverter:
             else:
                 else_expr = self.convert(else_node)
         return CaseExpression(
-            expression=self.convert(node.get('operand')),
-            when_clauses=[w for w in when_clauses if w],
-            else_expr=else_expr
+            expression=cast(Optional[Expression], self.convert(node.get('operand'))),
+            when_clauses=cast(List[WhenClause], [w for w in when_clauses if w]),
+            else_expr=cast(Optional[Expression], else_expr)
         )
     
     def _convert_Else(self, node: dict):
@@ -1296,25 +1332,25 @@ class ASTConverter:
     def _convert_SimpleWhen(self, node: dict) -> WhenClause:
         """Convert SimpleWhen to WhenClause."""
         return WhenClause(
-            condition=self.convert(node.get('value')),
-            result=self.convert(node.get('result'))
+            condition=cast(Optional[Expression], self.convert(node.get('value'))),
+            result=cast(Optional[Expression], self.convert(node.get('result')))
         )
     
     def _convert_SearchedWhen(self, node: dict) -> WhenClause:
         """Convert SearchedWhen to WhenClause."""
         return WhenClause(
-            condition=self.convert(node.get('condition')),
-            result=self.convert(node.get('result'))
+            condition=cast(Optional[Expression], self.convert(node.get('condition'))),
+            result=cast(Optional[Expression], self.convert(node.get('result')))
         )
     
     def _convert_Reduce(self, node: dict) -> Reduce:
         """Convert Reduce node."""
         return Reduce(
             accumulator=node.get('accumulator'),
-            initial=self.convert(node.get('initial')),
+            initial=cast(Optional[Expression], self.convert(node.get('initial'))),
             variable=node.get('variable'),
-            list_expr=self.convert(node.get('list')),
-            map_expr=self.convert(node.get('map'))
+            list_expr=cast(Optional[Expression], self.convert(node.get('list'))),
+            map_expr=cast(Optional[Expression], self.convert(node.get('map')))
         )
     
     def _convert_All(self, node: dict) -> Quantifier:
@@ -1322,8 +1358,8 @@ class ASTConverter:
         return Quantifier(
             quantifier="ALL",
             variable=node.get('variable'),
-            list_expr=self.convert(node.get('list')),
-            where=self.convert(node.get('where'))
+            list_expr=cast(Optional[Expression], self.convert(node.get('list'))),
+            where=cast(Optional[Expression], self.convert(node.get('where')))
         )
     
     def _convert_Any(self, node: dict) -> Quantifier:
@@ -1331,8 +1367,8 @@ class ASTConverter:
         return Quantifier(
             quantifier="ANY",
             variable=node.get('variable'),
-            list_expr=self.convert(node.get('list')),
-            where=self.convert(node.get('where'))
+            list_expr=cast(Optional[Expression], self.convert(node.get('list'))),
+            where=cast(Optional[Expression], self.convert(node.get('where')))
         )
     
     def _convert_None(self, node: dict) -> Quantifier:
@@ -1340,8 +1376,8 @@ class ASTConverter:
         return Quantifier(
             quantifier="NONE",
             variable=node.get('variable'),
-            list_expr=self.convert(node.get('list')),
-            where=self.convert(node.get('where'))
+            list_expr=cast(Optional[Expression], self.convert(node.get('list'))),
+            where=cast(Optional[Expression], self.convert(node.get('where')))
         )
     
     def _convert_Single(self, node: dict) -> Quantifier:
@@ -1349,20 +1385,20 @@ class ASTConverter:
         return Quantifier(
             quantifier="SINGLE",
             variable=node.get('variable'),
-            list_expr=self.convert(node.get('list')),
-            where=self.convert(node.get('where'))
+            list_expr=cast(Optional[Expression], self.convert(node.get('list'))),
+            where=cast(Optional[Expression], self.convert(node.get('where')))
         )
     
     def _convert_OrderByItem(self, node: dict) -> OrderByItem:
         """Convert OrderByItem node."""
         return OrderByItem(
-            expression=self.convert(node.get('expression')),
+            expression=cast(Optional[Expression], self.convert(node.get('expression'))),
             ascending=node.get('ascending', True)
         )
     
     def _convert_WhereClause(self, node: dict) -> Optional[Expression]:
         """Convert WhereClause - just return the condition."""
-        return self.convert(node.get('condition'))
+        return cast(Optional[Expression], self.convert(node.get('condition')))
     
     def _convert_ReturnBody(self, node: dict) -> Optional[ASTNode]:
         """Convert ReturnBody - extract items."""

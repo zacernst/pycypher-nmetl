@@ -16,9 +16,11 @@ Example:
 """
 
 from lark import Lark, Transformer, v_args, Tree, Token
-from typing import Any, List, Dict, Optional, Union
+from typing import Any, List, Dict, Optional, Union, Tuple
 from pathlib import Path
 import json
+import sys
+import argparse
 
 
 # Complete Lark grammar for openCypher
@@ -292,7 +294,7 @@ property_name: IDENTIFIER
 
 not_expression: NOT_KEYWORD* comparison_expression
 
-?comparison_expression: null_predicate_expression (comparison_op null_predicate_expression)*
+?comparison_expression: null_predicate_expression (COMP_OP null_predicate_expression)*
 
 ?null_predicate_expression: string_predicate_expression null_check_op?
 
@@ -300,8 +302,6 @@ null_check_op: "IS"i "NOT"i "NULL"i  -> is_not_null
              | "IS"i "NULL"i         -> is_null
 
 ?string_predicate_expression: add_expression (string_predicate_op add_expression)*
-
-comparison_op: "=" | "<>" | "<" | ">" | "<=" | ">="
 
 string_predicate_op: "STARTS"i "WITH"i
                    | "ENDS"i "WITH"i
@@ -511,6 +511,9 @@ variable_name: IDENTIFIER
 // Terminals
 //============================================================================
 
+// Comparison operators (higher priority to match multi-char operators first)
+COMP_OP: "<=" | ">=" | "<>" | "=" | "<" | ">"
+
 // Identifiers (regular or backtick-quoted)
 IDENTIFIER: REGULAR_IDENTIFIER
           | ESCAPED_IDENTIFIER
@@ -589,7 +592,7 @@ class CypherASTTransformer(Transformer):
     # Top-level query structure
     # ========================================================================
     
-    def cypher_query(self, args):
+    def cypher_query(self, args: List[Any]) -> Dict[str, Any]:
         """Transform the root query node.
         
         This is the entry point for all Cypher queries. It wraps all statements
@@ -604,7 +607,7 @@ class CypherASTTransformer(Transformer):
         """
         return {"type": "Query", "statements": args}
 
-    def statement_list(self, args):
+    def statement_list(self, args: List[Any]) -> List[Any]:
         """Transform a list of statements.
         
         Statements can be connected via UNION or UNION ALL operators.
@@ -618,7 +621,7 @@ class CypherASTTransformer(Transformer):
         """
         return list(args)
 
-    def query_statement(self, args):
+    def query_statement(self, args: List[Any]) -> Dict[str, Any]:
         """Transform a read-only query statement (MATCH...RETURN).
         
         Query statements consist of read clauses (MATCH, UNWIND, WITH) followed
@@ -635,7 +638,7 @@ class CypherASTTransformer(Transformer):
         return_clause = next((a for a in args if isinstance(a, dict) and a.get("type") == "ReturnStatement"), None)
         return {"type": "QueryStatement", "clauses": read_clauses, "return": return_clause}
 
-    def update_statement(self, args):
+    def update_statement(self, args: List[Any]) -> Dict[str, Any]:
         """Transform an update statement (CREATE/MERGE/DELETE/SET/REMOVE).
         
         Update statements can have prefix clauses (MATCH/WITH for context),
@@ -663,7 +666,7 @@ class CypherASTTransformer(Transformer):
                     
         return {"type": "UpdateStatement", "prefix": prefix_clauses, "updates": update_clauses, "return": return_clause}
     
-    def update_clause(self, args):
+    def update_clause(self, args: List[Any]) -> Optional[Any]:
         """Pass through update clauses without modification.
         
         This method exists because the grammar has an update_clause rule that
@@ -678,7 +681,7 @@ class CypherASTTransformer(Transformer):
         """
         return args[0] if args else None
     
-    def read_clause(self, args):
+    def read_clause(self, args: List[Any]) -> Optional[Any]:
         """Pass through read clauses without modification.
         
         This method exists because the grammar has a read_clause rule that
@@ -693,7 +696,7 @@ class CypherASTTransformer(Transformer):
         """
         return args[0] if args else None
     
-    def _ambig(self, args):
+    def _ambig(self, args: List[Any]) -> Any:
         """Handle ambiguous parses by selecting the most specific interpretation.
         
         The Earley parser can produce multiple valid parse trees for ambiguous
@@ -729,7 +732,7 @@ class CypherASTTransformer(Transformer):
         # Return first argument if no structured data
         return args[0]
 
-    def statement(self, args):
+    def statement(self, args: List[Any]) -> Optional[Any]:
         """Pass through statement nodes.
         
         Statements can be query statements, update statements, or call statements.
@@ -747,7 +750,7 @@ class CypherASTTransformer(Transformer):
     # CALL statement
     # ========================================================================
     
-    def call_statement(self, args):
+    def call_statement(self, args: List[Any]) -> Dict[str, Any]:
         """Transform a standalone CALL statement for procedure invocation.
         
         CALL statements invoke stored procedures, which can have arguments and
@@ -762,7 +765,7 @@ class CypherASTTransformer(Transformer):
         return {"type": "CallStatement", "procedure": args[0] if args else None, 
                 "args": args[1] if len(args) > 1 else None, "yield": args[2] if len(args) > 2 else None}
 
-    def call_clause(self, args):
+    def call_clause(self, args: List[Any]) -> Dict[str, Any]:
         """Transform a CALL clause within a larger query.
         
         Call clauses can appear as read clauses, allowing procedure results to
@@ -778,7 +781,7 @@ class CypherASTTransformer(Transformer):
         return {"type": "CallClause", "procedure": args[0] if args else None,
                 "args": args[1] if len(args) > 1 else None, "yield": args[2] if len(args) > 2 else None}
 
-    def procedure_reference(self, args):
+    def procedure_reference(self, args: List[Any]) -> Optional[Any]:
         """Extract procedure name reference.
         
         Procedures are referenced by their function name, which may include
@@ -792,7 +795,7 @@ class CypherASTTransformer(Transformer):
         """
         return args[0] if args else None
 
-    def explicit_args(self, args):
+    def explicit_args(self, args: List[Any]) -> List[Any]:
         """Transform explicit procedure arguments list.
         
         Procedures can accept arguments just like functions. Converting to
@@ -806,7 +809,7 @@ class CypherASTTransformer(Transformer):
         """
         return list(args) if args else []
 
-    def yield_clause(self, args):
+    def yield_clause(self, args: List[Any]) -> Dict[str, Any]:
         """Transform a YIELD clause that selects procedure output fields.
         
         YIELD specifies which fields from procedure results to expose, with
@@ -823,7 +826,7 @@ class CypherASTTransformer(Transformer):
         where = args[1] if len(args) > 1 else None
         return {"type": "YieldClause", "items": items, "where": where}
 
-    def yield_items(self, args):
+    def yield_items(self, args: List[Any]) -> List[Any]:
         """Transform list of yielded fields.
         
         Multiple fields can be yielded from a procedure. List normalization
@@ -837,7 +840,7 @@ class CypherASTTransformer(Transformer):
         """
         return list(args) if args else []
 
-    def yield_item(self, args):
+    def yield_item(self, args: List[Any]) -> Dict[str, Any]:
         """Transform a single yielded field with optional alias.
         
         Fields can be renamed using AS. Separating field and alias is
@@ -853,7 +856,7 @@ class CypherASTTransformer(Transformer):
             return {"field": args[0]}
         return {"field": args[0], "alias": args[1]}
 
-    def field_name(self, args):
+    def field_name(self, args: List[Any]) -> str:
         """Extract field name identifier.
         
         Field names in YIELD clauses reference procedure output columns.
@@ -871,7 +874,7 @@ class CypherASTTransformer(Transformer):
     # MATCH clause
     # ========================================================================
     
-    def match_clause(self, args):
+    def match_clause(self, args: List[Any]) -> Dict[str, Any]:
         """Transform a MATCH clause for pattern matching.
         
         MATCH finds existing graph patterns. The OPTIONAL modifier makes the match
@@ -893,7 +896,7 @@ class CypherASTTransformer(Transformer):
     # CREATE clause
     # ========================================================================
     
-    def create_clause(self, args):
+    def create_clause(self, args: List[Any]) -> Dict[str, Any]:
         """Transform a CREATE clause for creating new graph elements.
         
         CREATE adds new nodes and relationships to the graph based on a pattern.
@@ -912,7 +915,7 @@ class CypherASTTransformer(Transformer):
     # MERGE clause
     # ========================================================================
     
-    def merge_clause(self, args):
+    def merge_clause(self, args: List[Any]) -> Dict[str, Any]:
         """Transform a MERGE clause for create-or-match operations.
         
         MERGE ensures a pattern exists, creating it if necessary. This is atomic
@@ -930,7 +933,7 @@ class CypherASTTransformer(Transformer):
         actions = args[1:] if len(args) > 1 else []
         return {"type": "MergeClause", "pattern": pattern, "actions": actions}
 
-    def merge_action(self, args):
+    def merge_action(self, args: List[Any]) -> Dict[str, Any]:
         """Transform ON MATCH or ON CREATE action within MERGE.
         
         These actions execute conditionally based on whether MERGE found or
@@ -951,7 +954,7 @@ class CypherASTTransformer(Transformer):
     # DELETE clause
     # ========================================================================
     
-    def delete_clause(self, args):
+    def delete_clause(self, args: List[Any]) -> Dict[str, Any]:
         """Transform a DELETE clause for removing graph elements.
         
         DELETE removes nodes and relationships. DETACH DELETE also removes
@@ -968,7 +971,7 @@ class CypherASTTransformer(Transformer):
         items = next((a for a in args if isinstance(a, dict) and "items" in str(a)), {"items": []})
         return {"type": "DeleteClause", "detach": detach, "items": items.get("items", [])}
 
-    def delete_items(self, args):
+    def delete_items(self, args: List[Any]) -> Dict[str, List[Any]]:
         """Transform comma-separated list of expressions to delete.
         
         Multiple items can be deleted in one clause. Wrapping in a dict is
@@ -986,7 +989,7 @@ class CypherASTTransformer(Transformer):
     # SET clause
     # ========================================================================
     
-    def set_clause(self, args):
+    def set_clause(self, args: List[Any]) -> Dict[str, Any]:
         """Transform a SET clause for updating graph properties.
         
         SET modifies node/relationship properties and labels. Multiple set
@@ -1002,7 +1005,7 @@ class CypherASTTransformer(Transformer):
         items = next((a for a in args if isinstance(a, dict) and "items" in str(a)), {"items": []})
         return {"type": "SetClause", "items": items.get("items", [])}
 
-    def set_items(self, args):
+    def set_items(self, args: List[Any]) -> Dict[str, List[Any]]:
         """Transform comma-separated list of SET operations.
         
         Wrapping in a dict is necessary to pass the list through the
@@ -1016,7 +1019,7 @@ class CypherASTTransformer(Transformer):
         """
         return {"items": list(args)}
 
-    def set_item(self, args):
+    def set_item(self, args: List[Any]) -> Optional[Any]:
         """Pass through individual SET operation.
         
         The grammar has set_item as a union of different set types.
@@ -1030,7 +1033,7 @@ class CypherASTTransformer(Transformer):
         """
         return args[0] if args else None
 
-    def set_property_item(self, args):
+    def set_property_item(self, args: List[Any]) -> Dict[str, Any]:
         """Transform a single property assignment (e.g., SET n.age = 30).
         
         Property updates are the most common SET operation. Separating variable,
@@ -1047,7 +1050,7 @@ class CypherASTTransformer(Transformer):
         value = args[2] if len(args) > 2 else None
         return {"type": "SetProperty", "variable": variable, "property": prop, "value": value}
 
-    def set_labels_item(self, args):
+    def set_labels_item(self, args: List[Any]) -> Dict[str, Any]:
         """Transform label assignment (e.g., SET n:Person:Employee).
         
         Labels are added to nodes for categorization. Separate handling is
@@ -1063,7 +1066,7 @@ class CypherASTTransformer(Transformer):
         labels = args[1] if len(args) > 1 else None
         return {"type": "SetLabels", "variable": variable, "labels": labels}
 
-    def set_all_properties_item(self, args):
+    def set_all_properties_item(self, args: List[Any]) -> Dict[str, Any]:
         """Transform property map replacement (e.g., SET n = {name: 'Alice'}).
         
         This replaces ALL properties on a node/relationship with a new map.
@@ -1079,7 +1082,7 @@ class CypherASTTransformer(Transformer):
         value = args[1] if len(args) > 1 else None
         return {"type": "SetAllProperties", "variable": variable, "value": value}
 
-    def add_all_properties_item(self, args):
+    def add_all_properties_item(self, args: List[Any]) -> Dict[str, Any]:
         """Transform property map merge (e.g., SET n += {age: 30}).
         
         This merges new properties with existing ones without removing others.
@@ -1099,7 +1102,7 @@ class CypherASTTransformer(Transformer):
     # REMOVE clause
     # ========================================================================
     
-    def remove_clause(self, args):
+    def remove_clause(self, args: List[Any]) -> Dict[str, Any]:
         """Transform a REMOVE clause for deleting properties or labels.
         
         REMOVE deletes properties or labels without deleting the node/relationship
@@ -1114,7 +1117,7 @@ class CypherASTTransformer(Transformer):
         items = next((a for a in args if isinstance(a, dict) and "items" in str(a)), {"items": []})
         return {"type": "RemoveClause", "items": items.get("items", [])}
 
-    def remove_items(self, args):
+    def remove_items(self, args: List[Any]) -> Dict[str, List[Any]]:
         """Transform comma-separated list of REMOVE operations.
         
         Wrapping in a dict is necessary to pass the list through the
@@ -1128,7 +1131,7 @@ class CypherASTTransformer(Transformer):
         """
         return {"items": list(args)}
 
-    def remove_item(self, args):
+    def remove_item(self, args: List[Any]) -> Optional[Any]:
         """Pass through individual REMOVE operation.
         
         The grammar has remove_item as a union of property and label removal.
@@ -1142,7 +1145,7 @@ class CypherASTTransformer(Transformer):
         """
         return args[0] if args else None
 
-    def remove_property_item(self, args):
+    def remove_property_item(self, args: List[Any]) -> Dict[str, Any]:
         """Transform property removal (e.g., REMOVE n.age).
         
         Removes a single property from a node/relationship. Separating variable
@@ -1158,7 +1161,7 @@ class CypherASTTransformer(Transformer):
         prop = args[1] if len(args) > 1 else None
         return {"type": "RemoveProperty", "variable": variable, "property": prop}
 
-    def remove_labels_item(self, args):
+    def remove_labels_item(self, args: List[Any]) -> Dict[str, Any]:
         """Transform label removal (e.g., REMOVE n:Person).
         
         Removes labels from a node. Separate handling from properties is
@@ -1178,7 +1181,7 @@ class CypherASTTransformer(Transformer):
     # UNWIND clause
     # ========================================================================
     
-    def unwind_clause(self, args):
+    def unwind_clause(self, args: List[Any]) -> Dict[str, Any]:
         """Transform an UNWIND clause for list expansion.
         
         UNWIND expands a list into individual rows, creating a new variable for
@@ -1199,7 +1202,7 @@ class CypherASTTransformer(Transformer):
     # WITH clause
     # ========================================================================
     
-    def with_clause(self, args):
+    def with_clause(self, args: List[Any]) -> Dict[str, Any]:
         """Transform a WITH clause for query chaining and variable passing.
         
         WITH acts like a pipe operator, passing selected variables to the next
@@ -1242,7 +1245,7 @@ class CypherASTTransformer(Transformer):
     # RETURN clause
     # ========================================================================
     
-    def return_clause(self, args):
+    def return_clause(self, args: List[Any]) -> Dict[str, Any]:
         """Transform a RETURN clause for query output specification.
         
         RETURN determines what a query outputs, similar to SQL SELECT. It can
@@ -1283,7 +1286,7 @@ class CypherASTTransformer(Transformer):
         return {"type": "ReturnStatement", "distinct": distinct, "body": body,
                 "order": order, "skip": skip, "limit": limit}
 
-    def return_body(self, args):
+    def return_body(self, args: List[Any]) -> Union[str, List[Any]]:
         """Extract the body of a RETURN clause (items or *).
         
         This handles the special case of RETURN * vs. RETURN item1, item2.
@@ -1300,7 +1303,7 @@ class CypherASTTransformer(Transformer):
         # args[0] is already a list from return_items
         return args[0] if args else []
 
-    def return_items(self, args):
+    def return_items(self, args: List[Any]) -> List[Any]:
         """Transform comma-separated list of return items.
         
         Normalizing to a list is necessary for consistent iteration during
@@ -1314,7 +1317,7 @@ class CypherASTTransformer(Transformer):
         """
         return list(args) if args else []
 
-    def return_item(self, args):
+    def return_item(self, args: List[Any]) -> Dict[str, Any]:
         """Transform a single return item with optional alias.
         
         Return items can be aliased using AS (e.g., RETURN n.name AS fullName).
@@ -1331,7 +1334,7 @@ class CypherASTTransformer(Transformer):
             return {"type": "ReturnItem", "expression": args[0], "alias": None}
         return {"type": "ReturnItem", "expression": args[0], "alias": args[1]}
 
-    def return_alias(self, args):
+    def return_alias(self, args: List[Any]) -> str:
         """Extract return item alias identifier.
         
         Aliases define the output column names. Stripping backticks is necessary
@@ -1349,7 +1352,7 @@ class CypherASTTransformer(Transformer):
     # WHERE clause
     # ========================================================================
     
-    def where_clause(self, args):
+    def where_clause(self, args: List[Any]) -> Dict[str, Any]:
         """Transform a WHERE clause for filtering.
         
         WHERE filters graph patterns (in MATCH) or intermediate results (in WITH).
@@ -1367,7 +1370,7 @@ class CypherASTTransformer(Transformer):
     # ORDER BY clause
     # ========================================================================
     
-    def order_clause(self, args):
+    def order_clause(self, args: List[Any]) -> Dict[str, Any]:
         """Transform an ORDER BY clause for result sorting.
         
         ORDER BY sorts results by one or more expressions, each with a direction.
@@ -1382,7 +1385,7 @@ class CypherASTTransformer(Transformer):
         items = next((a for a in args if isinstance(a, dict) and "items" in str(a)), {"items": []})
         return {"type": "OrderClause", "items": items.get("items", [])}
 
-    def order_items(self, args):
+    def order_items(self, args: List[Any]) -> Dict[str, List[Any]]:
         """Transform comma-separated list of ORDER BY items.
         
         Wrapping in a dict is necessary to pass the list through the transformer.
@@ -1395,7 +1398,7 @@ class CypherASTTransformer(Transformer):
         """
         return {"items": list(args)}
 
-    def order_item(self, args):
+    def order_item(self, args: List[Any]) -> Dict[str, Any]:
         """Transform a single ORDER BY item with optional direction.
         
         Each item specifies an expression and sort direction (ASC/DESC).
@@ -1411,18 +1414,20 @@ class CypherASTTransformer(Transformer):
         direction = args[1] if len(args) > 1 else "asc"
         return {"expression": expr, "direction": direction}
 
-    def order_direction(self, args):
+    def order_direction(self, args: List[Any]) -> str:
         """Normalize ORDER BY direction keywords.
         
         Supports ASC/ASCENDING and DESC/DESCENDING. Normalization is necessary
         for consistent execution regardless of which keyword form is used.
         
         Args:
-            args: Direction keyword token.
+            args: Direction keyword token (optional).
             
         Returns:
             Normalized direction string: "asc" or "desc".
         """
+        if not args:
+            return "asc"
         d = str(args[0]).upper()
         return "desc" if d in ["DESC", "DESCENDING"] else "asc"
 
@@ -1430,7 +1435,7 @@ class CypherASTTransformer(Transformer):
     # SKIP and LIMIT
     # ========================================================================
     
-    def skip_clause(self, args):
+    def skip_clause(self, args: List[Any]) -> Dict[str, Any]:
         """Transform a SKIP clause for result pagination.
         
         SKIP skips the first N results, enabling pagination. The expression
@@ -1444,7 +1449,7 @@ class CypherASTTransformer(Transformer):
         """
         return {"type": "SkipClause", "value": args[0] if args else None}
 
-    def limit_clause(self, args):
+    def limit_clause(self, args: List[Any]) -> Dict[str, Any]:
         """Transform a LIMIT clause for result set size restriction.
         
         LIMIT restricts output to N results. Combined with SKIP, this enables
@@ -1462,7 +1467,7 @@ class CypherASTTransformer(Transformer):
     # Pattern matching
     # ========================================================================
     
-    def pattern(self, args):
+    def pattern(self, args: List[Any]) -> Dict[str, Any]:
         """Transform a graph pattern (one or more paths).
         
         Patterns describe graph structures to match or create. Multiple comma-separated
@@ -1479,7 +1484,7 @@ class CypherASTTransformer(Transformer):
         """
         return {"type": "Pattern", "paths": list(args)}
 
-    def path_pattern(self, args):
+    def path_pattern(self, args: List[Any]) -> Dict[str, Any]:
         """Transform a single path pattern with optional variable assignment.
         
         Paths can be assigned to variables (e.g., p = (a)-[]->(b)) for later reference.
@@ -1501,7 +1506,7 @@ class CypherASTTransformer(Transformer):
                 element = arg
         return {"type": "PathPattern", "variable": variable, "element": element}
 
-    def pattern_element(self, args):
+    def pattern_element(self, args: List[Any]) -> Dict[str, Any]:
         """Transform a pattern element (sequence of nodes and relationships).
         
         Pattern elements describe connected graph structures, alternating between
@@ -1516,7 +1521,7 @@ class CypherASTTransformer(Transformer):
         """
         return {"type": "PatternElement", "parts": list(args)}
 
-    def shortest_path(self, args):
+    def shortest_path(self, args: List[Any]) -> Dict[str, Any]:
         """Transform SHORTESTPATH or ALLSHORTESTPATHS function.
         
         Shortest path functions find minimal-length paths between nodes.
@@ -1537,7 +1542,7 @@ class CypherASTTransformer(Transformer):
     # Node pattern
     # ========================================================================
     
-    def node_pattern(self, args):
+    def node_pattern(self, args: List[Any]) -> Dict[str, Any]:
         """Transform a node pattern (node in parentheses).
         
         Node patterns describe nodes to match or create, with optional variable,
@@ -1555,7 +1560,7 @@ class CypherASTTransformer(Transformer):
         filler = args[0] if args else {}
         return {"type": "NodePattern", **filler} if isinstance(filler, dict) else {"type": "NodePattern", "filler": filler}
 
-    def node_pattern_filler(self, args):
+    def node_pattern_filler(self, args: List[Any]) -> Dict[str, Any]:
         """Extract components from inside node parentheses.
         
         Node patterns can contain: variable, labels, properties, and WHERE.
@@ -1586,7 +1591,7 @@ class CypherASTTransformer(Transformer):
                 filler["variable"] = arg
         return filler
 
-    def node_labels(self, args):
+    def node_labels(self, args: List[Any]) -> Dict[str, List[Any]]:
         """Transform node label expressions.
         
         Nodes can have multiple labels (e.g., :Person:Employee). Labels can also
@@ -1601,7 +1606,7 @@ class CypherASTTransformer(Transformer):
         """
         return {"labels": list(args)}
 
-    def label_expression(self, args):
+    def label_expression(self, args: List[Any]) -> Union[Any, Dict[str, Any]]:
         """Transform a single label expression.
         
         Labels can be prefixed with : or IS. For simple cases, just return the
@@ -1617,7 +1622,7 @@ class CypherASTTransformer(Transformer):
             return args[0]
         return {"type": "LabelExpression", "parts": list(args)}
 
-    def label_term(self, args):
+    def label_term(self, args: List[Any]) -> Union[Any, Dict[str, Any]]:
         """Transform label OR expressions (e.g., Person|Employee).
         
         Label terms can use | for alternation (match either label). Single labels
@@ -1633,7 +1638,7 @@ class CypherASTTransformer(Transformer):
             return args[0]
         return {"type": "LabelOr", "terms": list(args)}
 
-    def label_factor(self, args):
+    def label_factor(self, args: List[Any]) -> Optional[Any]:
         """Pass through label factors (possibly negated with !).
         
         Label factors can have ! negation prefix. Pass-through avoids extra wrapping.
@@ -1646,7 +1651,7 @@ class CypherASTTransformer(Transformer):
         """
         return args[0] if args else None
 
-    def label_primary(self, args):
+    def label_primary(self, args: List[Any]) -> Optional[Any]:
         """Pass through primary label expressions.
         
         Primary labels are either names, parenthesized expressions, or % (any label).
@@ -1660,7 +1665,7 @@ class CypherASTTransformer(Transformer):
         """
         return args[0] if args else None
 
-    def label_name(self, args):
+    def label_name(self, args: List[Any]) -> str:
         """Extract label name identifier.
         
         Label names can have leading : from grammar rules. Stripping both : and
@@ -1674,7 +1679,7 @@ class CypherASTTransformer(Transformer):
         """
         return str(args[0]).lstrip(":").strip('`')
 
-    def node_properties(self, args):
+    def node_properties(self, args: List[Any]) -> Optional[Any]:
         """Pass through node properties or WHERE clause.
         
         Node properties can be specified as a map literal or extracted via WHERE.
@@ -1688,7 +1693,7 @@ class CypherASTTransformer(Transformer):
         """
         return args[0] if args else None
 
-    def node_where(self, args):
+    def node_where(self, args: List[Any]) -> Dict[str, Any]:
         """Transform inline WHERE clause within node pattern.
         
         WHERE can filter node properties inline (e.g., (n WHERE n.age > 30)).
@@ -1706,7 +1711,7 @@ class CypherASTTransformer(Transformer):
     # Relationship pattern
     # ========================================================================
     
-    def relationship_pattern(self, args):
+    def relationship_pattern(self, args: List[Any]) -> Optional[Any]:
         """Pass through relationship patterns.
         
         Relationships are parsed by direction-specific rules (left/right/both/any).
@@ -1720,7 +1725,7 @@ class CypherASTTransformer(Transformer):
         """
         return args[0] if args else None
 
-    def full_rel_left(self, args):
+    def full_rel_left(self, args: List[Any]) -> Dict[str, Any]:
         """Transform left-pointing relationship (<--).
         
         Left direction means the relationship points from right to left in the
@@ -1735,7 +1740,7 @@ class CypherASTTransformer(Transformer):
         detail = args[0] if args else {}
         return {"type": "RelationshipPattern", "direction": "left", **detail}
 
-    def full_rel_right(self, args):
+    def full_rel_right(self, args: List[Any]) -> Dict[str, Any]:
         """Transform right-pointing relationship (-->).
         
         Right direction means the relationship points from left to right in the
@@ -1750,7 +1755,7 @@ class CypherASTTransformer(Transformer):
         detail = args[0] if args else {}
         return {"type": "RelationshipPattern", "direction": "right", **detail}
 
-    def full_rel_both(self, args):
+    def full_rel_both(self, args: List[Any]) -> Dict[str, Any]:
         """Transform bidirectional relationship (<-->).
         
         Both direction means the relationship can be traversed in either direction.
@@ -1765,7 +1770,7 @@ class CypherASTTransformer(Transformer):
         detail = args[0] if args else {}
         return {"type": "RelationshipPattern", "direction": "both", **detail}
 
-    def full_rel_any(self, args):
+    def full_rel_any(self, args: List[Any]) -> Dict[str, Any]:
         """Transform undirected relationship (---).
         
         Any direction means the relationship can point either way. This is useful
@@ -1780,7 +1785,7 @@ class CypherASTTransformer(Transformer):
         detail = args[0] if args else {}
         return {"type": "RelationshipPattern", "direction": "any", **detail}
 
-    def rel_detail(self, args):
+    def rel_detail(self, args: List[Any]) -> Dict[str, Any]:
         """Extract details from inside relationship brackets [...].
         
         Pass-through is necessary to avoid adding wrapper nodes.
@@ -1793,7 +1798,7 @@ class CypherASTTransformer(Transformer):
         """
         return args[0] if args else {}
 
-    def rel_filler(self, args):
+    def rel_filler(self, args: List[Any]) -> Dict[str, Any]:
         """Extract components from inside relationship brackets.
         
         Relationships can have: variable, types, properties, path length, and WHERE.
@@ -1814,7 +1819,7 @@ class CypherASTTransformer(Transformer):
                 filler["variable"] = arg
         return filler
 
-    def rel_types(self, args):
+    def rel_types(self, args: List[Any]) -> Dict[str, List[Any]]:
         """Transform relationship type constraints.
         
         Relationships can be constrained to one or more types (e.g., [:KNOWS|:LIKES]).
@@ -1828,7 +1833,7 @@ class CypherASTTransformer(Transformer):
         """
         return {"types": list(args)}
 
-    def rel_type(self, args):
+    def rel_type(self, args: List[Any]) -> str:
         """Extract relationship type name.
         
         Type names are identifiers. Stripping backticks is necessary for
@@ -1842,7 +1847,7 @@ class CypherASTTransformer(Transformer):
         """
         return str(args[0]).strip('`')
 
-    def rel_properties(self, args):
+    def rel_properties(self, args: List[Any]) -> Dict[str, Any]:
         """Transform relationship property constraints.
         
         Relationships can have property filters just like nodes. Wrapping in a
@@ -1856,7 +1861,7 @@ class CypherASTTransformer(Transformer):
         """
         return {"properties": args[0] if args else None}
 
-    def rel_where(self, args):
+    def rel_where(self, args: List[Any]) -> Dict[str, Any]:
         """Transform inline WHERE clause within relationship pattern.
         
         WHERE can filter relationship properties (e.g., [:KNOWS WHERE r.since > 2020]).
@@ -1870,7 +1875,7 @@ class CypherASTTransformer(Transformer):
         """
         return {"where": args[0] if args else None}
 
-    def path_length(self, args):
+    def path_length(self, args: List[Any]) -> Dict[str, Any]:
         """Transform variable-length path specification (*).
         
         Variable-length paths match multiple hops (e.g., *1..3 or * for unlimited).
@@ -1885,7 +1890,7 @@ class CypherASTTransformer(Transformer):
         range_spec = args[0] if args else None
         return {"pathLength": range_spec}
 
-    def path_length_range(self, args):
+    def path_length_range(self, args: List[Any]) -> Union[int, Dict[str, Optional[int]]]:
         """Transform path length range specification.
         
         Ranges can be: exact (5), minimum (5..), maximum (..5), or bounded (5..10).
@@ -1897,12 +1902,17 @@ class CypherASTTransformer(Transformer):
         Returns:
             Dict with "fixed", "min"/"max", or "unbounded" keys.
         """
+        if len(args) == 1:
+            return {"fixed": int(str(args[0]))}
+        elif len(args) == 2:
+            return {"min": int(str(args[0])) if args[0] else None, "max": int(str(args[1])) if args[1] else None}
+        return {"unbounded": True}
 
     # ========================================================================
     # Properties
     # ========================================================================
     
-    def properties(self, args):
+    def properties(self, args: List[Any]) -> Dict[str, Any]:
         """Extract property map from curly braces {...}.
         
         Property maps are key-value pairs for node/relationship properties.
@@ -1917,7 +1927,7 @@ class CypherASTTransformer(Transformer):
         props = next((a for a in args if isinstance(a, dict) and "props" in str(a)), {"props": {}})
         return props.get("props", {})
 
-    def property_list(self, args):
+    def property_list(self, args: List[Any]) -> Dict[str, Dict[str, Any]]:
         """Transform comma-separated property key-value pairs.
         
         Combines individual property assignments into a single map. Wrapping
@@ -1935,7 +1945,7 @@ class CypherASTTransformer(Transformer):
                 result[arg["key"]] = arg["value"]
         return {"props": result}
 
-    def property_key_value(self, args):
+    def property_key_value(self, args: List[Any]) -> Dict[str, Any]:
         """Transform a single property assignment (key: value).
         
         Separating key and value is necessary for validation and execution.
@@ -1948,7 +1958,7 @@ class CypherASTTransformer(Transformer):
         """
         return {"key": str(args[0]), "value": args[1] if len(args) > 1 else None}
 
-    def property_name(self, args):
+    def property_name(self, args: List[Any]) -> str:
         """Extract property name identifier.
         
         Property names are identifiers. Stripping backticks is necessary for
@@ -1966,7 +1976,7 @@ class CypherASTTransformer(Transformer):
     # Expressions
     # ========================================================================
     
-    def or_expression(self, args):
+    def or_expression(self, args: List[Any]) -> Union[Any, Dict[str, Any]]:
         """Transform OR boolean expression with short-circuit evaluation.
         
         OR has lowest precedence among boolean operators. Multiple OR operations
@@ -1983,7 +1993,7 @@ class CypherASTTransformer(Transformer):
             return args[0]
         return {"type": "Or", "operands": list(args)}
 
-    def xor_expression(self, args):
+    def xor_expression(self, args: List[Any]) -> Union[Any, Dict[str, Any]]:
         """Transform XOR (exclusive OR) boolean expression.
         
         XOR returns true only if operands differ. Multiple XORs are collected
@@ -2000,7 +2010,7 @@ class CypherASTTransformer(Transformer):
             return args[0]
         return {"type": "Xor", "operands": list(args)}
 
-    def and_expression(self, args):
+    def and_expression(self, args: List[Any]) -> Union[Any, Dict[str, Any]]:
         """Transform AND boolean expression with short-circuit evaluation.
         
         AND has higher precedence than OR/XOR. Multiple ANDs are collected into
@@ -2016,7 +2026,7 @@ class CypherASTTransformer(Transformer):
             return args[0]
         return {"type": "And", "operands": list(args)}
 
-    def not_expression(self, args):
+    def not_expression(self, args: List[Any]) -> Union[Any, Dict[str, Any]]:
         """Transform NOT expression with proper boolean negation handling.
         
         NOT is a unary boolean operator that negates its operand. Multiple NOTs
@@ -2052,7 +2062,7 @@ class CypherASTTransformer(Transformer):
         else:
             return expr
 
-    def comparison_expression(self, args):
+    def comparison_expression(self, args: List[Any]) -> Union[Any, Dict[str, Any]]:
         """Transform comparison expression with operators like =, <>, <, >, <=, >=.
         
         Comparison expressions allow comparing values for equality or ordering.
@@ -2079,7 +2089,7 @@ class CypherASTTransformer(Transformer):
             result = {"type": "Comparison", "operator": str(op), "left": result, "right": right}
         return result
 
-    def null_predicate_expression(self, args):
+    def null_predicate_expression(self, args: List[Any]) -> Union[Any, Dict[str, Any]]:
         """Transform IS NULL or IS NOT NULL predicate expressions.
         
         Null predicates check whether an expression evaluates to NULL, which is
@@ -2105,11 +2115,11 @@ class CypherASTTransformer(Transformer):
             return {"type": "NullCheck", "operator": op_type, "operand": expr}
         return expr
 
-    def null_check_op(self, args):
+    def null_check_op(self, args: List[Any]) -> None:
         # This will be called by the is_null or is_not_null aliases
         return None
 
-    def string_predicate_expression(self, args):
+    def string_predicate_expression(self, args: List[Any]) -> Union[Any, Dict[str, Any]]:
         """Transform string predicate expressions (STARTS WITH, ENDS WITH, CONTAINS, =~, IN).
         
         String predicates provide specialized string matching operations that are more
@@ -2137,28 +2147,7 @@ class CypherASTTransformer(Transformer):
             result = {"type": "StringPredicate", "operator": str(op), "left": result, "right": right}
         return result
 
-    def comparison_op(self, args):
-        """Extract and normalize comparison operator token.
-        
-        Comparison operators include: = (equality), <> (inequality), < (less than),
-        > (greater than), <= (less than or equal), >= (greater than or equal).
-        
-        This method extracts the operator symbol from the parsed token. The default
-        of "=" handles edge cases where the operator is missing (though this should
-        not happen in valid queries). Converting to string is necessary to normalize
-        Token objects into consistent string representations for the AST.
-        
-        Args:
-            args: Single comparison operator token.
-        
-        Returns:
-            Comparison operator as a string, defaulting to "=" if missing.
-        """
-        if not args:
-            return "="
-        return str(args[0])
-
-    def string_predicate_op(self, args):
+    def string_predicate_op(self, args: List[Any]) -> str:
         """Extract and normalize string predicate operator keywords.
         
         String predicate operators can be multi-word keywords (STARTS WITH, ENDS WITH)
@@ -2177,7 +2166,7 @@ class CypherASTTransformer(Transformer):
         """
         return " ".join(str(a).upper() for a in args)
 
-    def is_null(self, args):
+    def is_null(self, args: List[Any]) -> str:
         """Return the IS NULL operator constant.
         
         This method is called when the grammar matches the IS NULL pattern.
@@ -2196,7 +2185,7 @@ class CypherASTTransformer(Transformer):
         """
         return "IS NULL"
 
-    def is_not_null(self, args):
+    def is_not_null(self, args: List[Any]) -> str:
         """Return the IS NOT NULL operator constant.
         
         This method is called when the grammar matches the IS NOT NULL pattern.
@@ -2216,7 +2205,7 @@ class CypherASTTransformer(Transformer):
         """
         return "IS NOT NULL"
 
-    def add_expression(self, args):
+    def add_expression(self, args: List[Any]) -> Union[Any, Dict[str, Any]]:
         """Transform addition and subtraction arithmetic expressions.
         
         Addition and subtraction have equal precedence and associate left-to-right.
@@ -2248,7 +2237,7 @@ class CypherASTTransformer(Transformer):
             result = {"type": "Arithmetic", "operator": op, "left": result, "right": right}
         return result
 
-    def mult_expression(self, args):
+    def mult_expression(self, args: List[Any]) -> Union[Any, Dict[str, Any]]:
         """Transform multiplication, division, and modulo arithmetic expressions.
         
         Multiplication, division, and modulo have equal precedence, higher than
@@ -2279,7 +2268,7 @@ class CypherASTTransformer(Transformer):
             result = {"type": "Arithmetic", "operator": op, "left": result, "right": right}
         return result
 
-    def power_expression(self, args):
+    def power_expression(self, args: List[Any]) -> Union[Any, Dict[str, Any]]:
         """Transform exponentiation (power) arithmetic expressions using ^ operator.
         
         Exponentiation has the highest precedence among arithmetic operators and
@@ -2311,7 +2300,7 @@ class CypherASTTransformer(Transformer):
             result = {"type": "Arithmetic", "operator": op, "left": result, "right": right}
         return result
 
-    def unary_expression(self, args):
+    def unary_expression(self, args: List[Any]) -> Union[Any, Dict[str, Any]]:
         """Transform unary plus (+) and minus (-) expressions.
         
         Unary operators apply to a single operand and have the highest precedence
@@ -2341,7 +2330,7 @@ class CypherASTTransformer(Transformer):
         operand = args[1] if len(args) > 1 else None
         return {"type": "Unary", "operator": sign, "operand": operand}
 
-    def postfix_expression(self, args):
+    def postfix_expression(self, args: List[Any]) -> Union[Any, Dict[str, Any]]:
         """Transform postfix expressions (property access, indexing, slicing).
         
         Postfix operators apply after an expression and associate left-to-right,
@@ -2383,7 +2372,7 @@ class CypherASTTransformer(Transformer):
                 result = {"type": "Slice", "object": result, "from": op.get("from"), "to": op.get("to")}
         return result
 
-    def postfix_op(self, args):
+    def postfix_op(self, args: List[Any]) -> Optional[Any]:
         """Pass through postfix operator nodes without modification.
         
         The grammar defines postfix_op as a union of property_lookup, index_lookup,
@@ -2403,7 +2392,7 @@ class CypherASTTransformer(Transformer):
         """
         return args[0] if args else None
 
-    def property_lookup(self, args):
+    def property_lookup(self, args: List[Any]) -> Dict[str, Any]:
         """Transform property lookup syntax (.property_name) into intermediate node.
         
         Property lookup accesses a named property on a node, relationship, or map.
@@ -2430,7 +2419,7 @@ class CypherASTTransformer(Transformer):
         """
         return {"type": "PropertyLookup", "property": args[0] if args else None}
 
-    def index_lookup(self, args):
+    def index_lookup(self, args: List[Any]) -> Dict[str, Any]:
         """Transform index lookup syntax ([index]) into intermediate node.
         
         Index lookup accesses an element by position in a list or by key in a map.
@@ -2459,7 +2448,7 @@ class CypherASTTransformer(Transformer):
         """
         return {"type": "IndexLookup", "index": args[0] if args else None}
 
-    def slicing(self, args):
+    def slicing(self, args: List[Any]) -> Dict[str, Any]:
         """Transform list slicing syntax ([from..to]) into intermediate node.
         
         Slicing extracts a sub-list from a list using range notation. Examples:
@@ -2495,7 +2484,7 @@ class CypherASTTransformer(Transformer):
     # Count star
     # ========================================================================
     
-    def count_star(self, args):
+    def count_star(self, args: List[Any]) -> Dict[str, str]:
         """Transform COUNT(*) aggregate function into a special AST node.
         
         COUNT(*) counts all rows/matches, including duplicates and null values.
@@ -2524,7 +2513,7 @@ class CypherASTTransformer(Transformer):
     # EXISTS expression
     # ========================================================================
     
-    def exists_expression(self, args):
+    def exists_expression(self, args: List[Any]) -> Dict[str, Any]:
         """Transform EXISTS { ... } subquery expression.
         
         EXISTS evaluates to true if the subquery returns any results, false otherwise.
@@ -2555,7 +2544,7 @@ class CypherASTTransformer(Transformer):
         content = args[0] if args else None
         return {"type": "Exists", "content": content}
 
-    def exists_content(self, args):
+    def exists_content(self, args: List[Any]) -> Optional[Any]:
         """Extract the content of an EXISTS subquery.
         
         EXISTS content can be either:
@@ -2582,7 +2571,7 @@ class CypherASTTransformer(Transformer):
     # Function invocation
     # ========================================================================
     
-    def function_invocation(self, args):
+    def function_invocation(self, args: List[Any]) -> Dict[str, Any]:
         """Transform function invocation (built-in or user-defined functions).
         
         Functions are called with parentheses syntax: function_name(arg1, arg2, ...).
@@ -2613,7 +2602,7 @@ class CypherASTTransformer(Transformer):
         func_args = args[1] if len(args) > 1 else None
         return {"type": "FunctionInvocation", "name": name, "arguments": func_args}
 
-    def function_args(self, args):
+    def function_args(self, args: List[Any]) -> Dict[str, Union[bool, List[Any]]]:
         """Transform function arguments with optional DISTINCT modifier.
         
         Function arguments can have a DISTINCT modifier for aggregation functions:
@@ -2642,7 +2631,7 @@ class CypherASTTransformer(Transformer):
         arg_list = next((a for a in args if isinstance(a, list)), [])
         return {"distinct": distinct, "arguments": arg_list}
 
-    def function_arg_list(self, args):
+    def function_arg_list(self, args: List[Any]) -> List[Any]:
         """Transform comma-separated function argument expressions into a list.
         
         Function arguments are arbitrary expressions that can include:
@@ -2667,7 +2656,7 @@ class CypherASTTransformer(Transformer):
         """
         return list(args)
 
-    def function_name(self, args):
+    def function_name(self, args: List[Any]) -> Union[str, Dict[str, str]]:
         """Transform function name with optional namespace qualification.
         
         Function names can be simple (sum, count) or namespaced (db.labels, apoc.create.node).
@@ -2697,7 +2686,7 @@ class CypherASTTransformer(Transformer):
         simple_name = args[-1] if args else "unknown"
         return {"namespace": namespace, "name": simple_name} if namespace else simple_name
 
-    def namespace_name(self, args):
+    def namespace_name(self, args: List[Any]) -> str:
         """Transform namespace path into a dot-separated string.
         
         Namespaces can be multi-level: db.schema.nodeTypeProperties
@@ -2718,7 +2707,7 @@ class CypherASTTransformer(Transformer):
         """
         return ".".join(str(a).strip('`') for a in args)
 
-    def function_simple_name(self, args):
+    def function_simple_name(self, args: List[Any]) -> str:
         """Extract the unqualified function name identifier.
         
         The simple name is the final component of a potentially namespaced function.
@@ -2743,7 +2732,7 @@ class CypherASTTransformer(Transformer):
     # Case expression
     # ========================================================================
     
-    def case_expression(self, args):
+    def case_expression(self, args: List[Any]) -> Optional[Any]:
         """Transform CASE expression (simple or searched form).
         
         CASE expressions provide conditional logic similar to if-then-else or switch
@@ -2770,7 +2759,7 @@ class CypherASTTransformer(Transformer):
         """
         return args[0] if args else None
 
-    def simple_case(self, args):
+    def simple_case(self, args: List[Any]) -> Dict[str, Any]:
         """Transform simple CASE expression that matches an operand against values.
         
         Simple CASE syntax: CASE expression WHEN value1 THEN result1 [WHEN ...] [ELSE default] END
@@ -2804,7 +2793,7 @@ class CypherASTTransformer(Transformer):
         else_clause = next((a for a in args if isinstance(a, dict) and a.get("type") == "Else"), None)
         return {"type": "SimpleCase", "operand": operand, "when": when_clauses, "else": else_clause}
 
-    def searched_case(self, args):
+    def searched_case(self, args: List[Any]) -> Dict[str, Any]:
         """Transform searched CASE expression that evaluates boolean conditions.
         
         Searched CASE syntax: CASE WHEN condition1 THEN result1 [WHEN ...] [ELSE default] END
@@ -2836,7 +2825,7 @@ class CypherASTTransformer(Transformer):
         else_clause = next((a for a in args if isinstance(a, dict) and a.get("type") == "Else"), None)
         return {"type": "SearchedCase", "when": when_clauses, "else": else_clause}
 
-    def simple_when(self, args):
+    def simple_when(self, args: List[Any]) -> Dict[str, Any]:
         """Transform a WHEN clause in a simple CASE expression.
         
         Simple WHEN syntax: WHEN value1, value2, ... THEN result
@@ -2870,7 +2859,7 @@ class CypherASTTransformer(Transformer):
         result = args[1] if len(args) > 1 else None
         return {"type": "SimpleWhen", "operands": operands, "result": result}
 
-    def searched_when(self, args):
+    def searched_when(self, args: List[Any]) -> Dict[str, Any]:
         """Transform a WHEN clause in a searched CASE expression.
         
         Searched WHEN syntax: WHEN condition THEN result
@@ -2906,7 +2895,7 @@ class CypherASTTransformer(Transformer):
         result = args[1] if len(args) > 1 else None
         return {"type": "SearchedWhen", "condition": condition, "result": result}
 
-    def when_operands(self, args):
+    def when_operands(self, args: List[Any]) -> List[Any]:
         """Transform comma-separated operands in a simple CASE WHEN clause.
         
         Multiple operands allow matching against any of several values in one WHEN.
@@ -2926,7 +2915,7 @@ class CypherASTTransformer(Transformer):
         """
         return list(args)
 
-    def else_clause(self, args):
+    def else_clause(self, args: List[Any]) -> Dict[str, Any]:
         """Transform the ELSE clause in a CASE expression.
         
         The ELSE clause provides a default value when no WHEN conditions match.
@@ -2953,7 +2942,7 @@ class CypherASTTransformer(Transformer):
     # List comprehension
     # ========================================================================
     
-    def list_comprehension(self, args):
+    def list_comprehension(self, args: List[Any]) -> Dict[str, Any]:
         """Transform list comprehension expression for filtering and mapping lists.
         
         List comprehension syntax: [variable IN list WHERE condition | projection]
@@ -2993,7 +2982,7 @@ class CypherASTTransformer(Transformer):
         return {"type": "ListComprehension", "variable": variable, "in": source, 
                 "where": filter_expr, "projection": projection}
 
-    def list_variable(self, args):
+    def list_variable(self, args: List[Any]) -> Optional[Any]:
         """Extract the iteration variable name from a list comprehension.
         
         The list variable is the identifier used to reference each element during
@@ -3011,7 +3000,7 @@ class CypherASTTransformer(Transformer):
         """
         return args[0] if args else None
 
-    def list_filter(self, args):
+    def list_filter(self, args: List[Any]) -> Optional[Any]:
         """Extract the WHERE filter expression from a list comprehension.
         
         The filter expression determines which elements from the source list are
@@ -3028,7 +3017,7 @@ class CypherASTTransformer(Transformer):
         """
         return args[0] if args else None
 
-    def list_projection(self, args):
+    def list_projection(self, args: List[Any]) -> Optional[Any]:
         """Extract the projection expression from a list comprehension.
         
         The projection (after |) transforms each element before adding it to the
@@ -3051,7 +3040,7 @@ class CypherASTTransformer(Transformer):
     # Pattern comprehension
     # ========================================================================
     
-    def pattern_comprehension(self, args):
+    def pattern_comprehension(self, args: List[Any]) -> Dict[str, Any]:
         """Transform pattern comprehension for collecting results from pattern matching.
         
         Pattern comprehension syntax: [path_var = pattern WHERE condition | projection]
@@ -3104,7 +3093,7 @@ class CypherASTTransformer(Transformer):
         return {"type": "PatternComprehension", "variable": variable, "pattern": pattern,
                 "where": filter_expr, "projection": projection}
 
-    def pattern_comp_variable(self, args):
+    def pattern_comp_variable(self, args: List[Any]) -> Optional[Any]:
         """Extract the optional path variable from a pattern comprehension.
         
         The path variable captures the entire matched path, which can be useful
@@ -3120,7 +3109,7 @@ class CypherASTTransformer(Transformer):
         """
         return args[0] if args else None
 
-    def pattern_filter(self, args):
+    def pattern_filter(self, args: List[Any]) -> Optional[Any]:
         """Extract the WHERE filter from a pattern comprehension.
         
         The filter expression determines which matched patterns are included in
@@ -3136,7 +3125,7 @@ class CypherASTTransformer(Transformer):
         """
         return args[0] if args else None
 
-    def pattern_projection(self, args):
+    def pattern_projection(self, args: List[Any]) -> Optional[Any]:
         """Extract the projection expression from a pattern comprehension.
         
         The projection specifies what to collect from each matched pattern.
@@ -3157,7 +3146,41 @@ class CypherASTTransformer(Transformer):
     # Reduce expression
     # ========================================================================
     
-    def reduce_expression(self, args):
+    def reduce_expression(self, args: List[Any]) -> Dict[str, Any]:
+        """Transform REDUCE expression for list aggregation with accumulator.
+        
+        REDUCE syntax: REDUCE(accumulator = initial, variable IN list | step_expression)
+        
+        REDUCE is a functional programming construct that aggregates a list into
+        a single value by applying a step expression iteratively. It's analogous
+        to fold/reduce in functional languages.
+        
+        Example:
+        REDUCE(sum = 0, x IN [1,2,3,4,5] | sum + x) -> 15
+        REDUCE(product = 1, x IN [1,2,3,4] | product * x) -> 24
+        REDUCE(max = -999999, x IN numbers | CASE WHEN x > max THEN x ELSE max END)
+        
+        The structure contains:
+        - accumulator: {variable: name, init: initial_value} for the aggregated result
+        - variable: iteration variable name for each list element
+        - in: source list expression
+        - step: expression that computes next accumulator value (can reference both variables)
+        
+        This is necessary for:
+        - Custom aggregation logic not provided by built-in functions
+        - Stateful list processing (each step can use previous result)
+        - Complex computations that require iteration context
+        
+        The accumulator is updated in each iteration: accumulator = step_expression,
+        where step_expression can reference both the current accumulator value and
+        the current list element.
+        
+        Args:
+            args: [accumulator_dict, iteration_variable, source_list, step_expression].
+        
+        Returns:
+            Dict with type "Reduce" containing accumulator, variable, source, and step.
+        """
         accumulator = args[0] if args else None
         variable = args[1] if len(args) > 1 else None
         source = args[2] if len(args) > 2 else None
@@ -3165,19 +3188,91 @@ class CypherASTTransformer(Transformer):
         return {"type": "Reduce", "accumulator": accumulator, "variable": variable,
                 "in": source, "step": step}
 
-    def reduce_accumulator(self, args):
+    def reduce_accumulator(self, args: List[Any]) -> Dict[str, Any]:
+        """Transform the accumulator declaration in a REDUCE expression.
+        
+        Accumulator syntax: variable_name = initial_expression
+        
+        The accumulator holds the running result during iteration. It's initialized
+        before the first iteration and updated after each step. The final accumulator
+        value becomes the result of the entire REDUCE expression.
+        
+        The structure contains:
+        - variable: accumulator variable name
+        - init: initial value expression (evaluated once before iteration)
+        
+        Separating variable and initialization is necessary for:
+        1. Scoping - accumulator variable is local to REDUCE
+        2. Type inference - initial value determines accumulator type
+        3. Execution - initialization happens exactly once
+        
+        Args:
+            args: [variable_name, initialization_expression].
+        
+        Returns:
+            Dict with variable name and init expression.
+        """
         variable = args[0] if args else None
         init = args[1] if len(args) > 1 else None
         return {"variable": variable, "init": init}
 
-    def reduce_variable(self, args):
+    def reduce_variable(self, args: List[Any]) -> Optional[Any]:
+        """Extract the iteration variable from a REDUCE expression.
+        
+        The iteration variable represents each element from the source list during
+        iteration. It's scoped to the REDUCE expression and can be referenced in
+        the step expression.
+        
+        Pass-through is necessary to avoid extra wrapping.
+        
+        Args:
+            args: Variable name string.
+        
+        Returns:
+            Variable name unchanged.
+        """
         return args[0] if args else None
 
     # ========================================================================
     # Quantifier expressions
     # ========================================================================
     
-    def quantifier_expression(self, args):
+    def quantifier_expression(self, args: List[Any]) -> Dict[str, Any]:
+        """Transform quantifier expressions (ALL, ANY, SINGLE, NONE) for predicate testing.
+        
+        Quantifier syntax: QUANTIFIER(variable IN list WHERE predicate)
+        
+        Quantifiers test whether a predicate holds for list elements:
+        - ALL: true if predicate is true for every element (universal quantification)
+        - ANY: true if predicate is true for at least one element (existential quantification)
+        - SINGLE: true if predicate is true for exactly one element
+        - NONE: true if predicate is false for all elements (negation of ANY)
+        
+        Examples:
+        - ALL(x IN [2,4,6,8] WHERE x % 2 = 0) -> true
+        - ANY(x IN [1,3,5,6] WHERE x % 2 = 0) -> true
+        - SINGLE(x IN [1,2,3,4] WHERE x > 3) -> true
+        - NONE(x IN [1,3,5,7] WHERE x % 2 = 0) -> true
+        
+        These are essential for:
+        - Collection validation (checking constraints on all/some elements)
+        - Existence tests (ANY is more efficient than collecting and checking length)
+        - Uniqueness checking (SINGLE ensures exactly one match)
+        
+        The structure contains:
+        - quantifier: which quantifier (ALL/ANY/SINGLE/NONE)
+        - variable: iteration variable name
+        - in: source list expression
+        - where: predicate to test for each element
+        
+        This is similar to SQL's ALL/ANY operators and mathematical quantifiers (∀, ∃).
+        
+        Args:
+            args: [quantifier_keyword, variable, source_list, predicate_expression].
+        
+        Returns:
+            Dict with type "Quantifier" containing quantifier type, variable, source, and predicate.
+        """
         quantifier = args[0] if args else "ALL"
         variable = args[1] if len(args) > 1 else None
         source = args[2] if len(args) > 2 else None
@@ -3185,27 +3280,119 @@ class CypherASTTransformer(Transformer):
         return {"type": "Quantifier", "quantifier": quantifier, "variable": variable,
                 "in": source, "where": predicate}
 
-    def quantifier(self, args):
+    def quantifier(self, args: List[Any]) -> str:
+        """Extract and normalize the quantifier keyword (ALL, ANY, SINGLE, NONE).
+        
+        Quantifier keywords are case-insensitive in Cypher, so normalization to
+        uppercase is necessary for consistent matching during execution.
+        
+        The default of "ALL" handles edge cases (though grammatically, a quantifier
+        keyword is required).
+        
+        Args:
+            args: Quantifier keyword token.
+        
+        Returns:
+            Uppercased quantifier string: "ALL", "ANY", "SINGLE", or "NONE".
+        """
         if not args:
             return "ALL"
         return str(args[0]).upper()
 
-    def quantifier_variable(self, args):
+    def quantifier_variable(self, args: List[Any]) -> Optional[Any]:
+        """Extract the iteration variable from a quantifier expression.
+        
+        The iteration variable represents each element being tested against the
+        predicate. It's scoped to the quantifier expression.
+        
+        Pass-through is necessary to avoid extra wrapping.
+        
+        Args:
+            args: Variable name string.
+        
+        Returns:
+            Variable name unchanged.
+        """
         return args[0] if args else None
 
     # ========================================================================
     # Map projection
     # ========================================================================
     
-    def map_projection(self, args):
+    def map_projection(self, args: List[Any]) -> Dict[str, Any]:
+        """Transform map projection for selecting/transforming object properties.
+        
+        Map projection syntax: variable { property1, .property2, property3: expression, ...}
+        
+        Map projections create new maps by selecting and optionally transforming
+        properties from a node, relationship, or map. This is essential for:
+        - Shaping output data (selecting only needed properties)
+        - Property transformation (renaming, computing derived values)
+        - Creating anonymous objects in RETURN clauses
+        
+        Examples:
+        - person { .name, .age } -> {name: person.name, age: person.age}
+        - person { .*, age: person.age + 1 } -> all properties plus computed age
+        - node { id: id(node), labels: labels(node) } -> custom object
+        
+        Elements can be:
+        - Property selector: .name (copies property with same name)
+        - Computed property: name: expression (evaluates expression for value)
+        - Variable: other_var (includes all properties from other_var)
+        - Wildcard: .* (includes all properties from base variable)
+        
+        The structure contains:
+        - variable: base object to project from
+        - elements: list of property selections/transformations
+        
+        This is similar to JavaScript object destructuring and provides a declarative
+        way to shape data without manual property copying.
+        
+        Args:
+            args: [variable_name, list_of_map_elements].
+        
+        Returns:
+            Dict with type "MapProjection" containing variable and elements list.
+        """
         variable = args[0] if args else None
         elements = args[1] if len(args) > 1 else []
         return {"type": "MapProjection", "variable": variable, "elements": elements}
 
-    def map_elements(self, args):
+    def map_elements(self, args: List[Any]) -> List[Any]:
+        """Transform comma-separated map projection elements into a list.
+        
+        Map elements define what properties to include in the projected map.
+        Converting to a list is necessary for iteration during map construction.
+        
+        Empty elements list creates an empty map {}.
+        
+        Args:
+            args: Individual map_element nodes.
+        
+        Returns:
+            List of map element specifications (empty list if no elements).
+        """
         return list(args) if args else []
 
-    def map_element(self, args):
+    def map_element(self, args: List[Any]) -> Union[Dict[str, Any], Optional[Any]]:
+        """Transform a single map projection element.
+        
+        Map elements have different forms:
+        1. Selector (string): property name or .* wildcard -> {"selector": name}
+        2. Computed property (2 args): name: expression -> {"property": name, "value": expr}
+        3. Pass-through: other forms parsed by grammar
+        
+        The different representations are necessary for execution to distinguish:
+        - Which properties to copy (selectors)
+        - Which properties to compute (computed)
+        - Special operations (wildcard, variable inclusion)
+        
+        Args:
+            args: Either [selector_string] or [property_name, value_expression] or other.
+        
+        Returns:
+            Dict with appropriate structure for the element type.
+        """
         if len(args) == 1 and isinstance(args[0], str):
             return {"selector": args[0]}
         elif len(args) == 2:
@@ -3216,10 +3403,52 @@ class CypherASTTransformer(Transformer):
     # Literals
     # ========================================================================
     
-    def number_literal(self, args):
+    def number_literal(self, args: List[Any]) -> Union[int, float]:
+        """Transform number literals (integers and floats) into Python values.
+        
+        Numbers can be signed or unsigned. The grammar has already separated these
+        cases, and the specific handlers (signed_number, unsigned_number) have
+        converted string tokens to Python numeric types.
+        
+        Pass-through is necessary because the actual conversion happens in the
+        specific number type handlers. This method just routes between them.
+        
+        Args:
+            args: Single numeric value from signed_number or unsigned_number.
+        
+        Returns:
+            Python int or float value, or 0 as fallback.
+        """
         return args[0] if args else 0
 
-    def signed_number(self, args):
+    def signed_number(self, args: List[Any]) -> Union[int, float, str]:
+        """Transform signed number literals into Python int or float values.
+        
+        Signed numbers can have + or - prefix and support:
+        - Integers: -42, +100, -0x2A (hex), -0o52 (octal)
+        - Floats: -3.14, +2.5e10, -1.5E-3
+        - Special values: -INF, +INFINITY, -NAN
+        
+        The conversion process:
+        1. Extract string representation from token
+        2. Detect type (int vs float) by looking for . or e/E
+        3. Strip format suffixes (f/F/d/D for floats)
+        4. Parse to Python numeric type
+        5. Handle special values (infinity, NaN)
+        
+        Underscores in numbers (1_000_000) are stripped for readability support.
+        
+        This conversion is necessary to:
+        - Provide native Python values for arithmetic operations
+        - Preserve numeric precision (int vs float)
+        - Support special IEEE 754 values
+        
+        Args:
+            args: Single signed number token.
+        
+        Returns:
+            Python int, float, or special float value (inf/-inf/nan).
+        """
         s = str(args[0])
         try:
             if '.' in s or 'e' in s.lower() or 'f' in s.lower() or 'd' in s.lower():
@@ -3232,7 +3461,31 @@ class CypherASTTransformer(Transformer):
                 return float('nan')
             return s
 
-    def unsigned_number(self, args):
+    def unsigned_number(self, args: List[Any]) -> Union[int, float, str]:
+        """Transform unsigned number literals into Python int or float values.
+        
+        Unsigned numbers support the same formats as signed numbers but without
+        the +/- prefix:
+        - Integers: 42, 0x2A (hex), 0o52 (octal)
+        - Floats: 3.14, 2.5e10, 1.5E-3
+        - Special values: INF, INFINITY, NAN
+        
+        The conversion logic handles:
+        - Hexadecimal (0x prefix): parsed with base 16
+        - Octal (0o prefix): parsed with base 8, skip first 2 chars
+        - Decimal: default base 10
+        - Underscores: removed for readability (1_000_000)
+        - Float format suffixes: stripped (f/F/d/D)
+        
+        This method parallels signed_number but handles only positive values.
+        The separation is necessary because the grammar distinguishes them.
+        
+        Args:
+            args: Single unsigned number token.
+        
+        Returns:
+            Python int, float, or special float value (inf/nan).
+        """
         s = str(args[0])
         try:
             if '.' in s or 'e' in s.lower() or 'f' in s.lower() or 'd' in s.lower():
@@ -3249,7 +3502,37 @@ class CypherASTTransformer(Transformer):
                 return float('nan')
             return s
 
-    def string_literal(self, args):
+    def string_literal(self, args: List[Any]) -> str:
+        """Transform string literals into Python string values.
+        
+        String literals in Cypher can be enclosed in single or double quotes:
+        - 'Hello World'
+        - "Hello World"
+        
+        This method processes:
+        1. Quote removal (first and last character)
+        2. Escape sequence handling:
+           - \\n -> newline
+           - \\t -> tab
+           - \\r -> carriage return
+           - \\\\ -> backslash
+           - \\' -> single quote
+           - \\" -> double quote
+        
+        The escape sequence processing is necessary to:
+        - Support multi-line strings
+        - Allow quotes within strings
+        - Enable special characters in text
+        
+        More complex escape sequences (\\uXXXX for Unicode) could be added
+        but are not currently implemented.
+        
+        Args:
+            args: Single string token with quotes.
+        
+        Returns:
+            Python string with quotes removed and escape sequences processed.
+        """
         s = str(args[0])
         # Remove quotes and handle escape sequences
         if s.startswith("'") or s.startswith('"'):
@@ -3259,45 +3542,254 @@ class CypherASTTransformer(Transformer):
         s = s.replace('\\\\', '\\').replace("\\'", "'").replace('\\"', '"')
         return s
 
-    def true(self, args):
+    def true(self, args: List[Any]) -> bool:
+        """Transform the TRUE boolean literal keyword into Python True.
+        
+        Cypher's TRUE keyword is case-insensitive and represents the boolean
+        true value. Converting to Python's True is necessary for:
+        - Native boolean operations in the AST
+        - Correct evaluation in boolean expressions
+        - Type checking (distinguishing boolean from string "true")
+        
+        Args:
+            args: Not used (TRUE is a keyword, not parameterized).
+        
+        Returns:
+            Python boolean True.
+        """
         return True
 
-    def false(self, args):
+    def false(self, args: List[Any]) -> bool:
+        """Transform the FALSE boolean literal keyword into Python False.
+        
+        Cypher's FALSE keyword is case-insensitive and represents the boolean
+        false value. Converting to Python's False is necessary for:
+        - Native boolean operations in the AST
+        - Correct evaluation in boolean expressions
+        - Type checking (distinguishing boolean from string "false")
+        
+        Args:
+            args: Not used (FALSE is a keyword, not parameterized).
+        
+        Returns:
+            Python boolean False.
+        """
         return False
 
-    def null_literal(self, args):
+    def null_literal(self, args: List[Any]) -> None:
+        """Transform the NULL literal keyword into Python None.
+        
+        Cypher's NULL keyword represents the absence of a value, similar to SQL NULL.
+        Converting to Python's None is necessary for:
+        - Representing missing/unknown values in the AST
+        - Null propagation in expressions (NULL + anything = NULL)
+        - Three-valued logic in boolean expressions (true/false/NULL)
+        
+        NULL has special semantics:
+        - NULL = NULL is false (not true)
+        - IS NULL and IS NOT NULL are the only null tests
+        - Most operations with NULL produce NULL
+        
+        Args:
+            args: Not used (NULL is a keyword, not parameterized).
+        
+        Returns:
+            Python None.
+        """
         return None
 
-    def list_literal(self, args):
+    def list_literal(self, args: List[Any]) -> List[Any]:
+        """Transform list literal syntax [...] into Python list.
+        
+        List literals create ordered collections of values:
+        - [1, 2, 3] -> integer list
+        - ['a', 'b', 'c'] -> string list
+        - [1, 'mixed', true, null] -> mixed-type list
+        - [] -> empty list
+        
+        Lists in Cypher:
+        - Are ordered (preserve insertion order)
+        - Can contain mixed types
+        - Support indexing list[0], slicing list[1..3]
+        - Can be nested [[1,2], [3,4]]
+        
+        This method extracts the list of element expressions from the intermediate
+        list_elements node. The default empty list handles [...] with no elements.
+        
+        Args:
+            args: list_elements node containing list of element expressions.
+        
+        Returns:
+            Python list of element values (empty list if no elements).
+        """
         elements = next((a for a in args if isinstance(a, list)), [])
         return elements
 
-    def list_elements(self, args):
+    def list_elements(self, args: List[Any]) -> List[Any]:
+        """Transform comma-separated list elements into Python list.
+        
+        List elements are arbitrary expressions that are evaluated to produce
+        the list values. Each element can be:
+        - Literals: [1, 'hello', true]
+        - Variables: [n.name, m.age]
+        - Expressions: [x*2, y+1, f(z)]
+        - Nested lists: [[1,2], [3,4]]
+        
+        Converting to Python list is necessary for:
+        - Standard Python list operations during execution
+        - Consistent representation with Cypher list semantics
+        - Easy iteration and indexing
+        
+        Args:
+            args: Individual element expression nodes.
+        
+        Returns:
+            Python list of element expressions (empty list if no elements).
+        """
         return list(args) if args else []
 
-    def map_literal(self, args):
+    def map_literal(self, args: List[Any]) -> Dict[str, Any]:
+        """Transform map literal syntax {...} into Python dict.
+        
+        Map literals create key-value collections (like JSON objects):
+        - {name: 'Alice', age: 30} -> property map
+        - {x: 1, y: 2, z: 3} -> coordinate map
+        - {} -> empty map
+        
+        Maps in Cypher:
+        - Have string keys (property names)
+        - Can have any value types (including nested maps/lists)
+        - Are used for node/relationship properties
+        - Support property access via . or [] syntax
+        
+        This method extracts the dict of entries from the intermediate map_entries
+        node. The default empty dict handles {} with no entries.
+        
+        Args:
+            args: map_entries node containing dict of key-value pairs.
+        
+        Returns:
+            Python dict mapping property names to values (empty dict if no entries).
+        """
         entries = next((a for a in args if isinstance(a, dict) and "entries" in str(a)), {"entries": {}})
         return entries.get("entries", {})
 
-    def map_entries(self, args):
-        result = {}
+    def map_entries(self, args: List[Any]) -> Dict[str, Dict[str, Any]]:
+        """Transform comma-separated map entries into a dict wrapped in metadata.
+        
+        Map entries are key-value pairs where:
+        - Keys are property names (identifiers)
+        - Values are arbitrary expressions
+        
+        This method collects all entries into a single dict by iterating over
+        the parsed entry nodes and extracting their key-value pairs.
+        
+        Wrapping in {"entries": result} is necessary to:
+        - Pass the dict through the transformer without it being confused with
+          other dict nodes in the AST
+        - Provide a marker that this is an entries collection, not a semantic node
+        
+        Args:
+            args: Individual map_entry nodes with key and value.
+        
+        Returns:
+            Dict with "entries" key containing the collected key-value map.
+        """
+        result: dict[str, Any] = {}
         for arg in args:
             if isinstance(arg, dict) and "key" in arg:
                 result[arg["key"]] = arg["value"]
         return {"entries": result}
 
-    def map_entry(self, args):
+    def map_entry(self, args: List[Any]) -> Dict[str, Any]:
+        """Transform a single map entry (key: value) into a key-value dict.
+        
+        Map entries define property bindings in map literals. The key is always
+        a property name (identifier), and the value can be any expression.
+        
+        Examples:
+        - name: 'Alice' -> {"key": "name", "value": "Alice"}
+        - age: n.age + 1 -> {"key": "age", "value": <expression>}
+        - active: true -> {"key": "active", "value": True}
+        
+        Structuring as {"key": ..., "value": ...} is necessary for map_entries
+        to collect all entries into a final dict. This intermediate representation
+        separates the parsing structure from the final map literal value.
+        
+        Args:
+            args: [property_name, value_expression].
+        
+        Returns:
+            Dict with "key" (property name string) and "value" (expression).
+        """
         return {"key": str(args[0]), "value": args[1] if len(args) > 1 else None}
 
     # ========================================================================
     # Parameter
     # ========================================================================
     
-    def parameter(self, args):
+    def parameter(self, args: List[Any]) -> Dict[str, Any]:
+        """Transform parameter reference syntax ($param) into a Parameter node.
+        
+        Parameters are placeholders for values supplied at query execution time.
+        Syntax: $paramName or $0, $1, $2 (positional)
+        
+        Examples:
+        - MATCH (n:Person {name: $name}) RETURN n
+        - CREATE (n:Person {age: $0})
+        
+        Parameters are essential for:
+        - Query reuse (same query structure, different values)
+        - SQL injection prevention (values never interpreted as code)
+        - Query plan caching (parameterized queries can share plans)
+        - Batch operations (execute same query with different parameters)
+        
+        Parameters can be:
+        - Named: $name, $age, $customParam
+        - Positional: $0, $1, $2, ...
+        
+        Creating a Parameter node with type marker is necessary for:
+        1. Distinguishing parameters from regular variables
+        2. Parameter binding during execution
+        3. Type checking and validation
+        4. Query plan optimization
+        
+        The $ prefix is removed by the grammar; only the name/index is captured.
+        
+        Args:
+            args: Parameter name (string identifier or integer index).
+        
+        Returns:
+            Dict with type "Parameter" and the parameter name.
+        """
         name = args[0] if args else None
         return {"type": "Parameter", "name": name}
 
-    def parameter_name(self, args):
+    def parameter_name(self, args: List[Any]) -> Union[int, str]:
+        """Extract and normalize parameter name or index.
+        
+        Parameter names can be:
+        - Identifiers: myParam, user_name, Age
+        - Numeric indices: 0, 1, 2, 42
+        
+        This method attempts to parse numeric indices as integers, falling back
+        to string identifiers. Integer indices are used for positional parameters
+        in some query APIs.
+        
+        Stripping backticks is necessary for identifiers that use special characters
+        or reserved words: `my-param`, `case`
+        
+        The conversion is necessary for:
+        - Type-appropriate parameter lookup (int vs string keys)
+        - Parameter map indexing during execution
+        - Error reporting with correct parameter references
+        
+        Args:
+            args: Parameter name token (identifier or number).
+        
+        Returns:
+            Integer for numeric indices, or string for named parameters (backticks removed).
+        """
         s = str(args[0])
         try:
             return int(s)
@@ -3308,7 +3800,33 @@ class CypherASTTransformer(Transformer):
     # Variable name
     # ========================================================================
     
-    def variable_name(self, args):
+    def variable_name(self, args: List[Any]) -> str:
+        """Extract and normalize variable identifier names.
+        
+        Variable names are used throughout Cypher to bind and reference values:
+        - Pattern variables: MATCH (n:Person) - 'n' is a variable
+        - Relationship variables: MATCH (a)-[r:KNOWS]->(b) - 'r' is a variable
+        - Aliases: RETURN n.name AS fullName - 'fullName' is a variable
+        - Iteration variables: [x IN list WHERE x > 0] - 'x' is a variable
+        
+        Variables can be:
+        - Regular identifiers: name, age, person, x1
+        - Escaped identifiers (backtick-quoted): `my-var`, `case`, `Person Name`
+        
+        Stripping backticks is necessary because:
+        1. Backticks are syntax for escaping, not part of the semantic name
+        2. Allows reserved words as identifiers: `match`, `return`
+        3. Allows special characters: `my-variable`, `user.name`
+        4. Normalized names are needed for symbol table lookup
+        
+        Converting to string handles Token objects from the parser.
+        
+        Args:
+            args: Single identifier token (may have backticks).
+        
+        Returns:
+            Variable name as a string with backticks removed.
+        """
         return str(args[0]).strip('`')
 
 
@@ -3413,10 +3931,8 @@ class GrammarParser:
             return False
 
 
-def main():
+def main() -> None:
     """Command-line interface for the grammar parser."""
-    import sys
-    import argparse
 
     parser = argparse.ArgumentParser(description='Parse openCypher queries using the BNF grammar')
     parser.add_argument('query', nargs='?', help='Cypher query to parse')
