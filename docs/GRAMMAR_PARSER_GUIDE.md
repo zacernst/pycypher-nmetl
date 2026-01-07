@@ -258,9 +258,11 @@ def extract_property_accesses(ast):
     def traverse(node):
         if isinstance(node, dict):
             if node.get('type') == 'PropertyLookup':
+                # Note: variable field contains a Variable instance with 'name' property
                 var = node.get('variable')
                 prop = node.get('property')
-                properties.append(f"{var}.{prop}")
+                var_name = var.get('name') if isinstance(var, dict) else str(var)
+                properties.append(f"{var_name}.{prop}")
             
             for value in node.values():
                 traverse(value)
@@ -761,23 +763,27 @@ class GrammarParser:
 ```python
 {
     'type': 'NodePattern',
-    'variable': str or None,
+    'variable': {'type': 'Variable', 'name': str} or None,  # Variable instance
     'labels': [str, ...],
     'properties': {...} or None
 }
 ```
 
+Note: The `variable` field contains a `Variable` AST node (dict with 'type' and 'name'), not a plain string.
+
 #### Relationship Pattern
 ```python
 {
     'type': 'RelationshipPattern',
-    'variable': str or None,
+    'variable': {'type': 'Variable', 'name': str} or None,  # Variable instance
     'types': [str, ...],
     'properties': {...} or None,
     'direction': 'left' | 'right' | 'both' | 'any',
     'length': {...} or None
 }
 ```
+
+Note: The `variable` field contains a `Variable` AST node (dict with 'type' and 'name'), not a plain string.
 
 ## Advanced Use Cases
 

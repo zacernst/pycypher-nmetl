@@ -526,20 +526,20 @@ class TestPatterns:
     def test_node_pattern_creation(self):
         """Test creating a node pattern."""
         node = NodePattern(
-            variable="n",
+            variable=Variable(name="n"),
             labels=["Person"]
         )
-        assert node.variable == "n"
+        assert node.variable.name == "n"
         assert node.labels == ["Person"]
     
     def test_relationship_pattern_creation(self):
         """Test creating a relationship pattern."""
         rel = RelationshipPattern(
-            variable="r",
+            variable=Variable(name="r"),
             types=["KNOWS"],
             direction="outgoing"
         )
-        assert rel.variable == "r"
+        assert rel.variable.name == "r"
         assert rel.types == ["KNOWS"]
         assert rel.direction == "outgoing"
 

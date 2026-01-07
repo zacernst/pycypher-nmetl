@@ -41,13 +41,15 @@ make clean
 - `nmetl_tutorial.md` - Getting started tutorial
 - `quickref.rst` - Quick reference guide
 - `examples.rst` - Code examples
+- `GRAMMAR_PARSER_GUIDE.md` - Comprehensive grammar parser guide
+- `AST_VARIABLE_REPRESENTATION.md` - AST Variable usage and migration guide
+- `SAT_SOLVER_INTEGRATION.md` - SAT solver integration guide
 - `api/` - API reference documentation
   - `index.rst` - API overview
   - `nmetl.rst` - NMETL package API
   - `pycypher.rst` - PyCypher package API
   - `shared.rst` - Shared utilities API
   - `fastopendata.rst` - FastOpenData package API
-- `SAT_SOLVER_INTEGRATION.md` - SAT solver integration guide
 - `TEST_COVERAGE_CYPHER_QUERY_SOLVER.md` - Testing documentation
 
 ## Adding New Documentation

@@ -6,6 +6,19 @@ The PyCypher package provides Cypher query parsing, graph database operations, a
 Core Modules
 ------------
 
+Grammar Parser and AST
+~~~~~~~~~~~~~~~~~~~~~~
+
+.. automodule:: pycypher.grammar_parser
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: pycypher.ast_models
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Cypher Parsing
 ~~~~~~~~~~~~~~
 
