@@ -23,7 +23,7 @@ Example:
 """
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
+from abc import ABC, abstractmethod 
 from pydantic import field_validator, BaseModel
 from typing import Any, List, Optional
 from enum import Enum
@@ -34,7 +34,7 @@ import pandas as pd
 import ibis
 from ibis.expr.types import Table as IbisTable
 
-from pycypher.ast_models import ASTNode, ASTConverter
+from pycypher.ast_models import With, Return, ReturnItem, PropertyLookup, Variable, IntegerLiteral, ASTNode, ASTConverter, NodePattern, Query, Match, Pattern, PatternPath, RelationshipPattern
 
 def random_hash() -> str:
     """Generate a random hash string for column naming.
@@ -65,13 +65,13 @@ class JoinType(str, Enum):
     FULL = "FULL"
 
 
-class GraphObjectType(BaseModel):
-    """Base class for graph-level objects (nodes and relationships).
-    
-    Serves as a marker class to distinguish graph objects from algebraic operators.
-    Graph objects can be converted to algebraic operations via `to_algebra()` methods.
-    """
-    pass
+# class GraphObjectType(BaseModel):
+#     """Base class for graph-level objects (nodes and relationships).
+#     
+#     Serves as a marker class to distinguish graph objects from algebraic operators.
+#     Graph objects can be converted to algebraic operations via `to_algebra()` methods.
+#     """
+#     pass
 
 
 class Algebraic(BaseModel, ABC):
@@ -508,54 +508,54 @@ class IsLessThan(Boolean):
     right: Evaluable
 
 
-class Node(GraphObjectType):
-    """Represents a node (vertex) in a graph pattern.
-    
-    Nodes have a label (entity type), a variable name for binding in queries,
-    and optionally a set of attribute constraints. When converted to algebra,
-    a node becomes an EntityTable optionally filtered by its attributes.
-    
-    Attributes:
-        variable: The variable name to bind this node to (e.g., "p" for person).
-        label: The entity type/label (e.g., "Person").
-        attributes: Dictionary of attribute name-value pairs for filtering.
-    """
-    variable: str
-    label: str
-    attributes: dict = {}
-
-    def to_algebra(self, context: Context) -> Filter | EntityTable:
-        """Convert this node to an algebraic expression.
-        
-        Creates an EntityTable for the node's label, then applies Filter operations
-        for each attribute constraint. The variable is mapped to the entity's
-        identifier column.
-        
-        Args:
-            context: The execution context containing entity table schemas.
-            
-        Returns:
-            Filter | EntityTable: An EntityTable if no attributes, otherwise a Filter
-                chain wrapping the EntityTable.
-        """
-        entity_table: EntityTable = context.get_entity_table(self.label)
-        entity_table.variables_to_columns[self.variable] = (
-            entity_table.column_name_to_hash[
-                entity_table.entity_identifier_attribute
-            ]
-        )
-        out: None | Filter = None
-        for attr_name, attr_value in self.attributes.items():
-            out = Filter(
-                table=entity_table if not out else out,
-                column_name_to_hash=entity_table.column_name_to_hash,
-                hash_to_column_name=entity_table.hash_to_column_name,
-                variables_to_columns=entity_table.variables_to_columns,
-                condition=HasAttributeValue(
-                    attribute=attr_name, value=attr_value
-                ),
-            )
-        return out or entity_table
+# class Node(GraphObjectType):
+#     """Represents a node (vertex) in a graph pattern.
+#     
+#     Nodes have a label (entity type), a variable name for binding in queries,
+#     and optionally a set of attribute constraints. When converted to algebra,
+#     a node becomes an EntityTable optionally filtered by its attributes.
+#     
+#     Attributes:
+#         variable: The variable name to bind this node to (e.g., "p" for person).
+#         label: The entity type/label (e.g., "Person").
+#         attributes: Dictionary of attribute name-value pairs for filtering.
+#     """
+#     variable: str
+#     label: str
+#     attributes: dict = {}
+# 
+#     def to_algebra(self, context: Context) -> Filter | EntityTable:
+#         """Convert this node to an algebraic expression.
+#         
+#         Creates an EntityTable for the node's label, then applies Filter operations
+#         for each attribute constraint. The variable is mapped to the entity's
+#         identifier column.
+#         
+#         Args:
+#             context: The execution context containing entity table schemas.
+#             
+#         Returns:
+#             Filter | EntityTable: An EntityTable if no attributes, otherwise a Filter
+#                 chain wrapping the EntityTable.
+#         """
+#         entity_table: EntityTable = context.get_entity_table(self.label)
+#         entity_table.variables_to_columns[self.variable] = (
+#             entity_table.column_name_to_hash[
+#                 entity_table.entity_identifier_attribute
+#             ]
+#         )
+#         out: None | Filter = None
+#         for attr_name, attr_value in self.attributes.items():
+#             out = Filter(
+#                 table=entity_table if not out else out,
+#                 column_name_to_hash=entity_table.column_name_to_hash,
+#                 hash_to_column_name=entity_table.hash_to_column_name,
+#                 variables_to_columns=entity_table.variables_to_columns,
+#                 condition=HasAttributeValue(
+#                     attribute=attr_name, value=attr_value
+#                 ),
+#             )
+#         return out or entity_table
 
     def __str__(self) -> str:
         """Return a Cypher-like string representation of this node.
@@ -621,137 +621,100 @@ class DropColumn(Algebraic):
             return table
 
 
-class SelectColumns(Algebraic):
-    """Algebraic operation to select specific columns from a table.
-    
-    Implements the relational projection operation that keeps only the specified
-    columns, discarding all others.
-    
-    Attributes:
-        table: The input table to select columns from.
-        column_names: List of (hashed) column names to keep.
-    """
-    table: EntityTable | Join | DropColumn | SelectColumns
-    column_names: list[str]  # list of hashed column names
-
-    def to_pandas(self, context: Context) -> pd.DataFrame:
-        """Execute the column selection.
-        
-        Args:
-            context: The execution context.
-            
-        Returns:
-            pd.DataFrame: A DataFrame containing only the specified columns.
-        """
-        df: pd.DataFrame = self.table.to_pandas(context)
-        selected_df: pd.DataFrame = df[self.column_names]  # pyrefly:ignore[bad-assignment]
-        return selected_df
-
-    def to_ibis(self, context: Context) -> IbisTable:
-        """Execute the column selection on an Ibis table.
-        
-        Args:
-            context: The execution context.
-            
-        Returns:
-            IbisTable: An Ibis table containing only the specified columns.
-        """
-        table: IbisTable = self.table.to_ibis(context)
-        selected_table: IbisTable = table.select(self.column_names)
-        return selected_table
 
 
-class RelationshipConjunction(GraphObjectType):
-    """Represents a conjunction of multiple relationships in a graph pattern.
-    
-    This class implements graph pattern matching by joining multiple relationship
-    traversals together. Relationships are joined on their common variables,
-    effectively representing connected paths through the graph.
-    
-    Attributes:
-        relationships: List of relationships to conjoin (must have >= 2 elements).
-    """
-    relationships: List[Relationship]
 
-    def _join_two_relationships(self, relationship_1_alg: Algebraic, relationship_2_alg: Algebraic) -> DropColumn:
-        """Join two relationship algebraic expressions on their common variables.
-        
-        Identifies variables that appear in both relationships and performs an
-        inner join on the corresponding columns. Drops duplicate columns from
-        the right table after the join.
-        
-        Args:
-            relationship_1_alg: The first relationship's algebraic expression.
-            relationship_2_alg: The second relationship's algebraic expression.
-            
-        Returns:
-            DropColumn: An algebraic expression representing the joined relationships.
-            
-        Raises:
-            ValueError: If the relationships have no common variables (would result
-                in a Cartesian product).
-        """
-        # Identify the variables for relationship_1 and relationship_2
-        relationship_1_variables: set[str] = set(relationship_1_alg.variables_to_columns.keys())
-        relationship_2_variables: set[str] = set(relationship_2_alg.variables_to_columns.keys())
-        # Will join on the common_variables
-        common_variables: set[str] = relationship_1_variables & relationship_2_variables
-        if not common_variables:
-            raise ValueError("Nobody likes a Cartesian product!")
-        # Find the columns corresponding to the common variables in both relationships
-        left_join_combos: List[str] = []
-        right_join_combos: List[str] = []
-        for var in common_variables:
-            left_on: str = relationship_1_alg.variables_to_columns[var]
-            right_on: str = relationship_2_alg.variables_to_columns[var]
-            left_join_combos.append(left_on)
-            right_join_combos.append(right_on)
-        assert left_join_combos
-        assert right_join_combos
-        join: MultiJoin = MultiJoin(
-            left=relationship_1_alg,
-            right=relationship_2_alg,
-            left_on=left_join_combos,
-            right_on=right_join_combos,
-            join_type=JoinType.INNER,
-            variables_to_columns={**relationship_1_alg.variables_to_columns, **relationship_2_alg.variables_to_columns},
-            column_name_to_hash={**relationship_1_alg.column_name_to_hash, **relationship_2_alg.column_name_to_hash},
-            hash_to_column_name={**relationship_1_alg.hash_to_column_name, **relationship_2_alg.hash_to_column_name},
-        )
-        for duplicate_var in right_join_combos:
-            dropped: DropColumn = DropColumn(
-                table=join,
-                column_name=duplicate_var,
-                column_name_to_hash=join.column_name_to_hash,
-                hash_to_column_name=join.hash_to_column_name,
-                variables_to_columns=join.variables_to_columns,
-                execute=False,  # Skip the Drop!
-            )
-        return dropped  # pyrefly:ignore[unbound-name]
-
-    def to_algebra(self, context: Context) -> Algebraic:
-        """Convert this relationship conjunction to an algebraic expression.
-        
-        Iteratively joins all relationships in the conjunction, starting with the
-        first two and progressively adding each subsequent relationship.
-        
-        Args:
-            context: The execution context containing table schemas.
-            
-        Returns:
-            Algebraic: An algebraic expression representing all joined relationships.
-            
-        Raises:
-            AssertionError: If fewer than 2 relationships are provided.
-        """
-        assert len(self.relationships) >= 2, "Need at least two relationships to form a conjunction"
-        left_rel: Relationship = self.relationships[0]
-        left_obj: RenameColumn | DropColumn= left_rel.to_algebra(context)
-        for rel in self.relationships[1:]:
-            rel_alg: RenameColumn | DropColumn = rel.to_algebra(context)
-            conjoined: DropColumn = self._join_two_relationships(left_obj, rel_alg)
-            left_obj = conjoined
-        return conjoined  # pyrefly:ignore[unbound-name]
+# class RelationshipConjunction(GraphObjectType):
+#     """Represents a conjunction of multiple relationships in a graph pattern.
+#     
+#     This class implements graph pattern matching by joining multiple relationship
+#     traversals together. Relationships are joined on their common variables,
+#     effectively representing connected paths through the graph.
+#     
+#     Attributes:
+#         relationships: List of relationships to conjoin (must have >= 2 elements).
+#     """
+#     relationships: List[Relationship]
+# 
+#     def _join_two_relationships(self, relationship_1_alg: Algebraic, relationship_2_alg: Algebraic) -> DropColumn:
+#         """Join two relationship algebraic expressions on their common variables.
+#         
+#         Identifies variables that appear in both relationships and performs an
+#         inner join on the corresponding columns. Drops duplicate columns from
+#         the right table after the join.
+#         
+#         Args:
+#             relationship_1_alg: The first relationship's algebraic expression.
+#             relationship_2_alg: The second relationship's algebraic expression.
+#             /class
+#         Returns:
+#             DropColumn: An algebraic expression representing the joined relationships.
+#             
+#         Raises:
+#             ValueError: If the relationships have no common variables (would result
+#                 in a Cartesian product).
+#         """
+#         # Identify the variables for relationship_1 and relationship_2
+#         relationship_1_variables: set[str] = set(relationship_1_alg.variables_to_columns.keys())
+#         relationship_2_variables: set[str] = set(relationship_2_alg.variables_to_columns.keys())
+#         # Will join on the common_variables
+#         common_variables: set[str] = relationship_1_variables & relationship_2_variables
+#         if not common_variables:
+#             raise ValueError("Nobody likes a Cartesian product!")
+#         # Find the columns corresponding to the common variables in both relationships
+#         left_join_combos: List[str] = []
+#         right_join_combos: List[str] = []
+#         for var in common_variables:
+#             left_on: str = relationship_1_alg.variables_to_columns[var]
+#             right_on: str = relationship_2_alg.variables_to_columns[var]
+#             left_join_combos.append(left_on)
+#             right_join_combos.append(right_on)
+#         assert left_join_combos
+#         assert right_join_combos
+#         join: MultiJoin = MultiJoin(
+#             left=relationship_1_alg,
+#             right=relationship_2_alg,
+#             left_on=left_join_combos,
+#             right_on=right_join_combos,
+#             join_type=JoinType.INNER,
+#             variables_to_columns={**relationship_1_alg.variables_to_columns, **relationship_2_alg.variables_to_columns},
+#             column_name_to_hash={**relationship_1_alg.column_name_to_hash, **relationship_2_alg.column_name_to_hash},
+#             hash_to_column_name={**relationship_1_alg.hash_to_column_name, **relationship_2_alg.hash_to_column_name},
+#         )
+#         for duplicate_var in right_join_combos:
+#             dropped: DropColumn = DropColumn(
+#                 table=join,
+#                 column_name=duplicate_var,
+#                 column_name_to_hash=join.column_name_to_hash,
+#                 hash_to_column_name=join.hash_to_column_name,
+#                 variables_to_columns=join.variables_to_columns,
+#                 execute=False,  # Skip the Drop!
+#             )
+#         return dropped  # pyrefly:ignore[unbound-name]
+# 
+#     def to_algebra(self, context: Context) -> Algebraic:
+#         """Convert this relationship conjunction to an algebraic expression.
+#         
+#         Iteratively joins all relationships in the conjunction, starting with the
+#         first two and progressively adding each subsequent relationship.
+#         
+#         Args:
+#             context: The execution context containing table schemas.
+#             
+#         Returns:
+#             Algebraic: An algebraic expression representing all joined relationships.
+#             
+#         Raises:
+#             AssertionError: If fewer than 2 relationships are provided.
+#         """
+#         assert len(self.relationships) >= 2, "Need at least two relationships to form a conjunction"
+#         left_rel: Relationship = self.relationships[0]
+#         left_obj: RenameColumn | DropColumn= left_rel.to_algebra(context)
+#         for rel in self.relationships[1:]:
+#             rel_alg: RenameColumn | DropColumn = rel.to_algebra(context)
+#             conjoined: DropColumn = self._join_two_relationships(left_obj, rel_alg)
+#             left_obj = conjoined
+#         return conjoined  # pyrefly:ignore[unbound-name]
 
 
 class MultiJoin(Algebraic):
@@ -978,140 +941,140 @@ class Filter(Algebraic):
         return filtered_table
 
 
-class Relationship(GraphObjectType):
-    """Represents a directed relationship (edge) in a graph pattern.
-    
-    A relationship connects two nodes (source and target) and has a label indicating
-    the relationship type. When converted to algebra, it becomes a series of joins
-    between the source entity table, the relationship table, and the target entity table.
-    
-    Attributes:
-        variable: The variable name to bind this relationship to.
-        label: The relationship type/label (e.g., "LIVES_IN").
-        attributes: Optional dictionary of attribute constraints (not currently used).
-        source_node: The node at the source end of the relationship.
-        target_node: The node at the target end of the relationship.
-    """
-    variable: str
-    label: str
-    attributes: Optional[dict] = None
-    source_node: Node
-    target_node: Node
-
-    def to_algebra(self, context: Context) -> RenameColumn:
-        """Convert this relationship to an algebraic expression.
-        
-        Creates a complex join pattern:
-        1. Converts source and target nodes to algebra (EntityTable or Filter)
-        2. Joins source node with relationship table on source_name
-        3. Joins result with target node on target_name
-        4. Drops the source_name and target_name columns
-        5. Selects only relevant columns
-        6. Renames relationship_id to a hashed column name
-        
-        Args:
-            context: The execution context containing table schemas.
-            
-        Returns:
-            RenameColumn: An algebraic expression representing the complete
-                relationship traversal.
-        """
-        relationship_table: RelationshipTable = context.get_relationship_table(
-            self.label
-        )
-        relationship_table.variables_to_columns[self.variable] = (
-            "relationship_id"
-        )
-        source_table: EntityTable | Filter = self.source_node.to_algebra(
-            context
-        )
-        target_table: EntityTable | Filter = self.target_node.to_algebra(
-            context
-        )
-        left_join = Join(
-            left=source_table,
-            right=relationship_table,
-            left_on=source_table.variables_to_columns[
-                self.source_node.variable
-            ],
-            right_on="source_name",
-            join_type=JoinType.INNER,
-            variables_to_columns=source_table.variables_to_columns,
-            column_name_to_hash=source_table.column_name_to_hash,
-            hash_to_column_name=source_table.hash_to_column_name,
-        )
-        left_join.variables_to_columns[self.variable] = (
-            relationship_table.variables_to_columns[self.variable]
-        )  # TODO
-
-        right_join = Join(
-            left=left_join,
-            right=target_table,
-            left_on="target_name",
-            right_on=target_table.variables_to_columns[
-                self.target_node.variable
-            ],
-            join_type=JoinType.INNER,
-            variables_to_columns={
-                **left_join.variables_to_columns,
-                **target_table.variables_to_columns,
-            },
-            column_name_to_hash={
-                **left_join.column_name_to_hash,
-                **target_table.column_name_to_hash,
-            },
-            hash_to_column_name={
-                **left_join.hash_to_column_name,
-                **target_table.hash_to_column_name,
-            },
-        )
-
-        dropped: DropColumn = DropColumn(
-            table=DropColumn(
-                table=right_join,
-                column_name_to_hash=right_join.column_name_to_hash,
-                hash_to_column_name=right_join.hash_to_column_name,
-                column_name="source_name",
-                variables_to_columns=right_join.variables_to_columns,
-            ),
-            column_name="target_name",
-            column_name_to_hash=right_join.column_name_to_hash,
-            hash_to_column_name=right_join.hash_to_column_name,
-            variables_to_columns=right_join.variables_to_columns,
-        )
-
-        selected: SelectColumns = SelectColumns(
-            table=dropped,
-            column_names=list(right_join.variables_to_columns.values())
-            + ["relationship_id"],
-            column_name_to_hash=dropped.column_name_to_hash,
-            hash_to_column_name=dropped.hash_to_column_name,
-            variables_to_columns=right_join.variables_to_columns,
-        )
-
-        new_column_name: str = random_hash()
-        renamed: RenameColumn = RenameColumn(
-            table=selected,
-            old_column_name="relationship_id",
-            new_column_name=new_column_name,
-            column_name_to_hash=selected.column_name_to_hash,
-            hash_to_column_name=selected.hash_to_column_name,
-            variables_to_columns=selected.variables_to_columns,
-        )
-
-        renamed.column_name_to_hash[self.variable] = new_column_name
-        renamed.hash_to_column_name[new_column_name] = self.variable
-        renamed.variables_to_columns[self.variable] = new_column_name
-        return renamed
-
-    def __str__(self) -> str:
-        """Return a Cypher-like string representation of this relationship.
-        
-        Returns:
-            str: Relationship representation in the format
-                "(source_var)-[:LABEL]->(target_var)".
-        """
-        return f"({self.source_node.variable})-[:{self.label}]->({self.target_node.variable})"
+# class Relationship(GraphObjectType):
+#     """Represents a directed relationship (edge) in a graph pattern.
+#     
+#     A relationship connects two nodes (source and target) and has a label indicating
+#     the relationship type. When converted to algebra, it becomes a series of joins
+#     between the source entity table, the relationship table, and the target entity table.
+#     
+#     Attributes:
+#         variable: The variable name to bind this relationship to.
+#         label: The relationship type/label (e.g., "LIVES_IN").
+#         attributes: Optional dictionary of attribute constraints (not currently used).
+#         source_node: The node at the source end of the relationship.
+#         target_node: The node at the target end of the relationship.
+#     """
+#     variable: str
+#     label: str
+#     attributes: Optional[dict] = None
+#     source_node: Node
+#     target_node: Node
+# 
+#     def to_algebra(self, context: Context) -> RenameColumn:
+#         """Convert this relationship to an algebraic expression.
+#         
+#         Creates a complex join pattern:
+#         1. Converts source and target nodes to algebra (EntityTable or Filter)
+#         2. Joins source node with relationship table on source_name
+#         3. Joins result with target node on target_name
+#         4. Drops the source_name and target_name columns
+#         5. Selects only relevant columns
+#         6. Renames relationship_id to a hashed column name
+#         
+#         Args:
+#             context: The execution context containing table schemas.
+#             
+#         Returns:
+#             RenameColumn: An algebraic expression representing the complete
+#                 relationship traversal.
+#         """
+#         relationship_table: RelationshipTable = context.get_relationship_table(
+#             self.label
+#         )
+#         relationship_table.variables_to_columns[self.variable] = (
+#             "relationship_id"
+#         )
+#         source_table: EntityTable | Filter = self.source_node.to_algebra(
+#             context
+#         )
+#         target_table: EntityTable | Filter = self.target_node.to_algebra(
+#             context
+#         )
+#         left_join = Join(
+#             left=source_table,
+#             right=relationship_table,
+#             left_on=source_table.variables_to_columns[
+#                 self.source_node.variable
+#             ],
+#             right_on="source_name",
+#             join_type=JoinType.INNER,
+#             variables_to_columns=source_table.variables_to_columns,
+#             column_name_to_hash=source_table.column_name_to_hash,
+#             hash_to_column_name=source_table.hash_to_column_name,
+#         )
+#         left_join.variables_to_columns[self.variable] = (
+#             relationship_table.variables_to_columns[self.variable]
+#         )  # TODO
+# 
+#         right_join = Join(
+#             left=left_join,
+#             right=target_table,
+#             left_on="target_name",
+#             right_on=target_table.variables_to_columns[
+#                 self.target_node.variable
+#             ],
+#             join_type=JoinType.INNER,
+#             variables_to_columns={
+#                 **left_join.variables_to_columns,
+#                 **target_table.variables_to_columns,
+#             },
+#             column_name_to_hash={
+#                 **left_join.column_name_to_hash,
+#                 **target_table.column_name_to_hash,
+#             },
+#             hash_to_column_name={
+#                 **left_join.hash_to_column_name,
+#                 **target_table.hash_to_column_name,
+#             },
+#         )
+# 
+#         dropped: DropColumn = DropColumn(
+#             table=DropColumn(
+#                 table=right_join,
+#                 column_name_to_hash=right_join.column_name_to_hash,
+#                 hash_to_column_name=right_join.hash_to_column_name,
+#                 column_name="source_name",
+#                 variables_to_columns=right_join.variables_to_columns,
+#             ),
+#             column_name="target_name",
+#             column_name_to_hash=right_join.column_name_to_hash,
+#             hash_to_column_name=right_join.hash_to_column_name,
+#             variables_to_columns=right_join.variables_to_columns,
+#         )
+# 
+#         selected: SelectColumns = SelectColumns(
+#             table=dropped,
+#             column_names=list(right_join.variables_to_columns.values())
+#             + ["relationship_id"],
+#             column_name_to_hash=dropped.column_name_to_hash,
+#             hash_to_column_name=dropped.hash_to_column_name,
+#             variables_to_columns=right_join.variables_to_columns,
+#         )
+# 
+#         new_column_name: str = random_hash()
+#         renamed: RenameColumn = RenameColumn(
+#             table=selected,
+#             old_column_name="relationship_id",
+#             new_column_name=new_column_name,
+#             column_name_to_hash=selected.column_name_to_hash,
+#             hash_to_column_name=selected.hash_to_column_name,
+#             variables_to_columns=selected.variables_to_columns,
+#         )
+# 
+#         renamed.column_name_to_hash[self.variable] = new_column_name
+#         renamed.hash_to_column_name[new_column_name] = self.variable
+#         renamed.variables_to_columns[self.variable] = new_column_name
+#         return renamed
+# 
+#     def __str__(self) -> str:
+#         """Return a Cypher-like string representation of this relationship.
+#         
+#         Returns:
+#             str: Relationship representation in the format
+#                 "(source_var)-[:LABEL]->(target_var)".
+#         """
+#         return f"({self.source_node.variable})-[:{self.label}]->({self.target_node.variable})"
 
 
 class RenameColumn(Algebraic):
