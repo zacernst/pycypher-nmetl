@@ -1,24 +1,43 @@
-Tutorials and Guides
-====================
+Tutorials
+=========
 
-This section contains tutorials and guides for using the NMETL framework.
+Learn how to use NMETL with these step-by-step tutorials.
 
 .. toctree::
    :maxdepth: 2
+   :caption: Available Tutorials:
 
-   nmetl_tutorial
-   sat_solver_guide
-   testing_guide
+   basic_query_parsing
+   ast_manipulation
+   query_validation
+   pattern_matching
+   data_etl_pipeline
 
-Getting Started
----------------
+Introduction
+------------
 
-If you're new to NMETL, start with the :doc:`nmetl_tutorial` to learn the basics of declarative ETL.
+These tutorials will guide you through the main features of NMETL:
 
-Advanced Topics
----------------
+1. **Basic Query Parsing**: Learn how to parse openCypher queries
+2. **AST Manipulation**: Work with the typed AST structure
+3. **Query Validation**: Validate queries and handle errors
+4. **Pattern Matching**: Advanced pattern matching techniques
+5. **Data ETL Pipeline**: Build end-to-end data pipelines
 
-For advanced usage, see:
+Prerequisites
+-------------
 
-- :doc:`sat_solver_guide` - Learn how to use the SAT-based Cypher query solver
-- :doc:`testing_guide` - Understand the testing approach and coverage
+Before starting these tutorials, you should have:
+
+* Python 3.10 or higher installed
+* NMETL packages installed (see :doc:`../getting_started`)
+* Basic understanding of graph databases
+* Familiarity with Cypher query language
+
+Each tutorial includes:
+
+* Clear learning objectives
+* Step-by-step instructions
+* Complete code examples
+* Expected output
+* Common pitfalls and solutions

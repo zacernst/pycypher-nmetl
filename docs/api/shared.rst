@@ -1,31 +1,36 @@
-Shared Package
-==============
+Shared API
+==========
 
-The Shared package provides common utilities and helper functions used across all packages.
+The Shared package contains common utilities and base classes.
 
-Modules
--------
-
-Logging
-~~~~~~~
-
-.. automodule:: shared.logger
+.. automodule:: shared
    :members:
    :undoc-members:
    :show-inheritance:
 
-Telemetry
+Core Modules
+------------
+
+Utilities
 ~~~~~~~~~
 
-.. automodule:: shared.telemetry
+.. automodule:: shared.utils
    :members:
    :undoc-members:
    :show-inheritance:
 
-Helper Functions
-~~~~~~~~~~~~~~~~
+Base Classes
+~~~~~~~~~~~~
 
-.. automodule:: shared.helpers
+.. automodule:: shared.base
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Exceptions
+~~~~~~~~~~
+
+.. automodule:: shared.exceptions
    :members:
    :undoc-members:
    :show-inheritance:

@@ -15,20 +15,20 @@ Important Notes:
 Usage:
     from pycypher.grammar_parser import GrammarParser
     from pycypher.ast_models import ASTConverter
-    
+
     parser = GrammarParser()
     raw_ast = parser.parse_to_ast("MATCH (n:Person) RETURN n")
-    
+
     converter = ASTConverter()
     typed_ast = converter.convert(raw_ast)
-    
+
     # Traverse the AST
     for node in typed_ast.traverse():
         print(f"Node tiype: {node.__class__.__name__}")
-    
+
     # Pretty print
     print(typed_ast.pretty())
-    
+
     # Access variable names
     from pycypher.ast_models import NodePattern, Variable
     node = NodePattern(variable=Variable(name="n"), labels=["Person"])
@@ -36,7 +36,18 @@ Usage:
 """
 
 from __future__ import annotations
-from typing import Any, Optional, Union, List, Dict, Iterator, Callable, cast, Set, NoReturn
+from typing import (
+    Any,
+    Optional,
+    Union,
+    List,
+    Dict,
+    Iterator,
+    Callable,
+    cast,
+    Set,
+    NoReturn,
+)
 from pydantic import field_validator, BaseModel, Field, ConfigDict
 from pycypher.grammar_parser import GrammarParser
 from abc import ABC, abstractmethod
@@ -53,10 +64,10 @@ from shared.logger import LOGGER
 
 def random_hash() -> str:
     """Generate a random hash string for column naming.
-    
+
     Creates a unique identifier by hashing a random float. Used to generate
     collision-resistant column names during algebraic operations.
-    
+
     Returns:
         str: A 32-character hexadecimal hash string.
     """
@@ -67,13 +78,14 @@ def random_hash() -> str:
 
 class JoinType(str, Enum):
     """Enumeration of supported SQL join types.
-    
+
     Attributes:
         INNER: Inner join - returns only matching rows from both tables.
         LEFT: Left outer join - returns all rows from left table.
         RIGHT: Right outer join - returns all rows from right table.
         FULL: Full outer join - returns all rows from both tables.
     """
+
     INNER = "INNER"
     LEFT = "LEFT"
     RIGHT = "RIGHT"
@@ -85,16 +97,17 @@ class JoinType(str, Enum):
 # ===========================================================================
 class Algebraic(BaseModel, ABC):
     """Abstract base class for all relational algebra operators.
-    
+
     All algebraic operators maintain mappings between variable names, column names,
     and hashed column identifiers to support complex multi-way joins without naming
     conflicts. These operators can be composed to build complex query plans.
-    
+
     Attributes:
         variables_to_columns: Maps Cypher variable names to hashed column names.
         column_name_to_hash: Maps original column names to their hashed versions.
         hash_to_column_name: Reverse mapping from hashed names to original names.
     """
+
     variables_to_columns: dict[str, str] = {}
     column_name_to_hash: dict[str, str] = {}
     hash_to_column_name: dict[str, str] = {}
@@ -102,10 +115,10 @@ class Algebraic(BaseModel, ABC):
     @abstractmethod
     def to_pandas(self, context: Context) -> pd.DataFrame:
         """Convert this algebraic expression to a pandas DataFrame.
-        
+
         Args:
             context: The execution context containing entity and relationship data.
-            
+
         Returns:
             pd.DataFrame: The result of executing this algebraic operation.
         """
@@ -114,34 +127,36 @@ class Algebraic(BaseModel, ABC):
     @abstractmethod
     def to_ibis(self, context: Context) -> IbisTable:
         """Convert this algebraic expression to an Ibis table.
-        
+
         Args:
             context: The execution context containing entity and relationship data.
-            
+
         Returns:
             IbisTable: The result of executing this algebraic operation as an Ibis table.
         """
         ...
 
+
 class Table(Algebraic):
     """Base class for table representations.
-    
+
     Provides a unique identifier for each table instance, automatically generating
     a random hash if no identifier is provided.
-    
+
     Attributes:
         identifier: Unique identifier for this table instance.
     """
+
     identifier: str = ""
 
     @field_validator("identifier", mode="after")
     @classmethod
     def set_identifier(cls, v: str) -> str:
         """Generate a random identifier if none was provided.
-        
+
         Args:
             v: The identifier value (may be empty string).
-            
+
         Returns:
             str: The provided identifier or a newly generated hash.
         """
@@ -149,25 +164,27 @@ class Table(Algebraic):
             return random_hash()
         return v
 
+
 class EntityTable(Table):
     """Represents a table of graph entities (nodes).
-    
+
     EntityTable stores data about a particular type of node in the graph, along
     with its attributes. It maintains column name mappings to support collision-free
     joins with other tables.
-    
+
     Attributes:
         entity_type: The type/label of entities in this table (e.g., "Person").
         attributes: List of attribute names for this entity type.
         entity_identifier_attribute: The attribute that uniquely identifies entities.
     """
+
     entity_type: str
     attributes: List[str]
     entity_identifier_attribute: str
 
     def __init__(self, **data: Any):
         """Initialize the entity table and create column hash mappings.
-        
+
         Args:
             **data: Keyword arguments for entity_type, attributes, and
                 entity_identifier_attribute.
@@ -180,10 +197,10 @@ class EntityTable(Table):
 
     def to_pandas(self, context: Context) -> pd.DataFrame:
         """Convert this entity table to a pandas DataFrame with hashed column names.
-        
+
         Args:
             context: The execution context containing the actual entity data.
-            
+
         Returns:
             pd.DataFrame: The entity data with columns renamed to their hashed versions.
         """
@@ -195,10 +212,10 @@ class EntityTable(Table):
 
     def to_ibis(self, context: Context) -> IbisTable:
         """Convert this entity table to an Ibis table with hashed column names.
-        
+
         Args:
             context: The execution context containing the actual entity data.
-            
+
         Returns:
             IbisTable: The entity data with columns renamed to their hashed versions.
         """
@@ -209,64 +226,92 @@ class EntityTable(Table):
             table = table.rename({new_name: old_name})
         return table
 
-class Boolean(Algebraic):
-    """Base class for boolean conditions used in filters.
-    
-    Marker class for representing boolean predicates that can be evaluated
-    against rows in a DataFrame.
+
+class RelationshipTable(Table):
+    """Represents a table of graph relationships (edges).
+
+    RelationshipTable stores data about connections between entities, including
+    the source and target entity types. Each relationship can have its own attributes.
+
+    Attributes:
+        relationship_type: The type/label of this relationship (e.g., "LIVES_IN").
+        source_entity_type: The entity type at the source of the relationship.
+        target_entity_type: The entity type at the target of the relationship.
+        attributes: List of attribute names for this relationship type.
+        relationship_identifier_attribute: Optional unique identifier for relationships.
     """
-    
-    def to_pandas(self, context: Context) -> pd.DataFrame:
-        """Boolean conditions do not directly convert to DataFrames.
-        
-        Raises:
-            NotImplementedError: Always, since boolean conditions are not tables.
+
+    relationship_type: str
+    source_entity_type: str
+    target_entity_type: str
+    attributes: List[str]
+    relationship_identifier_attribute: Optional[str] = (
+        None  # Maybe use later for rel attributes?
+    )
+
+    def __init__(self, **data: Any) -> None:
+        """Initialize the relationship table and create column hash mappings.
+
+        Args:
+            **data: Keyword arguments for relationship_type, source_entity_type,
+                target_entity_type, and attributes.
         """
-        raise NotImplementedError("Boolean conditions cannot be converted to DataFrames")
+        super().__init__(**data)
+        for attribute in self.attributes:
+            column_hash: str = random_hash()
+            self.column_name_to_hash[attribute] = column_hash
+            self.hash_to_column_name[column_hash] = attribute
+
+    def to_pandas(self, context: Context) -> pd.DataFrame:
+        """Convert this relationship table to a pandas DataFrame.
+
+        Args:
+            context: The execution context containing the actual relationship data.
+
+        Returns:
+            pd.DataFrame: The relationship data.
+        """
+        df: pd.DataFrame = context.obj_map[self.relationship_type]
+        return df
 
     def to_ibis(self, context: Context) -> IbisTable:
-        """Boolean conditions do not directly convert to Ibis tables.
-        
-        Raises:
-            NotImplementedError: Always, since boolean conditions are not tables.
-        """
-        raise NotImplementedError("Boolean conditions cannot be converted to Ibis tables")
+        """Convert this relationship table to an Ibis table.
 
-class HasAttributeValue(Boolean):
-    """Condition that checks if an attribute has a specific value.
-    
-    Used in Filter operations to select rows where a particular attribute
-    matches the specified value.
-    
-    Attributes:
-        attribute: The name of the attribute to check.
-        value: The value to match against (can be string, number, boolean, or None).
-    """
-    attribute: str
-    value: str | int | float | bool | None
+        Args:
+            context: The execution context containing the actual relationship data.
+
+        Returns:
+            IbisTable: The relationship data as an Ibis table.
+        """
+        table: IbisTable = ibis.memtable(
+            context.obj_map[self.relationship_type]
+        )
+        return table
+
 
 class DropColumn(Table):
     """Algebraic operation to remove a column from a table.
-    
+
     Implements the relational projection operation that excludes a specific column.
     The execute flag can be set to False to defer execution, which is useful when
     building up complex query plans.
-    
+
     Attributes:
         table: The input table to drop a column from.
         column_name: The name of the column to drop.
         execute: Whether to actually execute the drop (default True).
     """
+
     table: Algebraic | EntityTable | Join | DropColumn | SelectColumns
     column_name: str
     execute: bool = True
 
     def to_pandas(self, context: Context) -> pd.DataFrame:
         """Execute the column drop operation.
-        
+
         Args:
             context: The execution context.
-            
+
         Returns:
             pd.DataFrame: The input DataFrame with the specified column removed,
                 or unchanged if execute=False or column doesn't exist.
@@ -282,10 +327,10 @@ class DropColumn(Table):
 
     def to_ibis(self, context: Context) -> IbisTable:
         """Execute the column drop operation on an Ibis table.
-        
+
         Args:
             context: The execution context.
-            
+
         Returns:
             IbisTable: The input table with the specified column removed,
                 or unchanged if execute=False or column doesn't exist.
@@ -298,28 +343,80 @@ class DropColumn(Table):
             return table_dropped
         else:
             return table
+
+
+class RenameColumn(Table):
+    """Algebraic operation to rename a column in a table.
+
+    Changes the name of a column while preserving all data. This is used to
+    maintain consistent naming conventions and avoid conflicts in complex queries.
+
+    Attributes:
+        table: The table containing the column to rename.
+        old_column_name: The current name of the column.
+        new_column_name: The new name for the column.
+        variables_to_columns: Mapping of variables to column names.
+    """
+
+    table: EntityTable | Join | DropColumn | SelectColumns
+    old_column_name: str
+    new_column_name: str
+    variables_to_columns: dict[str, str] = {}
+
+    def to_pandas(self, context: Context) -> pd.DataFrame:
+        """Execute the column rename operation.
+
+        Args:
+            context: The execution context.
+
+        Returns:
+            pd.DataFrame: The DataFrame with the renamed column.
+        """
+        df: pd.DataFrame = self.table.to_pandas(context)
+        renamed_df: pd.DataFrame = df.rename(
+            columns={self.old_column_name: self.new_column_name}
+        )
+        return renamed_df
+
+    def to_ibis(self, context: Context) -> IbisTable:
+        """Execute the column rename operation on an Ibis table.
+
+        Args:
+            context: The execution context.
+
+        Returns:
+            IbisTable: The Ibis table with the renamed column.
+        """
+        table: IbisTable = self.table.to_ibis(context)
+        renamed_table: IbisTable = table.rename(
+            {self.new_column_name: self.old_column_name}
+        )
+        return renamed_table
+
+
 class Filter(Table):
     """Relational selection operation that filters rows based on a condition.
-    
+
     Implements the relational selection operator (σ in relational algebra), which
     selects only those rows that satisfy a given boolean condition.
-    
+
     Attributes:
         table: The table to filter.
         condition: The boolean condition to evaluate for each row.
     """
+
     table: Join | Filter | DropColumn | EntityTable | RelationshipTable
     condition: HasAttributeValue
 
     def to_pandas(self, context: Context) -> pd.DataFrame:
         """Execute the filter operation.
-        
+
         Args:
             context: The execution context.
-            
+
         Returns:
             pd.DataFrame: A DataFrame containing only rows that satisfy the condition.
-            
+
         Raises:
             ValueError: If an unsupported condition type is provided.
         """
@@ -329,9 +426,11 @@ class Filter(Table):
                 column_name: str = self.table.column_name_to_hash[
                     self.condition.attribute
                 ]
-                filtered_df: pd.DataFrame = df[  # pyrefly:ignore[bad-assignment]
-                    df[column_name] == self.condition.value
-                ]
+                filtered_df: pd.DataFrame = (
+                    df[  # pyrefly:ignore[bad-assignment]
+                        df[column_name] == self.condition.value
+                    ]
+                )
             case _:
                 raise ValueError(
                     f"Unsupported condition type: {type(self.condition)}"
@@ -340,13 +439,13 @@ class Filter(Table):
 
     def to_ibis(self, context: Context) -> IbisTable:
         """Execute the filter operation on an Ibis table.
-        
+
         Args:
             context: The execution context.
-            
+
         Returns:
             IbisTable: An Ibis table containing only rows that satisfy the condition.
-            
+
         Raises:
             ValueError: If an unsupported condition type is provided.
         """
@@ -365,12 +464,13 @@ class Filter(Table):
                 )
         return filtered_table
 
+
 class Join(Table):
     """Single-column join operation between two tables.
-    
+
     Performs a standard relational join on a single column pair. This is the
     fundamental operation for combining entity and relationship tables.
-    
+
     Attributes:
         left: The left table in the join.
         right: The right table in the join.
@@ -379,6 +479,7 @@ class Join(Table):
         right_on: The column name from the right table to join on.
         variable_list: Optional list of variables involved in this join.
     """
+
     left: EntityTable | RelationshipTable | Filter | Join | Algebraic
     right: EntityTable | RelationshipTable | Filter | Join | Algebraic
     join_type: JoinType = JoinType.INNER
@@ -388,13 +489,13 @@ class Join(Table):
 
     def to_pandas(self, context: Context) -> pd.DataFrame:
         """Execute the join operation.
-        
+
         Args:
             context: The execution context.
-            
+
         Returns:
             pd.DataFrame: The result of joining the two tables.
-            
+
         Raises:
             ValueError: If an unsupported join type is specified.
         """
@@ -413,38 +514,125 @@ class Join(Table):
             raise ValueError(f"Unsupported join type: {self.join_type}")
         return merged_df
 
-class SelectColumns(Algebraic):
+
+# TODO: Replace Join with MultiJoin in relevant places
+class MultiJoin(Algebraic):
+    """Multi-column join operation between two tables.
+
+    Performs a join on multiple column pairs simultaneously. This is used when
+    joining relationships that share multiple variables, requiring all corresponding
+    columns to match.
+
+    Attributes:
+        left: The left table in the join.
+        right: The right table in the join.
+        join_type: The type of join to perform (currently only INNER is implemented).
+        left_on: List of column names from the left table to join on.
+        right_on: List of column names from the right table to join on.
+        variable_list: Optional list of variables involved in this join.
+    """
+
+    left: EntityTable | RelationshipTable | Filter | Join | Algebraic
+    right: EntityTable | RelationshipTable | Filter | Join | Algebraic
+    join_type: JoinType = JoinType.INNER
+    left_on: List[str]
+    right_on: List[str]
+    variable_list: List[str] = []
+
+    def to_pandas(self, context: Context) -> pd.DataFrame:
+        """Execute the multi-column join.
+
+        Args:
+            context: The execution context.
+
+        Returns:
+            pd.DataFrame: The result of joining the two tables on multiple columns.
+
+        Raises:
+            ValueError: If an unsupported join type is specified.
+        """
+        left_df: pd.DataFrame = self.left.to_pandas(context)
+        right_df: pd.DataFrame = self.right.to_pandas(context)
+        if self.join_type == JoinType.INNER:
+            merged_df: pd.DataFrame = pd.merge(
+                left_df,
+                right_df,
+                how="inner",
+                left_on=self.left_on,
+                right_on=self.right_on,
+                suffixes=("_left", "_right"),
+            )
+        else:
+            raise ValueError(f"Unsupported join type: {self.join_type}")
+        return merged_df
+
+    def to_ibis(self, context: Context) -> IbisTable:
+        """Execute the multi-column join on Ibis tables.
+
+        Args:
+            context: The execution context.
+
+        Returns:
+            IbisTable: The result of joining the two tables on multiple columns.
+
+        Raises:
+            ValueError: If an unsupported join type is specified.
+        """
+        left_table: IbisTable = self.left.to_ibis(context)
+        right_table: IbisTable = self.right.to_ibis(context)
+        if self.join_type == JoinType.INNER:
+            # Build join predicates for multiple columns
+            predicates = [
+                left_table[left_col] == right_table[right_col]
+                for left_col, right_col in zip(self.left_on, self.right_on)
+            ]
+            # Combine predicates with AND
+            combined_predicate = predicates[0]
+            for pred in predicates[1:]:
+                combined_predicate = combined_predicate & pred
+            merged_table: IbisTable = left_table.join(
+                right_table, combined_predicate, how="inner"
+            )
+        else:
+            raise ValueError(f"Unsupported join type: {self.join_type}")
+        return merged_table
+
+
+class SelectColumns(Table):
     """Algebraic operation to select specific columns from a table.
-    
+
     Implements the relational projection operation that keeps only the specified
     columns, discarding all others.
-    
+
     Attributes:
         table: The input table to select columns from.
         column_names: List of (hashed) column names to keep.
     """
+
     table: EntityTable | Join | DropColumn | SelectColumns
     column_names: list[str]  # list of hashed column names
 
     def to_pandas(self, context: Context) -> pd.DataFrame:
         """Execute the column selection.
-        
+
         Args:
             context: The execution context.
-            
+
         Returns:
             pd.DataFrame: A DataFrame containing only the specified columns.
         """
         df: pd.DataFrame = self.table.to_pandas(context)
-        selected_df: pd.DataFrame = df[self.column_names]  # pyrefly:ignore[bad-assignment]
+        selected_df: pd.DataFrame = df[
+            self.column_names
+        ]  # pyrefly:ignore[bad-assignment]
         return selected_df
 
     def to_ibis(self, context: Context) -> IbisTable:
         """Execute the column selection on an Ibis table.
-        
+
         Args:
             context: The execution context.
-            
+
         Returns:
             IbisTable: An Ibis table containing only the specified columns.
         """
@@ -453,31 +641,160 @@ class SelectColumns(Algebraic):
         return selected_table
 
 
+class Boolean(Table):
+    """Base class for boolean conditions used in filters.
+
+    Marker class for representing boolean predicates that can be evaluated
+    against rows in a DataFrame.
+    """
+
+    def to_pandas(self, context: Context) -> pd.DataFrame:
+        """Boolean conditions do not directly convert to DataFrames.
+
+        Raises:
+            NotImplementedError: Always, since boolean conditions are not tables.
+        """
+        raise NotImplementedError(
+            "Boolean conditions cannot be converted to DataFrames"
+        )
+
+    def to_ibis(self, context: Context) -> IbisTable:
+        """Boolean conditions do not directly convert to Ibis tables.
+
+        Raises:
+            NotImplementedError: Always, since boolean conditions are not tables.
+        """
+        raise NotImplementedError(
+            "Boolean conditions cannot be converted to Ibis tables"
+        )
+
+
+class Conjunction(Boolean):
+    """Condition that represents a logical AND of multiple boolean conditions.
+
+    Used in Filter operations to combine multiple predicates that must all be
+    satisfied for a row to be included.
+
+    Attributes:
+        conditions: List of boolean conditions to combine.
+    """
+
+    left: Boolean
+    right: Boolean
+
+
+class Disjunction(Boolean):
+    """Condition that represents a logical OR of multiple boolean conditions.
+
+    Used in Filter operations to combine multiple predicates where at least one
+    must be satisfied for a row to be included.
+
+    Attributes:
+        conditions: List of boolean conditions to combine.
+    """
+
+    left: Boolean
+    right: Boolean
+
+
+class Negation(Boolean):
+    """Condition that represents the logical NOT of a boolean condition.
+
+    Used in Filter operations to invert a predicate, selecting rows that do not
+    satisfy the given condition.
+
+    Attributes:
+        condition: The boolean condition to negate.
+    """
+
+    condition: Boolean
+
+
+class IsEqual(Boolean):
+    """Condition that checks if two attributes are equal.
+
+    Used in Filter operations to select rows where the values of two attributes
+    are equal.
+
+    Attributes:
+        attribute_1: The name of the first attribute.
+        attribute_2: The name of the second attribute.
+    """
+
+    left: Boolean
+    right: Boolean
+
+
+class IsGreaterThan(Boolean):
+    """Condition that checks if one attribute is greater than another.
+
+    Used in Filter operations to select rows where the value of one attribute
+    exceeds that of another.
+
+    Attributes:
+        attribute_1: The name of the first attribute.
+        attribute_2: The name of the second attribute.
+    """
+
+    left: Boolean
+    right: Boolean
+
+
+class IsLessThan(Boolean):
+    """Condition that checks if one attribute is less than another.
+
+    Used in Filter operations to select rows where the value of one attribute
+    is less than that of another.
+
+    Attributes:
+        attribute_1: The name of the first attribute.
+        attribute_2: The name of the second attribute.
+    """
+
+    left: Boolean
+    right: Boolean
+
+
+class HasAttributeValue(Boolean):
+    """Condition that checks if an attribute has a specific value.
+
+    Used in Filter operations to select rows where a particular attribute
+    matches the specified value.
+
+    Attributes:
+        attribute: The name of the attribute to check.
+        value: The value to match against (can be string, number, boolean, or None).
+    """
+
+    attribute: str
+    value: str | int | float | bool | None
+
 
 class Context(BaseModel):
     """Execution context for algebraic operations.
-    
+
     Context maintains the schema information (entity and relationship tables) and
     the actual data (as pandas DataFrames) needed to execute algebraic expressions.
-    
+
     Attributes:
         entity_tables: List of entity table schemas.
         relationship_tables: List of relationship table schemas.
         obj_map: Dictionary mapping entity/relationship types to their DataFrame data.
     """
+
     entity_tables: List[EntityTable]
     relationship_tables: List[RelationshipTable]
     obj_map: dict[str, Any] = {}
 
     def get_entity_table(self, entity_type: str) -> EntityTable:
         """Retrieve an entity table by type.
-        
+
         Args:
             entity_type: The type/label of the entity table to retrieve.
-            
+
         Returns:
             EntityTable: The matching entity table schema.
-            
+
         Raises:
             ValueError: If no entity table with the given type is found.
         """
@@ -491,13 +808,13 @@ class Context(BaseModel):
         self, relationship_type: str
     ) -> RelationshipTable:
         """Retrieve a relationship table by type.
-        
+
         Args:
             relationship_type: The type/label of the relationship table to retrieve.
-            
+
         Returns:
             RelationshipTable: The matching relationship table schema.
-            
+
         Raises:
             ValueError: If no relationship table with the given type is found.
         """
@@ -510,108 +827,56 @@ class Context(BaseModel):
             )
 
 
-
-
-
-class RelationshipTable(Table):
-    """Represents a table of graph relationships (edges).
-    
-    RelationshipTable stores data about connections between entities, including
-    the source and target entity types. Each relationship can have its own attributes.
-    
-    Attributes:
-        relationship_type: The type/label of this relationship (e.g., "LIVES_IN").
-        source_entity_type: The entity type at the source of the relationship.
-        target_entity_type: The entity type at the target of the relationship.
-        attributes: List of attribute names for this relationship type.
-        relationship_identifier_attribute: Optional unique identifier for relationships.
-    """
-    relationship_type: str
-    source_entity_type: str
-    target_entity_type: str
-    attributes: List[str]
-    relationship_identifier_attribute: Optional[str] = (
-        None  # Maybe use later for rel attributes?
-    )
-
-    def __init__(self, **data: Any) -> None:
-        """Initialize the relationship table and create column hash mappings.
-        
-        Args:
-            **data: Keyword arguments for relationship_type, source_entity_type,
-                target_entity_type, and attributes.
-        """
-        super().__init__(**data)
-        for attribute in self.attributes:
-            column_hash: str = random_hash()
-            self.column_name_to_hash[attribute] = column_hash
-            self.hash_to_column_name[column_hash] = attribute
-
-    def to_pandas(self, context: Context) -> pd.DataFrame:
-        """Convert this relationship table to a pandas DataFrame.
-        
-        Args:
-            context: The execution context containing the actual relationship data.
-            
-        Returns:
-            pd.DataFrame: The relationship data.
-        """
-        df: pd.DataFrame = context.obj_map[self.relationship_type]
-        return df
-
-    def to_ibis(self, context: Context) -> IbisTable:
-        """Convert this relationship table to an Ibis table.
-        
-        Args:
-            context: The execution context containing the actual relationship data.
-            
-        Returns:
-            IbisTable: The relationship data as an Ibis table.
-        """
-        table: IbisTable = ibis.memtable(context.obj_map[self.relationship_type])
-        return table
-
-
 class Algebraizable(ABC):
     """Mixin for AST nodes that can be converted to algebra."""
-    
+
     @abstractmethod
     def to_algebra(self, context: Context) -> Algebraic:
         """Convert this AST node to an Ibis algebra expression.
-        
+
         Args:
             context: Conversion context with variable bindings
-            
+
         Returns:
             An instance of Algebraic representing the relation
             corresponding to this graph entity.
         """
         pass
 
+
 # ============================================================================
 # Validation Framework
 # ============================================================================
 
+
 class ValidationSeverity(str, Enum):
     """Severity levels for validation issues."""
-    ERROR = "error"      # Query will likely fail or produce wrong results
+
+    ERROR = "error"  # Query will likely fail or produce wrong results
     WARNING = "warning"  # Query will work but may have performance/correctness issues
-    INFO = "info"        # Suggestions for improvement
+    INFO = "info"  # Suggestions for improvement
 
 
 class ValidationIssue(BaseModel):
     """A single validation issue found in the AST."""
+
     severity: ValidationSeverity
     message: str
     node_type: Optional[Any] = None  # Can be string or ASTNode
     suggestion: Optional[Any] = None  # Can be string or other types
     node: Optional[Any] = None  # For compatibility with tests
     code: Optional[str] = None  # For compatibility with tests
-    
+
     model_config = ConfigDict(arbitrary_types_allowed=True)
-    
-    def __init__(self, severity: Optional[Union[ValidationSeverity, dict]] = None,  message: Optional[str] = None, 
-                 node: Optional[Any] = None, code: Optional[str] = None, **kwargs):
+
+    def __init__(
+        self,
+        severity: Optional[Union[ValidationSeverity, dict]] = None,
+        message: Optional[str] = None,
+        node: Optional[Any] = None,
+        code: Optional[str] = None,
+        **kwargs,
+    ):
         """Initialize ValidationIssue with positional or keyword arguments."""
         # If first argument is dict and message is None, Pydantic is calling with dict
         if isinstance(severity, dict):
@@ -619,18 +884,18 @@ class ValidationIssue(BaseModel):
         elif severity is not None or message is not None:
             # Positional or mixed arguments - convert to kwargs
             if severity is not None and not isinstance(severity, dict):
-                kwargs['severity'] = severity
+                kwargs["severity"] = severity
             if message is not None:
-                kwargs['message'] = message
+                kwargs["message"] = message
             if node is not None:
-                kwargs['node'] = node
+                kwargs["node"] = node
             if code is not None:
-                kwargs['code'] = code
+                kwargs["code"] = code
             super().__init__(**kwargs)
         else:
             # All keyword arguments
             super().__init__(**kwargs)
-    
+
     def __str__(self) -> str:
         parts = [f"[{self.severity.value.upper()}] {self.message}"]
         if self.node_type:
@@ -638,7 +903,7 @@ class ValidationIssue(BaseModel):
         if self.suggestion:
             parts.append(f"\n  💡 {self.suggestion}")
         return "".join(parts)
-    
+
     def __repr__(self) -> str:
         """String representation for debugging."""
         node_info = f" in {self.node.__class__.__name__}" if self.node else ""
@@ -648,95 +913,139 @@ class ValidationIssue(BaseModel):
 
 class ValidationResult(BaseModel):
     """Result of validating an AST."""
+
     issues: List[ValidationIssue] = Field(default_factory=list)
-    
+
     @property
     def has_errors(self) -> bool:
         """Check if there are any error-level issues."""
-        return any(issue.severity == ValidationSeverity.ERROR for issue in self.issues)
-    
+        return any(
+            issue.severity == ValidationSeverity.ERROR for issue in self.issues
+        )
+
     @property
     def has_warnings(self) -> bool:
         """Check if there are any warning-level issues."""
-        return any(issue.severity == ValidationSeverity.WARNING for issue in self.issues)
-    
+        return any(
+            issue.severity == ValidationSeverity.WARNING
+            for issue in self.issues
+        )
+
     @property
     def is_valid(self) -> bool:
         """Check if AST is valid (no errors)."""
         return not self.has_errors
-    
+
     @property
     def errors(self) -> List[ValidationIssue]:
         """Get only error-level issues."""
-        return [i for i in self.issues if i.severity == ValidationSeverity.ERROR]
-    
+        return [
+            i for i in self.issues if i.severity == ValidationSeverity.ERROR
+        ]
+
     @property
     def warnings(self) -> List[ValidationIssue]:
         """Get only warning-level issues."""
-        return [i for i in self.issues if i.severity == ValidationSeverity.WARNING]
-    
+        return [
+            i for i in self.issues if i.severity == ValidationSeverity.WARNING
+        ]
+
     @property
     def infos(self) -> List[ValidationIssue]:
         """Get only info-level issues."""
-        return [i for i in self.issues if i.severity == ValidationSeverity.INFO]
-    
-    def add_issue(self, severity: ValidationSeverity, message: str, 
-                  node_type: Optional[str] = None, suggestion: Optional[str] = None,
-                  node: Optional[Any] = None, code: Optional[str] = None) -> None:
+        return [
+            i for i in self.issues if i.severity == ValidationSeverity.INFO
+        ]
+
+    def add_issue(
+        self,
+        severity: ValidationSeverity,
+        message: str,
+        node_type: Optional[str] = None,
+        suggestion: Optional[str] = None,
+        node: Optional[Any] = None,
+        code: Optional[str] = None,
+    ) -> None:
         """Add a validation issue."""
-        self.issues.append(ValidationIssue(
-            severity=severity,
-            message=message,
-            node_type=node_type,
-            suggestion=suggestion,
-            node=node,
-            code=code
-        ))
-    
-    def add_error(self, message: str, node_type: Optional[str] = None, suggestion: Optional[str] = None, 
-                  node: Optional[Any] = None, code: Optional[str] = None) -> None:
+        self.issues.append(
+            ValidationIssue(
+                severity=severity,
+                message=message,
+                node_type=node_type,
+                suggestion=suggestion,
+                node=node,
+                code=code,
+            )
+        )
+
+    def add_error(
+        self,
+        message: str,
+        node_type: Optional[str] = None,
+        suggestion: Optional[str] = None,
+        node: Optional[Any] = None,
+        code: Optional[str] = None,
+    ) -> None:
         """Add an error-level issue."""
-        self.issues.append(ValidationIssue(
-            severity=ValidationSeverity.ERROR,
-            message=message,
-            node_type=node_type,
-            suggestion=suggestion,
-            node=node,
-            code=code
-        ))
-    
-    def add_warning(self, message: str, node_type: Optional[str] = None, suggestion: Optional[str] = None,
-                    node: Optional[Any] = None, code: Optional[str] = None) -> None:
+        self.issues.append(
+            ValidationIssue(
+                severity=ValidationSeverity.ERROR,
+                message=message,
+                node_type=node_type,
+                suggestion=suggestion,
+                node=node,
+                code=code,
+            )
+        )
+
+    def add_warning(
+        self,
+        message: str,
+        node_type: Optional[str] = None,
+        suggestion: Optional[str] = None,
+        node: Optional[Any] = None,
+        code: Optional[str] = None,
+    ) -> None:
         """Add a warning-level issue."""
-        self.issues.append(ValidationIssue(
-            severity=ValidationSeverity.WARNING,
-            message=message,
-            node_type=node_type,
-            suggestion=suggestion,
-            node=node,
-            code=code
-        ))
-    
-    def add_info(self, message: str, node_type: Optional[str] = None, suggestion: Optional[str] = None,
-                 node: Optional[Any] = None, code: Optional[str] = None) -> None:
+        self.issues.append(
+            ValidationIssue(
+                severity=ValidationSeverity.WARNING,
+                message=message,
+                node_type=node_type,
+                suggestion=suggestion,
+                node=node,
+                code=code,
+            )
+        )
+
+    def add_info(
+        self,
+        message: str,
+        node_type: Optional[str] = None,
+        suggestion: Optional[str] = None,
+        node: Optional[Any] = None,
+        code: Optional[str] = None,
+    ) -> None:
         """Add an info-level issue."""
-        self.issues.append(ValidationIssue(
-            severity=ValidationSeverity.INFO,
-            message=message,
-            node_type=node_type,
-            suggestion=suggestion,
-            node=node,
-            code=code
-        ))
-    
+        self.issues.append(
+            ValidationIssue(
+                severity=ValidationSeverity.INFO,
+                message=message,
+                node_type=node_type,
+                suggestion=suggestion,
+                node=node,
+                code=code,
+            )
+        )
+
     def __bool__(self) -> bool:
         """True if validation passed (no errors)."""
         return self.is_valid
-    
+
     def __str__(self) -> str:
         if not self.issues:
             return "Validation passed: No issues found"
-        
+
         status = "passed" if self.is_valid else "failed"
         lines = [f"Validation {status} with {len(self.issues)} issue(s):"]
         for i, issue in enumerate(self.issues, 1):
@@ -748,18 +1057,19 @@ class ValidationResult(BaseModel):
 # Base Classes
 # ============================================================================
 
+
 class ASTNode(BaseModel, ABC):
     """Base class for all AST nodes."""
-    
+
     model_config = ConfigDict(arbitrary_types_allowed=True)
-    
-    def traverse(self, depth: int = 0) -> Iterator['ASTNode']:
+
+    def traverse(self, depth: int = 0) -> Iterator["ASTNode"]:
         """
         Traverse the AST depth-first, yielding all nodes.
-        
+
         Args:
             depth: Current depth in the tree (used internally)
-            
+
         Yields:
             ASTNode: Each node in the tree
         """
@@ -767,29 +1077,35 @@ class ASTNode(BaseModel, ABC):
         for child in self._get_children():
             if child is not None:
                 yield from child.traverse(depth + 1)
-    
-    def find_all(self, predicate: Union[type, Callable[['ASTNode'], bool]]) -> List['ASTNode']:
+
+    def find_all(
+        self, predicate: Union[type, Callable[["ASTNode"], bool]]
+    ) -> List["ASTNode"]:
         """
         Find all nodes matching a predicate or type.
-        
+
         Args:
             predicate: Either a type to match or a callable predicate function
-            
+
         Returns:
             List of matching nodes
         """
         if callable(predicate) and not isinstance(predicate, type):
             return [node for node in self.traverse() if predicate(node)]
         else:
-            return [node for node in self.traverse() if isinstance(node, predicate)]
-    
-    def find_first(self, predicate: Union[type, Callable[['ASTNode'], bool]]) -> Optional['ASTNode']:
+            return [
+                node for node in self.traverse() if isinstance(node, predicate)
+            ]
+
+    def find_first(
+        self, predicate: Union[type, Callable[["ASTNode"], bool]]
+    ) -> Optional["ASTNode"]:
         """
         Find the first node matching a predicate or type.
-        
+
         Args:
             predicate: Either a type to match or a callable predicate function
-            
+
         Returns:
             First matching node or None
         """
@@ -802,30 +1118,32 @@ class ASTNode(BaseModel, ABC):
                 if isinstance(node, predicate):
                     return node
         return None
-    
-    def _get_children(self) -> List['ASTNode']:
+
+    def _get_children(self) -> List["ASTNode"]:
         """Get all child nodes. Override in subclasses."""
         children = []
         for field_name, field_value in self.__dict__.items():
             if isinstance(field_value, ASTNode):
                 children.append(field_value)
             elif isinstance(field_value, list):
-                children.extend([item for item in field_value if isinstance(item, ASTNode)])
+                children.extend(
+                    [item for item in field_value if isinstance(item, ASTNode)]
+                )
         return children
-    
+
     def pretty(self, indent: int = 0) -> str:
         """
         Pretty print the AST node.
-        
+
         Args:
             indent: Current indentation level
-            
+
         Returns:
             Formatted string representation
         """
         prefix = "  " * indent
         lines = [f"{prefix}{self.__class__.__name__}"]
-        
+
         for field_name, field_value in self.__dict__.items():
             if field_value is None:
                 continue
@@ -842,13 +1160,13 @@ class ASTNode(BaseModel, ABC):
                     lines.append(f"{prefix}  {field_name}: {field_value}")
             elif not isinstance(field_value, (dict, list)) or field_value:
                 lines.append(f"{prefix}  {field_name}: {field_value}")
-        
+
         return "\n".join(lines)
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert back to dictionary representation."""
         result = {"type": self.__class__.__name__}
-        
+
         for field_name, field_value in self.__dict__.items():
             if field_value is None:
                 continue
@@ -861,16 +1179,16 @@ class ASTNode(BaseModel, ABC):
                 ]
             else:
                 result[field_name] = field_value
-        
+
         return result
-    
-    def clone(self) -> 'ASTNode':
+
+    def clone(self) -> "ASTNode":
         """Create a deep copy of this node."""
         return self.__class__(**self.to_dict())
-    
-    def validate(self) -> ValidationResult:
+
+    def cypher_validate(self) -> ValidationResult:
         """Validate this AST node and return any issues found.
-        
+
         Runs a suite of validators to check for:
         - Undefined variable references
         - Unused variables
@@ -878,17 +1196,17 @@ class ASTNode(BaseModel, ABC):
         - Unreachable conditions
         - Type mismatches
         - And other common query anti-patterns
-        
+
         Returns:
             ValidationResult containing all issues found
-            
+
         Example:
-            >>> result = query.validate()
+            >>> result = query.cypher_validate()
             >>> if not result.is_valid:
             ...     print(result)
         """
         result = ValidationResult()
-        
+
         # Run all validators
         _validate_undefined_variables(self, result)
         _validate_unused_variables(self, result)
@@ -897,21 +1215,24 @@ class ASTNode(BaseModel, ABC):
         _validate_return_all_with_limit(self, result)
         _validate_delete_without_detach(self, result)
         _validate_expensive_patterns(self, result)
-        
+
         return result
-    
+
 
 # ============================================================================
 # Query Structure
 # ============================================================================
 
+
 class Query(ASTNode):
     """Root query node."""
-    clauses: List['Clause'] = Field(default_factory=list)
+
+    clauses: List["Clause"] = Field(default_factory=list)
 
 
 class Clause(ASTNode, ABC):
     """Base class for query clauses."""
+
     pass
 
 
@@ -919,30 +1240,35 @@ class Clause(ASTNode, ABC):
 # Reading Clauses
 # ============================================================================
 
+
 class Match(Clause):
     """MATCH clause."""
+
     optional: bool = False
-    pattern: Optional['Pattern'] = None
-    where: Optional['Expression'] = None
+    pattern: Optional["Pattern"] = None
+    where: Optional["Expression"] = None
 
 
 class Unwind(Clause):
     """UNWIND clause."""
-    expression: Optional['Expression'] = None
+
+    expression: Optional["Expression"] = None
     alias: Optional[str] = None
 
 
 class Call(Clause):
     """CALL clause."""
+
     procedure_name: Optional[str] = None
-    arguments: List['Expression'] = Field(default_factory=list)
-    yield_items: List['YieldItem'] = Field(default_factory=list)
-    where: Optional['Expression'] = None
+    arguments: List["Expression"] = Field(default_factory=list)
+    yield_items: List["YieldItem"] = Field(default_factory=list)
+    where: Optional["Expression"] = None
 
 
 class YieldItem(ASTNode):
     """YIELD item in CALL clause."""
-    variable: Optional['Variable'] = None
+
+    variable: Optional["Variable"] = None
     alias: Optional[str] = None
 
 
@@ -950,39 +1276,45 @@ class YieldItem(ASTNode):
 # Projection Clauses
 # ============================================================================
 
+
 class Return(Clause):
     """RETURN clause."""
+
     distinct: bool = False
-    items: List['ReturnItem'] = Field(default_factory=list)
-    order_by: Optional[List['OrderByItem']] = None
+    items: List["ReturnItem"] = Field(default_factory=list)
+    order_by: Optional[List["OrderByItem"]] = None
     skip: Optional[int] = None
     limit: Optional[int] = None
 
 
 class With(Clause):
     """WITH clause."""
+
     distinct: bool = False
-    items: List['ReturnItem'] = Field(default_factory=list)
-    where: Optional['Expression'] = None
-    order_by: Optional[List['OrderByItem']] = None
+    items: List["ReturnItem"] = Field(default_factory=list)
+    where: Optional["Expression"] = None
+    order_by: Optional[List["OrderByItem"]] = None
     skip: Optional[int] = None
     limit: Optional[int] = None
 
 
 class ReturnItem(ASTNode):
     """Item in RETURN or WITH clause."""
-    expression: Optional['Expression'] = None
+
+    expression: Optional["Expression"] = None
     alias: Optional[str] = None
 
 
 class OrderByItem(ASTNode):
     """ORDER BY item."""
-    expression: Optional['Expression'] = None
+
+    expression: Optional["Expression"] = None
     ascending: bool = True
 
 
 class ReturnAll(ASTNode):
     """RETURN * or WITH *."""
+
     pass
 
 
@@ -990,45 +1322,53 @@ class ReturnAll(ASTNode):
 # Writing Clauses
 # ============================================================================
 
+
 class Create(Clause):
     """CREATE clause."""
-    pattern: Optional['Pattern'] = None
+
+    pattern: Optional["Pattern"] = None
 
 
 class Merge(Clause):
     """MERGE clause."""
-    pattern: Optional['Pattern'] = None
-    on_create: Optional[List['SetItem']] = None
-    on_match: Optional[List['SetItem']] = None
+
+    pattern: Optional["Pattern"] = None
+    on_create: Optional[List["SetItem"]] = None
+    on_match: Optional[List["SetItem"]] = None
 
 
 class Delete(Clause):
     """DELETE clause."""
+
     detach: bool = False
-    expressions: List['Expression'] = Field(default_factory=list)
+    expressions: List["Expression"] = Field(default_factory=list)
 
 
 class Set(Clause):
     """SET clause."""
-    items: List['SetItem'] = Field(default_factory=list)
+
+    items: List["SetItem"] = Field(default_factory=list)
 
 
 class SetItem(ASTNode):
     """Item in SET clause."""
-    variable: Optional['Variable'] = None
+
+    variable: Optional["Variable"] = None
     property: Optional[str] = None
-    expression: Optional['Expression'] = None
+    expression: Optional["Expression"] = None
     labels: List[str] = Field(default_factory=list)
 
 
 class Remove(Clause):
     """REMOVE clause."""
-    items: List['RemoveItem'] = Field(default_factory=list)
+
+    items: List["RemoveItem"] = Field(default_factory=list)
 
 
 class RemoveItem(ASTNode):
     """Item in REMOVE clause."""
-    variable: Optional['Variable'] = None
+
+    variable: Optional["Variable"] = None
     property: Optional[str] = None
     labels: List[str] = Field(default_factory=list)
 
@@ -1037,21 +1377,23 @@ class RemoveItem(ASTNode):
 # Patterns
 # ============================================================================
 
+
 class Pattern(ASTNode):
     """Pattern containing path components."""
-    paths: List['PatternPath'] = Field(default_factory=list)
+
+    paths: List["PatternPath"] = Field(default_factory=list)
 
 
 class PatternPath(ASTNode):
     """A single path in a pattern.
-    
+
     Represents a complete path pattern that may have an optional binding variable.
     For example: p = (a)-[r]->(b)
-    
+
     Attributes:
         variable: Variable instance for path binding (e.g., Variable(name="p")), optional
         elements: List of NodePattern and RelationshipPattern elements forming the path
-        
+
     Example:
         >>> path = PatternPath(
         ...     variable=Variable(name="path"),
@@ -1062,22 +1404,23 @@ class PatternPath(ASTNode):
         ...     ]
         ... )
     """
-    variable: Optional['Variable'] = None
-    elements: List[Union['NodePattern', 'RelationshipPattern']] = Field(default_factory=list)
 
-
+    variable: Optional["Variable"] = None
+    elements: List[Union["NodePattern", "RelationshipPattern"]] = Field(
+        default_factory=list
+    )
 
 
 class NodePattern(ASTNode, Algebraizable):
     """Node pattern in MATCH/CREATE clauses.
-    
+
     Represents a node pattern like (n:Person {name: 'Alice'}) in Cypher queries.
-    
+
     Attributes:
         variable: Variable instance representing the node's binding name (e.g., Variable(name="n"))
         labels: List of label names applied to this node
         properties: Property map as dict (optional)
-        
+
     Example:
         >>> node = NodePattern(
         ...     variable=Variable(name="person"),
@@ -1086,80 +1429,87 @@ class NodePattern(ASTNode, Algebraizable):
         ... )
         >>> print(node.variable.name)  # "person"
     """
-    variable: Optional['Variable'] = None
+
+    variable: Optional["Variable"] = None
     labels: List[str] = Field(default_factory=list)
     properties: Optional[Dict[str, Any]] = None
 
-#     def to_algebra(self, context: Context) -> Filter | EntityTable:
-#         """Convert this node to an algebraic expression.
-#         
-#         Creates an EntityTable for the node's label, then applies Filter operations
-#         for each attribute constraint. The variable is mapped to the entity's
-#         identifier column.
-#         
-#         Args:
-#             context: The execution context containing entity table schemas.
-#             
-#         Returns:
-#             Filter | EntityTable: An EntityTable if no attributes, otherwise a Filter
-#                 chain wrapping the EntityTable.
-#         """
-#         entity_table: EntityTable = context.get_entity_table(self.label)
-#         entity_table.variables_to_columns[self.variable] = (
-#             entity_table.column_name_to_hash[
-#                 entity_table.entity_identifier_attribute
-#             ]
-#         )
-#         out: None | Filter = None
-#         for attr_name, attr_value in self.attributes.items():
-#             out = Filter(
-#                 table=entity_table if not out else out,
-#                 column_name_to_hash=entity_table.column_name_to_hash,
-#                 hash_to_column_name=entity_table.hash_to_column_name,
-#                 variables_to_columns=entity_table.variables_to_columns,
-#                 condition=HasAttributeValue(
-#                     attribute=attr_name, value=attr_value
-#                 ),
-#             )
-#         return out or entity_table
+    #     def to_algebra(self, context: Context) -> Filter | EntityTable:
+    #         """Convert this node to an algebraic expression.
+    #
+    #         Creates an EntityTable for the node's label, then applies Filter operations
+    #         for each attribute constraint. The variable is mapped to the entity's
+    #         identifier column.
+    #
+    #         Args:
+    #             context: The execution context containing entity table schemas.
+    #
+    #         Returns:
+    #             Filter | EntityTable: An EntityTable if no attributes, otherwise a Filter
+    #                 chain wrapping the EntityTable.
+    #         """
+    #         entity_table: EntityTable = context.get_entity_table(self.label)
+    #         entity_table.variables_to_columns[self.variable] = (
+    #             entity_table.column_name_to_hash[
+    #                 entity_table.entity_identifier_attribute
+    #             ]
+    #         )
+    #         out: None | Filter = None
+    #         for attr_name, attr_value in self.attributes.items():
+    #             out = Filter(
+    #                 table=entity_table if not out else out,
+    #                 column_name_to_hash=entity_table.column_name_to_hash,
+    #                 hash_to_column_name=entity_table.hash_to_column_name,
+    #                 variables_to_columns=entity_table.variables_to_columns,
+    #                 condition=HasAttributeValue(
+    #                     attribute=attr_name, value=attr_value
+    #                 ),
+    #             )
+    #         return out or entity_table
 
     def to_algebra(self, context: Context) -> Algebraic:
         """Convert this node to an algebraic expression.
-        
+
         Creates an EntityTable for the node's label, then applies Filter operations
         for each attribute constraint. The variable is mapped to the entity's
         identifier column.
-        
+
         Args:
-            context: The execution context containing entity table schemas. 
+            context: The execution context containing entity table schemas.
         Returns:
             Algebraic: An EntityTable if no attributes, otherwise a Filter
                 chain wrapping the EntityTable.
         """
         if not self.labels:
-            raise ValueError("NodePattern must have at least one label to map to algebra.")
+            raise ValueError(
+                "NodePattern must have at least one label to map to algebra."
+            )
         if not self.variable:
-            raise NotImplementedError('Anonymous nodes not supported right now.')
+            raise NotImplementedError(
+                "Anonymous nodes not supported right now."
+            )
         if len(self.labels) > 1:
-            LOGGER.warning('Warning: Using first label "%s" for NodePattern in to_algebra().', self.labels[0])
-        entity_table: EntityTable = context.get_entity_table(entity_type=self.labels[0])
+            LOGGER.warning(
+                'Warning: Using first label "%s" for NodePattern in to_algebra().',
+                self.labels[0],
+            )
+        entity_table: EntityTable = context.get_entity_table(
+            entity_type=self.labels[0]
+        )
         hashed_name_column: str = entity_table.column_name_to_hash[
             entity_table.entity_identifier_attribute
         ]
-        identifier_table: SelectColumns =SelectColumns(
+        identifier_table: SelectColumns = SelectColumns(
             table=entity_table, column_names=[hashed_name_column]
         )
         return identifier_table
 
-        
-        
-
 
 class RelationshipPattern(ASTNode):
     """Relationship pattern in MATCH/CREATE clauses.
-    
+
     Represents a relationship pattern like -[r:KNOWS]-> in Cypher queries.
-    
+
     Attributes:
         variable: Variable instance representing the relationship's binding name (e.g., Variable(name="r"))
         types: List of relationship type names
@@ -1167,7 +1517,7 @@ class RelationshipPattern(ASTNode):
         direction: Relationship direction ("left", "right", "both", "any")
         length: PathLength specification for variable-length relationships (optional)
         where: WHERE condition for relationship patterns (optional)
-        
+
     Example:
         >>> rel = RelationshipPattern(
         ...     variable=Variable(name="knows"),
@@ -1176,16 +1526,18 @@ class RelationshipPattern(ASTNode):
         ... )
         >>> print(rel.variable.name)  # "knows"
     """
-    variable: Optional['Variable'] = None
+
+    variable: Optional["Variable"] = None
     types: List[str] = Field(default_factory=list)
     properties: Optional[Dict[str, Any]] = None
     direction: str = "right"  # "left", "right", "both", "any"
-    length: Optional['PathLength'] = None
-    where: Optional['Expression'] = None
+    length: Optional["PathLength"] = None
+    where: Optional["Expression"] = None
 
 
 class PathLength(ASTNode):
     """Variable-length path specification."""
+
     min: Optional[int] = None
     max: Optional[int] = None
     unbounded: bool = False
@@ -1195,13 +1547,16 @@ class PathLength(ASTNode):
 # Expressions
 # ============================================================================
 
+
 class Expression(ASTNode, ABC):
     """Base class for expressions."""
+
     pass
 
 
 class BinaryExpression(Expression, ABC):
     """Base for binary expressions."""
+
     operator: str
     left: Optional[Expression] = None
     right: Optional[Expression] = None
@@ -1209,50 +1564,59 @@ class BinaryExpression(Expression, ABC):
 
 class Or(BinaryExpression):
     """OR expression."""
+
     operands: List[Expression] = Field(default_factory=list)
     operator: str = "OR"
 
 
 class Xor(BinaryExpression):
     """XOR expression."""
+
     operands: List[Expression] = Field(default_factory=list)
     operator: str = "XOR"
 
 
 class And(BinaryExpression):
     """AND expression."""
+
     operands: List[Expression] = Field(default_factory=list)
     operator: str = "AND"
 
 
 class Not(Expression):
     """NOT expression."""
+
     operand: Optional[Expression] = None
 
 
 class Comparison(BinaryExpression):
     """Comparison expression (=, <>, <, >, <=, >=)."""
+
     pass
 
 
 class StringPredicate(BinaryExpression):
     """String predicate (STARTS WITH, ENDS WITH, CONTAINS, =~, IN)."""
+
     pass
 
 
 class NullCheck(Expression):
     """IS NULL or IS NOT NULL check."""
+
     operator: str  # "IS NULL" or "IS NOT NULL"
     operand: Optional[Expression] = None
 
 
 class Arithmetic(BinaryExpression):
     """Arithmetic expression (+, -, *, /, %, ^)."""
+
     pass
 
 
 class Unary(Expression):
     """Unary expression (+, -)."""
+
     operator: str
     operand: Optional[Expression] = None
 
@@ -1261,22 +1625,26 @@ class Unary(Expression):
 # Property Access and Indexing
 # ============================================================================
 
+
 class PropertyLookup(Expression):
     """Property access (e.g., n.name)."""
+
     expression: Optional[Expression] = None
     property: Optional[str] = None
     # Legacy field for backward compatibility - deprecated, use expression instead
-    variable: Optional['Variable'] = None
+    variable: Optional["Variable"] = None
 
 
 class IndexLookup(Expression):
     """Array/string indexing (e.g., list[0])."""
+
     expression: Optional[Expression] = None
     index: Optional[Expression] = None
 
 
 class Slicing(Expression):
     """Array/string slicing (e.g., list[1..3])."""
+
     expression: Optional[Expression] = None
     start: Optional[Expression] = None
     end: Optional[Expression] = None
@@ -1286,44 +1654,53 @@ class Slicing(Expression):
 # Literals
 # ============================================================================
 
+
 class Literal(Expression, ABC):
     """Base class for literal values."""
+
     value: Any
 
 
 class IntegerLiteral(Literal):
     """Integer literal."""
+
     value: int
 
 
 class FloatLiteral(Literal):
     """Float literal."""
+
     value: float
 
 
 class StringLiteral(Literal):
     """String literal."""
+
     value: str
 
 
 class BooleanLiteral(Literal):
     """Boolean literal."""
+
     value: bool
 
 
 class NullLiteral(Literal):
     """NULL literal."""
+
     value: None = None
 
 
 class ListLiteral(Literal):
     """List literal."""
+
     value: List[Any] = Field(default_factory=list)
     elements: List[Expression] = Field(default_factory=list)
 
 
 class MapLiteral(Literal):
     """Map literal."""
+
     value: Dict[str, Any] = Field(default_factory=dict)
     entries: Dict[str, Expression] = Field(default_factory=dict)
 
@@ -1332,37 +1709,40 @@ class MapLiteral(Literal):
 # Variables and Parameters
 # ============================================================================
 
+
 class Variable(Expression):
     """Variable reference in Cypher queries.
-    
+
     Represents a variable name used in expressions, patterns, and bindings.
     Variables are used throughout the AST to reference nodes, relationships,
     paths, and other values.
-    
+
     Attributes:
         name: The variable name (e.g., 'n', 'person', 'rel')
-        
+
     Note:
         As of the latest refactoring, all variable references in the AST
         (including in patterns, comprehensions, and other binding contexts)
         are represented as Variable instances, not plain strings. This ensures
         consistency throughout the AST structure.
-        
+
     Examples:
         >>> # In patterns
         >>> node = NodePattern(variable=Variable(name="n"), labels=["Person"])
-        >>> 
+        >>>
         >>> # In expressions
         >>> return_item = ReturnItem(expression=Variable(name="n"))
         >>>
         >>> # In comprehensions
         >>> comp = ListComprehension(variable=Variable(name="x"), ...)
     """
+
     name: str
 
 
 class Parameter(Expression):
     """Query parameter ($param)."""
+
     name: str
 
 
@@ -1370,8 +1750,10 @@ class Parameter(Expression):
 # Functions
 # ============================================================================
 
+
 class FunctionInvocation(Expression):
     """Function call."""
+
     name: Union[str, Dict[str, str]]  # Simple name or {namespace, name}
     arguments: Optional[Dict[str, Any]] = None
     distinct: bool = False
@@ -1379,6 +1761,7 @@ class FunctionInvocation(Expression):
 
 class CountStar(Expression):
     """COUNT(*) function."""
+
     pass
 
 
@@ -1386,22 +1769,24 @@ class CountStar(Expression):
 # Advanced Expressions
 # ============================================================================
 
+
 class Exists(Expression):
     """EXISTS subquery expression."""
-    content: Optional[Union['Pattern', 'Query']] = None
+
+    content: Optional[Union["Pattern", "Query"]] = None
 
 
 class ListComprehension(Expression):
     """List comprehension expression: [x IN list WHERE pred | expr].
-    
+
     Represents Cypher list comprehension syntax for transforming lists.
-    
+
     Attributes:
         variable: Variable instance for the iteration variable (e.g., Variable(name="x"))
         list_expr: Expression that evaluates to a list
         where: Optional filter predicate
         map_expr: Optional transformation expression
-        
+
     Example:
         >>> # [x IN [1,2,3] WHERE x > 1 | x * 2]
         >>> comp = ListComprehension(
@@ -1411,7 +1796,8 @@ class ListComprehension(Expression):
         ...     map_expr=Arithmetic(operator="*", left=Variable(name="x"), right=IntegerLiteral(value=2))
         ... )
     """
-    variable: Optional['Variable'] = None
+
+    variable: Optional["Variable"] = None
     list_expr: Optional[Expression] = None
     where: Optional[Expression] = None
     map_expr: Optional[Expression] = None
@@ -1419,15 +1805,15 @@ class ListComprehension(Expression):
 
 class PatternComprehension(Expression):
     """Pattern comprehension expression: [path = pattern WHERE pred | expr].
-    
+
     Represents Cypher pattern comprehension for matching and transforming graph patterns.
-    
+
     Attributes:
         variable: Variable instance for the path binding (e.g., Variable(name="path"))
         pattern: Graph pattern to match
         where: Optional filter predicate
         map_expr: Optional transformation expression
-        
+
     Example:
         >>> # [p = (a)-[:KNOWS]->(b) WHERE b.age > 30 | b.name]
         >>> comp = PatternComprehension(
@@ -1437,7 +1823,8 @@ class PatternComprehension(Expression):
         ...     map_expr=PropertyLookup(...)
         ... )
     """
-    variable: Optional['Variable'] = None
+
+    variable: Optional["Variable"] = None
     pattern: Optional[Pattern] = None
     where: Optional[Expression] = None
     map_expr: Optional[Expression] = None
@@ -1445,14 +1832,14 @@ class PatternComprehension(Expression):
 
 class MapProjection(Expression):
     """Map projection expression: node{.prop, computed: expr}.
-    
+
     Projects a map/object with selected or computed properties.
-    
+
     Attributes:
         variable: Variable instance for the source object (e.g., Variable(name="node"))
         elements: List of MapElement items defining projections
         include_all: Whether to include all properties (.* syntax)
-        
+
     Example:
         >>> # person{.name, .age, adult: person.age >= 18}
         >>> proj = MapProjection(
@@ -1464,13 +1851,15 @@ class MapProjection(Expression):
         ...     ]
         ... )
     """
-    variable: Optional['Variable'] = None
-    elements: List['MapElement'] = Field(default_factory=list)
+
+    variable: Optional["Variable"] = None
+    elements: List["MapElement"] = Field(default_factory=list)
     include_all: bool = False
 
 
 class MapElement(ASTNode):
     """Element in map projection."""
+
     property: Optional[str] = None
     expression: Optional[Expression] = None
     all_properties: bool = False
@@ -1478,29 +1867,31 @@ class MapElement(ASTNode):
 
 class CaseExpression(Expression):
     """CASE expression (simple or searched)."""
+
     expression: Optional[Expression] = None  # For simple CASE
-    when_clauses: List['WhenClause'] = Field(default_factory=list)
+    when_clauses: List["WhenClause"] = Field(default_factory=list)
     else_expr: Optional[Expression] = None
 
 
 class WhenClause(ASTNode):
     """WHEN clause in CASE expression."""
+
     condition: Optional[Expression] = None
     result: Optional[Expression] = None
 
 
 class Reduce(Expression):
     """REDUCE expression for list aggregation.
-    
+
     Iterates over a list, accumulating values using a custom expression.
-    
+
     Attributes:
         accumulator: Variable instance for the accumulator (e.g., Variable(name="sum"))
         initial: Initial value expression for the accumulator
         variable: Variable instance for the iteration variable (e.g., Variable(name="x"))
         list_expr: Expression that evaluates to a list
         map_expr: Expression to compute new accumulator value
-        
+
     Example:
         >>> # REDUCE(sum = 0, x IN [1,2,3] | sum + x)
         >>> reduce_expr = Reduce(
@@ -1511,24 +1902,25 @@ class Reduce(Expression):
         ...     map_expr=Arithmetic(operator="+", left=Variable(name="sum"), right=Variable(name="x"))
         ... )
     """
-    accumulator: Optional['Variable'] = None
+
+    accumulator: Optional["Variable"] = None
     initial: Optional[Expression] = None
-    variable: Optional['Variable'] = None
+    variable: Optional["Variable"] = None
     list_expr: Optional[Expression] = None
     map_expr: Optional[Expression] = None
 
 
 class Quantifier(Expression):
     """Quantifier expression: ALL, ANY, NONE, SINGLE.
-    
+
     Tests whether a predicate holds for elements in a list.
-    
+
     Attributes:
         quantifier: Type of quantifier ("ALL", "ANY", "NONE", "SINGLE")
         variable: Variable instance for the iteration variable (e.g., Variable(name="x"))
         list_expr: Expression that evaluates to a list
         where: Predicate expression to test
-        
+
     Examples:
         >>> # ALL(x IN [1,2,3] WHERE x > 0)
         >>> all_expr = Quantifier(
@@ -1546,8 +1938,9 @@ class Quantifier(Expression):
         ...     where=Comparison(operator="=", left=Variable(name="x"), right=Variable(name="value"))
         ... )
     """
+
     quantifier: str  # "ALL", "ANY", "NONE", "SINGLE"
-    variable: Optional['Variable'] = None
+    variable: Optional["Variable"] = None
     list_expr: Optional[Expression] = None
     where: Optional[Expression] = None
 
@@ -1556,19 +1949,23 @@ class Quantifier(Expression):
 # Special Functions
 # ============================================================================
 
+
 class ShortestPath(Expression):
     """SHORTESTPATH function."""
+
     pattern: Optional[Pattern] = None
 
 
 class AllShortestPaths(Expression):
     """ALLSHORTESTPATHS function."""
+
     pattern: Optional[Pattern] = None
 
 
 # ============================================================================
 # AST Converter
 # ============================================================================
+
 
 class ASTConverter:
     """Converts dictionary-based AST to Pydantic models."""
@@ -1577,7 +1974,7 @@ class ASTConverter:
     def from_cypher(cls, cypher: str) -> ASTNode:
         """
         Parse Cypher query and convert to typed AST.
-        
+
         Args:
             cypher: Cypher query string
         Returns:
@@ -1591,30 +1988,32 @@ class ASTConverter:
         if not ast_node:
             raise ValueError("Got a falsey object from AST conversion.")
         return ast_node
-    
+
     def convert(self, node: Any) -> Optional[ASTNode]:
         """
         Convert a dictionary-based AST node to a Pydantic model.
-        
+
         Args:
             node: Dictionary, list, or primitive value from grammar parser
-            
+
         Returns:
             Typed ASTNode or None
         """
         if node is None:
             return None
-        
+
         # Handle Lark Tree objects (convert to string representation for now)
-        if hasattr(node, '__class__') and 'Tree' in node.__class__.__name__:
+        if hasattr(node, "__class__") and "Tree" in node.__class__.__name__:
             # This is a Lark Tree, try to extract data
-            if hasattr(node, 'children') and node.children:
+            if hasattr(node, "children") and node.children:
                 # Get the first child which should be the actual data
-                return self.convert(node.children[0] if node.children else None)
+                return self.convert(
+                    node.children[0] if node.children else None
+                )
             return None
-        
+
         if not isinstance(node, dict):
-            # Primitive value  
+            # Primitive value
             result = self._convert_primitive(node)
             # Wrap primitives in appropriate AST nodes when in expression context
             match result:
@@ -1628,22 +2027,22 @@ class ASTConverter:
                     return FloatLiteral(value=result)
                 case _:
                     return result
-        
-        node_type = node.get('type')
+
+        node_type = node.get("type")
         if not node_type:
             return None
-        
+
         # Map type names to classes
-        converter_method = getattr(self, f'_convert_{node_type}', None)
+        converter_method = getattr(self, f"_convert_{node_type}", None)
         if converter_method:
             return converter_method(node)
-        
+
         # Generic fallback
         return self._convert_generic(node, node_type)
-    
+
     def _convert_primitive(self, value: Any) -> Any:
         """Convert primitive values, returning them as-is for simple types.
-        
+
         For primitive types (bool, int, float, str, None), returns the value directly.
         For complex types (list, dict), converts to AST nodes.
         """
@@ -1664,485 +2063,544 @@ class ASTConverter:
                 if not value:
                     return []
                 elements = [self.convert(item) for item in value]
-                return ListLiteral(value=value, elements=cast(List[Expression], [e for e in elements if e]))
+                return ListLiteral(
+                    value=value,
+                    elements=cast(
+                        List[Expression], [e for e in elements if e]
+                    ),
+                )
             case dict():
                 # Return empty dict as-is
                 if not value:
                     return {}
                 # If it has 'type' field, it's an AST dict, not a primitive
-                if 'type' in value:
+                if "type" in value:
                     return None
                 # Plain dictionary - convert to MapLiteral
                 entries = {k: self.convert(v) for k, v in value.items()}
-                return MapLiteral(value=value, entries=cast(Dict[str, Expression], {k: v for k, v in entries.items() if v}))
+                return MapLiteral(
+                    value=value,
+                    entries=cast(
+                        Dict[str, Expression],
+                        {k: v for k, v in entries.items() if v},
+                    ),
+                )
             case _:
                 return None
-    
+
     def _convert_Query(self, node: dict) -> Query:
         """Convert Query node."""
         # Handle both 'clauses' and 'statements' structure
         clauses = []
-        
-        if 'clauses' in node:
-            clauses = [self.convert(c) for c in node.get('clauses', [])]
-        elif 'statements' in node:
+
+        if "clauses" in node:
+            clauses = [self.convert(c) for c in node.get("clauses", [])]
+        elif "statements" in node:
             # New structure with statements
-            for stmt_list in node.get('statements', []):
+            for stmt_list in node.get("statements", []):
                 if isinstance(stmt_list, list):
                     for stmt in stmt_list:
                         converted = self.convert(stmt)
                         if converted:
                             # If it's a QueryStatement, extract its clauses
-                            if hasattr(converted, 'clauses'):
-                                clauses.extend(converted.clauses if isinstance(converted.clauses, list) else [])
+                            if hasattr(converted, "clauses"):
+                                clauses.extend(
+                                    converted.clauses
+                                    if isinstance(converted.clauses, list)
+                                    else []
+                                )
                             elif isinstance(converted, Clause):
                                 clauses.append(converted)
-        
+
         return Query(clauses=[c for c in clauses if isinstance(c, Clause)])
-    
+
     def _convert_QueryStatement(self, node: dict) -> Query:
         """Convert QueryStatement node to Query with clauses."""
         clauses = []
-        
+
         # Extract reading clauses (MATCH, etc.)
-        for clause_item in node.get('clauses', []):
+        for clause_item in node.get("clauses", []):
             converted = self.convert(clause_item)
             if converted and isinstance(converted, Clause):
                 clauses.append(converted)
-        
+
         # Extract return statement
-        if 'return' in node and node['return']:
-            ret_clause = self.convert(node['return'])
+        if "return" in node and node["return"]:
+            ret_clause = self.convert(node["return"])
             if ret_clause and isinstance(ret_clause, Clause):
                 clauses.append(ret_clause)
-        
+
         return Query(clauses=clauses)
-    
+
     def _convert_UpdateStatement(self, node: dict) -> Query:
         """Convert UpdateStatement which contains CREATE/SET/DELETE/etc."""
         clauses = []
-        
+
         # Add prefix clauses (usually MATCH before UPDATE)
-        prefix = node.get('prefix', [])
+        prefix = node.get("prefix", [])
         if prefix:
             for clause in prefix:
                 converted = self.convert(clause)
                 if converted and isinstance(converted, Clause):
                     clauses.append(converted)
-        
+
         # Add update clauses
-        updates = node.get('updates', [])
+        updates = node.get("updates", [])
         if updates:
             for clause in updates:
                 converted = self.convert(clause)
                 if converted and isinstance(converted, Clause):
                     clauses.append(converted)
-        
+
         # Handle return statement separately
-        if node.get('return'):
-            ret_clause = self.convert(node['return'])
+        if node.get("return"):
+            ret_clause = self.convert(node["return"])
             if ret_clause and isinstance(ret_clause, Clause):
                 clauses.append(ret_clause)
-        
+
         return Query(clauses=clauses)
-    
+
     def _convert_CreateClause(self, node: dict) -> Create:
         """Convert CreateClause node."""
-        return Create(pattern=cast(Optional[Pattern], self.convert(node.get('pattern'))))
-    
+        return Create(
+            pattern=cast(Optional[Pattern], self.convert(node.get("pattern")))
+        )
+
     def _convert_SetClause(self, node: dict) -> Set:
         """Convert SetClause node."""
-        items = [self.convert(item) for item in node.get('items', [])]
+        items = [self.convert(item) for item in node.get("items", [])]
         return Set(items=cast(List[SetItem], [i for i in items if i]))
-    
+
     def _convert_DeleteClause(self, node: dict) -> Delete:
         """Convert DeleteClause node."""
-        items = node.get('items', [])
+        items = node.get("items", [])
         exprs = [self.convert(e) for e in items]
         return Delete(
-            detach=node.get('detach', False),
-            expressions=cast(List[Expression], [e for e in exprs if e])
+            detach=node.get("detach", False),
+            expressions=cast(List[Expression], [e for e in exprs if e]),
         )
-    
+
     def _convert_RemoveClause(self, node: dict) -> Remove:
         """Convert RemoveClause node."""
-        items = [self.convert(item) for item in node.get('items', [])]
+        items = [self.convert(item) for item in node.get("items", [])]
         return Remove(items=cast(List[RemoveItem], [i for i in items if i]))
-    
+
     def _convert_MergeClause(self, node: dict) -> Merge:
         """Convert MergeClause node."""
         # Convert actions to on_create and on_match
         on_create = []
         on_match = []
-        for action in node.get('actions', []):
+        for action in node.get("actions", []):
             if isinstance(action, dict):
-                if action.get('on') == 'create':
-                    set_clause = action.get('set')
+                if action.get("on") == "create":
+                    set_clause = action.get("set")
                     if set_clause:
                         converted = self.convert(set_clause)
                         if converted:
                             on_create.append(converted)
-                elif action.get('on') == 'match':
-                    set_clause = action.get('set')
+                elif action.get("on") == "match":
+                    set_clause = action.get("set")
                     if set_clause:
                         converted = self.convert(set_clause)
                         if converted:
                             on_match.append(converted)
-        
+
         return Merge(
-            pattern=cast(Optional[Pattern], self.convert(node.get('pattern'))),
-            on_create=cast(Optional[List[SetItem]], on_create) if on_create else None,
-            on_match=cast(Optional[List[SetItem]], on_match) if on_match else None
+            pattern=cast(Optional[Pattern], self.convert(node.get("pattern"))),
+            on_create=cast(Optional[List[SetItem]], on_create)
+            if on_create
+            else None,
+            on_match=cast(Optional[List[SetItem]], on_match)
+            if on_match
+            else None,
         )
-    
+
     def _convert_MatchClause(self, node: dict) -> Match:
         """Convert MatchClause node."""
         where_cond = None
-        if 'where' in node and node['where']:
-            where_dict = node['where']
-            if isinstance(where_dict, dict) and 'condition' in where_dict:
-                where_cond = self.convert(where_dict['condition'])
+        if "where" in node and node["where"]:
+            where_dict = node["where"]
+            if isinstance(where_dict, dict) and "condition" in where_dict:
+                where_cond = self.convert(where_dict["condition"])
             else:
                 where_cond = self.convert(where_dict)
-        
+
         return Match(
-            optional=node.get('optional', False),
-            pattern=cast(Optional[Pattern], self.convert(node.get('pattern'))),
-            where=cast(Optional[Expression], where_cond)
+            optional=node.get("optional", False),
+            pattern=cast(Optional[Pattern], self.convert(node.get("pattern"))),
+            where=cast(Optional[Expression], where_cond),
         )
-    
+
     def _convert_ReturnStatement(self, node: dict) -> Return:
         """Convert ReturnStatement node."""
         items = []
-        
+
         # Handle body which contains return items
-        body = node.get('body')
+        body = node.get("body")
         if body:
-            if isinstance(body, dict) and body.get('type') == 'ReturnBody':
-                items_list = body.get('items', [])
+            if isinstance(body, dict) and body.get("type") == "ReturnBody":
+                items_list = body.get("items", [])
                 items = [self.convert(item) for item in items_list]
-        
+
         order_by = None
-        if node.get('order'):
-            order_items = node['order'].get('items', []) if isinstance(node['order'], dict) else []
-            converted_order = [self.convert(item) for item in order_items if item is not None]
-            order_by = [o for o in converted_order if o is not None]  # Filter out None values
-        
+        if node.get("order"):
+            order_items = (
+                node["order"].get("items", [])
+                if isinstance(node["order"], dict)
+                else []
+            )
+            converted_order = [
+                self.convert(item) for item in order_items if item is not None
+            ]
+            order_by = [
+                o for o in converted_order if o is not None
+            ]  # Filter out None values
+
         # Extract limit value
         limit_val = None
-        if node.get('limit'):
-            limit_clause = node['limit']
+        if node.get("limit"):
+            limit_clause = node["limit"]
             if isinstance(limit_clause, dict):
-                limit_val = limit_clause.get('value')
+                limit_val = limit_clause.get("value")
                 # Handle Lark Tree objects
-                if hasattr(limit_val, '__class__') and limit_val.__class__.__name__ == 'Tree':
+                if (
+                    hasattr(limit_val, "__class__")
+                    and limit_val.__class__.__name__ == "Tree"
+                ):
                     # Get first child which should be the integer
                     if limit_val.children:
                         limit_val = limit_val.children[0]
                 if isinstance(limit_val, int):
                     pass  # Already an int
-                elif hasattr(limit_val, 'value'):
+                elif hasattr(limit_val, "value"):
                     limit_val = int(limit_val.value)
                 else:
                     try:
                         limit_val = int(str(limit_val))
                     except (ValueError, TypeError):
                         limit_val = None
-        
+
         # Extract skip value
         skip_val = None
-        if node.get('skip'):
-            skip_clause = node['skip']
+        if node.get("skip"):
+            skip_clause = node["skip"]
             if isinstance(skip_clause, dict):
-                skip_val = skip_clause.get('value')
+                skip_val = skip_clause.get("value")
                 if isinstance(skip_val, int):
                     pass
-                elif hasattr(skip_val, 'value'):
+                elif hasattr(skip_val, "value"):
                     skip_val = int(skip_val.value)
                 else:
                     try:
                         skip_val = int(str(skip_val))
                     except (ValueError, TypeError):
                         skip_val = None
-        
+
         return Return(
-            distinct=node.get('distinct', False),
+            distinct=node.get("distinct", False),
             items=cast(List[ReturnItem], [i for i in items if i]),
-            order_by=cast(Optional[List[OrderByItem]], order_by) if order_by else None,
+            order_by=cast(Optional[List[OrderByItem]], order_by)
+            if order_by
+            else None,
             skip=skip_val,
-            limit=limit_val
+            limit=limit_val,
         )
-    
+
     def _convert_Match(self, node: dict) -> Match:
         """Convert Match node."""
         return Match(
-            optional=node.get('optional', False),
-            pattern=cast(Optional[Pattern], self.convert(node.get('pattern'))),
-            where=cast(Optional[Expression], self.convert(node.get('where')))
+            optional=node.get("optional", False),
+            pattern=cast(Optional[Pattern], self.convert(node.get("pattern"))),
+            where=cast(Optional[Expression], self.convert(node.get("where"))),
         )
-    
+
     def _convert_WithClause(self, node: dict) -> With:
         """Convert WithClause node.
-        
+
         WITH is similar to RETURN but continues query processing.
         It filters and projects variables for the next query stage.
-        
+
         Args:
             node: Dictionary with type "WithClause"
-            
+
         Returns:
             With clause with items, WHERE, ORDER BY, SKIP, LIMIT
         """
         # Convert return items
         items = []
-        items_list = node.get('items', [])
+        items_list = node.get("items", [])
         if items_list:
             items = [self.convert(item) for item in items_list]
-        
+
         # Handle WHERE clause
         where_cond = None
-        if 'where' in node and node['where']:
-            where_dict = node['where']
+        if "where" in node and node["where"]:
+            where_dict = node["where"]
             if isinstance(where_dict, dict):
-                if 'condition' in where_dict:
-                    where_cond = self.convert(where_dict['condition'])
+                if "condition" in where_dict:
+                    where_cond = self.convert(where_dict["condition"])
                 else:
                     where_cond = self.convert(where_dict)
-        
+
         # Handle ORDER BY
         order_by = None
-        if node.get('order'):
-            order_items = node['order'].get('items', []) if isinstance(node['order'], dict) else []
-            converted_order = [self.convert(item) for item in order_items if item is not None]
+        if node.get("order"):
+            order_items = (
+                node["order"].get("items", [])
+                if isinstance(node["order"], dict)
+                else []
+            )
+            converted_order = [
+                self.convert(item) for item in order_items if item is not None
+            ]
             order_by = [o for o in converted_order if o is not None]
-        
+
         # Extract SKIP value
         skip_val = None
-        if node.get('skip'):
-            skip_clause = node['skip']
+        if node.get("skip"):
+            skip_clause = node["skip"]
             if isinstance(skip_clause, dict):
-                skip_val = skip_clause.get('value')
-        
+                skip_val = skip_clause.get("value")
+
         # Extract LIMIT value (same logic as ReturnStatement)
         limit_val = None
-        if node.get('limit'):
-            limit_clause = node['limit']
+        if node.get("limit"):
+            limit_clause = node["limit"]
             if isinstance(limit_clause, dict):
-                limit_val = limit_clause.get('value')
+                limit_val = limit_clause.get("value")
                 # Handle Lark Tree objects
-                if hasattr(limit_val, '__class__') and limit_val.__class__.__name__ == 'Tree':
+                if (
+                    hasattr(limit_val, "__class__")
+                    and limit_val.__class__.__name__ == "Tree"
+                ):
                     if limit_val.children:
                         limit_val = limit_val.children[0]
                 if isinstance(limit_val, int):
                     pass  # Already good
-                elif hasattr(limit_val, 'value'):
+                elif hasattr(limit_val, "value"):
                     limit_val = int(limit_val.value)
-        
+
         return With(
-            distinct=node.get('distinct', False),
+            distinct=node.get("distinct", False),
             items=cast(List[ReturnItem], [i for i in items if i]),
             where=cast(Optional[Expression], where_cond),
             order_by=cast(Optional[List[OrderByItem]], order_by),
             skip=skip_val,
-            limit=limit_val
+            limit=limit_val,
         )
-    
+
     def _convert_Return(self, node: dict) -> Return:
         """Convert Return node."""
-        items = [self.convert(item) for item in node.get('items', [])]
+        items = [self.convert(item) for item in node.get("items", [])]
         order_by = None
-        if node.get('order_by'):
-            order_by = [self.convert(item) for item in node['order_by']]
-        
+        if node.get("order_by"):
+            order_by = [self.convert(item) for item in node["order_by"]]
+
         return Return(
-            distinct=node.get('distinct', False),
+            distinct=node.get("distinct", False),
             items=cast(List[ReturnItem], [i for i in items if i]),
             order_by=cast(Optional[List[OrderByItem]], order_by),
-            skip=node.get('skip'),
-            limit=node.get('limit')
+            skip=node.get("skip"),
+            limit=node.get("limit"),
         )
-    
+
     def _convert_ReturnItem(self, node: dict) -> ReturnItem:
         """Convert ReturnItem node."""
         return ReturnItem(
-            expression=cast(Optional[Expression], self.convert(node.get('expression'))),
-            alias=node.get('alias')
+            expression=cast(
+                Optional[Expression], self.convert(node.get("expression"))
+            ),
+            alias=node.get("alias"),
         )
-    
+
     def _convert_ReturnAll(self, node: dict) -> ReturnAll:
         """Convert ReturnAll node."""
         return ReturnAll()
-    
+
     def _convert_With(self, node: dict) -> With:
         """Convert With node."""
-        items = [self.convert(item) for item in node.get('items', [])]
+        items = [self.convert(item) for item in node.get("items", [])]
         order_by = None
-        if node.get('order_by'):
-            order_by = [self.convert(item) for item in node['order_by']]
-        
+        if node.get("order_by"):
+            order_by = [self.convert(item) for item in node["order_by"]]
+
         return With(
-            distinct=node.get('distinct', False),
+            distinct=node.get("distinct", False),
             items=cast(List[ReturnItem], [i for i in items if i]),
-            where=cast(Optional[Expression], self.convert(node.get('where'))),
+            where=cast(Optional[Expression], self.convert(node.get("where"))),
             order_by=cast(Optional[List[OrderByItem]], order_by),
-            skip=node.get('skip'),
-            limit=node.get('limit')
+            skip=node.get("skip"),
+            limit=node.get("limit"),
         )
-    
+
     def _convert_Create(self, node: dict) -> Create:
         """Convert Create node."""
-        return Create(pattern=cast(Optional[Pattern], self.convert(node.get('pattern'))))
-    
+        return Create(
+            pattern=cast(Optional[Pattern], self.convert(node.get("pattern")))
+        )
+
     def _convert_Merge(self, node: dict) -> Merge:
         """Convert Merge node."""
         on_create = None
-        if node.get('on_create'):
-            on_create = [self.convert(item) for item in node['on_create']]
-        
+        if node.get("on_create"):
+            on_create = [self.convert(item) for item in node["on_create"]]
+
         on_match = None
-        if node.get('on_match'):
-            on_match = [self.convert(item) for item in node['on_match']]
-        
+        if node.get("on_match"):
+            on_match = [self.convert(item) for item in node["on_match"]]
+
         return Merge(
-            pattern=cast(Optional[Pattern], self.convert(node.get('pattern'))),
+            pattern=cast(Optional[Pattern], self.convert(node.get("pattern"))),
             on_create=cast(Optional[List[SetItem]], on_create),
-            on_match=cast(Optional[List[SetItem]], on_match)
+            on_match=cast(Optional[List[SetItem]], on_match),
         )
-    
+
     def _convert_Delete(self, node: dict) -> Delete:
         """Convert Delete node."""
-        exprs = [self.convert(e) for e in node.get('expressions', [])]
+        exprs = [self.convert(e) for e in node.get("expressions", [])]
         return Delete(
-            detach=node.get('detach', False),
-            expressions=cast(List[Expression], [e for e in exprs if e])
+            detach=node.get("detach", False),
+            expressions=cast(List[Expression], [e for e in exprs if e]),
         )
-    
+
     def _convert_Set(self, node: dict) -> Set:
         """Convert Set node."""
-        items = [self.convert(item) for item in node.get('items', [])]
+        items = [self.convert(item) for item in node.get("items", [])]
         return Set(items=cast(List[SetItem], [i for i in items if i]))
-    
+
     def _convert_SetItem(self, node: dict) -> SetItem:
         """Convert SetItem node."""
-        var_name = node.get('variable')
+        var_name = node.get("variable")
         return SetItem(
             variable=Variable(name=var_name) if var_name else None,
-            property=node.get('property'),
-            expression=cast(Optional[Expression], self.convert(node.get('expression'))),
-            labels=node.get('labels', [])
+            property=node.get("property"),
+            expression=cast(
+                Optional[Expression], self.convert(node.get("expression"))
+            ),
+            labels=node.get("labels", []),
         )
-    
+
     def _convert_SetProperty(self, node: dict) -> SetItem:
         """Convert SetProperty node to SetItem."""
         # Extract property name from PropertyLookup dict if needed
-        prop = node.get('property')
-        if isinstance(prop, dict) and prop.get('type') == 'PropertyLookup':
-            prop = prop.get('property')
-        var_name = node.get('variable')
+        prop = node.get("property")
+        if isinstance(prop, dict) and prop.get("type") == "PropertyLookup":
+            prop = prop.get("property")
+        var_name = node.get("variable")
         return SetItem(
             variable=Variable(name=var_name) if var_name else None,
             property=prop,
-            expression=cast(Optional[Expression], self.convert(node.get('value'))),
-            labels=[]
+            expression=cast(
+                Optional[Expression], self.convert(node.get("value"))
+            ),
+            labels=[],
         )
-    
+
     def _convert_SetLabels(self, node: dict) -> SetItem:
         """Convert SetLabels node to SetItem."""
-        labels = node.get('labels', [])
+        labels = node.get("labels", [])
         # Convert label expression if needed
         if isinstance(labels, dict):
-            labels = [labels.get('name', '')]
+            labels = [labels.get("name", "")]
         elif not isinstance(labels, list):
             labels = [str(labels)]
-        var_name = node.get('variable')
+        var_name = node.get("variable")
         return SetItem(
             variable=Variable(name=var_name) if var_name else None,
             property=None,
             expression=None,
-            labels=labels
+            labels=labels,
         )
-    
+
     def _convert_SetAllProperties(self, node: dict) -> SetItem:
         """Convert SetAllProperties node to SetItem."""
-        var_name = node.get('variable')
+        var_name = node.get("variable")
         return SetItem(
             variable=Variable(name=var_name) if var_name else None,
-            property='*',  # Indicates all properties
-            expression=cast(Optional[Expression], self.convert(node.get('value'))),
-            labels=[]
+            property="*",  # Indicates all properties
+            expression=cast(
+                Optional[Expression], self.convert(node.get("value"))
+            ),
+            labels=[],
         )
-    
+
     def _convert_Remove(self, node: dict) -> Remove:
         """Convert Remove node."""
-        items = [self.convert(item) for item in node.get('items', [])]
+        items = [self.convert(item) for item in node.get("items", [])]
         return Remove(items=cast(List[RemoveItem], [i for i in items if i]))
-    
+
     def _convert_RemoveItem(self, node: dict) -> RemoveItem:
         """Convert RemoveItem node."""
-        var_name = node.get('variable')
+        var_name = node.get("variable")
         return RemoveItem(
             variable=Variable(name=var_name) if var_name else None,
-            property=node.get('property'),
-            labels=node.get('labels', [])
+            property=node.get("property"),
+            labels=node.get("labels", []),
         )
-    
+
     def _convert_RemoveProperty(self, node: dict) -> RemoveItem:
         """Convert RemoveProperty node to RemoveItem."""
         # Extract property name from PropertyLookup dict if needed
-        prop = node.get('property')
-        if isinstance(prop, dict) and prop.get('type') == 'PropertyLookup':
-            prop = prop.get('property')
-        var_name = node.get('variable')
+        prop = node.get("property")
+        if isinstance(prop, dict) and prop.get("type") == "PropertyLookup":
+            prop = prop.get("property")
+        var_name = node.get("variable")
         return RemoveItem(
             variable=Variable(name=var_name) if var_name else None,
             property=prop,
-            labels=[]
+            labels=[],
         )
-    
+
     def _convert_RemoveLabels(self, node: dict) -> RemoveItem:
         """Convert RemoveLabels node to RemoveItem."""
-        labels = node.get('labels', [])
+        labels = node.get("labels", [])
         # Convert label expression if needed
         if isinstance(labels, dict):
-            labels = [labels.get('name', '')]
+            labels = [labels.get("name", "")]
         elif not isinstance(labels, list):
             labels = [str(labels)]
-        var_name = node.get('variable')
+        var_name = node.get("variable")
         return RemoveItem(
             variable=Variable(name=var_name) if var_name else None,
             property=None,
-            labels=labels
+            labels=labels,
         )
-    
+
     def _convert_Unwind(self, node: dict) -> Unwind:
         """Convert Unwind node."""
         return Unwind(
-            expression=cast(Optional[Expression], self.convert(node.get('expression'))),
-            alias=node.get('alias')
+            expression=cast(
+                Optional[Expression], self.convert(node.get("expression"))
+            ),
+            alias=node.get("alias"),
         )
-    
+
     def _convert_UnwindClause(self, node: dict) -> Unwind:
         """Convert UnwindClause node."""
         return Unwind(
-            expression=cast(Optional[Expression], self.convert(node.get('expression'))),
-            alias=node.get('variable')  # UnwindClause uses 'variable' instead of 'alias'
+            expression=cast(
+                Optional[Expression], self.convert(node.get("expression"))
+            ),
+            alias=node.get(
+                "variable"
+            ),  # UnwindClause uses 'variable' instead of 'alias'
         )
-    
+
     def _convert_Call(self, node: dict) -> Call:
         """Convert Call node."""
-        args = [self.convert(a) for a in node.get('arguments', [])]
-        yield_items = [self.convert(y) for y in node.get('yield_items', [])]
-        
+        args = [self.convert(a) for a in node.get("arguments", [])]
+        yield_items = [self.convert(y) for y in node.get("yield_items", [])]
+
         return Call(
-            procedure_name=node.get('procedure_name'),
+            procedure_name=node.get("procedure_name"),
             arguments=cast(List[Expression], [a for a in args if a]),
             yield_items=cast(List[YieldItem], [y for y in yield_items if y]),
-            where=cast(Optional[Expression], self.convert(node.get('where')))
+            where=cast(Optional[Expression], self.convert(node.get("where"))),
         )
-    
+
     def _convert_Pattern(self, node: dict) -> Pattern:
         """Convert Pattern node."""
-        paths = [self.convert(p) for p in node.get('paths', [])]
+        paths = [self.convert(p) for p in node.get("paths", [])]
         # Filter out Nones and convert PatternElements to PatternPaths
         converted_paths = []
         for p in paths:
@@ -2153,22 +2611,29 @@ class ASTConverter:
                 converted_paths.append(p)
             elif isinstance(p, dict):
                 # Try to convert as PathPattern
-                pp = self._convert_PathPattern(p) if p.get('type') == 'PathPattern' else None
+                pp = (
+                    self._convert_PathPattern(p)
+                    if p.get("type") == "PathPattern"
+                    else None
+                )
                 if pp:
                     converted_paths.append(pp)
-        
+
         return Pattern(paths=converted_paths)
-    
+
     def _convert_PathPattern(self, node: dict) -> PatternPath:
         """Convert PathPattern node."""
         # Extract elements from the pattern element
         elements = []
-        
-        element = node.get('element')
+
+        element = node.get("element")
         if element:
-            if isinstance(element, dict) and element.get('type') == 'PatternElement':
+            if (
+                isinstance(element, dict)
+                and element.get("type") == "PatternElement"
+            ):
                 # Extract parts from PatternElement
-                parts = element.get('parts', [])
+                parts = element.get("parts", [])
                 for part in parts:
                     converted = self.convert(part)
                     if converted:
@@ -2177,335 +2642,416 @@ class ASTConverter:
                 converted = self.convert(element)
                 if converted:
                     elements.append(converted)
-        
-        var_name = node.get('variable')
+
+        var_name = node.get("variable")
         return PatternPath(
             variable=Variable(name=var_name) if var_name else None,
-            elements=elements
+            elements=elements,
         )
-    
+
     def _convert_PatternElement(self, node: dict) -> PatternPath:
         """Convert PatternElement to PatternPath."""
         elements = []
-        for part in node.get('parts', []):
+        for part in node.get("parts", []):
             converted = self.convert(part)
             if converted:
                 elements.append(converted)
-        
+
         return PatternPath(variable=None, elements=elements)
-    
+
     def _convert_PatternPath(self, node: dict) -> PatternPath:
         """Convert PatternPath node."""
-        elements = [self.convert(e) for e in node.get('elements', [])]
-        var_name = node.get('variable')
+        elements = [self.convert(e) for e in node.get("elements", [])]
+        var_name = node.get("variable")
         return PatternPath(
             variable=Variable(name=var_name) if var_name else None,
-            elements=cast(List[Union[NodePattern, RelationshipPattern]], [e for e in elements if e])
+            elements=cast(
+                List[Union[NodePattern, RelationshipPattern]],
+                [e for e in elements if e],
+            ),
         )
-    
+
     def _convert_NodePattern(self, node: dict) -> NodePattern:
         """Convert NodePattern node."""
-        var_name = node.get('variable')
+        var_name = node.get("variable")
         return NodePattern(
             variable=Variable(name=var_name) if var_name else None,
-            labels=node.get('labels', []),
-            properties=node.get('properties')
+            labels=node.get("labels", []),
+            properties=node.get("properties"),
         )
-    
+
     def _convert_RelationshipPattern(self, node: dict) -> RelationshipPattern:
         """Convert RelationshipPattern node."""
-        var_name = node.get('variable')
+        var_name = node.get("variable")
         return RelationshipPattern(
             variable=Variable(name=var_name) if var_name else None,
-            types=node.get('types', []),
-            properties=node.get('properties'),
-            direction=node.get('direction', 'right'),
-            length=cast(Optional[PathLength], self.convert(node.get('length'))),
-            where=cast(Optional[Expression], self.convert(node.get('where')))
+            types=node.get("types", []),
+            properties=node.get("properties"),
+            direction=node.get("direction", "right"),
+            length=cast(
+                Optional[PathLength], self.convert(node.get("length"))
+            ),
+            where=cast(Optional[Expression], self.convert(node.get("where"))),
         )
-    
+
     def _convert_PathLength(self, node: dict) -> PathLength:
         """Convert PathLength node."""
         return PathLength(
-            min=node.get('min'),
-            max=node.get('max'),
-            unbounded=node.get('unbounded', False)
+            min=node.get("min"),
+            max=node.get("max"),
+            unbounded=node.get("unbounded", False),
         )
-    
+
     def _convert_Or(self, node: dict) -> Or:
         """Convert Or node."""
-        operands = [self.convert(op) for op in node.get('operands', [])]
-        return Or(operands=cast(List[Expression], [o for o in operands if o]), operator="OR")
-    
+        operands = [self.convert(op) for op in node.get("operands", [])]
+        return Or(
+            operands=cast(List[Expression], [o for o in operands if o]),
+            operator="OR",
+        )
+
     def _convert_Xor(self, node: dict) -> Xor:
         """Convert Xor node."""
-        operands = [self.convert(op) for op in node.get('operands', [])]
-        return Xor(operands=cast(List[Expression], [o for o in operands if o]), operator="XOR")
-    
+        operands = [self.convert(op) for op in node.get("operands", [])]
+        return Xor(
+            operands=cast(List[Expression], [o for o in operands if o]),
+            operator="XOR",
+        )
+
     def _convert_And(self, node: dict) -> And:
         """Convert And node."""
-        operands = [self.convert(op) for op in node.get('operands', [])]
-        return And(operands=cast(List[Expression], [o for o in operands if o]), operator="AND")
-    
+        operands = [self.convert(op) for op in node.get("operands", [])]
+        return And(
+            operands=cast(List[Expression], [o for o in operands if o]),
+            operator="AND",
+        )
+
     def _convert_Not(self, node: dict) -> Not:
         """Convert Not node."""
-        return Not(operand=cast(Optional[Expression], self.convert(node.get('operand'))))
-    
+        return Not(
+            operand=cast(
+                Optional[Expression], self.convert(node.get("operand"))
+            )
+        )
+
     def _convert_Comparison(self, node: dict) -> Comparison:
         """Convert Comparison node."""
         return Comparison(
-            operator=node.get('operator', '='),
-            left=cast(Optional[Expression], self.convert(node.get('left'))),
-            right=cast(Optional[Expression], self.convert(node.get('right')))
+            operator=node.get("operator", "="),
+            left=cast(Optional[Expression], self.convert(node.get("left"))),
+            right=cast(Optional[Expression], self.convert(node.get("right"))),
         )
-    
+
     def _convert_StringPredicate(self, node: dict) -> StringPredicate:
         """Convert StringPredicate node."""
         return StringPredicate(
-            operator=node.get('operator', 'CONTAINS'),
-            left=cast(Optional[Expression], self.convert(node.get('left'))),
-            right=cast(Optional[Expression], self.convert(node.get('right')))
+            operator=node.get("operator", "CONTAINS"),
+            left=cast(Optional[Expression], self.convert(node.get("left"))),
+            right=cast(Optional[Expression], self.convert(node.get("right"))),
         )
-    
+
     def _convert_NullCheck(self, node: dict) -> NullCheck:
         """Convert NullCheck node."""
         return NullCheck(
-            operator=node.get('operator', 'IS NULL'),
-            operand=cast(Optional[Expression], self.convert(node.get('operand')))
+            operator=node.get("operator", "IS NULL"),
+            operand=cast(
+                Optional[Expression], self.convert(node.get("operand"))
+            ),
         )
-    
+
     def _convert_Arithmetic(self, node: dict) -> Arithmetic:
         """Convert Arithmetic node."""
         return Arithmetic(
-            operator=node.get('operator', '+'),
-            left=cast(Optional[Expression], self.convert(node.get('left'))),
-            right=cast(Optional[Expression], self.convert(node.get('right')))
+            operator=node.get("operator", "+"),
+            left=cast(Optional[Expression], self.convert(node.get("left"))),
+            right=cast(Optional[Expression], self.convert(node.get("right"))),
         )
-    
+
     def _convert_Unary(self, node: dict) -> Unary:
         """Convert Unary node."""
         return Unary(
-            operator=node.get('operator', '+'),
-            operand=cast(Optional[Expression], self.convert(node.get('operand')))
+            operator=node.get("operator", "+"),
+            operand=cast(
+                Optional[Expression], self.convert(node.get("operand"))
+            ),
         )
-    
+
     def _convert_PropertyLookup(self, node: dict) -> PropertyLookup:
         """Convert PropertyLookup node."""
-        var_name = node.get('variable')
+        var_name = node.get("variable")
         return PropertyLookup(
-            expression=cast(Optional[Expression], self.convert(node.get('expression'))),
-            property=node.get('property'),
-            variable=Variable(name=var_name) if var_name else None  # Legacy support
+            expression=cast(
+                Optional[Expression], self.convert(node.get("expression"))
+            ),
+            property=node.get("property"),
+            variable=Variable(name=var_name)
+            if var_name
+            else None,  # Legacy support
         )
-    
+
     def _convert_PropertyAccess(self, node: dict) -> PropertyLookup:
         """Convert PropertyAccess node (alternative name for PropertyLookup)."""
         return PropertyLookup(
-            expression=cast(Optional[Expression], self.convert(node.get('object'))),
-            property=node.get('property')
+            expression=cast(
+                Optional[Expression], self.convert(node.get("object"))
+            ),
+            property=node.get("property"),
         )
-    
+
     def _convert_IndexLookup(self, node: dict) -> IndexLookup:
         """Convert IndexLookup node."""
         return IndexLookup(
-            expression=cast(Optional[Expression], self.convert(node.get('expression'))),
-            index=cast(Optional[Expression], self.convert(node.get('index')))
+            expression=cast(
+                Optional[Expression], self.convert(node.get("expression"))
+            ),
+            index=cast(Optional[Expression], self.convert(node.get("index"))),
         )
-    
+
     def _convert_Slicing(self, node: dict) -> Slicing:
         """Convert Slicing node."""
         return Slicing(
-            expression=cast(Optional[Expression], self.convert(node.get('expression'))),
-            start=cast(Optional[Expression], self.convert(node.get('start'))),
-            end=cast(Optional[Expression], self.convert(node.get('end')))
+            expression=cast(
+                Optional[Expression], self.convert(node.get("expression"))
+            ),
+            start=cast(Optional[Expression], self.convert(node.get("start"))),
+            end=cast(Optional[Expression], self.convert(node.get("end"))),
         )
-    
+
     def _convert_FunctionInvocation(self, node: dict) -> FunctionInvocation:
         """Convert FunctionInvocation node."""
         return FunctionInvocation(
-            name=node.get('name', 'unknown'),
-            arguments=node.get('arguments'),
-            distinct=node.get('arguments', {}).get('distinct', False) if isinstance(node.get('arguments'), dict) else False
+            name=node.get("name", "unknown"),
+            arguments=node.get("arguments"),
+            distinct=node.get("arguments", {}).get("distinct", False)
+            if isinstance(node.get("arguments"), dict)
+            else False,
         )
-    
+
     def _convert_CountStar(self, node: dict) -> CountStar:
         """Convert CountStar node."""
         return CountStar()
-    
+
     def _convert_Exists(self, node: dict) -> Exists:
         """Convert Exists node."""
-        return Exists(content=cast(Optional[Union[Pattern, Query]], self.convert(node.get('content'))))
-    
+        return Exists(
+            content=cast(
+                Optional[Union[Pattern, Query]],
+                self.convert(node.get("content")),
+            )
+        )
+
     def _convert_ListComprehension(self, node: dict) -> ListComprehension:
         """Convert ListComprehension node."""
-        var_name = node.get('variable')
+        var_name = node.get("variable")
         return ListComprehension(
             variable=Variable(name=var_name) if var_name else None,
-            list_expr=cast(Optional[Expression], self.convert(node.get('in'))),  # 'in' from grammar
-            where=cast(Optional[Expression], self.convert(node.get('where'))),
-            map_expr=cast(Optional[Expression], self.convert(node.get('projection')))  # 'projection' from grammar
+            list_expr=cast(
+                Optional[Expression], self.convert(node.get("in"))
+            ),  # 'in' from grammar
+            where=cast(Optional[Expression], self.convert(node.get("where"))),
+            map_expr=cast(
+                Optional[Expression], self.convert(node.get("projection"))
+            ),  # 'projection' from grammar
         )
-    
-    def _convert_PatternComprehension(self, node: dict) -> PatternComprehension:
+
+    def _convert_PatternComprehension(
+        self, node: dict
+    ) -> PatternComprehension:
         """Convert PatternComprehension node."""
-        var_name = node.get('variable')
+        var_name = node.get("variable")
         return PatternComprehension(
             variable=Variable(name=var_name) if var_name else None,
-            pattern=cast(Optional[Pattern], self.convert(node.get('pattern'))),
-            where=cast(Optional[Expression], self.convert(node.get('where'))),
-            map_expr=cast(Optional[Expression], self.convert(node.get('map')))
+            pattern=cast(Optional[Pattern], self.convert(node.get("pattern"))),
+            where=cast(Optional[Expression], self.convert(node.get("where"))),
+            map_expr=cast(Optional[Expression], self.convert(node.get("map"))),
         )
-    
+
     def _convert_Quantifier(self, node: dict) -> Quantifier:
         """Convert Quantifier node."""
-        var_name = node.get('variable')
+        var_name = node.get("variable")
         return Quantifier(
-            quantifier=node.get('quantifier', 'ALL'),
+            quantifier=node.get("quantifier", "ALL"),
             variable=Variable(name=var_name) if var_name else None,
-            list_expr=cast(Optional[Expression], self.convert(node.get('in'))),
-            where=cast(Optional[Expression], self.convert(node.get('where')))
+            list_expr=cast(Optional[Expression], self.convert(node.get("in"))),
+            where=cast(Optional[Expression], self.convert(node.get("where"))),
         )
-    
+
     def _convert_MapProjection(self, node: dict) -> MapProjection:
         """Convert MapProjection node."""
-        elements = [self.convert(e) for e in node.get('elements', [])]
-        var_name = node.get('variable')
+        elements = [self.convert(e) for e in node.get("elements", [])]
+        var_name = node.get("variable")
         return MapProjection(
             variable=Variable(name=var_name) if var_name else None,
             elements=cast(List[MapElement], [e for e in elements if e]),
-            include_all=node.get('include_all', False)
+            include_all=node.get("include_all", False),
         )
-    
+
     def _convert_MapElement(self, node: dict) -> MapElement:
         """Convert MapElement node."""
         return MapElement(
-            property=node.get('property'),
-            expression=cast(Optional[Expression], self.convert(node.get('expression'))),
-            all_properties=node.get('all_properties', False)
+            property=node.get("property"),
+            expression=cast(
+                Optional[Expression], self.convert(node.get("expression"))
+            ),
+            all_properties=node.get("all_properties", False),
         )
-    
+
     def _convert_CaseExpression(self, node: dict) -> CaseExpression:
         """Convert CaseExpression node."""
-        when_clauses = [self.convert(w) for w in node.get('when_clauses', [])]
+        when_clauses = [self.convert(w) for w in node.get("when_clauses", [])]
         return CaseExpression(
-            expression=cast(Optional[Expression], self.convert(node.get('expression'))),
-            when_clauses=cast(List[WhenClause], [w for w in when_clauses if w]),
-            else_expr=cast(Optional[Expression], self.convert(node.get('else')))
+            expression=cast(
+                Optional[Expression], self.convert(node.get("expression"))
+            ),
+            when_clauses=cast(
+                List[WhenClause], [w for w in when_clauses if w]
+            ),
+            else_expr=cast(
+                Optional[Expression], self.convert(node.get("else"))
+            ),
         )
-    
+
     def _convert_SearchedCase(self, node: dict) -> CaseExpression:
         """Convert SearchedCase to CaseExpression."""
-        when_clauses = [self.convert(w) for w in node.get('when', [])]
-        else_node = node.get('else')
+        when_clauses = [self.convert(w) for w in node.get("when", [])]
+        else_node = node.get("else")
         else_expr = None
         if else_node:
-            if isinstance(else_node, dict) and else_node.get('type') == 'Else':
-                else_expr = self.convert(else_node.get('value'))
+            if isinstance(else_node, dict) and else_node.get("type") == "Else":
+                else_expr = self.convert(else_node.get("value"))
             else:
                 else_expr = self.convert(else_node)
         return CaseExpression(
             expression=None,  # Searched case has no test expression
-            when_clauses=cast(List[WhenClause], [w for w in when_clauses if w]),
-            else_expr=cast(Optional[Expression], else_expr)
+            when_clauses=cast(
+                List[WhenClause], [w for w in when_clauses if w]
+            ),
+            else_expr=cast(Optional[Expression], else_expr),
         )
-    
+
     def _convert_SimpleCase(self, node: dict) -> CaseExpression:
         """Convert SimpleCase to CaseExpression."""
-        when_clauses = [self.convert(w) for w in node.get('when', [])]
-        else_node = node.get('else')
+        when_clauses = [self.convert(w) for w in node.get("when", [])]
+        else_node = node.get("else")
         else_expr = None
         if else_node:
-            if isinstance(else_node, dict) and else_node.get('type') == 'Else':
-                else_expr = self.convert(else_node.get('value'))
+            if isinstance(else_node, dict) and else_node.get("type") == "Else":
+                else_expr = self.convert(else_node.get("value"))
             else:
                 else_expr = self.convert(else_node)
         return CaseExpression(
-            expression=cast(Optional[Expression], self.convert(node.get('operand'))),
-            when_clauses=cast(List[WhenClause], [w for w in when_clauses if w]),
-            else_expr=cast(Optional[Expression], else_expr)
+            expression=cast(
+                Optional[Expression], self.convert(node.get("operand"))
+            ),
+            when_clauses=cast(
+                List[WhenClause], [w for w in when_clauses if w]
+            ),
+            else_expr=cast(Optional[Expression], else_expr),
         )
-    
+
     def _convert_Else(self, node: dict):
         """Convert Else node - just extract the value."""
-        return self.convert(node.get('value'))
-    
+        return self.convert(node.get("value"))
+
     def _convert_SimpleWhen(self, node: dict) -> WhenClause:
         """Convert SimpleWhen to WhenClause."""
         return WhenClause(
-            condition=cast(Optional[Expression], self.convert(node.get('value'))),
-            result=cast(Optional[Expression], self.convert(node.get('result')))
+            condition=cast(
+                Optional[Expression], self.convert(node.get("value"))
+            ),
+            result=cast(
+                Optional[Expression], self.convert(node.get("result"))
+            ),
         )
-    
+
     def _convert_SearchedWhen(self, node: dict) -> WhenClause:
         """Convert SearchedWhen to WhenClause."""
         return WhenClause(
-            condition=cast(Optional[Expression], self.convert(node.get('condition'))),
-            result=cast(Optional[Expression], self.convert(node.get('result')))
+            condition=cast(
+                Optional[Expression], self.convert(node.get("condition"))
+            ),
+            result=cast(
+                Optional[Expression], self.convert(node.get("result"))
+            ),
         )
-    
+
     def _convert_Reduce(self, node: dict) -> Reduce:
         """Convert Reduce node."""
-        acc_name = node.get('accumulator')
-        var_name = node.get('variable')
+        acc_name = node.get("accumulator")
+        var_name = node.get("variable")
         return Reduce(
             accumulator=Variable(name=acc_name) if acc_name else None,
-            initial=cast(Optional[Expression], self.convert(node.get('initial'))),
+            initial=cast(
+                Optional[Expression], self.convert(node.get("initial"))
+            ),
             variable=Variable(name=var_name) if var_name else None,
-            list_expr=cast(Optional[Expression], self.convert(node.get('list'))),
-            map_expr=cast(Optional[Expression], self.convert(node.get('map')))
+            list_expr=cast(
+                Optional[Expression], self.convert(node.get("list"))
+            ),
+            map_expr=cast(Optional[Expression], self.convert(node.get("map"))),
         )
-    
+
     def _convert_All(self, node: dict) -> Quantifier:
         """Convert All quantifier."""
-        var_name = node.get('variable')
+        var_name = node.get("variable")
         return Quantifier(
             quantifier="ALL",
             variable=Variable(name=var_name) if var_name else None,
-            list_expr=cast(Optional[Expression], self.convert(node.get('list'))),
-            where=cast(Optional[Expression], self.convert(node.get('where')))
+            list_expr=cast(
+                Optional[Expression], self.convert(node.get("list"))
+            ),
+            where=cast(Optional[Expression], self.convert(node.get("where"))),
         )
-    
+
     def _convert_Any(self, node: dict) -> Quantifier:
         """Convert Any quantifier."""
-        var_name = node.get('variable')
+        var_name = node.get("variable")
         return Quantifier(
             quantifier="ANY",
             variable=Variable(name=var_name) if var_name else None,
-            list_expr=cast(Optional[Expression], self.convert(node.get('list'))),
-            where=cast(Optional[Expression], self.convert(node.get('where')))
+            list_expr=cast(
+                Optional[Expression], self.convert(node.get("list"))
+            ),
+            where=cast(Optional[Expression], self.convert(node.get("where"))),
         )
-    
+
     def _convert_None(self, node: dict) -> Quantifier:
         """Convert None quantifier."""
-        var_name = node.get('variable')
+        var_name = node.get("variable")
         return Quantifier(
             quantifier="NONE",
             variable=Variable(name=var_name) if var_name else None,
-            list_expr=cast(Optional[Expression], self.convert(node.get('list'))),
-            where=cast(Optional[Expression], self.convert(node.get('where')))
+            list_expr=cast(
+                Optional[Expression], self.convert(node.get("list"))
+            ),
+            where=cast(Optional[Expression], self.convert(node.get("where"))),
         )
-    
+
     def _convert_Single(self, node: dict) -> Quantifier:
         """Convert Single quantifier."""
-        var_name = node.get('variable')
+        var_name = node.get("variable")
         return Quantifier(
             quantifier="SINGLE",
             variable=Variable(name=var_name) if var_name else None,
-            list_expr=cast(Optional[Expression], self.convert(node.get('list'))),
-            where=cast(Optional[Expression], self.convert(node.get('where')))
+            list_expr=cast(
+                Optional[Expression], self.convert(node.get("list"))
+            ),
+            where=cast(Optional[Expression], self.convert(node.get("where"))),
         )
-    
+
     def _convert_OrderByItem(self, node: dict) -> OrderByItem:
         """Convert OrderByItem node."""
         return OrderByItem(
-            expression=cast(Optional[Expression], self.convert(node.get('expression'))),
-            ascending=node.get('ascending', True)
+            expression=cast(
+                Optional[Expression], self.convert(node.get("expression"))
+            ),
+            ascending=node.get("ascending", True),
         )
-    
+
     def _convert_WhereClause(self, node: dict) -> Optional[Expression]:
         """Convert WhereClause - just return the condition."""
-        return cast(Optional[Expression], self.convert(node.get('condition')))
-    
+        return cast(Optional[Expression], self.convert(node.get("condition")))
+
     def _convert_ReturnBody(self, node: dict) -> Optional[ASTNode]:
         """Convert ReturnBody - extract items."""
         # This is typically handled by ReturnStatement converter
@@ -2516,10 +3062,11 @@ class ASTConverter:
 # Validation Implementation
 # ============================================================================
 
+
 def _collect_defined_variables(node: ASTNode) -> Set[str]:
     """Collect all variables defined in patterns and other binding contexts."""
     defined = set()
-    
+
     # Variables from MATCH patterns
     for match in node.find_all(Match):
         if match.pattern:
@@ -2528,12 +3075,14 @@ def _collect_defined_variables(node: ASTNode) -> Set[str]:
                 for elem in path.elements:
                     if isinstance(elem, NodePattern) and elem.variable:
                         defined.add(elem.variable.name)
-                    elif isinstance(elem, RelationshipPattern) and elem.variable:
+                    elif (
+                        isinstance(elem, RelationshipPattern) and elem.variable
+                    ):
                         defined.add(elem.variable.name)
                 # Path variable
                 if path.variable:
                     defined.add(path.variable.name)
-    
+
     # Variables from CREATE patterns
     for create in node.find_all(Create):
         if create.pattern:
@@ -2541,14 +3090,16 @@ def _collect_defined_variables(node: ASTNode) -> Set[str]:
                 for elem in path.elements:
                     if isinstance(elem, NodePattern) and elem.variable:
                         defined.add(elem.variable.name)
-                    elif isinstance(elem, RelationshipPattern) and elem.variable:
+                    elif (
+                        isinstance(elem, RelationshipPattern) and elem.variable
+                    ):
                         defined.add(elem.variable.name)
-    
+
     # Variables from UNWIND
     for unwind in node.find_all(Unwind):
         if unwind.alias:
             defined.add(unwind.alias)
-    
+
     # Variables from WITH (creates new scope)
     for with_clause in node.find_all(With):
         for item in with_clause.items:
@@ -2556,67 +3107,71 @@ def _collect_defined_variables(node: ASTNode) -> Set[str]:
                 defined.add(item.alias)
             elif isinstance(item.expression, Variable):
                 defined.add(item.expression.name)
-    
+
     return defined
 
 
 def _collect_referenced_variables(node: ASTNode) -> Set[str]:
     """Collect all variables referenced in expressions."""
     referenced = set()
-    
+
     for var in node.find_all(Variable):
         referenced.add(var.name)
-    
+
     # Also check property lookups with legacy variable field
     for prop in node.find_all(PropertyLookup):
         if prop.variable:
             referenced.add(prop.variable.name)
-    
+
     return referenced
 
 
-def _validate_undefined_variables(node: ASTNode, result: ValidationResult) -> None:
+def _validate_undefined_variables(
+    node: ASTNode, result: ValidationResult
+) -> None:
     """Check for references to undefined variables."""
     if not isinstance(node, Query):
         return
-    
+
     defined = _collect_defined_variables(node)
     referenced = _collect_referenced_variables(node)
-    
+
     undefined = referenced - defined
     for var in sorted(undefined):
         result.add_issue(
             ValidationSeverity.ERROR,
             f"Variable '{var}' is used but never defined",
             suggestion=f"Add '{var}' to a MATCH or CREATE pattern, or define it with UNWIND/WITH",
-            code="UNDEFINED_VAR"
+            code="UNDEFINED_VAR",
         )
 
 
-def _validate_unused_variables(node: ASTNode, result: ValidationResult) -> None:
+def _validate_unused_variables(
+    node: ASTNode, result: ValidationResult
+) -> None:
     """Check for variables that are defined but never used."""
     if not isinstance(node, Query):
         return
-    
+
     defined = _collect_defined_variables(node)
     referenced = _collect_referenced_variables(node)
-    
+
     # Also check what's returned
     returned = set()
     for ret in node.find_all(Return):
         for item in ret.items:
             if isinstance(item.expression, Variable):
                 returned.add(item.expression.name)
-    
+
     used = referenced | returned
     unused = defined - used
-    
+
     for var in sorted(unused):
         result.add_issue(
             ValidationSeverity.WARNING,
             f"Variable '{var}' is defined but never used",
             suggestion=f"Remove '{var}' from the pattern or use it in WHERE/RETURN",
-            code="UNUSED_VAR"
+            code="UNUSED_VAR",
         )
 
 
@@ -2625,105 +3180,132 @@ def _validate_missing_labels(node: ASTNode, result: ValidationResult) -> None:
     for match in node.find_all(Match):
         if not match.pattern:
             continue
-        
+
         for path in match.pattern.paths:
             for elem in path.elements:
                 if isinstance(elem, NodePattern):
                     if not elem.labels and not elem.properties:
-                        var_name = elem.variable.name if elem.variable else "(anonymous)"
+                        var_name = (
+                            elem.variable.name
+                            if elem.variable
+                            else "(anonymous)"
+                        )
                         result.add_issue(
                             ValidationSeverity.WARNING,
                             f"Node pattern '{var_name}' has no labels or properties",
                             node_type="Match",
                             suggestion="Add a label to improve query performance via index usage",
-                            code="MISSING_LABEL"
+                            code="MISSING_LABEL",
                         )
 
 
-def _validate_unreachable_conditions(node: ASTNode, result: ValidationResult) -> None:
+def _validate_unreachable_conditions(
+    node: ASTNode, result: ValidationResult
+) -> None:
     """Check for unreachable WHERE conditions (like WHERE false)."""
     for match in node.find_all(Match):
         if match.where:
-            if isinstance(match.where, BooleanLiteral) and not match.where.value:
+            if (
+                isinstance(match.where, BooleanLiteral)
+                and not match.where.value
+            ):
                 result.add_issue(
                     ValidationSeverity.WARNING,
                     "WHERE clause is always false - this query will never return results",
                     node_type="Match",
                     suggestion="Remove the WHERE false condition or fix the logic",
-                    code="UNREACHABLE_MATCH"
+                    code="UNREACHABLE_MATCH",
                 )
-            
+
             # Check for contradictory literal comparisons
             _check_contradictory_comparisons(match.where, result)
 
 
-def _check_contradictory_comparisons(expr: Any, result: ValidationResult) -> None:
+def _check_contradictory_comparisons(
+    expr: Any, result: ValidationResult
+) -> None:
     """Recursively check for contradictory comparisons with literals."""
     # Check for Comparison class (not ComparisonExpression)
-    if expr.__class__.__name__ == 'Comparison':
+    if expr.__class__.__name__ == "Comparison":
         # Check if both sides are literals
-        left_is_literal = expr.left.__class__.__name__ in ('IntegerLiteral', 'FloatLiteral', 'StringLiteral', 'BooleanLiteral')
-        right_is_literal = expr.right.__class__.__name__ in ('IntegerLiteral', 'FloatLiteral', 'StringLiteral', 'BooleanLiteral')
-        
+        left_is_literal = expr.left.__class__.__name__ in (
+            "IntegerLiteral",
+            "FloatLiteral",
+            "StringLiteral",
+            "BooleanLiteral",
+        )
+        right_is_literal = expr.right.__class__.__name__ in (
+            "IntegerLiteral",
+            "FloatLiteral",
+            "StringLiteral",
+            "BooleanLiteral",
+        )
+
         if left_is_literal and right_is_literal:
             left_val = expr.left.value
             right_val = expr.right.value
             op = expr.operator
-            
+
             # Evaluate the comparison
             try:
-                if op == '>':
+                if op == ">":
                     always_false = not (left_val > right_val)
-                elif op == '<':
+                elif op == "<":
                     always_false = not (left_val < right_val)
-                elif op == '>=':
+                elif op == ">=":
                     always_false = not (left_val >= right_val)
-                elif op == '<=':
+                elif op == "<=":
                     always_false = not (left_val <= right_val)
-                elif op == '=':
+                elif op == "=":
                     always_false = not (left_val == right_val)
-                elif op == '<>':
+                elif op == "<>":
                     always_false = not (left_val != right_val)
                 else:
                     always_false = False
-                
+
                 if always_false:
                     result.add_issue(
                         ValidationSeverity.ERROR,
                         f"Contradictory comparison: {left_val} {op} {right_val} is always false",
                         node_type="ComparisonExpression",
                         suggestion="Review the comparison logic",
-                        code="CONTRADICTORY_COMPARISON"
+                        code="CONTRADICTORY_COMPARISON",
                     )
             except (TypeError, ValueError):
                 # Can't compare these types
                 pass
-    
+
     # Recursively check child expressions
-    if hasattr(expr, '__dict__'):
+    if hasattr(expr, "__dict__"):
         for attr_value in expr.__dict__.values():
             if isinstance(attr_value, list):
                 for item in attr_value:
                     _check_contradictory_comparisons(item, result)
-            elif hasattr(attr_value, '__dict__'):
+            elif hasattr(attr_value, "__dict__"):
                 _check_contradictory_comparisons(attr_value, result)
 
 
-def _validate_return_all_with_limit(node: ASTNode, result: ValidationResult) -> None:
+def _validate_return_all_with_limit(
+    node: ASTNode, result: ValidationResult
+) -> None:
     """Check for RETURN * with LIMIT (may return unexpected results)."""
     for ret in node.find_all(Return):
-        has_return_all = any(isinstance(item.expression, ReturnAll) for item in ret.items)
+        has_return_all = any(
+            isinstance(item.expression, ReturnAll) for item in ret.items
+        )
         if has_return_all and ret.limit:
             result.add_issue(
                 ValidationSeverity.INFO,
                 "Using RETURN * with LIMIT may return arbitrary results",
                 node_type="Return",
                 suggestion="Consider adding ORDER BY to make results deterministic",
-                code="NONDETERMINISTIC_LIMIT"
+                code="NONDETERMINISTIC_LIMIT",
             )
 
 
-def _validate_delete_without_detach(node: ASTNode, result: ValidationResult) -> None:
+def _validate_delete_without_detach(
+    node: ASTNode, result: ValidationResult
+) -> None:
     """Check for DELETE of nodes that might have relationships."""
     for delete in node.find_all(Delete):
         if not delete.detach and delete.expressions:
@@ -2735,11 +3317,13 @@ def _validate_delete_without_detach(node: ASTNode, result: ValidationResult) -> 
                         f"Deleting node '{expr.name}' without DETACH may fail if it has relationships",
                         node_type="Delete",
                         suggestion=f"Use DETACH DELETE to automatically remove relationships",
-                        code="MISSING_DETACH"
+                        code="MISSING_DETACH",
                     )
 
 
-def _validate_expensive_patterns(node: ASTNode, result: ValidationResult) -> None:
+def _validate_expensive_patterns(
+    node: ASTNode, result: ValidationResult
+) -> None:
     """Check for potentially expensive query patterns."""
     # Check for multiple MATCH clauses without connecting variables
     matches = node.find_all(Match)
@@ -2752,10 +3336,13 @@ def _validate_expensive_patterns(node: ASTNode, result: ValidationResult) -> Non
                     for elem in path.elements:
                         if isinstance(elem, NodePattern) and elem.variable:
                             vars_in_match.add(elem.variable.name)
-                        elif isinstance(elem, RelationshipPattern) and elem.variable:
+                        elif (
+                            isinstance(elem, RelationshipPattern)
+                            and elem.variable
+                        ):
                             vars_in_match.add(elem.variable.name)
                 match_vars.append(vars_in_match)
-        
+
         # Check if consecutive matches share variables
         for i in range(len(match_vars) - 1):
             if not match_vars[i] & match_vars[i + 1]:
@@ -2764,10 +3351,10 @@ def _validate_expensive_patterns(node: ASTNode, result: ValidationResult) -> Non
                     "Multiple MATCH clauses with no shared variables may create a Cartesian product",
                     node_type="Match",
                     suggestion="Ensure MATCH patterns share variables or add WHERE conditions to connect them",
-                    code="CARTESIAN_PRODUCT"
+                    code="CARTESIAN_PRODUCT",
                 )
                 break  # Only report once
-    
+
     # Check for variable-length paths without upper bound
     for rel in node.find_all(RelationshipPattern):
         if rel.length and rel.length.unbounded:
@@ -2776,10 +3363,12 @@ def _validate_expensive_patterns(node: ASTNode, result: ValidationResult) -> Non
                 "Unbounded variable-length relationship may cause performance issues",
                 node_type="RelationshipPattern",
                 suggestion="Add an upper bound to the relationship length (e.g., *1..10)",
-                code="UNBOUNDED_RELATIONSHIP"
+                code="UNBOUNDED_RELATIONSHIP",
             )
-    
-    def _convert_generic(self, node: dict, node_type: str) -> Optional[ASTNode]:
+
+    def _convert_generic(
+        self, node: dict, node_type: str
+    ) -> Optional[ASTNode]:
         """Generic converter for unknown node types."""
         # Try to find a matching class
         node_class = globals().get(node_type)
@@ -2787,7 +3376,7 @@ def _validate_expensive_patterns(node: ASTNode, result: ValidationResult) -> Non
             # Convert all fields
             converted_fields = {}
             for key, value in node.items():
-                if key == 'type':
+                if key == "type":
                     continue
                 if isinstance(value, dict):
                     converted_fields[key] = self.convert(value)
@@ -2795,12 +3384,12 @@ def _validate_expensive_patterns(node: ASTNode, result: ValidationResult) -> Non
                     converted_fields[key] = [self.convert(v) for v in value]
                 else:
                     converted_fields[key] = value
-            
+
             try:
                 return node_class(**converted_fields)
             except Exception:
                 pass
-        
+
         return None
 
 
@@ -2808,16 +3397,17 @@ def _validate_expensive_patterns(node: ASTNode, result: ValidationResult) -> Non
 # Utility Functions
 # ============================================================================
 
+
 def convert_ast(raw_ast: Any) -> Optional[ASTNode]:
     """
     Convert a dictionary-based AST to typed Pydantic models.
-    
+
     Args:
         raw_ast: Dictionary or other value from grammar parser
-        
+
     Returns:
         Typed ASTNode or None
-        
+
     Example:
         >>> from pycypher.grammar_parser import GrammarParser
         >>> parser = GrammarParser()
@@ -2832,13 +3422,13 @@ def convert_ast(raw_ast: Any) -> Optional[ASTNode]:
 def traverse_ast(node: ASTNode) -> Iterator[ASTNode]:
     """
     Traverse an AST depth-first.
-    
+
     Args:
         node: Root AST node
-        
+
     Yields:
         Each node in the tree
-        
+
     Example:
         >>> for ast_node in traverse_ast(typed_ast):
         ...     print(ast_node.__class__.__name__)
@@ -2849,14 +3439,14 @@ def traverse_ast(node: ASTNode) -> Iterator[ASTNode]:
 def find_nodes(node: ASTNode, node_type: type) -> List[ASTNode]:
     """
     Find all nodes of a specific type.
-    
+
     Args:
         node: Root AST node
         node_type: Type to search for
-        
+
     Returns:
         List of matching nodes
-        
+
     Example:
         >>> matches = find_nodes(typed_ast, Match)
         >>> print(f"Found {len(matches)} MATCH clauses")
@@ -2867,11 +3457,11 @@ def find_nodes(node: ASTNode, node_type: type) -> List[ASTNode]:
 def print_ast(node: ASTNode, indent: int = 0) -> None:
     """
     Pretty print an AST.
-    
+
     Args:
         node: AST node to print
         indent: Initial indentation level
-        
+
     Example:
         >>> print_ast(typed_ast)
     """
@@ -2882,23 +3472,24 @@ def print_ast(node: ASTNode, indent: int = 0) -> None:
 # Validation Framework - More Cowbell! 🔔
 # ============================================================================
 
+
 def validate_ast(node: ASTNode, strict: bool = False) -> ValidationResult:
     """
     Validate an AST for common issues and anti-patterns.
-    
+
     This function performs comprehensive validation including:
     - Undefined variable detection
     - Unreachable code detection
     - Performance anti-patterns
     - Type consistency checks
-    
+
     Args:
         node: Root AST node to validate
         strict: If True, treat warnings as errors
-        
+
     Returns:
         ValidationResult containing all issues found
-        
+
     Example:
         >>> result = validate_ast(typed_ast)
         >>> if not result.is_valid:
@@ -2907,7 +3498,7 @@ def validate_ast(node: ASTNode, strict: bool = False) -> ValidationResult:
         ...         print(f"Error: {error.message}")
     """
     result = ValidationResult()
-    
+
     # Run all validators
     _validate_undefined_variables(node, result)
     _validate_unused_variables(node, result)
@@ -2916,12 +3507,11 @@ def validate_ast(node: ASTNode, strict: bool = False) -> ValidationResult:
     _validate_return_all_with_limit(node, result)
     _validate_delete_without_detach(node, result)
     _validate_expensive_patterns(node, result)
-    
+
     # Convert warnings to errors in strict mode
     if strict:
         for issue in result.issues:
             if issue.severity == ValidationSeverity.WARNING:
                 issue.severity = ValidationSeverity.ERROR
-    
-    return result
 
+    return result

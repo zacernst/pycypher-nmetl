@@ -1,153 +1,44 @@
-NMETL Package
-=============
+NMETL API
+=========
 
-The NMETL package provides the core functionality for declarative ETL operations.
+The NMETL package provides ETL pipeline functionality for network-based data transformation.
+
+.. automodule:: nmetl
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 Core Modules
 ------------
 
-Session Management
-~~~~~~~~~~~~~~~~~~
+Pipeline
+~~~~~~~~
 
-.. automodule:: nmetl.session
+.. automodule:: nmetl.pipeline
    :members:
    :undoc-members:
    :show-inheritance:
 
-Configuration
-~~~~~~~~~~~~~
-
-.. automodule:: nmetl.configuration
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-.. automodule:: nmetl.config
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Data Sources
-~~~~~~~~~~~~
-
-.. automodule:: nmetl.data_source
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-.. automodule:: nmetl.data_source_config
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-.. automodule:: nmetl.data_asset
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Triggers and Transformations
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. automodule:: nmetl.trigger
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Queue Processing
-~~~~~~~~~~~~~~~~
-
-.. automodule:: nmetl.queue_processor
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-.. automodule:: nmetl.queue_generator
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Threading
+Transform
 ~~~~~~~~~
 
-.. automodule:: nmetl.thread_manager
+.. automodule:: nmetl.transform
    :members:
    :undoc-members:
    :show-inheritance:
 
-.. automodule:: nmetl.threaded_queue_generator
+Load
+~~~~
+
+.. automodule:: nmetl.load
    :members:
    :undoc-members:
    :show-inheritance:
 
-.. automodule:: nmetl.worker_context
-   :members:
-   :undoc-members:
-   :show-inheritance:
+Extract
+~~~~~~~
 
-Data Types and Messages
-~~~~~~~~~~~~~~~~~~~~~~~
-
-.. automodule:: nmetl.data_types
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-.. automodule:: nmetl.message_types
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Utilities
-~~~~~~~~~
-
-.. automodule:: nmetl.writer
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-.. automodule:: nmetl.dump_tables
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Monitoring
-~~~~~~~~~~
-
-.. automodule:: nmetl.prometheus_metrics
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-.. automodule:: nmetl.logger
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Enumerations
-~~~~~~~~~~~~
-
-.. automodule:: nmetl.session_enums
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Exceptions
-~~~~~~~~~~
-
-.. automodule:: nmetl.exceptions
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-CLI
-~~~
-
-.. automodule:: nmetl.cli
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-.. automodule:: nmetl.nmetl_cli
+.. automodule:: nmetl.extract
    :members:
    :undoc-members:
    :show-inheritance:

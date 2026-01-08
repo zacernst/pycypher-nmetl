@@ -1,147 +1,75 @@
-# Documentation
+# NMETL Documentation
 
 This directory contains the Sphinx documentation for the NMETL project.
 
-## Building the Documentation
+## Building Documentation
 
-### Prerequisites
-
-Install the required packages:
+To build the HTML documentation:
 
 ```bash
-pip install sphinx sphinx-rtd-theme myst-parser
+cd /pycypher-nmetl/docs
+LC_ALL=C.UTF-8 uv run sphinx-build -b html . _build/html
 ```
 
-### Build HTML Documentation
-
-From this directory, run:
+Or using the Makefile:
 
 ```bash
-make html
+cd /pycypher-nmetl/docs
+LC_ALL=C.UTF-8 make html
 ```
 
-The generated documentation will be in `_build/html/`. Open `_build/html/index.html` in your browser.
+## Viewing Documentation
 
-### Build PDF Documentation
-
-```bash
-make latexpdf
-```
-
-### Clean Build
+After building, open `_build/html/index.html` in your web browser:
 
 ```bash
-make clean
+$BROWSER _build/html/index.html
 ```
 
 ## Documentation Structure
 
-- `index.rst` - Main documentation entry point
+- `index.rst` - Main entry point
+- `getting_started.rst` - Installation and basic usage
+- `api/` - API reference documentation for all packages
+- `tutorials/` - Step-by-step tutorials
+- `user_guide/` - In-depth user guides
+- `developer_guide/` - Developer documentation
 - `conf.py` - Sphinx configuration
-- `nmetl_tutorial.md` - Getting started tutorial
-- `quickref.rst` - Quick reference guide
-- `examples.rst` - Code examples
-- `GRAMMAR_PARSER_GUIDE.md` - Comprehensive grammar parser guide
-- `AST_VARIABLE_REPRESENTATION.md` - AST Variable usage and migration guide
-- `SAT_SOLVER_INTEGRATION.md` - SAT solver integration guide
-- `api/` - API reference documentation
-  - `index.rst` - API overview
-  - `nmetl.rst` - NMETL package API
-  - `pycypher.rst` - PyCypher package API
-  - `shared.rst` - Shared utilities API
-  - `fastopendata.rst` - FastOpenData package API
-- `TEST_COVERAGE_CYPHER_QUERY_SOLVER.md` - Testing documentation
+- `_static/` - Static files (CSS, images, etc.)
+- `_templates/` - Custom Sphinx templates
 
-## Adding New Documentation
+## Adding Content
 
-### Add a New Tutorial
+### Creating a New Tutorial
 
-1. Create a new `.rst` or `.md` file in the `docs/` directory
-2. Add it to the appropriate `toctree` in `index.rst`
+1. Create a new `.rst` file in `tutorials/`
+2. Add it to the `toctree` in `tutorials/index.rst`
 
-### Add API Documentation for a New Module
+### Documenting a New Module
 
-1. Edit the appropriate file in `api/` (e.g., `api/nmetl.rst`)
-2. Add an `automodule` directive:
+1. Add an `automodule` directive in the appropriate API file
+2. Ensure the module is in the `sys.path` (see `conf.py`)
 
-```rst
-.. automodule:: nmetl.new_module
-   :members:
-   :undoc-members:
-   :show-inheritance:
-```
+### Updating API Documentation
 
-### Add a New Package
-
-1. Create a new `.rst` file in `api/` (e.g., `api/newpackage.rst`)
-2. Add it to `api/index.rst` in the toctree
-3. Document all modules in the package
-
-## Documentation Guidelines
-
-- Use clear, concise language
-- Include code examples for all major features
-- Document all public APIs with docstrings
-- Keep examples up-to-date with the code
-- Use semantic markup (code blocks, cross-references, etc.)
-
-## Cross-References
-
-Use Sphinx cross-references to link between pages:
-
-```rst
-:doc:`nmetl_tutorial`           # Link to document
-:ref:`section-label`             # Link to section
-:class:`nmetl.Session`           # Link to class
-:func:`pycypher.parse`           # Link to function
-:mod:`pycypher.fact_collection` # Link to module
-```
-
-## Docstring Format
-
-Use Google-style or NumPy-style docstrings:
-
-```python
-def example_function(param1, param2):
-    """
-    Brief description of function.
-    
-    More detailed description if needed.
-    
-    Args:
-        param1: Description of param1
-        param2: Description of param2
-        
-    Returns:
-        Description of return value
-        
-    Example:
-        >>> example_function(1, 2)
-        3
-    """
-    return param1 + param2
-```
-
-## Auto-generated Documentation
-
-The API reference documentation is automatically generated from docstrings in the source code using Sphinx's `autodoc` extension. To update:
+The API documentation is automatically generated from docstrings. To update:
 
 1. Update docstrings in source code
-2. Rebuild documentation with `make html`
+2. Rebuild the documentation
 
-## Viewing Documentation Locally
+## Dependencies
 
-After building, you can view the documentation by opening:
+Sphinx documentation requires:
 
-```
-_build/html/index.html
-```
+- sphinx
+- sphinx_rtd_theme
+- myst-parser (for Markdown support)
+- autodoc/napoleon extensions (for Google-style docstrings)
 
-Or use Python's built-in server:
+All dependencies are installed with the project via `uv sync`.
 
-```bash
-cd _build/html
-python -m http.server 8000
-```
+## Known Issues
 
-Then open http://localhost:8000 in your browser.
+- Some placeholder modules (e.g., `pycypher.validation`, `pycypher.solver`) generate warnings
+- These warnings are expected until those modules are implemented
+- The build still succeeds and generates complete documentation
