@@ -1,11 +1,212 @@
-This project uses uv to manage virtual environments. Please use uv to preface any commands that involve Python package installations or virtual environment activations. For example, use `uv install <package>` to install a package within the uv-managed environment.
+# PyCypher-NMETL Development Guide
 
-Use uv to run python scripts to ensure they execute within the correct virtual environment. For example, use `uv python script.py` to run a Python script.
+## Project Architecture
 
-When adding new dependencies to the project, make sure to update the uv configuration files accordingly to include these dependencies in the virtual environment.
+This is a **monorepo workspace** containing four interdependent packages:
+- **`packages/pycypher/`** - Cypher query parser, AST models, fact collections, and SAT solver integration
+- **`packages/nmetl/`** - Core ETL framework with sessions, triggers, and queue processors  
+- **`packages/shared/`** - Common utilities, logging, telemetry
+- **`packages/fastopendata/`** - Open data source integrations (Census, OpenStreetMap)
 
-This project uses ty as the type checker for Python code. Please ensure that all Python files pass ty checks before committing any changes. Run `uv run ty check` to verify type correctness in the codebase. All methods and functions should have appropriate type annotations to maintain type safety throughout the project.
+**Dependency order**: `shared` → `pycypher` → `nmetl` → `fastopendata`
 
-This project uses Sphinx to generate documentation. Please ensure that any new modules, classes, or functions are documented with docstrings in accordance with Sphinx conventions. Docstrings should be in Google format.
+Key architectural concepts:
+- **Fact-based data model**: All data stored as immutable facts (nodes, relationships, attributes)
+- **Declarative triggers**: Python functions with Cypher queries and type hints that automatically compute derived data
+- **Queue processors**: Multi-threaded pipeline stages (RawDataProcessor → FactGeneratedQueueProcessor → CheckFactAgainstTriggersQueueProcessor → TriggeredLookupProcessor)
+- **Multiple backends**: FoundationDB, RocksDB, etcd3, SimpleFactCollection (in-memory)
 
-When making significant changes to the codebase, please update the Sphinx documentation by running `uv run sphinx-build -b html docs/source docs/build` to regenerate the HTML documentation. Review the generated documentation to ensure that all changes are accurately reflected.
+## Development Workflow
+
+### Environment Management
+**CRITICAL**: Use `uv` for ALL Python operations - it manages the workspace virtual environment.
+
+```bash
+# Install dependencies
+uv sync
+
+# Run Python scripts
+uv run python script.py
+
+# Install new package to workspace
+uv pip install <package>
+
+# Add dependency to a package
+# Edit packages/<package>/pyproject.toml, then:
+uv sync
+```
+
+### Build and Install
+```bash
+# Full build from scratch
+make all                    # format → veryclean → fastopendata → docs → test
+
+# Install all packages in dev mode
+make install                # Builds and installs pycypher, nmetl, fastopendata
+
+# Build individual packages
+make pycypher              # Build only pycypher
+make nmetl                 # Build pycypher + nmetl  
+make fastopendata          # Build all three
+```
+
+The Makefile handles build ordering and dependencies automatically. Use it instead of manual `pip install -e` commands.
+
+### Testing
+```bash
+# Run all tests
+uv run pytest
+
+# Run with coverage
+make coverage              # Generates HTML report in coverage_report/
+
+# Run specific test file
+uv run pytest tests/test_ast_models.py
+
+# Run tests in parallel
+uv run pytest -n 4
+```
+
+**Important**: Tests marked with `@pytest.mark.fact_collection` require a running FoundationDB instance.
+
+### Type Checking
+Use `ty` (NOT mypy) for type checking:
+
+```bash
+uv run ty check
+```
+
+**All functions and methods MUST have type annotations**. The project uses Python 3.14.0a6+freethreaded.
+
+### Code Formatting
+```bash
+make format                # Runs isort + ruff format
+```
+
+Ruff config is in `pyproject.toml` (root) with `select = ["ALL"]` - highly strict linting enabled.
+
+## Key Patterns and Conventions
+
+### 1. Workspace Package References
+Packages reference each other via workspace sources in root `pyproject.toml`:
+
+```toml
+[tool.uv.sources]
+pycypher = { workspace = true }
+nmetl = { workspace = true }
+fastopendata = { workspace = true }
+shared = { workspace = true }
+```
+
+When adding cross-package imports, ensure the dependency is declared in the consuming package's `pyproject.toml`.
+
+### 2. Fact Model Pattern
+Facts are immutable, atomic data points. Never modify facts - only add new ones:
+
+```python
+from pycypher.fact import (
+    FactNodeHasLabel,
+    FactNodeHasAttributeWithValue,
+    FactRelationshipHasSourceNode,
+)
+
+# Create facts, never mutate
+FactNodeHasLabel(node_id="person1", label="Person")
+FactNodeHasAttributeWithValue(node_id="person1", attribute="age", value=30)
+```
+
+### 3. Trigger Definition Pattern
+Triggers MUST use proper type hints for return values:
+
+```python
+from nmetl.trigger import VariableAttribute, NodeRelationship
+
+@session.trigger("MATCH (c:City) RETURN c.population AS pop")
+def classify_city(pop) -> VariableAttribute["c", "size_class"]:
+    """Type hints specify variable and attribute name."""
+    return "large" if pop > 1000000 else "medium"
+
+@session.trigger("MATCH (p:Person)-[:WORKS_AT]->(c:Company) RETURN p.id, c.id")  
+def relationship_trigger(p_id, c_id) -> NodeRelationship["p", "MANAGES", "c"]:
+    """Creates a relationship between matched nodes."""
+    return True
+```
+
+The generic parameters in type hints (`["c", "size_class"]`, `["p", "MANAGES", "c"]`) are CRITICAL - they map results to graph structure.
+
+### 4. Queue Processor Extension
+When adding new processors, inherit from `QueueProcessor` and implement `_process_item`:
+
+```python
+from nmetl.queue_processor import QueueProcessor
+
+class CustomProcessor(QueueProcessor):
+    def _process_item(self, item, worker_context):
+        """Process single queue item. Must handle exceptions."""
+        # Your logic here
+        pass
+```
+
+Processors run in multiple threads - use `worker_context` for thread-local state.
+
+### 5. Storage Backend Implementation
+Implement `FactCollection` abstract interface for new backends:
+
+```python
+from pycypher.fact_collection import FactCollection
+
+class MyBackend(FactCollection):
+    def add_fact(self, fact): ...
+    def get_facts(self, **constraints): ...
+    def nodes(self): ...
+    # See pycypher/fact_collection/foundationdb.py for reference
+```
+
+## Critical Files and Entry Points
+
+- **`packages/nmetl/src/nmetl/session.py`** - Main ETL session orchestration
+- **`packages/nmetl/src/nmetl/trigger.py`** - Trigger base classes and execution logic
+- **`packages/pycypher/src/pycypher/cypher_parser.py`** - Cypher query parser (uses PLY - excluded from type checking)
+- **`packages/pycypher/src/pycypher/ast_models.py`** - Pydantic-based AST node definitions
+- **`packages/pycypher/src/pycypher/fact_collection/solver.py`** - SAT solver integration for query optimization
+- **`Makefile`** - Build orchestration and data pipeline commands
+
+## Data Pipeline Commands
+
+The project includes extensive data processing capabilities via Makefile targets:
+
+```bash
+make fod_ingest           # Run FastOpenData ingest
+make fdbclear            # Clear FoundationDB data
+```
+
+Census and OpenStreetMap data processing requires downloading large datasets to `packages/fastopendata/raw_data/`.
+
+## Documentation
+
+Documentation uses Sphinx with Google-style docstrings:
+
+```bash
+# Build docs
+make docs                # Outputs to docs/build/html
+
+# Regenerate after changes
+uv run sphinx-build -b html docs docs/build/html
+```
+
+**Always update docstrings** when modifying public APIs. Sphinx autodoc extracts from source.
+
+## Common Gotchas
+
+1. **Python version**: Requires exactly `3.14.0a6+freethreaded` - other versions will fail
+2. **FoundationDB**: Many features require FDB running locally. Use Docker: `docker-compose up fdb_build`
+3. **PLY parser**: `cypher_parser.py` uses PLY's magic imports - excluded from `ty` checking  
+4. **Trigger type hints**: Missing or incorrect generic parameters cause runtime errors
+5. **Workspace sync**: After editing `pyproject.toml` files, always run `uv sync`
+
+## Resources
+
+- Main README: [/README.md](../README.md)
+- Docs: [/docs/](../docs/)
+- Example queries: [/examples/](../examples/)
+- Test coverage summary: [/TEST_COVERAGE_SUMMARY.md](../TEST_COVERAGE_SUMMARY.md)
