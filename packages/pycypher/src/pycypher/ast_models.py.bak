@@ -466,25 +466,25 @@ class Filter(Table):
 
 
 class Join(Table):
-    """Join operation between two tables.
+    """Single-column join operation between two tables.
 
-    Performs a standard relational join on one or more column pairs. This is the
+    Performs a standard relational join on a single column pair. This is the
     fundamental operation for combining entity and relationship tables.
 
     Attributes:
         left: The left table in the join.
         right: The right table in the join.
         join_type: The type of join to perform (currently only INNER is implemented).
-        left_on: The column name(s) from the left table to join on.
-        right_on: The column name(s) from the right table to join on.
+        left_on: The column name from the left table to join on.
+        right_on: The column name from the right table to join on.
         variable_list: Optional list of variables involved in this join.
     """
 
     left: EntityTable | RelationshipTable | Filter | Join | Algebraic
     right: EntityTable | RelationshipTable | Filter | Join | Algebraic
     join_type: JoinType = JoinType.INNER
-    left_on: str | List[str]
-    right_on: str | List[str]
+    left_on: str
+    right_on: str
     variable_list: List[str] = []
 
     def to_pandas(self, context: Context) -> pd.DataFrame:
@@ -514,37 +514,82 @@ class Join(Table):
             raise ValueError(f"Unsupported join type: {self.join_type}")
         return merged_df
 
-    def to_ibis(self, context: Context) -> IbisTable:
-        """Execute the join operation on an Ibis table.
+
+# TODO: Replace Join with MultiJoin in relevant places
+class MultiJoin(Algebraic):
+    """Multi-column join operation between two tables.
+
+    Performs a join on multiple column pairs simultaneously. This is used when
+    joining relationships that share multiple variables, requiring all corresponding
+    columns to match.
+
+    Attributes:
+        left: The left table in the join.
+        right: The right table in the join.
+        join_type: The type of join to perform (currently only INNER is implemented).
+        left_on: List of column names from the left table to join on.
+        right_on: List of column names from the right table to join on.
+        variable_list: Optional list of variables involved in this join.
+    """
+
+    left: EntityTable | RelationshipTable | Filter | Join | Algebraic
+    right: EntityTable | RelationshipTable | Filter | Join | Algebraic
+    join_type: JoinType = JoinType.INNER
+    left_on: List[str]
+    right_on: List[str]
+    variable_list: List[str] = []
+
+    def to_pandas(self, context: Context) -> pd.DataFrame:
+        """Execute the multi-column join.
 
         Args:
             context: The execution context.
 
         Returns:
-            IbisTable: The result of joining the two tables.
+            pd.DataFrame: The result of joining the two tables on multiple columns.
+
+        Raises:
+            ValueError: If an unsupported join type is specified.
+        """
+        left_df: pd.DataFrame = self.left.to_pandas(context)
+        right_df: pd.DataFrame = self.right.to_pandas(context)
+        if self.join_type == JoinType.INNER:
+            merged_df: pd.DataFrame = pd.merge(
+                left_df,
+                right_df,
+                how="inner",
+                left_on=self.left_on,
+                right_on=self.right_on,
+                suffixes=("_left", "_right"),
+            )
+        else:
+            raise ValueError(f"Unsupported join type: {self.join_type}")
+        return merged_df
+
+    def to_ibis(self, context: Context) -> IbisTable:
+        """Execute the multi-column join on Ibis tables.
+
+        Args:
+            context: The execution context.
+
+        Returns:
+            IbisTable: The result of joining the two tables on multiple columns.
 
         Raises:
             ValueError: If an unsupported join type is specified.
         """
         left_table: IbisTable = self.left.to_ibis(context)
         right_table: IbisTable = self.right.to_ibis(context)
-        
-        # Normalize to lists for consistent processing
-        left_cols = [self.left_on] if isinstance(self.left_on, str) else self.left_on
-        right_cols = [self.right_on] if isinstance(self.right_on, str) else self.right_on
-
         if self.join_type == JoinType.INNER:
-            # Build join predicates
+            # Build join predicates for multiple columns
             predicates = [
-                left_table[l_col] == right_table[r_col]
-                for l_col, r_col in zip(left_cols, right_cols)
+                left_table[left_col] == right_table[right_col]
+                for left_col, right_col in zip(self.left_on, self.right_on)
             ]
-            
-            # Combine predicates with AND if multiple columns
+            # Combine predicates with AND
             combined_predicate = predicates[0]
             for pred in predicates[1:]:
                 combined_predicate = combined_predicate & pred
-                
             merged_table: IbisTable = left_table.join(
                 right_table, combined_predicate, how="inner"
             )
@@ -1017,18 +1062,6 @@ class ASTNode(BaseModel, ABC):
     """Base class for all AST nodes."""
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
-
-    def validate(self, strict: bool = False) -> "ValidationResult":
-        """
-        Validate this AST node and its children.
-
-        Args:
-            strict: If True, treat warnings as errors.
-
-        Returns:
-            ValidationResult containing verification details.
-        """
-        return validate_ast(self, strict)
 
     def traverse(self, depth: int = 0) -> Iterator["ASTNode"]:
         """
@@ -2006,43 +2039,6 @@ class ASTConverter:
 
         # Generic fallback
         return self._convert_generic(node, node_type)
-
-    def _convert_generic(self, node: dict, node_type: str) -> Optional[ASTNode]:
-        """Generic converter for nodes without specific handler."""
-        # Try to find the class in globals
-        cls = globals().get(node_type)
-        if cls and isinstance(cls, type) and issubclass(cls, ASTNode):
-            try:
-                # remove 'type' from args
-                args = {k: v for k, v in node.items() if k != "type"}
-                
-                # Recursively convert fields that look like AST dicts
-                converted_args = {}
-                for k, v in args.items():
-                    if isinstance(v, dict) and "type" in v:
-                        converted_args[k] = self.convert(v)
-                    elif isinstance(v, list):
-                        new_list = []
-                        for item in v:
-                            if isinstance(item, dict) and "type" in item:
-                                new_list.append(self.convert(item))
-                            elif isinstance(item, dict):
-                                # Convert dicts that might be AST nodes but missing type? 
-                                # Or just primitives.
-                                new_list.append(self._convert_primitive(item))
-                            else:
-                                new_list.append(item)
-                        converted_args[k] = new_list
-                    else:
-                        converted_args[k] = v
-                
-                return cls(**converted_args)
-            except Exception as e:
-                LOGGER.warning(f"Failed to auto-convert {node_type}: {e}")
-                return None
-        
-        LOGGER.warning(f"No converter found for node type: {node_type}")
-        return None
 
     def _convert_primitive(self, value: Any) -> Any:
         """Convert primitive values, returning them as-is for simple types.
@@ -3115,45 +3111,17 @@ def _collect_defined_variables(node: ASTNode) -> Set[str]:
     return defined
 
 
-def _collect_definition_ids(node: ASTNode) -> Set[int]:
-    """Collect IDs of Variable nodes that act as definitions."""
-    ids = set()
-    for match in node.find_all(Match):
-        if match.pattern:
-            for path in match.pattern.paths:
-                for elem in path.elements:
-                    if isinstance(elem, NodePattern) and elem.variable:
-                        ids.add(id(elem.variable))
-                    elif isinstance(elem, RelationshipPattern) and elem.variable:
-                        ids.add(id(elem.variable))
-                if path.variable:
-                    ids.add(id(path.variable))
-    for create in node.find_all(Create):
-        if create.pattern:
-            for path in create.pattern.paths:
-                for elem in path.elements:
-                    if isinstance(elem, NodePattern) and elem.variable:
-                        ids.add(id(elem.variable))
-                    elif isinstance(elem, RelationshipPattern) and elem.variable:
-                        ids.add(id(elem.variable))
-    return ids
-
-
 def _collect_referenced_variables(node: ASTNode) -> Set[str]:
     """Collect all variables referenced in expressions."""
     referenced = set()
-    definition_ids = _collect_definition_ids(node)
 
     for var in node.find_all(Variable):
-        if id(var) not in definition_ids:
-            referenced.add(var.name)
+        referenced.add(var.name)
 
     # Also check property lookups with legacy variable field
     for prop in node.find_all(PropertyLookup):
         if prop.variable:
-            # PropertyLookup variable is typically a reference
-            if id(prop.variable) not in definition_ids:
-                referenced.add(prop.variable.name)
+            referenced.add(prop.variable.name)
 
     return referenced
 

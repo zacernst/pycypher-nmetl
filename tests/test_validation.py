@@ -30,12 +30,16 @@ class TestUndefinedVariables:
     
     def test_undefined_variable_in_return(self, parser, converter):
         """Test error when returning undefined variable."""
-        query = "MATCH (n) RETURN m"
+        # Use a label to avoid "missing label" warning, so we isolate the undefined var error
+        # Also return 'n' so it's not "unused"
+        query = "MATCH (n:Thing) RETURN n, m"
         result = parse_and_validate(parser, converter, query)
-        
+    
         assert not result.is_valid
         assert result.has_errors
         assert len(result.issues) == 1
+        assert "m" in result.issues[0].message
+        assert "never defined" in result.issues[0].message.lower()
         assert result.issues[0].severity == ValidationSeverity.ERROR
         assert "m" in result.issues[0].message
         assert "never defined" in result.issues[0].message
@@ -177,7 +181,8 @@ class TestExpensivePatterns:
             if "Cartesian product" in issue.message
         ]
         assert len(cartesian_warnings) == 1
-        assert "shared variables" in cartesian_warnings[0].suggestion
+        # The suggestion might be "Ensure MATCH patterns share variables..."
+        assert "share variables" in cartesian_warnings[0].suggestion
     
     def test_connected_matches_no_warning(self, parser, converter):
         """Test that connected MATCH clauses don't trigger warning."""

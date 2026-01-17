@@ -238,14 +238,11 @@ node_where: "WHERE"i expression
 
 relationship_pattern: full_rel_left
                     | full_rel_right
-                    | full_rel_both
                     | full_rel_any
 
 full_rel_left: "<-" rel_detail? "-"
 
 full_rel_right: "-" rel_detail? "->"
-
-full_rel_both: "<-" rel_detail? "->"
 
 full_rel_any: "-" rel_detail? "-"
 
@@ -309,14 +306,18 @@ string_predicate_op: "STARTS"i "WITH"i
                    | "=~"
                    | "IN"i
 
-?add_expression: mult_expression (("+"|"-") mult_expression)*
+?add_expression: mult_expression (add_op mult_expression)*
+!add_op: "+" | "-"
 
-?mult_expression: power_expression (("*"|"/"|"%") power_expression)*
+?mult_expression: power_expression (mult_op power_expression)*
+!mult_op: "*" | "/" | "%"
 
-?power_expression: unary_expression ("^" unary_expression)*
+?power_expression: unary_expression (pow_op unary_expression)*
+!pow_op: "^"
 
-?unary_expression: ("+"|"-") unary_expression
+?unary_expression: unary_op unary_expression
                  | postfix_expression
+!unary_op: "+" | "-"
 
 ?postfix_expression: atom_expression postfix_op*
 
@@ -558,8 +559,8 @@ UNSIGNED_NAN: "NAN"i
 SIGNED_NAN: /[+-]?NAN/i
 
 // Strings (single or double quoted)
-STRING: /'([^'\\]|\\.)*'/
-      | /"([^"\\]|\\.)*"/
+STRING: /'([^'\\\n]|\\.)*'/
+      | /"([^"\\\n]|\\.)*"/
 
 // Whitespace and comments
 %import common.WS
@@ -592,6 +593,22 @@ class CypherASTTransformer(Transformer):
     # Top-level query structure
     # ========================================================================
     
+    def add_op(self, args: List[Any]) -> str:
+        """Extract operator from add_op rule."""
+        return str(args[0])
+
+    def mult_op(self, args: List[Any]) -> str:
+        """Extract operator from mult_op rule."""
+        return str(args[0])
+
+    def pow_op(self, args: List[Any]) -> str:
+        """Extract operator from pow_op rule."""
+        return str(args[0])
+    
+    def unary_op(self, args: List[Any]) -> str:
+        """Extract operator from unary_op rule."""
+        return str(args[0])
+
     def cypher_query(self, args: List[Any]) -> Dict[str, Any]:
         """Transform the root query node.
         

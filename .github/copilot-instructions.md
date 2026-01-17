@@ -10,12 +10,6 @@ This is a **monorepo workspace** containing four interdependent packages:
 
 **Dependency order**: `shared` → `pycypher` → `nmetl` → `fastopendata`
 
-Key architectural concepts:
-- **Fact-based data model**: All data stored as immutable facts (nodes, relationships, attributes)
-- **Declarative triggers**: Python functions with Cypher queries and type hints that automatically compute derived data
-- **Queue processors**: Multi-threaded pipeline stages (RawDataProcessor → FactGeneratedQueueProcessor → CheckFactAgainstTriggersQueueProcessor → TriggeredLookupProcessor)
-- **Multiple backends**: FoundationDB, RocksDB, etcd3, SimpleFactCollection (in-memory)
-
 ## Development Workflow
 
 ### Environment Management
@@ -34,20 +28,6 @@ uv pip install <package>
 # Add dependency to a package
 # Edit packages/<package>/pyproject.toml, then:
 uv sync
-```
-
-### Build and Install
-```bash
-# Full build from scratch
-make all                    # format → veryclean → fastopendata → docs → test
-
-# Install all packages in dev mode
-make install                # Builds and installs pycypher, nmetl, fastopendata
-
-# Build individual packages
-make pycypher              # Build only pycypher
-make nmetl                 # Build pycypher + nmetl  
-make fastopendata          # Build all three
 ```
 
 The Makefile handles build ordering and dependencies automatically. Use it instead of manual `pip install -e` commands.
@@ -210,3 +190,69 @@ uv run sphinx-build -b html docs docs/build/html
 - Docs: [/docs/](../docs/)
 - Example queries: [/examples/](../examples/)
 - Test coverage summary: [/TEST_COVERAGE_SUMMARY.md](../TEST_COVERAGE_SUMMARY.md)
+
+# Spyglass Data Tools Development Guide
+
+## Project Architecture
+
+This is a **Python monorepo** for New Relic data processing tools, organized as independent packages:
+
+- **`packages/sg_shared/`** - Core utilities including NRQL parser/AST (ANTLR4-based), logging, typing
+- **`packages/sg_synth/`** - Synthetic data generation and transmission to New Relic
+- **`packages/sg_collector/`** - Data aggregation, processing, and serialization from New Relic accounts
+- **`packages/sg_api_builder/`** - Templates and CLI for building FastAPI applications
+- **`packages/sg_catalog/`** - Data documentation and sharing tools
+- **`packages/sg_data_reader/`** - Multi-format data reading/writing utilities
+
+**Dependency hierarchy**: Most packages depend on `sg_shared`; the umbrella `spyglass-data-tools` package includes all as dependencies.
+
+## Critical Development Workflow
+
+### Environment Management
+**CRITICAL**: Use `uv` for ALL Python operations - it manages virtual environments and dependencies.
+
+```bash
+# Install uv (if not installed)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+# or: brew install uv
+
+# Set up Artifactory authentication (required for installation)
+export UV_INDEX_PYPI_NEWRELIC_PASSWORD=<YOUR_ARTIFACTORY_TOKEN>
+# Get token from: https://artifacts.datanerd.us - click "Set me up"
+
+# Sync all dependencies
+uv sync
+
+# Run any Python command in the right venv
+uv run python script.py
+uv run pytest tests/
+```
+
+### Build and Test Workflow
+```bash
+# Complete build pipeline (from Makefile)
+make all              # format → veryclean → install → tests → docs
+
+# Individual steps
+make format           # Run isort + ruff format
+make install          # Install all packages in dev mode
+make tests            # Run pytest across all packages
+make docs             # Build Sphinx documentation
+make publish          # Publish to Artifactory (requires UV_PUBLISH_* env vars)
+
+# Build individual packages (creates dist/ in each package dir)
+make build            # Builds all packages to dist/
+cd packages/<package> && uv build  # Build single package
+```
+
+**Testing convention**: Tests are in both `/tests/` (integration) and `packages/*/tests/` (unit).
+
+### Working with NRQL Parser (sg_shared)
+
+The NRQL parser is the **core innovation** of this project - it's an ANTLR4-based parser that converts New Relic Query Language to AST.
+
+**Key files**:
+- `packages/sg_shared/src/sg_shared/Nrql.g4` - ANTLR grammar definition
+- `packages/sg_shared/src/sg_shared/NrqlListener.py` - AST builder and listener (3800+ lines)
+- `packages/sg_shared/src/sg_shared/NrqlParser.py` - ANTLR-generated parser
+- `packages/sg_shared/src/sg_shared/NrqlLexer.py` - ANTLR-generated lexer
