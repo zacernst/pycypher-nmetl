@@ -113,6 +113,8 @@ timeout = 30
 
 [dependency-groups]
 dev = [
+    "myst-parser>=4.0.1",
+    "sphinx>=7.4.7",
     "ty>=0.0.1a6",
 ]
 

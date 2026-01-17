@@ -11,26 +11,10 @@ FastOpenData provides fast data loading and processing utilities.
 Core Modules
 ------------
 
-Data Sources
-~~~~~~~~~~~~
+Ingest
+~~~~~~
 
-.. automodule:: fastopendata.data_sources
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Data Assets
-~~~~~~~~~~~
-
-.. automodule:: fastopendata.data_assets
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Loaders
-~~~~~~~
-
-.. automodule:: fastopendata.loaders
+.. automodule:: fastopendata.ingest
    :members:
    :undoc-members:
    :show-inheritance:

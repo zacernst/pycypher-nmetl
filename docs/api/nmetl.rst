@@ -11,34 +11,26 @@ The NMETL package provides ETL pipeline functionality for network-based data tra
 Core Modules
 ------------
 
-Pipeline
-~~~~~~~~
-
-.. automodule:: nmetl.pipeline
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Transform
-~~~~~~~~~
-
-.. automodule:: nmetl.transform
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Load
-~~~~
-
-.. automodule:: nmetl.load
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Extract
+Session
 ~~~~~~~
 
-.. automodule:: nmetl.extract
+.. automodule:: nmetl.session
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Trigger
+~~~~~~~
+
+.. automodule:: nmetl.trigger
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Queue Processor
+~~~~~~~~~~~~~~~
+
+.. automodule:: nmetl.queue_processor
    :members:
    :undoc-members:
    :show-inheritance:

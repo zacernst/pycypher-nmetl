@@ -11,26 +11,26 @@ The Shared package contains common utilities and base classes.
 Core Modules
 ------------
 
-Utilities
+Telemetry
 ~~~~~~~~~
 
-.. automodule:: shared.utils
+.. automodule:: shared.telemetry
    :members:
    :undoc-members:
    :show-inheritance:
 
-Base Classes
-~~~~~~~~~~~~
+Logger
+~~~~~~
 
-.. automodule:: shared.base
+.. automodule:: shared.logger
    :members:
    :undoc-members:
    :show-inheritance:
 
-Exceptions
-~~~~~~~~~~
+Helpers
+~~~~~~~
 
-.. automodule:: shared.exceptions
+.. automodule:: shared.helpers
    :members:
    :undoc-members:
    :show-inheritance:
