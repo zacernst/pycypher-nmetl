@@ -76,6 +76,10 @@ def random_hash() -> str:
     ).hexdigest()
 
 
+class Algebraizable(ABC):
+    pass
+
+
 class JoinType(str, Enum):
     """Enumeration of supported SQL join types.
 
@@ -95,708 +99,708 @@ class JoinType(str, Enum):
 # ===========================================================================
 # Algebraizable Mixin
 # ===========================================================================
-class Algebraic(BaseModel, ABC):
-    """Abstract base class for all relational algebra operators.
-
-    All algebraic operators maintain mappings between variable names, column names,
-    and hashed column identifiers to support complex multi-way joins without naming
-    conflicts. These operators can be composed to build complex query plans.
-
-    Attributes:
-        variables_to_columns: Maps Cypher variable names to hashed column names.
-        column_name_to_hash: Maps original column names to their hashed versions.
-        hash_to_column_name: Reverse mapping from hashed names to original names.
-    """
-
-    variables_to_columns: dict[str, str] = {}
-    column_name_to_hash: dict[str, str] = {}
-    hash_to_column_name: dict[str, str] = {}
-
-    @abstractmethod
-    def to_pandas(self, context: Context) -> pd.DataFrame:
-        """Convert this algebraic expression to a pandas DataFrame.
-
-        Args:
-            context: The execution context containing entity and relationship data.
-
-        Returns:
-            pd.DataFrame: The result of executing this algebraic operation.
-        """
-        ...
-
-    @abstractmethod
-    def to_ibis(self, context: Context) -> IbisTable:
-        """Convert this algebraic expression to an Ibis table.
-
-        Args:
-            context: The execution context containing entity and relationship data.
-
-        Returns:
-            IbisTable: The result of executing this algebraic operation as an Ibis table.
-        """
-        ...
-
-
-class Table(Algebraic):
-    """Base class for table representations.
-
-    Provides a unique identifier for each table instance, automatically generating
-    a random hash if no identifier is provided.
-
-    Attributes:
-        identifier: Unique identifier for this table instance.
-    """
-
-    identifier: str = ""
-
-    @field_validator("identifier", mode="after")
-    @classmethod
-    def set_identifier(cls, v: str) -> str:
-        """Generate a random identifier if none was provided.
-
-        Args:
-            v: The identifier value (may be empty string).
-
-        Returns:
-            str: The provided identifier or a newly generated hash.
-        """
-        if v == "":
-            return random_hash()
-        return v
-
-
-class EntityTable(Table):
-    """Represents a table of graph entities (nodes).
-
-    EntityTable stores data about a particular type of node in the graph, along
-    with its attributes. It maintains column name mappings to support collision-free
-    joins with other tables.
-
-    Attributes:
-        entity_type: The type/label of entities in this table (e.g., "Person").
-        attributes: List of attribute names for this entity type.
-        entity_identifier_attribute: The attribute that uniquely identifies entities.
-    """
-
-    entity_type: str
-    attributes: List[str]
-    entity_identifier_attribute: str
-
-    def __init__(self, **data: Any):
-        """Initialize the entity table and create column hash mappings.
-
-        Args:
-            **data: Keyword arguments for entity_type, attributes, and
-                entity_identifier_attribute.
-        """
-        super().__init__(**data)
-        for attribute in self.attributes:
-            column_hash: str = random_hash()
-            self.column_name_to_hash[attribute] = column_hash
-            self.hash_to_column_name[column_hash] = attribute
-
-    def to_pandas(self, context: Context) -> pd.DataFrame:
-        """Convert this entity table to a pandas DataFrame with hashed column names.
-
-        Args:
-            context: The execution context containing the actual entity data.
-
-        Returns:
-            pd.DataFrame: The entity data with columns renamed to their hashed versions.
-        """
-        df: pd.DataFrame = context.obj_map[self.entity_type].rename(
-            mapper=self.column_name_to_hash,
-            axis=1,
-        )
-        return df
-
-    def to_ibis(self, context: Context) -> IbisTable:
-        """Convert this entity table to an Ibis table with hashed column names.
-
-        Args:
-            context: The execution context containing the actual entity data.
-
-        Returns:
-            IbisTable: The entity data with columns renamed to their hashed versions.
-        """
-        # Convert pandas DataFrame to Ibis table
-        table: IbisTable = ibis.memtable(context.obj_map[self.entity_type])
-        # Rename columns according to the hash mapping
-        for old_name, new_name in self.column_name_to_hash.items():
-            table = table.rename({new_name: old_name})
-        return table
-
-
-class RelationshipTable(Table):
-    """Represents a table of graph relationships (edges).
-
-    RelationshipTable stores data about connections between entities, including
-    the source and target entity types. Each relationship can have its own attributes.
-
-    Attributes:
-        relationship_type: The type/label of this relationship (e.g., "LIVES_IN").
-        source_entity_type: The entity type at the source of the relationship.
-        target_entity_type: The entity type at the target of the relationship.
-        attributes: List of attribute names for this relationship type.
-        relationship_identifier_attribute: Optional unique identifier for relationships.
-    """
-
-    relationship_type: str
-    source_entity_type: str
-    target_entity_type: str
-    attributes: List[str]
-    relationship_identifier_attribute: Optional[str] = (
-        None  # Maybe use later for rel attributes?
-    )
-
-    def __init__(self, **data: Any) -> None:
-        """Initialize the relationship table and create column hash mappings.
-
-        Args:
-            **data: Keyword arguments for relationship_type, source_entity_type,
-                target_entity_type, and attributes.
-        """
-        super().__init__(**data)
-        for attribute in self.attributes:
-            column_hash: str = random_hash()
-            self.column_name_to_hash[attribute] = column_hash
-            self.hash_to_column_name[column_hash] = attribute
-
-    def to_pandas(self, context: Context) -> pd.DataFrame:
-        """Convert this relationship table to a pandas DataFrame.
-
-        Args:
-            context: The execution context containing the actual relationship data.
-
-        Returns:
-            pd.DataFrame: The relationship data.
-        """
-        df: pd.DataFrame = context.obj_map[self.relationship_type]
-        return df
-
-    def to_ibis(self, context: Context) -> IbisTable:
-        """Convert this relationship table to an Ibis table.
-
-        Args:
-            context: The execution context containing the actual relationship data.
-
-        Returns:
-            IbisTable: The relationship data as an Ibis table.
-        """
-        table: IbisTable = ibis.memtable(
-            context.obj_map[self.relationship_type]
-        )
-        return table
-
-
-class DropColumn(Table):
-    """Algebraic operation to remove a column from a table.
-
-    Implements the relational projection operation that excludes a specific column.
-    The execute flag can be set to False to defer execution, which is useful when
-    building up complex query plans.
-
-    Attributes:
-        table: The input table to drop a column from.
-        column_name: The name of the column to drop.
-        execute: Whether to actually execute the drop (default True).
-    """
-
-    table: Algebraic | EntityTable | Join | DropColumn | SelectColumns
-    column_name: str
-    execute: bool = True
-
-    def to_pandas(self, context: Context) -> pd.DataFrame:
-        """Execute the column drop operation.
-
-        Args:
-            context: The execution context.
-
-        Returns:
-            pd.DataFrame: The input DataFrame with the specified column removed,
-                or unchanged if execute=False or column doesn't exist.
-        """
-        df: pd.DataFrame = self.table.to_pandas(context)
-        if not self.execute:
-            return df
-        if self.column_name in df.columns:
-            df_dropped: pd.DataFrame = df.drop(columns=[self.column_name])
-            return df_dropped
-        else:
-            return df
-
-    def to_ibis(self, context: Context) -> IbisTable:
-        """Execute the column drop operation on an Ibis table.
-
-        Args:
-            context: The execution context.
-
-        Returns:
-            IbisTable: The input table with the specified column removed,
-                or unchanged if execute=False or column doesn't exist.
-        """
-        table: IbisTable = self.table.to_ibis(context)
-        if not self.execute:
-            return table
-        if self.column_name in table.columns:
-            table_dropped: IbisTable = table.drop(self.column_name)
-            return table_dropped
-        else:
-            return table
-
-
-class RenameColumn(Table):
-    """Algebraic operation to rename a column in a table.
-
-    Changes the name of a column while preserving all data. This is used to
-    maintain consistent naming conventions and avoid conflicts in complex queries.
-
-    Attributes:
-        table: The table containing the column to rename.
-        old_column_name: The current name of the column.
-        new_column_name: The new name for the column.
-        variables_to_columns: Mapping of variables to column names.
-    """
-
-    table: EntityTable | Join | DropColumn | SelectColumns
-    old_column_name: str
-    new_column_name: str
-    variables_to_columns: dict[str, str] = {}
-
-    def to_pandas(self, context: Context) -> pd.DataFrame:
-        """Execute the column rename operation.
-
-        Args:
-            context: The execution context.
-
-        Returns:
-            pd.DataFrame: The DataFrame with the renamed column.
-        """
-        df: pd.DataFrame = self.table.to_pandas(context)
-        renamed_df: pd.DataFrame = df.rename(
-            columns={self.old_column_name: self.new_column_name}
-        )
-        return renamed_df
-
-    def to_ibis(self, context: Context) -> IbisTable:
-        """Execute the column rename operation on an Ibis table.
-
-        Args:
-            context: The execution context.
-
-        Returns:
-            IbisTable: The Ibis table with the renamed column.
-        """
-        table: IbisTable = self.table.to_ibis(context)
-        renamed_table: IbisTable = table.rename(
-            {self.new_column_name: self.old_column_name}
-        )
-        return renamed_table
-
-
-class Filter(Table):
-    """Relational selection operation that filters rows based on a condition.
-
-    Implements the relational selection operator (σ in relational algebra), which
-    selects only those rows that satisfy a given boolean condition.
-
-    Attributes:
-        table: The table to filter.
-        condition: The boolean condition to evaluate for each row.
-    """
-
-    table: Join | Filter | DropColumn | EntityTable | RelationshipTable
-    condition: HasAttributeValue
-
-    def to_pandas(self, context: Context) -> pd.DataFrame:
-        """Execute the filter operation.
-
-        Args:
-            context: The execution context.
-
-        Returns:
-            pd.DataFrame: A DataFrame containing only rows that satisfy the condition.
-
-        Raises:
-            ValueError: If an unsupported condition type is provided.
-        """
-        df: pd.DataFrame = self.table.to_pandas(context)
-        match self.condition:
-            case HasAttributeValue():
-                column_name: str = self.table.column_name_to_hash[
-                    self.condition.attribute
-                ]
-                filtered_df: pd.DataFrame = (
-                    df[  # pyrefly:ignore[bad-assignment]
-                        df[column_name] == self.condition.value
-                    ]
-                )
-            case _:
-                raise ValueError(
-                    f"Unsupported condition type: {type(self.condition)}"
-                )
-        return filtered_df
-
-    def to_ibis(self, context: Context) -> IbisTable:
-        """Execute the filter operation on an Ibis table.
-
-        Args:
-            context: The execution context.
-
-        Returns:
-            IbisTable: An Ibis table containing only rows that satisfy the condition.
-
-        Raises:
-            ValueError: If an unsupported condition type is provided.
-        """
-        table: IbisTable = self.table.to_ibis(context)
-        match self.condition:
-            case HasAttributeValue():
-                column_name: str = self.table.column_name_to_hash[
-                    self.condition.attribute
-                ]
-                filtered_table: IbisTable = table.filter(
-                    table[column_name] == self.condition.value
-                )
-            case _:
-                raise ValueError(
-                    f"Unsupported condition type: {type(self.condition)}"
-                )
-        return filtered_table
-
-
-class Join(Table):
-    """Join operation between two tables.
-
-    Performs a standard relational join on one or more column pairs. This is the
-    fundamental operation for combining entity and relationship tables.
-
-    Attributes:
-        left: The left table in the join.
-        right: The right table in the join.
-        join_type: The type of join to perform (currently only INNER is implemented).
-        left_on: The column name(s) from the left table to join on.
-        right_on: The column name(s) from the right table to join on.
-        variable_list: Optional list of variables involved in this join.
-    """
-
-    left: EntityTable | RelationshipTable | Filter | Join | Algebraic
-    right: EntityTable | RelationshipTable | Filter | Join | Algebraic
-    join_type: JoinType = JoinType.INNER
-    left_on: str | List[str]
-    right_on: str | List[str]
-    variable_list: List[str] = []
-
-    def to_pandas(self, context: Context) -> pd.DataFrame:
-        """Execute the join operation.
-
-        Args:
-            context: The execution context.
-
-        Returns:
-            pd.DataFrame: The result of joining the two tables.
-
-        Raises:
-            ValueError: If an unsupported join type is specified.
-        """
-        left_df: pd.DataFrame = self.left.to_pandas(context)
-        right_df: pd.DataFrame = self.right.to_pandas(context)
-        if self.join_type == JoinType.INNER:
-            merged_df: pd.DataFrame = pd.merge(
-                left_df,
-                right_df,
-                how="inner",
-                left_on=self.left_on,
-                right_on=self.right_on,
-                suffixes=("_left", "_right"),
-            )
-        else:
-            raise ValueError(f"Unsupported join type: {self.join_type}")
-        return merged_df
-
-    def to_ibis(self, context: Context) -> IbisTable:
-        """Execute the join operation on an Ibis table.
-
-        Args:
-            context: The execution context.
-
-        Returns:
-            IbisTable: The result of joining the two tables.
-
-        Raises:
-            ValueError: If an unsupported join type is specified.
-        """
-        left_table: IbisTable = self.left.to_ibis(context)
-        right_table: IbisTable = self.right.to_ibis(context)
-        
-        # Normalize to lists for consistent processing
-        left_cols = [self.left_on] if isinstance(self.left_on, str) else self.left_on
-        right_cols = [self.right_on] if isinstance(self.right_on, str) else self.right_on
-
-        if self.join_type == JoinType.INNER:
-            # Build join predicates
-            predicates = [
-                left_table[l_col] == right_table[r_col]
-                for l_col, r_col in zip(left_cols, right_cols)
-            ]
-            
-            # Combine predicates with AND if multiple columns
-            combined_predicate = predicates[0]
-            for pred in predicates[1:]:
-                combined_predicate = combined_predicate & pred
-                
-            merged_table: IbisTable = left_table.join(
-                right_table, combined_predicate, how="inner"
-            )
-        else:
-            raise ValueError(f"Unsupported join type: {self.join_type}")
-        return merged_table
-
-
-class SelectColumns(Table):
-    """Algebraic operation to select specific columns from a table.
-
-    Implements the relational projection operation that keeps only the specified
-    columns, discarding all others.
-
-    Attributes:
-        table: The input table to select columns from.
-        column_names: List of (hashed) column names to keep.
-    """
-
-    table: EntityTable | Join | DropColumn | SelectColumns
-    column_names: list[str]  # list of hashed column names
-
-    def to_pandas(self, context: Context) -> pd.DataFrame:
-        """Execute the column selection.
-
-        Args:
-            context: The execution context.
-
-        Returns:
-            pd.DataFrame: A DataFrame containing only the specified columns.
-        """
-        df: pd.DataFrame = self.table.to_pandas(context)
-        selected_df: pd.DataFrame = df[
-            self.column_names
-        ]  # pyrefly:ignore[bad-assignment]
-        return selected_df
-
-    def to_ibis(self, context: Context) -> IbisTable:
-        """Execute the column selection on an Ibis table.
-
-        Args:
-            context: The execution context.
-
-        Returns:
-            IbisTable: An Ibis table containing only the specified columns.
-        """
-        table: IbisTable = self.table.to_ibis(context)
-        selected_table: IbisTable = table.select(self.column_names)
-        return selected_table
-
-
-class Boolean(Table):
-    """Base class for boolean conditions used in filters.
-
-    Marker class for representing boolean predicates that can be evaluated
-    against rows in a DataFrame.
-    """
-
-    def to_pandas(self, context: Context) -> pd.DataFrame:
-        """Boolean conditions do not directly convert to DataFrames.
-
-        Raises:
-            NotImplementedError: Always, since boolean conditions are not tables.
-        """
-        raise NotImplementedError(
-            "Boolean conditions cannot be converted to DataFrames"
-        )
-
-    def to_ibis(self, context: Context) -> IbisTable:
-        """Boolean conditions do not directly convert to Ibis tables.
-
-        Raises:
-            NotImplementedError: Always, since boolean conditions are not tables.
-        """
-        raise NotImplementedError(
-            "Boolean conditions cannot be converted to Ibis tables"
-        )
-
-
-class Conjunction(Boolean):
-    """Condition that represents a logical AND of multiple boolean conditions.
-
-    Used in Filter operations to combine multiple predicates that must all be
-    satisfied for a row to be included.
-
-    Attributes:
-        conditions: List of boolean conditions to combine.
-    """
-
-    left: Boolean
-    right: Boolean
-
-
-class Disjunction(Boolean):
-    """Condition that represents a logical OR of multiple boolean conditions.
-
-    Used in Filter operations to combine multiple predicates where at least one
-    must be satisfied for a row to be included.
-
-    Attributes:
-        conditions: List of boolean conditions to combine.
-    """
-
-    left: Boolean
-    right: Boolean
-
-
-class Negation(Boolean):
-    """Condition that represents the logical NOT of a boolean condition.
-
-    Used in Filter operations to invert a predicate, selecting rows that do not
-    satisfy the given condition.
-
-    Attributes:
-        condition: The boolean condition to negate.
-    """
-
-    condition: Boolean
-
-
-class IsEqual(Boolean):
-    """Condition that checks if two attributes are equal.
-
-    Used in Filter operations to select rows where the values of two attributes
-    are equal.
-
-    Attributes:
-        attribute_1: The name of the first attribute.
-        attribute_2: The name of the second attribute.
-    """
-
-    left: Boolean
-    right: Boolean
-
-
-class IsGreaterThan(Boolean):
-    """Condition that checks if one attribute is greater than another.
-
-    Used in Filter operations to select rows where the value of one attribute
-    exceeds that of another.
-
-    Attributes:
-        attribute_1: The name of the first attribute.
-        attribute_2: The name of the second attribute.
-    """
-
-    left: Boolean
-    right: Boolean
-
-
-class IsLessThan(Boolean):
-    """Condition that checks if one attribute is less than another.
-
-    Used in Filter operations to select rows where the value of one attribute
-    is less than that of another.
-
-    Attributes:
-        attribute_1: The name of the first attribute.
-        attribute_2: The name of the second attribute.
-    """
-
-    left: Boolean
-    right: Boolean
-
-
-class HasAttributeValue(Boolean):
-    """Condition that checks if an attribute has a specific value.
-
-    Used in Filter operations to select rows where a particular attribute
-    matches the specified value.
-
-    Attributes:
-        attribute: The name of the attribute to check.
-        value: The value to match against (can be string, number, boolean, or None).
-    """
-
-    attribute: str
-    value: str | int | float | bool | None
-
-
-class Context(BaseModel):
-    """Execution context for algebraic operations.
-
-    Context maintains the schema information (entity and relationship tables) and
-    the actual data (as pandas DataFrames) needed to execute algebraic expressions.
-
-    Attributes:
-        entity_tables: List of entity table schemas.
-        relationship_tables: List of relationship table schemas.
-        obj_map: Dictionary mapping entity/relationship types to their DataFrame data.
-    """
-
-    entity_tables: List[EntityTable]
-    relationship_tables: List[RelationshipTable]
-    obj_map: dict[str, Any] = {}
-
-    def get_entity_table(self, entity_type: str) -> EntityTable:
-        """Retrieve an entity table by type.
-
-        Args:
-            entity_type: The type/label of the entity table to retrieve.
-
-        Returns:
-            EntityTable: The matching entity table schema.
-
-        Raises:
-            ValueError: If no entity table with the given type is found.
-        """
-        for entity_table in self.entity_tables:
-            if entity_table.entity_type == entity_type:
-                return entity_table
-        else:
-            raise ValueError(f"Entity table for type {entity_type} not found")
-
-    def get_relationship_table(
-        self, relationship_type: str
-    ) -> RelationshipTable:
-        """Retrieve a relationship table by type.
-
-        Args:
-            relationship_type: The type/label of the relationship table to retrieve.
-
-        Returns:
-            RelationshipTable: The matching relationship table schema.
-
-        Raises:
-            ValueError: If no relationship table with the given type is found.
-        """
-        for relationship_table in self.relationship_tables:
-            if relationship_table.relationship_type == relationship_type:
-                return relationship_table
-        else:
-            raise ValueError(
-                f"Relationship table for type {relationship_type} not found"
-            )
-
-
-class Algebraizable(ABC):
-    """Mixin for AST nodes that can be converted to algebra."""
-
-    @abstractmethod
-    def to_algebra(self, context: Context) -> Algebraic:
-        """Convert this AST node to an Ibis algebra expression.
-
-        Args:
-            context: Conversion context with variable bindings
-
-        Returns:
-            An instance of Algebraic representing the relation
-            corresponding to this graph entity.
-        """
-        pass
+# class Algebraic(BaseModel, ABC):
+#     """Abstract base class for all relational algebra operators.
+# 
+#     All algebraic operators maintain mappings between variable names, column names,
+#     and hashed column identifiers to support complex multi-way joins without naming
+#     conflicts. These operators can be composed to build complex query plans.
+# 
+#     Attributes:
+#         variables_to_columns: Maps Cypher variable names to hashed column names.
+#         column_name_to_hash: Maps original column names to their hashed versions.
+#         hash_to_column_name: Reverse mapping from hashed names to original names.
+#     """
+# 
+#     variables_to_columns: dict[str, str] = {}
+#     column_name_to_hash: dict[str, str] = {}
+#     hash_to_column_name: dict[str, str] = {}
+# 
+#     @abstractmethod
+#     def to_pandas(self, context: Context) -> pd.DataFrame:
+#         """Convert this algebraic expression to a pandas DataFrame.
+# 
+#         Args:
+#             context: The execution context containing entity and relationship data.
+# 
+#         Returns:
+#             pd.DataFrame: The result of executing this algebraic operation.
+#         """
+#         ...
+# 
+#     @abstractmethod
+#     def to_ibis(self, context: Context) -> IbisTable:
+#         """Convert this algebraic expression to an Ibis table.
+# 
+#         Args:
+#             context: The execution context containing entity and relationship data.
+# 
+#         Returns:
+#             IbisTable: The result of executing this algebraic operation as an Ibis table.
+#         """
+#         ...
+# 
+# 
+# class Table(Algebraic):
+#     """Base class for table representations.
+# 
+#     Provides a unique identifier for each table instance, automatically generating
+#     a random hash if no identifier is provided.
+# 
+#     Attributes:
+#         identifier: Unique identifier for this table instance.
+#     """
+# 
+#     identifier: str = ""
+# 
+#     @field_validator("identifier", mode="after")
+#     @classmethod
+#     def set_identifier(cls, v: str) -> str:
+#         """Generate a random identifier if none was provided.
+# 
+#         Args:
+#             v: The identifier value (may be empty string).
+# 
+#         Returns:
+#             str: The provided identifier or a newly generated hash.
+#         """
+#         if v == "":
+#             return random_hash()
+#         return v
+# 
+# 
+# class EntityTable(Table):
+#     """Represents a table of graph entities (nodes).
+# 
+#     EntityTable stores data about a particular type of node in the graph, along
+#     with its attributes. It maintains column name mappings to support collision-free
+#     joins with other tables.
+# 
+#     Attributes:
+#         entity_type: The type/label of entities in this table (e.g., "Person").
+#         attributes: List of attribute names for this entity type.
+#         entity_identifier_attribute: The attribute that uniquely identifies entities.
+#     """
+# 
+#     entity_type: str
+#     attributes: List[str]
+#     entity_identifier_attribute: str
+# 
+#     def __init__(self, **data: Any):
+#         """Initialize the entity table and create column hash mappings.
+# 
+#         Args:
+#             **data: Keyword arguments for entity_type, attributes, and
+#                 entity_identifier_attribute.
+#         """
+#         super().__init__(**data)
+#         for attribute in self.attributes:
+#             column_hash: str = random_hash()
+#             self.column_name_to_hash[attribute] = column_hash
+#             self.hash_to_column_name[column_hash] = attribute
+# 
+#     def to_pandas(self, context: Context) -> pd.DataFrame:
+#         """Convert this entity table to a pandas DataFrame with hashed column names.
+# 
+#         Args:
+#             context: The execution context containing the actual entity data.
+# 
+#         Returns:
+#             pd.DataFrame: The entity data with columns renamed to their hashed versions.
+#         """
+#         df: pd.DataFrame = context.obj_map[self.entity_type].rename(
+#             mapper=self.column_name_to_hash,
+#             axis=1,
+#         )
+#         return df
+# 
+#     def to_ibis(self, context: Context) -> IbisTable:
+#         """Convert this entity table to an Ibis table with hashed column names.
+# 
+#         Args:
+#             context: The execution context containing the actual entity data.
+# 
+#         Returns:
+#             IbisTable: The entity data with columns renamed to their hashed versions.
+#         """
+#         # Convert pandas DataFrame to Ibis table
+#         table: IbisTable = ibis.memtable(context.obj_map[self.entity_type])
+#         # Rename columns according to the hash mapping
+#         for old_name, new_name in self.column_name_to_hash.items():
+#             table = table.rename({new_name: old_name})
+#         return table
+# 
+# 
+# class RelationshipTable(Table):
+#     """Represents a table of graph relationships (edges).
+# 
+#     RelationshipTable stores data about connections between entities, including
+#     the source and target entity types. Each relationship can have its own attributes.
+# 
+#     Attributes:
+#         relationship_type: The type/label of this relationship (e.g., "LIVES_IN").
+#         source_entity_type: The entity type at the source of the relationship.
+#         target_entity_type: The entity type at the target of the relationship.
+#         attributes: List of attribute names for this relationship type.
+#         relationship_identifier_attribute: Optional unique identifier for relationships.
+#     """
+# 
+#     relationship_type: str
+#     source_entity_type: str
+#     target_entity_type: str
+#     attributes: List[str]
+#     relationship_identifier_attribute: Optional[str] = (
+#         None  # Maybe use later for rel attributes?
+#     )
+# 
+#     def __init__(self, **data: Any) -> None:
+#         """Initialize the relationship table and create column hash mappings.
+# 
+#         Args:
+#             **data: Keyword arguments for relationship_type, source_entity_type,
+#                 target_entity_type, and attributes.
+#         """
+#         super().__init__(**data)
+#         for attribute in self.attributes:
+#             column_hash: str = random_hash()
+#             self.column_name_to_hash[attribute] = column_hash
+#             self.hash_to_column_name[column_hash] = attribute
+# 
+#     def to_pandas(self, context: Context) -> pd.DataFrame:
+#         """Convert this relationship table to a pandas DataFrame.
+# 
+#         Args:
+#             context: The execution context containing the actual relationship data.
+# 
+#         Returns:
+#             pd.DataFrame: The relationship data.
+#         """
+#         df: pd.DataFrame = context.obj_map[self.relationship_type]
+#         return df
+# 
+#     def to_ibis(self, context: Context) -> IbisTable:
+#         """Convert this relationship table to an Ibis table.
+# 
+#         Args:
+#             context: The execution context containing the actual relationship data.
+# 
+#         Returns:
+#             IbisTable: The relationship data as an Ibis table.
+#         """
+#         table: IbisTable = ibis.memtable(
+#             context.obj_map[self.relationship_type]
+#         )
+#         return table
+# 
+# 
+# class DropColumn(Table):
+#     """Algebraic operation to remove a column from a table.
+# 
+#     Implements the relational projection operation that excludes a specific column.
+#     The execute flag can be set to False to defer execution, which is useful when
+#     building up complex query plans.
+# 
+#     Attributes:
+#         table: The input table to drop a column from.
+#         column_name: The name of the column to drop.
+#         execute: Whether to actually execute the drop (default True).
+#     """
+# 
+#     table: Algebraic | EntityTable | Join | DropColumn | SelectColumns
+#     column_name: str
+#     execute: bool = True
+# 
+#     def to_pandas(self, context: Context) -> pd.DataFrame:
+#         """Execute the column drop operation.
+# 
+#         Args:
+#             context: The execution context.
+# 
+#         Returns:
+#             pd.DataFrame: The input DataFrame with the specified column removed,
+#                 or unchanged if execute=False or column doesn't exist.
+#         """
+#         df: pd.DataFrame = self.table.to_pandas(context)
+#         if not self.execute:
+#             return df
+#         if self.column_name in df.columns:
+#             df_dropped: pd.DataFrame = df.drop(columns=[self.column_name])
+#             return df_dropped
+#         else:
+#             return df
+# 
+#     def to_ibis(self, context: Context) -> IbisTable:
+#         """Execute the column drop operation on an Ibis table.
+# 
+#         Args:
+#             context: The execution context.
+# 
+#         Returns:
+#             IbisTable: The input table with the specified column removed,
+#                 or unchanged if execute=False or column doesn't exist.
+#         """
+#         table: IbisTable = self.table.to_ibis(context)
+#         if not self.execute:
+#             return table
+#         if self.column_name in table.columns:
+#             table_dropped: IbisTable = table.drop(self.column_name)
+#             return table_dropped
+#         else:
+#             return table
+# 
+# 
+# class RenameColumn(Table):
+#     """Algebraic operation to rename a column in a table.
+# 
+#     Changes the name of a column while preserving all data. This is used to
+#     maintain consistent naming conventions and avoid conflicts in complex queries.
+# 
+#     Attributes:
+#         table: The table containing the column to rename.
+#         old_column_name: The current name of the column.
+#         new_column_name: The new name for the column.
+#         variables_to_columns: Mapping of variables to column names.
+#     """
+# 
+#     table: EntityTable | Join | DropColumn | SelectColumns
+#     old_column_name: str
+#     new_column_name: str
+#     variables_to_columns: dict[str, str] = {}
+# 
+#     def to_pandas(self, context: Context) -> pd.DataFrame:
+#         """Execute the column rename operation.
+# 
+#         Args:
+#             context: The execution context.
+# 
+#         Returns:
+#             pd.DataFrame: The DataFrame with the renamed column.
+#         """
+#         df: pd.DataFrame = self.table.to_pandas(context)
+#         renamed_df: pd.DataFrame = df.rename(
+#             columns={self.old_column_name: self.new_column_name}
+#         )
+#         return renamed_df
+# 
+#     def to_ibis(self, context: Context) -> IbisTable:
+#         """Execute the column rename operation on an Ibis table.
+# 
+#         Args:
+#             context: The execution context.
+# 
+#         Returns:
+#             IbisTable: The Ibis table with the renamed column.
+#         """
+#         table: IbisTable = self.table.to_ibis(context)
+#         renamed_table: IbisTable = table.rename(
+#             {self.new_column_name: self.old_column_name}
+#         )
+#         return renamed_table
+# 
+# 
+# class Filter(Table):
+#     """Relational selection operation that filters rows based on a condition.
+# 
+#     Implements the relational selection operator (σ in relational algebra), which
+#     selects only those rows that satisfy a given boolean condition.
+# 
+#     Attributes:
+#         table: The table to filter.
+#         condition: The boolean condition to evaluate for each row.
+#     """
+# 
+#     table: Join | Filter | DropColumn | EntityTable | RelationshipTable
+#     condition: HasAttributeValue
+# 
+#     def to_pandas(self, context: Context) -> pd.DataFrame:
+#         """Execute the filter operation.
+# 
+#         Args:
+#             context: The execution context.
+# 
+#         Returns:
+#             pd.DataFrame: A DataFrame containing only rows that satisfy the condition.
+# 
+#         Raises:
+#             ValueError: If an unsupported condition type is provided.
+#         """
+#         df: pd.DataFrame = self.table.to_pandas(context)
+#         match self.condition:
+#             case HasAttributeValue():
+#                 column_name: str = self.table.column_name_to_hash[
+#                     self.condition.attribute
+#                 ]
+#                 filtered_df: pd.DataFrame = (
+#                     df[  # pyrefly:ignore[bad-assignment]
+#                         df[column_name] == self.condition.value
+#                     ]
+#                 )
+#             case _:
+#                 raise ValueError(
+#                     f"Unsupported condition type: {type(self.condition)}"
+#                 )
+#         return filtered_df
+# 
+#     def to_ibis(self, context: Context) -> IbisTable:
+#         """Execute the filter operation on an Ibis table.
+# 
+#         Args:
+#             context: The execution context.
+# 
+#         Returns:
+#             IbisTable: An Ibis table containing only rows that satisfy the condition.
+# 
+#         Raises:
+#             ValueError: If an unsupported condition type is provided.
+#         """
+#         table: IbisTable = self.table.to_ibis(context)
+#         match self.condition:
+#             case HasAttributeValue():
+#                 column_name: str = self.table.column_name_to_hash[
+#                     self.condition.attribute
+#                 ]
+#                 filtered_table: IbisTable = table.filter(
+#                     table[column_name] == self.condition.value
+#                 )
+#             case _:
+#                 raise ValueError(
+#                     f"Unsupported condition type: {type(self.condition)}"
+#                 )
+#         return filtered_table
+# 
+# 
+# class Join(Table):
+#     """Join operation between two tables.
+# 
+#     Performs a standard relational join on one or more column pairs. This is the
+#     fundamental operation for combining entity and relationship tables.
+# 
+#     Attributes:
+#         left: The left table in the join.
+#         right: The right table in the join.
+#         join_type: The type of join to perform (currently only INNER is implemented).
+#         left_on: The column name(s) from the left table to join on.
+#         right_on: The column name(s) from the right table to join on.
+#         variable_list: Optional list of variables involved in this join.
+#     """
+# 
+#     left: EntityTable | RelationshipTable | Filter | Join | Algebraic
+#     right: EntityTable | RelationshipTable | Filter | Join | Algebraic
+#     join_type: JoinType = JoinType.INNER
+#     left_on: str | List[str]
+#     right_on: str | List[str]
+#     variable_list: List[str] = []
+# 
+#     def to_pandas(self, context: Context) -> pd.DataFrame:
+#         """Execute the join operation.
+# 
+#         Args:
+#             context: The execution context.
+# 
+#         Returns:
+#             pd.DataFrame: The result of joining the two tables.
+# 
+#         Raises:
+#             ValueError: If an unsupported join type is specified.
+#         """
+#         left_df: pd.DataFrame = self.left.to_pandas(context)
+#         right_df: pd.DataFrame = self.right.to_pandas(context)
+#         if self.join_type == JoinType.INNER:
+#             merged_df: pd.DataFrame = pd.merge(
+#                 left_df,
+#                 right_df,
+#                 how="inner",
+#                 left_on=self.left_on,
+#                 right_on=self.right_on,
+#                 suffixes=("_left", "_right"),
+#             )
+#         else:
+#             raise ValueError(f"Unsupported join type: {self.join_type}")
+#         return merged_df
+# 
+#     def to_ibis(self, context: Context) -> IbisTable:
+#         """Execute the join operation on an Ibis table.
+# 
+#         Args:
+#             context: The execution context.
+# 
+#         Returns:
+#             IbisTable: The result of joining the two tables.
+# 
+#         Raises:
+#             ValueError: If an unsupported join type is specified.
+#         """
+#         left_table: IbisTable = self.left.to_ibis(context)
+#         right_table: IbisTable = self.right.to_ibis(context)
+#         
+#         # Normalize to lists for consistent processing
+#         left_cols = [self.left_on] if isinstance(self.left_on, str) else self.left_on
+#         right_cols = [self.right_on] if isinstance(self.right_on, str) else self.right_on
+# 
+#         if self.join_type == JoinType.INNER:
+#             # Build join predicates
+#             predicates = [
+#                 left_table[l_col] == right_table[r_col]
+#                 for l_col, r_col in zip(left_cols, right_cols)
+#             ]
+#             
+#             # Combine predicates with AND if multiple columns
+#             combined_predicate = predicates[0]
+#             for pred in predicates[1:]:
+#                 combined_predicate = combined_predicate & pred
+#                 
+#             merged_table: IbisTable = left_table.join(
+#                 right_table, combined_predicate, how="inner"
+#             )
+#         else:
+#             raise ValueError(f"Unsupported join type: {self.join_type}")
+#         return merged_table
+# 
+# 
+# class SelectColumns(Table):
+#     """Algebraic operation to select specific columns from a table.
+# 
+#     Implements the relational projection operation that keeps only the specified
+#     columns, discarding all others.
+# 
+#     Attributes:
+#         table: The input table to select columns from.
+#         column_names: List of (hashed) column names to keep.
+#     """
+# 
+#     table: EntityTable | Join | DropColumn | SelectColumns
+#     column_names: list[str]  # list of hashed column names
+# 
+#     def to_pandas(self, context: Context) -> pd.DataFrame:
+#         """Execute the column selection.
+# 
+#         Args:
+#             context: The execution context.
+# 
+#         Returns:
+#             pd.DataFrame: A DataFrame containing only the specified columns.
+#         """
+#         df: pd.DataFrame = self.table.to_pandas(context)
+#         selected_df: pd.DataFrame = df[
+#             self.column_names
+#         ]  # pyrefly:ignore[bad-assignment]
+#         return selected_df
+# 
+#     def to_ibis(self, context: Context) -> IbisTable:
+#         """Execute the column selection on an Ibis table.
+# 
+#         Args:
+#             context: The execution context.
+# 
+#         Returns:
+#             IbisTable: An Ibis table containing only the specified columns.
+#         """
+#         table: IbisTable = self.table.to_ibis(context)
+#         selected_table: IbisTable = table.select(self.column_names)
+#         return selected_table
+# 
+# 
+# class Boolean(Table):
+#     """Base class for boolean conditions used in filters.
+# 
+#     Marker class for representing boolean predicates that can be evaluated
+#     against rows in a DataFrame.
+#     """
+# 
+#     def to_pandas(self, context: Context) -> pd.DataFrame:
+#         """Boolean conditions do not directly convert to DataFrames.
+# 
+#         Raises:
+#             NotImplementedError: Always, since boolean conditions are not tables.
+#         """
+#         raise NotImplementedError(
+#             "Boolean conditions cannot be converted to DataFrames"
+#         )
+# 
+#     def to_ibis(self, context: Context) -> IbisTable:
+#         """Boolean conditions do not directly convert to Ibis tables.
+# 
+#         Raises:
+#             NotImplementedError: Always, since boolean conditions are not tables.
+#         """
+#         raise NotImplementedError(
+#             "Boolean conditions cannot be converted to Ibis tables"
+#         )
+# 
+# 
+# class Conjunction(Boolean):
+#     """Condition that represents a logical AND of multiple boolean conditions.
+# 
+#     Used in Filter operations to combine multiple predicates that must all be
+#     satisfied for a row to be included.
+# 
+#     Attributes:
+#         conditions: List of boolean conditions to combine.
+#     """
+# 
+#     left: Boolean
+#     right: Boolean
+# 
+# 
+# class Disjunction(Boolean):
+#     """Condition that represents a logical OR of multiple boolean conditions.
+# 
+#     Used in Filter operations to combine multiple predicates where at least one
+#     must be satisfied for a row to be included.
+# 
+#     Attributes:
+#         conditions: List of boolean conditions to combine.
+#     """
+# 
+#     left: Boolean
+#     right: Boolean
+# 
+# 
+# class Negation(Boolean):
+#     """Condition that represents the logical NOT of a boolean condition.
+# 
+#     Used in Filter operations to invert a predicate, selecting rows that do not
+#     satisfy the given condition.
+# 
+#     Attributes:
+#         condition: The boolean condition to negate.
+#     """
+# 
+#     condition: Boolean
+# 
+# 
+# class IsEqual(Boolean):
+#     """Condition that checks if two attributes are equal.
+# 
+#     Used in Filter operations to select rows where the values of two attributes
+#     are equal.
+# 
+#     Attributes:
+#         attribute_1: The name of the first attribute.
+#         attribute_2: The name of the second attribute.
+#     """
+# 
+#     left: Boolean
+#     right: Boolean
+# 
+# 
+# class IsGreaterThan(Boolean):
+#     """Condition that checks if one attribute is greater than another.
+# 
+#     Used in Filter operations to select rows where the value of one attribute
+#     exceeds that of another.
+# 
+#     Attributes:
+#         attribute_1: The name of the first attribute.
+#         attribute_2: The name of the second attribute.
+#     """
+# 
+#     left: Boolean
+#     right: Boolean
+# 
+# 
+# class IsLessThan(Boolean):
+#     """Condition that checks if one attribute is less than another.
+# 
+#     Used in Filter operations to select rows where the value of one attribute
+#     is less than that of another.
+# 
+#     Attributes:
+#         attribute_1: The name of the first attribute.
+#         attribute_2: The name of the second attribute.
+#     """
+# 
+#     left: Boolean
+#     right: Boolean
+# 
+# 
+# class HasAttributeValue(Boolean):
+#     """Condition that checks if an attribute has a specific value.
+# 
+#     Used in Filter operations to select rows where a particular attribute
+#     matches the specified value.
+# 
+#     Attributes:
+#         attribute: The name of the attribute to check.
+#         value: The value to match against (can be string, number, boolean, or None).
+#     """
+# 
+#     attribute: str
+#     value: str | int | float | bool | None
+# 
+# 
+# class Context(BaseModel):
+#     """Execution context for algebraic operations.
+# 
+#     Context maintains the schema information (entity and relationship tables) and
+#     the actual data (as pandas DataFrames) needed to execute algebraic expressions.
+# 
+#     Attributes:
+#         entity_tables: List of entity table schemas.
+#         relationship_tables: List of relationship table schemas.
+#         obj_map: Dictionary mapping entity/relationship types to their DataFrame data.
+#     """
+# 
+#     entity_tables: List[EntityTable]
+#     relationship_tables: List[RelationshipTable]
+#     obj_map: dict[str, Any] = {}
+# 
+#     def get_entity_table(self, entity_type: str) -> EntityTable:
+#         """Retrieve an entity table by type.
+# 
+#         Args:
+#             entity_type: The type/label of the entity table to retrieve.
+# 
+#         Returns:
+#             EntityTable: The matching entity table schema.
+# 
+#         Raises:
+#             ValueError: If no entity table with the given type is found.
+#         """
+#         for entity_table in self.entity_tables:
+#             if entity_table.entity_type == entity_type:
+#                 return entity_table
+#         else:
+#             raise ValueError(f"Entity table for type {entity_type} not found")
+# 
+#     def get_relationship_table(
+#         self, relationship_type: str
+#     ) -> RelationshipTable:
+#         """Retrieve a relationship table by type.
+# 
+#         Args:
+#             relationship_type: The type/label of the relationship table to retrieve.
+# 
+#         Returns:
+#             RelationshipTable: The matching relationship table schema.
+# 
+#         Raises:
+#             ValueError: If no relationship table with the given type is found.
+#         """
+#         for relationship_table in self.relationship_tables:
+#             if relationship_table.relationship_type == relationship_type:
+#                 return relationship_table
+#         else:
+#             raise ValueError(
+#                 f"Relationship table for type {relationship_type} not found"
+#             )
+# 
+# 
+# class Algebraizable(ABC):
+#     """Mixin for AST nodes that can be converted to algebra."""
+# 
+#     @abstractmethod
+#     def to_algebra(self, context: Context) -> Algebraic:
+#         """Convert this AST node to an Ibis algebra expression.
+# 
+#         Args:
+#             context: Conversion context with variable bindings
+# 
+#         Returns:
+#             An instance of Algebraic representing the relation
+#             corresponding to this graph entity.
+#         """
+#         pass
 
 
 # ============================================================================
@@ -1399,7 +1403,7 @@ class NodePattern(ASTNode, Algebraizable):
 
     variable: Optional["Variable"] = None
     labels: List[str] = Field(default_factory=list)
-    properties: Optional[Dict[str, Any]] = None
+    properties: Dict[str, Any] = {}
 
     #     def to_algebra(self, context: Context) -> Filter | EntityTable:
     #         """Convert this node to an algebraic expression.
@@ -1434,42 +1438,42 @@ class NodePattern(ASTNode, Algebraizable):
     #             )
     #         return out or entity_table
 
-    def to_algebra(self, context: Context) -> Algebraic:
-        """Convert this node to an algebraic expression.
+    # def to_algebra(self, context: Context) -> Algebraic:
+    #     """Convert this node to an algebraic expression.
 
-        Creates an EntityTable for the node's label, then applies Filter operations
-        for each attribute constraint. The variable is mapped to the entity's
-        identifier column.
+    #     Creates an EntityTable for the node's label, then applies Filter operations
+    #     for each attribute constraint. The variable is mapped to the entity's
+    #     identifier column.
 
-        Args:
-            context: The execution context containing entity table schemas.
-        Returns:
-            Algebraic: An EntityTable if no attributes, otherwise a Filter
-                chain wrapping the EntityTable.
-        """
-        if not self.labels:
-            raise ValueError(
-                "NodePattern must have at least one label to map to algebra."
-            )
-        if not self.variable:
-            raise NotImplementedError(
-                "Anonymous nodes not supported right now."
-            )
-        if len(self.labels) > 1:
-            LOGGER.warning(
-                'Warning: Using first label "%s" for NodePattern in to_algebra().',
-                self.labels[0],
-            )
-        entity_table: EntityTable = context.get_entity_table(
-            entity_type=self.labels[0]
-        )
-        hashed_name_column: str = entity_table.column_name_to_hash[
-            entity_table.entity_identifier_attribute
-        ]
-        identifier_table: SelectColumns = SelectColumns(
-            table=entity_table, column_names=[hashed_name_column]
-        )
-        return identifier_table
+    #     Args:
+    #         context: The execution context containing entity table schemas.
+    #     Returns:
+    #         Algebraic: An EntityTable if no attributes, otherwise a Filter
+    #             chain wrapping the EntityTable.
+    #     """
+    #     if not self.labels:
+    #         raise ValueError(
+    #             "NodePattern must have at least one label to map to algebra."
+    #         )
+    #     if not self.variable:
+    #         raise NotImplementedError(
+    #             "Anonymous nodes not supported right now."
+    #         )
+    #     if len(self.labels) > 1:
+    #         LOGGER.warning(
+    #             'Warning: Using first label "%s" for NodePattern in to_algebra().',
+    #             self.labels[0],
+    #         )
+    #     entity_table: EntityTable = context.get_entity_table(
+    #         entity_type=self.labels[0]
+    #     )
+    #     hashed_name_column: str = entity_table.column_name_to_hash[
+    #         entity_table.entity_identifier_attribute
+    #     ]
+    #     identifier_table: SelectColumns = SelectColumns(
+    #         table=entity_table, column_names=[hashed_name_column]
+    #     )
+    #     return identifier_table
 
 
 class RelationshipPattern(ASTNode):

@@ -12,6 +12,7 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
+    "graphviz>=0.21",
     "ibis-framework>=11.0.0",
     "osmium>=4.2.0",
     "pycosat>=0.6.6",
