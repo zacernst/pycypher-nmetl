@@ -1,15 +1,21 @@
-from docutils.transforms.components import Filter
+from __future__ import annotations
 from pydantic import BaseModel
 import rich
 from typing_extensions import Annotated
-from pycypher.ast_models import Variable, NodePattern, Algebraizable
-import copy
-from typing import Literal, Any, Optional
+from pycypher.ast_models import (
+    RelationshipDirection,
+    PatternPath,
+    Variable,
+    RelationshipPattern,
+    NodePattern,
+    Algebraizable,
+)
+from typing import cast, Never, Any
 from shared.logger import LOGGER
 
 from enum import Enum
 
-LOGGER.setLevel('DEBUG')
+LOGGER.setLevel("DEBUG")
 ID_COLUMN: str = "__ID__"
 
 EntityType: Annotated[..., ...] = Annotated[str, ...]
@@ -18,13 +24,16 @@ HashedColumn: Annotated[..., ...] = Annotated[str, ...]
 ColumnName: Annotated[..., ...] = Annotated[str, ...]
 ColumnHashMap: Annotated[..., ...] = Annotated[dict[str, str], ...]
 
+
 class Algebraic(BaseModel):
-    '''Base class for algebraic structures in the relational model.'''
+    """Base class for algebraic structures in the relational model."""
+
     pass
 
 
 class EntityMapping(BaseModel):
-    '''Mapping from entity types to the corresponding Table.'''
+    """Mapping from entity types to the corresponding Table."""
+
     mapping: dict[EntityType, Any] = {}
 
     def __getitem__(self, key: EntityType) -> Any:
@@ -32,7 +41,8 @@ class EntityMapping(BaseModel):
 
 
 class RelationshipMapping(BaseModel):
-    '''Mapping from relationship types to the corresponding Table.'''
+    """Mapping from relationship types to the corresponding Table."""
+
     mapping: dict[RelationshipType, Any] = {}
 
     def __getitem__(self, key: RelationshipType) -> Any:
@@ -40,26 +50,28 @@ class RelationshipMapping(BaseModel):
 
 
 class Relation(Algebraic):
-    '''A `Relation` represents a tabular data structure with some metadata.'''
+    """A `Relation` represents a tabular data structure with some metadata."""
+
     pass
 
 
 class EntityTable(Relation):
-    '''Source of truth for all IDs and a
+    """Source of truth for all IDs and attributes for a specific entity type."""
 
-    ttributes for a specific entity type.'''
     entity_type: EntityType
 
 
 class RelationshipTable(Relation):
-    '''Source of truth for all IDs and attributes for a specific relationship type.'''
+    """Source of truth for all IDs and attributes for a specific relationship type."""
+
     relationship_type: RelationshipType
 
 
 class Projection(Relation):
-    '''Selection of specific columns from a Relation.
-    
-    To be used in `RETURN` and `WITH` clauses.'''
+    """Selection of specific columns from a Relation.
+
+    To be used in `RETURN` and `WITH` clauses."""
+
     relation: Relation
     columns: list[ColumnName]
 
@@ -68,16 +80,18 @@ class Projection(Relation):
 
 
 class JoinType(Enum):
-    '''Enumeration of join types.'''
+    """Enumeration of join types."""
+
     INNER = "INNER"
     LEFT = "LEFT"
     RIGHT = "RIGHT"
-    FULL = "FULL" 
+    FULL = "FULL"
     OUTER = "OUTER"
 
 
 class Join(Relation):
-    '''Join represents a join operation between two Relations.'''
+    """Join represents a join operation between two Relations."""
+
     join_type: JoinType = JoinType.INNER
     left: Relation
     right: Relation
@@ -86,19 +100,22 @@ class Join(Relation):
 
 
 class SelectColumns(Relation):
-    '''Filter represents a filtering operation on a Relation.'''
+    """Filter represents a filtering operation on a Relation."""
+
     relation: Relation
     columns: list[ColumnName]
 
 
 class FilterRows(Relation):
-    '''Filter represents a filtering operation on a Relation.'''
+    """Filter represents a filtering operation on a Relation."""
+
     relation: Relation
     condition: BooleanCondition  # Placeholder for condition expression
 
 
 class Context(BaseModel):
-    '''Context for translation operations.'''
+    """Context for translation operations."""
+
     entity_mapping: EntityMapping = EntityMapping()
     relationship_mapping: RelationshipMapping = RelationshipMapping()
     column_hash_map: ColumnHashMap = {}
@@ -109,52 +126,132 @@ class BooleanCondition(BaseModel):
 
 
 class Equals(BooleanCondition):
-    '''Equality condition between two expressions.'''
+    """Equality condition between two expressions."""
+
     left: Any
     right: Any
 
 
 class AttributeEqualsValue(Equals):
-    '''Condition that an attribute equals a specific value.'''
+    """Condition that an attribute equals a specific value."""
+
     pass
 
 
-class Star:
-    '''Translation operator'''
+class RelationshipHead(BaseModel):
+    """Represents the head of a relationship in a pattern."""
 
-    def __init__(self, obj: Algebraizable | Star, context: Context = Context()) -> None:
+    relationship: RelationshipPattern
+    node: NodePattern
+
+
+class RelationshipTail(BaseModel):
+    """Represents the tail of a relationship in a pattern."""
+
+    relationship: RelationshipPattern
+    node: NodePattern 
+
+
+class Star:
+    """Translation operator."""
+
+    def __init__(
+        self, obj: Algebraizable | Star, context: Context = Context()
+    ) -> None:
         self.obj: Algebraizable | Star = obj
         self.context: Context = context
-    
+
     def to_relation(self) -> Relation:
-        '''Convert the object to a Relation.'''
+        """Convert the object to a Relation."""
         LOGGER.debug(msg=f"Starting to_relation conversion for {self.obj}.")
         match self.obj:
-            case NodePattern(variable=_, labels=_, properties=properties) if len(properties) == 0:  # ty:ignore[unresolved-reference]
+            case NodePattern(variable=_, labels=_, properties=properties) if (
+                len(properties) == 0
+            ):
                 LOGGER.debug(msg="Translating NodePattern with no properties.")
                 return self._from_node_pattern(node=self.obj)
-            case NodePattern(variable=_, labels=_, properties=properties) if len(properties) == 1:  # ty:ignore[unresolved-reference]
+            case NodePattern(variable=_, labels=_, properties=properties) if (
+                len(properties) == 1
+            ):
                 LOGGER.debug(msg="Translating NodePattern with one property.")
                 return self._from_node_pattern_one_attr(node=self.obj)
-            case NodePattern(variable=_, labels=_, properties=properties) if len(properties) > 1:  # ty:ignore[unresolved-reference]
-                LOGGER.debug(msg=f"Translating NodePattern with {len(properties)} properties.")
+            case NodePattern(variable=_, labels=_, properties=properties) if (
+                len(properties) > 1
+            ):
+                LOGGER.debug(
+                    msg=f"Translating NodePattern with {len(properties)} properties."
+                )
                 return self._from_node_pattern_multiple_attrs(node=self.obj)
+            case RelationshipPattern(
+                variable=_, types=_, properties=properties
+            ) if len(properties) == 0:
+                LOGGER.debug(
+                    msg="Translating RelationshipPattern with no properties."
+                )
+                return self._from_relationship_pattern(relationship=self.obj)
+            case RelationshipPattern(
+                variable=_, types=_, properties=properties
+            ) if len(properties) == 1:
+                LOGGER.debug(
+                    msg="Translating RelationshipPattern with one property."
+                )
+                return self._from_relationship_pattern_one_attr(
+                    relationship=self.obj
+                )
+            case RelationshipPattern(
+                variable=_, types=_, properties=properties
+            ) if len(properties) > 1:
+                LOGGER.debug(
+                    msg="Translating RelationshipPattern with multiple properties."
+                )
+                return self._from_relationship_pattern_multiple_attrs(
+                    relationship=self.obj
+                )
             case _:
-                raise NotImplementedError(f"Translation for {type(self.obj)} is not implemented.")
-    
+                raise NotImplementedError(
+                    f"Translation for {type(self.obj)} is not implemented."
+                )
+
+    def _from_relationship_pattern(
+        self, relationship: RelationshipPattern
+    ) -> Projection:
+        """Convert a RelationshipPattern to a RelationshipTable."""
+        # Placeholder implementation
+        out: Projection = Projection(
+            relation=self.context.relationship_mapping[
+                relationship.types[0]
+            ],  # Only first type for now
+            columns=[ID_COLUMN],
+        )
+        return out
+
+    def _from_relationship_pattern_one_attr(
+        self, relationship: RelationshipPattern
+    ) -> Never:
+        """Convert a RelationshipPattern with one property to a RelationshipTable with that property."""
+        raise NotImplementedError("Not yet implemented.")
+
+    def _from_relationship_pattern_multiple_attrs(
+        self, relationship: RelationshipPattern
+    ) -> Never:
+        """Convert a RelationshipPattern with multiple properties to a RelationshipTable with those properties."""
+        raise NotImplementedError("Not yet implemented.")
+
     def _from_node_pattern(self, node: NodePattern) -> Projection:
-        '''Convert a NodePattern to an EntityTable.'''
+        """Convert a NodePattern to an EntityTable."""
         # Placeholder implementation
         out: Projection = Projection(
             relation=self.context.entity_mapping[node.labels[0]],
-            columns=[ID_COLUMN]
+            columns=[ID_COLUMN],
         )
         return out
-    
+
     def _from_node_pattern_one_attr(self, node: NodePattern) -> Projection:
-        '''Convert a NodePattern with one property to an EntityTable with that property.'''
+        """Convert a NodePattern with one property to an EntityTable with that property."""
         # Placeholder implementation
-        base_node: NodePattern = NodePattern(variable=node.variable, labels=node.labels) 
+        base_node: NodePattern = NodePattern(
+            variable=node.variable, labels=node.labels
+        )
         attr1: str = list(node.properties.keys())[0]
         val1: Any = list(node.properties.values())[0]
         out: Projection = Projection(
@@ -170,24 +267,28 @@ class Star:
             columns=[ID_COLUMN],
         )
         return out
-    
-    def _from_node_pattern_multiple_attrs(self, node: NodePattern) -> Projection:
-        '''Convert a NodePattern with multiple properties to an EntityTable with those properties.'''
+
+    def _from_node_pattern_multiple_attrs(
+        self, node: NodePattern
+    ) -> Projection:
+        """Convert a NodePattern with multiple properties to an EntityTable with those properties."""
         last_attr: str = list(node.properties.keys())[-1]
         last_val: Any = node.properties[last_attr]
         base_node: NodePattern = NodePattern(
-            variable=node.variable, 
+            variable=node.variable,
             labels=node.labels,
             properties={
                 k: v for k, v in node.properties.items() if k != last_attr
-            }
+            },
         )
         out: Projection = Projection(
             relation=Join(
                 left=Star(obj=base_node, context=self.context).to_relation(),
                 right=FilterRows(
                     relation=self.context.entity_mapping[node.labels[0]],
-                    condition=AttributeEqualsValue(left=last_attr, right=last_val),
+                    condition=AttributeEqualsValue(
+                        left=last_attr, right=last_val
+                    ),
                 ),
                 on_left=[ID_COLUMN],
                 on_right=[ID_COLUMN],
@@ -196,28 +297,70 @@ class Star:
         )
         return out
 
+    def _from_pattern_path(self, pattern_path: PatternPath) -> Never:
+        """Convert a PatternPath to a Relation."""
+        # Convert PatternPath to a collection of NodePattern, RelationshipPattern, RelationshipHead, RelationshipTail
+        decomposed_elements: list[
+            NodePattern | RelationshipHead | RelationshipTail
+        ] = [cast(NodePattern, pattern_path.elements[0])]
+        for index, pattern_element in enumerate(
+            iterable=pattern_path.elements[1:]
+        ):
+            match pattern_element:
+                case NodePattern():
+                    LOGGER.debug(
+                        msg=f"Processing NodePattern: {pattern_element}"
+                    )
+                    decomposed_elements.append(pattern_element)
+                case RelationshipPattern() if (
+                    pattern_element.direction == RelationshipDirection.LEFT
+                ):
+                    LOGGER.debug(
+                        msg=f"Processing RelationshipPattern (left): {pattern_element}"
+                    )
+                    decomposed_elements.append(
+                        RelationshipTail(relationship=pattern_element, node=cast(NodePattern, decomposed_elements[-1]))
+                    )
+                    decomposed_elements.append(
+                        RelationshipHead(relationship=pattern_element, node=cast(NodePattern, pattern_path.elements[index + 1]))
+                    )
+                case RelationshipPattern() if (
+                    pattern_element.direction == RelationshipDirection.RIGHT
+                ):
+                    LOGGER.debug(
+                        msg=f"Processing RelationshipPattern (right): {pattern_element}"
+                    )
+                    decomposed_elements.append(
+                        RelationshipHead(relationship=pattern_element, node=cast(NodePattern, decomposed_elements[-1]))
+                    )
+                    decomposed_elements.append(
+                        RelationshipTail(relationship=pattern_element, node=cast(NodePattern, pattern_path.elements[index + 1]))
+                    )
+                case _:
+                    raise NotImplementedError(
+                        f"Pattern element type {type(pattern_element)} not implemented."
+                    )
+        # We should be able to process decomposed_elements one by one without reference to previous elements
+        # That leaves us with just NodePattern, RelationshipHead, RelationshipTail to process
+        # Then we have to figure out how to combine them into a final Relation
+        raise NotImplementedError("Not yet implemented.")
+
 
 if __name__ == "__main__":
     LOGGER.info(msg="Module loaded successfully.")
 
     node = NodePattern(
         variable=Variable(name="p"),
-        labels=['Person'],
-        properties={'name': 'Alice', 'age': 30}
+        labels=["Person"],
+        properties={"name": "Alice", "age": 30},
     )
 
     context: Context = Context(
         entity_mapping=EntityMapping(
-            mapping={
-                'Person': EntityTable(entity_type='Person')
-            }
+            mapping={"Person": EntityTable(entity_type="Person")}
         ),
-        relationship_mapping=RelationshipMapping(
-            mapping={} 
-        ),
+        relationship_mapping=RelationshipMapping(mapping={}),
         column_hash_map={},
-
-
     )
     star: Star = Star(obj=node, context=context)
     translation: Relation = star.to_relation()

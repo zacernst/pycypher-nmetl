@@ -76,6 +76,20 @@ def random_hash() -> str:
     ).hexdigest()
 
 
+class RelationshipDirection(str, Enum):
+    """Enumeration of relationship directions in graph patterns.
+
+    Attributes:
+        LEFT: Left-directed relationship (e.g., <-[:REL]-).
+        RIGHT: Right-directed relationship (e.g., -[:REL]->).
+        UNDIRECTED: Undirected relationship (e.g., -[:REL]-).
+    """
+
+    LEFT: Literal[str] = "<-"
+    RIGHT: Literal[str] = "->"
+    UNDIRECTED: Literal[str] = "-"  # We won't support this right away
+
+
 class Algebraizable(ABC):
     pass
 
@@ -838,22 +852,23 @@ class ValidationIssue(BaseModel):
     ):
         """Initialize ValidationIssue with positional or keyword arguments."""
         # If first argument is dict and message is None, Pydantic is calling with dict
-        if isinstance(severity, dict):
-            super().__init__(**severity)
-        elif severity is not None or message is not None:
-            # Positional or mixed arguments - convert to kwargs
-            if severity is not None and not isinstance(severity, dict):
-                kwargs["severity"] = severity
-            if message is not None:
-                kwargs["message"] = message
-            if node is not None:
-                kwargs["node"] = node
-            if code is not None:
-                kwargs["code"] = code
-            super().__init__(**kwargs)
-        else:
-            # All keyword arguments
-            super().__init__(**kwargs)
+        match severity:
+            case dict():
+                super().__init__(**severity)
+            case _ if severity is not None or message is not None:
+                # Positional or mixed arguments - convert to kwargs
+                if severity is not None:
+                    kwargs["severity"] = severity
+                if message is not None:
+                    kwargs["message"] = message
+                if node is not None:
+                    kwargs["node"] = node
+                if code is not None:
+                    kwargs["code"] = code
+                super().__init__(**kwargs)
+            case _:
+                # All keyword arguments
+                super().__init__(**kwargs)
 
     def __str__(self) -> str:
         parts = [f"[{self.severity.value.upper()}] {self.message}"]
@@ -1094,12 +1109,13 @@ class ASTNode(BaseModel, ABC):
         """Get all child nodes. Override in subclasses."""
         children = []
         for field_name, field_value in self.__dict__.items():
-            if isinstance(field_value, ASTNode):
-                children.append(field_value)
-            elif isinstance(field_value, list):
-                children.extend(
-                    [item for item in field_value if isinstance(item, ASTNode)]
-                )
+            match field_value:
+                case ASTNode():
+                    children.append(field_value)
+                case list():
+                    children.extend(
+                        [item for item in field_value if isinstance(item, ASTNode)]
+                    )
         return children
 
     def pretty(self, indent: int = 0) -> str:
@@ -1116,21 +1132,22 @@ class ASTNode(BaseModel, ABC):
         lines = [f"{prefix}{self.__class__.__name__}"]
 
         for field_name, field_value in self.__dict__.items():
-            if field_value is None:
-                continue
-            elif isinstance(field_value, ASTNode):
-                lines.append(f"{prefix}  {field_name}:")
-                lines.append(field_value.pretty(indent + 2))
-            elif isinstance(field_value, list) and field_value:
-                if all(isinstance(item, ASTNode) for item in field_value):
-                    lines.append(f"{prefix}  {field_name}: [")
-                    for item in field_value:
-                        lines.append(item.pretty(indent + 2))
-                    lines.append(f"{prefix}  ]")
-                else:
+            match field_value:
+                case None:
+                    continue
+                case ASTNode():
+                    lines.append(f"{prefix}  {field_name}:")
+                    lines.append(field_value.pretty(indent + 2))
+                case list() if field_value:
+                    if all(isinstance(item, ASTNode) for item in field_value):
+                        lines.append(f"{prefix}  {field_name}: [")
+                        for item in field_value:
+                            lines.append(item.pretty(indent + 2))
+                        lines.append(f"{prefix}  ]")
+                    else:
+                        lines.append(f"{prefix}  {field_name}: {field_value}")
+                case _ if not isinstance(field_value, (dict, list)) or field_value:
                     lines.append(f"{prefix}  {field_name}: {field_value}")
-            elif not isinstance(field_value, (dict, list)) or field_value:
-                lines.append(f"{prefix}  {field_name}: {field_value}")
 
         return "\n".join(lines)
 
@@ -1139,17 +1156,18 @@ class ASTNode(BaseModel, ABC):
         result = {"type": self.__class__.__name__}
 
         for field_name, field_value in self.__dict__.items():
-            if field_value is None:
-                continue
-            elif isinstance(field_value, ASTNode):
-                result[field_name] = field_value.to_dict()
-            elif isinstance(field_value, list):
-                result[field_name] = [
-                    item.to_dict() if isinstance(item, ASTNode) else item
-                    for item in field_value
-                ]
-            else:
-                result[field_name] = field_value
+            match field_value:
+                case None:
+                    continue
+                case ASTNode():
+                    result[field_name] = field_value.to_dict()
+                case list():
+                    result[field_name] = [
+                        item.to_dict() if isinstance(item, ASTNode) else item
+                        for item in field_value
+                    ]
+                case _:
+                    result[field_name] = field_value
 
         return result
 
@@ -1493,7 +1511,7 @@ class RelationshipPattern(ASTNode):
         >>> rel = RelationshipPattern(
         ...     variable=Variable(name="knows"),
         ...     types=["KNOWS"],
-        ...     direction="right"
+        ...     direction=RelationshipDirection.RIGHT
         ... )
         >>> print(rel.variable.name)  # "knows"
     """
@@ -1501,7 +1519,7 @@ class RelationshipPattern(ASTNode):
     variable: Optional["Variable"] = None
     types: List[str] = Field(default_factory=list)
     properties: Optional[Dict[str, Any]] = None
-    direction: str = "right"  # "left", "right", "both", "any"
+    direction: RelationshipDirection
     length: Optional["PathLength"] = None
     where: Optional["Expression"] = None
 
@@ -2014,36 +2032,36 @@ class ASTConverter:
     def _convert_generic(self, node: dict, node_type: str) -> Optional[ASTNode]:
         """Generic converter for nodes without specific handler."""
         # Try to find the class in globals
-        cls = globals().get(node_type)
-        if cls and isinstance(cls, type) and issubclass(cls, ASTNode):
-            try:
-                # remove 'type' from args
-                args = {k: v for k, v in node.items() if k != "type"}
-                
-                # Recursively convert fields that look like AST dicts
-                converted_args = {}
-                for k, v in args.items():
-                    if isinstance(v, dict) and "type" in v:
-                        converted_args[k] = self.convert(v)
-                    elif isinstance(v, list):
-                        new_list = []
-                        for item in v:
-                            if isinstance(item, dict) and "type" in item:
-                                new_list.append(self.convert(item))
-                            elif isinstance(item, dict):
-                                # Convert dicts that might be AST nodes but missing type? 
-                                # Or just primitives.
-                                new_list.append(self._convert_primitive(item))
-                            else:
-                                new_list.append(item)
-                        converted_args[k] = new_list
-                    else:
-                        converted_args[k] = v
-                
-                return cls(**converted_args)
-            except Exception as e:
-                LOGGER.warning(f"Failed to auto-convert {node_type}: {e}")
-                return None
+        match cls := globals().get(node_type):
+            case type() if issubclass(cls, ASTNode):
+                try:
+                    # remove 'type' from args
+                    args = {k: v for k, v in node.items() if k != "type"}
+                    
+                    # Recursively convert fields that look like AST dicts
+                    converted_args = {}
+                    for k, v in args.items():
+                        if isinstance(v, dict) and "type" in v:
+                            converted_args[k] = self.convert(v)
+                        elif isinstance(v, list):
+                            new_list = []
+                            for item in v:
+                                if isinstance(item, dict) and "type" in item:
+                                    new_list.append(self.convert(item))
+                                elif isinstance(item, dict):
+                                    # Convert dicts that might be AST nodes but missing type? 
+                                    # Or just primitives.
+                                    new_list.append(self._convert_primitive(item))
+                                else:
+                                    new_list.append(item)
+                            converted_args[k] = new_list
+                        else:
+                            converted_args[k] = v
+                    
+                    return cls(**converted_args)
+                except Exception as e:
+                    LOGGER.warning(f"Failed to auto-convert {node_type}: {e}")
+                    return None
         
         LOGGER.warning(f"No converter found for node type: {node_type}")
         return None

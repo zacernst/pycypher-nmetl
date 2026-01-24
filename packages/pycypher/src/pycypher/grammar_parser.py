@@ -3416,11 +3416,15 @@ class CypherASTTransformer(Transformer):
         Returns:
             Dict with appropriate structure for the element type.
         """
-        if len(args) == 1 and isinstance(args[0], str):
-            return {"selector": args[0]}
-        elif len(args) == 2:
-            return {"property": args[0], "value": args[1]}
-        return args[0] if args else None
+        match args:
+            case [str() as selector]:
+                return {"selector": selector}
+            case [property_name, value]:
+                return {"property": property_name, "value": value}
+            case [single_arg]:
+                return single_arg
+            case _:
+                return None
 
     # ========================================================================
     # Literals
@@ -3870,7 +3874,10 @@ class GrammarParser:
         >>> ast = parser.parse_to_ast(query)
     """
 
-    def __init__(self, debug: bool = False):
+    parser: Lark
+    transformer: "CypherASTTransformer"
+
+    def __init__(self, debug: bool = False) -> None:
         """Initialize the grammar parser.
         
         Args:
@@ -3957,7 +3964,7 @@ class GrammarParser:
 def main() -> None:
     """Command-line interface for the grammar parser."""
 
-    parser = argparse.ArgumentParser(description='Parse openCypher queries using the BNF grammar')
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(description='Parse openCypher queries using the BNF grammar')
     parser.add_argument('query', nargs='?', help='Cypher query to parse')
     parser.add_argument('-f', '--file', help='File containing Cypher query')
     parser.add_argument('-a', '--ast', action='store_true', help='Output AST instead of parse tree')
@@ -3965,11 +3972,12 @@ def main() -> None:
     parser.add_argument('-v', '--validate', action='store_true', help='Only validate, don\'t output')
     parser.add_argument('-d', '--debug', action='store_true', help='Enable debug mode')
 
-    args = parser.parse_args()
+    args: argparse.Namespace = parser.parse_args()
 
-    cypher_parser = GrammarParser(debug=args.debug)
+    cypher_parser: GrammarParser = GrammarParser(debug=args.debug)
 
     # Get query from file or argument
+    query: str
     if args.file:
         with open(args.file, 'r') as f:
             query = f.read()
