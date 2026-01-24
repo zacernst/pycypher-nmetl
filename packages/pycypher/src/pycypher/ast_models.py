@@ -2394,8 +2394,8 @@ def _collect_defined_variables(node: ASTNode) -> Set[str]:
 
     # Variables from MATCH patterns
     for match in node.find_all(Match):
-        if match.pattern:
-            for path in match.pattern.paths:
+        if cast(Match, match).pattern:
+            for path in getattr(cast(Match, match).pattern, "paths", []):
                 # Node variables
                 for elem in path.elements:
                     if isinstance(elem, NodePattern) and elem.variable:
@@ -2410,8 +2410,8 @@ def _collect_defined_variables(node: ASTNode) -> Set[str]:
 
     # Variables from CREATE patterns
     for create in node.find_all(Create):
-        if create.pattern:
-            for path in create.pattern.paths:
+        if cast(Create, create).pattern:
+            for path in getattr(cast(Create, create).pattern, "paths", []):
                 for elem in path.elements:
                     if isinstance(elem, NodePattern) and elem.variable:
                         defined.add(elem.variable.name)
@@ -2422,12 +2422,12 @@ def _collect_defined_variables(node: ASTNode) -> Set[str]:
 
     # Variables from UNWIND
     for unwind in node.find_all(Unwind):
-        if unwind.alias:
-            defined.add(unwind.alias)
+        if cast(Unwind, unwind).alias:
+            defined.add(cast(Unwind, unwind).alias)
 
     # Variables from WITH (creates new scope)
     for with_clause in node.find_all(With):
-        for item in with_clause.items:
+        for item in cast(With, with_clause).items:
             if item.alias:
                 defined.add(item.alias)
             elif isinstance(item.expression, Variable):
@@ -2440,8 +2440,8 @@ def _collect_definition_ids(node: ASTNode) -> Set[int]:
     """Collect IDs of Variable nodes that act as definitions."""
     ids = set()
     for match in node.find_all(Match):
-        if match.pattern:
-            for path in match.pattern.paths:
+        if cast(Match, match).pattern:
+            for path in getattr(cast(Match, match).pattern, "paths", []):
                 for elem in path.elements:
                     if isinstance(elem, NodePattern) and elem.variable:
                         ids.add(id(elem.variable))
@@ -2452,8 +2452,8 @@ def _collect_definition_ids(node: ASTNode) -> Set[int]:
                 if path.variable:
                     ids.add(id(path.variable))
     for create in node.find_all(Create):
-        if create.pattern:
-            for path in create.pattern.paths:
+        if cast(Create, create).pattern:
+            for path in getattr(cast(Create, create).pattern, 'paths', []):
                 for elem in path.elements:
                     if isinstance(elem, NodePattern) and elem.variable:
                         ids.add(id(elem.variable))
@@ -2471,14 +2471,14 @@ def _collect_referenced_variables(node: ASTNode) -> Set[str]:
 
     for var in node.find_all(Variable):
         if id(var) not in definition_ids:
-            referenced.add(var.name)
+            referenced.add(cast(Variable, var).name)
 
     # Also check property lookups with legacy variable field
     for prop in node.find_all(PropertyLookup):
-        if prop.variable:
+        if cast(PropertyLookup, prop).variable:
             # PropertyLookup variable is typically a reference
-            if id(prop.variable) not in definition_ids:
-                referenced.add(prop.variable.name)
+            if id(cast(PropertyLookup, prop).variable) not in definition_ids:
+                referenced.add(cast(PropertyLookup, prop).variable.name)
 
     return referenced
 
@@ -2516,7 +2516,7 @@ def _validate_unused_variables(
     # Also check what's returned
     returned = set()
     for ret in node.find_all(Return):
-        for item in ret.items:
+        for item in cast(Return, ret).items:
             if isinstance(item.expression, Variable):
                 returned.add(item.expression.name)
 
@@ -2535,10 +2535,10 @@ def _validate_unused_variables(
 def _validate_missing_labels(node: ASTNode, result: ValidationResult) -> None:
     """Check for MATCH patterns without labels (potential performance issue)."""
     for match in node.find_all(Match):
-        if not match.pattern:
+        if not cast(Match, match).pattern:
             continue
 
-        for path in match.pattern.paths:
+        for path in getattr(cast(Match, match).pattern, "paths", []):
             for elem in path.elements:
                 if isinstance(elem, NodePattern):
                     if not elem.labels and not elem.properties:
@@ -2561,10 +2561,10 @@ def _validate_unreachable_conditions(
 ) -> None:
     """Check for unreachable WHERE conditions (like WHERE false)."""
     for match in node.find_all(Match):
-        if match.where:
+        if cast(Match, match).where:
             if (
-                isinstance(match.where, BooleanLiteral)
-                and not match.where.value
+                isinstance(cast(Match, match).where, BooleanLiteral)
+                and not getattr(cast(Match, match).where, "value", None)
             ):
                 result.add_issue(
                     ValidationSeverity.WARNING,
@@ -2650,7 +2650,7 @@ def _validate_return_all_with_limit(
         has_return_all = any(
             isinstance(item.expression, ReturnAll) for item in ret.items
         )
-        if has_return_all and ret.limit:
+        if has_return_all and cast(Return, ret).limit:
             result.add_issue(
                 ValidationSeverity.INFO,
                 "Using RETURN * with LIMIT may return arbitrary results",
@@ -2665,15 +2665,15 @@ def _validate_delete_without_detach(
 ) -> None:
     """Check for DELETE of nodes that might have relationships."""
     for delete in node.find_all(Delete):
-        if not delete.detach and delete.expressions:
+        if not cast(Delete, delete).detach and cast(Delete, delete).expressions:
             # Check if we're deleting node variables (not properties)
-            for expr in delete.expressions:
+            for expr in cast(Delete, delete).expressions:
                 if isinstance(expr, Variable):
                     result.add_issue(
                         ValidationSeverity.WARNING,
-                        f"Deleting node '{expr.name}' without DETACH may fail if it has relationships",
+                        f"Deleting node '{cast(Variable, expr).name}' without DETACH may fail if it has relationships",
                         node_type="Delete",
-                        suggestion=f"Use DETACH DELETE to automatically remove relationships",
+                        suggestion="Use DETACH DELETE to automatically remove relationships",
                         code="MISSING_DETACH",
                     )
 
@@ -2687,9 +2687,9 @@ def _validate_expensive_patterns(
     if len(matches) >= 2:
         match_vars = []
         for match in matches:
-            if match.pattern:
+            if cast(Match, match).pattern:
                 vars_in_match = set()
-                for path in match.pattern.paths:
+                for path in getattr(cast(Match, match).pattern, "paths", []):
                     for elem in path.elements:
                         if isinstance(elem, NodePattern) and elem.variable:
                             vars_in_match.add(elem.variable.name)
