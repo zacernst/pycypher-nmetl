@@ -2478,7 +2478,7 @@ def _collect_referenced_variables(node: ASTNode) -> Set[str]:
         if cast(PropertyLookup, prop).variable:
             # PropertyLookup variable is typically a reference
             if id(cast(PropertyLookup, prop).variable) not in definition_ids:
-                referenced.add(cast(PropertyLookup, prop).variable.name)
+                referenced.add(getattr(cast(PropertyLookup, prop).variable, "name", None))
 
     return referenced
 
@@ -2671,7 +2671,7 @@ def _validate_delete_without_detach(
                 if isinstance(expr, Variable):
                     result.add_issue(
                         ValidationSeverity.WARNING,
-                        f"Deleting node '{cast(Variable, expr).name}' without DETACH may fail if it has relationships",
+                        f"Deleting node '{expr.name}' without DETACH may fail if it has relationships",
                         node_type="Delete",
                         suggestion="Use DETACH DELETE to automatically remove relationships",
                         code="MISSING_DETACH",
@@ -2714,7 +2714,7 @@ def _validate_expensive_patterns(
 
     # Check for variable-length paths without upper bound
     for rel in node.find_all(RelationshipPattern):
-        if rel.length and rel.length.unbounded:
+        if cast(RelationshipPattern, rel).length and getattr(cast(RelationshipPattern, rel).length, "unbounded", False):
             result.add_issue(
                 ValidationSeverity.WARNING,
                 "Unbounded variable-length relationship may cause performance issues",
