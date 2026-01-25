@@ -305,11 +305,12 @@ class Star:
                 relationship.types[0]
             ],  # Only first type for now
             column_names=[ID_COLUMN],
+            variable_map={relationship.variable.name: ID_COLUMN} if relationship.variable else {}
         )
         # Attach variable mapping if variable is present
         # Note: We do this only for basis cases without properties
-        if relationship.variable:
-            out.variable_map[relationship.variable.name] = ID_COLUMN  # disambiguate?
+        # if relationship.variable:
+        #     out.variable_map[relationship.variable.name] = ID_COLUMN  # disambiguate?
         return out
 
     def _from_relationship_pattern_one_attr(
@@ -347,7 +348,6 @@ class Star:
 
     def _from_node_pattern_one_attr(self, node: NodePattern) -> Projection:
         """Convert a NodePattern with one property to an EntityTable with that property."""
-        # Placeholder implementation
         base_node: NodePattern = NodePattern(
             variable=node.variable, labels=node.labels
         )
