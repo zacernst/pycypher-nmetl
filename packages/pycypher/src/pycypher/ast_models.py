@@ -86,7 +86,7 @@ class RelationshipDirection(str, Enum):
     UNDIRECTED: Literal[str] = "-"  # We won't support this right away
 
 
-class Algebraizable(ABC):
+class Algebraizable(BaseModel):
     pass
 
 
@@ -668,7 +668,7 @@ class Pattern(ASTNode):
     paths: List["PatternPath"] = Field(default_factory=list)
 
 
-class PatternPath(ASTNode):
+class PatternPath(ASTNode, Algebraizable):
     """A single path in a pattern.
 
     Represents a complete path pattern that may have an optional binding variable.
@@ -789,7 +789,7 @@ class NodePattern(ASTNode, Algebraizable):
     #     return identifier_table
 
 
-class RelationshipPattern(ASTNode):
+class RelationshipPattern(ASTNode, Algebraizable):
     """Relationship pattern in MATCH/CREATE clauses.
 
     Represents a relationship pattern like -[r:KNOWS]-> in Cypher queries.
