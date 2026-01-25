@@ -1,9 +1,9 @@
 from __future__ import annotations
-from gitdb.util import join
-from pydantic import BaseModel
+from pydantic import Field, BaseModel
 import rich
 from typing_extensions import Annotated
 from pycypher.ast_models import (
+    random_hash,
     RelationshipDirection,
     PatternPath,
     Variable,
@@ -23,15 +23,20 @@ RELATIONSHIP_TARGET_COLUMN: str = "__TARGET__"
 
 EntityType: Annotated[..., ...] = Annotated[str, ...]
 RelationshipType: Annotated[..., ...] = Annotated[str, ...]
-HashedColumn: Annotated[..., ...] = Annotated[str, ...]
+DisambiguatedColumnName: Annotated[..., ...] = Annotated[str, ...]
 ColumnName: Annotated[..., ...] = Annotated[str, ...]
-ColumnHashMap: Annotated[..., ...] = Annotated[dict[str, str], ...]
+VariableMap: Annotated[..., ...] = Annotated[dict[str, DisambiguatedColumnName], ...]
 
+class DisambiguatedColumnName(BaseModel):
+    """A column name that is disambiguated with its source relation."""
+    
+    relation_identifier: str
+    column_name: str
 
-class Algebraic(BaseModel):
-    """Base class for algebraic structures in the relational model."""
-
-    source_algebraizable: Optional[Algebraizable] = None
+# class Algebraic(BaseModel):
+#     """Base class for algebraic structures in the relational model."""
+# 
+#     source_algebraizable: Optional[Algebraizable] = None
 
 
 class EntityMapping(BaseModel):
@@ -52,14 +57,41 @@ class RelationshipMapping(BaseModel):
         return self.mapping[key]
 
 
-class Relation(Algebraic):
+class Relation(BaseModel):
     """A `Relation` represents a tabular data structure with some metadata."""
     source_algebraizable: Optional[Algebraizable] = None
+    variable_map: VariableMap = {}
+    column_names: list[str | DisambiguatedColumnName] =  []
+    identifier: str = Field(default_factory=lambda: random_hash())
 
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        if not hasattr(self, 'column_names') or not self.column_names:
+            LOGGER.warning(msg="Relation created without column_names specified.")
+        self.column_names: list[DisambiguatedColumnName] = [
+            column_name 
+            if isinstance(column_name, DisambiguatedColumnName) 
+            else DisambiguatedColumnName(
+                relation_identifier=self.identifier,
+                column_name=column_name
+            )
+            for column_name in self.column_names]
+        
+        self.variable_map: VariableMap= {
+            var_name: (
+                column_name 
+                if isinstance(column_name, DisambiguatedColumnName) 
+                else DisambiguatedColumnName(
+                    relation_identifier=self.identifier,
+                    column_name=column_name
+                )
+            )
+            for var_name, column_name in self.variable_map.items()
+        }
 
 class EntityTable(Relation):
     """Source of truth for all IDs and attributes for a specific entity type."""
-
+    
     entity_type: EntityType
 
 
@@ -67,7 +99,7 @@ class RelationshipTable(Relation):
     """Source of truth for all IDs and attributes for a specific relationship type."""
 
     relationship_type: RelationshipType
-
+    
 
 class Projection(Relation):
     """Selection of specific columns from a Relation.
@@ -75,10 +107,6 @@ class Projection(Relation):
     To be used in `RETURN` and `WITH` clauses."""
 
     relation: Relation
-    columns: list[ColumnName]
-
-
-#
 
 
 class JoinType(Enum):
@@ -120,7 +148,6 @@ class Context(BaseModel):
 
     entity_mapping: EntityMapping = EntityMapping()
     relationship_mapping: RelationshipMapping = RelationshipMapping()
-    column_hash_map: ColumnHashMap = {}
 
 
 class BooleanCondition(BaseModel):
@@ -138,20 +165,6 @@ class AttributeEqualsValue(Equals):
     """Condition that an attribute equals a specific value."""
 
     pass
-
-
-class RelationshipHead(Algebraizable):
-    """Represents the head of a relationship in a pattern."""
-
-    relationship: RelationshipPattern
-    node: NodePattern
-
-
-class RelationshipTail(Algebraizable):
-    """Represents the tail of a relationship in a pattern."""
-
-    relationship: RelationshipPattern
-    node: NodePattern 
 
 
 class Star:
@@ -272,7 +285,7 @@ class Star:
             case _:
                 # This should never happen
                 raise NotImplementedError(
-                    "Join for the given Relation types is not implemented.")
+                    f"Join for the given Relation types is not implemented: {type(left)} and {type(right)}.")
         # Each Relation object has to track a mapping from variables to columns
         return Join(
             left=left,
@@ -291,8 +304,12 @@ class Star:
             relation=self.context.relationship_mapping[
                 relationship.types[0]
             ],  # Only first type for now
-            columns=[ID_COLUMN],
+            column_names=[ID_COLUMN],
         )
+        # Attach variable mapping if variable is present
+        # Note: We do this only for basis cases without properties
+        if relationship.variable:
+            out.variable_map[relationship.variable.name] = ID_COLUMN  # disambiguate?
         return out
 
     def _from_relationship_pattern_one_attr(
@@ -312,8 +329,20 @@ class Star:
         # Placeholder implementation
         out: Projection = Projection(
             relation=self.context.entity_mapping[node.labels[0]],
-            columns=[ID_COLUMN],
+            column_names=[
+                DisambiguatedColumnName(
+                    relation_identifier=self.context.entity_mapping[node.labels[0]].identifier,
+                    column_name=ID_COLUMN
+                    )
+                ]
         )
+        # Attach variable mapping if variable is present
+        # Note: We do this only for basis cases without properties
+        if node.variable:
+            out.variable_map[node.variable.name] = DisambiguatedColumnName(
+                relation_identifier=self.context.entity_mapping[node.labels[0]].identifier,
+                column_name=ID_COLUMN
+            )
         return out
 
     def _from_node_pattern_one_attr(self, node: NodePattern) -> Projection:
@@ -330,11 +359,13 @@ class Star:
                 right=FilterRows(
                     relation=self.context.entity_mapping[node.labels[0]],
                     condition=AttributeEqualsValue(left=attr1, right=val1),
+                    column_names=[ID_COLUMN],
+                    variable_map={node.variable.name: ID_COLUMN}
                 ),
                 on_left=[ID_COLUMN],
                 on_right=[ID_COLUMN],
             ),
-            columns=[ID_COLUMN],
+            column_names=[ID_COLUMN],
         )
         return out
 
@@ -356,66 +387,29 @@ class Star:
                 left=self.to_relation(obj=base_node),
                 right=FilterRows(
                     relation=self.context.entity_mapping[node.labels[0]],
-                    condition=AttributeEqualsValue(
-                        left=last_attr, right=last_val
-                    ),
+                    condition=AttributeEqualsValue(left=last_attr, right=last_val),
+                    column_names=[ID_COLUMN],
+                    variable_map={node.variable.name: ID_COLUMN}
                 ),
                 on_left=[ID_COLUMN],
                 on_right=[ID_COLUMN],
             ),
-            columns=[ID_COLUMN],
+            column_names=[ID_COLUMN],
         )
         return out
-
-    # def _decompose_pattern_path(self, pattern_path: PatternPath) -> list[
-    #     Relation]:
-    #     """Convert a PatternPath to a Relation."""
-    #     # Convert PatternPath to a collection of NodePattern, RelationshipPattern, RelationshipHead, RelationshipTail
-    #     decomposed_elements: list[
-    #         Relation
-    #     ] = []
-    #     for index, pattern_element in enumerate(
-    #         iterable=pattern_path.elements[1:]
-    #     ):
-    #         match pattern_element:
-    #             case NodePattern():
-    #                 LOGGER.debug(
-    #                     msg=f"Processing NodePattern: {pattern_element}"
-    #                 )
-    #                 decomposed_elements.append(self.to_relation(obj=pattern_element))
-    #             case RelationshipPattern() if (
-    #                 pattern_element.direction == RelationshipDirection.LEFT
-    #             ):
-    #                 LOGGER.debug(
-    #                     msg=f"Processing RelationshipPattern (left): {pattern_element}"
-    #                 )
-    #                 decomposed_elements.append(
-    #                     self.to_relation(obj=RelationshipTail(relationship=pattern_element, node=decomposed_elements[-1]))
-    #                 )
-    #                 decomposed_elements.append(
-    #                     RelationshipHead(relationship=pattern_element, node=cast(NodePattern, pattern_path.elements[index + 1]))
-    #                 )
-    #             case RelationshipPattern() if (
-    #                 pattern_element.direction == RelationshipDirection.RIGHT
-    #             ):
-    #                 LOGGER.debug(
-    #                     msg=f"Processing RelationshipPattern (right): {pattern_element}"
-    #                 )
-    #                 decomposed_elements.append(
-    #                     RelationshipHead(relationship=pattern_element, node=cast(NodePattern, decomposed_elements[-1]))
-    #                 )
-    #                 decomposed_elements.append(
-    #                     RelationshipTail(relationship=pattern_element, node=cast(NodePattern, pattern_path.elements[index + 1]))
-    #                 )
-    #             case _:
-    #                 raise NotImplementedError(
-    #                     f"Pattern element type {type(pattern_element)} not implemented."
-    #                 )
-    #     return decomposed_elements
 
 
 if __name__ == "__main__":
     LOGGER.info(msg="Module loaded successfully.")
+            
+    entity_table_person = EntityTable(entity_type="Person", column_names=[ID_COLUMN, 'name', 'age'])
+    relationship_table_knows = RelationshipTable(relationship_type="KNOWS", column_names=[ID_COLUMN, RELATIONSHIP_SOURCE_COLUMN, RELATIONSHIP_TARGET_COLUMN])
+
+    node_0 = NodePattern(
+        variable=Variable(name="n"),
+        labels=["Person"],
+        properties={},
+    )
 
     node_1 = NodePattern(
         variable=Variable(name="p1"),
@@ -442,27 +436,33 @@ if __name__ == "__main__":
 
     context: Context = Context(
         entity_mapping=EntityMapping(
-            mapping={"Person": EntityTable(entity_type="Person")}
+            mapping={"Person": entity_table_person}
         ),
         relationship_mapping=RelationshipMapping(
             mapping={
-                "KNOWS": RelationshipTable(relationship_type="KNOWS")
+                "KNOWS": relationship_table_knows
             }
         ),
-        column_hash_map={},
     )
     star: Star = Star(context=context)
     print("Translating NodePattern:")
     print("(p:Person {name: 'Alice', age: 30})")
 
+    translation: Relation = star.to_relation(obj=node_0)
+    rich.print(translation)
+    import pdb; pdb.set_trace()
+
     translation: Relation = star.to_relation(obj=node_1)
     rich.print(translation)
+
+    import pdb; pdb.set_trace()
 
     print("\n---\n")
     print("Translating RelationshipPattern:")
     print("-[r:KNOWS]->")
     translation: Relation = star.to_relation(obj=relationship)
     rich.print(translation)
+    import pdb; pdb.set_trace()
 
     print("\n---\n")
     print("Translating PatternPath:")

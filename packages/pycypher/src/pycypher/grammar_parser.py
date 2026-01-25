@@ -15,8 +15,8 @@ Example:
     >>> print(tree.pretty())
 """
 
-from lark import Lark, Transformer, v_args, Tree, Token
-from typing import Any, List, Dict, Optional, Union, Tuple
+from lark import Lark, Transformer, Tree
+from typing import Any, List, Dict, Optional, Union
 from pathlib import Path
 import json
 import sys
