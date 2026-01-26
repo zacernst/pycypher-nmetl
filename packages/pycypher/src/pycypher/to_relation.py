@@ -11,6 +11,7 @@ from pycypher.ast_models import (
     NodePattern,
     Algebraizable,
 )
+import pandas as pd
 from typing import Optional, Never, Any, cast
 from shared.logger import LOGGER
 
@@ -21,11 +22,7 @@ ID_COLUMN: str = "__ID__"
 RELATIONSHIP_SOURCE_COLUMN: str = "__SOURCE__"
 RELATIONSHIP_TARGET_COLUMN: str = "__TARGET__"
 
-EntityType: Annotated[..., ...] = Annotated[str, ...]
-RelationshipType: Annotated[..., ...] = Annotated[str, ...]
-DisambiguatedColumnName: Annotated[..., ...] = Annotated[str, ...]
-ColumnName: Annotated[..., ...] = Annotated[str, ...]
-VariableMap: Annotated[..., ...] = Annotated[dict[str, DisambiguatedColumnName], ...]
+
 
 class DisambiguatedColumnName(BaseModel):
     """A column name that is disambiguated with its source relation."""
@@ -33,10 +30,35 @@ class DisambiguatedColumnName(BaseModel):
     relation_identifier: str
     column_name: str
 
+    def __str__(self) -> str:
+        return f"{self.relation_identifier}::{self.column_name}"
+
+EntityType = Annotated[str, ...]
+RelationshipType = Annotated[str, ...]
+ColumnName: Annotated[..., ...] = Annotated[str, ...]
+VariableMap = Annotated[dict[str, str | DisambiguatedColumnName], ...]
+
 # class Algebraic(BaseModel):
 #     """Base class for algebraic structures in the relational model."""
 # 
 #     source_algebraizable: Optional[Algebraizable] = None
+
+
+class BooleanCondition(BaseModel):
+    pass
+
+
+class Equals(BooleanCondition):
+    """Equality condition between two expressions."""
+
+    left: Any
+    right: Any
+
+
+class AttributeEqualsValue(Equals):
+    """Condition that an attribute equals a specific value."""
+
+    pass
 
 
 class EntityMapping(BaseModel):
@@ -77,7 +99,7 @@ class Relation(BaseModel):
             )
             for column_name in self.column_names]
         
-        self.variable_map: VariableMap= {
+        self.variable_map: VariableMap = {
             var_name: (
                 column_name 
                 if isinstance(column_name, DisambiguatedColumnName) 
@@ -88,17 +110,39 @@ class Relation(BaseModel):
             )
             for var_name, column_name in self.variable_map.items()
         }
+    
+    def to_pandas(self, context: Context) -> pd.DataFrame:
+        """Convert the Relation to a pandas DataFrame."""
+        raise NotImplementedError("to_pandas() not implemented for base Relation class.")
 
 class EntityTable(Relation):
     """Source of truth for all IDs and attributes for a specific entity type."""
     
     entity_type: EntityType
+    source_obj: Any = None
+
+    def to_pandas(self, context: Context) -> pd.DataFrame:
+        """Convert the EntityTable to a pandas DataFrame."""
+        disambiguate_columns_mapping: dict[str, str] = {
+            cast(typ=DisambiguatedColumnName, val=disambiguated_col).column_name: str(object=disambiguated_col) for disambiguated_col in self.column_names
+        }
+        new_df: pd.DataFrame = self.source_obj.rename(columns=disambiguate_columns_mapping)
+        return new_df
 
 
 class RelationshipTable(Relation):
     """Source of truth for all IDs and attributes for a specific relationship type."""
 
     relationship_type: RelationshipType
+    source_obj: Any = None
+    
+    def to_pandas(self, context: Context) -> pd.DataFrame:
+        """Convert the EntityTable to a pandas DataFrame."""
+        disambiguate_columns_mapping: dict[str, str] = {
+            cast(typ=DisambiguatedColumnName, val=disambiguated_col).column_name: str(object=disambiguated_col) for disambiguated_col in self.column_names
+        }
+        new_df: pd.DataFrame = self.source_obj.rename(columns=disambiguate_columns_mapping)
+        return new_df
     
 
 class Projection(Relation):
@@ -108,13 +152,35 @@ class Projection(Relation):
 
     relation: Relation
 
+    def to_pandas(self, context: Context) -> pd.DataFrame:
+        """Convert the Projection to a pandas DataFrame."""
+        base_df: pd.DataFrame = self.relation.to_pandas(context=context)
+        # column_renaming_map: dict[str, str] = {
+        #     str(object=base_column_name): str(
+        #         object=DisambiguatedColumnName(
+        #             relation_identifier=self.identifier,
+        #             column_name=cast(typ=DisambiguatedColumnName, val=base_column_name).column_name
+        #         ) 
+        #     ) for base_column_name in self.relation.column_names}
+        column_renaming_map: dict[str, str] = {
+            str(object=base_column_name): str(
+                object=DisambiguatedColumnName(
+                    relation_identifier=self.identifier, 
+                    column_name=cast(typ=DisambiguatedColumnName, val=base_column_name).column_name
+                )
+            ) for base_column_name in self.relation.column_names}
+        projected_df: pd.DataFrame = base_df.rename(columns=column_renaming_map)[
+            [str(object=column_name) for column_name in self.column_names]
+        ]
+        return projected_df
+
 
 class JoinType(Enum):
     """Enumeration of join types."""
 
     INNER = "INNER"
     LEFT = "LEFT"
-    RIGHT = "RIGHT"
+    RIGHT = "RIGHT"    
     FULL = "FULL"
     OUTER = "OUTER"
 
@@ -142,29 +208,45 @@ class FilterRows(Relation):
     relation: Relation
     condition: BooleanCondition  # Placeholder for condition expression
 
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.column_names: list[str | DisambiguatedColumnName] = self.column_names or self.relation.column_names
+        # self.variable_map = self.relation.variable_map
+
+    def to_pandas(self, context: Context) -> pd.DataFrame:
+        """Convert the FilterRows to a pandas DataFrame."""
+        # Placeholder implementation
+        df: pd.DataFrame = self.relation.to_pandas(context=context)
+        # Apply filtering based on condition (not implemented)
+        match self.condition:
+            case AttributeEqualsValue():
+                filtered_df: pd.DataFrame = df[
+                    df[
+                        str(object=DisambiguatedColumnName(
+                            relation_identifier=self.relation.identifier,
+                            column_name=self.condition.left)
+                        )
+                    ] == self.condition.right
+                ]
+                column_renaming_map: dict[str, str] = {
+                    str(object=base_column_name): str(
+                        object=DisambiguatedColumnName(
+                            relation_identifier=self.identifier, 
+                            column_name=cast(typ=DisambiguatedColumnName, 
+                            val=base_column_name).column_name
+                        )
+                    ) for base_column_name in self.relation.column_names}
+                projected_df: pd.DataFrame = filtered_df.rename(columns=column_renaming_map)
+            case _:
+                raise NotImplementedError("Condition type not implemented in to_pandas.")
+        return filtered_df
+
 
 class Context(BaseModel):
     """Context for translation operations."""
 
     entity_mapping: EntityMapping = EntityMapping()
     relationship_mapping: RelationshipMapping = RelationshipMapping()
-
-
-class BooleanCondition(BaseModel):
-    pass
-
-
-class Equals(BooleanCondition):
-    """Equality condition between two expressions."""
-
-    left: Any
-    right: Any
-
-
-class AttributeEqualsValue(Equals):
-    """Condition that an attribute equals a specific value."""
-
-    pass
 
 
 class Star:
@@ -252,14 +334,19 @@ class Star:
     def _binary_join(self, left: Relation, right: Relation) -> Relation:
         """Perform a smart binary join between two Relations, depending on the
         specific types of the Relations."""
-        # Relation objects have some way of indicating their join keys,
-        # This is in the source_algebraizable attribute
+
+        # TODO: Add variable mapping assignments and columns with correct
+        #       disambiguation logic and renaming if necessary here.
         match (left.source_algebraizable, right.source_algebraizable):
             case (NodePattern(), RelationshipPattern()) if cast(typ=RelationshipPattern, val=right.source_algebraizable).direction == RelationshipDirection.RIGHT:
                 LOGGER.debug(msg="Joining Node with Relationship.")
                 left_join_key: str = ID_COLUMN
                 right_join_key: str = RELATIONSHIP_SOURCE_COLUMN
                 join_type: JoinType = JoinType.INNER
+                variable_map: VariableMap = {
+                    **left.variable_map,
+                    **right.variable_map
+                }
             case (NodePattern(), RelationshipPattern()) if cast(typ=RelationshipPattern, val=right.source_algebraizable).direction == RelationshipDirection.LEFT:
                 LOGGER.debug(msg="Joining Node with Relationship.")
                 left_join_key: str = ID_COLUMN
@@ -270,6 +357,10 @@ class Star:
                 left_join_key: str = RELATIONSHIP_TARGET_COLUMN
                 right_join_key: str = ID_COLUMN
                 join_type: JoinType = JoinType.INNER
+                variable_map: VariableMap = {
+                    **left.variable_map,
+                    **right.variable_map
+                }
             case (RelationshipPattern(), NodePattern()) if cast(typ=RelationshipPattern, val=left.source_algebraizable).direction == RelationshipDirection.LEFT:
                 LOGGER.debug(msg="Joining Relationship with Node.")
                 left_join_key: str = RELATIONSHIP_SOURCE_COLUMN
@@ -283,17 +374,28 @@ class Star:
                 raise ValueError("Cannot join two RelationshipPatterns directly.")
 
             case _:
+                LOGGER.debug(msg="Joining two complex Relations (Projection/Join).")
+                left_join_key: str = ID_COLUMN
+                right_join_key: str = ID_COLUMN
+                join_type: JoinType = JoinType.INNER
+                variable_map: VariableMap = {
+                    **left.variable_map,
+                    **right.variable_map
+                }
                 # This should never happen
-                raise NotImplementedError(
-                    f"Join for the given Relation types is not implemented: {type(left)} and {type(right)}.")
+                # import pdb; pdb.set_trace()
+                # raise NotImplementedError(
+                #     f"Join for the given Relation types is not implemented: {type(left)} and {type(right)}.")
         # Each Relation object has to track a mapping from variables to columns
-        return Join(
+        out: Join = Join(
             left=left,
             right=right,
             on_left=[left_join_key],
             on_right=[right_join_key],
             join_type=join_type,
+            variable_map=variable_map,
         )
+        return out
 
     def _from_relationship_pattern(
         self, relationship: RelationshipPattern
@@ -335,15 +437,11 @@ class Star:
                     relation_identifier=self.context.entity_mapping[node.labels[0]].identifier,
                     column_name=ID_COLUMN
                     )
-                ]
+                ],
+            variable_map={node.variable.name: ID_COLUMN} if node.variable else {}
         )
         # Attach variable mapping if variable is present
         # Note: We do this only for basis cases without properties
-        if node.variable:
-            out.variable_map[node.variable.name] = DisambiguatedColumnName(
-                relation_identifier=self.context.entity_mapping[node.labels[0]].identifier,
-                column_name=ID_COLUMN
-            )
         return out
 
     def _from_node_pattern_one_attr(self, node: NodePattern) -> Projection:
@@ -360,12 +458,13 @@ class Star:
                     relation=self.context.entity_mapping[node.labels[0]],
                     condition=AttributeEqualsValue(left=attr1, right=val1),
                     column_names=[ID_COLUMN],
-                    variable_map={node.variable.name: ID_COLUMN}
+                    variable_map={node.variable.name: ID_COLUMN} if node.variable else {}
                 ),
                 on_left=[ID_COLUMN],
                 on_right=[ID_COLUMN],
             ),
             column_names=[ID_COLUMN],
+            variable_map={node.variable.name: ID_COLUMN} if node.variable else {}
         )
         return out
 
@@ -389,23 +488,47 @@ class Star:
                     relation=self.context.entity_mapping[node.labels[0]],
                     condition=AttributeEqualsValue(left=last_attr, right=last_val),
                     column_names=[ID_COLUMN],
-                    variable_map={node.variable.name: ID_COLUMN}
+                    variable_map={node.variable.name: ID_COLUMN}  # ty: ignore[possibly-missing-attribute]
                 ),
                 on_left=[ID_COLUMN],
                 on_right=[ID_COLUMN],
             ),
             column_names=[ID_COLUMN],
+            variable_map={node.variable.name: ID_COLUMN} if node.variable else {}
         )
         return out
-
+    
 
 if __name__ == "__main__":
     LOGGER.info(msg="Module loaded successfully.")
+
+    entity_df: pd.DataFrame = pd.DataFrame(
+        data={
+            ID_COLUMN: [1, 2, 3],
+            'name': ['Alice', 'Bob', 'Carol'],
+            'age': [30, 40, 50],
+        }
+    )
+
+    relationship_df: pd.DataFrame = pd.DataFrame(
+        data={  
+            ID_COLUMN: [10, 11],
+            RELATIONSHIP_SOURCE_COLUMN: [1, 2],
+            RELATIONSHIP_TARGET_COLUMN: [2, 3],
+        }
+    )
+
             
-    entity_table_person = EntityTable(entity_type="Person", column_names=[ID_COLUMN, 'name', 'age'])
-    relationship_table_knows = RelationshipTable(relationship_type="KNOWS", column_names=[ID_COLUMN, RELATIONSHIP_SOURCE_COLUMN, RELATIONSHIP_TARGET_COLUMN])
+    entity_table_person = EntityTable(entity_type="Person", column_names=[ID_COLUMN, 'name', 'age'], source_obj=entity_df)
+    relationship_table_knows = RelationshipTable(relationship_type="KNOWS", column_names=[ID_COLUMN, RELATIONSHIP_SOURCE_COLUMN, RELATIONSHIP_TARGET_COLUMN], source_obj=relationship_df)
 
     node_0 = NodePattern(
+        variable=Variable(name="n"),
+        labels=["Person"],
+        properties={},
+    )
+
+    node_3 = NodePattern(
         variable=Variable(name="n"),
         labels=["Person"],
         properties={},
@@ -422,9 +545,22 @@ if __name__ == "__main__":
         labels=["Person"],
         properties={"name": "Bob", "age": 40},
     )
+    
+    node_3 = NodePattern(
+        variable=Variable(name="p3"),
+        labels=["Person"],
+        properties={"name": "Carol", "age": 50},
+    )
 
     relationship: RelationshipPattern = RelationshipPattern(
         variable=Variable(name="r"),
+        types=["KNOWS"],
+        direction=RelationshipDirection.RIGHT,
+        properties={},
+    )
+    
+    relationship_1: RelationshipPattern = RelationshipPattern(
+        variable=Variable(name="s"),
         types=["KNOWS"],
         direction=RelationshipDirection.RIGHT,
         properties={},
@@ -433,6 +569,14 @@ if __name__ == "__main__":
     alice_knows_bob: PatternPath = PatternPath(
         elements=[node_1, relationship, node_2]
     )
+
+    alice_knows_bob_knows_carol: PatternPath = PatternPath(
+        elements=[node_1, relationship, node_2, relationship_1, node_3]
+    )
+
+    path_empty_attrs: PatternPath = PatternPath(
+        elements=[node_0, relationship, node_3]
+    )   
 
     context: Context = Context(
         entity_mapping=EntityMapping(
@@ -445,28 +589,42 @@ if __name__ == "__main__":
         ),
     )
     star: Star = Star(context=context)
+    
+    translation: Relation = star.to_relation(obj=path_empty_attrs)
+    rich.print(translation)
+
     print("Translating NodePattern:")
     print("(p:Person {name: 'Alice', age: 30})")
 
     translation: Relation = star.to_relation(obj=node_0)
     rich.print(translation)
-    import pdb; pdb.set_trace()
 
     translation: Relation = star.to_relation(obj=node_1)
     rich.print(translation)
 
-    import pdb; pdb.set_trace()
-
-    print("\n---\n")
-    print("Translating RelationshipPattern:")
-    print("-[r:KNOWS]->")
-    translation: Relation = star.to_relation(obj=relationship)
-    rich.print(translation)
-    import pdb; pdb.set_trace()
-
-    print("\n---\n")
     print("Translating PatternPath:")
     print("(p1:Person {name: 'Alice', age: 30})-[r:KNOWS]->(p2:Person {name: 'Bob', age: 40})")
     translation: Relation = star.to_relation(obj=alice_knows_bob)
     rich.print(translation) 
+    
+    print("\n---\n")
+    print("Translating PatternPath:")
+    print("(p1:Person {name: 'Alice', age: 30})-[r:KNOWS]->(p2:Person {name: 'Bob', age: 40})-[s:KNOWS]->(p3:Person {name: 'Carol', age: 50})")
+    translation: Relation = star.to_relation(obj=alice_knows_bob_knows_carol)
+    rich.print(translation) 
 
+    filter_rows_df: pd.DataFrame = FilterRows(relation=entity_table_person, condition=AttributeEqualsValue(left='name', right='Carol')).to_pandas(context=context)
+    rich.print(filter_rows_df)
+
+    projection_df: pd.DataFrame = Projection(relation=entity_table_person, column_names=['name']).to_pandas(context=context)
+    rich.print(projection_df)
+    
+    projection_df: pd.DataFrame = Projection(
+        relation=FilterRows(
+            relation=entity_table_person, 
+            condition=AttributeEqualsValue(
+                left='name',
+                right='Carol'
+            ),
+        ), column_names=['name']).to_pandas(context=context)
+    rich.print(projection_df)
