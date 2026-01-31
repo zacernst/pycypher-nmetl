@@ -714,7 +714,7 @@ class NodePattern(ASTNode, Algebraizable):
         >>> print(node.variable.name)  # "person"
     """
 
-    variable: Optional["Variable"] = None
+    variable: Variable  # TODO: Make a constructor if not present
     labels: List[str] = Field(default_factory=list)
     properties: Dict[str, Any] = {}
 
@@ -811,7 +811,7 @@ class RelationshipPattern(ASTNode, Algebraizable):
         >>> print(rel.variable.name)  # "knows"
     """
 
-    variable: Optional["Variable"] = None
+    variable: Variable  # Make constructor if not present
     types: List[str] = Field(default_factory=list)
     properties: Optional[Dict[str, Any]] = None
     direction: RelationshipDirection
@@ -1022,6 +1022,10 @@ class Variable(Expression):
     """
 
     name: str
+
+    def __hash__(self) -> int:
+        """Hash based on variable name."""
+        return hash('__VARIABLE__' + self.name)
 
 
 class Parameter(Expression):
