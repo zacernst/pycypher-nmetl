@@ -1,6 +1,10 @@
 from __future__ import annotations
+from ibis.backends.tests.test_map import test_column_map_merge
+import copy
 from pydantic import Field, BaseModel
 import rich
+import sys
+from abc import abstractmethod
 from typing_extensions import Annotated
 from pycypher.ast_models import (
     random_hash,
@@ -23,7 +27,6 @@ RELATIONSHIP_SOURCE_COLUMN: str = "__SOURCE__"
 RELATIONSHIP_TARGET_COLUMN: str = "__TARGET__"
 
 
-
 class DisambiguatedColumnName(BaseModel):
     """A column name that is disambiguated with its source relation."""
     
@@ -32,16 +35,20 @@ class DisambiguatedColumnName(BaseModel):
 
     def __str__(self) -> str:
         return f"{self.relation_identifier}::{self.column_name}"
+    
+    def __hash__(self) -> int:
+        return hash((self.relation_identifier, self.column_name))
+    
+    def to_pandas_column(self) -> str:
+        """Convert to a pandas-compatible column name."""
+        return str(f'{self.relation_identifier}__{self.column_name}')
 
 EntityType = Annotated[str, ...]
+Attribute = Annotated[str, ...]
 RelationshipType = Annotated[str, ...]
 ColumnName: Annotated[..., ...] = Annotated[str, ...]
 VariableMap = Annotated[dict[Variable, DisambiguatedColumnName], ...]
-
-# class Algebraic(BaseModel):
-#     """Base class for algebraic structures in the relational model."""
-# 
-#     source_algebraizable: Optional[Algebraizable] = None
+AttributeMap = Annotated[dict[Attribute, DisambiguatedColumnName], ...]
 
 
 class BooleanCondition(BaseModel):
@@ -83,7 +90,7 @@ class Relation(BaseModel):
     """A `Relation` represents a tabular data structure with some metadata."""
     source_algebraizable: Optional[Algebraizable] = None
     variable_map: VariableMap = {}
-    column_names: list[str | DisambiguatedColumnName] =  []
+    column_names: list[DisambiguatedColumnName] =  []
     identifier: str = Field(default_factory=lambda: random_hash())
 
     def __init__(self, *args, **kwargs) -> None:
@@ -113,21 +120,31 @@ class Relation(BaseModel):
     
     def to_pandas(self, context: Context) -> pd.DataFrame:
         """Convert the Relation to a pandas DataFrame."""
-        raise NotImplementedError("to_pandas() not implemented for base Relation class.")
+        raise NotImplementedError("to_pandas not implemented for base Relation class.")
+
 
 class EntityTable(Relation):
     """Source of truth for all IDs and attributes for a specific entity type."""
     
     entity_type: EntityType
     source_obj: Any = Field(default=None, repr=False)
+    attribute_map: dict[Attribute, DisambiguatedColumnName] = Field(default_factory=dict)
+    source_obj_attribute_map: dict[Attribute, str] = Field(default_factory=dict)  # Assume all table objects (e.g. DataFrames) have string column names.
 
     def to_pandas(self, context: Context) -> pd.DataFrame:
         """Convert the EntityTable to a pandas DataFrame."""
-        disambiguate_columns_mapping: dict[str, str] = {
-            cast(typ=DisambiguatedColumnName, val=disambiguated_col).column_name: str(object=disambiguated_col) for disambiguated_col in self.column_names
+        df: pd.DataFrame = self.source_obj
+        column_renaming_dict: dict[str, str] = {
+            ID_COLUMN: DisambiguatedColumnName(
+                relation_identifier=self.entity_type,
+                column_name=ID_COLUMN
+            ).to_pandas_column()
         }
-        new_df: pd.DataFrame = self.source_obj.rename(columns=disambiguate_columns_mapping)
-        return new_df
+        for attribute, disambiguated_column_name in self.attribute_map.items():
+            source_column_name: str = self.source_obj_attribute_map[attribute]
+            column_renaming_dict[source_column_name] = disambiguated_column_name.to_pandas_column()
+        df: pd.DataFrame = df.rename(columns=column_renaming_dict)
+        return df
 
 
 class RelationshipTable(Relation):
@@ -135,14 +152,31 @@ class RelationshipTable(Relation):
 
     relationship_type: RelationshipType
     source_obj: Any = Field(default=None, repr=False)
+    attribute_map: dict[Attribute, DisambiguatedColumnName] = Field(default_factory=dict)
+    source_obj_attribute_map: dict[Attribute, str] = Field(default_factory=dict)  # Assume all table objects (e.g. DataFrames) have string column names.
     
     def to_pandas(self, context: Context) -> pd.DataFrame:
-        """Convert the EntityTable to a pandas DataFrame."""
-        disambiguate_columns_mapping: dict[str, str] = {
-            cast(typ=DisambiguatedColumnName, val=disambiguated_col).column_name: str(object=disambiguated_col) for disambiguated_col in self.column_names
+        """Convert the RelationshipTable to a pandas DataFrame."""
+        df: pd.DataFrame = self.source_obj
+        column_renaming_dict: dict[str, str] = {
+            ID_COLUMN: DisambiguatedColumnName(
+                relation_identifier=self.relationship_type,
+                column_name=ID_COLUMN
+            ).to_pandas_column(),
+            RELATIONSHIP_SOURCE_COLUMN: DisambiguatedColumnName(
+                relation_identifier=self.relationship_type,
+                column_name=RELATIONSHIP_SOURCE_COLUMN
+            ).to_pandas_column(),
+            RELATIONSHIP_TARGET_COLUMN: DisambiguatedColumnName(
+                relation_identifier=self.relationship_type,
+                column_name=RELATIONSHIP_TARGET_COLUMN
+            ).to_pandas_column(),
         }
-        new_df: pd.DataFrame = self.source_obj.rename(columns=disambiguate_columns_mapping)
-        return new_df
+        for attribute, disambiguated_column_name in self.attribute_map.items():
+            source_column_name: str = self.source_obj_attribute_map[attribute]
+            column_renaming_dict[source_column_name] = disambiguated_column_name.to_pandas_column()
+        df: pd.DataFrame = df.rename(columns=column_renaming_dict)
+        return df
     
 
 class Projection(Relation):
@@ -151,6 +185,7 @@ class Projection(Relation):
     To be used in `RETURN` and `WITH` clauses."""
 
     relation: Relation
+    projected_column_names: dict[DisambiguatedColumnName, DisambiguatedColumnName]
 
     def to_pandas(self, context: Context) -> pd.DataFrame:
         """Convert the Projection to a pandas DataFrame."""
@@ -224,10 +259,11 @@ class FilterRows(Relation):
 
     relation: Relation
     condition: BooleanCondition  # Placeholder for condition expression
+    column_map: dict[DisambiguatedColumnName, DisambiguatedColumnName] = Field(default_factory=dict)
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self.column_names: list[str | DisambiguatedColumnName] = self.column_names or self.relation.column_names
+        # self.column_names: list[DisambiguatedColumnName] = []  # self.column_names or self.relation.column_names
         # self.variable_map = self.relation.variable_map
 
     def to_pandas(self, context: Context) -> pd.DataFrame:
@@ -284,17 +320,10 @@ class Star:
                 LOGGER.debug(msg="Translating NodePattern with no properties.")
                 out: Projection = self._from_node_pattern(node=obj)
             case NodePattern(variable=_, labels=_, properties=properties) if (
-                len(properties) == 1             # (n:Thing {prop1: val1})
+                len(properties) >= 1             # (n:Thing {prop1: val1})
             ):
                 LOGGER.debug(msg="Translating NodePattern with one property.")
-                out: Projection = self._from_node_pattern_one_attr(node=obj)
-            case NodePattern(variable=_, labels=_, properties=properties) if (
-                len(properties) > 1              # (n:Thing {prop1: val1, prop2: val2}) 
-            ):
-                LOGGER.debug(
-                    msg=f"Translating NodePattern with {len(properties)} properties."
-                )
-                out: Projection = self._from_node_pattern_multiple_attrs(node=obj)
+                out: FilterRows = self._from_node_pattern_with_attrs(node=obj)
             case RelationshipPattern(            # -[r:KNOWS]->
                 variable=_, types=_, properties=properties
             ) if len(properties) == 0:
@@ -471,74 +500,71 @@ class Star:
     def _from_node_pattern(self, node: NodePattern) -> Projection:
         """Convert a NodePattern to an EntityTable."""
         # Placeholder implementation
-        out: Projection = Projection(
-            relation=self.context.entity_mapping[node.labels[0]],
-            column_names=[
-                DisambiguatedColumnName(
-                    relation_identifier=self.context.entity_mapping[node.labels[0]].identifier,
-                    column_name=ID_COLUMN
-                    )
-                ],
-            variable_map={node.variable: DisambiguatedColumnName(relation_identifier=self.context.entity_mapping[node.labels[0]].identifier, column_name=ID_COLUMN)} if node.variable else {}
-        )
-        # Attach variable mapping if variable is present
-        # Note: We do this only for basis cases without properties
-        return out
+        relation = copy.deepcopy(self.context.entity_mapping[node.labels[0]])
+        relation.variable_map = {
+            node.variable: DisambiguatedColumnName(
+                relation_identifier=relation.identifier,
+                column_name=ID_COLUMN
+            )
+        } if node.variable else {}
+        return relation
+        # projection_identifier: str = random_hash()
+        # out: Projection = Projection(
+        #     identifier=projection_identifier,
+        #     relation=self.context.entity_mapping[node.labels[0]],
+        #     projected_column_names={
+        #         DisambiguatedColumnName(
+        #             relation_identifier=self.context.entity_mapping[node.labels[0]].identifier,
+        #             column_name=column_name.column_name
+        #         ): DisambiguatedColumnName(
+        #             relation_identifier=projection_identifier,
+        #             column_name=column_name.column_name
+        #         )
+        #         for column_name in self.context.entity_mapping[node.labels[0]].column_names
+        #     },
+        #     variable_map={node.variable: DisambiguatedColumnName(relation_identifier=projection_identifier, column_name=ID_COLUMN)} if node.variable else {}
+        # )
+        # # Attach variable mapping if variable is present
+        # # Note: We do this only for basis cases without properties
+        # return out
 
-    def _from_node_pattern_one_attr(self, node: NodePattern) -> Projection:
-        """Convert a NodePattern with one property to an EntityTable with that property."""
-        base_node: NodePattern = NodePattern(
-            variable=node.variable, labels=node.labels
-        )
+    def _from_node_pattern_with_attrs(self, node: NodePattern) -> FilterRows:
+        """Convert a NodePattern with one property: value to a Relation with that property and value."""
+        
         attr1: str = list(node.properties.keys())[0]
         val1: Any = list(node.properties.values())[0]
-        out: Projection = Projection(
-            relation=Join(
-                left=self.to_relation(obj=base_node),
-                right=FilterRows(
-                    relation=self.context.entity_mapping[node.labels[0]],
-                    condition=AttributeEqualsValue(left=attr1, right=val1),
-                    column_names=[ID_COLUMN],
-                    variable_map={node.variable: DisambiguatedColumnName(relation_identifier=self.context.entity_mapping[node.labels[0]].identifier, column_name=ID_COLUMN)} if node.variable else {}
-                ),
-                on_left=[ID_COLUMN],
-                on_right=[ID_COLUMN],
-            ),
-            column_names=[ID_COLUMN],
-            variable_map={node.variable: DisambiguatedColumnName(relation_identifier=self.context.entity_mapping[node.labels[0]].identifier, column_name=ID_COLUMN)} if node.variable else {}
-        )
-        return out
-
-    def _from_node_pattern_multiple_attrs(
-        self, node: NodePattern
-    ) -> Projection:
-        """Convert a NodePattern with multiple properties to an EntityTable with those properties."""
-        last_attr: str = list(node.properties.keys())[-1]
-        last_val: Any = node.properties[last_attr]
         base_node: NodePattern = NodePattern(
-            variable=node.variable,
-            labels=node.labels,
+            variable=node.variable, labels=node.labels,
             properties={
-                k: v for k, v in node.properties.items() if k != last_attr
+                attr: val for attr, val in node.properties.items() if attr != attr1
             },
+        )  # TODO: Define the base_node as the current node with one property popped off
+        base_node_relation: Relation = self.to_relation(obj=base_node)  # left side for join
+        filtered_relation_identifier: str = random_hash()
+        filtered_relation: FilterRows = FilterRows(
+            relation=base_node_relation,
+            condition=AttributeEqualsValue(left=attr1, right=val1),
+            column_map={  # The column_map here is from base relation to filtered relation
+                          # It eliminates the need for a Projection after the FilterRows
+                DisambiguatedColumnName(
+                    relation_identifier=base_node_relation.identifier,
+                    column_name=disambiguated_column_name.column_name
+                ): DisambiguatedColumnName(
+                    relation_identifier=filtered_relation_identifier,
+                    column_name=disambiguated_column_name.column_name
+                ) for disambiguated_column_name in base_node_relation.column_names
+            },
+            column_names=[DisambiguatedColumnName(relation_identifier=filtered_relation_identifier, column_name=disambiguated_column_name.column_name) for disambiguated_column_name in base_node_relation.column_names],
+            identifier=filtered_relation_identifier,
+            variable_map={
+                variable: DisambiguatedColumnName(
+                    relation_identifier=filtered_relation_identifier,
+                    column_name=disambiguated_column_name.column_name
+                ) for variable, disambiguated_column_name in base_node_relation.variable_map.items()
+            }
         )
-        out: Projection = Projection(
-            relation=Join(
-                left=self.to_relation(obj=base_node),
-                right=FilterRows(
-                    relation=self.context.entity_mapping[node.labels[0]],
-                    condition=AttributeEqualsValue(left=last_attr, right=last_val),
-                    column_names=[ID_COLUMN],
-                    variable_map={node.variable: DisambiguatedColumnName(relation_identifier=self.context.entity_mapping[node.labels[0]].identifier, column_name=ID_COLUMN)} if node.variable else {}
-                ),
-                on_left=[ID_COLUMN],
-                on_right=[ID_COLUMN],
-            ),
-            column_names=[ID_COLUMN],
-            variable_map={node.variable: DisambiguatedColumnName(relation_identifier=self.context.entity_mapping[node.labels[0]].identifier, column_name=ID_COLUMN)} if node.variable else {}
-        )
-        return out
-    
+        return filtered_relation
+
 
 if __name__ == "__main__":
     LOGGER.info(msg="Module loaded successfully.")
@@ -576,10 +602,81 @@ if __name__ == "__main__":
     )
 
             
-    entity_table_person = EntityTable(entity_type="Person", column_names=[ID_COLUMN, 'name', 'age'], source_obj=entity_df_person)
-    entity_table_city = EntityTable(entity_type="City", column_names=[ID_COLUMN, 'name', 'population'], source_obj=entity_df_city)
-    relationship_table_lives_in = RelationshipTable(relationship_type="LIVES_IN", column_names=[ID_COLUMN, RELATIONSHIP_SOURCE_COLUMN, RELATIONSHIP_TARGET_COLUMN], source_obj=relationship_df_lives_in)
-    relationship_table_knows = RelationshipTable(relationship_type="KNOWS", column_names=[ID_COLUMN, RELATIONSHIP_SOURCE_COLUMN, RELATIONSHIP_TARGET_COLUMN], source_obj=relationship_df_knows)
+    entity_table_person = EntityTable(
+        entity_type="Person", 
+        column_names=[
+            DisambiguatedColumnName(relation_identifier="Person", column_name=ID_COLUMN),
+            DisambiguatedColumnName(relation_identifier="Person", column_name='name'),
+            DisambiguatedColumnName(relation_identifier="Person", column_name='age'),
+        ],
+        source_obj_attribute_map={
+            'name': 'name',
+            'age': 'age',
+        },
+        attribute_map = {
+            'name': DisambiguatedColumnName(relation_identifier='Person', column_name='name'),
+            'age': DisambiguatedColumnName(relation_identifier='Person', column_name='age'),
+        },
+        source_obj=entity_df_person
+    )
+    print(entity_table_person.to_pandas(context=Context())) 
+    # entity_table_city = EntityTable(entity_type="City", column_names=[ID_COLUMN, 'name', 'population'], source_obj=entity_df_city)
+    entity_table_city = EntityTable(
+        entity_type="City", 
+        column_names=[
+            DisambiguatedColumnName(relation_identifier="City", column_name=ID_COLUMN),
+            DisambiguatedColumnName(relation_identifier="City", column_name='name'),
+            DisambiguatedColumnName(relation_identifier="City", column_name='population'),
+        ],
+        source_obj_attribute_map={
+            'name': 'name',
+            'population': 'population',
+        },
+        attribute_map = {
+            'name': DisambiguatedColumnName(relation_identifier='City', column_name='name'),
+            'population': DisambiguatedColumnName(relation_identifier='City', column_name='population'),
+        },
+        source_obj=entity_df_city
+    )
+    print(entity_table_city.to_pandas(context=Context())) 
+    #Jsys.exit(0)
+    relationship_table_lives_in = RelationshipTable(
+        relationship_type="LIVES_IN", 
+        column_names=[
+            DisambiguatedColumnName(relation_identifier="LIVES_IN", column_name=ID_COLUMN),
+            DisambiguatedColumnName(relation_identifier="LIVES_IN", column_name=RELATIONSHIP_SOURCE_COLUMN),
+            DisambiguatedColumnName(relation_identifier="LIVES_IN", column_name=RELATIONSHIP_TARGET_COLUMN),
+        ],
+        source_obj_attribute_map={
+            RELATIONSHIP_SOURCE_COLUMN: RELATIONSHIP_SOURCE_COLUMN,
+            RELATIONSHIP_TARGET_COLUMN: RELATIONSHIP_TARGET_COLUMN,
+        },
+        attribute_map = {
+            RELATIONSHIP_SOURCE_COLUMN: DisambiguatedColumnName(relation_identifier='LIVES_IN', column_name=RELATIONSHIP_SOURCE_COLUMN),
+            RELATIONSHIP_TARGET_COLUMN: DisambiguatedColumnName(relation_identifier='LIVES_IN', column_name=RELATIONSHIP_TARGET_COLUMN),
+        },
+        source_obj=relationship_df_lives_in
+    )
+    relationship_table_knows = RelationshipTable(
+        relationship_type="KNOWS", 
+        column_names=[
+            DisambiguatedColumnName(relation_identifier="KNOWS", column_name=ID_COLUMN),
+            DisambiguatedColumnName(relation_identifier="KNOWS", column_name=RELATIONSHIP_SOURCE_COLUMN),
+            DisambiguatedColumnName(relation_identifier="KNOWS", column_name=RELATIONSHIP_TARGET_COLUMN),
+        ],
+        source_obj_attribute_map={
+            RELATIONSHIP_SOURCE_COLUMN: RELATIONSHIP_SOURCE_COLUMN,
+            RELATIONSHIP_TARGET_COLUMN: RELATIONSHIP_TARGET_COLUMN,
+        },
+        attribute_map = {
+            RELATIONSHIP_SOURCE_COLUMN: DisambiguatedColumnName(relation_identifier='KNOWS', column_name=RELATIONSHIP_SOURCE_COLUMN),
+            RELATIONSHIP_TARGET_COLUMN: DisambiguatedColumnName(relation_identifier='KNOWS', column_name=RELATIONSHIP_TARGET_COLUMN),
+        },
+        source_obj=relationship_df_knows
+    )
+    print(relationship_table_knows.to_pandas(context=Context())) 
+    print(relationship_table_lives_in.to_pandas(context=Context())) 
+    
     node_0 = NodePattern(
         variable=Variable(name="n"),
         labels=["Person"],
@@ -670,17 +767,18 @@ if __name__ == "__main__":
     )
     star: Star = Star(context=context)
     
-    translation: Relation = star.to_relation(obj=path_empty_attrs)
-    rich.print(translation)
-
     print("Translating NodePattern:")
     print("(p:Person {name: 'Alice', age: 30})")
 
+
     translation: Relation = star.to_relation(obj=node_0)
     rich.print(translation)
+    
 
     translation: Relation = star.to_relation(obj=node_1)
     rich.print(translation)
+    
+    sys.exit(0)
 
     print("Translating PatternPath:")
     print("(p1:Person {name: 'Alice', age: 30})-[r:KNOWS]->(p2:Person {name: 'Bob', age: 40})")
