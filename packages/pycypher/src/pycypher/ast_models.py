@@ -36,25 +36,17 @@ Usage:
 """
 
 from __future__ import annotations
-from typing import (
-    Any,
-    Optional,
-    Union,
-    List,
-    Dict,
-    Iterator,
-    Callable,
-    cast,
-    # Set,
-)
-from pydantic import BaseModel, Field, ConfigDict
-from pycypher.grammar_parser import GrammarParser
-from abc import ABC
+
 import hashlib
-from enum import Enum
 import random
+from abc import ABC
+from enum import Enum
+from typing import Optional  # Set,
+from typing import Any, Callable, Dict, Iterator, List, Union, cast
 
 import lark
+from pycypher.grammar_parser import GrammarParser
+from pydantic import BaseModel, ConfigDict, Field
 from shared.logger import LOGGER
 
 
@@ -182,13 +174,16 @@ class ValidationResult(BaseModel):
     @property
     def has_errors(self) -> bool:
         """Check if there are any error-level issues."""
-        return any(issue.severity == ValidationSeverity.ERROR for issue in self.issues)
+        return any(
+            issue.severity == ValidationSeverity.ERROR for issue in self.issues
+        )
 
     @property
     def has_warnings(self) -> bool:
         """Check if there are any warning-level issues."""
         return any(
-            issue.severity == ValidationSeverity.WARNING for issue in self.issues
+            issue.severity == ValidationSeverity.WARNING
+            for issue in self.issues
         )
 
     @property
@@ -199,17 +194,23 @@ class ValidationResult(BaseModel):
     @property
     def errors(self) -> List[ValidationIssue]:
         """Get only error-level issues."""
-        return [i for i in self.issues if i.severity == ValidationSeverity.ERROR]
+        return [
+            i for i in self.issues if i.severity == ValidationSeverity.ERROR
+        ]
 
     @property
     def warnings(self) -> List[ValidationIssue]:
         """Get only warning-level issues."""
-        return [i for i in self.issues if i.severity == ValidationSeverity.WARNING]
+        return [
+            i for i in self.issues if i.severity == ValidationSeverity.WARNING
+        ]
 
     @property
     def infos(self) -> List[ValidationIssue]:
         """Get only info-level issues."""
-        return [i for i in self.issues if i.severity == ValidationSeverity.INFO]
+        return [
+            i for i in self.issues if i.severity == ValidationSeverity.INFO
+        ]
 
     def add_issue(
         self,
@@ -359,7 +360,9 @@ class ASTNode(BaseModel, ABC):
         if callable(predicate) and not isinstance(predicate, type):
             return [node for node in self.traverse() if predicate(node)]
         else:
-            return [node for node in self.traverse() if isinstance(node, predicate)]
+            return [
+                node for node in self.traverse() if isinstance(node, predicate)
+            ]
 
     def find_first(
         self, predicate: Union[type, Callable[["ASTNode"], bool]]
@@ -392,7 +395,11 @@ class ASTNode(BaseModel, ABC):
                     children.append(field_value)
                 case list():
                     children.extend(
-                        [item for item in field_value if isinstance(item, ASTNode)]
+                        [
+                            item
+                            for item in field_value
+                            if isinstance(item, ASTNode)
+                        ]
                     )
         return children
 
@@ -424,7 +431,9 @@ class ASTNode(BaseModel, ABC):
                         lines.append(f"{prefix}  ]")
                     else:
                         lines.append(f"{prefix}  {field_name}: {field_value}")
-                case _ if not isinstance(field_value, (dict, list)) or field_value:
+                case _ if (
+                    not isinstance(field_value, (dict, list)) or field_value
+                ):
                     lines.append(f"{prefix}  {field_name}: {field_value}")
 
         return "\n".join(lines)
@@ -1278,7 +1287,9 @@ class ASTConverter:
             # This is a Lark Tree, try to extract data
             if hasattr(node, "children") and node.children:
                 # Get the first child which should be the actual data
-                return self.convert(node.children[0] if node.children else None)
+                return self.convert(
+                    node.children[0] if node.children else None
+                )
             return None
 
         if not isinstance(node, dict):
@@ -1309,7 +1320,9 @@ class ASTConverter:
         # Generic fallback
         return self._convert_generic(node, node_type)
 
-    def _convert_generic(self, node: dict, node_type: str) -> Optional[ASTNode]:
+    def _convert_generic(
+        self, node: dict, node_type: str
+    ) -> Optional[ASTNode]:
         """Generic converter for nodes without specific handler."""
         # Try to find the class in globals
         match cls := globals().get(node_type):
@@ -1331,7 +1344,9 @@ class ASTConverter:
                                 elif isinstance(item, dict):
                                     # Convert dicts that might be AST nodes but missing type?
                                     # Or just primitives.
-                                    new_list.append(self._convert_primitive(item))
+                                    new_list.append(
+                                        self._convert_primitive(item)
+                                    )
                                 else:
                                     new_list.append(item)
                             converted_args[k] = new_list
@@ -1371,7 +1386,9 @@ class ASTConverter:
                 elements = [self.convert(item) for item in value]
                 return ListLiteral(
                     value=value,
-                    elements=cast(List[Expression], [e for e in elements if e]),
+                    elements=cast(
+                        List[Expression], [e for e in elements if e]
+                    ),
                 )
             case dict():
                 # Return empty dict as-is
@@ -1511,8 +1528,12 @@ class ASTConverter:
 
         return Merge(
             pattern=cast(Optional[Pattern], self.convert(node.get("pattern"))),
-            on_create=cast(Optional[List[SetItem]], on_create) if on_create else None,
-            on_match=cast(Optional[List[SetItem]], on_match) if on_match else None,
+            on_create=cast(Optional[List[SetItem]], on_create)
+            if on_create
+            else None,
+            on_match=cast(Optional[List[SetItem]], on_match)
+            if on_match
+            else None,
         )
 
     def _convert_MatchClause(self, node: dict) -> Match:
@@ -1599,7 +1620,9 @@ class ASTConverter:
         return Return(
             distinct=node.get("distinct", False),
             items=cast(List[ReturnItem], [i for i in items if i]),
-            order_by=cast(Optional[List[OrderByItem]], order_by) if order_by else None,
+            order_by=cast(Optional[List[OrderByItem]], order_by)
+            if order_by
+            else None,
             skip=skip_val,
             limit=limit_val,
         )
@@ -1705,7 +1728,9 @@ class ASTConverter:
     def _convert_ReturnItem(self, node: dict) -> ReturnItem:
         """Convert ReturnItem node."""
         return ReturnItem(
-            expression=cast(Optional[Expression], self.convert(node.get("expression"))),
+            expression=cast(
+                Optional[Expression], self.convert(node.get("expression"))
+            ),
             alias=node.get("alias"),
         )
 
@@ -1770,7 +1795,9 @@ class ASTConverter:
         return SetItem(
             variable=Variable(name=var_name) if var_name else None,
             property=node.get("property"),
-            expression=cast(Optional[Expression], self.convert(node.get("expression"))),
+            expression=cast(
+                Optional[Expression], self.convert(node.get("expression"))
+            ),
             labels=node.get("labels", []),
         )
 
@@ -1784,7 +1811,9 @@ class ASTConverter:
         return SetItem(
             variable=Variable(name=var_name) if var_name else None,
             property=prop,
-            expression=cast(Optional[Expression], self.convert(node.get("value"))),
+            expression=cast(
+                Optional[Expression], self.convert(node.get("value"))
+            ),
             labels=[],
         )
 
@@ -1810,7 +1839,9 @@ class ASTConverter:
         return SetItem(
             variable=Variable(name=var_name) if var_name else None,
             property="*",  # Indicates all properties
-            expression=cast(Optional[Expression], self.convert(node.get("value"))),
+            expression=cast(
+                Optional[Expression], self.convert(node.get("value"))
+            ),
             labels=[],
         )
 
@@ -1859,14 +1890,18 @@ class ASTConverter:
     def _convert_Unwind(self, node: dict) -> Unwind:
         """Convert Unwind node."""
         return Unwind(
-            expression=cast(Optional[Expression], self.convert(node.get("expression"))),
+            expression=cast(
+                Optional[Expression], self.convert(node.get("expression"))
+            ),
             alias=node.get("alias"),
         )
 
     def _convert_UnwindClause(self, node: dict) -> Unwind:
         """Convert UnwindClause node."""
         return Unwind(
-            expression=cast(Optional[Expression], self.convert(node.get("expression"))),
+            expression=cast(
+                Optional[Expression], self.convert(node.get("expression"))
+            ),
             alias=node.get(
                 "variable"
             ),  # UnwindClause uses 'variable' instead of 'alias'
@@ -1914,7 +1949,10 @@ class ASTConverter:
 
         element = node.get("element")
         if element:
-            if isinstance(element, dict) and element.get("type") == "PatternElement":
+            if (
+                isinstance(element, dict)
+                and element.get("type") == "PatternElement"
+            ):
                 # Extract parts from PatternElement
                 parts = element.get("parts", [])
                 for part in parts:
@@ -1971,7 +2009,9 @@ class ASTConverter:
             labels=node.get("labels", []),
             properties=node.get("properties"),
             direction=node.get("direction", "right"),
-            length=cast(Optional[PathLength], self.convert(node.get("length"))),
+            length=cast(
+                Optional[PathLength], self.convert(node.get("length"))
+            ),
             where=cast(Optional[Expression], self.convert(node.get("where"))),
         )
 
@@ -2010,7 +2050,9 @@ class ASTConverter:
     def _convert_Not(self, node: dict) -> Not:
         """Convert Not node."""
         return Not(
-            operand=cast(Optional[Expression], self.convert(node.get("operand")))
+            operand=cast(
+                Optional[Expression], self.convert(node.get("operand"))
+            )
         )
 
     def _convert_Comparison(self, node: dict) -> Comparison:
@@ -2033,7 +2075,9 @@ class ASTConverter:
         """Convert NullCheck node."""
         return NullCheck(
             operator=node.get("operator", "IS NULL"),
-            operand=cast(Optional[Expression], self.convert(node.get("operand"))),
+            operand=cast(
+                Optional[Expression], self.convert(node.get("operand"))
+            ),
         )
 
     def _convert_Arithmetic(self, node: dict) -> Arithmetic:
@@ -2048,36 +2092,48 @@ class ASTConverter:
         """Convert Unary node."""
         return Unary(
             operator=node.get("operator", "+"),
-            operand=cast(Optional[Expression], self.convert(node.get("operand"))),
+            operand=cast(
+                Optional[Expression], self.convert(node.get("operand"))
+            ),
         )
 
     def _convert_PropertyLookup(self, node: dict) -> PropertyLookup:
         """Convert PropertyLookup node."""
         var_name = node.get("variable")
         return PropertyLookup(
-            expression=cast(Optional[Expression], self.convert(node.get("expression"))),
+            expression=cast(
+                Optional[Expression], self.convert(node.get("expression"))
+            ),
             property=node.get("property"),
-            variable=Variable(name=var_name) if var_name else None,  # Legacy support
+            variable=Variable(name=var_name)
+            if var_name
+            else None,  # Legacy support
         )
 
     def _convert_PropertyAccess(self, node: dict) -> PropertyLookup:
         """Convert PropertyAccess node (alternative name for PropertyLookup)."""
         return PropertyLookup(
-            expression=cast(Optional[Expression], self.convert(node.get("object"))),
+            expression=cast(
+                Optional[Expression], self.convert(node.get("object"))
+            ),
             property=node.get("property"),
         )
 
     def _convert_IndexLookup(self, node: dict) -> IndexLookup:
         """Convert IndexLookup node."""
         return IndexLookup(
-            expression=cast(Optional[Expression], self.convert(node.get("expression"))),
+            expression=cast(
+                Optional[Expression], self.convert(node.get("expression"))
+            ),
             index=cast(Optional[Expression], self.convert(node.get("index"))),
         )
 
     def _convert_Slicing(self, node: dict) -> Slicing:
         """Convert Slicing node."""
         return Slicing(
-            expression=cast(Optional[Expression], self.convert(node.get("expression"))),
+            expression=cast(
+                Optional[Expression], self.convert(node.get("expression"))
+            ),
             start=cast(Optional[Expression], self.convert(node.get("start"))),
             end=cast(Optional[Expression], self.convert(node.get("end"))),
         )
@@ -2121,7 +2177,9 @@ class ASTConverter:
             ),  # 'projection' from grammar
         )
 
-    def _convert_PatternComprehension(self, node: dict) -> PatternComprehension:
+    def _convert_PatternComprehension(
+        self, node: dict
+    ) -> PatternComprehension:
         """Convert PatternComprehension node."""
         var_name = node.get("variable")
         return PatternComprehension(
@@ -2155,7 +2213,9 @@ class ASTConverter:
         """Convert MapElement node."""
         return MapElement(
             property=node.get("property"),
-            expression=cast(Optional[Expression], self.convert(node.get("expression"))),
+            expression=cast(
+                Optional[Expression], self.convert(node.get("expression"))
+            ),
             all_properties=node.get("all_properties", False),
         )
 
@@ -2163,9 +2223,15 @@ class ASTConverter:
         """Convert CaseExpression node."""
         when_clauses = [self.convert(w) for w in node.get("when_clauses", [])]
         return CaseExpression(
-            expression=cast(Optional[Expression], self.convert(node.get("expression"))),
-            when_clauses=cast(List[WhenClause], [w for w in when_clauses if w]),
-            else_expr=cast(Optional[Expression], self.convert(node.get("else"))),
+            expression=cast(
+                Optional[Expression], self.convert(node.get("expression"))
+            ),
+            when_clauses=cast(
+                List[WhenClause], [w for w in when_clauses if w]
+            ),
+            else_expr=cast(
+                Optional[Expression], self.convert(node.get("else"))
+            ),
         )
 
     def _convert_SearchedCase(self, node: dict) -> CaseExpression:
@@ -2180,7 +2246,9 @@ class ASTConverter:
                 else_expr = self.convert(else_node)
         return CaseExpression(
             expression=None,  # Searched case has no test expression
-            when_clauses=cast(List[WhenClause], [w for w in when_clauses if w]),
+            when_clauses=cast(
+                List[WhenClause], [w for w in when_clauses if w]
+            ),
             else_expr=cast(Optional[Expression], else_expr),
         )
 
@@ -2195,8 +2263,12 @@ class ASTConverter:
             else:
                 else_expr = self.convert(else_node)
         return CaseExpression(
-            expression=cast(Optional[Expression], self.convert(node.get("operand"))),
-            when_clauses=cast(List[WhenClause], [w for w in when_clauses if w]),
+            expression=cast(
+                Optional[Expression], self.convert(node.get("operand"))
+            ),
+            when_clauses=cast(
+                List[WhenClause], [w for w in when_clauses if w]
+            ),
             else_expr=cast(Optional[Expression], else_expr),
         )
 
@@ -2207,15 +2279,23 @@ class ASTConverter:
     def _convert_SimpleWhen(self, node: dict) -> WhenClause:
         """Convert SimpleWhen to WhenClause."""
         return WhenClause(
-            condition=cast(Optional[Expression], self.convert(node.get("value"))),
-            result=cast(Optional[Expression], self.convert(node.get("result"))),
+            condition=cast(
+                Optional[Expression], self.convert(node.get("value"))
+            ),
+            result=cast(
+                Optional[Expression], self.convert(node.get("result"))
+            ),
         )
 
     def _convert_SearchedWhen(self, node: dict) -> WhenClause:
         """Convert SearchedWhen to WhenClause."""
         return WhenClause(
-            condition=cast(Optional[Expression], self.convert(node.get("condition"))),
-            result=cast(Optional[Expression], self.convert(node.get("result"))),
+            condition=cast(
+                Optional[Expression], self.convert(node.get("condition"))
+            ),
+            result=cast(
+                Optional[Expression], self.convert(node.get("result"))
+            ),
         )
 
     def _convert_Reduce(self, node: dict) -> Reduce:
@@ -2224,9 +2304,13 @@ class ASTConverter:
         var_name = node.get("variable")
         return Reduce(
             accumulator=Variable(name=acc_name) if acc_name else None,
-            initial=cast(Optional[Expression], self.convert(node.get("initial"))),
+            initial=cast(
+                Optional[Expression], self.convert(node.get("initial"))
+            ),
             variable=Variable(name=var_name) if var_name else None,
-            list_expr=cast(Optional[Expression], self.convert(node.get("list"))),
+            list_expr=cast(
+                Optional[Expression], self.convert(node.get("list"))
+            ),
             map_expr=cast(Optional[Expression], self.convert(node.get("map"))),
         )
 
@@ -2236,7 +2320,9 @@ class ASTConverter:
         return Quantifier(
             quantifier="ALL",
             variable=Variable(name=var_name) if var_name else None,
-            list_expr=cast(Optional[Expression], self.convert(node.get("list"))),
+            list_expr=cast(
+                Optional[Expression], self.convert(node.get("list"))
+            ),
             where=cast(Optional[Expression], self.convert(node.get("where"))),
         )
 
@@ -2246,7 +2332,9 @@ class ASTConverter:
         return Quantifier(
             quantifier="ANY",
             variable=Variable(name=var_name) if var_name else None,
-            list_expr=cast(Optional[Expression], self.convert(node.get("list"))),
+            list_expr=cast(
+                Optional[Expression], self.convert(node.get("list"))
+            ),
             where=cast(Optional[Expression], self.convert(node.get("where"))),
         )
 
@@ -2256,7 +2344,9 @@ class ASTConverter:
         return Quantifier(
             quantifier="NONE",
             variable=Variable(name=var_name) if var_name else None,
-            list_expr=cast(Optional[Expression], self.convert(node.get("list"))),
+            list_expr=cast(
+                Optional[Expression], self.convert(node.get("list"))
+            ),
             where=cast(Optional[Expression], self.convert(node.get("where"))),
         )
 
@@ -2266,14 +2356,18 @@ class ASTConverter:
         return Quantifier(
             quantifier="SINGLE",
             variable=Variable(name=var_name) if var_name else None,
-            list_expr=cast(Optional[Expression], self.convert(node.get("list"))),
+            list_expr=cast(
+                Optional[Expression], self.convert(node.get("list"))
+            ),
             where=cast(Optional[Expression], self.convert(node.get("where"))),
         )
 
     def _convert_OrderByItem(self, node: dict) -> OrderByItem:
         """Convert OrderByItem node."""
         return OrderByItem(
-            expression=cast(Optional[Expression], self.convert(node.get("expression"))),
+            expression=cast(
+                Optional[Expression], self.convert(node.get("expression"))
+            ),
             ascending=node.get("ascending", True),
         )
 
@@ -2304,7 +2398,9 @@ def _collect_defined_variables(node: ASTNode) -> Set[str]:
                 for elem in path.elements:
                     if isinstance(elem, NodePattern) and elem.variable:
                         defined.add(elem.variable.name)
-                    elif isinstance(elem, RelationshipPattern) and elem.variable:
+                    elif (
+                        isinstance(elem, RelationshipPattern) and elem.variable
+                    ):
                         defined.add(elem.variable.name)
                 # Path variable
                 if path.variable:
@@ -2317,7 +2413,9 @@ def _collect_defined_variables(node: ASTNode) -> Set[str]:
                 for elem in path.elements:
                     if isinstance(elem, NodePattern) and elem.variable:
                         defined.add(elem.variable.name)
-                    elif isinstance(elem, RelationshipPattern) and elem.variable:
+                    elif (
+                        isinstance(elem, RelationshipPattern) and elem.variable
+                    ):
                         defined.add(elem.variable.name)
 
     # Variables from UNWIND
@@ -2345,7 +2443,9 @@ def _collect_definition_ids(node: ASTNode) -> Set[int]:
                 for elem in path.elements:
                     if isinstance(elem, NodePattern) and elem.variable:
                         ids.add(id(elem.variable))
-                    elif isinstance(elem, RelationshipPattern) and elem.variable:
+                    elif (
+                        isinstance(elem, RelationshipPattern) and elem.variable
+                    ):
                         ids.add(id(elem.variable))
                 if path.variable:
                     ids.add(id(path.variable))
@@ -2355,7 +2455,9 @@ def _collect_definition_ids(node: ASTNode) -> Set[int]:
                 for elem in path.elements:
                     if isinstance(elem, NodePattern) and elem.variable:
                         ids.add(id(elem.variable))
-                    elif isinstance(elem, RelationshipPattern) and elem.variable:
+                    elif (
+                        isinstance(elem, RelationshipPattern) and elem.variable
+                    ):
                         ids.add(id(elem.variable))
     return ids
 
@@ -2381,7 +2483,9 @@ def _collect_referenced_variables(node: ASTNode) -> Set[str]:
     return referenced
 
 
-def _validate_undefined_variables(node: ASTNode, result: ValidationResult) -> None:
+def _validate_undefined_variables(
+    node: ASTNode, result: ValidationResult
+) -> None:
     """Check for references to undefined variables."""
     if not isinstance(node, Query):
         return
@@ -2399,7 +2503,9 @@ def _validate_undefined_variables(node: ASTNode, result: ValidationResult) -> No
         )
 
 
-def _validate_unused_variables(node: ASTNode, result: ValidationResult) -> None:
+def _validate_unused_variables(
+    node: ASTNode, result: ValidationResult
+) -> None:
     """Check for variables that are defined but never used."""
     if not isinstance(node, Query):
         return
@@ -2437,7 +2543,9 @@ def _validate_missing_labels(node: ASTNode, result: ValidationResult) -> None:
                 if isinstance(elem, NodePattern):
                     if not elem.labels and not elem.properties:
                         var_name = (
-                            elem.variable.name if elem.variable else "(anonymous)"
+                            elem.variable.name
+                            if elem.variable
+                            else "(anonymous)"
                         )
                         result.add_issue(
                             ValidationSeverity.WARNING,
@@ -2448,13 +2556,15 @@ def _validate_missing_labels(node: ASTNode, result: ValidationResult) -> None:
                         )
 
 
-def _validate_unreachable_conditions(node: ASTNode, result: ValidationResult) -> None:
+def _validate_unreachable_conditions(
+    node: ASTNode, result: ValidationResult
+) -> None:
     """Check for unreachable WHERE conditions (like WHERE false)."""
     for match in node.find_all(Match):
         if cast(Match, match).where:
-            if isinstance(cast(Match, match).where, BooleanLiteral) and not getattr(
-                cast(Match, match).where, "value", None
-            ):
+            if isinstance(
+                cast(Match, match).where, BooleanLiteral
+            ) and not getattr(cast(Match, match).where, "value", None):
                 result.add_issue(
                     ValidationSeverity.WARNING,
                     "WHERE clause is always false - this query will never return results",
@@ -2467,7 +2577,9 @@ def _validate_unreachable_conditions(node: ASTNode, result: ValidationResult) ->
             _check_contradictory_comparisons(match.where, result)
 
 
-def _check_contradictory_comparisons(expr: Any, result: ValidationResult) -> None:
+def _check_contradictory_comparisons(
+    expr: Any, result: ValidationResult
+) -> None:
     """Recursively check for contradictory comparisons with literals."""
     # Check for Comparison class (not ComparisonExpression)
     if expr.__class__.__name__ == "Comparison":
@@ -2529,7 +2641,9 @@ def _check_contradictory_comparisons(expr: Any, result: ValidationResult) -> Non
                 _check_contradictory_comparisons(attr_value, result)
 
 
-def _validate_return_all_with_limit(node: ASTNode, result: ValidationResult) -> None:
+def _validate_return_all_with_limit(
+    node: ASTNode, result: ValidationResult
+) -> None:
     """Check for RETURN * with LIMIT (may return unexpected results)."""
     for ret in node.find_all(Return):
         has_return_all = any(
@@ -2545,10 +2659,15 @@ def _validate_return_all_with_limit(node: ASTNode, result: ValidationResult) -> 
             )
 
 
-def _validate_delete_without_detach(node: ASTNode, result: ValidationResult) -> None:
+def _validate_delete_without_detach(
+    node: ASTNode, result: ValidationResult
+) -> None:
     """Check for DELETE of nodes that might have relationships."""
     for delete in node.find_all(Delete):
-        if not cast(Delete, delete).detach and cast(Delete, delete).expressions:
+        if (
+            not cast(Delete, delete).detach
+            and cast(Delete, delete).expressions
+        ):
             # Check if we're deleting node variables (not properties)
             for expr in cast(Delete, delete).expressions:
                 if isinstance(expr, Variable):
@@ -2561,7 +2680,9 @@ def _validate_delete_without_detach(node: ASTNode, result: ValidationResult) -> 
                     )
 
 
-def _validate_expensive_patterns(node: ASTNode, result: ValidationResult) -> None:
+def _validate_expensive_patterns(
+    node: ASTNode, result: ValidationResult
+) -> None:
     """Check for potentially expensive query patterns."""
     # Check for multiple MATCH clauses without connecting variables
     matches = node.find_all(Match)
@@ -2574,7 +2695,10 @@ def _validate_expensive_patterns(node: ASTNode, result: ValidationResult) -> Non
                     for elem in path.elements:
                         if isinstance(elem, NodePattern) and elem.variable:
                             vars_in_match.add(elem.variable.name)
-                        elif isinstance(elem, RelationshipPattern) and elem.variable:
+                        elif (
+                            isinstance(elem, RelationshipPattern)
+                            and elem.variable
+                        ):
                             vars_in_match.add(elem.variable.name)
                 match_vars.append(vars_in_match)
 
@@ -2603,7 +2727,9 @@ def _validate_expensive_patterns(node: ASTNode, result: ValidationResult) -> Non
                 code="UNBOUNDED_RELATIONSHIP",
             )
 
-    def _convert_generic(self, node: dict, node_type: str) -> Optional[ASTNode]:
+    def _convert_generic(
+        self, node: dict, node_type: str
+    ) -> Optional[ASTNode]:
         """Generic converter for unknown node types."""
         # Try to find a matching class
         node_class = globals().get(node_type)
@@ -2747,6 +2873,8 @@ def validate_ast(node: ASTNode, strict: bool = False) -> ValidationResult:
     if strict:
         for issue in result.issues:
             if issue.severity == ValidationSeverity.WARNING:
-                issue.severity: Literal[ValidationSeverity] = ValidationSeverity.ERROR
+                issue.severity: Literal[ValidationSeverity] = (
+                    ValidationSeverity.ERROR
+                )
 
     return result

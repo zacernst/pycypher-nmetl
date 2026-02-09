@@ -9,7 +9,7 @@ classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
-    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
     "graphviz>=0.21",
@@ -18,6 +18,8 @@ dependencies = [
     "osmium>=4.2.0",
     "pycosat>=0.6.6",
     "ty>=0.0.8",
+    "isort",
+    "ruff"
 ]
 
 [[project.authors]]

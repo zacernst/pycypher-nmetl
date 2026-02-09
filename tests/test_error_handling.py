@@ -5,9 +5,14 @@ and edge cases that should raise appropriate exceptions.
 """
 
 import pytest
-from pycypher.grammar_parser import GrammarParser
+from lark.exceptions import (
+    LarkError,
+    UnexpectedCharacters,
+    UnexpectedInput,
+    UnexpectedToken,
+)
 from pycypher.ast_models import ASTConverter
-from lark.exceptions import LarkError, UnexpectedInput, UnexpectedCharacters, UnexpectedToken
+from pycypher.grammar_parser import GrammarParser
 
 
 @pytest.fixture
@@ -156,7 +161,9 @@ class TestInvalidPatterns:
     def test_empty_relationship_brackets(self, parser):
         """Test error for malformed relationship."""
         with pytest.raises(LarkError):
-            parser.parse("MATCH (a)--[]--(b) RETURN a, b")  # May or may not be valid
+            parser.parse(
+                "MATCH (a)--[]--(b) RETURN a, b"
+            )  # May or may not be valid
 
 
 class TestInvalidExpressions:
@@ -462,7 +469,7 @@ class TestASTConversionErrors:
     def test_convert_invalid_dict_structure(self, converter):
         """Test conversion with invalid dict structure."""
         invalid_ast = {"type": "Query", "missing_required_field": None}
-        
+
         try:
             result = converter.convert(invalid_ast)
             # May return partially converted result or handle gracefully
@@ -476,9 +483,9 @@ class TestASTConversionErrors:
         # String where number expected, etc.
         invalid_ast = {
             "type": "IntegerLiteral",
-            "value": "not_a_number"  # String instead of int
+            "value": "not_a_number",  # String instead of int
         }
-        
+
         try:
             result = converter.convert(invalid_ast)
             # May convert or raise error
@@ -492,7 +499,7 @@ class TestASTConversionErrors:
         # Create circular reference
         circular = {"type": "Query"}
         circular["children"] = [circular]  # Points to itself
-        
+
         try:
             # May hit recursion limit or handle gracefully
             result = converter.convert(circular)
@@ -509,7 +516,7 @@ class TestASTConversionErrors:
         for i in range(1000):  # Very deep nesting
             current["child"] = {"type": "Node", "value": i}
             current = current["child"]
-        
+
         try:
             result = converter.convert(deep)
             # Should handle or fail gracefully

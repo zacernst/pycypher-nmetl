@@ -214,7 +214,7 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
             incoming_queue=self.triggered_lookup_processor_queue,
             outgoing_queue=self.fact_generated_queue,
         )
-    
+
     def attach_fact_collection(self, fact_collection: FactCollection) -> None:
         self.fact_collection = fact_collection
 

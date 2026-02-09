@@ -4,8 +4,8 @@ This module contains unit tests for the openCypher grammar parser implementation
 """
 
 import pytest
-from pycypher.grammar_parser import GrammarParser
 from lark.exceptions import LarkError
+from pycypher.grammar_parser import GrammarParser
 
 
 @pytest.fixture
@@ -616,10 +616,12 @@ class TestStringPredicates:
         query = "MATCH (n:Person) WHERE n.email IS NOT NULL RETURN n"
         tree = parser.parse(query)
         assert tree is not None
-    
+
     def test_is_null_in_complex_expression(self, parser):
         """Test IS NULL in complex expression."""
-        query = "MATCH (n) WHERE n.prop1 IS NULL OR n.prop2 IS NOT NULL RETURN n"
+        query = (
+            "MATCH (n) WHERE n.prop1 IS NULL OR n.prop2 IS NOT NULL RETURN n"
+        )
         tree = parser.parse(query)
         assert tree is not None
 
@@ -936,7 +938,7 @@ class TestEdgeCases:
         """
         tree = parser.parse(query)
         assert tree is not None
-    
+
     def test_multiple_predicates_with_null_checks(self, parser):
         """Test multiple WHERE predicates including IS NULL checks."""
         query = """

@@ -3,20 +3,17 @@
 
 from pycypher.ast_models import (
     ASTNode,
-    Variable,
     IntegerLiteral,
     PropertyLookup,
+    Variable,
 )
 
 
 def test_get_children():
     """Test _get_children() with match/case."""
     # Create a PropertyLookup with nested ASTNode
-    prop = PropertyLookup(
-        expression=Variable(name="n"),
-        property_name="name"
-    )
-    
+    prop = PropertyLookup(expression=Variable(name="n"), property_name="name")
+
     children = prop._get_children()
     assert len(children) == 1
     assert isinstance(children[0], Variable)

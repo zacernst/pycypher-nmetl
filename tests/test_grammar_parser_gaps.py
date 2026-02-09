@@ -4,7 +4,7 @@ This test suite complements test_grammar_parser.py by adding tests for:
 1. AST to typed AST conversion (Critical)
 2. AST traversal and modification utilities (Critical)
 3. Variable scoping and binding (Critical)
-4. Subquery correlation (Critical)  
+4. Subquery correlation (Critical)
 5. Enhanced error messages (Critical)
 6. SET clause variations (Medium priority)
 7. Path variables and functions (Medium priority)
@@ -16,9 +16,9 @@ These tests verify functionality that developers will directly use.
 """
 
 import pytest
-from pycypher.grammar_parser import GrammarParser
-from lark.exceptions import LarkError, UnexpectedInput
 from lark import Tree
+from lark.exceptions import LarkError, UnexpectedInput
+from pycypher.grammar_parser import GrammarParser
 
 
 @pytest.fixture
@@ -39,10 +39,10 @@ class TestParseTreeStructure:
         """Verify simple MATCH query produces correct tree structure."""
         query = "MATCH (n:Person) RETURN n"
         tree = parser.parse(query)
-        
+
         # Verify it's a Tree object
         assert isinstance(tree, Tree), f"Expected Tree, got {type(tree)}"
-        
+
         # Tree should have structure
         assert tree.data is not None
         assert len(tree.children) > 0
@@ -51,16 +51,16 @@ class TestParseTreeStructure:
         """Test MATCH with WHERE produces where_clause in tree."""
         query = "MATCH (n:Person {age: 30}) WHERE n.active = true RETURN n"
         tree = parser.parse(query)
-        
+
         # Convert to string to inspect structure
         tree_str = tree.pretty()
         assert "where" in tree_str.lower() or "condition" in tree_str.lower()
-        
+
     def test_create_produces_update_statement(self, parser):
         """Test CREATE produces update_statement tree."""
         query = "CREATE (n:Person {name: 'Alice', age: 30})"
         tree = parser.parse(query)
-        
+
         assert isinstance(tree, Tree)
         tree_str = tree.pretty()
         assert "create" in tree_str.lower()
@@ -77,11 +77,11 @@ class TestParseTreeStructure:
         LIMIT 10
         """
         tree = parser.parse(query)
-        
+
         # Tree should be deeply nested for complex query
         assert isinstance(tree, Tree)
         assert len(tree.children) > 0
-        
+
         # Should have multiple levels
         def tree_depth(t):
             if not isinstance(t, Tree):
@@ -89,7 +89,7 @@ class TestParseTreeStructure:
             if not t.children:
                 return 1
             return 1 + max(tree_depth(c) for c in t.children)
-        
+
         depth = tree_depth(tree)
         assert depth > 3, f"Expected deep tree, got depth {depth}"
 
@@ -104,11 +104,13 @@ class TestParseTreeStructure:
             ("[1, 2, 3]", "list"),
             ("{a: 1, b: 2}", "map"),
         ]
-        
+
         for literal, lit_type in literals:
             query = f"RETURN {literal}"
             tree = parser.parse(query)
-            assert isinstance(tree, Tree), f"Failed to parse {lit_type} literal"
+            assert isinstance(tree, Tree), (
+                f"Failed to parse {lit_type} literal"
+            )
 
 
 # ============================================================================
@@ -127,25 +129,29 @@ class TestTreeNavigation:
         RETURN a, b
         """
         tree = parser.parse(query)
-        
+
         # Find all match clauses using tree.find_data()
         match_count = sum(1 for _ in tree.find_data("match_clause"))
-        assert match_count >= 2, f"Expected at least 2 MATCH clauses, found {match_count}"
+        assert match_count >= 2, (
+            f"Expected at least 2 MATCH clauses, found {match_count}"
+        )
 
     def test_extract_node_patterns(self, parser):
         """Test extracting node patterns from tree."""
         query = "MATCH (a:Person), (b:Company) RETURN a, b"
         tree = parser.parse(query)
-        
+
         # Find node patterns
         node_patterns = list(tree.find_data("node_pattern"))
-        assert len(node_patterns) >= 2, f"Expected at least 2 node patterns, found {len(node_patterns)}"
+        assert len(node_patterns) >= 2, (
+            f"Expected at least 2 node patterns, found {len(node_patterns)}"
+        )
 
     def test_tree_iteration(self, parser):
         """Test iterating over all tree nodes."""
         query = "MATCH (n:Person) WHERE n.age > 30 RETURN n"
         tree = parser.parse(query)
-        
+
         # Count all nodes in tree
         node_count = sum(1 for _ in tree.iter_subtrees())
         assert node_count > 5, f"Expected many nodes, found {node_count}"
@@ -154,7 +160,7 @@ class TestTreeNavigation:
         """Test finding WHERE clauses in tree."""
         query = "MATCH (n:Person) WHERE n.age > 30 RETURN n"
         tree = parser.parse(query)
-        
+
         # Look for where clause
         where_clauses = list(tree.find_data("where_clause"))
         assert len(where_clauses) >= 1, "Should find WHERE clause"
@@ -303,7 +309,10 @@ class TestErrorMessages:
         except (LarkError, UnexpectedInput) as e:
             error_msg = str(e).lower()
             # Error should mention parenthesis or bracket
-            assert any(word in error_msg for word in ['parenthes', 'bracket', 'expected', ')'])
+            assert any(
+                word in error_msg
+                for word in ["parenthes", "bracket", "expected", ")"]
+            )
 
     def test_invalid_keyword_error(self, parser):
         """Invalid keyword should give helpful error."""
@@ -375,7 +384,9 @@ class TestSetClauseVariations:
 
     def test_set_merge_properties(self, parser):
         """SET merge properties using += operator."""
-        query = "MATCH (n:Person) SET n += {extra: 'value', more: 123} RETURN n"
+        query = (
+            "MATCH (n:Person) SET n += {extra: 'value', more: 123} RETURN n"
+        )
         tree = parser.parse(query)
         assert tree is not None
 

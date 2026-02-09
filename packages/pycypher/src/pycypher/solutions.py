@@ -64,7 +64,7 @@ class Projection(ProjectionTree):
         """
         self.projection: Dict[str, Any] = projection
         super().__init__(parent=parent)
-    
+
     def __bool__(self) -> bool:
         return not self.is_empty()
 
@@ -282,7 +282,7 @@ class ProjectionList(ProjectionTree):
             if projection not in self.projection_list
         ]
         return not left_outer and not right_outer
-    
+
     def __bool__(self) -> bool:
         return not self.is_empty()
 

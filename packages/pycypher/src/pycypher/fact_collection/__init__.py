@@ -69,7 +69,6 @@ class FactCollection(ABC):
         self.start_daemon_process: bool = start_daemon_process
         self.daemon_queue: queue.Queue = queue.Queue()
 
-
         self.sat_solver = CypherQuerySolver(self)
 
         self += facts or []
@@ -257,13 +256,13 @@ class FactCollection(ABC):
             FactNodeHasLabel: Facts that are instances of `FactNodeHasLabel`.
         """
         curframe = inspect.currentframe()
-        calframe = inspect.getouterframes(curframe,  2)
+        calframe = inspect.getouterframes(curframe, 2)
         LOGGER.debug("node_has_label_facts called: %s", calframe[1][3])
         ##### Look here.
         for fact in self:
             if isinstance(fact, FactNodeHasLabel):
                 yield fact
-    
+
     def node_has_specific_label_facts(self, label: str):
         """
         Return a generator of facts that have a specific label.

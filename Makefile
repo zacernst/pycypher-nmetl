@@ -23,6 +23,7 @@ export NMETL_DIR := ${PACKAGES_DIR}/nmetl
 export FASTOPENDATA_DIR := ${PACKAGES_DIR}/fastopendata
 export DATA_DIR := ${FASTOPENDATA_DIR}/raw_data
 export SOURCE_DIR := ${FASTOPENDATA_DIR}/src/fastopendata
+export LC_ALL := C
 
 # Documentation paths
 export DOCS_DIR := ${PROJECT_ROOT}/docs
@@ -38,7 +39,14 @@ export FOUNDATIONDB_VERSION := "7.1.31"
 .PHONY: pycypher ingest nmetl fastopendata test tada docs
 
 # Default target - run the complete build process
-all: format veryclean fastopendata docs test
+all: veryclean venv format pycypher # docs
+
+uv:
+	pip install --upgrade uv
+
+venv: uv
+	@echo "Setting up virtual environment..."
+	uv venv .venv
 
 start: veryclean install 
 

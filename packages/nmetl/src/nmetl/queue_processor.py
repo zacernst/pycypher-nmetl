@@ -123,7 +123,6 @@ class QueueProcessor(ABC):  # pylint: disable=too-few-public-methods,too-many-in
 
         self.name = self.__class__.__name__
 
-
     def __getattr__(self, attr: str) -> Any:
         return getattr(self.session, attr)
 

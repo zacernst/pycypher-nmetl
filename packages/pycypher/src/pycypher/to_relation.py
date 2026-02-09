@@ -1,23 +1,24 @@
 from __future__ import annotations
-import copy
-from pydantic import Field, BaseModel
-import rich
-import sys
-from typing_extensions import Annotated
-from pycypher.ast_models import (
-    random_hash,
-    RelationshipDirection,
-    PatternPath,
-    Variable,
-    RelationshipPattern,
-    NodePattern,
-    Algebraizable,
-)
-import pandas as pd
-from typing import Optional, Any, cast
-from shared.logger import LOGGER
 
+import copy
+import sys
 from enum import Enum
+from typing import Any, Optional, cast
+
+import pandas as pd
+import rich
+from pycypher.ast_models import (
+    Algebraizable,
+    NodePattern,
+    PatternPath,
+    RelationshipDirection,
+    RelationshipPattern,
+    Variable,
+    random_hash,
+)
+from pydantic import BaseModel, Field
+from shared.logger import LOGGER
+from typing_extensions import Annotated
 
 LOGGER.setLevel(level="DEBUG")
 ID_COLUMN: str = "__ID__"
@@ -107,13 +108,16 @@ class Relation(BaseModel):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         if not hasattr(self, "column_names") or not self.column_names:
-            LOGGER.warning(msg="Relation created without column_names specified.")
+            LOGGER.warning(
+                msg="Relation created without column_names specified."
+            )
         self.column_names: list[DisambiguatedColumnName] = [
             (
                 column_name
                 if isinstance(column_name, DisambiguatedColumnName)
                 else DisambiguatedColumnName(
-                    relation_identifier=self.identifier, column_name=column_name
+                    relation_identifier=self.identifier,
+                    column_name=column_name,
                 )
             )
             for column_name in self.column_names
@@ -124,7 +128,8 @@ class Relation(BaseModel):
                 column_name
                 if isinstance(column_name, DisambiguatedColumnName)
                 else DisambiguatedColumnName(
-                    relation_identifier=self.identifier, column_name=column_name
+                    relation_identifier=self.identifier,
+                    column_name=column_name,
                 )
             )
             for var_name, column_name in self.variable_map.items()
@@ -132,7 +137,9 @@ class Relation(BaseModel):
 
     def to_pandas(self, context: Context) -> pd.DataFrame:
         """Convert the Relation to a pandas DataFrame."""
-        raise NotImplementedError("to_pandas not implemented for base Relation class.")
+        raise NotImplementedError(
+            "to_pandas not implemented for base Relation class."
+        )
 
 
 class EntityTable(Relation):
@@ -181,7 +188,8 @@ class RelationshipTable(Relation):
         df: pd.DataFrame = self.source_obj
         column_renaming_dict: dict[str, str] = {
             ID_COLUMN: DisambiguatedColumnName(
-                relation_identifier=self.relationship_type, column_name=ID_COLUMN
+                relation_identifier=self.relationship_type,
+                column_name=ID_COLUMN,
             ).to_pandas_column(),
             RELATIONSHIP_SOURCE_COLUMN: DisambiguatedColumnName(
                 relation_identifier=self.relationship_type,
@@ -207,7 +215,9 @@ class Projection(Relation):
     To be used in `RETURN` and `WITH` clauses."""
 
     relation: Relation
-    projected_column_names: dict[DisambiguatedColumnName, DisambiguatedColumnName]
+    projected_column_names: dict[
+        DisambiguatedColumnName, DisambiguatedColumnName
+    ]
 
     def to_pandas(self, context: Context) -> pd.DataFrame:
         """Convert the Projection to a pandas DataFrame."""
@@ -230,9 +240,9 @@ class Projection(Relation):
             )
             for base_column_name in self.relation.column_names
         }
-        projected_df: pd.DataFrame = base_df.rename(columns=column_renaming_map)[
-            [str(object=column_name) for column_name in self.column_names]
-        ]
+        projected_df: pd.DataFrame = base_df.rename(
+            columns=column_renaming_map
+        )[[str(object=column_name) for column_name in self.column_names]]
         return projected_df
 
 
@@ -317,7 +327,8 @@ class FilterRows(Relation):
                         object=DisambiguatedColumnName(
                             relation_identifier=self.identifier,
                             column_name=cast(
-                                typ=DisambiguatedColumnName, val=base_column_name
+                                typ=DisambiguatedColumnName,
+                                val=base_column_name,
                             ).column_name,
                         )
                     )
@@ -358,18 +369,22 @@ class Star:
             case NodePattern(variable=_, labels=_, properties=properties) if (
                 len(properties) >= 1  # (n:Thing {prop1: val1})
             ):
-                LOGGER.debug(msg="Translating NodePattern with one or more properties.")
+                LOGGER.debug(
+                    msg="Translating NodePattern with one or more properties."
+                )
                 out: FilterRows = self._from_node_pattern_with_attrs(node=obj)
             case RelationshipPattern(  # -[r:KNOWS]->
                 variable=_, labels=_, properties=properties
-            ) if (len(properties) == 0):
-                LOGGER.debug(msg="Translating RelationshipPattern with no properties.")
+            ) if len(properties) == 0:
+                LOGGER.debug(
+                    msg="Translating RelationshipPattern with no properties."
+                )
                 out: RelationshipTable = self._from_relationship_pattern(
                     relationship=obj
                 )
-            case RelationshipPattern(variable=_, labels=_, properties=properties) if (
-                len(properties) >= 1
-            ):
+            case RelationshipPattern(
+                variable=_, labels=_, properties=properties
+            ) if len(properties) >= 1:
                 LOGGER.debug(
                     msg=f"Translating RelationshipPattern with {len(properties)} properties."
                 )
@@ -378,7 +393,9 @@ class Star:
                 )
             case PatternPath() as pattern_path:  # (p1)-[r:KNOWS]->(p2)
                 LOGGER.debug(msg="Translating PatternPath.")
-                out: Relation = self._from_pattern_path(pattern_path=pattern_path)
+                out: Relation = self._from_pattern_path(
+                    pattern_path=pattern_path
+                )
 
             case _:
                 raise NotImplementedError(
@@ -394,8 +411,10 @@ class Star:
         elements: list[Relation] = [
             self.to_relation(obj=element) for element in pattern_path.elements
         ]
-        LOGGER.debug(msg=f"Decomposed PatternPath into {len(elements)} elements.")
-        LOGGER.debug(msg=f'Elements: {"\n".join(str(e) for e in elements)}')
+        LOGGER.debug(
+            msg=f"Decomposed PatternPath into {len(elements)} elements."
+        )
+        LOGGER.debug(msg=f"Elements: {'\n'.join(str(e) for e in elements)}")
         if not elements:
             raise ValueError("PatternPath must have at least one element.")
         elif len(elements) == 1:
@@ -417,7 +436,9 @@ class Star:
         #       disambiguation logic and renaming if necessary here.
         match (left.source_algebraizable, right.source_algebraizable):
             case (NodePattern(), RelationshipPattern()) if (
-                cast(typ=RelationshipPattern, val=right.source_algebraizable).direction
+                cast(
+                    typ=RelationshipPattern, val=right.source_algebraizable
+                ).direction
                 == RelationshipDirection.RIGHT
             ):
                 LOGGER.debug(
@@ -426,9 +447,9 @@ class Star:
                 node_variable: Variable = cast(
                     typ=NodePattern, val=left.source_algebraizable
                 ).variable
-                node_variable_column: DisambiguatedColumnName = left.variable_map[
-                    node_variable
-                ]
+                node_variable_column: DisambiguatedColumnName = (
+                    left.variable_map[node_variable]
+                )
                 relationship_variable: Variable = cast(
                     typ=RelationshipPattern, val=right.source_algebraizable
                 ).variable
@@ -436,12 +457,17 @@ class Star:
                     right.variable_map[relationship_variable]
                 )
                 left_join_key: DisambiguatedColumnName = node_variable_column
-                right_join_key: DisambiguatedColumnName = DisambiguatedColumnName(
-                    relation_identifier=right.identifier,
-                    column_name=RELATIONSHIP_SOURCE_COLUMN,
+                right_join_key: DisambiguatedColumnName = (
+                    DisambiguatedColumnName(
+                        relation_identifier=right.identifier,
+                        column_name=RELATIONSHIP_SOURCE_COLUMN,
+                    )
                 )
                 join_type: JoinType = JoinType.INNER
-                variable_map: VariableMap = {**left.variable_map, **right.variable_map}
+                variable_map: VariableMap = {
+                    **left.variable_map,
+                    **right.variable_map,
+                }
                 join: Join = Join(
                     left=left,
                     right=right,
@@ -463,12 +489,15 @@ class Star:
                     identifier=random_hash(),
                     variable_map=join.variable_map,
                     column_names=[
-                        column_name for column_name in join.variable_map.values()
+                        column_name
+                        for column_name in join.variable_map.values()
                     ],
                 )
                 return variable_relation
             case (NodePattern(), RelationshipPattern()) if (
-                cast(typ=RelationshipPattern, val=right.source_algebraizable).direction
+                cast(
+                    typ=RelationshipPattern, val=right.source_algebraizable
+                ).direction
                 == RelationshipDirection.LEFT
             ):
                 LOGGER.debug(
@@ -477,18 +506,25 @@ class Star:
                 node_variable: Variable = cast(
                     typ=NodePattern, val=left.source_algebraizable
                 ).variable
-                node_variable_column: DisambiguatedColumnName = left.variable_map[
-                    node_variable
-                ]
+                node_variable_column: DisambiguatedColumnName = (
+                    left.variable_map[node_variable]
+                )
                 left_join_key: DisambiguatedColumnName = node_variable_column
-                right_join_key: DisambiguatedColumnName = DisambiguatedColumnName(
-                    relation_identifier=right.identifier,
-                    column_name=RELATIONSHIP_TARGET_COLUMN,
+                right_join_key: DisambiguatedColumnName = (
+                    DisambiguatedColumnName(
+                        relation_identifier=right.identifier,
+                        column_name=RELATIONSHIP_TARGET_COLUMN,
+                    )
                 )
                 join_type: JoinType = JoinType.INNER
-                variable_map: VariableMap = {**left.variable_map, **right.variable_map}
+                variable_map: VariableMap = {
+                    **left.variable_map,
+                    **right.variable_map,
+                }
             case (RelationshipPattern(), NodePattern()) if (
-                cast(typ=RelationshipPattern, val=left.source_algebraizable).direction
+                cast(
+                    typ=RelationshipPattern, val=left.source_algebraizable
+                ).direction
                 == RelationshipDirection.RIGHT
             ):
                 LOGGER.debug(
@@ -497,18 +533,25 @@ class Star:
                 node_variable: Variable = cast(
                     typ=NodePattern, val=right.source_algebraizable
                 ).variable
-                node_variable_column: DisambiguatedColumnName = right.variable_map[
-                    node_variable
-                ]
-                left_join_key: DisambiguatedColumnName = DisambiguatedColumnName(
-                    relation_identifier=left.identifier,
-                    column_name=RELATIONSHIP_TARGET_COLUMN,
+                node_variable_column: DisambiguatedColumnName = (
+                    right.variable_map[node_variable]
+                )
+                left_join_key: DisambiguatedColumnName = (
+                    DisambiguatedColumnName(
+                        relation_identifier=left.identifier,
+                        column_name=RELATIONSHIP_TARGET_COLUMN,
+                    )
                 )
                 right_join_key: DisambiguatedColumnName = node_variable_column
                 join_type: JoinType = JoinType.INNER
-                variable_map: VariableMap = {**left.variable_map, **right.variable_map}
+                variable_map: VariableMap = {
+                    **left.variable_map,
+                    **right.variable_map,
+                }
             case (RelationshipPattern(), NodePattern()) if (
-                cast(typ=RelationshipPattern, val=left.source_algebraizable).direction
+                cast(
+                    typ=RelationshipPattern, val=left.source_algebraizable
+                ).direction
                 == RelationshipDirection.LEFT
             ):
                 LOGGER.debug(
@@ -517,32 +560,49 @@ class Star:
                 node_variable: Variable = cast(
                     typ=NodePattern, val=right.source_algebraizable
                 ).variable
-                node_variable_column: DisambiguatedColumnName = right.variable_map[
-                    node_variable
-                ]
-                left_join_key: DisambiguatedColumnName = DisambiguatedColumnName(
-                    relation_identifier=left.identifier,
-                    column_name=RELATIONSHIP_SOURCE_COLUMN,
+                node_variable_column: DisambiguatedColumnName = (
+                    right.variable_map[node_variable]
+                )
+                left_join_key: DisambiguatedColumnName = (
+                    DisambiguatedColumnName(
+                        relation_identifier=left.identifier,
+                        column_name=RELATIONSHIP_SOURCE_COLUMN,
+                    )
                 )
                 right_join_key: DisambiguatedColumnName = node_variable_column
                 join_type: JoinType = JoinType.INNER
-                variable_map: VariableMap = {**left.variable_map, **right.variable_map}
+                variable_map: VariableMap = {
+                    **left.variable_map,
+                    **right.variable_map,
+                }
             case (NodePattern(), NodePattern()):
                 # This should never happen
                 raise ValueError("Cannot join two NodePatterns directly.")
             case (RelationshipPattern(), RelationshipPattern()):
                 # This should never happen
-                raise ValueError("Cannot join two RelationshipPatterns directly.")
+                raise ValueError(
+                    "Cannot join two RelationshipPatterns directly."
+                )
 
             case _:
-                LOGGER.debug(msg="Joining two complex Relations (Projection/Join).")
+                LOGGER.debug(
+                    msg="Joining two complex Relations (Projection/Join)."
+                )
                 # For complex relations, find ID columns in column_names
                 left_id_col = next(
-                    (col for col in left.column_names if col.column_name == ID_COLUMN),
+                    (
+                        col
+                        for col in left.column_names
+                        if col.column_name == ID_COLUMN
+                    ),
                     None,
                 )
                 right_id_col = next(
-                    (col for col in right.column_names if col.column_name == ID_COLUMN),
+                    (
+                        col
+                        for col in right.column_names
+                        if col.column_name == ID_COLUMN
+                    ),
                     None,
                 )
                 if not left_id_col or not right_id_col:
@@ -552,7 +612,10 @@ class Star:
                 left_join_key: DisambiguatedColumnName = left_id_col
                 right_join_key: DisambiguatedColumnName = right_id_col
                 join_type: JoinType = JoinType.INNER
-                variable_map: VariableMap = {**left.variable_map, **right.variable_map}
+                variable_map: VariableMap = {
+                    **left.variable_map,
+                    **right.variable_map,
+                }
         # Each Relation object has to track a mapping from variables to columns
         out: Join = Join(
             left=left,
@@ -609,7 +672,9 @@ class Star:
         )
 
         # Recursive call (eventually hits base case with no properties)
-        base_relationship_relation: Relation = self.to_relation(obj=base_relationship)
+        base_relationship_relation: Relation = self.to_relation(
+            obj=base_relationship
+        )
 
         # Create filtered relation
         filtered_relation_identifier: str = random_hash()
@@ -651,7 +716,8 @@ class Star:
         relation.variable_map = (
             {
                 node.variable: DisambiguatedColumnName(
-                    relation_identifier=relation.identifier, column_name=ID_COLUMN
+                    relation_identifier=relation.identifier,
+                    column_name=ID_COLUMN,
                 )
             }
             if node.variable
@@ -687,7 +753,9 @@ class Star:
             variable=node.variable,
             labels=node.labels,
             properties={
-                attr: val for attr, val in node.properties.items() if attr != attr1
+                attr: val
+                for attr, val in node.properties.items()
+                if attr != attr1
             },
         )  # TODO: Define the base_node as the current node with one property popped off
         base_node_relation: Relation = self.to_relation(
@@ -773,8 +841,12 @@ if __name__ == "__main__":
             DisambiguatedColumnName(
                 relation_identifier="Person", column_name=ID_COLUMN
             ),
-            DisambiguatedColumnName(relation_identifier="Person", column_name="name"),
-            DisambiguatedColumnName(relation_identifier="Person", column_name="age"),
+            DisambiguatedColumnName(
+                relation_identifier="Person", column_name="name"
+            ),
+            DisambiguatedColumnName(
+                relation_identifier="Person", column_name="age"
+            ),
         ],
         source_obj_attribute_map={
             "name": "name",
@@ -795,8 +867,12 @@ if __name__ == "__main__":
     entity_table_city = EntityTable(
         entity_type="City",
         column_names=[
-            DisambiguatedColumnName(relation_identifier="City", column_name=ID_COLUMN),
-            DisambiguatedColumnName(relation_identifier="City", column_name="name"),
+            DisambiguatedColumnName(
+                relation_identifier="City", column_name=ID_COLUMN
+            ),
+            DisambiguatedColumnName(
+                relation_identifier="City", column_name="name"
+            ),
             DisambiguatedColumnName(
                 relation_identifier="City", column_name="population"
             ),
@@ -1011,14 +1087,18 @@ if __name__ == "__main__":
         properties={"since": 2020, "strength": 0.9, "verified": True},
     )
 
-    relationship_lives_in_with_attrs: RelationshipPattern = RelationshipPattern(
-        variable=Variable(name="r4"),
-        labels=["LIVES_IN"],
-        direction=RelationshipDirection.RIGHT,
-        properties={"since": 2015, "rent": 2000},
+    relationship_lives_in_with_attrs: RelationshipPattern = (
+        RelationshipPattern(
+            variable=Variable(name="r4"),
+            labels=["LIVES_IN"],
+            direction=RelationshipDirection.RIGHT,
+            properties={"since": 2015, "rent": 2000},
+        )
     )
 
-    alice_knows_bob: PatternPath = PatternPath(elements=[node_1, relationship, node_2])
+    alice_knows_bob: PatternPath = PatternPath(
+        elements=[node_1, relationship, node_2]
+    )
 
     alice_knows_bob_knows_carol: PatternPath = PatternPath(
         elements=[node_1, relationship, node_2, relationship_1, node_3]
@@ -1028,7 +1108,9 @@ if __name__ == "__main__":
         elements=[node_1, relationship, node_2, relationship_2, node_4]
     )
 
-    path_empty_attrs: PatternPath = PatternPath(elements=[node_0, relationship, node_3])
+    path_empty_attrs: PatternPath = PatternPath(
+        elements=[node_0, relationship, node_3]
+    )
 
     context: Context = Context(
         entity_mapping=EntityMapping(
@@ -1052,19 +1134,21 @@ if __name__ == "__main__":
     print("-[r:KNOWS]->")
     translation: Relation = star.to_relation(obj=relationship_1)
     rich.print(translation)
-    assert isinstance(
-        translation, RelationshipTable
-    ), "Base case should return RelationshipTable"
+    assert isinstance(translation, RelationshipTable), (
+        "Base case should return RelationshipTable"
+    )
     print("✓ Base case works\n")
 
     # Test 2: Relationship with ONE attribute
     print("Test 2: Relationship with ONE attribute")
     print("-[r1:KNOWS {since: 2020}]->")
-    translation_one_attr: Relation = star.to_relation(obj=relationship_with_one_attr)
+    translation_one_attr: Relation = star.to_relation(
+        obj=relationship_with_one_attr
+    )
     rich.print(translation_one_attr)
-    assert isinstance(
-        translation_one_attr, FilterRows
-    ), "Should return FilterRows for relationship with attributes"
+    assert isinstance(translation_one_attr, FilterRows), (
+        "Should return FilterRows for relationship with attributes"
+    )
     assert translation_one_attr.condition.left == "since"
     assert translation_one_attr.condition.right == 2020
     print("✓ Single attribute works\n")
@@ -1072,13 +1156,17 @@ if __name__ == "__main__":
     # Test 3: Relationship with TWO attributes
     print("Test 3: Relationship with TWO attributes")
     print("-[r2:KNOWS {since: 2020, strength: 0.9}]->")
-    translation_two_attrs: Relation = star.to_relation(obj=relationship_with_two_attrs)
+    translation_two_attrs: Relation = star.to_relation(
+        obj=relationship_with_two_attrs
+    )
     rich.print(translation_two_attrs)
-    assert isinstance(translation_two_attrs, FilterRows), "Should return FilterRows"
+    assert isinstance(translation_two_attrs, FilterRows), (
+        "Should return FilterRows"
+    )
     # Should be nested FilterRows
-    assert isinstance(
-        translation_two_attrs.relation, FilterRows
-    ), "Should have nested FilterRows for multiple attributes"
+    assert isinstance(translation_two_attrs.relation, FilterRows), (
+        "Should have nested FilterRows for multiple attributes"
+    )
     print("✓ Two attributes work (nested FilterRows)\n")
 
     # Test 4: Relationship with THREE attributes
@@ -1088,13 +1176,15 @@ if __name__ == "__main__":
         obj=relationship_with_three_attrs
     )
     rich.print(translation_three_attrs)
-    assert isinstance(translation_three_attrs, FilterRows), "Should return FilterRows"
-    assert isinstance(
-        translation_three_attrs.relation, FilterRows
-    ), "Should have nested FilterRows"
-    assert isinstance(
-        translation_three_attrs.relation.relation, FilterRows
-    ), "Should have double-nested FilterRows"
+    assert isinstance(translation_three_attrs, FilterRows), (
+        "Should return FilterRows"
+    )
+    assert isinstance(translation_three_attrs.relation, FilterRows), (
+        "Should have nested FilterRows"
+    )
+    assert isinstance(translation_three_attrs.relation.relation, FilterRows), (
+        "Should have double-nested FilterRows"
+    )
     print("✓ Three attributes work (triple-nested FilterRows)\n")
 
     # Test 5: Different relationship type with attributes
@@ -1104,7 +1194,9 @@ if __name__ == "__main__":
         obj=relationship_lives_in_with_attrs
     )
     rich.print(translation_lives_in)
-    assert isinstance(translation_lives_in, FilterRows), "Should return FilterRows"
+    assert isinstance(translation_lives_in, FilterRows), (
+        "Should return FilterRows"
+    )
     print("✓ Different relationship type works\n")
 
     print("\n" + "=" * 80)
@@ -1123,9 +1215,9 @@ if __name__ == "__main__":
     print("(p:Person {name: 'Alice', age: 30})")
     translation: Relation = star.to_relation(obj=node_1)
     rich.print(translation)
-    assert isinstance(
-        translation, FilterRows
-    ), "Should return FilterRows for node with attributes"
+    assert isinstance(translation, FilterRows), (
+        "Should return FilterRows for node with attributes"
+    )
     print("✓ Node with attributes still works\n")
 
     # Regression test 3: PatternPath without relationship attributes
@@ -1199,5 +1291,7 @@ if __name__ == "__main__":
     print(
         "(p1:Person {name: 'Alice', age: 30})-[r:KNOWS]->(p2:Person)-[t:LIVES_IN]->(c1:City {name: 'New York'})"
     )
-    translation: Relation = star.to_relation(obj=alice_knows_someone_lives_in_new_york)
+    translation: Relation = star.to_relation(
+        obj=alice_knows_someone_lives_in_new_york
+    )
     rich.print(translation)
