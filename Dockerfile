@@ -20,14 +20,17 @@ RUN apt install -y -V libarrow-dev libarrow-glib-dev libarrow-dataset-dev libarr
 RUN git clone https://github.com/zacernst/pycypher-nmetl.git
 WORKDIR /pycypher-nmetl
 
-RUN wget https://github.com/apple/foundationdb/releases/download/7.3.69/foundationdb-clients_7.3.69-1_aarch64.deb
-RUN dpkg -i foundationdb-clients_7.3.69-1_aarch64.deb
-RUN pip install uv
-RUN uv venv -p 3.14t
-RUN uv pip install packages/pycypher
-RUN uv pip install packages/nmetl
-RUN uv pip install packages/fastopendata
-RUN uv pip install packages/shared
+RUN make
+
+## Commented out while we focus on pycypher
+## RUN wget https://github.com/apple/foundationdb/releases/download/7.3.69/foundationdb-clients_7.3.69-1_aarch64.deb
+## RUN dpkg -i foundationdb-clients_7.3.69-1_aarch64.deb
+## RUN pip install uv
+## RUN uv venv -p 3.14t
+## RUN uv pip install packages/pycypher
+## RUN uv pip install packages/nmetl
+## RUN uv pip install packages/fastopendata
+## RUN uv pip install packages/shared
 
 # RUN fdbcli --no-status -C "/app/fdb.cluster" --exec "configure new single ssd"
 # RUN uv venv -p 3.14t
