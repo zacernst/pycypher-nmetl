@@ -19,7 +19,8 @@ dependencies = [
     "pycosat>=0.6.6",
     "ty>=0.0.8",
     "isort",
-    "ruff"
+    "ruff",
+    "pytest>=8.4.2",
 ]
 
 [[project.authors]]

@@ -1,117 +1,110 @@
 services:
-  nmetl:
-    platform: linux/aarch64
-    environment:
-      GITHUB_TOKEN: ${GITHUB_TOKEN}
-    build: .
-      # ports:
-      # - "8000:8000"
+  # Main pycypher development container
+  pycypher-dev:
+    container_name: pycypher-dev
+    platform: linux/arm64
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    working_dir: /workspace
     volumes:
-      - ./packages/fastopendata/raw_data:/pycypher-nmetl/packages/fastopendata/raw_data # Mounts the current directory as /app inside the container
-      - ./packages/fastopendata/data_assets:/pycypher-nmetl/packages/fastopendata/data_assets # Mounts the current directory as /app inside the container
-    depends_on:
-      - fdb_build
-    network_mode: "service:fdb_build"
-    # develop:
-    #   watch:
-    #     - action: sync
-    #       path: ./packages
-    #       target: /app/packages/
-    #       initial_sync: true
-  
+      # Mount entire project for monorepo development
+      - .:/workspace
+      # Cache uv packages to speed up rebuilds
+      - uv-cache:/root/.cache/uv
+      # Cache pytest
+      - pytest-cache:/workspace/.pytest_cache
+    environment:
+      # Python environment
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+      - LC_ALL=C.UTF-8
+      - LANG=C.UTF-8
+      # GitHub token for private dependencies (if needed)
+      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+    # depends_on:
+    #   - fdb
+    command: >
+      bash -c "
+        echo 'Installing pycypher in development mode...' &&
+        cd /workspace &&
+        uv sync &&
+        uv pip install -e packages/pycypher &&
+        echo 'Pycypher development environment ready!' &&
+        echo 'Run: docker exec -it pycypher-dev bash' &&
+        tail -f /dev/null
+      "
+    stdin_open: true
+    tty: true
+
+  # FoundationDB for fact collection backend
   # fdb:
-  #   image: foundationdb/foundationdb:7.4.4
-  #   platform: linux/amd64
+  #   container_name: pycypher-fdb
+  #   platform: linux/arm64
+  #   build:
+  #     context: ./fdb_build
+  #     dockerfile: Dockerfile
   #   ports:
-  #     - "4550:4550"
+  #     - "4500:4500"
+  #   volumes:
+  #     - fdb-data:/var/fdb/data
+  #     - ./fdb.cluster:/etc/foundationdb/fdb.cluster
+  #   restart: unless-stopped
+
+  # # Optional: Jupyter notebook for interactive development
+  # jupyter:
+  #   container_name: pycypher-jupyter
+  #   platform: linux/arm64
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile.dev
+  #   working_dir: /workspace
+  #   ports:
+  #     - "8888:8888"
+  #   volumes:
+  #     - .:/workspace
+  #     - uv-cache:/root/.cache/uv
   #   environment:
-  #     VARIABLE: value
-  #   command:
-  #     - 'fdbcli --no-status --exec "configure new single ssd"'
-  
-  # fdb_service:
-  #   platform: linux/aarch64
-  #   build: ../fdb_client
+  #     - PYTHONUNBUFFERED=1
+  #     - FDB_CLUSTER_FILE=/workspace/fdb.cluster
   #   depends_on:
   #     - fdb
-  prometheus:
-    image: prom/prometheus
-    container_name: prometheus
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-    ports:
-      - 9090:9090
-    restart: unless-stopped
-    # volumes:
-    #   - ./prometheus:/etc/prometheus
-    #   - ./prometheus_data:/prometheus/data
-  grafana:
-    image: grafana/grafana
-    container_name: grafana
-    volumes:
-      - grafana-data:/var/lib/grafana
-      - grafana:/etc/grafana/provisioning/datasources
-    ports:
-      - 3000:3000
-    restart: unless-stopped
-    # environment:
-    #   - GF_SECURITY_ADMIN_USER=admin
-    #   - GF_SECURITY_ADMIN_PASSWORD=grafana
-    command:
-      - 'grafana cli admin reset-admin-password admin'
+  #   command: >
+  #     bash -c "
+  #       cd /workspace &&
+  #       uv sync &&
+  #       uv pip install -e packages/pycypher &&
+  #       uv pip install jupyter jupyterlab &&
+  #       jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token='' --NotebookApp.password=''
+  #     "
+  #   profiles:
+  #     - jupyter
 
-
-  nominatim:
-    container_name: nominatim
-    image: mediagis/nominatim:5.2
+  # Optional: VSCode server for browser-based development
+  code-server:
+    container_name: pycypher-code-server
+    image: codercom/code-server:latest
+    platform: linux/arm64
     ports:
       - "8080:8080"
-    environment:
-      # see https://github.com/mediagis/nominatim-docker/tree/master/5.2#configuration for more options
-      # PBF_URL: https://download.geofabrik.de/europe/monaco-latest.osm.pbf
-      PBF_PATH: /nominatim/osm/georgia-251107.osm.pbf
-      IMPORT_WIKIPEDIA: false   
-      REPLICATION_URL: https://download.geofabrik.de/europe/monaco-updates/
-      NOMINATIM_PASSWORD: very_secure_password
     volumes:
-    - type: bind
-      source: /home/zac/git/pycypher-nmetl/packages/fastopendata/nominatim_volumes/osm-maps
-      target: /nominatim/osm
-    - type: bind
-      source: /home/zac/git/pycypher-nmetl/packages/fastopendata/nominatim_volumes/nominatim-data
-      target: /var/lib/postgresql/16/main 
-    shm_size: 1gb
-  
-  fdb_build:
-    container_name: fdb_build
-    platform: linux/arm64
-    build: ./fdb_build
-    ports:
-    - "5050:5050"
-  
-  fastopendata_service:
-    platform: linux/arm64
-    build: ../fastopendata_service
-      # ports:
-      # - "8000:8000"
-
-  neo4j:
-    container_name: neo4j
-    image: neo4j:community-bullseye
-    ports:
-      - "7474:7474"
-      - "7687:7687"
-
+      - .:/workspace
+      - code-server-data:/root/.local/share/code-server
+    environment:
+      - PASSWORD=${CODE_SERVER_PASSWORD:-pycypher}
+    working_dir: /workspace
+    command: --auth password --bind-addr 0.0.0.0:8080 /workspace
+    profiles:
+      - code-server
 
 volumes:
-  prom_data:
-  grafana-data:
-  grafana:
-  # osm:
-  #   type: bind
-  #   source: packages/fastopendata/nominatim_volumes/osm-maps
-  #   target: /nominatim/osm
-  # pg:
-  #   type: bind
-  #   source: packages/fastopendata/nominatim_volumes/nominatim-data
-  #   target: /var/lib/postgresql/16/main
+  uv-cache:
+    driver: local
+  pytest-cache:
+    driver: local
+  code-server-data:
+    driver: local
+
+networks:
+  default:
+    name: pycypher-dev-network
