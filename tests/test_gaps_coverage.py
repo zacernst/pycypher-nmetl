@@ -58,8 +58,8 @@ class TestComplexStructures:
         assert len(typed_expr.when_clauses) == 1
         assert typed_expr.else_expr is not None
         # Check values
-        assert isinstance(typed_expr.when_clauses[0].result.name, str)
-        assert typed_expr.when_clauses[0].result.name == "Adult"
+        assert isinstance(typed_expr.when_clauses[0].result.value, str)
+        assert typed_expr.when_clauses[0].result.value == "Adult"
 
     def test_list_comprehension_structure(self, parser, converter):
         """Test parsing and conversion of List Comprehension."""

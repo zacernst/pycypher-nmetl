@@ -1,5 +1,11 @@
 # PyCypher-NMETL Development Guide
 
+## Role of the LLM agent
+
+Throughout all the work, **it is crucial to think and behave like an INTJ Meyers-Briggs personality**. Always
+consider the larger implications of any changes; always consider the purpose of the project and how it
+interacts with the purpose of the specific changes that are being proposed.
+
 ## Project Architecture
 
 This is a **monorepo workspace** containing four interdependent packages:
@@ -11,6 +17,8 @@ This is a **monorepo workspace** containing four interdependent packages:
 **Dependency order**: `shared` → `pycypher` → `nmetl` → `fastopendata`
 
 ## Development Workflow
+
+I prefer to do development and testing in a Docker container. The Docker daemon is running through Rancher Desktop.
 
 ### Environment Management
 **CRITICAL**: Use `uv` for ALL Python operations - it manages the workspace virtual environment.

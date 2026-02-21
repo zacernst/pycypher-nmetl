@@ -20,10 +20,18 @@ Grammar Parser
    :undoc-members:
    :show-inheritance:
 
-Relational Algebra
-------------------
+Relational Models
+-----------------
 
-.. automodule:: pycypher.relational_algebra
+.. automodule:: pycypher.relational_models
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Cypher Translator
+-----------------
+
+.. automodule:: pycypher.cypher_translator
    :members:
    :undoc-members:
    :show-inheritance:

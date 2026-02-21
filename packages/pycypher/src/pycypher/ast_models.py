@@ -17,14 +17,15 @@ Usage:
     from pycypher.ast_models import ASTConverter
 
     parser = GrammarParser()
-    raw_ast = parser.parse_to_ast("MATCH (n:Person) RETURN n")
+    parse_tree = parser.parse("MATCH (n:Person) RETURN n")
+    raw_ast = parser.transformer.transform(parse_tree)
 
     converter = ASTConverter()
     typed_ast = converter.convert(raw_ast)
 
     # Traverse the AST
     for node in typed_ast.traverse():
-        print(f"Node tiype: {node.__class__.__name__}")
+        print(f"Node type: {node.__class__.__name__}")
 
     # Pretty print
     print(typed_ast.pretty())
@@ -34,7 +35,6 @@ Usage:
     node = NodePattern(variable=Variable(name="n"), labels=["Person"])
     print(node.variable.name)  # "n"
 """
-
 from __future__ import annotations
 
 import hashlib
@@ -78,8 +78,7 @@ class RelationshipDirection(str, Enum):
     UNDIRECTED: Literal[str] = "-"  # We won't support this right away
 
 
-class Algebraizable(BaseModel):
-    pass
+
 
 
 class JoinType(str, Enum):
@@ -164,6 +163,9 @@ class ValidationIssue(BaseModel):
         node_info = f" in {self.node.__class__.__name__}" if self.node else ""
         code_info = f" [{self.code}]" if self.code else ""
         return f"{self.severity.value.upper()}{code_info}: {self.message}{node_info}"
+
+
+
 
 
 class ValidationResult(BaseModel):
@@ -388,19 +390,22 @@ class ASTNode(BaseModel, ABC):
 
     def _get_children(self) -> List["ASTNode"]:
         """Get all child nodes. Override in subclasses."""
-        children = []
-        for field_name, field_value in self.__dict__.items():
-            match field_value:
+        children: list[ASTNode] = []
+
+        def collect(value: Any) -> None:
+            match value:
                 case ASTNode():
-                    children.append(field_value)
-                case list():
-                    children.extend(
-                        [
-                            item
-                            for item in field_value
-                            if isinstance(item, ASTNode)
-                        ]
-                    )
+                    children.append(value)
+                case list() | tuple():
+                    for item in value:
+                        collect(item)
+                case dict():
+                    for item in value.values():
+                        collect(item)
+
+        for field_value in self.__dict__.values():
+            collect(field_value)
+
         return children
 
     def pretty(self, indent: int = 0) -> str:
@@ -494,6 +499,8 @@ class ASTNode(BaseModel, ABC):
 
         return result
 
+class Algebraizable(ASTNode):
+    pass
 
 # ============================================================================
 # Query Structure
@@ -511,6 +518,9 @@ class Clause(ASTNode, ABC):
 
     pass
 
+class PatternIntersection(Algebraizable):
+    """Intersection of multiple Patterns, implicit Join on shared variables."""
+    pattern_list: list[Algebraizable]
 
 # ============================================================================
 # Reading Clauses
@@ -660,7 +670,7 @@ class Pattern(ASTNode):
     paths: List["PatternPath"] = Field(default_factory=list)
 
 
-class PatternPath(ASTNode, Algebraizable):
+class PatternPath(Algebraizable):
     """A single path in a pattern.
 
     Represents a complete path pattern that may have an optional binding variable.
@@ -687,7 +697,7 @@ class PatternPath(ASTNode, Algebraizable):
     )
 
 
-class NodePattern(ASTNode, Algebraizable):
+class NodePattern(Algebraizable):
     """Node pattern in MATCH/CREATE clauses.
 
     Represents a node pattern like (n:Person {name: 'Alice'}) in Cypher queries.
@@ -781,16 +791,16 @@ class NodePattern(ASTNode, Algebraizable):
     #     return identifier_table
 
 
-class RelationshipPattern(ASTNode, Algebraizable):
+class RelationshipPattern(Algebraizable):
     """Relationship pattern in MATCH/CREATE clauses.
 
     Represents a relationship pattern like -[r:KNOWS]-> in Cypher queries.
 
     Attributes:
-        variable: Variable instance representing the relationship's binding name (e.g., Variable(name="r"))
+        variable: Optional Variable instance representing the relationship's binding name (e.g., Variable(name="r"))
         labels: List of relationship type names
         properties: Property map as dict (optional)
-        direction: Relationship direction ("left", "right", "both", "any")
+        direction: Relationship direction token from RelationshipDirection ("<-", "->", or "-")
         length: PathLength specification for variable-length relationships (optional)
         where: WHERE condition for relationship patterns (optional)
 
@@ -803,7 +813,7 @@ class RelationshipPattern(ASTNode, Algebraizable):
         >>> print(rel.variable.name)  # "knows"
     """
 
-    variable: Variable  # Make constructor if not present
+    variable: Variable
     labels: List[str] = Field(default_factory=list)
     properties: Optional[Dict[str, Any]] = None
     direction: RelationshipDirection
@@ -935,6 +945,10 @@ class Literal(Expression, ABC):
     """Base class for literal values."""
 
     value: Any
+
+    def evaluate(self):
+        """Evaluate the literal to its value."""
+        return self.value
 
 
 class IntegerLiteral(Literal):
@@ -1517,14 +1531,20 @@ class ASTConverter:
                     set_clause = action.get("set")
                     if set_clause:
                         converted = self.convert(set_clause)
-                        if converted:
-                            on_create.append(converted)
+                        match converted:
+                            case Set(items=set_items):
+                                on_create.extend(set_items)
+                            case SetItem() as set_item:
+                                on_create.append(set_item)
                 elif action.get("on") == "match":
                     set_clause = action.get("set")
                     if set_clause:
                         converted = self.convert(set_clause)
-                        if converted:
-                            on_match.append(converted)
+                        match converted:
+                            case Set(items=set_items):
+                                on_match.extend(set_items)
+                            case SetItem() as set_item:
+                                on_match.append(set_item)
 
         return Merge(
             pattern=cast(Optional[Pattern], self.convert(node.get("pattern"))),
@@ -1912,12 +1932,41 @@ class ASTConverter:
         args = [self.convert(a) for a in node.get("arguments", [])]
         yield_items = [self.convert(y) for y in node.get("yield_items", [])]
 
+        procedure_name = self._normalize_procedure_name(
+            node.get("procedure_name")
+        )
+
         return Call(
-            procedure_name=node.get("procedure_name"),
+            procedure_name=procedure_name,
             arguments=cast(List[Expression], [a for a in args if a]),
             yield_items=cast(List[YieldItem], [y for y in yield_items if y]),
             where=cast(Optional[Expression], self.convert(node.get("where"))),
         )
+
+    def _normalize_procedure_name(
+        self, value: Any
+    ) -> Optional[str]:  # type: ignore[override]
+        """Return dotted procedure name string for CALL clauses."""
+        if value is None:
+            return None
+
+        if isinstance(value, dict):
+            namespace = value.get("namespace")
+            name = value.get("name")
+            if namespace and name:
+                return f"{namespace}.{name}"
+            if name:
+                return str(name)
+            if namespace:
+                return str(namespace)
+            return None
+
+        if isinstance(value, (list, tuple)):
+            parts = [self._normalize_procedure_name(v) for v in value]
+            joined = ".".join([p for p in parts if p])
+            return joined or None
+
+        return str(value)
 
     def _convert_Pattern(self, node: dict) -> Pattern:
         """Convert Pattern node."""
@@ -1995,20 +2044,37 @@ class ASTConverter:
     def _convert_NodePattern(self, node: dict) -> NodePattern:
         """Convert NodePattern node."""
         var_name = node.get("variable")
+        properties_raw = node.get("properties") or {}
+        properties: Dict[str, Any] = {}
+        for key, value in properties_raw.items():
+            converted_value = self.convert(value)
+            properties[key] = converted_value if converted_value is not None else value
         return NodePattern(
             variable=Variable(name=var_name) if var_name else None,
             labels=node.get("labels", []),
-            properties=node.get("properties"),
+            properties=properties,
         )
 
     def _convert_RelationshipPattern(self, node: dict) -> RelationshipPattern:
         """Convert RelationshipPattern node."""
         var_name = node.get("variable")
+        direction_str = node.get("direction", "right")
+
+        match direction_str:
+            case "right":
+                direction = RelationshipDirection.RIGHT
+            case "left":
+                direction = RelationshipDirection.LEFT
+            case "both" | "any":
+                direction = RelationshipDirection.UNDIRECTED
+            case _:
+                direction = RelationshipDirection(direction_str)
+
         return RelationshipPattern(
             variable=Variable(name=var_name) if var_name else None,
-            labels=node.get("labels", []),
-            properties=node.get("properties"),
-            direction=node.get("direction", "right"),
+            labels=node.get("labels", []) or node.get("types", []),
+            properties=node.get("properties") or {},
+            direction=direction,
             length=cast(
                 Optional[PathLength], self.convert(node.get("length"))
             ),
@@ -2070,6 +2136,10 @@ class ASTConverter:
             left=cast(Optional[Expression], self.convert(node.get("left"))),
             right=cast(Optional[Expression], self.convert(node.get("right"))),
         )
+
+    def _convert_StringLiteral(self, node: dict) -> StringLiteral:
+        """Convert StringLiteral node from parser output."""
+        return StringLiteral(value=node.get("value", ""))
 
     def _convert_NullCheck(self, node: dict) -> NullCheck:
         """Convert NullCheck node."""
@@ -2369,6 +2439,14 @@ class ASTConverter:
                 Optional[Expression], self.convert(node.get("expression"))
             ),
             ascending=node.get("ascending", True),
+        )
+
+    def _convert_YieldItem(self, node: dict) -> YieldItem:
+        """Convert YieldItem node."""
+        variable = self.convert(node.get("variable"))
+        return YieldItem(
+            variable=variable if isinstance(variable, Variable) else None,
+            alias=node.get("alias"),
         )
 
     def _convert_WhereClause(self, node: dict) -> Optional[Expression]:

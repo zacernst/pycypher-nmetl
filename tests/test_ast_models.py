@@ -36,6 +36,7 @@ from pycypher.ast_models import (
     PatternPath,
     PropertyLookup,
     Query,
+    RelationshipDirection,
     RelationshipPattern,
     Remove,
     RemoveItem,
@@ -211,6 +212,24 @@ class TestASTTraversal:
         # Find all nodes (should return all traversable nodes)
         found = prop.find_all(lambda n: True)
         assert len(found) >= 2
+
+    def test_traverse_includes_map_literal_entries(self):
+        """Ensure traversal visits nodes stored inside dict-valued fields."""
+        entry_value = IntegerLiteral(value=42)
+        map_literal = MapLiteral(entries={"answer": entry_value})
+
+        nodes = list(map_literal.traverse())
+
+        assert any(isinstance(node, IntegerLiteral) and node.value == 42 for node in nodes)
+
+    def test_traverse_includes_nested_dict_children(self):
+        """Ensure traversal walks nested AST nodes inside dict containers."""
+        inner_variable = Variable(name="nested")
+        function_call = FunctionInvocation(name="identity", arguments={"arg": inner_variable})
+
+        nodes = list(function_call.traverse())
+
+        assert any(isinstance(node, Variable) and node.name == "nested" for node in nodes)
 
 
 # =============================================================================
@@ -574,11 +593,13 @@ class TestPatterns:
     def test_relationship_pattern_creation(self):
         """Test creating a relationship pattern."""
         rel = RelationshipPattern(
-            variable=Variable(name="r"), types=["KNOWS"], direction="outgoing"
+            variable=Variable(name="r"),
+            labels=["KNOWS"],
+            direction=RelationshipDirection.RIGHT,
         )
         assert rel.variable.name == "r"
-        assert rel.types == ["KNOWS"]
-        assert rel.direction == "outgoing"
+        assert rel.labels == ["KNOWS"]
+        assert rel.direction == RelationshipDirection.RIGHT
 
 
 if __name__ == "__main__":

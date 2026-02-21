@@ -22,7 +22,7 @@ def parse_and_validate(parser, converter, query):
     tree = parser.parse(query)
     ast_dict = parser.transformer.transform(tree)
     typed_ast = converter.convert(ast_dict)
-    return typed_ast.validate()
+    return typed_ast.validate_ast()
 
 
 class TestUndefinedVariables:

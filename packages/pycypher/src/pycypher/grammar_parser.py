@@ -21,7 +21,7 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
-from lark import Lark, Transformer, Tree
+from lark import Lark, Transformer, Tree, Token
 
 # Complete Lark grammar for openCypher
 # Based on the official openCypher grammar specification
@@ -79,7 +79,9 @@ field_name: IDENTIFIER
 // MATCH clause
 //============================================================================
 
-match_clause: "OPTIONAL"i? "MATCH"i pattern where_clause?
+match_clause: optional_keyword? "MATCH"i pattern where_clause?
+
+optional_keyword: "OPTIONAL"i
 
 //============================================================================
 // CREATE clause  
@@ -93,13 +95,19 @@ create_clause: "CREATE"i pattern
 
 merge_clause: "MERGE"i pattern merge_action*
 
-merge_action: "ON"i ("MATCH"i | "CREATE"i) set_clause
+merge_action: "ON"i merge_action_type set_clause
+
+merge_action_type: "MATCH"i  -> merge_action_match
+                 | "CREATE"i -> merge_action_create
 
 //============================================================================
 // DELETE clause
 //============================================================================
 
-delete_clause: ("DETACH"i)? "DELETE"i delete_items
+delete_clause: detach_keyword? "DELETE"i delete_items
+
+?detach_keyword: "DETACH"i
+
 
 delete_items: expression ("," expression)*
 
@@ -149,13 +157,16 @@ unwind_clause: "UNWIND"i expression "AS"i variable_name
 // WITH clause
 //============================================================================
 
-with_clause: "WITH"i ("DISTINCT"i)? return_body where_clause? order_clause? skip_clause? limit_clause?
+with_clause: "WITH"i distinct_keyword? return_body where_clause? order_clause? skip_clause? limit_clause?
 
 //============================================================================
 // RETURN clause
 //============================================================================
 
-return_clause: "RETURN"i ("DISTINCT"i)? return_body order_clause? skip_clause? limit_clause?
+return_clause: "RETURN"i distinct_keyword? return_body order_clause? skip_clause? limit_clause?
+
+distinct_keyword: "DISTINCT"i
+
 
 return_body: return_items | "*"
 
@@ -181,7 +192,7 @@ order_items: order_item ("," order_item)*
 
 order_item: expression order_direction?
 
-order_direction: "ASC"i | "ASCENDING"i | "DESC"i | "DESCENDING"i
+order_direction: ASC_KEYWORD | ASCENDING_KEYWORD | DESC_KEYWORD | DESCENDING_KEYWORD
 
 //============================================================================
 // SKIP and LIMIT
@@ -300,11 +311,11 @@ null_check_op: "IS"i "NOT"i "NULL"i  -> is_not_null
 
 ?string_predicate_expression: add_expression (string_predicate_op add_expression)*
 
-string_predicate_op: "STARTS"i "WITH"i
-                   | "ENDS"i "WITH"i
-                   | "CONTAINS"i
-                   | "=~"
-                   | "IN"i
+string_predicate_op: "STARTS"i "WITH"i -> starts_with_op
+                   | "ENDS"i "WITH"i   -> ends_with_op
+                   | "CONTAINS"i        -> contains_op
+                   | "=~"               -> regex_match_op
+                   | "IN"i              -> in_op
 
 ?add_expression: mult_expression (add_op mult_expression)*
 !add_op: "+" | "-"
@@ -520,6 +531,10 @@ IDENTIFIER: REGULAR_IDENTIFIER
           | ESCAPED_IDENTIFIER
 
 NOT_KEYWORD.2: "NOT"i  // Higher priority than IDENTIFIER
+ASC_KEYWORD.2: "ASC"i
+ASCENDING_KEYWORD.2: "ASCENDING"i
+DESC_KEYWORD.2: "DESC"i
+DESCENDING_KEYWORD.2: "DESCENDING"i
 REGULAR_IDENTIFIER: /[a-zA-Z_][a-zA-Z0-9_]*/
 
 ESCAPED_IDENTIFIER: /`[^`]+`/
@@ -805,11 +820,47 @@ class CypherASTTransformer(Transformer):
         Returns:
             Dict with type "CallStatement" containing procedure info, args, and yield.
         """
+        procedure = args[0] if args else None
+        remaining = list(args[1:]) if len(args) > 1 else []
+
+        arguments: List[Any] = []
+        yield_clause = None
+
+        if remaining:
+            potential_args = remaining[0]
+            if isinstance(potential_args, list):
+                arguments = potential_args
+                remaining = remaining[1:]
+            elif (
+                isinstance(potential_args, dict)
+                and potential_args.get("type") == "YieldClause"
+            ):
+                yield_clause = potential_args
+                remaining = remaining[1:]
+            elif potential_args is None:
+                arguments = []
+                remaining = remaining[1:]
+            else:
+                arguments = [potential_args]
+                remaining = remaining[1:]
+
+        if remaining and yield_clause is None:
+            yield_clause = remaining[0]
+
+        yield_items: List[Any] = []
+        where = None
+        if isinstance(yield_clause, dict):
+            items = yield_clause.get("items")
+            if isinstance(items, list):
+                yield_items = items
+            where = yield_clause.get("where")
+
         return {
-            "type": "CallStatement",
-            "procedure": args[0] if args else None,
-            "args": args[1] if len(args) > 1 else None,
-            "yield": args[2] if len(args) > 2 else None,
+            "type": "Call",
+            "procedure_name": procedure,
+            "arguments": arguments,
+            "yield_items": yield_items,
+            "where": where,
         }
 
     def call_clause(self, args: List[Any]) -> Dict[str, Any]:
@@ -825,11 +876,47 @@ class CypherASTTransformer(Transformer):
         Returns:
             Dict with type "CallClause" containing procedure info, args, and yield.
         """
+        procedure = args[0] if args else None
+        remaining = list(args[1:]) if len(args) > 1 else []
+
+        arguments: List[Any] = []
+        yield_clause = None
+
+        if remaining:
+            potential_args = remaining[0]
+            if isinstance(potential_args, list):
+                arguments = potential_args
+                remaining = remaining[1:]
+            elif (
+                isinstance(potential_args, dict)
+                and potential_args.get("type") == "YieldClause"
+            ):
+                yield_clause = potential_args
+                remaining = remaining[1:]
+            elif potential_args is None:
+                arguments = []
+                remaining = remaining[1:]
+            else:
+                arguments = [potential_args]
+                remaining = remaining[1:]
+
+        if remaining and yield_clause is None:
+            yield_clause = remaining[0]
+
+        yield_items: List[Any] = []
+        where = None
+        if isinstance(yield_clause, dict):
+            items = yield_clause.get("items")
+            if isinstance(items, list):
+                yield_items = items
+            where = yield_clause.get("where")
+
         return {
-            "type": "CallClause",
-            "procedure": args[0] if args else None,
-            "args": args[1] if len(args) > 1 else None,
-            "yield": args[2] if len(args) > 2 else None,
+            "type": "Call",
+            "procedure_name": procedure,
+            "arguments": arguments,
+            "yield_items": yield_items,
+            "where": where,
         }
 
     def procedure_reference(self, args: List[Any]) -> Optional[Any]:
@@ -903,9 +990,9 @@ class CypherASTTransformer(Transformer):
         Returns:
             Dict with field name and optional alias.
         """
-        if len(args) == 1:
-            return {"field": args[0]}
-        return {"field": args[0], "alias": args[1]}
+        variable = args[0] if args else None
+        alias = args[1] if len(args) > 1 else None
+        return {"type": "YieldItem", "variable": variable, "alias": alias}
 
     def field_name(self, args: List[Any]) -> str:
         """Extract field name identifier.
@@ -938,9 +1025,24 @@ class CypherASTTransformer(Transformer):
         Returns:
             Dict with type "MatchClause" containing optional flag, pattern, and where.
         """
-        optional = any(
-            str(a).upper() == "OPTIONAL" for a in args if isinstance(a, str)
-        )
+        def _is_optional(value: Any) -> bool:
+            if isinstance(value, str):
+                return value.upper() == "OPTIONAL"
+            if isinstance(value, Token):
+                token_value = str(getattr(value, "value", "") or "").upper()
+                token_type = str(getattr(value, "type", "") or "").upper()
+                return token_value == "OPTIONAL" or token_type == "OPTIONAL_KEYWORD"
+            if isinstance(value, Tree):
+                if getattr(value, "data", "") == "optional_keyword":
+                    return True
+                return any(_is_optional(child) for child in value.children)
+            if isinstance(value, dict):
+                return any(_is_optional(child) for child in value.values())
+            if isinstance(value, list) or isinstance(value, tuple):
+                return any(_is_optional(child) for child in value)
+            return False
+
+        optional = any(_is_optional(arg) for arg in args)
         pattern = next(
             (
                 a
@@ -1018,19 +1120,63 @@ class CypherASTTransformer(Transformer):
         Returns:
             Dict with type "MergeAction" specifying trigger type and SET operation.
         """
-        on_type = (
-            "match"
-            if any(
-                str(a).upper() == "MATCH" for a in args if isinstance(a, str)
-            )
-            else "create"
-        )
-        set_clause = next((a for a in args if isinstance(a, dict)), None)
+        on_type: Optional[str] = None
+        set_clause = None
+
+        for arg in args:
+            if isinstance(arg, str):
+                upper = arg.upper()
+                if upper == "ON":
+                    continue
+                if upper in {"MATCH", "CREATE"}:
+                    on_type = upper.lower()
+                    continue
+            if isinstance(arg, Token):
+                token_value = str(getattr(arg, "value", "") or "").upper()
+                token_type = str(getattr(arg, "type", "") or "").upper()
+                candidate = token_value or token_type
+                if candidate == "ON":
+                    continue
+                if candidate in {"MATCH", "CREATE", "CREATE_KEYWORD", "MATCH_KEYWORD"}:
+                    on_type = ("MATCH" if "MATCH" in candidate else "CREATE").lower()
+                    continue
+            if isinstance(arg, dict):
+                set_clause = arg
+
+        if on_type is None:
+            on_type = "create"
+
         return {"type": "MergeAction", "on": on_type, "set": set_clause}
+
+    def merge_action_type(self, args: List[Any]) -> str:
+        """Normalize merge action type tokens to keyword strings."""
+        if not args:
+            return ""
+        token = args[0]
+        if isinstance(token, str):
+            return token.upper()
+        if isinstance(token, Token):
+            value = str(getattr(token, "value", "") or "").upper()
+            if value:
+                return value
+            return str(getattr(token, "type", "") or "").upper()
+        return str(token).upper()
+
+    def merge_action_match(self, _args: List[Any]) -> str:
+        """Return normalized MATCH keyword for merge action."""
+        return "MATCH"
+
+    def merge_action_create(self, _args: List[Any]) -> str:
+        """Return normalized CREATE keyword for merge action."""
+        return "CREATE"
 
     # ========================================================================
     # DELETE clause
     # ========================================================================
+
+    def detach_keyword(self, args: List[Any]) -> str:
+        """Transform detach_keyword rule."""
+        return "DETACH"
 
     def delete_clause(self, args: List[Any]) -> Dict[str, Any]:
         """Transform a DELETE clause for removing graph elements.
@@ -1367,6 +1513,10 @@ class CypherASTTransformer(Transformer):
         }
 
     # ========================================================================
+    def distinct_keyword(self, args: List[Any]) -> str:
+        """Transform distinct_keyword rule."""
+        return "DISTINCT"
+
     # RETURN clause
     # ========================================================================
 
@@ -1386,9 +1536,18 @@ class CypherASTTransformer(Transformer):
         Returns:
             Dict with type "ReturnStatement" containing all output specifications.
         """
-        distinct = any(
-            str(a).upper() == "DISTINCT" for a in args if isinstance(a, str)
-        )
+        # LOGGER.debug(f"DEBUG return_clause args: {args} types: {[type(a) for a in args]}")
+        distinct = False
+        for a in args:
+            if hasattr(a, "type") and a.type == "DISTINCT":
+                distinct = True
+            elif isinstance(a, str) and a.upper() == "DISTINCT":
+                distinct = True
+            elif hasattr(a, "value") and str(a.value).upper() == "DISTINCT":
+                # Handle Token objects that might not satisfy isinstance(str) directly in some envs
+                # or if it is a Tree/Token mixup
+                distinct = True
+                
         body = None
         order = None
         skip = None
@@ -1547,8 +1706,24 @@ class CypherASTTransformer(Transformer):
             Dict with expression and direction ("asc" or "desc").
         """
         expr = args[0] if args else None
-        direction = args[1] if len(args) > 1 else "asc"
-        return {"expression": expr, "direction": direction}
+        direction = args[1] if len(args) > 1 else None
+
+        if hasattr(direction, "value"):
+            direction_value = str(direction.value).lower()
+        elif isinstance(direction, str):
+            direction_value = direction.lower()
+        elif direction is None:
+            direction_value = "asc"
+        else:
+            direction_value = str(direction).lower()
+
+        ascending = direction_value not in {"desc", "descending"}
+
+        return {
+            "type": "OrderByItem",
+            "expression": expr,
+            "ascending": ascending,
+        }
 
     def order_direction(self, args: List[Any]) -> str:
         """Normalize ORDER BY direction keywords.
@@ -2035,10 +2210,48 @@ class CypherASTTransformer(Transformer):
             args: Optional path_length_range specification.
 
         Returns:
-            Dict with "pathLength" key containing range spec or True for unlimited.
+            Dict with normalized PathLength node for downstream conversion.
         """
         range_spec = args[0] if args else None
-        return {"pathLength": range_spec}
+
+        length_node: Dict[str, Any] = {
+            "type": "PathLength",
+            "min": None,
+            "max": None,
+            "unbounded": False,
+        }
+
+        if isinstance(range_spec, dict):
+            if "fixed" in range_spec:
+                value = range_spec.get("fixed")
+                length_node["min"] = value
+                length_node["max"] = value
+            else:
+                if "min" in range_spec:
+                    length_node["min"] = range_spec.get("min")
+                if "max" in range_spec:
+                    length_node["max"] = range_spec.get("max")
+                if range_spec.get("unbounded"):
+                    length_node["unbounded"] = True
+        elif isinstance(range_spec, int):
+            length_node["min"] = range_spec
+            length_node["max"] = range_spec
+        elif range_spec is None:
+            length_node["unbounded"] = True
+        else:
+            # Fallback: attempt to coerce to int for fixed length strings/tokens
+            try:
+                value = int(str(range_spec))
+            except (TypeError, ValueError):
+                value = None
+            length_node["min"] = value
+            length_node["max"] = value
+
+        # When unbounded and no explicit lower bound, default Cypher lower bound is 1
+        if length_node["unbounded"] and length_node["min"] is None:
+            length_node["min"] = 1
+
+        return {"length": length_node}
 
     def path_length_range(
         self, args: List[Any]
@@ -2344,7 +2557,39 @@ class CypherASTTransformer(Transformer):
         Returns:
             Space-separated, uppercased operator string (e.g., "STARTS WITH").
         """
-        return " ".join(str(a).upper() for a in args)
+        parts: List[str] = []
+        for item in args:
+            value: str = ""
+            if isinstance(item, Token):
+                raw_value = str(getattr(item, "value", "") or "")
+                token_type = str(getattr(item, "type", "") or "")
+                value = raw_value or token_type
+            else:
+                value = str(item)
+            value = value.strip()
+            if value:
+                parts.append(value.upper())
+        return " ".join(parts)
+
+    def starts_with_op(self, _args: List[Any]) -> str:
+        """Return the normalized STARTS WITH operator string."""
+        return "STARTS WITH"
+
+    def ends_with_op(self, _args: List[Any]) -> str:
+        """Return the normalized ENDS WITH operator string."""
+        return "ENDS WITH"
+
+    def contains_op(self, _args: List[Any]) -> str:
+        """Return the normalized CONTAINS operator string."""
+        return "CONTAINS"
+
+    def regex_match_op(self, _args: List[Any]) -> str:
+        """Return the normalized regular expression match operator."""
+        return "=~"
+
+    def in_op(self, _args: List[Any]) -> str:
+        """Return the normalized IN operator string."""
+        return "IN"
 
     def is_null(self, args: List[Any]) -> str:
         """Return the IS NULL operator constant.
@@ -3802,8 +4047,8 @@ class CypherASTTransformer(Transformer):
                 return float("nan")
             return s
 
-    def string_literal(self, args: List[Any]) -> str:
-        """Transform string literals into Python string values.
+    def string_literal(self, args: List[Any]) -> Dict[str, Any]:
+        """Transform string literals into structured AST nodes.
 
         String literals in Cypher can be enclosed in single or double quotes:
         - 'Hello World'
@@ -3840,7 +4085,7 @@ class CypherASTTransformer(Transformer):
         # Basic escape sequence handling
         s = s.replace("\\n", "\n").replace("\\t", "\t").replace("\\r", "\r")
         s = s.replace("\\\\", "\\").replace("\\'", "'").replace('\\"', '"')
-        return s
+        return {"type": "StringLiteral", "value": s}
 
     def true(self, args: List[Any]) -> bool:
         """Transform the TRUE boolean literal keyword into Python True.
