@@ -22,6 +22,7 @@ dependencies = [
     "ruff",
     "pytest>=8.4.2",
     "pyspark>=4.1.1",
+    "shared",
 ]
 
 [[project.authors]]

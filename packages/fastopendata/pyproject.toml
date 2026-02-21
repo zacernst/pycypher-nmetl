@@ -42,6 +42,7 @@ dependencies = [
  "toml>=0.10.2,<1.0.0",
  "uv>=0.4.1,<1.0.0",
  "pycypher",
+ "shared",
  "osmium",
 ]
 [[project.authors]]

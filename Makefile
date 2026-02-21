@@ -61,7 +61,7 @@ clean:
 	rm -rfv ${COVERAGE_DIR}
 
 test:
-	(uv run pytest ./tests/test_eval.py)
+	(uv run pytest .)
 
 # ------------------------------------------------------------------------------
 # Docker development targets

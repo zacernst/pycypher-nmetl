@@ -1,5 +1,6 @@
 from pyspark.sql import SparkSession
-from pyspark.sql import functions as F, col, countDistinct
+from pyspark.sql import functions as F
+from pyspark.sql.functions import col, countDistinct
 
 MAX_SIGNAL_IDS = 128
 MAX_PARTITIONS = 2000

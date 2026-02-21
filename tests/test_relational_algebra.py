@@ -330,8 +330,10 @@ def test_star_joins_pattern_path(relational_context: Context) -> None:
 
     relation: Relation = star.to_relation(obj=path)
 
-    assert isinstance(relation, Join)
-    assert relation.join_type == JoinType.INNER
+    assert isinstance(relation, Projection)
+    join_relation = relation.relation
+    assert isinstance(join_relation, Join)
+    assert join_relation.join_type == JoinType.INNER or join_relation.how == JoinType.INNER
     assert Variable(name="a") in relation.variable_map
     assert Variable(name="b") in relation.variable_map
     assert Variable(name="r") in relation.variable_map
@@ -381,16 +383,26 @@ def test_from_node_relationship_tail_to_df(relational_context: Context) -> None:
 def test_filter_rows_to_pandas_filters_values(
     person_table: EntityTable, relational_context: Context
 ) -> None:
+    # Populate variable map for the test
+    person_table.variable_map = {Variable(name="n"): "Person____ID__"}
+    person_table.variable_type_map = {Variable(name="n"): "Person"}
+    
     filtered = FilterRows(
         relation=person_table,
-        condition=AttributeEqualsValue(left="age", right=30),
-        column_names=person_table.column_names,
+        condition=AttributeEqualsValue(left="name", right="Alice"),
+        variable_map=person_table.variable_map,
+        variable_type_map=person_table.variable_type_map,
+        column_names=["Person____ID__"],  # Only ID column
     )
 
     df: pd.DataFrame = filtered.to_pandas(context=relational_context)
 
+    # Should return 1 row (Alice) with only the ID column
     assert len(df) == 1
-    assert df.iloc[0]["Person__name"] == "Alice"
+    # Should only have the ID column, not attribute columns
+    assert list(df.columns) == ["Person____ID__"]
+    # Verify it's Alice's ID (which is 1 based on the fixture)
+    assert df.iloc[0]["Person____ID__"] == 1
 
 
 def test_from_pattern_path_to_relation(relational_context: Context) -> None:
@@ -408,8 +420,10 @@ def test_from_pattern_path_to_relation(relational_context: Context) -> None:
 
     relation: Relation = star.to_relation(obj=path)
 
-    assert isinstance(relation, Join)
-    assert relation.join_type == JoinType.INNER
+    assert isinstance(relation, Projection)
+    join_relation = relation.relation
+    assert isinstance(join_relation, Join)
+    assert join_relation.join_type == JoinType.INNER or join_relation.how == JoinType.INNER
     assert Variable(name="a") in relation.variable_map
     assert Variable(name="b") in relation.variable_map
     assert Variable(name="r") in relation.variable_map

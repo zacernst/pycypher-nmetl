@@ -1025,13 +1025,17 @@ class CypherASTTransformer(Transformer):
         Returns:
             Dict with type "MatchClause" containing optional flag, pattern, and where.
         """
+
         def _is_optional(value: Any) -> bool:
             if isinstance(value, str):
                 return value.upper() == "OPTIONAL"
             if isinstance(value, Token):
                 token_value = str(getattr(value, "value", "") or "").upper()
                 token_type = str(getattr(value, "type", "") or "").upper()
-                return token_value == "OPTIONAL" or token_type == "OPTIONAL_KEYWORD"
+                return (
+                    token_value == "OPTIONAL"
+                    or token_type == "OPTIONAL_KEYWORD"
+                )
             if isinstance(value, Tree):
                 if getattr(value, "data", "") == "optional_keyword":
                     return True
@@ -1137,8 +1141,15 @@ class CypherASTTransformer(Transformer):
                 candidate = token_value or token_type
                 if candidate == "ON":
                     continue
-                if candidate in {"MATCH", "CREATE", "CREATE_KEYWORD", "MATCH_KEYWORD"}:
-                    on_type = ("MATCH" if "MATCH" in candidate else "CREATE").lower()
+                if candidate in {
+                    "MATCH",
+                    "CREATE",
+                    "CREATE_KEYWORD",
+                    "MATCH_KEYWORD",
+                }:
+                    on_type = (
+                        "MATCH" if "MATCH" in candidate else "CREATE"
+                    ).lower()
                     continue
             if isinstance(arg, dict):
                 set_clause = arg
@@ -1547,7 +1558,7 @@ class CypherASTTransformer(Transformer):
                 # Handle Token objects that might not satisfy isinstance(str) directly in some envs
                 # or if it is a Tree/Token mixup
                 distinct = True
-                
+
         body = None
         order = None
         skip = None

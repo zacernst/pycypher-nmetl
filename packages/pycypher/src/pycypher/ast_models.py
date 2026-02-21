@@ -35,6 +35,7 @@ Usage:
     node = NodePattern(variable=Variable(name="n"), labels=["Person"])
     print(node.variable.name)  # "n"
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -76,9 +77,6 @@ class RelationshipDirection(str, Enum):
     LEFT: Literal[str] = "<-"
     RIGHT: Literal[str] = "->"
     UNDIRECTED: Literal[str] = "-"  # We won't support this right away
-
-
-
 
 
 class JoinType(str, Enum):
@@ -163,9 +161,6 @@ class ValidationIssue(BaseModel):
         node_info = f" in {self.node.__class__.__name__}" if self.node else ""
         code_info = f" [{self.code}]" if self.code else ""
         return f"{self.severity.value.upper()}{code_info}: {self.message}{node_info}"
-
-
-
 
 
 class ValidationResult(BaseModel):
@@ -499,8 +494,10 @@ class ASTNode(BaseModel, ABC):
 
         return result
 
+
 class Algebraizable(ASTNode):
     pass
+
 
 # ============================================================================
 # Query Structure
@@ -518,9 +515,12 @@ class Clause(ASTNode, ABC):
 
     pass
 
+
 class PatternIntersection(Algebraizable):
     """Intersection of multiple Patterns, implicit Join on shared variables."""
+
     pattern_list: list[Algebraizable]
+
 
 # ============================================================================
 # Reading Clauses
@@ -716,7 +716,7 @@ class NodePattern(Algebraizable):
         >>> print(node.variable.name)  # "person"
     """
 
-    variable: Variable  # TODO: Make a constructor if not present
+    variable: Optional[Variable] = None
     labels: List[str] = Field(default_factory=list)
     properties: Dict[str, Any] = {}
 
@@ -813,7 +813,7 @@ class RelationshipPattern(Algebraizable):
         >>> print(rel.variable.name)  # "knows"
     """
 
-    variable: Variable
+    variable: Optional[Variable] = None
     labels: List[str] = Field(default_factory=list)
     properties: Optional[Dict[str, Any]] = None
     direction: RelationshipDirection
@@ -1943,9 +1943,7 @@ class ASTConverter:
             where=cast(Optional[Expression], self.convert(node.get("where"))),
         )
 
-    def _normalize_procedure_name(
-        self, value: Any
-    ) -> Optional[str]:  # type: ignore[override]
+    def _normalize_procedure_name(self, value: Any) -> Optional[str]:  # type: ignore[override]
         """Return dotted procedure name string for CALL clauses."""
         if value is None:
             return None
@@ -2048,7 +2046,9 @@ class ASTConverter:
         properties: Dict[str, Any] = {}
         for key, value in properties_raw.items():
             converted_value = self.convert(value)
-            properties[key] = converted_value if converted_value is not None else value
+            properties[key] = (
+                converted_value if converted_value is not None else value
+            )
         return NodePattern(
             variable=Variable(name=var_name) if var_name else None,
             labels=node.get("labels", []),
