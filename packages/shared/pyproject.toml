@@ -27,7 +27,7 @@ file = "LICENSE.txt"
 dev = [ "hatch>=1.12.0,<2.0.0",]
 
 [project.urls]
-Homepage = "https://github.com/zacernst/pycypher-nmetl"
+Homepage = "https://github.com/zacernst/pycypher"
 
 [project.scripts]
 
@@ -44,7 +44,6 @@ exclude_also = [ "def tree", "def print_tree", "def __repr__", "if self.debug:",
 omit = [
     # omit anything in a .local directory anywhere
     "*/.local/*",
-    "*/fastopendata/src/fastopendata/*",
     "/*.py",
     "*/filter_us_nodes.py"
     ]

@@ -34,6 +34,9 @@ from pycypher.relational_models import (
     SelectColumns,
     FilterRows,
     AttributeEqualsValue,
+    ExpressionProjection,
+    Aggregation,
+    GroupedAggregation,
     ColumnName,
 )
 import pandas as pd
@@ -44,6 +47,18 @@ class Star:
 
     def __init__(self, context: Context = Context()) -> None:
         self.context: Context = context
+        # Track variable-to-type mappings during pattern processing
+        self.variable_type_registry: dict[Variable, str] = {}
+
+    def _extract_variable_types(self, pattern: Pattern) -> None:
+        """Extract variable-to-type mappings from all NodePatterns in a Pattern."""
+        for path in pattern.paths:
+            for element in path.elements:
+                if isinstance(element, NodePattern) and element.labels and element.variable:
+                    # Record the first label as the variable's type
+                    if element.variable not in self.variable_type_registry:
+                        self.variable_type_registry[element.variable] = element.labels[0]
+                        LOGGER.debug(msg=f"Registered variable {element.variable} as type {element.labels[0]}")
 
     def to_relation(self, obj: Algebraizable | str) -> Relation:
         """Convert the object to a Relation. Recursively handles different AST node types."""
@@ -85,6 +100,8 @@ class Star:
                 )
             case Pattern():
                 LOGGER.debug(msg="Translating Pattern.")
+                # Extract variable types before processing
+                self._extract_variable_types(pattern=obj)
                 out: Relation = self._from_pattern(pattern=obj)
             case PatternPath() as pattern_path:  # (p1)-[r:KNOWS]->(p2)
                 LOGGER.debug(msg="Translating PatternPath.")
@@ -542,13 +559,86 @@ class Star:
                 return self._binary_join(left=right, right=new_left)
 
             case (NodePattern(), NodePattern()):
-                # This should never happen
+                # Two standalone NodePatterns - should never happen in well-formed patterns
                 raise ValueError("Cannot join two NodePatterns directly.")
             case (RelationshipPattern(), RelationshipPattern()):
-                # This should never happen
+                # Two standalone RelationshipPatterns - should never happen
                 raise ValueError(
                     "Cannot join two RelationshipPatterns directly."
                 )
+            case (PatternPath(), PatternPath()) | (PatternPath(), _) | (_, PatternPath()):
+                # Join two PatternPaths or a PatternPath with another relation type
+                # This handles comma-separated patterns like (p:Person), (p)-[k:KNOWS]->(q)
+                LOGGER.debug(
+                    msg=f"Joining PatternPath-based relations on common variables."
+                )
+                # Find variables in common
+                left_vars = set(left.variable_map.keys())
+                right_vars = set(right.variable_map.keys())
+                common_vars = left_vars & right_vars
+                
+                if not common_vars:
+                    # No common variables - cross product
+                    LOGGER.debug(msg="No common variables, performing cross product.")
+                    variable_map = {**left.variable_map, **right.variable_map}
+                    variable_type_map = {**left.variable_type_map, **right.variable_type_map}
+                    # Column names should not have duplicates since no common variables
+                    column_names = left.column_names + right.column_names
+                    
+                    join: Join = Join(
+                        left=left,
+                        right=right,
+                        source_algebraizable=PatternIntersection(
+                            pattern_list=[left.source_algebraizable, right.source_algebraizable]
+                        ),
+                        on_left=[],
+                        on_right=[],
+                        how=JoinType.CROSS,
+                        variable_map=variable_map,
+                        variable_type_map=variable_type_map,
+                        column_names=column_names,
+                    )
+                    return join
+                else:
+                    # Join on common variables
+                    LOGGER.debug(msg=f"Joining on common variables: {common_vars}")
+                    left_join_cols = [left.variable_map[var] for var in common_vars]
+                    right_join_cols = [right.variable_map[var] for var in common_vars]
+                    
+                    variable_map = {**left.variable_map, **right.variable_map}
+                    variable_type_map = {**left.variable_type_map, **right.variable_type_map}
+                    
+                    # Only include unique columns (deduplicate common variable columns)
+                    # For common variables, use the left side's column
+                    unique_columns = []
+                    seen_vars = set()
+                    
+                    # Add all left columns
+                    for var, col in left.variable_map.items():
+                        if var not in seen_vars:
+                            unique_columns.append(col)
+                            seen_vars.add(var)
+                    
+                    # Add right columns only if variable not already seen
+                    for var, col in right.variable_map.items():
+                        if var not in seen_vars:
+                            unique_columns.append(col)
+                            seen_vars.add(var)
+                    
+                    join: Join = Join(
+                        left=left,
+                        right=right,
+                        source_algebraizable=PatternIntersection(
+                            pattern_list=[left.source_algebraizable, right.source_algebraizable]
+                        ),
+                        on_left=left_join_cols,
+                        on_right=right_join_cols,
+                        how=JoinType.INNER,
+                        variable_map=variable_map,
+                        variable_type_map=variable_type_map,
+                        column_names=unique_columns,
+                    )
+                    return join
 
             case _:
                 raise NotImplementedError(
@@ -590,53 +680,76 @@ class Star:
     def _from_relationship_pattern_with_attrs(
         self, relationship: RelationshipPattern
     ) -> FilterRows:
-        raise NotImplementedError(
-            "Filtering on relationship properties is not implemented yet."
+        """Convert a RelationshipPattern with properties to a filtered RelationshipTable.
+        
+        Uses inductive approach: take first property, create base relationship with
+        remaining properties, then wrap in FilterRows for the first property.
+        """
+        if not relationship.properties:
+            raise ValueError("RelationshipPattern must have properties for this method.")
+        
+        # Extract first property
+        attr1: str = list(relationship.properties.keys())[0]
+        val1: Any = list(relationship.properties.values())[0]
+
+        # Create base relationship with remaining properties
+        base_relationship: RelationshipPattern = RelationshipPattern(
+            variable=relationship.variable,
+            labels=relationship.labels,
+            direction=relationship.direction,
+            properties={
+                attr: val
+                for attr, val in relationship.properties.items()
+                if attr != attr1
+            },
         )
-        # if not relationship.properties:
-        #     raise ValueError("RelationshipPattern must have properties for this method.")
-        #
-        # """Convert a RelationshipPattern with attributes to a filtered RelationshipTable."""
-        # attr1: str = list(relationship.properties.keys())[0]
-        # val1: Any = list(relationship.properties.values())[0]
 
-        # # Create base relationship with remaining attributes
-        # base_relationship: RelationshipPattern = RelationshipPattern(
-        #     variable=relationship.variable,
-        #     labels=relationship.labels,
-        #     direction=relationship.direction,
-        #     properties={
-        #         attr: val
-        #         for attr, val in relationship.properties.items()
-        #         if attr != attr1
-        #     },
-        # )
+        # Recursively convert base relationship
+        base_relationship_relation: Relation = self.to_relation(obj=base_relationship)
 
-        # base_relationship_relation: Relation = self.to_relation(obj=base_relationship)
+        # Wrap in FilterRows for the first property
+        filtered_relation_identifier: str = random_hash()
+        filtered_relation: FilterRows = FilterRows(
+            relation=base_relationship_relation,
+            condition=AttributeEqualsValue(left=attr1, right=val1),
+            identifier=filtered_relation_identifier,
+            variable_map=base_relationship_relation.variable_map,
+            variable_type_map=base_relationship_relation.variable_type_map,
+            source_algebraizable=relationship,
+            column_names=list(base_relationship_relation.variable_map.values()),
+        )
 
-        # filtered_relation_identifier: str = random_hash()
-        # filtered_relation: FilterRows = FilterRows(
-        #     relation=base_relationship_relation,
-        #     condition=AttributeEqualsValue(left=attr1, right=val1),
-        #     source_algebraizable=relationship,
-        # )
-        # return filtered_relation
+        return filtered_relation
 
     def _from_node_pattern_no_attrs(self, node: NodePattern) -> Projection:
         """Convert a NodePattern to an EntityTable."""
-        entity_relation: EntityTable = self.context.entity_mapping[
-            node.labels[0]
-        ]
+        # Handle NodePattern with empty labels (variable reference)
+        if not node.labels:
+            # Look up the label from the variable registry
+            if node.variable in self.variable_type_registry:
+                label = self.variable_type_registry[node.variable]
+                LOGGER.debug(msg=f"Using registered type {label} for variable {node.variable}")
+            else:
+                raise ValueError(
+                    f"Variable {node.variable} used without labels and not found in registry. "
+                    "Variable must be declared with a label before being referenced."
+                )
+        else:
+            label = node.labels[0]
+            # Register this variable's type for future references
+            if node.variable and node.variable not in self.variable_type_registry:
+                self.variable_type_registry[node.variable] = label
         
-        lbl = node.labels[0]
+        entity_relation: EntityTable = self.context.entity_mapping[label]
+        
         new_column_name: ColumnName = random_hash()
         relation: Projection = Projection(
             relation=entity_relation,
             projected_column_names={
-                f"{lbl}__{ID_COLUMN}": new_column_name
+                f"{label}__{ID_COLUMN}": new_column_name
             },
             variable_map={node.variable: new_column_name},
-            variable_type_map={node.variable: node.labels[0]},
+            variable_type_map={node.variable: label},
             column_names=[new_column_name],
             identifier=random_hash(),
             source_algebraizable=node,
@@ -683,3 +796,491 @@ class Star:
         """Convert the EntityTable to a pandas DataFrame."""
         # Delegates to the relation's own to_pandas method which is now properly implemented in classes
         return relation.to_pandas(context=self.context)
+
+    def _from_with_clause(self, with_clause: Any, input_relation: Relation) -> Relation:
+        """Translate WITH clause to relational algebra.
+        
+        Phase 3 Implementation:
+        - Supports simple expression projection (property access, variables, literals)
+        - Supports full-table aggregations (COLLECT, COUNT, SUM, AVG, MIN, MAX)
+        - Supports grouped aggregations (GROUP BY)
+        - Assumes all items have aliases
+        - No WHERE/ORDER BY/DISTINCT/SKIP/LIMIT support yet (Phase 4)
+        
+        Args:
+            with_clause: AST With node
+            input_relation: Relation from previous MATCH clause
+            
+        Returns:
+            Relation with projected/aggregated columns and new variable scope
+            
+        Raises:
+            NotImplementedError: For unsupported features (filters, etc.)
+        """
+        from pycypher.ast_models import With, ReturnItem
+        
+        if not isinstance(with_clause, With):
+            raise TypeError(f"Expected With clause, got {type(with_clause).__name__}")
+        
+        LOGGER.debug(
+            msg=f"Processing WITH clause with {len(with_clause.items)} items"
+        )
+        
+        # Check for unsupported features
+        if with_clause.where is not None:
+            raise NotImplementedError(
+                "WHERE clause in WITH not supported yet (Phase 4)"
+            )
+        if with_clause.order_by is not None:
+            raise NotImplementedError(
+                "ORDER BY in WITH not supported yet (Phase 4)"
+            )
+        if with_clause.distinct:
+            raise NotImplementedError(
+                "DISTINCT in WITH not supported yet (Phase 4)"
+            )
+        if with_clause.skip is not None or with_clause.limit is not None:
+            raise NotImplementedError(
+                "SKIP/LIMIT in WITH not supported yet (Phase 4)"
+            )
+        
+        # All items should have expressions (checked by parser, but verify)
+        for item in with_clause.items:
+            if item.expression is None:
+                raise ValueError("WITH item must have an expression")
+            if item.alias is None:
+                raise ValueError(
+                    "All WITH items must have aliases. "
+                    f"Missing alias for expression: {item.expression}"
+                )
+        
+        # Classify items as aggregations or grouping expressions
+        agg_items = [
+            item for item in with_clause.items 
+            if self._contains_aggregation(item.expression)
+        ]
+        non_agg_items = [
+            item for item in with_clause.items 
+            if not self._contains_aggregation(item.expression)
+        ]
+        
+        # Route to appropriate implementation
+        if not agg_items:
+            # No aggregations - simple expression projection (Phase 1)
+            relation = self._apply_expression_projection(input_relation, with_clause.items)
+        elif not non_agg_items:
+            # All aggregations - full-table aggregation (Phase 2)
+            relation = self._apply_aggregation(input_relation, with_clause.items)
+        else:
+            # Mixed - grouped aggregation (Phase 3)
+            relation = self._apply_grouped_aggregation(
+                input_relation, 
+                non_agg_items, 
+                agg_items
+            )
+        
+        return relation
+    
+    def _contains_aggregation(self, expression: Any) -> bool:
+        """Check if expression contains aggregate functions.
+        
+        Phase 2: Checks for COLLECT, COUNT, SUM, AVG, MIN, MAX
+        Future: Will handle nested aggregations and sub-expressions
+        
+        Args:
+            expression: AST expression to check
+            
+        Returns:
+            True if expression contains aggregation functions
+        """
+        from pycypher.ast_models import FunctionInvocation, CountStar
+        
+        # Check if expression itself is an aggregate function
+        if isinstance(expression, CountStar):
+            return True
+        
+        if isinstance(expression, FunctionInvocation):
+            func_name = expression.name
+            if isinstance(func_name, str):
+                func_name_lower = func_name.lower()
+                if func_name_lower in ['collect', 'count', 'sum', 'avg', 'min', 'max']:
+                    return True
+        
+        # Recursively check sub-expressions
+        # For now, we only handle simple cases
+        # Future: traverse expression tree fully
+        
+        return False
+    
+    def _apply_aggregation(
+        self,
+        input_relation: Relation,
+        items: list[Any]
+    ) -> Relation:
+        """Create Aggregation relation from ReturnItems with aggregation functions.
+        
+        Phase 2: Full-table aggregations only (no GROUP BY)
+        
+        Args:
+            input_relation: Source relation
+            items: List of ReturnItem with aggregation expressions and aliases
+            
+        Returns:
+            Aggregation relation with aggregated values
+        """
+        from pycypher.relational_models import Aggregation
+        from pycypher.ast_models import Variable
+        
+        # Build aggregations dict: alias -> aggregation expression
+        aggregations = {}
+        for item in items:
+            alias = item.alias
+            expression = item.expression
+            aggregations[alias] = expression
+            
+            LOGGER.debug(
+                msg=f"WITH aggregation: {alias} = {type(expression).__name__}"
+            )
+        
+        # Create new variable map for the aggregation
+        # Only aliased variables are visible after WITH
+        new_variable_map = {}
+        new_variable_type_map = {}
+        
+        for item in items:
+            alias = item.alias
+            var = Variable(name=alias)
+            new_variable_map[var] = alias
+            # Aggregated values don't have entity types
+            # (they're scalars or lists, not entity references)
+        
+        # Create Aggregation relation
+        aggregation = Aggregation(
+            relation=input_relation,
+            aggregations=aggregations,
+            variable_map=new_variable_map,
+            variable_type_map=new_variable_type_map,
+            column_names=list(aggregations.keys()),
+            identifier=random_hash(),
+            source_algebraizable=None,
+        )
+        
+        LOGGER.debug(
+            msg=f"Created Aggregation with {len(aggregations)} columns: {list(aggregations.keys())}"
+        )
+        
+        return aggregation
+    
+    def _apply_expression_projection(
+        self,
+        input_relation: Relation,
+        items: list[Any]
+    ) -> Relation:
+        """Create ExpressionProjection relation from ReturnItems.
+        
+        Args:
+            input_relation: Source relation
+            items: List of ReturnItem with expression and alias
+            
+        Returns:
+            ExpressionProjection relation with evaluated expressions
+        """
+        from pycypher.relational_models import ExpressionProjection
+        from pycypher.ast_models import Variable, ReturnItem
+        
+        # Build expressions dict: alias -> expression
+        expressions = {}
+        for item in items:
+            alias = item.alias
+            expression = item.expression
+            expressions[alias] = expression
+            
+            LOGGER.debug(
+                msg=f"WITH projection: {alias} = {type(expression).__name__}"
+            )
+        
+        # Create new variable map for the projection
+        # Only aliased variables are visible after WITH
+        new_variable_map = {}
+        new_variable_type_map = {}
+        
+        for item in items:
+            alias = item.alias
+            var = Variable(name=alias)
+            new_variable_map[var] = alias
+            
+            # Try to infer type from expression
+            # For property lookups, preserve the entity type
+            from pycypher.ast_models import PropertyLookup
+            if isinstance(item.expression, PropertyLookup):
+                # Get variable from property lookup
+                if isinstance(item.expression.expression, Variable):
+                    source_var = item.expression.expression
+                    if source_var in input_relation.variable_type_map:
+                        # Preserve entity type (property values have same conceptual type)
+                        new_variable_type_map[var] = input_relation.variable_type_map[source_var]
+            elif isinstance(item.expression, Variable):
+                # Direct variable passthrough
+                if item.expression in input_relation.variable_type_map:
+                    new_variable_type_map[var] = input_relation.variable_type_map[item.expression]
+        
+        # Create ExpressionProjection relation
+        projection = ExpressionProjection(
+            relation=input_relation,
+            expressions=expressions,
+            variable_map=new_variable_map,
+            variable_type_map=new_variable_type_map,
+            column_names=list(expressions.keys()),
+            identifier=random_hash(),
+            source_algebraizable=None,  # WITH clause doesn't have a direct algebraizable source
+        )
+        
+        LOGGER.debug(
+            msg=f"Created ExpressionProjection with {len(expressions)} columns: {list(expressions.keys())}"
+        )
+        
+        return projection
+    
+    def _apply_grouped_aggregation(
+        self,
+        input_relation: Relation,
+        grouping_items: list[Any],
+        aggregation_items: list[Any]
+    ) -> Relation:
+        """Create GroupedAggregation relation from ReturnItems.
+        
+        Phase 3: Grouped aggregations (GROUP BY)
+        
+        Args:
+            input_relation: Source relation
+            grouping_items: List of ReturnItem with non-aggregation expressions (grouping keys)
+            aggregation_items: List of ReturnItem with aggregation expressions
+            
+        Returns:
+            GroupedAggregation relation with grouped and aggregated values
+        """
+        from pycypher.relational_models import GroupedAggregation
+        from pycypher.ast_models import Variable
+        
+        # Build grouping expressions dict: alias -> expression
+        grouping_expressions = {}
+        for item in grouping_items:
+            alias = item.alias
+            expression = item.expression
+            grouping_expressions[alias] = expression
+            
+            LOGGER.debug(
+                msg=f"WITH grouping: {alias} = {type(expression).__name__}"
+            )
+        
+        # Build aggregations dict: alias -> aggregation expression
+        aggregations = {}
+        for item in aggregation_items:
+            alias = item.alias
+            expression = item.expression
+            aggregations[alias] = expression
+            
+            LOGGER.debug(
+                msg=f"WITH aggregation: {alias} = {type(expression).__name__}"
+            )
+        
+        # Create new variable map for the result
+        # All columns (grouping + aggregations) are visible after WITH
+        new_variable_map = {}
+        new_variable_type_map = {}
+        
+        # Add grouping column variables
+        for item in grouping_items:
+            alias = item.alias
+            var = Variable(name=alias)
+            new_variable_map[var] = alias
+            # Grouping columns may preserve types from source expressions
+            # (implementation could be enhanced to track this)
+        
+        # Add aggregation result variables
+        for item in aggregation_items:
+            alias = item.alias
+            var = Variable(name=alias)
+            new_variable_map[var] = alias
+            # Aggregations don't have entity types (they're scalars or lists)
+        
+        # Create GroupedAggregation relation
+        grouped_agg = GroupedAggregation(
+            relation=input_relation,
+            grouping_expressions=grouping_expressions,
+            aggregations=aggregations,
+            variable_map=new_variable_map,
+            variable_type_map=new_variable_type_map,
+            column_names=list(grouping_expressions.keys()) + list(aggregations.keys()),
+            identifier=random_hash(),
+            source_algebraizable=None,
+        )
+        
+        LOGGER.debug(
+            msg=f"Created GroupedAggregation with {len(grouping_expressions)} grouping columns "
+            f"and {len(aggregations)} aggregations: {list(grouped_agg.column_names)}"
+        )
+        
+        return grouped_agg
+
+    def _from_return_clause(self, return_clause: Any, input_relation: Relation) -> Relation:
+        """Translate RETURN clause to relational algebra.
+        
+        Phase 1 Implementation:
+        - Supports simple expression projection (property access, variables, literals)
+        - Supports full-table aggregations (COLLECT, COUNT, SUM, AVG, MIN, MAX)
+        - Supports grouped aggregations (GROUP BY)
+        - Assumes all items have aliases (enforces alias requirement)
+        - No WHERE support (RETURN doesn't have WHERE)
+        - No DISTINCT/ORDER BY/SKIP/LIMIT support yet (Phase 4)
+        
+        Args:
+            return_clause: AST Return node
+            input_relation: Relation from previous clause(s)
+            
+        Returns:
+            Relation with projected/aggregated columns (terminal projection)
+            
+        Raises:
+            NotImplementedError: For unsupported features (DISTINCT, ORDER BY, etc.)
+            ValueError: If items lack required aliases
+        """
+        from pycypher.ast_models import Return, ReturnItem
+        
+        if not isinstance(return_clause, Return):
+            raise TypeError(f"Expected Return clause, got {type(return_clause).__name__}")
+        
+        LOGGER.debug(
+            msg=f"Processing RETURN clause with {len(return_clause.items)} items"
+        )
+        
+        # Check for unsupported features (Phase 4)
+        if return_clause.order_by is not None:
+            raise NotImplementedError(
+                "ORDER BY in RETURN not supported yet (Phase 4)"
+            )
+        if return_clause.distinct:
+            raise NotImplementedError(
+                "DISTINCT in RETURN not supported yet (Phase 4)"
+            )
+        if return_clause.skip is not None or return_clause.limit is not None:
+            raise NotImplementedError(
+                "SKIP/LIMIT in RETURN not supported yet (Phase 4)"
+            )
+        
+        # All items should have expressions (checked by parser, but verify)
+        for item in return_clause.items:
+            if item.expression is None:
+                raise ValueError("RETURN item must have an expression")
+            # For RETURN, alias is required for proper DataFrame column naming
+            if item.alias is None:
+                raise ValueError(
+                    "All RETURN items must have aliases. "
+                    f"Missing alias for expression: {item.expression}"
+                )
+        
+        # Classify items as aggregations or grouping expressions
+        agg_items = [
+            item for item in return_clause.items 
+            if self._contains_aggregation(item.expression)
+        ]
+        non_agg_items = [
+            item for item in return_clause.items 
+            if not self._contains_aggregation(item.expression)
+        ]
+        
+        # Route to appropriate implementation (same logic as WITH)
+        if not agg_items:
+            # No aggregations - simple expression projection (Phase 1)
+            relation = self._apply_expression_projection(input_relation, return_clause.items)
+        elif not non_agg_items:
+            # All aggregations - full-table aggregation (Phase 2)
+            relation = self._apply_aggregation(input_relation, return_clause.items)
+        else:
+            # Mixed - grouped aggregation (Phase 3)
+            relation = self._apply_grouped_aggregation(
+                input_relation, 
+                non_agg_items, 
+                agg_items
+            )
+        
+        return relation
+
+    def execute_query(self, query: Any) -> pd.DataFrame:
+        """Execute a complete Cypher query and return results as DataFrame.
+        
+        Processes clauses sequentially:
+        1. MATCH clause(s) - build base relation
+        2. WITH clause(s) - transform relation (if present)
+        3. RETURN clause - final projection
+        
+        Args:
+            query: Cypher query string or Query AST node
+            
+        Returns:
+            DataFrame with columns matching RETURN clause aliases
+            
+        Raises:
+            ValueError: If query structure is invalid
+            NotImplementedError: For unsupported clause types
+        """
+        from pycypher.ast_models import Query, Match, With, Return, ASTConverter
+        
+        # Parse string to AST if needed
+        if isinstance(query, str):
+            converter = ASTConverter()
+            query = converter.from_cypher(query)
+        
+        if not isinstance(query, Query):
+            raise TypeError(f"Expected Query, got {type(query).__name__}")
+        
+        if not query.clauses:
+            raise ValueError("Query must have at least one clause")
+        
+        LOGGER.debug(msg=f"Executing query with {len(query.clauses)} clauses")
+        
+        # Process clauses sequentially
+        current_relation = None
+        
+        for i, clause in enumerate(query.clauses):
+            LOGGER.debug(msg=f"Processing clause {i}: {type(clause).__name__}")
+            
+            if isinstance(clause, Match):
+                # MATCH clause - build base relation from pattern
+                if current_relation is not None:
+                    # Multiple MATCH clauses - join with previous relation
+                    match_relation = self.to_relation(clause.pattern)
+                    # Join the two relations (cross product or on shared variables)
+                    current_relation = self._binary_join(current_relation, match_relation)
+                else:
+                    # First MATCH clause
+                    current_relation = self.to_relation(clause.pattern)
+                    
+            elif isinstance(clause, With):
+                # WITH clause - transform current relation
+                if current_relation is None:
+                    raise ValueError("WITH clause requires preceding MATCH clause")
+                current_relation = self._from_with_clause(clause, current_relation)
+                
+            elif isinstance(clause, Return):
+                # RETURN clause - final projection
+                if current_relation is None:
+                    raise ValueError("RETURN clause requires preceding MATCH clause")
+                current_relation = self._from_return_clause(clause, current_relation)
+                
+            else:
+                raise NotImplementedError(
+                    f"Clause type {type(clause).__name__} not supported yet"
+                )
+        
+        # Execute final relation to get DataFrame
+        if current_relation is None:
+            raise ValueError("Query produced no relation")
+        
+        result_df = current_relation.to_pandas(context=self.context)
+        
+        LOGGER.debug(
+            msg=f"Query execution complete. Result shape: {result_df.shape}"
+        )
+        
+        return result_df

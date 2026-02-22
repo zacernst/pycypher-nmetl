@@ -292,10 +292,6 @@ def test_star_translates_relationship_without_properties(
     assert Variable(name="r") in relation.variable_map
 
 
-@pytest.mark.xfail(
-    reason="Relationship property filtering not implemented",
-    raises=NotImplementedError,
-)
 def test_star_applies_filter_for_relationship_properties(
     relational_context: Context,
 ) -> None:
@@ -310,7 +306,10 @@ def test_star_applies_filter_for_relationship_properties(
     relation: Relation = star.to_relation(obj=relationship)
 
     assert isinstance(relation, FilterRows)
-    assert isinstance(relation.relation, RelationshipTable)
+    assert isinstance(relation.condition, AttributeEqualsValue)
+    # Base relation should be Projection wrapping RelationshipTable
+    assert isinstance(relation.relation, Projection)
+    assert isinstance(relation.relation.relation, RelationshipTable)
     assert relation.condition.left == "since"
     assert relation.condition.right == 2020
 

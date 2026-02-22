@@ -200,6 +200,7 @@ class JoinType(Enum):
     LEFT = "LEFT"
     RIGHT = "RIGHT"
     FULL = "FULL"
+    CROSS = "CROSS"
 
 
 class Join(Relation):
@@ -219,13 +220,22 @@ class Join(Relation):
         left_df: pd.DataFrame = self.left.to_pandas(context=context)
         right_df: pd.DataFrame = self.right.to_pandas(context=context)
         join_type_str: str = self.join_type.value.lower()
-        joined_df: pd.DataFrame = pd.merge(
-            left=left_df,
-            right=right_df,
-            how=join_type_str,
-            left_on=self.on_left,
-            right_on=self.on_right,
-        )
+        
+        # Handle cross join specially (no join keys)
+        if self.join_type == JoinType.CROSS or (not self.on_left and not self.on_right):
+            joined_df: pd.DataFrame = pd.merge(
+                left=left_df,
+                right=right_df,
+                how='cross',
+            )
+        else:
+            joined_df: pd.DataFrame = pd.merge(
+                left=left_df,
+                right=right_df,
+                how=join_type_str,
+                left_on=self.on_left,
+                right_on=self.on_right,
+            )
         
         # Only keep columns that correspond to variables (ID columns)
         # Use column_names if specified, otherwise use variable_map values
@@ -332,3 +342,255 @@ class FilterRows(Relation):
                 raise NotImplementedError(
                     f"Condition type {type(self.condition)} not implemented yet."
                 )
+
+
+class ExpressionProjection(Relation):
+    """Projects computed expressions as new columns.
+    
+    Unlike simple Projection (column renaming), this evaluates
+    expressions like p.name, p.age, etc. and creates new columns.
+    
+    Used primarily in WITH clauses to evaluate expressions and create
+    aliases for the results.
+    
+    Attributes:
+        relation: Source relation
+        expressions: Dict mapping output column name (alias) to AST expression
+        context: Context with entity/relationship mappings for evaluation
+    
+    Example:
+        WITH p.name AS person_name, p.age AS age
+        -> ExpressionProjection(
+            expressions={
+                "person_name": PropertyLookup(expression=Variable("p"), property="name"),
+                "age": PropertyLookup(expression=Variable("p"), property="age")
+            }
+        )
+    """
+    
+    relation: Relation
+    expressions: dict[ColumnName, Any]  # Maps alias -> Expression (Any to avoid circular import)
+    
+    def to_pandas(self, context: Context) -> pd.DataFrame:
+        """Convert the ExpressionProjection to a pandas DataFrame.
+        
+        Evaluates each expression against the base DataFrame and creates
+        new columns with the results.
+        
+        Args:
+            context: Context with entity/relationship mappings
+            
+        Returns:
+            DataFrame with computed expression columns
+        """
+        from pycypher.expression_evaluator import ExpressionEvaluator
+        
+        # Get base DataFrame
+        base_df = self.relation.to_pandas(context=context)
+        
+        # Create evaluator
+        evaluator = ExpressionEvaluator(context=context, relation=self.relation)
+        
+        # Build result DataFrame with expression columns
+        result_columns = {}
+        
+        for alias, expression in self.expressions.items():
+            # Evaluate expression
+            series, _ = evaluator.evaluate(expression, base_df)
+            result_columns[alias] = series
+        
+        # Create result DataFrame
+        result_df = pd.DataFrame(result_columns)
+        
+        LOGGER.debug(
+            msg=f"ExpressionProjection created {len(result_df)} rows with columns: {list(result_df.columns)}"
+        )
+        
+        return result_df
+
+
+class Aggregation(Relation):
+    """Represents aggregation operations (full-table aggregations).
+    
+    Applies aggregation functions like COLLECT(), COUNT(), SUM(), AVG(), MIN(), MAX()
+    to entire columns without grouping.
+    
+    This is for Phase 2 - simple aggregations without GROUP BY.
+    Phase 3 will add grouped aggregations.
+    
+    Attributes:
+        relation: Source relation
+        aggregations: Dict mapping output column name (alias) to aggregation expression
+        context: Context for evaluation
+    
+    Example:
+        WITH count(p) AS person_count, collect(p.name) AS names
+        -> Aggregation(
+            aggregations={
+                "person_count": FunctionInvocation(name="count", arguments=...),
+                "names": FunctionInvocation(name="collect", arguments=...)
+            }
+        )
+    
+    Supported aggregation functions:
+        - collect(expr): Collect all values into a list
+        - count(expr): Count non-null values
+        - count(*): Count all rows (uses CountStar AST node)
+        - sum(expr): Sum all numeric values
+        - avg(expr): Average of numeric values
+        - min(expr): Minimum value
+        - max(expr): Maximum value
+    """
+    
+    relation: Relation
+    aggregations: dict[ColumnName, Any]  # Maps alias -> aggregation Expression
+    
+    def to_pandas(self, context: Context) -> pd.DataFrame:
+        """Convert the Aggregation to a pandas DataFrame.
+        
+        Evaluates each aggregation function against the base DataFrame and creates
+        a single-row result with aggregated values.
+        
+        Args:
+            context: Context with entity/relationship mappings
+            
+        Returns:
+            Single-row DataFrame with aggregated values
+        """
+        from pycypher.expression_evaluator import ExpressionEvaluator
+        
+        # Get base DataFrame
+        base_df = self.relation.to_pandas(context=context)
+        
+        # Create evaluator
+        evaluator = ExpressionEvaluator(context=context, relation=self.relation)
+        
+        # Build result dictionary with aggregated values
+        result_dict = {}
+        
+        for alias, agg_expr in self.aggregations.items():
+            # Evaluate aggregation
+            agg_value = evaluator.evaluate_aggregation(agg_expr, base_df)
+            result_dict[alias] = [agg_value]  # Wrap in list for DataFrame
+        
+        # Create single-row result DataFrame
+        result_df = pd.DataFrame(result_dict)
+        
+        LOGGER.debug(
+            msg=f"Aggregation created 1 row with columns: {list(result_df.columns)}"
+        )
+        
+        return result_df
+
+
+class GroupedAggregation(Relation):
+    """Represents grouped aggregation operations (GROUP BY aggregations).
+    
+    Applies aggregation functions grouped by one or more columns.
+    This is Phase 3 - aggregations with GROUP BY.
+    
+    Attributes:
+        relation: Source relation
+        grouping_expressions: Dict mapping column name to expression (non-aggregation)
+        aggregations: Dict mapping column name to aggregation expression
+    
+    Example:
+        WITH p.city AS city, count(*) AS count
+        -> GroupedAggregation(
+            grouping_expressions={
+                "city": PropertyLookup(expression=Variable("p"), property="city")
+            },
+            aggregations={
+                "count": CountStar()
+            }
+        )
+    
+    The result will have one row per unique combination of grouping column values,
+    with aggregations computed for each group.
+    """
+    
+    relation: Relation
+    grouping_expressions: dict[ColumnName, Any]  # Maps alias -> Expression
+    aggregations: dict[ColumnName, Any]  # Maps alias -> aggregation Expression
+    
+    def to_pandas(self, context: Context) -> pd.DataFrame:
+        """Convert the GroupedAggregation to a pandas DataFrame.
+        
+        Evaluates grouping expressions, groups by them, then computes aggregations
+        for each group.
+        
+        Args:
+            context: Context with entity/relationship mappings
+            
+        Returns:
+            DataFrame with one row per group, containing grouping columns and aggregated values
+        """
+        from pycypher.expression_evaluator import ExpressionEvaluator
+        
+        # Get base DataFrame
+        base_df = self.relation.to_pandas(context=context)
+        
+        # Create evaluator
+        evaluator = ExpressionEvaluator(context=context, relation=self.relation)
+        
+        # Step 1: Evaluate grouping expressions
+        grouping_columns = {}
+        for alias, expr in self.grouping_expressions.items():
+            series, _ = evaluator.evaluate(expr, base_df)
+            grouping_columns[alias] = series
+        
+        # Create a temporary DataFrame with grouping columns
+        temp_df = base_df.copy()
+        for alias, series in grouping_columns.items():
+            temp_df[alias] = series
+        
+        # Step 2: Group by the grouping columns
+        if not grouping_columns:
+            # No grouping columns - this shouldn't happen in Phase 3
+            # Fall back to full-table aggregation behavior
+            raise ValueError("GroupedAggregation requires at least one grouping expression")
+        
+        grouping_column_names = list(grouping_columns.keys())
+        
+        # For pandas groupby: pass string for single column, list for multiple
+        # This ensures group_key is scalar for single column, tuple for multiple
+        if len(grouping_column_names) == 1:
+            grouped = temp_df.groupby(grouping_column_names[0], dropna=False)
+        else:
+            grouped = temp_df.groupby(grouping_column_names, dropna=False)
+        
+        # Step 3: Apply aggregations to each group
+        result_rows = []
+        
+        for group_key, group_df in grouped:
+            row_dict = {}
+            
+            # Add grouping column values
+            if len(grouping_column_names) == 1:
+                # Single grouping column - group_key is a scalar
+                row_dict[grouping_column_names[0]] = group_key
+            else:
+                # Multiple grouping columns - group_key is a tuple
+                for i, col_name in enumerate(grouping_column_names):
+                    row_dict[col_name] = group_key[i]
+            
+            # Compute aggregations for this group
+            for alias, agg_expr in self.aggregations.items():
+                agg_value = evaluator.evaluate_aggregation(agg_expr, group_df)
+                row_dict[alias] = agg_value
+            
+            result_rows.append(row_dict)
+        
+        # Create result DataFrame
+        if result_rows:
+            result_df = pd.DataFrame(result_rows)
+        else:
+            # No groups - return empty DataFrame with correct columns
+            all_columns = list(grouping_columns.keys()) + list(self.aggregations.keys())
+            result_df = pd.DataFrame(columns=all_columns)
+        
+        LOGGER.debug(
+            msg=f"GroupedAggregation created {len(result_df)} rows with columns: {list(result_df.columns)}"
+        )
+        
+        return result_df

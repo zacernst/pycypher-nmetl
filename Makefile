@@ -1,4 +1,4 @@
-# pycypher-nmetl Makefile
+# PyCypher Makefile
 # ------------------------------------------------------------------------------
 # Configuration variables
 PYTHON_VERSION = 3.14
@@ -9,15 +9,11 @@ BUMP = micro
 
 
 # Project paths
-# export GIT_HOME := ${HOME}/git
 export PROJECT_ROOT := .
 export PACKAGES_DIR := ${PROJECT_ROOT}/packages
 # Package-specific path
 export PYCYPHER_DIR := ${PACKAGES_DIR}/pycypher
-export NMETL_DIR := ${PACKAGES_DIR}/nmetl
-export FASTOPENDATA_DIR := ${PACKAGES_DIR}/fastopendata
-export DATA_DIR := ${FASTOPENDATA_DIR}/raw_data
-export SOURCE_DIR := ${FASTOPENDATA_DIR}/src/fastopendata
+export SHARED_DIR := ${PACKAGES_DIR}/shared
 export LC_ALL := C
 
 # Documentation paths
@@ -28,7 +24,7 @@ export TESTS_DIR := ${PROJECT_ROOT}/tests
 export COVERAGE_DIR := ${PROJECT_ROOT}/coverage_report
 
 # Main targets
-.PHONY: pycypher ingest nmetl fastopendata test tada docs dev-up dev-down dev-shell dev-rebuild dev-logs dev-jupyter dev-vscode dev-test dev-typecheck dev-format
+.PHONY: pycypher shared test docs clean veryclean venv uv start format coverage dev-up dev-down dev-shell dev-rebuild dev-logs dev-test dev-typecheck dev-format
 
 # Default target - run the complete build process
 all: veryclean venv format pycypher # docs

@@ -30,7 +30,7 @@ def example_basic_projection_conversion():
 
     # Initialize
     fact_collection = FoundationDBFactCollection(
-        foundationdb_cluster_file="/pycypher-nmetl/fdb.cluster",
+        foundationdb_cluster_file="/pycypher/fdb.cluster",
     )
     solver = CypherQuerySolver(fact_collection)
 
@@ -61,7 +61,7 @@ def example_filtered_projection():
     print("=" * 70)
 
     fact_collection = FoundationDBFactCollection(
-        foundationdb_cluster_file="/pycypher-nmetl/fdb.cluster",
+        foundationdb_cluster_file="/pycypher/fdb.cluster",
     )
     solver = CypherQuerySolver(fact_collection)
 

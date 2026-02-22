@@ -17,8 +17,8 @@ RUN apt install -y -V libarrow-dev libarrow-glib-dev libarrow-dataset-dev libarr
 
 # COPY . /app
 
-RUN git clone https://github.com/zacernst/pycypher-nmetl.git
-WORKDIR /pycypher-nmetl
+RUN git clone https://github.com/zacernst/pycypher.git
+WORKDIR /pycypher
 
 RUN make
 
@@ -28,8 +28,6 @@ RUN make
 ## RUN pip install uv
 ## RUN uv venv -p 3.14t
 ## RUN uv pip install packages/pycypher
-## RUN uv pip install packages/nmetl
-## RUN uv pip install packages/fastopendata
 ## RUN uv pip install packages/shared
 
 # RUN fdbcli --no-status -C "/app/fdb.cluster" --exec "configure new single ssd"
@@ -37,7 +35,4 @@ RUN make
 # RUN uv sync
 # RUN uv build
 
-# CMD ["fdbcli --no-status --exec \"configure new single ssd\";writemode on;clearrange \"\" \"\\xFF\""]
-# CMD ["uv", "run", "python", "packages/fastopendata/src/fastopendata/ingest.py"]
-# CMD ["sleep 1000000"]
 CMD ["tail", "-f", "/dev/null"]
