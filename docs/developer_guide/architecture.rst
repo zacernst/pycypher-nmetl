@@ -81,17 +81,6 @@ Type-based column namespacing prevents collisions:
        Projection        # Attribute fetching
    )
 
-**Fact Collections**
-
-Abstract interface with multiple backends:
-
-.. code-block:: python
-
-   from pycypher.fact_collection import FactCollection
-   from pycypher.fact_collection.foundationdb import FoundationDBFactCollection
-   from pycypher.fact_collection.rocksdb import RocksDBFactCollection
-   from pycypher.fact_collection.simple import SimpleFactCollection
-
 Design Patterns
 ---------------
 
@@ -116,28 +105,6 @@ AST traversal uses visitor pattern:
 - Validation
 - Optimization
 - Translation to relational algebra
-
-Fact-Based Storage
-~~~~~~~~~~~~~~~~~~
-
-Immutable facts as atomic data points:
-
-.. code-block:: python
-
-   from pycypher.fact import (
-       FactNodeHasLabel,
-       FactNodeHasAttributeWithValue,
-       FactRelationshipHasSourceNode
-   )
-   
-   # Facts are immutable - never modified, only added
-   fact = FactNodeHasLabel(node_id="n1", label="Person")
-
-**Principles:**
-- Immutability: Facts never change
-- Atomicity: Each fact represents one piece of information  
-- Append-only: New facts added, old ones retained
-- Backend-agnostic: Same interface for all storage backends
 
 Type-Based Namespacing
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -212,37 +179,7 @@ Implement ``FactCollection`` interface:
        
        def nodes(self) -> Set[str]:
            # Return all node IDs
-           pass
-       
-       def relationships(self) -> Set[str]:
-           # Return all relationship IDs
-           pass
-
-**See:** ``fact_collection/foundationdb.py`` for reference implementation
-
-Custom Validators
-~~~~~~~~~~~~~~~~~
-
-Extend ``SemanticValidator``:
-
-.. code-block:: python
-
-   from pycypher.semantic_validator import SemanticValidator
-   
-   class MyValidator(SemanticValidator):
-       def validate_custom_rule(self, node):
-           # Custom validation logic
-           pass
-
-Custom Optimizers
-~~~~~~~~~~~~~~~~~
-
-Implement query optimization passes:
-
-.. code-block:: python
-
-   from pycypher.query_optimizer import QueryOptimizer
-   from pycypher.ast_models import Query
+        pycypher.ast_models import Query
    
    class MyOptimizer(QueryOptimizer):
        def optimize(self, query: Query) -> Query:
@@ -301,7 +238,6 @@ Use ``uv`` for all Python operations:
 
 .. code-block:: bash
 
-   # Sync dependencies
    uv sync
    
    # Run Python scripts

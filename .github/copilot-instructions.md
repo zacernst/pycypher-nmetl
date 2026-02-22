@@ -9,7 +9,7 @@ interacts with the purpose of the specific changes that are being proposed.
 ## Project Architecture
 
 This is a **monorepo workspace** containing two interdependent packages:
-- **`packages/pycypher/`** - Cypher query parser, AST models, fact collections, SAT solver, and relational algebra engine
+- **`packages/pycypher/`** - Cypher query parser, AST models, and relational algebra engine
 - **`packages/shared/`** - Common utilities, logging, telemetry
 
 **Dependency order**: `shared` → `pycypher`
@@ -53,8 +53,6 @@ uv run pytest tests/test_ast_models.py
 uv run pytest -n 4
 ```
 
-**Important**: Tests marked with `@pytest.mark.fact_collection` require a running FoundationDB instance.
-
 ### Type Checking
 Use `ty` (NOT mypy) for type checking:
 
@@ -88,21 +86,6 @@ When adding cross-package imports, ensure the dependency is declared in the cons
 Facts are immutable, atomic data points. Never modify facts - only add new ones:
 
 ```python
-from pycypher.fact import (
-    FactNodeHasLabel,
-    FactNodeHasAttributeWithValue,
-    FactRelationshipHasSourceNode,
-)
-
-# Create facts, never mutate
-FactNodeHasLabel(node_id="person1", label="Person")
-FactNodeHasAttributeWithValue(node_id="person1", attribute="age", value=30)
-```
-
-### 3. Type-Based Column Namespacing
-All relational algebra operations use type-based prefixing to prevent column collisions:
-
-```python
 # EntityTable prefixes all columns with entity type
 # Person.__ID__ becomes Person____ID__
 # Person.name becomes Person__name
@@ -125,19 +108,6 @@ This ensures deterministic, collision-free column names across complex joins.
 
 This separates ID tracking from attribute access, improving query efficiency.
 
-### 5. Storage Backend Implementation
-Implement `FactCollection` abstract interface for new backends:
-
-```python
-from pycypher.fact_collection import FactCollection
-
-class MyBackend(FactCollection):
-    def add_fact(self, fact): ...
-    def get_facts(self, **constraints): ...
-    def nodes(self): ...
-    # See pycypher/fact_collection/foundationdb.py for reference
-```
-
 ## Critical Files and Entry Points
 
 - **`packages/pycypher/src/pycypher/grammar_parser.py`** - Lark-based Cypher grammar parser
@@ -158,7 +128,6 @@ make docs                # Outputs to docs/_build/html
 # Regenerate after changes
 uv run sphinx-build -b html docs docs/_build/html
 ```
-
 **Always update docstrings** when modifying public APIs. Sphinx autodoc extracts from source.
 
 ## Common Gotchas
@@ -178,11 +147,10 @@ uv run sphinx-build -b html docs docs/_build/html
 - Test coverage summary: [/TEST_COVERAGE_SUMMARY.md](../TEST_COVERAGE_SUMMARY.md)
 
 ## Testing Philosophy
-
-- All AST models use Pydantic validation - test both valid and invalid inputs
-- Relational algebra tests verify column naming, ID-only preservation, and join correctness
-- Parser tests cover grammar edge cases and error handling
-- SAT solver tests verify CNF conversion and constraint satisfaction
+Grammar parser**: Uses Lark parser with custom visitor pattern for AST construction
+3. **Optional variables**: `NodePattern.variable` and `RelationshipPattern.variable` are Optional to support anonymous nodes/relationships
+4. **Workspace sync**: After editing `pyproject.toml` files, always run `uv sync`
+5 SAT solver tests verify CNF conversion and constraint satisfaction
 
 ## Recent Architectural Changes
 
@@ -197,7 +165,6 @@ uv run sphinx-build -b html docs docs/_build/html
 - Allows anonymous nodes/relationships in Cypher queries
 - All 39 AST validation tests passing
 
-## CLI Tools
 
 ### Grammar Parser CLI
 

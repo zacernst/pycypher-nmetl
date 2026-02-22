@@ -8,8 +8,6 @@ PyCypher is a Python framework for parsing, analyzing, and executing Cypher grap
 
 - Full Cypher query parser with complete AST representation
 - Translation to relational algebra for query optimization
-- SAT-based constraint solver for complex graph pattern queries
-- Multiple storage backend abstractions (FoundationDB, RocksDB, in-memory)
 - Type-safe query processing with full Python type hints
 
 ## Key Features
@@ -28,20 +26,6 @@ PyCypher is a Python framework for parsing, analyzing, and executing Cypher grap
 - ID-only column preservation strategy for efficiency
 - Support for EntityTable, RelationshipTable, Join, FilterRows, Projection
 - Pandas DataFrame integration for data processing
-
-### 🔬 SAT Solver Integration
-- Convert Cypher queries to CNF (Conjunctive Normal Form)
-- Integration with python-sat and pycosat
-- DIMACS format export for external solvers
-- Constraint types: Conjunction, Disjunction, Negation, Implication, Cardinality
-- Find all solutions or verify query satisfiability
-
-### 💾 Storage Backend Abstraction
-- **FoundationDB**: Distributed ACID transactions, fault-tolerant
-- **RocksDB**: High-performance local key-value store
-- **SimpleFactCollection**: In-memory for testing
-- Abstract `FactCollection` interface for custom backends
-- Fact-based data model (nodes, attributes, relationships)
 
 ## Architecture
 
@@ -78,34 +62,6 @@ ast = parse("MATCH (p:Person)-[:KNOWS]->(f:Person) WHERE p.age > 25 RETURN p.nam
 print(ast.model_dump_json(indent=2))
 ```
 
-### Execute Query on Fact Collection
-
-```python
-from pycypher.fact_collection.simple import SimpleFactCollection
-from pycypher.fact import FactNodeHasLabel, FactNodeHasAttributeWithValue
-
-# Create fact collection
-fc = SimpleFactCollection()
-
-# Add facts
-fc.add_fact(FactNodeHasLabel(node_id="person1", label="Person"))
-fc.add_fact(FactNodeHasAttributeWithValue(
-    node_id="person1", 
-    attribute="name", 
-    value="Alice"
-))
-fc.add_fact(FactNodeHasAttributeWithValue(
-    node_id="person1", 
-    attribute="age", 
-    value=30
-))
-
-# Query the collection
-results = fc.query("MATCH (p:Person) WHERE p.age > 25 RETURN p.name")
-for result in results:
-    print(result['p.name'])  # "Alice"
-```
-
 ### Translate to Relational Algebra
 
 ```python
@@ -124,60 +80,10 @@ df = rel_algebra.to_pandas()
 print(df.columns)  # ['Person____ID__']  (ID-only columns)
 ```
 
-### SAT Solver for Complex Queries
-
-```python
-from pycypher.fact_collection.solver import CypherQuerySolver
-from pycypher.fact_collection.simple import SimpleFactCollection
-
-# Initialize solver with fact collection
-fc = SimpleFactCollection()
-solver = CypherQuerySolver(fc)
-
-# Parse complex query
-query = """
-MATCH (p:Person)-[:WORKS_AT]->(c:Company)
-WHERE p.age > 30 AND c.revenue > 1000000
-RETURN p, c
-"""
-
-# Get SAT clauses
-clauses = solver.get_sat_clauses(query)
-
-# Export to DIMACS format for external solvers
-dimacs = solver.to_dimacs(clauses)
-print(dimacs)
-```
-
 ## Core Concepts
 
-### Fact-Based Data Model
-
-Data is stored as immutable facts:
-
-```python
-# Node facts
-FactNodeHasLabel(node_id="person1", label="Person")
-FactNodeHasAttributeWithValue(node_id="person1", attribute="name", value="Alice")
-
-# Relationship facts
-FactNodeRelatedToNode(
-    source_node_id="person1", 
-    target_node_id="person2", 
-    relationship_id="rel1"
-)
-FactRelationshipHasLabel(relationship_id="rel1", label="KNOWS")
-```
-
 ### Type-Based Column Namespacing
-
-To prevent column name collisions in joins, PyCypher uses type-based prefixing:
-
-```python
-# Person.name becomes Person__name
-# Person.__ID__ becomes Person____ID__
-# KNOWS.__SOURCE__ becomes KNOWS____SOURCE__
-```
+`
 
 This ensures deterministic, collision-free column names across complex joins.
 
@@ -204,25 +110,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 uv sync
 
 # Run tests
-uv run pytest
-
-# Run type checking
-uv run ty check
-
-# Format code
-make format
-```
-
-### Testing
-
-```bash
-# Run all tests
-uv run pytest
-
-# Run with coverage
-make coverage
-
-# Run specific test file
+uv rn specific test file
 uv run pytest tests/test_ast_models.py
 
 # Run in parallel
@@ -294,7 +182,6 @@ MIT License - see [LICENSE.txt](LICENSE.txt)
 ## Authors
 
 - **Zachary Ernst** - [zac.ernst@gmail.com](mailto:zac.ernst@gmail.com)
-
 ## Links
 
 - [GitHub Repository](https://github.com/zacernst/pycypher)

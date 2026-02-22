@@ -10,7 +10,6 @@ Comprehensive guides for using NMETL features.
    variables
    ast_nodes
    query_processing
-   backends
 
 Overview
 --------
@@ -20,4 +19,3 @@ The user guide provides in-depth information about NMETL's features and capabili
 * **Variables**: Understanding Variable representation in AST
 * **AST Nodes**: Complete guide to all AST node types
 * **Query Processing**: Query parsing, validation, and optimization
-* **Backends**: Working with different database backends

@@ -29,8 +29,6 @@ Key Features
 * Complete openCypher grammar support
 * Strongly-typed AST models with Pydantic
 * Query validation and optimization
-* SAT solver integration
-* Multiple backend support (FoundationDB, RocksDB, etc.)
 * Comprehensive data lineage tracking
 
 Quick Start

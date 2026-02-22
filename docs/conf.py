@@ -42,10 +42,6 @@ autodoc_mock_imports = [
     "pycypher.node_classes",
     "pycypher.cypher_parser",
     "pyroscope",
-    "foundationdb",
-    "rocksdb",
-    "etcd3",
-    "fdb",
 ]
 
 # Autodoc settings
