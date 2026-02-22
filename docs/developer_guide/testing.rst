@@ -125,15 +125,14 @@ Use fixtures for common test data:
 Type Checking
 -------------
 
-Run type checks with mypy:
+Run type checks with ``ty`` (not mypy):
 
 .. code-block:: bash
 
    # Check all packages
-   uv run mypy packages/pycypher/src
-   uv run mypy packages/nmetl/src
-   uv run mypy packages/fastopendata/src
-   uv run mypy packages/shared/src
+   uv run ty check
+
+**Note:** All functions and methods MUST have type annotations. The project uses Python 3.14.0a6+freethreaded.
 
 Test Guidelines
 ---------------

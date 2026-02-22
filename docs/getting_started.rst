@@ -79,13 +79,14 @@ All variables in the AST are represented using the ``Variable`` class:
 Type Checking
 -------------
 
-The project uses ``mypy`` for type checking. Run type checks with:
+The project uses ``ty`` (not mypy) for type checking. Run type checks with:
 
 .. code-block:: bash
 
-   uv run mypy packages/pycypher/src
-   uv run mypy packages/nmetl/src
-   uv run mypy packages/fastopendata/src
+   # Check all packages
+   uv run ty check
+
+**Note**: All functions and methods MUST have type annotations. The project uses Python 3.14.0a6+freethreaded.
 
 Running Tests
 -------------
