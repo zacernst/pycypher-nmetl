@@ -315,11 +315,14 @@ class ExpressionEvaluator:
         arg_expr = None
         
         if isinstance(arguments, dict):
-            # Named arguments - look for 'expression' or first positional arg
+            # Named arguments - look for 'expression', 'args', or 'arguments'
             if 'expression' in arguments:
                 arg_expr = arguments['expression']
             elif 'args' in arguments and arguments['args']:
                 arg_expr = arguments['args'][0]
+            elif 'arguments' in arguments and arguments['arguments']:
+                # Parser produces {'distinct': False, 'arguments': [...]}
+                arg_expr = arguments['arguments'][0]
             elif len(arguments) == 1:
                 # Single argument, use its value
                 arg_expr = list(arguments.values())[0]

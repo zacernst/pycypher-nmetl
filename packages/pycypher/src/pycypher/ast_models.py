@@ -1324,7 +1324,11 @@ class ASTConverter:
 
         node_type = node.get("type")
         if not node_type:
-            return None
+            # Empty dict should return None
+            if not node:
+                return None
+            # Dict without "type" field might be a primitive map literal
+            return self._convert_primitive(node)
 
         # Map type names to classes
         converter_method = getattr(self, f"_convert_{node_type}", None)
@@ -2141,6 +2145,22 @@ class ASTConverter:
         """Convert StringLiteral node from parser output."""
         return StringLiteral(value=node.get("value", ""))
 
+    def _convert_IntegerLiteral(self, node: dict) -> IntegerLiteral:
+        """Convert IntegerLiteral node from parser output."""
+        return IntegerLiteral(value=node.get("value", 0))
+
+    def _convert_FloatLiteral(self, node: dict) -> FloatLiteral:
+        """Convert FloatLiteral node from parser output."""
+        return FloatLiteral(value=node.get("value", 0.0))
+
+    def _convert_BooleanLiteral(self, node: dict) -> BooleanLiteral:
+        """Convert BooleanLiteral node from parser output."""
+        return BooleanLiteral(value=node.get("value", False))
+
+    def _convert_NullLiteral(self, node: dict) -> NullLiteral:
+        """Convert NullLiteral node from parser output."""
+        return NullLiteral(value=None)
+
     def _convert_NullCheck(self, node: dict) -> NullCheck:
         """Convert NullCheck node."""
         return NullCheck(
@@ -2210,9 +2230,29 @@ class ASTConverter:
 
     def _convert_FunctionInvocation(self, node: dict) -> FunctionInvocation:
         """Convert FunctionInvocation node."""
+        raw_arguments = node.get("arguments")
+        
+        # Convert arguments recursively if present
+        converted_arguments = None
+        if raw_arguments is not None:
+            if isinstance(raw_arguments, dict):
+                # Arguments dict may have 'arguments' list and 'distinct' flag
+                converted_arguments = {}
+                for key, value in raw_arguments.items():
+                    if key == "arguments" and isinstance(value, list):
+                        # Convert each argument expression in the list
+                        converted_arguments[key] = [
+                            self.convert(arg) for arg in value
+                        ]
+                    else:
+                        converted_arguments[key] = value
+            elif isinstance(raw_arguments, list):
+                # Direct list of arguments
+                converted_arguments = [self.convert(arg) for arg in raw_arguments]
+        
         return FunctionInvocation(
             name=node.get("name", "unknown"),
-            arguments=node.get("arguments"),
+            arguments=converted_arguments,
             distinct=(
                 node.get("arguments", {}).get("distinct", False)
                 if isinstance(node.get("arguments"), dict)
