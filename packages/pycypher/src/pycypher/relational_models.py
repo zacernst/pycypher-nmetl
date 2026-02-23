@@ -1,6 +1,7 @@
 from __future__ import annotations
 from enum import Enum
-from typing import Optional, Any, cast
+from functools import wraps
+from typing import Callable, Optional, Any, cast
 from typing_extensions import Annotated
 from pydantic import Field, BaseModel
 import pandas as pd
@@ -72,11 +73,40 @@ class RelationshipMapping(BaseModel):
         return self.mapping[key]
 
 
+class RegisteredFunction(BaseModel):
+    """Represents a registered Cypher function in the context."""
+
+    model_config = {"arbitrary_types_allowed": True}
+
+    name: str
+    implementation: Callable
+    arity: int = 0
+
+    def __call__(self, *args) -> Any:
+        if self.arity and len(args) != self.arity:
+            raise ValueError(
+                f"Function {self.name} expects {self.arity} arguments, got {len(args)}"
+            )
+        return self.implementation(*args)
+
+
 class Context(BaseModel):
     """Context for translation operations."""
 
     entity_mapping: EntityMapping = EntityMapping()
     relationship_mapping: RelationshipMapping = RelationshipMapping()
+    cypher_functions: dict[str, RegisteredFunction] = Field(default_factory=dict)
+
+    def cypher_function(self, func):
+        '''Decorator to register a function as a Cypher function in the context.'''
+
+        LOGGER.info(f'Registering Cypher function: {func.__name__}')
+        self.cypher_functions[func.__name__] = RegisteredFunction(
+            name=func.__name__,
+            implementation=func,
+            arity=func.__code__.co_argcount,
+        )
+        return func
 
 
 class Relation(BaseModel):
@@ -594,3 +624,17 @@ class GroupedAggregation(Relation):
         )
         
         return result_df
+
+
+if __name__ == '__main__':
+    # Basic test of Context and Relation classes
+    context = Context()
+
+    @context.cypher_function
+    def my_custom_function(x):
+        return x * 2
+    
+    print("Registered Cypher functions in context:")
+    for func_name in context.cypher_functions:
+        print(f" - {func_name}")
+        print(context.cypher_functions[func_name])

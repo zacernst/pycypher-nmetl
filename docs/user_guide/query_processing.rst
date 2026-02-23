@@ -332,14 +332,12 @@ Performance Considerations
 - Column naming is deterministic and cached
 
 **Execution**
-- Performance depends on backend
-- FoundationDB: distributed, high throughput
-- RocksDB: embedded, low latency
-- Simple: in-memory, very fast
+- Relational algebra operators execute against pandas DataFrames
+- Performance depends on data size and query complexity
+- Optimizations include ID-only joins and lazy attribute loading
 
 For More Information
 --------------------
 
 * See :doc:`../api/pycypher` for complete API reference
 * See :doc:`../tutorials/query_validation` for validation examples
-* See :doc:`backends` for backend performance characteristics

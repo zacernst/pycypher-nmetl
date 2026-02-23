@@ -237,7 +237,7 @@ class Star:
                 joined_relation: Join = Join(
                     left=joined_relation,
                     right=relation,
-                    how=JoinType.INNER,
+                    join_type=JoinType.INNER,
                     on_left=list(left_join_on_map.values()),
                     on_right=list(right_join_on_map.values()),
                     source_algebraizable=pattern_path,  # Wrong, strictly speaking
@@ -289,9 +289,12 @@ class Star:
             relationship_variable
         ]
         
-        # Get the prefixed source column name from the relationship
+        # Look up the actual source column from the relationship Projection's
+        # projected_column_names (which maps input→output column names).
+        # This works with the unique-hash naming scheme.
         rel_label = relationship.labels[0]
-        rel_source_column = f"{rel_label}__{RELATIONSHIP_SOURCE_COLUMN}"
+        rel_source_input = f"{rel_label}__{RELATIONSHIP_SOURCE_COLUMN}"
+        rel_source_column = relationship_relation.projected_column_names[rel_source_input]
 
         joined_relation: Relation = Join(
             left=node_relation,
@@ -301,7 +304,7 @@ class Star:
             ),
             on_left=[node_variable_column],
             on_right=[rel_source_column],
-            how=JoinType.INNER,
+            join_type=JoinType.INNER,
             variable_map={
                 **node_relation.variable_map,
                 **relationship_relation.variable_map,
@@ -334,9 +337,12 @@ class Star:
             relationship_variable
         ]
         
-        # Get the prefixed target column name from the relationship
+        # Look up the actual target column from the relationship Projection's
+        # projected_column_names (which maps input→output column names).
+        # This works with the unique-hash naming scheme.
         rel_label = relationship.labels[0]
-        rel_target_column = f"{rel_label}__{RELATIONSHIP_TARGET_COLUMN}"
+        rel_target_input = f"{rel_label}__{RELATIONSHIP_TARGET_COLUMN}"
+        rel_target_column = relationship_relation.projected_column_names[rel_target_input]
 
         joined_relation: Relation = Join(
             left=node_relation,
@@ -346,7 +352,7 @@ class Star:
             ),
             on_left=[node_variable_column],
             on_right=[rel_target_column],
-            how=JoinType.INNER,
+            join_type=JoinType.INNER,
             variable_map={
                 **node_relation.variable_map,
                 **relationship_relation.variable_map,
@@ -385,10 +391,6 @@ class Star:
             column_names = (
                 accumulated_value.column_names + next_relation.column_names
             )
-
-            import pdb
-
-            pdb.set_trace()
 
             accumulated_value = Join(
                 left=accumulated_value,
@@ -452,8 +454,10 @@ class Star:
                 join: Join = Join(
                     left=left,
                     right=right,
-                    source_algebraizable=flatten(
-                        [left.source_algebraizable, right.source_algebraizable]
+                    source_algebraizable=PatternIntersection(
+                        pattern_list=flatten(
+                            [left.source_algebraizable, right.source_algebraizable]
+                        )
                     ),
                     on_left=[left_join_key],
                     on_right=[right_join_key],
@@ -465,7 +469,9 @@ class Star:
                 )
                 variable_relation: Relation = SelectColumns(
                     relation=join,
-                    source_algebraizable=flatten([join.source_algebraizable]),
+                    source_algebraizable=PatternIntersection(
+                        pattern_list=flatten([join.source_algebraizable])
+                    ),
                     identifier=random_hash(),
                     variable_map=join.variable_map,
                     variable_type_map=join.variable_type_map,
@@ -521,8 +527,10 @@ class Star:
                 join: Join = Join(
                     left=left,
                     right=right,
-                    source_algebraizable=flatten(
-                        [left.source_algebraizable, right.source_algebraizable]
+                    source_algebraizable=PatternIntersection(
+                        pattern_list=flatten(
+                            [left.source_algebraizable, right.source_algebraizable]
+                        )
                     ),
                     on_left=[left_join_key],
                     on_right=[right_join_key],
@@ -534,7 +542,9 @@ class Star:
                 )
                 variable_relation: Relation = SelectColumns(
                     relation=join,
-                    source_algebraizable=flatten([join.source_algebraizable]),
+                    source_algebraizable=PatternIntersection(
+                        pattern_list=flatten([join.source_algebraizable])
+                    ),
                     identifier=random_hash(),
                     variable_map=join.variable_map,
                     variable_type_map=join.variable_type_map,
@@ -593,7 +603,7 @@ class Star:
                         ),
                         on_left=[],
                         on_right=[],
-                        how=JoinType.CROSS,
+                        join_type=JoinType.CROSS,
                         variable_map=variable_map,
                         variable_type_map=variable_type_map,
                         column_names=column_names,
@@ -633,7 +643,7 @@ class Star:
                         ),
                         on_left=left_join_cols,
                         on_right=right_join_cols,
-                        how=JoinType.INNER,
+                        join_type=JoinType.INNER,
                         variable_map=variable_map,
                         variable_type_map=variable_type_map,
                         column_names=unique_columns,
@@ -648,7 +658,13 @@ class Star:
     def _from_relationship_pattern(
         self, relationship: RelationshipPattern
     ) -> Projection:
-        """Convert a RelationshipPattern to a RelationshipTable."""
+        """Convert a RelationshipPattern to a RelationshipTable.
+
+        Uses unique random hashes for all output columns to ensure that
+        multiple instances of the same relationship type (e.g. two separate
+        KNOWS edges in a multi-hop path) have distinct column names and
+        never collide during pd.merge operations.
+        """
         relationship_relation: RelationshipTable = (
             self.context.relationship_mapping[relationship.labels[0]]
         )
@@ -657,20 +673,25 @@ class Star:
         prefixed_id_col = f"{lbl}__{ID_COLUMN}"
         prefixed_source_col = f"{lbl}__{RELATIONSHIP_SOURCE_COLUMN}"
         prefixed_target_col = f"{lbl}__{RELATIONSHIP_TARGET_COLUMN}"
+
+        # Generate unique column names for this specific relationship instance
+        new_id_column: ColumnName = random_hash()
+        new_source_column: ColumnName = random_hash()
+        new_target_column: ColumnName = random_hash()
         
         relation: Projection = Projection(
             relation=relationship_relation,
             projected_column_names={
-                prefixed_id_col: prefixed_id_col,
-                prefixed_source_col: prefixed_source_col,
-                prefixed_target_col: prefixed_target_col,
+                prefixed_id_col: new_id_column,
+                prefixed_source_col: new_source_column,
+                prefixed_target_col: new_target_column,
             },
-            variable_map={relationship.variable: prefixed_id_col},
+            variable_map={relationship.variable: new_id_column},
             variable_type_map={relationship.variable: relationship.labels[0]},
             column_names=[
-                prefixed_id_col,
-                prefixed_source_col,
-                prefixed_target_col,
+                new_id_column,
+                new_source_column,
+                new_target_column,
             ],
             identifier=random_hash(),
             source_algebraizable=relationship,
@@ -884,27 +905,52 @@ class Star:
     def _contains_aggregation(self, expression: Any) -> bool:
         """Check if expression contains aggregate functions.
         
-        Phase 2: Checks for COLLECT, COUNT, SUM, AVG, MIN, MAX
-        Future: Will handle nested aggregations and sub-expressions
+        Distinguishes between scalar functions (toUpper, toString, etc.) 
+        and aggregation functions (collect, count, sum, avg, min, max).
+        
+        Scalar functions operate on individual values (row-by-row),
+        while aggregations reduce multiple rows to a single value.
         
         Args:
             expression: AST expression to check
             
         Returns:
-            True if expression contains aggregation functions
+            True if expression contains aggregation functions, False for scalar functions
         """
         from pycypher.ast_models import FunctionInvocation, CountStar
+        from pycypher.scalar_functions import ScalarFunctionRegistry
         
         # Check if expression itself is an aggregate function
         if isinstance(expression, CountStar):
             return True
         
         if isinstance(expression, FunctionInvocation):
+            # Extract function name
             func_name = expression.name
+            if isinstance(func_name, dict):
+                # Namespaced function: {namespace: "db", name: "labels"}
+                func_name = func_name.get("name", "")
+            
             if isinstance(func_name, str):
                 func_name_lower = func_name.lower()
-                if func_name_lower in ['collect', 'count', 'sum', 'avg', 'min', 'max']:
+                
+                # Check if it's a registered scalar function
+                # Scalar functions are NOT aggregations
+                registry = ScalarFunctionRegistry.get_instance()
+                if registry.has_function(func_name_lower):
+                    return False
+                
+                # Check if it's a known aggregation function
+                known_aggregations = {'collect', 'count', 'sum', 'avg', 'min', 'max'}
+                if func_name_lower in known_aggregations:
                     return True
+                
+                # Unknown function - default to scalar (safer for WITH clause)
+                # This allows new scalar functions to work without updating this method
+                LOGGER.warning(
+                    msg=f"Unknown function '{func_name}', treating as scalar function"
+                )
+                return False
         
         # Recursively check sub-expressions
         # For now, we only handle simple cases
@@ -1248,10 +1294,55 @@ class Star:
             if isinstance(clause, Match):
                 # MATCH clause - build base relation from pattern
                 if current_relation is not None:
-                    # Multiple MATCH clauses - join with previous relation
+                    # Multiple MATCH clauses - join with previous relation on common variables
                     match_relation = self.to_relation(clause.pattern)
-                    # Join the two relations (cross product or on shared variables)
-                    current_relation = self._binary_join(current_relation, match_relation)
+                    left_vars = set(current_relation.variable_map.keys())
+                    right_vars = set(match_relation.variable_map.keys())
+                    common_vars = left_vars & right_vars
+
+                    if common_vars:
+                        left_join_cols = [current_relation.variable_map[var] for var in common_vars]
+                        right_join_cols = [match_relation.variable_map[var] for var in common_vars]
+
+                        variable_map = {**current_relation.variable_map, **match_relation.variable_map}
+                        variable_type_map = {**current_relation.variable_type_map, **match_relation.variable_type_map}
+
+                        # Deduplicate columns for common variables (keep left side)
+                        unique_columns = []
+                        seen_vars: set[Variable] = set()
+                        for var, col in current_relation.variable_map.items():
+                            if var not in seen_vars:
+                                unique_columns.append(col)
+                                seen_vars.add(var)
+                        for var, col in match_relation.variable_map.items():
+                            if var not in seen_vars:
+                                unique_columns.append(col)
+                                seen_vars.add(var)
+
+                        current_relation = Join(
+                            left=current_relation,
+                            right=match_relation,
+                            join_type=JoinType.INNER,
+                            on_left=left_join_cols,
+                            on_right=right_join_cols,
+                            variable_map=variable_map,
+                            variable_type_map=variable_type_map,
+                            column_names=unique_columns,
+                        )
+                    else:
+                        # No common variables — cross product
+                        variable_map = {**current_relation.variable_map, **match_relation.variable_map}
+                        variable_type_map = {**current_relation.variable_type_map, **match_relation.variable_type_map}
+                        current_relation = Join(
+                            left=current_relation,
+                            right=match_relation,
+                            join_type=JoinType.CROSS,
+                            on_left=[],
+                            on_right=[],
+                            variable_map=variable_map,
+                            variable_type_map=variable_type_map,
+                            column_names=current_relation.column_names + match_relation.column_names,
+                        )
                 else:
                     # First MATCH clause
                     current_relation = self.to_relation(clause.pattern)

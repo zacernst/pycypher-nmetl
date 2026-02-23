@@ -12,5 +12,4 @@ This tutorial will cover:
 
 * Extracting data from sources
 * Transforming graph data
-* Loading into backends
 * Pipeline orchestration

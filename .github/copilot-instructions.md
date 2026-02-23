@@ -6,6 +6,10 @@ Throughout all the work, **it is crucial to think and behave like an INTJ Meyers
 consider the larger implications of any changes; always consider the purpose of the project and how it
 interacts with the purpose of the specific changes that are being proposed.
 
+## Execution of commands in the terminal
+
+Whenever possible, do **not** open new terminal instances. Instead, execute all commands in the same terminal instance. This allows you to maintain context and continuity, and also allows you to see the full history of commands and their outputs.
+
 ## Project Architecture
 
 This is a **monorepo workspace** containing two interdependent packages:
@@ -82,8 +86,8 @@ shared = { workspace = true }
 
 When adding cross-package imports, ensure the dependency is declared in the consuming package's `pyproject.toml`.
 
-### 2. Fact Model Pattern
-Facts are immutable, atomic data points. Never modify facts - only add new ones:
+### 2. Type-Based Column Naming
+All relational operators use type prefixes to prevent naming collisions:
 
 ```python
 # EntityTable prefixes all columns with entity type
@@ -97,7 +101,7 @@ Facts are immutable, atomic data points. Never modify facts - only add new ones:
 
 This ensures deterministic, collision-free column names across complex joins.
 
-### 4. ID-Only Column Preservation
+### 3. ID-Only Column Preservation
 `FilterRows` and `Join` operators only preserve ID columns, not attributes:
 
 ```python
@@ -114,7 +118,6 @@ This separates ID tracking from attribute access, improving query efficiency.
 - **`packages/pycypher/src/pycypher/ast_models.py`** - Pydantic-based AST node definitions
 - **`packages/pycypher/src/pycypher/relational_models.py`** - Relational algebra operators (EntityTable, Join, FilterRows, Projection)
 - **`packages/pycypher/src/pycypher/star.py`** - Translates AST patterns to relational algebra
-- **`packages/pycypher/src/pycypher/fact_collection/solver.py`** - SAT solver integration for query optimization
 - **`Makefile`** - Build orchestration and test commands
 
 ## Documentation
@@ -133,11 +136,10 @@ uv run sphinx-build -b html docs docs/_build/html
 ## Common Gotchas
 
 1. **Python version**: Requires exactly `3.14.0a6+freethreaded` - other versions will fail
-2. **FoundationDB**: Many features require FDB running locally. Use Docker: `docker-compose up fdb_build`
-3. **Grammar parser**: Uses Lark parser with custom visitor pattern for AST construction
-4. **Optional variables**: `NodePattern.variable` and `RelationshipPattern.variable` are Optional to support anonymous nodes/relationships
-5. **Workspace sync**: After editing `pyproject.toml` files, always run `uv sync`
-6. **Column naming**: Always use type-prefixed column names in relational operators (e.g., `Person____ID__` not `__ID__`)
+2. **Grammar parser**: Uses Lark parser with custom visitor pattern for AST construction
+3. **Optional variables**: `NodePattern.variable` and `RelationshipPattern.variable` are Optional to support anonymous nodes/relationships
+4. **Workspace sync**: After editing `pyproject.toml` files, always run `uv sync`
+5. **Column naming**: Always use type-prefixed column names in relational operators (e.g., `Person____ID__` not `__ID__`)
 
 ## Resources
 

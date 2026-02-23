@@ -22,6 +22,9 @@ from pycypher.ast_models import (
     BooleanLiteral,
     NullLiteral,
     ListLiteral,
+    Arithmetic,
+    Unary,
+    FunctionInvocation,
 )
 from pycypher.relational_models import (
     Context,
@@ -29,6 +32,7 @@ from pycypher.relational_models import (
     ID_COLUMN,
     ColumnName,
 )
+from pycypher.scalar_functions import ScalarFunctionRegistry
 
 
 class ExpressionEvaluator:
@@ -38,9 +42,10 @@ class ExpressionEvaluator:
     - PropertyLookup (p.name) - requires joining with entity tables
     - Variable references (p)
     - Literal values
+    - Arithmetic operations (+, -, *, /, %, ^)
+    - Unary operations (+, -)
     
     Future extensions will support:
-    - Arithmetic operations
     - Function calls
     - Comparisons
     """
@@ -54,6 +59,7 @@ class ExpressionEvaluator:
         """
         self.context = context
         self.relation = relation
+        self.scalar_registry = ScalarFunctionRegistry.get_instance()
         
     def evaluate(
         self, 
@@ -94,10 +100,22 @@ class ExpressionEvaluator:
                 # List literal - return as constant series
                 return pd.Series([val] * len(df)), "list"
                 
+            case Arithmetic(operator=op, left=left_expr, right=right_expr):
+                # Arithmetic operation: +, -, *, /, %, ^
+                return self._evaluate_arithmetic(op, left_expr, right_expr, df)
+                
+            case Unary(operator=op, operand=operand_expr):
+                # Unary operation: +, -
+                return self._evaluate_unary(op, operand_expr, df)
+                
+            case FunctionInvocation(name=func_name, arguments=func_args):
+                # Scalar function invocation: toUpper(p.name), toString(p.age), etc.
+                return self._evaluate_scalar_function(func_name, func_args, df)
+                
             case _:
                 raise NotImplementedError(
-                    f"Expression type {type(expression).__name__} not yet supported "
-                    f"in Phase 1. Only PropertyLookup, Variable, and Literal are supported."
+                    f"Expression type {type(expression).__name__} not yet supported. "
+                    f"Supported: PropertyLookup, Variable, Literal, Arithmetic, Unary, FunctionInvocation"
                 )
     
     def _evaluate_property_lookup(
@@ -258,6 +276,186 @@ class ExpressionEvaluator:
             Tuple of (constant Series, column name "literal")
         """
         return pd.Series([value] * len(df)), "literal"
+    
+    def _evaluate_arithmetic(
+        self,
+        operator: str,
+        left_expr: Expression,
+        right_expr: Expression,
+        df: pd.DataFrame
+    ) -> tuple[pd.Series, str]:
+        """Evaluate arithmetic expression.
+        
+        Recursively evaluates left and right operands, then applies
+        the arithmetic operator.
+        
+        Args:
+            operator: Arithmetic operator (+, -, *, /, %, ^)
+            left_expr: Left operand expression
+            right_expr: Right operand expression
+            df: Current DataFrame
+            
+        Returns:
+            Tuple of (result Series, column name "arithmetic")
+            
+        Raises:
+            ValueError: For division by zero or unsupported operators
+        """
+        # Recursively evaluate left and right operands
+        left_series, _ = self.evaluate(left_expr, df)
+        right_series, _ = self.evaluate(right_expr, df)
+        
+        # Apply the arithmetic operation
+        if operator == "+":
+            result = left_series + right_series
+        elif operator == "-":
+            result = left_series - right_series
+        elif operator == "*":
+            result = left_series * right_series
+        elif operator == "/":
+            # Handle division by zero - pandas automatically produces inf/nan
+            result = left_series / right_series
+        elif operator == "%":
+            result = left_series % right_series
+        elif operator == "^":
+            # Power operator
+            result = left_series ** right_series
+        else:
+            raise ValueError(
+                f"Unsupported arithmetic operator: {operator}. "
+                f"Supported operators: +, -, *, /, %, ^"
+            )
+        
+        LOGGER.debug(
+            msg=f"Evaluated arithmetic operation: {operator} on {len(result)} rows"
+        )
+        
+        return result, "arithmetic"
+    
+    def _evaluate_unary(
+        self,
+        operator: str,
+        operand_expr: Expression,
+        df: pd.DataFrame
+    ) -> tuple[pd.Series, str]:
+        """Evaluate unary expression.
+        
+        Recursively evaluates the operand, then applies the unary operator.
+        
+        Args:
+            operator: Unary operator (+ or -)
+            operand_expr: Operand expression
+            df: Current DataFrame
+            
+        Returns:
+            Tuple of (result Series, column name "unary")
+            
+        Raises:
+            ValueError: For unsupported operators
+        """
+        # Recursively evaluate the operand
+        operand_series, _ = self.evaluate(operand_expr, df)
+        
+        # Apply the unary operation
+        if operator == "+":
+            # Unary plus - identity operation
+            result = operand_series
+        elif operator == "-":
+            # Unary minus - negation
+            result = -operand_series
+        else:
+            raise ValueError(
+                f"Unsupported unary operator: {operator}. "
+                f"Supported operators: +, -"
+            )
+        
+        LOGGER.debug(
+            msg=f"Evaluated unary operation: {operator} on {len(result)} rows"
+        )
+        
+        return result, "unary"
+    
+    def _evaluate_scalar_function(
+        self,
+        func_name: str | dict,
+        func_args: Any,
+        df: pd.DataFrame,
+    ) -> tuple[pd.Series, str]:
+        """Evaluate scalar function invocation.
+
+        Strategy:
+        1. Extract function name (handle namespaced functions)
+        2. Parse arguments and evaluate each to pd.Series
+        3. Call ScalarFunctionRegistry.execute()
+        4. Return result series
+
+        Args:
+            func_name: Function name (string or dict for namespaced)
+            func_args: Function arguments (dict with 'arguments' list)
+            df: Current DataFrame
+
+        Returns:
+            Tuple of (result series, column name)
+
+        Raises:
+            ValueError: If function not found or args invalid
+            RuntimeError: If function execution fails
+
+        Example:
+            >>> # toUpper(p.name)
+            >>> func_name = "toUpper"
+            >>> func_args = {'arguments': [PropertyLookup(...)]}
+            >>> result, col_name = evaluator._evaluate_scalar_function(
+            ...     func_name, func_args, df
+            ... )
+        """
+        # Extract function name
+        if isinstance(func_name, dict):
+            # Namespaced function: {namespace: "db", name: "labels"}
+            name = func_name.get("name", "")
+        else:
+            name = func_name
+
+        # Parse arguments from AST structure
+        arg_expressions: list[Expression] = []
+        if isinstance(func_args, dict):
+            # Arguments come in different dict formats depending on parser output
+            if "arguments" in func_args:
+                arg_list = func_args["arguments"]
+                if isinstance(arg_list, list):
+                    arg_expressions = arg_list
+            elif "args" in func_args:
+                arg_list = func_args["args"]
+                if isinstance(arg_list, list):
+                    arg_expressions = arg_list
+        elif isinstance(func_args, list):
+            # Direct list of arguments
+            arg_expressions = func_args
+
+        # Evaluate each argument expression to pd.Series
+        arg_series: list[pd.Series] = []
+        for arg_expr in arg_expressions:
+            series, _ = self.evaluate(arg_expr, df)
+            arg_series.append(series)
+
+        # Execute function via registry
+        try:
+            result_series = self.scalar_registry.execute(name, arg_series)
+        except (ValueError, RuntimeError) as e:
+            # Re-raise with context about where this happened
+            raise type(e)(
+                f"Error in scalar function '{name}': {e}"
+            ) from e
+
+        # Generate descriptive column name
+        column_name = f"{name}(...)"
+
+        LOGGER.debug(
+            msg=f"Evaluated scalar function: {name} with {len(arg_series)} "
+            f"arg(s) on {len(result_series)} rows"
+        )
+
+        return result_series, column_name
     
     def evaluate_aggregation(
         self,

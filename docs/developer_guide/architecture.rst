@@ -157,33 +157,19 @@ FilterRows and Join operators preserve only ID columns:
 Extension Points
 ----------------
 
-Custom Backends
-~~~~~~~~~~~~~~~
+Custom Query Optimizers
+~~~~~~~~~~~~~~~~~~~~~~~
 
-Implement ``FactCollection`` interface:
+Extend the QueryOptimizer class:
 
 .. code-block:: python
 
-   from pycypher.fact_collection import FactCollection
-   from pycypher.fact import Fact
-   from typing import List, Set
-   
-   class MyBackend(FactCollection):
-       def add_fact(self, fact: Fact) -> None:
-           # Store fact
-           pass
-       
-       def get_facts(self, **constraints) -> List[Fact]:
-           # Query facts
-           pass
-       
-       def nodes(self) -> Set[str]:
-           # Return all node IDs
-        pycypher.ast_models import Query
+   from pycypher.query_optimizer import QueryOptimizer
+   from pycypher.ast_models import Query
    
    class MyOptimizer(QueryOptimizer):
        def optimize(self, query: Query) -> Query:
-           # Apply optimizations
+           # Apply custom optimizations
            return optimized_query
 
 Testing Architecture
@@ -208,7 +194,6 @@ Tests follow package structure:
 **Conventions:**
 - Use pytest fixtures for common test data
 - Separate unit tests from integration tests
-- Mark FoundationDB tests with ``@pytest.mark.fact_collection``
 - Aim for >90% coverage on new code
 
 Test Execution
@@ -321,23 +306,18 @@ Relational Algebra
 - **Column naming:** Deterministic, cached
 - **Join strategy:** ID-only, efficient merging
 
-Backend Performance
-~~~~~~~~~~~~~~~~~~~
+Query Execution
+~~~~~~~~~~~~~~~
 
-**FoundationDB:**
-- Throughput: 10K+ ops/second
-- Latency: <10ms (network overhead)
-- Scalability: Horizontal
+**Relational Algebra:**
+- Translation: O(n) in AST size
+- Execution: pandas-based operations
+- Memory: DataFrame-dependent
 
-**RocksDB:**
-- Throughput: 100K+ ops/second
-- Latency: <1ms (embedded)
-- Scalability: Vertical
-
-**Simple:**
-- Throughput: 1M+ ops/second
-- Latency: <0.1ms (in-memory)
-- Scalability: Memory-limited
+**Performance Tips:**
+- Filter early (push down filters)
+- Use ID-only joins where possible
+- Fetch attributes lazily via Projection
 
 For More Information
 --------------------

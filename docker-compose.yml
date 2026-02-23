@@ -37,7 +37,6 @@ services:
     stdin_open: true
     tty: true
 
-  # FoundationDB for fact collection backend
   # fdb:
   #   container_name: pycypher-fdb
   #   platform: linux/arm64
