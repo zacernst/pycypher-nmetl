@@ -22,9 +22,6 @@ WORKDIR /pycypher
 
 RUN make
 
-## Commented out while we focus on pycypher
-## RUN wget https://github.com/apple/foundationdb/releases/download/7.3.69/foundationdb-clients_7.3.69-1_aarch64.deb
-## RUN dpkg -i foundationdb-clients_7.3.69-1_aarch64.deb
 ## RUN pip install uv
 ## RUN uv venv -p 3.14t
 ## RUN uv pip install packages/pycypher

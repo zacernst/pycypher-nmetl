@@ -98,12 +98,21 @@ exclude_also = [
 ]
 
 [tool.pytest.ini_options]
-addopts = ""
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "--tb=short",
+]
 testpaths = ["tests"]
 markers = [
-    "fact_collection: Tests that require a FactCollection"
+    "slow: Marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: Integration tests (deselect with '-m \"not integration\"')",
 ]
 timeout = 30
+# Performance optimizations
+minversion = "8.0"
+# Don't capture output for faster execution (use -s to override)
+# addopts already includes necessary flags
 
 
 [dependency-groups]

@@ -15,6 +15,7 @@ from pycypher.ast_models import (
     RelationshipPattern,
     NodePattern,
     Algebraizable,
+    Set,
 )
 from pycypher.relational_models import (
     ID_COLUMN,
@@ -1252,6 +1253,138 @@ class Star:
         
         return relation
 
+    def _from_set_clause(self, set_clause: Any, input_relation: Relation) -> Relation:
+        """Translate SET clause to relational algebra.
+
+        Converts SET clause items to PropertyChange objects and creates a
+        PropertyModification relation to apply the changes.
+
+        Args:
+            set_clause: SET clause AST node
+            input_relation: Input relation to modify
+
+        Returns:
+            PropertyModification relation with changes applied
+        """
+        from pycypher.ast_models import (
+            SetPropertyItem, SetLabelsItem, SetAllPropertiesItem, AddAllPropertiesItem, SetItem
+        )
+        from pycypher.property_change import PropertyChange, PropertyChangeType
+        from pycypher.relational_models import PropertyModification
+
+        if not isinstance(set_clause, Set):
+            raise TypeError(f"Expected Set clause, got {type(set_clause).__name__}")
+
+        LOGGER.debug(f"Processing SET clause with {len(set_clause.items)} items")
+
+        # Convert SET items to PropertyChange objects
+        property_changes = []
+
+        for item in set_clause.items:
+            if isinstance(item, SetPropertyItem):
+                # SET n.prop = value
+                change = PropertyChange(
+                    variable_type=input_relation.variable_type_map.get(item.variable),
+                    variable_column=input_relation.variable_map.get(item.variable),
+                    change_type=PropertyChangeType.SET_PROPERTY,
+                    property_name=item.property,
+                    value_expression=item.value
+                )
+                property_changes.append(change)
+                LOGGER.debug(f"SET property: {item.variable.name}.{item.property}")
+
+            elif isinstance(item, SetLabelsItem):
+                # SET n:Label
+                change = PropertyChange(
+                    variable_type=input_relation.variable_type_map.get(item.variable),
+                    variable_column=input_relation.variable_map.get(item.variable),
+                    change_type=PropertyChangeType.SET_LABELS,
+                    labels=item.labels
+                )
+                property_changes.append(change)
+                LOGGER.debug(f"SET labels: {item.variable.name}:{':'.join(item.labels)}")
+
+            elif isinstance(item, SetAllPropertiesItem):
+                # SET n = {map}
+                # Convert the expression to a properties map
+                if hasattr(item.properties, 'value') and isinstance(item.properties.value, dict):
+                    from pycypher.ast_models import Literal
+                    properties_map = {
+                        prop: Literal(value=val) if not hasattr(val, '__class__') else val
+                        for prop, val in item.properties.value.items()
+                    }
+                else:
+                    # Handle other expression types (variables, etc.)
+                    properties_map = {"_properties": item.properties}
+
+                change = PropertyChange(
+                    variable_type=input_relation.variable_type_map.get(item.variable),
+                    variable_column=input_relation.variable_map.get(item.variable),
+                    change_type=PropertyChangeType.SET_ALL_PROPERTIES,
+                    properties_map=properties_map
+                )
+                property_changes.append(change)
+                LOGGER.debug(f"SET all properties: {item.variable.name} = {{map}}")
+
+            elif isinstance(item, AddAllPropertiesItem):
+                # SET n += {map}
+                if hasattr(item.properties, 'value') and isinstance(item.properties.value, dict):
+                    from pycypher.ast_models import Literal
+                    properties_map = {
+                        prop: Literal(value=val) if not hasattr(val, '__class__') else val
+                        for prop, val in item.properties.value.items()
+                    }
+                else:
+                    properties_map = {"_properties": item.properties}
+
+                change = PropertyChange(
+                    variable_type=input_relation.variable_type_map.get(item.variable),
+                    variable_column=input_relation.variable_map.get(item.variable),
+                    change_type=PropertyChangeType.ADD_ALL_PROPERTIES,
+                    properties_map=properties_map
+                )
+                property_changes.append(change)
+                LOGGER.debug(f"ADD all properties: {item.variable.name} += {{map}}")
+
+            elif isinstance(item, SetItem):
+                # Handle generic SetItem for backward compatibility with parser
+                if item.property and item.expression:
+                    # SET n.prop = value
+                    change = PropertyChange(
+                        variable_type=input_relation.variable_type_map.get(item.variable),
+                        variable_column=input_relation.variable_map.get(item.variable),
+                        change_type=PropertyChangeType.SET_PROPERTY,
+                        property_name=item.property,
+                        value_expression=item.expression
+                    )
+                    property_changes.append(change)
+                    LOGGER.debug(f"SET property (generic): {item.variable.name}.{item.property}")
+                elif item.labels:
+                    # SET n:Label
+                    change = PropertyChange(
+                        variable_type=input_relation.variable_type_map.get(item.variable),
+                        variable_column=input_relation.variable_map.get(item.variable),
+                        change_type=PropertyChangeType.SET_LABELS,
+                        labels=item.labels
+                    )
+                    property_changes.append(change)
+                    LOGGER.debug(f"SET labels (generic): {item.variable.name}:{':'.join(item.labels)}")
+                else:
+                    raise ValueError(f"Invalid SetItem: missing property/expression or labels")
+
+            else:
+                raise NotImplementedError(f"SET item type {type(item).__name__} not supported")
+
+        # Create PropertyModification relation
+        return PropertyModification(
+            base_relation=input_relation,
+            modifications=property_changes,
+            context=self.context,
+            variable_map=input_relation.variable_map,
+            variable_type_map=input_relation.variable_type_map,
+            column_names=input_relation.column_names  # Will be updated by PropertyModification
+        )
+
     def execute_query(self, query: Any) -> pd.DataFrame:
         """Execute a complete Cypher query and return results as DataFrame.
         
@@ -1358,7 +1491,13 @@ class Star:
                 if current_relation is None:
                     raise ValueError("RETURN clause requires preceding MATCH clause")
                 current_relation = self._from_return_clause(clause, current_relation)
-                
+
+            elif isinstance(clause, Set):
+                # SET clause - property modifications
+                if current_relation is None:
+                    raise ValueError("SET clause requires preceding MATCH clause")
+                current_relation = self._from_set_clause(clause, current_relation)
+
             else:
                 raise NotImplementedError(
                     f"Clause type {type(clause).__name__} not supported yet"

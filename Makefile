@@ -3,7 +3,7 @@
 # Configuration variables
 PYTHON_VERSION = 3.14
 SUPPORTED_PYTHON_VERSIONS = 3.14
-PYTHON_TEST_THREADS = 4
+PYTHON_TEST_THREADS = 8
 BUMP = micro
 
 
@@ -57,7 +57,25 @@ clean:
 	rm -rfv ${COVERAGE_DIR}
 
 test:
-	(uv run pytest .)
+	uv run pytest -n ${PYTHON_TEST_THREADS} .
+
+test-fast:
+	uv run pytest -n auto -x .
+
+test-serial:
+	uv run pytest .
+
+test-quick:
+	uv run pytest -n auto --tb=line --no-cov -q .
+
+test-failed:
+	uv run pytest --lf -n ${PYTHON_TEST_THREADS} .
+
+test-changed:
+	uv run pytest --lf --ff -n ${PYTHON_TEST_THREADS} .
+
+test-verbose:
+	uv run pytest -n ${PYTHON_TEST_THREADS} -v .
 
 # ------------------------------------------------------------------------------
 # Docker development targets
@@ -139,14 +157,18 @@ install: build
 	uv pip install --upgrade -e ${PYCYPHER_DIR}
 	uv pip install --upgrade -e ${NMETL_DIR}
 	# uv pip install --upgrade -e .
-
 # ------------------------------------------------------------------------------
 # Testing targets
 
-# Run tests with coverage
+# Run tests with coverage (parallel)
 coverage: install
 	@echo "Running tests with coverage..."
-	uv run pytest --cov-report html:${COVERAGE_DIR} --cov
+	uv run pytest -n ${PYTHON_TEST_THREADS} --cov-report html:${COVERAGE_DIR} --cov
+
+# Run tests with coverage (detailed, serial)
+coverage-detailed: install
+	@echo "Running tests with detailed coverage..."
+	uv run pytest --cov-report html:${COVERAGE_DIR} --cov --cov-report term-missing
 
 # ------------------------------------------------------------------------------
 # Documentation targets
@@ -208,10 +230,6 @@ fastopendata: nmetl
 	@echo "Building and installing fastopendata package..."
 	cd ${FASTOPENDATA_DIR} && uv run hatch build -t wheel
 	uv pip install --upgrade ${FASTOPENDATA_DIR}
-
-fdbclear:
-	@echo "Clearing FoundationDB data..."
-	fdbcli --exec "writemode on; clearrange \"\" \"\\xFF\""
 
 #####################################
 # vars:

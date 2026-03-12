@@ -361,8 +361,8 @@ class ScalarFunctionRegistry:
                     return str(int(x))
                 return str(x)
 
-            result: pd.Series = s.apply(_convert_value)
-            return result
+            result = s.apply(_convert_value)
+            return pd.Series(result)  # Explicit cast to satisfy type checker
 
         self.register_function(
             name="toString",

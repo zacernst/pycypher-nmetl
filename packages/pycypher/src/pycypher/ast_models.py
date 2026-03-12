@@ -637,12 +637,41 @@ class Set(Clause):
 
 
 class SetItem(ASTNode):
-    """Item in SET clause."""
+    """Base class for items in SET clause."""
 
     variable: Optional["Variable"] = None
     property: Optional[str] = None
     expression: Optional["Expression"] = None
     labels: List[str] = Field(default_factory=list)
+
+
+class SetPropertyItem(SetItem):
+    """SET n.property = value item."""
+
+    variable: "Variable"
+    property: str
+    value: "Expression"
+
+
+class SetLabelsItem(SetItem):
+    """SET n:Label item."""
+
+    variable: "Variable"
+    labels: List[str]
+
+
+class SetAllPropertiesItem(SetItem):
+    """SET n = {map} item."""
+
+    variable: "Variable"
+    properties: "Expression"
+
+
+class AddAllPropertiesItem(SetItem):
+    """SET n += {map} item."""
+
+    variable: "Variable"
+    properties: "Expression"
 
 
 class Remove(Clause):

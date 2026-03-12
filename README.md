@@ -139,7 +139,6 @@ Full documentation is available in the `docs/` directory:
 - [Architecture](docs/developer_guide/architecture.rst)
 - [AST Nodes Reference](docs/user_guide/ast_nodes.rst)
 - [Query Processing](docs/user_guide/query_processing.rst)
-- [Storage Backends](docs/user_guide/backends.rst)
 
 Build documentation locally:
 
