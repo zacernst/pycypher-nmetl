@@ -19,13 +19,18 @@ Example:
     >>> errors = validator.validate(tree)
     >>> for error in errors:
     ...     print(f"{error.line}:{error.column} - {error.message}")
+
 """
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, List, Optional, Set
+from typing import Any
 
 from lark import Token, Tree
+from shared.helpers import suggest_close_match
+from shared.logger import LOGGER
+
+from pycypher.aggregation_evaluator import KNOWN_AGGREGATIONS
 
 
 class ErrorSeverity(Enum):
@@ -42,10 +47,10 @@ class ValidationError:
 
     severity: ErrorSeverity
     message: str
-    line: Optional[int] = None
-    column: Optional[int] = None
-    node_type: Optional[str] = None
-    variable_name: Optional[str] = None
+    line: int | None = None
+    column: int | None = None
+    node_type: str | None = None
+    variable_name: str | None = None
 
     def __str__(self) -> str:
         """Format error as string."""
@@ -61,15 +66,16 @@ class ValidationError:
 class VariableScope:
     """Manages variable scope and bindings in Cypher queries."""
 
-    def __init__(self, parent: Optional["VariableScope"] = None):
+    def __init__(self, parent: VariableScope | None = None) -> None:
         """Initialize a variable scope.
 
         Args:
             parent: Parent scope for nested scopes (e.g., subqueries, comprehensions).
+
         """
         self.parent = parent
-        self.defined_vars: Set[str] = set()
-        self.used_vars: Set[str] = set()
+        self.defined_vars: set[str] = set()
+        self.used_vars: set[str] = set()
 
     def define(self, var_name: str) -> None:
         """Mark a variable as defined in this scope."""
@@ -87,7 +93,7 @@ class VariableScope:
             return self.parent.is_defined(var_name)
         return False
 
-    def get_undefined_vars(self) -> Set[str]:
+    def get_undefined_vars(self) -> set[str]:
         """Get variables used but not defined in accessible scopes."""
         undefined = set()
         for var in self.used_vars:
@@ -95,7 +101,7 @@ class VariableScope:
                 undefined.add(var)
         return undefined
 
-    def create_child_scope(self) -> "VariableScope":
+    def create_child_scope(self) -> VariableScope:
         """Create a nested child scope."""
         return VariableScope(parent=self)
 
@@ -110,13 +116,17 @@ class SemanticValidator:
     - Return clause validation
     """
 
-    def __init__(self):
-        """Initialize the semantic validator."""
-        self.errors: List[ValidationError] = []
-        self.current_scope: VariableScope = VariableScope()
-        self.scope_stack: List[VariableScope] = []
+    #: Canonical set of aggregation function names (lower-case), shared with
+    #: the execution engine.  Single source of truth — do not duplicate.
+    _AGGREGATION_FUNCTIONS: frozenset[str] = KNOWN_AGGREGATIONS
 
-    def validate(self, tree: Tree) -> List[ValidationError]:
+    def __init__(self) -> None:
+        """Initialize the semantic validator."""
+        self.errors: list[ValidationError] = []
+        self.current_scope: VariableScope = VariableScope()
+        self.scope_stack: list[VariableScope] = []
+
+    def validate(self, tree: Tree) -> list[ValidationError]:
         """Validate a parse tree and return any errors found.
 
         Args:
@@ -124,6 +134,7 @@ class SemanticValidator:
 
         Returns:
             List of ValidationError objects found during validation.
+
         """
         self.errors = []
         self.current_scope = VariableScope()
@@ -134,15 +145,27 @@ class SemanticValidator:
 
         # Check for undefined variables at the end
         undefined = self.current_scope.get_undefined_vars()
+        defined = sorted(self.current_scope.defined_vars)
         for var in undefined:
+            hint = suggest_close_match(var, defined)
+            msg = f"Variable '{var}' is used but not defined"
+            if defined:
+                msg += f". Defined variables: {', '.join(defined)}"
+            if hint:
+                msg += f".{hint}"
             self.errors.append(
                 ValidationError(
                     severity=ErrorSeverity.ERROR,
-                    message=f"Variable '{var}' is used but not defined",
+                    message=msg,
                     variable_name=var,
-                )
+                ),
             )
 
+        if self.errors:
+            LOGGER.debug(
+                "semantic validation: %d error(s) found",
+                len(self.errors),
+            )
         return self.errors
 
     def _validate_node(self, node: Any) -> None:
@@ -150,6 +173,7 @@ class SemanticValidator:
 
         Args:
             node: Tree node or Token to validate.
+
         """
         if isinstance(node, Token):
             return
@@ -174,6 +198,7 @@ class SemanticValidator:
 
         Args:
             node: match_clause tree node.
+
         """
         # Extract variables from patterns
         for pattern_node in node.find_data("node_pattern"):
@@ -183,7 +208,7 @@ class SemanticValidator:
 
         for rel_node in node.find_data("relationship_pattern"):
             var_name = self._extract_variable_from_relationship_pattern(
-                rel_node
+                rel_node,
             )
             if var_name:
                 self.current_scope.define(var_name)
@@ -197,8 +222,23 @@ class SemanticValidator:
 
         Args:
             node: return_clause tree node.
+
+        Note:
+            RETURN aliases (``AS alias``) must be defined in the current scope
+            *before* marking variables as used, so that ORDER BY clauses (which
+            are children of ``return_body`` inside ``return_clause``) can
+            reference those aliases without triggering a false-positive
+            "undefined variable" error.
+
         """
-        # Extract and track variables used in RETURN
+        # First: define all AS aliases so ORDER BY can reference them.
+        for return_item in node.find_data("return_item"):
+            for alias_node in return_item.find_data("return_alias"):
+                alias_name = self._get_token_value(alias_node)
+                if alias_name:
+                    self.current_scope.define(alias_name)
+
+        # Then: mark variables used in the full RETURN + ORDER BY subtree.
         variables = self._extract_variables_from_expression(node)
         for var in variables:
             self.current_scope.use(var)
@@ -212,10 +252,9 @@ class SemanticValidator:
         for item in return_items:
             if self._contains_aggregation(item):
                 has_aggregation = True
-            else:
-                # Check if it's a simple variable or expression
-                if self._is_non_aggregated_expression(item):
-                    has_non_aggregation = True
+            # Check if it's a simple variable or expression
+            elif self._is_non_aggregated_expression(item):
+                has_non_aggregation = True
 
         if has_aggregation and has_non_aggregation:
             # This is valid in Cypher (implies grouping), but we can warn about it
@@ -224,7 +263,7 @@ class SemanticValidator:
                     severity=ErrorSeverity.WARNING,
                     message="Mixing aggregated and non-aggregated expressions in RETURN (implicit grouping)",
                     node_type="return_clause",
-                )
+                ),
             )
 
     def _validate_with_clause(self, node: Tree) -> None:
@@ -234,6 +273,7 @@ class SemanticValidator:
 
         Args:
             node: with_clause tree node.
+
         """
         # WITH creates a new scope - variables before WITH are shadowed
         new_scope = VariableScope()
@@ -263,6 +303,7 @@ class SemanticValidator:
 
         Args:
             node: where_clause tree node.
+
         """
         # Extract variables used in WHERE clause
         variables = self._extract_variables_from_expression(node)
@@ -274,12 +315,13 @@ class SemanticValidator:
 
         Args:
             node: unwind_clause tree node.
+
         """
         # UNWIND introduces a new variable (after AS)
         var_nodes = list(node.find_data("variable_name"))
         if var_nodes:
             var_name = self._get_token_value(
-                var_nodes[-1]
+                var_nodes[-1],
             )  # Get the AS variable
             if var_name:
                 self.current_scope.define(var_name)
@@ -289,6 +331,7 @@ class SemanticValidator:
 
         Args:
             node: create_clause tree node.
+
         """
         # CREATE can define new variables
         for pattern_node in node.find_data("node_pattern"):
@@ -298,7 +341,7 @@ class SemanticValidator:
 
         for rel_node in node.find_data("relationship_pattern"):
             var_name = self._extract_variable_from_relationship_pattern(
-                rel_node
+                rel_node,
             )
             if var_name:
                 self.current_scope.define(var_name)
@@ -308,6 +351,7 @@ class SemanticValidator:
 
         Args:
             node: merge_clause tree node.
+
         """
         # MERGE is similar to CREATE
         for pattern_node in node.find_data("node_pattern"):
@@ -315,7 +359,7 @@ class SemanticValidator:
             if var_name:
                 self.current_scope.define(var_name)
 
-    def _extract_variable_from_node_pattern(self, node: Tree) -> Optional[str]:
+    def _extract_variable_from_node_pattern(self, node: Tree) -> str | None:
         """Extract variable name from a node pattern.
 
         Args:
@@ -323,17 +367,31 @@ class SemanticValidator:
 
         Returns:
             Variable name or None if no variable.
+
+        Note:
+            We look at the FIRST child of ``node_pattern_filler`` rather than
+            using ``find_data("variable_name")`` because Lark's ``find_data``
+            uses post-order DFS.  Property predicate value references such as
+            ``{id: id}`` are deeper in the tree and therefore appear *before*
+            the shallow pattern variable in post-order, causing the wrong name
+            to be returned.
+
         """
-        # Look for variable_name in node pattern
-        for var_name_node in node.find_data("variable_name"):
-            token_val = self._get_token_value(var_name_node)
-            if token_val:
-                return token_val
+        for filler in node.find_data("node_pattern_filler"):
+            if filler.children:
+                first = filler.children[0]
+                if (
+                    isinstance(first, Tree)
+                    and str(first.data) == "variable_name"
+                ):
+                    return self._get_token_value(first)
+            return None  # filler with no variable
         return None
 
     def _extract_variable_from_relationship_pattern(
-        self, node: Tree
-    ) -> Optional[str]:
+        self,
+        node: Tree,
+    ) -> str | None:
         """Extract variable name from a relationship pattern.
 
         Args:
@@ -341,15 +399,24 @@ class SemanticValidator:
 
         Returns:
             Variable name or None if no variable.
+
+        Note:
+            Same post-order DFS caveat as ``_extract_variable_from_node_pattern``.
+            The relationship variable is the first child of ``rel_filler``.
+
         """
-        # Look for variable_name in relationship pattern
-        for var_name_node in node.find_data("variable_name"):
-            token_val = self._get_token_value(var_name_node)
-            if token_val:
-                return token_val
+        for filler in node.find_data("rel_filler"):
+            if filler.children:
+                first = filler.children[0]
+                if (
+                    isinstance(first, Tree)
+                    and str(first.data) == "variable_name"
+                ):
+                    return self._get_token_value(first)
+            return None
         return None
 
-    def _extract_variables_from_expression(self, node: Tree) -> Set[str]:
+    def _extract_variables_from_expression(self, node: Tree) -> set[str]:
         """Extract all variable references from an expression.
 
         Args:
@@ -357,6 +424,7 @@ class SemanticValidator:
 
         Returns:
             Set of variable names referenced.
+
         """
         variables = set()
 
@@ -368,7 +436,7 @@ class SemanticValidator:
 
         return variables
 
-    def _get_token_value(self, node: Tree) -> Optional[str]:
+    def _get_token_value(self, node: Tree) -> str | None:
         """Get the string value from a tree node.
 
         Args:
@@ -376,6 +444,7 @@ class SemanticValidator:
 
         Returns:
             String value or None.
+
         """
         for child in node.children:
             if isinstance(child, Token):
@@ -390,30 +459,22 @@ class SemanticValidator:
 
         Returns:
             True if contains aggregation function.
+
         """
         # Check for count(*)
         if list(node.find_data("count_star")):
             return True
 
-        # Check for named aggregation functions
-        aggregation_functions = {
-            "count",
-            "sum",
-            "avg",
-            "min",
-            "max",
-            "collect",
-            "stdev",
-            "stdevp",
-            "percentiledisc",
-            "percentilecont",
-        }
-
+        # Check for named aggregation functions — use the class constant so
+        # there is a single source of truth shared with the execution engine.
         for func_node in node.find_data("function_invocation"):
             func_name_node = list(func_node.find_data("function_name"))
             if func_name_node:
                 func_name = self._get_token_value(func_name_node[0])
-                if func_name and func_name.lower() in aggregation_functions:
+                if (
+                    func_name
+                    and func_name.lower() in self._AGGREGATION_FUNCTIONS
+                ):
                     return True
 
         return False
@@ -426,6 +487,7 @@ class SemanticValidator:
 
         Returns:
             True if non-aggregated expression.
+
         """
         # First check if it contains aggregation
         if self._contains_aggregation(node):
@@ -438,7 +500,7 @@ class SemanticValidator:
         return has_vars or has_props
 
 
-def validate_query(query_string: str) -> List[ValidationError]:
+def validate_query(query_string: str) -> list[ValidationError]:
     """Convenience function to parse and validate a query string.
 
     Args:
@@ -451,7 +513,10 @@ def validate_query(query_string: str) -> List[ValidationError]:
         >>> errors = validate_query("MATCH (n) RETURN m")
         >>> for error in errors:
         ...     print(error)
+
     """
+    from lark.exceptions import LarkError
+
     from pycypher.grammar_parser import GrammarParser
 
     parser = GrammarParser()
@@ -460,9 +525,10 @@ def validate_query(query_string: str) -> List[ValidationError]:
     try:
         tree = parser.parse(query_string)
         return validator.validate(tree)
-    except Exception as e:
+    except (LarkError, SyntaxError) as e:
         return [
             ValidationError(
-                severity=ErrorSeverity.ERROR, message=f"Syntax error: {str(e)}"
-            )
+                severity=ErrorSeverity.ERROR,
+                message=f"Syntax error: {e!s}",
+            ),
         ]

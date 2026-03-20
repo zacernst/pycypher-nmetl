@@ -1,43 +1,87 @@
-# Use the official Ubuntu image as the base
-FROM ubuntu:22.04
+# Production Dockerfile for pycypher (multi-stage)
+#
+# Stage 1: Install dependencies with build tools (compilers, headers).
+# Stage 2: Copy only the virtual environment into a slim runtime image.
+#
+# This produces a significantly smaller image (~400MB vs ~1.2GB) by excluding
+# build-essential, git, and other build-only tooling from the final layer.
+#
+# Build:
+#   docker build -t pycypher:latest .
+#
+# Run health server (container liveness probe):
+#   docker run -p 8079:8079 pycypher:latest nmetl health-server --bind 0.0.0.0
+#
+# Note: CI (.github/workflows/ci.yml) uses Python 3.14t (free-threaded) for
+# testing. This Dockerfile uses standard 3.14 for production stability.
 
-# Update the package lists and install Python 3 and pip
+# ── Stage 1: build ──────────────────────────────────────────────────────────
+# SECURITY NOTE: When Python 3.14 reaches GA, pin base images to SHA digests
+# (e.g. python:3.14@sha256:abc...) for reproducible, tamper-proof builds.
+# While 3.14 is pre-release, version tags are acceptable for tracking updates.
+FROM python:3.14 AS builder
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Build-only system dependencies
 RUN apt-get update && \
-    apt-get install -y neovim python3 python3-pip wget bash libgdal-dev unzip dos2unix git && \
-    rm -rf /var/lib/apt/lists/*
+    apt-get install -y --no-install-recommends \
+    build-essential \
+    git \
+    && rm -rf /var/lib/apt/lists/*
 
-RUN apt update
-RUN apt install -y -V ca-certificates lsb-release wget
-RUN wget https://packages.apache.org/artifactory/arrow/$(lsb_release --id --short | tr 'A-Z' 'a-z')/apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
-RUN apt install -y -V ./apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
-RUN apt update
-RUN apt install -y -V libarrow-dev libarrow-glib-dev libarrow-dataset-dev libarrow-dataset-glib-dev libarrow-acero-dev libarrow-flight-dev libarrow-flight-glib-dev libarrow-flight-sql-dev libarrow-flight-sql-glib-dev libgandiva-dev libgandiva-glib-dev libparquet-dev libparquet-glib-dev 
+# Install uv (prebuilt binary — faster than pip install)
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+ENV PATH="/root/.local/bin:${PATH}"
 
-# Set the working directory inside the container
+WORKDIR /app
 
-# COPY . /app
+# Copy dependency manifests first (layer cache optimization)
+COPY pyproject.toml uv.lock ./
+COPY packages/pycypher/pyproject.toml packages/pycypher/pyproject.toml
+COPY packages/shared/pyproject.toml packages/shared/pyproject.toml
+COPY packages/fastopendata/pyproject.toml packages/fastopendata/pyproject.toml
 
-RUN git clone https://github.com/zacernst/pycypher-nmetl.git
-WORKDIR /pycypher-nmetl
+# Copy source code
+COPY packages/ packages/
 
-RUN make
+# Install into a virtual environment
+RUN uv sync --frozen --no-dev
 
-## Commented out while we focus on pycypher
-## RUN wget https://github.com/apple/foundationdb/releases/download/7.3.69/foundationdb-clients_7.3.69-1_aarch64.deb
-## RUN dpkg -i foundationdb-clients_7.3.69-1_aarch64.deb
-## RUN pip install uv
-## RUN uv venv -p 3.14t
-## RUN uv pip install packages/pycypher
-## RUN uv pip install packages/nmetl
-## RUN uv pip install packages/fastopendata
-## RUN uv pip install packages/shared
+# ── Stage 2: runtime ───────────────────────────────────────────────────────
+FROM python:3.14-slim AS runtime
 
-# RUN fdbcli --no-status -C "/app/fdb.cluster" --exec "configure new single ssd"
-# RUN uv venv -p 3.14t
-# RUN uv sync
-# RUN uv build
+ENV PYTHONUNBUFFERED=1
+ENV LC_ALL=C.UTF-8
+ENV LANG=C.UTF-8
 
-# CMD ["fdbcli --no-status --exec \"configure new single ssd\";writemode on;clearrange \"\" \"\\xFF\""]
-# CMD ["uv", "run", "python", "packages/fastopendata/src/fastopendata/ingest.py"]
-# CMD ["sleep 1000000"]
-CMD ["tail", "-f", "/dev/null"]
+# Minimal runtime dependencies only
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy the virtual environment from builder
+COPY --from=builder /app/.venv /app/.venv
+COPY --from=builder /app/packages /app/packages
+
+# Put venv on PATH so `nmetl` is directly callable
+ENV PATH="/app/.venv/bin:$PATH"
+
+# Security: non-root user
+ARG USERNAME=appuser
+ARG USER_UID=1000
+ARG USER_GID=$USER_UID
+RUN groupadd --gid $USER_GID $USERNAME \
+    && useradd --uid $USER_UID --gid $USER_GID -m $USERNAME
+USER $USERNAME
+
+# Health check using the nmetl health command (exit code 0/1/2)
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
+    CMD ["nmetl", "health"]
+
+# Default: start health server for container probe integration
+EXPOSE 8079
+CMD ["nmetl", "health-server", "--bind", "0.0.0.0"]

@@ -31,8 +31,7 @@ docs/
 │   ├── index.rst
 │   ├── variables.rst           # Complete guide on Variable usage
 │   ├── ast_nodes.rst           # Placeholder for AST nodes
-│   ├── query_processing.rst    # Placeholder for processing
-│   └── backends.rst            # Placeholder for backends
+│   └── query_processing.rst    # Placeholder for processing
 ├── developer_guide/             # Developer documentation
 │   ├── index.rst
 │   ├── architecture.rst        # Placeholder for architecture

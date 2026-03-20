@@ -1,0 +1,7 @@
+version: "1.0"
+
+functions:
+  - module: "mypackage.string_utils"
+    names:
+      - normalize_name
+    callable: "mypackage.string_utils.normalize_name"

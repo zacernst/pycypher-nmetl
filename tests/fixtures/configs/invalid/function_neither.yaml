@@ -1,0 +1,5 @@
+version: "1.0"
+
+functions:
+  - register:
+      - some_function

@@ -1,685 +1,1945 @@
+"""Translation layer from Cypher AST to BindingFrame execution.
+
+The main entry point for users is the ``Star`` class, which accepts a
+``Context`` (containing ``EntityTable`` and ``RelationshipTable`` objects),
+parses a Cypher query string, and executes it against the registered
+DataFrames via the BindingFrame execution path.
+
+The ``Star.execute_query()`` method drives the full pipeline: parsing,
+clause-by-clause translation, and execution.
+
+Supported Cypher Features
+--------------------------
+
+Pattern Matching
+~~~~~~~~~~~~~~~~
+* **MATCH** — node and relationship patterns; anonymous and named variables;
+  inline node-property filters (``{key: val}``); unlabeled node traversal;
+  multiple MATCH clauses in the same query.
+* **OPTIONAL MATCH** — left-outer-join semantics; unmatched rows produce
+  ``null`` for all variables introduced by the OPTIONAL MATCH.
+* **Relationship direction** — directed (``-->``, ``<--``) and undirected
+  (``--``) traversal; undirected is executed as a union of both directed
+  traversals with duplicates removed.
+* **Variable-length paths** — ``[*m..n]`` hop-bounded BFS; unbounded ``[*]``
+  capped at :data:`_MAX_UNBOUNDED_PATH_HOPS` hops.
+* **Relationship labels** — typed (``[:KNOWS]``), typed union
+  (``[:KNOWS|:LIKES]`` or ``[:KNOWS|LIKES]``), and untyped (``[]``)
+  relationship patterns; untyped scans every registered relationship type.
+* **Relationship properties** — inline property filters on relationship
+  patterns (``-[r {since: 2020}]->``) and post-hoc access via ``r.prop``.
+
+Filtering and Predicates
+~~~~~~~~~~~~~~~~~~~~~~~~~
+* **WHERE** — full expression predicate support including scalar functions,
+  boolean operators (``AND``, ``OR``, ``NOT``), comparisons, ``IS NULL``,
+  ``IS NOT NULL``, and string predicates.
+* **String predicates** — ``STARTS WITH``, ``ENDS WITH``, ``CONTAINS``,
+  regex match (``=~``), ``IN``, and ``NOT IN``.
+* **Null literals** — ``null`` is parsed and propagated correctly through
+  comparisons and predicates.
+
+Expressions
+~~~~~~~~~~~
+* **Arithmetic** — ``+``, ``-``, ``*``, ``/``, ``%``, ``^`` with operator
+  precedence.
+* **CASE** — both searched (``CASE WHEN … THEN … ELSE … END``) and simple
+  (``CASE expr WHEN val THEN … END``) forms.
+* **List comprehensions** — ``[x IN list WHERE pred | expr]``.
+* **Quantifier predicates** — ``all()``, ``any()``, ``none()``, ``single()``
+  over lists.
+* **reduce()** — ``reduce(acc = init, var IN list | step)`` accumulation.
+* **Scalar functions** — full registry of built-in functions; see
+  :meth:`Star.available_functions` for the complete list.
+* **UNWIND** — expands a list expression into individual rows.
+
+Projection and Aggregation
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+* **WITH** — simple column projection, full-table aggregation, and
+  grouped aggregation; supports DISTINCT, ORDER BY, SKIP, and LIMIT.
+* **WITH *** — pass-through projection; all non-internal bindings are
+  forwarded unchanged (ORDER BY / SKIP / LIMIT still apply).
+* **RETURN** — expression projection with DISTINCT, ORDER BY (ASC / DESC),
+  SKIP, and LIMIT.
+* **RETURN *** — return all non-internal in-scope variables.
+* **Aggregation functions** — ``count()``, ``sum()``, ``avg()``, ``min()``,
+  ``max()``, ``collect()`` (produces Python lists), ``stdev()`` (sample,
+  ddof=1), ``stdevp()`` (population, ddof=0), ``percentileCont(expr, p)``
+  (linear interpolation), ``percentileDisc(expr, p)`` (lower/discrete).
+
+Mutation
+~~~~~~~~
+* **CREATE** — node and relationship insertion.  New entity types are
+  automatically registered in the context at commit time.
+* **SET** — property write-back via shadow-write atomicity; supports
+  computed expressions on the right-hand side.
+* **REMOVE p.property** — remove a single property from matched nodes.
+  ``REMOVE p:Label`` is accepted but is a no-op (label membership is
+  implicit in entity-table identity and cannot be detached per-row).
+* **DELETE** — remove matched entity rows from the entity table.
+* **DETACH DELETE** — remove matched entities *and* all relationship rows
+  that reference them (outgoing or incoming).
+* **MERGE** — upsert primitive: attempts to match the supplied node
+  pattern; if no match exists, creates the node.  Idempotent.
+  Supports ``ON CREATE SET`` (fires only when the node was created) and
+  ``ON MATCH SET`` (fires only when the node already existed); both may
+  appear together in the same MERGE clause.
+
+All mutations are staged in a per-query shadow layer and committed
+atomically when the query succeeds; a failed query is automatically
+rolled back to leave the context unchanged.
+
+Procedure Calls
+~~~~~~~~~~~~~~~
+* **CALL procedure(args) YIELD col1, col2** — invokes a registered
+  procedure and introduces the YIELDed columns into the binding frame.
+  Built-in ``db.*`` procedures:
+
+  - ``db.labels()`` → ``label`` (one row per registered entity type)
+  - ``db.relationshipTypes()`` → ``relationshipType`` (one per relationship type)
+  - ``db.propertyKeys()`` → ``propertyKey`` (one per unique user-visible property)
+
+  Custom procedures can be registered via
+  :data:`~pycypher.relational_models.PROCEDURE_REGISTRY`.
+
+Set Operations
+~~~~~~~~~~~~~~
+* **UNION / UNION ALL** — combine the results of multiple queries;
+  ``UNION`` deduplicates, ``UNION ALL`` preserves all rows.
+
+Utility
+-------
+* :meth:`Star.available_functions` — return sorted list of registered scalar
+  function names from the :class:`~pycypher.scalar_functions.ScalarFunctionRegistry`.
+* :data:`~pycypher.relational_models.PROCEDURE_REGISTRY` — module-level
+  singleton for registering and invoking CALL procedures.
+"""
+
 from __future__ import annotations
-import copy
-from typing import Optional, Any, cast
-import rich
-from shared.logger import LOGGER
-from pycypher.grammar_parser import GrammarParser
-from pycypher.ast_models import (
-    random_hash,
-    ASTConverter,
-    RelationshipDirection,
-    Pattern,
-    PatternPath,
-    PatternIntersection,
-    Variable,
-    RelationshipPattern,
-    NodePattern,
-    Algebraizable,
-)
-from pycypher.relational_models import (
-    ID_COLUMN,
-    RELATIONSHIP_SOURCE_COLUMN,
-    RELATIONSHIP_TARGET_COLUMN,
-    flatten,
-    VariableMap,
-    VariableTypeMap,
-    Context,
-    Relation,
-    EntityTable,
-    RelationIntersection,
-    RelationshipTable,
-    Projection,
-    JoinType,
-    Join,
-    SelectColumns,
-    FilterRows,
-    AttributeEqualsValue,
-    ColumnName,
-)
+
+import hashlib
+import json
+import signal
+import threading
+import time
+import uuid
+from collections import OrderedDict
+from typing import Any
+
+# BindingFrame is needed at runtime, not just for type checking
 import pandas as pd
+from shared.logger import LOGGER, reset_query_id, set_query_id
+from shared.metrics import QUERY_METRICS, get_rss_mb
+
+from pycypher.ast_models import (
+    ASTConverter,
+    Variable,
+)
+from pycypher.binding_frame import BindingFrame
+from pycypher.config import QUERY_TIMEOUT_S as _DEFAULT_TIMEOUT_S
+from pycypher.config import RESULT_CACHE_MAX_MB as _DEFAULT_RESULT_CACHE_MAX_MB
+from pycypher.config import RESULT_CACHE_TTL_S as _DEFAULT_RESULT_CACHE_TTL_S
+from pycypher.exceptions import QueryTimeoutError
+from pycypher.expression_renderer import ExpressionRenderer
+from pycypher.ingestion.context_builder import ContextBuilder
+from pycypher.mutation_engine import MutationEngine
+from pycypher.path_expander import PathExpander
+from pycypher.pattern_matcher import PatternMatcher
+from pycypher.relational_models import Context
+
+__all__ = [
+    "ResultCache",
+    "Star",
+    "get_cache_stats",
+]
+
+# ---------------------------------------------------------------------------
+# Internal column-name constants
+# ---------------------------------------------------------------------------
+
+#: Temporary column used during variable-length path BFS to track the frontier.
+_VL_TIP_COL: str = "_vl_tip"
+
+#: Synthetic variable name prefix for anonymous nodes.
+_ANON_NODE_PREFIX: str = "_anon_node_"
+
+#: Synthetic variable name prefix for anonymous relationships.
+_ANON_REL_PREFIX: str = "_anon_rel_"
+
+
+class ResultCache:
+    """LRU cache for query results with size-bounded eviction and TTL support.
+
+    Keys are derived from the normalised query string and parameters.
+    Values are copied DataFrames so mutations to the returned frame do not
+    corrupt the cached entry.
+
+    The cache is automatically invalidated when the underlying ``Context``
+    commits a mutation (SET / CREATE / DELETE / MERGE / REMOVE).
+
+    Thread-safety: all public methods acquire ``_lock``.
+    """
+
+    def __init__(
+        self,
+        max_size_bytes: int = _DEFAULT_RESULT_CACHE_MAX_MB * 1024 * 1024,
+        ttl_seconds: float = _DEFAULT_RESULT_CACHE_TTL_S or 0.0,
+    ) -> None:
+        """Initialize the result cache.
+
+        Args:
+            max_size_bytes: Maximum total memory for cached DataFrames.
+                ``0`` disables caching entirely.
+            ttl_seconds: Time-to-live per entry in seconds.
+                ``0`` means entries never expire by time (only by LRU eviction
+                or mutation-based invalidation).
+
+        """
+        self._max_size_bytes: int = max_size_bytes
+        self._ttl_seconds: float = ttl_seconds
+        # OrderedDict for LRU: most-recently-used entries move to the end.
+        self._entries: OrderedDict[str, tuple[pd.DataFrame, float, int]] = (
+            OrderedDict()
+        )
+        self._current_size_bytes: int = 0
+        self._hits: int = 0
+        self._misses: int = 0
+        self._evictions: int = 0
+        self._lock: threading.Lock = threading.Lock()
+        # Monotonically increasing counter — bumped on every mutation commit.
+        # Cache entries store the generation at insertion time; a mismatch
+        # means the underlying data has changed.
+        self._generation: int = 0
+
+    @property
+    def enabled(self) -> bool:
+        """Whether caching is active (max_size_bytes > 0)."""
+        return self._max_size_bytes > 0
+
+    @staticmethod
+    def _make_key(query: str, parameters: dict[str, Any] | None) -> str:
+        """Produce a deterministic cache key from query + parameters.
+
+        Args:
+            query: The Cypher query string.
+            parameters: Optional query parameters dict.
+
+        Returns:
+            A hex-digest string suitable as a dict key.
+
+        """
+        # blake2b is ~3x faster than SHA-256 for short inputs and equally
+        # collision-resistant for cache-key purposes (not cryptographic).
+        h = hashlib.blake2b(query.encode("utf-8"), digest_size=16)
+        if parameters:
+            # Sort keys for deterministic ordering.
+            h.update(
+                json.dumps(parameters, sort_keys=True, default=str).encode(
+                    "utf-8",
+                ),
+            )
+        return h.hexdigest()
+
+    @staticmethod
+    def _estimate_df_bytes(df: pd.DataFrame) -> int:
+        """Estimate the in-memory size of a DataFrame in bytes.
+
+        Args:
+            df: The DataFrame to measure.
+
+        Returns:
+            Estimated size in bytes.
+
+        """
+        return int(df.memory_usage(deep=True).sum())
+
+    def get(
+        self,
+        query: str,
+        parameters: dict[str, Any] | None,
+    ) -> pd.DataFrame | None:
+        """Look up a cached result.
+
+        Args:
+            query: The Cypher query string.
+            parameters: Optional query parameters dict.
+
+        Returns:
+            A **copy** of the cached DataFrame, or ``None`` on miss.
+
+        """
+        if not self.enabled:
+            self._misses += 1
+            return None
+
+        key = self._make_key(query, parameters)
+        with self._lock:
+            entry = self._entries.get(key)
+            if entry is None:
+                self._misses += 1
+                return None
+
+            df, timestamp, generation = entry
+
+            # Stale generation — data has been mutated since caching.
+            if generation != self._generation:
+                del self._entries[key]
+                self._current_size_bytes -= self._estimate_df_bytes(df)
+                self._misses += 1
+                return None
+
+            # TTL expiry.
+            if self._ttl_seconds > 0:
+                age = time.monotonic() - timestamp
+                if age > self._ttl_seconds:
+                    del self._entries[key]
+                    self._current_size_bytes -= self._estimate_df_bytes(df)
+                    self._misses += 1
+                    return None
+
+            # Move to end (most-recently-used).
+            self._entries.move_to_end(key)
+            self._hits += 1
+            return df.copy()
+
+    def put(
+        self,
+        query: str,
+        parameters: dict[str, Any] | None,
+        result: pd.DataFrame,
+    ) -> None:
+        """Store a query result in the cache.
+
+        Args:
+            query: The Cypher query string.
+            parameters: Optional query parameters dict.
+            result: The DataFrame to cache (a copy is stored).
+
+        """
+        if not self.enabled:
+            return
+
+        key = self._make_key(query, parameters)
+        df_copy = result.copy()
+        entry_bytes = self._estimate_df_bytes(df_copy)
+
+        # Don't cache entries larger than the entire budget.
+        if entry_bytes > self._max_size_bytes:
+            return
+
+        with self._lock:
+            # If key already exists, remove old entry first.
+            if key in self._entries:
+                old_df, _, _ = self._entries.pop(key)
+                self._current_size_bytes -= self._estimate_df_bytes(old_df)
+
+            # Evict LRU entries until there is room.
+            while (
+                self._entries
+                and self._current_size_bytes + entry_bytes
+                > self._max_size_bytes
+            ):
+                _, (evicted_df, _, _) = self._entries.popitem(last=False)
+                self._current_size_bytes -= self._estimate_df_bytes(evicted_df)
+                self._evictions += 1
+
+            self._entries[key] = (
+                df_copy,
+                time.monotonic(),
+                self._generation,
+            )
+            self._current_size_bytes += entry_bytes
+
+    def invalidate(self) -> None:
+        """Bump the generation counter, lazily invalidating all entries.
+
+        Called when a mutation is committed to the Context.  Existing entries
+        are not deleted immediately — they are evicted on the next ``get()``
+        that detects the stale generation, or during LRU eviction.
+        """
+        with self._lock:
+            self._generation += 1
+
+    def clear(self) -> None:
+        """Remove all cached entries immediately."""
+        with self._lock:
+            self._entries.clear()
+            self._current_size_bytes = 0
+
+    def stats(self) -> dict[str, Any]:
+        """Return cache statistics.
+
+        Returns:
+            Dict with keys: result_cache_hits, result_cache_misses,
+            result_cache_hit_rate, result_cache_size_bytes,
+            result_cache_size_mb, result_cache_entries,
+            result_cache_evictions, result_cache_max_mb.
+
+        """
+        with self._lock:
+            total = self._hits + self._misses
+            return {
+                "result_cache_hits": self._hits,
+                "result_cache_misses": self._misses,
+                "result_cache_hit_rate": (
+                    self._hits / total if total > 0 else 0.0
+                ),
+                "result_cache_size_bytes": self._current_size_bytes,
+                "result_cache_size_mb": round(
+                    self._current_size_bytes / (1024 * 1024),
+                    2,
+                ),
+                "result_cache_entries": len(self._entries),
+                "result_cache_evictions": self._evictions,
+                "result_cache_max_mb": round(
+                    self._max_size_bytes / (1024 * 1024),
+                    2,
+                ),
+            }
+
+
+def _literal_from_python_value(val: Any) -> Any:
+    """Convert a Python scalar to the matching AST Literal node.
+
+    Args:
+        val: A Python ``bool``, ``int``, ``float``, or any other value
+             (converted to string).
+
+    Returns:
+        An AST ``Literal`` subclass instance suitable for use in a
+        :class:`~pycypher.ast_models.Comparison` predicate.
+
+    Note:
+        ``bool`` must be checked before ``int`` because ``bool`` is a
+        subclass of ``int`` in Python.
+
+    """
+    from pycypher.ast_models import (
+        BooleanLiteral,
+        FloatLiteral,
+        IntegerLiteral,
+        StringLiteral,
+    )
+
+    if isinstance(val, bool):
+        return BooleanLiteral(value=val)
+    if isinstance(val, int):
+        return IntegerLiteral(value=val)
+    if isinstance(val, float):
+        return FloatLiteral(value=val)
+    return StringLiteral(value=str(val))
+
+
+def get_cache_stats(star: Star | None = None) -> dict[str, Any]:
+    """Return combined cache statistics from all PyCypher caches.
+
+    Combines metrics from:
+    - ``_parse_cypher_cached`` (functools.lru_cache in ast_models)
+    - ``GrammarParser._lark_cache`` (class-level Lark instance cache)
+    - ``Star._result_cache`` (query result LRU cache, if *star* is provided)
+
+    Args:
+        star: Optional Star instance to include result cache stats.  When
+            ``None``, result cache metrics are omitted.
+
+    Returns:
+        Dict with keys: lru_hits, lru_misses, lru_size, lru_maxsize,
+        lru_hit_rate, lark_cache_hits, lark_cache_misses,
+        lru_at_capacity, eviction_estimate, and (when *star* is given)
+        result_cache_* keys.
+
+    """
+    from pycypher.ast_models import _parse_cypher_cached
+    from pycypher.grammar_parser import GrammarParser
+
+    info = _parse_cypher_cached.cache_info()
+    lru_total = info.hits + info.misses
+    at_capacity = info.maxsize is not None and info.currsize == info.maxsize
+    # Eviction estimate: misses beyond maxsize indicate evictions occurred.
+    eviction_estimate = (
+        max(0, info.misses - (info.maxsize or 0)) if at_capacity else 0
+    )
+    result: dict[str, Any] = {
+        "lru_hits": info.hits,
+        "lru_misses": info.misses,
+        "lru_size": info.currsize,
+        "lru_maxsize": info.maxsize,
+        "lru_hit_rate": info.hits / lru_total if lru_total > 0 else 0.0,
+        "lark_cache_hits": GrammarParser._lark_cache_hits,
+        "lark_cache_misses": GrammarParser._lark_cache_misses,
+        "lru_at_capacity": at_capacity,
+        "eviction_estimate": eviction_estimate,
+    }
+    if star is not None:
+        result.update(star._result_cache.stats())
+    return result
 
 
 class Star:
-    """Translation operator."""
+    """Main entry point for PyCypher query execution.
 
-    def __init__(self, context: Context = Context()) -> None:
+    Accepts a :class:`~pycypher.relational_models.Context` (containing
+    ``EntityTable`` and ``RelationshipTable`` objects), parses a Cypher query
+    string, and executes it against the registered DataFrames via the
+    BindingFrame execution path.
+
+    Query lifecycle
+    ~~~~~~~~~~~~~~~
+
+    1. **Parse** — Cypher string → AST via :class:`~pycypher.grammar_parser.GrammarParser`.
+    2. **Plan** — AST is analysed for complexity, memory budget, and timeout.
+    3. **Execute** — clauses are processed sequentially, building up a
+       :class:`~pycypher.binding_frame.BindingFrame` through MATCH, WHERE,
+       WITH, and RETURN stages.  Mutations (CREATE/SET/DELETE) are staged
+       in a shadow layer and committed on success.
+    4. **Return** — the final BindingFrame is projected to a pandas DataFrame.
+
+    Example::
+
+        import pandas as pd
+        from pycypher import ContextBuilder, Star
+
+        people = pd.DataFrame({
+            "__ID__": [1, 2, 3],
+            "name": ["Alice", "Bob", "Carol"],
+            "age": [30, 25, 35],
+        })
+        star = Star(ContextBuilder().add_entity("Person", people).build())
+
+        # Simple query
+        result = star.execute_query(
+            "MATCH (p:Person) WHERE p.age > 28 RETURN p.name ORDER BY p.name"
+        )
+        # Returns DataFrame: name = ["Alice", "Carol"]
+
+        # Parameterized query with timeout
+        result = star.execute_query(
+            "MATCH (p:Person) WHERE p.age > $min_age RETURN p.name",
+            parameters={"min_age": 28},
+            timeout_seconds=5.0,
+        )
+
+    Internally, Star delegates to specialized engines:
+
+    - :class:`~pycypher.pattern_matcher.PatternMatcher` — MATCH clause translation
+    - :class:`~pycypher.path_expander.PathExpander` — variable-length path BFS
+    - :class:`~pycypher.mutation_engine.MutationEngine` — CREATE/SET/DELETE execution
+    """
+
+    def __init__(
+        self,
+        context: Context | ContextBuilder | None = None,
+        *,
+        result_cache_max_mb: int | None = None,
+        result_cache_ttl_seconds: float | None = None,
+    ) -> None:
+        """Initialize Star with a data context.
+
+        Args:
+            context: PyCypher Context or ContextBuilder.  A ContextBuilder is
+                automatically finalised via ``.build()``.
+            result_cache_max_mb: Maximum memory (MB) for the query result
+                cache.  Defaults to ``PYCYPHER_RESULT_CACHE_MAX_MB`` env var
+                (100 MB).  Set to ``0`` to disable result caching.
+            result_cache_ttl_seconds: Time-to-live per cached result in
+                seconds.  Defaults to ``PYCYPHER_RESULT_CACHE_TTL_S`` env var
+                (0 = no TTL).
+
+        """
+        if context is None:
+            context = Context()
+        elif isinstance(context, ContextBuilder):
+            context = context.build()
         self.context: Context = context
 
-    def to_relation(self, obj: Algebraizable | str) -> Relation:
-        """Convert the object to a Relation. Recursively handles different AST node types."""
-        LOGGER.debug(msg=f"Starting to_relation conversion for {obj}.")
-        match obj:
-            case str():
-                pattern_obj: Pattern = self.to_relation(
-                    ASTConverter().from_cypher(obj)
-                )
-            case NodePattern(variable=_, labels=_, properties=properties) if (
-                len(properties) == 0  # (n:Thing)
-            ):
-                LOGGER.debug(msg="Translating NodePattern with no properties.")
-                out: Projection = self._from_node_pattern(node=obj)
-            case NodePattern(variable=_, labels=_, properties=properties) if (
-                len(properties) >= 1  # (n:Thing {prop1: val1})
-            ):
-                LOGGER.debug(
-                    msg="Translating NodePattern with one or more properties."
-                )
-                out: FilterRows = self._from_node_pattern_with_attrs(node=obj)
-            case RelationshipPattern(  # -[r:KNOWS]->
-                variable=_, labels=_, properties=properties
-            ) if len(properties) == 0:
-                LOGGER.debug(
-                    msg="Translating RelationshipPattern with no properties."
-                )
-                out: RelationshipTable = self._from_relationship_pattern(
-                    relationship=obj
-                )
-            case RelationshipPattern(
-                variable=_, labels=_, properties=properties
-            ) if len(properties) >= 1:
-                LOGGER.debug(
-                    msg=f"Translating RelationshipPattern with {len(properties)} properties."
-                )
-                out: FilterRows = self._from_relationship_pattern_with_attrs(
-                    relationship=obj
-                )
-            case Pattern():
-                LOGGER.debug(msg="Translating Pattern.")
-                out: Relation = self._from_pattern(pattern=obj)
-            case PatternPath() as pattern_path:  # (p1)-[r:KNOWS]->(p2)
-                LOGGER.debug(msg="Translating PatternPath.")
-                out: Relation = self._from_pattern_path(
-                    pattern_path=pattern_path
-                )
+        # Track variable-to-type mappings during pattern processing
+        self.variable_type_registry: dict[Variable, str] = {}
 
-            case _:
-                raise NotImplementedError(
-                    f"Translation for {type(obj)} is not implemented."
-                )
-        # Record the original `obj` in the Relation for traceability
-        out.source_algebraizable: Algebraizable = obj
-        return out
+        # Delegate all mutation operations to the focused MutationEngine.
+        self._mutations: MutationEngine = MutationEngine(context=context)
 
-    def _from_pattern(self, pattern: Pattern) -> Relation:
-        """Break down the `Pattern` into NodePattern objects and pairs of NodePattern and RelationshipPattern.
-        Reverse the directions of RelationshipPatterns to reduce the number of cases. Translate each element
-        of the Pattern, then join them pairwise.
+        # Delegate BFS path expansion to the focused PathExpander.
+        self._path_expander: PathExpander = PathExpander(context=context)
+
+        # Delegate frame joining (OPTIONAL MATCH, multi-MATCH merging, seed frames).
+        from pycypher.frame_joiner import FrameJoiner
+
+        self._frame_joiner: FrameJoiner = FrameJoiner(
+            context=context,
+            match_fn=lambda clause, **kw: (
+                self._pattern_matcher.match_to_binding_frame(clause, **kw)
+            ),
+            where_fn=self._apply_where_filter,
+        )
+
+        # Delegate pattern matching to the focused PatternMatcher.
+        # Injected with coerce_join and apply_where_filter from this class.
+        self._pattern_matcher: PatternMatcher = PatternMatcher(
+            context=context,
+            path_expander=self._path_expander,
+            coerce_join_fn=self._frame_joiner.coerce_join,
+            apply_where_fn=self._apply_where_filter,
+        )
+
+        # Delegate expression rendering to the focused ExpressionRenderer.
+        self._renderer: ExpressionRenderer = ExpressionRenderer()
+
+        # Delegate aggregation detection and planning.
+        from pycypher.aggregation_planner import AggregationPlanner
+
+        self._agg_planner: AggregationPlanner = AggregationPlanner()
+
+        # Delegate RETURN/WITH clause evaluation and projection modifiers.
+        from pycypher.projection_planner import ProjectionPlanner
+
+        self._projection_planner: ProjectionPlanner = ProjectionPlanner(
+            agg_planner=self._agg_planner,
+            renderer=self._renderer,
+            where_fn=self._apply_where_filter,
+        )
+
+        # Query result cache — LRU with size-bounded eviction.
+        _cache_mb = (
+            result_cache_max_mb
+            if result_cache_max_mb is not None
+            else _DEFAULT_RESULT_CACHE_MAX_MB
+        )
+        _cache_ttl = (
+            result_cache_ttl_seconds
+            if result_cache_ttl_seconds is not None
+            else _DEFAULT_RESULT_CACHE_TTL_S
+        )
+        self._result_cache: ResultCache = ResultCache(
+            max_size_bytes=_cache_mb * 1024 * 1024,
+            ttl_seconds=_cache_ttl or 0.0,
+        )
+
+    def __repr__(self) -> str:
+        """Return an informative summary for REPL/notebook display.
+
+        Shows backend, entity types with row counts, and relationship
+        types with row counts.  Example::
+
+            Star(backend='pandas', entities={'Person': 4}, relationships={'KNOWS': 3})
         """
-        elements: list[Relation] = [
-            self.to_relation(obj=element) for element in pattern.paths
-        ]
-        if not elements:
-            raise ValueError("PatternPath must have at least one element.")
-        elif len(elements) == 1:
-            LOGGER.debug(msg="Pattern has only one element, no joins needed.")
-            return elements[0]
-        else:  # Two or more elements
-            LOGGER.debug(
-                msg=f"Pattern has {len(elements)} elements, performing pairwise joins."
+        entity_counts: dict[str, int] = {}
+        for name in sorted(self.context.entity_mapping.mapping):
+            table = self.context.entity_mapping.mapping[name]
+            src = getattr(table, "source_obj", None)
+            entity_counts[name] = len(src) if src is not None else 0
+
+        rel_counts: dict[str, int] = {}
+        for name in sorted(self.context.relationship_mapping.mapping):
+            table = self.context.relationship_mapping.mapping[name]
+            src = getattr(table, "source_obj", None)
+            rel_counts[name] = len(src) if src is not None else 0
+
+        parts = [f"Star(backend={self.context.backend_name!r}"]
+        parts.append(
+            f"entities={entity_counts}" if entity_counts else "entities={}",
+        )
+        if rel_counts:
+            parts.append(f"relationships={rel_counts}")
+        return ", ".join(parts) + ")"
+
+    @staticmethod
+    def _query_has_mutations(parsed: Any) -> bool:
+        """Return True if the parsed query contains mutation clauses.
+
+        Args:
+            parsed: A Query or UnionQuery AST node.
+
+        Returns:
+            True if the query contains CREATE, SET, DELETE, MERGE, REMOVE,
+            or FOREACH clauses (i.e. it modifies data).
+
+        """
+        from pycypher.ast_models import (
+            Create,
+            Delete,
+            Foreach,
+            Merge,
+            Remove,
+            Set,
+            UnionQuery,
+        )
+
+        _MUTATION_TYPES = (Create, Delete, Set, Merge, Remove, Foreach)
+
+        if isinstance(parsed, UnionQuery):
+            return any(
+                Star._query_has_mutations(stmt) for stmt in parsed.statements
             )
-            pairwise_joined_relations: list[Relation] = []
-            for index, first_element in enumerate(elements[:-1]):
-                LOGGER.debug(msg=f"Element {index}: {first_element}")
-                second_element: Relation = elements[index + 1]
-                LOGGER.debug(msg=f"Element {index + 1}: {second_element}")
-                pairwise_joined_relations.append(
-                    self._binary_join(left=first_element, right=second_element)
+        clauses = getattr(parsed, "clauses", None)
+        if clauses is None:
+            return False
+        return any(isinstance(c, _MUTATION_TYPES) for c in clauses)
+
+    def available_functions(self) -> list[str]:
+        """Return a sorted list of registered scalar function names.
+
+        Queries the :class:`~pycypher.scalar_functions.ScalarFunctionRegistry`
+        singleton for all currently registered function names.  Names are
+        lowercased (matching Cypher case-insensitive semantics).
+
+        Returns:
+            Sorted list of function name strings, e.g.
+            ``["abs", "ceil", "cos", ..., "toupper", "trim"]``.
+
+        """
+        from pycypher.scalar_functions import ScalarFunctionRegistry
+
+        registry = ScalarFunctionRegistry.get_instance()
+        return registry.list_functions()
+
+    def explain_query(self, query: str) -> str:
+        """Return a text execution plan without running the query.
+
+        Parses the Cypher query, walks the AST clauses, and runs the query
+        planner to produce cardinality estimates, join strategies, and memory
+        projections.  Similar to SQL ``EXPLAIN``.
+
+        Args:
+            query: Cypher query string.
+
+        Returns:
+            Human-readable execution plan as a multi-line string.
+
+        Example::
+
+            print(star.explain_query(
+                "MATCH (p:Person)-[:KNOWS]->(q:Person) RETURN p.name"
+            ))
+
+        """
+        from pycypher.ast_models import ASTConverter, Query, UnionQuery
+        from pycypher.query_planner import QueryPlanAnalyzer
+
+        if not query.strip():
+            return "Error: empty query"
+
+        converter = ASTConverter()
+        parsed = converter.from_cypher(query)
+
+        lines: list[str] = [
+            "Execution Plan",
+            "=" * 60,
+            f"Query: {query.strip()!r}",
+            f"Backend: {self.context.backend_name}",
+            "",
+        ]
+
+        if isinstance(parsed, UnionQuery):
+            lines.append(
+                f"UNION query with {len(parsed.statements)} sub-queries"
+            )
+            for i, sub_q in enumerate(parsed.statements):
+                lines.append(
+                    f"  Sub-query {i + 1}: {len(sub_q.clauses)} clauses",
+                )
+            return "\n".join(lines)
+
+        if not isinstance(parsed, Query):
+            lines.append(f"Unexpected AST type: {type(parsed).__name__}")
+            return "\n".join(lines)
+
+        # Clause summary
+        lines.append("Clauses:")
+        for i, clause in enumerate(parsed.clauses):
+            clause_name = type(clause).__name__
+            detail = ""
+            if hasattr(clause, "optional") and clause.optional:
+                detail = " (OPTIONAL)"
+            if hasattr(clause, "distinct") and clause.distinct:
+                detail += " DISTINCT"
+            lines.append(f"  {i + 1}. {clause_name}{detail}")
+        lines.append("")
+
+        # Entity/relationship stats
+        entities = self.context.entity_mapping.mapping
+        rels = self.context.relationship_mapping.mapping
+        if entities or rels:
+            lines.append("Data Context:")
+            for name in sorted(entities):
+                src = entities[name].source_obj
+                n = len(src) if hasattr(src, "__len__") else "?"
+                lines.append(f"  Entity {name}: {n} rows")
+            for name in sorted(rels):
+                src = rels[name].source_obj
+                n = len(src) if hasattr(src, "__len__") else "?"
+                lines.append(f"  Relationship {name}: {n} rows")
+            lines.append("")
+
+        # Query planner analysis
+        analysis = QueryPlanAnalyzer(parsed, self.context).analyze()
+        lines.append(
+            f"Estimated peak memory: {analysis.estimated_peak_bytes:,} bytes",
+        )
+
+        if analysis.clause_cardinalities:
+            lines.append("Cardinality estimates:")
+            for i, card in enumerate(analysis.clause_cardinalities):
+                clause_name = (
+                    type(parsed.clauses[i]).__name__
+                    if i < len(parsed.clauses)
+                    else "?"
+                )
+                lines.append(
+                    f"  Clause {i + 1} ({clause_name}): ~{card:,} rows",
                 )
 
-        out: Relation = self._from_intersection_list(
-            relations=pairwise_joined_relations
-        )
-        return out
+        if analysis.join_plans:
+            lines.append("Join strategies:")
+            for jp in analysis.join_plans:
+                lines.append(
+                    f"  {jp.left_name} \u22c8 {jp.right_name}: "
+                    f"{jp.strategy.value} (~{jp.estimated_rows:,} rows, "
+                    f"{jp.estimated_memory_bytes:,} bytes)",
+                )
+                if jp.notes:
+                    lines.append(f"    Note: {jp.notes}")
 
-    def _from_pattern_path(self, pattern_path: PatternPath) -> Relation:
-        """Convert a PatternPath to a Relation."""
-        # Convert PatternPath to a list of Relationship/Node
-        elements: list[Relation] = [
-            self.to_relation(obj=element) for element in pattern_path.elements
-        ]
-        LOGGER.debug(
-            msg=f"Decomposed PatternPath into {len(elements)} elements."
-        )
-        LOGGER.debug(msg=f"Elements: {'\n'.join(str(e) for e in elements)}")
-        if not elements:
-            raise ValueError("PatternPath must have at least one element.")
-        elif len(elements) == 1:
-            return elements[0]
-        else:  # Two or more elements
-            pairwise_joined_relations: list[Relation] = []
-            for index, first_element in enumerate(elements[:-1]):
-                second_element: Relation = elements[index + 1]
-                LOGGER.debug(msg=f"Joining element {index} and {index + 1}.")
+        if analysis.has_pushdown_opportunities:
+            lines.append("Optimization opportunities:")
+            for p in analysis.pushdown_opportunities:
+                lines.append(
+                    f"  Filter on '{p.variable}' can be pushed before join",
+                )
 
-                match (
-                    first_element.source_algebraizable,
-                    second_element.source_algebraizable,
-                ):
-                    case (
-                        NodePattern() as node_pattern,
-                        RelationshipPattern() as relationship_pattern,
-                    ):
-                        normalized_pair = (node_pattern, relationship_pattern)
-                        joiner = (
-                            self._from_node_relationship_tail
-                            if relationship_pattern.direction
-                            == RelationshipDirection.RIGHT
-                            else self._from_node_relationship_head
-                        )
-                    case (
-                        RelationshipPattern() as relationship_pattern,
-                        NodePattern() as node_pattern,
-                    ):
-                        normalized_pair = (node_pattern, relationship_pattern)
-                        joiner = (
-                            self._from_node_relationship_tail
-                            if relationship_pattern.direction
-                            == RelationshipDirection.LEFT
-                            else self._from_node_relationship_head
-                        )
-                    case _:
-                        raise ValueError(
-                            "Unexpected pair of elements in PatternPath: "
-                            f"{type(first_element.source_algebraizable)} and "
-                            f"{type(second_element.source_algebraizable)}. "
-                            "Expected NodePattern and RelationshipPattern."
-                        )
+        return "\n".join(lines)
 
-                node_pattern, relationship_pattern = normalized_pair
+    def execute_query(
+        self,
+        query: str | Any,
+        *,
+        parameters: dict[str, Any] | None = None,
+        timeout_seconds: float | None = None,
+        memory_budget_bytes: int | None = None,
+        max_complexity_score: int | None = None,
+    ) -> pd.DataFrame:
+        """Execute a complete Cypher query and return results as DataFrame.
 
-                # joiner = (
-                #     self._from_node_relationship_head
-                #     if relationship_pattern.direction == RelationshipDirection.RIGHT
-                #     else self._from_node_relationship_tail
-                # )
+        Args:
+            query: Cypher query string or Query AST node.
+            parameters: Optional dict of named query parameters.  Each key
+                corresponds to a ``$name`` placeholder in the query.  Example::
 
-                pairwise_joined_relations.append(
-                    joiner(
-                        node=node_pattern, relationship=relationship_pattern
+                    star.execute_query(
+                        "MATCH (p:Person) WHERE p.name = $name RETURN p.age",
+                        parameters={"name": "Alice"},
                     )
+            timeout_seconds: Optional wall-clock timeout in seconds.  If the
+                query takes longer than this, a
+                :class:`~pycypher.exceptions.QueryTimeoutError` is raised.
+                ``None`` (default) means no timeout.  Falls back to the
+                ``PYCYPHER_QUERY_TIMEOUT_S`` environment variable when set.
+            memory_budget_bytes: Optional peak-memory budget in bytes.  The
+                query planner estimates memory requirements before execution
+                and raises
+                :class:`~pycypher.exceptions.QueryMemoryBudgetError` if the
+                estimate exceeds this value.  ``None`` (default) logs a
+                warning when the estimate exceeds 2 GB but does not raise.
+                Set explicitly to enforce a hard limit, e.g.
+                ``memory_budget_bytes=500 * 1024 * 1024`` for 500 MB.
+            max_complexity_score: Optional ceiling for the query complexity
+                score computed by :func:`~pycypher.query_complexity.score_query`.
+                The scorer assigns weighted points for clauses, joins,
+                variable-length paths, aggregations, cross-product risk,
+                etc.  If the total exceeds this value, a
+                :class:`~pycypher.query_complexity.QueryComplexityError` is
+                raised **before** execution begins.  ``None`` (default) skips
+                complexity checking entirely.  Typical production values
+                range from 50 to 200.
+
+        Returns:
+            DataFrame with columns matching the RETURN clause aliases.
+
+        Raises:
+            ValueError: If query structure is invalid, or if a query
+                parameter referenced in the query (e.g. ``$min_age``) is
+                not present in *parameters*.
+            NotImplementedError: For unsupported clause types.
+            QueryTimeoutError: If execution exceeds *timeout_seconds*.
+            QueryMemoryBudgetError: If estimated memory exceeds
+                *memory_budget_bytes*.
+            QueryComplexityError: If complexity score exceeds
+                *max_complexity_score*.
+
+        """
+        from pycypher.ast_models import Query, UnionQuery
+
+        # --- Input validation ---
+        if isinstance(query, str) and not query.strip():
+            msg = "Query string must not be empty or whitespace-only."
+            raise ValueError(msg)
+
+        if parameters is not None and not isinstance(parameters, dict):
+            from pycypher.exceptions import WrongCypherTypeError
+
+            raise WrongCypherTypeError(
+                f"parameters must be a dict, got {type(parameters).__name__}"
+            )
+
+        # Resolve effective timeout: explicit parameter > env var > None.
+        _effective_timeout = (
+            timeout_seconds
+            if timeout_seconds is not None
+            else _DEFAULT_TIMEOUT_S
+        )
+
+        if _effective_timeout is not None and _effective_timeout < 0:
+            msg = f"timeout_seconds must be non-negative, got {_effective_timeout}"
+            raise ValueError(msg)
+
+        # Inject parameters into the shared context so evaluators can access them.
+        self.context._parameters = dict(parameters) if parameters else {}
+
+        _qid = uuid.uuid4().hex[:12]
+        _qid_token = set_query_id(_qid)
+        _query_str = query if isinstance(query, str) else repr(query)
+        _param_keys = list(self.context._parameters.keys())
+        LOGGER.debug(
+            "execute_query: start  query=%r  parameters=%r",
+            _query_str[:120],
+            _param_keys,
+        )
+        _t0 = time.perf_counter()
+        _rss_before = get_rss_mb()
+        self._last_clause_timings: dict[str, float] = {}
+        self.context._memory_budget_bytes = memory_budget_bytes
+        _parse_elapsed_ms: float | None = None
+
+        # Arm the per-query timeout before entering the execution path.
+        self.context.set_deadline(_effective_timeout)
+
+        # --- SIGALRM hard stop (Unix main-thread only) ---
+        # The cooperative check_timeout() runs between clauses, but a single
+        # clause stuck in a C extension (pandas merge, numpy sort) won't yield.
+        # SIGALRM ensures the process isn't stuck forever.
+        _old_alarm_handler = None
+        _alarm_set = False
+        if (
+            _effective_timeout is not None
+            and _effective_timeout >= 0
+            and (
+                hasattr(signal, "SIGALRM")
+                and threading.current_thread() is threading.main_thread()
+            )
+        ):
+
+            def _alarm_handler(signum: int, frame: Any) -> None:
+                elapsed = time.perf_counter() - _t0
+                raise QueryTimeoutError(
+                    timeout_seconds=_effective_timeout or 0.0,
+                    elapsed_seconds=elapsed,
+                    query_fragment=_query_str,
                 )
-            relation_intersection: RelationIntersection = RelationIntersection(
-                relation_list=pairwise_joined_relations
+
+            _old_alarm_handler = signal.signal(
+                signal.SIGALRM,
+                _alarm_handler,
             )
-            # join_variables = relation_intersection.variables_in_common()
-            # Each node/relationship pair has been Joined. Now we need to perform a final Join across all pairs.
-            # Start with the first element, then iteratively join the next to it.
-            joined_relation = relation_intersection.relation_list[0]
-            for relation in relation_intersection.relation_list[1:]:
-                join_variables = RelationIntersection(
-                    relation_list=[joined_relation, relation]
-                ).variables_in_common()
-                left_join_on_map = {
-                    join_variable: joined_relation.variable_map[join_variable]
-                    for join_variable in join_variables
-                }
-                right_join_on_map = {
-                    join_variable: relation.variable_map[join_variable]
-                    for join_variable in join_variables
-                }
-                joined_relation: Join = Join(
-                    left=joined_relation,
-                    right=relation,
-                    how=JoinType.INNER,
-                    on_left=list(left_join_on_map.values()),
-                    on_right=list(right_join_on_map.values()),
-                    source_algebraizable=pattern_path,  # Wrong, strictly speaking
-                    variable_map={
-                        **joined_relation.variable_map,
-                        **relation.variable_map,
-                    },
-                    variable_type_map={
-                        **joined_relation.variable_type_map,
-                        **relation.variable_type_map,
-                    },
-                    column_names=joined_relation.column_names
-                    + relation.column_names,
-                )
-            # Remove all columns except variables
-            projected_joined_relation = Projection(
-                relation=joined_relation,
-                projected_column_names={
-                    column_name: column_name
-                    for column_name in joined_relation.variable_map.values()
-                },
-                source_algebraizable=joined_relation.source_algebraizable,
-                variable_map=copy.deepcopy(joined_relation.variable_map),
-                variable_type_map=copy.deepcopy(
-                    joined_relation.variable_type_map
-                ),
-                column_names=[
-                    column_name
-                    for column_name in joined_relation.variable_map.values()
-                ],
-            )
-            return projected_joined_relation
+            signal.alarm(max(1, int(_effective_timeout + 1)))
+            _alarm_set = True
 
-    def _from_node_relationship_tail(
-        self, node: NodePattern, relationship: RelationshipPattern
-    ) -> Relation:
-        """Convert a NodePattern and adjacent RelationshipPattern with direction (n)-[r]-> to a Relation."""
-        # First convert the Node and Relationship separately
-        node_relation: Relation = self._from_node_pattern(node=node)
-        relationship_relation: Relation = self._from_relationship_pattern(
-            relationship=relationship
+        # --- Result cache: fast path for repeated read-only queries ---
+        # Skip cache for queries containing non-deterministic functions.
+        _NON_DETERMINISTIC = {"rand(", "randomuuid(", "timestamp("}
+        _cache_params = dict(parameters) if parameters else None
+        _from_cache = False
+        _query_lower = _query_str.lower() if isinstance(query, str) else ""
+        _cache_eligible = (
+            isinstance(query, str)
+            and self._result_cache.enabled
+            and not any(fn in _query_lower for fn in _NON_DETERMINISTIC)
         )
-
-        # Then perform a binary join on the Node and Relationship using the appropriate keys based on the relationship direction
-        node_variable = node.variable
-        node_variable_column = node_relation.variable_map[node_variable]
-        relationship_variable = relationship.variable
-        relationship_variable_column = relationship_relation.variable_map[
-            relationship_variable
-        ]
-        
-        # Get the prefixed source column name from the relationship
-        rel_label = relationship.labels[0]
-        rel_source_column = f"{rel_label}__{RELATIONSHIP_SOURCE_COLUMN}"
-
-        joined_relation: Relation = Join(
-            left=node_relation,
-            right=relationship_relation,
-            source_algebraizable=PatternIntersection(
-                pattern_list=[node, relationship]
-            ),
-            on_left=[node_variable_column],
-            on_right=[rel_source_column],
-            how=JoinType.INNER,
-            variable_map={
-                **node_relation.variable_map,
-                **relationship_relation.variable_map,
-            },
-            variable_type_map={
-                **node_relation.variable_type_map,
-                **relationship_relation.variable_type_map,
-            },
-            column_names=list(node_relation.variable_map.values())
-            + list(relationship_relation.variable_map.values()),
-        )
-
-        return joined_relation
-
-    def _from_node_relationship_head(
-        self, node: NodePattern, relationship: RelationshipPattern
-    ) -> Relation:
-        """Convert a NodePattern and adjacent RelationshipPattern with direction -[r]->(n) to a Relation."""
-        # First convert the Node and Relationship separately
-        node_relation: Relation = self._from_node_pattern(node=node)
-        relationship_relation: Relation = self._from_relationship_pattern(
-            relationship=relationship
-        )
-
-        # Then perform a binary join on the Node and Relationship using the appropriate keys based on the relationship direction
-        node_variable = node.variable
-        node_variable_column = node_relation.variable_map[node_variable]
-        relationship_variable = relationship.variable
-        relationship_variable_column = relationship_relation.variable_map[
-            relationship_variable
-        ]
-        
-        # Get the prefixed target column name from the relationship
-        rel_label = relationship.labels[0]
-        rel_target_column = f"{rel_label}__{RELATIONSHIP_TARGET_COLUMN}"
-
-        joined_relation: Relation = Join(
-            left=node_relation,
-            right=relationship_relation,
-            source_algebraizable=PatternIntersection(
-                pattern_list=[node, relationship]
-            ),
-            on_left=[node_variable_column],
-            on_right=[rel_target_column],
-            how=JoinType.INNER,
-            variable_map={
-                **node_relation.variable_map,
-                **relationship_relation.variable_map,
-            },
-            variable_type_map={
-                **node_relation.variable_type_map,
-                **relationship_relation.variable_type_map,
-            },
-            column_names=list(node_relation.variable_map.values())
-            + list(relationship_relation.variable_map.values()),
-        )
-
-        return joined_relation
-
-    def _from_intersection_list(self, relations: list[Relation]) -> Relation:
-        accumulated_value: Relation = relations[0]
-        for next_relation in relations[1:]:
-            # Get trhe variables in common
-            common_variables: set[Variable] = set(
-                accumulated_value.variable_map.keys()
-            ).intersection(set(next_relation.variable_map.keys()))
-            # Assume for now that there are common variables. We will need to perform a cross product in the future
-            if not common_variables:
-                raise NotImplementedError(
-                    "No common variables found for join. Cross product not implemented yet."
-                )
-            # Perform the binary join using the common variables
-            variable_map = {
-                **accumulated_value.variable_map,
-                **next_relation.variable_map,
-            }
-            variable_type_map = {
-                **accumulated_value.variable_type_map,
-                **next_relation.variable_type_map,
-            }
-            column_names = (
-                accumulated_value.column_names + next_relation.column_names
-            )
-
-            import pdb
-
-            pdb.set_trace()
-
-            accumulated_value = Join(
-                left=accumulated_value,
-                right=next_relation,
-                join_type=JoinType.INNER,
-                on_left=[
-                    accumulated_value.variable_map[var]
-                    for var in common_variables
-                ],
-                on_right=[
-                    next_relation.variable_map[var] for var in common_variables
-                ],
-                variable_map=variable_map,
-                variable_type_map=variable_type_map,
-                column_names=column_names,
-                source_algebraizable=PatternIntersection(
-                    pattern_list=[
-                        accumulated_value.source_algebraizable,
-                        next_relation.source_algebraizable,
-                    ]
-                ),
-            )
-
-        return accumulated_value
-
-    def _binary_join(self, left: Relation, right: Relation) -> Relation:
-        """Perform a smart binary join between two Relations, depending on the
-        specific types of the Relations."""
-
-        match (left.source_algebraizable, right.source_algebraizable):
-            case (NodePattern(), RelationshipPattern()) if (
-                cast(
-                    typ=RelationshipPattern, val=right.source_algebraizable
-                ).direction
-                == RelationshipDirection.RIGHT
-            ):
+        if _cache_eligible:
+            cached = self._result_cache.get(query, _cache_params)
+            if cached is not None:
+                _elapsed = time.perf_counter() - _t0
                 LOGGER.debug(
-                    msg="Joining Node with Relationship for -[r:RELATIONSHIP]->(n) (head)`."
+                    "execute_query: cache hit  elapsed=%.3fs  query=%r",
+                    _elapsed,
+                    _query_str[:80],
                 )
-                node_variable: Variable = cast(
-                    typ=NodePattern, val=left.source_algebraizable
-                ).variable
-                node_variable_column: ColumnName = left.variable_map[
-                    node_variable
-                ]
-                left_join_key: ColumnName = node_variable_column
-                right_join_key: ColumnName = right.variable_map[
-                    cast(
-                        typ=RelationshipPattern, val=right.source_algebraizable
-                    ).variable
-                ]
-                join_type: JoinType = JoinType.INNER
-                variable_map: VariableMap = {
-                    **left.variable_map,
-                    **right.variable_map,
-                }
-                variable_type_map: VariableTypeMap = {
-                    **left.variable_type_map,
-                    **right.variable_type_map,
-                }
-                join: Join = Join(
-                    left=left,
-                    right=right,
-                    source_algebraizable=flatten(
-                        [left.source_algebraizable, right.source_algebraizable]
-                    ),
-                    on_left=[left_join_key],
-                    on_right=[right_join_key],
-                    join_type=join_type,
-                    variable_map=variable_map,
-                    variable_type_map=variable_type_map,
-                    column_names=left.column_names
-                    + right.column_names,  # NOTE: Should not be any collisions here
-                )
-                variable_relation: Relation = SelectColumns(
-                    relation=join,
-                    source_algebraizable=flatten([join.source_algebraizable]),
-                    identifier=random_hash(),
-                    variable_map=join.variable_map,
-                    variable_type_map=join.variable_type_map,
-                    column_names=[
-                        column_name
-                        for column_name in join.variable_map.values()
-                    ],
-                )
-                return variable_relation
-            case (NodePattern(), RelationshipPattern()) if (
-                cast(
-                    typ=RelationshipPattern, val=right.source_algebraizable
-                ).direction
-                == RelationshipDirection.LEFT
-            ):
+                return cached
+
+        try:
+            # Parse string to AST if needed
+            if isinstance(query, str):
+                _parse_t0 = time.perf_counter()
+                converter = ASTConverter()
+                parsed_query = converter.from_cypher(query)
+                _parse_elapsed = time.perf_counter() - _parse_t0
+                _parse_elapsed_ms = _parse_elapsed * 1000.0
+                self._last_parse_time_ms = _parse_elapsed_ms
                 LOGGER.debug(
-                    msg="Joining Node with Relationship for (n)<-[r:RELATIONSHIP] (tail)`."
+                    "execute_query: parse  elapsed=%.3fs",
+                    _parse_elapsed,
                 )
-                # (n)<-[r] is equivalent to [r]->(n)
-                # Swap to (Rel, Node) and set Rel direction to RIGHT (to match existing logic)
-                new_right = copy.copy(right)
-                new_right.source_algebraizable = cast(
-                    RelationshipPattern, right.source_algebraizable
-                ).model_copy(update={"direction": RelationshipDirection.RIGHT})
-                return self._binary_join(left=new_right, right=left)
-            case (RelationshipPattern(), NodePattern()) if (
-                cast(
-                    typ=RelationshipPattern, val=left.source_algebraizable
-                ).direction
-                == RelationshipDirection.RIGHT
-            ):
+            else:
+                parsed_query = query
+
+            # --- Complexity scoring (pre-execution gate) ---
+            if max_complexity_score is not None:
+                from pycypher.query_complexity import score_query
+
+                _complexity = score_query(
+                    parsed_query,
+                    max_score=max_complexity_score,
+                )
                 LOGGER.debug(
-                    msg="Joining Node with Relationship for -[r:RELATIONSHIP]->(n) (head)`."
+                    "execute_query: complexity score=%d  breakdown=%s",
+                    _complexity.total,
+                    _complexity.breakdown,
                 )
-                node_variable: Variable = cast(
-                    typ=NodePattern, val=right.source_algebraizable
-                ).variable
-                node_variable_column: ColumnName = right.variable_map[
-                    node_variable
-                ]
+                for _cw in _complexity.warnings:
+                    LOGGER.warning("query complexity: %s", _cw)
 
-                left_join_key: ColumnName = RELATIONSHIP_TARGET_COLUMN
-                right_join_key: ColumnName = node_variable_column
-                join_type: JoinType = JoinType.INNER
-                variable_map: VariableMap = {
-                    **left.variable_map,
-                    **right.variable_map,
-                }
-                variable_type_map: VariableTypeMap = {
-                    **left.variable_type_map,
-                    **right.variable_type_map,
-                }
-                join: Join = Join(
-                    left=left,
-                    right=right,
-                    source_algebraizable=flatten(
-                        [left.source_algebraizable, right.source_algebraizable]
-                    ),
-                    on_left=[left_join_key],
-                    on_right=[right_join_key],
-                    join_type=join_type,
-                    variable_map=variable_map,
-                    variable_type_map=variable_type_map,
-                    column_names=left.column_names
-                    + right.column_names,  # NOTE: Should not be any collisions here
+            # Detect mutation clauses to decide cacheability.
+            _is_mutation = self._query_has_mutations(parsed_query)
+
+            if isinstance(parsed_query, UnionQuery):
+                result = self._execute_union_query(parsed_query)
+            elif not isinstance(parsed_query, Query):
+                from pycypher.exceptions import GrammarTransformerSyncError
+
+                raise GrammarTransformerSyncError(
+                    f"Internal error: parser returned "
+                    f"{type(parsed_query).__name__} instead of Query. "
+                    f"Please report this as a bug with your query.",
+                    missing_node_type=type(parsed_query).__name__,
+                    query_fragment=query if isinstance(query, str) else "",
                 )
-                variable_relation: Relation = SelectColumns(
-                    relation=join,
-                    source_algebraizable=flatten([join.source_algebraizable]),
-                    identifier=random_hash(),
-                    variable_map=join.variable_map,
-                    variable_type_map=join.variable_type_map,
-                    column_names=[
-                        column_name
-                        for column_name in join.variable_map.values()
-                    ],
+            else:
+                result = self._execute_query_binding_frame(
+                    parsed_query,
                 )
-                return variable_relation
-            case (RelationshipPattern(), NodePattern()) if (
-                cast(
-                    typ=RelationshipPattern, val=left.source_algebraizable
-                ).direction
-                == RelationshipDirection.LEFT
+
+            _elapsed = time.perf_counter() - _t0
+            _rss_after = get_rss_mb()
+            _mem_delta = _rss_after - _rss_before
+            _nrows = len(result) if isinstance(result, pd.DataFrame) else 0
+            LOGGER.info(
+                "execute_query: done  rows=%d  elapsed=%.3fs  rss_delta=%.1fMB  query=%r",
+                _nrows,
+                _elapsed,
+                _mem_delta,
+                _query_str[:80],
+            )
+            # Record metrics for the successful query.
+            _clause_names: list[str] = (
+                [
+                    type(c).__name__ for c in parsed_query.clauses
+                ]  # guarded by hasattr below
+                if hasattr(parsed_query, "clauses")
+                else []
+            )
+            QUERY_METRICS.record_query(
+                query_id=_qid,
+                elapsed_s=_elapsed,
+                rows=_nrows,
+                clauses=_clause_names,
+                memory_delta_mb=_mem_delta,
+                clause_timings_ms=self._last_clause_timings or None,
+                parse_time_ms=_parse_elapsed_ms,
+                estimated_memory_mb=self._last_estimated_memory_bytes
+                / (1024.0 * 1024.0)
+                if hasattr(self, "_last_estimated_memory_bytes")
+                else None,
+                plan_time_ms=self._last_plan_time_ms
+                if hasattr(self, "_last_plan_time_ms")
+                else None,
+            )
+            QUERY_METRICS.update_cache_stats(self._result_cache.stats())
+            if isinstance(result, pd.DataFrame) and result.empty:
+                LOGGER.debug(
+                    "execute_query: result is empty (0 rows) for query %r",
+                    _query_str[:80],
+                )
+
+            # Cache read-only results; invalidate cache after mutations.
+            if _is_mutation:
+                self._result_cache.invalidate()
+            elif _cache_eligible and isinstance(result, pd.DataFrame):
+                self._result_cache.put(query, _cache_params, result)
+
+            return result
+        except Exception as _exc:
+            _elapsed = time.perf_counter() - _t0
+            LOGGER.error(
+                "execute_query: failed  elapsed=%.3fs  query=%r",
+                _elapsed,
+                _query_str[:80],
+                exc_info=True,
+            )
+            QUERY_METRICS.record_error(
+                query_id=_qid,
+                error_type=type(_exc).__name__,
+                elapsed_s=_elapsed,
+            )
+            raise
+        finally:
+            # Restore the query-ID contextvar so it doesn't leak into
+            # subsequent queries or unrelated log output.
+            reset_query_id(_qid_token)
+            # Cancel SIGALRM and restore previous handler.
+            if _alarm_set:
+                signal.alarm(0)
+                if _old_alarm_handler is not None:
+                    signal.signal(signal.SIGALRM, _old_alarm_handler)
+            # Clear parameters after execution to avoid leaking them.
+            self.context._parameters = {}
+            # Disarm the timeout so it doesn't bleed into subsequent queries.
+            self.context.clear_deadline()
+            # Defensive: ensure shadow state is clean even if an unexpected
+            # code path bypassed the normal begin/commit/rollback cycle
+            # (e.g. BaseException during transaction handling).
+            if self.context._shadow or self.context._shadow_rels:
+                self.context.rollback_query()
+
+    async def execute_query_async(
+        self,
+        query: str | Any,
+        *,
+        parameters: dict[str, Any] | None = None,
+        timeout_seconds: float | None = None,
+        memory_budget_bytes: int | None = None,
+        max_complexity_score: int | None = None,
+    ) -> pd.DataFrame:
+        """Async wrapper around :meth:`execute_query`.
+
+        Runs the synchronous query execution in a thread via
+        :func:`asyncio.to_thread`, allowing callers to ``await`` query
+        results without blocking the event loop.
+
+        All parameters are forwarded to :meth:`execute_query`.
+
+        Example::
+
+            result = await star.execute_query_async(
+                "MATCH (p:Person) RETURN p.name AS name"
+            )
+
+        Returns:
+            DataFrame with columns matching the RETURN clause aliases.
+        """
+        import asyncio
+
+        return await asyncio.to_thread(
+            self.execute_query,
+            query,
+            parameters=parameters,
+            timeout_seconds=timeout_seconds,
+            memory_budget_bytes=memory_budget_bytes,
+            max_complexity_score=max_complexity_score,
+        )
+
+    # =========================================================================
+    # BindingFrame execution path (Phases 5–7)
+    # =========================================================================
+
+    def _apply_projection_modifiers(
+        self,
+        df: pd.DataFrame,
+        clause: Any,
+        frame: BindingFrame,
+    ) -> pd.DataFrame:
+        """Apply DISTINCT/ORDER BY/SKIP/LIMIT — delegates to :class:`ProjectionPlanner`."""
+        return self._projection_planner.apply_projection_modifiers(
+            df, clause, frame
+        )
+
+    def _return_from_frame(
+        self,
+        return_clause: Any,
+        frame: BindingFrame,
+    ) -> pd.DataFrame:
+        """Evaluate a RETURN clause — delegates to :class:`ProjectionPlanner`."""
+        return self._projection_planner.return_from_frame(return_clause, frame)
+
+    def _aggregate_items(
+        self,
+        items: list[Any],
+        frame: BindingFrame,
+    ) -> pd.DataFrame:
+        """Evaluate projection items — delegates to :class:`AggregationPlanner`."""
+        return self._agg_planner.aggregate_items(items, frame)
+
+    def _contains_aggregation(self, expression: Any) -> bool:
+        """Check for aggregate functions — delegates to :class:`AggregationPlanner`."""
+        return self._agg_planner.contains_aggregation(expression)
+
+    def _plan_query(self, query: Any) -> dict[str, Any]:
+        """Build a computation graph from the query AST and run optimisation passes.
+
+        Returns execution hints derived from the lazy evaluation optimizer's
+        analysis of the query structure.  These hints are used for logging,
+        memory estimation, and future predicate pushdown.
+
+        Args:
+            query: A parsed :class:`~pycypher.ast_models.Query` AST node.
+
+        Returns:
+            A dict with keys:
+
+            - ``estimated_memory_bytes`` — peak memory estimate from the graph.
+            - ``node_count`` — number of operation nodes in the graph.
+            - ``has_filter`` — whether the query contains filter operations.
+            - ``has_join`` — whether the query contains join operations.
+            - ``optimized_graph`` — the graph after optimization passes.
+
+        """
+        from pycypher.lazy_eval import (
+            OpType,
+            build_computation_graph,
+            estimate_memory,
+            fuse_filters,
+            push_filters_down,
+        )
+
+        graph = build_computation_graph(query)
+
+        # Run optimisation passes
+        optimized = fuse_filters(graph)
+        optimized = push_filters_down(optimized)
+
+        mem_estimate = estimate_memory(optimized)
+
+        has_filter = any(
+            n.op_type == OpType.FILTER for n in optimized.nodes.values()
+        )
+        has_join = any(
+            n.op_type == OpType.JOIN for n in optimized.nodes.values()
+        )
+
+        return {
+            "estimated_memory_bytes": mem_estimate,
+            "node_count": len(optimized.nodes),
+            "has_filter": has_filter,
+            "has_join": has_join,
+            "optimized_graph": optimized,
+        }
+
+    def _extract_limit_hint(self, query: Any) -> int | None:
+        """Extract a LIMIT value for pushdown if the query pattern is safe.
+
+        Returns the integer LIMIT value when the query has the simple pattern
+        ``MATCH ... RETURN ... LIMIT N`` (no aggregation, no DISTINCT, no
+        ORDER BY, no SKIP, no WITH).  Returns ``None`` when pushdown is
+        unsafe.
+
+        This is a conservative heuristic — it only enables pushdown when we
+        are *certain* that limiting rows during MATCH will produce the same
+        final result as computing all rows and truncating at the end.
+
+        Args:
+            query: Parsed :class:`~pycypher.ast_models.Query` AST node.
+
+        Returns:
+            Integer limit for pushdown, or ``None`` if pushdown is unsafe.
+
+        """
+        from pycypher.ast_models import Match, Return, With
+
+        clauses = query.clauses
+        if not clauses:
+            return None
+
+        # Only push down for simple MATCH → RETURN (possibly with WHERE)
+        # Reject if there's a WITH clause (changes row semantics)
+        match_count = sum(1 for c in clauses if isinstance(c, Match))
+        with_count = sum(1 for c in clauses if isinstance(c, With))
+        return_clauses = [c for c in clauses if isinstance(c, Return)]
+
+        if match_count != 1 or with_count > 0 or len(return_clauses) != 1:
+            return None
+
+        ret = return_clauses[0]
+
+        # Reject if DISTINCT, ORDER BY, or SKIP are present
+        if ret.distinct or ret.order_by or ret.skip is not None:
+            return None
+
+        # Reject if LIMIT is absent
+        if ret.limit is None:
+            return None
+
+        # Reject if any ReturnItem contains an aggregation
+        for item in ret.items:
+            if item.expression is not None and self._contains_aggregation(
+                item.expression,
             ):
-                # <-[r]-(n). Equivalent to (n)-[r]->.
-                # Swap to (Node, Rel) and set Rel direction to RIGHT.
-                new_left = copy.copy(left)
-                new_left.source_algebraizable = cast(
-                    RelationshipPattern, left.source_algebraizable
-                ).model_copy(update={"direction": RelationshipDirection.RIGHT})
-                return self._binary_join(left=right, right=new_left)
+                return None
 
-            case (NodePattern(), NodePattern()):
-                # This should never happen
-                raise ValueError("Cannot join two NodePatterns directly.")
-            case (RelationshipPattern(), RelationshipPattern()):
-                # This should never happen
-                raise ValueError(
-                    "Cannot join two RelationshipPatterns directly."
+        # Extract the integer limit value
+        limit_val = ret.limit
+        if isinstance(limit_val, int):
+            return limit_val
+
+        # If it's an expression (e.g. parameter), we can't resolve it at
+        # planning time — skip pushdown
+        return None
+
+    def _unwind_binding_frame(
+        self,
+        clause: Any,
+        frame: BindingFrame,
+    ) -> BindingFrame:
+        """Evaluate an UNWIND clause and return the exploded BindingFrame.
+
+        Each row in *frame* that contains a list value in the expression is
+        expanded into one row per list element, with the element bound to
+        ``clause.alias``.  All other columns from *frame* are preserved via
+        pandas :meth:`~pandas.DataFrame.explode`.
+
+        Args:
+            clause: AST :class:`~pycypher.ast_models.Unwind` node.
+            frame: Current :class:`~pycypher.binding_frame.BindingFrame`.
+
+        Returns:
+            A new :class:`~pycypher.binding_frame.BindingFrame` whose rows
+            are the Cartesian expansion of *frame* × list elements.
+
+        """
+        from pycypher.binding_evaluator import BindingExpressionEvaluator
+
+        alias: str = clause.alias or "_unwind_col"
+        evaluator = BindingExpressionEvaluator(frame)
+        list_series = evaluator.evaluate(clause.expression).reset_index(
+            drop=True,
+        )
+
+        # Guard against memory exhaustion: check max list size before explode.
+        from pycypher.config import MAX_COLLECTION_SIZE
+        from pycypher.exceptions import SecurityError
+
+        max_list_len = 0
+        for val in list_series:
+            if isinstance(val, (list, tuple)):
+                max_list_len = max(max_list_len, len(val))
+        if max_list_len > MAX_COLLECTION_SIZE:
+            msg = (
+                f"UNWIND list contains {max_list_len:,} elements, "
+                f"exceeding limit of {MAX_COLLECTION_SIZE:,}. "
+                f"Adjust PYCYPHER_MAX_COLLECTION_SIZE to increase."
+            )
+            raise SecurityError(msg)
+
+        # PERFORMANCE: Use assign() instead of copy() for adding single column
+        df = frame.bindings.reset_index(drop=True).assign(
+            **{alias: list_series},
+        )
+
+        df = df.explode(alias, ignore_index=True)
+
+        # pandas explode() converts empty lists to a single NaN row; drop those.
+        df = df.dropna(subset=[alias]).reset_index(drop=True)
+
+        return BindingFrame(
+            bindings=df,
+            type_registry=frame.type_registry,
+            context=frame.context,
+        )
+
+    def _apply_where_filter(
+        self,
+        where_expr: Any,
+        result_frame: BindingFrame,
+        fallback_frame: BindingFrame | None = None,
+    ) -> BindingFrame:
+        """Apply a WHERE predicate to *result_frame*, with optional fallback.
+
+        First tries evaluating *where_expr* against *result_frame* (handles
+        projected aliases).  If that raises ``ValueError`` or ``KeyError``
+        (expression references variables not in the projected frame), falls
+        back to evaluating against *fallback_frame* and applying the boolean
+        mask positionally to *result_frame*.
+
+        When *fallback_frame* is ``None``, uses
+        :class:`~pycypher.binding_frame.BindingFilter` directly (no fallback).
+
+        Args:
+            where_expr: AST expression node for the WHERE predicate.
+            result_frame: The frame to filter.
+            fallback_frame: Optional pre-projection frame for variable lookup.
+
+        Returns:
+            A new filtered :class:`~pycypher.binding_frame.BindingFrame`.
+
+        """
+        from pycypher.binding_evaluator import (
+            BindingExpressionEvaluator as _BEE,
+        )
+        from pycypher.binding_frame import BindingFilter
+
+        if fallback_frame is None:
+            return BindingFilter(predicate=where_expr).apply(result_frame)
+
+        try:
+            _mask = _BEE(result_frame).evaluate(where_expr).fillna(False)
+            return result_frame.filter(_mask)
+        except (ValueError, KeyError):
+            LOGGER.debug(
+                "WHERE: evaluation failed on result frame, falling back to pre-projection frame",
+            )
+            _pre_mask = _BEE(fallback_frame).evaluate(where_expr).fillna(False)
+            return result_frame.filter(_pre_mask)
+
+    def _with_to_binding_frame(
+        self,
+        with_clause: Any,
+        frame: BindingFrame,
+    ) -> BindingFrame:
+        """Translate a WITH clause — delegates to :class:`ProjectionPlanner`."""
+        return self._projection_planner.with_to_binding_frame(
+            with_clause, frame
+        )
+
+    # Mutation clause wrappers removed — calls inlined directly in the
+    # clause loop via self._mutations.* methods.
+
+    def _execute_union_query(self, union_query: Any) -> pd.DataFrame:
+        """Execute a UNION [ALL] query — run each component query and combine.
+
+        For ``UNION`` (without ALL), duplicate rows are removed from the final
+        result.  For ``UNION ALL``, all rows from all sub-queries are kept.
+
+        The entire UNION is wrapped in a single transaction so that a
+        failure in any sub-query rolls back mutations from *all* earlier
+        sub-queries, preserving atomicity.
+
+        Args:
+            union_query: A :class:`~pycypher.ast_models.UnionQuery` AST node.
+
+        Returns:
+            A ``pd.DataFrame`` combining all sub-query results.
+
+        """
+        self.context.begin_query()
+        _committed = False
+        try:
+            frames: list[pd.DataFrame] = []
+            for stmt in union_query.statements:
+                frames.append(
+                    self._execute_query_binding_frame_inner(stmt),
                 )
 
-            case _:
-                raise NotImplementedError(
-                    f"Join logic for {type(left.source_algebraizable)} and {type(right.source_algebraizable)} is not implemented."
+            if not frames:
+                self.context.commit_query()
+                _committed = True
+                return pd.DataFrame()
+
+            combined = pd.concat(frames, ignore_index=True)
+
+            # Determine whether any join was "ALL" — if any flag is False, we need
+            # to deduplicate.  Simplest correct behaviour: if ALL flags are True
+            # this is a pure UNION ALL; otherwise deduplicate the full result.
+            any_union = any(not flag for flag in union_query.all_flags)
+            if any_union:
+                combined = combined.drop_duplicates().reset_index(drop=True)
+
+            self.context.commit_query()
+            _committed = True
+            return combined
+        finally:
+            if not _committed:
+                self.context.rollback_query()
+
+    def _execute_query_binding_frame(
+        self,
+        query: Any,
+    ) -> pd.DataFrame:
+        """Execute a Cypher query with query-scoped shadow write atomicity.
+
+        Wraps :meth:`_execute_query_binding_frame_inner` in a
+        begin / commit / rollback transaction so that a failed query never
+        leaves the context in a partially-mutated state.
+
+        Args:
+            query: A parsed :class:`~pycypher.ast_models.Query` AST node.
+
+        Returns:
+            A ``pd.DataFrame`` with columns matching the RETURN aliases.
+
+        """
+        self.context.begin_query()
+        _committed = False
+        try:
+            result = self._execute_query_binding_frame_inner(
+                query,
+            )
+            self.context.commit_query()
+            _committed = True
+            return result
+        finally:
+            if not _committed:
+                self.context.rollback_query()
+
+    # ------------------------------------------------------------------
+    # Private helpers for _execute_query_binding_frame_inner
+    # ------------------------------------------------------------------
+
+    def _process_optional_match(self, clause: Any, current_frame: Any) -> Any:
+        """Execute an OPTIONAL MATCH — delegates to :class:`FrameJoiner`."""
+        return self._frame_joiner.process_optional_match(clause, current_frame)
+
+    def _merge_frames_for_match(
+        self,
+        current_frame: Any,
+        match_frame: Any,
+        where_clause: Any = None,
+    ) -> Any:
+        """Merge a new MATCH frame — delegates to :class:`FrameJoiner`."""
+        return self._frame_joiner.merge_frames_for_match(
+            current_frame,
+            match_frame,
+            where_clause,
+        )
+
+    def _coerce_join(self, frame_a: Any, frame_b: Any) -> Any:
+        """Join two BindingFrames — delegates to :class:`FrameJoiner`."""
+        return self._frame_joiner.coerce_join(frame_a, frame_b)
+
+    def _make_seed_frame(self) -> Any:
+        """Create a seed frame — delegates to :class:`FrameJoiner`."""
+        return self._frame_joiner.make_seed_frame()
+
+    def _process_unwind_clause(self, clause: Any, current_frame: Any) -> Any:
+        """Execute an UNWIND clause, seeding a synthetic frame if needed.
+
+        When UNWIND appears without a preceding MATCH (standalone), there is
+        no existing frame.  A single-row seed frame is created so the
+        expression evaluator has something to iterate over.  The synthetic
+        ``_seed`` column is removed after unwinding.
+
+        Args:
+            clause: The :class:`~pycypher.ast_models.Unwind` clause.
+            current_frame: The preceding
+                :class:`~pycypher.binding_frame.BindingFrame`, or ``None`` if
+                UNWIND is the first clause.
+
+        Returns:
+            A new :class:`~pycypher.binding_frame.BindingFrame` with the
+            unwound variable bound and the seed column (if any) stripped.
+
+        """
+        if current_frame is None:
+            # Standalone UNWIND (no preceding MATCH) — seed with a
+            # single-row empty frame so the expression evaluator has
+            # something to operate against.
+            current_frame = self._make_seed_frame()
+
+        result = self._unwind_binding_frame(clause, current_frame)
+
+        # Strip the synthetic seed column if it survived into the result.
+        if "_row" in result.bindings.columns:
+            result = BindingFrame(
+                bindings=result.bindings.drop(columns=["_row"]),
+                type_registry=result.type_registry,
+                context=result.context,
+            )
+        return result
+
+    def _log_clause_performance(
+        self,
+        clause_name: str,
+        elapsed: float,
+        size_before: str,
+        size_after: str
+    ) -> None:
+        """Log debug information for clause execution performance."""
+        LOGGER.debug(
+            "clause %s  elapsed=%.3fs  frame_before=%s  frame_after=%s",
+            clause_name,
+            elapsed,
+            size_before,
+            size_after,
+        )
+
+    def _handle_clause_result(
+        self,
+        result: Any,
+        clause_name: str,
+        elapsed: float,
+        size_before: str,
+        clause_timings: dict[str, float]
+    ) -> pd.DataFrame | None:
+        """Handle clause execution result, returning DataFrame if early exit needed.
+
+        Returns:
+            pd.DataFrame if the clause result triggers early return (RETURN clause),
+            None if execution should continue with the next clause.
+        """
+        if isinstance(result, pd.DataFrame):
+            self._log_clause_performance(
+                clause_name, elapsed, size_before, str(len(result))
+            )
+            self._last_clause_timings = clause_timings
+            return result
+
+        return None
+
+    # ------------------------------------------------------------------
+    # Query planning and clause dispatch helpers
+    # ------------------------------------------------------------------
+
+    def _analyze_and_plan(self, query: Any) -> int | None:
+        """Run query planning, memory budget enforcement, and LIMIT pushdown.
+
+        Performs all pre-execution analysis:
+
+        * Builds a lazy computation graph via :meth:`_plan_query` for
+          memory estimates and structural analysis.
+        * Runs :class:`~pycypher.query_planner.QueryPlanAnalyzer` for
+          cardinality estimates, join strategies, and pushdown opportunities.
+        * Enforces the memory budget (hard error with explicit budget,
+          warning otherwise).
+        * Extracts a LIMIT pushdown hint when the query pattern is safe.
+
+        Args:
+            query: A parsed :class:`~pycypher.ast_models.Query` AST node.
+
+        Returns:
+            An optional row-limit hint for MATCH pushdown, or ``None``.
+
+        Raises:
+            QueryMemoryBudgetError: If an explicit memory budget is exceeded.
+
+        """
+        # --- Lazy evaluation planning phase ---
+        _plan_t0 = time.perf_counter()
+        _plan_hints = self._plan_query(query)
+        _plan_elapsed_ms = (time.perf_counter() - _plan_t0) * 1000.0
+        self._last_plan_time_ms = _plan_elapsed_ms
+        self._last_estimated_memory_bytes = _plan_hints.get(
+            "estimated_memory_bytes",
+            0,
+        )
+        LOGGER.debug(
+            "query plan: nodes=%d  memory_est=%d bytes  has_filter=%s  has_join=%s",
+            _plan_hints["node_count"],
+            _plan_hints["estimated_memory_bytes"],
+            _plan_hints["has_filter"],
+            _plan_hints["has_join"],
+        )
+
+        # --- Query planner analysis ---
+        from pycypher.query_planner import QueryPlanAnalyzer
+
+        _analysis = QueryPlanAnalyzer(query, self.context).analyze()
+        if _analysis.join_plans:
+            for _jp in _analysis.join_plans:
+                LOGGER.debug(
+                    "query planner: join %s ⋈ %s → %s (%s rows, %s bytes)  %s",
+                    _jp.left_name,
+                    _jp.right_name,
+                    _jp.strategy.value,
+                    f"{_jp.estimated_rows:,}",
+                    f"{_jp.estimated_memory_bytes:,}",
+                    _jp.notes,
+                )
+        if _analysis.has_pushdown_opportunities:
+            for _pd_opp in _analysis.pushdown_opportunities:
+                LOGGER.debug(
+                    "query planner: pushdown opportunity on '%s': %s",
+                    _pd_opp.variable,
+                    _pd_opp.predicate_summary,
                 )
 
-    def _from_relationship_pattern(
-        self, relationship: RelationshipPattern
-    ) -> Projection:
-        """Convert a RelationshipPattern to a RelationshipTable."""
-        relationship_relation: RelationshipTable = (
-            self.context.relationship_mapping[relationship.labels[0]]
+        # Memory budget enforcement.
+        _budget = (
+            self.context._memory_budget_bytes
+            if self.context._memory_budget_bytes is not None
+            else 2 * 1024 * 1024 * 1024
         )
-        
-        lbl = relationship.labels[0]
-        prefixed_id_col = f"{lbl}__{ID_COLUMN}"
-        prefixed_source_col = f"{lbl}__{RELATIONSHIP_SOURCE_COLUMN}"
-        prefixed_target_col = f"{lbl}__{RELATIONSHIP_TARGET_COLUMN}"
-        
-        relation: Projection = Projection(
-            relation=relationship_relation,
-            projected_column_names={
-                prefixed_id_col: prefixed_id_col,
-                prefixed_source_col: prefixed_source_col,
-                prefixed_target_col: prefixed_target_col,
-            },
-            variable_map={relationship.variable: prefixed_id_col},
-            variable_type_map={relationship.variable: relationship.labels[0]},
-            column_names=[
-                prefixed_id_col,
-                prefixed_source_col,
-                prefixed_target_col,
-            ],
-            identifier=random_hash(),
-            source_algebraizable=relationship,
-        )
-        return relation
+        if _analysis.exceeds_budget(budget_bytes=_budget):
+            if self.context._memory_budget_bytes is not None:
+                from pycypher.exceptions import QueryMemoryBudgetError
 
-    def _from_relationship_pattern_with_attrs(
-        self, relationship: RelationshipPattern
-    ) -> FilterRows:
-        raise NotImplementedError(
-            "Filtering on relationship properties is not implemented yet."
-        )
-        # if not relationship.properties:
-        #     raise ValueError("RelationshipPattern must have properties for this method.")
-        #
-        # """Convert a RelationshipPattern with attributes to a filtered RelationshipTable."""
-        # attr1: str = list(relationship.properties.keys())[0]
-        # val1: Any = list(relationship.properties.values())[0]
+                raise QueryMemoryBudgetError(
+                    estimated_bytes=_analysis.estimated_peak_bytes,
+                    budget_bytes=_budget,
+                )
+            LOGGER.warning(
+                "query planner: estimated peak memory %s bytes exceeds 2 GB budget; "
+                "consider adding LIMIT or narrowing the MATCH pattern",
+                f"{_analysis.estimated_peak_bytes:,}",
+            )
 
-        # # Create base relationship with remaining attributes
-        # base_relationship: RelationshipPattern = RelationshipPattern(
-        #     variable=relationship.variable,
-        #     labels=relationship.labels,
-        #     direction=relationship.direction,
-        #     properties={
-        #         attr: val
-        #         for attr, val in relationship.properties.items()
-        #         if attr != attr1
-        #     },
-        # )
+        # --- LIMIT pushdown hint ---
+        _limit_hint = self._extract_limit_hint(query)
+        if _limit_hint is not None:
+            LOGGER.debug(
+                "LIMIT pushdown hint: %d rows",
+                _limit_hint,
+            )
+        return _limit_hint
 
-        # base_relationship_relation: Relation = self.to_relation(obj=base_relationship)
+    def _handle_match_clause(
+        self,
+        clause: Any,
+        current_frame: Any,
+        limit_hint: int | None,
+    ) -> Any | pd.DataFrame:
+        """Execute a MATCH or OPTIONAL MATCH clause.
 
-        # filtered_relation_identifier: str = random_hash()
-        # filtered_relation: FilterRows = FilterRows(
-        #     relation=base_relationship_relation,
-        #     condition=AttributeEqualsValue(left=attr1, right=val1),
-        #     source_algebraizable=relationship,
-        # )
-        # return filtered_relation
+        Handles three sub-cases:
 
-    def _from_node_pattern_no_attrs(self, node: NodePattern) -> Projection:
-        """Convert a NodePattern to an EntityTable."""
-        entity_relation: EntityTable = self.context.entity_mapping[
-            node.labels[0]
-        ]
-        
-        lbl = node.labels[0]
-        new_column_name: ColumnName = random_hash()
-        relation: Projection = Projection(
-            relation=entity_relation,
-            projected_column_names={
-                f"{lbl}__{ID_COLUMN}": new_column_name
-            },
-            variable_map={node.variable: new_column_name},
-            variable_type_map={node.variable: node.labels[0]},
-            column_names=[new_column_name],
-            identifier=random_hash(),
-            source_algebraizable=node,
-        )
-        return relation
+        * **OPTIONAL MATCH with existing frame** — delegates to
+          :meth:`_process_optional_match` for left-join semantics.
+        * **Regular MATCH (first clause)** — creates the initial
+          BindingFrame from pattern matching.
+        * **Regular MATCH (subsequent)** — merges with the existing
+          frame via :meth:`_merge_frames_for_match`.
 
-    def _from_node_pattern(self, node: NodePattern) -> Projection | FilterRows:
-        """Convert a NodePattern to an EntityTable. If there are properties, convert to a Projection and then FilterRows."""
-        if not node.properties:
-            return self._from_node_pattern_no_attrs(node=node)
-        else:
-            return self._from_node_pattern_with_attrs(node=node)
+        Args:
+            clause: The :class:`~pycypher.ast_models.Match` clause.
+            current_frame: The preceding BindingFrame, or ``None``.
+            limit_hint: Optional row limit for MATCH pushdown.
 
-    def _from_node_pattern_with_attrs(self, node: NodePattern) -> FilterRows:
-        """Convert a NodePattern with one property: value to a Relation with that property and value."""
+        Returns:
+            The updated BindingFrame, or an empty ``pd.DataFrame`` when
+            an OPTIONAL MATCH as first clause finds no matches.
 
-        attr1: str = list(node.properties.keys())[0]
-        val1: Any = list(node.properties.values())[0]
-        base_node: NodePattern = NodePattern(
-            variable=node.variable,
-            labels=node.labels,
-            properties={
-                attr: val
-                for attr, val in node.properties.items()
-                if attr != attr1
-            },
-        )
-        base_node_relation: Relation = self.to_relation(obj=base_node)
+        """
+        if clause.optional and current_frame is not None:
+            return self._process_optional_match(clause, current_frame)
 
-        filtered_relation_identifier: str = random_hash()
-        filtered_relation: FilterRows = FilterRows(
-            relation=base_node_relation,
-            condition=AttributeEqualsValue(left=attr1, right=val1),
-            identifier=filtered_relation_identifier,
-            variable_map=base_node_relation.variable_map,
-            variable_type_map=base_node_relation.variable_type_map,
-            source_algebraizable=node,
-            column_names=list(base_node_relation.variable_map.values()),
+        try:
+            match_frame = self._pattern_matcher.match_to_binding_frame(
+                clause,
+                context_frame=current_frame,
+                row_limit=limit_hint,
+            )
+        except ValueError:
+            LOGGER.debug(
+                "MATCH: ValueError during pattern matching (optional=%s)",
+                clause.optional,
+            )
+            if clause.optional:
+                return pd.DataFrame()
+            raise
+
+        if current_frame is None:
+            return match_frame
+        return self._merge_frames_for_match(
+            current_frame,
+            match_frame,
+            clause.where,
         )
 
-        return filtered_relation
+    @staticmethod
+    def _require_bound_frame(current_frame: Any, clause_name: str) -> None:
+        """Raise ``ValueError`` if *current_frame* is ``None``.
 
-    def to_pandas(self, relation: Relation) -> pd.DataFrame:
-        """Convert the EntityTable to a pandas DataFrame."""
-        # Delegates to the relation's own to_pandas method which is now properly implemented in classes
-        return relation.to_pandas(context=self.context)
+        Used by mutation clauses (SET, REMOVE, DELETE) that require a
+        preceding MATCH or CREATE to bind variables.
+
+        Args:
+            current_frame: The current BindingFrame (or None).
+            clause_name: Human-readable clause name for the error message.
+
+        Raises:
+            ValueError: When *current_frame* is None.
+
+        """
+        if current_frame is None:
+            msg = (
+                f"{clause_name} clause requires a preceding MATCH or CREATE clause "
+                f"to bind variables."
+            )
+            raise ValueError(msg)
+
+    @staticmethod
+    def _frame_size(frame: Any) -> str:
+        """Return row count string for a BindingFrame, or ``'(none)'``."""
+        if frame is None:
+            return "(none)"
+        try:
+            return str(len(frame.bindings))
+        except AttributeError:
+            return "(unknown)"
+
+    def _dispatch_clause(
+        self,
+        clause: Any,
+        current_frame: Any,
+        limit_hint: int | None,
+    ) -> Any:
+        """Dispatch a single clause and return the updated frame.
+
+        Returns a ``pd.DataFrame`` for RETURN clauses and early-exit
+        OPTIONAL MATCH, or a BindingFrame / ``None`` for all other clauses.
+
+        """
+        from pycypher.ast_models import (
+            Call,
+            Create,
+            Delete,
+            Foreach,
+            Match,
+            Merge,
+            Remove,
+            Return,
+            Set,
+            Unwind,
+            With,
+        )
+
+        if isinstance(clause, Match):
+            result = self._handle_match_clause(
+                clause, current_frame, limit_hint,
+            )
+            # _handle_match_clause returns pd.DataFrame for OPTIONAL
+            # MATCH-as-first-clause with no matches — signal early exit.
+            if isinstance(result, pd.DataFrame):
+                return result
+            return result
+
+        if isinstance(clause, With):
+            if current_frame is None:
+                current_frame = self._make_seed_frame()
+            return self._with_to_binding_frame(clause, current_frame)
+
+        if isinstance(clause, Return):
+            if current_frame is None:
+                current_frame = self._make_seed_frame()
+            return self._return_from_frame(clause, current_frame)
+
+        if isinstance(clause, Set):
+            self._require_bound_frame(current_frame, "SET")
+            self._mutations.set_properties(clause, current_frame)
+            return current_frame
+
+        if isinstance(clause, Remove):
+            self._require_bound_frame(current_frame, "REMOVE")
+            self._mutations.remove_properties(clause, current_frame)
+            return current_frame
+
+        if isinstance(clause, Delete):
+            self._require_bound_frame(current_frame, "DELETE")
+            self._mutations.process_delete(clause, current_frame)
+            return current_frame
+
+        if isinstance(clause, Unwind):
+            return self._process_unwind_clause(clause, current_frame)
+
+        if isinstance(clause, Create):
+            return self._mutations.process_create(
+                clause, current_frame,
+                make_seed_frame=self._make_seed_frame,
+            )
+
+        if isinstance(clause, Call):
+            return self._mutations.process_call(clause, current_frame)
+
+        if isinstance(clause, Merge):
+            return self._mutations.process_merge(
+                clause, current_frame,
+                match_to_binding_frame=self._pattern_matcher.match_to_binding_frame,
+                merge_frames_for_match=self._merge_frames_for_match,
+                make_seed_frame=self._make_seed_frame,
+            )
+
+        if isinstance(clause, Foreach):
+            return self._mutations.process_foreach(
+                clause, current_frame,
+                make_seed_frame=self._make_seed_frame,
+            )
+
+        msg = (
+            f"Clause type '{type(clause).__name__}' is not yet supported "
+            "in the BindingFrame execution path."
+        )
+        raise NotImplementedError(msg)
+
+    def _execute_query_binding_frame_inner(
+        self,
+        query: Any,
+        initial_frame: Any = None,
+    ) -> pd.DataFrame:
+        """Execute a Cypher query using the BindingFrame IR.
+
+        This is the new execution path that eliminates the PREFIXED_ENTITY /
+        HASH_ID / ALIAS column-name fragility of the legacy pipeline.  It
+        handles:
+
+        * MATCH + WHERE (with anonymous and named relationships)
+        * WITH (simple projection, full aggregation, grouped aggregation;
+          plus DISTINCT, ORDER BY, SKIP, LIMIT modifiers)
+        * SET (property write-back via ``BindingFrame.mutate``)
+        * RETURN (expression projection including ``CaseExpression``;
+          plus DISTINCT, ORDER BY, SKIP, LIMIT modifiers)
+
+        Unsupported patterns raise :exc:`NotImplementedError` so the caller
+        can fall back to the legacy path.
+
+        Clause-specific details are delegated to focused private helpers:
+
+        * :meth:`_analyze_and_plan` — query planning, memory budget, LIMIT pushdown
+        * :meth:`_handle_match_clause` — MATCH / OPTIONAL MATCH dispatch
+        * :meth:`_require_bound_frame` — null-frame guard for mutation clauses
+        * :meth:`_process_optional_match` — OPTIONAL MATCH left-join semantics
+        * :meth:`_merge_frames_for_match` — keyed or cross-join for subsequent MATCH clauses
+        * :meth:`_process_unwind_clause` — UNWIND with seed-frame management
+
+        Args:
+            query: A parsed :class:`~pycypher.ast_models.Query` AST node.
+            initial_frame: Optional pre-seeded BindingFrame for correlated
+                subqueries.
+
+        Returns:
+            A ``pd.DataFrame`` with columns matching the RETURN aliases.
+
+        Raises:
+            NotImplementedError: For variable-length paths, cross-product MATCH,
+                or other unsupported patterns.
+            ValueError: For structural problems (no MATCH, no RETURN, etc.).
+
+        """
+        if not query.clauses:
+            msg = (
+                "Query must have at least one clause (e.g. MATCH, RETURN, CREATE). "
+                "Example: MATCH (n:Person) RETURN n.name"
+            )
+            raise ValueError(msg)
+
+        _clause_timings: dict[str, float] = {}
+        _limit_hint = self._analyze_and_plan(query)
+        current_frame: Any = initial_frame
+
+        for clause in query.clauses:
+            self.context.check_timeout()
+
+            _clause_name = type(clause).__name__
+            _size_before = self._frame_size(current_frame)
+            _clause_t0 = time.perf_counter()
+
+            result = self._dispatch_clause(
+                clause, current_frame, _limit_hint,
+            )
+
+            _clause_elapsed = time.perf_counter() - _clause_t0
+            _clause_timings[_clause_name] = (
+                _clause_timings.get(_clause_name, 0.0)
+                + _clause_elapsed * 1000.0
+            )
+
+            # Check if this is a final result (DataFrame) requiring early return
+            early_result = self._handle_clause_result(
+                result, _clause_name, _clause_elapsed, _size_before, _clause_timings
+            )
+            if early_result is not None:
+                return early_result
+
+            # Continue with next clause - log performance and update current frame
+            current_frame = result
+            self._log_clause_performance(
+                _clause_name, _clause_elapsed, _size_before, self._frame_size(current_frame)
+            )
+
+        # Mutation queries (DELETE, SET, CREATE without RETURN) are valid — return
+        # an empty DataFrame indicating successful execution with no output rows.
+        self._last_clause_timings = _clause_timings
+        return pd.DataFrame()

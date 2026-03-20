@@ -1,0 +1,5 @@
+version: "1.0"
+
+queries:
+  - id: bad_query
+    description: "This query has no source or inline text"

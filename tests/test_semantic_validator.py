@@ -12,7 +12,6 @@ from pycypher.grammar_parser import GrammarParser
 from pycypher.semantic_validator import (
     ErrorSeverity,
     SemanticValidator,
-    ValidationError,
     VariableScope,
     validate_query,
 )
@@ -265,9 +264,6 @@ class TestUnwindVariables:
         errors = [e for e in errors if e.severity == ErrorSeverity.ERROR]
         assert len(errors) == 0
 
-    @pytest.mark.skip(
-        reason="Grammar doesn't support UNWIND + MATCH without WITH - known limitation"
-    )
     def test_unwind_with_match(self, parser, validator):
         """Test UNWIND combined with MATCH."""
         query = """
@@ -352,9 +348,6 @@ class TestAggregationValidation:
 class TestComplexQueries:
     """Test validation of complex queries with multiple clauses."""
 
-    @pytest.mark.skip(
-        reason="WITH + WHERE syntax edge case - validator needs enhancement for this pattern"
-    )
     def test_complex_valid_query(self, parser, validator):
         """Test complex but valid query."""
         query = """
@@ -482,6 +475,82 @@ class TestEdgeCases:
 
         errors = [e for e in errors if e.severity == ErrorSeverity.ERROR]
         assert len(errors) == 0
+
+
+# ============================================================================
+# Aggregation registry consistency
+# ============================================================================
+
+
+class TestAggregationRegistryConsistency:
+    """The semantic validator must recognise every function in KNOWN_AGGREGATIONS.
+
+    This class enforces the single-source-of-truth contract: the canonical set
+    of aggregation function names lives in ``KNOWN_AGGREGATIONS``
+    (``binding_evaluator.py``).  If the semantic validator uses a *separate*
+    hardcoded set instead of importing that frozenset, newly added aggregation
+    functions (``stdev``, ``stdevp``, ``percentileCont``, etc.) will be
+    silently rejected by validation even though execution works.
+    """
+
+    def test_stdev_recognised_as_aggregation(self, parser, validator):
+        """stdev is an aggregation — validator must not warn about mixing."""
+        query = "MATCH (n:Person) RETURN stdev(n.age)"
+        tree = parser.parse(query)
+        errors = validator.validate(tree)
+        # No errors: stdev(n.age) is a pure aggregation, valid in RETURN.
+        errors = [e for e in errors if e.severity == ErrorSeverity.ERROR]
+        assert len(errors) == 0
+
+    def test_stdevp_recognised_as_aggregation(self, parser, validator):
+        """stdevp is an aggregation — validator must not warn about mixing."""
+        query = "MATCH (n:Person) RETURN stdevp(n.age)"
+        tree = parser.parse(query)
+        errors = validator.validate(tree)
+        errors = [e for e in errors if e.severity == ErrorSeverity.ERROR]
+        assert len(errors) == 0
+
+    def test_percentilecont_recognised_as_aggregation(self, parser, validator):
+        """percentileCont is an aggregation — mixing check should pass."""
+        query = "MATCH (n:Person) RETURN percentileCont(n.age, 0.5)"
+        tree = parser.parse(query)
+        errors = validator.validate(tree)
+        errors = [e for e in errors if e.severity == ErrorSeverity.ERROR]
+        assert len(errors) == 0
+
+    def test_percentiledisc_recognised_as_aggregation(self, parser, validator):
+        """percentileDisc is an aggregation — mixing check should pass."""
+        query = "MATCH (n:Person) RETURN percentileDisc(n.age, 0.5)"
+        tree = parser.parse(query)
+        errors = validator.validate(tree)
+        errors = [e for e in errors if e.severity == ErrorSeverity.ERROR]
+        assert len(errors) == 0
+
+    def test_known_aggregations_matches_validator_set(self):
+        """KNOWN_AGGREGATIONS and the validator's set must be identical.
+
+        This test imports the canonical frozenset and compares it against
+        whatever the validator actually uses internally.  It will fail if the
+        two sets diverge (e.g., a new aggregation is added to
+        ``KNOWN_AGGREGATIONS`` but forgotten in ``semantic_validator.py``).
+        """
+        from pycypher.binding_evaluator import KNOWN_AGGREGATIONS
+        from pycypher.semantic_validator import SemanticValidator
+
+        sv = SemanticValidator()
+        # Access the internal set via the _AGGREGATION_FUNCTIONS attribute
+        # that the refactored validator exposes as a class constant.
+        assert hasattr(sv, "_AGGREGATION_FUNCTIONS"), (
+            "SemanticValidator must expose _AGGREGATION_FUNCTIONS as a "
+            "class attribute so that it can be compared against the "
+            "canonical KNOWN_AGGREGATIONS frozenset."
+        )
+        assert sv._AGGREGATION_FUNCTIONS == KNOWN_AGGREGATIONS, (
+            "SemanticValidator._AGGREGATION_FUNCTIONS diverges from "
+            "KNOWN_AGGREGATIONS.  Use "
+            "'from pycypher.binding_evaluator import KNOWN_AGGREGATIONS' "
+            "in semantic_validator.py instead of a hardcoded set."
+        )
 
 
 # ============================================================================

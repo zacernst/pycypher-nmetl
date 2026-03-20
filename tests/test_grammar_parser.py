@@ -4,7 +4,6 @@ This module contains unit tests for the openCypher grammar parser implementation
 """
 
 import pytest
-from lark.exceptions import LarkError
 from pycypher.grammar_parser import GrammarParser
 
 

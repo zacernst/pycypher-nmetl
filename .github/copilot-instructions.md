@@ -1,20 +1,22 @@
-# PyCypher-NMETL Development Guide
+# PyCypher Development Guide
 
-## Role of the LLM agent
+## Role of the LLM Agent
 
 Throughout all the work, **it is crucial to think and behave like an INTJ Meyers-Briggs personality**. Always
 consider the larger implications of any changes; always consider the purpose of the project and how it
 interacts with the purpose of the specific changes that are being proposed.
 
+## Execution of commands in the terminal
+
+Whenever possible, do **not** open new terminal instances. Instead, execute all commands in the same terminal instance. This allows you to maintain context and continuity, and also allows you to see the full history of commands and their outputs.
+
 ## Project Architecture
 
-This is a **monorepo workspace** containing four interdependent packages:
-- **`packages/pycypher/`** - Cypher query parser, AST models, fact collections, and SAT solver integration
-- **`packages/nmetl/`** - Core ETL framework with sessions, triggers, and queue processors  
+This is a **monorepo workspace** containing two interdependent packages:
+- **`packages/pycypher/`** - Cypher query parser, AST models, and relational algebra engine
 - **`packages/shared/`** - Common utilities, logging, telemetry
-- **`packages/fastopendata/`** - Open data source integrations (Census, OpenStreetMap)
 
-**Dependency order**: `shared` → `pycypher` → `nmetl` → `fastopendata`
+**Dependency order**: `shared` → `pycypher`
 
 ## Development Workflow
 
@@ -55,8 +57,6 @@ uv run pytest tests/test_ast_models.py
 uv run pytest -n 4
 ```
 
-**Important**: Tests marked with `@pytest.mark.fact_collection` require a running FoundationDB instance.
-
 ### Type Checking
 Use `ty` (NOT mypy) for type checking:
 
@@ -81,94 +81,44 @@ Packages reference each other via workspace sources in root `pyproject.toml`:
 ```toml
 [tool.uv.sources]
 pycypher = { workspace = true }
-nmetl = { workspace = true }
-fastopendata = { workspace = true }
 shared = { workspace = true }
 ```
 
 When adding cross-package imports, ensure the dependency is declared in the consuming package's `pyproject.toml`.
 
-### 2. Fact Model Pattern
-Facts are immutable, atomic data points. Never modify facts - only add new ones:
+### 2. Type-Based Column Naming
+All relational operators use type prefixes to prevent naming collisions:
 
 ```python
-from pycypher.fact import (
-    FactNodeHasLabel,
-    FactNodeHasAttributeWithValue,
-    FactRelationshipHasSourceNode,
-)
+# EntityTable prefixes all columns with entity type
+# Person.__ID__ becomes Person____ID__
+# Person.name becomes Person__name
 
-# Create facts, never mutate
-FactNodeHasLabel(node_id="person1", label="Person")
-FactNodeHasAttributeWithValue(node_id="person1", attribute="age", value=30)
+# RelationshipTable prefixes with relationship type
+# KNOWS.__SOURCE__ becomes KNOWS____SOURCE__
+# KNOWS.__TARGET__ becomes KNOWS____TARGET__
 ```
 
-### 3. Trigger Definition Pattern
-Triggers MUST use proper type hints for return values:
+This ensures deterministic, collision-free column names across complex joins.
+
+### 3. ID-Only Column Preservation
+`FilterRows` and `Join` operators only preserve ID columns, not attributes:
 
 ```python
-from nmetl.trigger import VariableAttribute, NodeRelationship
-
-@session.trigger("MATCH (c:City) RETURN c.population AS pop")
-def classify_city(pop) -> VariableAttribute["c", "size_class"]:
-    """Type hints specify variable and attribute name."""
-    return "large" if pop > 1000000 else "medium"
-
-@session.trigger("MATCH (p:Person)-[:WORKS_AT]->(c:Company) RETURN p.id, c.id")  
-def relationship_trigger(p_id, c_id) -> NodeRelationship["p", "MANAGES", "c"]:
-    """Creates a relationship between matched nodes."""
-    return True
+# FilterRows returns semi-join result with only ID columns
+# Join merges on ID columns and filters result to only IDs
+# Projection fetches attributes on-demand when needed
 ```
 
-The generic parameters in type hints (`["c", "size_class"]`, `["p", "MANAGES", "c"]`) are CRITICAL - they map results to graph structure.
-
-### 4. Queue Processor Extension
-When adding new processors, inherit from `QueueProcessor` and implement `_process_item`:
-
-```python
-from nmetl.queue_processor import QueueProcessor
-
-class CustomProcessor(QueueProcessor):
-    def _process_item(self, item, worker_context):
-        """Process single queue item. Must handle exceptions."""
-        # Your logic here
-        pass
-```
-
-Processors run in multiple threads - use `worker_context` for thread-local state.
-
-### 5. Storage Backend Implementation
-Implement `FactCollection` abstract interface for new backends:
-
-```python
-from pycypher.fact_collection import FactCollection
-
-class MyBackend(FactCollection):
-    def add_fact(self, fact): ...
-    def get_facts(self, **constraints): ...
-    def nodes(self): ...
-    # See pycypher/fact_collection/foundationdb.py for reference
-```
+This separates ID tracking from attribute access, improving query efficiency.
 
 ## Critical Files and Entry Points
 
-- **`packages/nmetl/src/nmetl/session.py`** - Main ETL session orchestration
-- **`packages/nmetl/src/nmetl/trigger.py`** - Trigger base classes and execution logic
-- **`packages/pycypher/src/pycypher/cypher_parser.py`** - Cypher query parser (uses PLY - excluded from type checking)
+- **`packages/pycypher/src/pycypher/grammar_parser.py`** - Lark-based Cypher grammar parser
 - **`packages/pycypher/src/pycypher/ast_models.py`** - Pydantic-based AST node definitions
-- **`packages/pycypher/src/pycypher/fact_collection/solver.py`** - SAT solver integration for query optimization
-- **`Makefile`** - Build orchestration and data pipeline commands
-
-## Data Pipeline Commands
-
-The project includes extensive data processing capabilities via Makefile targets:
-
-```bash
-make fod_ingest           # Run FastOpenData ingest
-make fdbclear            # Clear FoundationDB data
-```
-
-Census and OpenStreetMap data processing requires downloading large datasets to `packages/fastopendata/raw_data/`.
+- **`packages/pycypher/src/pycypher/relational_models.py`** - Relational algebra operators (EntityTable, Join, FilterRows, Projection)
+- **`packages/pycypher/src/pycypher/star.py`** - Translates AST patterns to relational algebra
+- **`Makefile`** - Build orchestration and test commands
 
 ## Documentation
 
@@ -176,21 +126,20 @@ Documentation uses Sphinx with Google-style docstrings:
 
 ```bash
 # Build docs
-make docs                # Outputs to docs/build/html
+make docs                # Outputs to docs/_build/html
 
 # Regenerate after changes
-uv run sphinx-build -b html docs docs/build/html
+uv run sphinx-build -b html docs docs/_build/html
 ```
-
 **Always update docstrings** when modifying public APIs. Sphinx autodoc extracts from source.
 
 ## Common Gotchas
 
 1. **Python version**: Requires exactly `3.14.0a6+freethreaded` - other versions will fail
-2. **FoundationDB**: Many features require FDB running locally. Use Docker: `docker-compose up fdb_build`
-3. **PLY parser**: `cypher_parser.py` uses PLY's magic imports - excluded from `ty` checking  
-4. **Trigger type hints**: Missing or incorrect generic parameters cause runtime errors
-5. **Workspace sync**: After editing `pyproject.toml` files, always run `uv sync`
+2. **Grammar parser**: Uses Lark parser with custom visitor pattern for AST construction
+3. **Optional variables**: `NodePattern.variable` and `RelationshipPattern.variable` are Optional to support anonymous nodes/relationships
+4. **Workspace sync**: After editing `pyproject.toml` files, always run `uv sync`
+5. **Column naming**: Always use type-prefixed column names in relational operators (e.g., `Person____ID__` not `__ID__`)
 
 ## Resources
 
@@ -199,68 +148,32 @@ uv run sphinx-build -b html docs docs/build/html
 - Example queries: [/examples/](../examples/)
 - Test coverage summary: [/TEST_COVERAGE_SUMMARY.md](../TEST_COVERAGE_SUMMARY.md)
 
-# Spyglass Data Tools Development Guide
+## Testing Philosophy
+Grammar parser**: Uses Lark parser with custom visitor pattern for AST construction
+3. **Optional variables**: `NodePattern.variable` and `RelationshipPattern.variable` are Optional to support anonymous nodes/relationships
+4. **Workspace sync**: After editing `pyproject.toml` files, always run `uv sync`
+5 SAT solver tests verify CNF conversion and constraint satisfaction
 
-## Project Architecture
+## Recent Architectural Changes
 
-This is a **Python monorepo** for New Relic data processing tools, organized as independent packages:
+### Column Naming Strategy (Latest)
+- Implemented type-based prefixing in all relational operators
+- Changed `FilterRows.to_pandas()` to use semi-join and return only ID columns
+- Changed `Join.to_pandas()` to filter results to only ID columns
+- Updated `star.py` to expect prefixed columns throughout
 
-- **`packages/sg_shared/`** - Core utilities including NRQL parser/AST (ANTLR4-based), logging, typing
-- **`packages/sg_synth/`** - Synthetic data generation and transmission to New Relic
-- **`packages/sg_collector/`** - Data aggregation, processing, and serialization from New Relic accounts
-- **`packages/sg_api_builder/`** - Templates and CLI for building FastAPI applications
-- **`packages/sg_catalog/`** - Data documentation and sharing tools
-- **`packages/sg_data_reader/`** - Multi-format data reading/writing utilities
+### AST Validation Fix
+- Made `NodePattern.variable` and `RelationshipPattern.variable` Optional[Variable] = None
+- Allows anonymous nodes/relationships in Cypher queries
+- All 39 AST validation tests passing
 
-**Dependency hierarchy**: Most packages depend on `sg_shared`; the umbrella `spyglass-data-tools` package includes all as dependencies.
 
-## Critical Development Workflow
-
-### Environment Management
-**CRITICAL**: Use `uv` for ALL Python operations - it manages virtual environments and dependencies.
+### Grammar Parser CLI
 
 ```bash
-# Install uv (if not installed)
-curl -LsSf https://astral.sh/uv/install.sh | sh
-# or: brew install uv
+# Parse and validate Cypher query
+uv run python -m pycypher.grammar_parser_cli "MATCH (n:Person) RETURN n.name"
 
-# Set up Artifactory authentication (required for installation)
-export UV_INDEX_PYPI_NEWRELIC_PASSWORD=<YOUR_ARTIFACTORY_TOKEN>
-# Get token from: https://artifacts.datanerd.us - click "Set me up"
-
-# Sync all dependencies
-uv sync
-
-# Run any Python command in the right venv
-uv run python script.py
-uv run pytest tests/
+# Output AST as JSON
+uv run python -m pycypher.grammar_parser_cli --json "MATCH (n) RETURN n" > ast.json
 ```
-
-### Build and Test Workflow
-```bash
-# Complete build pipeline (from Makefile)
-make all              # format → veryclean → install → tests → docs
-
-# Individual steps
-make format           # Run isort + ruff format
-make install          # Install all packages in dev mode
-make tests            # Run pytest across all packages
-make docs             # Build Sphinx documentation
-make publish          # Publish to Artifactory (requires UV_PUBLISH_* env vars)
-
-# Build individual packages (creates dist/ in each package dir)
-make build            # Builds all packages to dist/
-cd packages/<package> && uv build  # Build single package
-```
-
-**Testing convention**: Tests are in both `/tests/` (integration) and `packages/*/tests/` (unit).
-
-### Working with NRQL Parser (sg_shared)
-
-The NRQL parser is the **core innovation** of this project - it's an ANTLR4-based parser that converts New Relic Query Language to AST.
-
-**Key files**:
-- `packages/sg_shared/src/sg_shared/Nrql.g4` - ANTLR grammar definition
-- `packages/sg_shared/src/sg_shared/NrqlListener.py` - AST builder and listener (3800+ lines)
-- `packages/sg_shared/src/sg_shared/NrqlParser.py` - ANTLR-generated parser
-- `packages/sg_shared/src/sg_shared/NrqlLexer.py` - ANTLR-generated lexer

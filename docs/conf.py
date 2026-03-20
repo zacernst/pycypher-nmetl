@@ -8,17 +8,15 @@ import sys
 
 # Add package paths to sys.path
 sys.path.insert(0, os.path.abspath("../packages/pycypher/src"))
-sys.path.insert(0, os.path.abspath("../packages/nmetl/src"))
-sys.path.insert(0, os.path.abspath("../packages/fastopendata/src"))
 sys.path.insert(0, os.path.abspath("../packages/shared/src"))
 sys.path.insert(0, os.path.abspath(".."))
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = "NMETL"
-copyright = "2026, NMETL Contributors"
-author = "NMETL Contributors"
+project = "PyCypher"
+copyright = "2026, PyCypher Contributors"
+author = "PyCypher Contributors"
 release = "0.1.0"
 version = "0.1.0"
 
@@ -39,13 +37,15 @@ extensions = [
 
 # Mock imports for missing modules or C-extensions
 autodoc_mock_imports = [
+    # Legacy pycypher modules that no longer exist in the codebase
     "pycypher.node_classes",
     "pycypher.cypher_parser",
+    "pycypher.query",
+    "pycypher.tree_mixin",
+    "pycypher.lineage",
+    "pycypher.cli",
+    # Optional telemetry dependency
     "pyroscope",
-    "foundationdb",
-    "rocksdb",
-    "etcd3",
-    "fdb",
 ]
 
 # Autodoc settings
@@ -60,8 +60,9 @@ autodoc_default_options = {
 autodoc_typehints = "description"
 autodoc_typehints_description_target = "documented"
 
-# Autosummary settings
-autosummary_generate = True
+# Autosummary settings — disabled to prevent duplicate-object warnings
+# (the API pages in docs/api/ use explicit automodule directives instead)
+autosummary_generate = False
 autosummary_imported_members = False
 
 # Napoleon settings (for Google and NumPy style docstrings)
@@ -106,6 +107,8 @@ exclude_patterns = [
     "**.ipynb_checkpoints",
     ".venv",
     "venv",
+    "README.md",  # docs-internal build instructions, not user-facing
+    "SPHINX_SETUP_COMPLETE.md",  # setup log, not user-facing
 ]
 
 # -- Options for HTML output -------------------------------------------------
@@ -136,3 +139,27 @@ intersphinx_mapping = {
 # -- Options for todo extension ----------------------------------------------
 
 todo_include_todos = True
+
+# Suppress known harmless warnings
+suppress_warnings = [
+    "autosummary",  # autosummary duplicate-member warnings
+    "ref.duplicate",  # duplicate object descriptions from autosummary + automodule
+    "autodoc.mocked_object",  # mocked-import warnings for unavailable packages
+]
+
+
+def setup(app: object) -> None:
+    """Filter noisy Pydantic duplicate-object-description warnings.
+
+    Pydantic model fields get documented twice by autodoc (once as a class
+    attribute and once as a descriptor), producing ~150 harmless warnings.
+    """
+    import logging
+
+    class _DuplicateFilter(logging.Filter):
+        def filter(self, record: logging.LogRecord) -> bool:
+            return "duplicate object description" not in record.getMessage()
+
+    # Sphinx 7.x uses the root "sphinx" logger hierarchy
+    for name in ("sphinx", "sphinx.domains", "sphinx.domains.python"):
+        logging.getLogger(name).addFilter(_DuplicateFilter())

@@ -1,0 +1,14 @@
+version: "1.0"
+
+sources:
+  entities:
+    - id: data
+      uri: "file:///data/persons.csv"
+      entity_type: Person
+
+  relationships:
+    - id: data
+      uri: "file:///data/edges.csv"
+      relationship_type: KNOWS
+      source_col: src
+      target_col: tgt

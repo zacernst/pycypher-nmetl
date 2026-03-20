@@ -1,0 +1,15 @@
+version: "1.0"
+
+sources:
+  entities:
+    - id: persons
+      uri: "file:///data/persons.csv"
+      entity_type: Person
+    - id: companies
+      uri: "file:///data/companies.csv"
+      entity_type: Company
+
+queries:
+  - id: customer_summary
+    description: "Customer summary from external file"
+    source: "cypher/customer_summary.cypher"

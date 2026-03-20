@@ -1,0 +1,29 @@
+version: "1.0"
+
+sources:
+  entities:
+    - id: persons
+      uri: "file:///data/persons.csv"
+      entity_type: Person
+    - id: companies
+      uri: "file:///data/companies.csv"
+      entity_type: Company
+
+queries:
+  - id: enrich_persons
+    inline: |
+      MATCH (p:Person)
+      WITH p.name AS name
+      RETURN name AS name
+
+  - id: enrich_companies
+    inline: |
+      MATCH (c:Company)
+      WITH c.name AS name
+      RETURN name AS name
+
+  - id: combined_report
+    inline: |
+      MATCH (p:Person)
+      WITH p.name AS person_name
+      RETURN person_name AS person_name

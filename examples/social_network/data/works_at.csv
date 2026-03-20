@@ -1,0 +1,13 @@
+__SOURCE__,__TARGET__,role,start_date
+p1,c1,Senior Engineer,2020-04-01
+p2,c1,Data Scientist,2021-07-15
+p7,c1,Junior Engineer,2023-03-01
+p11,c1,Engineering Manager,2019-06-01
+p3,c2,Product Manager,2019-12-01
+p5,c5,Financial Analyst,2022-02-01
+p10,c2,Backend Developer,2022-06-01
+p4,c3,Lead Data Scientist,2020-01-15
+p8,c3,CTO,2020-01-15
+p12,c3,ML Engineer,2023-08-01
+p6,c4,Clinical Data Lead,2020-10-01
+p9,c4,Research Scientist,2021-09-15

@@ -1,13 +1,49 @@
-"""Configuration for Pyroscope -> Grafana"""
+"""Configuration for Pyroscope continuous profiling.
 
-import pyroscope
+All settings are configurable via environment variables:
 
-pyroscope.configure(
-    application_name="nmetl",  # replace this with some name for your application
-    server_address="http://localhost:4040",  # replace this with the address of your Pyroscope server
-    sample_rate=100,  # default is 100
-    detect_subprocesses=True,  # detect subprocesses started by the main process; default is False
-    oncpu=True,  # report cpu time only; default is True
-    gil_only=False,  # only include traces for threads that are holding on to the Global Interpreter Lock; default is True
-    enable_logging=False,  # does enable logging facility; default is False
+- ``PYROSCOPE_SERVER``  – Pyroscope endpoint (default ``http://localhost:4040``)
+- ``PYROSCOPE_APP_NAME`` – application name tag (default ``nmetl``)
+- ``PYROSCOPE_SAMPLE_RATE`` – samples per second (default ``100``)
+- ``PYROSCOPE_ENABLED``  – set to ``0`` or ``false`` to disable (default enabled)
+
+If Pyroscope is not installed or the server is unreachable the module
+silently degrades — no import-time crash.
+"""
+
+import logging
+import os
+
+_logger = logging.getLogger(__name__)
+
+_enabled = os.environ.get("PYROSCOPE_ENABLED", "1").lower() not in (
+    "0",
+    "false",
+    "no",
 )
+
+if _enabled:
+    try:
+        import pyroscope
+
+        pyroscope.configure(
+            application_name=os.environ.get("PYROSCOPE_APP_NAME", "nmetl"),
+            server_address=os.environ.get(
+                "PYROSCOPE_SERVER",
+                "http://localhost:4040",
+            ),
+            sample_rate=int(os.environ.get("PYROSCOPE_SAMPLE_RATE", "100")),
+            detect_subprocesses=True,
+            oncpu=True,
+            gil_only=False,
+            enable_logging=False,
+        )
+    except ImportError:
+        _logger.debug(
+            "pyroscope not installed — continuous profiling disabled",
+        )
+    except Exception:  # noqa: BLE001
+        _logger.warning(
+            "pyroscope configuration failed — profiling disabled",
+            exc_info=True,
+        )

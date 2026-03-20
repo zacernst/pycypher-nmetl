@@ -1,0 +1,23 @@
+version: "1.0"
+
+sources:
+  entities:
+    - id: persons
+      uri: "file:///data/persons.csv"
+      entity_type: Person
+
+queries:
+  - id: all_persons
+    inline: "MATCH (p:Person) WITH p.name AS name RETURN name AS name"
+
+output:
+  - query_id: all_persons
+    uri: "s3://results/persons.parquet"
+
+  - query_id: all_persons
+    uri: "file:///output/persons.csv"
+    format: csv
+
+  - query_id: all_persons
+    uri: "file:///output/persons.json"
+    format: json

@@ -7,8 +7,8 @@ to ensure that the Cypher-to-AST translation is correct.
 
 import pytest
 from pycypher.ast_models import (
-    ASTConverter,
     Arithmetic,
+    ASTConverter,
     BooleanLiteral,
     Call,
     Comparison,
@@ -65,15 +65,15 @@ class TestMatchClauseVerification:
 
         assert isinstance(ast, Query)
         assert len(ast.clauses) == 2
-        
+
         match_clause = ast.clauses[0]
         assert isinstance(match_clause, Match)
-        
+
         # Verify Pattern
         assert len(match_clause.pattern.paths) == 1
         path = match_clause.pattern.paths[0]
         assert len(path.elements) == 1
-        
+
         node = path.elements[0]
         assert isinstance(node, NodePattern)
         assert isinstance(node.variable, Variable)
@@ -85,10 +85,10 @@ class TestMatchClauseVerification:
         """Test MATCH with properties."""
         query = "MATCH (n:Person {name: 'Alice', age: 30}) RETURN n"
         ast = parse_to_ast(query)
-        
+
         match_clause = ast.clauses[0]
         node = match_clause.pattern.paths[0].elements[0]
-        
+
         assert set(node.properties.keys()) == {"name", "age"}
 
         name_value = node.properties["name"]
@@ -107,24 +107,24 @@ class TestMatchClauseVerification:
         """Test MATCH (a)-[r:KNOWS]->(b)."""
         query = "MATCH (a)-[r:KNOWS]->(b) RETURN r"
         ast = parse_to_ast(query)
-        
+
         path = ast.clauses[0].pattern.paths[0]
-        assert len(path.elements) == 3 # Node, Rel, Node
-        
+        assert len(path.elements) == 3  # Node, Rel, Node
+
         start_node = path.elements[0]
         rel = path.elements[1]
         end_node = path.elements[2]
-        
+
         assert isinstance(start_node, NodePattern)
         assert start_node.variable.name == "a"
-        
+
         assert isinstance(rel, RelationshipPattern)
         assert rel.variable.name == "r"
         assert rel.labels == ["KNOWS"]
         # Direction might be string or Enum based on AST model definition
         # The AST model has RelationshipDirection enum.
         assert rel.direction == RelationshipDirection.RIGHT
-        
+
         assert isinstance(end_node, NodePattern)
         assert end_node.variable.name == "b"
 
@@ -179,19 +179,19 @@ class TestWhereClauseVerification:
         """Test WHERE n.age > 30."""
         query = "MATCH (n) WHERE n.age > 30 RETURN n"
         ast = parse_to_ast(query)
-        
+
         match_clause = ast.clauses[0]
         assert match_clause.where is not None
         where = match_clause.where
-        
+
         assert isinstance(where, Comparison)
         assert where.operator == ">"
-        
+
         assert isinstance(where.left, PropertyLookup)
         assert where.left.property == "age"
         assert isinstance(where.left.expression, Variable)
         assert where.left.expression.name == "n"
-        
+
         assert isinstance(where.right, IntegerLiteral)
         assert where.right.value == 30
 
@@ -199,11 +199,11 @@ class TestWhereClauseVerification:
         """Test WHERE n.age + 5 = 40."""
         query = "MATCH (n) WHERE n.age + 5 = 40 RETURN n"
         ast = parse_to_ast(query)
-        
+
         where = ast.clauses[0].where
         assert isinstance(where, Comparison)
         assert where.operator == "="
-        
+
         # Left side should be Arithmetic
         assert isinstance(where.left, Arithmetic)
         assert where.left.operator == "+"
@@ -219,15 +219,15 @@ class TestReturnClauseVerification:
         """Test RETURN n.name AS name."""
         query = "MATCH (n) RETURN n.name AS name"
         ast = parse_to_ast(query)
-        
+
         return_clause = ast.clauses[1]
         assert isinstance(return_clause, Return)
-        
+
         assert len(return_clause.items) == 1
         item = return_clause.items[0]
         assert isinstance(item, ReturnItem)
         assert item.alias == "name"
-        
+
         assert isinstance(item.expression, PropertyLookup)
         assert item.expression.property == "name"
 
@@ -235,7 +235,7 @@ class TestReturnClauseVerification:
         """Test RETURN DISTINCT n."""
         query = "MATCH (n) RETURN DISTINCT n"
         ast = parse_to_ast(query)
-        
+
         return_clause = ast.clauses[1]
         assert isinstance(return_clause, Return)
         assert return_clause.distinct is True
@@ -248,13 +248,13 @@ class TestCreateClauseVerification:
         """Test CREATE (n:Person {id: 1})."""
         query = "CREATE (n:Person {id: 1})"
         ast = parse_to_ast(query)
-        
+
         assert isinstance(ast.clauses[0], Create)
         create_clause = ast.clauses[0]
-        
+
         path = create_clause.pattern.paths[0]
         node = path.elements[0]
-        
+
         assert isinstance(node, NodePattern)
         assert node.labels == ["Person"]
         assert "id" in node.properties
@@ -267,15 +267,16 @@ class TestDeleteClauseVerification:
         """Test DETACH DELETE n."""
         query = "MATCH (n) DETACH DELETE n"
         ast = parse_to_ast(query)
-        
+
         delete_clause = ast.clauses[1]
         assert isinstance(delete_clause, Delete)
         assert delete_clause.detach is True
-        
+
         assert len(delete_clause.expressions) == 1
         expr = delete_clause.expressions[0]
         assert isinstance(expr, Variable)
         assert expr.name == "n"
+
 
 class TestSetClauseVerification:
     """Verify SET clause structure."""
@@ -288,7 +289,7 @@ class TestSetClauseVerification:
         set_clause = ast.clauses[1]
         assert isinstance(set_clause, Set)
         assert len(set_clause.items) == 1
-        
+
         item = set_clause.items[0]
         assert isinstance(item, SetItem)
         assert isinstance(item.variable, Variable)
@@ -310,7 +311,11 @@ class TestUnwindClauseVerification:
         assert isinstance(unwind_clause, Unwind)
         assert unwind_clause.alias == "x"
         assert isinstance(unwind_clause.expression, ListLiteral)
-        assert [elem.value for elem in unwind_clause.expression.elements] == [1, 2, 3]
+        assert [elem.value for elem in unwind_clause.expression.elements] == [
+            1,
+            2,
+            3,
+        ]
 
         return_clause = ast.clauses[1]
         assert isinstance(return_clause, Return)
@@ -323,9 +328,7 @@ class TestWithClauseVerification:
 
     def test_with_distinct_and_ordering(self, parse_to_ast):
         """Test WITH DISTINCT with ordering, skip, and limit."""
-        query = (
-            "MATCH (n) WITH DISTINCT n ORDER BY n.name DESC SKIP 5 LIMIT 10 RETURN n"
-        )
+        query = "MATCH (n) WITH DISTINCT n ORDER BY n.name DESC SKIP 5 LIMIT 10 RETURN n"
         ast = parse_to_ast(query)
 
         with_clause = ast.clauses[1]
@@ -368,7 +371,9 @@ class TestMergeClauseVerification:
 
         merge_clause = ast.clauses[0]
         assert isinstance(merge_clause, Merge)
-        assert isinstance(merge_clause.pattern.paths[0].elements[0], NodePattern)
+        assert isinstance(
+            merge_clause.pattern.paths[0].elements[0], NodePattern
+        )
         node = merge_clause.pattern.paths[0].elements[0]
         assert node.labels == ["Person"]
         id_value = node.properties["id"]
@@ -453,7 +458,11 @@ class TestComprehensionExpressionVerification:
         assert expression.variable.name == "x"
 
         assert isinstance(expression.list_expr, ListLiteral)
-        assert [elem.value for elem in expression.list_expr.elements] == [1, 2, 3]
+        assert [elem.value for elem in expression.list_expr.elements] == [
+            1,
+            2,
+            3,
+        ]
 
         assert isinstance(expression.where, Comparison)
         assert isinstance(expression.where.left, Variable)

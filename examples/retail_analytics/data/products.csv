@@ -1,0 +1,21 @@
+product_id,name,category,price,cost
+1,"iPhone 14","Electronics",999.99,750.00
+2,"MacBook Air","Electronics",1199.99,900.00
+3,"AirPods Pro","Electronics",249.99,180.00
+4,"Running Shoes","Clothing",129.99,65.00
+5,"Denim Jeans","Clothing",79.99,35.00
+6,"Cotton T-Shirt","Clothing",24.99,12.00
+7,"Leather Jacket","Clothing",299.99,150.00
+8,"Coffee Maker","Home",89.99,45.00
+9,"Vacuum Cleaner","Home",199.99,100.00
+10,"Desk Lamp","Home",49.99,25.00
+11,"Throw Pillows","Home",39.99,20.00
+12,"Yoga Mat","Sports",29.99,15.00
+13,"Tennis Racket","Sports",119.99,60.00
+14,"Basketball","Sports",24.99,12.50
+15,"Protein Powder","Sports",34.99,20.00
+16,"Gaming Mouse","Electronics",79.99,40.00
+17,"Mechanical Keyboard","Electronics",149.99,75.00
+18,"Bluetooth Speaker","Electronics",59.99,30.00
+19,"Hoodie","Clothing",49.99,25.00
+20,"Sneakers","Clothing",89.99,45.00

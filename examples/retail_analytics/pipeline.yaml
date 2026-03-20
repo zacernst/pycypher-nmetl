@@ -1,0 +1,85 @@
+version: "1.0"
+
+project:
+  name: retail_analytics_pipeline
+  description: "Multi-stage ETL pipeline demonstrating query composition with dependencies"
+
+sources:
+  entities:
+    - id: customers
+      uri: "data/customers.csv"
+      entity_type: Customer
+      id_col: customer_id
+      schema_hints:
+        customer_id: INTEGER
+        name: VARCHAR
+        email: VARCHAR
+        city: VARCHAR
+        signup_date: DATE
+
+    - id: products
+      uri: "data/products.csv"
+      entity_type: Product
+      id_col: product_id
+      schema_hints:
+        product_id: INTEGER
+        name: VARCHAR
+        category: VARCHAR
+        price: DECIMAL
+        cost: DECIMAL
+
+    - id: orders
+      uri: "data/orders.csv"
+      entity_type: CustomerOrder
+      id_col: order_id
+      schema_hints:
+        order_id: INTEGER
+        customer_id: INTEGER
+        product_id: INTEGER
+        quantity: INTEGER
+        unit_price: DECIMAL
+        order_date: DATE
+
+queries:
+  # Stage 1: Customer Metrics Calculation
+  - id: customer_metrics
+    description: "Calculate RFM metrics for each customer"
+    source: "queries/customer_metrics.cypher"
+
+  # Stage 2: Customer Segmentation (depends on Stage 1)
+  - id: customer_segmentation
+    description: "Classify customers into value-based segments"
+    source: "queries/customer_segmentation.cypher"
+
+  # Stage 3: Product Analytics (independent of customer stages)
+  - id: product_analytics
+    description: "Analyze product performance and category trends"
+    source: "queries/product_analytics.cypher"
+
+  # Stage 4: Business Report (depends on Stages 2 & 3)
+  - id: business_report
+    description: "Generate executive summary combining all insights"
+    source: "queries/business_report_simple.cypher"
+
+# Output configurations for each query
+output:
+  - query_id: customer_metrics
+    uri: "output/customer_metrics.csv"
+
+  - query_id: customer_segmentation
+    uri: "output/customer_segments.csv"
+
+  - query_id: product_analytics
+    uri: "output/product_performance.csv"
+
+  - query_id: business_report
+    uri: "output/executive_report.csv"
+
+# Error handling configuration
+error_handling:
+  on_error: fail  # Stop pipeline on any error
+
+# Pipeline execution settings
+execution:
+  dependency_analysis: auto  # Automatically determine execution order
+  parallel_execution: false  # Execute queries sequentially for demo clarity

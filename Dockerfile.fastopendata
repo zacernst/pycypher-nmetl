@@ -1,0 +1,65 @@
+# Dockerfile for fastopendata — data ingestion container
+# Includes geospatial tools (GDAL, osmium) for processing OSM and Census shapefiles.
+
+# Use the same Python version as the main project (not -rc pre-release)
+FROM python:3.14-slim
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=UTC
+ENV PYTHONUNBUFFERED=1
+ENV LC_ALL=C.UTF-8
+ENV LANG=C.UTF-8
+
+# System packages:
+#   - wget / curl / unzip / dos2unix   : dataset download & prep
+#   - osmium-tool / libosmium-dev      : OSM PBF parsing
+#   - libgdal-dev / gdal-bin           : shapefile processing
+#   - bzip2 / pbzip2                   : Wikidata dump decompression
+#   - build-essential                  : compile Python extensions (osmium, GDAL)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    git \
+    curl \
+    wget \
+    ca-certificates \
+    unzip \
+    dos2unix \
+    bzip2 \
+    pbzip2 \
+    osmium-tool \
+    libosmium-dev \
+    libgdal-dev \
+    gdal-bin \
+    libexpat1-dev \
+    libboost-dev \
+    libprotozero-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install uv
+RUN pip install --no-cache-dir uv
+
+WORKDIR /workspace
+
+RUN git config --global --add safe.directory /workspace && \
+    git config --global init.defaultBranch main
+
+# Directory where raw downloaded data lives (mounted as a named volume)
+ENV DATA_DIR=/workspace/packages/fastopendata/raw_data
+RUN mkdir -p /workspace/packages/fastopendata/raw_data
+
+SHELL ["/bin/bash", "-c"]
+
+# Create a non-root user
+ARG USERNAME=appuser
+ARG USER_UID=1000
+ARG USER_GID=$USER_UID
+RUN groupadd --gid $USER_GID $USERNAME \
+    && useradd --uid $USER_UID --gid $USER_GID -m $USERNAME \
+    && chown -R $USERNAME:$USERNAME /workspace
+
+RUN echo 'alias ll="ls -lah"' >> /home/appuser/.bashrc && \
+    echo 'export PS1="\[\e[35m\]\u@fastopendata:\[\e[34m\]\w\[\e[0m\]\$ "' >> /home/appuser/.bashrc
+
+USER $USERNAME
+
+CMD ["tail", "-f", "/dev/null"]

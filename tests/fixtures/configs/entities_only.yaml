@@ -1,0 +1,15 @@
+version: "1.0"
+
+project:
+  name: entity_only_pipeline
+
+sources:
+  entities:
+    - id: persons
+      uri: "file:///data/persons.csv"
+      entity_type: Person
+      id_col: person_id
+
+    - id: companies
+      uri: "file:///data/companies.csv"
+      entity_type: Company

@@ -5,14 +5,13 @@ edge cases that were not covered in test_grammar_parser.py.
 """
 
 import os
-import sys
 import tempfile
-from io import StringIO
 from pathlib import Path
 
 import pytest
-from lark.exceptions import LarkError, UnexpectedInput
-from pycypher.grammar_parser import GrammarParser, main
+from lark.exceptions import LarkError
+from pycypher.exceptions import CypherSyntaxError
+from pycypher.grammar_parser import GrammarParser
 
 
 @pytest.fixture
@@ -124,7 +123,7 @@ class TestFileIO:
             temp_path = f.name
 
         try:
-            with pytest.raises(LarkError):
+            with pytest.raises((LarkError, CypherSyntaxError)):
                 parser.parse_file(temp_path)
         finally:
             os.unlink(temp_path)

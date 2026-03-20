@@ -18,6 +18,7 @@ These tests verify functionality that developers will directly use.
 import pytest
 from lark import Tree
 from lark.exceptions import LarkError, UnexpectedInput
+from pycypher.exceptions import CypherSyntaxError
 from pycypher.grammar_parser import GrammarParser
 
 
@@ -306,7 +307,7 @@ class TestErrorMessages:
         try:
             parser.parse(query)
             pytest.fail("Should have raised parsing error")
-        except (LarkError, UnexpectedInput) as e:
+        except (LarkError, UnexpectedInput, CypherSyntaxError) as e:
             error_msg = str(e).lower()
             # Error should mention parenthesis or bracket
             assert any(
@@ -320,7 +321,7 @@ class TestErrorMessages:
         try:
             parser.parse(query)
             pytest.fail("Should have raised parsing error")
-        except (LarkError, UnexpectedInput) as e:
+        except (LarkError, UnexpectedInput, CypherSyntaxError) as e:
             # Should indicate unexpected token
             assert True
 
@@ -333,7 +334,7 @@ class TestErrorMessages:
             result = parser.parse(query)
             # If it parses, that's also valid behavior
             assert result is not None
-        except (LarkError, UnexpectedInput):
+        except (LarkError, UnexpectedInput, CypherSyntaxError):
             # If it errors, that's expected
             pass
 
@@ -343,7 +344,7 @@ class TestErrorMessages:
         try:
             parser.parse(query)
             pytest.fail("Should have raised parsing error")
-        except (LarkError, UnexpectedInput):
+        except (LarkError, UnexpectedInput, CypherSyntaxError):
             pass
 
     def test_incomplete_relationship_pattern_error(self, parser):
@@ -352,7 +353,7 @@ class TestErrorMessages:
         try:
             parser.parse(query)
             pytest.fail("Should have raised parsing error")
-        except (LarkError, UnexpectedInput):
+        except (LarkError, UnexpectedInput, CypherSyntaxError):
             pass
 
 

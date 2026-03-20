@@ -1,8 +1,7 @@
-# Development Dockerfile for pycypher-nmetl
+# Development Dockerfile for pycypher
 # Optimized for VSCode Dev Containers and local development
 
-FROM python:3
-# ubuntu:22.04
+FROM python:3.14
 
 # Prevent interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive
@@ -12,45 +11,19 @@ ENV TZ=UTC
 
 # Install system dependencies
 RUN apt-get update && \
-    apt install -y \
-    # Core build tools
+    apt-get install -y --no-install-recommends \
     build-essential \
     git \
     curl \
     wget \
     ca-certificates \
     lsb-release \
-    unzip 
-    # dos2unix \
-    # # Python and development tools
-    # # Libraries for geospatial data
-    # libgdal-dev \
-    # # Libraries for Arrow/Parquet
-    # # libarrow-dev \
-    # # libarrow-glib-dev \
-    # # libarrow-dataset-dev \
-    # # libarrow-dataset-glib-dev \
-    # # libarrow-acero-dev \
-    # # libarrow-flight-dev \
-    # # libarrow-flight-glib-dev \
-    # # libarrow-flight-sql-dev \
-    # # libarrow-flight-sql-glib-dev \
-    # # libgandiva-dev \
-    # # libgandiva-glib-dev \
-    # # libparquet-dev \
-    # # libparquet-glib-dev \
-    # # Editor and utilities
-    # vim \
-    # neovim \
-    # less \
-    # bash-completion \
-    # sudo \
-    # Clean up
+    unzip \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install uv (modern Python package manager)
-# RUN curl -LsSf https://astral.sh/uv/install.sh | sh
-RUN pip install uv
-# ENV PATH=$PATH:"/root/.cargo/bin:${PATH}"
+# Install uv (modern Python package manager — prebuilt binary, faster than pip)
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+ENV PATH="/root/.local/bin:${PATH}"
 
 # Set up working directory
 WORKDIR /workspace
@@ -65,33 +38,31 @@ ENV PYTHONUNBUFFERED=1
 ENV LC_ALL=C.UTF-8
 ENV LANG=C.UTF-8
 
-RUN git clone https://github.com/zacernst/pycypher-nmetl.git
-
-# Install common development Python packages using uv
+# Install common interactive development tools (not in workspace deps)
 RUN uv pip install --system --no-cache \
     ipython \
-    ipdb \
-    pytest \
-    pytest-cov
+    ipdb
 
-# Create a non-root user for development (optional but recommended)
-# ARG USERNAME=developer
-# ARG USER_UID=1000
-# ARG USER_GID=$USER_UID
-# RUN groupadd --gid $USER_GID $USERNAME \
-#     && useradd --uid $USER_UID --gid $USER_GID -m $USERNAME \
-#     && echo $USERNAME ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$USERNAME \
-#     && chmod 0440 /etc/sudoers.d/$USERNAME
-# USER $USERNAME
+# Create a non-root user for development
+ARG USERNAME=developer
+ARG USER_UID=1000
+ARG USER_GID=$USER_UID
+RUN groupadd --gid $USER_GID $USERNAME \
+    && useradd --uid $USER_UID --gid $USER_GID -m $USERNAME \
+    && echo $USERNAME ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$USERNAME \
+    && chmod 0440 /etc/sudoers.d/$USERNAME
+USER $USERNAME
 
 # Set default shell to bash
 SHELL ["/bin/bash", "-c"]
 
 # Add helpful aliases and environment setup
-RUN echo 'alias ll="ls -lah"' >> /root/.bashrc && \
-    echo 'alias gs="git status"' >> /root/.bashrc && \
-    echo 'alias gp="git pull"' >> /root/.bashrc && \
-    echo 'export PS1="\[\e[32m\]\u@docker:\[\e[34m\]\w\[\e[0m\]\$ "' >> /root/.bashrc
+RUN echo 'alias ll="ls -lah"' >> /home/developer/.bashrc && \
+    echo 'alias gs="git status"' >> /home/developer/.bashrc && \
+    echo 'alias gp="git pull"' >> /home/developer/.bashrc && \
+    echo 'alias t="uv run pytest -n auto -x"' >> /home/developer/.bashrc && \
+    echo 'alias tf="uv run pytest -x"' >> /home/developer/.bashrc && \
+    echo 'export PS1="\[\e[32m\]\u@pycypher:\[\e[34m\]\w\[\e[0m\]\$ "' >> /home/developer/.bashrc
 
 # Keep container running
 CMD ["tail", "-f", "/dev/null"]
