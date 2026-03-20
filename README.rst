@@ -2,137 +2,192 @@
 
 |Build Sphinx documentation|
 
-Cypher AST Generator for Python
-===============================
+PyCypher — Cypher Query Engine for Python
+==========================================
 
-This is a *work in progress*, by which I mean, “ugly, but fixable.” It
-is also woefully incomplete. It generates an abstract syntax tree for
-Cypher statements that use only a subset of the language. That subset is
-growing, but it’s still small.
+PyCypher is a Cypher query engine that executes openCypher queries against
+ordinary pandas DataFrames.  It is built on a Lark-based parser, a
+Pydantic AST, and a BindingFrame execution layer — no graph database
+required.
 
-Additionally, this package contains the beginning of a query engine that
-is designed to accept Cypher queries and return results from arbitrary
-graph structures in Python. This functionality is in a *very* early
-state, and works only for trivial queries.
-
-The hope is that this will be useful for building modules that can take
-advantage of the Cypher query language, by eliminating the need to do
-all the boring work of writing a parser and generating an AST.
-
-How to use it
--------------
-
-Don’t. But if you really want to, then:
+Quick start
+-----------
 
 .. code:: python
 
-   >>> from pycypher.parser import CypherParser
-   >>> cypher = CypherParser("MATCH (n:Thing) RETURN n.foo")
-   >>> cypher.parsed.print_tree()
+   import pandas as pd
+   from pycypher import Star
+   from pycypher.ingestion import ContextBuilder
 
-   Cypher
-   └── Query
-       ├── Match
-       │   └── Node
-       │       └── NodeNameLabel
-       │           ├── n
-       │           └── Thing
-       └── Return
-           └── Projection
-               └── ObjectAttributeLookup
-                   ├── n
-                   └── foo
-   >>> print(cypher.parsed)
-   Cypher(Query(Match(Node(NodeNameLabel(n, Thing), None)), Return(Projection([ObjectAttributeLookup(n, foo)]))))
+   # Build a context from plain DataFrames
+   ctx = ContextBuilder.from_dict({
+       "Person": pd.DataFrame({
+           "__ID__":  ["p1", "p2", "p3"],
+           "name":    ["Alice", "Bob", "Carol"],
+           "age":     [30, 25, 35],
+       }),
+       "KNOWS": pd.DataFrame({
+           "__SOURCE__": ["p1", "p2"],
+           "__TARGET__": ["p2", "p3"],
+           "since":     [2020, 2021],
+       }),
+   })
 
-If you want to understand what’s happening, what Python classes are
-being built, etc., then you’ll have to use the source, Luke. Check out
-the ``__main__`` function at the end of the ``cypher.py`` script. There
-are no docs yet. Like I said, this is a *work in progress*.
+   star = Star(context=ctx)
 
-In addition to parsing Cypher queries, there is the beginning of support
-for querying your data with Cypher. It is very experimental.
+   # Simple property projection
+   result = star.execute_query(
+       "MATCH (p:Person) RETURN p.name AS name, p.age AS age ORDER BY age ASC"
+   )
+   print(result)
 
-The design of ``pycypher``\ ’s querying process requires a few simple
-steps:
+   # Relationship traversal
+   result = star.execute_query(
+       "MATCH (a:Person)-[:KNOWS]->(b:Person) RETURN a.name AS from, b.name AS to"
+   )
+   print(result)
 
-- First, you define individual ``Fact`` objects from your graph data;
-- then you put them all in a ``FactCollection`` object.
-- Instantiate a ``CypherParser`` object with your Cypher query;
-- finally, call ``CypherParser.solutions`` with your ``FactCollection``,
-  which will return a list of dictionaries containing solutions to your
-  query.
+   # Aggregation
+   result = star.execute_query(
+       "MATCH (p:Person) RETURN count(p) AS total, avg(p.age) AS avg_age"
+   )
+   print(result)
+
+The ``Star`` class is the main entry point.  ``ContextBuilder.from_dict``
+automatically detects entity tables (any key with a ``__ID__`` column) and
+relationship tables (any key with both ``__SOURCE__`` and ``__TARGET__``
+columns).
+
+Use ``parameters`` for safe value injection:
 
 .. code:: python
 
-   ################################
-   ### Build FactCollection
-   ################################
+   result = star.execute_query(
+       "MATCH (p:Person) WHERE p.name = $name AND p.age > $min_age "
+       "RETURN p.age AS age",
+       parameters={"name": "Alice", "min_age": 20},
+   )
 
-   fact1 = FactNodeHasLabel("1", "Thing")
-   fact2 = FactNodeHasAttributeWithValue("1", "key", Literal("2"))
-   fact3 = FactNodeRelatedToNode("1", "2", "MyRelationship")
-   fact4 = FactNodeHasLabel("2", "OtherThing")
-   fact5 = FactNodeHasAttributeWithValue("2", "key", Literal(5))
 
-   fact_collection = FactCollection([fact1, fact2, fact3, fact4, fact5])
+Supported Cypher features
+--------------------------
 
-   ###########################################
-   ### Define Cypher Query
-   ###########################################
+Pattern matching
+~~~~~~~~~~~~~~~~
 
-   cypher_statement = """MATCH (n:Thing {key: 2}) RETURN n.key"""
+- Node and relationship patterns with named and anonymous variables
+- Directed (``-->``/``<--``) and undirected (``--``) relationship traversal
+- Typed (``[:KNOWS]``) and untyped (``[]``) relationship patterns
+- Relationship type union: ``[:KNOWS|LIKES]`` or ``[:KNOWS|:LIKES]``
+- Inline node-property filters: ``MATCH (p:Person {name: 'Alice'})``
+- Inline relationship-property filters: ``-[r:KNOWS {since: 2020}]->``
+- Variable-length paths: ``[*m..n]`` BFS; unbounded ``[*]`` (capped)
+- ``shortestPath()`` / ``allShortestPaths()`` — minimum-hop path finding
+- Multiple ``MATCH`` clauses in one query (cross-join)
+- ``OPTIONAL MATCH`` — left-outer-join semantics; unmatched rows yield ``null``
 
-   ###########################################
-   ### Parse Cypher Query
-   ###########################################
+Filtering and predicates
+~~~~~~~~~~~~~~~~~~~~~~~~
 
-   parsed = CypherParser(cypher_statement)
-   instances = parsed.solutions(fact_collection)
-   rich.print(instances)
+- ``WHERE`` with full expression support, boolean operators, comparisons
+- String predicates: ``STARTS WITH``, ``ENDS WITH``, ``CONTAINS``, ``=~``
+- Membership tests: ``IN``, ``NOT IN``
+- Null checks: ``IS NULL``, ``IS NOT NULL``
+- Null literal: ``null``
 
-which will return:
+Expressions
+~~~~~~~~~~~
 
-::
+- Arithmetic: ``+``, ``-``, ``*``, ``/``, ``%``, ``^``
+- Searched and simple ``CASE … WHEN … THEN … ELSE … END``
+- List comprehensions: ``[x IN list WHERE cond | expr]``
+- Quantifier predicates: ``all()``, ``any()``, ``none()``, ``single()``
+- Accumulation: ``reduce(acc = init, var IN list | step)``
+- Full scalar function registry (see ``Star.available_functions()``)
+- Graph introspection: ``id(n)``, ``labels(n)``, ``type(r)``, ``keys(n)``, ``properties(n)``
 
-   [{n: 1}]
+Control flow
+~~~~~~~~~~~~
 
-where ``n`` is the node variable from your Cypher query. It says that
-the node whose ID is ``1`` can be put in for the value of ``n`` in your
-Cypher query. Alert readers will notice that the query actually asks for
-an attribute of ``n``, not the ID of ``n`` itself. I know; we haven’t
-gotten there yet.
+- ``UNWIND`` — expand a list into individual rows (standalone or after MATCH/WITH)
+- ``FOREACH (var IN list | ...)`` — iterate over a list and execute inner clauses
 
-Why is it designed this way? The idea is that if you’ve got a graph-like
-structure (say, a ``networkx`` graph), it would be very easy to walk the
-graph and create a list of simple ``Fact`` objects. Those can be put in
-a ``FactCollection`` and passed into your ``CypherParser``. In other
-words, the various ``Fact`` classes are there to provide a simple and
-intuitive target to represent graph data. So long as you can get the
-data into a ``FactCollection``, you can query it. The next logical step
-in developing this package is to provide out-of-the-box methods for
-querying various graph data formats, probably starting with
-``networkx``.
+Projection and aggregation
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- ``WITH`` — projection, grouped aggregation; DISTINCT, ORDER BY, SKIP, LIMIT
+- ``WITH *`` — pass-through all in-scope bindings (ORDER BY / SKIP / LIMIT apply)
+- ``RETURN`` — expression projection; DISTINCT, ORDER BY (ASC/DESC), SKIP, LIMIT
+- ``RETURN *`` — return all in-scope variables
+- Standalone ``RETURN``/``WITH`` (no preceding MATCH) — evaluates literal and scalar expressions directly
+- Aggregations: ``count()``, ``sum()``, ``avg()``, ``min()``, ``max()``,
+  ``collect()``, ``stdev()`` (sample), ``stdevp()`` (population),
+  ``percentileCont(expr, p)`` (linear), ``percentileDisc(expr, p)`` (discrete)
+
+Set operations
+~~~~~~~~~~~~~~
+
+- ``UNION`` (deduplicates) and ``UNION ALL`` (preserves duplicates)
+
+Mutation
+~~~~~~~~
+
+All mutations are staged in a shadow layer and committed atomically when
+the query succeeds; a failed query rolls back automatically.
+
+- ``CREATE`` — insert nodes and relationships; new entity types are registered automatically
+- ``SET`` — write a computed expression back to an entity property
+- ``REMOVE p.property`` — remove a property from matched nodes.
+  (``REMOVE p:Label`` is accepted but is a no-op — label membership is
+  implicit in entity-table identity and cannot be removed per-row.)
+- ``DELETE`` — remove matched entity rows
+- ``DETACH DELETE`` — remove matched entities and all relationship rows referencing them
+- ``MERGE`` — upsert: match an existing node or create it if absent; idempotent.
+  Supports ``ON CREATE SET`` (fires only on creation) and ``ON MATCH SET``
+  (fires only when the node already existed); both may appear together.
+- ``FOREACH (var IN list | ...)`` — iterate over a list and apply inner SET/CREATE/MERGE clauses
+
+Procedure calls
+~~~~~~~~~~~~~~~
+
+- ``CALL procedure(args) YIELD col1, col2`` — invokes a registered procedure and
+  introduces the YIELDed columns into the binding frame.
+
+  Built-in ``db.*`` procedures:
+
+  - ``db.labels()`` → ``label`` (one row per registered entity type)
+  - ``db.relationshipTypes()`` → ``relationshipType`` (one row per relationship type)
+  - ``db.propertyKeys()`` → ``propertyKey`` (one row per unique user-visible property)
+
+Not yet supported
+~~~~~~~~~~~~~~~~~
+
+- ``CALL { ... }`` subquery blocks (inline subqueries)
+- Full-text index operations (``CALL db.index.fulltext.*``)
+
+
+Pipeline configuration (nmetl)
+-------------------------------
+
+PyCypher ships with ``nmetl``, a command-line ETL tool that executes
+Cypher queries defined in a YAML pipeline config:
+
+.. code:: bash
+
+   nmetl run pipeline.yml            # execute all queries
+   nmetl query --entity Person=people.csv "MATCH (p:Person) RETURN p.name"
+   nmetl validate pipeline.yml       # validate config without running
+
+See ``nmetl --help`` for the full command reference.
+
 
 Under the hood
 --------------
 
-The package is simple, but complicated in the sense of “God, this is
-tedious!”. It contains a grammar in the old style of Lex and Yacc, which
-is processed by the ``PLY`` package. From there, an AST is generated
-which is constructed from a set of classes representing the semantic
-structure of the query (in contrast to a so-called “concrete” syntax
-tree which literally represents only the exact syntax).
+PyCypher uses Lark (Earley) to parse Cypher into a Pydantic-validated AST,
+then translates the AST into BindingFrame operations executed entirely in
+pandas.  No graph database, no JVM, no external process.
 
-For querying your data with the help of the AST, this package treats
-querying as a problem of constraint satisfaction over a finite domain.
-The AST yields a set of constraints such as “There is a node named ``n``
-which has the label ``Foo``”. The ``FactCollection`` object defines the
-domain of the constraint satisfaction problem. When you ask for
-solutions, a potentially large number of partial functions over the
-finite domain is generated, which form the constraints. Then we apply a
-backtracking constraint solver to get every set of assignments of
-variables to the domain satisfying the constraints.
 
 Installation
 ------------
@@ -140,26 +195,26 @@ Installation
 Mac and Linux
 ~~~~~~~~~~~~~
 
-You’ll need to be able to run ``uv`` in order to use the ``Makefile``.
+You'll need to be able to run ``uv`` in order to use the ``Makefile``.
 To install ``uv`` on Linux or Mac:
 
 .. code:: bash
 
    curl -LsSf https://astral.sh/uv/install.sh | sh
 
-If you don’t have ``make`` on your Mac, then you should:
+If you don't have ``make`` on your Mac, then you should:
 
 .. code:: bash
 
    brew install make
 
-And if you don’t have ``brew``, then install it with:
+And if you don't have ``brew``, then install it with:
 
 .. code:: bash
 
    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
-If you’re running Linux without ``make``, then follow the directions for
+If you're running Linux without ``make``, then follow the directions for
 your distribution. For example, on Ubuntu, you can:
 
 .. code:: bash
@@ -191,11 +246,11 @@ and so on, do:
 
    make clean
 
-You don’t *need* to use the ``Makefile``, and therefore you don’t *need*
-to have ``uv`` installed on your system. But that’s what all the cool
+You don't *need* to use the ``Makefile``, and therefore you don't *need*
+to have ``uv`` installed on your system. But that's what all the cool
 kids are using these days.
 
-.. |Install and run tests| image:: https://github.com/zacernst/pycypher/actions/workflows/makefile.yml/badge.svg
-   :target: https://github.com/zacernst/pycypher/actions/workflows/makefile.yml
-.. |Build Sphinx documentation| image:: https://github.com/zacernst/pycypher/actions/workflows/docs.yml/badge.svg
-   :target: https://github.com/zacernst/pycypher/actions/workflows/docs.yml
+.. |Install and run tests| image:: https://github.com/zacernst/pycypher/actions/workflows/ci.yml/badge.svg
+   :target: https://github.com/zacernst/pycypher/actions/workflows/ci.yml
+.. |Build Sphinx documentation| image:: https://github.com/zacernst/pycypher/actions/workflows/ci.yml/badge.svg
+   :target: https://github.com/zacernst/pycypher/actions/workflows/ci.yml

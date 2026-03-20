@@ -1,0 +1,4 @@
+segment,customer_count,avg_spend_per_segment,total_segment_revenue
+Regular,26,525.5265384615385,13663.69
+VIP,10,1802.446,18024.46
+Inactive,14,232.80785714285713,3259.31

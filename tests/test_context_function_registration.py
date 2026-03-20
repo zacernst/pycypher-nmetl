@@ -13,13 +13,12 @@ class TestRegisteredFunction:
 
     def test_create_registered_function(self):
         """Test creating a RegisteredFunction instance."""
+
         def sample_func(x, y):
             return x + y
 
         reg_func = RegisteredFunction(
-            name="sample_func",
-            implementation=sample_func,
-            arity=2
+            name="sample_func", implementation=sample_func, arity=2
         )
 
         assert reg_func.name == "sample_func"
@@ -28,55 +27,49 @@ class TestRegisteredFunction:
 
     def test_call_registered_function_correct_arity(self):
         """Test calling a registered function with correct number of arguments."""
+
         def add(x, y):
             return x + y
 
-        reg_func = RegisteredFunction(
-            name="add",
-            implementation=add,
-            arity=2
-        )
+        reg_func = RegisteredFunction(name="add", implementation=add, arity=2)
 
         result = reg_func(3, 5)
         assert result == 8
 
     def test_call_registered_function_wrong_arity_too_few(self):
         """Test that calling with too few arguments raises ValueError."""
+
         def add(x, y):
             return x + y
 
-        reg_func = RegisteredFunction(
-            name="add",
-            implementation=add,
-            arity=2
-        )
+        reg_func = RegisteredFunction(name="add", implementation=add, arity=2)
 
-        with pytest.raises(ValueError, match="expects 2 arguments, got 1"):
+        with pytest.raises(
+            ValueError, match="expects 2 arguments but 1 provided"
+        ):
             reg_func(3)
 
     def test_call_registered_function_wrong_arity_too_many(self):
         """Test that calling with too many arguments raises ValueError."""
+
         def add(x, y):
             return x + y
 
-        reg_func = RegisteredFunction(
-            name="add",
-            implementation=add,
-            arity=2
-        )
+        reg_func = RegisteredFunction(name="add", implementation=add, arity=2)
 
-        with pytest.raises(ValueError, match="expects 2 arguments, got 3"):
+        with pytest.raises(
+            ValueError, match="expects 2 arguments but 3 provided"
+        ):
             reg_func(3, 5, 7)
 
     def test_call_registered_function_zero_arity(self):
         """Test calling a zero-argument function."""
+
         def get_constant():
             return 42
 
         reg_func = RegisteredFunction(
-            name="get_constant",
-            implementation=get_constant,
-            arity=0
+            name="get_constant", implementation=get_constant, arity=0
         )
 
         result = reg_func()
@@ -84,14 +77,13 @@ class TestRegisteredFunction:
 
     def test_call_registered_function_zero_arity_no_check(self):
         """Test that arity=0 allows calling without arity check."""
+
         def variadic_func(*args):
             return sum(args)
 
         # When arity is 0 (default), no arity checking is performed
         reg_func = RegisteredFunction(
-            name="variadic_func",
-            implementation=variadic_func,
-            arity=0
+            name="variadic_func", implementation=variadic_func, arity=0
         )
 
         # Should work with any number of arguments
@@ -111,7 +103,9 @@ class TestContextFunctionDecorator:
             return x * 2
 
         assert "double" in context.cypher_functions
-        assert isinstance(context.cypher_functions["double"], RegisteredFunction)
+        assert isinstance(
+            context.cypher_functions["double"], RegisteredFunction
+        )
         assert context.cypher_functions["double"].name == "double"
         assert context.cypher_functions["double"].arity == 1
 
@@ -179,10 +173,13 @@ class TestContextFunctionDecorator:
 
         @context.cypher_function
         def my_custom_function(x):
-            return x ** 2
+            return x**2
 
         assert "my_custom_function" in context.cypher_functions
-        assert context.cypher_functions["my_custom_function"].name == "my_custom_function"
+        assert (
+            context.cypher_functions["my_custom_function"].name
+            == "my_custom_function"
+        )
 
     def test_function_overwrite(self):
         """Test that registering a function with the same name overwrites the previous one."""
@@ -216,7 +213,9 @@ class TestContextFunctionDecorator:
             return {key: value}
 
         assert context.cypher_functions["make_list"](5) == [0, 1, 2, 3, 4]
-        assert context.cypher_functions["make_dict"]("name", "Alice") == {"name": "Alice"}
+        assert context.cypher_functions["make_dict"]("name", "Alice") == {
+            "name": "Alice"
+        }
 
     def test_function_with_string_operations(self):
         """Test registering functions that work with strings."""
@@ -231,7 +230,10 @@ class TestContextFunctionDecorator:
             return s1 + s2
 
         assert context.cypher_functions["uppercase"]("hello") == "HELLO"
-        assert context.cypher_functions["concat"]("Hello, ", "World!") == "Hello, World!"
+        assert (
+            context.cypher_functions["concat"]("Hello, ", "World!")
+            == "Hello, World!"
+        )
 
     def test_arity_enforcement_after_registration(self):
         """Test that arity is enforced after registration."""
@@ -284,7 +286,7 @@ class TestContextFunctionDecorator:
 
         # Arity should be 2 (total parameter count)
         assert context.cypher_functions["greet"].arity == 2
-        
+
         # Should work with 2 arguments
         assert context.cypher_functions["greet"]("Alice", "Hi") == "Hi, Alice!"
 
@@ -293,7 +295,7 @@ class TestContextFunctionDecorator:
         context = Context()
 
         # Create a lambda and register it
-        square = lambda x: x ** 2
+        square = lambda x: x**2
         context.cypher_function(square)
 
         assert "<lambda>" in context.cypher_functions

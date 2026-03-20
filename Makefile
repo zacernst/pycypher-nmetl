@@ -6,14 +6,17 @@ SUPPORTED_PYTHON_VERSIONS = 3.14
 PYTHON_TEST_THREADS = 8
 BUMP = micro
 
+# Cross-platform browser opener (macOS: open, Linux: xdg-open, WSL: wslview)
+BROWSER := $(shell command -v xdg-open 2>/dev/null || command -v wslview 2>/dev/null || echo open)
 
 
 # Project paths
 export PROJECT_ROOT := .
 export PACKAGES_DIR := ${PROJECT_ROOT}/packages
-# Package-specific path
+# Package-specific paths
 export PYCYPHER_DIR := ${PACKAGES_DIR}/pycypher
 export SHARED_DIR := ${PACKAGES_DIR}/shared
+export FASTOPENDATA_DIR := ${PACKAGES_DIR}/fastopendata
 export LC_ALL := C
 
 # Documentation paths
@@ -24,10 +27,120 @@ export TESTS_DIR := ${PROJECT_ROOT}/tests
 export COVERAGE_DIR := ${PROJECT_ROOT}/coverage_report
 
 # Main targets
-.PHONY: pycypher shared test docs clean veryclean venv uv start format coverage dev-up dev-down dev-shell dev-rebuild dev-logs dev-test dev-typecheck dev-format
+.PHONY: help pycypher shared test docs clean veryclean venv uv start format lint lint-changed audit typecheck coverage coverage-check check setup test-file test-find test-k test-mark watch reset lock-check dev-check bench bench-save bench-compare bench-memory metrics-snapshot metrics-prometheus test-telemetry dev-up dev-up-minimal dev-down dev-shell dev-rebuild dev-logs dev-test dev-typecheck dev-format spark-up spark-down spark-logs spark-ui spark-shell spark-scale neo4j-up neo4j-down neo4j-logs neo4j-browser neo4j-shell neo4j-reset infra-up infra-down test-spark test-neo4j test-integration fod-up fod-down fod-shell fod-logs fod-rebuild fod-api-up fod-api-down fod-api-shell fod-api-logs fod-api-rebuild nominatim-up nominatim-down nominatim-logs nominatim-search nominatim-status
 
 # Default target - run the complete build process
-all: veryclean venv format pycypher # docs
+all: clean venv format pycypher # docs
+
+## Show available targets with descriptions
+help:
+	@echo "PyCypher Development Targets"
+	@echo "============================"
+	@echo ""
+	@echo "Setup & Build:"
+	@echo "  make uv              Install/upgrade uv package manager"
+	@echo "  make venv            Create virtual environment"
+	@echo "  make build           Build wheel packages"
+	@echo "  make pycypher        Build and install pycypher package"
+	@echo "  make format          Run ruff import sorting + format"
+	@echo "  make all             Full rebuild (veryclean + venv + format + pycypher)"
+	@echo ""
+	@echo "Testing:"
+	@echo "  make test            Run all tests (parallel, $(PYTHON_TEST_THREADS) threads)"
+	@echo "  make test-fast       Run tests (auto threads, stop on first failure)"
+	@echo "  make test-serial     Run tests (single thread)"
+	@echo "  make test-quick      Run tests (minimal output, no coverage)"
+	@echo "  make test-failed     Re-run only previously failed tests"
+	@echo "  make test-changed    Re-run failed tests first, then rest"
+	@echo "  make test-verbose    Run tests with verbose output"
+	@echo "  make test-unit       Run only unit-marked tests"
+	@echo "  make test-no-slow    Run all tests except slow-marked"
+	@echo "  make coverage        Run tests with HTML coverage report"
+	@echo "  make coverage-check  Run tests with coverage floor (COVERAGE_FLOOR=50)"
+	@echo ""
+	@echo "Benchmarking:"
+	@echo "  make bench           Run performance benchmarks (pytest-benchmark)"
+	@echo "  make bench-save      Run benchmarks and save baseline"
+	@echo "  make bench-compare   Run benchmarks and compare against baseline"
+	@echo "  make bench-memory    Run memory profiling benchmark"
+	@echo ""
+	@echo "Telemetry & Monitoring:"
+	@echo "  make metrics-snapshot     Show current metrics (human-readable)"
+	@echo "  make metrics-prometheus   Export metrics in Prometheus text format"
+	@echo "  make test-telemetry       Run telemetry/exporter tests"
+	@echo ""
+	@echo "Code Quality:"
+	@echo "  make lint            Run ruff import check + format check + lint"
+	@echo "  make lint-changed    Lint only files changed vs main (CI gate)"
+	@echo "  make typecheck       Run ty type checker"
+	@echo "  make audit           Scan dependencies for known vulnerabilities (pip-audit)"
+	@echo ""
+	@echo "Docker Development:"
+	@echo "  make dev-up          Start dev container + Spark + Neo4j"
+	@echo "  make dev-up-minimal  Start dev container only (no Spark/Neo4j)"
+	@echo "  make dev-down        Stop all containers"
+	@echo "  make dev-shell       Open shell in dev container"
+	@echo "  make dev-rebuild     Rebuild and restart dev container"
+	@echo "  make dev-logs        Tail dev container logs"
+	@echo "  make dev-test        Run tests inside container"
+	@echo "  make dev-typecheck   Run ty type checker inside container"
+	@echo "  make dev-format      Run ruff format inside container"
+	@echo "  make dev-jupyter     Start with Jupyter Lab (port 8888)"
+	@echo "  make dev-vscode      Start with VS Code server (port 8080)"
+	@echo ""
+	@echo "Infrastructure:"
+	@echo "  make infra-up        Start Spark + Neo4j"
+	@echo "  make infra-down      Stop Spark + Neo4j"
+	@echo "  make spark-up        Start Spark cluster"
+	@echo "  make spark-down      Stop Spark cluster"
+	@echo "  make spark-ui        Open Spark UI (port 8090)"
+	@echo "  make spark-shell     Open PySpark shell"
+	@echo "  make spark-scale     Scale workers (WORKERS=N)"
+	@echo "  make neo4j-up        Start Neo4j"
+	@echo "  make neo4j-down      Stop Neo4j"
+	@echo "  make neo4j-browser   Open Neo4j browser (port 7474)"
+	@echo "  make neo4j-shell     Open Cypher shell"
+	@echo "  make neo4j-reset     Delete all Neo4j data (with confirmation)"
+	@echo ""
+	@echo "Integration Tests:"
+	@echo "  make test-spark      Run Spark tests (requires dev container)"
+	@echo "  make test-neo4j      Run Neo4j tests (requires dev container)"
+	@echo "  make test-integration Run all integration tests"
+	@echo "  make test-large-dataset Run large-dataset tests (timeout=120s)"
+	@echo "  make test-backends   Run backend equivalence tests (timeout=60s)"
+	@echo ""
+	@echo "Documentation:"
+	@echo "  make docs            Build Sphinx documentation"
+	@echo ""
+	@echo "Examples:"
+	@echo "  uv run python examples/social_network/run_demo.py"
+	@echo "  uv run python examples/functions_in_where.py"
+	@echo "  uv run python examples/scalar_functions_in_with.py"
+	@echo "  uv run python examples/ast_conversion_example.py"
+	@echo "  uv run python examples/advanced_grammar_examples.py"
+	@echo ""
+	@echo "Developer Workflow:"
+	@echo "  make setup           One-command onboarding (env + deps + pre-commit hooks)"
+	@echo "  make check           Run lock-check + format + lint + typecheck + test-fast"
+	@echo "  make lock-check      Verify uv.lock matches pyproject.toml (CI parity)"
+	@echo "  make dev-check       Validate .env before Docker targets"
+	@echo "  make test-file FILE=tests/test_foo.py  Run a single test file"
+	@echo "  make test-find QUERY=binding           Search test names"
+	@echo "  make test-k EXPR=\"binding AND frame\"   Run tests matching keyword expression"
+	@echo "  make test-mark MARK=security           Run tests by marker"
+	@echo "  make watch                             Re-run tests on file change (TDD)"
+	@echo "  make watch WATCH_FILE=tests/test_foo.py  Watch a specific test file"
+	@echo ""
+	@echo "Getting Started:"
+	@echo "  1. make setup            (one-command setup, or do steps 2-3 manually)"
+	@echo "  2. cp .env.example .env  (set real credentials for Docker)"
+	@echo "  3. uv sync               (install dependencies)"
+	@echo "  4. make test             (run tests)"
+	@echo ""
+	@echo "Cleaning:"
+	@echo "  make clean           Remove build artifacts"
+	@echo "  make reset           Deep clean (clean + remove .venv + uv cache)"
+	@echo "  make veryclean       Alias for reset"
 
 uv:
 	pip install --upgrade uv
@@ -42,9 +155,12 @@ start: veryclean install
 # Cleaning targets
 
 # Remove all generated files and virtual environment
-veryclean: clean
+reset: clean
 	@echo "Deep cleaning project..."
 	uv cache clean && rm -rfv ./.venv
+
+# Keep veryclean as alias for backwards compatibility
+veryclean: reset
 
 # Clean up build artifacts
 clean:
@@ -60,13 +176,13 @@ test:
 	uv run pytest -n ${PYTHON_TEST_THREADS} .
 
 test-fast:
-	uv run pytest -n auto -x .
+	uv run pytest -n auto -x -m "not slow" --ignore=tests/load_testing --ignore=tests/large_dataset .
 
 test-serial:
 	uv run pytest .
 
 test-quick:
-	uv run pytest -n auto --tb=line --no-cov -q .
+	uv run pytest -n auto --tb=line --no-cov -q -m "not slow" --ignore=tests/load_testing --ignore=tests/large_dataset --ignore=tests/property_based .
 
 test-failed:
 	uv run pytest --lf -n ${PYTHON_TEST_THREADS} .
@@ -77,62 +193,393 @@ test-changed:
 test-verbose:
 	uv run pytest -n ${PYTHON_TEST_THREADS} -v .
 
+test-unit:
+	uv run pytest -m unit -n ${PYTHON_TEST_THREADS} .
+
+test-no-slow:
+	uv run pytest -m "not slow" -n ${PYTHON_TEST_THREADS} .
+
+test-large-dataset:
+	@echo "Running large-dataset integration tests..."
+	uv run pytest -m integration tests/test_distributed_scaffolding.py tests/test_large_dataset_dependency_compat.py -v --timeout=120
+
+test-backends:
+	@echo "Running backend equivalence and compatibility tests..."
+	uv run pytest tests/test_large_dataset_dependency_compat.py tests/test_distributed_scaffolding.py -k "not Dask" -v --timeout=60
+
+# ------------------------------------------------------------------------------
+# Benchmarking targets (pytest-benchmark)
+
+# Run all benchmarks (excludes slow/100K scale by default)
+bench:
+	@echo "Running performance benchmarks..."
+	uv run pytest tests/benchmarks/bench_core_operations.py -v --benchmark-only -m "not slow" --timeout=120
+
+# Run benchmarks and save as named baseline for regression comparison
+BENCH_NAME ?= baseline
+bench-save:
+	@echo "Running benchmarks and saving as '$(BENCH_NAME)'..."
+	uv run pytest tests/benchmarks/bench_core_operations.py -v --benchmark-only -m "not slow" --benchmark-save=$(BENCH_NAME) --timeout=120
+	@echo "Saved to .benchmarks/ — compare later with: make bench-compare"
+
+# Run benchmarks and compare against most recent saved baseline
+bench-compare:
+	@echo "Running benchmarks and comparing against saved baseline..."
+	uv run pytest tests/benchmarks/bench_core_operations.py -v --benchmark-only -m "not slow" --benchmark-compare --timeout=120
+
+# Run memory profiling benchmark (all scales including slow)
+bench-memory:
+	@echo "Running memory profiling benchmark..."
+	uv run python tests/benchmarks/bench_memory_baseline.py
+
+# ------------------------------------------------------------------------------
+# Telemetry and monitoring targets
+
+# Show current in-process metrics snapshot (human-readable)
+metrics-snapshot:
+	@uv run nmetl metrics
+
+# Export current metrics in Prometheus text exposition format
+metrics-prometheus:
+	@uv run python -c "from shared.metrics import QUERY_METRICS; from shared.exporters import PrometheusExporter; print(PrometheusExporter().render(QUERY_METRICS.snapshot()))"
+
+# Run telemetry and exporter test suites
+test-telemetry:
+	@echo "Running telemetry integration tests..."
+	uv run pytest tests/test_otel_integration.py tests/test_metrics_exporters.py -v
+
+# ------------------------------------------------------------------------------
+# Code quality targets (local equivalents of CI checks)
+
+lint:
+	@echo "Running linters..."
+	uv run ruff check --select I .
+	uv run ruff format --check .
+	uv run ruff check .
+
+# Lint only files changed vs main (enforces quality on new code)
+lint-changed:
+	@./scripts/lint_changed.sh
+
+# Scan dependencies for known vulnerabilities (CVEs)
+# --skip-editable excludes workspace packages not on PyPI
+audit:
+	@echo "Auditing dependencies for known vulnerabilities..."
+	uv run pip-audit --desc --skip-editable
+
+# Static Application Security Testing (SAST) — scan source code for
+# injection risks, hardcoded secrets, and other security anti-patterns.
+# Configuration in pyproject.toml [tool.bandit].
+sast:
+	@echo "Running SAST scan (bandit)..."
+	uv run bandit -r packages/pycypher/src/ packages/shared/src/ \
+		-c pyproject.toml --severity-level medium -f txt
+
+# Combined security scan: dependencies + code
+security: audit sast
+
+typecheck:
+	@echo "Running type checker..."
+	uv run ty check
+
+# ------------------------------------------------------------------------------
+# Developer workflow targets
+
+# One-command onboarding: copy .env, install deps, install pre-commit hooks
+setup:
+	@echo "Setting up development environment..."
+	@if [ ! -f .env ]; then \
+		cp .env.example .env; \
+		echo "Created .env from .env.example — edit it to set real credentials for Docker."; \
+	else \
+		echo ".env already exists, skipping copy."; \
+	fi
+	uv sync
+	uv run pre-commit install
+	@echo ""
+	@echo "Setup complete! Next steps:"
+	@echo "  make test        Run the test suite"
+	@echo "  make dev-up      Start Docker dev environment (edit .env first)"
+
+# Verify uv.lock is in sync with pyproject.toml (matches CI --frozen)
+lock-check:
+	@echo "Checking lockfile is in sync with pyproject.toml..."
+	uv sync --frozen --dry-run 2>&1 || { echo "ERROR: uv.lock is out of date. Run 'uv sync' to update."; exit 1; }
+	@echo "Lockfile is in sync."
+
+# Validate .env before docker-compose (prevents cryptic startup errors)
+dev-check:
+	@echo "Checking Docker environment prerequisites..."
+	@if [ ! -f .env ]; then \
+		echo "ERROR: .env file not found. Run 'cp .env.example .env' and set real credentials."; \
+		exit 1; \
+	fi
+	@missing=""; \
+	for var in NEO4J_USER NEO4J_PASSWORD NEO4J_URI SPARK_MASTER_URL SPARK_RPC_SECRET; do \
+		val=$$(grep "^$$var=" .env 2>/dev/null | cut -d= -f2-); \
+		if [ -z "$$val" ] || echo "$$val" | grep -q '<.*>'; then \
+			missing="$$missing $$var"; \
+		fi; \
+	done; \
+	if [ -n "$$missing" ]; then \
+		echo "ERROR: The following .env variables are missing or still have placeholder values:"; \
+		echo " $$missing"; \
+		echo "Edit .env and set real values before running Docker targets."; \
+		exit 1; \
+	fi
+	@echo "Environment OK — all required Docker variables are set."
+
+# Run format + lint + typecheck + fast tests (local CI equivalent)
+check: lock-check format lint typecheck test-fast
+
+# Run a single test file: make test-file FILE=tests/test_foo.py
+FILE ?= tests/
+test-file:
+	uv run pytest -n auto -x $(FILE)
+
+# Search test names by keyword: make test-find QUERY=binding
+QUERY ?= ""
+test-find:
+	@uv run pytest --collect-only -q 2>/dev/null | grep -i "$(QUERY)" || echo "No tests matching '$(QUERY)'"
+
+# Run tests matching a keyword expression: make test-k EXPR="binding AND frame"
+EXPR ?= ""
+test-k:
+	uv run pytest -n auto -x -k "$(EXPR)" .
+
+# Run tests by marker: make test-mark MARK=security
+MARK ?= ""
+test-mark:
+	uv run pytest -n ${PYTHON_TEST_THREADS} -m "$(MARK)" .
+
+# Watch files and re-run tests on change (TDD workflow)
+WATCH_FILE ?= tests/
+watch:
+	uv run ptw -- -x --tb=short $(WATCH_FILE)
+
 # ------------------------------------------------------------------------------
 # Docker development targets
 
-# Start the development container
-dev-up:
-	@echo "Starting pycypher development container..."
-	docker-compose up -d pycypher-dev
+# Start the development container (+ Spark + Neo4j)
+dev-up: dev-check
+	@echo "Starting pycypher development environment (dev + Spark + Neo4j)..."
+	docker compose up -d
+	@echo "  pycypher-dev : make dev-shell"
+	@echo "  Spark UI     : http://localhost:8090"
+	@echo "  Neo4j browser: http://localhost:7474  (neo4j / pycypher)"
 
-# Stop the development container
+# Start only the dev container (no Spark/Neo4j — faster for pure pycypher work)
+dev-up-minimal:
+	@echo "Starting pycypher dev container only (no Spark/Neo4j)..."
+	docker compose up -d --no-deps pycypher-dev
+	@echo "  pycypher-dev : make dev-shell"
+
+# Stop all containers
 dev-down:
 	@echo "Stopping development container..."
-	docker-compose down
+	docker compose down
 
 # Access shell in development container
 dev-shell:
 	@echo "Accessing pycypher development container shell..."
-	docker-compose exec pycypher-dev bash
+	docker compose exec pycypher-dev bash
 
 # Rebuild and start development container
 dev-rebuild:
 	@echo "Rebuilding pycypher development container..."
-	docker-compose build pycypher-dev
-	docker-compose up -d pycypher-dev
+	docker compose build pycypher-dev
+	docker compose up -d pycypher-dev
 
 # View logs from development container
 dev-logs:
 	@echo "Viewing pycypher development container logs..."
-	docker-compose logs -f pycypher-dev
+	docker compose logs -f pycypher-dev
 
 # Start with Jupyter Lab for interactive development
 dev-jupyter:
 	@echo "Starting development environment with Jupyter Lab..."
-	docker-compose --profile jupyter up -d
+	docker compose --profile jupyter up -d
 	@echo "Jupyter Lab available at http://localhost:8888"
 
 # Start with code-server (VS Code in browser)
 dev-vscode:
 	@echo "Starting development environment with VS Code server..."
-	docker-compose --profile code-server up -d
+	docker compose --profile code-server up -d
 	@echo "VS Code available at http://localhost:8080"
 	@echo "Password: ${CODE_SERVER_PASSWORD:-pycypher}"
 
 # Run tests inside the container
 dev-test:
 	@echo "Running tests in development container..."
-	docker-compose exec pycypher-dev bash -c "cd /workspace && uv run pytest packages/pycypher/"
+	docker compose exec pycypher-dev bash -c "cd /workspace && uv run pytest -n auto -x tests/"
 
 # Run type checking inside the container
 dev-typecheck:
 	@echo "Running type checker in development container..."
-	docker-compose exec pycypher-dev bash -c "cd /workspace && uv run ty check packages/pycypher/"
+	docker compose exec pycypher-dev bash -c "cd /workspace && uv run ty check packages/pycypher/"
 
 # Format code inside the container
 dev-format:
 	@echo "Formatting code in development container..."
-	docker-compose exec pycypher-dev bash -c "cd /workspace && uv run ruff format packages/pycypher/"
+	docker compose exec pycypher-dev bash -c "cd /workspace && uv run ruff format packages/pycypher/"
+
+# ------------------------------------------------------------------------------
+# Nominatim geocoder targets
+#
+# IMPORTANT — first-start import time:
+#   Importing the full US OSM extract takes several hours and ~32 GB of RAM.
+#   The PBF must already exist at:
+#     packages/fastopendata/raw_data/us-latest.osm.pbf
+#   Run `make fod-shell` then download it per DATASETS.md #16 before starting
+#   Nominatim for the first time.  Subsequent starts skip the import.
+
+nominatim-up:
+	@echo "Starting Nominatim (first start triggers OSM import — see DATASETS.md #16)..."
+	docker compose up -d nominatim
+
+nominatim-down:
+	docker compose stop nominatim
+
+nominatim-logs:
+	docker compose logs -f nominatim
+
+# Quick smoke-test: geocode "New York" against the running instance
+nominatim-search:
+	@echo "Searching for 'New York'..."
+	curl -s "http://localhost:8092/search?q=New+York&format=json&limit=1" | python3 -m json.tool
+
+# Check import/service status
+nominatim-status:
+	curl -s "http://localhost:8092/status.php" | python3 -m json.tool
+
+# ------------------------------------------------------------------------------
+# FastOpenData targets
+
+fod-up:
+	@echo "Starting fastopendata container..."
+	docker compose up -d fastopendata
+	@echo "  shell: make fod-shell"
+
+fod-down:
+	docker compose stop fastopendata
+
+fod-rebuild:
+	@echo "Rebuilding fastopendata image..."
+	docker compose build fastopendata
+	docker compose up -d fastopendata
+
+fod-shell:
+	@echo "Opening fastopendata shell..."
+	docker compose exec fastopendata bash
+
+fod-logs:
+	docker compose logs -f fastopendata
+
+# ------------------------------------------------------------------------------
+# FastOpenData API targets
+# The API container runs uvicorn with --reload against the bind-mounted source.
+# Swagger UI is available at http://localhost:8093/docs once the container starts.
+
+fod-api-up:
+	@echo "Starting fastopendata API container..."
+	docker compose up -d fastopendata-api
+	@echo "  API:       http://localhost:8093"
+	@echo "  Swagger:   http://localhost:8093/docs"
+	@echo "  ReDoc:     http://localhost:8093/redoc"
+	@echo "  shell:     make fod-api-shell"
+
+fod-api-down:
+	docker compose stop fastopendata-api
+
+fod-api-rebuild:
+	@echo "Rebuilding fastopendata API image..."
+	docker compose build fastopendata-api
+	docker compose up -d fastopendata-api
+
+fod-api-shell:
+	@echo "Opening fastopendata API container shell..."
+	docker compose exec fastopendata-api bash
+
+fod-api-logs:
+	docker compose logs -f fastopendata-api
+
+# ------------------------------------------------------------------------------
+# Spark targets
+
+spark-up:
+	@echo "Starting Spark cluster..."
+	docker compose up -d spark-master spark-worker
+
+spark-down:
+	docker compose stop spark-master spark-worker
+
+spark-logs:
+	docker compose logs -f spark-master spark-worker
+
+spark-ui:
+	$(BROWSER) http://localhost:8090
+
+spark-shell:
+	docker compose exec pycypher-dev bash -c \
+	  "cd /workspace && PYSPARK_DRIVER_PYTHON=python3 \
+	   uv run pyspark --master spark://spark-master:7077"
+
+WORKERS ?= 2
+spark-scale:
+	docker compose up -d --scale spark-worker=$(WORKERS) spark-worker
+
+# ------------------------------------------------------------------------------
+# Neo4j targets
+
+neo4j-up:
+	@echo "Starting Neo4j..."
+	docker compose up -d neo4j
+
+neo4j-down:
+	docker compose stop neo4j
+
+neo4j-logs:
+	docker compose logs -f neo4j
+
+neo4j-browser:
+	$(BROWSER) http://localhost:7474
+
+neo4j-shell:
+	@echo "Cypher shell (neo4j / pycypher)..."
+	docker compose exec neo4j cypher-shell -u neo4j -p pycypher
+
+neo4j-reset:
+	@echo "WARNING: deleting all Neo4j data. Ctrl-C within 3s to abort."
+	@sleep 3
+	docker compose exec neo4j cypher-shell -u neo4j -p pycypher \
+	  "MATCH (n) DETACH DELETE n"
+	@echo "Neo4j graph cleared."
+
+# ------------------------------------------------------------------------------
+# Combined infrastructure targets
+
+infra-up: spark-up neo4j-up
+	@echo "Spark and Neo4j services running."
+
+infra-down:
+	docker compose stop spark-master spark-worker neo4j
+
+# ------------------------------------------------------------------------------
+# Integration test targets
+
+test-spark:
+	@echo "Running Spark integration tests..."
+	docker compose exec pycypher-dev bash -c \
+	  "cd /workspace && uv run pytest -m spark -v"
+
+test-neo4j:
+	@echo "Running Neo4j integration tests..."
+	docker compose exec pycypher-dev bash -c \
+	  "cd /workspace && uv run pytest -m neo4j -v"
+
+test-integration:
+	docker compose exec pycypher-dev bash -c \
+	  "cd /workspace && uv run pytest -m 'spark or neo4j' -v"
 
 # ------------------------------------------------------------------------------
 # Development targets
@@ -140,7 +587,7 @@ dev-format:
 # Format code
 format:
 	@echo "Formatting code..."
-	uv run isort .
+	uv run ruff check --select I --fix .
 	uv run ruff format . --config ./pyproject.toml
 
 # Build packages
@@ -155,20 +602,24 @@ build:
 install: build
 	@echo "Installing packages in development mode..."
 	uv pip install --upgrade -e ${PYCYPHER_DIR}
-	uv pip install --upgrade -e ${NMETL_DIR}
-	# uv pip install --upgrade -e .
 # ------------------------------------------------------------------------------
 # Testing targets
 
 # Run tests with coverage (parallel)
-coverage: install
+coverage:
 	@echo "Running tests with coverage..."
 	uv run pytest -n ${PYTHON_TEST_THREADS} --cov-report html:${COVERAGE_DIR} --cov
 
 # Run tests with coverage (detailed, serial)
-coverage-detailed: install
+coverage-detailed:
 	@echo "Running tests with detailed coverage..."
 	uv run pytest --cov-report html:${COVERAGE_DIR} --cov --cov-report term-missing
+
+# Run tests with coverage floor enforcement (CI gate)
+COVERAGE_FLOOR ?= 50
+coverage-check:
+	@echo "Running tests with coverage floor ($(COVERAGE_FLOOR)%)..."
+	uv run pytest -n ${PYTHON_TEST_THREADS} --cov --cov-fail-under=$(COVERAGE_FLOOR) -q
 
 # ------------------------------------------------------------------------------
 # Documentation targets
@@ -219,14 +670,8 @@ pycypher:
 	cd ${PYCYPHER_DIR} && uv build
 	uv pip install --upgrade -e ${PYCYPHER_DIR}
 
-# Build and install only nmetl (depends on pycypher)
-nmetl: pycypher
-	@echo "Building and installing nmetl package..."
-	cd ${NMETL_DIR} && uv run hatch build -t wheel
-	uv pip install --upgrade -e ${NMETL_DIR}
-
-# Build and install only fastopendata
-fastopendata: nmetl
+# Build and install only fastopendata (depends on pycypher)
+fastopendata: pycypher
 	@echo "Building and installing fastopendata package..."
 	cd ${FASTOPENDATA_DIR} && uv run hatch build -t wheel
 	uv pip install --upgrade ${FASTOPENDATA_DIR}

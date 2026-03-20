@@ -1,0 +1,40 @@
+# Dockerfile for the fastopendata FastAPI service (development/testing).
+#
+# This image is intentionally lean — it carries no geospatial system
+# libraries (osmium, GDAL).  The monorepo is bind-mounted at /workspace
+# so the startup command installs all workspace packages at runtime via uv.
+#
+# Usage (via Makefile):
+#   make fod-api-up     # build + start
+#   make fod-api-shell  # interactive shell
+#   curl http://localhost:8093/health
+
+# Use the same Python version as the main project (not -rc pre-release)
+FROM python:3.14-slim
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONUNBUFFERED=1
+ENV LC_ALL=C.UTF-8
+ENV LANG=C.UTF-8
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install uv — used to manage the monorepo virtual environment.
+RUN pip install --no-cache-dir uv
+
+WORKDIR /workspace
+
+EXPOSE 8000
+
+# Sync the entire workspace (installs pycypher, shared, fastopendata and
+# all their deps including fastapi + uvicorn), then start the API server
+# with --reload for live code reloading against the bind-mounted source.
+CMD ["bash", "-c", \
+    "cd /workspace && \
+     uv sync && \
+     uv run uvicorn fastopendata.api:app \
+       --host 0.0.0.0 --port 8000 --reload \
+       --reload-dir packages/fastopendata/src"]

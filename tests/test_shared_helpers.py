@@ -6,9 +6,7 @@ from pathlib import Path
 from urllib.parse import ParseResult, urlparse
 
 import pytest
-
 from shared.helpers import decode, encode, ensure_bytes, ensure_uri
-
 
 # ---------------------------------------------------------------------------
 # ensure_uri

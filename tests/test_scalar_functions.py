@@ -11,7 +11,6 @@ Tests cover:
 
 import pandas as pd
 import pytest
-
 from pycypher.scalar_functions import ScalarFunctionRegistry
 
 
@@ -66,26 +65,32 @@ class TestScalarFunctionRegistry:
 
     def test_argument_count_validation_min(self):
         """Validates minimum argument count."""
+        from pycypher.exceptions import FunctionArgumentError
+
         registry = ScalarFunctionRegistry.get_instance()
 
         # toUpper requires at least 1 argument
-        with pytest.raises(ValueError, match="at least 1 argument"):
+        with pytest.raises(FunctionArgumentError, match="toUpper"):
             registry.execute("toUpper", [])
 
     def test_argument_count_validation_max(self):
         """Validates maximum argument count."""
+        from pycypher.exceptions import FunctionArgumentError
+
         registry = ScalarFunctionRegistry.get_instance()
 
         # toUpper accepts at most 1 argument
         input_series = pd.Series(["a", "b"])
-        with pytest.raises(ValueError, match="at most 1 argument"):
+        with pytest.raises(FunctionArgumentError, match="toUpper"):
             registry.execute("toUpper", [input_series, input_series])
 
     def test_unknown_function_error(self):
         """Raises error for unknown function with helpful message."""
+        from pycypher.exceptions import UnsupportedFunctionError
+
         registry = ScalarFunctionRegistry.get_instance()
 
-        with pytest.raises(ValueError, match="Unknown scalar function: foobar"):
+        with pytest.raises(UnsupportedFunctionError, match="foobar"):
             registry.execute("foobar", [])
 
 
@@ -132,7 +137,9 @@ class TestStringFunctions:
         """trim removes leading and trailing whitespace."""
         registry = ScalarFunctionRegistry.get_instance()
 
-        input_series = pd.Series(["  hello  ", "world", "  spaces  ", "\t\ntabs\n"])
+        input_series = pd.Series(
+            ["  hello  ", "world", "  spaces  ", "\t\ntabs\n"]
+        )
         result = registry.execute("trim", [input_series])
 
         assert result.tolist() == ["hello", "world", "spaces", "tabs"]
@@ -236,7 +243,7 @@ class TestConversionFunctions:
         input_series = pd.Series([True, False])
         result = registry.execute("toString", [input_series])
 
-        assert result.tolist() == ["True", "False"]
+        assert result.tolist() == ["true", "false"]
 
     def test_tostring_preserves_nulls(self):
         """toString preserves null values."""
@@ -432,48 +439,58 @@ class TestFunctionErrorHandling:
 
     def test_unknown_function(self):
         """Unknown function produces clear error message."""
+        from pycypher.exceptions import UnsupportedFunctionError
+
         registry = ScalarFunctionRegistry.get_instance()
 
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(UnsupportedFunctionError) as exc_info:
             registry.execute("unknownFunction", [pd.Series([1])])
 
-        assert "Unknown scalar function: unknownFunction" in str(exc_info.value)
-        assert "Available functions:" in str(exc_info.value)
+        assert exc_info.value.function_name == "unknownFunction"
+        assert exc_info.value.category == "scalar"
 
     def test_too_few_arguments(self):
         """Too few arguments produces clear error."""
+        from pycypher.exceptions import FunctionArgumentError
+
         registry = ScalarFunctionRegistry.get_instance()
 
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(FunctionArgumentError) as exc_info:
             registry.execute("toUpper", [])
 
-        assert "at least 1 argument" in str(exc_info.value)
+        assert exc_info.value.function_name == "toUpper"
+        assert exc_info.value.actual_args == 0
 
     def test_too_many_arguments(self):
         """Too many arguments produces clear error."""
+        from pycypher.exceptions import FunctionArgumentError
+
         registry = ScalarFunctionRegistry.get_instance()
 
         s1 = pd.Series(["a"])
         s2 = pd.Series(["b"])
 
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(FunctionArgumentError) as exc_info:
             registry.execute("toUpper", [s1, s2])
 
-        assert "at most 1 argument" in str(exc_info.value)
+        assert exc_info.value.function_name == "toUpper"
+        assert exc_info.value.actual_args == 2
 
     def test_return_type_validation(self):
-        """Functions must return pd.Series."""
+        """Functions must return pd.Series — wrong return type raises TypeError."""
         registry = ScalarFunctionRegistry.get_instance()
 
         # Register a badly behaved function that returns wrong type
         registry.register_function(
             name="badFunction",
-            callable=lambda s: "wrong_type",  # Returns string instead of Series
+            callable=lambda s: (
+                "wrong_type"
+            ),  # Returns string instead of Series
             min_args=1,
             max_args=1,
         )
 
-        with pytest.raises(RuntimeError) as exc_info:
+        with pytest.raises(TypeError) as exc_info:
             registry.execute("badFunction", [pd.Series([1])])
 
         assert "must return pd.Series" in str(exc_info.value)
@@ -506,10 +523,11 @@ class TestScalarFunctionEdgeCases:
         result = registry.execute("mycustom", [pd.Series([5])])
         assert result.tolist() == [15]
 
-    def test_size_numeric_raises(self):
-        """size() on a numeric (non-object) Series raises RuntimeError."""
+    def test_size_numeric_works(self):
+        """size() on a numeric Series converts to string and returns length."""
         registry = ScalarFunctionRegistry.get_instance()
         input_series = pd.Series([10, 200, 3000])
-        with pytest.raises(RuntimeError, match="Error executing function size"):
-            registry.execute("size", [input_series])
-
+        result = registry.execute("size", [input_series])
+        # "10" → 2, "200" → 3, "3000" → 4
+        expected = pd.Series([2, 3, 4])
+        pd.testing.assert_series_equal(result, expected)

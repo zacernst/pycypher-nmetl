@@ -5,15 +5,12 @@ Aggregations are critical for ETL data quality and must be mathematically precis
 
 import pandas as pd
 import pytest
-import numpy as np
-import math
-
 from pycypher.relational_models import (
     ID_COLUMN,
     Context,
     EntityMapping,
-    RelationshipMapping,
     EntityTable,
+    RelationshipMapping,
 )
 from pycypher.star import Star
 
@@ -21,29 +18,107 @@ from pycypher.star import Star
 @pytest.fixture
 def aggregation_test_context():
     """Create context with specific data for testing aggregation accuracy."""
-    person_df = pd.DataFrame({
-        ID_COLUMN: [1, 2, 3, 4, 5, 6, 7, 8],
-        "name": ["Alice", "Bob", "Carol", "Dave", "Eve", "Frank", "Grace", "Henry"],
-        "age": [30, None, 25, 40, 35, None, 28, 32],  # Mix with nulls
-        "salary": [100000, 120000, None, 110000, 95000, 105000, None, 115000],  # Mix with nulls
-        "score": [85.5, 92.3, 78.9, 88.1, 91.7, 87.2, 83.4, 89.6],  # All valid floats
-        "department": ["Eng", "Sales", "Eng", "Marketing", "Eng", "Sales", "Marketing", "Eng"],
-        "bonus": [5000, 8000, 3000, 6000, 4000, 7000, 5500, 6500],  # All valid
-        "years": [1, 5, 2, 10, 3, 7, 4, 8],  # All valid integers
-        "rating": [4.2, 3.8, 4.5, 4.1, 3.9, 4.3, 4.0, 4.4],  # Precise decimals
-    })
+    person_df = pd.DataFrame(
+        {
+            ID_COLUMN: [1, 2, 3, 4, 5, 6, 7, 8],
+            "name": [
+                "Alice",
+                "Bob",
+                "Carol",
+                "Dave",
+                "Eve",
+                "Frank",
+                "Grace",
+                "Henry",
+            ],
+            "age": [30, None, 25, 40, 35, None, 28, 32],  # Mix with nulls
+            "salary": [
+                100000,
+                120000,
+                None,
+                110000,
+                95000,
+                105000,
+                None,
+                115000,
+            ],  # Mix with nulls
+            "score": [
+                85.5,
+                92.3,
+                78.9,
+                88.1,
+                91.7,
+                87.2,
+                83.4,
+                89.6,
+            ],  # All valid floats
+            "department": [
+                "Eng",
+                "Sales",
+                "Eng",
+                "Marketing",
+                "Eng",
+                "Sales",
+                "Marketing",
+                "Eng",
+            ],
+            "bonus": [
+                5000,
+                8000,
+                3000,
+                6000,
+                4000,
+                7000,
+                5500,
+                6500,
+            ],  # All valid
+            "years": [1, 5, 2, 10, 3, 7, 4, 8],  # All valid integers
+            "rating": [
+                4.2,
+                3.8,
+                4.5,
+                4.1,
+                3.9,
+                4.3,
+                4.0,
+                4.4,
+            ],  # Precise decimals
+        }
+    )
 
     person_table = EntityTable(
         entity_type="Person",
         identifier="Person",
-        column_names=[ID_COLUMN, "name", "age", "salary", "score", "department", "bonus", "years", "rating"],
+        column_names=[
+            ID_COLUMN,
+            "name",
+            "age",
+            "salary",
+            "score",
+            "department",
+            "bonus",
+            "years",
+            "rating",
+        ],
         source_obj_attribute_map={
-            "name": "name", "age": "age", "salary": "salary", "score": "score",
-            "department": "department", "bonus": "bonus", "years": "years", "rating": "rating"
+            "name": "name",
+            "age": "age",
+            "salary": "salary",
+            "score": "score",
+            "department": "department",
+            "bonus": "bonus",
+            "years": "years",
+            "rating": "rating",
         },
         attribute_map={
-            "name": "name", "age": "age", "salary": "salary", "score": "score",
-            "department": "department", "bonus": "bonus", "years": "years", "rating": "rating"
+            "name": "name",
+            "age": "age",
+            "salary": "salary",
+            "score": "score",
+            "department": "department",
+            "bonus": "bonus",
+            "years": "years",
+            "rating": "rating",
         },
         source_obj=person_df,
     )
@@ -182,7 +257,7 @@ class TestGroupedAggregationAccuracy:
         for _, row in result.iterrows():
             dept_counts[row["dept"]] = {
                 "people": row["people_count"],
-                "salaries": row["salary_count"]
+                "salaries": row["salary_count"],
             }
 
         assert dept_counts["Eng"]["people"] == 4
@@ -237,14 +312,15 @@ class TestAggregationFloatingPointPrecision:
 class TestAggregationEdgeCases:
     """Test edge cases in aggregation behavior."""
 
-    @pytest.mark.xfail(reason="Empty columns are a sign of a bug in the ETL pipeline - aggregation returning 0 instead of null indicates framework issue")
     def test_aggregation_on_all_nulls(self, aggregation_test_context):
         """Test aggregations when all values are null."""
         # Create a temporary context with all-null column
-        person_df_nulls = pd.DataFrame({
-            ID_COLUMN: [1, 2, 3],
-            "all_null": [None, None, None],
-        })
+        person_df_nulls = pd.DataFrame(
+            {
+                ID_COLUMN: [1, 2, 3],
+                "all_null": [None, None, None],
+            }
+        )
 
         person_table_nulls = EntityTable(
             entity_type="Person",
@@ -256,7 +332,9 @@ class TestAggregationEdgeCases:
         )
 
         context_nulls = Context(
-            entity_mapping=EntityMapping(mapping={"Person": person_table_nulls}),
+            entity_mapping=EntityMapping(
+                mapping={"Person": person_table_nulls}
+            ),
             relationship_mapping=RelationshipMapping(mapping={}),
         )
 
@@ -271,7 +349,6 @@ class TestAggregationEdgeCases:
         assert pd.isna(result["avg_nulls"].iloc[0])  # avg of nulls = null
         assert result["count_nulls"].iloc[0] == 0  # count of nulls = 0
 
-    @pytest.mark.skip(reason="WHERE clause filtering not implemented yet (Phase 4)")
     def test_empty_group_aggregation(self, aggregation_test_context):
         """Test aggregation on empty result set."""
         star = Star(context=aggregation_test_context)
@@ -285,7 +362,6 @@ class TestAggregationEdgeCases:
         assert result["impossible_count"].iloc[0] == 0
         assert pd.isna(result["impossible_sum"].iloc[0])
 
-    @pytest.mark.skip(reason="WHERE clause filtering not implemented yet (Phase 4)")
     def test_single_value_aggregations(self, aggregation_test_context):
         """Test aggregations on single-value groups."""
         star = Star(context=aggregation_test_context)
@@ -297,14 +373,18 @@ class TestAggregationEdgeCases:
 
         # Alice's bonus: 5000
         assert result["single_sum"].iloc[0] == 5000
-        assert result["single_avg"].iloc[0] == 5000.0  # avg of single value = value
+        assert (
+            result["single_avg"].iloc[0] == 5000.0
+        )  # avg of single value = value
         assert result["single_count"].iloc[0] == 1
 
 
 class TestComplexAggregationExpressions:
     """Test aggregations of computed expressions."""
 
-    def test_aggregation_of_arithmetic_expression(self, aggregation_test_context):
+    def test_aggregation_of_arithmetic_expression(
+        self, aggregation_test_context
+    ):
         """Test aggregating computed values."""
         star = Star(context=aggregation_test_context)
 
@@ -355,7 +435,10 @@ class TestAggregationConsistency:
         result2 = star.execute_query(query)
 
         # Results should be identical
-        assert abs(result1["avg_score"].iloc[0] - result2["avg_score"].iloc[0]) < 0.000001
+        assert (
+            abs(result1["avg_score"].iloc[0] - result2["avg_score"].iloc[0])
+            < 0.000001
+        )
         assert result1["total_bonus"].iloc[0] == result2["total_bonus"].iloc[0]
 
     def test_mathematical_relationships(self, aggregation_test_context):

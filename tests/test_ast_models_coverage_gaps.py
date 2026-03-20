@@ -12,9 +12,6 @@ identified in the coverage gap analysis. Focus areas:
 - Validation framework edge cases
 """
 
-import pytest
-from pydantic import ValidationError
-
 from pycypher.ast_models import (
     And,
     Arithmetic,
@@ -471,7 +468,9 @@ class TestCaseExpressionConversions:
         result = self.converter.convert(node)
 
         assert isinstance(result, CaseExpression)
-        assert result.expression is None  # Searched case has no test expression
+        assert (
+            result.expression is None
+        )  # Searched case has no test expression
         assert len(result.when_clauses) == 2
         assert all(w.condition is not None for w in result.when_clauses)
         assert isinstance(result.else_expr, StringLiteral)
@@ -520,10 +519,19 @@ class TestCaseExpressionConversions:
                                 "condition": {
                                     "type": "Comparison",
                                     "operator": ">=",
-                                    "left": {"type": "Variable", "name": "score"},
-                                    "right": {"type": "IntegerLiteral", "value": 95},
+                                    "left": {
+                                        "type": "Variable",
+                                        "name": "score",
+                                    },
+                                    "right": {
+                                        "type": "IntegerLiteral",
+                                        "value": 95,
+                                    },
                                 },
-                                "result": {"type": "StringLiteral", "value": "A+"},
+                                "result": {
+                                    "type": "StringLiteral",
+                                    "value": "A+",
+                                },
                             }
                         ],
                         "else": {"type": "StringLiteral", "value": "A"},
@@ -1008,7 +1016,9 @@ class TestASTTraversalMethods:
         )
 
         # Find all Variable nodes with name starting with 'x'
-        results = comp.find_all(lambda n: isinstance(n, Variable) and n.name.startswith("x"))
+        results = comp.find_all(
+            lambda n: isinstance(n, Variable) and n.name.startswith("x")
+        )
 
         assert isinstance(results[0], Variable)
         assert len(results) == 1

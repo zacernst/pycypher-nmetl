@@ -1,0 +1,15 @@
+version: "1.0"
+
+sources:
+  entities:
+    - id: persons
+      uri: "file:///data/persons.csv"
+      entity_type: Person
+
+queries:
+  - id: all_persons
+    description: "Return all person names"
+    inline: |
+      MATCH (p:Person)
+      WITH p.name AS name
+      RETURN name AS name

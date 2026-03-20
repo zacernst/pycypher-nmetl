@@ -1,0 +1,826 @@
+{
+  "timestamp": "2026-03-19T18:35:11",
+  "python_version": "3.14.0 (v3.14.0:ebf955df7a8, Oct  7 2025, 08:20:14) [Clang 16.0.0 (clang-1600.0.26.6)]",
+  "measurements": [
+    {
+      "scale": 100,
+      "query_name": "simple_scan",
+      "query_text": "MATCH (n:Person) RETURN n.name",
+      "peak_memory_bytes": 3884955,
+      "net_memory_bytes": 3772537,
+      "elapsed_seconds": 0.4678,
+      "result_rows": 100,
+      "result_columns": 1,
+      "error": null
+    },
+    {
+      "scale": 100,
+      "query_name": "filtered_scan",
+      "query_text": "MATCH (n:Person) WHERE n.age > 30 RETURN n.name, n.age",
+      "peak_memory_bytes": 774233,
+      "net_memory_bytes": 569720,
+      "elapsed_seconds": 0.1079,
+      "result_rows": 78,
+      "result_columns": 2,
+      "error": null
+    },
+    {
+      "scale": 100,
+      "query_name": "single_hop",
+      "query_text": "MATCH (n:Person)-[r:KNOWS]->(m:Person) RETURN n.name, m.name",
+      "peak_memory_bytes": 666207,
+      "net_memory_bytes": 564563,
+      "elapsed_seconds": 0.0867,
+      "result_rows": 494,
+      "result_columns": 2,
+      "error": null
+    },
+    {
+      "scale": 100,
+      "query_name": "filtered_hop",
+      "query_text": "MATCH (n:Person)-[r:KNOWS]->(m:Person) WHERE n.age > 25 RETURN n.name, m.name, r.since",
+      "peak_memory_bytes": 1066651,
+      "net_memory_bytes": 756110,
+      "elapsed_seconds": 0.1419,
+      "result_rows": 418,
+      "result_columns": 3,
+      "error": null
+    },
+    {
+      "scale": 100,
+      "query_name": "two_hop",
+      "query_text": "MATCH (a:Person)-[:KNOWS]->(b:Person)-[:KNOWS]->(c:Person) RETURN a.name, c.name",
+      "peak_memory_bytes": 825717,
+      "net_memory_bytes": 574849,
+      "elapsed_seconds": 0.0964,
+      "result_rows": 2535,
+      "result_columns": 2,
+      "error": null
+    },
+    {
+      "scale": 100,
+      "query_name": "aggregation_count",
+      "query_text": "MATCH (n:Person) RETURN n.dept, count(n) AS cnt",
+      "peak_memory_bytes": 595095,
+      "net_memory_bytes": 472431,
+      "elapsed_seconds": 0.0957,
+      "result_rows": 5,
+      "result_columns": 2,
+      "error": null
+    },
+    {
+      "scale": 100,
+      "query_name": "aggregation_avg",
+      "query_text": "MATCH (n:Person) RETURN n.dept, avg(n.salary) AS avg_sal",
+      "peak_memory_bytes": 645305,
+      "net_memory_bytes": 466449,
+      "elapsed_seconds": 0.0957,
+      "result_rows": 5,
+      "result_columns": 2,
+      "error": null
+    },
+    {
+      "scale": 100,
+      "query_name": "varlength_path",
+      "query_text": "MATCH (a:Person)-[:KNOWS*1..3]->(b:Person) RETURN a.name, b.name",
+      "peak_memory_bytes": 1353475,
+      "net_memory_bytes": 500922,
+      "elapsed_seconds": 0.1001,
+      "result_rows": 8598,
+      "result_columns": 2,
+      "error": null
+    },
+    {
+      "scale": 1000,
+      "query_name": "simple_scan",
+      "query_text": "MATCH (n:Person) RETURN n.name",
+      "peak_memory_bytes": 134873,
+      "net_memory_bytes": 26014,
+      "elapsed_seconds": 0.0049,
+      "result_rows": 1000,
+      "result_columns": 1,
+      "error": null
+    },
+    {
+      "scale": 1000,
+      "query_name": "filtered_scan",
+      "query_text": "MATCH (n:Person) WHERE n.age > 30 RETURN n.name, n.age",
+      "peak_memory_bytes": 121886,
+      "net_memory_bytes": 20303,
+      "elapsed_seconds": 0.0079,
+      "result_rows": 691,
+      "result_columns": 2,
+      "error": null
+    },
+    {
+      "scale": 1000,
+      "query_name": "single_hop",
+      "query_text": "MATCH (n:Person)-[r:KNOWS]->(m:Person) RETURN n.name, m.name",
+      "peak_memory_bytes": 926529,
+      "net_memory_bytes": 62945,
+      "elapsed_seconds": 0.02,
+      "result_rows": 4995,
+      "result_columns": 2,
+      "error": null
+    },
+    {
+      "scale": 1000,
+      "query_name": "filtered_hop",
+      "query_text": "MATCH (n:Person)-[r:KNOWS]->(m:Person) WHERE n.age > 25 RETURN n.name, m.name, r.since",
+      "peak_memory_bytes": 965198,
+      "net_memory_bytes": 52979,
+      "elapsed_seconds": 0.0313,
+      "result_rows": 4095,
+      "result_columns": 3,
+      "error": null
+    },
+    {
+      "scale": 1000,
+      "query_name": "two_hop",
+      "query_text": "MATCH (a:Person)-[:KNOWS]->(b:Person)-[:KNOWS]->(c:Person) RETURN a.name, c.name",
+      "peak_memory_bytes": 2942867,
+      "net_memory_bytes": 20688,
+      "elapsed_seconds": 0.0384,
+      "result_rows": 24778,
+      "result_columns": 2,
+      "error": null
+    },
+    {
+      "scale": 1000,
+      "query_name": "aggregation_count",
+      "query_text": "MATCH (n:Person) RETURN n.dept, count(n) AS cnt",
+      "peak_memory_bytes": 120063,
+      "net_memory_bytes": 16631,
+      "elapsed_seconds": 0.0078,
+      "result_rows": 5,
+      "result_columns": 2,
+      "error": null
+    },
+    {
+      "scale": 1000,
+      "query_name": "aggregation_avg",
+      "query_text": "MATCH (n:Person) RETURN n.dept, avg(n.salary) AS avg_sal",
+      "peak_memory_bytes": 123697,
+      "net_memory_bytes": 18771,
+      "elapsed_seconds": 0.0097,
+      "result_rows": 5,
+      "result_columns": 2,
+      "error": null
+    },
+    {
+      "scale": 1000,
+      "query_name": "varlength_path",
+      "query_text": "MATCH (a:Person)-[:KNOWS*1..3]->(b:Person) RETURN a.name, b.name",
+      "peak_memory_bytes": 10671864,
+      "net_memory_bytes": 27132,
+      "elapsed_seconds": 0.0467,
+      "result_rows": 141309,
+      "result_columns": 2,
+      "error": null
+    },
+    {
+      "scale": 10000,
+      "query_name": "simple_scan",
+      "query_text": "MATCH (n:Person) RETURN n.name",
+      "peak_memory_bytes": 1229473,
+      "net_memory_bytes": 97765,
+      "elapsed_seconds": 0.024,
+      "result_rows": 10000,
+      "result_columns": 1,
+      "error": null
+    },
+    {
+      "scale": 10000,
+      "query_name": "filtered_scan",
+      "query_text": "MATCH (n:Person) WHERE n.age > 30 RETURN n.name, n.age",
+      "peak_memory_bytes": 1147454,
+      "net_memory_bytes": 71991,
+      "elapsed_seconds": 0.0561,
+      "result_rows": 7173,
+      "result_columns": 2,
+      "error": null
+    },
+    {
+      "scale": 10000,
+      "query_name": "single_hop",
+      "query_text": "MATCH (n:Person)-[r:KNOWS]->(m:Person) RETURN n.name, m.name",
+      "peak_memory_bytes": 9928473,
+      "net_memory_bytes": 422749,
+      "elapsed_seconds": 0.1782,
+      "result_rows": 49994,
+      "result_columns": 2,
+      "error": null
+    },
+    {
+      "scale": 10000,
+      "query_name": "filtered_hop",
+      "query_text": "MATCH (n:Person)-[r:KNOWS]->(m:Person) WHERE n.age > 25 RETURN n.name, m.name, r.since",
+      "peak_memory_bytes": 10343004,
+      "net_memory_bytes": 349579,
+      "elapsed_seconds": 0.2904,
+      "result_rows": 41181,
+      "result_columns": 3,
+      "error": null
+    },
+    {
+      "scale": 10000,
+      "query_name": "two_hop",
+      "query_text": "MATCH (a:Person)-[:KNOWS]->(b:Person)-[:KNOWS]->(c:Person) RETURN a.name, c.name",
+      "peak_memory_bytes": 30653986,
+      "net_memory_bytes": 20684,
+      "elapsed_seconds": 0.3466,
+      "result_rows": 250055,
+      "result_columns": 2,
+      "error": null
+    },
+    {
+      "scale": 10000,
+      "query_name": "aggregation_count",
+      "query_text": "MATCH (n:Person) RETURN n.dept, count(n) AS cnt",
+      "peak_memory_bytes": 1142928,
+      "net_memory_bytes": 16557,
+      "elapsed_seconds": 0.0283,
+      "result_rows": 5,
+      "result_columns": 2,
+      "error": null
+    },
+    {
+      "scale": 10000,
+      "query_name": "aggregation_avg",
+      "query_text": "MATCH (n:Person) RETURN n.dept, avg(n.salary) AS avg_sal",
+      "peak_memory_bytes": 1146544,
+      "net_memory_bytes": 18821,
+      "elapsed_seconds": 0.0423,
+      "result_rows": 5,
+      "result_columns": 2,
+      "error": null
+    },
+    {
+      "scale": 10000,
+      "query_name": "varlength_path",
+      "query_text": "MATCH (a:Person)-[:KNOWS*1..3]->(b:Person) RETURN a.name, b.name",
+      "peak_memory_bytes": 100226077,
+      "net_memory_bytes": 26932,
+      "elapsed_seconds": 0.3548,
+      "result_rows": 1538429,
+      "result_columns": 2,
+      "error": null
+    },
+    {
+      "scale": 50000,
+      "query_name": "simple_scan",
+      "query_text": "MATCH (n:Person) RETURN n.name",
+      "peak_memory_bytes": 5861890,
+      "net_memory_bytes": 417814,
+      "elapsed_seconds": 0.1145,
+      "result_rows": 50000,
+      "result_columns": 1,
+      "error": null
+    },
+    {
+      "scale": 50000,
+      "query_name": "filtered_scan",
+      "query_text": "MATCH (n:Person) WHERE n.age > 30 RETURN n.name, n.age",
+      "peak_memory_bytes": 5707318,
+      "net_memory_bytes": 303902,
+      "elapsed_seconds": 0.2648,
+      "result_rows": 36168,
+      "result_columns": 2,
+      "error": null
+    },
+    {
+      "scale": 50000,
+      "query_name": "single_hop",
+      "query_text": "MATCH (n:Person)-[r:KNOWS]->(m:Person) RETURN n.name, m.name",
+      "peak_memory_bytes": 49927037,
+      "net_memory_bytes": 2022781,
+      "elapsed_seconds": 0.9879,
+      "result_rows": 249998,
+      "result_columns": 2,
+      "error": null
+    },
+    {
+      "scale": 50000,
+      "query_name": "filtered_hop",
+      "query_text": "MATCH (n:Person)-[r:KNOWS]->(m:Person) WHERE n.age > 25 RETURN n.name, m.name, r.since",
+      "peak_memory_bytes": 52012924,
+      "net_memory_bytes": 1682141,
+      "elapsed_seconds": 1.5395,
+      "result_rows": 207745,
+      "result_columns": 3,
+      "error": null
+    },
+    {
+      "scale": 50000,
+      "query_name": "two_hop",
+      "query_text": "MATCH (a:Person)-[:KNOWS]->(b:Person)-[:KNOWS]->(c:Person) RETURN a.name, c.name",
+      "peak_memory_bytes": 153737685,
+      "net_memory_bytes": 20582,
+      "elapsed_seconds": 1.9087,
+      "result_rows": 1250457,
+      "result_columns": 2,
+      "error": null
+    },
+    {
+      "scale": 50000,
+      "query_name": "aggregation_count",
+      "query_text": "MATCH (n:Person) RETURN n.dept, count(n) AS cnt",
+      "peak_memory_bytes": 5455424,
+      "net_memory_bytes": 16607,
+      "elapsed_seconds": 0.1161,
+      "result_rows": 5,
+      "result_columns": 2,
+      "error": null
+    },
+    {
+      "scale": 50000,
+      "query_name": "aggregation_avg",
+      "query_text": "MATCH (n:Person) RETURN n.dept, avg(n.salary) AS avg_sal",
+      "peak_memory_bytes": 5459090,
+      "net_memory_bytes": 18822,
+      "elapsed_seconds": 0.1836,
+      "result_rows": 5,
+      "result_columns": 2,
+      "error": null
+    },
+    {
+      "scale": 50000,
+      "query_name": "varlength_path",
+      "query_text": "MATCH (a:Person)-[:KNOWS*1..3]->(b:Person) RETURN a.name, b.name",
+      "peak_memory_bytes": 468196044,
+      "net_memory_bytes": 27131,
+      "elapsed_seconds": 2.0387,
+      "result_rows": 7742835,
+      "result_columns": 2,
+      "error": null
+    }
+  ],
+  "materialization_points": [
+    {
+      "point_name": "data_generation",
+      "scale": 100,
+      "memory_bytes": 50788,
+      "description": "Raw DataFrame creation (Person + KNOWS)"
+    },
+    {
+      "point_name": "context_construction",
+      "scale": 100,
+      "memory_bytes": 50270,
+      "description": "Context + EntityTable + RelationshipTable wrapping"
+    },
+    {
+      "point_name": "entity_scan",
+      "scale": 100,
+      "memory_bytes": 23523,
+      "description": "EntityScan.scan() \u2192 BindingFrame with all Person IDs"
+    },
+    {
+      "point_name": "relationship_scan",
+      "scale": 100,
+      "memory_bytes": 59560,
+      "description": "RelationshipScan.scan() \u2192 BindingFrame with all KNOWS relationships"
+    },
+    {
+      "point_name": "join_operation",
+      "scale": 100,
+      "memory_bytes": 56631,
+      "description": "BindingFrame.join() via pd.merge (entity-to-relationship)"
+    },
+    {
+      "point_name": "property_lookup",
+      "scale": 100,
+      "memory_bytes": 30796,
+      "description": "BindingFrame.get_property() with cache population"
+    },
+    {
+      "point_name": "data_generation",
+      "scale": 1000,
+      "memory_bytes": 360338,
+      "description": "Raw DataFrame creation (Person + KNOWS)"
+    },
+    {
+      "point_name": "context_construction",
+      "scale": 1000,
+      "memory_bytes": 360178,
+      "description": "Context + EntityTable + RelationshipTable wrapping"
+    },
+    {
+      "point_name": "entity_scan",
+      "scale": 1000,
+      "memory_bytes": 99954,
+      "description": "EntityScan.scan() \u2192 BindingFrame with all Person IDs"
+    },
+    {
+      "point_name": "relationship_scan",
+      "scale": 1000,
+      "memory_bytes": 772338,
+      "description": "RelationshipScan.scan() \u2192 BindingFrame with all KNOWS relationships"
+    },
+    {
+      "point_name": "join_operation",
+      "scale": 1000,
+      "memory_bytes": 331253,
+      "description": "BindingFrame.join() via pd.merge (entity-to-relationship)"
+    },
+    {
+      "point_name": "property_lookup",
+      "scale": 1000,
+      "memory_bytes": 218622,
+      "description": "BindingFrame.get_property() with cache population"
+    },
+    {
+      "point_name": "data_generation",
+      "scale": 10000,
+      "memory_bytes": 3501206,
+      "description": "Raw DataFrame creation (Person + KNOWS)"
+    },
+    {
+      "point_name": "context_construction",
+      "scale": 10000,
+      "memory_bytes": 3501064,
+      "description": "Context + EntityTable + RelationshipTable wrapping"
+    },
+    {
+      "point_name": "entity_scan",
+      "scale": 10000,
+      "memory_bytes": 981825,
+      "description": "EntityScan.scan() \u2192 BindingFrame with all Person IDs"
+    },
+    {
+      "point_name": "relationship_scan",
+      "scale": 10000,
+      "memory_bytes": 8419784,
+      "description": "RelationshipScan.scan() \u2192 BindingFrame with all KNOWS relationships"
+    },
+    {
+      "point_name": "join_operation",
+      "scale": 10000,
+      "memory_bytes": 3211165,
+      "description": "BindingFrame.join() via pd.merge (entity-to-relationship)"
+    },
+    {
+      "point_name": "property_lookup",
+      "scale": 10000,
+      "memory_bytes": 2108580,
+      "description": "BindingFrame.get_property() with cache population"
+    },
+    {
+      "point_name": "data_generation",
+      "scale": 50000,
+      "memory_bytes": 17460950,
+      "description": "Raw DataFrame creation (Person + KNOWS)"
+    },
+    {
+      "point_name": "context_construction",
+      "scale": 50000,
+      "memory_bytes": 17461142,
+      "description": "Context + EntityTable + RelationshipTable wrapping"
+    },
+    {
+      "point_name": "entity_scan",
+      "scale": 50000,
+      "memory_bytes": 4901794,
+      "description": "EntityScan.scan() \u2192 BindingFrame with all Person IDs"
+    },
+    {
+      "point_name": "relationship_scan",
+      "scale": 50000,
+      "memory_bytes": 42422124,
+      "description": "RelationshipScan.scan() \u2192 BindingFrame with all KNOWS relationships"
+    },
+    {
+      "point_name": "join_operation",
+      "scale": 50000,
+      "memory_bytes": 16011277,
+      "description": "BindingFrame.join() via pd.merge (entity-to-relationship)"
+    },
+    {
+      "point_name": "property_lookup",
+      "scale": 50000,
+      "memory_bytes": 10508664,
+      "description": "BindingFrame.get_property() with cache population"
+    }
+  ],
+  "scaling_analysis": {
+    "aggregation_avg": {
+      "scales": [
+        100,
+        1000,
+        10000,
+        50000
+      ],
+      "peak_memory_bytes": [
+        645305,
+        123697,
+        1146544,
+        5459090
+      ],
+      "elapsed_seconds": [
+        0.0957,
+        0.0097,
+        0.0423,
+        0.1836
+      ],
+      "result_rows": [
+        5,
+        5,
+        5,
+        5
+      ],
+      "bytes_per_entity": [
+        6453.1,
+        123.7,
+        114.7,
+        109.2
+      ],
+      "seconds_per_entity": [
+        0.000957,
+        9.7e-06,
+        4.23e-06,
+        3.67e-06
+      ],
+      "estimated_memory_order": 0.34,
+      "estimated_time_order": 0.1
+    },
+    "aggregation_count": {
+      "scales": [
+        100,
+        1000,
+        10000,
+        50000
+      ],
+      "peak_memory_bytes": [
+        595095,
+        120063,
+        1142928,
+        5455424
+      ],
+      "elapsed_seconds": [
+        0.0957,
+        0.0078,
+        0.0283,
+        0.1161
+      ],
+      "result_rows": [
+        5,
+        5,
+        5,
+        5
+      ],
+      "bytes_per_entity": [
+        5950.9,
+        120.1,
+        114.3,
+        109.1
+      ],
+      "seconds_per_entity": [
+        0.000957,
+        7.8e-06,
+        2.83e-06,
+        2.32e-06
+      ],
+      "estimated_memory_order": 0.36,
+      "estimated_time_order": 0.03
+    },
+    "filtered_hop": {
+      "scales": [
+        100,
+        1000,
+        10000,
+        50000
+      ],
+      "peak_memory_bytes": [
+        1066651,
+        965198,
+        10343004,
+        52012924
+      ],
+      "elapsed_seconds": [
+        0.1419,
+        0.0313,
+        0.2904,
+        1.5395
+      ],
+      "result_rows": [
+        418,
+        4095,
+        41181,
+        207745
+      ],
+      "bytes_per_entity": [
+        10666.5,
+        965.2,
+        1034.3,
+        1040.3
+      ],
+      "seconds_per_entity": [
+        0.001419,
+        3.13e-05,
+        2.904e-05,
+        3.079e-05
+      ],
+      "estimated_memory_order": 0.63,
+      "estimated_time_order": 0.38
+    },
+    "filtered_scan": {
+      "scales": [
+        100,
+        1000,
+        10000,
+        50000
+      ],
+      "peak_memory_bytes": [
+        774233,
+        121886,
+        1147454,
+        5707318
+      ],
+      "elapsed_seconds": [
+        0.1079,
+        0.0079,
+        0.0561,
+        0.2648
+      ],
+      "result_rows": [
+        78,
+        691,
+        7173,
+        36168
+      ],
+      "bytes_per_entity": [
+        7742.3,
+        121.9,
+        114.7,
+        114.1
+      ],
+      "seconds_per_entity": [
+        0.001079,
+        7.9e-06,
+        5.61e-06,
+        5.3e-06
+      ],
+      "estimated_memory_order": 0.32,
+      "estimated_time_order": 0.14
+    },
+    "simple_scan": {
+      "scales": [
+        100,
+        1000,
+        10000,
+        50000
+      ],
+      "peak_memory_bytes": [
+        3884955,
+        134873,
+        1229473,
+        5861890
+      ],
+      "elapsed_seconds": [
+        0.4678,
+        0.0049,
+        0.024,
+        0.1145
+      ],
+      "result_rows": [
+        100,
+        1000,
+        10000,
+        50000
+      ],
+      "bytes_per_entity": [
+        38849.6,
+        134.9,
+        122.9,
+        117.2
+      ],
+      "seconds_per_entity": [
+        0.004678,
+        4.9e-06,
+        2.4e-06,
+        2.29e-06
+      ],
+      "estimated_memory_order": 0.07,
+      "estimated_time_order": -0.23
+    },
+    "single_hop": {
+      "scales": [
+        100,
+        1000,
+        10000,
+        50000
+      ],
+      "peak_memory_bytes": [
+        666207,
+        926529,
+        9928473,
+        49927037
+      ],
+      "elapsed_seconds": [
+        0.0867,
+        0.02,
+        0.1782,
+        0.9879
+      ],
+      "result_rows": [
+        494,
+        4995,
+        49994,
+        249998
+      ],
+      "bytes_per_entity": [
+        6662.1,
+        926.5,
+        992.8,
+        998.5
+      ],
+      "seconds_per_entity": [
+        0.000867,
+        2e-05,
+        1.782e-05,
+        1.976e-05
+      ],
+      "estimated_memory_order": 0.69,
+      "estimated_time_order": 0.39
+    },
+    "two_hop": {
+      "scales": [
+        100,
+        1000,
+        10000,
+        50000
+      ],
+      "peak_memory_bytes": [
+        825717,
+        2942867,
+        30653986,
+        153737685
+      ],
+      "elapsed_seconds": [
+        0.0964,
+        0.0384,
+        0.3466,
+        1.9087
+      ],
+      "result_rows": [
+        2535,
+        24778,
+        250055,
+        1250457
+      ],
+      "bytes_per_entity": [
+        8257.2,
+        2942.9,
+        3065.4,
+        3074.8
+      ],
+      "seconds_per_entity": [
+        0.000964,
+        3.84e-05,
+        3.466e-05,
+        3.817e-05
+      ],
+      "estimated_memory_order": 0.84,
+      "estimated_time_order": 0.48
+    },
+    "varlength_path": {
+      "scales": [
+        100,
+        1000,
+        10000,
+        50000
+      ],
+      "peak_memory_bytes": [
+        1353475,
+        10671864,
+        100226077,
+        468196044
+      ],
+      "elapsed_seconds": [
+        0.1001,
+        0.0467,
+        0.3548,
+        2.0387
+      ],
+      "result_rows": [
+        8598,
+        141309,
+        1538429,
+        7742835
+      ],
+      "bytes_per_entity": [
+        13534.8,
+        10671.9,
+        10022.6,
+        9363.9
+      ],
+      "seconds_per_entity": [
+        0.001001,
+        4.67e-05,
+        3.548e-05,
+        4.077e-05
+      ],
+      "estimated_memory_order": 0.94,
+      "estimated_time_order": 0.48
+    }
+  }
+}

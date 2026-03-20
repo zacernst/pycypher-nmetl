@@ -1,0 +1,6 @@
+version: "1.0"
+
+queries:
+  - id: bad_query
+    source: "cypher/customer_summary.cypher"
+    inline: "MATCH (p:Person) RETURN p"

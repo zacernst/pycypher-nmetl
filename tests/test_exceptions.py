@@ -23,6 +23,12 @@ class TestWrongCypherTypeError:
         with __import__("pytest").raises(WrongCypherTypeError):
             raise WrongCypherTypeError("bad type")
 
+    def test_is_type_error(self) -> None:
+        """WrongCypherTypeError is a TypeError subclass."""
+        assert issubclass(WrongCypherTypeError, TypeError)
+        with __import__("pytest").raises(TypeError):
+            raise WrongCypherTypeError("bad type")
+
 
 class TestInvalidCastError:
     """Tests for InvalidCastError."""
@@ -40,4 +46,10 @@ class TestInvalidCastError:
     def test_is_exception(self) -> None:
         """Can be raised and caught as Exception."""
         with __import__("pytest").raises(InvalidCastError):
+            raise InvalidCastError("bad cast")
+
+    def test_is_value_error(self) -> None:
+        """InvalidCastError is a ValueError subclass."""
+        assert issubclass(InvalidCastError, ValueError)
+        with __import__("pytest").raises(ValueError):
             raise InvalidCastError("bad cast")

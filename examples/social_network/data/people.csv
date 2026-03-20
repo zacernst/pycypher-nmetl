@@ -1,0 +1,13 @@
+__ID__,name,age,city,email,join_date
+p1,Alice Chen,32,San Francisco,alice.chen@example.com,2020-03-15
+p2,Bob Martinez,28,San Francisco,bob.martinez@example.com,2021-06-01
+p3,Carol Wu,35,New York,carol.wu@example.com,2019-11-20
+p4,David Kim,41,Seattle,david.kim@example.com,2018-07-10
+p5,Eva Johansson,29,New York,eva.johansson@example.com,2022-01-05
+p6,Frank Okafor,38,Chicago,frank.okafor@example.com,2020-09-18
+p7,Grace Patel,26,San Francisco,grace.patel@example.com,2023-02-14
+p8,Henry Liu,45,Seattle,henry.liu@example.com,2017-04-22
+p9,Irene Costa,33,Chicago,irene.costa@example.com,2021-08-30
+p10,James Wright,30,New York,james.wright@example.com,2022-05-12
+p11,Karen Nakamura,37,San Francisco,karen.nakamura@example.com,2019-03-08
+p12,Leo Singh,27,Seattle,leo.singh@example.com,2023-07-19

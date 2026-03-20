@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import pandas as pd
 import pytest
-
 from pycypher.ast_models import ASTConverter
 from pycypher.relational_models import (
     ID_COLUMN,
@@ -27,92 +26,384 @@ from pycypher.relational_models import (
     RelationshipMapping,
     RelationshipTable,
 )
-from pycypher.star import Star
 
 
 @pytest.fixture
 def relationship_context() -> Context:
     """Create test context focused on relationship operations."""
     # User entities
-    user_df = pd.DataFrame({
-        ID_COLUMN: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-        "username": ["alice", "bob", "carol", "dave", "eve", "frank", "grace", "henry", "iris", "jack"],
-        "email": ["alice@test.com", "bob@test.com", "carol@test.com", "dave@test.com", "eve@test.com",
-                 "frank@test.com", "grace@test.com", "henry@test.com", "iris@test.com", "jack@test.com"],
-        "status": ["active", "active", "inactive", "active", "active", "pending", "active", "active", "suspended", "active"],
-        "created": ["2023-01-01", "2023-02-01", "2023-01-15", "2023-03-01", "2023-02-15",
-                   "2023-03-15", "2023-01-30", "2023-04-01", "2023-02-01", "2023-03-30"],
-        "last_login": ["2024-03-10", "2024-03-09", "2023-12-01", "2024-03-08", "2024-03-11",
-                      None, "2024-03-07", "2024-03-10", "2023-11-15", "2024-03-05"],
-    })
+    user_df = pd.DataFrame(
+        {
+            ID_COLUMN: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+            "username": [
+                "alice",
+                "bob",
+                "carol",
+                "dave",
+                "eve",
+                "frank",
+                "grace",
+                "henry",
+                "iris",
+                "jack",
+            ],
+            "email": [
+                "alice@test.com",
+                "bob@test.com",
+                "carol@test.com",
+                "dave@test.com",
+                "eve@test.com",
+                "frank@test.com",
+                "grace@test.com",
+                "henry@test.com",
+                "iris@test.com",
+                "jack@test.com",
+            ],
+            "status": [
+                "active",
+                "active",
+                "inactive",
+                "active",
+                "active",
+                "pending",
+                "active",
+                "active",
+                "suspended",
+                "active",
+            ],
+            "created": [
+                "2023-01-01",
+                "2023-02-01",
+                "2023-01-15",
+                "2023-03-01",
+                "2023-02-15",
+                "2023-03-15",
+                "2023-01-30",
+                "2023-04-01",
+                "2023-02-01",
+                "2023-03-30",
+            ],
+            "last_login": [
+                "2024-03-10",
+                "2024-03-09",
+                "2023-12-01",
+                "2024-03-08",
+                "2024-03-11",
+                None,
+                "2024-03-07",
+                "2024-03-10",
+                "2023-11-15",
+                "2024-03-05",
+            ],
+        }
+    )
 
     # Post entities
-    post_df = pd.DataFrame({
-        ID_COLUMN: [101, 102, 103, 104, 105, 106, 107, 108],
-        "title": ["First Post", "Hello World", "Tech Update", "Weekly Recap", "Project Launch",
-                 "Code Review", "Meeting Notes", "Status Update"],
-        "content": ["This is my first post", "Hello everyone!", "New tech stack deployed",
-                   "Weekly progress update", "Launching new project", "Code review completed",
-                   "Meeting notes from today", "Current project status"],
-        "author_id": [1, 2, 1, 3, 4, 2, 5, 1],
-        "created": ["2024-01-01", "2024-01-02", "2024-01-15", "2024-02-01", "2024-02-15",
-                   "2024-03-01", "2024-03-05", "2024-03-10"],
-        "likes_count": [15, 8, 22, 5, 18, 12, 3, 9],
-        "status": ["published", "published", "published", "draft", "published", "published", "draft", "published"],
-    })
+    post_df = pd.DataFrame(
+        {
+            ID_COLUMN: [101, 102, 103, 104, 105, 106, 107, 108],
+            "title": [
+                "First Post",
+                "Hello World",
+                "Tech Update",
+                "Weekly Recap",
+                "Project Launch",
+                "Code Review",
+                "Meeting Notes",
+                "Status Update",
+            ],
+            "content": [
+                "This is my first post",
+                "Hello everyone!",
+                "New tech stack deployed",
+                "Weekly progress update",
+                "Launching new project",
+                "Code review completed",
+                "Meeting notes from today",
+                "Current project status",
+            ],
+            "author_id": [1, 2, 1, 3, 4, 2, 5, 1],
+            "created": [
+                "2024-01-01",
+                "2024-01-02",
+                "2024-01-15",
+                "2024-02-01",
+                "2024-02-15",
+                "2024-03-01",
+                "2024-03-05",
+                "2024-03-10",
+            ],
+            "likes_count": [15, 8, 22, 5, 18, 12, 3, 9],
+            "status": [
+                "published",
+                "published",
+                "published",
+                "draft",
+                "published",
+                "published",
+                "draft",
+                "published",
+            ],
+        }
+    )
 
     # Friendship relationships
-    friends_df = pd.DataFrame({
-        ID_COLUMN: [201, 202, 203, 204, 205, 206, 207, 208, 209, 210],
-        RELATIONSHIP_SOURCE_COLUMN: [1, 2, 1, 3, 4, 2, 5, 1, 6, 7],
-        RELATIONSHIP_TARGET_COLUMN: [2, 3, 4, 4, 5, 5, 6, 7, 8, 8],
-        "since": ["2023-01-15", "2023-02-01", "2023-01-30", "2023-03-15", "2023-02-20",
-                 "2023-03-01", "2023-04-01", "2023-02-10", "2023-03-20", "2023-04-05"],
-        "status": ["active", "active", "pending", "active", "active", "blocked", "active", "active", "pending", "active"],
-        "interaction_count": [45, 23, 5, 67, 34, 12, 28, 91, 8, 15],
-        "last_interaction": ["2024-03-10", "2024-03-08", "2023-02-01", "2024-03-09", "2024-03-07",
-                            "2023-06-01", "2024-03-05", "2024-03-11", "2023-04-01", "2024-03-06"],
-        "mutual_friends": [3, 2, 1, 4, 2, 0, 5, 6, 1, 2],
-    })
+    friends_df = pd.DataFrame(
+        {
+            ID_COLUMN: [201, 202, 203, 204, 205, 206, 207, 208, 209, 210],
+            RELATIONSHIP_SOURCE_COLUMN: [1, 2, 1, 3, 4, 2, 5, 1, 6, 7],
+            RELATIONSHIP_TARGET_COLUMN: [2, 3, 4, 4, 5, 5, 6, 7, 8, 8],
+            "since": [
+                "2023-01-15",
+                "2023-02-01",
+                "2023-01-30",
+                "2023-03-15",
+                "2023-02-20",
+                "2023-03-01",
+                "2023-04-01",
+                "2023-02-10",
+                "2023-03-20",
+                "2023-04-05",
+            ],
+            "status": [
+                "active",
+                "active",
+                "pending",
+                "active",
+                "active",
+                "blocked",
+                "active",
+                "active",
+                "pending",
+                "active",
+            ],
+            "interaction_count": [45, 23, 5, 67, 34, 12, 28, 91, 8, 15],
+            "last_interaction": [
+                "2024-03-10",
+                "2024-03-08",
+                "2023-02-01",
+                "2024-03-09",
+                "2024-03-07",
+                "2023-06-01",
+                "2024-03-05",
+                "2024-03-11",
+                "2023-04-01",
+                "2024-03-06",
+            ],
+            "mutual_friends": [3, 2, 1, 4, 2, 0, 5, 6, 1, 2],
+        }
+    )
 
     # Follow relationships
-    follows_df = pd.DataFrame({
-        ID_COLUMN: [301, 302, 303, 304, 305, 306, 307, 308, 309, 310, 311, 312],
-        RELATIONSHIP_SOURCE_COLUMN: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2],
-        RELATIONSHIP_TARGET_COLUMN: [3, 1, 5, 1, 2, 4, 1, 2, 1, 3, 5, 6],
-        "followed_at": ["2023-01-20", "2023-01-25", "2023-02-05", "2023-02-10", "2023-02-15",
-                       "2023-03-01", "2023-03-10", "2023-03-15", "2023-03-20", "2023-03-25",
-                       "2023-04-01", "2023-04-05"],
-        "notifications": [True, False, True, True, False, True, False, True, False, True, True, False],
-        "source": ["profile", "suggestion", "search", "profile", "mutual", "suggestion",
-                  "search", "profile", "suggestion", "search", "profile", "mutual"],
-        "engagement_score": [8.5, 6.2, 9.1, 7.8, 5.4, 8.9, 6.7, 9.3, 4.2, 7.5, 8.1, 6.8],
-    })
+    follows_df = pd.DataFrame(
+        {
+            ID_COLUMN: [
+                301,
+                302,
+                303,
+                304,
+                305,
+                306,
+                307,
+                308,
+                309,
+                310,
+                311,
+                312,
+            ],
+            RELATIONSHIP_SOURCE_COLUMN: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2],
+            RELATIONSHIP_TARGET_COLUMN: [3, 1, 5, 1, 2, 4, 1, 2, 1, 3, 5, 6],
+            "followed_at": [
+                "2023-01-20",
+                "2023-01-25",
+                "2023-02-05",
+                "2023-02-10",
+                "2023-02-15",
+                "2023-03-01",
+                "2023-03-10",
+                "2023-03-15",
+                "2023-03-20",
+                "2023-03-25",
+                "2023-04-01",
+                "2023-04-05",
+            ],
+            "notifications": [
+                True,
+                False,
+                True,
+                True,
+                False,
+                True,
+                False,
+                True,
+                False,
+                True,
+                True,
+                False,
+            ],
+            "source": [
+                "profile",
+                "suggestion",
+                "search",
+                "profile",
+                "mutual",
+                "suggestion",
+                "search",
+                "profile",
+                "suggestion",
+                "search",
+                "profile",
+                "mutual",
+            ],
+            "engagement_score": [
+                8.5,
+                6.2,
+                9.1,
+                7.8,
+                5.4,
+                8.9,
+                6.7,
+                9.3,
+                4.2,
+                7.5,
+                8.1,
+                6.8,
+            ],
+        }
+    )
 
     # Like relationships (user likes post)
-    likes_df = pd.DataFrame({
-        ID_COLUMN: [401, 402, 403, 404, 405, 406, 407, 408, 409, 410, 411, 412, 413, 414, 415],
-        RELATIONSHIP_SOURCE_COLUMN: [1, 2, 3, 4, 5, 1, 2, 6, 7, 8, 9, 10, 3, 4, 5],
-        RELATIONSHIP_TARGET_COLUMN: [102, 101, 102, 103, 101, 104, 105, 102, 103, 101, 106, 107, 108, 102, 103],
-        "liked_at": ["2024-01-02", "2024-01-01", "2024-01-02", "2024-01-15", "2024-01-01",
-                    "2024-02-01", "2024-02-15", "2024-01-02", "2024-01-15", "2024-01-01",
-                    "2024-03-01", "2024-03-05", "2024-03-10", "2024-01-02", "2024-01-15"],
-        "reaction_type": ["like", "love", "like", "wow", "like", "like", "angry", "like", "wow", "love",
-                         "like", "sad", "like", "like", "wow"],
-        "weight": [1.0, 2.0, 1.0, 1.5, 1.0, 1.0, 0.5, 1.0, 1.5, 2.0, 1.0, 0.8, 1.0, 1.0, 1.5],
-    })
+    likes_df = pd.DataFrame(
+        {
+            ID_COLUMN: [
+                401,
+                402,
+                403,
+                404,
+                405,
+                406,
+                407,
+                408,
+                409,
+                410,
+                411,
+                412,
+                413,
+                414,
+                415,
+            ],
+            RELATIONSHIP_SOURCE_COLUMN: [
+                1,
+                2,
+                3,
+                4,
+                5,
+                1,
+                2,
+                6,
+                7,
+                8,
+                9,
+                10,
+                3,
+                4,
+                5,
+            ],
+            RELATIONSHIP_TARGET_COLUMN: [
+                102,
+                101,
+                102,
+                103,
+                101,
+                104,
+                105,
+                102,
+                103,
+                101,
+                106,
+                107,
+                108,
+                102,
+                103,
+            ],
+            "liked_at": [
+                "2024-01-02",
+                "2024-01-01",
+                "2024-01-02",
+                "2024-01-15",
+                "2024-01-01",
+                "2024-02-01",
+                "2024-02-15",
+                "2024-01-02",
+                "2024-01-15",
+                "2024-01-01",
+                "2024-03-01",
+                "2024-03-05",
+                "2024-03-10",
+                "2024-01-02",
+                "2024-01-15",
+            ],
+            "reaction_type": [
+                "like",
+                "love",
+                "like",
+                "wow",
+                "like",
+                "like",
+                "angry",
+                "like",
+                "wow",
+                "love",
+                "like",
+                "sad",
+                "like",
+                "like",
+                "wow",
+            ],
+            "weight": [
+                1.0,
+                2.0,
+                1.0,
+                1.5,
+                1.0,
+                1.0,
+                0.5,
+                1.0,
+                1.5,
+                2.0,
+                1.0,
+                0.8,
+                1.0,
+                1.0,
+                1.5,
+            ],
+        }
+    )
 
     user_table = EntityTable(
         entity_type="User",
         identifier="User",
-        column_names=[ID_COLUMN, "username", "email", "status", "created", "last_login"],
+        column_names=[
+            ID_COLUMN,
+            "username",
+            "email",
+            "status",
+            "created",
+            "last_login",
+        ],
         source_obj_attribute_map={
-            "username": "username", "email": "email", "status": "status",
-            "created": "created", "last_login": "last_login"
+            "username": "username",
+            "email": "email",
+            "status": "status",
+            "created": "created",
+            "last_login": "last_login",
         },
         attribute_map={
-            "username": "username", "email": "email", "status": "status",
-            "created": "created", "last_login": "last_login"
+            "username": "username",
+            "email": "email",
+            "status": "status",
+            "created": "created",
+            "last_login": "last_login",
         },
         source_obj=user_df,
     )
@@ -120,14 +411,30 @@ def relationship_context() -> Context:
     post_table = EntityTable(
         entity_type="Post",
         identifier="Post",
-        column_names=[ID_COLUMN, "title", "content", "author_id", "created", "likes_count", "status"],
+        column_names=[
+            ID_COLUMN,
+            "title",
+            "content",
+            "author_id",
+            "created",
+            "likes_count",
+            "status",
+        ],
         source_obj_attribute_map={
-            "title": "title", "content": "content", "author_id": "author_id",
-            "created": "created", "likes_count": "likes_count", "status": "status"
+            "title": "title",
+            "content": "content",
+            "author_id": "author_id",
+            "created": "created",
+            "likes_count": "likes_count",
+            "status": "status",
         },
         attribute_map={
-            "title": "title", "content": "content", "author_id": "author_id",
-            "created": "created", "likes_count": "likes_count", "status": "status"
+            "title": "title",
+            "content": "content",
+            "author_id": "author_id",
+            "created": "created",
+            "likes_count": "likes_count",
+            "status": "status",
         },
         source_obj=post_df,
     )
@@ -135,19 +442,33 @@ def relationship_context() -> Context:
     friends_table = RelationshipTable(
         relationship_type="FRIENDS",
         identifier="FRIENDS",
-        column_names=[ID_COLUMN, RELATIONSHIP_SOURCE_COLUMN, RELATIONSHIP_TARGET_COLUMN,
-                     "since", "status", "interaction_count", "last_interaction", "mutual_friends"],
+        column_names=[
+            ID_COLUMN,
+            RELATIONSHIP_SOURCE_COLUMN,
+            RELATIONSHIP_TARGET_COLUMN,
+            "since",
+            "status",
+            "interaction_count",
+            "last_interaction",
+            "mutual_friends",
+        ],
         source_obj_attribute_map={
             RELATIONSHIP_SOURCE_COLUMN: RELATIONSHIP_SOURCE_COLUMN,
             RELATIONSHIP_TARGET_COLUMN: RELATIONSHIP_TARGET_COLUMN,
-            "since": "since", "status": "status", "interaction_count": "interaction_count",
-            "last_interaction": "last_interaction", "mutual_friends": "mutual_friends"
+            "since": "since",
+            "status": "status",
+            "interaction_count": "interaction_count",
+            "last_interaction": "last_interaction",
+            "mutual_friends": "mutual_friends",
         },
         attribute_map={
             RELATIONSHIP_SOURCE_COLUMN: RELATIONSHIP_SOURCE_COLUMN,
             RELATIONSHIP_TARGET_COLUMN: RELATIONSHIP_TARGET_COLUMN,
-            "since": "since", "status": "status", "interaction_count": "interaction_count",
-            "last_interaction": "last_interaction", "mutual_friends": "mutual_friends"
+            "since": "since",
+            "status": "status",
+            "interaction_count": "interaction_count",
+            "last_interaction": "last_interaction",
+            "mutual_friends": "mutual_friends",
         },
         source_obj=friends_df,
     )
@@ -155,19 +476,30 @@ def relationship_context() -> Context:
     follows_table = RelationshipTable(
         relationship_type="FOLLOWS",
         identifier="FOLLOWS",
-        column_names=[ID_COLUMN, RELATIONSHIP_SOURCE_COLUMN, RELATIONSHIP_TARGET_COLUMN,
-                     "followed_at", "notifications", "source", "engagement_score"],
+        column_names=[
+            ID_COLUMN,
+            RELATIONSHIP_SOURCE_COLUMN,
+            RELATIONSHIP_TARGET_COLUMN,
+            "followed_at",
+            "notifications",
+            "source",
+            "engagement_score",
+        ],
         source_obj_attribute_map={
             RELATIONSHIP_SOURCE_COLUMN: RELATIONSHIP_SOURCE_COLUMN,
             RELATIONSHIP_TARGET_COLUMN: RELATIONSHIP_TARGET_COLUMN,
-            "followed_at": "followed_at", "notifications": "notifications",
-            "source": "source", "engagement_score": "engagement_score"
+            "followed_at": "followed_at",
+            "notifications": "notifications",
+            "source": "source",
+            "engagement_score": "engagement_score",
         },
         attribute_map={
             RELATIONSHIP_SOURCE_COLUMN: RELATIONSHIP_SOURCE_COLUMN,
             RELATIONSHIP_TARGET_COLUMN: RELATIONSHIP_TARGET_COLUMN,
-            "followed_at": "followed_at", "notifications": "notifications",
-            "source": "source", "engagement_score": "engagement_score"
+            "followed_at": "followed_at",
+            "notifications": "notifications",
+            "source": "source",
+            "engagement_score": "engagement_score",
         },
         source_obj=follows_df,
     )
@@ -175,35 +507,51 @@ def relationship_context() -> Context:
     likes_table = RelationshipTable(
         relationship_type="LIKES",
         identifier="LIKES",
-        column_names=[ID_COLUMN, RELATIONSHIP_SOURCE_COLUMN, RELATIONSHIP_TARGET_COLUMN,
-                     "liked_at", "reaction_type", "weight"],
+        column_names=[
+            ID_COLUMN,
+            RELATIONSHIP_SOURCE_COLUMN,
+            RELATIONSHIP_TARGET_COLUMN,
+            "liked_at",
+            "reaction_type",
+            "weight",
+        ],
         source_obj_attribute_map={
             RELATIONSHIP_SOURCE_COLUMN: RELATIONSHIP_SOURCE_COLUMN,
             RELATIONSHIP_TARGET_COLUMN: RELATIONSHIP_TARGET_COLUMN,
-            "liked_at": "liked_at", "reaction_type": "reaction_type", "weight": "weight"
+            "liked_at": "liked_at",
+            "reaction_type": "reaction_type",
+            "weight": "weight",
         },
         attribute_map={
             RELATIONSHIP_SOURCE_COLUMN: RELATIONSHIP_SOURCE_COLUMN,
             RELATIONSHIP_TARGET_COLUMN: RELATIONSHIP_TARGET_COLUMN,
-            "liked_at": "liked_at", "reaction_type": "reaction_type", "weight": "weight"
+            "liked_at": "liked_at",
+            "reaction_type": "reaction_type",
+            "weight": "weight",
         },
         source_obj=likes_df,
     )
 
     return Context(
-        entity_mapping=EntityMapping(mapping={"User": user_table, "Post": post_table}),
-        relationship_mapping=RelationshipMapping(mapping={
-            "FRIENDS": friends_table,
-            "FOLLOWS": follows_table,
-            "LIKES": likes_table
-        }),
+        entity_mapping=EntityMapping(
+            mapping={"User": user_table, "Post": post_table}
+        ),
+        relationship_mapping=RelationshipMapping(
+            mapping={
+                "FRIENDS": friends_table,
+                "FOLLOWS": follows_table,
+                "LIKES": likes_table,
+            }
+        ),
     )
 
 
 class TestBasicRelationshipPropertySET:
     """Test basic SET operations on relationship properties."""
 
-    def test_set_relationship_single_property(self, relationship_context: Context) -> None:
+    def test_set_relationship_single_property(
+        self, relationship_context: Context
+    ) -> None:
         """Test parsing setting single property on relationship."""
         cypher = """
         MATCH (u1:User)-[f:FRIENDS]->(u2:User)
@@ -216,7 +564,9 @@ class TestBasicRelationshipPropertySET:
         ast = ASTConverter.from_cypher(cypher)
         assert ast is not None
 
-    def test_set_relationship_multiple_properties(self, relationship_context: Context) -> None:
+    def test_set_relationship_multiple_properties(
+        self, relationship_context: Context
+    ) -> None:
         """Test parsing setting multiple properties on relationship."""
         cypher = """
         MATCH (u1:User)-[f:FRIENDS]->(u2:User)
@@ -231,7 +581,9 @@ class TestBasicRelationshipPropertySET:
         ast = ASTConverter.from_cypher(cypher)
         assert ast is not None
 
-    def test_set_relationship_computed_properties(self, relationship_context: Context) -> None:
+    def test_set_relationship_computed_properties(
+        self, relationship_context: Context
+    ) -> None:
         """Test parsing setting computed properties on relationship."""
         cypher = """
         MATCH (u1:User)-[f:FRIENDS]->(u2:User)
@@ -248,7 +600,9 @@ class TestBasicRelationshipPropertySET:
         ast = ASTConverter.from_cypher(cypher)
         assert ast is not None
 
-    def test_set_relationship_timestamp_update(self, relationship_context: Context) -> None:
+    def test_set_relationship_timestamp_update(
+        self, relationship_context: Context
+    ) -> None:
         """Test parsing updating timestamp properties on relationships."""
         cypher = """
         MATCH (u1:User)-[f:FRIENDS]->(u2:User)
@@ -263,7 +617,9 @@ class TestBasicRelationshipPropertySET:
         ast = ASTConverter.from_cypher(cypher)
         assert ast is not None
 
-    def test_set_relationship_metadata(self, relationship_context: Context) -> None:
+    def test_set_relationship_metadata(
+        self, relationship_context: Context
+    ) -> None:
         """Test parsing setting metadata properties on relationships."""
         cypher = """
         MATCH (u1:User)-[f:FOLLOWS]->(u2:User)
@@ -284,7 +640,9 @@ class TestBasicRelationshipPropertySET:
 class TestRelationshipConditionalSET:
     """Test SET operations on relationships with conditional logic."""
 
-    def test_set_relationship_where_property(self, relationship_context: Context) -> None:
+    def test_set_relationship_where_property(
+        self, relationship_context: Context
+    ) -> None:
         """Test parsing SET on relationships with WHERE on relationship property."""
         cypher = """
         MATCH (u1:User)-[f:FOLLOWS]->(u2:User)
@@ -299,7 +657,9 @@ class TestRelationshipConditionalSET:
         ast = ASTConverter.from_cypher(cypher)
         assert ast is not None
 
-    def test_set_relationship_where_node_property(self, relationship_context: Context) -> None:
+    def test_set_relationship_where_node_property(
+        self, relationship_context: Context
+    ) -> None:
         """Test parsing SET on relationships based on connected node properties."""
         cypher = """
         MATCH (u1:User)-[f:FRIENDS]->(u2:User)
@@ -313,7 +673,9 @@ class TestRelationshipConditionalSET:
         ast = ASTConverter.from_cypher(cypher)
         assert ast is not None
 
-    def test_set_relationship_conditional_status(self, relationship_context: Context) -> None:
+    def test_set_relationship_conditional_status(
+        self, relationship_context: Context
+    ) -> None:
         """Test parsing conditional status updates on relationships."""
         cypher = """
         MATCH (u1:User)-[f:FRIENDS]->(u2:User)
@@ -328,7 +690,9 @@ class TestRelationshipConditionalSET:
         ast = ASTConverter.from_cypher(cypher)
         assert ast is not None
 
-    def test_set_relationship_engagement_tiers(self, relationship_context: Context) -> None:
+    def test_set_relationship_engagement_tiers(
+        self, relationship_context: Context
+    ) -> None:
         """Test parsing setting engagement tiers based on interaction patterns."""
         cypher = """
         MATCH (u1:User)-[f:FOLLOWS]->(u2:User)
@@ -346,7 +710,9 @@ class TestRelationshipConditionalSET:
         ast = ASTConverter.from_cypher(cypher)
         assert ast is not None
 
-    def test_set_relationship_mutual_properties(self, relationship_context: Context) -> None:
+    def test_set_relationship_mutual_properties(
+        self, relationship_context: Context
+    ) -> None:
         """Test parsing setting properties based on mutual relationship analysis."""
         cypher = """
         MATCH (u1:User)-[f1:FRIENDS]->(u2:User),
@@ -366,7 +732,9 @@ class TestRelationshipConditionalSET:
 class TestRelationshipBulkOperations:
     """Test bulk SET operations affecting multiple relationships."""
 
-    def test_set_bulk_relationship_update(self, relationship_context: Context) -> None:
+    def test_set_bulk_relationship_update(
+        self, relationship_context: Context
+    ) -> None:
         """Test parsing bulk update across relationship type."""
         cypher = """
         MATCH (u1:User)-[l:LIKES]->(p:Post)
@@ -380,7 +748,9 @@ class TestRelationshipBulkOperations:
         ast = ASTConverter.from_cypher(cypher)
         assert ast is not None
 
-    def test_set_relationship_deprecation(self, relationship_context: Context) -> None:
+    def test_set_relationship_deprecation(
+        self, relationship_context: Context
+    ) -> None:
         """Test parsing bulk deprecation of old relationships."""
         cypher = """
         MATCH (u1:User)-[f:FOLLOWS]->(u2:User)
@@ -395,7 +765,9 @@ class TestRelationshipBulkOperations:
         ast = ASTConverter.from_cypher(cypher)
         assert ast is not None
 
-    def test_set_relationship_policy_compliance(self, relationship_context: Context) -> None:
+    def test_set_relationship_policy_compliance(
+        self, relationship_context: Context
+    ) -> None:
         """Test parsing policy compliance updates across relationships."""
         cypher = """
         MATCH (u1:User)-[r:FRIENDS]->(u2:User)
@@ -410,7 +782,9 @@ class TestRelationshipBulkOperations:
         ast = ASTConverter.from_cypher(cypher)
         assert ast is not None
 
-    def test_set_relationship_analytics_batch(self, relationship_context: Context) -> None:
+    def test_set_relationship_analytics_batch(
+        self, relationship_context: Context
+    ) -> None:
         """Test parsing batch analytics property updates."""
         cypher = """
         MATCH (u1:User)-[f:FOLLOWS]->(u2:User)
@@ -432,7 +806,9 @@ class TestRelationshipBulkOperations:
 class TestRelationshipPatternBasedSET:
     """Test SET operations based on complex relationship patterns."""
 
-    def test_set_triangular_relationship_pattern(self, relationship_context: Context) -> None:
+    def test_set_triangular_relationship_pattern(
+        self, relationship_context: Context
+    ) -> None:
         """Test parsing SET based on triangular relationship patterns."""
         cypher = """
         MATCH (u1:User)-[f1:FRIENDS]->(u2:User)-[f2:FRIENDS]->(u3:User),
@@ -448,7 +824,9 @@ class TestRelationshipPatternBasedSET:
         ast = ASTConverter.from_cypher(cypher)
         assert ast is not None
 
-    def test_set_influence_relationship_pattern(self, relationship_context: Context) -> None:
+    def test_set_influence_relationship_pattern(
+        self, relationship_context: Context
+    ) -> None:
         """Test parsing SET based on influence patterns (simplified)."""
         cypher = """
         MATCH (influencer:User)
@@ -463,7 +841,9 @@ class TestRelationshipPatternBasedSET:
         ast = ASTConverter.from_cypher(cypher)
         assert ast is not None
 
-    def test_set_reciprocal_follow_pattern(self, relationship_context: Context) -> None:
+    def test_set_reciprocal_follow_pattern(
+        self, relationship_context: Context
+    ) -> None:
         """Test parsing SET for reciprocal follow relationships."""
         cypher = """
         MATCH (u1:User)-[f1:FOLLOWS]->(u2:User),
@@ -479,7 +859,9 @@ class TestRelationshipPatternBasedSET:
         ast = ASTConverter.from_cypher(cypher)
         assert ast is not None
 
-    def test_set_content_engagement_pattern(self, relationship_context: Context) -> None:
+    def test_set_content_engagement_pattern(
+        self, relationship_context: Context
+    ) -> None:
         """Test parsing SET based on content engagement patterns."""
         cypher = """
         MATCH (u:User)-[l:LIKES]->(p:Post)
@@ -495,7 +877,9 @@ class TestRelationshipPatternBasedSET:
         ast = ASTConverter.from_cypher(cypher)
         assert ast is not None
 
-    def test_set_cross_relationship_influence(self, relationship_context: Context) -> None:
+    def test_set_cross_relationship_influence(
+        self, relationship_context: Context
+    ) -> None:
         """Test parsing SET based on cross-relationship type influences."""
         cypher = """
         MATCH (u1:User)-[f:FRIENDS]->(u2:User),
@@ -515,7 +899,9 @@ class TestRelationshipPatternBasedSET:
 class TestRelationshipCreationWithSET:
     """Test SET operations during relationship creation scenarios."""
 
-    def test_set_during_relationship_match_create(self, relationship_context: Context) -> None:
+    def test_set_during_relationship_match_create(
+        self, relationship_context: Context
+    ) -> None:
         """Test parsing SET during MATCH or CREATE relationship patterns."""
         cypher = """
         MATCH (u1:User {username: 'alice'}), (u2:User {username: 'bob'})
@@ -532,7 +918,9 @@ class TestRelationshipCreationWithSET:
         ast = ASTConverter.from_cypher(cypher)
         assert ast is not None
 
-    def test_set_new_relationship_defaults(self, relationship_context: Context) -> None:
+    def test_set_new_relationship_defaults(
+        self, relationship_context: Context
+    ) -> None:
         """Test parsing SET with default values for new relationships."""
         cypher = """
         MATCH (u1:User), (u2:User)
@@ -550,7 +938,9 @@ class TestRelationshipCreationWithSET:
         ast = ASTConverter.from_cypher(cypher)
         assert ast is not None
 
-    def test_set_relationship_with_inheritance(self, relationship_context: Context) -> None:
+    def test_set_relationship_with_inheritance(
+        self, relationship_context: Context
+    ) -> None:
         """Test parsing SET with property inheritance from nodes."""
         cypher = """
         MATCH (u1:User), (u2:User)
@@ -567,7 +957,9 @@ class TestRelationshipCreationWithSET:
         ast = ASTConverter.from_cypher(cypher)
         assert ast is not None
 
-    def test_set_bulk_relationship_creation(self, relationship_context: Context) -> None:
+    def test_set_bulk_relationship_creation(
+        self, relationship_context: Context
+    ) -> None:
         """Test parsing bulk relationship creation with SET."""
         cypher = """
         MATCH (u1:User), (u2:User)
@@ -589,7 +981,9 @@ class TestRelationshipCreationWithSET:
 class TestRelationshipMaintenanceOperations:
     """Test SET operations for relationship maintenance and cleanup."""
 
-    def test_set_relationship_maintenance_flags(self, relationship_context: Context) -> None:
+    def test_set_relationship_maintenance_flags(
+        self, relationship_context: Context
+    ) -> None:
         """Test parsing setting maintenance flags on relationships."""
         cypher = """
         MATCH (u1:User)-[f:FRIENDS]->(u2:User)
@@ -608,7 +1002,9 @@ class TestRelationshipMaintenanceOperations:
         ast = ASTConverter.from_cypher(cypher)
         assert ast is not None
 
-    def test_set_relationship_cleanup_markers(self, relationship_context: Context) -> None:
+    def test_set_relationship_cleanup_markers(
+        self, relationship_context: Context
+    ) -> None:
         """Test parsing setting cleanup markers for relationship pruning."""
         cypher = """
         MATCH (u1:User)-[r:FOLLOWS]->(u2:User)
@@ -624,7 +1020,9 @@ class TestRelationshipMaintenanceOperations:
         ast = ASTConverter.from_cypher(cypher)
         assert ast is not None
 
-    def test_set_relationship_archive_properties(self, relationship_context: Context) -> None:
+    def test_set_relationship_archive_properties(
+        self, relationship_context: Context
+    ) -> None:
         """Test parsing setting archive properties before relationship deletion."""
         cypher = """
         MATCH (u1:User)-[l:LIKES]->(p:Post)
@@ -640,7 +1038,9 @@ class TestRelationshipMaintenanceOperations:
         ast = ASTConverter.from_cypher(cypher)
         assert ast is not None
 
-    def test_set_relationship_migration_tracking(self, relationship_context: Context) -> None:
+    def test_set_relationship_migration_tracking(
+        self, relationship_context: Context
+    ) -> None:
         """Test parsing setting migration tracking properties."""
         cypher = """
         MATCH (u1:User)-[r:FRIENDS]->(target)
@@ -659,7 +1059,9 @@ class TestRelationshipMaintenanceOperations:
         ast = ASTConverter.from_cypher(cypher)
         assert ast is not None
 
-    def test_set_relationship_quality_scores(self, relationship_context: Context) -> None:
+    def test_set_relationship_quality_scores(
+        self, relationship_context: Context
+    ) -> None:
         """Test parsing setting relationship quality assessment scores."""
         cypher = """
         MATCH (u1:User)-[f:FRIENDS]->(u2:User)

@@ -140,10 +140,10 @@ class TestWhereClauseStructure:
         tree = parser.parse(query)
         ast = parser.transformer.transform(tree)
 
-        # return -> body -> items -> item -> expression
-        expr = ast["statements"][0][0]["return"]["body"]["items"][0][
-            "expression"
-        ]
+        # Grammar transformer now puts return statement in clauses array
+        # clauses -> ReturnStatement -> body -> items -> item -> expression
+        return_clause = ast["statements"][0][0]["clauses"][0]
+        expr = return_clause["body"]["items"][0]["expression"]
 
         assert expr["type"] == "Arithmetic"
         assert expr["operator"] == "+"

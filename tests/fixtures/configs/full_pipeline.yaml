@@ -1,0 +1,79 @@
+version: "1.0"
+
+project:
+  name: customer_graph
+  description: "Customer/company/product graph from CRM exports"
+
+sources:
+  entities:
+    - id: persons
+      uri: "s3://my-bucket/exports/persons.parquet"
+      entity_type: Person
+      id_col: person_id
+      query: |
+        SELECT person_id, first_name || ' ' || last_name AS name, age
+        FROM source
+        WHERE active = true
+      schema_hints:
+        person_id: INTEGER
+        name: VARCHAR
+        age: INTEGER
+      on_error: fail
+
+    - id: companies
+      uri: "file:///data/companies.csv"
+      entity_type: Company
+      id_col: company_id
+      on_error: warn
+
+    - id: products
+      uri: "postgresql://user:${DB_PASSWORD}@host:5432/crm"
+      entity_type: Product
+      id_col: product_id
+      query: "SELECT * FROM products WHERE deleted_at IS NULL"
+
+  relationships:
+    - id: employment
+      uri: "file:///data/employment.parquet"
+      relationship_type: WORKS_FOR
+      source_col: person_id
+      target_col: company_id
+      id_col: employment_id
+      on_error: skip
+
+    - id: purchases
+      uri: "s3://my-bucket/purchases.parquet"
+      relationship_type: PURCHASED
+      source_col: customer_id
+      target_col: product_id
+
+functions:
+  - module: "mypackage.string_utils"
+    names:
+      - normalize_name
+      - parse_phone_number
+
+  - module: "mypackage.math_utils"
+    names: "*"
+
+  - callable: "mypackage.formatters.format_currency"
+
+queries:
+  - id: customer_summary
+    description: "Aggregate customer metrics per company"
+    source: "cypher/customer_summary.cypher"
+
+  - id: active_employees
+    description: "All active person–company relationships"
+    inline: |
+      MATCH (p:Person)-[w:WORKS_FOR]->(c:Company)
+      WITH p.name AS person, c.name AS company
+      RETURN person AS person, company AS company
+
+output:
+  - query_id: customer_summary
+    uri: "s3://results/customer_summary.parquet"
+
+  - query_id: active_employees
+    uri: "file:///output/employees.csv"
+    format: csv

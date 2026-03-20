@@ -1,151 +1,182 @@
-Basic Query Parsing
-===================
+Basic Query Execution
+=====================
 
-This tutorial demonstrates how to parse openCypher queries using PyCypher.
+This tutorial shows how to run Cypher queries against your data using PyCypher.
 
 Learning Objectives
 -------------------
 
-* Parse simple and complex Cypher queries
-* Convert raw AST to typed AST
-* Inspect AST structure
-* Handle parsing errors
+* Load data and build a query context
+* Execute MATCH / WHERE / RETURN queries
+* Filter, sort, and aggregate results
+* Inspect the parsed AST when needed
 
 Setup
 -----
 
 .. code-block:: python
 
-   from pycypher.grammar_parser import GrammarParser
-   from pycypher.ast_models import ASTConverter
+   import pandas as pd
+   from pycypher.ingestion import ContextBuilder
+   from pycypher import Star
 
-   parser = GrammarParser()
-   converter = ASTConverter()
+   # Load data from a CSV (or pass a DataFrame directly)
+   context = (
+       ContextBuilder()
+       .add_entity("Person", "data/people.csv")
+       .build()
+   )
+   star = Star(context=context)
 
-Parsing Simple Queries
------------------------
-
-Match Query
-~~~~~~~~~~~
+If your data is already in memory as a DataFrame, the fastest path is
+:meth:`~pycypher.ingestion.ContextBuilder.from_dict`:
 
 .. code-block:: python
 
-   query = "MATCH (n:Person) RETURN n"
-   
-   # Parse to raw AST
-   raw_ast = parser.parse_to_ast(query)
-   print(f"Raw AST type: {type(raw_ast)}")
-   
-   # Convert to typed AST
-   typed_ast = converter.convert(raw_ast)
-   print(f"Typed AST type: {type(typed_ast)}")
-   
-   # Inspect structure
-   regular_query = typed_ast.regular_query
-   single_query = regular_query.single_queries[0]
-   match_clause = single_query.reading_clauses[0]
-   
-   print(f"Match clause patterns: {match_clause.pattern}")
+   people = pd.DataFrame({
+       "__ID__": [1, 2, 3],
+       "name":   ["Alice", "Bob", "Carol"],
+       "age":    [30, 25, 35],
+   })
+   context = ContextBuilder.from_dict({"Person": people})
+   star = Star(context=context)
 
-Create Query
+Running Queries
+---------------
+
+Simple MATCH
 ~~~~~~~~~~~~
 
 .. code-block:: python
 
-   query = "CREATE (p:Person {name: 'Alice', age: 30})"
-   
-   raw_ast = parser.parse_to_ast(query)
-   typed_ast = converter.convert(raw_ast)
-   
-   # Access the create clause
-   single_query = typed_ast.regular_query.single_queries[0]
-   create_clause = single_query.updating_clauses[0]
-   
-   pattern = create_clause.pattern
-   node_pattern = pattern.pattern_paths[0].node_pattern
-   
-   print(f"Node labels: {node_pattern.labels}")
-   print(f"Node properties: {node_pattern.properties}")
+   # Returns a pandas DataFrame
+   result = star.execute_query("MATCH (p:Person) RETURN p.name AS name")
+   print(result)
+   #     name
+   # 0  Alice
+   # 1    Bob
+   # 2  Carol
 
-Complex Queries
----------------
-
-Match with WHERE
-~~~~~~~~~~~~~~~~
+Filtering with WHERE
+~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: python
 
-   query = """
-   MATCH (person:Person)-[:KNOWS]->(friend:Person)
-   WHERE person.age > 30 AND friend.city = 'New York'
-   RETURN person.name, friend.name
-   """
-   
-   raw_ast = parser.parse_to_ast(query)
-   typed_ast = converter.convert(raw_ast)
-   
-   single_query = typed_ast.regular_query.single_queries[0]
-   match_clause = single_query.reading_clauses[0]
-   where = match_clause.where
-   
-   print(f"WHERE condition: {where.expression}")
-   
-   # Access RETURN clause
-   return_clause = single_query.return_clause
-   return_items = return_clause.return_body.return_items
-   
-   for item in return_items:
-       print(f"Return item: {item.expression}")
+   result = star.execute_query(
+       "MATCH (p:Person) WHERE p.age > 25 RETURN p.name AS name, p.age AS age"
+   )
+   print(result)
+   #     name  age
+   # 0  Alice   30
+   # 1  Carol   35
 
-Handling Variables
-------------------
-
-All variables in the AST are represented as ``Variable`` instances:
+Sorting and Limiting
+~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: python
 
-   from pycypher.ast_models import Variable
-   
-   query = "MATCH (n:Person) RETURN n.name AS personName"
-   
-   raw_ast = parser.parse_to_ast(query)
-   typed_ast = converter.convert(raw_ast)
-   
-   # Get the variable from the pattern
-   single_query = typed_ast.regular_query.single_queries[0]
-   match_clause = single_query.reading_clauses[0]
-   pattern_path = match_clause.pattern.pattern_paths[0]
-   node_pattern = pattern_path.node_pattern
-   
-   # Variable is a Variable instance, not a string
-   var = node_pattern.variable
-   assert isinstance(var, Variable)
-   print(f"Variable name: {var.name}")
-   
-   # Property lookup also uses Variable
-   return_item = single_query.return_clause.return_body.return_items[0]
-   prop_lookup = return_item.expression
-   assert isinstance(prop_lookup.expression, Variable)
-   print(f"Property on variable: {prop_lookup.property_name}")
+   # Top 2 oldest people
+   result = star.execute_query(
+       "MATCH (p:Person) RETURN p.name AS name ORDER BY p.age DESC LIMIT 2"
+   )
+
+Aggregation
+~~~~~~~~~~~
+
+.. code-block:: python
+
+   result = star.execute_query(
+       "MATCH (p:Person) RETURN count(p) AS total, avg(p.age) AS avg_age"
+   )
+
+Relationship Patterns
+---------------------
+
+.. code-block:: python
+
+   context = (
+       ContextBuilder()
+       .add_entity("Person", "data/people.csv")
+       .add_entity("Product", "data/products.csv")
+       .add_relationship("BOUGHT", "data/purchases.csv",
+                         source_col="user_id", target_col="product_id")
+       .build()
+   )
+   star = Star(context=context)
+
+   result = star.execute_query(
+       """
+       MATCH (buyer:Person)-[:BOUGHT]->(item:Product)
+       WHERE buyer.age >= 30
+       RETURN buyer.name AS buyer, item.name AS product
+       ORDER BY buyer.name
+       """
+   )
+
+Discovering Available Functions
+--------------------------------
+
+Use :meth:`~pycypher.star.Star.available_functions` to see all registered
+scalar functions at any time:
+
+.. code-block:: python
+
+   print(star.available_functions())
+   # ['abs', 'acos', 'asin', ..., 'toupper', 'trim']
+
+   # Use them in any expression context
+   result = star.execute_query(
+       "MATCH (p:Person) RETURN toUpper(p.name) AS upper_name"
+   )
+
+Advanced: Inspecting the Parsed AST
+-------------------------------------
+
+For users who need to programmatically inspect or introspect parsed query
+structure, :meth:`~pycypher.ast_models.ASTConverter.from_cypher` returns a
+fully-typed Pydantic AST:
+
+.. code-block:: python
+
+   from pycypher.ast_models import ASTConverter, Match, Return
+
+   query = "MATCH (p:Person) WHERE p.age > 30 RETURN p.name AS name"
+   ast = ASTConverter.from_cypher(query)
+
+   # ast is a Query object; clauses is the flat list of parsed clauses
+   for clause in ast.clauses:
+       print(type(clause).__name__, clause)
+
+   # Check the first clause is a MATCH
+   match_clause = ast.clauses[0]
+   assert isinstance(match_clause, Match)
+   print("WHERE predicate:", match_clause.where)
+
+   # Check the last clause is a RETURN
+   return_clause = ast.clauses[-1]
+   assert isinstance(return_clause, Return)
+   print("RETURN items:", return_clause.items)
 
 Error Handling
 --------------
 
 .. code-block:: python
 
-   from pycypher.exceptions import ParseError
-   
-   invalid_query = "MATCH (n:Person RETURN n"  # Missing closing parenthesis
-   
    try:
-       raw_ast = parser.parse_to_ast(invalid_query)
-   except ParseError as e:
-       print(f"Parse error: {e}")
-       print(f"Error location: line {e.line}, column {e.column}")
+       result = star.execute_query("MATCH (p:Person) RETURN p.salary AS s")
+   except KeyError as e:
+       # Property 'salary' not found on entity type 'Person'
+       print(f"Property error: {e}")
+
+   try:
+       result = star.execute_query("MATCH (x:Unknown) RETURN x.name")
+   except ValueError as e:
+       # Entity type 'Unknown' is not registered
+       print(f"Entity error: {e}")
 
 Next Steps
 ----------
 
-* Learn about :doc:`ast_manipulation` to modify queries
-* Explore :doc:`query_validation` to validate parsed queries
-* Try :doc:`pattern_matching` for advanced patterns
+* :doc:`../user_guide/query_processing` — execution model deep-dive
+* :doc:`pattern_matching` — advanced graph patterns
+* :doc:`../api/pycypher` — full API reference

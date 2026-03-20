@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import pandas as pd
 import pytest
-
 from pycypher.ast_models import ASTConverter
 from pycypher.relational_models import (
     ID_COLUMN,
@@ -35,57 +34,160 @@ from pycypher.star import Star
 def comprehensive_context() -> Context:
     """Create a comprehensive test context for SET operations."""
     # Person entities with diverse data types and null values
-    person_df = pd.DataFrame({
-        ID_COLUMN: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-        "name": ["Alice Johnson", "Bob Smith", "Carol White", "Dave Brown", "Eve Davis",
-                "Frank Miller", "Grace Wilson", None, "Henry Lee", "Ivy Chen"],
-        "age": [25, 30, 35, 40, None, 28, 45, 50, 22, 33],
-        "salary": [50000, 60000, 70000, 80000, 55000, None, 90000, 65000, 45000, 75000],
-        "active": [True, False, True, None, True, False, True, True, None, False],
-        "department": ["Engineering", "Sales", "Marketing", "Engineering", "HR",
-                      None, "Engineering", "Sales", "Marketing", "HR"],
-        "email": ["alice@company.com", "bob@company.com", None, "dave@company.com",
-                 "eve@company.com", "frank@company.com", None, "henry@company.com",
-                 "henry@company.com", "ivy@company.com"],
-        "score": [8.5, 7.2, 9.1, 6.8, 8.0, None, 9.5, 7.8, 6.5, 8.2],
-        "level": ["senior", "junior", "senior", "lead", "junior", "senior", "lead",
-                 "junior", "intern", "senior"],
-        "years_experience": [5, 2, 8, 12, 3, 6, 15, 1, 0, 7],
-    })
+    person_df = pd.DataFrame(
+        {
+            ID_COLUMN: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+            "name": [
+                "Alice Johnson",
+                "Bob Smith",
+                "Carol White",
+                "Dave Brown",
+                "Eve Davis",
+                "Frank Miller",
+                "Grace Wilson",
+                None,
+                "Henry Lee",
+                "Ivy Chen",
+            ],
+            "age": [25, 30, 35, 40, None, 28, 45, 50, 22, 33],
+            "salary": [
+                50000,
+                60000,
+                70000,
+                80000,
+                55000,
+                None,
+                90000,
+                65000,
+                45000,
+                75000,
+            ],
+            "active": [
+                True,
+                False,
+                True,
+                None,
+                True,
+                False,
+                True,
+                True,
+                None,
+                False,
+            ],
+            "department": [
+                "Engineering",
+                "Sales",
+                "Marketing",
+                "Engineering",
+                "HR",
+                None,
+                "Engineering",
+                "Sales",
+                "Marketing",
+                "HR",
+            ],
+            "email": [
+                "alice@company.com",
+                "bob@company.com",
+                None,
+                "dave@company.com",
+                "eve@company.com",
+                "frank@company.com",
+                None,
+                "henry@company.com",
+                "henry@company.com",
+                "ivy@company.com",
+            ],
+            "score": [8.5, 7.2, 9.1, 6.8, 8.0, None, 9.5, 7.8, 6.5, 8.2],
+            "level": [
+                "senior",
+                "junior",
+                "senior",
+                "lead",
+                "junior",
+                "senior",
+                "lead",
+                "junior",
+                "intern",
+                "senior",
+            ],
+            "years_experience": [5, 2, 8, 12, 3, 6, 15, 1, 0, 7],
+        }
+    )
 
     # Company entities for relationship testing
-    company_df = pd.DataFrame({
-        ID_COLUMN: [101, 102, 103],
-        "name": ["TechCorp", "InnovateLtd", "DataSystems"],
-        "industry": ["Technology", "Consulting", "Analytics"],
-        "size": [500, 150, 75],
-        "founded": [2010, 2015, 2018],
-    })
+    company_df = pd.DataFrame(
+        {
+            ID_COLUMN: [101, 102, 103],
+            "name": ["TechCorp", "InnovateLtd", "DataSystems"],
+            "industry": ["Technology", "Consulting", "Analytics"],
+            "size": [500, 150, 75],
+            "founded": [2010, 2015, 2018],
+        }
+    )
 
     # Employee-Company relationships
-    works_at_df = pd.DataFrame({
-        ID_COLUMN: [201, 202, 203, 204, 205, 206],
-        RELATIONSHIP_SOURCE_COLUMN: [1, 2, 3, 4, 5, 6],
-        RELATIONSHIP_TARGET_COLUMN: [101, 101, 102, 101, 103, 102],
-        "start_date": ["2020-01-15", "2019-06-01", "2021-03-10", "2018-11-20", "2022-02-01", "2020-08-15"],
-        "role": ["Developer", "Sales Rep", "Marketer", "Tech Lead", "Analyst", "Senior Dev"],
-        "remote": [True, False, True, False, True, True],
-    })
+    works_at_df = pd.DataFrame(
+        {
+            ID_COLUMN: [201, 202, 203, 204, 205, 206],
+            RELATIONSHIP_SOURCE_COLUMN: [1, 2, 3, 4, 5, 6],
+            RELATIONSHIP_TARGET_COLUMN: [101, 101, 102, 101, 103, 102],
+            "start_date": [
+                "2020-01-15",
+                "2019-06-01",
+                "2021-03-10",
+                "2018-11-20",
+                "2022-02-01",
+                "2020-08-15",
+            ],
+            "role": [
+                "Developer",
+                "Sales Rep",
+                "Marketer",
+                "Tech Lead",
+                "Analyst",
+                "Senior Dev",
+            ],
+            "remote": [True, False, True, False, True, True],
+        }
+    )
 
     person_table = EntityTable(
         entity_type="Person",
         identifier="Person",
-        column_names=[ID_COLUMN, "name", "age", "salary", "active", "department",
-                     "email", "score", "level", "years_experience"],
+        column_names=[
+            ID_COLUMN,
+            "name",
+            "age",
+            "salary",
+            "active",
+            "department",
+            "email",
+            "score",
+            "level",
+            "years_experience",
+        ],
         source_obj_attribute_map={
-            "name": "name", "age": "age", "salary": "salary", "active": "active",
-            "department": "department", "email": "email", "score": "score",
-            "level": "level", "years_experience": "years_experience"
+            "name": "name",
+            "age": "age",
+            "salary": "salary",
+            "active": "active",
+            "department": "department",
+            "email": "email",
+            "score": "score",
+            "level": "level",
+            "years_experience": "years_experience",
         },
         attribute_map={
-            "name": "name", "age": "age", "salary": "salary", "active": "active",
-            "department": "department", "email": "email", "score": "score",
-            "level": "level", "years_experience": "years_experience"
+            "name": "name",
+            "age": "age",
+            "salary": "salary",
+            "active": "active",
+            "department": "department",
+            "email": "email",
+            "score": "score",
+            "level": "level",
+            "years_experience": "years_experience",
         },
         source_obj=person_df,
     )
@@ -95,10 +197,16 @@ def comprehensive_context() -> Context:
         identifier="Company",
         column_names=[ID_COLUMN, "name", "industry", "size", "founded"],
         source_obj_attribute_map={
-            "name": "name", "industry": "industry", "size": "size", "founded": "founded"
+            "name": "name",
+            "industry": "industry",
+            "size": "size",
+            "founded": "founded",
         },
         attribute_map={
-            "name": "name", "industry": "industry", "size": "size", "founded": "founded"
+            "name": "name",
+            "industry": "industry",
+            "size": "size",
+            "founded": "founded",
         },
         source_obj=company_df,
     )
@@ -106,31 +214,47 @@ def comprehensive_context() -> Context:
     works_at_table = RelationshipTable(
         relationship_type="WORKS_AT",
         identifier="WORKS_AT",
-        column_names=[ID_COLUMN, RELATIONSHIP_SOURCE_COLUMN, RELATIONSHIP_TARGET_COLUMN,
-                     "start_date", "role", "remote"],
+        column_names=[
+            ID_COLUMN,
+            RELATIONSHIP_SOURCE_COLUMN,
+            RELATIONSHIP_TARGET_COLUMN,
+            "start_date",
+            "role",
+            "remote",
+        ],
         source_obj_attribute_map={
             RELATIONSHIP_SOURCE_COLUMN: RELATIONSHIP_SOURCE_COLUMN,
             RELATIONSHIP_TARGET_COLUMN: RELATIONSHIP_TARGET_COLUMN,
-            "start_date": "start_date", "role": "role", "remote": "remote"
+            "start_date": "start_date",
+            "role": "role",
+            "remote": "remote",
         },
         attribute_map={
             RELATIONSHIP_SOURCE_COLUMN: RELATIONSHIP_SOURCE_COLUMN,
             RELATIONSHIP_TARGET_COLUMN: RELATIONSHIP_TARGET_COLUMN,
-            "start_date": "start_date", "role": "role", "remote": "remote"
+            "start_date": "start_date",
+            "role": "role",
+            "remote": "remote",
         },
         source_obj=works_at_df,
     )
 
     return Context(
-        entity_mapping=EntityMapping(mapping={"Person": person_table, "Company": company_table}),
-        relationship_mapping=RelationshipMapping(mapping={"WORKS_AT": works_at_table}),
+        entity_mapping=EntityMapping(
+            mapping={"Person": person_table, "Company": company_table}
+        ),
+        relationship_mapping=RelationshipMapping(
+            mapping={"WORKS_AT": works_at_table}
+        ),
     )
 
 
 class TestBasicPropertySetting:
     """Test basic SET operations for single and multiple properties."""
 
-    def test_set_single_string_property(self, comprehensive_context: Context) -> None:
+    def test_set_single_string_property(
+        self, comprehensive_context: Context
+    ) -> None:
         """Test parsing single string property SET operation."""
         cypher = "MATCH (p:Person) WHERE p.name = 'Alice Johnson' SET p.title = 'Senior Engineer' RETURN p AS p"
 
@@ -139,7 +263,11 @@ class TestBasicPropertySetting:
         assert ast is not None
 
         # Verify SET clause was parsed correctly
-        set_clauses = [clause for clause in ast.clauses if clause.__class__.__name__ == "Set"]
+        set_clauses = [
+            clause
+            for clause in ast.clauses
+            if clause.__class__.__name__ == "Set"
+        ]
         assert len(set_clauses) == 1
 
         set_clause = set_clauses[0]
@@ -147,7 +275,9 @@ class TestBasicPropertySetting:
         assert set_clause.items[0].variable.name == "p"  # Setting p.title
         assert set_clause.items[0].property == "title"  # Setting p.title
 
-    def test_set_single_numeric_property(self, comprehensive_context: Context) -> None:
+    def test_set_single_numeric_property(
+        self, comprehensive_context: Context
+    ) -> None:
         """Test parsing SET operation for single numeric property."""
         cypher = "MATCH (p:Person) WHERE p.name = 'Bob Smith' SET p.bonus = 5000 RETURN p AS p"
 
@@ -156,7 +286,9 @@ class TestBasicPropertySetting:
         ast = ASTConverter.from_cypher(cypher)
         assert ast is not None
 
-    def test_set_single_boolean_property(self, comprehensive_context: Context) -> None:
+    def test_set_single_boolean_property(
+        self, comprehensive_context: Context
+    ) -> None:
         """Test parsing SET operation for single boolean property."""
         cypher = "MATCH (p:Person) WHERE p.name = 'Carol White' SET p.verified = true RETURN p AS p"
 
@@ -164,7 +296,9 @@ class TestBasicPropertySetting:
         ast = ASTConverter.from_cypher(cypher)
         assert ast is not None
 
-    def test_set_multiple_properties_same_type(self, comprehensive_context: Context) -> None:
+    def test_set_multiple_properties_same_type(
+        self, comprehensive_context: Context
+    ) -> None:
         """Test parsing SET operation for multiple string properties."""
         cypher = """
         MATCH (p:Person) WHERE p.name = 'Dave Brown'
@@ -176,7 +310,9 @@ class TestBasicPropertySetting:
         ast = ASTConverter.from_cypher(cypher)
         assert ast is not None
 
-    def test_set_multiple_properties_mixed_types(self, comprehensive_context: Context) -> None:
+    def test_set_multiple_properties_mixed_types(
+        self, comprehensive_context: Context
+    ) -> None:
         """Test parsing SET operation for properties of different types."""
         cypher = """
         MATCH (p:Person) WHERE p.name = 'Eve Davis'
@@ -229,7 +365,9 @@ class TestBasicPropertySetting:
 class TestComputedPropertySetting:
     """Test SET operations with computed expressions and transformations."""
 
-    def test_set_arithmetic_computation(self, comprehensive_context: Context) -> None:
+    def test_set_arithmetic_computation(
+        self, comprehensive_context: Context
+    ) -> None:
         """Test SET with arithmetic expression."""
         cypher = """
         MATCH (p:Person) WHERE p.name = 'Henry Lee'
@@ -241,7 +379,9 @@ class TestComputedPropertySetting:
         ast = ASTConverter.from_cypher(cypher)
         assert ast is not None
 
-    def test_set_percentage_calculation(self, comprehensive_context: Context) -> None:
+    def test_set_percentage_calculation(
+        self, comprehensive_context: Context
+    ) -> None:
         """Test SET with percentage calculation."""
         cypher = """
         MATCH (p:Person) WHERE p.salary IS NOT NULL
@@ -253,7 +393,9 @@ class TestComputedPropertySetting:
         ast = ASTConverter.from_cypher(cypher)
         assert ast is not None
 
-    def test_set_string_concatenation(self, comprehensive_context: Context) -> None:
+    def test_set_string_concatenation(
+        self, comprehensive_context: Context
+    ) -> None:
         """Test SET with string concatenation."""
         cypher = """
         MATCH (p:Person) WHERE p.name IS NOT NULL AND p.level IS NOT NULL
@@ -265,7 +407,9 @@ class TestComputedPropertySetting:
         ast = ASTConverter.from_cypher(cypher)
         assert ast is not None
 
-    def test_set_conditional_expression(self, comprehensive_context: Context) -> None:
+    def test_set_conditional_expression(
+        self, comprehensive_context: Context
+    ) -> None:
         """Test SET with CASE expression."""
         cypher = """
         MATCH (p:Person)
@@ -294,7 +438,9 @@ class TestComputedPropertySetting:
         ast = ASTConverter.from_cypher(cypher)
         assert ast is not None
 
-    def test_set_nested_arithmetic(self, comprehensive_context: Context) -> None:
+    def test_set_nested_arithmetic(
+        self, comprehensive_context: Context
+    ) -> None:
         """Test SET with nested arithmetic expressions."""
         cypher = """
         MATCH (p:Person) WHERE p.salary IS NOT NULL AND p.score IS NOT NULL
@@ -310,7 +456,9 @@ class TestComputedPropertySetting:
 class TestPropertyTypeConversions:
     """Test SET operations involving type conversions and function calls."""
 
-    def test_set_string_to_integer(self, comprehensive_context: Context) -> None:
+    def test_set_string_to_integer(
+        self, comprehensive_context: Context
+    ) -> None:
         """Test converting string to integer."""
         cypher = """
         MATCH (p:Person) WHERE p.name = 'Alice Johnson'
@@ -322,7 +470,9 @@ class TestPropertyTypeConversions:
         ast = ASTConverter.from_cypher(cypher)
         assert ast is not None
 
-    def test_set_with_string_functions(self, comprehensive_context: Context) -> None:
+    def test_set_with_string_functions(
+        self, comprehensive_context: Context
+    ) -> None:
         """Test SET with string transformation functions."""
         cypher = """
         MATCH (p:Person) WHERE p.name IS NOT NULL
@@ -336,7 +486,9 @@ class TestPropertyTypeConversions:
         ast = ASTConverter.from_cypher(cypher)
         assert ast is not None
 
-    def test_set_with_coalesce_function(self, comprehensive_context: Context) -> None:
+    def test_set_with_coalesce_function(
+        self, comprehensive_context: Context
+    ) -> None:
         """Test SET with coalesce for null handling."""
         cypher = """
         MATCH (p:Person)
@@ -349,7 +501,9 @@ class TestPropertyTypeConversions:
         ast = ASTConverter.from_cypher(cypher)
         assert ast is not None
 
-    def test_set_with_math_functions(self, comprehensive_context: Context) -> None:
+    def test_set_with_math_functions(
+        self, comprehensive_context: Context
+    ) -> None:
         """Test SET with mathematical functions."""
         cypher = """
         MATCH (p:Person) WHERE p.score IS NOT NULL
@@ -363,7 +517,9 @@ class TestPropertyTypeConversions:
         ast = ASTConverter.from_cypher(cypher)
         assert ast is not None
 
-    def test_set_with_type_validation(self, comprehensive_context: Context) -> None:
+    def test_set_with_type_validation(
+        self, comprehensive_context: Context
+    ) -> None:
         """Test SET with type checking and conversion."""
         cypher = """
         MATCH (p:Person) WHERE p.salary IS NOT NULL
@@ -407,7 +563,9 @@ class TestLabelOperations:
         ast = ASTConverter.from_cypher(cypher)
         assert ast is not None
 
-    def test_set_conditional_labels(self, comprehensive_context: Context) -> None:
+    def test_set_conditional_labels(
+        self, comprehensive_context: Context
+    ) -> None:
         """Test conditional label setting."""
         cypher = """
         MATCH (p:Person) WHERE p.active = true
@@ -419,7 +577,9 @@ class TestLabelOperations:
         ast = ASTConverter.from_cypher(cypher)
         assert ast is not None
 
-    def test_set_role_based_labels(self, comprehensive_context: Context) -> None:
+    def test_set_role_based_labels(
+        self, comprehensive_context: Context
+    ) -> None:
         """Test parsing SET operation for labels based on role/department."""
         cypher = """
         MATCH (p:Person) WHERE p.department = 'Engineering'
@@ -431,7 +591,9 @@ class TestLabelOperations:
         ast = ASTConverter.from_cypher(cypher)
         assert ast is not None
 
-    def test_set_experience_level_labels(self, comprehensive_context: Context) -> None:
+    def test_set_experience_level_labels(
+        self, comprehensive_context: Context
+    ) -> None:
         """Test parsing SET operation for labels based on experience level."""
         cypher = """
         MATCH (p:Person) WHERE p.years_experience < 3
@@ -447,7 +609,9 @@ class TestLabelOperations:
 class TestPropertyMapOperations:
     """Test SET operations with property maps (replace and merge operations)."""
 
-    def test_set_replace_all_properties(self, comprehensive_context: Context) -> None:
+    def test_set_replace_all_properties(
+        self, comprehensive_context: Context
+    ) -> None:
         """Test replacing all properties with a map."""
         cypher = """
         MATCH (p:Person) WHERE p.name = 'Alice Johnson'
@@ -465,7 +629,9 @@ class TestPropertyMapOperations:
         ast = ASTConverter.from_cypher(cypher)
         assert ast is not None
 
-    def test_set_merge_properties(self, comprehensive_context: Context) -> None:
+    def test_set_merge_properties(
+        self, comprehensive_context: Context
+    ) -> None:
         """Test merging properties with existing ones using +=."""
         cypher = """
         MATCH (p:Person) WHERE p.name = 'Bob Smith'
@@ -481,7 +647,9 @@ class TestPropertyMapOperations:
         ast = ASTConverter.from_cypher(cypher)
         assert ast is not None
 
-    def test_set_selective_property_update(self, comprehensive_context: Context) -> None:
+    def test_set_selective_property_update(
+        self, comprehensive_context: Context
+    ) -> None:
         """Test selective property updates with partial map."""
         cypher = """
         MATCH (p:Person) WHERE p.department = 'Engineering'
@@ -496,7 +664,9 @@ class TestPropertyMapOperations:
         ast = ASTConverter.from_cypher(cypher)
         assert ast is not None
 
-    def test_set_nested_property_map(self, comprehensive_context: Context) -> None:
+    def test_set_nested_property_map(
+        self, comprehensive_context: Context
+    ) -> None:
         """Test parsing SET operation for nested property structures."""
         cypher = """
         MATCH (p:Person) WHERE p.name = 'Carol White'
@@ -516,7 +686,9 @@ class TestPropertyMapOperations:
         ast = ASTConverter.from_cypher(cypher)
         assert ast is not None
 
-    def test_set_dynamic_property_map(self, comprehensive_context: Context) -> None:
+    def test_set_dynamic_property_map(
+        self, comprehensive_context: Context
+    ) -> None:
         """Test parsing SET operation for properties with dynamic map construction."""
         cypher = """
         MATCH (p:Person) WHERE p.salary IS NOT NULL
@@ -540,7 +712,9 @@ class TestPropertyMapOperations:
 class TestNullHandlingAndPropertyRemoval:
     """Test SET operations for null handling and property removal."""
 
-    def test_set_null_to_remove_property(self, comprehensive_context: Context) -> None:
+    def test_set_null_to_remove_property(
+        self, comprehensive_context: Context
+    ) -> None:
         """Test parsing SET operation for property to null for removal."""
         cypher = """
         MATCH (p:Person) WHERE p.email IS NULL
@@ -552,7 +726,9 @@ class TestNullHandlingAndPropertyRemoval:
         ast = ASTConverter.from_cypher(cypher)
         assert ast is not None
 
-    def test_set_conditional_null_replacement(self, comprehensive_context: Context) -> None:
+    def test_set_conditional_null_replacement(
+        self, comprehensive_context: Context
+    ) -> None:
         """Test conditional null value replacement."""
         cypher = """
         MATCH (p:Person)
@@ -565,7 +741,9 @@ class TestNullHandlingAndPropertyRemoval:
         ast = ASTConverter.from_cypher(cypher)
         assert ast is not None
 
-    def test_set_null_to_default_values(self, comprehensive_context: Context) -> None:
+    def test_set_null_to_default_values(
+        self, comprehensive_context: Context
+    ) -> None:
         """Test parsing SET operation for null values to defaults across multiple properties."""
         cypher = """
         MATCH (p:Person)
@@ -580,7 +758,9 @@ class TestNullHandlingAndPropertyRemoval:
         ast = ASTConverter.from_cypher(cypher)
         assert ast is not None
 
-    def test_set_explicit_null_assignments(self, comprehensive_context: Context) -> None:
+    def test_set_explicit_null_assignments(
+        self, comprehensive_context: Context
+    ) -> None:
         """Test explicit null assignments for cleanup."""
         cypher = """
         MATCH (p:Person) WHERE p.active = false
@@ -628,7 +808,9 @@ class TestComplexExpressionSetting:
         ast = ASTConverter.from_cypher(cypher)
         assert ast is not None
 
-    def test_set_array_manipulation(self, comprehensive_context: Context) -> None:
+    def test_set_array_manipulation(
+        self, comprehensive_context: Context
+    ) -> None:
         """Test SET with array manipulation."""
         cypher = """
         MATCH (p:Person) WHERE p.name = 'Dave Brown'
@@ -642,7 +824,9 @@ class TestComplexExpressionSetting:
         ast = ASTConverter.from_cypher(cypher)
         assert ast is not None
 
-    def test_set_with_regular_expressions(self, comprehensive_context: Context) -> None:
+    def test_set_with_regular_expressions(
+        self, comprehensive_context: Context
+    ) -> None:
         """Test SET with pattern matching operations."""
         cypher = """
         MATCH (p:Person) WHERE p.email IS NOT NULL
@@ -655,7 +839,9 @@ class TestComplexExpressionSetting:
         ast = ASTConverter.from_cypher(cypher)
         assert ast is not None
 
-    def test_set_aggregation_based_values(self, comprehensive_context: Context) -> None:
+    def test_set_aggregation_based_values(
+        self, comprehensive_context: Context
+    ) -> None:
         """Test SET based on aggregated computations."""
         cypher = """
         MATCH (p:Person) WHERE p.department IS NOT NULL
@@ -669,7 +855,9 @@ class TestComplexExpressionSetting:
         ast = ASTConverter.from_cypher(cypher)
         assert ast is not None
 
-    def test_set_time_based_calculations(self, comprehensive_context: Context) -> None:
+    def test_set_time_based_calculations(
+        self, comprehensive_context: Context
+    ) -> None:
         """Test SET with time-based calculations."""
         cypher = """
         MATCH (p:Person) WHERE p.years_experience IS NOT NULL
@@ -683,7 +871,9 @@ class TestComplexExpressionSetting:
         ast = ASTConverter.from_cypher(cypher)
         assert ast is not None
 
-    def test_set_performance_metrics(self, comprehensive_context: Context) -> None:
+    def test_set_performance_metrics(
+        self, comprehensive_context: Context
+    ) -> None:
         """Test SET for performance metric calculations."""
         cypher = """
         MATCH (p:Person) WHERE p.score IS NOT NULL AND p.salary IS NOT NULL
@@ -701,7 +891,9 @@ class TestComplexExpressionSetting:
 class TestBulkOperations:
     """Test SET operations affecting multiple entities simultaneously."""
 
-    def test_set_department_wide_update(self, comprehensive_context: Context) -> None:
+    def test_set_department_wide_update(
+        self, comprehensive_context: Context
+    ) -> None:
         """Test bulk update for entire department."""
         cypher = """
         MATCH (p:Person) WHERE p.department = 'Engineering'
@@ -715,7 +907,9 @@ class TestBulkOperations:
         ast = ASTConverter.from_cypher(cypher)
         assert ast is not None
 
-    def test_set_salary_band_adjustment(self, comprehensive_context: Context) -> None:
+    def test_set_salary_band_adjustment(
+        self, comprehensive_context: Context
+    ) -> None:
         """Test bulk salary adjustments by band."""
         cypher = """
         MATCH (p:Person) WHERE p.salary IS NOT NULL
@@ -734,7 +928,9 @@ class TestBulkOperations:
         ast = ASTConverter.from_cypher(cypher)
         assert ast is not None
 
-    def test_set_performance_review_cycle(self, comprehensive_context: Context) -> None:
+    def test_set_performance_review_cycle(
+        self, comprehensive_context: Context
+    ) -> None:
         """Test bulk update for performance review cycle."""
         cypher = """
         MATCH (p:Person) WHERE p.active = true
@@ -749,7 +945,9 @@ class TestBulkOperations:
         ast = ASTConverter.from_cypher(cypher)
         assert ast is not None
 
-    def test_set_company_wide_policy_update(self, comprehensive_context: Context) -> None:
+    def test_set_company_wide_policy_update(
+        self, comprehensive_context: Context
+    ) -> None:
         """Test company-wide policy implementation."""
         cypher = """
         MATCH (p:Person)
@@ -764,7 +962,9 @@ class TestBulkOperations:
         ast = ASTConverter.from_cypher(cypher)
         assert ast is not None
 
-    def test_set_gradual_migration(self, comprehensive_context: Context) -> None:
+    def test_set_gradual_migration(
+        self, comprehensive_context: Context
+    ) -> None:
         """Test gradual data migration pattern."""
         cypher = """
         MATCH (p:Person) WHERE p.email IS NOT NULL

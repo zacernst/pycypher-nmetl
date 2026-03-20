@@ -1,0 +1,26 @@
+version: "1.0"
+
+sources:
+  entities:
+    - id: required_persons
+      uri: "file:///data/persons.parquet"
+      entity_type: Person
+      on_error: fail
+
+    - id: optional_enrichment
+      uri: "https://api.example.com/enrichment.json"
+      entity_type: Enrichment
+      on_error: skip
+
+    - id: advisory_data
+      uri: "file:///data/advisory.csv"
+      entity_type: Advisory
+      on_error: warn
+
+  relationships:
+    - id: employment
+      uri: "file:///data/employment.parquet"
+      relationship_type: WORKS_FOR
+      source_col: person_id
+      target_col: company_id
+      on_error: warn

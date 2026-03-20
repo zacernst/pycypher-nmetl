@@ -4,12 +4,18 @@ Tests the type-safe AST representations for all SET variants.
 """
 
 import pytest
-from pydantic import ValidationError
 from pycypher.ast_models import (
-    Set, SetItem, SetPropertyItem, SetLabelsItem,
-    SetAllPropertiesItem, AddAllPropertiesItem,
-    Variable, Literal, PropertyLookup
+    AddAllPropertiesItem,
+    Literal,
+    PropertyLookup,
+    Set,
+    SetAllPropertiesItem,
+    SetItem,
+    SetLabelsItem,
+    SetPropertyItem,
+    Variable,
 )
+from pydantic import ValidationError
 
 
 class TestSetPropertyItem:
@@ -20,7 +26,7 @@ class TestSetPropertyItem:
         item = SetPropertyItem(
             variable=Variable(name="n"),
             property="age",
-            value=Literal(value=30)
+            value=Literal(value=30),
         )
 
         assert item.variable.name == "n"
@@ -34,9 +40,8 @@ class TestSetPropertyItem:
             variable=Variable(name="person"),
             property="fullName",
             value=PropertyLookup(
-                variable=Variable(name="person"),
-                property="firstName"
-            )
+                variable=Variable(name="person"), property="firstName"
+            ),
         )
 
         assert item.variable.name == "person"
@@ -50,7 +55,9 @@ class TestSetPropertyItem:
             SetPropertyItem()  # Missing required fields
 
         with pytest.raises(ValidationError):
-            SetPropertyItem(variable=Variable(name="n"))  # Missing property and value
+            SetPropertyItem(
+                variable=Variable(name="n")
+            )  # Missing property and value
 
 
 class TestSetLabelsItem:
@@ -59,8 +66,7 @@ class TestSetLabelsItem:
     def test_create_set_labels_item(self):
         """Test creating a SetLabelsItem with labels."""
         item = SetLabelsItem(
-            variable=Variable(name="n"),
-            labels=["Person", "Employee"]
+            variable=Variable(name="n"), labels=["Person", "Employee"]
         )
 
         assert item.variable.name == "n"
@@ -70,8 +76,7 @@ class TestSetLabelsItem:
     def test_set_labels_single_label(self):
         """Test SetLabelsItem with single label."""
         item = SetLabelsItem(
-            variable=Variable(name="node"),
-            labels=["NewLabel"]
+            variable=Variable(name="node"), labels=["NewLabel"]
         )
 
         assert item.variable.name == "node"
@@ -80,10 +85,7 @@ class TestSetLabelsItem:
 
     def test_set_labels_empty_list(self):
         """Test SetLabelsItem with empty labels list."""
-        item = SetLabelsItem(
-            variable=Variable(name="n"),
-            labels=[]
-        )
+        item = SetLabelsItem(variable=Variable(name="n"), labels=[])
 
         assert item.variable.name == "n"
         assert item.labels == []
@@ -96,7 +98,7 @@ class TestSetAllPropertiesItem:
         """Test creating SetAllPropertiesItem with map literal."""
         item = SetAllPropertiesItem(
             variable=Variable(name="n"),
-            properties=Literal(value={"name": "John", "age": 30})
+            properties=Literal(value={"name": "John", "age": 30}),
         )
 
         assert item.variable.name == "n"
@@ -107,7 +109,7 @@ class TestSetAllPropertiesItem:
         """Test SetAllPropertiesItem with variable reference."""
         item = SetAllPropertiesItem(
             variable=Variable(name="target"),
-            properties=Variable(name="sourceProps")
+            properties=Variable(name="sourceProps"),
         )
 
         assert item.variable.name == "target"
@@ -122,7 +124,7 @@ class TestAddAllPropertiesItem:
         """Test creating AddAllPropertiesItem."""
         item = AddAllPropertiesItem(
             variable=Variable(name="n"),
-            properties=Literal(value={"newProp": "newValue"})
+            properties=Literal(value={"newProp": "newValue"}),
         )
 
         assert item.variable.name == "n"
@@ -132,13 +134,11 @@ class TestAddAllPropertiesItem:
     def test_add_properties_distinction_from_set_all(self):
         """Test that AddAllPropertiesItem is distinct from SetAllPropertiesItem."""
         add_item = AddAllPropertiesItem(
-            variable=Variable(name="n"),
-            properties=Literal(value={"a": 1})
+            variable=Variable(name="n"), properties=Literal(value={"a": 1})
         )
 
         set_item = SetAllPropertiesItem(
-            variable=Variable(name="n"),
-            properties=Literal(value={"a": 1})
+            variable=Variable(name="n"), properties=Literal(value={"a": 1})
         )
 
         assert type(add_item) != type(set_item)
@@ -151,13 +151,15 @@ class TestSetClause:
 
     def test_create_set_clause_single_item(self):
         """Test creating SET clause with single item."""
-        set_clause = Set(items=[
-            SetPropertyItem(
-                variable=Variable(name="n"),
-                property="age",
-                value=Literal(value=25)
-            )
-        ])
+        set_clause = Set(
+            items=[
+                SetPropertyItem(
+                    variable=Variable(name="n"),
+                    property="age",
+                    value=Literal(value=25),
+                )
+            ]
+        )
 
         assert len(set_clause.items) == 1
         assert isinstance(set_clause.items[0], SetPropertyItem)
@@ -165,22 +167,21 @@ class TestSetClause:
 
     def test_create_set_clause_multiple_items(self):
         """Test creating SET clause with multiple different items."""
-        set_clause = Set(items=[
-            SetPropertyItem(
-                variable=Variable(name="n"),
-                property="name",
-                value=Literal(value="John")
-            ),
-            SetPropertyItem(
-                variable=Variable(name="n"),
-                property="age",
-                value=Literal(value=30)
-            ),
-            SetLabelsItem(
-                variable=Variable(name="n"),
-                labels=["Person"]
-            )
-        ])
+        set_clause = Set(
+            items=[
+                SetPropertyItem(
+                    variable=Variable(name="n"),
+                    property="name",
+                    value=Literal(value="John"),
+                ),
+                SetPropertyItem(
+                    variable=Variable(name="n"),
+                    property="age",
+                    value=Literal(value=30),
+                ),
+                SetLabelsItem(variable=Variable(name="n"), labels=["Person"]),
+            ]
+        )
 
         assert len(set_clause.items) == 3
         assert isinstance(set_clause.items[0], SetPropertyItem)
@@ -189,18 +190,20 @@ class TestSetClause:
 
     def test_set_clause_mixed_variables(self):
         """Test SET clause with items affecting different variables."""
-        set_clause = Set(items=[
-            SetPropertyItem(
-                variable=Variable(name="person"),
-                property="age",
-                value=Literal(value=25)
-            ),
-            SetPropertyItem(
-                variable=Variable(name="company"),
-                property="revenue",
-                value=Literal(value=1000000)
-            )
-        ])
+        set_clause = Set(
+            items=[
+                SetPropertyItem(
+                    variable=Variable(name="person"),
+                    property="age",
+                    value=Literal(value=25),
+                ),
+                SetPropertyItem(
+                    variable=Variable(name="company"),
+                    property="revenue",
+                    value=Literal(value=1000000),
+                ),
+            ]
+        )
 
         assert len(set_clause.items) == 2
         assert set_clause.items[0].variable.name == "person"
@@ -223,25 +226,20 @@ class TestSetItemPolymorphism:
             SetPropertyItem(
                 variable=Variable(name="n"),
                 property="prop",
-                value=Literal(value="val")
+                value=Literal(value="val"),
             ),
-            SetLabelsItem(
-                variable=Variable(name="n"),
-                labels=["Label"]
-            ),
+            SetLabelsItem(variable=Variable(name="n"), labels=["Label"]),
             SetAllPropertiesItem(
-                variable=Variable(name="n"),
-                properties=Literal(value={})
+                variable=Variable(name="n"), properties=Literal(value={})
             ),
             AddAllPropertiesItem(
-                variable=Variable(name="n"),
-                properties=Literal(value={})
-            )
+                variable=Variable(name="n"), properties=Literal(value={})
+            ),
         ]
 
         for item in items:
             assert isinstance(item, SetItem)
-            assert hasattr(item, 'variable')
+            assert hasattr(item, "variable")
             assert item.variable.name == "n"
 
     def test_set_item_type_discrimination(self):
@@ -249,12 +247,11 @@ class TestSetItemPolymorphism:
         prop_item = SetPropertyItem(
             variable=Variable(name="n"),
             property="age",
-            value=Literal(value=30)
+            value=Literal(value=30),
         )
 
         labels_item = SetLabelsItem(
-            variable=Variable(name="n"),
-            labels=["Person"]
+            variable=Variable(name="n"), labels=["Person"]
         )
 
         # Type checking should work

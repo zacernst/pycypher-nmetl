@@ -6,50 +6,19 @@ including node creation, conversion, traversal, and utility methods.
 
 import pytest
 from pycypher.ast_models import (
-    And,
-    Arithmetic,
     ASTConverter,
-    ASTNode,
     BooleanLiteral,
-    Call,
-    CaseExpression,
     Comparison,
-    CountStar,
-    Create,
-    Delete,
-    FloatLiteral,
     FunctionInvocation,
     IntegerLiteral,
-    ListComprehension,
-    ListLiteral,
     MapLiteral,
     Match,
-    Merge,
     NodePattern,
-    Not,
-    NullLiteral,
-    Or,
-    OrderByItem,
-    Parameter,
-    PathLength,
-    Pattern,
-    PatternPath,
     PropertyLookup,
     Query,
     RelationshipDirection,
     RelationshipPattern,
-    Remove,
-    RemoveItem,
-    Return,
-    ReturnItem,
-    Set,
-    SetItem,
-    StringLiteral,
-    Unwind,
     Variable,
-    WhenClause,
-    With,
-    YieldItem,
 )
 from pycypher.grammar_parser import GrammarParser
 
@@ -108,10 +77,12 @@ class TestPrimitiveConversion:
         assert result is None
 
     def test_convert_empty_list(self, converter):
-        """Test that empty lists are returned as-is."""
+        """Empty lists are converted to ListLiteral(value=[], elements=[])."""
+        from pycypher.ast_models import ListLiteral
+
         result = converter._convert_primitive([])
-        assert result == []
-        assert isinstance(result, list)
+        assert isinstance(result, ListLiteral)
+        assert result.elements == []
 
     def test_convert_empty_dict(self, converter):
         """Test that empty dicts are returned as-is."""
@@ -220,16 +191,57 @@ class TestASTTraversal:
 
         nodes = list(map_literal.traverse())
 
-        assert any(isinstance(node, IntegerLiteral) and node.value == 42 for node in nodes)
+        assert any(
+            isinstance(node, IntegerLiteral) and node.value == 42
+            for node in nodes
+        )
 
     def test_traverse_includes_nested_dict_children(self):
         """Ensure traversal walks nested AST nodes inside dict containers."""
         inner_variable = Variable(name="nested")
-        function_call = FunctionInvocation(name="identity", arguments={"arg": inner_variable})
+        function_call = FunctionInvocation(
+            name="identity", arguments={"arg": inner_variable}
+        )
 
         nodes = list(function_call.traverse())
 
-        assert any(isinstance(node, Variable) and node.name == "nested" for node in nodes)
+        assert any(
+            isinstance(node, Variable) and node.name == "nested"
+            for node in nodes
+        )
+
+
+# =============================================================================
+# Test FunctionInvocation.function_name property
+# =============================================================================
+
+
+class TestFunctionInvocationFunctionName:
+    """Unit tests for the FunctionInvocation.function_name property."""
+
+    def test_string_name_returned_unchanged(self) -> None:
+        fi = FunctionInvocation(name="toUpper")
+        assert fi.function_name == "toUpper"
+
+    def test_dict_name_returns_qualified_name(self) -> None:
+        # Namespace-qualified functions return "namespace.name" for registry lookup
+        fi = FunctionInvocation(
+            name={"namespace": "apoc.text", "name": "join"}
+        )
+        assert fi.function_name == "apoc.text.join"
+
+    def test_dict_name_missing_name_key_returns_namespace_prefix(self) -> None:
+        # When name key is absent, returns "namespace." (namespace with trailing dot)
+        fi = FunctionInvocation(name={"namespace": "apoc.text"})
+        assert fi.function_name == "apoc.text."
+
+    def test_function_name_is_case_preserved(self) -> None:
+        fi = FunctionInvocation(name="toLower")
+        assert fi.function_name == "toLower"
+
+    def test_function_name_with_namespace_dict_case_preserved(self) -> None:
+        fi = FunctionInvocation(name={"name": "UPPER"})
+        assert fi.function_name == "UPPER"
 
 
 # =============================================================================

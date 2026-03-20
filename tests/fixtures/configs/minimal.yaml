@@ -1,0 +1,7 @@
+version: "1.0"
+
+sources:
+  entities:
+    - id: persons
+      uri: "file:///data/persons.parquet"
+      entity_type: Person

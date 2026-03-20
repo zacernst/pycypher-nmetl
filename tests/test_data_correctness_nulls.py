@@ -5,14 +5,12 @@ Priority 1: Null propagation bugs cause silent data corruption.
 
 import pandas as pd
 import pytest
-import numpy as np
-
 from pycypher.relational_models import (
     ID_COLUMN,
     Context,
     EntityMapping,
-    RelationshipMapping,
     EntityTable,
+    RelationshipMapping,
 )
 from pycypher.star import Star
 
@@ -20,26 +18,40 @@ from pycypher.star import Star
 @pytest.fixture
 def null_test_context():
     """Create context with strategic null values for testing."""
-    person_df = pd.DataFrame({
-        ID_COLUMN: [1, 2, 3, 4, 5],
-        "name": ["Alice", None, "Carol", "", "Dave"],  # Mix of null and empty
-        "age": [30, None, 25, 40, 35],  # Null in middle
-        "salary": [100000, 120000, None, 110000, None],  # Multiple nulls
-        "score": [85.5, None, 92.0, None, 78.0],  # Float nulls
-        "active": ["true", None, "false", "", "yes"],  # Boolean-ish nulls
-    })
+    person_df = pd.DataFrame(
+        {
+            ID_COLUMN: [1, 2, 3, 4, 5],
+            "name": [
+                "Alice",
+                None,
+                "Carol",
+                "",
+                "Dave",
+            ],  # Mix of null and empty
+            "age": [30, None, 25, 40, 35],  # Null in middle
+            "salary": [100000, 120000, None, 110000, None],  # Multiple nulls
+            "score": [85.5, None, 92.0, None, 78.0],  # Float nulls
+            "active": ["true", None, "false", "", "yes"],  # Boolean-ish nulls
+        }
+    )
 
     person_table = EntityTable(
         entity_type="Person",
         identifier="Person",
         column_names=[ID_COLUMN, "name", "age", "salary", "score", "active"],
         source_obj_attribute_map={
-            "name": "name", "age": "age", "salary": "salary",
-            "score": "score", "active": "active"
+            "name": "name",
+            "age": "age",
+            "salary": "salary",
+            "score": "score",
+            "active": "active",
         },
         attribute_map={
-            "name": "name", "age": "age", "salary": "salary",
-            "score": "score", "active": "active"
+            "name": "name",
+            "age": "age",
+            "salary": "salary",
+            "score": "score",
+            "active": "active",
         },
         source_obj=person_df,
     )
@@ -115,7 +127,9 @@ class TestNullStringFunctions:
         assert "ALICE" in non_null_values
         assert "CAROL" in non_null_values
         assert "DAVE" in non_null_values
-        assert "" in non_null_values  # Empty string should become empty string, not null
+        assert (
+            "" in non_null_values
+        )  # Empty string should become empty string, not null
 
     def test_trim_with_null(self, null_test_context):
         """trim(null) must return null."""
@@ -126,7 +140,9 @@ class TestNullStringFunctions:
         )
 
         assert len(result) == 5
-        assert result["trimmed_name"].isna().sum() == 1  # One null input = one null output
+        assert (
+            result["trimmed_name"].isna().sum() == 1
+        )  # One null input = one null output
 
     def test_size_with_null(self, null_test_context):
         """size(null) must return null, not 0."""
@@ -137,7 +153,9 @@ class TestNullStringFunctions:
         )
 
         assert len(result) == 5
-        assert result["name_length"].isna().sum() == 1  # One null input = one null output
+        assert (
+            result["name_length"].isna().sum() == 1
+        )  # One null input = one null output
 
         # Non-null lengths should be correct
         non_null_lengths = result["name_length"].dropna().tolist()
@@ -184,7 +202,9 @@ class TestNullAggregations:
 
         assert len(result) == 1
         assert result["total_rows"].iloc[0] == 5  # count(*) counts all rows
-        assert result["non_null_ages"].iloc[0] == 4  # count(p.age) ignores nulls
+        assert (
+            result["non_null_ages"].iloc[0] == 4
+        )  # count(p.age) ignores nulls
 
     def test_min_max_with_nulls(self, null_test_context):
         """min/max should ignore nulls."""
@@ -239,7 +259,9 @@ class TestComplexNullScenarios:
         )
 
         assert len(result) == 5
-        assert result["clean_upper_name"].isna().sum() == 1  # One null propagated through
+        assert (
+            result["clean_upper_name"].isna().sum() == 1
+        )  # One null propagated through
 
     def test_coalesce_null_handling(self, null_test_context):
         """coalesce should work correctly with nulls."""
@@ -254,7 +276,7 @@ class TestComplexNullScenarios:
 
         # Should have exactly one 'Unknown' (replacing the null)
         final_names = result["final_name"].tolist()
-        assert final_names.count('Unknown') == 1
+        assert final_names.count("Unknown") == 1
 
     def test_arithmetic_expression_with_mixed_nulls(self, null_test_context):
         """Complex arithmetic with nulls."""

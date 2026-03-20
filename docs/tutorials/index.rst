@@ -1,43 +1,78 @@
 Tutorials
 =========
 
-Learn how to use NMETL with these step-by-step tutorials.
+Learn PyCypher through structured, hands-on tutorials that progress from
+first query to production deployment.
 
 .. toctree::
    :maxdepth: 2
-   :caption: Available Tutorials:
+   :caption: Tutorial Series:
 
    basic_query_parsing
-   ast_manipulation
-   query_validation
+   graph_modeling
    pattern_matching
+   query_validation
+   ast_manipulation
    data_etl_pipeline
+   integration_guide
+   troubleshooting
 
-Introduction
-------------
+Learning Pathway
+-----------------
 
-These tutorials will guide you through the main features of NMETL:
+The tutorials are organized into three tiers.  Start at your level and
+work forward:
 
-1. **Basic Query Parsing**: Learn how to parse openCypher queries
-2. **AST Manipulation**: Work with the typed AST structure
-3. **Query Validation**: Validate queries and handle errors
-4. **Pattern Matching**: Advanced pattern matching techniques
-5. **Data ETL Pipeline**: Build end-to-end data pipelines
+**Beginner** — Your first graph queries
+
+1. :doc:`basic_query_parsing` — Load data, execute MATCH/WHERE/RETURN, sort
+   and aggregate results.  *Start here.*
+2. :doc:`graph_modeling` — Design your tabular data as entities and
+   relationships.  Modeling patterns, ID strategies, common pitfalls.
+
+**Intermediate** — Real-world graph analysis
+
+3. :doc:`pattern_matching` — Variable-length paths, shortestPath, OPTIONAL
+   MATCH, pattern comprehensions, quantifier predicates, EXISTS subqueries.
+4. :doc:`query_validation` — Pre-execution syntax and semantic validation.
+   Error severity levels, custom validation pipelines.
+5. :doc:`ast_manipulation` — Programmatic AST inspection, traversal, and
+   construction using Pydantic models.
+
+**Advanced** — Production systems
+
+6. :doc:`data_etl_pipeline` — ContextBuilder, YAML pipelines, the ``nmetl``
+   CLI, data sources, and output sinks.
+7. :doc:`integration_guide` — Embed PyCypher in web APIs, batch jobs, and
+   notebooks.  Query parameters, error handling, context refresh patterns.
+8. :doc:`troubleshooting` — Diagnose parse errors, missing results,
+   performance problems, and unexpected output.
+
+.. tip::
+
+   Each tutorial builds on earlier ones.  The beginner tutorials establish
+   the vocabulary and patterns that intermediate and advanced tutorials
+   assume.
 
 Prerequisites
 -------------
 
-Before starting these tutorials, you should have:
-
-* Python 3.10 or higher installed
-* NMETL packages installed (see :doc:`../getting_started`)
-* Basic understanding of graph databases
-* Familiarity with Cypher query language
+* Python 3.14 or higher (free-threaded build recommended)
+* PyCypher packages installed (see :doc:`../getting_started`)
+* Basic familiarity with pandas DataFrames
 
 Each tutorial includes:
 
 * Clear learning objectives
-* Step-by-step instructions
-* Complete code examples
-* Expected output
+* Complete, runnable code examples
+* "Try it yourself" exercises
 * Common pitfalls and solutions
+
+Related Resources
+-----------------
+
+* :doc:`../getting_started` — Installation and quick-start examples
+* :doc:`../user_guide/index` — In-depth reference guides
+* :doc:`../user_guide/performance_tuning` — Production optimization
+* :doc:`../api/pycypher` — Full API reference
+* ``examples/`` directory — Runnable scripts (``uv run python examples/quickstart.py``)

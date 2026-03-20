@@ -1,0 +1,25 @@
+version: "1.0"
+
+sources:
+  entities:
+    - id: persons
+      uri: "file:///data/persons.csv"
+      entity_type: Person
+      id_col: person_id
+      schema_hints:
+        person_id: INTEGER
+        name: VARCHAR
+        age: INTEGER
+        zip_code: VARCHAR
+        salary: DOUBLE
+
+  relationships:
+    - id: employment
+      uri: "file:///data/employment.csv"
+      relationship_type: WORKS_FOR
+      source_col: person_id
+      target_col: company_id
+      schema_hints:
+        person_id: INTEGER
+        company_id: INTEGER
+        start_date: DATE

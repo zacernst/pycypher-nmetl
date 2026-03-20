@@ -1,0 +1,24 @@
+version: "1.0"
+
+project:
+  name: "${PIPELINE_NAME}"
+  description: "Pipeline for ${ENVIRONMENT} environment"
+
+sources:
+  entities:
+    - id: persons
+      uri: "postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:5432/${DB_NAME}"
+      entity_type: Person
+      id_col: person_id
+      query: "SELECT * FROM persons WHERE tenant_id = '${TENANT_ID}'"
+
+  relationships:
+    - id: employment
+      uri: "s3://${S3_BUCKET}/employment.parquet"
+      relationship_type: WORKS_FOR
+      source_col: person_id
+      target_col: company_id
+
+output:
+  - query_id: all_persons
+    uri: "s3://${OUTPUT_BUCKET}/results/persons.parquet"

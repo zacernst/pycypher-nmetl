@@ -4,50 +4,80 @@ PyCypher Demo: Clean demonstration of SET operations
 """
 
 import logging
+
 import pandas as pd
-from pycypher.star import Star
 from pycypher.relational_models import (
-    Context, EntityMapping, RelationshipMapping,
-    EntityTable, RelationshipTable, ID_COLUMN,
-    RELATIONSHIP_SOURCE_COLUMN, RELATIONSHIP_TARGET_COLUMN
+    ID_COLUMN,
+    RELATIONSHIP_SOURCE_COLUMN,
+    RELATIONSHIP_TARGET_COLUMN,
+    Context,
+    EntityMapping,
+    EntityTable,
+    RelationshipMapping,
+    RelationshipTable,
 )
+from pycypher.star import Star
 
 # Disable debug logging for clean output
 logging.basicConfig(level=logging.CRITICAL)
-logging.getLogger('shared.logger').setLevel(logging.CRITICAL)
-logging.getLogger('pycypher').setLevel(logging.CRITICAL)
+logging.getLogger("shared.logger").setLevel(logging.CRITICAL)
+logging.getLogger("pycypher").setLevel(logging.CRITICAL)
+
 
 def main():
     print("🚀 PyCypher Demo: Cypher to Pandas with SET Operations")
     print("=" * 60)
 
     # Create sample employee data
-    employees_df = pd.DataFrame({
-        ID_COLUMN: [1, 2, 3, 4, 5],
-        "first_name": ["Alice", "Bob", "Carol", "David", "Eve"],
-        "last_name": ["Johnson", "Smith", "Williams", "Brown", "Davis"],
-        "department": ["Engineering", "Sales", "Engineering", "Marketing", "Sales"],
-        "base_salary": [85000, 65000, 90000, 70000, 68000],
-        "performance_rating": [4.2, 3.8, 4.5, 3.9, 4.1]
-    })
+    employees_df = pd.DataFrame(
+        {
+            ID_COLUMN: [1, 2, 3, 4, 5],
+            "first_name": ["Alice", "Bob", "Carol", "David", "Eve"],
+            "last_name": ["Johnson", "Smith", "Williams", "Brown", "Davis"],
+            "department": [
+                "Engineering",
+                "Sales",
+                "Engineering",
+                "Marketing",
+                "Sales",
+            ],
+            "base_salary": [85000, 65000, 90000, 70000, 68000],
+            "performance_rating": [4.2, 3.8, 4.5, 3.9, 4.1],
+        }
+    )
 
     # Set up PyCypher context
     employee_table = EntityTable(
         entity_type="Employee",
         identifier="Employee",
-        column_names=[ID_COLUMN, "first_name", "last_name", "department", "base_salary", "performance_rating"],
+        column_names=[
+            ID_COLUMN,
+            "first_name",
+            "last_name",
+            "department",
+            "base_salary",
+            "performance_rating",
+        ],
         source_obj_attribute_map={
-            "first_name": "first_name", "last_name": "last_name", "department": "department",
-            "base_salary": "base_salary", "performance_rating": "performance_rating"
+            "first_name": "first_name",
+            "last_name": "last_name",
+            "department": "department",
+            "base_salary": "base_salary",
+            "performance_rating": "performance_rating",
         },
         attribute_map={
-            "first_name": "first_name", "last_name": "last_name", "department": "department",
-            "base_salary": "base_salary", "performance_rating": "performance_rating"
+            "first_name": "first_name",
+            "last_name": "last_name",
+            "department": "department",
+            "base_salary": "base_salary",
+            "performance_rating": "performance_rating",
         },
-        source_obj=employees_df
+        source_obj=employees_df,
     )
 
-    context = Context(entity_mapping=EntityMapping(mapping={"Employee": employee_table}))
+    context = Context(
+        entity_mapping=EntityMapping(mapping={"Employee": employee_table})
+    )
     star = Star(context=context)
 
     print(f"📊 Sample data: {len(employees_df)} employees")
@@ -55,7 +85,9 @@ def main():
 
     # Demo 1: Basic query
     print("1️⃣ Basic Query")
-    print("MATCH (e:Employee) RETURN e.first_name AS name, e.department AS dept")
+    print(
+        "MATCH (e:Employee) RETURN e.first_name AS name, e.department AS dept"
+    )
 
     result = star.execute_query("""
         MATCH (e:Employee)
@@ -93,7 +125,9 @@ def main():
     # Demo 4: SET - Modify existing properties
     print(f"\n{'-' * 60}")
     print("4️⃣ SET: Modifying Existing Properties")
-    print("MATCH (e:Employee) SET e.base_salary = e.base_salary + e.annual_bonus")
+    print(
+        "MATCH (e:Employee) SET e.base_salary = e.base_salary + e.annual_bonus"
+    )
 
     result = star.execute_query("""
         MATCH (e:Employee)
@@ -106,7 +140,9 @@ def main():
     # Demo 5: SET - Complex expressions
     print(f"\n{'-' * 60}")
     print("5️⃣ SET: Complex Expressions")
-    print("MATCH (e:Employee) SET e.full_name = e.first_name + ' ' + e.last_name")
+    print(
+        "MATCH (e:Employee) SET e.full_name = e.first_name + ' ' + e.last_name"
+    )
 
     result = star.execute_query("""
         MATCH (e:Employee)
@@ -129,7 +165,9 @@ def main():
                e.annual_bonus AS bonus,
                e.full_name AS full_name
     """)
-    print(f"\n📋 All properties persist across queries ({result.shape[0]} rows):")
+    print(
+        f"\n📋 All properties persist across queries ({result.shape[0]} rows):"
+    )
     print(result.to_string(index=False))
 
     print(f"\n{'=' * 60}")
@@ -145,6 +183,7 @@ def main():
     print("• Expression evaluator works with updated entity context")
     print("• No need to track dynamic schemas across pipeline")
     print("• Clean separation between ID tracking and attribute access")
+
 
 if __name__ == "__main__":
     main()

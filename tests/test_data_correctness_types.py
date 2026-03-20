@@ -3,17 +3,16 @@ Critical data correctness tests for type coercion and conversion.
 Priority 2: Type coercion bugs can silently corrupt data.
 """
 
-import pandas as pd
-import pytest
-import numpy as np
 import math
 
+import pandas as pd
+import pytest
 from pycypher.relational_models import (
     ID_COLUMN,
     Context,
     EntityMapping,
-    RelationshipMapping,
     EntityTable,
+    RelationshipMapping,
 )
 from pycypher.star import Star
 
@@ -21,30 +20,73 @@ from pycypher.star import Star
 @pytest.fixture
 def type_test_context():
     """Create context with diverse data types for testing coercion."""
-    person_df = pd.DataFrame({
-        ID_COLUMN: [1, 2, 3, 4, 5],
-        "name": ["Alice", "Bob", "Carol", "Dave", "Eve"],
-        "age_int": [30, 40, 25, 35, 28],  # Integers
-        "age_float": [30.0, 40.5, 25.2, 35.7, 28.9],  # Floats
-        "salary_str": ["100000", "120000.50", "90000", "110000.75", "95000"],  # String numbers
-        "score_mixed": ["85", "92.5", "invalid", "", "78.0"],  # Mixed valid/invalid
-        "bool_str": ["true", "false", "1", "0", "yes"],  # Boolean-ish strings
-        "empty_or_null": ["", None, " ", "text", ""],  # Empty vs null vs whitespace
-    })
+    person_df = pd.DataFrame(
+        {
+            ID_COLUMN: [1, 2, 3, 4, 5],
+            "name": ["Alice", "Bob", "Carol", "Dave", "Eve"],
+            "age_int": [30, 40, 25, 35, 28],  # Integers
+            "age_float": [30.0, 40.5, 25.2, 35.7, 28.9],  # Floats
+            "salary_str": [
+                "100000",
+                "120000.50",
+                "90000",
+                "110000.75",
+                "95000",
+            ],  # String numbers
+            "score_mixed": [
+                "85",
+                "92.5",
+                "invalid",
+                "",
+                "78.0",
+            ],  # Mixed valid/invalid
+            "bool_str": [
+                "true",
+                "false",
+                "1",
+                "0",
+                "yes",
+            ],  # Boolean-ish strings
+            "empty_or_null": [
+                "",
+                None,
+                " ",
+                "text",
+                "",
+            ],  # Empty vs null vs whitespace
+        }
+    )
 
     person_table = EntityTable(
         entity_type="Person",
         identifier="Person",
-        column_names=[ID_COLUMN, "name", "age_int", "age_float", "salary_str", "score_mixed", "bool_str", "empty_or_null"],
+        column_names=[
+            ID_COLUMN,
+            "name",
+            "age_int",
+            "age_float",
+            "salary_str",
+            "score_mixed",
+            "bool_str",
+            "empty_or_null",
+        ],
         source_obj_attribute_map={
-            "name": "name", "age_int": "age_int", "age_float": "age_float",
-            "salary_str": "salary_str", "score_mixed": "score_mixed",
-            "bool_str": "bool_str", "empty_or_null": "empty_or_null"
+            "name": "name",
+            "age_int": "age_int",
+            "age_float": "age_float",
+            "salary_str": "salary_str",
+            "score_mixed": "score_mixed",
+            "bool_str": "bool_str",
+            "empty_or_null": "empty_or_null",
         },
         attribute_map={
-            "name": "name", "age_int": "age_int", "age_float": "age_float",
-            "salary_str": "salary_str", "score_mixed": "score_mixed",
-            "bool_str": "bool_str", "empty_or_null": "empty_or_null"
+            "name": "name",
+            "age_int": "age_int",
+            "age_float": "age_float",
+            "salary_str": "salary_str",
+            "score_mixed": "score_mixed",
+            "bool_str": "bool_str",
+            "empty_or_null": "empty_or_null",
         },
         source_obj=person_df,
     )
@@ -73,34 +115,48 @@ class TestIntegerFloatArithmetic:
         sums = result["sum_result"].tolist()
         assert abs(sums[0] - 60.0) < 0.001
         assert abs(sums[1] - 80.5) < 0.001
-        assert all(isinstance(val, float) for val in sums)  # All should be floats
+        assert all(
+            isinstance(val, float) for val in sums
+        )  # All should be floats
 
     def test_float_division_precision(self, type_test_context):
-        """Division should produce correct float precision."""
+        """Integer / integer uses truncating integer division (openCypher spec).
+        Float / integer still produces float results."""
         star = Star(context=type_test_context)
 
+        # Integer column / integer literal → integer (truncation toward zero)
         result = star.execute_query(
             "MATCH (p:Person) WITH p.age_int / 3 AS third_age RETURN third_age AS third_age"
         )
-
-        # 30/3=10.0, 40/3=13.333..., 25/3=8.333..., etc.
+        # 30/3=10, 40/3=13 (truncated), 25/3=8 (truncated)
         thirds = result["third_age"].tolist()
-        assert abs(thirds[0] - 10.0) < 0.001
-        assert abs(thirds[1] - 13.333333333333334) < 0.001
-        assert abs(thirds[2] - 8.333333333333334) < 0.001
+        assert thirds[0] == 10
+        assert thirds[1] == 13  # 13.333... truncates to 13
+        assert thirds[2] == 8  # 8.333... truncates to 8
+
+        # Float column / integer literal → float
+        result_f = star.execute_query(
+            "MATCH (p:Person) WITH p.age_float / 3 AS third_age RETURN third_age AS third_age"
+        )
+        thirds_f = result_f["third_age"].tolist()
+        # age_float[1] = 40.5, so 40.5 / 3 = 13.5
+        assert abs(thirds_f[1] - 13.5) < 0.001
 
     def test_integer_division_vs_float_division(self, type_test_context):
-        """Verify division behavior matches expectations."""
+        """Integer / integer → integer; float / integer → float (openCypher spec)."""
         star = Star(context=type_test_context)
 
         result = star.execute_query(
             "MATCH (p:Person) WITH p.age_int / 3 AS int_div, p.age_float / 3 AS float_div RETURN int_div AS int_div, float_div AS float_div"
         )
 
-        # Both should produce floats in modern arithmetic
-        for _, row in result.iterrows():
-            assert isinstance(row["int_div"], float)
-            assert isinstance(row["float_div"], float)
+        # Check column dtypes (iterrows upcasts values, so check the Series dtype instead)
+        assert pd.api.types.is_integer_dtype(result["int_div"]), (
+            f"int_div column should be integer dtype, got {result['int_div'].dtype}"
+        )
+        assert pd.api.types.is_float_dtype(result["float_div"]), (
+            f"float_div column should be float dtype, got {result['float_div'].dtype}"
+        )
 
 
 class TestStringToNumberConversion:
@@ -165,7 +221,12 @@ class TestBooleanConversion:
 
         # Expected: "true"->True, "false"->False, "1"->True, "0"->False
         # "yes" should probably be null or follow specific rules
-        expected_true_false = [True, False, True, False]  # First 4 should be clear
+        expected_true_false = [
+            True,
+            False,
+            True,
+            False,
+        ]  # First 4 should be clear
         assert bool_results[:4] == expected_true_false
 
     def test_boolean_arithmetic(self, type_test_context):
@@ -295,8 +356,8 @@ class TestEmptyStringVsNull:
         concat_results = result["concat_result"].tolist()
 
         # Empty string + suffix should equal just suffix
-        assert '_suffix' in concat_results  # From empty string concatenation
-        assert 'text_suffix' in concat_results  # From "text" concatenation
+        assert "_suffix" in concat_results  # From empty string concatenation
+        assert "text_suffix" in concat_results  # From "text" concatenation
 
 
 class TestComplexTypeCoercion:
@@ -334,4 +395,6 @@ class TestComplexTypeCoercion:
         converted = result["converted_back"].tolist()
         assert all(isinstance(val, str) for val in converted)
         assert "100000" in converted
-        assert "120000" in converted  # 120000.50 -> 120000.0 -> 120000 -> "120000"
+        assert (
+            "120000" in converted
+        )  # 120000.50 -> 120000.0 -> 120000 -> "120000"

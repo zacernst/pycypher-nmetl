@@ -1,0 +1,10 @@
+version: "1.0"
+
+sources:
+  entities:
+    - id: persons
+      uri: "file:///data/persons.csv"
+      entity_type: Person
+
+functions:
+  - callable: "mypackage.formatters.format_currency"

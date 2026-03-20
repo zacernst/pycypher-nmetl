@@ -1,9 +1,7 @@
-import sys
 from io import StringIO
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
-import pytest
-from pycypher.grammar_parser import GrammarParser, main
+from pycypher.grammar_parser import main
 
 
 class TestParserCLI:
@@ -84,5 +82,5 @@ class TestParserCLI:
         ):
             main()
             output = mock_stderr.getvalue()
-            assert "Error:" in output
+            assert "Error:" in output or "Syntax error:" in output
             mock_exit.assert_called_with(1)

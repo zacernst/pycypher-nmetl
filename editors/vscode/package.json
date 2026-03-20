@@ -1,0 +1,72 @@
+{
+  "name": "pycypher-cypher",
+  "displayName": "PyCypher - Cypher Language Support",
+  "description": "Cypher query language support with syntax highlighting, diagnostics, and completion powered by PyCypher",
+  "version": "0.1.0",
+  "publisher": "pycypher",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zacernst/pycypher"
+  },
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": ["Programming Languages", "Linters", "Formatters"],
+  "keywords": ["cypher", "neo4j", "graph", "pycypher", "query"],
+  "activationEvents": [
+    "onLanguage:cypher"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "cypher",
+        "aliases": ["Cypher", "cypher", "CQL"],
+        "extensions": [".cypher", ".cql", ".cyp"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "cypher",
+        "scopeName": "source.cypher",
+        "path": "./cypher.tmLanguage.json"
+      }
+    ],
+    "configuration": {
+      "title": "PyCypher",
+      "properties": {
+        "pycypher.lspServer.path": {
+          "type": "string",
+          "default": "",
+          "description": "Path to the PyCypher LSP server executable. Leave empty to auto-detect from PATH."
+        },
+        "pycypher.lspServer.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable the PyCypher Language Server for diagnostics and completion."
+        },
+        "pycypher.format.uppercaseKeywords": {
+          "type": "boolean",
+          "default": true,
+          "description": "Capitalize Cypher keywords (MATCH, RETURN, WHERE, etc.) when formatting."
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "pycypher.formatQuery",
+        "title": "PyCypher: Format Cypher Query"
+      },
+      {
+        "command": "pycypher.validateQuery",
+        "title": "PyCypher: Validate Cypher Query"
+      },
+      {
+        "command": "pycypher.explainQuery",
+        "title": "PyCypher: Explain Query (AST)"
+      }
+    ]
+  }
+}

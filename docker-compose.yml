@@ -2,7 +2,7 @@ services:
   # Main pycypher development container
   pycypher-dev:
     container_name: pycypher-dev
-    platform: linux/arm64
+    # platform auto-detected; override with DOCKER_DEFAULT_PLATFORM if needed
     build:
       context: .
       dockerfile: Dockerfile.dev
@@ -14,6 +14,12 @@ services:
       - uv-cache:/root/.cache/uv
       # Cache pytest
       - pytest-cache:/workspace/.pytest_cache
+    healthcheck:
+      test: ["CMD", "uv", "run", "nmetl", "health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s  # allow time for uv sync
     environment:
       # Python environment
       - PYTHONUNBUFFERED=1
@@ -22,8 +28,19 @@ services:
       - LANG=C.UTF-8
       # GitHub token for private dependencies (if needed)
       - GITHUB_TOKEN=${GITHUB_TOKEN:-}
-    # depends_on:
-    #   - fdb
+      # Spark cluster
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - PYSPARK_PYTHON=/usr/bin/python3
+      - SPARK_EVENTS_DIR=/opt/bitnami/spark/spark-events
+      # Neo4j
+      - NEO4J_URI=bolt://neo4j:7687
+      - NEO4J_USER=${NEO4J_USER:?Set NEO4J_USER in .env}
+      - NEO4J_PASSWORD=${NEO4J_PASSWORD:?Set NEO4J_PASSWORD in .env}
+      # Nominatim geocoder
+      - NOMINATIM_URL=http://nominatim:8080
+    depends_on:
+      - spark-master
+      - neo4j
     command: >
       bash -c "
         echo 'Installing pycypher in development mode...' &&
@@ -83,18 +100,154 @@ services:
   code-server:
     container_name: pycypher-code-server
     image: codercom/code-server:latest
-    platform: linux/arm64
     ports:
       - "8080:8080"
     volumes:
       - .:/workspace
       - code-server-data:/root/.local/share/code-server
     environment:
-      - PASSWORD=${CODE_SERVER_PASSWORD:-pycypher}
+      - PASSWORD=${CODE_SERVER_PASSWORD:?Set CODE_SERVER_PASSWORD in .env}
     working_dir: /workspace
     command: --auth password --bind-addr 0.0.0.0:8080 /workspace
     profiles:
       - code-server
+
+  fastopendata:
+    container_name: pycypher-fastopendata
+    build:
+      context: .
+      dockerfile: Dockerfile.fastopendata
+    working_dir: /workspace
+    volumes:
+      - .:/workspace
+      - uv-cache:/root/.cache/uv
+      - fastopendata-raw:/workspace/packages/fastopendata/raw_data
+    environment:
+      - PYTHONUNBUFFERED=1
+      - LC_ALL=C.UTF-8
+      - LANG=C.UTF-8
+      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+      - DATA_DIR=/workspace/packages/fastopendata/raw_data
+      # Nominatim geocoder
+      - NOMINATIM_URL=http://nominatim:8080
+    command: >
+      bash -c "
+        echo 'Installing fastopendata in development mode...' &&
+        cd /workspace &&
+        uv sync &&
+        uv pip install -e packages/fastopendata &&
+        echo 'fastopendata environment ready!' &&
+        tail -f /dev/null
+      "
+    stdin_open: true
+    tty: true
+
+  fastopendata-api:
+    container_name: pycypher-fastopendata-api
+    build:
+      context: .
+      dockerfile: Dockerfile.fastopendata-api
+    working_dir: /workspace
+    ports:
+      - "8093:8000"
+    volumes:
+      - .:/workspace
+      - uv-cache:/root/.cache/uv
+    environment:
+      - PYTHONUNBUFFERED=1
+      - LC_ALL=C.UTF-8
+      - LANG=C.UTF-8
+      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+    stdin_open: true
+    tty: true
+
+  spark-master:
+    container_name: pycypher-spark-master
+    image: bitnami/spark:3.5
+    environment:
+      - SPARK_MODE=master
+      - SPARK_RPC_AUTHENTICATION_ENABLED=yes
+      - SPARK_RPC_AUTHENTICATION_SECRET=${SPARK_RPC_SECRET:?Set SPARK_RPC_SECRET in .env}
+      - SPARK_RPC_ENCRYPTION_ENABLED=yes
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=yes
+      - SPARK_SSL_ENABLED=no
+      - SPARK_MASTER_WEBUI_PORT=8080
+    ports:
+      - "7077:7077"
+      - "8090:8080"
+    volumes:
+      - spark-events:/opt/bitnami/spark/spark-events
+
+  spark-worker:
+    container_name: pycypher-spark-worker
+    image: bitnami/spark:3.5
+    depends_on:
+      - spark-master
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_WORKER_MEMORY=2G
+      - SPARK_WORKER_CORES=2
+      - SPARK_RPC_AUTHENTICATION_ENABLED=yes
+      - SPARK_RPC_AUTHENTICATION_SECRET=${SPARK_RPC_SECRET:?Set SPARK_RPC_SECRET in .env}
+      - SPARK_RPC_ENCRYPTION_ENABLED=yes
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=yes
+      - SPARK_SSL_ENABLED=no
+    ports:
+      - "8091:8081"
+    volumes:
+      - spark-events:/opt/bitnami/spark/spark-events
+
+  nominatim:
+    container_name: pycypher-nominatim
+    image: mediagis/nominatim:4.4
+    environment:
+      # Point at the PBF already downloaded by the fastopendata container.
+      # On first start the image runs a full import (can take several hours
+      # for the US extract — see packages/fastopendata/DATASETS.md #16).
+      # Set PBF_URL instead if you want Nominatim to download its own copy.
+      - PBF_PATH=/nominatim/data/us-latest.osm.pbf
+      - REPLICATION_URL=https://download.geofabrik.de/north-america/us-updates/
+      - NOMINATIM_PASSWORD=${NOMINATIM_PASSWORD:?Set NOMINATIM_PASSWORD in .env}
+      # Disable Wikipedia/Wikidata importance rankings to reduce import time
+      - IMPORT_WIKIPEDIA=false
+      - IMPORT_US_POSTCODES=true
+      - IMPORT_TIGER_ADDRESSES=false
+    ports:
+      - "8092:8080"
+    volumes:
+      # Read-only access to the OSM PBF downloaded by fastopendata
+      - fastopendata-raw:/nominatim/data:ro
+      # Persistent PostgreSQL database (survives container restarts)
+      - nominatim-data:/var/lib/postgresql/14/main
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/search?q=New+York&format=json"]
+      interval: 30s
+      timeout: 10s
+      retries: 20
+      start_period: 300s   # allow time for the initial import
+
+  neo4j:
+    container_name: pycypher-neo4j
+    image: neo4j:5-community
+    environment:
+      - NEO4J_AUTH=${NEO4J_USER:?Set NEO4J_USER in .env}/${NEO4J_PASSWORD:?Set NEO4J_PASSWORD in .env}
+      - NEO4J_PLUGINS=["apoc"]
+      - NEO4J_dbms_security_procedures_unrestricted=apoc.*
+      - NEO4J_dbms_memory_heap_max__size=1G
+      - NEO4J_dbms_memory_pagecache_size=512m
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    volumes:
+      - neo4j-data:/data
+      - neo4j-logs:/logs
+      - neo4j-import:/var/lib/neo4j/import
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:7474"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
 volumes:
   uv-cache:
@@ -102,6 +255,18 @@ volumes:
   pytest-cache:
     driver: local
   code-server-data:
+    driver: local
+  spark-events:
+    driver: local
+  neo4j-data:
+    driver: local
+  neo4j-logs:
+    driver: local
+  neo4j-import:
+    driver: local
+  fastopendata-raw:
+    driver: local
+  nominatim-data:
     driver: local
 
 networks:
