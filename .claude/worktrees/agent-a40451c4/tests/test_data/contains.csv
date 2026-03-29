@@ -1,0 +1,8 @@
+square,circle,entirely_contains
+squarename1,circle_a,true
+squarename1,circle_b,true
+squarename1,circle_c,false
+squarename2,circle_d,true
+squarename2,circle_e,true
+squarename2,circle_f,true
+squarename3,circle_g,false

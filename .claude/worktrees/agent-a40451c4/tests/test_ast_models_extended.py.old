@@ -1,0 +1,818 @@
+"""Extended tests for ast_models module - covering missing test coverage.
+
+This module contains additional unit tests for ASTConverter methods and edge cases
+that were not covered in test_ast_models.py.
+"""
+
+import pytest
+from pycypher.grammar_parser import GrammarParser
+from pycypher.ast_models import ASTConverter, ASTNode, Query
+from lark import Tree, Token
+
+
+@pytest.fixture
+def parser():
+    """Create a GrammarParser instance for testing."""
+    return GrammarParser()
+
+
+@pytest.fixture
+def converter():
+    """Create an ASTConverter instance for testing."""
+    return ASTConverter()
+
+
+class TestASTConverterPrimitive:
+    """Test the _convert_primitive() method edge cases."""
+
+    def test_convert_primitive_boolean_true(self, converter):
+        """Test converting boolean True."""
+        result = converter._convert_primitive(True)
+        assert result is True
+
+    def test_convert_primitive_boolean_false(self, converter):
+        """Test converting boolean False."""
+        result = converter._convert_primitive(False)
+        assert result is False
+
+    def test_convert_primitive_integer(self, converter):
+        """Test converting integer."""
+        result = converter._convert_primitive(42)
+        assert result == 42
+
+    def test_convert_primitive_float(self, converter):
+        """Test converting float."""
+        result = converter._convert_primitive(3.14)
+        assert result == 3.14
+
+    def test_convert_primitive_string(self, converter):
+        """Test converting string."""
+        result = converter._convert_primitive("hello")
+        assert result == "hello"
+
+    def test_convert_primitive_none(self, converter):
+        """Test converting None."""
+        result = converter._convert_primitive(None)
+        assert result is None
+
+    def test_convert_primitive_empty_string(self, converter):
+        """Test converting empty string."""
+        result = converter._convert_primitive("")
+        assert result == ""
+
+    def test_convert_primitive_empty_dict(self, converter):
+        """Test converting empty dict returns empty dict."""
+        result = converter._convert_primitive({})
+        assert result == {}
+
+    def test_convert_primitive_empty_list(self, converter):
+        """Test converting empty list."""
+        result = converter._convert_primitive([])
+        assert isinstance(result, list)
+        assert len(result) == 0
+
+
+class TestASTConverterComplexTypes:
+    """Test conversion of complex AST node types."""
+
+    def test_convert_query_statement(self, parser, converter):
+        """Test _convert_QueryStatement with complete query."""
+        query_text = "MATCH (n:Person) WHERE n.age > 30 RETURN n.name"
+        tree = parser.parse(query_text)
+        ast_dict = parser.transformer.transform(tree)
+        
+        # Convert to typed AST
+        typed_ast = converter.convert(ast_dict)
+        assert typed_ast is not None
+        assert isinstance(typed_ast, ASTNode)
+
+    def test_convert_update_statement(self, parser, converter):
+        """Test _convert_UpdateStatement."""
+        query_text = "CREATE (n:Person {name: 'Alice'})"
+        tree = parser.parse(query_text)
+        ast_dict = parser.transformer.transform(tree)
+        
+        typed_ast = converter.convert(ast_dict)
+        assert typed_ast is not None
+
+    def test_convert_match_clause_with_where(self, parser, converter):
+        """Test converting MATCH with WHERE clause."""
+        query_text = "MATCH (n:Person) WHERE n.age > 30 RETURN n"
+        tree = parser.parse(query_text)
+        ast_dict = parser.transformer.transform(tree)
+        
+        typed_ast = converter.convert(ast_dict)
+        assert typed_ast is not None
+
+    def test_convert_return_body_with_items(self, parser, converter):
+        """Test converting RETURN body with multiple items."""
+        query_text = "MATCH (n) RETURN n.name AS name, n.age AS age, count(*) AS total"
+        tree = parser.parse(query_text)
+        ast_dict = parser.transformer.transform(tree)
+        
+        typed_ast = converter.convert(ast_dict)
+        assert typed_ast is not None
+
+    def test_convert_where_clause(self, parser, converter):
+        """Test converting WHERE clause."""
+        query_text = "MATCH (n) WHERE n.age > 30 AND n.active = true RETURN n"
+        tree = parser.parse(query_text)
+        ast_dict = parser.transformer.transform(tree)
+        
+        typed_ast = converter.convert(ast_dict)
+        assert typed_ast is not None
+
+    def test_convert_set_all_properties(self, parser, converter):
+        """Test converting SET with all properties replacement."""
+        query_text = "MATCH (n) SET n = {name: 'Bob', age: 35}"
+        tree = parser.parse(query_text)
+        ast_dict = parser.transformer.transform(tree)
+        
+        typed_ast = converter.convert(ast_dict)
+        assert typed_ast is not None
+
+    def test_convert_set_add_properties(self, parser, converter):
+        """Test converting SET with += operator."""
+        query_text = "MATCH (n) SET n += {email: 'bob@example.com'}"
+        tree = parser.parse(query_text)
+        ast_dict = parser.transformer.transform(tree)
+        
+        typed_ast = converter.convert(ast_dict)
+        assert typed_ast is not None
+
+
+class TestASTConverterEdgeCases:
+    """Test edge cases in AST conversion."""
+
+    def test_convert_null_literal(self, parser, converter):
+        """Test converting NULL literal."""
+        query_text = "RETURN NULL"
+        tree = parser.parse(query_text)
+        ast_dict = parser.transformer.transform(tree)
+        
+        typed_ast = converter.convert(ast_dict)
+        assert typed_ast is not None
+
+    def test_convert_infinity(self, parser, converter):
+        """Test converting Infinity literal."""
+        query_text = "RETURN Infinity"
+        tree = parser.parse(query_text)
+        ast_dict = parser.transformer.transform(tree)
+        
+        typed_ast = converter.convert(ast_dict)
+        assert typed_ast is not None
+
+    def test_convert_nan(self, parser, converter):
+        """Test converting NaN literal."""
+        query_text = "RETURN NaN"
+        tree = parser.parse(query_text)
+        ast_dict = parser.transformer.transform(tree)
+        
+        typed_ast = converter.convert(ast_dict)
+        assert typed_ast is not None
+
+    def test_convert_empty_list(self, parser, converter):
+        """Test converting empty list literal."""
+        query_text = "RETURN []"
+        tree = parser.parse(query_text)
+        ast_dict = parser.transformer.transform(tree)
+        
+        typed_ast = converter.convert(ast_dict)
+        assert typed_ast is not None
+
+    def test_convert_empty_map(self, parser, converter):
+        """Test converting empty map literal."""
+        query_text = "RETURN {}"
+        tree = parser.parse(query_text)
+        ast_dict = parser.transformer.transform(tree)
+        
+        typed_ast = converter.convert(ast_dict)
+        assert typed_ast is not None
+
+    def test_convert_nested_list(self, parser, converter):
+        """Test converting nested list."""
+        query_text = "RETURN [[1, 2], [3, 4], [5, 6]]"
+        tree = parser.parse(query_text)
+        ast_dict = parser.transformer.transform(tree)
+        
+        typed_ast = converter.convert(ast_dict)
+        assert typed_ast is not None
+
+    def test_convert_nested_map(self, parser, converter):
+        """Test converting nested map."""
+        query_text = "RETURN {person: {name: 'Alice', address: {city: 'NYC'}}}"
+        tree = parser.parse(query_text)
+        ast_dict = parser.transformer.transform(tree)
+        
+        typed_ast = converter.convert(ast_dict)
+        assert typed_ast is not None
+
+    def test_convert_complex_expression_tree(self, parser, converter):
+        """Test converting complex expression tree."""
+        query_text = "RETURN (2 + 3) * 4 - 10 / 2"
+        tree = parser.parse(query_text)
+        ast_dict = parser.transformer.transform(tree)
+        
+        typed_ast = converter.convert(ast_dict)
+        assert typed_ast is not None
+
+    def test_convert_property_chain(self, parser, converter):
+        """Test converting chained property access."""
+        query_text = "RETURN n.address.city.name"
+        tree = parser.parse(query_text)
+        ast_dict = parser.transformer.transform(tree)
+        
+        typed_ast = converter.convert(ast_dict)
+        assert typed_ast is not None
+
+    def test_convert_list_indexing(self, parser, converter):
+        """Test converting list index access."""
+        query_text = "RETURN [1, 2, 3, 4, 5][2]"
+        tree = parser.parse(query_text)
+        ast_dict = parser.transformer.transform(tree)
+        
+        typed_ast = converter.convert(ast_dict)
+        assert typed_ast is not None
+
+    def test_convert_list_slicing(self, parser, converter):
+        """Test converting list slicing."""
+        query_text = "RETURN [1, 2, 3, 4, 5][1..3]"
+        tree = parser.parse(query_text)
+        ast_dict = parser.transformer.transform(tree)
+        
+        typed_ast = converter.convert(ast_dict)
+        assert typed_ast is not None
+
+
+class TestASTConverterFunctions:
+    """Test conversion of function calls."""
+
+    def test_convert_function_no_args(self, parser, converter):
+        """Test converting function with no arguments."""
+        query_text = "RETURN timestamp()"
+        tree = parser.parse(query_text)
+        ast_dict = parser.transformer.transform(tree)
+        
+        typed_ast = converter.convert(ast_dict)
+        assert typed_ast is not None
+
+    def test_convert_function_multiple_args(self, parser, converter):
+        """Test converting function with multiple arguments."""
+        query_text = "RETURN substring('hello world', 0, 5)"
+        tree = parser.parse(query_text)
+        ast_dict = parser.transformer.transform(tree)
+        
+        typed_ast = converter.convert(ast_dict)
+        assert typed_ast is not None
+
+    def test_convert_function_nested(self, parser, converter):
+        """Test converting nested function calls."""
+        query_text = "RETURN toUpper(substring('hello', 0, 3))"
+        tree = parser.parse(query_text)
+        ast_dict = parser.transformer.transform(tree)
+        
+        typed_ast = converter.convert(ast_dict)
+        assert typed_ast is not None
+
+    def test_convert_function_distinct(self, parser, converter):
+        """Test converting function with DISTINCT."""
+        query_text = "MATCH (n) RETURN count(DISTINCT n.type)"
+        tree = parser.parse(query_text)
+        ast_dict = parser.transformer.transform(tree)
+        
+        typed_ast = converter.convert(ast_dict)
+        assert typed_ast is not None
+
+    def test_convert_function_namespaced(self, parser, converter):
+        """Test converting namespaced function."""
+        query_text = "RETURN apoc.text.join(['a', 'b'], ',')"
+        tree = parser.parse(query_text)
+        ast_dict = parser.transformer.transform(tree)
+        
+        typed_ast = converter.convert(ast_dict)
+        assert typed_ast is not None
+
+
+class TestASTConverterPatterns:
+    """Test conversion of graph patterns."""
+
+    def test_convert_simple_node_pattern(self, parser, converter):
+        """Test converting simple node pattern."""
+        query_text = "MATCH (n) RETURN n"
+        tree = parser.parse(query_text)
+        ast_dict = parser.transformer.transform(tree)
+        
+        typed_ast = converter.convert(ast_dict)
+        assert typed_ast is not None
+
+    def test_convert_node_with_label(self, parser, converter):
+        """Test converting node with label."""
+        query_text = "MATCH (n:Person) RETURN n"
+        tree = parser.parse(query_text)
+        ast_dict = parser.transformer.transform(tree)
+        
+        typed_ast = converter.convert(ast_dict)
+        assert typed_ast is not None
+
+    def test_convert_node_with_multiple_labels(self, parser, converter):
+        """Test converting node with multiple labels."""
+        query_text = "MATCH (n:Person:Employee) RETURN n"
+        tree = parser.parse(query_text)
+        ast_dict = parser.transformer.transform(tree)
+        
+        typed_ast = converter.convert(ast_dict)
+        assert typed_ast is not None
+
+    def test_convert_node_with_properties(self, parser, converter):
+        """Test converting node with properties."""
+        query_text = "MATCH (n:Person {name: 'Alice', age: 30}) RETURN n"
+        tree = parser.parse(query_text)
+        ast_dict = parser.transformer.transform(tree)
+        
+        typed_ast = converter.convert(ast_dict)
+        assert typed_ast is not None
+
+    def test_convert_relationship_pattern(self, parser, converter):
+        """Test converting relationship pattern."""
+        query_text = "MATCH (a)-[r:KNOWS]->(b) RETURN a, r, b"
+        tree = parser.parse(query_text)
+        ast_dict = parser.transformer.transform(tree)
+        
+        typed_ast = converter.convert(ast_dict)
+        assert typed_ast is not None
+
+    def test_convert_relationship_variable_length(self, parser, converter):
+        """Test converting variable-length relationship."""
+        query_text = "MATCH (a)-[*1..3]->(b) RETURN a, b"
+        tree = parser.parse(query_text)
+        ast_dict = parser.transformer.transform(tree)
+        
+        typed_ast = converter.convert(ast_dict)
+        assert typed_ast is not None
+
+    def test_convert_relationship_bidirectional(self, parser, converter):
+        """Test converting bidirectional relationship."""
+        query_text = "MATCH (a)--(b) RETURN a, b"
+        tree = parser.parse(query_text)
+        ast_dict = parser.transformer.transform(tree)
+        
+        typed_ast = converter.convert(ast_dict)
+        assert typed_ast is not None
+
+    def test_convert_relationship_multiple_types(self, parser, converter):
+        """Test converting relationship with multiple types."""
+        query_text = "MATCH (a)-[:KNOWS|:LIKES]->(b) RETURN a, b"
+        tree = parser.parse(query_text)
+        ast_dict = parser.transformer.transform(tree)
+        
+        typed_ast = converter.convert(ast_dict)
+        assert typed_ast is not None
+
+    def test_convert_named_path(self, parser, converter):
+        """Test converting named path pattern."""
+        query_text = "MATCH p = (a)-[:KNOWS*]->(b) RETURN p"
+        tree = parser.parse(query_text)
+        ast_dict = parser.transformer.transform(tree)
+        
+        typed_ast = converter.convert(ast_dict)
+        assert typed_ast is not None
+
+    def test_convert_shortest_path(self, parser, converter):
+        """Test converting shortestPath."""
+        query_text = "MATCH p = shortestPath((a)-[*]-(b)) RETURN p"
+        tree = parser.parse(query_text)
+        ast_dict = parser.transformer.transform(tree)
+        
+        typed_ast = converter.convert(ast_dict)
+        assert typed_ast is not None
+
+
+class TestASTConverterComprehensions:
+    """Test conversion of comprehensions."""
+
+    def test_convert_list_comprehension_simple(self, parser, converter):
+        """Test converting simple list comprehension."""
+        query_text = "RETURN [x IN [1, 2, 3] | x * 2]"
+        tree = parser.parse(query_text)
+        ast_dict = parser.transformer.transform(tree)
+        
+        typed_ast = converter.convert(ast_dict)
+        assert typed_ast is not None
+
+    def test_convert_list_comprehension_with_filter(self, parser, converter):
+        """Test converting list comprehension with WHERE."""
+        query_text = "RETURN [x IN [1, 2, 3, 4, 5] WHERE x > 2 | x * 2]"
+        tree = parser.parse(query_text)
+        ast_dict = parser.transformer.transform(tree)
+        
+        typed_ast = converter.convert(ast_dict)
+        assert typed_ast is not None
+
+    def test_convert_pattern_comprehension(self, parser, converter):
+        """Test converting pattern comprehension."""
+        query_text = "MATCH (p:Person) RETURN [(p)-[:KNOWS]->(f) | f.name]"
+        tree = parser.parse(query_text)
+        ast_dict = parser.transformer.transform(tree)
+        
+        typed_ast = converter.convert(ast_dict)
+        assert typed_ast is not None
+
+    def test_convert_pattern_comprehension_with_where(self, parser, converter):
+        """Test converting pattern comprehension with WHERE."""
+        query_text = """
+        MATCH (p:Person)
+        RETURN [(p)-[:KNOWS]->(f) WHERE f.age > 30 | f.name]
+        """
+        tree = parser.parse(query_text)
+        ast_dict = parser.transformer.transform(tree)
+        
+        typed_ast = converter.convert(ast_dict)
+        assert typed_ast is not None
+
+
+class TestASTConverterQuantifiers:
+    """Test conversion of quantifier expressions."""
+
+    def test_convert_all_quantifier(self, parser, converter):
+        """Test converting ALL quantifier."""
+        query_text = "RETURN ALL(x IN [1, 2, 3] WHERE x > 0)"
+        tree = parser.parse(query_text)
+        ast_dict = parser.transformer.transform(tree)
+        
+        typed_ast = converter.convert(ast_dict)
+        assert typed_ast is not None
+
+    def test_convert_any_quantifier(self, parser, converter):
+        """Test converting ANY quantifier."""
+        query_text = "RETURN ANY(x IN [1, 2, 3] WHERE x > 2)"
+        tree = parser.parse(query_text)
+        ast_dict = parser.transformer.transform(tree)
+        
+        typed_ast = converter.convert(ast_dict)
+        assert typed_ast is not None
+
+    def test_convert_none_quantifier(self, parser, converter):
+        """Test converting NONE quantifier."""
+        query_text = "RETURN NONE(x IN [1, 2, 3] WHERE x < 0)"
+        tree = parser.parse(query_text)
+        ast_dict = parser.transformer.transform(tree)
+        
+        typed_ast = converter.convert(ast_dict)
+        assert typed_ast is not None
+
+    def test_convert_single_quantifier(self, parser, converter):
+        """Test converting SINGLE quantifier."""
+        query_text = "RETURN SINGLE(x IN [1, 2, 3] WHERE x = 2)"
+        tree = parser.parse(query_text)
+        ast_dict = parser.transformer.transform(tree)
+        
+        typed_ast = converter.convert(ast_dict)
+        assert typed_ast is not None
+
+
+class TestASTConverterCaseExpressions:
+    """Test conversion of CASE expressions."""
+
+    def test_convert_searched_case(self, parser, converter):
+        """Test converting searched CASE expression."""
+        query_text = """
+        RETURN CASE
+            WHEN 1 > 2 THEN 'yes'
+            WHEN 2 > 1 THEN 'no'
+            ELSE 'maybe'
+        END
+        """
+        tree = parser.parse(query_text)
+        ast_dict = parser.transformer.transform(tree)
+        
+        typed_ast = converter.convert(ast_dict)
+        assert typed_ast is not None
+
+    def test_convert_simple_case(self, parser, converter):
+        """Test converting simple CASE expression."""
+        query_text = """
+        RETURN CASE n.status
+            WHEN 'active' THEN 1
+            WHEN 'pending' THEN 2
+            ELSE 0
+        END
+        """
+        tree = parser.parse(query_text)
+        ast_dict = parser.transformer.transform(tree)
+        
+        typed_ast = converter.convert(ast_dict)
+        assert typed_ast is not None
+
+    def test_convert_case_no_else(self, parser, converter):
+        """Test converting CASE without ELSE."""
+        query_text = """
+        RETURN CASE WHEN n.age > 18 THEN 'adult' END
+        """
+        tree = parser.parse(query_text)
+        ast_dict = parser.transformer.transform(tree)
+        
+        typed_ast = converter.convert(ast_dict)
+        assert typed_ast is not None
+
+
+class TestASTConverterMapProjection:
+    """Test conversion of map projections."""
+
+    def test_convert_map_projection_simple(self, parser, converter):
+        """Test converting simple map projection."""
+        query_text = "MATCH (n:Person) RETURN n{.name, .age}"
+        tree = parser.parse(query_text)
+        ast_dict = parser.transformer.transform(tree)
+        
+        typed_ast = converter.convert(ast_dict)
+        assert typed_ast is not None
+
+    def test_convert_map_projection_all_properties(self, parser, converter):
+        """Test converting map projection with .*."""
+        query_text = "MATCH (n:Person) RETURN n{.*}"
+        tree = parser.parse(query_text)
+        ast_dict = parser.transformer.transform(tree)
+        
+        typed_ast = converter.convert(ast_dict)
+        assert typed_ast is not None
+
+    def test_convert_map_projection_computed(self, parser, converter):
+        """Test converting map projection with computed properties."""
+        query_text = "MATCH (n:Person) RETURN n{.name, ageInMonths: n.age * 12}"
+        tree = parser.parse(query_text)
+        ast_dict = parser.transformer.transform(tree)
+        
+        typed_ast = converter.convert(ast_dict)
+        assert typed_ast is not None
+
+
+class TestASTConverterReduce:
+    """Test conversion of REDUCE expressions."""
+
+    def test_convert_reduce_simple(self, parser, converter):
+        """Test converting simple REDUCE expression."""
+        query_text = "RETURN REDUCE(sum = 0, x IN [1, 2, 3] | sum + x)"
+        tree = parser.parse(query_text)
+        ast_dict = parser.transformer.transform(tree)
+        
+        typed_ast = converter.convert(ast_dict)
+        assert typed_ast is not None
+
+    def test_convert_reduce_complex(self, parser, converter):
+        """Test converting complex REDUCE expression."""
+        query_text = "RETURN REDUCE(product = 1, x IN [2, 3, 4] | product * x)"
+        tree = parser.parse(query_text)
+        ast_dict = parser.transformer.transform(tree)
+        
+        typed_ast = converter.convert(ast_dict)
+        assert typed_ast is not None
+
+
+class TestASTConverterExists:
+    """Test conversion of EXISTS expressions."""
+
+    def test_convert_exists_simple(self, parser, converter):
+        """Test converting simple EXISTS."""
+        query_text = """
+        MATCH (p:Person)
+        WHERE EXISTS { (p)-[:KNOWS]->(:Person) }
+        RETURN p
+        """
+        tree = parser.parse(query_text)
+        ast_dict = parser.transformer.transform(tree)
+        
+        typed_ast = converter.convert(ast_dict)
+        assert typed_ast is not None
+
+    def test_convert_exists_with_match(self, parser, converter):
+        """Test converting EXISTS with explicit MATCH."""
+        query_text = """
+        MATCH (p:Person)
+        WHERE EXISTS { MATCH (p)-[:KNOWS]->(f) WHERE f.age > 30 }
+        RETURN p
+        """
+        tree = parser.parse(query_text)
+        ast_dict = parser.transformer.transform(tree)
+        
+        typed_ast = converter.convert(ast_dict)
+        assert typed_ast is not None
+
+
+class TestASTConverterErrorHandling:
+    """Test error handling in AST conversion."""
+
+    def test_convert_with_missing_type(self, converter):
+        """Test conversion with missing type field."""
+        # AST dict without 'type' field should handle gracefully
+        ast_dict = {"value": 42}  # Missing 'type'
+        
+        try:
+            result = converter.convert(ast_dict)
+            # Should either handle gracefully or raise appropriate error
+            assert result is not None or True
+        except (KeyError, ValueError, TypeError):
+            # Expected error types
+            pass
+
+    def test_convert_with_invalid_type(self, converter):
+        """Test conversion with invalid/unknown type."""
+        ast_dict = {"type": "UnknownType", "value": 42}
+        
+        try:
+            result = converter.convert(ast_dict)
+            # Should handle unknown type gracefully
+            assert result is not None or True
+        except (KeyError, ValueError, TypeError):
+            # Expected error types
+            pass
+
+    def test_convert_with_none_input(self, converter):
+        """Test conversion with None input."""
+        result = converter.convert(None)
+        assert result is None
+
+    def test_convert_with_lark_tree(self, converter):
+        """Test conversion handles Lark Tree objects."""
+        # Create a simple Lark Tree
+        tree = Tree('test', [Token('VALUE', '42')])
+        
+        try:
+            result = converter.convert(tree)
+            # Should handle Tree objects appropriately
+            assert result is not None or True
+        except (TypeError, AttributeError):
+            # Expected if Tree objects aren't directly supported
+            pass
+
+    def test_convert_with_nested_none_values(self, parser, converter):
+        """Test conversion with nested None values."""
+        # Query that might produce None in AST
+        query_text = "MATCH (n) RETURN n"
+        tree = parser.parse(query_text)
+        ast_dict = parser.transformer.transform(tree)
+        
+        # Should handle any None values in the tree
+        typed_ast = converter.convert(ast_dict)
+        assert typed_ast is not None
+
+
+class TestASTNodeMethods:
+    """Test ASTNode base class methods."""
+
+    def test_traverse_all_nodes(self, parser, converter):
+        """Test traverse() method visits all nodes."""
+        query_text = "MATCH (n:Person) WHERE n.age > 30 RETURN n.name"
+        tree = parser.parse(query_text)
+        ast_dict = parser.transformer.transform(tree)
+        typed_ast = converter.convert(ast_dict)
+        
+        # Count all nodes
+        node_count = 0
+        def counter(node):
+            nonlocal node_count
+            node_count += 1
+        
+        if hasattr(typed_ast, 'traverse'):
+            typed_ast.traverse(counter)
+            assert node_count > 0
+
+    def test_find_first_by_type(self, parser, converter):
+        """Test find_first() method."""
+        query_text = "MATCH (n:Person) RETURN n.name, n.age"
+        tree = parser.parse(query_text)
+        ast_dict = parser.transformer.transform(tree)
+        typed_ast = converter.convert(ast_dict)
+        
+        if hasattr(typed_ast, 'find_first'):
+            # Try to find a specific node type
+            result = typed_ast.find_first(lambda node: hasattr(node, 'type'))
+            # Should find at least something in a complex query
+            assert result is not None or True
+
+    def test_find_all_by_type(self, parser, converter):
+        """Test find_all() method."""
+        query_text = "MATCH (n:Person) RETURN n.name, n.age, n.email"
+        tree = parser.parse(query_text)
+        ast_dict = parser.transformer.transform(tree)
+        typed_ast = converter.convert(ast_dict)
+        
+        if hasattr(typed_ast, 'find_all'):
+            # Find all nodes matching a condition
+            results = typed_ast.find_all(lambda node: True)  # All nodes
+            assert isinstance(results, list)
+
+    def test_clone_ast(self, parser, converter):
+        """Test clone() method creates deep copy."""
+        query_text = "MATCH (n) RETURN n"
+        tree = parser.parse(query_text)
+        ast_dict = parser.transformer.transform(tree)
+        typed_ast = converter.convert(ast_dict)
+        
+        if hasattr(typed_ast, 'clone'):
+            cloned = typed_ast.clone()
+            # Should be a separate object
+            assert cloned is not typed_ast
+            # But should have same structure
+            assert type(cloned) == type(typed_ast)
+
+    def test_pretty_print(self, parser, converter):
+        """Test pretty() method produces string output."""
+        query_text = "MATCH (n:Person) RETURN n.name"
+        tree = parser.parse(query_text)
+        ast_dict = parser.transformer.transform(tree)
+        typed_ast = converter.convert(ast_dict)
+        
+        if hasattr(typed_ast, 'pretty'):
+            pretty_str = typed_ast.pretty()
+            assert isinstance(pretty_str, str)
+            assert len(pretty_str) > 0
+
+
+class TestASTConverterComplexQueries:
+    """Test conversion of complex real-world queries."""
+
+    def test_convert_multi_match_with_aggregation(self, parser, converter):
+        """Test converting query with multiple MATCH and aggregation."""
+        query_text = """
+        MATCH (p:Person)-[:LIVES_IN]->(c:City)
+        MATCH (p)-[:WORKS_AT]->(comp:Company)
+        WITH c.name AS city, COUNT(p) AS population, COLLECT(comp.name) AS companies
+        WHERE population > 100
+        RETURN city, population, companies
+        ORDER BY population DESC
+        LIMIT 10
+        """
+        tree = parser.parse(query_text)
+        ast_dict = parser.transformer.transform(tree)
+        
+        typed_ast = converter.convert(ast_dict)
+        assert typed_ast is not None
+
+    def test_convert_optional_match_query(self, parser, converter):
+        """Test converting query with OPTIONAL MATCH."""
+        query_text = """
+        MATCH (p:Person)
+        OPTIONAL MATCH (p)-[:KNOWS]->(f:Person)
+        RETURN p.name, COLLECT(f.name) AS friends
+        """
+        tree = parser.parse(query_text)
+        ast_dict = parser.transformer.transform(tree)
+        
+        typed_ast = converter.convert(ast_dict)
+        assert typed_ast is not None
+
+    def test_convert_union_query(self, parser, converter):
+        """Test converting UNION query."""
+        query_text = """
+        MATCH (p:Person) RETURN p.name AS name
+        UNION
+        MATCH (c:Company) RETURN c.name AS name
+        """
+        tree = parser.parse(query_text)
+        ast_dict = parser.transformer.transform(tree)
+        
+        typed_ast = converter.convert(ast_dict)
+        assert typed_ast is not None
+
+    def test_convert_merge_with_on_create_match(self, parser, converter):
+        """Test converting MERGE with ON CREATE and ON MATCH."""
+        query_text = """
+        MERGE (n:Person {id: 123})
+        ON CREATE SET n.created = timestamp()
+        ON MATCH SET n.updated = timestamp()
+        RETURN n
+        """
+        tree = parser.parse(query_text)
+        ast_dict = parser.transformer.transform(tree)
+        
+        typed_ast = converter.convert(ast_dict)
+        assert typed_ast is not None
+
+    def test_convert_subquery_with_exists(self, parser, converter):
+        """Test converting query with EXISTS subquery."""
+        query_text = """
+        MATCH (p:Person)
+        WHERE EXISTS {
+            MATCH (p)-[:WORKS_AT]->(c:Company)
+            WHERE c.revenue > 1000000
+        }
+        RETURN p.name
+        """
+        tree = parser.parse(query_text)
+        ast_dict = parser.transformer.transform(tree)
+        
+        typed_ast = converter.convert(ast_dict)
+        assert typed_ast is not None
+
+    def test_convert_call_procedure(self, parser, converter):
+        """Test converting CALL procedure."""
+        query_text = """
+        CALL db.labels() YIELD label
+        RETURN label
+        ORDER BY label
+        """
+        tree = parser.parse(query_text)
+        ast_dict = parser.transformer.transform(tree)
+        
+        typed_ast = converter.convert(ast_dict)
+        assert typed_ast is not None

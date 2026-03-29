@@ -1,0 +1,226 @@
+%%% DOCUMENTCLASS 
+%%%-------------------------------------------------------------------------------
+
+\documentclass[
+a4paper, % Stock and paper size.
+11pt, % Type size.
+% article,
+% oneside, 
+onecolumn, % Only one column of text on a page.
+% openright, % Each chapter will start on a recto page.
+% openleft, % Each chapter will start on a verso page.
+openany, % A chapter may start on either a recto or verso page.
+]{memoir}
+
+%%% PACKAGES 
+%%%------------------------------------------------------------------------------
+
+\usepackage[utf8]{inputenc} % If utf8 encoding
+% \usepackage[lantin1]{inputenc} % If not utf8 encoding, then this is probably the way to go
+\usepackage[T1]{fontenc}    %
+\usepackage[english]{babel} % English please
+\usepackage[final]{microtype} % Less badboxes
+
+% \usepackage{kpfonts} %Font
+
+\usepackage{amsmath,amssymb,mathtools} % Math
+
+% \usepackage{tikz} % Figures
+\usepackage{graphicx} % Include figures
+
+%%% PAGE LAYOUT 
+%%%------------------------------------------------------------------------------
+
+\setlrmarginsandblock{0.15\paperwidth}{*}{1} % Left and right margin
+\setulmarginsandblock{0.2\paperwidth}{*}{1}  % Upper and lower margin
+\checkandfixthelayout
+
+%%% SECTIONAL DIVISIONS
+%%%------------------------------------------------------------------------------
+
+\maxsecnumdepth{subsection} % Subsections (and higher) are numbered
+\setsecnumdepth{subsection}
+
+\makeatletter %
+\makechapterstyle{standard}{
+  \setlength{\beforechapskip}{0\baselineskip}
+  \setlength{\midchapskip}{1\baselineskip}
+  \setlength{\afterchapskip}{8\baselineskip}
+  \renewcommand{\chapterheadstart}{\vspace*{\beforechapskip}}
+  \renewcommand{\chapnamefont}{\centering\normalfont\Large}
+  \renewcommand{\printchaptername}{\chapnamefont \@chapapp}
+  \renewcommand{\chapternamenum}{\space}
+  \renewcommand{\chapnumfont}{\normalfont\Large}
+  \renewcommand{\printchapternum}{\chapnumfont \thechapter}
+  \renewcommand{\afterchapternum}{\par\nobreak\vskip \midchapskip}
+  \renewcommand{\printchapternonum}{\vspace*{\midchapskip}\vspace*{5mm}}
+  \renewcommand{\chaptitlefont}{\centering\bfseries\LARGE}
+  \renewcommand{\printchaptertitle}[1]{\chaptitlefont ##1}
+  \renewcommand{\afterchaptertitle}{\par\nobreak\vskip \afterchapskip}
+}
+\makeatother
+
+\chapterstyle{standard}
+
+\setsecheadstyle{\normalfont\large\bfseries}
+\setsubsecheadstyle{\normalfont\normalsize\bfseries}
+\setparaheadstyle{\normalfont\normalsize\bfseries}
+\setparaindent{0pt}\setafterparaskip{0pt}
+
+%%% FLOATS AND CAPTIONS
+%%%------------------------------------------------------------------------------
+
+\makeatletter                  % You do not need to write [htpb] all the time
+\renewcommand\fps@figure{htbp} %
+\renewcommand\fps@table{htbp}  %
+\makeatother                   %
+
+\captiondelim{\space } % A space between caption name and text
+\captionnamefont{\small\bfseries} % Font of the caption name
+\captiontitlefont{\small\normalfont} % Font of the caption text
+
+\changecaptionwidth          % Change the width of the caption
+\captionwidth{1\textwidth} %
+
+%%% ABSTRACT
+%%%------------------------------------------------------------------------------
+
+\renewcommand{\abstractnamefont}{\normalfont\small\bfseries} % Font of abstract title
+\setlength{\absleftindent}{0.1\textwidth} % Width of abstract
+\setlength{\absrightindent}{\absleftindent}
+
+%%% HEADER AND FOOTER 
+%%%------------------------------------------------------------------------------
+
+\makepagestyle{standard} % Make standard pagestyle
+
+\makeatletter                 % Define standard pagestyle
+\makeevenfoot{standard}{}{}{} %
+\makeoddfoot{standard}{}{}{}  %
+\makeevenhead{standard}{\bfseries\thepage\normalfont\qquad\small\leftmark}{}{}
+\makeoddhead{standard}{}{}{\small\rightmark\qquad\bfseries\thepage}
+% \makeheadrule{standard}{\textwidth}{\normalrulethickness}
+\makeatother                  %
+
+\makeatletter
+\makepsmarks{standard}{
+\createmark{chapter}{both}{shownumber}{\@chapapp\ }{ \quad }
+\createmark{section}{right}{shownumber}{}{ \quad }
+\createplainmark{toc}{both}{\contentsname}
+\createplainmark{lof}{both}{\listfigurename}
+\createplainmark{lot}{both}{\listtablename}
+\createplainmark{bib}{both}{\bibname}
+\createplainmark{index}{both}{\indexname}
+\createplainmark{glossary}{both}{\glossaryname}
+}
+\makeatother                               %
+
+\makepagestyle{chap} % Make new chapter pagestyle
+
+\makeatletter
+\makeevenfoot{chap}{}{\small\bfseries\thepage}{} % Define new chapter pagestyle
+\makeoddfoot{chap}{}{\small\bfseries\thepage}{}  %
+\makeevenhead{chap}{}{}{}   %
+\makeoddhead{chap}{}{}{}    %
+% \makeheadrule{chap}{\textwidth}{\normalrulethickness}
+\makeatother
+
+\nouppercaseheads
+\pagestyle{standard}               % Choosing pagestyle and chapter pagestyle
+\aliaspagestyle{chapter}{chap} %
+
+%%% NEW COMMANDS
+%%%------------------------------------------------------------------------------
+
+\newcommand{\p}{\partial} %Partial
+% Or what ever you want
+
+%%% TABLE OF CONTENTS
+%%%------------------------------------------------------------------------------
+
+\maxtocdepth{subsection} % Only parts, chapters and sections in the table of contents
+\settocdepth{subsection}
+
+\AtEndDocument{\addtocontents{toc}{\par}} % Add a \par to the end of the TOC
+
+%%% INTERNAL HYPERLINKS
+%%%-------------------------------------------------------------------------------
+
+\usepackage{hyperref}   % Internal hyperlinks
+\hypersetup{
+pdfborder={0 0 0},      % No borders around internal hyperlinks
+pdfauthor={I am the Author} % author
+}
+\usepackage{memhfixc}   %
+
+%%% THE DOCUMENT
+%%% Where all the important stuff is included!
+%%%-------------------------------------------------------------------------------
+
+\author{A. Author}
+\title{The amazing Book about Timemachines}
+
+
+\begin{document}
+
+\frontmatter
+
+\maketitle
+
+\begin{abstract}
+Hi. This is an abstract.
+\end{abstract}
+\clearpage
+
+\chapter{Introduction}
+
+This is very random collection of thoughts.
+
+\chapter{Memory}
+
+We think about memory in a very outdated way. By this line of thinking, it is very much like a transcript of events, but written with ink that slowly disappears. Some of the memories are written in darker ink than others, and fade more slowly. When we remember an event, read the transcript. It can be read incorrectly, but usually not.
+
+But memory is more about reconstruction than recollection. We reconstruct what events occurred based on situation, evidence, and other memories. Those, in turn, are reconstructed in a similar manner.
+
+So memory is not ink on paper, more like a line hung along various poles. Those poles are particularly strongly-held memories -- the ones that seem most like accurate recordings of important events. Whether they are accurate or not isn't important -- they define where the rest of the line falls. Move one of those poles, and the line will resettle to accommodate the move.
+
+\chapter{The Doctor}
+
+I vividly remember being about eight or nine years old, and I often had a hard time sleeping. Occasionally, I'd get up and watch television downstairs while my parents were sleeping.
+
+One night, I wandered downstairs and switched on the television. This was when there were only a few channels available, and they often weren't even on the air twenty-four hours a day. So my options were limited.
+
+Public television was still on, but when I turned to that channel, I didn't understand what I was seeing. First, there was a strange opening sequence showing some kind of blue telephone booth flying through a weird, twisty tunnel. At the end of the sequence, it showed man's face. I was confused.
+
+The man turned out to be wearing old-fashioned clothes, but with an absurdly long scarf that must have been fifteen or twenty feet long. It wrapped loosely around his neck several times, but still dragged on the floor behind him. The opening of the episode showed him in a white room with a bunch of large circles carved into the walls and a big console in the middle of the room with a bunch of buttons and flashing lights. He was with a beautiful woman, and they were not making any sense at all.
+
+Of course, this was the Tom Baker incarnation of The Doctor, and I was watching a classic episode of Doctor Who. The woman, I think, was Sarah Jane Smith, who was a long-time favorite companion to the Doctor.
+
+Doctor Who was produced in half-hour episodes that usually ended in some sort of cliffhanger. But public television in the United States would stitch several episodes together to make a show lasting anywhere from an hour to four hours. So I was up for a few hours trying to figure this out.
+
+Eventually, I figured out more about the premise of the show. The Doctor was an otherwise nameless time-traveler; he was the hero of the story, along with a (usually) human companion who would travel with him and bumble along through the absurd events that the Doctor would take part in. He did not have any "powers", so to speak, and seemed not to approve of violence. He never carried a gun or other weapon, and would talk a lot instead of taking part in a fight.
+
+This was a strange kind of hero to my eight- or nine-year old self. What gave him an advantage over any villians on the show was that -- incredibly -- he was smarter and knew more than anyone else. At that time in the Doctor Who series, The Doctor was about four-hundred years old, and he seemed to have amassed an encyclopedic knowledge of everything in the universe. He especially seemed to know everything about science, and the way he'd extract himself from a dire situation usually involved gaining an unfair advantage at the last second from his knowledge of science.
+
+He also seemed to me to be a bit oblivious. If The Doctor had any serious flaw, it was that he didn't really "get" other people. They were constantly surprising him with what they'd say and do, even though the various humans on the show (particualrly the companions) were proxies for the audience as they struggled to understand the plot. But if The Doctor was strange to them, they were equally strange to him. The Doctor did not relate well to others, and he didn't "fit in".
+
+Strikingly to my young self, his outsider status wasn't a source of discomfort for him. The Doctor never really tried to fit in. It didn't matter if he looked or sounded odd to other people; he never tried to accommodate anyone's expectations. The Doctor did not care. Instead, other people would learn to accommodate him, usually after figuring out (finally) how smart and helpful he could be. It also helped that The Doctor was just a nice person; eventually, other characters would recognize that, even if took a while for them to get past his odd character.
+
+"Doctor Who" was a real find for my young self because The Doctor was relatable, in a strange way. Although it took many years to realize that it was an influence on me, it was one influence that started to chip away, very slowly, at my insecurities. I, too, was a smart but odd person who had difficulty relating to people. I had to figure out things that just seemed to be intuitively known by everyone else, especially when it came to my expected behavior around other people. To a young person, this is a source of stress, anxiety, and loneliness. It causes people like my young self to try harder and harder to "fit in", which never works, leading to more stress and isolation.
+
+But The Doctor, in a way, gives permission to be different, awkward, or unrelatable. It's okay to remain oblivious to others' expectations; or more specifically, to not accommodate those expectations. The Doctor was simply his own, authentic self; he "leaned into" his strengths, and let himself not care so much about his weaknesses. Tom Baker's interpretation of The Doctor was the rare example of how to be an outsider without being sad or ashamed.
+
+
+
+
+
+
+\backmatter
+
+%%% BIBLIOGRAPHY
+%%% -------------------------------------------------------------
+
+% \bibliographystyle{utphysics}
+% \bibliography{ref}
+
+\end{document}

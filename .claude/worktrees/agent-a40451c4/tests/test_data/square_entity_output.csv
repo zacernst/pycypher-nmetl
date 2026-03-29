@@ -1,0 +1,5 @@
+area,big,name,side_length,small,square_color
+1.0,False,squarename1,1.0,True,blue
+25.0,True,squarename2,5.0,False,red
+9.0,False,squarename3,3.0,True,blue
+,,squarename4,10.0,,orange

@@ -1,0 +1,110 @@
+services:
+  # Main pycypher development container
+  pycypher-dev:
+    container_name: pycypher-dev
+    platform: linux/arm64
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    working_dir: /workspace
+    volumes:
+      # Mount entire project for monorepo development
+      - .:/workspace
+      # Cache uv packages to speed up rebuilds
+      - uv-cache:/root/.cache/uv
+      # Cache pytest
+      - pytest-cache:/workspace/.pytest_cache
+    environment:
+      # Python environment
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+      - LC_ALL=C.UTF-8
+      - LANG=C.UTF-8
+      # GitHub token for private dependencies (if needed)
+      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+    # depends_on:
+    #   - fdb
+    command: >
+      bash -c "
+        echo 'Installing pycypher in development mode...' &&
+        cd /workspace &&
+        uv sync &&
+        uv pip install -e packages/pycypher &&
+        echo 'Pycypher development environment ready!' &&
+        echo 'Run: docker exec -it pycypher-dev bash' &&
+        tail -f /dev/null
+      "
+    stdin_open: true
+    tty: true
+
+  # FoundationDB for fact collection backend
+  # fdb:
+  #   container_name: pycypher-fdb
+  #   platform: linux/arm64
+  #   build:
+  #     context: ./fdb_build
+  #     dockerfile: Dockerfile
+  #   ports:
+  #     - "4500:4500"
+  #   volumes:
+  #     - fdb-data:/var/fdb/data
+  #     - ./fdb.cluster:/etc/foundationdb/fdb.cluster
+  #   restart: unless-stopped
+
+  # # Optional: Jupyter notebook for interactive development
+  # jupyter:
+  #   container_name: pycypher-jupyter
+  #   platform: linux/arm64
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile.dev
+  #   working_dir: /workspace
+  #   ports:
+  #     - "8888:8888"
+  #   volumes:
+  #     - .:/workspace
+  #     - uv-cache:/root/.cache/uv
+  #   environment:
+  #     - PYTHONUNBUFFERED=1
+  #     - FDB_CLUSTER_FILE=/workspace/fdb.cluster
+  #   depends_on:
+  #     - fdb
+  #   command: >
+  #     bash -c "
+  #       cd /workspace &&
+  #       uv sync &&
+  #       uv pip install -e packages/pycypher &&
+  #       uv pip install jupyter jupyterlab &&
+  #       jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token='' --NotebookApp.password=''
+  #     "
+  #   profiles:
+  #     - jupyter
+
+  # Optional: VSCode server for browser-based development
+  code-server:
+    container_name: pycypher-code-server
+    image: codercom/code-server:latest
+    platform: linux/arm64
+    ports:
+      - "8080:8080"
+    volumes:
+      - .:/workspace
+      - code-server-data:/root/.local/share/code-server
+    environment:
+      - PASSWORD=${CODE_SERVER_PASSWORD:-pycypher}
+    working_dir: /workspace
+    command: --auth password --bind-addr 0.0.0.0:8080 /workspace
+    profiles:
+      - code-server
+
+volumes:
+  uv-cache:
+    driver: local
+  pytest-cache:
+    driver: local
+  code-server-data:
+    driver: local
+
+networks:
+  default:
+    name: pycypher-dev-network
