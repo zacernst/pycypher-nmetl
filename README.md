@@ -110,7 +110,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 uv sync
 
 # Run tests
-uv rn specific test file
+uv run pytest tests/<specific_test_file>
 uv run pytest tests/test_ast_models.py
 
 # Run in parallel

@@ -32,6 +32,18 @@ from pycypher.types import FrameSeries
 _DEBUG_ENABLED: bool = LOGGER.isEnabledFor(logging.DEBUG)
 
 
+def _is_integer_series(s: FrameSeries) -> bool:
+    """Check if a Series contains integer values, even if dtype is object."""
+    if pd.api.types.is_integer_dtype(s):
+        return True
+    if s.dtype == object:
+        non_null = s.dropna()
+        if len(non_null) == 0:
+            return False
+        return all(isinstance(v, (int, np.integer)) for v in non_null)
+    return False
+
+
 def _cypher_div(left: FrameSeries, right: FrameSeries) -> FrameSeries:
     """Divide two Series using openCypher semantics.
 
@@ -46,33 +58,35 @@ def _cypher_div(left: FrameSeries, right: FrameSeries) -> FrameSeries:
         A Series of quotients; integer dtype when both operands are integer,
         float dtype otherwise.
     """
-    if pd.api.types.is_integer_dtype(left) and pd.api.types.is_integer_dtype(
-        right,
-    ):
-        zero_mask = right == 0
+    if _is_integer_series(left) and _is_integer_series(right):
+        left_f = left.astype(float)
+        right_f = right.astype(float)
+        zero_mask = right_f == 0
         null_mask = left.isna() | right.isna()
         replace_mask = zero_mask | null_mask
         if replace_mask.any():
             result = np.trunc(
                 _op.truediv(
-                    left.astype(float),
-                    right.where(~zero_mask, other=1.0),
+                    left_f,
+                    right_f.where(~zero_mask, other=1.0),
                 ),
             ).astype(object)
             result[replace_mask] = None
             return result
         # True-divide for precision, then truncate toward zero and restore int64.
-        return np.trunc(_op.truediv(left, right)).astype("int64")
+        return np.trunc(_op.truediv(left_f, right_f)).astype("int64")
 
-    # Handle null cases for non-integer division (but allow division by zero → infinity)
+    # Float division: IEEE semantics (x/0 → ±inf, 0/0 → NaN).
+    # Ensure operands are float so pandas uses numpy float division
+    # (which produces inf/nan) instead of raising ZeroDivisionError.
+    left_f = left.astype(float)
+    right_f = right.astype(float)
     null_mask = left.isna() | right.isna()
+    result = _op.truediv(left_f, right_f)
     if null_mask.any():
-        # Float division by zero produces infinity, only null inputs produce null
-        result = _op.truediv(left, right).astype(object)
+        result = result.astype(object)
         result[null_mask] = None
-        return result
-
-    return _op.truediv(left, right)
+    return result
 
 
 def _cypher_mod(left: FrameSeries, right: FrameSeries) -> FrameSeries:

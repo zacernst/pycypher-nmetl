@@ -62,8 +62,8 @@ jobs:
       - name: Install workspace dependencies
         run: uv sync --frozen
 
-      - name: Run unit and integration tests (parallel)
-        run: uv run pytest -n auto --timeout=30 -q --tb=short
+      - name: Run unit and integration tests (parallel, with coverage gate)
+        run: uv run pytest -n auto --timeout=30 -q --tb=short --cov --cov-report=term-missing:skip-covered
 
   # ──────────────────────────────────────────────
   # Lint & format check
@@ -166,17 +166,25 @@ jobs:
       - name: Install workspace dependencies
         run: uv sync --frozen
 
-      - name: Audit dependencies for known vulnerabilities
+      # Block on any known dependency vulnerability.
+      - name: Audit dependencies for known vulnerabilities (blocking)
         run: uv run pip-audit --desc --skip-editable
-        continue-on-error: true
 
-      - name: SAST — bandit security scan (advisory)
+      # High/critical SAST findings block the build.
+      - name: SAST — bandit high/critical (blocking)
+        run: |
+          uv run bandit -r packages/pycypher/src/ packages/shared/src/ \
+            -c pyproject.toml \
+            --severity-level high \
+            -f txt
+
+      # Medium SAST findings are advisory only.
+      - name: SAST — bandit medium (advisory)
         run: |
           uv run bandit -r packages/pycypher/src/ packages/shared/src/ \
             -c pyproject.toml \
             --severity-level medium \
-            -f txt \
-            || true
+            -f txt
         continue-on-error: true
 
   # ──────────────────────────────────────────────
@@ -204,10 +212,12 @@ jobs:
       - name: Install workspace dependencies
         run: uv sync --frozen
 
-      - name: Run benchmarks (excluding slow/100K scale)
+      - name: Run benchmarks with regression detection
         run: |
           uv run pytest tests/benchmarks/bench_core_operations.py \
             -v --benchmark-only -m "not slow" --timeout=120 \
+            --benchmark-compare=0001_baseline \
+            --benchmark-compare-fail=mean:5.0 \
             --benchmark-json=benchmark-results.json
 
       - name: Upload benchmark results

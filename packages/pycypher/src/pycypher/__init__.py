@@ -86,6 +86,41 @@ Example — catching specific errors::
 To list all supported Cypher functions::
 
     print(star.available_functions())
+
+API stability
+-------------
+
+PyCypher is in **Alpha** (``0.0.x``).  Breaking changes may occur in any
+release.  The following table summarises the stability of each public symbol:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 40 15 45
+
+   * - Symbol
+     - Stability
+     - Notes
+   * - :class:`Star`, :meth:`Star.execute_query`
+     - **Stable**
+     - Core entry point; breaking changes will be announced in CHANGELOG.
+   * - :class:`ContextBuilder`, :class:`Context`
+     - **Stable**
+     - Primary data-loading API.
+   * - All exception classes
+     - **Stable**
+     - Exception hierarchy is stable; new attributes may be added.
+   * - :func:`validate_query`, :class:`SemanticValidator`
+     - **Stable**
+     - Pre-execution validation API.
+   * - :class:`Pipeline`, :class:`Stage`
+     - Provisional
+     - Multi-stage ETL pipeline; API may change in ``0.1.0``.
+   * - :class:`ResultCache`, :func:`get_cache_stats`
+     - Provisional
+     - Caching internals; API may change.
+   * - ``ArrowIngestion``
+     - **Deprecated**
+     - Removed in ``0.1.0``.  Use :class:`~pycypher.ingestion.DuckDBReader`.
 """
 
 from __future__ import annotations

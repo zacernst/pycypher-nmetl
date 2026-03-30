@@ -17,8 +17,8 @@ sys.path.insert(0, os.path.abspath(".."))
 project = "PyCypher"
 copyright = "2026, PyCypher Contributors"
 author = "PyCypher Contributors"
-release = "0.1.0"
-version = "0.1.0"
+release = "0.0.19"
+version = "0.0.19"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -135,6 +135,14 @@ intersphinx_mapping = {
     "numpy": ("https://numpy.org/doc/stable", None),
     "pydantic": ("https://docs.pydantic.dev/latest/", None),
 }
+
+# Timeout for fetching remote inventories (seconds).
+# Keeps builds fast when external sites are unreachable.
+intersphinx_timeout = 5
+
+# Disable TLS verification for intersphinx fetches so builds succeed
+# behind corporate proxies or environments with self-signed CA certs.
+tls_verify = False
 
 # -- Options for todo extension ----------------------------------------------
 
