@@ -168,6 +168,20 @@ class PatternMatcher:
             var_name = f"{_ANON_NODE_PREFIX}{anon_counter[0]}"
             anon_counter[0] += 1
 
+        # --- Extract pushable property predicates from inline {prop: val} ---
+        # Only literal equality predicates can be pushed into EntityScan.
+        from pycypher.ast_models import Literal as _Literal
+
+        _pushable: dict[str, Any] = {}
+        _remaining_props: dict[str, Any] = {}
+        for prop_name, prop_val in (node.properties or {}).items():
+            if isinstance(prop_val, _Literal) and not isinstance(
+                prop_val, (type(None),)
+            ):
+                _pushable[prop_name] = prop_val.value
+            else:
+                _remaining_props[prop_name] = prop_val
+
         if not node.labels:
             if (
                 context_frame is not None
@@ -198,10 +212,17 @@ class PatternMatcher:
                 if len(all_frames) == 1:
                     frame = all_frames[0]
                 else:
-                    combined = pd.concat(
-                        [f.bindings for f in all_frames],
-                        ignore_index=True,
-                    )
+                    _be = getattr(self.context, "backend", None)
+                    if _be is not None:
+                        combined = _be.concat(
+                            [f.bindings for f in all_frames],
+                            ignore_index=True,
+                        )
+                    else:
+                        combined = pd.concat(
+                            [f.bindings for f in all_frames],
+                            ignore_index=True,
+                        )
                     frame = BindingFrame(
                         bindings=combined,
                         type_registry={var_name: "__MULTI__"},
@@ -209,10 +230,13 @@ class PatternMatcher:
                     )
         else:
             entity_type = node.labels[0]
-            frame = EntityScan(entity_type, var_name).scan(self.context)
+            frame = EntityScan(entity_type, var_name).scan(
+                self.context,
+                property_filters=_pushable or None,
+            )
 
-        # Apply inline property filters  {prop: val}
-        for prop_name, prop_val in (node.properties or {}).items():
+        # Apply remaining inline property filters not pushed down
+        for prop_name, prop_val in _remaining_props.items():
             predicate = Comparison(
                 operator="=",
                 left=PropertyLookup(
@@ -222,6 +246,8 @@ class PatternMatcher:
                 right=prop_val,
             )
             frame = BindingFilter(predicate=predicate).apply(frame)
+        # For labelled nodes with pushdown, the pushed predicates have already
+        # filtered at scan time — no need to re-apply them.
 
         return frame
 
@@ -531,8 +557,10 @@ class PatternMatcher:
         from pycypher.ast_models import Variable as _Var
         from pycypher.binding_frame import (
             BindingFilter,
-            BindingFrame as _BF,
             RelationshipScan,
+        )
+        from pycypher.binding_frame import (
+            BindingFrame as _BF,
         )
         directions_to_try: list[RelationshipDirection] = (
             [RelationshipDirection.RIGHT, RelationshipDirection.LEFT]
@@ -591,10 +619,17 @@ class PatternMatcher:
         if len(hop_frames) == 1:
             return hop_frames[0]
 
-        all_bindings = pd.concat(
-            [f.bindings for f in hop_frames], ignore_index=True,
-        )
-        all_bindings = all_bindings.drop_duplicates().reset_index(drop=True)
+        _be = getattr(self.context, "backend", None)
+        if _be is not None:
+            all_bindings = _be.concat(
+                [f.bindings for f in hop_frames], ignore_index=True,
+            )
+            all_bindings = _be.distinct(all_bindings)
+        else:
+            all_bindings = pd.concat(
+                [f.bindings for f in hop_frames], ignore_index=True,
+            )
+            all_bindings = all_bindings.drop_duplicates().reset_index(drop=True)
         combined_registry: dict[str, str] = {}
         for hop_f in hop_frames:
             combined_registry.update(hop_f.type_registry)

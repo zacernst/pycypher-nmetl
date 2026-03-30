@@ -34,6 +34,32 @@ Usage::
     filtered = engine.filter(ids, mask)
     joined = engine.join(left, right, on="__ID__")
     result = engine.to_pandas(joined)
+
+Integration Status
+------------------
+
+.. note:: **Partially integrated into the execution path.**
+
+   The ``BackendEngine`` protocol is wired into the core execution path via
+   ``BindingFrame`` delegation.  When ``context.backend`` is available, the
+   following operations route through the backend:
+
+   - :meth:`BindingFrame.join` — inner joins with strategy hints
+   - :meth:`BindingFrame.left_join` — left outer joins (OPTIONAL MATCH)
+   - :meth:`BindingFrame.cross_join` — Cartesian products
+   - :meth:`BindingFrame.filter` — boolean mask filtering
+   - :meth:`BindingFrame.rename` — column renaming
+   - :mod:`~pycypher.pattern_matcher` — concat and distinct for multi-type
+     scans and variable-length path expansion
+
+   Selecting ``backend="duckdb"`` at ``Context`` construction now routes
+   these operations through the DuckDB engine.
+
+   Not yet delegated (future work):
+
+   - :mod:`~pycypher.mutation_engine` — still uses raw pandas for shadow writes
+   - Property resolution in :meth:`BindingFrame.get_property`
+   - Aggregation operations in ``AggregationEvaluator``
 """
 
 from __future__ import annotations
@@ -397,10 +423,11 @@ def check_backend_health(backend: BackendEngine) -> bool:
         )
         result = backend.to_pandas(joined)
         return len(result) == 1 and result[ID_COLUMN].iloc[0] == 1
-    except Exception:  # noqa: BLE001
-        LOGGER.warning(
-            "Health check failed for backend %s",
+    except (RuntimeError, TypeError, ValueError, KeyError, AttributeError) as exc:
+        LOGGER.error(
+            "Health check failed for backend %s: %s",
             backend.name,
+            type(exc).__name__,
             exc_info=True,
         )
         return False
@@ -900,8 +927,11 @@ def _try_create(name: str) -> BackendEngine | None:
         return None
     try:
         return factory()
-    except Exception:  # noqa: BLE001
-        LOGGER.warning("Failed to create backend %s", name, exc_info=True)
+    except (RuntimeError, ImportError, OSError, TypeError, ValueError) as exc:
+        LOGGER.error(
+            "Failed to create backend %s: %s", name, type(exc).__name__,
+            exc_info=True,
+        )
         return None
 
 

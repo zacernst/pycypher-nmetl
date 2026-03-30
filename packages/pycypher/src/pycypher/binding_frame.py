@@ -32,7 +32,7 @@ from __future__ import annotations
 
 import logging
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
@@ -40,6 +40,9 @@ import pandas as pd
 from shared.helpers import suggest_close_match
 from shared.logger import LOGGER
 
+from pycypher.config import (
+    CROSS_JOIN_WARN_THRESHOLDS as CROSS_JOIN_WARN_THRESHOLDS,
+)
 from pycypher.config import MAX_CROSS_JOIN_ROWS as MAX_CROSS_JOIN_ROWS
 from pycypher.constants import (
     ID_COLUMN,
@@ -187,6 +190,62 @@ def _source_to_pandas(obj: Any) -> pd.DataFrame:
     return obj
 
 
+def _backend_merge(
+    backend: Any,
+    left: pd.DataFrame,
+    right: pd.DataFrame,
+    *,
+    left_col: str,
+    right_col: str,
+    how: str = "inner",
+    strategy: str = "auto",
+    suffixes: tuple[str, str] = ("", "_right"),
+) -> pd.DataFrame:
+    """Delegate a merge to the backend, handling column-name normalisation.
+
+    The :class:`BackendEngine` protocol requires the join key to have the
+    same name in both frames (``on``).  When *left_col* differs from
+    *right_col*, this helper renames the right join key before delegating
+    and resolves any non-join column collisions using *suffixes*.
+
+    Args:
+        backend: A :class:`~pycypher.backend_engine.BackendEngine` instance.
+        left: Left DataFrame.
+        right: Right DataFrame.
+        left_col: Join key column name in *left*.
+        right_col: Join key column name in *right*.
+        how: Join type (``'inner'``, ``'left'``, ``'cross'``).
+        strategy: Join strategy hint for the backend.
+        suffixes: Tuple of suffixes for resolving non-join column collisions.
+
+    Returns:
+        The joined DataFrame with collision-suffixed columns.
+
+    """
+    # --- Normalise join key names ---
+    if left_col != right_col:
+        right = backend.rename(right, {right_col: left_col})
+
+    # --- Resolve non-join column collisions ---
+    left_suffix, right_suffix = suffixes
+    join_key = left_col
+    left_other = set(left.columns) - {join_key}
+    right_other = set(right.columns) - {join_key}
+    collisions = left_other & right_other
+
+    if collisions:
+        # Rename colliding columns in the right frame with the right suffix
+        rename_map = {c: f"{c}{right_suffix}" for c in collisions}
+        right = backend.rename(right, rename_map)
+        # Also rename left collisions if left_suffix is non-empty
+        if left_suffix:
+            left_rename = {c: f"{c}{left_suffix}" for c in collisions}
+            left = backend.rename(left, left_rename)
+
+    # --- Delegate to backend ---
+    return backend.join(left, right, on=join_key, how=how, strategy=strategy)
+
+
 @dataclass
 class BindingFrame:
     """A table of variable bindings where every column is a Cypher variable name.
@@ -230,6 +289,9 @@ class BindingFrame:
     bindings: FrameDataFrame
     type_registry: dict[str, str]
     context: Any  # Context — typed as Any to avoid circular import at runtime
+    _property_cache: dict[tuple[str, str], FrameSeries] = field(
+        default_factory=dict, repr=False, compare=False,
+    )
 
     # ------------------------------------------------------------------
     # Introspection helpers
@@ -256,6 +318,42 @@ class BindingFrame:
     # ------------------------------------------------------------------
     # Property access
     # ------------------------------------------------------------------
+
+    @staticmethod
+    def _coerce_ids(id_values, target_index: pd.Index):
+        """Coerce binding ID values to match the entity table's index dtype.
+
+        DuckDB backend may produce string IDs after merges even when entity
+        tables use integer IDs.  This ensures lookups (map, reindex,
+        searchsorted) match types correctly.
+
+        Skips coercion when the target index has mixed types (e.g. after
+        MERGE appends integer IDs to a string-ID table).
+        """
+        if len(id_values) == 0 or len(target_index) == 0:
+            return id_values
+        # Detect type mismatch: binding IDs vs entity table index
+        sample_binding = id_values.iloc[0] if hasattr(id_values, 'iloc') else id_values[0]
+        sample_index = target_index[0]
+        if type(sample_binding) is type(sample_index):
+            return id_values
+        # Check if target index has homogeneous types; skip coercion if mixed
+        if target_index.dtype == object:
+            index_types = {type(v) for v in target_index[:100]}
+            if len(index_types) > 1:
+                return id_values  # Mixed types — don't coerce
+        try:
+            if isinstance(sample_index, (int, np.integer)):
+                if hasattr(id_values, 'astype'):
+                    return id_values.astype(int)
+                return np.array(id_values, dtype=int)
+            elif isinstance(sample_index, str):
+                if hasattr(id_values, 'astype'):
+                    return id_values.astype(str)
+                return np.array(id_values, dtype=str)
+        except (ValueError, TypeError):
+            pass
+        return id_values
 
     def _get_indexed_dataframe(self, entity_type: str) -> pd.DataFrame | None:
         """Resolve an ID-indexed DataFrame for *entity_type*.
@@ -329,6 +427,11 @@ class BindingFrame:
             rather than raising an exception.
 
         """
+        # Fast path: return cached result if already resolved for this frame.
+        _cache_key = (var_name, prop_name)
+        if _cache_key in self._property_cache:
+            return self._property_cache[_cache_key]
+
         if _DEBUG_ENABLED:
             _t0 = time.perf_counter()
             _rows_before = len(self.bindings)
@@ -375,26 +478,54 @@ class BindingFrame:
                 return row_values
             return _null_series(len(self.bindings), index=self.bindings.index)
 
-        indexed_df = self._get_indexed_dataframe(entity_type)
-        if indexed_df is None:
-            return _null_series(len(self.bindings), index=self.bindings.index)
+        # --- Vectorized fast path ---
+        # Use np.searchsorted-based bulk lookup when the graph index manager
+        # has a VectorizedPropertyStore for this entity type.  This avoids
+        # hash-based pd.Series.map() in favour of O(k log N) binary search.
+        _used_vectorized = False
+        index_mgr = getattr(self.context, "index_manager", None)
+        shadow: dict = getattr(self.context, "_shadow", {})
+        shadow_rels: dict = getattr(self.context, "_shadow_rels", {})
+        if (
+            index_mgr is not None
+            and entity_type not in shadow
+            and entity_type not in shadow_rels
+        ):
+            try:
+                store = index_mgr.get_vectorized_store(entity_type)
+                if store is not None:
+                    id_values = self.bindings[var_name].values
+                    raw = store.fetch(id_values, prop_name)
+                    result = pd.Series(raw, index=self.bindings.index, dtype=object)
+                    # Apply same NaN→None and ndarray→list normalization as standard path
+                    result = _normalize_mapped_result(result)
+                    result.index = self.bindings.index
+                    _used_vectorized = True
+            except Exception:
+                LOGGER.debug(
+                    "Vectorized fetch failed for %s.%s, falling back",
+                    entity_type, prop_name, exc_info=True,
+                )
 
-        if prop_name not in indexed_df.columns:
-            # Per Cypher semantics, accessing a nonexistent property returns null.
-            return _null_series(len(self.bindings), index=self.bindings.index)
-        lookup: pd.Series = indexed_df[prop_name]
+        if not _used_vectorized:
+            # --- Standard path (hash-based map) ---
+            indexed_df = self._get_indexed_dataframe(entity_type)
+            if indexed_df is None:
+                return _null_series(len(self.bindings), index=self.bindings.index)
 
-        # Map entity IDs in this frame to property values.
-        # pd.Series.map() converts both "missing key" and null property values
-        # (stored as NaN by pandas) to float NaN.  Cypher null semantics require
-        # Python None so that downstream ``x is None`` guards in scalar functions
-        # (isString, isFloat, isNaN, …) correctly propagate null rather than
-        # misclassifying float('nan') as a valid non-null value.
-        id_series: pd.Series = self.bindings[var_name]
-        result: pd.Series = id_series.map(lookup)
+            if prop_name not in indexed_df.columns:
+                # Per Cypher semantics, accessing a nonexistent property returns null.
+                return _null_series(len(self.bindings), index=self.bindings.index)
+            lookup: pd.Series = indexed_df[prop_name]
 
-        result = _normalize_mapped_result(result)
-        result.index = self.bindings.index
+            # Map entity IDs in this frame to property values.
+            id_series: pd.Series = self._coerce_ids(
+                self.bindings[var_name], indexed_df.index,
+            )
+            result: pd.Series = id_series.map(lookup)
+
+            result = _normalize_mapped_result(result)
+            result.index = self.bindings.index
         if _DEBUG_ENABLED:
             LOGGER.debug(
                 "BindingFrame.get_property  var=%s  prop=%s  rows=%d  elapsed=%.4fs",
@@ -403,6 +534,7 @@ class BindingFrame:
                 _rows_before,
                 time.perf_counter() - _t0,
             )
+        self._property_cache[_cache_key] = result
         return result
 
     def get_properties_batch(
@@ -437,7 +569,34 @@ class BindingFrame:
         if entity_type is None or entity_type == "__MULTI__":
             return {p: self.get_property(var_name, p) for p in prop_names}
 
-        # Resolve the indexed DataFrame (shared cache logic with get_property)
+        # --- Vectorized fast path (np.searchsorted) ---
+        index_mgr = getattr(self.context, "index_manager", None)
+        shadow: dict = getattr(self.context, "_shadow", {})
+        shadow_rels: dict = getattr(self.context, "_shadow_rels", {})
+        if (
+            index_mgr is not None
+            and entity_type not in shadow
+            and entity_type not in shadow_rels
+        ):
+            try:
+                store = index_mgr.get_vectorized_store(entity_type)
+                if store is not None:
+                    id_values = self.bindings[var_name].values
+                    raw_results = store.fetch_multi(id_values, prop_names)
+                    results: dict[str, FrameSeries] = {}
+                    for prop, raw in raw_results.items():
+                        series = pd.Series(raw, index=self.bindings.index, dtype=object)
+                        series = _normalize_mapped_result(series)
+                        series.index = self.bindings.index
+                        results[prop] = series
+                    return results
+            except Exception:
+                LOGGER.debug(
+                    "Vectorized batch fetch failed for %s, falling back",
+                    entity_type, exc_info=True,
+                )
+
+        # --- Standard path (reindex-based) ---
         indexed_df = self._get_indexed_dataframe(entity_type)
         if indexed_df is None:
             return {
@@ -454,14 +613,14 @@ class BindingFrame:
         results: dict[str, FrameSeries] = {}
 
         if available:
-            # Map each property via the cached indexed_df — the entity type
-            # resolution and cache lookup above are amortized across all props.
+            # Reindex the entity table subset by IDs in one operation.
+            id_values = self._coerce_ids(id_series, indexed_df.index)
+            if hasattr(id_values, 'values'):
+                id_values = id_values.values
+            subset = indexed_df[available].reindex(id_values)
+            subset.index = self.bindings.index
             for prop in available:
-                lookup: pd.Series = indexed_df[prop]
-                result: pd.Series = id_series.map(lookup)
-                result = _normalize_mapped_result(result)
-                result.index = self.bindings.index
-                results[prop] = result
+                results[prop] = _normalize_mapped_result(subset[prop])
 
         # Missing properties → null Series
         for prop in missing:
@@ -607,7 +766,11 @@ class BindingFrame:
         if _DEBUG_ENABLED:
             _t0 = time.perf_counter()
             _rows_before = len(self.bindings)
-        filtered = self.bindings[mask.values].reset_index(drop=True)
+        backend = getattr(self.context, "backend", None)
+        if backend is not None:
+            filtered = backend.filter(self.bindings, mask.values)
+        else:
+            filtered = self.bindings[mask.values].reset_index(drop=True)
         if _DEBUG_ENABLED:
             _rows_after = len(filtered)
             LOGGER.debug(
@@ -683,6 +846,8 @@ class BindingFrame:
         other: BindingFrame,
         left_col: str,
         right_col: str,
+        *,
+        join_plan: object | None = None,
     ) -> BindingFrame:
         """Inner-join two BindingFrames on a pair of columns.
 
@@ -706,8 +871,6 @@ class BindingFrame:
         """
         if _DEBUG_ENABLED:
             _t0 = time.perf_counter()
-            _left_rows = len(self.bindings)
-            _right_rows = len(other.bindings)
 
         if left_col not in self.bindings.columns:
             from pycypher.exceptions import VariableNotFoundError
@@ -723,31 +886,77 @@ class BindingFrame:
             raise VariableNotFoundError(right_col, available, hint)
 
         # --- Adaptive join strategy selection ---
-        # Use the QueryPlanner to classify the join (broadcast/hash/merge).
-        # Today this is informational — pandas handles strategy internally.
-        # The classification is logged and available for future backends
-        # (DuckDB/Polars) that benefit from explicit strategy hints.
-        if _DEBUG_ENABLED and len(self.bindings) + len(other.bindings) > 0:
-            from pycypher.query_planner import get_default_planner
+        # Use the pre-computed join plan from QueryPlanAnalyzer when available,
+        # falling back to on-the-fly planning for standalone calls.
+        _left_len = len(self.bindings)
+        _right_len = len(other.bindings)
 
+        from pycypher.query_planner import JoinStrategy, get_default_planner
+
+        if join_plan is not None:
+            _plan = join_plan
+        else:
             _plan = get_default_planner().plan_join(
                 left_name=left_col,
                 right_name=right_col,
-                left_rows=len(self.bindings),
-                right_rows=len(other.bindings),
+                left_rows=_left_len,
+                right_rows=_right_len,
                 join_key=left_col,
             )
-            # Strategy is available at _plan.strategy for logging/monitoring.
-            # Future: pass _plan.strategy.value to backend.join(strategy=...)
-            # when BindingFrame fully delegates to the backend engine.
 
-        merged: pd.DataFrame = self.bindings.merge(
-            other.bindings,
-            left_on=left_col,
-            right_on=right_col,
-            how="inner",
-            suffixes=("", "_right"),
-        )
+        backend = getattr(self.context, "backend", None)
+        if (
+            _plan.strategy == JoinStrategy.BROADCAST
+            and _right_len > _left_len
+        ):
+            # Swap so smaller side is the build table for the hash join.
+            if backend is not None:
+                merged = _backend_merge(
+                    backend,
+                    other.bindings,
+                    self.bindings,
+                    left_col=right_col,
+                    right_col=left_col,
+                    how="inner",
+                    strategy=_plan.strategy.value,
+                    suffixes=("_right", ""),
+                )
+                # _backend_merge normalises both join keys to the same name
+                # (right_col after the swap).  Restore the original left_col
+                # so that downstream code still sees the caller's variable.
+                if (
+                    left_col != right_col
+                    and left_col not in merged.columns
+                    and right_col in merged.columns
+                ):
+                    merged = merged.rename(columns={right_col: left_col})
+            else:
+                merged = other.bindings.merge(
+                    self.bindings,
+                    left_on=right_col,
+                    right_on=left_col,
+                    how="inner",
+                    suffixes=("_right", ""),
+                )
+        else:
+            if backend is not None:
+                merged = _backend_merge(
+                    backend,
+                    self.bindings,
+                    other.bindings,
+                    left_col=left_col,
+                    right_col=right_col,
+                    how="inner",
+                    strategy=_plan.strategy.value,
+                )
+            else:
+                merged = self.bindings.merge(
+                    other.bindings,
+                    left_on=left_col,
+                    right_on=right_col,
+                    how="inner",
+                    suffixes=("", "_right"),
+                )
 
         merged = BindingFrame._cleanup_merged(merged, left_col, right_col)
         # Build merged registry: when one side is empty (common for initial
@@ -761,12 +970,13 @@ class BindingFrame:
 
         if _DEBUG_ENABLED:
             LOGGER.debug(
-                "BindingFrame.join  left_col=%s  right_col=%s  left_rows=%d  right_rows=%d  result_rows=%d  elapsed=%.4fs",
+                "BindingFrame.join  left_col=%s  right_col=%s  left_rows=%d  right_rows=%d  result_rows=%d  strategy=%s  elapsed=%.4fs",
                 left_col,
                 right_col,
-                _left_rows,
-                _right_rows,
+                _left_len,
+                _right_len,
                 len(merged),
+                _plan.strategy.value,
                 time.perf_counter() - _t0,
             )
         return BindingFrame(
@@ -817,13 +1027,24 @@ class BindingFrame:
             hint = suggest_close_match(right_col, available)
             raise VariableNotFoundError(right_col, available, hint)
 
-        merged: pd.DataFrame = self.bindings.merge(
-            other.bindings,
-            left_on=left_col,
-            right_on=right_col,
-            how="left",
-            suffixes=("", "_right"),
-        )
+        backend = getattr(self.context, "backend", None)
+        if backend is not None:
+            merged: pd.DataFrame = _backend_merge(
+                backend,
+                self.bindings,
+                other.bindings,
+                left_col=left_col,
+                right_col=right_col,
+                how="left",
+            )
+        else:
+            merged: pd.DataFrame = self.bindings.merge(
+                other.bindings,
+                left_on=left_col,
+                right_on=right_col,
+                how="left",
+                suffixes=("", "_right"),
+            )
 
         merged = BindingFrame._cleanup_merged(merged, left_col, right_col)
         if not self.type_registry:
@@ -873,10 +1094,20 @@ class BindingFrame:
         _left_rows = len(self.bindings)
         _right_rows = len(other.bindings)
         result_size = _left_rows * _right_rows
+
+        # Log cardinality estimate before execution for monitoring.
+        LOGGER.info(
+            "Cross-join cardinality estimate: %s rows (%d × %d)",
+            f"{result_size:,}",
+            _left_rows,
+            _right_rows,
+        )
+
+        # Hard ceiling — refuse to execute.
         if result_size > MAX_CROSS_JOIN_ROWS:
             msg = (
                 f"Cross-join would produce {result_size:,} rows "
-                f"({len(self.bindings):,} × {len(other.bindings):,}), "
+                f"({_left_rows:,} × {_right_rows:,}), "
                 f"exceeding the {MAX_CROSS_JOIN_ROWS:,}-row safety limit.\n"
                 "To fix:\n"
                 "  1. Add WHERE filters to reduce matched rows\n"
@@ -885,27 +1116,43 @@ class BindingFrame:
             )
             from pycypher.exceptions import QueryMemoryBudgetError
 
-            # Estimate bytes: ~200 bytes per row is a conservative heuristic
-            # for a DataFrame with a handful of ID/attribute columns.
             _BYTES_PER_ROW = 200
             raise QueryMemoryBudgetError(
                 estimated_bytes=result_size * _BYTES_PER_ROW,
                 budget_bytes=MAX_CROSS_JOIN_ROWS * _BYTES_PER_ROW,
                 suggestion=msg,
             )
-        if result_size > 1_000_000:
-            LOGGER.warning(
-                "Cross-join producing %s rows (%d x %d) — consider adding"
-                " a WHERE clause to reduce result size",
-                f"{result_size:,}",
-                len(self.bindings),
-                len(other.bindings),
+
+        # Progressive warnings at configured thresholds.
+        for threshold in CROSS_JOIN_WARN_THRESHOLDS:
+            if result_size > threshold:
+                LOGGER.warning(
+                    "Cross-join producing %s rows (%d × %d) exceeds %s-row"
+                    " warning threshold — consider adding a WHERE clause",
+                    f"{result_size:,}",
+                    _left_rows,
+                    _right_rows,
+                    f"{threshold:,}",
+                )
+        backend = getattr(self.context, "backend", None)
+        if backend is not None:
+            # Resolve non-join column collisions before cross join
+            left_other = set(self.bindings.columns)
+            right_other = set(other.bindings.columns)
+            collisions = left_other & right_other
+            right_df = other.bindings
+            if collisions:
+                rename_map = {c: f"{c}_right" for c in collisions}
+                right_df = backend.rename(right_df, rename_map)
+            merged: pd.DataFrame = backend.join(
+                self.bindings, right_df, on=[], how="cross",
             )
-        merged: pd.DataFrame = self.bindings.merge(
-            other.bindings,
-            how="cross",
-            suffixes=("", "_right"),
-        )
+        else:
+            merged: pd.DataFrame = self.bindings.merge(
+                other.bindings,
+                how="cross",
+                suffixes=("", "_right"),
+            )
         merged = BindingFrame._cleanup_merged(merged)
         if not self.type_registry:
             merged_registry = other.type_registry
@@ -963,7 +1210,11 @@ class BindingFrame:
             hint = suggest_close_match(old_col, available)
             raise VariableNotFoundError(old_col, available, hint)
 
-        new_bindings = self.bindings.rename(columns={old_col: new_col})
+        backend = getattr(self.context, "backend", None)
+        if backend is not None:
+            new_bindings = backend.rename(self.bindings, {old_col: new_col})
+        else:
+            new_bindings = self.bindings.rename(columns={old_col: new_col})
         # Build registry efficiently: only copy when we actually need to
         # mutate (i.e., when old_col is registered or new_type is given).
         if new_type is not None:
@@ -1176,11 +1427,20 @@ class EntityScan:
     entity_type: str
     var_name: str
 
-    def scan(self, context: Any) -> BindingFrame:
+    def scan(
+        self,
+        context: Any,
+        property_filters: dict[str, Any] | None = None,
+    ) -> BindingFrame:
         """Return a :class:`BindingFrame` containing all IDs for this entity type.
 
         Args:
             context: The query :class:`~pycypher.relational_models.Context`.
+            property_filters: Optional dict of ``{prop_name: value}`` equality
+                predicates.  When provided and a :class:`PropertyValueIndex`
+                is available, the scan returns only IDs matching **all**
+                predicates instead of the full entity table — O(1) per
+                predicate instead of O(N) post-scan filtering.
 
         Returns:
             A :class:`BindingFrame` with one column (*var_name*) of entity IDs.
@@ -1201,26 +1461,71 @@ class EntityScan:
                 f"Available entity types: {available or []}"
                 f"{hint}",
             ) from None
-        # Use the _property_lookup_cache to avoid repeated Arrow→pandas
-        # conversions.  The cache stores indexed_df = raw_df.set_index(ID_COLUMN);
-        # entity IDs are recovered from the index.
-        cache: dict = getattr(context, "_property_lookup_cache", {})
-        if self.entity_type not in cache:
-            raw_df: pd.DataFrame = _source_to_pandas(entity_table.source_obj)
-            cache[self.entity_type] = raw_df.set_index(ID_COLUMN)
-        indexed_df = cache[self.entity_type]
-        ids = pd.Series(
-            indexed_df.index.to_numpy(dtype=object),
-            name=ID_COLUMN,
-        ).reset_index(drop=True)
-        if _DEBUG_ENABLED:
-            LOGGER.debug(
-                "EntityScan.scan  entity_type=%s  var=%s  rows=%d  elapsed=%.4fs",
-                self.entity_type,
-                self.var_name,
-                len(ids),
-                time.perf_counter() - _t0,
-            )
+
+        # --- Predicate pushdown via property index ---
+        _pushed_down = False
+        if property_filters:
+            shadow: dict = getattr(context, "_shadow", {})
+            if self.entity_type not in shadow:
+                index_mgr = getattr(context, "index_manager", None)
+                if index_mgr is not None:
+                    try:
+                        candidate_ids: frozenset | None = None
+                        for prop_name, value in property_filters.items():
+                            matching = index_mgr.indexed_property_lookup(
+                                self.entity_type, prop_name, value,
+                            )
+                            if matching is None:
+                                # No index for this property — skip pushdown
+                                candidate_ids = None
+                                break
+                            if candidate_ids is None:
+                                candidate_ids = matching
+                            else:
+                                candidate_ids = candidate_ids & matching
+                        if candidate_ids is not None:
+                            ids = pd.Series(
+                                list(candidate_ids), name=ID_COLUMN,
+                            ).reset_index(drop=True)
+                            _pushed_down = True
+                            if _DEBUG_ENABLED:
+                                LOGGER.debug(
+                                    "EntityScan.scan  PUSHDOWN  entity_type=%s  var=%s  "
+                                    "filters=%s  matched=%d  elapsed=%.4fs",
+                                    self.entity_type,
+                                    self.var_name,
+                                    property_filters,
+                                    len(ids),
+                                    time.perf_counter() - _t0,
+                                )
+                    except Exception:
+                        LOGGER.debug(
+                            "EntityScan: predicate pushdown failed for %s, "
+                            "falling back to full scan",
+                            self.entity_type,
+                            exc_info=True,
+                        )
+
+        if not _pushed_down:
+            # --- Standard full scan ---
+            cache: dict = getattr(context, "_property_lookup_cache", {})
+            if self.entity_type not in cache:
+                raw_df: pd.DataFrame = _source_to_pandas(entity_table.source_obj)
+                cache[self.entity_type] = raw_df.set_index(ID_COLUMN)
+            indexed_df = cache[self.entity_type]
+            ids = pd.Series(
+                indexed_df.index.to_numpy(dtype=object),
+                name=ID_COLUMN,
+            ).reset_index(drop=True)
+            if _DEBUG_ENABLED:
+                LOGGER.debug(
+                    "EntityScan.scan  entity_type=%s  var=%s  rows=%d  elapsed=%.4fs",
+                    self.entity_type,
+                    self.var_name,
+                    len(ids),
+                    time.perf_counter() - _t0,
+                )
+
         return BindingFrame(
             bindings=pd.DataFrame({self.var_name: ids}),
             type_registry={self.var_name: self.entity_type},
@@ -1304,6 +1609,51 @@ class RelationshipScan:
                 f"Available relationship types: {available or []}"
                 f"{hint}",
             ) from None
+
+        # --- Fast path: adjacency index for O(degree) pushdown ---
+        # When endpoint IDs are provided and no active shadow mutations exist,
+        # use the adjacency index for O(degree) neighbor lookup instead of
+        # O(E) table scan + isin() filter.
+        _shadow_rels: dict = getattr(context, "_shadow_rels", {})
+        if (source_ids is not None or target_ids is not None) and self.rel_type not in _shadow_rels:
+            try:
+                index_mgr = getattr(context, "index_manager", None)
+                if index_mgr is not None:
+                    idx_result = index_mgr.indexed_relationship_scan(
+                        self.rel_type,
+                        source_ids=source_ids,
+                        target_ids=target_ids,
+                    )
+                    if idx_result is not None:
+                        bindings = pd.DataFrame(
+                            {
+                                self.rel_var: idx_result[ID_COLUMN].values,
+                                self.src_col: idx_result[RELATIONSHIP_SOURCE_COLUMN].values,
+                                self.tgt_col: idx_result[RELATIONSHIP_TARGET_COLUMN].values,
+                            },
+                        )
+                        if _DEBUG_ENABLED:
+                            LOGGER.debug(
+                                "RelationshipScan.scan  rel_type=%s  var=%s  rows=%d  pushdown=index  elapsed=%.4fs",
+                                self.rel_type,
+                                self.rel_var,
+                                len(bindings),
+                                time.perf_counter() - _t0,
+                            )
+                        return BindingFrame(
+                            bindings=bindings,
+                            type_registry={self.rel_var: self.rel_type},
+                            context=context,
+                        )
+            except Exception:
+                # Fall through to table-scan path on any index error
+                LOGGER.debug(
+                    "RelationshipScan: index scan failed for %s, falling back to table scan",
+                    self.rel_type,
+                    exc_info=True,
+                )
+
+        # --- Fallback: table scan with isin() pushdown ---
         # Use the _property_lookup_cache to avoid repeated Arrow→pandas
         # conversions.  Cache key uses "__rel__" prefix to prevent collision
         # with entity type names (same convention as get_property).
