@@ -19,11 +19,11 @@ import operator as _op
 from typing import TYPE_CHECKING, Any
 
 import pandas as pd
+from shared.logger import LOGGER
 
 from pycypher.constants import _null_series
 from pycypher.exceptions import UnsupportedOperatorError
 from pycypher.types import FrameSeries
-from shared.logger import LOGGER
 
 _DEBUG_ENABLED: bool = LOGGER.isEnabledFor(logging.DEBUG)
 

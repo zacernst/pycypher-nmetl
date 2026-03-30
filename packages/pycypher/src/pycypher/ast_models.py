@@ -1572,6 +1572,34 @@ def _collect_definition_ids(node: ASTNode) -> Set[int]:
     return ids
 
 
+def extract_referenced_variables(node: ASTNode) -> set[str]:
+    """Extract all variable names referenced in an AST expression.
+
+    Uses the AST's built-in ``find_all(Variable)`` visitor to collect variable
+    names.  This traversal is complete (handles all AST node types) and
+    depth-limited (raises :exc:`SecurityError` if nesting exceeds the
+    configured maximum).
+
+    For ``PropertyLookup`` nodes (e.g. ``p.name``), extracts the base variable
+    name (``p``).
+
+    This is the **canonical** variable extraction function — all call sites
+    that need variable names from expression ASTs should use this function
+    rather than implementing ad-hoc traversal.
+
+    Args:
+        node: An AST node (typically a WHERE predicate or expression).
+
+    Returns:
+        Set of variable name strings.
+
+    """
+    refs: set[str] = set()
+    for var in node.find_all(Variable):
+        refs.add(var.name)
+    return refs
+
+
 def _collect_referenced_variables(node: ASTNode) -> Set[str]:
     """Collect all variables referenced in expressions."""
     referenced = set()
@@ -1748,7 +1776,7 @@ def _check_contradictory_comparisons(
                         suggestion="Review the comparison logic",
                         code="CONTRADICTORY_COMPARISON",
                     )
-            except (TypeError, ValueError):
+            except (TypeError, ValueError):  # fmt: skip  # parens required for Python <3.14
                 # Can't compare these types
                 pass
 

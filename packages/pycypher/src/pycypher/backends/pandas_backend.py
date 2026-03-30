@@ -83,10 +83,10 @@ class PandasBackend:
                 return right.merge(left, on=on, how="inner")
 
         if strategy == "merge":
-            key = [on] if isinstance(on, str) else on
-            left_sorted = left.sort_values(key)
-            right_sorted = right.sort_values(key)
-            return left_sorted.merge(right_sorted, on=on, how=how)  # type: ignore[arg-type]  # pandas Literal stub
+            # pandas merge uses a hash-based join internally, so pre-sorting
+            # both sides is redundant O(n log n) work.  Just pass through to
+            # the default merge path which is already O(n).
+            return left.merge(right, on=on, how=how)  # type: ignore[arg-type]  # pandas Literal stub
 
         return left.merge(right, on=on, how=how)  # type: ignore[arg-type]  # pandas Literal stub
 

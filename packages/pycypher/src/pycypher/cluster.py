@@ -52,6 +52,8 @@ from typing import Any, Protocol, runtime_checkable
 import pandas as pd
 from shared.logger import LOGGER
 
+from pycypher.exceptions import WorkerExecutionError
+
 # ---------------------------------------------------------------------------
 # Worker status
 # ---------------------------------------------------------------------------
@@ -347,22 +349,28 @@ class LocalWorker:
             with self._lock:
                 self._queries_executed += 1
                 self._total_latency_ms += elapsed_ms
-                self._active_queries -= 1
                 self._last_heartbeat = time.monotonic()
             return result
-        except Exception:  # noqa: BLE001
+        except Exception as exc:  # noqa: BLE001
             elapsed_ms = (time.perf_counter() - t0) * 1000.0
+            snippet = query[:80]
             with self._lock:
                 self._errors += 1
-                self._active_queries -= 1
             LOGGER.debug(
                 "Worker %s query failed after %.1fms: %s",
                 self._worker_id,
                 elapsed_ms,
-                query[:80],
+                snippet,
                 exc_info=True,
             )
-            raise
+            raise WorkerExecutionError(
+                worker_id=self._worker_id,
+                query_snippet=snippet,
+                elapsed_ms=elapsed_ms,
+            ) from exc
+        finally:
+            with self._lock:
+                self._active_queries -= 1
 
     def health_check(self) -> WorkerHealth:
         """Return current health snapshot.

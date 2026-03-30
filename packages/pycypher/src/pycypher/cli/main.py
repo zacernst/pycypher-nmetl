@@ -8,7 +8,8 @@ from .interactive import repl
 from .pipeline import list_queries, run, validate
 from .query import format_query, parse, query
 from .schema import functions, schema
-from .system import config, health, health_server, metrics
+from .security import security_check
+from .system import config, health, health_server, metrics, show_config
 from .utility import compat_check
 
 
@@ -60,9 +61,13 @@ cli.add_command(metrics)
 cli.add_command(config)
 cli.add_command(health)
 cli.add_command(health_server)
+cli.add_command(show_config)
 
 # Register interactive commands
 cli.add_command(repl)
+
+# Register security commands
+cli.add_command(security_check)
 
 # Register utility commands
 cli.add_command(compat_check)
