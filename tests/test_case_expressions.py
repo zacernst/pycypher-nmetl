@@ -27,7 +27,7 @@ def people_df() -> pd.DataFrame:
             "age": [30, 25, 35, 28],
             "dept": ["eng", "mktg", "eng", "sales"],
             "salary": [100_000, 80_000, 110_000, 90_000],
-        }
+        },
     )
 
 
@@ -49,7 +49,7 @@ class TestSearchedCase:
             "MATCH (p:Person) "
             "RETURN p.name AS name, "
             "CASE WHEN p.age > 28 THEN 'senior' ELSE 'junior' END AS tier "
-            "ORDER BY p.name ASC"
+            "ORDER BY p.name ASC",
         )
         assert list(result["tier"]) == ["senior", "junior", "senior", "junior"]
 
@@ -58,11 +58,11 @@ class TestSearchedCase:
             "MATCH (p:Person) "
             "RETURN p.name AS name, "
             "CASE WHEN p.dept = 'eng' THEN 'Engineering' END AS dept_label "
-            "ORDER BY p.name ASC"
+            "ORDER BY p.name ASC",
         )
         assert result["dept_label"].iloc[0] == "Engineering"  # Alice
         assert result["dept_label"].iloc[1] is None or pd.isna(
-            result["dept_label"].iloc[1]
+            result["dept_label"].iloc[1],
         )  # Bob
 
     def test_searched_case_multiple_when_clauses(self, star: Star) -> None:
@@ -74,7 +74,7 @@ class TestSearchedCase:
             "  WHEN p.age < 32 THEN 'mid' "
             "  ELSE 'senior' "
             "END AS tier "
-            "ORDER BY p.name ASC"
+            "ORDER BY p.name ASC",
         )
         tiers = dict(zip(result["name"], result["tier"]))
         assert tiers["Alice"] == "mid"  # 30
@@ -86,7 +86,7 @@ class TestSearchedCase:
         result = star.execute_query(
             "MATCH (p:Person) "
             "WITH p, CASE WHEN p.salary > 95000 THEN 'high' ELSE 'low' END AS bracket "
-            "RETURN p.name AS name, bracket ORDER BY p.name ASC"
+            "RETURN p.name AS name, bracket ORDER BY p.name ASC",
         )
         brackets = dict(zip(result["name"], result["bracket"]))
         assert brackets["Alice"] == "high"
@@ -97,7 +97,7 @@ class TestSearchedCase:
         result = star.execute_query(
             "MATCH (p:Person) "
             "WHERE CASE WHEN p.dept = 'eng' THEN p.salary ELSE 0 END > 95000 "
-            "RETURN p.name AS name ORDER BY p.name ASC"
+            "RETURN p.name AS name ORDER BY p.name ASC",
         )
         # Engineering people with salary > 95000: Alice (100k) and Carol (110k)
         assert list(result["name"]) == ["Alice", "Carol"]
@@ -107,7 +107,7 @@ class TestSearchedCase:
         result = star.execute_query(
             "MATCH (p:Person) "
             "WITH sum(CASE WHEN p.dept = 'eng' THEN p.salary ELSE 0 END) AS eng_total "
-            "RETURN eng_total AS eng_total"
+            "RETURN eng_total AS eng_total",
         )
         assert result["eng_total"].iloc[0] == pytest.approx(210_000.0)
 
@@ -125,7 +125,7 @@ class TestSimpleCase:
             "MATCH (p:Person) "
             "RETURN p.name AS name, "
             "CASE p.dept WHEN 'eng' THEN 'Engineering' WHEN 'mktg' THEN 'Marketing' ELSE 'Other' END AS dept_label "
-            "ORDER BY p.name ASC"
+            "ORDER BY p.name ASC",
         )
         labels = dict(zip(result["name"], result["dept_label"]))
         assert labels["Alice"] == "Engineering"
@@ -134,17 +134,18 @@ class TestSimpleCase:
         assert labels["Dave"] == "Other"
 
     def test_simple_case_no_else_returns_null_on_miss(
-        self, star: Star
+        self,
+        star: Star,
     ) -> None:
         result = star.execute_query(
             "MATCH (p:Person) "
             "RETURN p.name AS name, "
             "CASE p.dept WHEN 'eng' THEN 'Engineering' END AS label "
-            "ORDER BY p.name ASC"
+            "ORDER BY p.name ASC",
         )
         assert result["label"].iloc[0] == "Engineering"  # Alice
         assert result["label"].iloc[1] is None or pd.isna(
-            result["label"].iloc[1]
+            result["label"].iloc[1],
         )  # Bob
 
     def test_simple_case_numeric_discrimination(self, star: Star) -> None:
@@ -152,7 +153,7 @@ class TestSimpleCase:
             "MATCH (p:Person) "
             "RETURN p.name AS name, "
             "CASE p.age WHEN 30 THEN 'thirty' WHEN 25 THEN 'twenty-five' ELSE 'other' END AS age_label "
-            "ORDER BY p.name ASC"
+            "ORDER BY p.name ASC",
         )
         labels = dict(zip(result["name"], result["age_label"]))
         assert labels["Alice"] == "thirty"

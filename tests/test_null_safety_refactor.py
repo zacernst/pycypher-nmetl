@@ -36,7 +36,7 @@ from pycypher.star import Star
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture()
+@pytest.fixture
 def null_ctx() -> Context:
     """Single row with a null string/date column for null-propagation tests."""
     df = pd.DataFrame(
@@ -45,7 +45,7 @@ def null_ctx() -> Context:
             "name": [None],
             "score": [float("nan")],
             "dstr": [None],
-        }
+        },
     )
     table = EntityTable(
         entity_type="Item",
@@ -83,7 +83,7 @@ class TestToStringOrNullNullSafety:
         """toStringOrNull(null column) → null."""
         star = Star(context=null_ctx)
         result = star.execute_query(
-            "MATCH (i:Item) RETURN toStringOrNull(i.name) AS v"
+            "MATCH (i:Item) RETURN toStringOrNull(i.name) AS v",
         )
         assert _is_null_value(result["v"].iloc[0])
 
@@ -91,7 +91,7 @@ class TestToStringOrNullNullSafety:
         """toStringOrNull(NaN column) → null."""
         star = Star(context=null_ctx)
         result = star.execute_query(
-            "MATCH (i:Item) RETURN toStringOrNull(i.score) AS v"
+            "MATCH (i:Item) RETURN toStringOrNull(i.score) AS v",
         )
         assert _is_null_value(result["v"].iloc[0])
 
@@ -108,7 +108,7 @@ class TestLpadNullSafety:
         """lpad(null, 5, '*') → null."""
         star = Star(context=null_ctx)
         result = star.execute_query(
-            "MATCH (i:Item) RETURN lpad(i.name, 5, '*') AS v"
+            "MATCH (i:Item) RETURN lpad(i.name, 5, '*') AS v",
         )
         assert _is_null_value(result["v"].iloc[0])
 
@@ -116,7 +116,7 @@ class TestLpadNullSafety:
         """lpad(NaN column, 5, '*') → null."""
         star = Star(context=null_ctx)
         result = star.execute_query(
-            "MATCH (i:Item) RETURN lpad(i.score, 5, '*') AS v"
+            "MATCH (i:Item) RETURN lpad(i.score, 5, '*') AS v",
         )
         assert _is_null_value(result["v"].iloc[0])
 
@@ -133,7 +133,7 @@ class TestRpadNullSafety:
         """rpad(null, 5, '-') → null."""
         star = Star(context=null_ctx)
         result = star.execute_query(
-            "MATCH (i:Item) RETURN rpad(i.name, 5, '-') AS v"
+            "MATCH (i:Item) RETURN rpad(i.name, 5, '-') AS v",
         )
         assert _is_null_value(result["v"].iloc[0])
 
@@ -141,7 +141,7 @@ class TestRpadNullSafety:
         """rpad(NaN column, 5, '-') → null."""
         star = Star(context=null_ctx)
         result = star.execute_query(
-            "MATCH (i:Item) RETURN rpad(i.score, 5, '-') AS v"
+            "MATCH (i:Item) RETURN rpad(i.score, 5, '-') AS v",
         )
         assert _is_null_value(result["v"].iloc[0])
 
@@ -158,7 +158,7 @@ class TestIndexOfNullSafety:
         """indexOf(null, 'x') → null."""
         star = Star(context=null_ctx)
         result = star.execute_query(
-            "MATCH (i:Item) RETURN indexOf(i.name, 'x') AS v"
+            "MATCH (i:Item) RETURN indexOf(i.name, 'x') AS v",
         )
         assert _is_null_value(result["v"].iloc[0])
 
@@ -166,7 +166,7 @@ class TestIndexOfNullSafety:
         """indexOf(NaN, 'x') → null."""
         star = Star(context=null_ctx)
         result = star.execute_query(
-            "MATCH (i:Item) RETURN indexOf(i.score, 'x') AS v"
+            "MATCH (i:Item) RETURN indexOf(i.score, 'x') AS v",
         )
         assert _is_null_value(result["v"].iloc[0])
 
@@ -198,7 +198,7 @@ class TestDatetimeNullSafety:
         """datetime(null column) → null."""
         star = Star(context=null_ctx)
         result = star.execute_query(
-            "MATCH (i:Item) RETURN datetime(i.dstr) AS v"
+            "MATCH (i:Item) RETURN datetime(i.dstr) AS v",
         )
         assert _is_null_value(result["v"].iloc[0])
 
@@ -215,6 +215,6 @@ class TestDurationNullSafety:
         """duration(null column) → null."""
         star = Star(context=null_ctx)
         result = star.execute_query(
-            "MATCH (i:Item) RETURN duration(i.dstr) AS v"
+            "MATCH (i:Item) RETURN duration(i.dstr) AS v",
         )
         assert _is_null_value(result["v"].iloc[0])

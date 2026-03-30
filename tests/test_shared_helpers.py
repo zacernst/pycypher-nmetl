@@ -98,7 +98,7 @@ class TestEnsureBytes:
         assert ensure_bytes(None) is None
 
     def test_bytes_passthrough(self) -> None:
-        """bytes input is returned unchanged."""
+        """Bytes input is returned unchanged."""
         b = b"hello"
         assert ensure_bytes(b) is b
 
@@ -111,4 +111,4 @@ class TestEnsureBytes:
         """Custom encoding kwarg is forwarded."""
         result = ensure_bytes("café", encoding="utf-8")
         assert isinstance(result, bytes)
-        assert result == "café".encode("utf-8")
+        assert result == "café".encode()

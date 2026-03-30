@@ -24,7 +24,7 @@ def dept_context() -> Context:
             "name": ["Alice", "Bob", "Carol", "Dave", "Eve"],
             "dept": ["eng", "eng", "hr", "hr", "eng"],
             "score": [90, 90, 80, 85, 90],
-        }
+        },
     )
     table = EntityTable(
         entity_type="Person",
@@ -49,7 +49,7 @@ class TestCountDistinct:
         """count(DISTINCT p.dept) returns 2 (only 'eng' and 'hr' are unique)."""
         star = Star(context=dept_context)
         result = star.execute_query(
-            "MATCH (p:Person) RETURN count(DISTINCT p.dept) AS n"
+            "MATCH (p:Person) RETURN count(DISTINCT p.dept) AS n",
         )
         assert result["n"].iloc[0] == 2
 
@@ -57,17 +57,18 @@ class TestCountDistinct:
         """count(DISTINCT p.name) returns 5 (all names are unique)."""
         star = Star(context=dept_context)
         result = star.execute_query(
-            "MATCH (p:Person) RETURN count(DISTINCT p.name) AS n"
+            "MATCH (p:Person) RETURN count(DISTINCT p.name) AS n",
         )
         assert result["n"].iloc[0] == 5
 
     def test_count_distinct_score_duplicates(
-        self, dept_context: Context
+        self,
+        dept_context: Context,
     ) -> None:
         """count(DISTINCT p.score) returns 3 (90, 80, 85) despite 3 people scoring 90."""
         star = Star(context=dept_context)
         result = star.execute_query(
-            "MATCH (p:Person) RETURN count(DISTINCT p.score) AS n"
+            "MATCH (p:Person) RETURN count(DISTINCT p.score) AS n",
         )
         assert result["n"].iloc[0] == 3
 
@@ -76,7 +77,7 @@ class TestCountDistinct:
         star = Star(context=dept_context)
         result = star.execute_query(
             "MATCH (p:Person) "
-            "RETURN p.dept AS dept, count(DISTINCT p.score) AS unique_scores"
+            "RETURN p.dept AS dept, count(DISTINCT p.score) AS unique_scores",
         )
         assert len(result) == 2
         eng_row = result[result["dept"] == "eng"]

@@ -10,8 +10,6 @@ clause ordering, and error diagnostics.
 
 from __future__ import annotations
 
-import pytest
-
 # ---------------------------------------------------------------------------
 # Interface contract tests
 # ---------------------------------------------------------------------------
@@ -94,9 +92,7 @@ class TestValidQueryAcceptance:
 
         validator = CombinedQueryValidator()
         ast = ASTConverter.from_cypher(
-            "CREATE (n:Person {name: 'Alice'}) "
-            "WITH * "
-            "MATCH (n:Person) RETURN n.name",
+            "CREATE (n:Person {name: 'Alice'}) WITH * MATCH (n:Person) RETURN n.name",
         )
         result = validator.validate(ast)
         assert result.is_valid
@@ -159,7 +155,7 @@ class TestClauseOrderingValidation:
                 Return(
                     items=[
                         ReturnItem(expression=Variable(name="n")),
-                    ]
+                    ],
                 ),
                 Match(
                     pattern=Pattern(
@@ -197,12 +193,12 @@ class TestClauseOrderingValidation:
                 Return(
                     items=[
                         ReturnItem(expression=Variable(name="n")),
-                    ]
+                    ],
                 ),
                 Return(
                     items=[
                         ReturnItem(expression=Variable(name="m")),
-                    ]
+                    ],
                 ),
             ],
         )
@@ -245,7 +241,7 @@ class TestClauseOrderingValidation:
                 Return(
                     items=[
                         ReturnItem(expression=Variable(name="n")),
-                    ]
+                    ],
                 ),
                 Create(
                     pattern=Pattern(
@@ -323,12 +319,12 @@ class TestErrorDiagnostics:
                 Return(
                     items=[
                         ReturnItem(expression=Variable(name="n")),
-                    ]
+                    ],
                 ),
                 Return(
                     items=[
                         ReturnItem(expression=Variable(name="m")),
-                    ]
+                    ],
                 ),
             ],
         )
@@ -357,12 +353,12 @@ class TestErrorDiagnostics:
                 Return(
                     items=[
                         ReturnItem(expression=Variable(name="n")),
-                    ]
+                    ],
                 ),
                 Return(
                     items=[
                         ReturnItem(expression=Variable(name="m")),
-                    ]
+                    ],
                 ),
                 Match(
                     pattern=Pattern(

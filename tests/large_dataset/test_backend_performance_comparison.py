@@ -42,12 +42,12 @@ def large_df() -> pd.DataFrame:
     return generate_person_dataframe(200_000, seed=42)
 
 
-@pytest.fixture()
+@pytest.fixture
 def pandas_be() -> PandasBackend:
     return PandasBackend()
 
 
-@pytest.fixture()
+@pytest.fixture
 def duckdb_be() -> DuckDBBackend:
     return DuckDBBackend()
 
@@ -78,9 +78,7 @@ class TestScanPerformanceComparison:
         )
         # Pandas should not be >10x slower at small scale
         ratio = p.median_time_s / max(d.median_time_s, 1e-9)
-        assert ratio < 10, (  # noqa: PLR2004
-            f"Pandas {ratio:.1f}x slower than DuckDB at 1K rows"
-        )
+        assert ratio < 10, f"Pandas {ratio:.1f}x slower than DuckDB at 1K rows"
 
     def test_scan_large_both_complete(
         self,
@@ -131,7 +129,7 @@ class TestFilterPerformanceComparison:
         )
 
         # Record selectivity for debugging
-        assert selectivity < 0.1  # noqa: PLR2004
+        assert selectivity < 0.1
         # Both should complete quickly
         p.assert_time_under(2.0)
         d.assert_time_under(2.0)
@@ -156,13 +154,13 @@ class TestJoinPerformanceComparison:
             {
                 "id": np.arange(10_000),
                 "val": np.random.default_rng(42).standard_normal(10_000),
-            }
+            },
         )
         right = pd.DataFrame(
             {
                 "id": np.arange(5_000, 15_000),
                 "score": np.random.default_rng(43).standard_normal(10_000),
-            }
+            },
         )
 
         p = run_benchmark(
@@ -189,13 +187,13 @@ class TestJoinPerformanceComparison:
             {
                 "id": np.arange(100_000),
                 "val": rng.standard_normal(100_000),
-            }
+            },
         )
         right = pd.DataFrame(
             {
                 "id": np.arange(50_000, 150_000),
                 "score": rng.standard_normal(100_000),
-            }
+            },
         )
 
         p = run_benchmark(
@@ -332,7 +330,7 @@ class TestAutoSelectionValidation:
         assert be.name == "pandas"
 
         result = be.scan_entity(df, "Person")
-        assert be.row_count(result) == 1_000  # noqa: PLR2004
+        assert be.row_count(result) == 1_000
 
     def test_auto_selection_large_produces_correct_results(self) -> None:
         """Verify DuckDB produces same results as pandas."""
@@ -368,4 +366,4 @@ class TestAutoSelectionValidation:
         large_est = be.memory_estimate_bytes(large)
 
         # 100x more rows should be at least 10x more memory
-        assert large_est > small_est * 10  # noqa: PLR2004
+        assert large_est > small_est * 10

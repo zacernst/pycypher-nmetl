@@ -27,7 +27,7 @@ def knows_context() -> Context:
         {
             ID_COLUMN: [1, 2, 3],
             "name": ["Alice", "Bob", "Carol"],
-        }
+        },
     )
     people_table = EntityTable(
         entity_type="Person",
@@ -44,7 +44,7 @@ def knows_context() -> Context:
             ID_COLUMN: [101, 102],
             "__SOURCE__": [1, 2],
             "__TARGET__": [2, 3],
-        }
+        },
     )
     knows_table = RelationshipTable(
         relationship_type="KNOWS",
@@ -58,7 +58,7 @@ def knows_context() -> Context:
     return Context(
         entity_mapping=EntityMapping(mapping={"Person": people_table}),
         relationship_mapping=RelationshipMapping(
-            mapping={"KNOWS": knows_table}
+            mapping={"KNOWS": knows_table},
         ),
     )
 
@@ -71,7 +71,7 @@ def simple_context() -> Context:
             ID_COLUMN: [1, 2],
             "name": ["Alice", "Bob"],
             "age": [30, 25],
-        }
+        },
     )
     table = EntityTable(
         entity_type="Person",
@@ -94,7 +94,8 @@ def simple_context() -> Context:
 
 class TestOptionalMatchBasic:
     def test_optional_match_as_first_clause_finds_results(
-        self, simple_context: Context
+        self,
+        simple_context: Context,
     ) -> None:
         """OPTIONAL MATCH as first clause works like regular MATCH when rows exist."""
         star = Star(context=simple_context)
@@ -103,7 +104,8 @@ class TestOptionalMatchBasic:
         assert set(result["name"].tolist()) == {"Alice", "Bob"}
 
     def test_optional_match_as_first_clause_nonexistent_type(
-        self, simple_context: Context
+        self,
+        simple_context: Context,
     ) -> None:
         """OPTIONAL MATCH on a nonexistent entity type returns 0 rows as first clause."""
         star = Star(context=simple_context)
@@ -118,19 +120,21 @@ class TestOptionalMatchBasic:
 
 class TestOptionalMatchLeftJoin:
     def test_optional_match_preserves_all_left_rows(
-        self, knows_context: Context
+        self,
+        knows_context: Context,
     ) -> None:
         """MATCH then OPTIONAL MATCH — all 3 persons returned even if no KNOWS match."""
         star = Star(context=knows_context)
         result = star.execute_query(
-            "MATCH (p:Person) OPTIONAL MATCH (p)-[:KNOWS]->(f:Person) RETURN p.name"
+            "MATCH (p:Person) OPTIONAL MATCH (p)-[:KNOWS]->(f:Person) RETURN p.name",
         )
         # All 3 persons should appear (Carol too, even with no outgoing KNOWS)
         assert len(result) == 3
         assert set(result["name"].tolist()) == {"Alice", "Bob", "Carol"}
 
     def test_optional_match_row_count_with_relationship(
-        self, knows_context: Context
+        self,
+        knows_context: Context,
     ) -> None:
         """Rows where optional match found something have correct count."""
         star = Star(context=knows_context)
@@ -139,7 +143,7 @@ class TestOptionalMatchLeftJoin:
             "OPTIONAL MATCH (p)-[:KNOWS]->(f:Person) "
             "WITH p.name AS pname, f.name AS fname "
             "WHERE fname IS NOT NULL "
-            "RETURN pname, fname"
+            "RETURN pname, fname",
         )
         # Only Alice->Bob and Bob->Carol have KNOWS edges
         assert len(result) == 2
@@ -148,7 +152,8 @@ class TestOptionalMatchLeftJoin:
         assert ("Bob", "Carol") in pairs
 
     def test_optional_match_null_for_unmatched_rows(
-        self, knows_context: Context
+        self,
+        knows_context: Context,
     ) -> None:
         """Carol has no outgoing KNOWS — her f variable is null/None."""
         star = Star(context=knows_context)
@@ -157,7 +162,7 @@ class TestOptionalMatchLeftJoin:
             "OPTIONAL MATCH (p)-[:KNOWS]->(f:Person) "
             "WITH p.name AS pname, f.name AS fname "
             "WHERE pname = 'Carol' "
-            "RETURN pname, fname"
+            "RETURN pname, fname",
         )
         assert len(result) == 1
         fname_val = result["fname"].iloc[0]
@@ -174,7 +179,8 @@ class TestOptionalMatchLeftJoin:
 
 class TestOptionalMatchNullHandling:
     def test_is_null_filters_unmatched_rows(
-        self, knows_context: Context
+        self,
+        knows_context: Context,
     ) -> None:
         """WHERE fname IS NULL returns only Carol (no outgoing KNOWS)."""
         star = Star(context=knows_context)
@@ -183,13 +189,14 @@ class TestOptionalMatchNullHandling:
             "OPTIONAL MATCH (p)-[:KNOWS]->(f:Person) "
             "WITH p.name AS pname, f.name AS fname "
             "WHERE fname IS NULL "
-            "RETURN pname"
+            "RETURN pname",
         )
         assert len(result) == 1
         assert result["pname"].iloc[0] == "Carol"
 
     def test_is_not_null_filters_matched_rows(
-        self, knows_context: Context
+        self,
+        knows_context: Context,
     ) -> None:
         """WHERE fname IS NOT NULL returns Alice and Bob (have outgoing KNOWS)."""
         star = Star(context=knows_context)
@@ -198,7 +205,7 @@ class TestOptionalMatchNullHandling:
             "OPTIONAL MATCH (p)-[:KNOWS]->(f:Person) "
             "WITH p.name AS pname, f.name AS fname "
             "WHERE fname IS NOT NULL "
-            "RETURN pname"
+            "RETURN pname",
         )
         assert len(result) == 2
         assert set(result["pname"].tolist()) == {"Alice", "Bob"}

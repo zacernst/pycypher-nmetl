@@ -80,93 +80,93 @@ class TestCorrectnessRegression:
 
     def test_abs_positive(self) -> None:
         assert float(
-            _reg().execute("abs", [_s(5.0)]).iloc[0]
+            _reg().execute("abs", [_s(5.0)]).iloc[0],
         ) == pytest.approx(5.0)
 
     def test_abs_negative(self) -> None:
         assert float(
-            _reg().execute("abs", [_s(-7.3)]).iloc[0]
+            _reg().execute("abs", [_s(-7.3)]).iloc[0],
         ) == pytest.approx(7.3)
 
     def test_abs_zero(self) -> None:
         assert float(
-            _reg().execute("abs", [_s(0.0)]).iloc[0]
+            _reg().execute("abs", [_s(0.0)]).iloc[0],
         ) == pytest.approx(0.0)
 
     def test_ceil_basic(self) -> None:
         assert float(
-            _reg().execute("ceil", [_s(1.1)]).iloc[0]
+            _reg().execute("ceil", [_s(1.1)]).iloc[0],
         ) == pytest.approx(2.0)
 
     def test_ceil_negative(self) -> None:
         assert float(
-            _reg().execute("ceil", [_s(-1.9)]).iloc[0]
+            _reg().execute("ceil", [_s(-1.9)]).iloc[0],
         ) == pytest.approx(-1.0)
 
     def test_floor_basic(self) -> None:
         assert float(
-            _reg().execute("floor", [_s(1.9)]).iloc[0]
+            _reg().execute("floor", [_s(1.9)]).iloc[0],
         ) == pytest.approx(1.0)
 
     def test_floor_negative(self) -> None:
         assert float(
-            _reg().execute("floor", [_s(-1.1)]).iloc[0]
+            _reg().execute("floor", [_s(-1.1)]).iloc[0],
         ) == pytest.approx(-2.0)
 
     def test_sign_positive(self) -> None:
         assert float(
-            _reg().execute("sign", [_s(5.0)]).iloc[0]
+            _reg().execute("sign", [_s(5.0)]).iloc[0],
         ) == pytest.approx(1.0)
 
     def test_sign_negative(self) -> None:
         assert float(
-            _reg().execute("sign", [_s(-3.0)]).iloc[0]
+            _reg().execute("sign", [_s(-3.0)]).iloc[0],
         ) == pytest.approx(-1.0)
 
     def test_sign_zero(self) -> None:
         assert float(
-            _reg().execute("sign", [_s(0.0)]).iloc[0]
+            _reg().execute("sign", [_s(0.0)]).iloc[0],
         ) == pytest.approx(0.0)
 
     def test_sqrt_four(self) -> None:
         assert float(
-            _reg().execute("sqrt", [_s(4.0)]).iloc[0]
+            _reg().execute("sqrt", [_s(4.0)]).iloc[0],
         ) == pytest.approx(2.0)
 
     def test_sqrt_nine(self) -> None:
         assert float(
-            _reg().execute("sqrt", [_s(9.0)]).iloc[0]
+            _reg().execute("sqrt", [_s(9.0)]).iloc[0],
         ) == pytest.approx(3.0)
 
     def test_cbrt_eight(self) -> None:
         assert float(
-            _reg().execute("cbrt", [_s(8.0)]).iloc[0]
+            _reg().execute("cbrt", [_s(8.0)]).iloc[0],
         ) == pytest.approx(2.0)
 
     def test_cbrt_negative(self) -> None:
-        """cbrt supports negative inputs: cbrt(-8) = -2.0."""
+        """Cbrt supports negative inputs: cbrt(-8) = -2.0."""
         assert float(
-            _reg().execute("cbrt", [_s(-8.0)]).iloc[0]
+            _reg().execute("cbrt", [_s(-8.0)]).iloc[0],
         ) == pytest.approx(-2.0)
 
     def test_log_one(self) -> None:
         assert float(
-            _reg().execute("log", [_s(1.0)]).iloc[0]
+            _reg().execute("log", [_s(1.0)]).iloc[0],
         ) == pytest.approx(0.0)
 
     def test_log_e(self) -> None:
         assert float(
-            _reg().execute("log", [_s(math.e)]).iloc[0]
+            _reg().execute("log", [_s(math.e)]).iloc[0],
         ) == pytest.approx(1.0)
 
     def test_exp_zero(self) -> None:
         assert float(
-            _reg().execute("exp", [_s(0.0)]).iloc[0]
+            _reg().execute("exp", [_s(0.0)]).iloc[0],
         ) == pytest.approx(1.0)
 
     def test_exp_one(self) -> None:
         assert float(
-            _reg().execute("exp", [_s(1.0)]).iloc[0]
+            _reg().execute("exp", [_s(1.0)]).iloc[0],
         ) == pytest.approx(math.e)
 
     def test_exp_overflow_returns_inf(self) -> None:
@@ -176,32 +176,32 @@ class TestCorrectnessRegression:
 
     def test_log2_one(self) -> None:
         assert float(
-            _reg().execute("log2", [_s(1.0)]).iloc[0]
+            _reg().execute("log2", [_s(1.0)]).iloc[0],
         ) == pytest.approx(0.0)
 
     def test_log2_eight(self) -> None:
         assert float(
-            _reg().execute("log2", [_s(8.0)]).iloc[0]
+            _reg().execute("log2", [_s(8.0)]).iloc[0],
         ) == pytest.approx(3.0)
 
     def test_log10_one(self) -> None:
         assert float(
-            _reg().execute("log10", [_s(1.0)]).iloc[0]
+            _reg().execute("log10", [_s(1.0)]).iloc[0],
         ) == pytest.approx(0.0)
 
     def test_log10_hundred(self) -> None:
         assert float(
-            _reg().execute("log10", [_s(100.0)]).iloc[0]
+            _reg().execute("log10", [_s(100.0)]).iloc[0],
         ) == pytest.approx(2.0)
 
     def test_pow_basic(self) -> None:
         assert float(
-            _reg().execute("pow", [_s(2.0), _s(10.0)]).iloc[0]
+            _reg().execute("pow", [_s(2.0), _s(10.0)]).iloc[0],
         ) == pytest.approx(1024.0)
 
     def test_pow_zero_exponent(self) -> None:
         assert float(
-            _reg().execute("pow", [_s(5.0), _s(0.0)]).iloc[0]
+            _reg().execute("pow", [_s(5.0), _s(0.0)]).iloc[0],
         ) == pytest.approx(1.0)
 
     def test_pow_overflow_returns_inf(self) -> None:
@@ -379,7 +379,7 @@ class TestMathVectorisationPerformance:
         )
 
     def test_numpy_vs_apply_speedup(self) -> None:
-        """numpy abs must be ≥ 3× faster than .apply() at 10k rows."""
+        """Numpy abs must be ≥ 3× faster than .apply() at 10k rows."""
         arr = np.linspace(-10.0, 10.0, N)
         s_obj = pd.Series(arr, dtype=object)
 

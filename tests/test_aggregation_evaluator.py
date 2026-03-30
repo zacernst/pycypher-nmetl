@@ -142,7 +142,8 @@ class TestAggregationHelperFunctions:
         """Test discrete percentile (lower interpolation)."""
         values = pd.Series([1, 2, 3, 4, 5])
         result = _agg_percentile_disc(
-            values, 0.6
+            values,
+            0.6,
         )  # Should select actual value
         assert isinstance(result, float)
 
@@ -221,9 +222,7 @@ class TestNormalizeFuncArgs:
     def test_normalize_single_argument(self) -> None:
         """Test normalization of single argument returns empty list."""
         result = _normalize_func_args("n.age")
-        assert (
-            result == []
-        )  # Single strings don't match expected dict/list format
+        assert result == []  # Single strings don't match expected dict/list format
 
 
 class TestDispatchTables:
@@ -246,12 +245,12 @@ class TestDispatchTables:
     def test_percentile_aggregations_set(self) -> None:
         """Test percentile aggregations set."""
         expected = {"percentilecont", "percentiledisc"}
-        assert _PERCENTILE_AGGREGATIONS == expected
+        assert expected == _PERCENTILE_AGGREGATIONS
 
     def test_known_aggregations_completeness(self) -> None:
         """Test KNOWN_AGGREGATIONS includes all aggregation functions."""
         expected = set(_AGG_OPS.keys()) | _PERCENTILE_AGGREGATIONS
-        assert KNOWN_AGGREGATIONS == expected
+        assert expected == KNOWN_AGGREGATIONS
 
     def test_collect_operation(self) -> None:
         """Test collect aggregation function."""
@@ -277,7 +276,7 @@ class TestAggregationExpressionEvaluator:
                 ID_COLUMN: [1, 2, 3, 4, 5],
                 "Person__age": [25, 30, 35, 40, 45],
                 "Person__salary": [50000, 60000, 70000, 80000, 90000],
-            }
+            },
         )
 
         person_table = EntityTable.from_dataframe(
@@ -287,21 +286,24 @@ class TestAggregationExpressionEvaluator:
                     ID_COLUMN: [1, 2, 3, 4, 5],
                     "age": [25, 30, 35, 40, 45],
                     "salary": [50000, 60000, 70000, 80000, 90000],
-                }
+                },
             ),
         )
 
         context = Context(
-            entity_mapping=EntityMapping(mapping={"Person": person_table})
+            entity_mapping=EntityMapping(mapping={"Person": person_table}),
         )
         type_registry = {"p": "Person"}
         return BindingFrame(
-            bindings=df, context=context, type_registry=type_registry
+            bindings=df,
+            context=context,
+            type_registry=type_registry,
         )
 
     @pytest.fixture
     def aggregation_evaluator(
-        self, test_frame: BindingFrame
+        self,
+        test_frame: BindingFrame,
     ) -> AggregationExpressionEvaluator:
         """Create AggregationExpressionEvaluator instance."""
         return AggregationExpressionEvaluator(test_frame)
@@ -322,7 +324,7 @@ class TestCountStarEvaluation:
             {
                 ID_COLUMN: [1, 2, 3, 4],
                 "Person__age": [25, 30, 35, 40],
-            }
+            },
         )
 
         person_table = EntityTable.from_dataframe(
@@ -331,16 +333,18 @@ class TestCountStarEvaluation:
                 {
                     ID_COLUMN: [1, 2, 3, 4],
                     "age": [25, 30, 35, 40],
-                }
+                },
             ),
         )
 
         context = Context(
-            entity_mapping=EntityMapping(mapping={"Person": person_table})
+            entity_mapping=EntityMapping(mapping={"Person": person_table}),
         )
         type_registry = {"p": "Person"}
         return BindingFrame(
-            bindings=df, context=context, type_registry=type_registry
+            bindings=df,
+            context=context,
+            type_registry=type_registry,
         )
 
     def test_count_star_evaluation(self, test_frame: BindingFrame) -> None:
@@ -368,7 +372,7 @@ class TestFunctionInvocationEvaluation:
                     80000,
                     90000,
                 ],  # Include null for testing
-            }
+            },
         )
 
         person_table = EntityTable.from_dataframe(
@@ -377,22 +381,25 @@ class TestFunctionInvocationEvaluation:
                 {
                     ID_COLUMN: [1, 2, 3, 4, 5],
                     "salary": [50000, 60000, None, 80000, 90000],
-                }
+                },
             ),
         )
 
         context = Context(
-            entity_mapping=EntityMapping(mapping={"Person": person_table})
+            entity_mapping=EntityMapping(mapping={"Person": person_table}),
         )
         type_registry = {"p": "Person"}
         return BindingFrame(
-            bindings=df, context=context, type_registry=type_registry
+            bindings=df,
+            context=context,
+            type_registry=type_registry,
         )
 
     def test_sum_aggregation(self, test_frame: BindingFrame) -> None:
         """Test SUM aggregation function."""
         sum_function = FunctionInvocation(
-            name="sum", arguments={"expression": "n.salary"}
+            name="sum",
+            arguments={"expression": "n.salary"},
         )
 
         class MockExpressionEvaluator:
@@ -412,7 +419,8 @@ class TestFunctionInvocationEvaluation:
     def test_count_with_expression(self, test_frame: BindingFrame) -> None:
         """Test COUNT(expression) - counts non-null values."""
         count_function = FunctionInvocation(
-            name="count", arguments={"expression": "n.salary"}
+            name="count",
+            arguments={"expression": "n.salary"},
         )
 
         class MockExpressionEvaluator:
@@ -440,11 +448,13 @@ class TestFunctionInvocationEvaluation:
         assert result == 5
 
     def test_unsupported_aggregation_function(
-        self, test_frame: BindingFrame
+        self,
+        test_frame: BindingFrame,
     ) -> None:
         """Test unsupported aggregation function raises UnsupportedFunctionError."""
         unsupported_function = FunctionInvocation(
-            name="unsupported", arguments={"expression": "n.age"}
+            name="unsupported",
+            arguments={"expression": "n.age"},
         )
 
         class MockExpressionEvaluator:
@@ -460,7 +470,8 @@ class TestFunctionInvocationEvaluation:
 
         with pytest.raises(UnsupportedFunctionError):
             evaluator.evaluate_aggregation(
-                unsupported_function, mock_evaluator
+                unsupported_function,
+                mock_evaluator,
             )
 
 
@@ -480,7 +491,7 @@ class TestDistinctAggregation:
                     2,
                     3,
                 ],  # Duplicate values for DISTINCT testing
-            }
+            },
         )
 
         person_table = EntityTable.from_dataframe(
@@ -489,16 +500,18 @@ class TestDistinctAggregation:
                 {
                     ID_COLUMN: [1, 2, 3, 4, 5],
                     "category": [1, 1, 2, 2, 3],
-                }
+                },
             ),
         )
 
         context = Context(
-            entity_mapping=EntityMapping(mapping={"Person": person_table})
+            entity_mapping=EntityMapping(mapping={"Person": person_table}),
         )
         type_registry = {"p": "Person"}
         return BindingFrame(
-            bindings=df, context=context, type_registry=type_registry
+            bindings=df,
+            context=context,
+            type_registry=type_registry,
         )
 
     def test_sum_distinct(self, test_frame: BindingFrame) -> None:
@@ -513,14 +526,15 @@ class TestDistinctAggregation:
             def evaluate(expr):
                 if expr == "n.category":
                     return pd.Series(
-                        [1, 1, 2, 2, 3]
+                        [1, 1, 2, 2, 3],
                     )  # Duplicates: should sum to 1+2+3=6
                 return pd.Series([0, 0, 0, 0, 0])
 
         evaluator = AggregationExpressionEvaluator(test_frame)
         mock_evaluator = MockExpressionEvaluator()
         result = evaluator.evaluate_aggregation(
-            sum_distinct_function, mock_evaluator
+            sum_distinct_function,
+            mock_evaluator,
         )
 
         # SUM DISTINCT should deduplicate: 1 + 2 + 3 = 6
@@ -537,7 +551,7 @@ class TestPercentileAggregations:
             {
                 ID_COLUMN: [1, 2, 3, 4, 5],
                 "Person__score": [10, 20, 30, 40, 50],
-            }
+            },
         )
 
         person_table = EntityTable.from_dataframe(
@@ -546,26 +560,29 @@ class TestPercentileAggregations:
                 {
                     ID_COLUMN: [1, 2, 3, 4, 5],
                     "score": [10, 20, 30, 40, 50],
-                }
+                },
             ),
         )
 
         context = Context(
-            entity_mapping=EntityMapping(mapping={"Person": person_table})
+            entity_mapping=EntityMapping(mapping={"Person": person_table}),
         )
         type_registry = {"p": "Person"}
         return BindingFrame(
-            bindings=df, context=context, type_registry=type_registry
+            bindings=df,
+            context=context,
+            type_registry=type_registry,
         )
 
     def test_percentile_cont_evaluation(
-        self, test_frame: BindingFrame
+        self,
+        test_frame: BindingFrame,
     ) -> None:
         """Test percentileCont evaluation."""
         percentile_cont_function = FunctionInvocation(
             name="percentileCont",
             arguments={
-                "arguments": ["n.score", "0.5"]
+                "arguments": ["n.score", "0.5"],
             },  # 50th percentile (median)
         )
 
@@ -574,21 +591,23 @@ class TestPercentileAggregations:
             def evaluate(expr):
                 if expr == "n.score":
                     return pd.Series([10, 20, 30, 40, 50])
-                elif expr == "0.5":
+                if expr == "0.5":
                     return pd.Series([0.5])
                 return pd.Series([0])
 
         evaluator = AggregationExpressionEvaluator(test_frame)
         mock_evaluator = MockExpressionEvaluator()
         result = evaluator.evaluate_aggregation(
-            percentile_cont_function, mock_evaluator
+            percentile_cont_function,
+            mock_evaluator,
         )
 
         # 50th percentile of [10, 20, 30, 40, 50] is 30.0
         assert result == 30.0
 
     def test_percentile_disc_evaluation(
-        self, test_frame: BindingFrame
+        self,
+        test_frame: BindingFrame,
     ) -> None:
         """Test percentileDisc evaluation."""
         percentile_disc_function = FunctionInvocation(
@@ -601,14 +620,15 @@ class TestPercentileAggregations:
             def evaluate(expr):
                 if expr == "n.score":
                     return pd.Series([10, 20, 30, 40, 50])
-                elif expr == "0.5":
+                if expr == "0.5":
                     return pd.Series([0.5])
                 return pd.Series([0])
 
         evaluator = AggregationExpressionEvaluator(test_frame)
         mock_evaluator = MockExpressionEvaluator()
         result = evaluator.evaluate_aggregation(
-            percentile_disc_function, mock_evaluator
+            percentile_disc_function,
+            mock_evaluator,
         )
 
         # Should return an actual value from the dataset
@@ -616,13 +636,14 @@ class TestPercentileAggregations:
         assert result in [10.0, 20.0, 30.0, 40.0, 50.0]
 
     def test_percentile_insufficient_arguments(
-        self, test_frame: BindingFrame
+        self,
+        test_frame: BindingFrame,
     ) -> None:
         """Test percentile functions with insufficient arguments."""
         percentile_function = FunctionInvocation(
             name="percentileCont",
             arguments={
-                "arguments": ["n.score"]
+                "arguments": ["n.score"],
             },  # Missing percentile argument
         )
 
@@ -651,7 +672,7 @@ class TestGroupedAggregation:
                 ID_COLUMN: [1, 2, 3, 4, 5, 6],
                 "Person__department": ["A", "A", "B", "B", "C", "C"],
                 "Person__salary": [50000, 60000, 70000, 80000, 90000, 100000],
-            }
+            },
         )
 
         person_table = EntityTable.from_dataframe(
@@ -661,16 +682,18 @@ class TestGroupedAggregation:
                     ID_COLUMN: [1, 2, 3, 4, 5, 6],
                     "department": ["A", "A", "B", "B", "C", "C"],
                     "salary": [50000, 60000, 70000, 80000, 90000, 100000],
-                }
+                },
             ),
         )
 
         context = Context(
-            entity_mapping=EntityMapping(mapping={"Person": person_table})
+            entity_mapping=EntityMapping(mapping={"Person": person_table}),
         )
         type_registry = {"p": "Person"}
         return BindingFrame(
-            bindings=df, context=context, type_registry=type_registry
+            bindings=df,
+            context=context,
+            type_registry=type_registry,
         )
 
     def test_grouped_count_star(self, test_frame: BindingFrame) -> None:
@@ -680,12 +703,15 @@ class TestGroupedAggregation:
         group_df = pd.DataFrame(
             {
                 "Person__department": ["A", "A", "B", "B", "C", "C"],
-            }
+            },
         )
 
         evaluator = AggregationExpressionEvaluator(test_frame)
         result = evaluator.evaluate_aggregation_grouped(
-            count_star, group_df, ["Person__department"], None
+            count_star,
+            group_df,
+            ["Person__department"],
+            None,
         )
 
         # Should return Series with count per group: [2, 2, 2] for groups A, B, C
@@ -696,7 +722,8 @@ class TestGroupedAggregation:
     def test_grouped_sum_aggregation(self, test_frame: BindingFrame) -> None:
         """Test grouped SUM aggregation."""
         sum_function = FunctionInvocation(
-            name="sum", arguments={"expression": "n.salary"}
+            name="sum",
+            arguments={"expression": "n.salary"},
         )
 
         class MockExpressionEvaluator:
@@ -704,20 +731,23 @@ class TestGroupedAggregation:
             def evaluate(expr):
                 if expr == "n.salary":
                     return pd.Series(
-                        [50000, 60000, 70000, 80000, 90000, 100000]
+                        [50000, 60000, 70000, 80000, 90000, 100000],
                     )
                 return pd.Series([0, 0, 0, 0, 0, 0])
 
         group_df = pd.DataFrame(
             {
                 "Person__department": ["A", "A", "B", "B", "C", "C"],
-            }
+            },
         )
 
         evaluator = AggregationExpressionEvaluator(test_frame)
         mock_evaluator = MockExpressionEvaluator()
         result = evaluator.evaluate_aggregation_grouped(
-            sum_function, group_df, ["Person__department"], mock_evaluator
+            sum_function,
+            group_df,
+            ["Person__department"],
+            mock_evaluator,
         )
 
         # Should return Series with sum per group
@@ -730,11 +760,13 @@ class TestGroupedAggregation:
         assert list(result) == expected_sums
 
     def test_grouped_unsupported_aggregation(
-        self, test_frame: BindingFrame
+        self,
+        test_frame: BindingFrame,
     ) -> None:
         """Test grouped aggregation with unsupported function returns None."""
         unsupported_function = FunctionInvocation(
-            name="unsupported", arguments={"expression": "n.salary"}
+            name="unsupported",
+            arguments={"expression": "n.salary"},
         )
 
         class MockExpressionEvaluator:
@@ -745,7 +777,7 @@ class TestGroupedAggregation:
         group_df = pd.DataFrame(
             {
                 "Person__department": ["A", "A", "B", "B"],
-            }
+            },
         )
 
         evaluator = AggregationExpressionEvaluator(test_frame)
@@ -770,7 +802,7 @@ class TestArithmeticInAggregation:
             {
                 ID_COLUMN: [1, 2, 3, 4],
                 "Person__count": [10, 20, 30, 40],
-            }
+            },
         )
 
         person_table = EntityTable.from_dataframe(
@@ -779,16 +811,18 @@ class TestArithmeticInAggregation:
                 {
                     ID_COLUMN: [1, 2, 3, 4],
                     "count": [10, 20, 30, 40],
-                }
+                },
             ),
         )
 
         context = Context(
-            entity_mapping=EntityMapping(mapping={"Person": person_table})
+            entity_mapping=EntityMapping(mapping={"Person": person_table}),
         )
         type_registry = {"p": "Person"}
         return BindingFrame(
-            bindings=df, context=context, type_registry=type_registry
+            bindings=df,
+            context=context,
+            type_registry=type_registry,
         )
 
     def test_arithmetic_in_aggregation(self, test_frame: BindingFrame) -> None:
@@ -796,34 +830,40 @@ class TestArithmeticInAggregation:
         count_star = CountStar()
         literal_one = IntegerLiteral(value=1)
         arithmetic_expr = Arithmetic(
-            operator="+", left=count_star, right=literal_one
+            operator="+",
+            left=count_star,
+            right=literal_one,
         )
 
         class MockExpressionEvaluator:
             def _eval_as_scalar(self, expr):
                 if isinstance(expr, CountStar):
                     return 4  # Frame length
-                elif isinstance(expr, IntegerLiteral):
+                if isinstance(expr, IntegerLiteral):
                     return expr.value
                 return 0
 
         evaluator = AggregationExpressionEvaluator(test_frame)
         mock_evaluator = MockExpressionEvaluator()
         result = evaluator.evaluate_aggregation(
-            arithmetic_expr, mock_evaluator
+            arithmetic_expr,
+            mock_evaluator,
         )
 
         # COUNT(*) + 1 = 4 + 1 = 5
         assert result == 5
 
     def test_division_by_zero_in_aggregation(
-        self, test_frame: BindingFrame
+        self,
+        test_frame: BindingFrame,
     ) -> None:
         """Test division by zero in aggregation arithmetic returns None."""
         literal_ten = IntegerLiteral(value=10)
         literal_zero = IntegerLiteral(value=0)
         division_expr = Arithmetic(
-            operator="/", left=literal_ten, right=literal_zero
+            operator="/",
+            left=literal_ten,
+            right=literal_zero,
         )
 
         class MockExpressionEvaluator:
@@ -838,13 +878,16 @@ class TestArithmeticInAggregation:
         assert result is None
 
     def test_unsupported_arithmetic_operator(
-        self, test_frame: BindingFrame
+        self,
+        test_frame: BindingFrame,
     ) -> None:
         """Test unsupported arithmetic operator in aggregation raises ValueError."""
         literal_ten = IntegerLiteral(value=10)
         literal_two = IntegerLiteral(value=2)
         arithmetic_expr = Arithmetic(
-            operator="@", left=literal_ten, right=literal_two
+            operator="@",
+            left=literal_ten,
+            right=literal_two,
         )  # Unsupported operator
 
         class MockExpressionEvaluator:
@@ -866,14 +909,17 @@ class TestErrorHandling:
         """Create minimal test BindingFrame."""
         df = pd.DataFrame({ID_COLUMN: [1, 2, 3]})
         person_table = EntityTable.from_dataframe(
-            "Person", pd.DataFrame({ID_COLUMN: [1, 2, 3]})
+            "Person",
+            pd.DataFrame({ID_COLUMN: [1, 2, 3]}),
         )
         context = Context(
-            entity_mapping=EntityMapping(mapping={"Person": person_table})
+            entity_mapping=EntityMapping(mapping={"Person": person_table}),
         )
         type_registry = {"p": "Person"}
         return BindingFrame(
-            bindings=df, context=context, type_registry=type_registry
+            bindings=df,
+            context=context,
+            type_registry=type_registry,
         )
 
     def test_invalid_expression_type(self, test_frame: BindingFrame) -> None:
@@ -885,12 +931,14 @@ class TestErrorHandling:
         evaluator = AggregationExpressionEvaluator(test_frame)
 
         with pytest.raises(
-            ValueError, match="Expected FunctionInvocation or CountStar"
+            ValueError,
+            match="Expected FunctionInvocation or CountStar",
         ):
             evaluator.evaluate_aggregation(InvalidExpression(), None)
 
     def test_missing_argument_expression(
-        self, test_frame: BindingFrame
+        self,
+        test_frame: BindingFrame,
     ) -> None:
         """Test aggregation without required argument raises ValueError."""
         sum_function = FunctionInvocation(name="sum", arguments=None)

@@ -6,18 +6,14 @@ and detects regressions by comparing execution profiles across scales.
 
 from __future__ import annotations
 
-import math
 import time
-from typing import Any
 
 import pytest
 from pycypher.star import Star
 
 from .load_generator import (
-    SCALE_MEDIUM,
     SCALE_MICRO,
     SCALE_SMALL,
-    GraphScale,
     build_graph,
 )
 
@@ -32,7 +28,11 @@ def stars_by_scale() -> dict[str, Star]:
 
 
 def _measure_query(
-    star: Star, query: str, *, warmup: int = 1, runs: int = 3
+    star: Star,
+    query: str,
+    *,
+    warmup: int = 1,
+    runs: int = 3,
 ) -> float:
     """Return median execution time in seconds."""
     for _ in range(warmup):
@@ -97,10 +97,7 @@ class TestJoinScaling:
         stars_by_scale: dict[str, Star],
     ) -> None:
         """Single-hop join with LIMIT should scale sub-linearly."""
-        query = (
-            "MATCH (a:Person)-[:KNOWS]->(b:Person) "
-            "RETURN a.name, b.name LIMIT 50"
-        )
+        query = "MATCH (a:Person)-[:KNOWS]->(b:Person) RETURN a.name, b.name LIMIT 50"
         t_micro = _measure_query(stars_by_scale["micro"], query)
         t_small = _measure_query(stars_by_scale["small"], query)
 

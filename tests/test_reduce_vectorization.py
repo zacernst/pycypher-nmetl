@@ -65,7 +65,7 @@ def _star_empty():
         context=Context(
             entity_mapping=EntityMapping(mapping={}),
             relationship_mapping=RelationshipMapping(mapping={}),
-        )
+        ),
     )
 
 
@@ -73,7 +73,7 @@ def _q(cypher: str) -> pd.DataFrame:
     return _star_empty().execute_query(cypher)
 
 
-def _star_with_rows(rows: list[dict]) -> "Star":
+def _star_with_rows(rows: list[dict]) -> Star:
     """Create a Star with a single 'Row' entity table from the given rows."""
     import pandas as pd
     from pycypher.relational_models import (
@@ -102,7 +102,7 @@ def _star_with_rows(rows: list[dict]) -> "Star":
         context=Context(
             entity_mapping=EntityMapping(mapping={"Row": table}),
             relationship_mapping=RelationshipMapping(mapping={}),
-        )
+        ),
     )
 
 
@@ -112,9 +112,7 @@ def _reference_reduce(list_series, initial_series, step_fn):
     results = []
     for raw_list, init_val in zip(list_series, initial_series):
         acc = init_val
-        if raw_list is None or (
-            isinstance(raw_list, float) and pd.isna(raw_list)
-        ):
+        if raw_list is None or (isinstance(raw_list, float) and pd.isna(raw_list)):
             results.append(acc)
             continue
         for item in list(raw_list):
@@ -167,11 +165,11 @@ class TestReduceMultiRowVaryingLengths:
             [
                 {"items": [1, 2]},
                 {"items": [10, 20, 30]},
-            ]
+            ],
         )
         result = star.execute_query(
             "MATCH (r:Row) RETURN reduce(s = 0, x IN r.items | s + x) AS v "
-            "ORDER BY id(r)"
+            "ORDER BY id(r)",
         )
         assert result["v"].iloc[0] == 3  # 0+1+2
         assert result["v"].iloc[1] == 60  # 0+10+20+30
@@ -182,11 +180,11 @@ class TestReduceMultiRowVaryingLengths:
             [
                 {"items": []},
                 {"items": [5, 6, 7]},
-            ]
+            ],
         )
         result = star.execute_query(
             "MATCH (r:Row) RETURN reduce(s = 0, x IN r.items | s + x) AS v "
-            "ORDER BY id(r)"
+            "ORDER BY id(r)",
         )
         assert result["v"].iloc[0] == 0  # empty list → initial
         assert result["v"].iloc[1] == 18  # 0+5+6+7
@@ -196,7 +194,7 @@ class TestReduceMultiRowVaryingLengths:
         star = _star_with_rows([{"items": None}, {"items": [3, 4]}])
         result = star.execute_query(
             "MATCH (r:Row) RETURN reduce(s = 0, x IN r.items | s + x) AS v "
-            "ORDER BY id(r)"
+            "ORDER BY id(r)",
         )
         assert result["v"].iloc[0] == 0  # null list → initial
         assert result["v"].iloc[1] == 7  # 0+3+4
@@ -206,7 +204,7 @@ class TestReduceMultiRowVaryingLengths:
         rows = [{"items": [1, 2, 3, 4, 5]} for _ in range(100)]
         star = _star_with_rows(rows)
         result = star.execute_query(
-            "MATCH (r:Row) RETURN reduce(s = 0, x IN r.items | s + x) AS v"
+            "MATCH (r:Row) RETURN reduce(s = 0, x IN r.items | s + x) AS v",
         )
         assert all(v == 15 for v in result["v"])
 
@@ -214,7 +212,7 @@ class TestReduceMultiRowVaryingLengths:
         """Single row reducing a 200-element list: result must be sum(1..200)."""
         star = _star_with_rows([{"items": list(range(1, 201))}])
         result = star.execute_query(
-            "MATCH (r:Row) RETURN reduce(s = 0, x IN r.items | s + x) AS v"
+            "MATCH (r:Row) RETURN reduce(s = 0, x IN r.items | s + x) AS v",
         )
         expected = sum(range(1, 201))  # 20100
         assert result["v"].iloc[0] == expected
@@ -231,12 +229,12 @@ class TestReduceMultiRowVaryingLengths:
             [
                 {"words": ["hello", " ", "world"]},
                 {"words": ["foo", "bar"]},
-            ]
+            ],
         )
         result = star.execute_query(
             "MATCH (r:Row) "
             "RETURN reduce(s = '', x IN r.words | s + x) AS v "
-            "ORDER BY id(r)"
+            "ORDER BY id(r)",
         )
         assert result["v"].iloc[0] == "hello world"
         assert result["v"].iloc[1] == "foobar"
@@ -254,7 +252,7 @@ class TestReduceConditionalStep:
         """reduce(m=-999, x IN list | CASE WHEN x > m THEN x ELSE m END) finds max."""
         result = _q(
             "RETURN reduce(m = -999, x IN [3, 1, 4, 1, 5, 9, 2, 6] | "
-            "CASE WHEN x > m THEN x ELSE m END) AS v"
+            "CASE WHEN x > m THEN x ELSE m END) AS v",
         )
         assert result["v"].iloc[0] == 9
 
@@ -262,7 +260,7 @@ class TestReduceConditionalStep:
         """Count positive elements: reduce(n=0, x IN list | n + CASE WHEN x > 0 THEN 1 ELSE 0 END)."""
         result = _q(
             "RETURN reduce(n = 0, x IN [1, -2, 3, -4, 5] | "
-            "n + CASE WHEN x > 0 THEN 1 ELSE 0 END) AS v"
+            "n + CASE WHEN x > 0 THEN 1 ELSE 0 END) AS v",
         )
         assert result["v"].iloc[0] == 3
 
@@ -279,11 +277,9 @@ class TestReducePerformance:
     N_ROWS: int = 200
     LIST_LEN: int = 50
 
-    @pytest.fixture()
+    @pytest.fixture
     def large_star(self):
-        rows = [
-            {"items": list(range(self.LIST_LEN))} for _ in range(self.N_ROWS)
-        ]
+        rows = [{"items": list(range(self.LIST_LEN))} for _ in range(self.N_ROWS)]
         return _star_with_rows(rows)
 
     def test_absolute_threshold(self, large_star) -> None:
@@ -291,7 +287,7 @@ class TestReducePerformance:
         start = time.perf_counter()
         for _ in range(self.REPS):
             large_star.execute_query(
-                "MATCH (r:Row) RETURN reduce(s = 0, x IN r.items | s + x) AS v"
+                "MATCH (r:Row) RETURN reduce(s = 0, x IN r.items | s + x) AS v",
             )
         elapsed = time.perf_counter() - start
         assert elapsed < 5.0, (
@@ -302,7 +298,7 @@ class TestReducePerformance:
     def test_result_correctness_in_performance_run(self, large_star) -> None:
         """Results during the performance run must be correct (sum(0..49) = 1225)."""
         result = large_star.execute_query(
-            "MATCH (r:Row) RETURN reduce(s = 0, x IN r.items | s + x) AS v"
+            "MATCH (r:Row) RETURN reduce(s = 0, x IN r.items | s + x) AS v",
         )
         expected = sum(range(self.LIST_LEN))  # 1225
         assert all(v == expected for v in result["v"]), (
@@ -340,7 +336,7 @@ class TestReducePerformance:
         start = time.perf_counter()
         for _ in range(self.REPS):
             large_star.execute_query(
-                "MATCH (r:Row) RETURN reduce(s = 0, x IN r.items | s + x) AS v"
+                "MATCH (r:Row) RETURN reduce(s = 0, x IN r.items | s + x) AS v",
             )
         vectorised = time.perf_counter() - start
 

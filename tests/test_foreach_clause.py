@@ -29,13 +29,13 @@ from pycypher.star import Star
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture()
+@pytest.fixture
 def empty_ctx() -> Context:
     """No entities at all."""
     return Context(entity_mapping=EntityMapping(mapping={}))
 
 
-@pytest.fixture()
+@pytest.fixture
 def person_ctx() -> Context:
     """Single Person entity table with 2 rows."""
     df = pd.DataFrame(
@@ -43,7 +43,7 @@ def person_ctx() -> Context:
             ID_COLUMN: [1, 2],
             "name": ["Alice", "Bob"],
             "visited": [False, False],
-        }
+        },
     )
     table = EntityTable(
         entity_type="Person",
@@ -65,18 +65,20 @@ class TestForeachCreate:
     """FOREACH (x IN list | CREATE (n:Tag {val: x})) creates new nodes."""
 
     def test_foreach_creates_nodes_from_literal_list(
-        self, empty_ctx: Context
+        self,
+        empty_ctx: Context,
     ) -> None:
         """FOREACH with a literal list creates one node per element."""
         star = Star(context=empty_ctx)
         star.execute_query(
-            "FOREACH (x IN [1, 2, 3] | CREATE (n:Num {val: x}))"
+            "FOREACH (x IN [1, 2, 3] | CREATE (n:Num {val: x}))",
         )
         result = star.execute_query("MATCH (n:Num) RETURN n.val AS v")
         assert len(result) == 3
 
     def test_foreach_creates_correct_property_values(
-        self, empty_ctx: Context
+        self,
+        empty_ctx: Context,
     ) -> None:
         """Property values on created nodes equal the list elements."""
         star = Star(context=empty_ctx)
@@ -90,7 +92,7 @@ class TestForeachCreate:
         star = Star(context=empty_ctx)
         # No CREATE occurs; entity type 'Num' is never registered.
         result = star.execute_query(
-            "FOREACH (x IN [] | CREATE (n:Num {val: x}))"
+            "FOREACH (x IN [] | CREATE (n:Num {val: x}))",
         )
         # Empty mutation returns empty DataFrame
         assert result is not None
@@ -99,7 +101,7 @@ class TestForeachCreate:
         """Regression: FOREACH must not raise NotImplementedError."""
         star = Star(context=empty_ctx)
         result = star.execute_query(
-            "FOREACH (x IN [1] | CREATE (n:Tag {name: 'test'}))"
+            "FOREACH (x IN [1] | CREATE (n:Tag {name: 'test'}))",
         )
         assert result is not None
 
@@ -118,7 +120,7 @@ class TestForeachSet:
         # For each person, iterate once with a dummy list and SET p.visited.
         # 'p' is typed as Person in the outer frame and carried into the loop.
         star.execute_query(
-            "MATCH (p:Person) FOREACH (ignored IN [1] | SET p.visited = true)"
+            "MATCH (p:Person) FOREACH (ignored IN [1] | SET p.visited = true)",
         )
         result = star.execute_query("MATCH (p:Person) RETURN p.visited AS v")
         assert all(result["v"].tolist())
@@ -127,7 +129,7 @@ class TestForeachSet:
         """Regression: FOREACH + SET must not raise."""
         star = Star(context=person_ctx)
         result = star.execute_query(
-            "MATCH (p:Person) FOREACH (x IN [1] | SET p.name = p.name)"
+            "MATCH (p:Person) FOREACH (x IN [1] | SET p.name = p.name)",
         )
         assert result is not None
 
@@ -141,14 +143,15 @@ class TestForeachWithOuterMatch:
     """FOREACH can reference variables from the outer MATCH."""
 
     def test_foreach_creates_one_node_per_outer_row(
-        self, person_ctx: Context
+        self,
+        person_ctx: Context,
     ) -> None:
         """Outer MATCH has N rows; FOREACH creates N nodes (one per outer row)."""
         star = Star(context=person_ctx)
         # For each Person, create a Badge node named after them
         star.execute_query(
             "MATCH (p:Person) "
-            "FOREACH (ignored IN [1] | CREATE (b:Badge {owner: p.name}))"
+            "FOREACH (ignored IN [1] | CREATE (b:Badge {owner: p.name}))",
         )
         result = star.execute_query("MATCH (b:Badge) RETURN b.owner AS owner")
         # 2 persons → 2 Badge nodes
@@ -156,14 +159,15 @@ class TestForeachWithOuterMatch:
         assert set(result["owner"].tolist()) == {"Alice", "Bob"}
 
     def test_foreach_return_clause_after_is_valid(
-        self, person_ctx: Context
+        self,
+        person_ctx: Context,
     ) -> None:
         """A RETURN clause following FOREACH produces the outer frame."""
         star = Star(context=person_ctx)
         result = star.execute_query(
             "MATCH (p:Person) "
             "FOREACH (x IN [1] | CREATE (b:Badge {owner: p.name})) "
-            "RETURN p.name AS name"
+            "RETURN p.name AS name",
         )
         # The outer frame is unchanged; RETURN delivers person names.
         assert set(result["name"].tolist()) == {"Alice", "Bob"}

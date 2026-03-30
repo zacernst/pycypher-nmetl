@@ -25,7 +25,7 @@ from pycypher.star import Star
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture()
+@pytest.fixture
 def people_context():
     """Eight people across three departments, with some null ages/salaries."""
     df = pd.DataFrame(
@@ -65,7 +65,7 @@ def people_context():
             ],
             "team": ["A", "B", "A", "C", "B", "B", "C", "A"],
             "bonus": [5_000, 8_000, 3_000, 6_000, 4_000, 7_000, 5_500, 6_500],
-        }
+        },
     )
     table = EntityTable(
         entity_type="Person",
@@ -93,7 +93,7 @@ def _star(ctx: Context) -> Star:
 class TestCountStarGrouped:
     def test_count_star_single_key(self, people_context):
         result = _star(people_context).execute_query(
-            "MATCH (p:Person) RETURN p.dept AS dept, count(*) AS n"
+            "MATCH (p:Person) RETURN p.dept AS dept, count(*) AS n",
         )
         counts = dict(zip(result["dept"], result["n"]))
         assert counts["Eng"] == 4
@@ -102,7 +102,7 @@ class TestCountStarGrouped:
 
     def test_count_star_preserves_all_groups(self, people_context):
         result = _star(people_context).execute_query(
-            "MATCH (p:Person) RETURN p.dept AS dept, count(*) AS n"
+            "MATCH (p:Person) RETURN p.dept AS dept, count(*) AS n",
         )
         assert len(result) == 3
 
@@ -115,7 +115,7 @@ class TestCountStarGrouped:
 class TestSumGrouped:
     def test_sum_single_key(self, people_context):
         result = _star(people_context).execute_query(
-            "MATCH (p:Person) RETURN p.dept AS dept, sum(p.bonus) AS total"
+            "MATCH (p:Person) RETURN p.dept AS dept, sum(p.bonus) AS total",
         )
         totals = dict(zip(result["dept"], result["total"]))
         # Eng: 5000+3000+4000+6500 = 18500
@@ -128,7 +128,7 @@ class TestSumGrouped:
     def test_sum_null_ignoring(self, people_context):
         # salary has two nulls (Carol, Grace); they should be ignored per group
         result = _star(people_context).execute_query(
-            "MATCH (p:Person) RETURN p.dept AS dept, sum(p.salary) AS total"
+            "MATCH (p:Person) RETURN p.dept AS dept, sum(p.salary) AS total",
         )
         totals = dict(zip(result["dept"], result["total"]))
         # Eng salaries: 100000, None, 95000, 115000 → 310000
@@ -145,7 +145,7 @@ class TestSumGrouped:
 class TestAvgGrouped:
     def test_avg_single_key(self, people_context):
         result = _star(people_context).execute_query(
-            "MATCH (p:Person) RETURN p.dept AS dept, avg(p.bonus) AS mean"
+            "MATCH (p:Person) RETURN p.dept AS dept, avg(p.bonus) AS mean",
         )
         means = dict(zip(result["dept"], result["mean"]))
         # Eng bonuses: 5000, 3000, 4000, 6500 → mean 4625
@@ -153,7 +153,7 @@ class TestAvgGrouped:
 
     def test_avg_null_ignoring(self, people_context):
         result = _star(people_context).execute_query(
-            "MATCH (p:Person) RETURN p.dept AS dept, avg(p.age) AS mean_age"
+            "MATCH (p:Person) RETURN p.dept AS dept, avg(p.age) AS mean_age",
         )
         means = dict(zip(result["dept"], result["mean_age"]))
         # Eng ages: 30, 25, 35, 32 → mean 30.5 (no nulls in Eng)
@@ -172,14 +172,14 @@ class TestAvgGrouped:
 class TestMinMaxGrouped:
     def test_min_grouped(self, people_context):
         result = _star(people_context).execute_query(
-            "MATCH (p:Person) RETURN p.dept AS dept, min(p.score) AS lo"
+            "MATCH (p:Person) RETURN p.dept AS dept, min(p.score) AS lo",
         )
         lows = dict(zip(result["dept"], result["lo"]))
         assert lows["Eng"] == pytest.approx(78.9)
 
     def test_max_grouped(self, people_context):
         result = _star(people_context).execute_query(
-            "MATCH (p:Person) RETURN p.dept AS dept, max(p.score) AS hi"
+            "MATCH (p:Person) RETURN p.dept AS dept, max(p.score) AS hi",
         )
         highs = dict(zip(result["dept"], result["hi"]))
         assert highs["Sales"] == pytest.approx(92.3)
@@ -194,7 +194,7 @@ class TestCountExprGrouped:
     def test_count_non_null_values(self, people_context):
         # age has two nulls; count(p.age) should count only non-null per group
         result = _star(people_context).execute_query(
-            "MATCH (p:Person) RETURN p.dept AS dept, count(p.age) AS n"
+            "MATCH (p:Person) RETURN p.dept AS dept, count(p.age) AS n",
         )
         counts = dict(zip(result["dept"], result["n"]))
         # Eng: 30, 25, 35, 32 — all 4 present
@@ -211,7 +211,7 @@ class TestCountExprGrouped:
 class TestCollectGrouped:
     def test_collect_single_key(self, people_context):
         result = _star(people_context).execute_query(
-            "MATCH (p:Person) RETURN p.dept AS dept, collect(p.name) AS names"
+            "MATCH (p:Person) RETURN p.dept AS dept, collect(p.name) AS names",
         )
         by_dept = dict(zip(result["dept"], result["names"]))
         assert set(by_dept["Eng"]) == {"Alice", "Carol", "Eve", "Henry"}
@@ -220,7 +220,7 @@ class TestCollectGrouped:
     def test_collect_distinct(self, people_context):
         # team has repeated values; distinct should deduplicate within each dept group
         result = _star(people_context).execute_query(
-            "MATCH (p:Person) RETURN p.dept AS dept, collect(distinct p.team) AS teams"
+            "MATCH (p:Person) RETURN p.dept AS dept, collect(distinct p.team) AS teams",
         )
         by_dept = dict(zip(result["dept"], result["teams"]))
         assert set(by_dept["Eng"]) == {"A", "B"}
@@ -235,7 +235,7 @@ class TestCollectGrouped:
 class TestCountDistinctGrouped:
     def test_count_distinct_single_key(self, people_context):
         result = _star(people_context).execute_query(
-            "MATCH (p:Person) RETURN p.dept AS dept, count(distinct p.team) AS n"
+            "MATCH (p:Person) RETURN p.dept AS dept, count(distinct p.team) AS n",
         )
         counts = dict(zip(result["dept"], result["n"]))
         # Eng has teams A, A, B, A → distinct: A, B → 2
@@ -252,7 +252,7 @@ class TestCountDistinctGrouped:
 class TestStdevGrouped:
     def test_stdev_grouped(self, people_context):
         result = _star(people_context).execute_query(
-            "MATCH (p:Person) RETURN p.dept AS dept, stdev(p.score) AS s"
+            "MATCH (p:Person) RETURN p.dept AS dept, stdev(p.score) AS s",
         )
         stdevs = dict(zip(result["dept"], result["s"]))
         import statistics
@@ -263,7 +263,7 @@ class TestStdevGrouped:
 
     def test_stdevp_grouped(self, people_context):
         result = _star(people_context).execute_query(
-            "MATCH (p:Person) RETURN p.dept AS dept, stdevp(p.score) AS s"
+            "MATCH (p:Person) RETURN p.dept AS dept, stdevp(p.score) AS s",
         )
         stdevps = dict(zip(result["dept"], result["s"]))
         import statistics
@@ -281,7 +281,7 @@ class TestStdevGrouped:
 class TestPercentileGrouped:
     def test_percentile_cont_grouped(self, people_context):
         result = _star(people_context).execute_query(
-            "MATCH (p:Person) RETURN p.dept AS dept, percentileCont(p.bonus, 0.5) AS med"
+            "MATCH (p:Person) RETURN p.dept AS dept, percentileCont(p.bonus, 0.5) AS med",
         )
         meds = dict(zip(result["dept"], result["med"]))
         # Eng bonuses sorted: 3000, 4000, 5000, 6500 → median (cont) = 4500
@@ -289,7 +289,7 @@ class TestPercentileGrouped:
 
     def test_percentile_disc_grouped(self, people_context):
         result = _star(people_context).execute_query(
-            "MATCH (p:Person) RETURN p.dept AS dept, percentileDisc(p.bonus, 0.5) AS med"
+            "MATCH (p:Person) RETURN p.dept AS dept, percentileDisc(p.bonus, 0.5) AS med",
         )
         meds = dict(zip(result["dept"], result["med"]))
         # Eng bonuses sorted: 3000, 4000, 5000, 6500 → discrete lower = 4000
@@ -304,7 +304,7 @@ class TestPercentileGrouped:
 class TestMultiKeyGroupBy:
     def test_two_group_keys(self, people_context):
         result = _star(people_context).execute_query(
-            "MATCH (p:Person) RETURN p.dept AS dept, p.team AS team, count(*) AS n"
+            "MATCH (p:Person) RETURN p.dept AS dept, p.team AS team, count(*) AS n",
         )
         # Eng/A: Alice,Carol,Henry; Eng/B: Eve; Sales/B: Bob,Frank; Mktg/C: Dave,Grace
         assert len(result) == 4
@@ -313,7 +313,7 @@ class TestMultiKeyGroupBy:
 
     def test_sum_with_two_group_keys(self, people_context):
         result = _star(people_context).execute_query(
-            "MATCH (p:Person) RETURN p.dept AS dept, p.team AS team, sum(p.bonus) AS total"
+            "MATCH (p:Person) RETURN p.dept AS dept, p.team AS team, sum(p.bonus) AS total",
         )
         row = result[(result["dept"] == "Sales") & (result["team"] == "B")]
         # Sales/B: Bob 8000 + Frank 7000 = 15000
@@ -328,7 +328,7 @@ class TestMultiKeyGroupBy:
 class TestArithmeticWrappingAgg:
     def test_count_star_plus_one(self, people_context):
         result = _star(people_context).execute_query(
-            "MATCH (p:Person) RETURN p.dept AS dept, count(*) + 1 AS n_plus_one"
+            "MATCH (p:Person) RETURN p.dept AS dept, count(*) + 1 AS n_plus_one",
         )
         vals = dict(zip(result["dept"], result["n_plus_one"]))
         assert vals["Eng"] == 5  # 4 + 1
@@ -369,7 +369,7 @@ class TestGroupedAggPerformance:
                 ID_COLUMN: range(n_rows),
                 "dept": [f"dept_{i % n_groups}" for i in range(n_rows)],
                 "value": rng.integers(1, 1000, size=n_rows),
-            }
+            },
         )
         table = EntityTable(
             entity_type="Person",
@@ -390,7 +390,7 @@ class TestGroupedAggPerformance:
         star = Star(context=ctx)
         t0 = time.perf_counter()
         result = star.execute_query(
-            "MATCH (p:Person) RETURN p.dept AS dept, sum(p.value) AS total, count(*) AS n"
+            "MATCH (p:Person) RETURN p.dept AS dept, sum(p.value) AS total, count(*) AS n",
         )
         elapsed = time.perf_counter() - t0
         assert len(result) == 1_000
@@ -405,7 +405,7 @@ class TestGroupedAggPerformance:
         ctx = self._make_large_context(n_rows=n_rows, n_groups=n_groups)
         star = Star(context=ctx)
         result = star.execute_query(
-            "MATCH (p:Person) RETURN p.dept AS dept, count(*) AS n"
+            "MATCH (p:Person) RETURN p.dept AS dept, count(*) AS n",
         )
         counts = dict(zip(result["dept"], result["n"]))
         for g in range(n_groups):

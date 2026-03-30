@@ -51,9 +51,9 @@ def ctx() -> ContextBuilder:
                     "name": ["Alice", "Bob"],
                     "age": [30, 25],
                     "active": [True, False],
-                }
-            )
-        }
+                },
+            ),
+        },
     )
 
 
@@ -192,7 +192,7 @@ class TestMultipleUnarrowedExpressions:
     def test_two_functions_distinct_columns(self, star: Star) -> None:
         """RETURN toUpper(p.name), toLower(p.name) → two distinct columns."""
         r = star.execute_query(
-            "MATCH (p:Person) RETURN toUpper(p.name), toLower(p.name)"
+            "MATCH (p:Person) RETURN toUpper(p.name), toLower(p.name)",
         )
         assert len(r.columns) == 2
         assert "toUpper(name)" in r.columns
@@ -201,7 +201,7 @@ class TestMultipleUnarrowedExpressions:
     def test_function_and_arithmetic_distinct(self, star: Star) -> None:
         """RETURN toUpper(p.name), p.age + 1 → two distinct columns."""
         r = star.execute_query(
-            "MATCH (p:Person) RETURN toUpper(p.name), p.age + 1"
+            "MATCH (p:Person) RETURN toUpper(p.name), p.age + 1",
         )
         assert len(r.columns) == 2
         assert "toUpper(name)" in r.columns
@@ -210,14 +210,14 @@ class TestMultipleUnarrowedExpressions:
     def test_no_none_column_names(self, star: Star) -> None:
         """After the fix, no column should be named None."""
         r = star.execute_query(
-            "MATCH (p:Person) RETURN toUpper(p.name), abs(p.age)"
+            "MATCH (p:Person) RETURN toUpper(p.name), abs(p.age)",
         )
         assert None not in r.columns
 
     def test_values_are_correct(self, star: Star) -> None:
         """Values in auto-named columns must be correct."""
         r = star.execute_query(
-            "MATCH (p:Person) RETURN toUpper(p.name), p.age + 1 ORDER BY p.age"
+            "MATCH (p:Person) RETURN toUpper(p.name), p.age + 1 ORDER BY p.age",
         )
         assert r["toUpper(name)"].tolist() == ["BOB", "ALICE"]
         assert r["age + 1"].tolist() == [26, 31]
@@ -225,7 +225,7 @@ class TestMultipleUnarrowedExpressions:
     def test_mixed_aliased_and_unaliased(self, star: Star) -> None:
         """Explicit alias and auto-name co-exist without collision."""
         r = star.execute_query(
-            "MATCH (p:Person) RETURN toUpper(p.name) AS up, p.age + 1"
+            "MATCH (p:Person) RETURN toUpper(p.name) AS up, p.age + 1",
         )
         assert "up" in r.columns
         assert "age + 1" in r.columns

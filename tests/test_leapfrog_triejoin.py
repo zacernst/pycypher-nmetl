@@ -28,7 +28,9 @@ def _make_context():
     )
 
 
-def _bf(data: dict[str, list], type_registry: dict[str, str] | None = None) -> BindingFrame:
+def _bf(
+    data: dict[str, list], type_registry: dict[str, str] | None = None,
+) -> BindingFrame:
     """Shorthand to build a BindingFrame from column data."""
     return BindingFrame(
         bindings=pd.DataFrame(data),
@@ -242,17 +244,17 @@ class TestLeapfrogTriejoin:
 
         # Nodes: 1, 2, 3, 4, 5
         # Edges: 1->2, 2->3, 3->1 (triangle), 4->5
-        r1 = _bf({"src": [1, 4], "tgt": [2, 5]})   # a->b edges
-        r2 = _bf({"src": [2], "tgt": [3]})           # b->c edges
-        r3 = _bf({"src": [3], "tgt": [1]})           # c->a edges
+        r1 = _bf({"src": [1, 4], "tgt": [2, 5]})  # a->b edges
+        r2 = _bf({"src": [2], "tgt": [3]})  # b->c edges
+        r3 = _bf({"src": [3], "tgt": [1]})  # c->a edges
 
         # To find triangles, we'd typically join on:
         # r1.tgt = r2.src (b), r2.tgt = r3.src (c), r3.tgt = r1.src (a)
         # For the leapfrog test, join r1 and r2 on shared var 'tgt'/'src'
         # Here we simplify: join frames that share the 'b' node
-        f1 = _bf({"b": [2, 5]})         # b values from r1.tgt
-        f2 = _bf({"b": [2]})            # b values from r2.src
-        f3 = _bf({"b": [2, 7, 8]})      # b values from some other relation
+        f1 = _bf({"b": [2, 5]})  # b values from r1.tgt
+        f2 = _bf({"b": [2]})  # b values from r2.src
+        f3 = _bf({"b": [2, 7, 8]})  # b values from some other relation
 
         result = leapfrog_triejoin([f1, f2, f3], "b")
         assert len(result.bindings) == 1

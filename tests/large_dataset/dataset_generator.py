@@ -7,13 +7,9 @@ scales (1K to 100M+ rows) for systematic performance validation.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
-
-if TYPE_CHECKING:
-    pass
 
 ID_COLUMN = "__ID__"
 SOURCE_COLUMN = "__SOURCE__"
@@ -97,6 +93,7 @@ def generate_person_dataframe(
     -------
     pd.DataFrame
         DataFrame with __ID__, name, age, and additional properties.
+
     """
     rng = np.random.default_rng(seed)
 
@@ -134,7 +131,7 @@ def generate_company_dataframe(
             "name": [f"Company{i}" for i in range(1, n_rows + 1)],
             "sector": [sectors[i % len(sectors)] for i in range(n_rows)],
             "revenue": rng.integers(1_000_000, 1_000_000_000, size=n_rows),
-        }
+        },
     )
 
 
@@ -168,6 +165,7 @@ def generate_relationship_dataframe(
     -------
     pd.DataFrame
         DataFrame with __ID__, __SOURCE__, __TARGET__, and since columns.
+
     """
     if n_target_rows is None:
         n_target_rows = n_source_rows
@@ -192,7 +190,7 @@ def generate_relationship_dataframe(
             TARGET_COLUMN: targets,
             "since": rng.integers(2000, 2025, size=n_relationships),
             "weight": rng.standard_normal(n_relationships),
-        }
+        },
     )
 
 
@@ -207,6 +205,7 @@ def generate_social_graph(
     -------
     tuple[pd.DataFrame, pd.DataFrame]
         (person_df, knows_df) tuple.
+
     """
     person_df = generate_person_dataframe(scale.person_rows, seed=seed)
     knows_df = generate_relationship_dataframe(
@@ -228,6 +227,7 @@ def generate_multi_type_graph(
     -------
     dict[str, pd.DataFrame]
         Dictionary with keys: Person, Company, KNOWS, WORKS_AT.
+
     """
     n_companies = max(1, scale.person_rows // 100)
     n_works_at = scale.person_rows  # Each person works at one company

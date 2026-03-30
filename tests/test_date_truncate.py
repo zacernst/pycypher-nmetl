@@ -35,14 +35,16 @@ def ctx():
                     "__ID__": ["e1"],
                     "dt": ["2024-03-15T10:30:45"],
                     "d": ["2024-03-15"],
-                }
-            )
-        }
+                },
+            ),
+        },
     )
 
 
 def _exec_date_truncate(
-    reg: ScalarFunctionRegistry, unit: str, value: str
+    reg: ScalarFunctionRegistry,
+    unit: str,
+    value: str,
 ) -> str:
     result = reg.execute(
         "date.truncate",
@@ -52,7 +54,9 @@ def _exec_date_truncate(
 
 
 def _exec_datetime_truncate(
-    reg: ScalarFunctionRegistry, unit: str, value: str
+    reg: ScalarFunctionRegistry,
+    unit: str,
+    value: str,
 ) -> str:
     result = reg.execute(
         "datetime.truncate",
@@ -68,17 +72,20 @@ def _exec_datetime_truncate(
 
 class TestTruncateFunctionsRegistered:
     def test_date_truncate_registered(
-        self, reg: ScalarFunctionRegistry
+        self,
+        reg: ScalarFunctionRegistry,
     ) -> None:
         assert "date.truncate" in reg._functions
 
     def test_datetime_truncate_registered(
-        self, reg: ScalarFunctionRegistry
+        self,
+        reg: ScalarFunctionRegistry,
     ) -> None:
         assert "datetime.truncate" in reg._functions
 
     def test_localdatetime_truncate_registered(
-        self, reg: ScalarFunctionRegistry
+        self,
+        reg: ScalarFunctionRegistry,
     ) -> None:
         assert "localdatetime.truncate" in reg._functions
 
@@ -103,33 +110,21 @@ class TestDateTruncate:
         assert _exec_date_truncate(reg, "decade", "2024-07-04") == "2020-01-01"
 
     def test_truncate_to_century(self, reg: ScalarFunctionRegistry) -> None:
-        assert (
-            _exec_date_truncate(reg, "century", "2024-07-04") == "2001-01-01"
-        )
+        assert _exec_date_truncate(reg, "century", "2024-07-04") == "2001-01-01"
 
     def test_truncate_to_millennium(self, reg: ScalarFunctionRegistry) -> None:
-        assert (
-            _exec_date_truncate(reg, "millennium", "2024-07-04")
-            == "2001-01-01"
-        )
+        assert _exec_date_truncate(reg, "millennium", "2024-07-04") == "2001-01-01"
 
     def test_truncate_to_quarter(self, reg: ScalarFunctionRegistry) -> None:
         # Q1: Jan-Mar, Q2: Apr-Jun, Q3: Jul-Sep, Q4: Oct-Dec
-        assert (
-            _exec_date_truncate(reg, "quarter", "2024-03-15") == "2024-01-01"
-        )
-        assert (
-            _exec_date_truncate(reg, "quarter", "2024-05-20") == "2024-04-01"
-        )
-        assert (
-            _exec_date_truncate(reg, "quarter", "2024-08-10") == "2024-07-01"
-        )
-        assert (
-            _exec_date_truncate(reg, "quarter", "2024-11-30") == "2024-10-01"
-        )
+        assert _exec_date_truncate(reg, "quarter", "2024-03-15") == "2024-01-01"
+        assert _exec_date_truncate(reg, "quarter", "2024-05-20") == "2024-04-01"
+        assert _exec_date_truncate(reg, "quarter", "2024-08-10") == "2024-07-01"
+        assert _exec_date_truncate(reg, "quarter", "2024-11-30") == "2024-10-01"
 
     def test_truncate_unit_case_insensitive(
-        self, reg: ScalarFunctionRegistry
+        self,
+        reg: ScalarFunctionRegistry,
     ) -> None:
         assert _exec_date_truncate(reg, "MONTH", "2024-03-15") == "2024-03-01"
         assert _exec_date_truncate(reg, "Year", "2024-03-15") == "2024-01-01"
@@ -229,38 +224,40 @@ class TestCypherIntegration:
     def test_date_truncate_month_in_return(self, ctx: ContextBuilder) -> None:
         s = Star(context=ctx)
         result = s.execute_query(
-            'MATCH (n:Event) RETURN date.truncate("month", n.d) AS r'
+            'MATCH (n:Event) RETURN date.truncate("month", n.d) AS r',
         )
         assert result["r"].iloc[0] == "2024-03-01"
 
     def test_date_truncate_year_in_return(self, ctx: ContextBuilder) -> None:
         s = Star(context=ctx)
         result = s.execute_query(
-            'MATCH (n:Event) RETURN date.truncate("year", n.d) AS r'
+            'MATCH (n:Event) RETURN date.truncate("year", n.d) AS r',
         )
         assert result["r"].iloc[0] == "2024-01-01"
 
     def test_datetime_truncate_day_in_return(
-        self, ctx: ContextBuilder
+        self,
+        ctx: ContextBuilder,
     ) -> None:
         s = Star(context=ctx)
         result = s.execute_query(
-            'MATCH (n:Event) RETURN datetime.truncate("day", n.dt) AS r'
+            'MATCH (n:Event) RETURN datetime.truncate("day", n.dt) AS r',
         )
         assert result["r"].iloc[0] == "2024-03-15T00:00:00"
 
     def test_datetime_truncate_hour_in_return(
-        self, ctx: ContextBuilder
+        self,
+        ctx: ContextBuilder,
     ) -> None:
         s = Star(context=ctx)
         result = s.execute_query(
-            'MATCH (n:Event) RETURN datetime.truncate("hour", n.dt) AS r'
+            'MATCH (n:Event) RETURN datetime.truncate("hour", n.dt) AS r',
         )
         assert result["r"].iloc[0] == "2024-03-15T10:00:00"
 
     def test_date_truncate_in_where(self, ctx: ContextBuilder) -> None:
         s = Star(context=ctx)
         result = s.execute_query(
-            'MATCH (n:Event) WHERE date.truncate("month", n.d) = "2024-03-01" RETURN n.d'
+            'MATCH (n:Event) WHERE date.truncate("month", n.d) = "2024-03-01" RETURN n.d',
         )
         assert len(result) == 1

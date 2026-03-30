@@ -14,7 +14,7 @@ from pathlib import Path
 
 # The _rand function was refactored from scalar_functions.py into scalar_functions/list_functions.py
 _RAND_SOURCE_FILE = Path(
-    "packages/pycypher/src/pycypher/scalar_functions/list_functions.py"
+    "packages/pycypher/src/pycypher/scalar_functions/list_functions.py",
 )
 
 import pandas as pd
@@ -64,9 +64,7 @@ class TestCurrentSecurityTestingIssues:
         from pycypher.scalar_functions import ScalarFunctionRegistry
 
         registry = ScalarFunctionRegistry.get_instance()
-        assert "rand" in registry._functions, (
-            "rand function should be registered"
-        )
+        assert "rand" in registry._functions, "rand function should be registered"
 
         # Test that it actually uses secure randomness
         star = Star(context=Context(entity_mapping=EntityMapping(mapping={})))
@@ -84,9 +82,7 @@ class TestCurrentSecurityTestingIssues:
         values2 = result2["r"].tolist()
 
         # With cryptographically secure randomness, sequences should be different
-        assert values1 != values2, (
-            "Secure random should produce different sequences"
-        )
+        assert values1 != values2, "Secure random should produce different sequences"
 
 
 class TestUpdatedSecurityTesting:
@@ -145,8 +141,7 @@ class TestUpdatedSecurityTesting:
         insecure_usage_lines = [
             line
             for line in lines
-            if "_random.random()" in line
-            and "secure_random.random()" not in line
+            if "_random.random()" in line and "secure_random.random()" not in line
         ]
         assert len(insecure_usage_lines) == 0, (
             f"rand() function should not use insecure _random.random(). Found: {insecure_usage_lines}"
@@ -172,7 +167,7 @@ class TestUpdatedSecurityTesting:
         sequences = []
         for _ in range(5):
             result = star.execute_query(
-                "UNWIND [1,2,3] AS x RETURN rand() AS r"
+                "UNWIND [1,2,3] AS x RETURN rand() AS r",
             )
             sequences.append(tuple(result["r"].tolist()))
 
@@ -207,8 +202,7 @@ class TestUpdatedSecurityTesting:
         insecure_usage_lines = [
             line
             for line in lines
-            if "_random.random()" in line
-            and "secure_random.random()" not in line
+            if "_random.random()" in line and "secure_random.random()" not in line
         ]
         assert len(insecure_usage_lines) == 0, (
             f"Should not contain S311 violation _random.random() usage. Found: {insecure_usage_lines}"
@@ -230,17 +224,11 @@ class TestUpdatedSecurityTesting:
         registry = ScalarFunctionRegistry.get_instance()
 
         # Should still be registered with same interface
-        assert "rand" in registry._functions, (
-            "rand() should still be registered"
-        )
+        assert "rand" in registry._functions, "rand() should still be registered"
 
         func_info = registry._functions["rand"]
-        assert func_info.min_args == 0, (
-            "rand() should require 0 minimum arguments"
-        )
-        assert func_info.max_args == 0, (
-            "rand() should require 0 maximum arguments"
-        )
+        assert func_info.min_args == 0, "rand() should require 0 minimum arguments"
+        assert func_info.max_args == 0, "rand() should require 0 maximum arguments"
 
         # Should still work in Cypher queries
         star = Star(context=Context(entity_mapping=EntityMapping(mapping={})))
@@ -259,12 +247,12 @@ class TestUpdatedSecurityTesting:
 
         # Generate larger sample for statistical testing
         result = star.execute_query(
-            "UNWIND range(1, 1000) AS x RETURN rand() AS r"
+            "UNWIND range(1, 1000) AS x RETURN rand() AS r",
         )
         values = result["r"].values
 
         # Statistical tests for uniform distribution in [0, 1)
-        assert 0.0 <= values.min(), "Min should be >= 0.0"
+        assert values.min() >= 0.0, "Min should be >= 0.0"
         assert values.max() < 1.0, "Max should be < 1.0"
 
         # Mean should be around 0.5 for uniform distribution
@@ -285,13 +273,13 @@ class TestUpdatedSecurityTesting:
             {
                 "__ID__": [1, 2, 3, 4, 5],
                 "name": ["Alice", "Bob", "Carol", "Dave", "Eve"],
-            }
+            },
         )
 
         entity_mapping = EntityMapping(
             mapping={
-                "Person": EntityTable(source_obj=people, entity_type="Person")
-            }
+                "Person": EntityTable(source_obj=people, entity_type="Person"),
+            },
         )
 
         context = Context(
@@ -303,32 +291,26 @@ class TestUpdatedSecurityTesting:
 
         # Test rand() in RETURN clause
         result = star.execute_query(
-            "MATCH (p:Person) RETURN p.name, rand() AS random_value"
+            "MATCH (p:Person) RETURN p.name, rand() AS random_value",
         )
-        assert len(result) == 5, (
-            "Should return all 5 people with random values"
-        )
+        assert len(result) == 5, "Should return all 5 people with random values"
         assert "name" in result.columns, "Should have name column"
-        assert "random_value" in result.columns, (
-            "Should have random_value column"
+        assert "random_value" in result.columns, "Should have random_value column"
+        assert all(0.0 <= val < 1.0 for val in result["random_value"].values), (
+            "All random values should be in valid range"
         )
-        assert all(
-            0.0 <= val < 1.0 for val in result["random_value"].values
-        ), "All random values should be in valid range"
 
         # Test rand() in WHERE clause (probabilistic filtering)
         result = star.execute_query(
-            "MATCH (p:Person) WHERE rand() >= 0.0 RETURN p.name"
+            "MATCH (p:Person) WHERE rand() >= 0.0 RETURN p.name",
         )
-        assert 0 <= len(result) <= 5, (
-            "Should return 0-5 people (probabilistic)"
-        )
+        assert 0 <= len(result) <= 5, "Should return 0-5 people (probabilistic)"
 
         # Multiple executions should give different results due to randomness
         results = []
         for _ in range(10):
             result = star.execute_query(
-                "MATCH (p:Person) RETURN rand() AS r LIMIT 1"
+                "MATCH (p:Person) RETURN rand() AS r LIMIT 1",
             )
             results.append(result["r"].iloc[0])
 

@@ -398,6 +398,13 @@ def estimate_memory(graph: ComputationGraph, avg_row_bytes: int = 100) -> int:
     peak = 0
     active: dict[int, int] = {}  # node_id → estimated bytes
 
+    # Pre-build consumer counts: how many downstream nodes consume each input.
+    # This replaces an O(N³) nested loop with O(V+E) construction + O(1) lookups.
+    consumer_count: dict[int, int] = {}
+    for node in graph.nodes.values():
+        for input_id in node.inputs:
+            consumer_count[input_id] = consumer_count.get(input_id, 0) + 1
+
     for nid in graph.topological_order():
         node = graph.nodes[nid]
         node_mem = node.estimated_rows * avg_row_bytes
@@ -417,13 +424,8 @@ def estimate_memory(graph: ComputationGraph, avg_row_bytes: int = 100) -> int:
 
         # Release input memory when no longer needed
         for input_id in node.inputs:
-            # Check if any other unreached node still needs this input
-            still_needed = any(
-                input_id in graph.nodes[other].inputs
-                for other in graph.nodes
-                if other != nid and other not in active
-            )
-            if not still_needed and input_id in active:
+            consumer_count[input_id] -= 1
+            if consumer_count[input_id] == 0 and input_id in active:
                 del active[input_id]
 
         active[nid] = node_mem
@@ -441,26 +443,15 @@ def estimate_memory(graph: ComputationGraph, avg_row_bytes: int = 100) -> int:
 # ---------------------------------------------------------------------------
 
 
-_WALK_CHILD_ATTRS: tuple[str, ...] = (
-    "left",
-    "right",
-    "expression",
-    "operand",
-    "arguments",
-    "conditions",
-)
-"""AST node attributes that may contain child expressions."""
-
-
 def _extract_variables_from_predicate(predicate: Any) -> set[str]:
     """Extract variable names referenced by a WHERE predicate.
 
-    Uses an iterative stack-based traversal (not recursion) to avoid
-    ``RecursionError`` on deeply nested AST expressions.  Traversal
-    depth is capped at ``MAX_QUERY_NESTING_DEPTH``.
+    Delegates to :func:`~pycypher.ast_models.extract_referenced_variables`,
+    the canonical variable extraction function.  The underlying traversal
+    is depth-limited and handles all AST node types automatically.
 
     Args:
-        predicate: An AST predicate expression.
+        predicate: An AST predicate expression (must be an ASTNode).
 
     Returns:
         Set of variable name strings.
@@ -469,46 +460,11 @@ def _extract_variables_from_predicate(predicate: Any) -> set[str]:
         SecurityError: If the AST nesting depth exceeds the configured limit.
 
     """
-    from pycypher.ast_models import PropertyLookup, Variable
-    from pycypher.config import MAX_QUERY_NESTING_DEPTH
-    from pycypher.exceptions import SecurityError
+    from pycypher.ast_models import ASTNode, extract_referenced_variables
 
-    refs: set[str] = set()
-    # Stack entries are (node, depth) tuples.
-    stack: list[tuple[Any, int]] = [(predicate, 0)]
-
-    while stack:
-        node, depth = stack.pop()
-        if node is None:
-            continue
-
-        if depth > MAX_QUERY_NESTING_DEPTH:
-            msg = (
-                f"AST nesting depth ({depth}) exceeds limit "
-                f"({MAX_QUERY_NESTING_DEPTH}). "
-                f"Adjust PYCYPHER_MAX_QUERY_NESTING_DEPTH to increase."
-            )
-            raise SecurityError(msg)
-
-        if isinstance(node, Variable):
-            refs.add(node.name)
-            continue
-        if isinstance(node, PropertyLookup):
-            if isinstance(node.expression, Variable):
-                refs.add(node.expression.name)
-            continue  # don't descend into the lookup target
-
-        # Enqueue children from known composite fields.
-        next_depth = depth + 1
-        for attr_name in _WALK_CHILD_ATTRS:
-            child = getattr(node, attr_name, None)
-            if child is None:
-                continue
-            if isinstance(child, list):
-                for item in child:
-                    stack.append((item, next_depth))
-            else:
-                stack.append((child, next_depth))
+    if isinstance(predicate, ASTNode):
+        return extract_referenced_variables(predicate)
+    return set()
 
     return refs
 
@@ -755,3 +711,109 @@ def build_computation_graph(query: Any) -> ComputationGraph:
         len(graph.nodes),
     )
     return graph
+
+
+# ---------------------------------------------------------------------------
+# Dead column elimination
+# ---------------------------------------------------------------------------
+
+
+def _extract_clause_variables(clause: Any) -> set[str]:
+    """Extract all variable names referenced by a single AST clause.
+
+    Walks the clause's AST subtree to find every variable name that the
+    clause reads or writes.  This includes pattern variables, WHERE
+    predicates, RETURN/WITH projection items, SET/REMOVE targets, and
+    DELETE expressions.
+
+    Args:
+        clause: An AST clause node (Match, With, Return, etc.).
+
+    Returns:
+        Set of variable name strings referenced by the clause.
+
+    """
+    from pycypher.ast_models import ASTNode, extract_referenced_variables
+
+    refs: set[str] = set()
+
+    # Generic: walk the clause itself if it's an ASTNode
+    if isinstance(clause, ASTNode):
+        refs.update(extract_referenced_variables(clause))
+
+    return refs
+
+
+def compute_live_columns(clauses: list[Any]) -> list[set[str] | None]:
+    """Compute the set of live (needed) columns after each clause.
+
+    For each clause index ``i``, returns the set of variable names that are
+    referenced by *any* clause at index ``i+1`` or later.  A ``None`` entry
+    means "keep all columns" (conservative fallback for mutation clauses
+    where dropping columns could lose data).
+
+    The result list has the same length as *clauses*.  Entry ``i`` is the
+    set of columns that must be **retained** in the frame produced by clause
+    ``i`` — any column not in this set can be safely dropped.
+
+    Args:
+        clauses: The ordered list of AST clause nodes from a parsed query.
+
+    Returns:
+        A list parallel to *clauses* where each element is either a
+        ``set[str]`` of live variable names or ``None`` (keep-all).
+
+    """
+    from pycypher.ast_models import (
+        Create,
+        Delete,
+        Foreach,
+        Merge,
+        Return,
+        Set,
+        With,
+    )
+
+    n = len(clauses)
+    result: list[set[str] | None] = [None] * n
+
+    if n == 0:
+        return result
+
+    # Last clause always keeps all columns (it's the output).
+    result[-1] = None
+
+    # Walk backwards: accumulate variables needed by all subsequent clauses.
+    needed_after: set[str] = set()
+    _keep_all = False  # True when a downstream clause needs all columns
+
+    for i in range(n - 1, -1, -1):
+        clause = clauses[i]
+
+        # Mutation clauses (SET, DELETE, CREATE, MERGE, FOREACH) may read
+        # any column's entity data — conservatively keep everything.
+        if isinstance(clause, (Set, Delete, Create, Merge, Foreach)):
+            result[i] = None
+            # All preceding clauses must also keep everything since we
+            # can't know what the mutation needs.
+            for j in range(i):
+                result[j] = None
+            return result
+
+        # RETURN * / WITH * (empty items list) reference all in-scope
+        # columns — preceding clauses must keep everything.
+        if isinstance(clause, (Return, With)) and not getattr(
+            clause, "items", None
+        ):
+            _keep_all = True
+
+        if _keep_all:
+            result[i] = None
+        else:
+            clause_vars = _extract_clause_variables(clause)
+            needed_after = needed_after | clause_vars
+
+            if i < n - 1:
+                result[i] = frozenset(needed_after) if needed_after else None
+
+    return result

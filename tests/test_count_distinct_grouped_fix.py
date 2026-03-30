@@ -44,7 +44,7 @@ class TestCountDistinctGroupedFix:
                     85,
                     90,
                 ],  # eng has 1 unique (90), hr has 2 unique (80,85)
-            }
+            },
         )
 
         table = EntityTable(
@@ -66,12 +66,13 @@ class TestCountDistinctGroupedFix:
         )
 
     def test_count_distinct_grouped_per_department_correctness(
-        self, count_distinct_context: Context
+        self,
+        count_distinct_context: Context,
     ) -> None:
         """COUNT DISTINCT grouped by department returns per-group distinct counts."""
         star = Star(context=count_distinct_context)
         result = star.execute_query(
-            "MATCH (p:Person) RETURN p.dept AS dept, count(DISTINCT p.score) AS unique_scores"
+            "MATCH (p:Person) RETURN p.dept AS dept, count(DISTINCT p.score) AS unique_scores",
         )
 
         # Should return 2 rows: one per department
@@ -92,14 +93,15 @@ class TestCountDistinctGroupedFix:
         )
 
     def test_count_distinct_global_vs_grouped_isolation(
-        self, count_distinct_context: Context
+        self,
+        count_distinct_context: Context,
     ) -> None:
         """Global and grouped COUNT DISTINCT should return different results."""
         star = Star(context=count_distinct_context)
 
         # Global COUNT DISTINCT should count all unique values across all groups
         global_result = star.execute_query(
-            "MATCH (p:Person) RETURN count(DISTINCT p.score) AS n"
+            "MATCH (p:Person) RETURN count(DISTINCT p.score) AS n",
         )
         assert global_result["n"].iloc[0] == 3, (
             "Global should see 3 unique scores (90, 80, 85)"
@@ -107,7 +109,7 @@ class TestCountDistinctGroupedFix:
 
         # Grouped COUNT DISTINCT should count per-group
         grouped_result = star.execute_query(
-            "MATCH (p:Person) RETURN p.dept AS dept, count(DISTINCT p.score) AS unique_scores"
+            "MATCH (p:Person) RETURN p.dept AS dept, count(DISTINCT p.score) AS unique_scores",
         )
 
         # Sum of grouped counts may equal global count when data aligns that way
@@ -122,15 +124,11 @@ class TestCountDistinctGroupedFix:
         eng_unique = grouped_result[grouped_result["dept"] == "eng"][
             "unique_scores"
         ].iloc[0]
-        assert eng_unique == 1, (
-            "Eng should have 1 unique score (not global count of 3)"
-        )
+        assert eng_unique == 1, "Eng should have 1 unique score (not global count of 3)"
 
         # Verify the logic is working correctly
         assert grouped_sum == 3, "Grouped sum should be 1+2=3"
-        assert global_count == 3, (
-            "Global count should be 3 unique values (90,80,85)"
-        )
+        assert global_count == 3, "Global count should be 3 unique values (90,80,85)"
 
     def test_count_distinct_with_no_duplicates_within_groups(self) -> None:
         """COUNT DISTINCT grouped when each group has no internal duplicates."""
@@ -139,7 +137,7 @@ class TestCountDistinctGroupedFix:
                 ID_COLUMN: [1, 2, 3, 4],
                 "dept": ["a", "a", "b", "b"],
                 "score": [10, 20, 30, 40],  # No duplicates within groups
-            }
+            },
         )
 
         table = EntityTable(
@@ -158,12 +156,12 @@ class TestCountDistinctGroupedFix:
 
         star = Star(context=context)
         result = star.execute_query(
-            "MATCH (p:Person) RETURN p.dept AS dept, count(DISTINCT p.score) AS unique_scores"
+            "MATCH (p:Person) RETURN p.dept AS dept, count(DISTINCT p.score) AS unique_scores",
         )
 
         # When no duplicates within groups, COUNT DISTINCT should equal COUNT
         regular_count_result = star.execute_query(
-            "MATCH (p:Person) RETURN p.dept AS dept, count(p.score) AS regular_count"
+            "MATCH (p:Person) RETURN p.dept AS dept, count(p.score) AS regular_count",
         )
 
         # Both departments should have 2 items each
@@ -176,14 +174,12 @@ class TestCountDistinctGroupedFix:
         # Should match regular count when no duplicates
         result_sorted = result.sort_values("dept").reset_index(drop=True)
         regular_sorted = regular_count_result.sort_values("dept").reset_index(
-            drop=True
+            drop=True,
         )
 
         assert (
             result_sorted["unique_scores"] == regular_sorted["regular_count"]
-        ).all(), (
-            "COUNT DISTINCT should equal COUNT when no duplicates within groups"
-        )
+        ).all(), "COUNT DISTINCT should equal COUNT when no duplicates within groups"
 
     def test_count_distinct_with_all_duplicates_within_group(self) -> None:
         """COUNT DISTINCT grouped when a group has all duplicate values."""
@@ -197,7 +193,7 @@ class TestCountDistinctGroupedFix:
                     200,
                     300,
                 ],  # 'same' dept has all duplicates, 'diff' has unique
-            }
+            },
         )
 
         table = EntityTable(
@@ -216,7 +212,7 @@ class TestCountDistinctGroupedFix:
 
         star = Star(context=context)
         result = star.execute_query(
-            "MATCH (p:Person) RETURN p.dept AS dept, count(DISTINCT p.score) AS unique_scores ORDER BY p.dept"
+            "MATCH (p:Person) RETURN p.dept AS dept, count(DISTINCT p.score) AS unique_scores ORDER BY p.dept",
         )
 
         assert len(result) == 2
@@ -255,7 +251,7 @@ class TestCountDistinctGroupedFix:
                     85,
                     85,
                 ],  # Different distinct counts per group combo
-            }
+            },
         )
 
         table = EntityTable(
@@ -278,7 +274,7 @@ class TestCountDistinctGroupedFix:
 
         star = Star(context=context)
         result = star.execute_query(
-            "MATCH (p:Person) RETURN p.dept AS dept, p.level AS level, count(DISTINCT p.score) AS unique_scores"
+            "MATCH (p:Person) RETURN p.dept AS dept, p.level AS level, count(DISTINCT p.score) AS unique_scores",
         )
 
         # Should have 4 groups: (eng,junior), (eng,senior), (hr,junior), (hr,senior)
@@ -286,33 +282,25 @@ class TestCountDistinctGroupedFix:
 
         # Check specific group expectations:
         # eng+junior: [90, 90] -> 1 unique
-        eng_junior = result[
-            (result["dept"] == "eng") & (result["level"] == "junior")
-        ]
+        eng_junior = result[(result["dept"] == "eng") & (result["level"] == "junior")]
         assert eng_junior["unique_scores"].iloc[0] == 1, (
             "Eng+Junior should have 1 unique score"
         )
 
         # hr+senior: [85, 85] -> 1 unique
-        hr_senior = result[
-            (result["dept"] == "hr") & (result["level"] == "senior")
-        ]
+        hr_senior = result[(result["dept"] == "hr") & (result["level"] == "senior")]
         assert hr_senior["unique_scores"].iloc[0] == 1, (
             "HR+Senior should have 1 unique score"
         )
 
         # eng+senior: [95] -> 1 unique
-        eng_senior = result[
-            (result["dept"] == "eng") & (result["level"] == "senior")
-        ]
+        eng_senior = result[(result["dept"] == "eng") & (result["level"] == "senior")]
         assert eng_senior["unique_scores"].iloc[0] == 1, (
             "Eng+Senior should have 1 unique score"
         )
 
         # hr+junior: [80] -> 1 unique
-        hr_junior = result[
-            (result["dept"] == "hr") & (result["level"] == "junior")
-        ]
+        hr_junior = result[(result["dept"] == "hr") & (result["level"] == "junior")]
         assert hr_junior["unique_scores"].iloc[0] == 1, (
             "HR+Junior should have 1 unique score"
         )
@@ -330,7 +318,7 @@ class TestCountDistinctRegressionPrevention:
                 "name": ["Alice", "Bob", "Carol", "Dave", "Eve"],
                 "dept": ["eng", "eng", "hr", "hr", "eng"],
                 "score": [90, 90, 80, 85, 90],
-            }
+            },
         )
 
         table = EntityTable(
@@ -354,7 +342,7 @@ class TestCountDistinctRegressionPrevention:
         star = Star(context=context)
         result = star.execute_query(
             "MATCH (p:Person) "
-            "RETURN p.dept AS dept, count(DISTINCT p.score) AS unique_scores"
+            "RETURN p.dept AS dept, count(DISTINCT p.score) AS unique_scores",
         )
 
         eng_row = result[result["dept"] == "eng"]
@@ -379,7 +367,7 @@ class TestCountDistinctRegressionPrevention:
                 "name": ["Alice", "Bob", "Carol", "Dave", "Eve"],
                 "dept": ["eng", "eng", "hr", "hr", "eng"],
                 "score": [90, 90, 80, 85, 90],
-            }
+            },
         )
 
         table = EntityTable(
@@ -402,7 +390,7 @@ class TestCountDistinctRegressionPrevention:
 
         star = Star(context=context)
         result = star.execute_query(
-            "MATCH (p:Person) RETURN p.dept AS dept, count(DISTINCT p.score) AS unique_scores"
+            "MATCH (p:Person) RETURN p.dept AS dept, count(DISTINCT p.score) AS unique_scores",
         )
 
         assert len(result) == 2

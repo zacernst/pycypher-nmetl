@@ -12,7 +12,7 @@ class TestExplainQuery:
 
     def test_explain_simple_match_return(self, social_star: Star) -> None:
         result = social_star.explain_query(
-            "MATCH (n:Person)-[r:KNOWS]->(m:Person) RETURN n, m"
+            "MATCH (n:Person)-[r:KNOWS]->(m:Person) RETURN n, m",
         )
         assert isinstance(result, str)
         assert "Execution Plan" in result
@@ -27,7 +27,7 @@ class TestExplainQuery:
     def test_explain_union_query(self, social_star: Star) -> None:
         result = social_star.explain_query(
             "MATCH (n:Person) RETURN n.name AS name "
-            "UNION MATCH (m:Person) RETURN m.name AS name"
+            "UNION MATCH (m:Person) RETURN m.name AS name",
         )
         assert "UNION" in result
         assert "sub-quer" in result.lower()
@@ -37,10 +37,11 @@ class TestExplainQuery:
         assert "4 rows" in result  # people_df has 4 rows
 
     def test_explain_shows_relationship_row_counts(
-        self, social_star: Star
+        self,
+        social_star: Star,
     ) -> None:
         result = social_star.explain_query(
-            "MATCH (n:Person)-[r:KNOWS]->(m:Person) RETURN n.name"
+            "MATCH (n:Person)-[r:KNOWS]->(m:Person) RETURN n.name",
         )
         assert "KNOWS" in result
 
@@ -51,7 +52,7 @@ class TestUnionQueries:
     def test_union_with_results(self, social_star: Star) -> None:
         result = social_star.execute_query(
             "MATCH (n:Person) RETURN n.name AS name "
-            "UNION MATCH (n:Person) RETURN n.name AS name"
+            "UNION MATCH (n:Person) RETURN n.name AS name",
         )
         assert isinstance(result, pd.DataFrame)
         assert "name" in result.columns
@@ -65,7 +66,7 @@ class TestUnionQueries:
         with pytest.raises(GraphTypeNotFoundError):
             social_star.execute_query(
                 "MATCH (n:NonExistent) RETURN n.name AS name "
-                "UNION MATCH (m:AlsoNonExistent) RETURN m.name AS name"
+                "UNION MATCH (m:AlsoNonExistent) RETURN m.name AS name",
             )
 
 
@@ -74,19 +75,22 @@ class TestMutationClausesWithoutMatch:
 
     def test_set_without_match_raises(self, social_star: Star) -> None:
         with pytest.raises(
-            ValueError, match="SET clause requires a preceding MATCH"
+            ValueError,
+            match="SET clause requires a preceding MATCH",
         ):
             social_star.execute_query("SET n.age = 30")
 
     def test_remove_without_match_raises(self, social_star: Star) -> None:
         with pytest.raises(
-            ValueError, match="REMOVE clause requires a preceding MATCH"
+            ValueError,
+            match="REMOVE clause requires a preceding MATCH",
         ):
             social_star.execute_query("REMOVE n.prop")
 
     def test_delete_without_match_raises(self, social_star: Star) -> None:
         with pytest.raises(
-            ValueError, match="DELETE clause requires a preceding MATCH"
+            ValueError,
+            match="DELETE clause requires a preceding MATCH",
         ):
             social_star.execute_query("DELETE n")
 
@@ -95,11 +99,11 @@ class TestOptionalMatchNoResults:
     """Cover OPTIONAL MATCH with no results (line 2273)."""
 
     def test_optional_match_nonexistent_relationship(
-        self, social_star: Star
+        self,
+        social_star: Star,
     ) -> None:
         result = social_star.execute_query(
-            "MATCH (n:Person) OPTIONAL MATCH (n)-[:NONEXISTENT]->(m) "
-            "RETURN n.name, m"
+            "MATCH (n:Person) OPTIONAL MATCH (n)-[:NONEXISTENT]->(m) RETURN n.name, m",
         )
         assert isinstance(result, pd.DataFrame)
         assert len(result) > 0
@@ -113,7 +117,7 @@ class TestAggregationInBinaryExpression:
 
     def test_aggregation_in_addition(self, social_star: Star) -> None:
         result = social_star.execute_query(
-            "MATCH (n:Person) RETURN 1 + count(n) AS result"
+            "MATCH (n:Person) RETURN 1 + count(n) AS result",
         )
         assert isinstance(result, pd.DataFrame)
         assert "result" in result.columns
@@ -125,6 +129,6 @@ class TestCreateClause:
 
     def test_create_node_with_properties(self, social_star: Star) -> None:
         result = social_star.execute_query(
-            "CREATE (n:TestNode {name: 'test', age: 42, score: 3.14, active: true})"
+            "CREATE (n:TestNode {name: 'test', age: 42, score: 3.14, active: true})",
         )
         assert isinstance(result, pd.DataFrame)

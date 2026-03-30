@@ -26,14 +26,14 @@ from pycypher.star import Star
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture()
+@pytest.fixture
 def person_ctx() -> Context:
     df = pd.DataFrame(
         {
             ID_COLUMN: [1, 2, 3],
             "name": ["Alice", "Bob", "Charlie"],
             "age": [25, 30, 35],
-        }
+        },
     )
     table = EntityTable(
         entity_type="Person",
@@ -59,7 +59,7 @@ class TestUnknownFunctionError:
         star = Star(context=person_ctx)
         with pytest.raises(ValueError) as exc_info:
             star.execute_query(
-                "MATCH (p:Person) RETURN noSuchFunction(p.name) AS x"
+                "MATCH (p:Person) RETURN noSuchFunction(p.name) AS x",
             )
         assert (
             "noSuchFunction" in str(exc_info.value)
@@ -71,7 +71,7 @@ class TestUnknownFunctionError:
         star = Star(context=person_ctx)
         with pytest.raises(ValueError):
             star.execute_query(
-                "MATCH (p:Person) RETURN missingFn(p.name) AS x"
+                "MATCH (p:Person) RETURN missingFn(p.name) AS x",
             )
 
 
@@ -84,7 +84,8 @@ class TestFunctionNameSuggestion:
     """A close-match typo triggers a 'Did you mean?' hint."""
 
     def test_tolower_typo_suggests_correction(
-        self, person_ctx: Context
+        self,
+        person_ctx: Context,
     ) -> None:
         """'tolow' is close to 'toLower' — error should explicitly suggest it."""
         star = Star(context=person_ctx)
@@ -103,19 +104,21 @@ class TestFunctionNameSuggestion:
         assert "did you mean" in error_msg
 
     def test_substring_typo_suggests_substring(
-        self, person_ctx: Context
+        self,
+        person_ctx: Context,
     ) -> None:
         """'substr' is close to 'substring' — error must say "Did you mean 'substring'"."""
         star = Star(context=person_ctx)
         with pytest.raises(ValueError) as exc_info:
             star.execute_query(
-                "MATCH (p:Person) RETURN substr(p.name, 1) AS x"
+                "MATCH (p:Person) RETURN substr(p.name, 1) AS x",
             )
         error_msg = str(exc_info.value).lower()
         assert "did you mean" in error_msg
 
     def test_no_suggestion_for_completely_unrelated_name(
-        self, person_ctx: Context
+        self,
+        person_ctx: Context,
     ) -> None:
         """No 'Did you mean?' for a completely unrelated function name."""
         star = Star(context=person_ctx)
@@ -129,11 +132,12 @@ class TestFunctionNameSuggestion:
         assert "did you mean" not in error_msg
 
     def test_correct_function_does_not_raise(
-        self, person_ctx: Context
+        self,
+        person_ctx: Context,
     ) -> None:
         """Correctly spelled functions must execute without error."""
         star = Star(context=person_ctx)
         result = star.execute_query(
-            "MATCH (p:Person) RETURN toLower(p.name) AS low_name"
+            "MATCH (p:Person) RETURN toLower(p.name) AS low_name",
         )
         assert result["low_name"].tolist() == ["alice", "bob", "charlie"]

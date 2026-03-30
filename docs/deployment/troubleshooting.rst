@@ -93,7 +93,7 @@ Backend failures
    uv pip install polars
 
    # Verify
-   uv run python -c "from pycypher.backend_engine import select_backend; print(select_backend('auto').name)"
+   uv run python -c "from pycypher.backend_engine import select_backend; print(select_backend(hint='pandas').name)"
 
 Spark Issues
 ------------
@@ -233,4 +233,4 @@ Getting Help
 * **Issue tracker**: Report bugs at the GitHub repository
 * **Test suite**: Run ``uv run pytest -x`` to identify failures
 * **Logs**: Check ``make dev-logs`` for container output
-* **Metrics**: Use ``QUERY_METRICS.diagnostic_summary()`` for execution stats
+* **Metrics**: Use ``QUERY_METRICS.snapshot().diagnostic_report()`` for execution stats

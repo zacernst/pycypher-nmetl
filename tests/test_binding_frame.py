@@ -46,14 +46,14 @@ def ctx() -> Context:
             ID_COLUMN: [1, 2, 3],
             "name": ["Alice", "Bob", "Carol"],
             "age": [30, 25, 35],
-        }
+        },
     )
     knows_df = pd.DataFrame(
         {
             ID_COLUMN: [10, 11, 12],
             RELATIONSHIP_SOURCE_COLUMN: [1, 2, 1],
             RELATIONSHIP_TARGET_COLUMN: [2, 3, 3],
-        }
+        },
     )
     person_table = EntityTable(
         entity_type="Person",
@@ -78,7 +78,7 @@ def ctx() -> Context:
     return Context(
         entity_mapping=EntityMapping(mapping={"Person": person_table}),
         relationship_mapping=RelationshipMapping(
-            mapping={"KNOWS": knows_table}
+            mapping={"KNOWS": knows_table},
         ),
     )
 
@@ -122,7 +122,8 @@ class TestConstruction:
         assert single_var_frame.entity_type("p") == "Person"
 
     def test_entity_type_missing_raises(
-        self, single_var_frame: BindingFrame
+        self,
+        single_var_frame: BindingFrame,
     ) -> None:
         with pytest.raises(KeyError):
             single_var_frame.entity_type("z")
@@ -135,13 +136,15 @@ class TestConstruction:
 
 class TestGetProperty:
     def test_returns_series_of_correct_length(
-        self, single_var_frame: BindingFrame
+        self,
+        single_var_frame: BindingFrame,
     ) -> None:
         result = single_var_frame.get_property("p", "name")
         assert len(result) == 3
 
     def test_correct_values_single_var(
-        self, single_var_frame: BindingFrame
+        self,
+        single_var_frame: BindingFrame,
     ) -> None:
         result = single_var_frame.get_property("p", "name")
         assert list(result) == ["Alice", "Bob", "Carol"]
@@ -151,9 +154,10 @@ class TestGetProperty:
         assert list(result) == [30, 25, 35]
 
     def test_two_same_type_vars_independent(
-        self, two_var_frame: BindingFrame
+        self,
+        two_var_frame: BindingFrame,
     ) -> None:
-        """p and q are both Person — their properties must be independent."""
+        """P and q are both Person — their properties must be independent."""
         p_names = two_var_frame.get_property("p", "name")
         q_names = two_var_frame.get_property("q", "name")
 
@@ -170,17 +174,20 @@ class TestGetProperty:
             assert pn != qn
 
     def test_unknown_variable_raises(
-        self, single_var_frame: BindingFrame
+        self,
+        single_var_frame: BindingFrame,
     ) -> None:
         from pycypher.exceptions import VariableNotFoundError
 
         with pytest.raises(
-            VariableNotFoundError, match="Variable 'z' is not defined"
+            VariableNotFoundError,
+            match="Variable 'z' is not defined",
         ):
             single_var_frame.get_property("z", "name")
 
     def test_unknown_property_returns_null_series(
-        self, single_var_frame: BindingFrame
+        self,
+        single_var_frame: BindingFrame,
     ) -> None:
         """Per Cypher semantics, accessing a nonexistent property returns null."""
         import pandas as pd
@@ -213,7 +220,8 @@ class TestFilter:
         assert filtered.bindings["p"].iloc[0] == 2  # Bob's ID
 
     def test_filter_preserves_type_registry(
-        self, single_var_frame: BindingFrame
+        self,
+        single_var_frame: BindingFrame,
     ) -> None:
         mask = single_var_frame.get_property("p", "age") > 0
         filtered = single_var_frame.filter(mask)
@@ -251,7 +259,7 @@ class TestJoin:
                     "r": [10, 11, 12],
                     "_src_r": [1, 2, 1],
                     "_tgt_r": [2, 3, 3],
-                }
+                },
             ),
             type_registry={"r": "KNOWS"},
             context=ctx,
@@ -279,7 +287,7 @@ class TestJoin:
                     "r": [10, 11, 12],
                     "_src_r": [1, 2, 1],
                     "_tgt_r": [2, 3, 3],
-                }
+                },
             ),
             type_registry={"r": "KNOWS"},
             context=ctx,
@@ -339,7 +347,8 @@ class TestJoin:
 
 class TestProject:
     def test_project_single_column(
-        self, single_var_frame: BindingFrame
+        self,
+        single_var_frame: BindingFrame,
     ) -> None:
         names = single_var_frame.get_property("p", "name")
         result = single_var_frame.project({"name": names})
@@ -347,7 +356,8 @@ class TestProject:
         assert list(result["name"]) == ["Alice", "Bob", "Carol"]
 
     def test_project_multiple_columns(
-        self, single_var_frame: BindingFrame
+        self,
+        single_var_frame: BindingFrame,
     ) -> None:
         names = single_var_frame.get_property("p", "name")
         ages = single_var_frame.get_property("p", "age")
@@ -356,7 +366,8 @@ class TestProject:
         assert len(result) == 3
 
     def test_project_returns_plain_dataframe(
-        self, single_var_frame: BindingFrame
+        self,
+        single_var_frame: BindingFrame,
     ) -> None:
         names = single_var_frame.get_property("p", "name")
         result = single_var_frame.project({"name": names})
@@ -364,7 +375,8 @@ class TestProject:
         assert not isinstance(result, BindingFrame)
 
     def test_project_two_same_type_vars(
-        self, two_var_frame: BindingFrame
+        self,
+        two_var_frame: BindingFrame,
     ) -> None:
         """Project p.name and q.name as independent columns."""
         p_names = two_var_frame.get_property("p", "name")
@@ -405,7 +417,8 @@ class TestMutate:
         assert list(result) == [99, 99, 99]
 
     def test_mutate_partial_frame_leaves_others_unchanged(
-        self, ctx: Context
+        self,
+        ctx: Context,
     ) -> None:
         """Mutating a subset of rows should not corrupt the rest."""
         # Frame with only Alice
@@ -553,7 +566,8 @@ class TestRelationshipScan:
         assert set(bf.bindings["_tgt_r"]) == {2, 3}
 
     def test_scan_type_registry_contains_only_rel_var(
-        self, ctx: Context
+        self,
+        ctx: Context,
     ) -> None:
         """Structural columns _src_ and _tgt_ are NOT in the type registry."""
         bf = RelationshipScan("KNOWS", "r").scan(ctx)
@@ -671,7 +685,8 @@ class TestBindingFilter:
         predicate = Comparison(
             operator="=",
             left=PropertyLookup(
-                expression=Variable(name="p"), property="name"
+                expression=Variable(name="p"),
+                property="name",
             ),
             right=StringLiteral(value="Alice"),
         )
@@ -716,18 +731,20 @@ class TestBindingFilter:
                 Comparison(
                     operator=">",
                     left=PropertyLookup(
-                        expression=Variable(name="p"), property="age"
+                        expression=Variable(name="p"),
+                        property="age",
                     ),
                     right=IntegerLiteral(value=25),
                 ),
                 Comparison(
                     operator="<",
                     left=PropertyLookup(
-                        expression=Variable(name="p"), property="age"
+                        expression=Variable(name="p"),
+                        property="age",
                     ),
                     right=IntegerLiteral(value=35),
                 ),
-            ]
+            ],
         )
         filtered = BindingFilter(predicate=predicate).apply(bf)
         assert len(filtered) == 1
@@ -781,13 +798,16 @@ class TestBindingFilter:
         p_bf = EntityScan("Person", "p").scan(ctx)
         r_bf = RelationshipScan("KNOWS", "r").scan(ctx)
         joined = p_bf.join(r_bf, "p", "_src_r").rename(
-            "_tgt_r", "q", new_type="Person"
+            "_tgt_r",
+            "q",
+            new_type="Person",
         )
 
         predicate = Comparison(
             operator="=",
             left=PropertyLookup(
-                expression=Variable(name="p"), property="name"
+                expression=Variable(name="p"),
+                property="name",
             ),
             right=StringLiteral(value="Alice"),
         )
@@ -815,7 +835,7 @@ class TestBindingExpressionEvaluator:
         from pycypher.ast_models import IntegerLiteral
 
         result = BindingExpressionEvaluator(bf).evaluate(
-            IntegerLiteral(value=42)
+            IntegerLiteral(value=42),
         )
         assert list(result) == [42, 42, 42]
 
@@ -823,7 +843,7 @@ class TestBindingExpressionEvaluator:
         from pycypher.ast_models import StringLiteral
 
         result = BindingExpressionEvaluator(bf).evaluate(
-            StringLiteral(value="hi")
+            StringLiteral(value="hi"),
         )
         assert list(result) == ["hi", "hi", "hi"]
 
@@ -839,18 +859,19 @@ class TestBindingExpressionEvaluator:
         from pycypher.ast_models import PropertyLookup, Variable
 
         result = BindingExpressionEvaluator(bf).evaluate(
-            PropertyLookup(expression=Variable(name="p"), property="name")
+            PropertyLookup(expression=Variable(name="p"), property="name"),
         )
         assert set(result) == {"Alice", "Bob", "Carol"}
 
     def test_property_lookup_unknown_variable_raises(
-        self, bf: BindingFrame
+        self,
+        bf: BindingFrame,
     ) -> None:
         from pycypher.ast_models import PropertyLookup, Variable
 
         with pytest.raises(ValueError):
             BindingExpressionEvaluator(bf).evaluate(
-                PropertyLookup(expression=Variable(name="z"), property="name")
+                PropertyLookup(expression=Variable(name="z"), property="name"),
             )
 
     # Arithmetic
@@ -867,10 +888,11 @@ class TestBindingExpressionEvaluator:
             Arithmetic(
                 operator="+",
                 left=PropertyLookup(
-                    expression=Variable(name="p"), property="age"
+                    expression=Variable(name="p"),
+                    property="age",
                 ),
                 right=IntegerLiteral(value=10),
-            )
+            ),
         )
         assert set(result) == {40, 35, 45}
 
@@ -888,10 +910,11 @@ class TestBindingExpressionEvaluator:
             Comparison(
                 operator="=",
                 left=PropertyLookup(
-                    expression=Variable(name="p"), property="name"
+                    expression=Variable(name="p"),
+                    property="name",
                 ),
                 right=StringLiteral(value="Alice"),
-            )
+            ),
         )
         assert list(result) == [True, False, False]
 
@@ -910,9 +933,10 @@ class TestBindingExpressionEvaluator:
             NullCheck(
                 operator="IS NULL",
                 operand=PropertyLookup(
-                    expression=Variable(name="p"), property="name"
+                    expression=Variable(name="p"),
+                    property="name",
                 ),
-            )
+            ),
         )
         assert result.sum() == 1
 
@@ -930,10 +954,11 @@ class TestBindingExpressionEvaluator:
             StringPredicate(
                 operator="STARTS WITH",
                 left=PropertyLookup(
-                    expression=Variable(name="p"), property="name"
+                    expression=Variable(name="p"),
+                    property="name",
                 ),
                 right=StringLiteral(value="A"),
-            )
+            ),
         )
         assert list(result) == [True, False, False]
 
@@ -949,10 +974,11 @@ class TestBindingExpressionEvaluator:
             StringPredicate(
                 operator="CONTAINS",
                 left=PropertyLookup(
-                    expression=Variable(name="p"), property="name"
+                    expression=Variable(name="p"),
+                    property="name",
                 ),
                 right=StringLiteral(value="o"),
-            )
+            ),
         )
         # Bob and Carol contain 'o'
         assert result.sum() == 2
@@ -974,19 +1000,21 @@ class TestBindingExpressionEvaluator:
                     Comparison(
                         operator=">",
                         left=PropertyLookup(
-                            expression=Variable(name="p"), property="age"
+                            expression=Variable(name="p"),
+                            property="age",
                         ),
                         right=IntegerLiteral(value=24),
                     ),
                     Comparison(
                         operator="<",
                         left=PropertyLookup(
-                            expression=Variable(name="p"), property="age"
+                            expression=Variable(name="p"),
+                            property="age",
                         ),
                         right=IntegerLiteral(value=31),
                     ),
-                ]
-            )
+                ],
+            ),
         )
         # Bob (25) and Alice (30) match; Carol (35) does not
         assert result.sum() == 2
@@ -1005,11 +1033,12 @@ class TestBindingExpressionEvaluator:
                 operand=Comparison(
                     operator="=",
                     left=PropertyLookup(
-                        expression=Variable(name="p"), property="name"
+                        expression=Variable(name="p"),
+                        property="name",
                     ),
                     right=StringLiteral(value="Alice"),
-                )
-            )
+                ),
+            ),
         )
         assert list(result) == [False, True, True]
 
@@ -1033,12 +1062,13 @@ class TestBindingExpressionEvaluator:
                     condition=Comparison(
                         operator=">=",
                         left=PropertyLookup(
-                            expression=Variable(name="p"), property="age"
+                            expression=Variable(name="p"),
+                            property="age",
                         ),
                         right=IntegerLiteral(value=30),
                     ),
                     result=StringLiteral(value="senior"),
-                )
+                ),
             ],
             else_expr=StringLiteral(value="junior"),
         )
@@ -1064,7 +1094,8 @@ class TestBindingExpressionEvaluator:
                     condition=Comparison(
                         operator=">=",
                         left=PropertyLookup(
-                            expression=Variable(name="p"), property="age"
+                            expression=Variable(name="p"),
+                            property="age",
                         ),
                         right=IntegerLiteral(value=30),
                     ),
@@ -1074,7 +1105,8 @@ class TestBindingExpressionEvaluator:
                     condition=Comparison(
                         operator=">=",
                         left=PropertyLookup(
-                            expression=Variable(name="p"), property="age"
+                            expression=Variable(name="p"),
+                            property="age",
                         ),
                         right=IntegerLiteral(value=25),
                     ),
@@ -1105,12 +1137,13 @@ class TestBindingExpressionEvaluator:
                     condition=Comparison(
                         operator=">",
                         left=PropertyLookup(
-                            expression=Variable(name="p"), property="age"
+                            expression=Variable(name="p"),
+                            property="age",
                         ),
                         right=IntegerLiteral(value=100),
                     ),
                     result=StringLiteral(value="impossible"),
-                )
+                ),
             ],
             else_expr=None,
         )
@@ -1131,9 +1164,10 @@ class TestBindingExpressionEvaluator:
             arguments={
                 "arguments": [
                     PropertyLookup(
-                        expression=Variable(name="p"), property="name"
-                    )
-                ]
+                        expression=Variable(name="p"),
+                        property="name",
+                    ),
+                ],
             },
         )
         result = BindingExpressionEvaluator(bf).evaluate(expr)
@@ -1157,17 +1191,17 @@ class TestQueryAtomicity:
 
         star = Star(context=ctx)
         original_names: list = list(
-            ctx.entity_mapping["Person"].source_obj["name"]
+            ctx.entity_mapping["Person"].source_obj["name"],
         )
 
         # The RETURN references a non-existent variable; the query will fail.
         with pytest.raises(Exception):
             star.execute_query(
-                "MATCH (p:Person) SET p.name = 'Changed' RETURN nosuchvar.foo AS x"
+                "MATCH (p:Person) SET p.name = 'Changed' RETURN nosuchvar.foo AS x",
             )
 
         current_names: list = list(
-            ctx.entity_mapping["Person"].source_obj["name"]
+            ctx.entity_mapping["Person"].source_obj["name"],
         )
         assert current_names == original_names, (
             "Rolled-back mutation must not persist to context"
@@ -1179,7 +1213,7 @@ class TestQueryAtomicity:
 
         star = Star(context=ctx)
         star.execute_query(
-            "MATCH (p:Person) SET p.score = 99 RETURN p.name AS name"
+            "MATCH (p:Person) SET p.score = 99 RETURN p.name AS name",
         )
         result = star.execute_query("MATCH (p:Person) RETURN p.score AS score")
         assert (result["score"] == 99).all()
@@ -1190,16 +1224,16 @@ class TestQueryAtomicity:
 
         star = Star(context=ctx)
         star.execute_query(
-            "MATCH (p:Person) SET p.tag = 'hello' RETURN p.name AS n"
+            "MATCH (p:Person) SET p.tag = 'hello' RETURN p.name AS n",
         )
         result1 = list(
-            star.execute_query("MATCH (p:Person) RETURN p.tag AS tag")["tag"]
+            star.execute_query("MATCH (p:Person) RETURN p.tag AS tag")["tag"],
         )
         star.execute_query(
-            "MATCH (p:Person) SET p.tag = 'hello' RETURN p.name AS n"
+            "MATCH (p:Person) SET p.tag = 'hello' RETURN p.name AS n",
         )
         result2 = list(
-            star.execute_query("MATCH (p:Person) RETURN p.tag AS tag")["tag"]
+            star.execute_query("MATCH (p:Person) RETURN p.tag AS tag")["tag"],
         )
         assert result1 == result2
 
@@ -1463,7 +1497,8 @@ class TestGetPropertyEdgeCases:
     """Edge cases for get_property not covered by basic tests."""
 
     def test_variable_not_in_registry_but_inferable(
-        self, ctx: Context
+        self,
+        ctx: Context,
     ) -> None:
         """Variable without type_registry entry should be auto-detected."""
         bf = BindingFrame(
@@ -1487,7 +1522,8 @@ class TestGetPropertyEdgeCases:
             bf.get_property("q", "name")
 
     def test_empty_frame_not_in_registry_returns_empty(
-        self, ctx: Context
+        self,
+        ctx: Context,
     ) -> None:
         """Empty frame with unregistered variable returns empty series."""
         bf = BindingFrame(
@@ -1499,7 +1535,8 @@ class TestGetPropertyEdgeCases:
         assert len(result) == 0
 
     def test_entity_type_not_in_mapping_returns_null(
-        self, ctx: Context
+        self,
+        ctx: Context,
     ) -> None:
         """Entity type registered but not in entity_mapping returns null series."""
         bf = BindingFrame(
@@ -1533,7 +1570,7 @@ class TestGetPropertyEdgeCases:
             {
                 ID_COLUMN: [100, 101],
                 "name": ["Rex", "Spot"],
-            }
+            },
         )
         animal_table = EntityTable(
             entity_type="Animal",
@@ -1571,7 +1608,8 @@ class TestMutateRelationship:
         assert list(result) == [1.0, 2.0, 3.0]
 
     def test_mutate_entity_type_not_in_mapping_raises(
-        self, ctx: Context
+        self,
+        ctx: Context,
     ) -> None:
         """Mutating with a type not in any mapping raises ValueError."""
         bf = BindingFrame(

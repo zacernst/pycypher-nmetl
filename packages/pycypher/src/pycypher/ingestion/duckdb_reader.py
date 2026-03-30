@@ -7,6 +7,9 @@ and returns the result as a ``pa.Table`` via ``duckdb_relation.to_arrow_table()`
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from urllib.parse import urlparse
+
+from shared.logger import LOGGER
 
 from pycypher.ingestion.data_sources import _validate_sql_string_literal
 from pycypher.ingestion.security import (
@@ -179,8 +182,7 @@ class DuckDBReader:
         """Execute *query* against an external database and return Arrow.
 
         Args:
-            connection_string: DuckDB-compatible connection string (e.g.
-                ``"postgresql://user:pass@host/db"``).
+            connection_string: DuckDB-compatible connection string.
             query: SQL query to execute.
 
         Returns:
@@ -188,6 +190,22 @@ class DuckDBReader:
 
         Raises:
             SecurityError: If connection string or query contains dangerous content.
+
+        Security:
+            **Never embed credentials directly in connection strings or config
+            files.**  Use environment variables to supply sensitive values::
+
+                import os
+                conn = f"postgresql://{os.environ['DB_USER']}:{os.environ['DB_PASSWORD']}@host/db"
+                result = DuckDBReader.from_sql(conn, "SELECT * FROM t")
+
+            In pipeline YAML configs, reference env vars with ``${DB_PASSWORD}``
+            syntax.  The ``nmetl security-check`` command will flag embedded
+            credentials and insecure connection patterns.
+
+            Connection strings are validated for safe URI schemes but are
+            **not logged** to prevent credential leakage.  The audit logger
+            records parameter *keys* only, never values.
 
         """
         # Security validation
@@ -199,8 +217,24 @@ class DuckDBReader:
             msg = f"Security validation failed for SQL execution: {e}"
             raise SecurityError(msg) from e
 
+        # Warn if credentials appear embedded in the connection string.
+        try:
+            parsed = urlparse(connection_string)
+            if parsed.password:
+                LOGGER.warning(
+                    "from_sql: connection string contains an embedded password. "
+                    "Use environment variables instead "
+                    "(e.g. os.environ['DB_PASSWORD']) to avoid credential "
+                    "exposure in config files and logs.",
+                )
+        except Exception:  # noqa: BLE001 — best-effort check, never block execution
+            pass
+
         import duckdb
 
+        # NOTE: connection_string is intentionally not logged to prevent
+        # credential leakage.  Use the query correlation ID from structured
+        # logs to trace execution.
         with duckdb.connect(connection_string) as con:
             return con.execute(query).to_arrow_table()
 

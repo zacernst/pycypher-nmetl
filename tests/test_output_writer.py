@@ -22,7 +22,7 @@ _SAMPLE_DF = pd.DataFrame(
     {
         "name": ["Alice", "Bob"],
         "age": [30, 25],
-    }
+    },
 )
 
 
@@ -74,7 +74,8 @@ class TestExplicitFormat:
         assert set(result["name"]) == {"Alice", "Bob"}
 
     def test_explicit_parquet_overrides_csv_extension(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         uri = str(tmp_path / "output.csv")
         write_dataframe_to_uri(_SAMPLE_DF, uri, OutputFormat.PARQUET)

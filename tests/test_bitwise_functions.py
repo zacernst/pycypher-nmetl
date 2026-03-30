@@ -42,9 +42,9 @@ def bits_ctx() -> ContextBuilder:
                     "flags": [0b1010, 0b1100, 0b0110, 0b1111],
                     "shift": [1, 2, 3, 4],
                     "val": [12, 7, 0, -1],
-                }
-            )
-        }
+                },
+            ),
+        },
     )
 
 
@@ -67,12 +67,14 @@ class TestBitwiseFunctionsRegistered:
         assert registry.has_function("bitNot")
 
     def test_bitshiftleft_registered(
-        self, registry: ScalarFunctionRegistry
+        self,
+        registry: ScalarFunctionRegistry,
     ) -> None:
         assert registry.has_function("bitShiftLeft")
 
     def test_bitshiftright_registered(
-        self, registry: ScalarFunctionRegistry
+        self,
+        registry: ScalarFunctionRegistry,
     ) -> None:
         assert registry.has_function("bitShiftRight")
 
@@ -118,7 +120,7 @@ class TestBitAnd:
         # 0b1010 & 0b1100 = 0b1000 = 8; 0b1100 & 0b1100 = 0b1100 = 12;
         # 0b0110 & 0b1100 = 0b0100 = 4; 0b1111 & 0b1100 = 0b1100 = 12
         result = s.execute_query(
-            "MATCH (n:Item) RETURN bitAnd(n.flags, 12) AS v ORDER BY n.flags"
+            "MATCH (n:Item) RETURN bitAnd(n.flags, 12) AS v ORDER BY n.flags",
         )
         assert result["v"].tolist() == [4, 8, 12, 12]
 
@@ -152,7 +154,7 @@ class TestBitOr:
         s = Star(context=bits_ctx)
         # OR with 1 (0b0001): all values get bit 0 set
         result = s.execute_query(
-            "MATCH (n:Item) RETURN bitOr(n.flags, 1) AS v ORDER BY n.flags"
+            "MATCH (n:Item) RETURN bitOr(n.flags, 1) AS v ORDER BY n.flags",
         )
         expected = [0b0111, 0b1011, 0b1101, 0b1111]
         assert result["v"].tolist() == expected
@@ -185,7 +187,7 @@ class TestBitXor:
         s = Star(context=bits_ctx)
         # XOR each flag with itself → 0 for all
         result = s.execute_query(
-            "MATCH (n:Item) RETURN bitXor(n.flags, n.flags) AS v"
+            "MATCH (n:Item) RETURN bitXor(n.flags, n.flags) AS v",
         )
         assert all(v == 0 for v in result["v"].tolist())
 
@@ -222,7 +224,7 @@ class TestBitNot:
         s = Star(context=bits_ctx)
         # ~(n.val): 12→-13, 7→-8, 0→-1, -1→0
         result = s.execute_query(
-            "MATCH (n:Item) RETURN bitNot(n.val) AS v ORDER BY n.val"
+            "MATCH (n:Item) RETURN bitNot(n.val) AS v ORDER BY n.val",
         )
         vals = sorted(result["v"].tolist())
         assert vals == sorted([-13, -8, -1, 0])
@@ -238,7 +240,8 @@ class TestBitShiftLeft:
         s = pd.Series([1, 2, 3], dtype=object)
         y = pd.Series([3, 3, 3], dtype=object)
         r = ScalarFunctionRegistry.get_instance().execute(
-            "bitShiftLeft", [s, y]
+            "bitShiftLeft",
+            [s, y],
         )
         assert r.tolist() == [8, 16, 24]
 
@@ -246,7 +249,8 @@ class TestBitShiftLeft:
         s = pd.Series([42], dtype=object)
         z = pd.Series([0], dtype=object)
         r = ScalarFunctionRegistry.get_instance().execute(
-            "bitShiftLeft", [s, z]
+            "bitShiftLeft",
+            [s, z],
         )
         assert r.iloc[0] == 42
 
@@ -254,7 +258,8 @@ class TestBitShiftLeft:
         s = pd.Series([None, 4], dtype=object)
         y = pd.Series([2, None], dtype=object)
         r = ScalarFunctionRegistry.get_instance().execute(
-            "bitShiftLeft", [s, y]
+            "bitShiftLeft",
+            [s, y],
         )
         assert r.iloc[0] is None
         assert r.iloc[1] is None
@@ -263,7 +268,7 @@ class TestBitShiftLeft:
         s = Star(context=bits_ctx)
         # 1 << shift: 1<<1=2, 1<<2=4, 1<<3=8, 1<<4=16
         result = s.execute_query(
-            "MATCH (n:Item) RETURN bitShiftLeft(1, n.shift) AS v ORDER BY n.shift"
+            "MATCH (n:Item) RETURN bitShiftLeft(1, n.shift) AS v ORDER BY n.shift",
         )
         assert result["v"].tolist() == [2, 4, 8, 16]
 
@@ -278,7 +283,8 @@ class TestBitShiftRight:
         s = pd.Series([16, 32, 64], dtype=object)
         y = pd.Series([2, 2, 2], dtype=object)
         r = ScalarFunctionRegistry.get_instance().execute(
-            "bitShiftRight", [s, y]
+            "bitShiftRight",
+            [s, y],
         )
         assert r.tolist() == [4, 8, 16]
 
@@ -286,7 +292,8 @@ class TestBitShiftRight:
         s = pd.Series([42], dtype=object)
         z = pd.Series([0], dtype=object)
         r = ScalarFunctionRegistry.get_instance().execute(
-            "bitShiftRight", [s, z]
+            "bitShiftRight",
+            [s, z],
         )
         assert r.iloc[0] == 42
 
@@ -294,7 +301,8 @@ class TestBitShiftRight:
         s = pd.Series([7], dtype=object)  # 0b0111
         y = pd.Series([1], dtype=object)
         r = ScalarFunctionRegistry.get_instance().execute(
-            "bitShiftRight", [s, y]
+            "bitShiftRight",
+            [s, y],
         )
         assert r.iloc[0] == 3  # 0b0011
 
@@ -302,7 +310,8 @@ class TestBitShiftRight:
         s = pd.Series([None], dtype=object)
         y = pd.Series([2], dtype=object)
         r = ScalarFunctionRegistry.get_instance().execute(
-            "bitShiftRight", [s, y]
+            "bitShiftRight",
+            [s, y],
         )
         assert r.iloc[0] is None
 
@@ -310,7 +319,7 @@ class TestBitShiftRight:
         s = Star(context=bits_ctx)
         # flags >> 1: 0b1010>>1=5, 0b1100>>1=6, 0b0110>>1=3, 0b1111>>1=7
         result = s.execute_query(
-            "MATCH (n:Item) RETURN bitShiftRight(n.flags, 1) AS v ORDER BY n.flags"
+            "MATCH (n:Item) RETURN bitShiftRight(n.flags, 1) AS v ORDER BY n.flags",
         )
         assert result["v"].tolist() == [3, 5, 6, 7]
 
@@ -322,7 +331,7 @@ class TestBitShiftRight:
 
 class TestBitwiseVectorised:
     def test_bitand_large_series(self) -> None:
-        """bitAnd over 10 000 rows completes in < 100ms (not per-row Python)."""
+        """BitAnd over 10 000 rows completes in < 100ms (not per-row Python)."""
         import time
 
         n = 10_000
@@ -332,9 +341,7 @@ class TestBitwiseVectorised:
         for _ in range(100):
             ScalarFunctionRegistry.get_instance().execute("bitAnd", [s, mask])
         elapsed = time.perf_counter() - t0
-        assert elapsed < 5.0, (
-            f"100 × 10k bitAnd took {elapsed:.2f}s (too slow)"
-        )
+        assert elapsed < 5.0, f"100 × 10k bitAnd took {elapsed:.2f}s (too slow)"
 
     def test_all_six_return_series(self) -> None:
         """All six functions return a pd.Series (not a scalar or list)."""
@@ -350,7 +357,5 @@ class TestBitwiseVectorised:
             ("bitShiftRight", [x, y]),
         ]:
             result = reg.execute(fname, args)
-            assert isinstance(result, pd.Series), (
-                f"{fname} did not return Series"
-            )
+            assert isinstance(result, pd.Series), f"{fname} did not return Series"
             assert len(result) == 2, f"{fname} wrong length"

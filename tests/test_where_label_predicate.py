@@ -34,7 +34,7 @@ from pycypher.star import Star
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture()
+@pytest.fixture
 def label_star() -> Star:
     """Star with Person and Animal tables for multi-type label tests."""
     persons = pd.DataFrame(
@@ -42,7 +42,7 @@ def label_star() -> Star:
             ID_COLUMN: [1, 2, 3],
             "name": ["Alice", "Bob", "Carol"],
             "age": [30, 25, 35],
-        }
+        },
     )
     p_table = EntityTable(
         entity_type="Person",
@@ -56,22 +56,22 @@ def label_star() -> Star:
         context=Context(
             entity_mapping=EntityMapping(mapping={"Person": p_table}),
             relationship_mapping=RelationshipMapping(mapping={}),
-        )
+        ),
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def multi_type_star() -> Star:
     """Star with both Person and Animal entity types."""
     persons = pd.DataFrame(
-        {ID_COLUMN: [1, 2], "name": ["Alice", "Bob"], "age": [30, 25]}
+        {ID_COLUMN: [1, 2], "name": ["Alice", "Bob"], "age": [30, 25]},
     )
     animals = pd.DataFrame(
         {
             ID_COLUMN: [10, 11],
             "name": ["Rex", "Mimi"],
             "species": ["dog", "cat"],
-        }
+        },
     )
     p_table = EntityTable(
         entity_type="Person",
@@ -92,10 +92,10 @@ def multi_type_star() -> Star:
     return Star(
         context=Context(
             entity_mapping=EntityMapping(
-                mapping={"Person": p_table, "Animal": a_table}
+                mapping={"Person": p_table, "Animal": a_table},
             ),
             relationship_mapping=RelationshipMapping(mapping={}),
-        )
+        ),
     )
 
 
@@ -154,57 +154,53 @@ class TestLabelPredicateExecution:
     def test_unlabeled_match_filtered_by_label(self, label_star: Star) -> None:
         """MATCH (n) WHERE n:Person returns all persons (same as labeled match)."""
         result = label_star.execute_query(
-            "MATCH (n) WHERE n:Person RETURN n.name ORDER BY n.name"
+            "MATCH (n) WHERE n:Person RETURN n.name ORDER BY n.name",
         )
         assert list(result["name"]) == ["Alice", "Bob", "Carol"]
 
     def test_labeled_match_redundant_where(self, label_star: Star) -> None:
         """MATCH (n:Person) WHERE n:Person is redundant but must return all persons."""
         result = label_star.execute_query(
-            "MATCH (n:Person) WHERE n:Person RETURN n.name ORDER BY n.name"
+            "MATCH (n:Person) WHERE n:Person RETURN n.name ORDER BY n.name",
         )
         assert list(result["name"]) == ["Alice", "Bob", "Carol"]
 
     def test_label_with_property_filter(self, label_star: Star) -> None:
         """WHERE n:Person AND n.age > 28 filters by label AND property."""
         result = label_star.execute_query(
-            "MATCH (n) WHERE n:Person AND n.age > 28 RETURN n.name ORDER BY n.name"
+            "MATCH (n) WHERE n:Person AND n.age > 28 RETURN n.name ORDER BY n.name",
         )
         assert list(result["name"]) == ["Alice", "Carol"]
 
     def test_wrong_label_returns_empty(self, label_star: Star) -> None:
         """WHERE n:Animal returns empty when context has only Person entities."""
         result = label_star.execute_query(
-            "MATCH (n) WHERE n:Animal RETURN n.name"
+            "MATCH (n) WHERE n:Animal RETURN n.name",
         )
         assert len(result) == 0
 
     def test_not_label_inverts_result(self, label_star: Star) -> None:
         """WHERE NOT n:Person returns empty (all nodes ARE persons)."""
         result = label_star.execute_query(
-            "MATCH (n) WHERE NOT n:Person RETURN n.name"
+            "MATCH (n) WHERE NOT n:Person RETURN n.name",
         )
         assert len(result) == 0
 
     def test_label_in_return_clause(self, label_star: Star) -> None:
         """RETURN n:Person AS is_person must return True for all rows."""
         result = label_star.execute_query(
-            "MATCH (n:Person) RETURN n:Person AS is_person ORDER BY n.name"
+            "MATCH (n:Person) RETURN n:Person AS is_person ORDER BY n.name",
         )
         values = list(result["is_person"])
-        assert all(v is True for v in values), (
-            f"Expected all True, got {values}"
-        )
+        assert all(v is True for v in values), f"Expected all True, got {values}"
 
     def test_label_false_in_return_clause(self, label_star: Star) -> None:
         """RETURN n:Animal AS is_animal must return False for Person nodes."""
         result = label_star.execute_query(
-            "MATCH (n:Person) RETURN n:Animal AS is_animal ORDER BY n.name"
+            "MATCH (n:Person) RETURN n:Animal AS is_animal ORDER BY n.name",
         )
         values = list(result["is_animal"])
-        assert all(v is False for v in values), (
-            f"Expected all False, got {values}"
-        )
+        assert all(v is False for v in values), f"Expected all False, got {values}"
 
 
 # ---------------------------------------------------------------------------
@@ -216,43 +212,46 @@ class TestLabelPredicateMultiType:
     """With multiple entity types, WHERE n:Label discriminates between them."""
 
     def test_filter_persons_from_mixed_scan(
-        self, multi_type_star: Star
+        self,
+        multi_type_star: Star,
     ) -> None:
         """Unlabeled scan filtered by n:Person returns only persons."""
         result = multi_type_star.execute_query(
-            "MATCH (n) WHERE n:Person RETURN n.name ORDER BY n.name"
+            "MATCH (n) WHERE n:Person RETURN n.name ORDER BY n.name",
         )
         assert set(result["name"]) == {"Alice", "Bob"}
 
     def test_filter_animals_from_mixed_scan(
-        self, multi_type_star: Star
+        self,
+        multi_type_star: Star,
     ) -> None:
         """Unlabeled scan filtered by n:Animal returns only animals."""
         result = multi_type_star.execute_query(
-            "MATCH (n) WHERE n:Animal RETURN n.name ORDER BY n.name"
+            "MATCH (n) WHERE n:Animal RETURN n.name ORDER BY n.name",
         )
         assert set(result["name"]) == {"Rex", "Mimi"}
 
     def test_or_label_returns_all(self, multi_type_star: Star) -> None:
         """WHERE n:Person OR n:Animal returns all entities."""
         result = multi_type_star.execute_query(
-            "MATCH (n) WHERE n:Person OR n:Animal RETURN n.name ORDER BY n.name"
+            "MATCH (n) WHERE n:Person OR n:Animal RETURN n.name ORDER BY n.name",
         )
         assert set(result["name"]) == {"Alice", "Bob", "Rex", "Mimi"}
 
     def test_and_label_impossible_returns_empty(
-        self, multi_type_star: Star
+        self,
+        multi_type_star: Star,
     ) -> None:
         """WHERE n:Person AND n:Animal returns empty (entities have one type)."""
         result = multi_type_star.execute_query(
-            "MATCH (n) WHERE n:Person AND n:Animal RETURN n.name"
+            "MATCH (n) WHERE n:Person AND n:Animal RETURN n.name",
         )
         assert len(result) == 0
 
     def test_label_with_not_in_multitype(self, multi_type_star: Star) -> None:
         """WHERE NOT n:Person in mixed context returns only animals."""
         result = multi_type_star.execute_query(
-            "MATCH (n) WHERE NOT n:Person RETURN n.name ORDER BY n.name"
+            "MATCH (n) WHERE NOT n:Person RETURN n.name ORDER BY n.name",
         )
         assert set(result["name"]) == {"Rex", "Mimi"}
 
@@ -274,12 +273,12 @@ class TestLabelPredicateContextBuilder:
                         ID_COLUMN: [1, 2, 3],
                         "name": ["Alice", "Bob", "Carol"],
                         "age": [30, 25, 35],
-                    }
-                )
-            }
+                    },
+                ),
+            },
         )
         star = Star(context=ctx)
         result = star.execute_query(
-            "MATCH (n) WHERE n:Person RETURN n.name ORDER BY n.name"
+            "MATCH (n) WHERE n:Person RETURN n.name ORDER BY n.name",
         )
         assert list(result["name"]) == ["Alice", "Bob", "Carol"]

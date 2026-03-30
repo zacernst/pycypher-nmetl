@@ -1483,7 +1483,7 @@ class ASTConverter:
         """Convert ExistsSubquery node — full EXISTS { MATCH ... RETURN ... } form."""
         clauses = [self.convert(c) for c in node.get("clauses", [])]
         return Query(
-            clauses=[cast("Clause", c) for c in clauses if c is not None]
+            clauses=[cast("Clause", c) for c in clauses if c is not None],
         )
 
     def _convert_ListComprehension(self, node: dict) -> ListComprehension:

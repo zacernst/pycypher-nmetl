@@ -36,9 +36,11 @@ def cli(*, verbose: bool, debug: bool) -> None:
     """
     if debug:
         import logging
+
         logging.basicConfig(level=logging.DEBUG)
     elif verbose:
         import logging
+
         logging.basicConfig(level=logging.INFO)
 
 

@@ -34,13 +34,14 @@ class TestEngineRemovalCorrectness:
                 ID_COLUMN: [1, 2, 3],
                 "name": ["Alice", "Bob", "Carol"],
                 "age": [30, 25, 35],
-            }
+            },
         )
         table = EntityTable.from_dataframe("Person", person_df)
         return Context(entity_mapping=EntityMapping(mapping={"Person": table}))
 
     def test_star_init_no_engine_parameters(
-        self, simple_context: Context
+        self,
+        simple_context: Context,
     ) -> None:
         """Star.__init__ should not accept engine-related parameters."""
         # Should work: clean constructor
@@ -55,7 +56,8 @@ class TestEngineRemovalCorrectness:
             Star(context=simple_context, backend="pandas")
 
     def test_execute_query_no_double_star_creation(
-        self, simple_context: Context
+        self,
+        simple_context: Context,
     ) -> None:
         """execute_query should not create multiple Star instances."""
         star = Star(context=simple_context)
@@ -68,7 +70,8 @@ class TestEngineRemovalCorrectness:
         assert list(result.columns) == ["name"]  # Correct columns
 
     def test_execute_query_no_exception_swallowing(
-        self, simple_context: Context
+        self,
+        simple_context: Context,
     ) -> None:
         """execute_query should propagate exceptions instead of swallowing them."""
         star = Star(context=simple_context)
@@ -84,7 +87,7 @@ class TestEngineRemovalCorrectness:
         # Mock the direct execution method
         with patch.object(star, "_execute_query_binding_frame") as mock_direct:
             mock_direct.return_value = pd.DataFrame(
-                {"name": ["Alice", "Bob", "Carol"]}
+                {"name": ["Alice", "Bob", "Carol"]},
             )
 
             star.execute_query("MATCH (p:Person) RETURN p.name")
@@ -93,7 +96,9 @@ class TestEngineRemovalCorrectness:
             assert mock_direct.call_count == 1
 
     def test_no_engine_logging_noise(
-        self, simple_context: Context, caplog
+        self,
+        simple_context: Context,
+        caplog,
     ) -> None:
         """Should not log engine fallback messages."""
         star = Star(context=simple_context)
@@ -120,13 +125,14 @@ class TestEngineRemovalPerformance:
                 ID_COLUMN: list(range(1000)),
                 "name": [f"Person{i}" for i in range(1000)],
                 "age": [(20 + i % 50) for i in range(1000)],
-            }
+            },
         )
         table = EntityTable.from_dataframe("Person", person_df)
         return Context(entity_mapping=EntityMapping(mapping={"Person": table}))
 
     def test_no_double_instance_creation_overhead(
-        self, performance_context: Context
+        self,
+        performance_context: Context,
     ) -> None:
         """Removing engine layer should eliminate double Star instance overhead."""
         star = Star(context=performance_context)
@@ -134,7 +140,7 @@ class TestEngineRemovalPerformance:
         # Time a simple query - should be fast without double instance creation
         start = time.perf_counter()
         result = star.execute_query(
-            "MATCH (p:Person) WHERE p.age > 30 RETURN p.name"
+            "MATCH (p:Person) WHERE p.age > 30 RETURN p.name",
         )
         elapsed_ms = (time.perf_counter() - start) * 1000
 
@@ -149,14 +155,18 @@ class TestEngineRemovalCleanup:
     """Verify engine-related code is properly removed."""
 
     def test_engines_module_removed(self) -> None:
-        """engines module should not be importable."""
+        """Engines module should not be importable."""
         with pytest.raises(ImportError):
-            import pycypher.engines  # noqa: F401
+            import importlib
+
+            importlib.import_module("pycypher.engines")
 
     def test_backend_detection_removed(self) -> None:
         """backend_detection module should not be importable."""
         with pytest.raises(ImportError):
-            import pycypher.backend_detection  # noqa: F401
+            import importlib
+
+            importlib.import_module("pycypher.backend_detection")
 
     def test_no_engine_references_in_star(self) -> None:
         """Star class should contain no engine-related code (excluding __repr__)."""
@@ -192,7 +202,7 @@ class TestEngineRemovalCleanup:
         person_df = pd.DataFrame({ID_COLUMN: [1], "name": ["Test"]})
         table = EntityTable.from_dataframe("Person", person_df)
         context = Context(
-            entity_mapping=EntityMapping(mapping={"Person": table})
+            entity_mapping=EntityMapping(mapping={"Person": table}),
         )
         star = Star(context=context)
 

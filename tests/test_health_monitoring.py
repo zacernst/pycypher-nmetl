@@ -12,9 +12,7 @@ import json
 import threading
 import time
 from typing import Any
-from unittest.mock import patch
 
-import pytest
 from click.testing import CliRunner
 from pycypher.nmetl_cli import cli
 
@@ -61,9 +59,7 @@ class TestHealthCLI:
 
         # Each check has a status field
         for check_name, check_data in data["checks"].items():
-            assert "status" in check_data, (
-                f"Check '{check_name}' missing status"
-            )
+            assert "status" in check_data, f"Check '{check_name}' missing status"
 
 
 # ---------------------------------------------------------------------------
@@ -90,11 +86,16 @@ class TestHealthStatusClassification:
         # Record 70 successes and 30 errors -> 30% error rate
         for i in range(70):
             collector.record_query(
-                query_id=f"ok-{i}", elapsed_s=0.01, rows=1, clauses=["Match"]
+                query_id=f"ok-{i}",
+                elapsed_s=0.01,
+                rows=1,
+                clauses=["Match"],
             )
         for i in range(30):
             collector.record_error(
-                query_id=f"err-{i}", error_type="TypeError", elapsed_s=0.01
+                query_id=f"err-{i}",
+                error_type="TypeError",
+                elapsed_s=0.01,
             )
         snap = collector.snapshot()
         assert snap.health_status() == "unhealthy"
@@ -107,11 +108,16 @@ class TestHealthStatusClassification:
         # Record 90 successes and 10 errors -> 10% error rate
         for i in range(90):
             collector.record_query(
-                query_id=f"ok-{i}", elapsed_s=0.01, rows=1, clauses=["Match"]
+                query_id=f"ok-{i}",
+                elapsed_s=0.01,
+                rows=1,
+                clauses=["Match"],
             )
         for i in range(10):
             collector.record_error(
-                query_id=f"err-{i}", error_type="TypeError", elapsed_s=0.01
+                query_id=f"err-{i}",
+                error_type="TypeError",
+                elapsed_s=0.01,
             )
         snap = collector.snapshot()
         assert snap.health_status() == "degraded"

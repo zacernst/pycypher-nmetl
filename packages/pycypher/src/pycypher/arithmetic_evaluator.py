@@ -57,6 +57,7 @@ def _cypher_div(left: FrameSeries, right: FrameSeries) -> FrameSeries:
     Returns:
         A Series of quotients; integer dtype when both operands are integer,
         float dtype otherwise.
+
     """
     if _is_integer_series(left) and _is_integer_series(right):
         left_f = left.astype(float)
@@ -109,6 +110,7 @@ def _cypher_mod(left: FrameSeries, right: FrameSeries) -> FrameSeries:
     Returns:
         A Series of remainders with the sign of the dividend; ``object`` dtype
         when any divisor is zero or null, numeric dtype otherwise.
+
     """
     zero_mask = right == 0
     null_mask = left.isna() | right.isna()
@@ -150,6 +152,7 @@ def _cypher_pow(left: FrameSeries, right: FrameSeries) -> FrameSeries:
     Returns:
         A Series of powers; float dtype when the exponent contains negative
         values and the base is integer, numeric dtype otherwise.
+
     """
     import operator as _op
 
@@ -186,6 +189,7 @@ def _first_non_null_val(series: FrameSeries) -> Any:
 
     Returns:
         First non-null value, or None if all values are null
+
     """
     for v in series.values:
         if v is None:
@@ -240,6 +244,7 @@ def _temporal_arith_pair(op: str, left: object, right: object) -> object:
 
     Raises:
         TemporalArithmeticError: When temporal arithmetic is attempted on incompatible types
+
     """
     from datetime import date as _date_cls
     from datetime import datetime as _datetime_cls
@@ -271,7 +276,9 @@ def _temporal_arith_pair(op: str, left: object, right: object) -> object:
         d["microseconds"] = delta.microseconds
         return d
 
-    def _apply_duration_to_date(d: _date_cls, dur: dict[str, int], sign: int) -> _date_cls:
+    def _apply_duration_to_date(
+        d: _date_cls, dur: dict[str, int], sign: int
+    ) -> _date_cls:
         """Add (*sign* = 1) or subtract (*sign* = -1) *dur* from date *d*.
 
         Month and year arithmetic applies first with end-of-month clamping, then
@@ -297,7 +304,9 @@ def _temporal_arith_pair(op: str, left: object, right: object) -> object:
         )
         return d + td
 
-    def _apply_duration_to_datetime(dt: _datetime_cls, dur: dict[str, int], sign: int) -> _datetime_cls:
+    def _apply_duration_to_datetime(
+        dt: _datetime_cls, dur: dict[str, int], sign: int
+    ) -> _datetime_cls:
         """Add (*sign* = 1) or subtract (*sign* = -1) *dur* from datetime *dt*."""
         # Month/year arithmetic first
         total_months = dt.month + sign * (
@@ -340,7 +349,7 @@ def _temporal_arith_pair(op: str, left: object, right: object) -> object:
     # date - date  → duration
     if _is_date_str(left) and _is_date_str(right) and op == "-":
         delta = _date_cls.fromisoformat(
-            cast(str, left)
+            cast(str, left),
         ) - _date_cls.fromisoformat(cast(str, right))
         return _delta_to_duration(delta)
 
@@ -431,6 +440,7 @@ class ArithmeticExpressionEvaluator:
 
         Args:
             frame: BindingFrame providing variable and expression evaluation context
+
         """
         self.frame = frame
 
@@ -458,6 +468,7 @@ class ArithmeticExpressionEvaluator:
         Raises:
             UnsupportedOperatorError: If operator is not supported
             TypeError: If operands have incompatible types
+
         """
         _t0 = time.perf_counter()
         if _DEBUG_ENABLED:
@@ -484,7 +495,9 @@ class ArithmeticExpressionEvaluator:
         handler = _ARITH_OPS.get(op)
         if handler is None:
             raise UnsupportedOperatorError(
-                op, list(_ARITH_OPS), category="arithmetic"
+                op,
+                list(_ARITH_OPS),
+                category="arithmetic",
             )
 
         try:
@@ -529,6 +542,7 @@ class ArithmeticExpressionEvaluator:
 
         Raises:
             UnsupportedOperatorError: If operator is not supported
+
         """
         _t0 = time.perf_counter()
         if _DEBUG_ENABLED:
@@ -539,7 +553,9 @@ class ArithmeticExpressionEvaluator:
         handler = _CMP_OPS.get(op)
         if handler is None:
             raise UnsupportedOperatorError(
-                op, list(_CMP_OPS), category="comparison"
+                op,
+                list(_CMP_OPS),
+                category="comparison",
             )
 
         # Three-valued logic: any comparison involving null → null
@@ -583,6 +599,7 @@ class ArithmeticExpressionEvaluator:
 
         Raises:
             UnsupportedOperatorError: If operator is not supported
+
         """
         _t0 = time.perf_counter()
         if _DEBUG_ENABLED:
@@ -591,7 +608,9 @@ class ArithmeticExpressionEvaluator:
         handler = _UNARY_OPS.get(op)
         if handler is None:
             raise UnsupportedOperatorError(
-                op, list(_UNARY_OPS), category="unary"
+                op,
+                list(_UNARY_OPS),
+                category="unary",
             )
 
         # Propagate null: object-dtype Series with None values cause TypeError

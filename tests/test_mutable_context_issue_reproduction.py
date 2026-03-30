@@ -27,27 +27,28 @@ class TestMutableContextIssue:
                 "name": ["Alice", "Bob", "Carol"],
                 "age": [30, 25, 35],
                 "active": [True, True, False],
-            }
+            },
         )
         table = EntityTable.from_dataframe("Person", person_df)
         context = Context(
-            entity_mapping=EntityMapping(mapping={"Person": table})
+            entity_mapping=EntityMapping(mapping={"Person": table}),
         )
         return Star(context=context)
 
     def test_mutation_affects_subsequent_queries(
-        self, star_with_modifiable_data: Star
+        self,
+        star_with_modifiable_data: Star,
     ) -> None:
         """Test that demonstrates the mutable context issue."""
         # First query: SET Alice's age to 40
         result1 = star_with_modifiable_data.execute_query(
-            "MATCH (p:Person {name: 'Alice'}) SET p.age = 40 RETURN p.age AS age"
+            "MATCH (p:Person {name: 'Alice'}) SET p.age = 40 RETURN p.age AS age",
         )
         assert result1.iloc[0]["age"] == 40
 
         # Second query: Check Alice's age again (should this be 30 or 40?)
         result2 = star_with_modifiable_data.execute_query(
-            "MATCH (p:Person {name: 'Alice'}) RETURN p.age AS age"
+            "MATCH (p:Person {name: 'Alice'}) RETURN p.age AS age",
         )
 
         # The PROBLEM: Alice's age is now 40, even though we want isolation
@@ -63,12 +64,11 @@ class TestMutableContextIssue:
         # assert actual_age == 30  # Desired behavior (isolation)
 
     def test_same_query_produces_different_results(
-        self, star_with_modifiable_data: Star
+        self,
+        star_with_modifiable_data: Star,
     ) -> None:
         """Test that the same query produces different results on repeated execution."""
-        query = (
-            "MATCH (p:Person) SET p.visited = true RETURN count(p) AS count"
-        )
+        query = "MATCH (p:Person) SET p.visited = true RETURN count(p) AS count"
 
         # Run the query twice
         result1 = star_with_modifiable_data.execute_query(query)
@@ -84,7 +84,7 @@ class TestMutableContextIssue:
         # But let's check if the 'visited' property was actually added to context
         # This demonstrates the mutation persistence problem
         check_result = star_with_modifiable_data.execute_query(
-            "MATCH (p:Person) WHERE p.visited = true RETURN count(p) AS visited_count"
+            "MATCH (p:Person) WHERE p.visited = true RETURN count(p) AS visited_count",
         )
 
         visited_count = check_result.iloc[0]["visited_count"]
@@ -95,17 +95,18 @@ class TestMutableContextIssue:
         assert visited_count == 3  # Current buggy behavior - mutation persists
 
     def test_context_state_leakage_between_queries(
-        self, star_with_modifiable_data: Star
+        self,
+        star_with_modifiable_data: Star,
     ) -> None:
         """Test that context state leaks between different queries."""
         # Query 1: Add a new property to all people
         star_with_modifiable_data.execute_query(
-            "MATCH (p:Person) SET p.processed = true RETURN count(p) AS count"
+            "MATCH (p:Person) SET p.processed = true RETURN count(p) AS count",
         )
 
         # Query 2: Check if the property exists (it shouldn't in isolated execution)
         result = star_with_modifiable_data.execute_query(
-            "MATCH (p:Person) WHERE p.processed IS NOT NULL RETURN count(p) AS processed_count"
+            "MATCH (p:Person) WHERE p.processed IS NOT NULL RETURN count(p) AS processed_count",
         )
 
         processed_count = result.iloc[0]["processed_count"]
@@ -117,7 +118,8 @@ class TestMutableContextIssue:
         # What we want: assert processed_count == 0  # Desired isolated behavior
 
     def test_shadow_write_system_exists_but_bypassed(
-        self, star_with_modifiable_data: Star
+        self,
+        star_with_modifiable_data: Star,
     ) -> None:
         """Test that shadow write system exists but is being bypassed."""
         # Check that the context has shadow write infrastructure

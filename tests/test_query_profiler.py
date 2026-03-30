@@ -10,7 +10,7 @@ import pytest
 from pycypher.query_profiler import ProfileReport, QueryProfiler
 
 
-@pytest.fixture()
+@pytest.fixture
 def profiler() -> QueryProfiler:
     """Create a profiler with test data context."""
     import pandas as pd
@@ -96,7 +96,8 @@ class TestRecommendations:
         assert isinstance(report.recommendations, list)
 
     def test_recommendations_are_strings(
-        self, profiler: QueryProfiler
+        self,
+        profiler: QueryProfiler,
     ) -> None:
         report = profiler.profile("MATCH (p:Person) RETURN p.name AS name")
         for rec in report.recommendations:
@@ -128,7 +129,7 @@ class TestMultipleProfiles:
     def test_profile_different_queries(self, profiler: QueryProfiler) -> None:
         r1 = profiler.profile("MATCH (p:Person) RETURN p.name AS name")
         r2 = profiler.profile(
-            "MATCH (p:Person) WHERE p.age > 50 RETURN p.name AS name"
+            "MATCH (p:Person) WHERE p.age > 50 RETURN p.name AS name",
         )
         assert r1.row_count != r2.row_count
 

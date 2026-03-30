@@ -18,7 +18,6 @@ import logging
 from pathlib import Path
 
 import pandas as pd
-
 from pycypher.ingestion.context_builder import ContextBuilder
 from pycypher.star import Star
 
@@ -27,7 +26,7 @@ def setup_logging() -> None:
     """Configure logging for pipeline execution."""
     logging.basicConfig(
         level=logging.INFO,
-        format='%(asctime)s - %(levelname)s - %(message)s'
+        format="%(asctime)s - %(levelname)s - %(message)s",
     )
 
 
@@ -48,8 +47,12 @@ def load_pipeline_context() -> tuple[ContextBuilder, Star]:
     star = Star(context=context)
 
     # Quick test to verify data is loaded
-    test_customers = star.execute_query("MATCH (c:Customer) RETURN count(c) AS customer_count")
-    test_orders = star.execute_query("MATCH (o:CustomerOrder) RETURN count(o) AS order_count")
+    test_customers = star.execute_query(
+        "MATCH (c:Customer) RETURN count(c) AS customer_count",
+    )
+    test_orders = star.execute_query(
+        "MATCH (o:CustomerOrder) RETURN count(o) AS order_count",
+    )
 
     # Test join condition
     join_test = star.execute_query("""
@@ -126,7 +129,9 @@ def execute_stage_1_customer_metrics(star: Star) -> pd.DataFrame:
     result = star.execute_query(query)
     print(f"✅ Created CustomerMetrics for {len(result)} customers")
     if len(result) > 0:
-        print(f"📊 Top customer: {result.iloc[0]['name']} (${result.iloc[0]['total_spend']:.2f})")
+        print(
+            f"📊 Top customer: {result.iloc[0]['name']} (${result.iloc[0]['total_spend']:.2f})",
+        )
     else:
         print("⚠️ No customers found - check data join conditions")
 
@@ -186,7 +191,9 @@ def execute_stage_2_customer_segmentation(star: Star) -> pd.DataFrame:
     result = star.execute_query(query)
     print(f"✅ Classified customers into {len(result)} segments:")
     for _, row in result.iterrows():
-        print(f"   📋 {row['segment']}: {row['customer_count']} customers (${row['total_segment_revenue']:.2f} revenue)")
+        print(
+            f"   📋 {row['segment']}: {row['customer_count']} customers (${row['total_segment_revenue']:.2f} revenue)",
+        )
 
     return result
 
@@ -252,9 +259,13 @@ def execute_stage_3_product_analytics(star: Star) -> pd.DataFrame:
     """
 
     result = star.execute_query(query)
-    print(f"✅ Analyzed {sum(result['products_in_category'])} products across {len(result)} categories:")
+    print(
+        f"✅ Analyzed {sum(result['products_in_category'])} products across {len(result)} categories:",
+    )
     for _, row in result.iterrows():
-        print(f"   📦 {row['category']}: ${row['category_revenue']:.2f} revenue ({row['avg_profit_margin']:.1f}% margin)")
+        print(
+            f"   📦 {row['category']}: ${row['category_revenue']:.2f} revenue ({row['avg_profit_margin']:.1f}% margin)",
+        )
 
     return result
 
@@ -301,10 +312,12 @@ def execute_stage_4_business_report(star: Star) -> pd.DataFrame:
     """
 
     result = star.execute_query(query)
-    print(f"✅ Generated executive report:")
+    print("✅ Generated executive report:")
     row = result.iloc[0]
     print(f"   💰 Total Revenue: ${row['total_revenue']:,.2f}")
-    print(f"   📈 Total Profit: ${row['total_profit']:,.2f} ({row['profit_margin_percent']}% margin)")
+    print(
+        f"   📈 Total Profit: ${row['total_profit']:,.2f} ({row['profit_margin_percent']}% margin)",
+    )
     print(f"   👥 Customer LTV: ${row['avg_customer_lifetime_value']:,.2f}")
     print(f"   🎯 Strategic Focus: {row['strategic_focus']}")
     print(f"   🚀 Growth Opportunity: {row['growth_recommendation']}")

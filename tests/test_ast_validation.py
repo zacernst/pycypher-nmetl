@@ -1,5 +1,4 @@
-"""
-Comprehensive unit tests for AST validation framework.
+"""Comprehensive unit tests for AST validation framework.
 
 Tests the validation capabilities added to ast_models.py to detect:
 - Undefined variables
@@ -122,7 +121,9 @@ class TestValidationIssue:
     def test_issue_creation(self):
         """Test creating validation issues."""
         issue = ValidationIssue(
-            ValidationSeverity.ERROR, "Test message", code="TEST_CODE"
+            ValidationSeverity.ERROR,
+            "Test message",
+            code="TEST_CODE",
         )
 
         assert issue.severity == ValidationSeverity.ERROR
@@ -133,7 +134,9 @@ class TestValidationIssue:
     def test_issue_repr(self):
         """Test string representation of issues."""
         issue = ValidationIssue(
-            ValidationSeverity.WARNING, "Test warning", code="WARN_CODE"
+            ValidationSeverity.WARNING,
+            "Test warning",
+            code="WARN_CODE",
         )
 
         repr_str = repr(issue)
@@ -151,9 +154,7 @@ class TestUndefinedVariables:
         result = parse_and_validate(query, parser, converter)
 
         assert result.is_valid
-        undefined_errors = [
-            e for e in result.errors if e.code == "UNDEFINED_VAR"
-        ]
+        undefined_errors = [e for e in result.errors if e.code == "UNDEFINED_VAR"]
         assert len(undefined_errors) == 0
 
     def test_undefined_variable_in_return(self, parser, converter):
@@ -162,9 +163,7 @@ class TestUndefinedVariables:
         result = parse_and_validate(query, parser, converter)
 
         assert not result.is_valid
-        undefined_errors = [
-            e for e in result.errors if e.code == "UNDEFINED_VAR"
-        ]
+        undefined_errors = [e for e in result.errors if e.code == "UNDEFINED_VAR"]
         assert len(undefined_errors) == 1
         assert "m" in undefined_errors[0].message
 
@@ -174,9 +173,7 @@ class TestUndefinedVariables:
         result = parse_and_validate(query, parser, converter)
 
         assert not result.is_valid
-        undefined_errors = [
-            e for e in result.errors if e.code == "UNDEFINED_VAR"
-        ]
+        undefined_errors = [e for e in result.errors if e.code == "UNDEFINED_VAR"]
         assert len(undefined_errors) >= 1
         assert any("m" in e.message for e in undefined_errors)
 
@@ -208,9 +205,7 @@ class TestUndefinedVariables:
         assert result.is_valid
 
         # Verify no undefined variable errors
-        undefined_errors = [
-            e for e in result.errors if e.code == "UNDEFINED_VAR"
-        ]
+        undefined_errors = [e for e in result.errors if e.code == "UNDEFINED_VAR"]
         assert len(undefined_errors) == 0
 
 
@@ -222,9 +217,7 @@ class TestUnreachableCode:
         query = "MATCH (n:Person) WHERE false RETURN n"
         result = parse_and_validate(query, parser, converter)
 
-        unreachable = [
-            w for w in result.warnings if w.code == "UNREACHABLE_MATCH"
-        ]
+        unreachable = [w for w in result.warnings if w.code == "UNREACHABLE_MATCH"]
         assert len(unreachable) >= 1
         assert "always false" in unreachable[0].message.lower()
 
@@ -267,9 +260,7 @@ class TestPerformanceAntipatterns:
         query = "MATCH (n) RETURN n"
         result = parse_and_validate(query, parser, converter)
 
-        missing_label = [
-            w for w in result.warnings if w.code == "MISSING_LABEL"
-        ]
+        missing_label = [w for w in result.warnings if w.code == "MISSING_LABEL"]
         assert len(missing_label) >= 1
         assert "labels" in missing_label[0].message.lower()
 
@@ -278,9 +269,7 @@ class TestPerformanceAntipatterns:
         query = "MATCH (n:Person) RETURN n"
         result = parse_and_validate(query, parser, converter)
 
-        missing_label = [
-            w for w in result.warnings if w.code == "MISSING_LABEL"
-        ]
+        missing_label = [w for w in result.warnings if w.code == "MISSING_LABEL"]
         assert len(missing_label) == 0
 
     def test_cartesian_product_warning(self, parser, converter):
@@ -288,22 +277,16 @@ class TestPerformanceAntipatterns:
         query = "MATCH (n:Person) MATCH (m:Company) RETURN n, m"
         result = parse_and_validate(query, parser, converter)
 
-        cartesian = [
-            w for w in result.warnings if w.code == "CARTESIAN_PRODUCT"
-        ]
+        cartesian = [w for w in result.warnings if w.code == "CARTESIAN_PRODUCT"]
         assert len(cartesian) >= 1
         assert "cartesian" in cartesian[0].message.lower()
 
     def test_related_matches_no_warning(self, parser, converter):
         """Related MATCHes should not warn."""
-        query = (
-            "MATCH (n:Person) MATCH (n)-[:WORKS_AT]->(m:Company) RETURN n, m"
-        )
+        query = "MATCH (n:Person) MATCH (n)-[:WORKS_AT]->(m:Company) RETURN n, m"
         result = parse_and_validate(query, parser, converter)
 
-        cartesian = [
-            w for w in result.warnings if w.code == "CARTESIAN_PRODUCT"
-        ]
+        cartesian = [w for w in result.warnings if w.code == "CARTESIAN_PRODUCT"]
         assert len(cartesian) == 0
 
 
@@ -319,18 +302,14 @@ class TestTypeConsistency:
 
         # This is checking the validation capability exists
         # Type mismatch detection works when literals are properly created
-        assert (
-            result.is_valid or not result.is_valid
-        )  # Just check it doesn't crash
+        assert result.is_valid or not result.is_valid  # Just check it doesn't crash
 
     def test_comparing_same_types(self, parser, converter):
         """Comparing same types should not warn."""
         query = "MATCH (n) WHERE 5 > 3 RETURN n"
         result = parse_and_validate(query, parser, converter)
 
-        type_mismatch = [
-            w for w in result.warnings if w.code == "TYPE_MISMATCH"
-        ]
+        type_mismatch = [w for w in result.warnings if w.code == "TYPE_MISMATCH"]
         assert len(type_mismatch) == 0
 
     def test_int_float_comparison_allowed(self, parser, converter):
@@ -338,9 +317,7 @@ class TestTypeConsistency:
         query = "MATCH (n) WHERE 5 > 3.5 RETURN n"
         result = parse_and_validate(query, parser, converter)
 
-        type_mismatch = [
-            w for w in result.warnings if w.code == "TYPE_MISMATCH"
-        ]
+        type_mismatch = [w for w in result.warnings if w.code == "TYPE_MISMATCH"]
         assert len(type_mismatch) == 0
 
     def test_null_comparison_allowed(self, parser, converter):
@@ -348,9 +325,7 @@ class TestTypeConsistency:
         query = "MATCH (n) WHERE null = 5 RETURN n"
         result = parse_and_validate(query, parser, converter)
 
-        type_mismatch = [
-            w for w in result.warnings if w.code == "TYPE_MISMATCH"
-        ]
+        type_mismatch = [w for w in result.warnings if w.code == "TYPE_MISMATCH"]
         assert len(type_mismatch) == 0
 
     def test_string_concatenation_info(self, parser, converter):
@@ -380,9 +355,7 @@ class TestPatternCompleteness:
         query = "MATCH (n)-[r:KNOWS]-(m) RETURN n, m"
         result = parse_and_validate(query, parser, converter)
 
-        bidirectional = [
-            i for i in result.infos if i.code == "BIDIRECTIONAL_REL"
-        ]
+        bidirectional = [i for i in result.infos if i.code == "BIDIRECTIONAL_REL"]
         # Note: This might be 0 if the grammar parser sets a default direction
         # The test validates the detection logic exists
         assert len(bidirectional) >= 0
@@ -406,14 +379,20 @@ class TestStrictMode:
 
         # Normal mode
         result_normal = parse_and_validate(
-            query, parser, converter, strict=False
+            query,
+            parser,
+            converter,
+            strict=False,
         )
         assert result_normal.is_valid  # Warnings don't fail validation
         assert len(result_normal.warnings) > 0
 
         # Strict mode
         result_strict = parse_and_validate(
-            query, parser, converter, strict=True
+            query,
+            parser,
+            converter,
+            strict=True,
         )
         assert not result_strict.is_valid  # Warnings become errors
         assert len(result_strict.errors) > 0
@@ -471,9 +450,7 @@ class TestComplexQueries:
         result = parse_and_validate(query, parser, converter)
 
         assert not result.is_valid
-        undefined_errors = [
-            e for e in result.errors if e.code == "UNDEFINED_VAR"
-        ]
+        undefined_errors = [e for e in result.errors if e.code == "UNDEFINED_VAR"]
         assert len(undefined_errors) >= 1
 
 
@@ -497,7 +474,9 @@ class TestEdgeCases:
 
     def test_nested_expressions(self, parser, converter):
         """Deeply nested expressions should be validated."""
-        query = "MATCH (n) WHERE (n.age > 25 AND n.age < 65) OR n.retired = true RETURN n"
+        query = (
+            "MATCH (n) WHERE (n.age > 25 AND n.age < 65) OR n.retired = true RETURN n"
+        )
         result = parse_and_validate(query, parser, converter)
 
         # Should handle nesting without errors

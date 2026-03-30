@@ -29,7 +29,7 @@ def people_df() -> pd.DataFrame:
                 ["java", "sql"],
                 ["rust", "python", "c"],
             ],
-        }
+        },
     )
 
 
@@ -49,13 +49,13 @@ class TestListComprehensionBasic:
 
     def test_literal_list_no_transform(self, star: Star) -> None:
         result = star.execute_query(
-            "UNWIND [1] AS _ RETURN [x IN [1, 2, 3] | x] AS items"
+            "UNWIND [1] AS _ RETURN [x IN [1, 2, 3] | x] AS items",
         )
         assert result["items"].iloc[0] == [1, 2, 3]
 
     def test_literal_list_length_preserved(self, star: Star) -> None:
         result = star.execute_query(
-            "UNWIND [1] AS _ RETURN [x IN [10, 20, 30, 40] | x] AS items"
+            "UNWIND [1] AS _ RETURN [x IN [10, 20, 30, 40] | x] AS items",
         )
         assert len(result["items"].iloc[0]) == 4
 
@@ -70,19 +70,19 @@ class TestListComprehensionMap:
 
     def test_multiply_literal_list(self, star: Star) -> None:
         result = star.execute_query(
-            "UNWIND [1] AS _ RETURN [x IN [1, 2, 3] | x * 2] AS doubled"
+            "UNWIND [1] AS _ RETURN [x IN [1, 2, 3] | x * 2] AS doubled",
         )
         assert result["doubled"].iloc[0] == [2, 4, 6]
 
     def test_add_constant_to_each(self, star: Star) -> None:
         result = star.execute_query(
-            "UNWIND [1] AS _ RETURN [x IN [10, 20, 30] | x + 5] AS shifted"
+            "UNWIND [1] AS _ RETURN [x IN [10, 20, 30] | x + 5] AS shifted",
         )
         assert result["shifted"].iloc[0] == [15, 25, 35]
 
     def test_string_concat_each(self, star: Star) -> None:
         result = star.execute_query(
-            "UNWIND [1] AS _ RETURN [s IN ['a', 'b', 'c'] | toUpper(s)] AS upped"
+            "UNWIND [1] AS _ RETURN [s IN ['a', 'b', 'c'] | toUpper(s)] AS upped",
         )
         assert result["upped"].iloc[0] == ["A", "B", "C"]
 
@@ -91,7 +91,7 @@ class TestListComprehensionMap:
         result = star.execute_query(
             "MATCH (p:Person) "
             "RETURN p.name AS name, [x IN p.scores | x + 10] AS bumped "
-            "ORDER BY p.name ASC"
+            "ORDER BY p.name ASC",
         )
         alice_bumped = result[result["name"] == "Alice"]["bumped"].iloc[0]
         assert alice_bumped == [95, 100, 88]
@@ -107,26 +107,26 @@ class TestListComprehensionFilter:
 
     def test_filter_keeps_matching_elements(self, star: Star) -> None:
         result = star.execute_query(
-            "UNWIND [1] AS _ RETURN [x IN [1, 2, 3, 4, 5] WHERE x > 2] AS big"
+            "UNWIND [1] AS _ RETURN [x IN [1, 2, 3, 4, 5] WHERE x > 2] AS big",
         )
         assert result["big"].iloc[0] == [3, 4, 5]
 
     def test_filter_removes_all_elements(self, star: Star) -> None:
         result = star.execute_query(
-            "UNWIND [1] AS _ RETURN [x IN [1, 2, 3] WHERE x > 10] AS empty_list"
+            "UNWIND [1] AS _ RETURN [x IN [1, 2, 3] WHERE x > 10] AS empty_list",
         )
         assert result["empty_list"].iloc[0] == []
 
     def test_filter_keeps_all_elements(self, star: Star) -> None:
         result = star.execute_query(
-            "UNWIND [1] AS _ RETURN [x IN [1, 2, 3] WHERE x > 0] AS all_items"
+            "UNWIND [1] AS _ RETURN [x IN [1, 2, 3] WHERE x > 0] AS all_items",
         )
         assert result["all_items"].iloc[0] == [1, 2, 3]
 
     def test_filter_property_list(self, star: Star) -> None:
         result = star.execute_query(
             "MATCH (p:Person) WHERE p.name = 'Alice' "
-            "RETURN [x IN p.scores WHERE x >= 85] AS high_scores"
+            "RETURN [x IN p.scores WHERE x >= 85] AS high_scores",
         )
         assert set(result["high_scores"].iloc[0]) == {85, 90}
 
@@ -142,21 +142,21 @@ class TestListComprehensionFilterAndMap:
     def test_filter_and_double(self, star: Star) -> None:
         result = star.execute_query(
             "UNWIND [1] AS _ "
-            "RETURN [x IN [1, 2, 3, 4, 5] WHERE x > 2 | x * 10] AS result"
+            "RETURN [x IN [1, 2, 3, 4, 5] WHERE x > 2 | x * 10] AS result",
         )
         assert result["result"].iloc[0] == [30, 40, 50]
 
     def test_filter_and_transform_on_property(self, star: Star) -> None:
         result = star.execute_query(
             "MATCH (p:Person) WHERE p.name = 'Carol' "
-            "RETURN [s IN p.tags WHERE s STARTS WITH 'p' | toUpper(s)] AS ptags"
+            "RETURN [s IN p.tags WHERE s STARTS WITH 'p' | toUpper(s)] AS ptags",
         )
         # Carol has tags: ["rust", "python", "c"] — only "python" starts with 'p'
         assert result["ptags"].iloc[0] == ["PYTHON"]
 
     def test_filter_and_map_empty_result(self, star: Star) -> None:
         result = star.execute_query(
-            "UNWIND [1] AS _ RETURN [x IN [1, 2, 3] WHERE x > 100 | x * 2] AS nothing"
+            "UNWIND [1] AS _ RETURN [x IN [1, 2, 3] WHERE x > 100 | x * 2] AS nothing",
         )
         assert result["nothing"].iloc[0] == []
 
@@ -164,7 +164,7 @@ class TestListComprehensionFilterAndMap:
         result = star.execute_query(
             "MATCH (p:Person) "
             "RETURN p.name AS name, [x IN p.scores WHERE x > 80 | x] AS good "
-            "ORDER BY p.name ASC"
+            "ORDER BY p.name ASC",
         )
         alice_good = result[result["name"] == "Alice"]["good"].iloc[0]
         assert set(alice_good) == {85, 90}
@@ -184,7 +184,7 @@ class TestListComprehensionInWith:
         result = star.execute_query(
             "UNWIND [1] AS _ "
             "WITH [x IN [1, 2, 3, 4] WHERE x % 2 = 0 | x * x] AS even_squares "
-            "RETURN even_squares"
+            "RETURN even_squares",
         )
         assert result["even_squares"].iloc[0] == [4, 16]
 
@@ -193,7 +193,7 @@ class TestListComprehensionInWith:
             "MATCH (p:Person) "
             "WITH p, [x IN p.tags WHERE size(x) > 4] AS long_tags "
             "RETURN p.name AS name, size(long_tags) AS n_long "
-            "ORDER BY p.name ASC"
+            "ORDER BY p.name ASC",
         )
         # Alice: ["python" (6), "data" (4)] → 1 long tag
         alice = result[result["name"] == "Alice"]["n_long"].iloc[0]

@@ -15,7 +15,7 @@ from pycypher.star import Star
 @pytest.fixture
 def person_context() -> Context:
     df = pd.DataFrame(
-        {ID_COLUMN: [1, 2], "name": ["Alice", "Bob"], "age": [30, 25]}
+        {ID_COLUMN: [1, 2], "name": ["Alice", "Bob"], "age": [30, 25]},
     )
     table = EntityTable(
         entity_type="Person",
@@ -33,7 +33,8 @@ def person_context() -> Context:
 
 class TestMissingPropertyError:
     def test_missing_property_returns_null(
-        self, person_context: Context
+        self,
+        person_context: Context,
     ) -> None:
         """Accessing a nonexistent property returns null per Cypher semantics."""
         import math
@@ -42,27 +43,27 @@ class TestMissingPropertyError:
 
         star = Star(context=person_context)
         result = star.execute_query(
-            "MATCH (p:Person) WHERE p.name = 'Alice' RETURN p.nonexistent AS x"
+            "MATCH (p:Person) WHERE p.name = 'Alice' RETURN p.nonexistent AS x",
         )
         val = result["x"].iloc[0]
         assert (
-            val is None
-            or val is pd.NA
-            or (isinstance(val, float) and math.isnan(val))
+            val is None or val is pd.NA or (isinstance(val, float) and math.isnan(val))
         )
 
     def test_missing_property_is_null_check(
-        self, person_context: Context
+        self,
+        person_context: Context,
     ) -> None:
         """IS NULL on a missing property returns True."""
         star = Star(context=person_context)
         result = star.execute_query(
-            "MATCH (p:Person) WHERE p.name = 'Alice' RETURN p.salary IS NULL AS missing"
+            "MATCH (p:Person) WHERE p.name = 'Alice' RETURN p.salary IS NULL AS missing",
         )
         assert bool(result["missing"].iloc[0]) is True
 
     def test_unknown_entity_type_raises_value_error(
-        self, person_context: Context
+        self,
+        person_context: Context,
     ) -> None:
         """Querying an unknown entity type raises ValueError."""
         star = Star(context=person_context)
@@ -72,7 +73,8 @@ class TestMissingPropertyError:
 
 class TestVariableNotInTypeRegistry:
     def test_unregistered_variable_error_message(
-        self, person_context: Context
+        self,
+        person_context: Context,
     ) -> None:
         """Variable in bindings but not type_registry gives a clear error."""
         from pycypher.binding_frame import BindingFrame
@@ -88,7 +90,8 @@ class TestVariableNotInTypeRegistry:
             frame.get_property("x", "name")
 
     def test_variable_not_in_bindings_error_message(
-        self, person_context: Context
+        self,
+        person_context: Context,
     ) -> None:
         """Variable absent from bindings gives a clear error."""
         from pycypher.binding_frame import BindingFrame

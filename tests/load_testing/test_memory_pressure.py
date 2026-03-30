@@ -7,9 +7,7 @@ workloads and that memory usage scales predictably with data size.
 from __future__ import annotations
 
 import gc
-import os
 import tracemalloc
-from typing import Any
 
 import pytest
 from pycypher.star import Star

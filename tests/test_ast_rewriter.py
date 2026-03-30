@@ -9,8 +9,6 @@ substitution, Cypher generation, and structural validation.
 
 from __future__ import annotations
 
-import pytest
-
 # ---------------------------------------------------------------------------
 # Interface contract tests
 # ---------------------------------------------------------------------------
@@ -280,7 +278,7 @@ class TestToCypher:
 
     def test_to_cypher_with_star(self) -> None:
         """Serialize a WITH * clause."""
-        from pycypher.ast_models import ASTConverter, Query
+        from pycypher.ast_models import Query
         from pycypher.ast_rewriter import ASTRewriter
 
         rewriter = ASTRewriter()

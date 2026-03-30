@@ -29,11 +29,11 @@ from pycypher.relational_models import (
 from pycypher.star import Star
 
 
-@pytest.fixture()
+@pytest.fixture
 def social_star() -> Star:
     """Alice -KNOWS-> Bob, -KNOWS-> Carol."""
     people_df = pd.DataFrame(
-        {ID_COLUMN: [1, 2, 3], "name": ["Alice", "Bob", "Carol"]}
+        {ID_COLUMN: [1, 2, 3], "name": ["Alice", "Bob", "Carol"]},
     )
     people_table = EntityTable(
         entity_type="Person",
@@ -44,7 +44,7 @@ def social_star() -> Star:
         source_obj=people_df,
     )
     knows_df = pd.DataFrame(
-        {ID_COLUMN: [10, 11], "__SOURCE__": [1, 1], "__TARGET__": [2, 3]}
+        {ID_COLUMN: [10, 11], "__SOURCE__": [1, 1], "__TARGET__": [2, 3]},
     )
     knows_table = RelationshipTable(
         relationship_type="KNOWS",
@@ -58,13 +58,13 @@ def social_star() -> Star:
         context=Context(
             entity_mapping=EntityMapping(mapping={"Person": people_table}),
             relationship_mapping=RelationshipMapping(
-                mapping={"KNOWS": knows_table}
+                mapping={"KNOWS": knows_table},
             ),
-        )
+        ),
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def broken_star() -> Star:
     """A Star where KNOWS is accidentally placed in entity_mapping.
 
@@ -72,7 +72,7 @@ def broken_star() -> Star:
     instead of raising a ValueError about the missing relationship type.
     """
     people_df = pd.DataFrame(
-        {ID_COLUMN: [1, 2, 3], "name": ["Alice", "Bob", "Carol"]}
+        {ID_COLUMN: [1, 2, 3], "name": ["Alice", "Bob", "Carol"]},
     )
     people_table = EntityTable(
         entity_type="Person",
@@ -83,7 +83,7 @@ def broken_star() -> Star:
         source_obj=people_df,
     )
     knows_df = pd.DataFrame(
-        {ID_COLUMN: [10, 11], "__SOURCE__": [1, 1], "__TARGET__": [2, 3]}
+        {ID_COLUMN: [10, 11], "__SOURCE__": [1, 1], "__TARGET__": [2, 3]},
     )
     # Intentionally wrong: RelationshipTable in entity_mapping
     knows_table = RelationshipTable(
@@ -97,10 +97,10 @@ def broken_star() -> Star:
     return Star(
         context=Context(
             entity_mapping=EntityMapping(
-                mapping={"Person": people_table, "KNOWS": knows_table}
-            )
+                mapping={"Person": people_table, "KNOWS": knows_table},
+            ),
             # relationship_mapping intentionally empty
-        )
+        ),
     )
 
 
@@ -112,24 +112,26 @@ class TestExistsExceptionPropagation:
         r = social_star.execute_query(
             "MATCH (p:Person) "
             "WHERE EXISTS { MATCH (p)-[:KNOWS]->(f:Person) } "
-            "RETURN p.name"
+            "RETURN p.name",
         )
         assert "Alice" in list(r["name"])
 
     def test_correct_context_returns_false_for_no_match(
-        self, social_star: Star
+        self,
+        social_star: Star,
     ) -> None:
         """Correct setup with non-existent name → EXISTS returns False, not error."""
         r = social_star.execute_query(
             "MATCH (p:Person) "
             "WHERE EXISTS { MATCH (p)-[:KNOWS]->(f:Person) WHERE f.name = 'Zara' } "
-            "RETURN p.name"
+            "RETURN p.name",
         )
         # Should return 0 rows, not raise
         assert len(r) == 0
 
     def test_misconfigured_context_raises_not_false(
-        self, broken_star: Star
+        self,
+        broken_star: Star,
     ) -> None:
         """EXISTS with KNOWS in entity_mapping (wrong) must raise, not silently False.
 
@@ -140,11 +142,12 @@ class TestExistsExceptionPropagation:
             broken_star.execute_query(
                 "MATCH (p:Person) "
                 "WHERE EXISTS { MATCH (p)-[:KNOWS]->(f:Person) } "
-                "RETURN p.name"
+                "RETURN p.name",
             )
 
     def test_unknown_function_in_exists_raises_not_false(
-        self, social_star: Star
+        self,
+        social_star: Star,
     ) -> None:
         """EXISTS { MATCH ... WHERE unknownFn(f.name) } must raise, not silently False.
 
@@ -157,5 +160,5 @@ class TestExistsExceptionPropagation:
                 "MATCH (p:Person) "
                 "WHERE EXISTS { MATCH (p)-[:KNOWS]->(f:Person) "
                 "WHERE _nonExistentFn_(f.name) = 'Bob' } "
-                "RETURN p.name"
+                "RETURN p.name",
             )

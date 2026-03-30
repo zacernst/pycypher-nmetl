@@ -47,9 +47,7 @@ SCALE_FACTORS: list[int] = [100, 1_000, 10_000, 50_000]
 QUERIES: dict[str, str] = {
     "simple_scan": "MATCH (n:Person) RETURN n.name",
     "filtered_scan": "MATCH (n:Person) WHERE n.age > 30 RETURN n.name, n.age",
-    "single_hop": (
-        "MATCH (n:Person)-[r:KNOWS]->(m:Person) RETURN n.name, m.name"
-    ),
+    "single_hop": ("MATCH (n:Person)-[r:KNOWS]->(m:Person) RETURN n.name, m.name"),
     "filtered_hop": (
         "MATCH (n:Person)-[r:KNOWS]->(m:Person) "
         "WHERE n.age > 25 RETURN n.name, m.name, r.since"
@@ -59,9 +57,7 @@ QUERIES: dict[str, str] = {
         "RETURN a.name, c.name"
     ),
     "aggregation_count": ("MATCH (n:Person) RETURN n.dept, count(n) AS cnt"),
-    "aggregation_avg": (
-        "MATCH (n:Person) RETURN n.dept, avg(n.salary) AS avg_sal"
-    ),
+    "aggregation_avg": ("MATCH (n:Person) RETURN n.dept, avg(n.salary) AS avg_sal"),
     "varlength_path": (
         "MATCH (a:Person)-[:KNOWS*1..3]->(b:Person) RETURN a.name, b.name"
     ),
@@ -83,7 +79,7 @@ def generate_persons(n: int, *, rng: np.random.Generator) -> pd.DataFrame:
             "age": rng.integers(18, 65, size=n),
             "dept": rng.choice(depts, size=n),
             "salary": rng.integers(40_000, 200_000, size=n),
-        }
+        },
     )
 
 
@@ -111,7 +107,7 @@ def generate_knows(
             "__SOURCE__": sources,
             "__TARGET__": targets,
             "since": rng.integers(2000, 2026, size=n_actual),
-        }
+        },
     )
 
 
@@ -124,9 +120,7 @@ def build_context(n_persons: int, *, rng: np.random.Generator) -> Context:
         entity_type="Person",
         identifier="Person",
         column_names=list(persons_df.columns),
-        source_obj_attribute_map={
-            c: c for c in persons_df.columns if c != "__ID__"
-        },
+        source_obj_attribute_map={c: c for c in persons_df.columns if c != "__ID__"},
         attribute_map={c: c for c in persons_df.columns if c != "__ID__"},
         source_obj=persons_df,
     )
@@ -151,7 +145,7 @@ def build_context(n_persons: int, *, rng: np.random.Generator) -> Context:
     return Context(
         entity_mapping=EntityMapping(mapping={"Person": person_table}),
         relationship_mapping=RelationshipMapping(
-            mapping={"KNOWS": knows_table}
+            mapping={"KNOWS": knows_table},
         ),
     )
 
@@ -194,7 +188,7 @@ class BenchmarkReport:
     python_version: str = ""
     measurements: list[Measurement] = field(default_factory=list)
     materialization_points: list[MaterializationPoint] = field(
-        default_factory=list
+        default_factory=list,
     )
     scaling_analysis: dict[str, Any] = field(default_factory=dict)
 
@@ -271,7 +265,7 @@ def measure_materialization_points(
             scale=scale,
             memory_bytes=peak,
             description="Raw DataFrame creation (Person + KNOWS)",
-        )
+        ),
     )
 
     # 2. Context construction
@@ -286,7 +280,7 @@ def measure_materialization_points(
             scale=scale,
             memory_bytes=peak,
             description="Context + EntityTable + RelationshipTable wrapping",
-        )
+        ),
     )
 
     # 3. Entity scan (BindingFrame creation)
@@ -304,7 +298,7 @@ def measure_materialization_points(
             scale=scale,
             memory_bytes=peak,
             description="EntityScan.scan() → BindingFrame with all Person IDs",
-        )
+        ),
     )
 
     # 4. Relationship scan
@@ -325,7 +319,7 @@ def measure_materialization_points(
             scale=scale,
             memory_bytes=peak,
             description="RelationshipScan.scan() → BindingFrame with all KNOWS relationships",
-        )
+        ),
     )
 
     # 5. Join operation
@@ -340,7 +334,7 @@ def measure_materialization_points(
             scale=scale,
             memory_bytes=peak,
             description="BindingFrame.join() via pd.merge (entity-to-relationship)",
-        )
+        ),
     )
 
     # 6. Property lookup
@@ -355,7 +349,7 @@ def measure_materialization_points(
             scale=scale,
             memory_bytes=peak,
             description="BindingFrame.get_property() with cache population",
-        )
+        ),
     )
 
     return points
@@ -375,11 +369,7 @@ def compute_scaling_factors(
     query_names = sorted({m.query_name for m in measurements})
     for qname in query_names:
         qm = sorted(
-            [
-                m
-                for m in measurements
-                if m.query_name == qname and m.error is None
-            ],
+            [m for m in measurements if m.query_name == qname and m.error is None],
             key=lambda x: x.scale,
         )
         if len(qm) < 2:
@@ -457,7 +447,7 @@ def run_benchmark(
         report.materialization_points.extend(mat_points)
         for mp in mat_points:
             print(
-                f"  [{mp.point_name}] {mp.memory_bytes / 1024:.1f} KB — {mp.description}"
+                f"  [{mp.point_name}] {mp.memory_bytes / 1024:.1f} KB — {mp.description}",
             )
 
         # Measure queries
@@ -471,7 +461,7 @@ def run_benchmark(
                 f"peak={m.peak_memory_bytes / 1024:>10.1f} KB  "
                 f"time={m.elapsed_seconds:>8.4f}s  "
                 f"rows={m.result_rows:>8,}  "
-                f"{status}"
+                f"{status}",
             )
 
     # Scaling analysis
@@ -484,7 +474,7 @@ def run_benchmark(
         mem_order = analysis.get("estimated_memory_order", "?")
         time_order = analysis.get("estimated_time_order", "?")
         print(
-            f"  {qname:30s}  memory~O(n^{mem_order})  time~O(n^{time_order})"
+            f"  {qname:30s}  memory~O(n^{mem_order})  time~O(n^{time_order})",
         )
 
     return report

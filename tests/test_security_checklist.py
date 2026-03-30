@@ -34,7 +34,7 @@ class TestYAMLSafety:
     def test_yaml_safe_load_used(self) -> None:
         """Config loader must use yaml.safe_load, never yaml.load."""
         config_path = Path(
-            "packages/pycypher/src/pycypher/ingestion/config.py"
+            "packages/pycypher/src/pycypher/ingestion/config.py",
         )
         source = config_path.read_text()
         assert "yaml.safe_load" in source
@@ -145,7 +145,8 @@ class TestEnvVarResilience:
         from unittest.mock import patch
 
         with patch.dict(
-            os.environ, {"PYCYPHER_SLOW_QUERY_MS": "not_a_number"}
+            os.environ,
+            {"PYCYPHER_SLOW_QUERY_MS": "not_a_number"},
         ):
             from shared.metrics import _parse_slow_query_ms
 
@@ -223,7 +224,7 @@ class TestImportBlocklist:
     def test_blocklist_contains_dangerous_modules(self) -> None:
         """Import blocklist includes os, subprocess, pickle, etc."""
         config_path = Path(
-            "packages/pycypher/src/pycypher/ingestion/config.py"
+            "packages/pycypher/src/pycypher/ingestion/config.py",
         )
         source = config_path.read_text()
         dangerous = ["os", "subprocess", "pickle", "shutil", "tempfile"]
@@ -314,7 +315,7 @@ class TestQueryParameterSafety:
         ctx = ContextBuilder().add_entity("Person", df).build()
         star = Star(context=ctx)
 
-        with pytest.raises(Exception):  # noqa: B017, PT011
+        with pytest.raises(Exception):
             star.execute_query(
                 "MATCH (p:NonExistent) RETURN p.name",
                 parameters={"key": "value"},

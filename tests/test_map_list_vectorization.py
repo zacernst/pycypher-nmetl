@@ -57,7 +57,7 @@ def _star_empty():
         context=Context(
             entity_mapping=EntityMapping(mapping={}),
             relationship_mapping=RelationshipMapping(mapping={}),
-        )
+        ),
     )
 
 
@@ -65,7 +65,7 @@ def _q(cypher: str) -> pd.DataFrame:
     return _star_empty().execute_query(cypher)
 
 
-def _star_with_rows(rows: list[dict]) -> "Star":
+def _star_with_rows(rows: list[dict]) -> Star:
     """Create a Star with a single 'Row' entity table from the given rows."""
     from pycypher.relational_models import (
         ID_COLUMN,
@@ -93,7 +93,7 @@ def _star_with_rows(rows: list[dict]) -> "Star":
         context=Context(
             entity_mapping=EntityMapping(mapping={"Row": table}),
             relationship_mapping=RelationshipMapping(mapping={}),
-        )
+        ),
     )
 
 
@@ -129,10 +129,10 @@ class TestMapLiteralCorrectness:
             [
                 {"name": "Alice", "age": 30},
                 {"name": "Bob", "age": 25},
-            ]
+            ],
         )
         result = star.execute_query(
-            "MATCH (r:Row) RETURN {label: r.name, years: r.age} AS m ORDER BY id(r)"
+            "MATCH (r:Row) RETURN {label: r.name, years: r.age} AS m ORDER BY id(r)",
         )
         assert result["m"].iloc[0] == {"label": "Alice", "years": 30}
         assert result["m"].iloc[1] == {"label": "Bob", "years": 25}
@@ -144,10 +144,10 @@ class TestMapLiteralCorrectness:
                 {"x": 1},
                 {"x": 2},
                 {"x": 3},
-            ]
+            ],
         )
         result = star.execute_query(
-            "MATCH (r:Row) RETURN {val: r.x, doubled: r.x * 2} AS m"
+            "MATCH (r:Row) RETURN {val: r.x, doubled: r.x * 2} AS m",
         )
         for i, row in result["m"].items():
             assert "val" in row
@@ -158,7 +158,7 @@ class TestMapLiteralCorrectness:
         """A null property value must appear as null in the map, not absent."""
         star = _star_with_rows([{"a": None}, {"a": 5}])
         result = star.execute_query(
-            "MATCH (r:Row) RETURN {key: r.a} AS m ORDER BY id(r)"
+            "MATCH (r:Row) RETURN {key: r.a} AS m ORDER BY id(r)",
         )
         assert pd.isna(result["m"].iloc[0]["key"])
         assert result["m"].iloc[1]["key"] == 5
@@ -176,7 +176,7 @@ class TestMapProjectionCorrectness:
         """p{.name} — single named property."""
         star = _star_with_rows([{"name": "Alice"}, {"name": "Bob"}])
         result = star.execute_query(
-            "MATCH (r:Row) RETURN r{.name} AS m ORDER BY id(r)"
+            "MATCH (r:Row) RETURN r{.name} AS m ORDER BY id(r)",
         )
         assert result["m"].iloc[0] == {"name": "Alice"}
         assert result["m"].iloc[1] == {"name": "Bob"}
@@ -187,10 +187,10 @@ class TestMapProjectionCorrectness:
             [
                 {"name": "Alice", "age": 30},
                 {"name": "Bob", "age": 25},
-            ]
+            ],
         )
         result = star.execute_query(
-            "MATCH (r:Row) RETURN r{.name, .age} AS m ORDER BY id(r)"
+            "MATCH (r:Row) RETURN r{.name, .age} AS m ORDER BY id(r)",
         )
         assert result["m"].iloc[0] == {"name": "Alice", "age": 30}
         assert result["m"].iloc[1] == {"name": "Bob", "age": 25}
@@ -199,7 +199,7 @@ class TestMapProjectionCorrectness:
         """p{.name, doubled: p.age * 2} — mix of property and computed."""
         star = _star_with_rows([{"name": "Carol", "age": 20}])
         result = star.execute_query(
-            "MATCH (r:Row) RETURN r{.name, twice: r.age * 2} AS m"
+            "MATCH (r:Row) RETURN r{.name, twice: r.age * 2} AS m",
         )
         m = result["m"].iloc[0]
         assert m["name"] == "Carol"
@@ -212,10 +212,10 @@ class TestMapProjectionCorrectness:
                 {"name": "A", "score": 1},
                 {"name": "B", "score": 2},
                 {"name": "C", "score": 3},
-            ]
+            ],
         )
         result = star.execute_query(
-            "MATCH (r:Row) RETURN r{.name, .score} AS m"
+            "MATCH (r:Row) RETURN r{.name, .score} AS m",
         )
         for m in result["m"]:
             assert set(m.keys()) == {"name", "score"}
@@ -251,10 +251,10 @@ class TestListLiteralCorrectness:
             [
                 {"a": 10, "b": 20},
                 {"a": 30, "b": 40},
-            ]
+            ],
         )
         result = star.execute_query(
-            "MATCH (r:Row) RETURN [r.a, r.b] AS lst ORDER BY id(r)"
+            "MATCH (r:Row) RETURN [r.a, r.b] AS lst ORDER BY id(r)",
         )
         assert list(result["lst"].iloc[0]) == [10, 20]
         assert list(result["lst"].iloc[1]) == [30, 40]
@@ -278,7 +278,7 @@ class TestListLiteralCorrectness:
         rows = [{"a": i, "b": i * 2, "c": i * 3} for i in range(100)]
         star = _star_with_rows(rows)
         result = star.execute_query(
-            "MATCH (r:Row) RETURN [r.a, r.b, r.c] AS lst"
+            "MATCH (r:Row) RETURN [r.a, r.b, r.c] AS lst",
         )
         for i, lst in enumerate(result["lst"]):
             assert lst[0] == i
@@ -296,11 +296,9 @@ N_ROWS = 500
 N_KEYS = 10
 
 
-def _make_wide_star(n_rows: int, n_cols: int) -> "Star":
+def _make_wide_star(n_rows: int, n_cols: int) -> Star:
     """Create a Star with n_rows rows and n_cols named properties."""
-    rows = [
-        {f"c{j}": i * n_cols + j for j in range(n_cols)} for i in range(n_rows)
-    ]
+    rows = [{f"c{j}": i * n_cols + j for j in range(n_cols)} for i in range(n_rows)]
     return _star_with_rows(rows)
 
 

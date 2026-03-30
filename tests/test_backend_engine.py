@@ -28,7 +28,7 @@ ID_COLUMN = "__ID__"
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture()
+@pytest.fixture
 def sample_df() -> pd.DataFrame:
     """Small sample entity DataFrame."""
     return pd.DataFrame(
@@ -41,7 +41,7 @@ def sample_df() -> pd.DataFrame:
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def left_df() -> pd.DataFrame:
     """Left side for join tests."""
     return pd.DataFrame(
@@ -52,7 +52,7 @@ def left_df() -> pd.DataFrame:
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def right_df() -> pd.DataFrame:
     """Right side for join tests."""
     return pd.DataFrame(
@@ -383,7 +383,7 @@ class TestRename:
     ) -> None:
         """Rename a single column."""
         result = backend.to_pandas(
-            backend.rename(sample_df, {"name": "person_name"})
+            backend.rename(sample_df, {"name": "person_name"}),
         )
         assert "person_name" in result.columns
         assert "name" not in result.columns
@@ -623,7 +623,7 @@ class TestDuckDBResourceCleanup:
         be.close()
 
     def test_join_cleans_up_views_on_error(self) -> None:
-        """join unregisters views even when SQL execution fails."""
+        """Join unregisters views even when SQL execution fails."""
         be = DuckDBBackend()
         left = pd.DataFrame({"id": [1], "val": ["a"]})
         right = pd.DataFrame({"id": [1], "val": ["b"]})

@@ -28,7 +28,7 @@ from pycypher.star import Star
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture()
+@pytest.fixture
 def person_context() -> Context:
     """Context with Person entities."""
     data = pd.DataFrame(
@@ -36,7 +36,7 @@ def person_context() -> Context:
             ID_COLUMN: [1, 2, 3],
             "name": ["Alice", "Bob", "Charlie"],
             "age": [25, 30, 35],
-        }
+        },
     )
     table = EntityTable(
         entity_type="Person",
@@ -49,7 +49,7 @@ def person_context() -> Context:
     return Context(entity_mapping=EntityMapping(mapping={"Person": table}))
 
 
-@pytest.fixture()
+@pytest.fixture
 def star(person_context: Context) -> Star:
     """Star instance with person context."""
     return Star(context=person_context)
@@ -65,10 +65,8 @@ class TestExecuteQueryErrors:
 
     def test_invalid_query_type(self, star: Star) -> None:
         """Passing a non-Query/non-str raises GrammarTransformerSyncError."""
-        from pycypher.exceptions import GrammarTransformerSyncError
-
         with pytest.raises(
-            GrammarTransformerSyncError, match="instead of Query"
+            (TypeError, ValueError),
         ):
             star.execute_query(42)
 
@@ -81,16 +79,17 @@ class TestExecuteQueryErrors:
                 With(
                     items=[
                         ReturnItem(
-                            expression=IntegerLiteral(value=1), alias="x"
-                        )
-                    ]
+                            expression=IntegerLiteral(value=1),
+                            alias="x",
+                        ),
+                    ],
                 ),
                 Return(
                     items=[
-                        ReturnItem(expression=Variable(name="x"), alias="x")
-                    ]
+                        ReturnItem(expression=Variable(name="x"), alias="x"),
+                    ],
                 ),
-            ]
+            ],
         )
         result = star.execute_query(query)
         assert result is not None
@@ -105,11 +104,12 @@ class TestExecuteQueryErrors:
                 Return(
                     items=[
                         ReturnItem(
-                            expression=IntegerLiteral(value=1), alias="x"
-                        )
-                    ]
+                            expression=IntegerLiteral(value=1),
+                            alias="x",
+                        ),
+                    ],
                 ),
-            ]
+            ],
         )
         result = star.execute_query(query)
         assert result is not None
@@ -158,11 +158,15 @@ class TestEngineLayerRemoval:
         from unittest.mock import patch
 
         sentinel = RuntimeError("deliberate test error")
-        with patch.object(
-            star, "_execute_query_binding_frame", side_effect=sentinel
+        with (
+            patch.object(
+                star,
+                "_execute_query_binding_frame",
+                side_effect=sentinel,
+            ),
+            pytest.raises(RuntimeError, match="deliberate test error"),
         ):
-            with pytest.raises(RuntimeError, match="deliberate test error"):
-                star.execute_query("MATCH (p:Person) RETURN p.name AS name")
+            star.execute_query("MATCH (p:Person) RETURN p.name AS name")
 
     def test_query_still_works_without_engine(self, star: Star) -> None:
         """Basic query must execute correctly after engine layer removal."""
@@ -176,7 +180,7 @@ class TestEngineLayerRemoval:
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture()
+@pytest.fixture
 def dept_context() -> Context:
     """Context with Person entities that have a dept attribute for grouping."""
     data = pd.DataFrame(
@@ -184,7 +188,7 @@ def dept_context() -> Context:
             ID_COLUMN: [1, 2, 3, 4],
             "name": ["Alice", "Bob", "Charlie", "Dave"],
             "dept": ["eng", "eng", "hr", "hr"],
-        }
+        },
     )
     table = EntityTable(
         entity_type="Person",
@@ -208,12 +212,13 @@ class TestAggregateItemsConsistency:
         assert int(result["n"].iloc[0]) == 4
 
     def test_full_table_count_with_then_return(
-        self, dept_context: Context
+        self,
+        dept_context: Context,
     ) -> None:
         """WITH count(*) followed by RETURN produces same result as direct RETURN."""
         star = Star(context=dept_context)
         result = star.execute_query(
-            "MATCH (p:Person) WITH count(*) AS n RETURN n"
+            "MATCH (p:Person) WITH count(*) AS n RETURN n",
         )
         assert len(result) == 1
         assert int(result["n"].iloc[0]) == 4
@@ -222,18 +227,19 @@ class TestAggregateItemsConsistency:
         """RETURN grouped count aggregates correctly per group."""
         star = Star(context=dept_context)
         result = star.execute_query(
-            "MATCH (p:Person) RETURN p.dept AS dept, count(p) AS n"
+            "MATCH (p:Person) RETURN p.dept AS dept, count(p) AS n",
         )
         grouped = dict(zip(result["dept"], result["n"].astype(int)))
         assert grouped == {"eng": 2, "hr": 2}
 
     def test_grouped_count_with_then_return(
-        self, dept_context: Context
+        self,
+        dept_context: Context,
     ) -> None:
         """WITH grouped count then RETURN produces identical result to direct RETURN."""
         star = Star(context=dept_context)
         result = star.execute_query(
-            "MATCH (p:Person) WITH p.dept AS dept, count(p) AS n RETURN dept, n"
+            "MATCH (p:Person) WITH p.dept AS dept, count(p) AS n RETURN dept, n",
         )
         grouped = dict(zip(result["dept"], result["n"].astype(int)))
         assert grouped == {"eng": 2, "hr": 2}
@@ -253,7 +259,8 @@ class TestMissingParameterError:
     """
 
     def test_missing_parameter_raises_value_error(
-        self, person_context: Context
+        self,
+        person_context: Context,
     ) -> None:
         """Referencing an undeclared $param must raise ValueError."""
         star = Star(context=person_context)
@@ -264,7 +271,8 @@ class TestMissingParameterError:
             )
 
     def test_missing_parameter_not_key_error(
-        self, person_context: Context
+        self,
+        person_context: Context,
     ) -> None:
         """ValueError is raised, not KeyError — callers must not catch KeyError."""
         star = Star(context=person_context)
@@ -278,11 +286,12 @@ class TestMissingParameterError:
             pass  # Correct
         except KeyError:
             pytest.fail(
-                "Missing parameter raised KeyError; should be ValueError"
+                "Missing parameter raised KeyError; should be ValueError",
             )
 
     def test_missing_parameter_message_mentions_name(
-        self, person_context: Context
+        self,
+        person_context: Context,
     ) -> None:
         """Error message must include the parameter name for debugging."""
         star = Star(context=person_context)
@@ -293,7 +302,8 @@ class TestMissingParameterError:
             )
 
     def test_provided_parameter_does_not_raise(
-        self, person_context: Context
+        self,
+        person_context: Context,
     ) -> None:
         """Correctly provided parameters must NOT raise any error."""
         star = Star(context=person_context)

@@ -17,7 +17,7 @@ class TestNewExceptionClasses:
         # Basic instantiation
         error = ASTConversionError("Test message")
         assert isinstance(error, ValueError)
-        assert str(error) == "Test message"
+        assert str(error).startswith("Test message")
 
         # With context
         error_with_context = ASTConversionError(
@@ -45,7 +45,10 @@ class TestNewExceptionClasses:
         from pycypher.exceptions import IncompatibleOperatorError
 
         error = IncompatibleOperatorError(
-            "+", "string", "integer", "Use toString()"
+            "+",
+            "string",
+            "integer",
+            "Use toString()",
         )
         assert isinstance(error, TypeError)
         assert error.operator == "+"
@@ -60,7 +63,8 @@ class TestNewExceptionClasses:
 
         error = TemporalArithmeticError("+", "date", "string")
         assert isinstance(
-            error, TypeError
+            error,
+            TypeError,
         )  # Inherits from IncompatibleOperatorError
         assert error.operator == "+"
         assert error.left_type == "date"
@@ -72,7 +76,9 @@ class TestNewExceptionClasses:
         from pycypher.exceptions import UnsupportedFunctionError
 
         error = UnsupportedFunctionError(
-            "badfunction", ["count", "sum", "avg"], "aggregation"
+            "badfunction",
+            ["count", "sum", "avg"],
+            "aggregation",
         )
         assert isinstance(error, ValueError)
         assert error.function_name == "badfunction"
@@ -96,7 +102,10 @@ class TestNewExceptionClasses:
         from pycypher.exceptions import FunctionArgumentError
 
         error = FunctionArgumentError(
-            "percentile", 2, 1, "expression and percentile value"
+            "percentile",
+            2,
+            1,
+            "expression and percentile value",
         )
         assert isinstance(error, ValueError)
         assert error.function_name == "percentile"

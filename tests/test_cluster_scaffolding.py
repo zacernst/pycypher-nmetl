@@ -52,19 +52,20 @@ def _make_star_with_data() -> Any:
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def worker_a() -> LocalWorker:
     return LocalWorker("worker-a", star=_make_star_with_data())
 
 
-@pytest.fixture()
+@pytest.fixture
 def worker_b() -> LocalWorker:
     return LocalWorker("worker-b", star=_make_star_with_data())
 
 
-@pytest.fixture()
+@pytest.fixture
 def coordinator(
-    worker_a: LocalWorker, worker_b: LocalWorker
+    worker_a: LocalWorker,
+    worker_b: LocalWorker,
 ) -> ClusterCoordinator:
     coord = ClusterCoordinator()
     coord.register_worker(worker_a)
@@ -87,10 +88,11 @@ class TestLocalWorker:
         assert worker_a.status == WorkerStatus.ACTIVE
 
     def test_execute_query_returns_dataframe(
-        self, worker_a: LocalWorker
+        self,
+        worker_a: LocalWorker,
     ) -> None:
         result = worker_a.execute_query(
-            "MATCH (p:Person) RETURN p.name AS name"
+            "MATCH (p:Person) RETURN p.name AS name",
         )
         assert isinstance(result, pd.DataFrame)
         assert len(result) == 3
@@ -104,7 +106,7 @@ class TestLocalWorker:
         assert health.active_queries == 0
 
     def test_health_check_tracks_errors(self, worker_a: LocalWorker) -> None:
-        with pytest.raises(Exception):  # noqa: B017, PT011
+        with pytest.raises(Exception):
             worker_a.execute_query("MATCH (p:NonExistent) RETURN p")
         health = worker_a.health_check()
         assert health.errors >= 1
@@ -132,7 +134,9 @@ class TestWorkerRegistration:
         assert coord.worker_count == 1
 
     def test_register_duplicate_raises(
-        self, coordinator: ClusterCoordinator, worker_a: LocalWorker
+        self,
+        coordinator: ClusterCoordinator,
+        worker_a: LocalWorker,
     ) -> None:
         with pytest.raises(ValueError, match="already registered"):
             coordinator.register_worker(worker_a)
@@ -142,7 +146,8 @@ class TestWorkerRegistration:
         assert coordinator.worker_count == 1
 
     def test_deregister_unknown_raises(
-        self, coordinator: ClusterCoordinator
+        self,
+        coordinator: ClusterCoordinator,
     ) -> None:
         with pytest.raises(ValueError, match="not registered"):
             coordinator.deregister_worker("nonexistent")
@@ -163,7 +168,7 @@ class TestRoundRobinRouter:
         results = []
         for _ in range(4):
             result = coordinator.execute_query(
-                "MATCH (p:Person) RETURN p.name AS name"
+                "MATCH (p:Person) RETURN p.name AS name",
             )
             results.append(len(result))
         # All queries should succeed regardless of which worker handles them
@@ -175,9 +180,7 @@ class TestRoundRobinRouter:
         w2 = LocalWorker("w2", star=_make_star_with_data())
         workers = [w1, w2]
 
-        selected = [
-            router.select_worker(workers, "q").worker_id for _ in range(6)
-        ]
+        selected = [router.select_worker(workers, "q").worker_id for _ in range(6)]
         assert selected == ["w1", "w2", "w1", "w2", "w1", "w2"]
 
     def test_round_robin_empty_raises(self) -> None:
@@ -217,7 +220,8 @@ class TestClusterHealth:
     """Verify aggregate cluster health reporting."""
 
     def test_cluster_health_initial(
-        self, coordinator: ClusterCoordinator
+        self,
+        coordinator: ClusterCoordinator,
     ) -> None:
         health = coordinator.cluster_health()
         assert health.total_workers == 2
@@ -228,7 +232,8 @@ class TestClusterHealth:
         assert health.cluster_error_rate == 0.0
 
     def test_cluster_health_after_queries(
-        self, coordinator: ClusterCoordinator
+        self,
+        coordinator: ClusterCoordinator,
     ) -> None:
         for _ in range(4):
             coordinator.execute_query("MATCH (p:Person) RETURN p.name AS name")
@@ -240,7 +245,8 @@ class TestClusterHealth:
         assert health.avg_latency_ms > 0.0
 
     def test_cluster_health_per_worker(
-        self, coordinator: ClusterCoordinator
+        self,
+        coordinator: ClusterCoordinator,
     ) -> None:
         coordinator.execute_query("MATCH (p:Person) RETURN p.name AS name")
         health = coordinator.cluster_health()
@@ -259,7 +265,8 @@ class TestClusterHealth:
             health.queries_executed = 999  # type: ignore[misc]
 
     def test_cluster_health_frozen(
-        self, coordinator: ClusterCoordinator
+        self,
+        coordinator: ClusterCoordinator,
     ) -> None:
         health = coordinator.cluster_health()
         with pytest.raises(AttributeError):
@@ -285,7 +292,7 @@ class TestFaultTolerance:
     ) -> None:
         coordinator.deregister_worker("worker-a")
         result = coordinator.execute_query(
-            "MATCH (p:Person) RETURN p.name AS name"
+            "MATCH (p:Person) RETURN p.name AS name",
         )
         assert len(result) == 3
 

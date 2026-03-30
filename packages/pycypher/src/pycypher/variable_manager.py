@@ -79,7 +79,7 @@ class VariableManager:
 
         """
         conflicts = self.collect_variables(query_a) & self.collect_variables(
-            query_b
+            query_b,
         )
         if conflicts:
             LOGGER.debug(

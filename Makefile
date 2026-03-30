@@ -27,10 +27,10 @@ export TESTS_DIR := ${PROJECT_ROOT}/tests
 export COVERAGE_DIR := ${PROJECT_ROOT}/coverage_report
 
 # Main targets
-.PHONY: help pycypher shared test docs clean veryclean venv uv start format lint lint-changed audit typecheck coverage coverage-check check setup test-file test-find test-k test-mark watch reset lock-check dev-check bench bench-save bench-compare bench-memory metrics-snapshot metrics-prometheus test-telemetry dev-up dev-up-minimal dev-down dev-shell dev-rebuild dev-logs dev-test dev-typecheck dev-format spark-up spark-down spark-logs spark-ui spark-shell spark-scale neo4j-up neo4j-down neo4j-logs neo4j-browser neo4j-shell neo4j-reset infra-up infra-down test-spark test-neo4j test-integration fod-up fod-down fod-shell fod-logs fod-rebuild fod-api-up fod-api-down fod-api-shell fod-api-logs fod-api-rebuild nominatim-up nominatim-down nominatim-logs nominatim-search nominatim-status
+.PHONY: help pycypher shared test docs lsp clean veryclean venv uv start format lint lint-changed audit typecheck coverage coverage-check check setup test-file test-find test-k test-mark watch reset lock-check dev-check bench bench-save bench-compare bench-memory metrics-snapshot metrics-prometheus test-telemetry dev-up dev-up-minimal dev-down dev-shell dev-rebuild dev-logs dev-test dev-typecheck dev-format spark-up spark-down spark-logs spark-ui spark-shell spark-scale neo4j-up neo4j-down neo4j-logs neo4j-browser neo4j-shell neo4j-reset infra-up infra-down test-spark test-neo4j test-integration fod-up fod-down fod-shell fod-logs fod-rebuild fod-api-up fod-api-down fod-api-shell fod-api-logs fod-api-rebuild nominatim-up nominatim-down nominatim-logs nominatim-search nominatim-status fod-data fod-data-plan fod-data-census fod-data-tiger fod-data-osm fod-data-wikidata fod-data-status fod-data-clean
 
 # Default target - run the complete build process
-all: clean venv format pycypher # docs
+all: clean venv format pycypher docs
 
 ## Show available targets with descriptions
 help:
@@ -109,6 +109,16 @@ help:
 	@echo "  make test-large-dataset Run large-dataset tests (timeout=120s)"
 	@echo "  make test-backends   Run backend equivalence tests (timeout=60s)"
 	@echo ""
+	@echo "Data Downloads (Snakemake):"
+	@echo "  make fod-data          Download all 17 fastopendata datasets"
+	@echo "  make fod-data-plan     Dry-run: show what would be downloaded"
+	@echo "  make fod-data-census   Download Census surveys (ACS, SIPP, AHS, CJARS)"
+	@echo "  make fod-data-tiger    Download TIGER/Line shapefiles"
+	@echo "  make fod-data-osm      Download OpenStreetMap U.S. extract (~10 GB)"
+	@echo "  make fod-data-wikidata Download Wikidata geopoints (~100 GB raw)"
+	@echo "  make fod-data-status   Show pipeline status"
+	@echo "  make fod-data-clean    Delete all downloaded raw data"
+	@echo ""
 	@echo "Documentation:"
 	@echo "  make docs            Build Sphinx documentation"
 	@echo ""
@@ -120,7 +130,8 @@ help:
 	@echo "  uv run python examples/advanced_grammar_examples.py"
 	@echo ""
 	@echo "Developer Workflow:"
-	@echo "  make setup           One-command onboarding (env + deps + pre-commit hooks)"
+	@echo "  make setup           One-command onboarding (core deps, no Spark/Dask/Polars)"
+	@echo "  make setup-full      Full onboarding (all deps including Spark/Dask/Polars/Neo4j)"
 	@echo "  make check           Run lock-check + format + lint + typecheck + test-fast"
 	@echo "  make lock-check      Verify uv.lock matches pyproject.toml (CI parity)"
 	@echo "  make dev-check       Validate .env before Docker targets"
@@ -132,7 +143,7 @@ help:
 	@echo "  make watch WATCH_FILE=tests/test_foo.py  Watch a specific test file"
 	@echo ""
 	@echo "Getting Started:"
-	@echo "  1. make setup            (one-command setup, or do steps 2-3 manually)"
+	@echo "  1. make setup            (core deps, or make setup-full for everything)"
 	@echo "  2. cp .env.example .env  (set real credentials for Docker)"
 	@echo "  3. uv sync               (install dependencies)"
 	@echo "  4. make test             (run tests)"
@@ -143,13 +154,13 @@ help:
 	@echo "  make veryclean       Alias for reset"
 
 uv:
-	pip install --upgrade uv
+	@command -v uv >/dev/null 2>&1 || { echo "Installing uv..."; curl -LsSf https://astral.sh/uv/install.sh | sh; }
 
 venv: uv
 	@echo "Setting up virtual environment..."
 	uv venv .venv
 
-start: veryclean install 
+start: veryclean install
 
 # ------------------------------------------------------------------------------
 # Cleaning targets
@@ -225,7 +236,7 @@ bench-save:
 # Run benchmarks and compare against most recent saved baseline
 bench-compare:
 	@echo "Running benchmarks and comparing against saved baseline..."
-	uv run pytest tests/benchmarks/bench_core_operations.py -v --benchmark-only -m "not slow" --benchmark-compare --timeout=120
+	uv run pytest tests/benchmarks/bench_core_operations.py -v --benchmark-only -m "not slow" --benchmark-compare=0001_baseline --benchmark-compare-fail=mean:5.0 --timeout=120
 
 # Run memory profiling benchmark (all scales including slow)
 bench-memory:
@@ -265,7 +276,7 @@ lint-changed:
 # --skip-editable excludes workspace packages not on PyPI
 audit:
 	@echo "Auditing dependencies for known vulnerabilities..."
-	uv run pip-audit --desc --skip-editable
+	uv run pip-audit --desc --skip-editable --cache-dir "$$(mktemp -d)"
 
 # Static Application Security Testing (SAST) — scan source code for
 # injection risks, hardcoded secrets, and other security anti-patterns.
@@ -285,20 +296,42 @@ typecheck:
 # ------------------------------------------------------------------------------
 # Developer workflow targets
 
-# One-command onboarding: copy .env, install deps, install pre-commit hooks
+# One-command onboarding: copy .env, install core deps, install pre-commit hooks.
+# Uses dev-core group (no Spark/Dask/Polars). For full deps: make setup-full
 setup:
-	@echo "Setting up development environment..."
+	@echo "Setting up development environment (core)..."
 	@if [ ! -f .env ]; then \
 		cp .env.example .env; \
 		echo "Created .env from .env.example — edit it to set real credentials for Docker."; \
 	else \
 		echo ".env already exists, skipping copy."; \
 	fi
-	uv sync
+	uv sync --group dev-core
 	uv run pre-commit install
 	@echo ""
 	@echo "Setup complete! Next steps:"
-	@echo "  make test        Run the test suite"
+	@echo "  make test        Run the test suite (use -m 'not spark and not neo4j' for core-only)"
+	@echo "  make dev-up      Start Docker dev environment (edit .env first)"
+	@echo ""
+	@echo "Dependency groups available:"
+	@echo "  dev-core  (installed) — testing, linting, docs"
+	@echo "  dev                   — adds Spark, Dask, Polars, Neo4j  (make setup-full)"
+	@echo "  dev-full              — adds Jupyter, profiling, visualization"
+
+# Full onboarding: all dev dependencies including Spark, Dask, Polars, Neo4j
+setup-full:
+	@echo "Setting up full development environment..."
+	@if [ ! -f .env ]; then \
+		cp .env.example .env; \
+		echo "Created .env from .env.example — edit it to set real credentials for Docker."; \
+	else \
+		echo ".env already exists, skipping copy."; \
+	fi
+	uv sync --group dev
+	uv run pre-commit install
+	@echo ""
+	@echo "Full setup complete! All dependency groups installed."
+	@echo "  make test        Run all tests"
 	@echo "  make dev-up      Start Docker dev environment (edit .env first)"
 
 # Verify uv.lock is in sync with pyproject.toml (matches CI --frozen)
@@ -596,7 +629,7 @@ build:
 	@for v in ${SUPPORTED_PYTHON_VERSIONS}; do \
 		echo "Building with Python version ${PYTHON_VERSION}..." && \
 		uv run --python $v uv build -t wheel || exit 1; \
-	done	
+	done
 
 # Install packages in development mode
 install: build
@@ -616,7 +649,7 @@ coverage-detailed:
 	uv run pytest --cov-report html:${COVERAGE_DIR} --cov --cov-report term-missing
 
 # Run tests with coverage floor enforcement (CI gate)
-COVERAGE_FLOOR ?= 50
+COVERAGE_FLOOR ?= 80
 coverage-check:
 	@echo "Running tests with coverage floor ($(COVERAGE_FLOOR)%)..."
 	uv run pytest -n ${PYTHON_TEST_THREADS} --cov --cov-fail-under=$(COVERAGE_FLOOR) -q
@@ -628,6 +661,10 @@ docs:
 	@echo "Building documentation..."
 	cd ${DOCS_DIR} && uv run make html
 
+lsp:
+	@echo "Starting PyCypher LSP server (stdin/stdout)..."
+	uv run python -m pycypher.cypher_lsp
+
 # ------------------------------------------------------------------------------
 # Release and publishing targets
 
@@ -637,7 +674,68 @@ publish: build
 	uv run python ./release.py --increment=$(BUMP)
 
 # ------------------------------------------------------------------------------
-# Data processing targets
+# Snakemake dataset download targets
+#
+# These targets delegate to the Snakefile in packages/fastopendata/ which
+# manages all 17 source datasets with retry logic, validation, and
+# proper dependency ordering.
+#
+# Override data directory: make fod-data DATA_DIR=/mnt/data/fastopendata
+
+SNAKEMAKE_CORES ?= all
+FOD_SNAKEMAKE = cd ${FASTOPENDATA_DIR} && uv run snakemake --cores $(SNAKEMAKE_CORES)
+
+## Download and process all 17 fastopendata datasets via Snakemake
+fod-data:
+	@echo "Downloading all fastopendata datasets ($(SNAKEMAKE_CORES) cores)..."
+	$(FOD_SNAKEMAKE)
+
+## Dry-run: show what Snakemake would download without executing
+fod-data-plan:
+	@echo "Snakemake dry-run (no downloads)..."
+	$(FOD_SNAKEMAKE) --dry-run
+
+## Download only Census survey datasets (ACS PUMS, SIPP, AHS, CJARS)
+fod-data-census:
+	@echo "Downloading Census survey datasets..."
+	$(FOD_SNAKEMAKE) \
+		raw_data/psam_pus.csv raw_data/psam_p.csv \
+		raw_data/psam_hus.csv raw_data/psam_h.csv \
+		raw_data/pu2023.csv raw_data/rw2023.csv raw_data/pu2023_schema.json \
+		raw_data/.ahs_2023_extracted raw_data/cjars_joe_2022_co.csv \
+		raw_data/state_county_tract_puma.csv
+
+## Download only TIGER/Line geographic shapefiles
+fod-data-tiger:
+	@echo "Downloading TIGER/Line shapefiles..."
+	$(FOD_SNAKEMAKE) \
+		raw_data/puma_combined.shp raw_data/tl_2024_us_state.shp \
+		raw_data/combined.shp
+
+## Download and process OpenStreetMap U.S. extract (~10 GB)
+fod-data-osm:
+	@echo "Downloading OpenStreetMap U.S. extract..."
+	$(FOD_SNAKEMAKE) raw_data/united_states_nodes.csv
+
+## Download and filter Wikidata geopoint entities (~100 GB raw)
+fod-data-wikidata:
+	@echo "Downloading and filtering Wikidata dump..."
+	$(FOD_SNAKEMAKE) raw_data/wikidata_us_points.json
+
+## Show Snakemake DAG status for fastopendata pipeline
+fod-data-status:
+	@echo "Snakemake pipeline status:"
+	$(FOD_SNAKEMAKE) --summary
+
+## Clean downloaded raw data (requires confirmation)
+fod-data-clean:
+	@echo "This will delete all downloaded data in ${FASTOPENDATA_DIR}/raw_data/"
+	@read -p "Are you sure? [y/N] " confirm && [ "$$confirm" = y ] || exit 1
+	rm -rf ${FASTOPENDATA_DIR}/raw_data/*
+	@echo "Raw data cleaned."
+
+# ------------------------------------------------------------------------------
+# Data processing targets (legacy — prefer fod-data-* targets above)
 
 # Process data with DVC
 # data: install
@@ -682,7 +780,7 @@ fastopendata: pycypher
 #       monorepo_path: /Users/zernst/git/pycypher-nmetl/
 #       raw_data: /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data/
 #       source_dir: /Users/zernst/git/pycypher-nmetl/packages/fastopendata/src/fastopendata/
-# 
+#
 ${DATA_DIR}/state_county_tract_puma.csv:
 	wget --no-check-certificate https://www2.census.gov/geo/docs/maps-data/data/rel2020/2020_Census_Tract_to_2020_PUMA.txt -O ${DATA_DIR}/state_county_unedited.txt
 	cat ${DATA_DIR}/state_county_unedited.txt | sed 's/^\uFEFF//' > ${DATA_DIR}/state_county_tract_puma.csv
@@ -770,7 +868,7 @@ ${DATA_DIR}/wikidata_compressed.json.bz2:
 
 # ${DATA_DIR}/wikidata_compressed.json.bz2: ${DATA_DIR}/latest-all.json.bz2
 # 	cat ${DATA_DIR}/latest-all.json.bz2 | bunzip2 -c | uv run python ${SOURCE_DIR}/compress_wikidata.py | bzip2 -c > ${DATA_DIR}/wikidata_compressed.json.bz2
-# 	
+#
 #   download_pums_5_year:
 #     cmd: wget -P '${paths.raw_data}' -nH --recursive -np https://www2.census.gov/programs-surveys/acs/data/pums/2023/5-Year/ && /bin/bash -c ${paths.source_dir}/pums_5_year.sh
 #     outs:
@@ -802,13 +900,13 @@ ${DATA_DIR}/tl_2024_us_state.shp: ${DATA_DIR}/us_state_boundaries.zip
 
 # This one might be broken
 ${DATA_DIR}/pu2023_csv.zip:
-	wget --no-check-certificate --user-agent='Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1)' --no-cache --header='referer: https://www2.census.gov/programs-surveys/acs/data/pums/2027/' https://www2.census.gov/programs-surveys/sipp/data/datasets/2023/pu2023_csv.zip -O ${paths.raw_data}/pu2023_csv.zip 
+	wget --no-check-certificate --user-agent='Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1)' --no-cache --header='referer: https://www2.census.gov/programs-surveys/acs/data/pums/2027/' https://www2.census.gov/programs-surveys/sipp/data/datasets/2023/pu2023_csv.zip -O ${paths.raw_data}/pu2023_csv.zip
 # && unzip -o ${paths.raw_data}/pu2023_csv.zip -d ${paths.raw_data}/
 
 #     outs:
 #     - ${paths.raw_data}/tl_2024_us_state.shp
 #   filter_us_wikidata:
-#     cmd: python ${paths.source_dir}/filter_us_nodes.py 
+#     cmd: python ${paths.source_dir}/filter_us_nodes.py
 #     deps:
 #     - ${paths.raw_data}/location_entities.json.bz2
 #     - ${paths.raw_data}/tl_2024_us_state.shp

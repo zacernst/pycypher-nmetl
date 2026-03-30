@@ -29,7 +29,8 @@ from .dataset_generator import SCALE_SMALL, SCALE_TINY, generate_social_graph
 ID_COLUMN = "__ID__"
 
 psutil = pytest.importorskip(
-    "psutil", reason="psutil required for memory tests"
+    "psutil",
+    reason="psutil required for memory tests",
 )
 
 
@@ -58,9 +59,9 @@ def _build_star(
         context=Context(
             entity_mapping=EntityMapping(mapping={"Person": person_table}),
             relationship_mapping=RelationshipMapping(
-                mapping={"KNOWS": knows_table}
+                mapping={"KNOWS": knows_table},
             ),
-        )
+        ),
     )
 
 
@@ -89,11 +90,12 @@ class TestRelationshipScanCorrectness:
     """
 
     def test_relationship_scan_returns_all_edges(
-        self, tiny_star: Star
+        self,
+        tiny_star: Star,
     ) -> None:
         """All relationships should appear in unfiltered scan."""
         result = tiny_star.execute_query(
-            "MATCH (a:Person)-[r:KNOWS]->(b:Person) RETURN count(r) AS cnt"
+            "MATCH (a:Person)-[r:KNOWS]->(b:Person) RETURN count(r) AS cnt",
         )
         # Should match the number of relationships in the dataset
         assert result["cnt"].iloc[0] == SCALE_TINY.relationship_rows
@@ -101,27 +103,27 @@ class TestRelationshipScanCorrectness:
     def test_filtered_scan_subset(self, tiny_star: Star) -> None:
         """Filtered relationship scan returns correct subset."""
         all_result = tiny_star.execute_query(
-            "MATCH (a:Person)-[r:KNOWS]->(b:Person) RETURN a.name AS src, b.name AS tgt"
+            "MATCH (a:Person)-[r:KNOWS]->(b:Person) RETURN a.name AS src, b.name AS tgt",
         )
         filtered_result = tiny_star.execute_query(
             "MATCH (a:Person)-[r:KNOWS]->(b:Person) "
             "WHERE a.age > 50 "
-            "RETURN a.name AS src, b.name AS tgt"
+            "RETURN a.name AS src, b.name AS tgt",
         )
         assert len(filtered_result) <= len(all_result)
 
     def test_relationship_properties_accessible(self, tiny_star: Star) -> None:
         """Relationship properties should be accessible after scan."""
         result = tiny_star.execute_query(
-            "MATCH (a:Person)-[r:KNOWS]->(b:Person) RETURN r.since AS since LIMIT 5"
+            "MATCH (a:Person)-[r:KNOWS]->(b:Person) RETURN r.since AS since LIMIT 5",
         )
         assert "since" in result.columns
-        assert len(result) <= 5  # noqa: PLR2004
+        assert len(result) <= 5
 
     def test_bidirectional_scan(self, tiny_star: Star) -> None:
         """Both directions of relationship should be scannable."""
         forward = tiny_star.execute_query(
-            "MATCH (a:Person)-[r:KNOWS]->(b:Person) RETURN count(r) AS cnt"
+            "MATCH (a:Person)-[r:KNOWS]->(b:Person) RETURN count(r) AS cnt",
         )
         assert forward["cnt"].iloc[0] > 0
 
@@ -142,7 +144,9 @@ class TestRelationshipScanPerformance:
 
     def test_scan_with_limit_faster(self, small_star: Star) -> None:
         """LIMIT should reduce execution time."""
-        full_query = "MATCH (a:Person)-[r:KNOWS]->(b:Person) RETURN a.name AS src, b.name AS tgt"
+        full_query = (
+            "MATCH (a:Person)-[r:KNOWS]->(b:Person) RETURN a.name AS src, b.name AS tgt"
+        )
         limited_query = (
             "MATCH (a:Person)-[r:KNOWS]->(b:Person) "
             "RETURN a.name AS src, b.name AS tgt LIMIT 100"
@@ -175,7 +179,7 @@ class TestRelationshipScanPerformance:
 
         gc.collect()
         growth = _get_process_memory_mb() - baseline
-        assert growth < 50, (  # noqa: PLR2004
+        assert growth < 50, (
             f"Memory grew {growth:.1f}MB over 15 relationship scan iterations"
         )
 
@@ -202,12 +206,12 @@ class TestVariableLengthPathCorrectness:
         single_hop = tiny_star.execute_query(
             "MATCH (a:Person)-[r:KNOWS]->(b:Person) "
             "RETURN a.name AS src, b.name AS tgt "
-            "ORDER BY src, tgt"
+            "ORDER BY src, tgt",
         )
         vlp_one = tiny_star.execute_query(
             "MATCH (a:Person)-[:KNOWS*1..1]->(b:Person) "
             "RETURN a.name AS src, b.name AS tgt "
-            "ORDER BY src, tgt"
+            "ORDER BY src, tgt",
         )
         # VLP may deduplicate, so result should be <= single hop
         assert len(vlp_one) <= len(single_hop)
@@ -217,11 +221,11 @@ class TestVariableLengthPathCorrectness:
         """More hops should produce >= as many results as fewer hops."""
         one_hop = tiny_star.execute_query(
             "MATCH (a:Person)-[:KNOWS*1..1]->(b:Person) "
-            "RETURN a.name AS src, b.name AS tgt"
+            "RETURN a.name AS src, b.name AS tgt",
         )
         two_hop = tiny_star.execute_query(
             "MATCH (a:Person)-[:KNOWS*1..2]->(b:Person) "
-            "RETURN a.name AS src, b.name AS tgt"
+            "RETURN a.name AS src, b.name AS tgt",
         )
         assert len(two_hop) >= len(one_hop)
 
@@ -229,9 +233,9 @@ class TestVariableLengthPathCorrectness:
         """LIMIT on VLP should return correct number of rows."""
         result = tiny_star.execute_query(
             "MATCH (a:Person)-[:KNOWS*1..2]->(b:Person) "
-            "RETURN a.name AS src, b.name AS tgt LIMIT 5"
+            "RETURN a.name AS src, b.name AS tgt LIMIT 5",
         )
-        assert len(result) <= 5  # noqa: PLR2004
+        assert len(result) <= 5
 
     def test_vlp_deterministic(self, tiny_star: Star) -> None:
         """VLP should produce deterministic results."""
@@ -287,13 +291,13 @@ class TestVariableLengthPathPerformance:
         gc.collect()
         growth = _get_process_memory_mb() - baseline
         # With LIMIT 50, memory growth should be modest
-        assert growth < 200, (  # noqa: PLR2004
-            f"VLP LIMIT 50 query grew memory by {growth:.1f}MB"
-        )
+        assert growth < 200, f"VLP LIMIT 50 query grew memory by {growth:.1f}MB"
 
     def test_vlp_no_memory_leak(self, small_star: Star) -> None:
         """Repeated VLP queries should not leak memory."""
-        query = "MATCH (a:Person)-[:KNOWS*1..2]->(b:Person) RETURN a.name AS src LIMIT 10"
+        query = (
+            "MATCH (a:Person)-[:KNOWS*1..2]->(b:Person) RETURN a.name AS src LIMIT 10"
+        )
 
         for _ in range(3):
             small_star.execute_query(query)
@@ -305,6 +309,4 @@ class TestVariableLengthPathPerformance:
 
         gc.collect()
         growth = _get_process_memory_mb() - baseline
-        assert growth < 100, (  # noqa: PLR2004
-            f"Memory grew {growth:.1f}MB over 10 VLP iterations"
-        )
+        assert growth < 100, f"Memory grew {growth:.1f}MB over 10 VLP iterations"

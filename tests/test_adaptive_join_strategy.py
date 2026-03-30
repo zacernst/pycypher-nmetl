@@ -226,7 +226,7 @@ class TestBindingFrameJoinIntegration:
         )
         right = BindingFrame(
             bindings=pd.DataFrame(
-                {"a": [3, 4, 5, 6, 7], "b": [10, 20, 30, 40, 50]}
+                {"a": [3, 4, 5, 6, 7], "b": [10, 20, 30, 40, 50]},
             ),
             type_registry={"b": "Company"},
             context=ctx,

@@ -26,17 +26,17 @@ class TestJoinFunctionExists:
         return ScalarFunctionRegistry.get_instance()
 
     def test_join_function_registered(
-        self, registry: ScalarFunctionRegistry
+        self,
+        registry: ScalarFunctionRegistry,
     ) -> None:
-        """join function must be registered in the scalar function registry."""
-        assert "join" in registry._functions, (
-            "join function not found in registry"
-        )
+        """Join function must be registered in the scalar function registry."""
+        assert "join" in registry._functions, "join function not found in registry"
 
     def test_join_function_callable(
-        self, registry: ScalarFunctionRegistry
+        self,
+        registry: ScalarFunctionRegistry,
     ) -> None:
-        """join function must be callable through registry.execute."""
+        """Join function must be callable through registry.execute."""
         # Basic test - should not raise an error about unknown function
         list_series = pd.Series([["a", "b", "c"]], dtype="object")
         delimiter_series = pd.Series([","], dtype="object")
@@ -74,7 +74,8 @@ class TestJoinFunctionCorrectness:
         assert result.iloc[0] == ""
 
     def test_single_element_list(
-        self, registry: ScalarFunctionRegistry
+        self,
+        registry: ScalarFunctionRegistry,
     ) -> None:
         """join(['hello'], ',') should return 'hello' (no delimiter needed)."""
         list_series = pd.Series([["hello"]], dtype="object")
@@ -106,7 +107,8 @@ class TestJoinFunctionCorrectness:
         assert result.iloc[0] is None
 
     def test_different_delimiters(
-        self, registry: ScalarFunctionRegistry
+        self,
+        registry: ScalarFunctionRegistry,
     ) -> None:
         """Test join with various delimiters."""
         # Space delimiter
@@ -131,7 +133,8 @@ class TestJoinFunctionCorrectness:
         assert result.iloc[0] == "one | two | three"
 
     def test_list_with_null_elements(
-        self, registry: ScalarFunctionRegistry
+        self,
+        registry: ScalarFunctionRegistry,
     ) -> None:
         """join(['a', null, 'c'], ',') should skip null elements and return 'a,c'."""
         list_series = pd.Series([["a", None, "c"]], dtype="object")
@@ -143,7 +146,8 @@ class TestJoinFunctionCorrectness:
         assert result.iloc[0] == "a,c"
 
     def test_list_with_numeric_elements(
-        self, registry: ScalarFunctionRegistry
+        self,
+        registry: ScalarFunctionRegistry,
     ) -> None:
         """join([1, 2, 3], ',') should convert numbers to strings and return '1,2,3'."""
         list_series = pd.Series([[1, 2, 3]], dtype="object")
@@ -157,7 +161,8 @@ class TestJoinFunctionCorrectness:
     def test_multiple_rows(self, registry: ScalarFunctionRegistry) -> None:
         """Test join function with multiple rows of data."""
         list_series = pd.Series(
-            [["a", "b"], ["x", "y", "z"], [], None], dtype="object"
+            [["a", "b"], ["x", "y", "z"], [], None],
+            dtype="object",
         )
         delimiter_series = pd.Series(["-", "-", "-", "-"], dtype="object")
 
@@ -179,7 +184,8 @@ class TestJoinFunctionIntegration:
         return ScalarFunctionRegistry.get_instance()
 
     def test_join_split_roundtrip(
-        self, registry: ScalarFunctionRegistry
+        self,
+        registry: ScalarFunctionRegistry,
     ) -> None:
         """join(split(s, d), d) should return the original string s."""
         original = "hello,world,test"
@@ -197,7 +203,8 @@ class TestJoinFunctionIntegration:
         assert join_result.iloc[0] == original
 
     def test_split_join_preserves_empty_elements(
-        self, registry: ScalarFunctionRegistry
+        self,
+        registry: ScalarFunctionRegistry,
     ) -> None:
         """Test that split/join roundtrip preserves empty elements."""
         original = "a,,c"  # empty element in the middle
@@ -221,7 +228,8 @@ class TestJoinFunctionErrors:
         return ScalarFunctionRegistry.get_instance()
 
     def test_non_list_first_argument(
-        self, registry: ScalarFunctionRegistry
+        self,
+        registry: ScalarFunctionRegistry,
     ) -> None:
         """join('not_a_list', ',') should handle non-list input gracefully."""
         # Depending on implementation, this might return null or raise an error
@@ -233,14 +241,15 @@ class TestJoinFunctionErrors:
         assert result is not None
 
     def test_wrong_number_of_arguments(
-        self, registry: ScalarFunctionRegistry
+        self,
+        registry: ScalarFunctionRegistry,
     ) -> None:
         """join() with wrong number of arguments should raise appropriate error."""
         list_series = pd.Series([["a", "b"]], dtype="object")
 
         # Too few arguments
         with pytest.raises(
-            Exception
+            Exception,
         ):  # Specific exception type depends on implementation
             registry.execute("join", [list_series])
 

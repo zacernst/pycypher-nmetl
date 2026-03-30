@@ -35,52 +35,52 @@ class TestCoreExports:
     """Core symbols must be importable from the top-level pycypher package."""
 
     def test_star_importable(self) -> None:
-        from pycypher import Star  # noqa: F401
+        from pycypher import Star
 
         assert Star is not None
 
     def test_context_importable(self) -> None:
-        from pycypher import Context  # noqa: F401
+        from pycypher import Context
 
         assert Context is not None
 
     def test_entity_table_importable(self) -> None:
-        from pycypher import EntityTable  # noqa: F401
+        from pycypher import EntityTable
 
         assert EntityTable is not None
 
     def test_context_builder_importable(self) -> None:
-        from pycypher import ContextBuilder  # noqa: F401
+        from pycypher import ContextBuilder
 
         assert ContextBuilder is not None
 
     def test_relationship_table_importable(self) -> None:
-        from pycypher import RelationshipTable  # noqa: F401
+        from pycypher import RelationshipTable
 
         assert RelationshipTable is not None
 
     def test_entity_mapping_importable(self) -> None:
-        from pycypher import EntityMapping  # noqa: F401
+        from pycypher import EntityMapping
 
         assert EntityMapping is not None
 
     def test_relationship_mapping_importable(self) -> None:
-        from pycypher import RelationshipMapping  # noqa: F401
+        from pycypher import RelationshipMapping
 
         assert RelationshipMapping is not None
 
     def test_id_column_importable(self) -> None:
-        from pycypher import ID_COLUMN  # noqa: F401
+        from pycypher import ID_COLUMN
 
         assert isinstance(ID_COLUMN, str)
 
     def test_result_cache_importable(self) -> None:
-        from pycypher import ResultCache  # noqa: F401
+        from pycypher import ResultCache
 
         assert ResultCache is not None
 
     def test_get_cache_stats_importable(self) -> None:
-        from pycypher import get_cache_stats  # noqa: F401
+        from pycypher import get_cache_stats
 
         assert callable(get_cache_stats)
 
@@ -176,10 +176,8 @@ class TestDeprecationHandling:
 
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
-            _ = pycypher.ArrowIngestion  # noqa: B018
-            deprecations = [
-                x for x in w if issubclass(x.category, DeprecationWarning)
-            ]
+            _ = pycypher.ArrowIngestion
+            deprecations = [x for x in w if issubclass(x.category, DeprecationWarning)]
             assert len(deprecations) >= 1
             assert "DuckDBReader" in str(deprecations[0].message)
 
@@ -188,7 +186,7 @@ class TestDeprecationHandling:
         import pytest
 
         with pytest.raises(AttributeError, match="Did you mean"):
-            _ = pycypher.Starr  # noqa: B018
+            _ = pycypher.Starr
 
 
 class TestValidatorExports:
@@ -196,13 +194,13 @@ class TestValidatorExports:
 
     def test_semantic_validator_importable(self) -> None:
         """SemanticValidator class is accessible from pycypher top-level."""
-        from pycypher import SemanticValidator  # noqa: F401
+        from pycypher import SemanticValidator
 
         assert SemanticValidator is not None
 
     def test_validate_query_importable(self) -> None:
         """validate_query() helper is accessible from pycypher top-level."""
-        from pycypher import validate_query  # noqa: F401
+        from pycypher import validate_query
 
         assert callable(validate_query)
 

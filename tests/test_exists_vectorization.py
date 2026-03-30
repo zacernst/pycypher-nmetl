@@ -65,7 +65,7 @@ def _make_context(
             ID_COLUMN: ids,
             "name": [f"P{i}" for i in ids],
             "age": [i * 10 for i in ids],
-        }
+        },
     )
     people_table = EntityTable(
         entity_type="Person",
@@ -84,7 +84,7 @@ def _make_context(
             ID_COLUMN: list(range(100, 100 + len(edges))),
             "__SOURCE__": [s for s, _ in edges],
             "__TARGET__": [t for _, t in edges],
-        }
+        },
     )
     knows_table = RelationshipTable(
         relationship_type="KNOWS",
@@ -97,12 +97,12 @@ def _make_context(
     return Context(
         entity_mapping=EntityMapping(mapping={"Person": people_table}),
         relationship_mapping=RelationshipMapping(
-            mapping={"KNOWS": knows_table}
+            mapping={"KNOWS": knows_table},
         ),
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def ctx() -> Context:
     return _make_context()
 
@@ -116,39 +116,42 @@ class TestExistsQueryCorrectnessBasic:
     """Batch implementation must produce correct True/False per row."""
 
     def test_exists_subquery_returns_true_for_row_with_match(
-        self, ctx: Context
+        self,
+        ctx: Context,
     ) -> None:
         """P1 has outgoing KNOWS → EXISTS returns True for P1."""
         star = Star(context=ctx)
         result = star.execute_query(
             "MATCH (p:Person) WHERE p.name = 'P1' "
             "AND EXISTS { MATCH (p)-[:KNOWS]->(q) } "
-            "RETURN p.name AS name"
+            "RETURN p.name AS name",
         )
         assert len(result) == 1
         assert result["name"].iloc[0] == "P1"
 
     def test_exists_subquery_returns_false_for_row_without_match(
-        self, ctx: Context
+        self,
+        ctx: Context,
     ) -> None:
         """P3 has no outgoing KNOWS → WHERE EXISTS returns no rows."""
         star = Star(context=ctx)
         result = star.execute_query(
             "MATCH (p:Person) WHERE p.name = 'P3' "
             "AND EXISTS { MATCH (p)-[:KNOWS]->(q) } "
-            "RETURN p.name AS name"
+            "RETURN p.name AS name",
         )
         assert len(result) == 0
 
     def test_exists_subquery_multi_row_all_rows_correct(
-        self, ctx: Context
+        self,
+        ctx: Context,
     ) -> None:
         """All three persons evaluated in one query: P1 and P2 match; P3 does not."""
         star = Star(context=ctx)
         result = star.execute_query(
             "MATCH (p:Person) WHERE EXISTS { MATCH (p)-[:KNOWS]->(q) } "
             "RETURN p.name AS name "
-            "ORDER BY p.name"
+            "ORDER BY p.name",
         )
         names = list(result["name"])
         assert "P1" in names
@@ -158,12 +161,12 @@ class TestExistsQueryCorrectnessBasic:
     def test_not_exists_subquery_inverts_result(self) -> None:
         """NOT EXISTS returns True only for P3 (no outgoing edges) in a 3-person graph."""
         ctx3 = _make_context(
-            n_people=3
+            n_people=3,
         )  # P1→P2, P1→P3, P2→P3 — only P3 has no outgoing
         star = Star(context=ctx3)
         result = star.execute_query(
             "MATCH (p:Person) WHERE NOT EXISTS { MATCH (p)-[:KNOWS]->(q) } "
-            "RETURN p.name AS name"
+            "RETURN p.name AS name",
         )
         assert len(result) == 1
         assert result["name"].iloc[0] == "P3"
@@ -189,7 +192,7 @@ class TestExistsQueryCorrectnessWithWhere:
         result = star.execute_query(
             "MATCH (p:Person) WHERE EXISTS { MATCH (p)-[:KNOWS]->(q:Person) WHERE q.age > 25 } "
             "RETURN p.name AS name "
-            "ORDER BY p.name"
+            "ORDER BY p.name",
         )
         names = set(result["name"])
         assert names == {"P1", "P2"}
@@ -204,7 +207,7 @@ class TestExistsQueryCorrectnessWithWhere:
         result = star.execute_query(
             "MATCH (p:Person) WHERE EXISTS { MATCH (p)-[:KNOWS]->(q:Person) WHERE q.name = 'P3' } "
             "RETURN p.name AS name "
-            "ORDER BY p.name"
+            "ORDER BY p.name",
         )
         names = set(result["name"])
         assert names == {"P1", "P2"}
@@ -215,7 +218,7 @@ class TestExistsQueryCorrectnessWithWhere:
         star = Star(context=ctx3)
         result = star.execute_query(
             "MATCH (p:Person) WHERE EXISTS { MATCH (p)-[:KNOWS]->(q:Person) WHERE q.age > 9999 } "
-            "RETURN p.name AS name"
+            "RETURN p.name AS name",
         )
         assert len(result) == 0
 
@@ -229,7 +232,7 @@ class TestExistsQueryCorrectnessWithWhere:
         result = star.execute_query(
             "MATCH (p:Person) WHERE EXISTS { MATCH (p)-[:KNOWS]->(q:Person) } "
             "RETURN p.name AS name "
-            "ORDER BY p.name"
+            "ORDER BY p.name",
         )
         assert len(result) == 3  # all three
 
@@ -254,7 +257,7 @@ class TestExistsQueryWithConjunction:
         result = star.execute_query(
             "MATCH (p:Person) "
             "WHERE p.age >= 20 AND EXISTS { MATCH (p)-[:KNOWS]->(q:Person) } "
-            "RETURN p.name AS name"
+            "RETURN p.name AS name",
         )
         names = set(result["name"])
         assert "P2" in names
@@ -274,7 +277,7 @@ class TestExistsQueryWithConjunction:
             "MATCH (p:Person) "
             "WHERE p.age >= 30 OR EXISTS { MATCH (p)-[:KNOWS]->(q:Person) } "
             "RETURN p.name AS name "
-            "ORDER BY p.name"
+            "ORDER BY p.name",
         )
         assert len(result) == 3  # all three
 
@@ -292,7 +295,7 @@ def _make_large_context(n: int = 500, edges_per: int = 10) -> Context:
             ID_COLUMN: ids,
             "name": [f"P{i}" for i in ids],
             "age": [(i * 7) % 90 + 1 for i in ids],
-        }
+        },
     )
     people_table = EntityTable(
         entity_type="Person",
@@ -316,7 +319,7 @@ def _make_large_context(n: int = 500, edges_per: int = 10) -> Context:
             ID_COLUMN: rel_ids,
             "__SOURCE__": sources,
             "__TARGET__": targets,
-        }
+        },
     )
     knows_table = RelationshipTable(
         relationship_type="KNOWS",
@@ -329,7 +332,7 @@ def _make_large_context(n: int = 500, edges_per: int = 10) -> Context:
     return Context(
         entity_mapping=EntityMapping(mapping={"Person": people_table}),
         relationship_mapping=RelationshipMapping(
-            mapping={"KNOWS": knows_table}
+            mapping={"KNOWS": knows_table},
         ),
     )
 
@@ -352,12 +355,12 @@ class TestExistsQueryPerformance:
         # Warm up parse cache so we measure only the relational algebra cost.
         star.execute_query(
             "MATCH (p:Person) WHERE EXISTS { MATCH (p)-[:KNOWS]->(q:Person) } "
-            "RETURN p.name AS name"
+            "RETURN p.name AS name",
         )
         start = time.perf_counter()
         result = star.execute_query(
             "MATCH (p:Person) WHERE EXISTS { MATCH (p)-[:KNOWS]->(q:Person) } "
-            "RETURN p.name AS name"
+            "RETURN p.name AS name",
         )
         elapsed = time.perf_counter() - start
         assert len(result) == 500  # all persons have edges
@@ -372,12 +375,12 @@ class TestExistsQueryPerformance:
         star = Star(context=ctx)
         star.execute_query(
             "MATCH (p:Person) WHERE EXISTS { MATCH (p)-[:KNOWS]->(q:Person) WHERE q.age > 50 } "
-            "RETURN p.name AS name"
+            "RETURN p.name AS name",
         )
         start = time.perf_counter()
         result = star.execute_query(
             "MATCH (p:Person) WHERE EXISTS { MATCH (p)-[:KNOWS]->(q:Person) WHERE q.age > 50 } "
-            "RETURN p.name AS name"
+            "RETURN p.name AS name",
         )
         elapsed = time.perf_counter() - start
         assert isinstance(result, pd.DataFrame)
@@ -391,12 +394,12 @@ class TestExistsQueryPerformance:
         star = Star(context=ctx)
         star.execute_query(
             "MATCH (p:Person) WHERE NOT EXISTS { MATCH (p)-[:KNOWS]->(q:Person) WHERE q.age > 9999 } "
-            "RETURN p.name AS name"
+            "RETURN p.name AS name",
         )
         start = time.perf_counter()
         result = star.execute_query(
             "MATCH (p:Person) WHERE NOT EXISTS { MATCH (p)-[:KNOWS]->(q:Person) WHERE q.age > 9999 } "
-            "RETURN p.name AS name"
+            "RETURN p.name AS name",
         )
         elapsed = time.perf_counter() - start
         assert len(result) == 500  # impossible WHERE → all persons qualify

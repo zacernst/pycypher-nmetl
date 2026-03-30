@@ -33,9 +33,7 @@ class TestFunctionAliasesExist:
         registry = ScalarFunctionRegistry.get_instance()
 
         # Should be able to get metadata for now()
-        assert "now" in registry._functions, (
-            "now() function should be registered"
-        )
+        assert "now" in registry._functions, "now() function should be registered"
         meta = registry._functions["now"]
         assert meta.callable is not None, "now() should be callable"
 
@@ -43,9 +41,7 @@ class TestFunctionAliasesExist:
         """len() function should be registered as alias to length()."""
         registry = ScalarFunctionRegistry.get_instance()
 
-        assert "len" in registry._functions, (
-            "len() function should be registered"
-        )
+        assert "len" in registry._functions, "len() function should be registered"
         meta = registry._functions["len"]
         assert meta.callable is not None, "len() should be callable"
 
@@ -53,9 +49,7 @@ class TestFunctionAliasesExist:
         """str() function should be registered as alias to toString()."""
         registry = ScalarFunctionRegistry.get_instance()
 
-        assert "str" in registry._functions, (
-            "str() function should be registered"
-        )
+        assert "str" in registry._functions, "str() function should be registered"
         meta = registry._functions["str"]
         assert meta.callable is not None, "str() should be callable"
 
@@ -63,9 +57,7 @@ class TestFunctionAliasesExist:
         """int() function should be registered as alias to toInteger()."""
         registry = ScalarFunctionRegistry.get_instance()
 
-        assert "int" in registry._functions, (
-            "int() function should be registered"
-        )
+        assert "int" in registry._functions, "int() function should be registered"
         meta = registry._functions["int"]
         assert meta.callable is not None, "int() should be callable"
 
@@ -73,9 +65,7 @@ class TestFunctionAliasesExist:
         """float() function should be registered as alias to toFloat()."""
         registry = ScalarFunctionRegistry.get_instance()
 
-        assert "float" in registry._functions, (
-            "float() function should be registered"
-        )
+        assert "float" in registry._functions, "float() function should be registered"
         meta = registry._functions["float"]
         assert meta.callable is not None, "float() should be callable"
 
@@ -83,9 +73,7 @@ class TestFunctionAliasesExist:
         """bool() function should be registered as alias to toBoolean()."""
         registry = ScalarFunctionRegistry.get_instance()
 
-        assert "bool" in registry._functions, (
-            "bool() function should be registered"
-        )
+        assert "bool" in registry._functions, "bool() function should be registered"
         meta = registry._functions["bool"]
         assert meta.callable is not None, "bool() should be callable"
 
@@ -204,9 +192,7 @@ class TestAliasMetadata:
 
         for name in expected_names:
             meta = registry._functions[name]
-            assert meta.name == name, (
-                f"Function {name}() should have name='{name}'"
-            )
+            assert meta.name == name, f"Function {name}() should have name='{name}'"
 
 
 class TestUserExperienceImprovements:
@@ -307,9 +293,7 @@ class TestBackwardCompatibility:
 
         for alias in new_aliases:
             # Should exist now
-            assert alias in registry._functions, (
-                f"Alias {alias}() should be registered"
-            )
+            assert alias in registry._functions, f"Alias {alias}() should be registered"
 
 
 class TestEdgeCases:
@@ -340,9 +324,7 @@ class TestEdgeCases:
         tointeger_result = registry.execute("tointeger", [invalid_data])
 
         # Both should return null for invalid inputs (null safety contract)
-        assert pd.isna(int_result.iloc[0]), (
-            "int() should return null for invalid input"
-        )
+        assert pd.isna(int_result.iloc[0]), "int() should return null for invalid input"
         assert pd.isna(tointeger_result.iloc[0]), (
             "tointeger() should return null for invalid input"
         )

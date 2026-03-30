@@ -21,7 +21,7 @@ from pycypher.relational_models import (
 from pycypher.star import Star
 
 
-@pytest.fixture()
+@pytest.fixture
 def item_ctx() -> Context:
     """Single row for map/list access tests."""
     df = pd.DataFrame(
@@ -29,7 +29,7 @@ def item_ctx() -> Context:
             ID_COLUMN: [1],
             "name": ["Alice"],
             "age": [30],
-        }
+        },
     )
     table = EntityTable(
         entity_type="Item",
@@ -46,22 +46,24 @@ class TestMapKeyAccess:
     """Map subscript access with string key: map['key'] → value."""
 
     def test_map_string_key_access_returns_value(
-        self, item_ctx: Context
+        self,
+        item_ctx: Context,
     ) -> None:
         """{'name': 'Alice'}['name'] returns 'Alice'."""
         star = Star(context=item_ctx)
         result = star.execute_query(
-            "MATCH (i:Item) RETURN {name: i.name}['name'] AS v"
+            "MATCH (i:Item) RETURN {name: i.name}['name'] AS v",
         )
         assert result["v"].iloc[0] == "Alice"
 
     def test_map_string_key_access_integer_value(
-        self, item_ctx: Context
+        self,
+        item_ctx: Context,
     ) -> None:
         """{'age': 30}['age'] returns 30."""
         star = Star(context=item_ctx)
         result = star.execute_query(
-            "MATCH (i:Item) RETURN {age: i.age}['age'] AS v"
+            "MATCH (i:Item) RETURN {age: i.age}['age'] AS v",
         )
         assert result["v"].iloc[0] == 30
 
@@ -69,7 +71,7 @@ class TestMapKeyAccess:
         """{'name': 'Alice'}['missing'] returns null (not an error)."""
         star = Star(context=item_ctx)
         result = star.execute_query(
-            "MATCH (i:Item) RETURN {name: i.name}['missing'] AS v"
+            "MATCH (i:Item) RETURN {name: i.name}['missing'] AS v",
         )
         val = result["v"].iloc[0]
         assert val is None or (isinstance(val, float) and pd.isna(val))
@@ -88,7 +90,7 @@ class TestListIntIndexAccess:
         """[10, 20, 30][0] returns 10."""
         star = Star(context=item_ctx)
         result = star.execute_query(
-            "MATCH (i:Item) RETURN [10, 20, 30][0] AS v"
+            "MATCH (i:Item) RETURN [10, 20, 30][0] AS v",
         )
         assert result["v"].iloc[0] == 10
 
@@ -96,7 +98,7 @@ class TestListIntIndexAccess:
         """[10, 20, 30][2] returns 30."""
         star = Star(context=item_ctx)
         result = star.execute_query(
-            "MATCH (i:Item) RETURN [10, 20, 30][2] AS v"
+            "MATCH (i:Item) RETURN [10, 20, 30][2] AS v",
         )
         assert result["v"].iloc[0] == 30
 
@@ -104,6 +106,6 @@ class TestListIntIndexAccess:
         """[10, 20, 30][-1] returns 30 (Python negative index)."""
         star = Star(context=item_ctx)
         result = star.execute_query(
-            "MATCH (i:Item) RETURN [10, 20, 30][-1] AS v"
+            "MATCH (i:Item) RETURN [10, 20, 30][-1] AS v",
         )
         assert result["v"].iloc[0] == 30

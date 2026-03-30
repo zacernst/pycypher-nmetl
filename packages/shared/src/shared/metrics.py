@@ -39,6 +39,7 @@ Attributes:
     SLOW_QUERY_THRESHOLD_S: Queries exceeding this duration trigger a
         warning log.  Configurable via ``PYCYPHER_SLOW_QUERY_MS`` env var
         (default 1000 ms).
+
 """
 
 from __future__ import annotations
@@ -120,6 +121,7 @@ class MetricsSnapshot:
         timing_min_ms: Minimum observed execution time in milliseconds.
         total_rows_returned: Cumulative rows returned across all queries.
         uptime_s: Seconds since the collector was created.
+
     """
 
     total_queries: int
@@ -204,6 +206,7 @@ class MetricsSnapshot:
             ``"healthy"`` — error rate < 5% and slow query rate < 10%.
             ``"degraded"`` — error rate 5–20% or slow query rate 10–30%.
             ``"unhealthy"`` — error rate > 20% or slow query rate > 30%.
+
         """
         total_ops = self.total_queries + self.total_errors
         if total_ops == 0:
@@ -242,7 +245,7 @@ class MetricsSnapshot:
             f"=== Query Execution Diagnostic Report ===\n"
             f"Status: {status.upper()}  |  "
             f"Uptime: {self.uptime_s:.0f}s  |  "
-            f"Total operations: {total_ops}"
+            f"Total operations: {total_ops}",
         )
 
         if total_ops == 0:
@@ -257,18 +260,18 @@ class MetricsSnapshot:
                 f"Latency spread: p50={self.timing_p50_ms:.1f}ms  "
                 f"p90={self.timing_p90_ms:.1f}ms  "
                 f"p99={self.timing_p99_ms:.1f}ms  "
-                f"max={self.timing_max_ms:.1f}ms"
+                f"max={self.timing_max_ms:.1f}ms",
             )
             if tail_ratio > 10:
                 perf_lines.append(
                     f"  WARNING: p99/p50 ratio is {tail_ratio:.1f}x — "
                     "high tail latency suggests occasional expensive queries "
-                    "or resource contention"
+                    "or resource contention",
                 )
             elif tail_ratio > 5:
                 perf_lines.append(
                     f"  NOTE: p99/p50 ratio is {tail_ratio:.1f}x — "
-                    "moderate tail latency variance"
+                    "moderate tail latency variance",
                 )
 
         if self.recent_queries_per_second > 0 and self.queries_per_second > 0:
@@ -279,7 +282,7 @@ class MetricsSnapshot:
                 perf_lines.append(
                     f"  WARNING: Recent throughput ({self.recent_queries_per_second:.1f} qps) "
                     f"is {rate_ratio:.0%} of overall ({self.queries_per_second:.1f} qps) — "
-                    "possible throughput degradation"
+                    "possible throughput degradation",
                 )
 
         slow_rate = (
@@ -290,12 +293,12 @@ class MetricsSnapshot:
         if slow_rate > 0:
             perf_lines.append(
                 f"Slow queries: {self.slow_queries}/{self.total_queries} "
-                f"({slow_rate:.1%}) exceeded {SLOW_QUERY_THRESHOLD_S * 1000:.0f}ms threshold"
+                f"({slow_rate:.1%}) exceeded {SLOW_QUERY_THRESHOLD_S * 1000:.0f}ms threshold",
             )
             if slow_rate > 0.10:
                 perf_lines.append(
                     "  ACTION: Review slow query patterns — consider adding "
-                    "LIMIT clauses or WHERE filters to reduce scan scope"
+                    "LIMIT clauses or WHERE filters to reduce scan scope",
                 )
         sections.append("\n".join(perf_lines))
 
@@ -305,7 +308,7 @@ class MetricsSnapshot:
             err_lines.append(
                 f"Error rate: {self.error_rate:.1%} overall, "
                 f"{self.recent_error_rate:.1%} recent  "
-                f"({self.total_errors} failures)"
+                f"({self.total_errors} failures)",
             )
             if (
                 self.recent_error_rate > self.error_rate * 1.5
@@ -313,7 +316,7 @@ class MetricsSnapshot:
             ):
                 err_lines.append(
                     "  WARNING: Recent error rate is increasing — "
-                    "check for new query patterns or data issues"
+                    "check for new query patterns or data issues",
                 )
             if self.error_counts:
                 sorted_errors = sorted(
@@ -342,12 +345,12 @@ class MetricsSnapshot:
                 clause_lines.append(
                     f"  {clause_name:20s}  p50={p50:7.1f}ms  "
                     f"p90={p90:7.1f}ms  max={max_t:7.1f}ms  "
-                    f"count={count}"
+                    f"count={count}",
                 )
             if sorted_clauses and sorted_clauses[0][1] > 100:
                 clause_lines.append(
                     f"  HOTSPOT: {sorted_clauses[0][0]} is the slowest clause — "
-                    "focus optimization here for maximum impact"
+                    "focus optimization here for maximum impact",
                 )
             sections.append("\n".join(clause_lines))
 
@@ -357,22 +360,22 @@ class MetricsSnapshot:
             cache_lines: list[str] = ["\n--- Cache Efficiency ---"]
             cache_lines.append(
                 f"Hit rate: {self.result_cache_hit_rate:.1%}  "
-                f"({self.result_cache_hits} hits / {cache_total} lookups)"
+                f"({self.result_cache_hits} hits / {cache_total} lookups)",
             )
             cache_lines.append(
                 f"Entries: {self.result_cache_entries}  "
                 f"Size: {self.result_cache_size_mb:.1f}MB  "
-                f"Evictions: {self.result_cache_evictions}"
+                f"Evictions: {self.result_cache_evictions}",
             )
             if self.result_cache_hit_rate < 0.3 and cache_total > 10:
                 cache_lines.append(
                     "  NOTE: Low cache hit rate — queries may have high "
-                    "cardinality or unique parameters reducing cache reuse"
+                    "cardinality or unique parameters reducing cache reuse",
                 )
             if self.result_cache_evictions > cache_total * 0.5:
                 cache_lines.append(
                     "  WARNING: High eviction rate — consider increasing "
-                    "cache size to reduce recomputation"
+                    "cache size to reduce recomputation",
                 )
             sections.append("\n".join(cache_lines))
 
@@ -382,22 +385,22 @@ class MetricsSnapshot:
             mem_lines.append(
                 f"Memory delta: p50={self.memory_delta_p50_mb:.1f}MB  "
                 f"p90={self.memory_delta_p90_mb:.1f}MB  "
-                f"max={self.memory_delta_max_mb:.1f}MB"
+                f"max={self.memory_delta_max_mb:.1f}MB",
             )
             if self.memory_delta_max_mb > 500:
                 mem_lines.append(
                     "  WARNING: Peak memory delta exceeds 500MB — "
-                    "queries with large intermediate results may cause OOM"
+                    "queries with large intermediate results may cause OOM",
                 )
             if self.parse_time_max_ms > 100:
                 mem_lines.append(
                     f"  NOTE: Max parse time {self.parse_time_max_ms:.1f}ms — "
-                    "complex queries may benefit from AST caching"
+                    "complex queries may benefit from AST caching",
                 )
             if self.plan_time_max_ms > 100:
                 mem_lines.append(
                     f"  NOTE: Max plan time {self.plan_time_max_ms:.1f}ms — "
-                    "consider simplifying join patterns"
+                    "consider simplifying join patterns",
                 )
             sections.append("\n".join(mem_lines))
 
@@ -406,17 +409,17 @@ class MetricsSnapshot:
             plan_lines: list[str] = ["\n--- Planner Accuracy ---"]
             plan_lines.append(
                 f"Memory estimate MAE: {self.planner_mae_mb:.2f}MB  "
-                f"Accuracy ratio p50: {self.planner_accuracy_ratio_p50:.2f}"
+                f"Accuracy ratio p50: {self.planner_accuracy_ratio_p50:.2f}",
             )
             if self.planner_accuracy_ratio_p50 > 2.0:
                 plan_lines.append(
                     "  WARNING: Planner overestimates memory by 2x+ — "
-                    "may reject queries that would fit in budget"
+                    "may reject queries that would fit in budget",
                 )
             elif self.planner_accuracy_ratio_p50 < 0.5:
                 plan_lines.append(
                     "  WARNING: Planner underestimates memory by 2x+ — "
-                    "queries may exceed budget unexpectedly"
+                    "queries may exceed budget unexpectedly",
                 )
             sections.append("\n".join(plan_lines))
 
@@ -489,6 +492,7 @@ class QueryMetrics:
             parse_time_ms: Time spent parsing the query string (ms).
             estimated_memory_mb: Planner's memory estimate (MB) for accuracy tracking.
             plan_time_ms: Time spent in query planning phase (ms).
+
         """
         if not _ENABLED:
             return
@@ -590,6 +594,7 @@ class QueryMetrics:
             query_id: Correlation ID for the query.
             error_type: Exception class name (e.g. ``"TypeError"``).
             elapsed_s: Wall-clock time before failure in seconds.
+
         """
         if not _ENABLED:
             return
@@ -613,6 +618,7 @@ class QueryMetrics:
         Args:
             stats: Dict with keys like ``result_cache_hits``,
                 ``result_cache_misses``, ``result_cache_hit_rate``, etc.
+
         """
         if not _ENABLED:
             return
@@ -624,6 +630,7 @@ class QueryMetrics:
 
         Returns:
             A :class:`MetricsSnapshot` with current aggregated statistics.
+
         """
         _RATE_WINDOW_S = 60.0
         now = time.monotonic()
@@ -776,6 +783,7 @@ def _percentile(data: list[float], pct: float) -> float:
 
     Returns:
         The percentile value, or 0.0 if data is empty.
+
     """
     if not data:
         return 0.0

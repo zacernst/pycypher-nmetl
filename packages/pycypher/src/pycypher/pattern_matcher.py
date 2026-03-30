@@ -108,6 +108,7 @@ class PatternMatcher:
         path_expander: PathExpander instance for variable-length paths.
         coerce_join_fn: Callable for joining two BindingFrames (inner or cross join).
         apply_where_fn: Callable for applying a WHERE predicate to a BindingFrame.
+        multi_way_join_fn: Optional callable for n-way joins using LeapfrogTriejoin.
 
     """
 
@@ -117,6 +118,7 @@ class PatternMatcher:
         path_expander: PathExpander,
         coerce_join_fn: Any,
         apply_where_fn: Any,
+        multi_way_join_fn: Any = None,
     ) -> None:
         """Initialize pattern matcher.
 
@@ -127,11 +129,15 @@ class PatternMatcher:
                 joining two frames (inner or cross join).
             apply_where_fn: Callable ``(frame, predicate) -> BindingFrame``
                 for applying a WHERE predicate to a frame.
+            multi_way_join_fn: Optional callable ``(frames) -> BindingFrame``
+                for n-way joins using LeapfrogTriejoin when applicable.
+
         """
         self.context = context
         self._path_expander = path_expander
         self._coerce_join = coerce_join_fn
         self._apply_where_filter = apply_where_fn
+        self._multi_way_join = multi_way_join_fn
 
     def node_pattern_to_binding_frame(
         self,
@@ -176,7 +182,8 @@ class PatternMatcher:
         _remaining_props: dict[str, Any] = {}
         for prop_name, prop_val in (node.properties or {}).items():
             if isinstance(prop_val, _Literal) and not isinstance(
-                prop_val, (type(None),)
+                prop_val,
+                (type(None),),
             ):
                 _pushable[prop_name] = prop_val.value
             else:
@@ -281,7 +288,7 @@ class PatternMatcher:
 
             raise PatternComprehensionError(
                 "MATCH pattern path is empty — expected at least one node "
-                "pattern. Use e.g. MATCH (n:Person) or MATCH (a)-[:KNOWS]->(b)."
+                "pattern. Use e.g. MATCH (n:Person) or MATCH (a)-[:KNOWS]->(b).",
             )
 
         path_var_name: str | None = (
@@ -368,13 +375,23 @@ class PatternMatcher:
                 )
             elif next_var in frame.var_names:
                 frame = self._join_cyclic_back_reference(
-                    frame, scan_rel_types, rel_var,
-                    prev_var, next_var, direction,
+                    frame,
+                    scan_rel_types,
+                    rel_var,
+                    prev_var,
+                    next_var,
+                    direction,
                 )
             else:
                 frame = self._traverse_fixed_hop(
-                    frame, node_ast, scan_rel_types,
-                    rel_var, prev_var, next_var, next_type, direction,
+                    frame,
+                    node_ast,
+                    scan_rel_types,
+                    rel_var,
+                    prev_var,
+                    next_var,
+                    next_type,
+                    direction,
                 )
 
             prev_var = next_var
@@ -419,7 +436,7 @@ class PatternMatcher:
             raise PatternComprehensionError(
                 "Variable-length relationship patterns [*m..n] require "
                 "exactly one relationship type. "
-                "Use e.g. -[:KNOWS*1..3]-> instead of -[*1..3]->"
+                "Use e.g. -[:KNOWS*1..3]-> instead of -[*1..3]->",
             )
         rel_type = params.scan_rel_types[0]
         if rel_type not in self.context.relationship_mapping.mapping:
@@ -492,7 +509,7 @@ class PatternMatcher:
             raise PatternComprehensionError(
                 "Cyclic back-reference patterns require exactly one "
                 "relationship type. Use e.g. (a)-[:KNOWS]->(a) "
-                "instead of (a)-[]->(a)"
+                "instead of (a)-[]->(a)",
             )
         rel_type = scan_rel_types[0]
         rs = RelationshipScan(rel_type, rel_var)
@@ -500,11 +517,15 @@ class PatternMatcher:
         tgt_push = frame.bindings.get(next_var)
         if direction == RelationshipDirection.LEFT:
             rel_frame = rs.scan(
-                self.context, source_ids=tgt_push, target_ids=src_push,
+                self.context,
+                source_ids=tgt_push,
+                target_ids=src_push,
             )
         else:
             rel_frame = rs.scan(
-                self.context, source_ids=src_push, target_ids=tgt_push,
+                self.context,
+                source_ids=src_push,
+                target_ids=tgt_push,
             )
 
         if direction == RelationshipDirection.LEFT:
@@ -562,6 +583,7 @@ class PatternMatcher:
         from pycypher.binding_frame import (
             BindingFrame as _BF,
         )
+
         directions_to_try: list[RelationshipDirection] = (
             [RelationshipDirection.RIGHT, RelationshipDirection.LEFT]
             if direction == RelationshipDirection.UNDIRECTED
@@ -578,11 +600,13 @@ class PatternMatcher:
                 if pushdown_ids is not None:
                     if d == RelationshipDirection.LEFT:
                         rel_frame = rs.scan(
-                            self.context, target_ids=pushdown_ids,
+                            self.context,
+                            target_ids=pushdown_ids,
                         )
                     else:
                         rel_frame = rs.scan(
-                            self.context, source_ids=pushdown_ids,
+                            self.context,
+                            source_ids=pushdown_ids,
                         )
                 else:
                     rel_frame = rs.scan(self.context)
@@ -590,18 +614,20 @@ class PatternMatcher:
                 if d == RelationshipDirection.LEFT:
                     hop_f = frame.join(rel_frame, prev_var, rs.tgt_col)
                     hop_f = hop_f.rename(
-                        rs.src_col, next_var, new_type=next_type,
+                        rs.src_col,
+                        next_var,
+                        new_type=next_type,
                     )
                 else:
                     hop_f = frame.join(rel_frame, prev_var, rs.src_col)
                     hop_f = hop_f.rename(
-                        rs.tgt_col, next_var, new_type=next_type,
+                        rs.tgt_col,
+                        next_var,
+                        new_type=next_type,
                     )
 
                 # Apply inline property filters for next node.
-                for prop_name, prop_val in (
-                    node_ast.properties or {}
-                ).items():
+                for prop_name, prop_val in (node_ast.properties or {}).items():
                     predicate = Comparison(
                         operator="=",
                         left=PropertyLookup(
@@ -622,14 +648,18 @@ class PatternMatcher:
         _be = getattr(self.context, "backend", None)
         if _be is not None:
             all_bindings = _be.concat(
-                [f.bindings for f in hop_frames], ignore_index=True,
+                [f.bindings for f in hop_frames],
+                ignore_index=True,
             )
             all_bindings = _be.distinct(all_bindings)
         else:
             all_bindings = pd.concat(
-                [f.bindings for f in hop_frames], ignore_index=True,
+                [f.bindings for f in hop_frames],
+                ignore_index=True,
             )
-            all_bindings = all_bindings.drop_duplicates().reset_index(drop=True)
+            all_bindings = all_bindings.drop_duplicates().reset_index(
+                drop=True
+            )
         combined_registry: dict[str, str] = {}
         for hop_f in hop_frames:
             combined_registry.update(hop_f.type_registry)
@@ -683,7 +713,7 @@ class PatternMatcher:
 
             raise PatternComprehensionError(
                 "MATCH clause contains no pattern paths. "
-                "Provide at least one pattern, e.g. MATCH (n:Person)."
+                "Provide at least one pattern, e.g. MATCH (n:Person).",
             )
 
         # --- Predicate pushdown for multi-path MATCH ---
@@ -716,9 +746,12 @@ class PatternMatcher:
                         where_applied = True
                         break
 
-        result = frames[0]
-        for frame in frames[1:]:
-            result = self._coerce_join(result, frame)
+        if len(frames) >= 3 and self._multi_way_join is not None:
+            result = self._multi_way_join(frames)
+        else:
+            result = frames[0]
+            for frame in frames[1:]:
+                result = self._coerce_join(result, frame)
 
         if (
             match_clause.where is not None

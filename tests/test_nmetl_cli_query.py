@@ -40,7 +40,7 @@ class TestParseEntityArg:
 
     def test_label_equals_path_with_id_col(self) -> None:
         label, path, id_col = _parse_entity_arg(
-            "Person=data/people.csv:person_id"
+            "Person=data/people.csv:person_id",
         )
         assert label == "Person"
         assert path == "data/people.csv"
@@ -49,11 +49,11 @@ class TestParseEntityArg:
     def test_path_with_multiple_colons_only_last_is_id_col(self) -> None:
         # Windows-style paths could contain colons; only the LAST colon is id_col
         label, path, id_col = _parse_entity_arg(
-            "Item=C:/Users/data/items.csv:item_id"
+            "Item=C:/Users/data/items.csv:item_id",
         )
         assert label == "Item"
         assert id_col == "item_id"
-        assert "C:/Users/data/items.csv" == path
+        assert path == "C:/Users/data/items.csv"
 
     def test_missing_equals_raises_value_error(self) -> None:
         with pytest.raises(ValueError, match="Expected 'Label=path"):
@@ -69,7 +69,7 @@ class TestParseEntityArg:
 
     def test_whitespace_stripped_from_label_and_path(self) -> None:
         label, path, id_col = _parse_entity_arg(
-            "  Person  =  data/people.csv  "
+            "  Person  =  data/people.csv  ",
         )
         assert label == "Person"
         assert path == "data/people.csv"
@@ -85,7 +85,7 @@ class TestParseRelArg:
 
     def test_basic_rel_spec(self) -> None:
         rel_type, path, src_col, tgt_col = _parse_rel_arg(
-            "KNOWS=data/knows.csv:from_id:to_id"
+            "KNOWS=data/knows.csv:from_id:to_id",
         )
         assert rel_type == "KNOWS"
         assert path == "data/knows.csv"
@@ -110,7 +110,7 @@ class TestParseRelArg:
 
     def test_whitespace_stripped(self) -> None:
         rel_type, path, src_col, tgt_col = _parse_rel_arg(
-            "  KNOWS  =  data/knows.csv  :  from_id  :  to_id  "
+            "  KNOWS  =  data/knows.csv  :  from_id  :  to_id  ",
         )
         assert rel_type == "KNOWS"
         assert path == "data/knows.csv"
@@ -283,9 +283,7 @@ class TestQueryCommand:
         )
         assert result.exit_code == 0, result.output
         assert out_file.exists()
-        records = [
-            json.loads(line) for line in out_file.read_text().splitlines()
-        ]
+        records = [json.loads(line) for line in out_file.read_text().splitlines()]
         assert len(records) == 2
 
     def test_output_parquet_creates_file(self, tmp_path: Path) -> None:
@@ -373,9 +371,7 @@ class TestQueryCommand:
         assert result.exit_code == 0, result.output
         # Filter to only lines that look like JSON objects (logging may also appear)
         json_lines = [
-            line
-            for line in result.output.splitlines()
-            if line.strip().startswith("{")
+            line for line in result.output.splitlines() if line.strip().startswith("{")
         ]
         records = [json.loads(line) for line in json_lines]
         assert len(records) == 2

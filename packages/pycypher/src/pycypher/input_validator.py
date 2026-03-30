@@ -79,7 +79,9 @@ class InputValidator:
             for err in errors:
                 LOGGER.debug("  validation error: %s", err)
         else:
-            LOGGER.debug("input validation passed for %d queries", len(queries))
+            LOGGER.debug(
+                "input validation passed for %d queries", len(queries)
+            )
 
         return InputValidationResult(
             is_valid=len(errors) == 0,
@@ -110,7 +112,7 @@ class InputValidator:
             if not cypher or not cypher.strip():
                 errors.append(
                     f"Query '{query_id}' has empty or whitespace-only "
-                    f"Cypher content"
+                    f"Cypher content",
                 )
 
     def _check_parseability(
@@ -126,7 +128,7 @@ class InputValidator:
                 continue  # Already reported by _check_content
             try:
                 ASTConverter.from_cypher(cypher)
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 LOGGER.warning(
                     "query '%s' failed to parse: %s",
                     query_id,

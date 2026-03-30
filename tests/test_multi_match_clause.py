@@ -30,7 +30,7 @@ def people_df() -> pd.DataFrame:
             "name": ["Alice", "Bob", "Carol"],
             "age": [30, 25, 35],
             "dept": ["eng", "eng", "mktg"],
-        }
+        },
     )
 
 
@@ -42,7 +42,7 @@ def knows_df() -> pd.DataFrame:
             "__ID__": [10, 11],
             "__SOURCE__": [1, 1],
             "__TARGET__": [2, 3],
-        }
+        },
     )
 
 
@@ -55,7 +55,7 @@ def star(people_df: pd.DataFrame) -> Star:
 @pytest.fixture
 def star_with_edges(people_df: pd.DataFrame, knows_df: pd.DataFrame) -> Star:
     context = ContextBuilder.from_dict(
-        {"Person": people_df, "KNOWS": knows_df}
+        {"Person": people_df, "KNOWS": knows_df},
     )
     return Star(context=context)
 
@@ -74,7 +74,7 @@ class TestDoubleMatchCartesian:
             "MATCH (p:Person) MATCH (q:Person) "
             "WHERE p.age > q.age "
             "RETURN p.name AS p, q.name AS q "
-            "ORDER BY p.name ASC, q.name ASC"
+            "ORDER BY p.name ASC, q.name ASC",
         )
         # Pairs where p.age > q.age:
         # Alice(30) > Bob(25): (Alice, Bob)
@@ -91,7 +91,7 @@ class TestDoubleMatchCartesian:
             "MATCH (p:Person) MATCH (q:Person) "
             "WHERE p.dept = q.dept AND p.name <> q.name "
             "RETURN p.name AS p, q.name AS q "
-            "ORDER BY p.name ASC, q.name ASC"
+            "ORDER BY p.name ASC, q.name ASC",
         )
         # Both Alice and Bob are in 'eng'; Carol is in 'mktg'.
         # Valid pairs: (Alice, Bob), (Bob, Alice)
@@ -101,7 +101,7 @@ class TestDoubleMatchCartesian:
     def test_cross_match_no_filter_is_cartesian(self, star: Star) -> None:
         """Without WHERE, double MATCH is a Cartesian product."""
         result = star.execute_query(
-            "MATCH (p:Person) MATCH (q:Person) RETURN p.name AS p, q.name AS q"
+            "MATCH (p:Person) MATCH (q:Person) RETURN p.name AS p, q.name AS q",
         )
         # 3 × 3 = 9 rows
         assert len(result) == 9
@@ -111,7 +111,7 @@ class TestDoubleMatchCartesian:
             "MATCH (p:Person) MATCH (q:Person) "
             "WHERE p.age > q.age "
             "RETURN p.name AS p, q.name AS q "
-            "LIMIT 2"
+            "LIMIT 2",
         )
         assert len(result) <= 2
 
@@ -125,27 +125,29 @@ class TestDoubleMatchWithSharedVariable:
     """MATCH (p) MATCH (p)-[:R]->(q) — join on shared 'p' variable."""
 
     def test_match_then_relationship_match(
-        self, star_with_edges: Star
+        self,
+        star_with_edges: Star,
     ) -> None:
         """Second MATCH re-uses p from first MATCH, joined on p."""
         result = star_with_edges.execute_query(
             "MATCH (p:Person) "
             "MATCH (p)-[:KNOWS]->(q:Person) "
             "RETURN p.name AS src, q.name AS tgt "
-            "ORDER BY q.name ASC"
+            "ORDER BY q.name ASC",
         )
         # Alice knows Bob and Carol
         assert list(result["tgt"]) == ["Bob", "Carol"]
         assert all(s == "Alice" for s in result["src"])
 
     def test_match_then_filtered_relationship_match(
-        self, star_with_edges: Star
+        self,
+        star_with_edges: Star,
     ) -> None:
         result = star_with_edges.execute_query(
             "MATCH (p:Person) WHERE p.age >= 30 "
             "MATCH (p)-[:KNOWS]->(q:Person) "
             "RETURN p.name AS src, q.name AS tgt "
-            "ORDER BY q.name ASC"
+            "ORDER BY q.name ASC",
         )
         # Only Alice (30) and Carol (35) pass age filter;
         # but only Alice has outgoing KNOWS edges.
@@ -156,7 +158,7 @@ class TestDoubleMatchWithSharedVariable:
         result = star.execute_query(
             "MATCH (a:Person) MATCH (b:Person) MATCH (c:Person) "
             "WHERE a.age < b.age AND b.age < c.age "
-            "RETURN a.name AS a, b.name AS b, c.name AS c"
+            "RETURN a.name AS a, b.name AS b, c.name AS c",
         )
         # Only one ordering: Bob(25) < Alice(30) < Carol(35)
         assert len(result) == 1

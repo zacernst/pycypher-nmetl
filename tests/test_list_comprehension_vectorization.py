@@ -52,11 +52,9 @@ def _make_ctx(n_people: int = 5, *, scores_factor: int = 10) -> Context:
             ID_COLUMN: ids,
             "name": [f"P{i}" for i in ids],
             "age": [i * 10 for i in ids],
-            "scores": [
-                [i * scores_factor, i * scores_factor + 5] for i in ids
-            ],
+            "scores": [[i * scores_factor, i * scores_factor + 5] for i in ids],
             "tags": [[f"P{i}", "all"] for i in ids],
-        }
+        },
     )
     people_table = EntityTable(
         entity_type="Person",
@@ -82,7 +80,7 @@ def _make_ctx(n_people: int = 5, *, scores_factor: int = 10) -> Context:
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def ctx() -> Context:
     return _make_ctx()
 
@@ -96,12 +94,13 @@ class TestListComprehensionBasic:
     """[x IN list] with no filter or transform must return the list unchanged."""
 
     def test_identity_comprehension_returns_all_elements(
-        self, ctx: Context
+        self,
+        ctx: Context,
     ) -> None:
         """[x IN p.scores | x] returns the same list for each person."""
         star = Star(context=ctx)
         result = star.execute_query(
-            "MATCH (p:Person) WHERE p.name = 'P2' RETURN [x IN p.scores | x] AS vals"
+            "MATCH (p:Person) WHERE p.name = 'P2' RETURN [x IN p.scores | x] AS vals",
         )
         assert len(result) == 1
         vals = result["vals"].iloc[0]
@@ -113,7 +112,7 @@ class TestListComprehensionBasic:
         result = star.execute_query(
             "MATCH (p:Person) "
             "RETURN p.name AS name, [x IN p.scores | x] AS vals "
-            "ORDER BY p.name"
+            "ORDER BY p.name",
         )
         assert len(result) == 5
         # P1: [10, 15], P2: [20, 25], P3: [30, 35], P4: [40, 45], P5: [50, 55]
@@ -135,20 +134,21 @@ class TestListComprehensionWhere:
         star = Star(context=ctx)
         result = star.execute_query(
             "MATCH (p:Person) WHERE p.name = 'P2' "
-            "RETURN [x IN p.scores WHERE x > 22] AS vals"
+            "RETURN [x IN p.scores WHERE x > 22] AS vals",
         )
         assert len(result) == 1
         assert list(result["vals"].iloc[0]) == [25]
 
     def test_where_all_filtered_out_returns_empty_list(
-        self, ctx: Context
+        self,
+        ctx: Context,
     ) -> None:
         """[x IN p.scores WHERE x > 9999] → [] for every person."""
         star = Star(context=ctx)
         result = star.execute_query(
             "MATCH (p:Person) "
             "RETURN [x IN p.scores WHERE x > 9999] AS vals "
-            "ORDER BY p.name"
+            "ORDER BY p.name",
         )
         assert len(result) == 5
         for _, row in result.iterrows():
@@ -159,7 +159,7 @@ class TestListComprehensionWhere:
         star = Star(context=ctx)
         result = star.execute_query(
             "MATCH (p:Person) WHERE p.name = 'P1' "
-            "RETURN [x IN p.scores WHERE x > 0] AS vals"
+            "RETURN [x IN p.scores WHERE x > 0] AS vals",
         )
         assert list(result["vals"].iloc[0]) == [10, 15]
 
@@ -169,7 +169,7 @@ class TestListComprehensionWhere:
         result = star.execute_query(
             "MATCH (p:Person) "
             "RETURN p.name AS name, [x IN p.scores WHERE x >= 30] AS vals "
-            "ORDER BY p.name"
+            "ORDER BY p.name",
         )
         # P1 (10,15) → [], P2 (20,25) → [], P3 (30,35) → [30,35]
         assert list(result["vals"].iloc[0]) == []  # P1
@@ -190,7 +190,7 @@ class TestListComprehensionMap:
         star = Star(context=ctx)
         result = star.execute_query(
             "MATCH (p:Person) WHERE p.name = 'P1' "
-            "RETURN [x IN p.scores | x * 2] AS vals"
+            "RETURN [x IN p.scores | x * 2] AS vals",
         )
         assert list(result["vals"].iloc[0]) == [20, 30]
 
@@ -199,7 +199,7 @@ class TestListComprehensionMap:
         star = Star(context=ctx)
         result = star.execute_query(
             "MATCH (p:Person) WHERE p.name = 'P1' "
-            "RETURN [x IN p.scores WHERE x > 12 | x + 100] AS vals"
+            "RETURN [x IN p.scores WHERE x > 12 | x + 100] AS vals",
         )
         assert list(result["vals"].iloc[0]) == [115]
 
@@ -216,7 +216,7 @@ class TestListComprehensionEdgeCases:
         """[x IN [] WHERE x > 0] → []."""
         star = Star(context=ctx)
         result = star.execute_query(
-            "MATCH (p:Person) WHERE p.name = 'P1' RETURN [x IN [] WHERE x > 0] AS vals"
+            "MATCH (p:Person) WHERE p.name = 'P1' RETURN [x IN [] WHERE x > 0] AS vals",
         )
         assert list(result["vals"].iloc[0]) == []
 
@@ -235,7 +235,7 @@ class TestQuantifierAny:
         result = star.execute_query(
             "MATCH (p:Person) WHERE p.name = 'P1' "
             "AND any(x IN p.scores WHERE x > 12) "
-            "RETURN p.name AS name"
+            "RETURN p.name AS name",
         )
         assert len(result) == 1
 
@@ -244,7 +244,7 @@ class TestQuantifierAny:
         star = Star(context=ctx)
         result = star.execute_query(
             "MATCH (p:Person) WHERE any(x IN p.scores WHERE x > 9999) "
-            "RETURN p.name AS name"
+            "RETURN p.name AS name",
         )
         assert len(result) == 0
 
@@ -253,7 +253,7 @@ class TestQuantifierAny:
         star = Star(context=ctx)
         result = star.execute_query(
             "MATCH (p:Person) WHERE any(x IN p.scores WHERE x >= 50) "
-            "RETURN p.name AS name"
+            "RETURN p.name AS name",
         )
         assert len(result) == 1
         assert result["name"].iloc[0] == "P5"
@@ -273,7 +273,7 @@ class TestQuantifierAll:
         result = star.execute_query(
             "MATCH (p:Person) WHERE all(x IN p.scores WHERE x > 0) "
             "RETURN p.name AS name "
-            "ORDER BY p.name"
+            "ORDER BY p.name",
         )
         assert len(result) == 5
 
@@ -283,7 +283,7 @@ class TestQuantifierAll:
         result = star.execute_query(
             "MATCH (p:Person) WHERE p.name = 'P1' "
             "AND all(x IN p.scores WHERE x > 12) "
-            "RETURN p.name AS name"
+            "RETURN p.name AS name",
         )
         assert len(result) == 0
 
@@ -293,7 +293,7 @@ class TestQuantifierAll:
         result = star.execute_query(
             "MATCH (p:Person) WHERE p.name = 'P1' "
             "AND all(x IN [] WHERE x > 0) "
-            "RETURN p.name AS name"
+            "RETURN p.name AS name",
         )
         assert len(result) == 1
 
@@ -312,7 +312,7 @@ class TestQuantifierNone:
         result = star.execute_query(
             "MATCH (p:Person) WHERE none(x IN p.scores WHERE x > 9999) "
             "RETURN p.name AS name "
-            "ORDER BY p.name"
+            "ORDER BY p.name",
         )
         assert len(result) == 5
 
@@ -322,7 +322,7 @@ class TestQuantifierNone:
         result = star.execute_query(
             "MATCH (p:Person) WHERE p.name = 'P1' "
             "AND none(x IN p.scores WHERE x > 12) "
-            "RETURN p.name AS name"
+            "RETURN p.name AS name",
         )
         assert len(result) == 0
 
@@ -341,7 +341,7 @@ class TestQuantifierSingle:
         result = star.execute_query(
             "MATCH (p:Person) WHERE p.name = 'P1' "
             "AND single(x IN p.scores WHERE x > 12) "
-            "RETURN p.name AS name"
+            "RETURN p.name AS name",
         )
         assert len(result) == 1
 
@@ -351,7 +351,7 @@ class TestQuantifierSingle:
         result = star.execute_query(
             "MATCH (p:Person) WHERE p.name = 'P1' "
             "AND single(x IN p.scores WHERE x > 0) "
-            "RETURN p.name AS name"
+            "RETURN p.name AS name",
         )
         assert len(result) == 0
 
@@ -370,7 +370,7 @@ def _make_large_ctx(n_people: int = 200, n_scores: int = 50) -> Context:
             "name": [f"P{i}" for i in ids],
             "age": [(i * 7) % 90 + 1 for i in ids],
             "scores": [list(range(i, i + n_scores)) for i in ids],
-        }
+        },
     )
     people_table = EntityTable(
         entity_type="Person",
@@ -404,11 +404,11 @@ class TestListComprehensionPerformance:
         star = Star(context=ctx)
         # Warm-up
         star.execute_query(
-            "MATCH (p:Person) RETURN [x IN p.scores WHERE x > 100 | x * 2] AS vals"
+            "MATCH (p:Person) RETURN [x IN p.scores WHERE x > 100 | x * 2] AS vals",
         )
         start = time.perf_counter()
         result = star.execute_query(
-            "MATCH (p:Person) RETURN [x IN p.scores WHERE x > 100 | x * 2] AS vals"
+            "MATCH (p:Person) RETURN [x IN p.scores WHERE x > 100 | x * 2] AS vals",
         )
         elapsed = time.perf_counter() - start
         assert len(result) == 200
@@ -423,18 +423,16 @@ class TestListComprehensionPerformance:
         star = Star(context=ctx)
         star.execute_query(
             "MATCH (p:Person) WHERE any(x IN p.scores WHERE x > 100) "
-            "RETURN p.name AS name"
+            "RETURN p.name AS name",
         )
         start = time.perf_counter()
         result = star.execute_query(
             "MATCH (p:Person) WHERE any(x IN p.scores WHERE x > 100) "
-            "RETURN p.name AS name"
+            "RETURN p.name AS name",
         )
         elapsed = time.perf_counter() - start
         assert isinstance(result, pd.DataFrame)
-        assert elapsed < 0.5, (
-            f"200×50 any() took {elapsed:.3f}s — expected < 0.5s."
-        )
+        assert elapsed < 0.5, f"200×50 any() took {elapsed:.3f}s — expected < 0.5s."
 
     def test_quantifier_all_200_rows_50_elements_fast(self) -> None:
         """all() over 200×50 elements must complete in < 0.5s."""
@@ -442,15 +440,13 @@ class TestListComprehensionPerformance:
         star = Star(context=ctx)
         star.execute_query(
             "MATCH (p:Person) WHERE all(x IN p.scores WHERE x > 0) "
-            "RETURN p.name AS name"
+            "RETURN p.name AS name",
         )
         start = time.perf_counter()
         result = star.execute_query(
             "MATCH (p:Person) WHERE all(x IN p.scores WHERE x > 0) "
-            "RETURN p.name AS name"
+            "RETURN p.name AS name",
         )
         elapsed = time.perf_counter() - start
         assert len(result) == 200  # all elements > 0
-        assert elapsed < 0.5, (
-            f"200×50 all() took {elapsed:.3f}s — expected < 0.5s."
-        )
+        assert elapsed < 0.5, f"200×50 all() took {elapsed:.3f}s — expected < 0.5s."

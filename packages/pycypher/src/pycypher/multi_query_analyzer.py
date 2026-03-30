@@ -209,14 +209,11 @@ class QueryDependencyAnalyzer:
         produced: set[str] = set()
 
         for clause in ast.clauses:
-            if (
-                isinstance(clause, Create)
-                and clause.pattern
-                or isinstance(clause, Merge)
-                and clause.pattern
+            if (isinstance(clause, Create) and clause.pattern) or (
+                isinstance(clause, Merge) and clause.pattern
             ):
                 produced.update(
-                    self._extract_types_from_pattern(clause.pattern)
+                    self._extract_types_from_pattern(clause.pattern),
                 )
 
         return produced
@@ -230,14 +227,11 @@ class QueryDependencyAnalyzer:
         consumed: set[str] = set()
 
         for clause in ast.clauses:
-            if (
-                isinstance(clause, Match)
-                and clause.pattern
-                or isinstance(clause, Merge)
-                and clause.pattern
+            if (isinstance(clause, Match) and clause.pattern) or (
+                isinstance(clause, Merge) and clause.pattern
             ):
                 consumed.update(
-                    self._extract_types_from_pattern(clause.pattern)
+                    self._extract_types_from_pattern(clause.pattern),
                 )
 
         return consumed

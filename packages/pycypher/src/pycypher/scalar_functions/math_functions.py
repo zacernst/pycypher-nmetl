@@ -9,7 +9,10 @@ import numpy as np
 import pandas as pd
 from shared.helpers import is_null_value
 
-from pycypher.constants import _null_series
+from pycypher.constants import (
+    _init_null_result,
+    _scalar_int_opt,
+)
 
 if TYPE_CHECKING:
     from pycypher.scalar_functions import ScalarFunctionRegistry
@@ -152,9 +155,7 @@ def register(registry: ScalarFunctionRegistry) -> None:
             ValueError: If an unrecognised mode name is supplied.
 
         """
-        prec_val = 0
-        if precision is not None:
-            prec_val = int(precision.iloc[0]) if len(precision) > 0 else 0
+        prec_val = _scalar_int_opt(precision, 0)
         quant = _decimal.Decimal(10) ** (-prec_val)
 
         rounding_mode: str = _decimal.ROUND_HALF_UP
@@ -172,21 +173,14 @@ def register(registry: ScalarFunctionRegistry) -> None:
             rounding_mode = _ROUND_MODE_MAP[raw_mode]
 
         # Vectorized implementation eliminating .apply() anti-pattern
-        result = _null_series(len(s), index=s.index)
-
-        # Handle null values using vectorized mask
-        non_null_mask = ~s.isna()
-        if not non_null_mask.any():
-            return result.astype("float64")
-
-        non_null_values = s[non_null_mask]
+        nr = _init_null_result(s)
+        if nr.all_null:
+            return nr.result.astype("float64")
 
         try:
-            # Convert to numpy array for vectorized operations
-            values_array = non_null_values.to_numpy()
+            values_array = nr.non_null_vals.to_numpy()
             rounded_values = []
 
-            # Batch process the decimal quantization
             for val in values_array:
                 if _is_null(val):
                     rounded_values.append(None)
@@ -205,19 +199,18 @@ def register(registry: ScalarFunctionRegistry) -> None:
                     ):
                         rounded_values.append(None)
 
-            # Assign results back using boolean indexing
-            result[non_null_mask] = rounded_values
+            nr.result[nr.non_null_mask] = rounded_values
 
         except (ValueError, TypeError, IndexError):
-            # Fallback for complex cases - still better than individual .apply()
-            result = pd.Series(
+            # Fallback for complex cases
+            nr.result = pd.Series(
                 [None] * len(s),
                 index=s.index,
                 dtype=object,
             )
             for i, val in enumerate(s):
                 if _is_null(val):
-                    result.iloc[i] = None
+                    nr.result.iloc[i] = None
                 else:
                     try:
                         decimal_val = _decimal.Decimal(str(val))
@@ -225,15 +218,15 @@ def register(registry: ScalarFunctionRegistry) -> None:
                             quant,
                             rounding=rounding_mode,
                         )
-                        result.iloc[i] = float(quantized_val)
+                        nr.result.iloc[i] = float(quantized_val)
                     except (
                         ValueError,
                         TypeError,
                         _decimal.InvalidOperation,
                     ):
-                        result.iloc[i] = None
+                        nr.result.iloc[i] = None
 
-        return result.astype("float64")
+        return nr.result.astype("float64")
 
     registry.register_function(
         name="round",

@@ -22,14 +22,14 @@ from pycypher.relational_models import (
 from pycypher.star import Star
 
 
-@pytest.fixture()
+@pytest.fixture
 def person_context() -> Context:
     df = pd.DataFrame(
         {
             ID_COLUMN: [1, 2, 3],
             "name": ["Alice", "Bob", "Charlie"],
             "age": [25, 30, 35],
-        }
+        },
     )
     table = EntityTable(
         entity_type="Person",
@@ -49,47 +49,52 @@ class TestAggregationInScalarContext:
     """Using aggregation functions in non-aggregation positions raises WrongCypherTypeError."""
 
     def test_count_in_where_raises_type_error(
-        self, person_context: Context
+        self,
+        person_context: Context,
     ) -> None:
         """count() in WHERE must raise WrongCypherTypeError, not crash with a confusing message."""
         star = Star(context=person_context)
         with pytest.raises(WrongCypherTypeError, match="aggregation"):
             star.execute_query(
-                "MATCH (p:Person) WHERE count(p) > 1 RETURN p.name"
+                "MATCH (p:Person) WHERE count(p) > 1 RETURN p.name",
             )
 
     def test_sum_in_where_raises_type_error(
-        self, person_context: Context
+        self,
+        person_context: Context,
     ) -> None:
         """sum() in WHERE must raise WrongCypherTypeError."""
         star = Star(context=person_context)
         with pytest.raises(WrongCypherTypeError, match="aggregation"):
             star.execute_query(
-                "MATCH (p:Person) WHERE sum(p.age) > 50 RETURN p.name"
+                "MATCH (p:Person) WHERE sum(p.age) > 50 RETURN p.name",
             )
 
     def test_avg_in_where_raises_type_error(
-        self, person_context: Context
+        self,
+        person_context: Context,
     ) -> None:
         """avg() in WHERE must raise WrongCypherTypeError."""
         star = Star(context=person_context)
         with pytest.raises(WrongCypherTypeError, match="aggregation"):
             star.execute_query(
-                "MATCH (p:Person) WHERE avg(p.age) > 25 RETURN p.name"
+                "MATCH (p:Person) WHERE avg(p.age) > 25 RETURN p.name",
             )
 
     def test_error_message_names_the_function(
-        self, person_context: Context
+        self,
+        person_context: Context,
     ) -> None:
         """Error message must include the specific function name for debugging."""
         star = Star(context=person_context)
         with pytest.raises(WrongCypherTypeError, match="count"):
             star.execute_query(
-                "MATCH (p:Person) WHERE count(p) > 1 RETURN p.name"
+                "MATCH (p:Person) WHERE count(p) > 1 RETURN p.name",
             )
 
     def test_count_star_in_return_still_works(
-        self, person_context: Context
+        self,
+        person_context: Context,
     ) -> None:
         """COUNT(*) in RETURN (valid aggregation context) must still work."""
         star = Star(context=person_context)

@@ -34,6 +34,7 @@ Green-phase tests (verify behaviour is preserved after fix):
 
 from __future__ import annotations
 
+import importlib.util
 import sys
 from unittest.mock import MagicMock, patch
 
@@ -71,7 +72,7 @@ def _make_entity_table() -> EntityTable:
 
 def _make_relationship_table() -> RelationshipTable:
     df = pd.DataFrame(
-        {"__ID__": [10], "__SOURCE__": [1], "__TARGET__": [2], "since": [2020]}
+        {"__ID__": [10], "__SOURCE__": [1], "__TARGET__": [2], "since": [2020]},
     )
     return RelationshipTable(
         relationship_type="KNOWS",
@@ -128,7 +129,9 @@ class TestSubclassesDelegateToHelper:
         mock_result = MagicMock(name="spark_df")
 
         with patch.object(
-            table, "_to_spark_with_prefix", return_value=mock_result
+            table,
+            "_to_spark_with_prefix",
+            return_value=mock_result,
         ) as mock_helper:
             result = table.to_spark(ctx)
 
@@ -141,7 +144,9 @@ class TestSubclassesDelegateToHelper:
         ctx = _make_context()
 
         with patch.object(
-            table, "_to_spark_with_prefix", return_value=MagicMock()
+            table,
+            "_to_spark_with_prefix",
+            return_value=MagicMock(),
         ) as mock_helper:
             table.to_spark(ctx)
 
@@ -159,7 +164,9 @@ class TestSubclassesDelegateToHelper:
         mock_result = MagicMock(name="spark_df")
 
         with patch.object(
-            table, "_to_spark_with_prefix", return_value=mock_result
+            table,
+            "_to_spark_with_prefix",
+            return_value=mock_result,
         ) as mock_helper:
             result = table.to_spark(ctx)
 
@@ -174,7 +181,9 @@ class TestSubclassesDelegateToHelper:
         ctx = _make_context()
 
         with patch.object(
-            table, "_to_spark_with_prefix", return_value=MagicMock()
+            table,
+            "_to_spark_with_prefix",
+            return_value=MagicMock(),
         ) as mock_helper:
             table.to_spark(ctx)
 
@@ -189,6 +198,10 @@ class TestSubclassesDelegateToHelper:
 # ---------------------------------------------------------------------------
 
 
+_pyspark_available = importlib.util.find_spec("pyspark") is not None
+
+
+@pytest.mark.skipif(not _pyspark_available, reason="pyspark not installed")
 class TestHelperNativeSparkPath:
     def test_helper_renames_columns_on_native_pyspark_df(self) -> None:
         """When source_obj has toPandas, columns are renamed with type prefix."""
@@ -208,7 +221,9 @@ class TestHelperNativeSparkPath:
         mock_spark_session = MagicMock()
 
         with patch("pyspark.sql.SparkSession") as mock_spark_class:
-            mock_spark_class.builder.appName.return_value.getOrCreate.return_value = mock_spark_session
+            mock_spark_class.builder.appName.return_value.getOrCreate.return_value = (
+                mock_spark_session
+            )
             result = table._to_spark_with_prefix(ctx, "Person", mock_spark_df)
 
         # withColumnRenamed must have been called for each column
@@ -230,7 +245,9 @@ class TestHelperNativeSparkPath:
             patch.object(EntityTable, "to_pandas") as mock_to_pandas,
             patch("pyspark.sql.SparkSession") as mock_spark_class,
         ):
-            mock_spark_class.builder.appName.return_value.getOrCreate.return_value = MagicMock()
+            mock_spark_class.builder.appName.return_value.getOrCreate.return_value = (
+                MagicMock()
+            )
             table._to_spark_with_prefix(ctx, "Person", mock_spark_df)
 
         mock_to_pandas.assert_not_called()
@@ -241,6 +258,7 @@ class TestHelperNativeSparkPath:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.skipif(not _pyspark_available, reason="pyspark not installed")
 class TestHelperPandasFallbackPath:
     def test_helper_calls_to_pandas_when_source_is_not_spark(self) -> None:
         """When source_obj is a pandas DF, helper converts via to_pandas()."""
@@ -248,7 +266,7 @@ class TestHelperPandasFallbackPath:
         ctx = _make_context()
 
         pandas_df = pd.DataFrame(
-            {"Person____ID__": [1, 2], "Person__name": ["Alice", "Bob"]}
+            {"Person____ID__": [1, 2], "Person__name": ["Alice", "Bob"]},
         )
 
         mock_spark_df = MagicMock()
@@ -258,11 +276,15 @@ class TestHelperPandasFallbackPath:
         # Patch at the class level to avoid Pydantic's __setattr__ guard.
         with (
             patch.object(
-                EntityTable, "to_pandas", return_value=pandas_df
+                EntityTable,
+                "to_pandas",
+                return_value=pandas_df,
             ) as mock_to_pandas,
             patch("pyspark.sql.SparkSession") as mock_spark_class,
         ):
-            mock_spark_class.builder.appName.return_value.getOrCreate.return_value = mock_spark_session
+            mock_spark_class.builder.appName.return_value.getOrCreate.return_value = (
+                mock_spark_session
+            )
             result = table._to_spark_with_prefix(ctx, "Person", None)
 
         mock_to_pandas.assert_called_once()
@@ -279,11 +301,15 @@ class TestHelperPandasFallbackPath:
 
         with (
             patch.object(
-                EntityTable, "to_pandas", return_value=pd.DataFrame({"x": [1]})
+                EntityTable,
+                "to_pandas",
+                return_value=pd.DataFrame({"x": [1]}),
             ),
             patch("pyspark.sql.SparkSession") as mock_spark_class,
         ):
-            mock_spark_class.builder.appName.return_value.getOrCreate.return_value = mock_spark_session
+            mock_spark_class.builder.appName.return_value.getOrCreate.return_value = (
+                mock_spark_session
+            )
             result = table._to_spark_with_prefix(ctx, "Person", None)
 
         assert result is expected
@@ -334,6 +360,7 @@ class TestHelperImportError:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.skipif(not _pyspark_available, reason="pyspark not installed")
 class TestColumnPrefixCorrectness:
     def test_entity_table_pandas_path_produces_prefixed_columns(self) -> None:
         """EntityTable.to_spark() pandas path should produce prefixed columns in spark_df."""
@@ -351,7 +378,9 @@ class TestColumnPrefixCorrectness:
         mock_spark_session.createDataFrame.side_effect = capture_create
 
         with patch("pyspark.sql.SparkSession") as mock_spark_class:
-            mock_spark_class.builder.appName.return_value.getOrCreate.return_value = mock_spark_session
+            mock_spark_class.builder.appName.return_value.getOrCreate.return_value = (
+                mock_spark_session
+            )
             table.to_spark(ctx)
 
         assert len(captured_df) == 1
@@ -379,7 +408,9 @@ class TestColumnPrefixCorrectness:
         mock_spark_session.createDataFrame.side_effect = capture_create
 
         with patch("pyspark.sql.SparkSession") as mock_spark_class:
-            mock_spark_class.builder.appName.return_value.getOrCreate.return_value = mock_spark_session
+            mock_spark_class.builder.appName.return_value.getOrCreate.return_value = (
+                mock_spark_session
+            )
             table.to_spark(ctx)
 
         assert len(captured_df) == 1

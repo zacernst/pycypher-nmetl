@@ -72,11 +72,8 @@ import pandas as pd
 from shared.logger import LOGGER
 from shared.otel import get_tracer, trace_phase
 
-from pycypher.backends._helpers import (  # noqa: F401 — backward-compat re-exports
+from pycypher.backends._helpers import (
     IDENTIFIER_RE,
-    _pandas_agg_to_sql,
-    _polars_agg_func,
-    _to_pandas,
     validate_identifier,
 )
 from pycypher.backends.duckdb_backend import DuckDBBackend
@@ -423,7 +420,13 @@ def check_backend_health(backend: BackendEngine) -> bool:
         )
         result = backend.to_pandas(joined)
         return len(result) == 1 and result[ID_COLUMN].iloc[0] == 1
-    except (RuntimeError, TypeError, ValueError, KeyError, AttributeError) as exc:
+    except (
+        RuntimeError,
+        TypeError,
+        ValueError,
+        KeyError,
+        AttributeError,
+    ) as exc:
         LOGGER.error(
             "Health check failed for backend %s: %s",
             backend.name,
@@ -616,6 +619,7 @@ class InstrumentedBackend:
         operation_timings: Dict mapping operation names to lists of elapsed
             times in milliseconds.
         operation_counts: Dict mapping operation names to invocation counts.
+
     """
 
     def __init__(self, inner: BackendEngine) -> None:
@@ -626,6 +630,7 @@ class InstrumentedBackend:
                 All method calls are forwarded transparently; timing and
                 counts are recorded in :attr:`operation_timings` and
                 :attr:`operation_counts`.
+
         """
         self._inner = inner
         self.operation_timings: dict[str, list[float]] = {}
@@ -658,6 +663,7 @@ class InstrumentedBackend:
         Returns:
             Dict mapping operation names to dicts with ``count`` and
             ``total_ms`` keys.
+
         """
         result: dict[str, dict[str, float]] = {}
         for op, timings in self.operation_timings.items():
@@ -676,7 +682,9 @@ class InstrumentedBackend:
             t0 = time.perf_counter()
             result = self._inner.scan_entity(source_obj, entity_type)
             self._record(
-                "scan_entity", (time.perf_counter() - t0) * 1000.0, span
+                "scan_entity",
+                (time.perf_counter() - t0) * 1000.0,
+                span,
             )
             return result
 
@@ -745,7 +753,9 @@ class InstrumentedBackend:
             t0 = time.perf_counter()
             result = self._inner.assign_column(frame, name, values)
             self._record(
-                "assign_column", (time.perf_counter() - t0) * 1000.0, span
+                "assign_column",
+                (time.perf_counter() - t0) * 1000.0,
+                span,
             )
             return result
 
@@ -756,7 +766,9 @@ class InstrumentedBackend:
             t0 = time.perf_counter()
             result = self._inner.drop_columns(frame, columns)
             self._record(
-                "drop_columns", (time.perf_counter() - t0) * 1000.0, span
+                "drop_columns",
+                (time.perf_counter() - t0) * 1000.0,
+                span,
             )
             return result
 
@@ -775,7 +787,9 @@ class InstrumentedBackend:
             t0 = time.perf_counter()
             result = self._inner.aggregate(frame, group_cols, agg_specs)
             self._record(
-                "aggregate", (time.perf_counter() - t0) * 1000.0, span
+                "aggregate",
+                (time.perf_counter() - t0) * 1000.0,
+                span,
             )
             return result
 
@@ -929,7 +943,9 @@ def _try_create(name: str) -> BackendEngine | None:
         return factory()
     except (RuntimeError, ImportError, OSError, TypeError, ValueError) as exc:
         LOGGER.error(
-            "Failed to create backend %s: %s", name, type(exc).__name__,
+            "Failed to create backend %s: %s",
+            name,
+            type(exc).__name__,
             exc_info=True,
         )
         return None

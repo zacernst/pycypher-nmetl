@@ -20,19 +20,19 @@ from pycypher.scalar_functions import ScalarFunctionRegistry
 from pycypher.star import Star
 
 
-@pytest.fixture()
+@pytest.fixture
 def reg() -> ScalarFunctionRegistry:
     return ScalarFunctionRegistry.get_instance()
 
 
-@pytest.fixture()
+@pytest.fixture
 def abs_star() -> Star:
     df = pd.DataFrame(
         {
             ID_COLUMN: [1, 2, 3],
             "name": ["Alice", "Bob", "Carol"],
             "val": [-5.0, None, 3.0],
-        }
+        },
     )
     table = EntityTable(
         entity_type="Person",
@@ -46,7 +46,7 @@ def abs_star() -> Star:
         context=Context(
             entity_mapping=EntityMapping(mapping={"Person": table}),
             relationship_mapping=RelationshipMapping(mapping={}),
-        )
+        ),
     )
 
 
@@ -68,13 +68,15 @@ class TestAbsNullPropagation:
         assert result.iloc[3] == pytest.approx(3.0)
 
     def test_positive_value_unchanged(
-        self, reg: ScalarFunctionRegistry
+        self,
+        reg: ScalarFunctionRegistry,
     ) -> None:
         result = reg.execute("abs", [pd.Series([7.5])])
         assert result.iloc[0] == pytest.approx(7.5)
 
     def test_negative_value_inverted(
-        self, reg: ScalarFunctionRegistry
+        self,
+        reg: ScalarFunctionRegistry,
     ) -> None:
         result = reg.execute("abs", [pd.Series([-7.5])])
         assert result.iloc[0] == pytest.approx(7.5)
@@ -89,7 +91,7 @@ class TestAbsNullPropagation:
 
     def test_in_return_clause(self, abs_star: Star) -> None:
         r = abs_star.execute_query(
-            "MATCH (p:Person) RETURN abs(p.val) AS a ORDER BY p.name"
+            "MATCH (p:Person) RETURN abs(p.val) AS a ORDER BY p.name",
         )
         vals = list(r["a"])
         assert vals[0] == pytest.approx(5.0)  # Alice  val=-5
@@ -98,6 +100,6 @@ class TestAbsNullPropagation:
 
     def test_in_where_clause(self, abs_star: Star) -> None:
         r = abs_star.execute_query(
-            "MATCH (p:Person) WHERE abs(p.val) > 4.0 RETURN p.name"
+            "MATCH (p:Person) WHERE abs(p.val) > 4.0 RETURN p.name",
         )
         assert list(r["name"]) == ["Alice"]

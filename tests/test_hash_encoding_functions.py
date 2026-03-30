@@ -77,12 +77,12 @@ class TestMd5Correctness:
     """md5(string) must return a 32-char lowercase hex digest."""
 
     def test_md5_known_value(self) -> None:
-        expected = hashlib.md5(b"hello").hexdigest()  # noqa: S324
+        expected = hashlib.md5(b"hello").hexdigest()
         result = _exec("md5", "hello")
         assert result.iloc[0] == expected
 
     def test_md5_empty_string(self) -> None:
-        expected = hashlib.md5(b"").hexdigest()  # noqa: S324
+        expected = hashlib.md5(b"").hexdigest()
         result = _exec("md5", "")
         assert result.iloc[0] == expected
 
@@ -103,10 +103,10 @@ class TestMd5Correctness:
     def test_md5_vectorized_series(self) -> None:
         inputs = _s("hello", "world", None, "")
         result = _reg().execute("md5", [inputs])
-        assert result.iloc[0] == hashlib.md5(b"hello").hexdigest()  # noqa: S324
-        assert result.iloc[1] == hashlib.md5(b"world").hexdigest()  # noqa: S324
+        assert result.iloc[0] == hashlib.md5(b"hello").hexdigest()
+        assert result.iloc[1] == hashlib.md5(b"world").hexdigest()
         assert pd.isna(result.iloc[2])
-        assert result.iloc[3] == hashlib.md5(b"").hexdigest()  # noqa: S324
+        assert result.iloc[3] == hashlib.md5(b"").hexdigest()
 
 
 # ---------------------------------------------------------------------------
@@ -118,7 +118,7 @@ class TestSha1Correctness:
     """sha1(string) must return a 40-char lowercase hex digest."""
 
     def test_sha1_known_value(self) -> None:
-        expected = hashlib.sha1(b"hello").hexdigest()  # noqa: S324
+        expected = hashlib.sha1(b"hello").hexdigest()
         result = _exec("sha1", "hello")
         assert result.iloc[0] == expected
 
@@ -139,8 +139,8 @@ class TestSha1Correctness:
     def test_sha1_vectorized_series(self) -> None:
         inputs = _s("a", "b", None)
         result = _reg().execute("sha1", [inputs])
-        assert result.iloc[0] == hashlib.sha1(b"a").hexdigest()  # noqa: S324
-        assert result.iloc[1] == hashlib.sha1(b"b").hexdigest()  # noqa: S324
+        assert result.iloc[0] == hashlib.sha1(b"a").hexdigest()
+        assert result.iloc[1] == hashlib.sha1(b"b").hexdigest()
         assert pd.isna(result.iloc[2])
 
 
@@ -261,7 +261,7 @@ class TestDecodeBase64Correctness:
 class TestHashEncodingIntegration:
     """End-to-end Cypher query execution using the hash/encoding functions."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def star(self):
         import pandas as pd
         from pycypher.relational_models import (
@@ -278,7 +278,7 @@ class TestHashEncodingIntegration:
                 ID_COLUMN: [1, 2, 3],
                 "name": ["Alice", "Bob", "Carol"],
                 "ssn": ["123-45-6789", "987-65-4321", "111-22-3333"],
-            }
+            },
         )
         table = EntityTable(
             entity_type="Person",
@@ -296,9 +296,9 @@ class TestHashEncodingIntegration:
 
     def test_md5_in_return_clause(self, star) -> None:
         result = star.execute_query(
-            "MATCH (p:Person) WHERE p.name = 'Alice' RETURN md5(p.ssn) AS hashed"
+            "MATCH (p:Person) WHERE p.name = 'Alice' RETURN md5(p.ssn) AS hashed",
         )
-        expected = hashlib.md5(b"123-45-6789").hexdigest()  # noqa: S324
+        expected = hashlib.md5(b"123-45-6789").hexdigest()
         assert result["hashed"].iloc[0] == expected
 
     def test_sha256_in_where_clause(self, star) -> None:
@@ -306,7 +306,7 @@ class TestHashEncodingIntegration:
         target_hash = hashlib.sha256(b"Bob").hexdigest()
         result = star.execute_query(
             f"MATCH (p:Person) WHERE sha256(p.name) = '{target_hash}' "
-            "RETURN p.name AS name"
+            "RETURN p.name AS name",
         )
         assert len(result) == 1
         assert result["name"].iloc[0] == "Bob"
@@ -315,21 +315,21 @@ class TestHashEncodingIntegration:
         expected = base64.b64encode(b"Alice").decode("utf-8")
         result = star.execute_query(
             "MATCH (p:Person) WHERE p.name = 'Alice' "
-            "RETURN encodeBase64(p.name) AS encoded"
+            "RETURN encodeBase64(p.name) AS encoded",
         )
         assert result["encoded"].iloc[0] == expected
 
     def test_encodebase64_decodebase64_roundtrip_in_query(self, star) -> None:
         result = star.execute_query(
             "MATCH (p:Person) WHERE p.name = 'Carol' "
-            "RETURN decodeBase64(encodeBase64(p.name)) AS roundtrip"
+            "RETURN decodeBase64(encodeBase64(p.name)) AS roundtrip",
         )
         assert result["roundtrip"].iloc[0] == "Carol"
 
     def test_sha256_all_rows_produces_unique_hashes(self, star) -> None:
         """Different names must hash to different SHA-256 digests."""
         result = star.execute_query(
-            "MATCH (p:Person) RETURN sha256(p.name) AS h ORDER BY p.name"
+            "MATCH (p:Person) RETURN sha256(p.name) AS h ORDER BY p.name",
         )
         hashes = list(result["h"])
         assert len(set(hashes)) == 3  # all distinct

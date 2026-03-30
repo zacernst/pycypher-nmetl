@@ -21,19 +21,19 @@ from pycypher.scalar_functions import ScalarFunctionRegistry
 from pycypher.star import Star
 
 
-@pytest.fixture()
+@pytest.fixture
 def reg() -> ScalarFunctionRegistry:
     return ScalarFunctionRegistry.get_instance()
 
 
-@pytest.fixture()
+@pytest.fixture
 def log_star() -> Star:
     df = pd.DataFrame(
         {
             ID_COLUMN: [1, 2, 3, 4],
             "name": ["Alice", "Bob", "Carol", "Dave"],
             "val": [100.0, 0.0, -1.0, 10.0],
-        }
+        },
     )
     table = EntityTable(
         entity_type="Person",
@@ -47,7 +47,7 @@ def log_star() -> Star:
         context=Context(
             entity_mapping=EntityMapping(mapping={"Person": table}),
             relationship_mapping=RelationshipMapping(mapping={}),
-        )
+        ),
     )
 
 
@@ -55,7 +55,8 @@ class TestLog10DomainNull:
     """log10(x<=0) → null, not nan; consistent with log() and log2()."""
 
     def test_zero_returns_null_not_nan(
-        self, reg: ScalarFunctionRegistry
+        self,
+        reg: ScalarFunctionRegistry,
     ) -> None:
         result = reg.execute("log10", [pd.Series([0.0])])
         # Must be null (isna) and must NOT be NaN-the-float (which isna also catches,
@@ -63,13 +64,15 @@ class TestLog10DomainNull:
         assert pd.isna(result.iloc[0])
 
     def test_negative_returns_null_not_nan(
-        self, reg: ScalarFunctionRegistry
+        self,
+        reg: ScalarFunctionRegistry,
     ) -> None:
         result = reg.execute("log10", [pd.Series([-1.0])])
         assert pd.isna(result.iloc[0])
 
     def test_null_input_returns_null(
-        self, reg: ScalarFunctionRegistry
+        self,
+        reg: ScalarFunctionRegistry,
     ) -> None:
         result = reg.execute("log10", [pd.Series([None])])
         assert pd.isna(result.iloc[0])
@@ -83,7 +86,8 @@ class TestLog10DomainNull:
         assert result.iloc[0] == pytest.approx(0.0)
 
     def test_consistent_with_log_and_log2(
-        self, reg: ScalarFunctionRegistry
+        self,
+        reg: ScalarFunctionRegistry,
     ) -> None:
         """All three log functions must agree on domain-error → null."""
         for fn in ("log", "log2", "log10"):
@@ -103,17 +107,18 @@ class TestLog10DomainNull:
     def test_in_where_clause_nulls_excluded(self, log_star: Star) -> None:
         """Domain-error nulls are excluded from WHERE comparisons (null-safe)."""
         r = log_star.execute_query(
-            "MATCH (p:Person) WHERE log10(p.val) >= 1.0 RETURN p.name ORDER BY p.name"
+            "MATCH (p:Person) WHERE log10(p.val) >= 1.0 RETURN p.name ORDER BY p.name",
         )
         # val=100 → log10=2.0 ✓, val=10 → log10=1.0 ✓, val=0 → null, val=-1 → null
         assert list(r["name"]) == ["Alice", "Dave"]
 
     def test_isnan_does_not_see_domain_error_as_nan(
-        self, log_star: Star
+        self,
+        log_star: Star,
     ) -> None:
         """log10(0) is a domain error → null. isNaN(null) → null (null propagates)."""
         r = log_star.execute_query(
-            "MATCH (p:Person) WHERE p.val = 0.0 RETURN isNaN(log10(p.val)) AS r"
+            "MATCH (p:Person) WHERE p.val = 0.0 RETURN isNaN(log10(p.val)) AS r",
         )
         # log10(0) → null; isNaN(null) → null per Neo4j null-propagation semantics.
         # (Previously returned False due to missing null guard; null is now correct.)

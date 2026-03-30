@@ -39,9 +39,9 @@ class TestNodeStructure:
         tree = parser.parse(query)
         ast = parser.transformer.transform(tree)
 
-        node = ast["statements"][0][0]["clauses"][0]["pattern"]["paths"][0][
-            "element"
-        ]["parts"][0]
+        node = ast["statements"][0][0]["clauses"][0]["pattern"]["paths"][0]["element"][
+            "parts"
+        ][0]
 
         assert node["type"] == "NodePattern"
         # Check label structure (list of dicts from label_expression)
@@ -62,9 +62,9 @@ class TestNodeStructure:
         tree = parser.parse(query)
         ast = parser.transformer.transform(tree)
 
-        node = ast["statements"][0][0]["clauses"][0]["pattern"]["paths"][0][
-            "element"
-        ]["parts"][0]
+        node = ast["statements"][0][0]["clauses"][0]["pattern"]["paths"][0]["element"][
+            "parts"
+        ][0]
 
         props = node["properties"]
         assert isinstance(props, dict)
@@ -89,9 +89,9 @@ class TestRelationshipStructure:
         tree = parser.parse(query)
         ast = parser.transformer.transform(tree)
 
-        parts = ast["statements"][0][0]["clauses"][0]["pattern"]["paths"][0][
-            "element"
-        ]["parts"]
+        parts = ast["statements"][0][0]["clauses"][0]["pattern"]["paths"][0]["element"][
+            "parts"
+        ]
         # parts: [Node, Rel, Node]
         rel = parts[1]
 
@@ -106,9 +106,9 @@ class TestRelationshipStructure:
         tree = parser.parse(query)
         ast = parser.transformer.transform(tree)
 
-        rel = ast["statements"][0][0]["clauses"][0]["pattern"]["paths"][0][
-            "element"
-        ]["parts"][1]
+        rel = ast["statements"][0][0]["clauses"][0]["pattern"]["paths"][0]["element"][
+            "parts"
+        ][1]
 
         assert rel["direction"] == "any"
         assert "variable" not in rel or rel["variable"] is None
@@ -168,9 +168,7 @@ class TestUpdateStructure:
 
         assert update["type"] == "CreateClause"
         pattern = update["pattern"]
-        assert (
-            pattern["paths"][0]["element"]["parts"][0]["labels"][0] == "Person"
-        )
+        assert pattern["paths"][0]["element"]["parts"][0]["labels"][0] == "Person"
 
     def test_set_structure(self, parser):
         """Test SET clause structure."""

@@ -16,7 +16,6 @@ from pycypher.pipeline import (
     ParseStage,
     Pipeline,
     PipelineContext,
-    PipelineResult,
     PlanStage,
     Stage,
     ValidateStage,
@@ -182,7 +181,7 @@ class TestPipelineComposition:
                 RecordingStage("a"),
                 RecordingStage("b"),
                 RecordingStage("c"),
-            ]
+            ],
         )
         assert pipeline.stage_names == ["a", "b", "c"]
 
@@ -215,7 +214,7 @@ class TestPipelineMutation:
                 RecordingStage("a"),
                 RecordingStage("b"),
                 RecordingStage("c"),
-            ]
+            ],
         )
         pipeline.remove("b")
         assert pipeline.stage_names == ["a", "c"]
@@ -356,19 +355,37 @@ class TestExecuteStage:
         with pytest.raises(ValueError, match="Star instance required"):
             stage.execute(ctx)
 
-    def test_execute_delegates_to_star(self) -> None:
+    def test_execute_no_ast_raises(self) -> None:
         star = MagicMock()
-        expected_df = pd.DataFrame({"name": ["Alice"]})
-        star.execute_query.return_value = expected_df
-
         stage = ExecuteStage()
         ctx = PipelineContext(
             query_input="MATCH (n) RETURN n",
             star=star,
         )
+        with pytest.raises(ValueError, match="Parsed AST required"):
+            stage.execute(ctx)
+
+    def test_execute_delegates_to_inner_methods(self) -> None:
+        """ExecuteStage dispatches to Star's inner execution methods."""
+        from pycypher.ast_converter import ASTConverter
+
+        star = MagicMock()
+        expected_df = pd.DataFrame({"name": ["Alice"]})
+        star._execute_query_binding_frame.return_value = expected_df
+        star._query_has_mutations.return_value = False
+
+        ast = ASTConverter.from_cypher("MATCH (n) RETURN n")
+        stage = ExecuteStage()
+        ctx = PipelineContext(
+            query_input="MATCH (n) RETURN n",
+            star=star,
+            ast=ast,
+        )
         result = stage.execute(ctx)
         assert result.result is expected_df
-        star.execute_query.assert_called_once()
+        star._execute_query_binding_frame.assert_called_once_with(ast)
+        assert result.metadata["is_mutation"] is False
+        assert result.metadata["parsed_ast"] is ast
 
 
 # ---------------------------------------------------------------------------

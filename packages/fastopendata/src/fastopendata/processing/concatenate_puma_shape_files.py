@@ -1,33 +1,44 @@
 """Concatenate per-state PUMA shapefiles into a single national file.
 
-Reads all *.shp files whose name contains "puma" from $DATA_DIR and
-writes $DATA_DIR/puma_combined.shp.
+Reads all *.shp files whose name contains "puma" from the configured data directory
+and writes puma_combined.shp.
 
 Columns retained: PUMA20, GEOID, geometry.
 
 Usage:
-    DATA_DIR=/path/to/raw_data uv run python concatenate_puma_shape_files.py
-"""
+    uv run python concatenate_puma_shape_files.py
 
-import os
+Configuration:
+    Uses centralized configuration from config.toml.
+    Data directory can be overridden with DATA_DIR environment variable.
+"""
 
 from shared.logger import LOGGER
 
+from fastopendata.config import config
 from fastopendata.processing.concatenate_shape_files import (
     concatenate_shapefiles,
 )
 
 if __name__ == "__main__":
-    DATA_DIR: str = os.environ["DATA_DIR"]
+    # Use centralized configuration (supports DATA_DIR environment override)
+    data_dir = config.data_path
+
+    LOGGER.info("Using data directory: %s", data_dir)
+
     puma_files = [
-        f
-        for f in os.listdir(DATA_DIR)
-        if "puma" in f.lower() and f.endswith(".shp")
+        f.name
+        for f in data_dir.iterdir()
+        if "puma" in f.name.lower() and f.suffix == ".shp"
     ]
     LOGGER.info("Found %d PUMA shapefiles.", len(puma_files))
+
+    output_path = config.get_dataset_path("tiger_puma")
+    LOGGER.info("Output file: %s", output_path)
+
     concatenate_shapefiles(
         puma_files,
-        DATA_DIR,
-        os.path.join(DATA_DIR, "puma_combined.shp"),
+        data_dir,
+        output_path,
         columns=["PUMA20", "GEOID", "geometry"],
     )

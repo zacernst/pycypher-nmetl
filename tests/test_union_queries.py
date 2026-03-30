@@ -26,7 +26,7 @@ def people_df() -> pd.DataFrame:
             "name": ["Alice", "Bob", "Carol"],
             "age": [30, 25, 35],
             "dept": ["eng", "eng", "mktg"],
-        }
+        },
     )
 
 
@@ -48,7 +48,7 @@ class TestUnion:
         result = star.execute_query(
             "MATCH (p:Person) WHERE p.age > 28 RETURN p.name AS name "
             "UNION "
-            "MATCH (p:Person) WHERE p.age < 27 RETURN p.name AS name"
+            "MATCH (p:Person) WHERE p.age < 27 RETURN p.name AS name",
         )
         names = set(result["name"])
         assert names == {"Alice", "Carol", "Bob"}
@@ -59,7 +59,7 @@ class TestUnion:
         result = star.execute_query(
             "MATCH (p:Person) WHERE p.age >= 25 RETURN p.name AS name "
             "UNION "
-            "MATCH (p:Person) WHERE p.age <= 30 RETURN p.name AS name"
+            "MATCH (p:Person) WHERE p.age <= 30 RETURN p.name AS name",
         )
         # age>=25: Alice(30), Bob(25), Carol(35) — 3 rows
         # age<=30: Alice(30), Bob(25)             — 2 rows
@@ -72,7 +72,7 @@ class TestUnion:
         result = star.execute_query(
             "MATCH (p:Person) WHERE p.dept = 'eng' RETURN p.name AS name, p.age AS age "
             "UNION "
-            "MATCH (p:Person) WHERE p.dept = 'mktg' RETURN p.name AS name, p.age AS age"
+            "MATCH (p:Person) WHERE p.dept = 'mktg' RETURN p.name AS name, p.age AS age",
         )
         assert set(result["name"]) == {"Alice", "Bob", "Carol"}
         assert len(result) == 3
@@ -82,7 +82,7 @@ class TestUnion:
         result = star.execute_query(
             "MATCH (p:Person) WHERE p.age > 1000 RETURN p.name AS name "
             "UNION "
-            "MATCH (p:Person) WHERE p.age < 27 RETURN p.name AS name"
+            "MATCH (p:Person) WHERE p.age < 27 RETURN p.name AS name",
         )
         assert list(result["name"]) == ["Bob"]
 
@@ -91,7 +91,7 @@ class TestUnion:
         result = star.execute_query(
             "MATCH (p:Person) WHERE p.age < 27 RETURN p.name AS name "
             "UNION "
-            "MATCH (p:Person) WHERE p.age > 1000 RETURN p.name AS name"
+            "MATCH (p:Person) WHERE p.age > 1000 RETURN p.name AS name",
         )
         assert list(result["name"]) == ["Bob"]
 
@@ -100,7 +100,7 @@ class TestUnion:
         result = star.execute_query(
             "MATCH (p:Person) RETURN p.name AS name "
             "UNION "
-            "MATCH (p:Person) RETURN p.name AS name"
+            "MATCH (p:Person) RETURN p.name AS name",
         )
         assert len(result) == 3
 
@@ -118,7 +118,7 @@ class TestUnionAll:
         result = star.execute_query(
             "MATCH (p:Person) WHERE p.age > 28 RETURN p.name AS name "
             "UNION ALL "
-            "MATCH (p:Person) WHERE p.age < 27 RETURN p.name AS name"
+            "MATCH (p:Person) WHERE p.age < 27 RETURN p.name AS name",
         )
         assert len(result) == 3
         assert set(result["name"]) == {"Alice", "Carol", "Bob"}
@@ -128,7 +128,7 @@ class TestUnionAll:
         result = star.execute_query(
             "MATCH (p:Person) WHERE p.age >= 25 RETURN p.name AS name "
             "UNION ALL "
-            "MATCH (p:Person) WHERE p.age <= 30 RETURN p.name AS name"
+            "MATCH (p:Person) WHERE p.age <= 30 RETURN p.name AS name",
         )
         # side1: Alice, Bob, Carol (3)
         # side2: Alice, Bob       (2)
@@ -142,6 +142,6 @@ class TestUnionAll:
         result = star.execute_query(
             "MATCH (p:Person) RETURN p.name AS name "
             "UNION ALL "
-            "MATCH (p:Person) RETURN p.name AS name"
+            "MATCH (p:Person) RETURN p.name AS name",
         )
         assert len(result) == 6

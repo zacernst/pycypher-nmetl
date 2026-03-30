@@ -38,7 +38,7 @@ def _vt(value: object) -> str:
 
 class TestValueTypeRegistration:
     def test_is_registered(self) -> None:
-        """valueType is in the registry."""
+        """ValueType is in the registry."""
         assert _reg().has_function("valueType")
 
 
@@ -130,7 +130,8 @@ class TestValueTypeSeriesVectorized:
     def test_mixed_series(self) -> None:
         reg = _reg()
         result = reg.execute(
-            "valueType", [pd.Series([1, "hello", None, 3.14, True])]
+            "valueType",
+            [pd.Series([1, "hello", None, 3.14, True])],
         )
         assert list(result) == [
             "INTEGER",
@@ -154,11 +155,11 @@ class TestValueTypeCypherIntegration:
                 "__ID__": ["p1", "p2"],
                 "name": ["Alice", "Bob"],
                 "age": [30, 25],
-            }
+            },
         )
         star = Star(context=ContextBuilder.from_dict({"Person": people}))
         result = star.execute_query(
-            "MATCH (n:Person) RETURN valueType(n.age) AS t"
+            "MATCH (n:Person) RETURN valueType(n.age) AS t",
         )
         assert set(result["t"].tolist()) == {"INTEGER"}
 
@@ -168,10 +169,10 @@ class TestValueTypeCypherIntegration:
             {
                 "__ID__": ["p1"],
                 "name": ["Alice"],
-            }
+            },
         )
         star = Star(context=ContextBuilder.from_dict({"Person": people}))
         result = star.execute_query(
-            "MATCH (n:Person) RETURN valueType(n.name) AS t"
+            "MATCH (n:Person) RETURN valueType(n.name) AS t",
         )
         assert result["t"].iloc[0] == "STRING"

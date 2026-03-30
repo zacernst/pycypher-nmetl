@@ -21,7 +21,7 @@ from pycypher.relational_models import (
 from pycypher.star import Star
 
 
-@pytest.fixture()
+@pytest.fixture
 def star() -> Star:
     df = pd.DataFrame({ID_COLUMN: [1], "n": [1]})
     table = EntityTable(
@@ -36,7 +36,7 @@ def star() -> Star:
         context=Context(
             entity_mapping=EntityMapping(mapping={"N": table}),
             relationship_mapping=RelationshipMapping(mapping={}),
-        )
+        ),
     )
 
 

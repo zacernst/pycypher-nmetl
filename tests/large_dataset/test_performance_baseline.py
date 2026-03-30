@@ -62,7 +62,7 @@ def _build_star(
     ctx = Context(
         entity_mapping=EntityMapping(mapping={"Person": person_table}),
         relationship_mapping=RelationshipMapping(
-            mapping={"KNOWS": knows_table}
+            mapping={"KNOWS": knows_table},
         ),
     )
     return Star(context=ctx)
@@ -143,7 +143,9 @@ class TestJoinBaseline:
     """Baseline performance for relationship join queries."""
 
     def test_single_hop_join_tiny(self, tiny_star: Star) -> None:
-        query = "MATCH (a:Person)-[r:KNOWS]->(b:Person) RETURN a.name AS src, b.name AS tgt"
+        query = (
+            "MATCH (a:Person)-[r:KNOWS]->(b:Person) RETURN a.name AS src, b.name AS tgt"
+        )
         result = run_benchmark(
             lambda: tiny_star.execute_query(query),
             query=query,
@@ -153,7 +155,9 @@ class TestJoinBaseline:
         result.assert_time_under(SCALE_TINY.max_query_time_s)
 
     def test_single_hop_join_small(self, small_star: Star) -> None:
-        query = "MATCH (a:Person)-[r:KNOWS]->(b:Person) RETURN a.name AS src, b.name AS tgt"
+        query = (
+            "MATCH (a:Person)-[r:KNOWS]->(b:Person) RETURN a.name AS src, b.name AS tgt"
+        )
         result = run_benchmark(
             lambda: small_star.execute_query(query),
             query=query,
@@ -183,7 +187,9 @@ class TestAggregationBaseline:
         result.assert_time_under(SCALE_TINY.max_query_time_s)
 
     def test_grouped_aggregation_small(self, small_star: Star) -> None:
-        query = "MATCH (p:Person) RETURN p.city AS city, count(p) AS cnt ORDER BY cnt DESC"
+        query = (
+            "MATCH (p:Person) RETURN p.city AS city, count(p) AS cnt ORDER BY cnt DESC"
+        )
         result = run_benchmark(
             lambda: small_star.execute_query(query),
             query=query,
@@ -193,9 +199,7 @@ class TestAggregationBaseline:
         result.assert_time_under(SCALE_SMALL.max_query_time_s)
 
     def test_sum_aggregation_small(self, small_star: Star) -> None:
-        query = (
-            "MATCH (p:Person) RETURN p.dept AS dept, sum(p.age) AS total_age"
-        )
+        query = "MATCH (p:Person) RETURN p.dept AS dept, sum(p.age) AS total_age"
         result = run_benchmark(
             lambda: small_star.execute_query(query),
             query=query,

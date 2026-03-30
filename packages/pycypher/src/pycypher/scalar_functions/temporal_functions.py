@@ -8,7 +8,10 @@ from typing import TYPE_CHECKING
 import pandas as pd
 from shared.helpers import is_null_value
 
-from pycypher.constants import _broadcast_series, _null_series
+from pycypher.constants import (
+    _broadcast_series,
+    _init_null_result,
+)
 
 if TYPE_CHECKING:
     from pycypher.scalar_functions import ScalarFunctionRegistry
@@ -85,31 +88,23 @@ def register(registry: ScalarFunctionRegistry) -> None:
             return result
 
         except (ValueError, TypeError):
-            # Fallback for complex cases - still better than individual .apply()
-            result = pd.Series(
-                [None] * len(s),
-                index=s.index,
-                dtype=object,
-            )
+            # Fallback for complex cases
+            nr = _init_null_result(s)
+            if nr.all_null:
+                return nr.result
 
-            # Handle non-null values
-            non_null_mask = s.notna()
-            if non_null_mask.any():
-                s_str = s[non_null_mask].astype(str)
+            parsed_values = []
+            for sv in nr.non_null_vals.astype(str):
+                try:
+                    parsed_values.append(
+                        date.fromisoformat(sv).isoformat(),
+                    )
+                except (ValueError, TypeError):
+                    parsed_values.append(None)
 
-                # Try to parse each non-null string
-                parsed_values = []
-                for sv in s_str:
-                    try:
-                        parsed_values.append(
-                            date.fromisoformat(sv).isoformat(),
-                        )
-                    except (ValueError, TypeError):
-                        parsed_values.append(None)
+            nr.result[nr.non_null_mask] = parsed_values
 
-                result[non_null_mask] = parsed_values
-
-            return result
+            return nr.result
 
     registry.register_function(
         name="date",
@@ -177,32 +172,24 @@ def register(registry: ScalarFunctionRegistry) -> None:
             return result
 
         except (ValueError, TypeError):
-            # Fallback for complex cases - still better than individual .apply()
-            result = pd.Series(
-                [None] * len(s),
-                index=s.index,
-                dtype=object,
-            )
+            # Fallback for complex cases
+            nr = _init_null_result(s)
+            if nr.all_null:
+                return nr.result
 
-            # Handle non-null values
-            non_null_mask = s.notna()
-            if non_null_mask.any():
-                s_str = s[non_null_mask].astype(str)
+            parsed_values = []
+            for sv in nr.non_null_vals.astype(str):
+                try:
+                    normalized = sv.replace("Z", "+00:00")
+                    parsed_values.append(
+                        datetime.fromisoformat(normalized).isoformat(),
+                    )
+                except (ValueError, TypeError):
+                    parsed_values.append(None)
 
-                # Try to parse each non-null string
-                parsed_values = []
-                for sv in s_str:
-                    try:
-                        normalized = sv.replace("Z", "+00:00")
-                        parsed_values.append(
-                            datetime.fromisoformat(normalized).isoformat(),
-                        )
-                    except (ValueError, TypeError):
-                        parsed_values.append(None)
+            nr.result[nr.non_null_mask] = parsed_values
 
-                result[non_null_mask] = parsed_values
-
-            return result
+            return nr.result
 
     registry.register_function(
         name="datetime",
@@ -314,30 +301,20 @@ def register(registry: ScalarFunctionRegistry) -> None:
             }
 
         # Vectorized implementation replacing .apply(_parse) anti-pattern
-        result = _null_series(len(s), index=s.index)
+        nr = _init_null_result(s)
+        if nr.all_null:
+            return nr.result
 
-        # Handle null values - they remain None
-        null_mask = s.isna()
+        parsed_values = []
+        for val in nr.non_null_vals:
+            try:
+                parsed_values.append(_parse(val))
+            except (ValueError, TypeError, AttributeError, KeyError):
+                parsed_values.append(None)
 
-        # Process non-null values
-        non_null_mask = ~null_mask
-        if non_null_mask.any():
-            # For complex parsing like this, we still need individual processing
-            # but we can batch the non-null values more efficiently
-            non_null_vals = s[non_null_mask]
+        nr.result[nr.non_null_vals.index] = parsed_values
 
-            parsed_values = []
-            for val in non_null_vals:
-                try:
-                    parsed_val = _parse(val)
-                    parsed_values.append(parsed_val)
-                except (ValueError, TypeError, AttributeError, KeyError):
-                    parsed_values.append(None)
-
-            # Map back to original indices
-            result[non_null_vals.index] = parsed_values
-
-        return result
+        return nr.result
 
     registry.register_function(
         name="duration",

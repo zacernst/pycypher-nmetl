@@ -14,13 +14,10 @@ from __future__ import annotations
 from typing import Any
 from unittest.mock import MagicMock
 
-import numpy as np
 import pandas as pd
 import pytest
-
 from pycypher.comparison_evaluator import ComparisonEvaluator
 from pycypher.exceptions import UnsupportedOperatorError
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -115,8 +112,8 @@ class TestEvaluateComparisonNulls:
         parent = _mock_parent_evaluator(left, right)
         result = ev.evaluate_comparison("=", MagicMock(), MagicMock(), parent)
         assert result.iloc[0] is None
-        assert result.iloc[1] is True or result.iloc[1] == True  # noqa: E712
-        assert result.iloc[2] is True or result.iloc[2] == True  # noqa: E712
+        assert result.iloc[1] is True or result.iloc[1] == True
+        assert result.iloc[2] is True or result.iloc[2] == True
 
     def test_right_null_propagates(self) -> None:
         ev, _ = _make_evaluator()
@@ -302,11 +299,13 @@ class TestEvaluateCaseSearched:
         # Condition: [True, False, True]
         # Then: [10, 10, 10]
         # Else: [0, 0, 0]
-        call_results = iter([
-            pd.Series([0, 0, 0]),         # else
-            pd.Series([10, 10, 10]),       # then
-            pd.Series([True, False, True]),  # condition (fillna applied)
-        ])
+        call_results = iter(
+            [
+                pd.Series([0, 0, 0]),  # else
+                pd.Series([10, 10, 10]),  # then
+                pd.Series([True, False, True]),  # condition (fillna applied)
+            ],
+        )
         parent.evaluate = MagicMock(side_effect=lambda e: next(call_results))
 
         when = MagicMock()
@@ -325,10 +324,12 @@ class TestEvaluateCaseSearched:
         ev, _ = _make_evaluator()
         parent = MagicMock()
 
-        call_results = iter([
-            pd.Series([99, 99, 99]),        # then
-            pd.Series([False, False, False]),  # condition
-        ])
+        call_results = iter(
+            [
+                pd.Series([99, 99, 99]),  # then
+                pd.Series([False, False, False]),  # condition
+            ],
+        )
         parent.evaluate = MagicMock(side_effect=lambda e: next(call_results))
 
         when = MagicMock()
@@ -350,13 +351,15 @@ class TestEvaluateCaseSearched:
         parent = MagicMock()
 
         # Reverse iteration: when2 applied first, then when1 overwrites
-        call_results = iter([
-            pd.Series([0, 0, 0]),             # else
-            pd.Series([20, 20, 20]),           # when2 then
-            pd.Series([True, True, False]),    # when2 condition
-            pd.Series([10, 10, 10]),           # when1 then
-            pd.Series([True, False, False]),   # when1 condition
-        ])
+        call_results = iter(
+            [
+                pd.Series([0, 0, 0]),  # else
+                pd.Series([20, 20, 20]),  # when2 then
+                pd.Series([True, True, False]),  # when2 condition
+                pd.Series([10, 10, 10]),  # when1 then
+                pd.Series([True, False, False]),  # when1 condition
+            ],
+        )
         parent.evaluate = MagicMock(side_effect=lambda e: next(call_results))
 
         when1 = MagicMock()
@@ -393,12 +396,14 @@ class TestEvaluateCaseSimple:
         # else: [-1, -1, -1]
         # when val: [1, 1, 1] (match when discriminant == 1)
         # then: [100, 100, 100]
-        call_results = iter([
-            pd.Series([-1, -1, -1]),     # else
-            pd.Series([1, 2, 3]),        # discriminant
-            pd.Series([100, 100, 100]),  # then
-            pd.Series([1, 1, 1]),        # match value
-        ])
+        call_results = iter(
+            [
+                pd.Series([-1, -1, -1]),  # else
+                pd.Series([1, 2, 3]),  # discriminant
+                pd.Series([100, 100, 100]),  # then
+                pd.Series([1, 1, 1]),  # match value
+            ],
+        )
         parent.evaluate = MagicMock(side_effect=lambda e: next(call_results))
 
         when = MagicMock()

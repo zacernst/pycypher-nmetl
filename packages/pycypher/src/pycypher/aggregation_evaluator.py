@@ -173,6 +173,14 @@ KNOWN_AGGREGATIONS: frozenset[str] = (
     frozenset(_AGG_OPS.keys()) | _PERCENTILE_AGGREGATIONS
 )
 
+#: Pandas-native aggregation strings for fast-path groupby operations.
+_NATIVE_AGG_MAP: dict[str, str] = {
+    "sum": "sum",
+    "avg": "mean",
+    "min": "min",
+    "max": "max",
+}
+
 # Arithmetic operators for aggregation arithmetic
 _ARITH_OPS: dict[str, Any] = {
     "+": lambda left, r: left + r,
@@ -200,6 +208,7 @@ class AggregationExpressionEvaluator:
 
         Args:
             frame: BindingFrame providing variable and expression evaluation context
+
         """
         self.frame = frame
 
@@ -226,6 +235,7 @@ class AggregationExpressionEvaluator:
 
         Raises:
             ValueError: For unsupported aggregation functions or missing arguments.
+
         """
         from pycypher.ast_models import (
             Arithmetic,
@@ -239,7 +249,7 @@ class AggregationExpressionEvaluator:
                 "aggregation dispatch: %s  frame_size=%d",
                 _agg_type,
                 len(self.frame),
-        )
+            )
 
         if isinstance(agg_expression, CountStar):
             return len(self.frame)
@@ -329,7 +339,7 @@ class AggregationExpressionEvaluator:
             and agg_expression.arguments.get("distinct", False),
         )
         if distinct:
-            values = values.dropna().drop_duplicates()
+            values = values.drop_duplicates()
 
         # Two-argument percentile functions require the second argument to be
         # evaluated as the percentile parameter before dispatching.
@@ -351,9 +361,9 @@ class AggregationExpressionEvaluator:
 
         agg_handler = _AGG_OPS.get(func_name_lower)
         if agg_handler is None:
-            from pycypher.exceptions import UnsupportedFunctionError
-
             from shared.helpers import suggest_close_match
+
+            from pycypher.exceptions import UnsupportedFunctionError
 
             supported_functions = sorted(_AGG_OPS) + sorted(
                 _PERCENTILE_AGGREGATIONS,
@@ -444,11 +454,9 @@ class AggregationExpressionEvaluator:
 
             if distinct:
                 # COUNT(DISTINCT expression) = count unique non-null values per group
-                def _distinct_count(s: FrameSeries) -> int:
-                    distinct_values = s.dropna().drop_duplicates()
-                    return int(distinct_values.notna().sum())
-
-                return pd.Series(grouped.agg(_distinct_count).values)
+                # nunique() counts unique non-null values directly, avoiding
+                # the dropna().drop_duplicates().notna().sum() chain.
+                return pd.Series(grouped.nunique().values)
             # Regular COUNT(expression) = count non-null values per group
             return pd.Series(grouped.count().values)
 
@@ -487,27 +495,20 @@ class AggregationExpressionEvaluator:
         if distinct:
 
             def _distinct_agg(s: FrameSeries) -> Any:
-                return agg_handler(s.dropna().drop_duplicates())
+                return agg_handler(s.drop_duplicates())
 
             return pd.Series(grouped.agg(_distinct_agg).values)
 
         # Fast path: use pandas-native aggregation strings / groupby methods
-        # when possible for performance
-        native_agg_map = {
-            "sum": "sum",
-            "avg": "mean",
-            "min": "min",
-            "max": "max",
-        }
-
-        if func_name_lower in native_agg_map:
+        # when possible for performance.
+        if func_name_lower in _NATIVE_AGG_MAP:
             if func_name_lower == "sum":
                 # pandas sum() returns 0 for all-null groups by default.
                 # min_count=1 makes it return NaN instead, matching Cypher's
                 # null semantics (sum over all-null → null).
                 result = grouped.sum(min_count=1)
             else:
-                pandas_agg = native_agg_map[func_name_lower]
+                pandas_agg = _NATIVE_AGG_MAP[func_name_lower]
                 result = grouped.agg(pandas_agg)
             return pd.Series(result.values)
 

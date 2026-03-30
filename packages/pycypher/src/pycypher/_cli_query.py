@@ -69,11 +69,16 @@ def _print_table(df: pd.DataFrame, *, no_header: bool = False) -> None:
     if sum(natural_widths) > available and available > n_cols:
         # Distribute available space proportionally, minimum 4 chars/col
         min_col = 4
-        col_widths = [max(min_col, int(w * available / sum(natural_widths))) for w in natural_widths]
+        col_widths = [
+            max(min_col, int(w * available / sum(natural_widths)))
+            for w in natural_widths
+        ]
         # Redistribute any leftover to the widest columns
         leftover = available - sum(col_widths)
         if leftover > 0:
-            ranked = sorted(range(n_cols), key=lambda i: natural_widths[i], reverse=True)
+            ranked = sorted(
+                range(n_cols), key=lambda i: natural_widths[i], reverse=True
+            )
             for i in ranked[:leftover]:
                 col_widths[i] += 1
     else:
@@ -269,8 +274,9 @@ def register(cli_group: click.Group) -> None:
         default=None,
         metavar="SECONDS",
         help=(
-            "Wall-clock timeout for query execution in seconds.  "
-            "Raises an error if the query exceeds this limit."
+            "Wall-clock timeout for query execution in seconds (e.g. --timeout 30).  "
+            "If the query exceeds this limit it is cancelled and exits with an error.  "
+            "Default: no timeout."
         ),
     )
     @click.option(
@@ -299,7 +305,7 @@ def register(cli_group: click.Group) -> None:
             "executing the query.  Useful for debugging query structure."
         ),
     )
-    def query(  # noqa: PLR0912, PLR0913
+    def query(
         query_text: str,
         entity_specs: tuple[str, ...],
         rel_specs: tuple[str, ...],
@@ -330,6 +336,7 @@ def register(cli_group: click.Group) -> None:
         """
         import time
 
+        from pycypher.ingestion.context_builder import ContextBuilder
         from pycypher.nmetl_cli import (
             _ADHOC_QUERY_ERRORS,
             _cli_error,
@@ -338,9 +345,6 @@ def register(cli_group: click.Group) -> None:
             _parse_entity_arg,
             _parse_rel_arg,
         )
-
-        from pycypher.ingestion.context_builder import ContextBuilder
-        from pycypher.ingestion.output_writer import write_dataframe_to_uri
         from pycypher.star import Star
 
         if not query_text or not query_text.strip():
@@ -376,20 +380,30 @@ def register(cli_group: click.Group) -> None:
         # ------------------------------------------------------------------
         # Build execution context
         # ------------------------------------------------------------------
+        n_sources = len(parsed_entities) + len(parsed_rels)
+        click.echo(f"Loading {n_sources} data source(s) …")
+
         builder = ContextBuilder()
-        for label, path, id_col in parsed_entities:
+        for i, (label, path, id_col) in enumerate(parsed_entities, 1):
+            click.echo(f"  [{i}/{n_sources}] entity {label} <- {path}")
             effective_id_col = id_col or default_id_col
             _load_data_source(
-                lambda _l=label, _p=path, _i=effective_id_col: builder.add_entity(
-                    _l,
-                    _p,
-                    id_col=_i,
+                lambda _l=label, _p=path, _i=effective_id_col: (
+                    builder.add_entity(
+                        _l,
+                        _p,
+                        id_col=_i,
+                    )
                 ),
                 "entity source",
                 path,
             )
 
-        for rel_type, path, src_col, tgt_col in parsed_rels:
+        for j, (rel_type, path, src_col, tgt_col) in enumerate(parsed_rels, 1):
+            click.echo(
+                f"  [{len(parsed_entities) + j}/{n_sources}]"
+                f" relationship {rel_type} <- {path}",
+            )
             _load_data_source(
                 lambda _r=rel_type, _p=path, _s=src_col, _t=tgt_col: (
                     builder.add_relationship(
@@ -415,6 +429,7 @@ def register(cli_group: click.Group) -> None:
         # ------------------------------------------------------------------
         star = Star(context=context)
         profile_report = None
+        click.echo("Executing query …")
         t0 = time.monotonic()
         try:
             result_df = star.execute_query(
@@ -429,7 +444,10 @@ def register(cli_group: click.Group) -> None:
         # Build profile report from star's instrumentation data (no re-execution).
         if profile:
             profile_report = _build_profile_report(
-                star, query_text, elapsed, result_df,
+                star,
+                query_text,
+                elapsed,
+                result_df,
             )
 
         # ------------------------------------------------------------------
@@ -485,7 +503,10 @@ def _build_profile_report(
     result_df: pd.DataFrame,
 ) -> object:
     """Build an execution profile report from Star instrumentation data."""
-    from pycypher.query_profiler import ProfileReport, _generate_recommendations
+    from pycypher.query_profiler import (
+        ProfileReport,
+        _generate_recommendations,
+    )
 
     clause_timings: dict[str, float] = dict(
         getattr(star, "_last_clause_timings", {}),
@@ -545,6 +566,8 @@ def _emit_results(
             ".gv": "dot",
         }
         effective_fmt = _EXT_TO_FMT.get(ext)
+        if effective_fmt is not None and verbose:
+            click.echo(f"Inferred output format: {effective_fmt} (from {ext})")
         if effective_fmt is None:
             _cli_error(
                 f"cannot infer output format from {output_path}.  "
@@ -595,7 +618,8 @@ def _emit_results(
             click.echo(f"Wrote {len(result_df)} row(s) \u2192 {output_path}")
     elif effective_fmt == "csv":
         click.echo(
-            result_df.to_csv(index=False, header=not no_header), nl=False
+            result_df.to_csv(index=False, header=not no_header),
+            nl=False,
         )
     elif effective_fmt == "json":
         click.echo(result_df.to_json(orient="records", lines=True), nl=False)

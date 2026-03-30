@@ -67,10 +67,9 @@ async def security_headers_middleware(
     response.headers["Content-Security-Policy"] = "default-src 'none'"
     response.headers["X-XSS-Protection"] = "1; mode=block"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-    response.headers["Permissions-Policy"] = (
-        "camera=(), microphone=(), geolocation=()"
-    )
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
     return response
+
 
 # ---------------------------------------------------------------------------
 # Query engine — singleton Star instance
@@ -81,7 +80,7 @@ _star: Star | None = None
 
 def get_star() -> Star:
     """Return the shared Star instance, creating it lazily if needed."""
-    global _star  # noqa: PLW0603
+    global _star
     if _star is None:
         try:
             _star = Star()
@@ -96,7 +95,7 @@ def get_star() -> Star:
 
 def set_star(star: Star) -> None:
     """Replace the shared Star instance (used for testing and data loading)."""
-    global _star  # noqa: PLW0603
+    global _star
     _star = star
 
 
@@ -201,7 +200,7 @@ async def list_datasets() -> DatasetListResponse:
                 format=dataset_config.format,
                 source=dataset_config.source,
                 approx_size=dataset_config.approx_size,
-            )
+            ),
         )
 
     return DatasetListResponse(datasets=datasets)
@@ -214,7 +213,8 @@ async def get_dataset(name: str) -> DatasetInfo:
         dataset_config = config.get_dataset(name)
     except KeyError as exc:
         raise HTTPException(
-            status_code=404, detail=f"Dataset '{name}' not found."
+            status_code=404,
+            detail=f"Dataset '{name}' not found.",
         ) from exc
     return DatasetInfo(
         name=name,
@@ -263,7 +263,9 @@ def _record_error_and_raise(
     """
     total_ms = (time.monotonic() - t_start) * 1000
     _metrics_collector.record_error(
-        query, total_ms, str(exc),
+        query,
+        total_ms,
+        str(exc),
         status=status,
         metadata={"parse_ms": parse_ms},
     )
@@ -276,10 +278,18 @@ def _record_error_and_raise(
 _QUERY_ERROR_MAP: list[
     tuple[type[Exception] | tuple[type[Exception], ...], int, str | None]
 ] = [
-    ((GraphTypeNotFoundError, VariableNotFoundError), 422, "Query references unknown type or variable: {}"),
+    (
+        (GraphTypeNotFoundError, VariableNotFoundError),
+        422,
+        "Query references unknown type or variable: {}",
+    ),
     (MissingParameterError, 422, "Missing query parameter: {}"),
     (QueryTimeoutError, 504, "Query timed out: {}"),
-    ((QueryMemoryBudgetError, QueryComplexityError), 413, "Query exceeds resource limits: {}"),
+    (
+        (QueryMemoryBudgetError, QueryComplexityError),
+        413,
+        "Query exceeds resource limits: {}",
+    ),
 ]
 
 
@@ -297,13 +307,14 @@ async def run_cypher_query(
     parse_ms = (t_parse_end - t_parse_start) * 1000
 
     if errors:
-        detail = [
-            {"severity": e.severity.value, "message": e.message} for e in errors
-        ]
+        detail = [{"severity": e.severity.value, "message": e.message} for e in errors]
         _record_error_and_raise(
-            request.query, t_start, parse_ms,
+            request.query,
+            t_start,
+            parse_ms,
             ValueError("Validation failed"),
-            status_code=422, detail=detail,
+            status_code=422,
+            detail=detail,
         )
 
     star = get_star()
@@ -314,24 +325,36 @@ async def run_cypher_query(
             parameters=request.parameters or None,
         )
     except (
-        GraphTypeNotFoundError, VariableNotFoundError,
-        MissingParameterError, QueryTimeoutError,
-        QueryMemoryBudgetError, QueryComplexityError,
+        GraphTypeNotFoundError,
+        VariableNotFoundError,
+        MissingParameterError,
+        QueryTimeoutError,
+        QueryMemoryBudgetError,
+        QueryComplexityError,
     ) as exc:
         for exc_types, code, template in _QUERY_ERROR_MAP:
             if isinstance(exc, exc_types):
                 _record_error_and_raise(
-                    request.query, t_start, parse_ms, exc,
+                    request.query,
+                    t_start,
+                    parse_ms,
+                    exc,
                     status_code=code,
                     detail=template.format(exc),
-                    status=QueryStatus.TIMEOUT if isinstance(exc, QueryTimeoutError) else QueryStatus.ERROR,
+                    status=QueryStatus.TIMEOUT
+                    if isinstance(exc, QueryTimeoutError)
+                    else QueryStatus.ERROR,
                 )
         # Unreachable, but satisfies type checker
         raise  # pragma: no cover
     except Exception as exc:
         _record_error_and_raise(
-            request.query, t_start, parse_ms, exc,
-            status_code=400, detail="Query execution failed",
+            request.query,
+            t_start,
+            parse_ms,
+            exc,
+            status_code=400,
+            detail="Query execution failed",
             log_traceback=True,
         )
 

@@ -40,14 +40,14 @@ def ctx() -> Context:
             ID_COLUMN: [1, 2, 3],
             "name": ["Alice", "Bob", "Carol"],
             "age": [30, 25, 35],
-        }
+        },
     )
     knows_df = pd.DataFrame(
         {
             ID_COLUMN: [10, 11, 12],
             RELATIONSHIP_SOURCE_COLUMN: [1, 2, 1],
             RELATIONSHIP_TARGET_COLUMN: [2, 3, 3],
-        }
+        },
     )
     person_table = EntityTable(
         entity_type="Person",
@@ -72,7 +72,7 @@ def ctx() -> Context:
     return Context(
         entity_mapping=EntityMapping(mapping={"Person": person_table}),
         relationship_mapping=RelationshipMapping(
-            mapping={"KNOWS": knows_table}
+            mapping={"KNOWS": knows_table},
         ),
     )
 
@@ -109,7 +109,7 @@ class TestCleanupMergedStatic:
     def test_right_suffix_collision_dropped(self) -> None:
         """Columns ending in '_right' (pandas collision suffix) are dropped."""
         df = pd.DataFrame(
-            {"x": [1, 2], "name": ["Alice", "Bob"], "name_right": ["X", "Y"]}
+            {"x": [1, 2], "name": ["Alice", "Bob"], "name_right": ["X", "Y"]},
         )
         result = BindingFrame._cleanup_merged(df, left_col="x", right_col="x")
         assert "name_right" not in result.columns
@@ -124,7 +124,7 @@ class TestCleanupMergedStatic:
                 "b_right": ["r2"],
                 "c_right": ["r3"],
                 "keep": [42],
-            }
+            },
         )
         result = BindingFrame._cleanup_merged(df, left_col="x", right_col="x")
         for col in ("a_right", "b_right", "c_right"):

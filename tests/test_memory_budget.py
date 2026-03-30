@@ -89,7 +89,8 @@ class TestBudgetCleanup:
         """After a budget rejection, normal queries succeed."""
         with pytest.raises(QueryMemoryBudgetError):
             star.execute_query(
-                "MATCH (p:Person) RETURN p.name", memory_budget_bytes=1
+                "MATCH (p:Person) RETURN p.name",
+                memory_budget_bytes=1,
             )
         # Should work fine without budget constraint
         result = star.execute_query("MATCH (p:Person) RETURN p.name")

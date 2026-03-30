@@ -34,7 +34,7 @@ def _s(*values: object) -> pd.Series:
 
 class TestNormalizeRegistered:
     def test_normalize_is_registered(self) -> None:
-        """normalize must be in the scalar function registry."""
+        """Normalize must be in the scalar function registry."""
         assert _reg().has_function("normalize"), (
             "Expected 'normalize' to be registered in ScalarFunctionRegistry"
         )
@@ -157,9 +157,10 @@ class TestNormalizeNullPropagation:
         assert pd.isna(result.iloc[0])
 
     def test_mixed_null_and_non_null_rows(self) -> None:
-        """normalize propagates null correctly across a multi-row series."""
+        """Normalize propagates null correctly across a multi-row series."""
         result = _reg().execute(
-            "normalize", [_s("cafe\u0301", None, "\ufb03")]
+            "normalize",
+            [_s("cafe\u0301", None, "\ufb03")],
         )
         assert result.iloc[0] == unicodedata.normalize("NFC", "cafe\u0301")
         assert pd.isna(result.iloc[1])
@@ -185,7 +186,7 @@ class TestNormalizeInvalidForm:
 
 class TestNormalizeColumnInput:
     def test_all_rows_normalised(self) -> None:
-        """normalize works correctly over a full column."""
+        """Normalize works correctly over a full column."""
         inputs = ["cafe\u0301", "ﬃre", "résumé"]
         expected = [unicodedata.normalize("NFC", v) for v in inputs]
         result = _reg().execute("normalize", [_s(*inputs)])
@@ -211,12 +212,13 @@ class TestNormalizeCypherIntegration:
             context=Context(
                 entity_mapping=EntityMapping(mapping={}),
                 relationship_mapping=RelationshipMapping(mapping={}),
-            )
+            ),
         )
         result = star.execute_query("RETURN normalize('cafe\u0301') AS n")
         assert len(result) == 1
         assert result["n"].iloc[0] == unicodedata.normalize(
-            "NFC", "cafe\u0301"
+            "NFC",
+            "cafe\u0301",
         )
 
     def test_normalize_with_form_in_return(self) -> None:
@@ -232,7 +234,7 @@ class TestNormalizeCypherIntegration:
             context=Context(
                 entity_mapping=EntityMapping(mapping={}),
                 relationship_mapping=RelationshipMapping(mapping={}),
-            )
+            ),
         )
         result = star.execute_query("RETURN normalize('\ufb03', 'NFKC') AS n")
         assert len(result) == 1

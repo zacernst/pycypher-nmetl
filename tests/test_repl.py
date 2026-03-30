@@ -277,7 +277,8 @@ class TestLoadCommand:
     """Verify .load dot-command for adding data sources mid-session."""
 
     def test_load_no_args_shows_usage(
-        self, capsys: pytest.CaptureFixture[str]
+        self,
+        capsys: pytest.CaptureFixture[str],
     ) -> None:
         repl = CypherRepl()
         repl.do_load("")
@@ -341,7 +342,8 @@ class TestLoadCommand:
         assert ".load" in completions
 
     def test_load_in_help_output(
-        self, capsys: pytest.CaptureFixture[str]
+        self,
+        capsys: pytest.CaptureFixture[str],
     ) -> None:
         repl = CypherRepl()
         repl.do_help("")

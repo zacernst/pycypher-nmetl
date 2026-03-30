@@ -44,7 +44,7 @@ def integration_context():
             "name": ["Alice", "Bob", "Carol", "Dave", "Eve"],
             "age": [30, 40, 25, 35, 28],
             "city": ["NYC", "LA", "NYC", "SF", "LA"],
-        }
+        },
     )
 
     person_table = EntityTable(
@@ -70,7 +70,7 @@ def integration_context():
             RELATIONSHIP_SOURCE_COLUMN: [1, 2, 3],
             RELATIONSHIP_TARGET_COLUMN: [2, 3, 4],
             "since": [2020, 2021, 2019],
-        }
+        },
     )
 
     knows_table = RelationshipTable(
@@ -90,7 +90,7 @@ def integration_context():
     return Context(
         entity_mapping=EntityMapping(mapping={"Person": person_table}),
         relationship_mapping=RelationshipMapping(
-            mapping={"KNOWS": knows_table}
+            mapping={"KNOWS": knows_table},
         ),
     )
 
@@ -113,16 +113,16 @@ class TestReturnAggregationIntegration:
                                         variable=Variable(name="p"),
                                         labels=["Person"],
                                         properties={},
-                                    )
-                                ]
-                            )
-                        ]
-                    )
+                                    ),
+                                ],
+                            ),
+                        ],
+                    ),
                 ),
                 Return(
-                    items=[ReturnItem(expression=CountStar(), alias="total")]
+                    items=[ReturnItem(expression=CountStar(), alias="total")],
                 ),
-            ]
+            ],
         )
 
         result_df = star.execute_query(query)
@@ -146,11 +146,11 @@ class TestReturnAggregationIntegration:
                                         variable=Variable(name="p"),
                                         labels=["Person"],
                                         properties={},
-                                    )
-                                ]
-                            )
-                        ]
-                    )
+                                    ),
+                                ],
+                            ),
+                        ],
+                    ),
                 ),
                 Return(
                     items=[
@@ -161,14 +161,14 @@ class TestReturnAggregationIntegration:
                                     "expression": PropertyLookup(
                                         expression=Variable(name="p"),
                                         property="name",
-                                    )
+                                    ),
                                 },
                             ),
                             alias="names",
-                        )
-                    ]
+                        ),
+                    ],
                 ),
-            ]
+            ],
         )
 
         result_df = star.execute_query(query)
@@ -201,11 +201,11 @@ class TestReturnAggregationIntegration:
                                         variable=person_var,
                                         labels=["Person"],
                                         properties={},
-                                    )
-                                ]
-                            )
-                        ]
-                    )
+                                    ),
+                                ],
+                            ),
+                        ],
+                    ),
                 ),
                 Return(
                     items=[
@@ -214,8 +214,9 @@ class TestReturnAggregationIntegration:
                                 name="sum",
                                 arguments={
                                     "expression": PropertyLookup(
-                                        expression=person_var, property="age"
-                                    )
+                                        expression=person_var,
+                                        property="age",
+                                    ),
                                 },
                             ),
                             alias="total_age",
@@ -225,15 +226,16 @@ class TestReturnAggregationIntegration:
                                 name="avg",
                                 arguments={
                                     "expression": PropertyLookup(
-                                        expression=person_var, property="age"
-                                    )
+                                        expression=person_var,
+                                        property="age",
+                                    ),
                                 },
                             ),
                             alias="avg_age",
                         ),
-                    ]
+                    ],
                 ),
-            ]
+            ],
         )
 
         result_df = star.execute_query(query)
@@ -260,11 +262,11 @@ class TestReturnAggregationIntegration:
                                         variable=person_var,
                                         labels=["Person"],
                                         properties={},
-                                    )
-                                ]
-                            )
-                        ]
-                    )
+                                    ),
+                                ],
+                            ),
+                        ],
+                    ),
                 ),
                 Return(
                     items=[
@@ -273,8 +275,9 @@ class TestReturnAggregationIntegration:
                                 name="min",
                                 arguments={
                                     "expression": PropertyLookup(
-                                        expression=person_var, property="age"
-                                    )
+                                        expression=person_var,
+                                        property="age",
+                                    ),
                                 },
                             ),
                             alias="min_age",
@@ -284,15 +287,16 @@ class TestReturnAggregationIntegration:
                                 name="max",
                                 arguments={
                                     "expression": PropertyLookup(
-                                        expression=person_var, property="age"
-                                    )
+                                        expression=person_var,
+                                        property="age",
+                                    ),
                                 },
                             ),
                             alias="max_age",
                         ),
-                    ]
+                    ],
                 ),
-            ]
+            ],
         )
 
         result_df = star.execute_query(query)
@@ -319,11 +323,11 @@ class TestReturnAggregationIntegration:
                                         variable=person_var,
                                         labels=["Person"],
                                         properties={},
-                                    )
-                                ]
-                            )
-                        ]
-                    )
+                                    ),
+                                ],
+                            ),
+                        ],
+                    ),
                 ),
                 Return(
                     items=[
@@ -340,15 +344,16 @@ class TestReturnAggregationIntegration:
                                 name="sum",
                                 arguments={
                                     "expression": PropertyLookup(
-                                        expression=person_var, property="age"
-                                    )
+                                        expression=person_var,
+                                        property="age",
+                                    ),
                                 },
                             ),
                             alias="total_age",
                         ),
-                    ]
+                    ],
                 ),
-            ]
+            ],
         )
 
         result_df = star.execute_query(query)
@@ -390,15 +395,15 @@ class TestReturnAggregationWithRelationships:
                                         labels=["Person"],
                                         properties={},
                                     ),
-                                ]
-                            )
-                        ]
-                    )
+                                ],
+                            ),
+                        ],
+                    ),
                 ),
                 Return(
-                    items=[ReturnItem(expression=CountStar(), alias="total")]
+                    items=[ReturnItem(expression=CountStar(), alias="total")],
                 ),
-            ]
+            ],
         )
 
         result_df = star.execute_query(query)
@@ -436,10 +441,10 @@ class TestReturnAggregationWithRelationships:
                                         labels=["Person"],
                                         properties={},
                                     ),
-                                ]
-                            )
-                        ]
-                    )
+                                ],
+                            ),
+                        ],
+                    ),
                 ),
                 Return(
                     items=[
@@ -448,8 +453,9 @@ class TestReturnAggregationWithRelationships:
                                 name="collect",
                                 arguments={
                                     "expression": PropertyLookup(
-                                        expression=a_var, property="name"
-                                    )
+                                        expression=a_var,
+                                        property="name",
+                                    ),
                                 },
                             ),
                             alias="from_names",
@@ -459,15 +465,16 @@ class TestReturnAggregationWithRelationships:
                                 name="collect",
                                 arguments={
                                     "expression": PropertyLookup(
-                                        expression=b_var, property="name"
-                                    )
+                                        expression=b_var,
+                                        property="name",
+                                    ),
                                 },
                             ),
                             alias="to_names",
                         ),
-                    ]
+                    ],
                 ),
-            ]
+            ],
         )
 
         result_df = star.execute_query(query)
@@ -493,7 +500,7 @@ class TestReturnAggregationStringParsing:
         star = Star(context=integration_context)
 
         result_df = star.execute_query(
-            "MATCH (p:Person) RETURN count(*) AS total"
+            "MATCH (p:Person) RETURN count(*) AS total",
         )
 
         assert len(result_df) == 1
@@ -504,7 +511,7 @@ class TestReturnAggregationStringParsing:
         star = Star(context=integration_context)
 
         result_df = star.execute_query(
-            "MATCH (p:Person) RETURN collect(p.name) AS names"
+            "MATCH (p:Person) RETURN collect(p.name) AS names",
         )
 
         assert len(result_df) == 1
@@ -515,7 +522,7 @@ class TestReturnAggregationStringParsing:
         star = Star(context=integration_context)
 
         result_df = star.execute_query(
-            "MATCH (p:Person) RETURN count(*) AS total, sum(p.age) AS total_age"
+            "MATCH (p:Person) RETURN count(*) AS total, sum(p.age) AS total_age",
         )
 
         assert len(result_df) == 1

@@ -3,14 +3,8 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import click
-
-from .common import cli_error, load_config
-
-if TYPE_CHECKING:
-    pass
 
 
 @click.command()

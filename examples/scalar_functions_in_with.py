@@ -26,7 +26,6 @@ from pycypher.ast_models import (
     ReturnItem,
     With,
 )
-from pycypher.grammar_parser import GrammarParser
 from pycypher.relational_models import (
     ID_COLUMN,
     RELATIONSHIP_SOURCE_COLUMN,
@@ -76,12 +75,13 @@ def main() -> None:
         if isinstance(node, With):
             for item in node.items:
                 if isinstance(item, ReturnItem) and isinstance(
-                    item.expression, FunctionInvocation
+                    item.expression,
+                    FunctionInvocation,
                 ):
                     fn = item.expression
                     print(
                         f"\n  → Found FunctionInvocation: name={fn.name!r}, "
-                        f"alias={item.alias!r}"
+                        f"alias={item.alias!r}",
                     )
 
     # --- 1b. Nested scalar functions ----------------------------------------
@@ -123,7 +123,7 @@ def main() -> None:
     for name, meta in sorted(registry._functions.items()):
         print(
             f"  {meta.name:14s}  args=[{meta.min_args}..{meta.max_args or '∞'}]  "
-            f"{meta.description}"
+            f"{meta.description}",
         )
 
     # ===================================================================
@@ -140,7 +140,7 @@ def main() -> None:
             ID_COLUMN: [1, 2, 3],
             "name": ["  Alice  ", "BOB", "carol"],
             "age": [30, 40, 25],
-        }
+        },
     )
 
     knows_df = pd.DataFrame(
@@ -148,7 +148,7 @@ def main() -> None:
             ID_COLUMN: [100, 101],
             RELATIONSHIP_SOURCE_COLUMN: [1, 2],
             RELATIONSHIP_TARGET_COLUMN: [2, 3],
-        }
+        },
     )
 
     person_table = EntityTable(
@@ -182,7 +182,7 @@ def main() -> None:
     context = Context(
         entity_mapping=EntityMapping(mapping={"Person": person_table}),
         relationship_mapping=RelationshipMapping(
-            mapping={"KNOWS": knows_table}
+            mapping={"KNOWS": knows_table},
         ),
     )
 
@@ -199,7 +199,9 @@ def main() -> None:
 
     # --- 3b. Execute: trim + toLower ----------------------------------------
     print("\n--- 3b. trim via WITH ---")
-    query_str = "MATCH (n:Person) WITH trim(n.name) AS trimmed RETURN trimmed AS trimmed"
+    query_str = (
+        "MATCH (n:Person) WITH trim(n.name) AS trimmed RETURN trimmed AS trimmed"
+    )
     print(f"  Query : {query_str}")
     try:
         star = Star(context=context)
@@ -220,10 +222,10 @@ def main() -> None:
     int_series = pd.Series(["42", "7", "100"])
     print(f"\n  Input:      {int_series.tolist()}")
     print(
-        f"  toInteger:  {registry.execute('toInteger', [int_series]).tolist()}"
+        f"  toInteger:  {registry.execute('toInteger', [int_series]).tolist()}",
     )
     print(
-        f"  toFloat:    {registry.execute('toFloat', [int_series]).tolist()}"
+        f"  toFloat:    {registry.execute('toFloat', [int_series]).tolist()}",
     )
 
     print("\nDone.")

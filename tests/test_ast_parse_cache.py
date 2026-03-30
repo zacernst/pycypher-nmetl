@@ -181,9 +181,9 @@ class TestASTCachePerformance:
         ASTConverter.from_cypher(unique_q)
         cold_time = time.perf_counter() - t0
 
-        if cold_time < 0.005:  # noqa: PLR2004 — if cold call is already fast, skip ratio test
+        if cold_time < 0.005:
             pytest.skip(
-                "Cold parse time too small to measure speedup ratio meaningfully"
+                "Cold parse time too small to measure speedup ratio meaningfully",
             )
 
         # Warm calls
@@ -195,7 +195,7 @@ class TestASTCachePerformance:
         warm_per_call = warm_total / N
 
         speedup = cold_time / warm_per_call
-        assert speedup >= 10, (  # noqa: PLR2004
+        assert speedup >= 10, (
             f"Expected cached calls to be ≥10× faster than cold call, "
             f"but cold={cold_time * 1000:.1f}ms, warm={warm_per_call * 1000:.2f}ms/call, "
             f"speedup={speedup:.1f}×.  Cache may not be active."

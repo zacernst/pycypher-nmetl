@@ -151,7 +151,7 @@ def conditional_context() -> Context:
             ],
             "certification_count": [3, 0, 5, 8, 2, 4, 1, 6, 4, 7, 3, 2],
             "team_size": [0, 0, 5, 12, 0, 8, 0, 0, 6, 10, 0, 0],
-        }
+        },
     )
 
     project_df = pd.DataFrame(
@@ -175,7 +175,7 @@ def conditional_context() -> Context:
                 "2024-07-15",
             ],
             "team_size": [8, 5, 12, 6, 4],
-        }
+        },
     )
 
     # Employee-Project assignments
@@ -220,7 +220,7 @@ def conditional_context() -> Context:
                 "2024-02-01",
                 "2024-02-10",
             ],
-        }
+        },
     )
 
     employee_table = EntityTable(
@@ -330,10 +330,10 @@ def conditional_context() -> Context:
 
     return Context(
         entity_mapping=EntityMapping(
-            mapping={"Employee": employee_table, "Project": project_table}
+            mapping={"Employee": employee_table, "Project": project_table},
         ),
         relationship_mapping=RelationshipMapping(
-            mapping={"WORKS_ON": works_on_table}
+            mapping={"WORKS_ON": works_on_table},
         ),
     )
 
@@ -342,7 +342,8 @@ class TestBasicConditionalSET:
     """Test SET operations with basic WHERE clause conditions."""
 
     def test_set_where_single_condition(
-        self, conditional_context: Context
+        self,
+        conditional_context: Context,
     ) -> None:
         """Test parsing SET with single WHERE condition."""
         cypher = """
@@ -357,7 +358,8 @@ class TestBasicConditionalSET:
         assert ast is not None
 
     def test_set_where_numeric_condition(
-        self, conditional_context: Context
+        self,
+        conditional_context: Context,
     ) -> None:
         """Test parsing SET with numeric comparison."""
         cypher = """
@@ -372,7 +374,8 @@ class TestBasicConditionalSET:
         assert ast is not None
 
     def test_set_where_boolean_condition(
-        self, conditional_context: Context
+        self,
+        conditional_context: Context,
     ) -> None:
         """Test parsing SET with boolean property condition."""
         cypher = """
@@ -387,7 +390,8 @@ class TestBasicConditionalSET:
         assert ast is not None
 
     def test_set_where_null_condition(
-        self, conditional_context: Context
+        self,
+        conditional_context: Context,
     ) -> None:
         """Test parsing SET with NULL check conditions."""
         cypher = """
@@ -402,7 +406,8 @@ class TestBasicConditionalSET:
         assert ast is not None
 
     def test_set_where_not_null_condition(
-        self, conditional_context: Context
+        self,
+        conditional_context: Context,
     ) -> None:
         """Test parsing SET with NOT NULL condition."""
         cypher = """
@@ -421,7 +426,8 @@ class TestComplexBooleanConditions:
     """Test SET operations with complex boolean logic in WHERE clauses."""
 
     def test_set_where_and_condition(
-        self, conditional_context: Context
+        self,
+        conditional_context: Context,
     ) -> None:
         """Test parsing SET with AND conditions."""
         cypher = """
@@ -436,7 +442,8 @@ class TestComplexBooleanConditions:
         assert ast is not None
 
     def test_set_where_or_condition(
-        self, conditional_context: Context
+        self,
+        conditional_context: Context,
     ) -> None:
         """Test parsing SET with OR conditions."""
         cypher = """
@@ -451,7 +458,8 @@ class TestComplexBooleanConditions:
         assert ast is not None
 
     def test_set_where_not_condition(
-        self, conditional_context: Context
+        self,
+        conditional_context: Context,
     ) -> None:
         """Test parsing SET with NOT conditions."""
         cypher = """
@@ -466,7 +474,8 @@ class TestComplexBooleanConditions:
         assert ast is not None
 
     def test_set_where_complex_and_or(
-        self, conditional_context: Context
+        self,
+        conditional_context: Context,
     ) -> None:
         """Test parsing SET with complex AND/OR combinations."""
         cypher = """
@@ -482,7 +491,8 @@ class TestComplexBooleanConditions:
         assert ast is not None
 
     def test_set_where_nested_conditions(
-        self, conditional_context: Context
+        self,
+        conditional_context: Context,
     ) -> None:
         """Test parsing SET with nested boolean conditions."""
         cypher = """
@@ -502,7 +512,8 @@ class TestRangeBasedConditions:
     """Test SET operations with range and comparison conditions."""
 
     def test_set_where_salary_ranges(
-        self, conditional_context: Context
+        self,
+        conditional_context: Context,
     ) -> None:
         """Test parsing SET with salary range conditions."""
         cypher = """
@@ -517,7 +528,8 @@ class TestRangeBasedConditions:
         assert ast is not None
 
     def test_set_where_performance_ranges(
-        self, conditional_context: Context
+        self,
+        conditional_context: Context,
     ) -> None:
         """Test parsing SET with performance score ranges."""
         cypher = """
@@ -532,7 +544,8 @@ class TestRangeBasedConditions:
         assert ast is not None
 
     def test_set_where_experience_ranges(
-        self, conditional_context: Context
+        self,
+        conditional_context: Context,
     ) -> None:
         """Test parsing SET with experience range conditions."""
         cypher = """
@@ -547,7 +560,8 @@ class TestRangeBasedConditions:
         assert ast is not None
 
     def test_set_where_multiple_ranges(
-        self, conditional_context: Context
+        self,
+        conditional_context: Context,
     ) -> None:
         """Test parsing SET with multiple range conditions."""
         cypher = """
@@ -566,7 +580,8 @@ class TestRangeBasedConditions:
         assert ast is not None
 
     def test_set_where_certification_thresholds(
-        self, conditional_context: Context
+        self,
+        conditional_context: Context,
     ) -> None:
         """Test parsing SET with certification count thresholds."""
         cypher = """
@@ -585,7 +600,8 @@ class TestPatternBasedConditions:
     """Test SET operations with pattern matching and string conditions."""
 
     def test_set_where_string_contains(
-        self, conditional_context: Context
+        self,
+        conditional_context: Context,
     ) -> None:
         """Test parsing SET with string CONTAINS conditions."""
         cypher = """
@@ -600,7 +616,8 @@ class TestPatternBasedConditions:
         assert ast is not None
 
     def test_set_where_string_starts_with(
-        self, conditional_context: Context
+        self,
+        conditional_context: Context,
     ) -> None:
         """Test parsing SET with STARTS WITH conditions."""
         cypher = """
@@ -615,7 +632,8 @@ class TestPatternBasedConditions:
         assert ast is not None
 
     def test_set_where_string_ends_with(
-        self, conditional_context: Context
+        self,
+        conditional_context: Context,
     ) -> None:
         """Test parsing SET with ENDS WITH conditions."""
         cypher = """
@@ -630,7 +648,8 @@ class TestPatternBasedConditions:
         assert ast is not None
 
     def test_set_where_regex_patterns(
-        self, conditional_context: Context
+        self,
+        conditional_context: Context,
     ) -> None:
         """Test parsing SET with regular expression patterns."""
         cypher = """
@@ -645,7 +664,8 @@ class TestPatternBasedConditions:
         assert ast is not None
 
     def test_set_where_department_in_list(
-        self, conditional_context: Context
+        self,
+        conditional_context: Context,
     ) -> None:
         """Test parsing SET with IN list conditions."""
         cypher = """
@@ -664,7 +684,8 @@ class TestTemporalConditions:
     """Test SET operations with date/time based conditions."""
 
     def test_set_where_recent_review(
-        self, conditional_context: Context
+        self,
+        conditional_context: Context,
     ) -> None:
         """Test parsing SET with recent date conditions."""
         cypher = """
@@ -705,7 +726,8 @@ class TestTemporalConditions:
         assert ast is not None
 
     def test_set_where_quarterly_conditions(
-        self, conditional_context: Context
+        self,
+        conditional_context: Context,
     ) -> None:
         """Test parsing SET with quarterly date groupings."""
         cypher = """
@@ -724,7 +746,8 @@ class TestMultipleEntityConditions:
     """Test SET operations with conditions spanning multiple entities."""
 
     def test_set_where_relationship_exists(
-        self, conditional_context: Context
+        self,
+        conditional_context: Context,
     ) -> None:
         """Test parsing SET with relationship existence conditions."""
         cypher = """
@@ -739,7 +762,8 @@ class TestMultipleEntityConditions:
         assert ast is not None
 
     def test_set_where_relationship_properties(
-        self, conditional_context: Context
+        self,
+        conditional_context: Context,
     ) -> None:
         """Test parsing SET with relationship property conditions."""
         cypher = """
@@ -754,7 +778,8 @@ class TestMultipleEntityConditions:
         assert ast is not None
 
     def test_set_where_project_priority(
-        self, conditional_context: Context
+        self,
+        conditional_context: Context,
     ) -> None:
         """Test parsing SET based on related project properties."""
         cypher = """
@@ -769,7 +794,8 @@ class TestMultipleEntityConditions:
         assert ast is not None
 
     def test_set_where_project_budget(
-        self, conditional_context: Context
+        self,
+        conditional_context: Context,
     ) -> None:
         """Test parsing SET based on project budget conditions."""
         cypher = """
@@ -784,7 +810,8 @@ class TestMultipleEntityConditions:
         assert ast is not None
 
     def test_set_where_multiple_projects(
-        self, conditional_context: Context
+        self,
+        conditional_context: Context,
     ) -> None:
         """Test parsing SET for employees working on multiple projects (simplified)."""
         cypher = """
@@ -803,7 +830,8 @@ class TestAggregateBasedConditions:
     """Test SET operations with aggregate-based WHERE conditions."""
 
     def test_set_where_team_size_aggregate(
-        self, conditional_context: Context
+        self,
+        conditional_context: Context,
     ) -> None:
         """Test parsing SET with team size aggregate conditions."""
         cypher = """
@@ -819,7 +847,8 @@ class TestAggregateBasedConditions:
         assert ast is not None
 
     def test_set_where_department_count(
-        self, conditional_context: Context
+        self,
+        conditional_context: Context,
     ) -> None:
         """Test parsing SET based on department size."""
         cypher = """
@@ -836,7 +865,8 @@ class TestAggregateBasedConditions:
         assert ast is not None
 
     def test_set_where_salary_percentile(
-        self, conditional_context: Context
+        self,
+        conditional_context: Context,
     ) -> None:
         """Test parsing SET based on salary percentile calculations."""
         cypher = """
@@ -853,7 +883,8 @@ class TestAggregateBasedConditions:
         assert ast is not None
 
     def test_set_where_performance_ranking(
-        self, conditional_context: Context
+        self,
+        conditional_context: Context,
     ) -> None:
         """Test parsing SET based on performance rankings."""
         cypher = """
@@ -868,7 +899,8 @@ class TestAggregateBasedConditions:
         assert ast is not None
 
     def test_set_where_experience_distribution(
-        self, conditional_context: Context
+        self,
+        conditional_context: Context,
     ) -> None:
         """Test parsing SET based on experience distribution."""
         cypher = """
@@ -889,7 +921,8 @@ class TestConditionalBulkOperations:
     """Test bulk SET operations with complex conditional logic."""
 
     def test_set_performance_based_bulk_update(
-        self, conditional_context: Context
+        self,
+        conditional_context: Context,
     ) -> None:
         """Test bulk performance-based updates."""
         cypher = """
@@ -907,7 +940,8 @@ class TestConditionalBulkOperations:
         assert ast is not None
 
     def test_set_department_restructuring(
-        self, conditional_context: Context
+        self,
+        conditional_context: Context,
     ) -> None:
         """Test department-based bulk restructuring."""
         cypher = """
@@ -925,7 +959,8 @@ class TestConditionalBulkOperations:
         assert ast is not None
 
     def test_set_remote_work_policy(
-        self, conditional_context: Context
+        self,
+        conditional_context: Context,
     ) -> None:
         """Test conditional remote work policy implementation."""
         cypher = """
@@ -961,7 +996,8 @@ class TestConditionalBulkOperations:
         assert ast is not None
 
     def test_set_succession_planning(
-        self, conditional_context: Context
+        self,
+        conditional_context: Context,
     ) -> None:
         """Test conditional succession planning updates."""
         cypher = """

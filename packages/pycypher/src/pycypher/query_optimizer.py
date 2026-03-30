@@ -145,7 +145,7 @@ class OptimizationPlan:
                         else ""
                     )
                     lines.append(
-                        f"  + {r.rule_name}: {r.description}{speedup}"
+                        f"  + {r.rule_name}: {r.description}{speedup}",
                     )
 
         if self.skipped_rules:
@@ -423,24 +423,78 @@ class JoinReorderingRule(OptimizationRule):
 
     @staticmethod
     def _estimate_match_cardinality(match: Match, context: Context) -> int:
-        """Rough cardinality estimate for a MATCH clause."""
+        """Cardinality estimate for a MATCH clause using table sizes and
+        relationship constraints.
+
+        For patterns like ``(a:Person)-[:KNOWS]->(b:Person)``, the
+        cardinality is bounded by the relationship count rather than the
+        naive product of entity counts.  WHERE clause selectivity is
+        estimated via ``QueryPlanAnalyzer.estimate_predicate_selectivity``
+        when column statistics are available.
+        """
+        from pycypher.ast_models import NodePattern, Query, RelationshipPattern
+
         if match.pattern is None:
             return 0
 
-        total = 1
+        cardinality = 1
+        has_relationship = False
+
         for path in getattr(match.pattern, "paths", []):
             for element in getattr(path, "elements", []):
-                labels = getattr(element, "labels", [])
-                if labels:
-                    label = labels[0]
-                    mapping = context.entity_mapping.mapping
-                    if label in mapping:
-                        src = mapping[label].source_obj
-                        if hasattr(src, "__len__"):
-                            total *= len(src)
-                            continue
-                total *= 100  # Unknown cardinality default
-        return total
+                if isinstance(element, NodePattern):
+                    labels = getattr(element, "labels", [])
+                    if labels:
+                        label = labels[0]
+                        mapping = context.entity_mapping.mapping
+                        if label in mapping:
+                            src = mapping[label].source_obj
+                            if hasattr(src, "__len__"):
+                                if not has_relationship:
+                                    cardinality = len(src)
+                                continue
+                    if not has_relationship:
+                        cardinality *= 100  # Unknown entity default
+
+                elif isinstance(element, RelationshipPattern):
+                    has_relationship = True
+                    labels = getattr(element, "labels", [])
+                    if labels:
+                        label = labels[0]
+                        rel_mapping = context.relationship_mapping.mapping
+                        if label in rel_mapping:
+                            src = rel_mapping[label].source_obj
+                            if hasattr(src, "__len__"):
+                                # Relationship count bounds the join output
+                                cardinality = min(
+                                    cardinality * len(src)
+                                    if cardinality > 0
+                                    else len(src),
+                                    len(src),
+                                )
+                                continue
+                    cardinality *= 100  # Unknown relationship default
+
+        # Apply WHERE selectivity using column statistics if available
+        if getattr(match, "where", None) is not None:
+            try:
+                # Build a minimal Query wrapper to use QueryPlanAnalyzer
+                from pycypher.query_planner import QueryPlanAnalyzer
+
+                dummy_query = Query(clauses=[match])
+                analyzer = QueryPlanAnalyzer(dummy_query, context)
+                selectivity = analyzer.estimate_predicate_selectivity(
+                    match.where,
+                )
+                cardinality = max(1, int(cardinality * selectivity))
+            except Exception:
+                LOGGER.debug(
+                    "Failed to estimate WHERE selectivity; falling back to 0.33",
+                    exc_info=True,
+                )
+                cardinality = max(1, int(cardinality * 0.33))
+
+        return cardinality
 
 
 class PredicateSimplificationRule(OptimizationRule):
@@ -499,6 +553,87 @@ class PredicateSimplificationRule(OptimizationRule):
         )
 
 
+class IndexScanRule(OptimizationRule):
+    """Detect opportunities to use graph-native index scans.
+
+    Identifies MATCH patterns with relationship traversals that can benefit
+    from adjacency index lookups (O(degree) instead of O(E) table scans)
+    and inline property filters that can use property value indexes
+    (O(1) instead of O(N) scans).
+
+    """
+
+    name: str = "index_scan"
+
+    def analyze(
+        self,
+        ast: ASTNode,
+        context: Context | None = None,
+    ) -> OptimizationResult:
+        """Check for index scan opportunities."""
+        from pycypher.ast_models import (
+            Match,
+            NodePattern,
+            Query,
+            RelationshipPattern,
+        )
+
+        if not isinstance(ast, Query):
+            return OptimizationResult(
+                rule_name=self.name,
+                applied=False,
+                description="Not a Query AST",
+            )
+
+        index_opportunities = 0
+        adjacency_candidates = 0
+        property_candidates = 0
+
+        for clause in ast.clauses:
+            if not isinstance(clause, Match):
+                continue
+            for path in getattr(clause.pattern, "paths", []):
+                elements = getattr(path, "elements", [])
+                for element in elements:
+                    if isinstance(element, RelationshipPattern):
+                        # Every directed relationship traversal benefits from
+                        # adjacency index when pushdown IDs are available
+                        adjacency_candidates += 1
+                    elif isinstance(element, NodePattern):
+                        # Inline property filters benefit from property indexes
+                        if getattr(element, "properties", None):
+                            property_candidates += len(element.properties)
+
+        index_opportunities = adjacency_candidates + property_candidates
+
+        if index_opportunities > 0:
+            # Adjacency index: O(degree) vs O(E) → typically 10-100x for sparse graphs
+            # Property index: O(1) vs O(N) → typically 100-1000x for selective lookups
+            adj_speedup = 1.0 + (0.5 * min(adjacency_candidates, 5))
+            prop_speedup = 1.0 + (1.0 * min(property_candidates, 3))
+            combined = adj_speedup * prop_speedup
+
+            return OptimizationResult(
+                rule_name=self.name,
+                applied=True,
+                description=(
+                    f"{adjacency_candidates} adjacency index candidate(s), "
+                    f"{property_candidates} property index candidate(s)"
+                ),
+                estimated_speedup=combined,
+                hints={
+                    "index_adjacency_candidates": adjacency_candidates,
+                    "index_property_candidates": property_candidates,
+                },
+            )
+
+        return OptimizationResult(
+            rule_name=self.name,
+            applied=False,
+            description="No index scan opportunities found",
+        )
+
+
 # ---------------------------------------------------------------------------
 # QueryOptimizer — runs all rules
 # ---------------------------------------------------------------------------
@@ -524,6 +659,7 @@ class QueryOptimizer:
             LimitPushdownRule(),
             JoinReorderingRule(),
             PredicateSimplificationRule(),
+            IndexScanRule(),
         ]
 
     @classmethod
@@ -581,10 +717,17 @@ class QueryOptimizer:
                         result.description,
                         result.estimated_speedup,
                     )
-            except Exception:  # noqa: BLE001
-                LOGGER.warning(
-                    "Optimization rule '%s' failed, skipping",
+            except (
+                RuntimeError,
+                TypeError,
+                ValueError,
+                KeyError,
+                AttributeError,
+            ) as exc:
+                LOGGER.error(
+                    "Optimization rule '%s' failed (%s), skipping",
                     rule.name,
+                    type(exc).__name__,
                     exc_info=True,
                 )
                 plan.results.append(

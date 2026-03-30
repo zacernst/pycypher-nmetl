@@ -49,7 +49,7 @@ from pycypher.star import Star
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture()
+@pytest.fixture
 def bool_star() -> Star:
     """5 000-row context with ~1/3 null values in boolean and integer columns."""
     n = 5_000
@@ -65,10 +65,8 @@ def bool_star() -> Star:
                 True if i % 3 == 1 else (None if i % 3 == 2 else False)
                 for i in range(1, n + 1)
             ],
-            "age": [
-                20 + (i % 50) if i % 5 != 0 else None for i in range(1, n + 1)
-            ],
-        }
+            "age": [20 + (i % 50) if i % 5 != 0 else None for i in range(1, n + 1)],
+        },
     )
     table = EntityTable(
         entity_type="Person",
@@ -86,7 +84,7 @@ def bool_star() -> Star:
         context=Context(
             entity_mapping=EntityMapping(mapping={"Person": table}),
             relationship_mapping=RelationshipMapping(mapping={}),
-        )
+        ),
     )
 
 
@@ -114,7 +112,10 @@ class TestKleeneAndTruthTable:
         ],
     )
     def test_null_result(
-        self, lv: object, rv: object, expected_null: bool
+        self,
+        lv: object,
+        rv: object,
+        expected_null: bool,
     ) -> None:
         left = _make_series([lv])
         right = _make_series([rv])
@@ -137,7 +138,10 @@ class TestKleeneAndTruthTable:
         ],
     )
     def test_non_null_result(
-        self, lv: object, rv: object, expected: bool
+        self,
+        lv: object,
+        rv: object,
+        expected: bool,
     ) -> None:
         left = _make_series([lv])
         right = _make_series([rv])
@@ -165,7 +169,10 @@ class TestKleeneOrTruthTable:
         ],
     )
     def test_null_result(
-        self, lv: object, rv: object, expected_null: bool
+        self,
+        lv: object,
+        rv: object,
+        expected_null: bool,
     ) -> None:
         left = _make_series([lv])
         right = _make_series([rv])
@@ -188,7 +195,10 @@ class TestKleeneOrTruthTable:
         ],
     )
     def test_non_null_result(
-        self, lv: object, rv: object, expected: bool
+        self,
+        lv: object,
+        rv: object,
+        expected: bool,
     ) -> None:
         left = _make_series([lv])
         right = _make_series([rv])
@@ -230,7 +240,10 @@ class TestKleeneXorTruthTable:
         ],
     )
     def test_non_null_result(
-        self, lv: object, rv: object, expected: bool
+        self,
+        lv: object,
+        rv: object,
+        expected: bool,
     ) -> None:
         result = kleene_xor(_make_series([lv]), _make_series([rv]))
         assert not pd.isna(result.iloc[0])
@@ -285,7 +298,7 @@ class TestKleenePdNAHandling:
         left = pd.Series([pd.NA], dtype=object)
         right = pd.Series([False], dtype=object)
         result = kleene_and(left, right)
-        assert result.iloc[0] is False or result.iloc[0] == False, (  # noqa: E712
+        assert result.iloc[0] is False or result.iloc[0] == False, (
             f"Expected False for pd.NA AND False, got {result.iloc[0]!r}."
         )
 
@@ -294,7 +307,7 @@ class TestKleenePdNAHandling:
         left = pd.Series([pd.NA], dtype=object)
         right = pd.Series([True], dtype=object)
         result = kleene_or(left, right)
-        assert result.iloc[0] is True or result.iloc[0] == True, (  # noqa: E712
+        assert result.iloc[0] is True or result.iloc[0] == True, (
             f"Expected True for pd.NA OR True, got {result.iloc[0]!r}."
         )
 
@@ -330,7 +343,8 @@ def _reference_kleene_and(left: pd.Series, right: pd.Series) -> pd.Series:
         return True
 
     return pd.Series(
-        [_and(lv, rv) for lv, rv in zip(left, right)], dtype=object
+        [_and(lv, rv) for lv, rv in zip(left, right)],
+        dtype=object,
     )
 
 
@@ -340,7 +354,7 @@ class TestKleenePerformance:
     REPS = 50
     N = 5_000
 
-    @pytest.fixture()
+    @pytest.fixture
     def large_bool_series(self) -> tuple[pd.Series, pd.Series]:
         vals_l = [
             True if i % 3 == 0 else (None if i % 3 == 1 else False)
@@ -353,7 +367,8 @@ class TestKleenePerformance:
         return pd.Series(vals_l, dtype=object), pd.Series(vals_r, dtype=object)
 
     def test_kleene_and_faster_than_python_loop(
-        self, large_bool_series: tuple[pd.Series, pd.Series]
+        self,
+        large_bool_series: tuple[pd.Series, pd.Series],
     ) -> None:
         """kleene_and on 5 000 rows × 50 reps must be ≥ 5× faster than baseline."""
         left, right = large_bool_series
@@ -378,7 +393,8 @@ class TestKleenePerformance:
         )
 
     def test_kleene_and_absolute_threshold(
-        self, large_bool_series: tuple[pd.Series, pd.Series]
+        self,
+        large_bool_series: tuple[pd.Series, pd.Series],
     ) -> None:
         """50 × kleene_and on 5 000 rows must complete in under 0.5s."""
         left, right = large_bool_series
@@ -392,7 +408,8 @@ class TestKleenePerformance:
         )
 
     def test_kleene_or_absolute_threshold(
-        self, large_bool_series: tuple[pd.Series, pd.Series]
+        self,
+        large_bool_series: tuple[pd.Series, pd.Series],
     ) -> None:
         """50 × kleene_or on 5 000 rows must complete in under 0.5s."""
         left, right = large_bool_series
@@ -406,7 +423,8 @@ class TestKleenePerformance:
         )
 
     def test_kleene_xor_absolute_threshold(
-        self, large_bool_series: tuple[pd.Series, pd.Series]
+        self,
+        large_bool_series: tuple[pd.Series, pd.Series],
     ) -> None:
         """50 × kleene_xor on 5 000 rows must complete in under 0.5s."""
         left, right = large_bool_series
@@ -431,7 +449,7 @@ class TestKleeneQueryIntegration:
     def test_and_where_clause_correct_count(self, bool_star: Star) -> None:
         """WHERE active AND senior selects only rows where both are True."""
         result = bool_star.execute_query(
-            "MATCH (p:Person) WHERE p.active AND p.senior RETURN p.age"
+            "MATCH (p:Person) WHERE p.active AND p.senior RETURN p.age",
         )
         # active = True when id%3==0, senior = True when id%3==1
         # → active AND senior can never both be True simultaneously
@@ -442,7 +460,7 @@ class TestKleeneQueryIntegration:
     def test_or_where_clause_correct_count(self, bool_star: Star) -> None:
         """WHERE active OR senior captures rows where either is True."""
         result = bool_star.execute_query(
-            "MATCH (p:Person) WHERE p.active OR p.senior RETURN p.age"
+            "MATCH (p:Person) WHERE p.active OR p.senior RETURN p.age",
         )
         # active=True for id%3==0: 1666/5000, senior=True for id%3==1: 1667/5000
         # No overlap possible (different modulo classes)
@@ -454,7 +472,7 @@ class TestKleeneQueryIntegration:
     def test_compound_and_or_where_clause(self, bool_star: Star) -> None:
         """WHERE (age > 30) AND (active OR senior) selects non-null age + (active or senior)."""
         result = bool_star.execute_query(
-            "MATCH (p:Person) WHERE p.age > 30 AND (p.active OR p.senior) RETURN p.age"
+            "MATCH (p:Person) WHERE p.age > 30 AND (p.active OR p.senior) RETURN p.age",
         )
         # age is null for i%5==0, non-null otherwise
         # age > 30 means age >= 31, i.e., i%50 >= 11 (since age = 20 + i%50 for non-null)
@@ -469,7 +487,7 @@ class TestKleeneQueryIntegration:
     def test_null_and_false_excludes_row(self, bool_star: Star) -> None:
         """WHERE null AND false = false → row excluded (Kleene short-circuit)."""
         result = bool_star.execute_query(
-            "MATCH (p:Person) WHERE p.active AND false RETURN p.age"
+            "MATCH (p:Person) WHERE p.active AND false RETURN p.age",
         )
         assert len(result) == 0, (
             f"Expected 0 rows for WHERE active AND false (always false), got {len(result)}"
@@ -478,7 +496,7 @@ class TestKleeneQueryIntegration:
     def test_null_or_true_includes_row(self, bool_star: Star) -> None:
         """WHERE null OR true = true → all rows included (Kleene short-circuit)."""
         result = bool_star.execute_query(
-            "MATCH (p:Person) WHERE p.active OR true RETURN p.age"
+            "MATCH (p:Person) WHERE p.active OR true RETURN p.age",
         )
         # All 5000 rows should be returned (null OR true = true)
         assert len(result) == 5_000, (
@@ -486,7 +504,8 @@ class TestKleeneQueryIntegration:
         )
 
     def test_repeated_compound_queries_wall_clock(
-        self, bool_star: Star
+        self,
+        bool_star: Star,
     ) -> None:
         """100 compound-AND queries on 5 000-row frame must complete in < 2s total."""
         REPS = 100
@@ -494,13 +513,13 @@ class TestKleeneQueryIntegration:
 
         # Warm up parse cache
         bool_star.execute_query(
-            "MATCH (p:Person) WHERE p.active AND p.age > 30 RETURN p.age"
+            "MATCH (p:Person) WHERE p.active AND p.age > 30 RETURN p.age",
         )
 
         start = time.perf_counter()
         for _ in range(REPS):
             bool_star.execute_query(
-                "MATCH (p:Person) WHERE p.active AND p.age > 30 RETURN p.age"
+                "MATCH (p:Person) WHERE p.active AND p.age > 30 RETURN p.age",
             )
         elapsed = time.perf_counter() - start
 

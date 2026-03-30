@@ -1,5 +1,4 @@
-"""
-Scalar Function Evaluator for Cypher Scalar and Graph Introspection Functions.
+"""Scalar Function Evaluator for Cypher Scalar and Graph Introspection Functions.
 
 This module provides the ScalarFunctionEvaluator class, extracted from BindingExpressionEvaluator
 as part of Architecture Loop Phase 5. It handles evaluation of scalar functions including
@@ -9,6 +8,8 @@ Architecture Loop Phase 5 Note:
 This extraction follows the proven delegation pattern established in previous loops,
 maintaining 100% backward compatibility while achieving clear separation of concerns.
 """
+
+from __future__ import annotations
 
 import logging
 import time
@@ -35,8 +36,7 @@ _GRAPH_INTERNAL_COLS: frozenset[str] = frozenset(
 
 
 class ScalarFunctionEvaluator:
-    """
-    Evaluates Cypher scalar functions and graph introspection functions.
+    """Evaluates Cypher scalar functions and graph introspection functions.
 
     This class handles the evaluation of scalar function calls, with special handling
     for graph introspection functions that need to access variable metadata before
@@ -61,12 +61,12 @@ class ScalarFunctionEvaluator:
     """
 
     def __init__(self, frame: BindingFrame) -> None:
-        """
-        Initialize scalar function evaluator with binding frame context.
+        """Initialize scalar function evaluator with binding frame context.
 
         Args:
             frame: The BindingFrame containing variable bindings, type registry,
                 and context for function evaluation.
+
         """
         self.frame = frame
 
@@ -76,8 +76,7 @@ class ScalarFunctionEvaluator:
         func_args: Any,
         expression_evaluator: ExpressionEvaluatorProtocol,
     ) -> FrameSeries:
-        """
-        Main entry point for scalar function evaluation.
+        """Main entry point for scalar function evaluation.
 
         Handles the following function families before delegating to the
         ScalarFunctionRegistry:
@@ -120,6 +119,7 @@ class ScalarFunctionEvaluator:
         Raises:
             ValueError: If *func_name* is an aggregation function used in a
                 scalar context, or if the function is unknown to the registry.
+
         """
         _t0 = time.perf_counter()
         _nrows = len(self.frame) if hasattr(self.frame, "__len__") else -1
@@ -133,19 +133,19 @@ class ScalarFunctionEvaluator:
         arg_expressions: list[Any] = _normalize_func_args(func_args)
 
         # --- Graph introspection & special-case handlers ---
+        # O(1) dictionary dispatch keyed by lowercase function name.
         # Each handler returns a pd.Series on match or None to pass through.
-        # Tried in order (lazy); first non-None result wins.
-        _handlers: tuple[tuple[str, Any], ...] = (
-            ("path_length", lambda: self._eval_path_length(name, arg_expressions)),
-            ("labels", lambda: self._eval_labels(name_lower, arg_expressions)),
-            ("type", lambda: self._eval_type(name_lower, arg_expressions)),
-            ("keys", lambda: self._eval_keys(name_lower, arg_expressions)),
-            ("properties", lambda: self._eval_properties(name_lower, arg_expressions)),
-            ("start_end_node", lambda: self._eval_start_end_node(name_lower, arg_expressions)),
-            ("min_max", lambda: self._eval_min_max_special_case(name_lower, arg_expressions, expression_evaluator)),
-        )
-        for handler_name, handler_fn in _handlers:
-            result = handler_fn()
+        _handler = _SPECIAL_CASE_DISPATCH.get(name_lower)
+        if _handler is not None:
+            handler_name, handler_fn = _handler
+            if handler_name == "min_max":
+                result = handler_fn(
+                    self, name_lower, arg_expressions, expression_evaluator
+                )
+            elif handler_name == "path_length":
+                result = handler_fn(self, name, arg_expressions)
+            else:
+                result = handler_fn(self, name_lower, arg_expressions)
             if result is not None:
                 if _DEBUG_ENABLED:
                     LOGGER.debug(
@@ -178,8 +178,7 @@ class ScalarFunctionEvaluator:
         name: str,
         arg_expressions: list[Any],
     ) -> pd.Series | None:
-        """
-        Evaluate length(path_var) for variable-length path hop counts.
+        """Evaluate length(path_var) for variable-length path hop counts.
 
         Returns the hop count column stored by _expand_variable_length_path.
 
@@ -189,6 +188,7 @@ class ScalarFunctionEvaluator:
 
         Returns:
             Series of hop counts if this is a path length call, None otherwise.
+
         """
         if (
             name.lower() == "length"
@@ -205,8 +205,7 @@ class ScalarFunctionEvaluator:
         name_lower: str,
         arg_expressions: list[Any],
     ) -> pd.Series | None:
-        """
-        Evaluate labels(n) to return entity type label list.
+        """Evaluate labels(n) to return entity type label list.
 
         Returns a list-per-row containing the entity type label(s).
 
@@ -216,6 +215,7 @@ class ScalarFunctionEvaluator:
 
         Returns:
             Series of label lists if this is a labels call, None otherwise.
+
         """
         if (
             name_lower == "labels"
@@ -234,8 +234,7 @@ class ScalarFunctionEvaluator:
         name_lower: str,
         arg_expressions: list[Any],
     ) -> pd.Series | None:
-        """
-        Evaluate type(r) to return relationship type string.
+        """Evaluate type(r) to return relationship type string.
 
         Returns the relationship type string for every row.
 
@@ -245,6 +244,7 @@ class ScalarFunctionEvaluator:
 
         Returns:
             Series of type strings if this is a type call, None otherwise.
+
         """
         if (
             name_lower == "type"
@@ -263,8 +263,7 @@ class ScalarFunctionEvaluator:
         name_lower: str,
         arg_expressions: list[Any],
     ) -> pd.Series | None:
-        """
-        Evaluate keys(n) to return property column names.
+        """Evaluate keys(n) to return property column names.
 
         Returns the list of user-visible property column names, excluding all
         internal columns (__ID__, __SOURCE__, __TARGET__). Checks both
@@ -277,6 +276,7 @@ class ScalarFunctionEvaluator:
 
         Returns:
             Series of property key lists if this is a keys call, None otherwise.
+
         """
         if (
             name_lower == "keys"
@@ -286,7 +286,7 @@ class ScalarFunctionEvaluator:
             var_name = arg_expressions[0].name
             entity_type = self.frame.type_registry.get(var_name)
             if entity_type is not None:
-                from pycypher.binding_frame import _source_to_pandas
+                from pycypher.dataframe_utils import source_to_pandas as _source_to_pandas
 
                 ctx = self.frame.context
                 try:
@@ -322,8 +322,7 @@ class ScalarFunctionEvaluator:
         name_lower: str,
         arg_expressions: list[Any],
     ) -> pd.Series | None:
-        """
-        Evaluate properties(n) to return property dictionary.
+        """Evaluate properties(n) to return property dictionary.
 
         Returns all user-visible properties of a node or relationship as a
         dict per row. Internal columns (__ID__, __SOURCE__, __TARGET__) are
@@ -336,6 +335,7 @@ class ScalarFunctionEvaluator:
 
         Returns:
             Series of property dicts if this is a properties call, None otherwise.
+
         """
         if (
             name_lower == "properties"
@@ -345,7 +345,7 @@ class ScalarFunctionEvaluator:
             var_name = arg_expressions[0].name
             entity_type = self.frame.type_registry.get(var_name)
             if entity_type is not None:
-                from pycypher.binding_frame import _source_to_pandas
+                from pycypher.dataframe_utils import source_to_pandas as _source_to_pandas
                 from pycypher.constants import ID_COLUMN as _ID_COL
 
                 ctx = self.frame.context
@@ -403,8 +403,7 @@ class ScalarFunctionEvaluator:
         name_lower: str,
         arg_expressions: list[Any],
     ) -> pd.Series | None:
-        """
-        Evaluate startNode(r) / endNode(r) to return relationship endpoints.
+        """Evaluate startNode(r) / endNode(r) to return relationship endpoints.
 
         Returns the source (__SOURCE__) or target (__TARGET__) node ID for
         each relationship in the binding frame. The relationship variable
@@ -416,6 +415,7 @@ class ScalarFunctionEvaluator:
 
         Returns:
             Series of node IDs if this is a startNode/endNode call, None otherwise.
+
         """
         if (
             name_lower in {"startnode", "endnode"}
@@ -425,7 +425,7 @@ class ScalarFunctionEvaluator:
             var_name = arg_expressions[0].name
             rel_type = self.frame.type_registry.get(var_name)
             if rel_type is not None:
-                from pycypher.binding_frame import _source_to_pandas
+                from pycypher.dataframe_utils import source_to_pandas as _source_to_pandas
                 from pycypher.constants import ID_COLUMN as _ID_COL
                 from pycypher.constants import (
                     RELATIONSHIP_SOURCE_COLUMN as _SRC_COL,
@@ -460,8 +460,7 @@ class ScalarFunctionEvaluator:
         arg_expressions: list[Any],
         expression_evaluator: ExpressionEvaluatorProtocol,
     ) -> pd.Series | None:
-        """
-        Handle min/max special case for list arguments.
+        """Handle min/max special case for list arguments.
 
         min/max are dual-purpose: aggregation over rows *or* scalar over a list.
         When called with a list-valued argument (e.g. min([1, 2, 3])) or with
@@ -475,6 +474,7 @@ class ScalarFunctionEvaluator:
 
         Returns:
             Series result if this is a scalar min/max call, None otherwise.
+
         """
         if name_lower in {"min", "max"} and len(arg_expressions) == 1:
             _probe = expression_evaluator.evaluate(arg_expressions[0])
@@ -497,8 +497,7 @@ class ScalarFunctionEvaluator:
         return None
 
     def _validate_not_aggregation(self, name_lower: str, name: str) -> None:
-        """
-        Validate that the function is not an aggregation function in scalar context.
+        """Validate that the function is not an aggregation function in scalar context.
 
         Args:
             name_lower: Lowercase function name
@@ -507,13 +506,14 @@ class ScalarFunctionEvaluator:
         Raises:
             WrongCypherTypeError: If the function is a known aggregation function
                 used in a scalar expression context.
+
         """
         if name_lower in KNOWN_AGGREGATIONS:
             from pycypher.exceptions import WrongCypherTypeError
 
             raise WrongCypherTypeError(
                 f"'{name}' is an aggregation function and cannot be used in a scalar "
-                f"expression context (e.g. WHERE clause). Use it in RETURN or WITH instead."
+                f"expression context (e.g. WHERE clause). Use it in RETURN or WITH instead.",
             )
 
     def _eval_registry_function(
@@ -522,8 +522,7 @@ class ScalarFunctionEvaluator:
         arg_expressions: list[Any],
         expression_evaluator: ExpressionEvaluatorProtocol,
     ) -> FrameSeries:
-        """
-        Delegate to ScalarFunctionRegistry for standard scalar function evaluation.
+        """Delegate to ScalarFunctionRegistry for standard scalar function evaluation.
 
         This handles all functions not covered by the special cases above,
         including standard scalar functions like toInteger, toLower, substring,
@@ -539,6 +538,7 @@ class ScalarFunctionEvaluator:
 
         Raises:
             ValueError: If the function is unknown to the registry.
+
         """
         arg_series: list[pd.Series] = [
             expression_evaluator.evaluate(a) for a in arg_expressions
@@ -565,3 +565,18 @@ class ScalarFunctionEvaluator:
                 msg=f"ScalarFunctionEvaluator: calling scalar '{name}' with {len(arg_series)} args",
             )
         return expression_evaluator.scalar_registry.execute(name, arg_series)
+
+
+# Module-level O(1) dispatch table for special-case scalar functions.
+# Maps lowercase function name → (handler_label, unbound_method).
+_SPECIAL_CASE_DISPATCH: dict[str, tuple[str, Any]] = {
+    "length": ("path_length", ScalarFunctionEvaluator._eval_path_length),
+    "labels": ("labels", ScalarFunctionEvaluator._eval_labels),
+    "type": ("type", ScalarFunctionEvaluator._eval_type),
+    "keys": ("keys", ScalarFunctionEvaluator._eval_keys),
+    "properties": ("properties", ScalarFunctionEvaluator._eval_properties),
+    "startnode": ("start_end_node", ScalarFunctionEvaluator._eval_start_end_node),
+    "endnode": ("start_end_node", ScalarFunctionEvaluator._eval_start_end_node),
+    "min": ("min_max", ScalarFunctionEvaluator._eval_min_max_special_case),
+    "max": ("min_max", ScalarFunctionEvaluator._eval_min_max_special_case),
+}

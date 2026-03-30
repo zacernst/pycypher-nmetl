@@ -10,11 +10,9 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
-
 from shared.compat import (
-    APISurface,
     NEO4J_COMPAT_NOTES,
+    APISurface,
     SurfaceDiff,
     SymbolInfo,
     check_neo4j_compat,
@@ -23,7 +21,6 @@ from shared.compat import (
     save_snapshot,
     snapshot_api_surface,
 )
-
 
 # ---------------------------------------------------------------------------
 # SymbolInfo
@@ -34,9 +31,16 @@ class TestSymbolInfo:
     """Tests for SymbolInfo dataclass."""
 
     def test_to_dict_with_signature(self) -> None:
-        sym = SymbolInfo(name="foo", kind="function", signature="() -> None", module="mod")
+        sym = SymbolInfo(
+            name="foo", kind="function", signature="() -> None", module="mod",
+        )
         d = sym.to_dict()
-        assert d == {"name": "foo", "kind": "function", "signature": "() -> None", "module": "mod"}
+        assert d == {
+            "name": "foo",
+            "kind": "function",
+            "signature": "() -> None",
+            "module": "mod",
+        }
 
     def test_to_dict_without_signature(self) -> None:
         sym = SymbolInfo(name="X", kind="constant")
@@ -46,7 +50,9 @@ class TestSymbolInfo:
         assert "module" not in d
 
     def test_from_dict_roundtrip(self) -> None:
-        sym = SymbolInfo(name="Bar", kind="class", signature="(x: int)", module="pkg.bar")
+        sym = SymbolInfo(
+            name="Bar", kind="class", signature="(x: int)", module="pkg.bar",
+        )
         restored = SymbolInfo.from_dict(sym.to_dict())
         assert restored.name == sym.name
         assert restored.kind == sym.kind
@@ -189,20 +195,26 @@ class TestDiffSurfaces:
 
     def test_added_symbol(self) -> None:
         old = self._make_surface("1.0", {"A": SymbolInfo(name="A", kind="class")})
-        new = self._make_surface("1.1", {
-            "A": SymbolInfo(name="A", kind="class"),
-            "B": SymbolInfo(name="B", kind="function"),
-        })
+        new = self._make_surface(
+            "1.1",
+            {
+                "A": SymbolInfo(name="A", kind="class"),
+                "B": SymbolInfo(name="B", kind="function"),
+            },
+        )
         diff = diff_surfaces(old, new)
         assert len(diff.added) == 1
         assert diff.added[0].name == "B"
         assert not diff.has_breaking_changes
 
     def test_removed_symbol(self) -> None:
-        old = self._make_surface("1.0", {
-            "A": SymbolInfo(name="A", kind="class"),
-            "B": SymbolInfo(name="B", kind="function"),
-        })
+        old = self._make_surface(
+            "1.0",
+            {
+                "A": SymbolInfo(name="A", kind="class"),
+                "B": SymbolInfo(name="B", kind="function"),
+            },
+        )
         new = self._make_surface("1.1", {"A": SymbolInfo(name="A", kind="class")})
         diff = diff_surfaces(old, new)
         assert len(diff.removed) == 1
@@ -210,12 +222,18 @@ class TestDiffSurfaces:
         assert diff.has_breaking_changes
 
     def test_changed_signature(self) -> None:
-        old = self._make_surface("1.0", {
-            "foo": SymbolInfo(name="foo", kind="function", signature="(x: int)"),
-        })
-        new = self._make_surface("1.1", {
-            "foo": SymbolInfo(name="foo", kind="function", signature="(x: str)"),
-        })
+        old = self._make_surface(
+            "1.0",
+            {
+                "foo": SymbolInfo(name="foo", kind="function", signature="(x: int)"),
+            },
+        )
+        new = self._make_surface(
+            "1.1",
+            {
+                "foo": SymbolInfo(name="foo", kind="function", signature="(x: str)"),
+            },
+        )
         diff = diff_surfaces(old, new)
         assert len(diff.changed) == 1
         assert diff.changed[0][0].signature == "(x: int)"
@@ -224,12 +242,18 @@ class TestDiffSurfaces:
 
     def test_signature_none_not_flagged_as_change(self) -> None:
         """Constants with no signature should not be flagged as changed."""
-        old = self._make_surface("1.0", {
-            "X": SymbolInfo(name="X", kind="constant", signature=None),
-        })
-        new = self._make_surface("1.1", {
-            "X": SymbolInfo(name="X", kind="constant", signature=None),
-        })
+        old = self._make_surface(
+            "1.0",
+            {
+                "X": SymbolInfo(name="X", kind="constant", signature=None),
+            },
+        )
+        new = self._make_surface(
+            "1.1",
+            {
+                "X": SymbolInfo(name="X", kind="constant", signature=None),
+            },
+        )
         diff = diff_surfaces(old, new)
         assert diff.changed == []
 

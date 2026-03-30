@@ -56,7 +56,7 @@ class SecurityReport:
                 category=category,
                 message=message,
                 location=location,
-            )
+            ),
         )
 
     @property
@@ -94,11 +94,13 @@ _INLINE_SECRET_NAMES = frozenset(
         "APIKEY",
         "PRIVATE_KEY",
         "SECRET_KEY",
-    }
+    },
 )
 
 
-def _check_uri_security(uri: str, location: str, report: SecurityReport) -> None:
+def _check_uri_security(
+    uri: str, location: str, report: SecurityReport
+) -> None:
     """Check a single URI for security issues."""
     parsed = urlparse(uri)
 
@@ -141,7 +143,9 @@ def _check_uri_security(uri: str, location: str, report: SecurityReport) -> None
         )
 
 
-def _check_env_var_patterns(value: str, location: str, report: SecurityReport) -> None:
+def _check_env_var_patterns(
+    value: str, location: str, report: SecurityReport
+) -> None:
     """Check environment variable references for unsafe patterns."""
     for match in _ENV_VAR_REF.finditer(value):
         var_name = match.group(1)
@@ -160,7 +164,9 @@ def _check_env_var_patterns(value: str, location: str, report: SecurityReport) -
                 break
 
 
-def _check_glob_pattern(pattern: str, location: str, report: SecurityReport) -> None:
+def _check_glob_pattern(
+    pattern: str, location: str, report: SecurityReport
+) -> None:
     """Check file glob patterns for overly broad matches."""
     stripped = pattern.strip()
     if stripped in _BROAD_GLOBS:
@@ -173,7 +179,9 @@ def _check_glob_pattern(pattern: str, location: str, report: SecurityReport) -> 
         )
 
 
-def _check_query_injection(query: str, location: str, report: SecurityReport) -> None:
+def _check_query_injection(
+    query: str, location: str, report: SecurityReport
+) -> None:
     """Check inline queries for potential injection patterns."""
     # Env var substitution inside SQL/Cypher queries is risky
     if _ENV_VAR_REF.search(query):
@@ -194,6 +202,7 @@ def scan_config(config: object) -> SecurityReport:
 
     Returns:
         A SecurityReport with all findings.
+
     """
     report = SecurityReport()
 
@@ -317,12 +326,19 @@ def security_check(
     cfg = load_config(config)
     report = scan_config(cfg)
 
-    severity_order = [Severity.INFO, Severity.LOW, Severity.MEDIUM, Severity.HIGH]
+    severity_order = [
+        Severity.INFO,
+        Severity.LOW,
+        Severity.MEDIUM,
+        Severity.HIGH,
+    ]
     min_idx = severity_order.index(Severity(severity))
     fail_idx = severity_order.index(Severity(fail_on))
 
     filtered = [
-        f for f in report.findings if severity_order.index(f.severity) >= min_idx
+        f
+        for f in report.findings
+        if severity_order.index(f.severity) >= min_idx
     ]
 
     if output_json:
@@ -341,27 +357,31 @@ def security_check(
     else:
         if not filtered:
             click.echo(
-                click.style("No security findings.", fg="green", bold=True)
+                click.style("No security findings.", fg="green", bold=True),
             )
         else:
             click.echo(
                 click.style(
                     f"Security scan: {len(filtered)} finding(s)",
                     bold=True,
-                )
+                ),
             )
             click.echo()
             for f in sorted(
-                filtered, key=lambda x: severity_order.index(x.severity), reverse=True
+                filtered,
+                key=lambda x: severity_order.index(x.severity),
+                reverse=True,
             ):
                 symbol = _SEVERITY_SYMBOLS[f.severity]
                 color = _SEVERITY_COLORS[f.severity]
                 sev = click.style(
-                    f"[{f.severity.value.upper()}]", fg=color, bold=True
+                    f"[{f.severity.value.upper()}]",
+                    fg=color,
+                    bold=True,
                 )
                 click.echo(f"  {symbol} {sev} {f.message}")
                 click.echo(
-                    f"     {click.style(f.location, dim=True)}"
+                    f"     {click.style(f.location, dim=True)}",
                 )
             click.echo()
 

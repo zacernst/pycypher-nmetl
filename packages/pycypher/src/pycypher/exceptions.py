@@ -5,6 +5,37 @@ package for handling specific error conditions during query parsing and
 execution.
 """
 
+from __future__ import annotations
+
+# Base URL for error documentation.  Change this single value when the
+# docs site moves.  Set to ``""`` to suppress all doc links.
+_DOCS_BASE_URL = "https://pycypher.readthedocs.io/en/latest"
+
+# Mapping from exception class name → docs page anchor.
+_DOCS_ANCHORS: dict[str, str] = {
+    "CypherSyntaxError": "/user_guide/error_handling.html#cyphersyntaxerror",
+    "QueryTimeoutError": "/user_guide/error_handling.html#querytimeouterror",
+    "QueryMemoryBudgetError": "/user_guide/error_handling.html#querymemorybudgeterror",
+    "VariableNotFoundError": "/user_guide/error_handling.html#variablenotfounderror",
+    "UnsupportedFunctionError": "/user_guide/error_handling.html#unsupportedfunctionerror",
+    "QueryComplexityError": "/user_guide/error_handling.html#querycomplexityerror",
+    "CyclicDependencyError": "/user_guide/error_handling.html#cyclicdependencyerror",
+    "SecurityError": "/user_guide/error_handling.html#securityerror",
+    "RateLimitError": "/user_guide/error_handling.html#ratelimiterror",
+    "GraphTypeNotFoundError": "/user_guide/error_handling.html#graphtypenotfounderror",
+    "FunctionArgumentError": "/user_guide/error_handling.html#unsupportedfunctionerror",
+    "MissingParameterError": "/user_guide/error_handling.html#catching-runtime-errors",
+    "ASTConversionError": "/user_guide/error_handling.html#catching-parse-errors",
+}
+
+
+def _docs_hint(cls_name: str) -> str:
+    """Return a doc-link hint string for the given exception class, or ``""``."""
+    anchor = _DOCS_ANCHORS.get(cls_name, "")
+    if anchor and _DOCS_BASE_URL:
+        return f"\nDocs: {_DOCS_BASE_URL}{anchor}"
+    return ""
+
 
 class GraphTypeNotFoundError(ValueError):
     """Raised when a node label or relationship type is not registered in the context.
@@ -27,19 +58,33 @@ class GraphTypeNotFoundError(ValueError):
 
     """
 
-    def __init__(self, type_name: str, message: str = "") -> None:
+    def __init__(
+        self,
+        type_name: str,
+        message: str = "",
+        available_types: list[str] | None = None,
+    ) -> None:
         """Initialise with the missing type name and an optional detail message.
 
         Args:
             type_name: The label or relationship type that was absent.
             message: Optional additional detail; if omitted a default is used.
+            available_types: Known types in the context, shown as a hint.
 
         """
         self.type_name = type_name
-        detail = (
-            message
-            or f"Graph type {type_name!r} is not registered in the context."
-        )
+        self.available_types = available_types
+        if message:
+            detail = message
+        else:
+            detail = f"Graph type {type_name!r} is not registered in the context."
+            if available_types:
+                detail += f" Available types: {', '.join(sorted(available_types))}."
+            detail += (
+                " Check that you loaded the correct data source with a "
+                "matching entity_type or relationship_type."
+            )
+        detail += _docs_hint("GraphTypeNotFoundError")
         super().__init__(detail)
 
     def __repr__(self) -> str:
@@ -143,6 +188,7 @@ class ASTConversionError(ValueError):
         else:
             full_message = message
 
+        full_message += _docs_hint("ASTConversionError")
         super().__init__(full_message)
 
     def __repr__(self) -> str:
@@ -227,12 +273,70 @@ class CypherSyntaxError(SyntaxError):
     shows the offending line, column position, and what the parser expected,
     without leaking internal terminal names like ``__ANON_0``.
 
+    Includes keyword typo detection: when the token at the error position is
+    close to a known Cypher keyword, a "Did you mean ...?" suggestion is
+    appended automatically.
+
     Attributes:
         query: The original query string.
         line: 1-based line number of the error.
         column: 1-based column number of the error.
+        keyword_suggestion: Suggested keyword if a typo was detected, or ``""``.
 
     """
+
+    # Comprehensive set of Cypher keywords for typo detection.
+    _CYPHER_KEYWORDS: tuple[str, ...] = (
+        "MATCH",
+        "OPTIONAL",
+        "WHERE",
+        "WITH",
+        "RETURN",
+        "ORDER",
+        "BY",
+        "SKIP",
+        "LIMIT",
+        "CREATE",
+        "MERGE",
+        "DELETE",
+        "DETACH",
+        "SET",
+        "REMOVE",
+        "UNWIND",
+        "FOREACH",
+        "CALL",
+        "YIELD",
+        "UNION",
+        "ON",
+        "AND",
+        "OR",
+        "XOR",
+        "NOT",
+        "IN",
+        "IS",
+        "NULL",
+        "STARTS",
+        "ENDS",
+        "CONTAINS",
+        "AS",
+        "DISTINCT",
+        "ALL",
+        "ANY",
+        "NONE",
+        "SINGLE",
+        "EXISTS",
+        "ASC",
+        "DESC",
+        "ASCENDING",
+        "DESCENDING",
+        "CASE",
+        "WHEN",
+        "THEN",
+        "ELSE",
+        "END",
+        "TRUE",
+        "FALSE",
+    )
 
     def __init__(
         self,
@@ -248,6 +352,7 @@ class CypherSyntaxError(SyntaxError):
         """
         self.query = query
         self.original = original
+        self.keyword_suggestion: str = ""
 
         # Extract line/column from Lark exceptions when available
         raw_line = getattr(original, "line", None)
@@ -306,7 +411,9 @@ class CypherSyntaxError(SyntaxError):
             "DASH": "-",
         }
         expected = getattr(original, "expected", None) or getattr(
-            original, "allowed", None
+            original,
+            "allowed",
+            None,
         )
         if expected:
             clean = sorted(
@@ -314,12 +421,113 @@ class CypherSyntaxError(SyntaxError):
                     _FRIENDLY_NAMES.get(t.strip("\"'"), t.strip("\"'"))
                     for t in expected
                     if not t.startswith("__") and not t.startswith("_")
-                )
+                ),
             )
             if clean:
                 parts.append(f"\nExpected: {', '.join(clean)}")
 
+        # --- Keyword typo detection ---
+        # Extract the token at the error position and check if it's close
+        # to a known Cypher keyword.
+        self.keyword_suggestion = self._detect_keyword_typo(query)
+        if self.keyword_suggestion:
+            parts.append(f"\n{self.keyword_suggestion}")
+
+        # --- Contextual guidance ---
+        guidance = self._contextual_guidance(query)
+        if guidance:
+            parts.append(f"\n{guidance}")
+
+        # --- Documentation link ---
+        doc_hint = _docs_hint("CypherSyntaxError")
+        if doc_hint:
+            parts.append(doc_hint)
+
         super().__init__("".join(parts))
+
+    def _detect_keyword_typo(self, query: str) -> str:
+        """Check if the token at the error position is a misspelling of a keyword.
+
+        Returns a suggestion string like ``"Did you mean 'MATCH'?"`` or ``""``.
+        """
+        import difflib
+
+        token = self._extract_error_token(query)
+        if not token or len(token) < 2:
+            return ""
+
+        token_upper = token.upper()
+        # Don't suggest if it's already a valid keyword
+        if token_upper in self._CYPHER_KEYWORDS:
+            return ""
+
+        matches = difflib.get_close_matches(
+            token_upper,
+            self._CYPHER_KEYWORDS,
+            n=1,
+            cutoff=0.6,
+        )
+        if matches:
+            return f"Did you mean '{matches[0]}'?"
+        return ""
+
+    def _extract_error_token(self, query: str) -> str:
+        """Extract the identifier/word token at the error position."""
+        if self.line is None or self.column is None:
+            return ""
+        lines = query.splitlines()
+        if not (0 < self.line <= len(lines)):
+            return ""
+        line_text = lines[self.line - 1]
+        col_idx = self.column - 1  # 0-based
+        if col_idx >= len(line_text):
+            return ""
+
+        # Walk backwards to find start of word
+        start = col_idx
+        while start > 0 and (
+            line_text[start - 1].isalnum() or line_text[start - 1] == "_"
+        ):
+            start -= 1
+        # Walk forwards to find end of word
+        end = col_idx
+        while end < len(line_text) and (
+            line_text[end].isalnum() or line_text[end] == "_"
+        ):
+            end += 1
+
+        return line_text[start:end]
+
+    def _contextual_guidance(self, query: str) -> str:
+        """Return contextual guidance based on the error pattern."""
+        query_stripped = query.strip()
+        query_upper = query_stripped.upper()
+
+        # Missing RETURN clause
+        if "RETURN" not in query_upper and query_upper.startswith("MATCH"):
+            return "Hint: MATCH queries require a RETURN clause."
+
+        # WHERE without preceding MATCH
+        if query_upper.startswith("WHERE"):
+            return "Hint: WHERE must follow a MATCH, WITH, or OPTIONAL MATCH clause."
+
+        # Unclosed string literal
+        single_quotes = query.count("'")
+        double_quotes = query.count('"')
+        if single_quotes % 2 != 0:
+            return "Hint: Unclosed string literal — check for a missing closing quote (')."
+        if double_quotes % 2 != 0:
+            return 'Hint: Unclosed string literal — check for a missing closing quote (").'
+
+        # Unclosed parentheses/brackets/braces
+        if query.count("(") > query.count(")"):
+            return "Hint: Unclosed parenthesis — check for a missing ')'."
+        if query.count("[") > query.count("]"):
+            return "Hint: Unclosed bracket — check for a missing ']'."
+        if query.count("{") > query.count("}"):
+            return "Hint: Unclosed brace — check for a missing '}'."
+
+        return ""
 
     def __repr__(self) -> str:
         """Return a repr exposing structured attributes for REPL inspection."""
@@ -362,6 +570,7 @@ class VariableNotFoundError(ValueError):
         else:
             message = f"Variable '{variable_name}' is not defined. No variables are in scope.{hint}"
 
+        message += _docs_hint("VariableNotFoundError")
         super().__init__(message)
 
     def __repr__(self) -> str:
@@ -573,6 +782,7 @@ class UnsupportedFunctionError(ValueError):
             f"Unsupported {category_desc}function: '{function_name}'. "
             f"Supported: {supported_str}"
         )
+        message += _docs_hint("UnsupportedFunctionError")
 
         super().__init__(message)
 
@@ -628,6 +838,7 @@ class FunctionArgumentError(ValueError):
         if argument_description:
             message += f". Expected: {argument_description}"
 
+        message += _docs_hint("FunctionArgumentError")
         super().__init__(message)
 
     def __repr__(self) -> str:
@@ -680,6 +891,7 @@ class QueryTimeoutError(TimeoutError):
                 else query_fragment
             )
             message += f". Query: {short!r}"
+        message += _docs_hint("QueryTimeoutError")
 
         super().__init__(message)
 
@@ -736,6 +948,7 @@ class QueryMemoryBudgetError(MemoryError):
                 "or use SKIP/LIMIT to process in batches. "
                 "To allow larger queries: increase memory_budget_bytes."
             )
+        message += _docs_hint("QueryMemoryBudgetError")
 
         super().__init__(message)
 
@@ -774,6 +987,7 @@ class MissingParameterError(ValueError):
         )
 
         message = f"Parameter '${parameter_name}' not provided. Use: {self.example_usage}"
+        message += _docs_hint("MissingParameterError")
         super().__init__(message)
 
     def __repr__(self) -> str:
@@ -856,6 +1070,27 @@ class PatternComprehensionError(ValueError):
         return f"PatternComprehensionError(detail={self.detail!r})"
 
 
+_COMPLEXITY_HINTS: dict[str, str] = {
+    "match_clauses": "reduce the number of MATCH clauses or combine patterns",
+    "optional_match": "remove OPTIONAL MATCH clauses or replace with WHERE filters",
+    "cross_products": "add join conditions to avoid Cartesian products",
+    "pattern_length": "shorten variable-length path patterns (e.g. *1..3 instead of *1..10)",
+    "unwind_clauses": "reduce UNWIND nesting or pre-filter the list",
+    "subqueries": "inline subqueries or break into separate pipeline queries",
+    "aggregations": "reduce the number of aggregation functions",
+    "return_columns": "return fewer columns",
+}
+
+
+def _complexity_suggestions(contributor_names: list[str]) -> list[str]:
+    """Return actionable suggestions for the given complexity contributors."""
+    return [
+        _COMPLEXITY_HINTS[name]
+        for name in contributor_names
+        if name in _COMPLEXITY_HINTS
+    ]
+
+
 class QueryComplexityError(ValueError):
     """Raised when a query's complexity score exceeds the configured limit.
 
@@ -891,11 +1126,21 @@ class QueryComplexityError(ValueError):
         )[:3]
         top_str = ", ".join(f"{k}={v}" for k, v in top_contributors)
 
+        # Build actionable suggestions based on top contributors.
+        suggestions = _complexity_suggestions(
+            [k for k, _ in top_contributors],
+        )
+
         message = (
             f"Query complexity score {score} exceeds limit {limit}. "
-            f"Top contributors: {top_str}. "
-            f"Simplify the query or increase max_complexity_score."
+            f"Top contributors: {top_str}."
         )
+        if suggestions:
+            message += " To reduce complexity: " + "; ".join(suggestions) + "."
+        message += (
+            " Or increase PYCYPHER_MAX_COMPLEXITY_SCORE to allow larger queries."
+        )
+        message += _docs_hint("QueryComplexityError")
         super().__init__(message)
 
     def __repr__(self) -> str:
@@ -929,16 +1174,68 @@ class CyclicDependencyError(ValueError):
 
         """
         self.remaining_nodes = remaining_nodes
+        sorted_nodes = sorted(remaining_nodes)
+        node_list = ", ".join(sorted_nodes)
         detail = message or (
             f"Circular dependency detected in query graph. "
-            f"Remaining nodes: {remaining_nodes}"
+            f"Queries involved in the cycle: {node_list}. "
+            f"To resolve: check that these queries do not mutually depend "
+            f"on each other's output types, or break the cycle by splitting "
+            f"a query into separate read/write steps."
         )
+        detail += _docs_hint("CyclicDependencyError")
         super().__init__(detail)
 
     def __repr__(self) -> str:
         """Return a repr exposing structured attributes for REPL inspection."""
         return (
             f"CyclicDependencyError(remaining_nodes={self.remaining_nodes!r})"
+        )
+
+
+class WorkerExecutionError(RuntimeError):
+    """Raised when a query fails inside a cluster worker.
+
+    Wraps the original exception with worker identity and timing context
+    so that distributed failures can be diagnosed without correlating
+    separate log streams.
+
+    Attributes:
+        worker_id: Identifier of the worker that encountered the failure.
+        query_snippet: First 80 characters of the query that failed.
+        elapsed_ms: Wall-clock time in milliseconds before the failure.
+
+    Example::
+
+        try:
+            worker.execute_query("MATCH (n) RETURN n")
+        except WorkerExecutionError as exc:
+            print(f"Worker {exc.worker_id} failed after {exc.elapsed_ms:.0f}ms")
+
+    """
+
+    def __init__(
+        self,
+        worker_id: str,
+        query_snippet: str,
+        elapsed_ms: float,
+        message: str = "",
+    ) -> None:
+        self.worker_id = worker_id
+        self.query_snippet = query_snippet
+        self.elapsed_ms = elapsed_ms
+        detail = message or (
+            f"Worker {worker_id!r} failed after {elapsed_ms:.1f}ms "
+            f"executing: {query_snippet}"
+        )
+        super().__init__(detail)
+
+    def __repr__(self) -> str:
+        """Return a repr exposing structured attributes for REPL inspection."""
+        return (
+            f"WorkerExecutionError(worker_id={self.worker_id!r}, "
+            f"elapsed_ms={self.elapsed_ms:.1f}, "
+            f"query_snippet={self.query_snippet!r})"
         )
 
 
@@ -949,3 +1246,72 @@ class SecurityError(Exception):
     dangerous DuckDB table function calls, and SSRF attempts.
 
     """
+
+    def __init__(self, message: str = "") -> None:
+        """Initialize with security violation details.
+
+        Args:
+            message: Description of the security violation.
+
+        """
+        full_message = message + _docs_hint("SecurityError")
+        super().__init__(full_message)
+
+
+class RateLimitError(Exception):
+    """Raised when a query exceeds the configured rate limit.
+
+    Attributes:
+        qps: The configured queries-per-second limit.
+        burst: The configured burst capacity.
+        caller_id: The caller identifier, if per-caller limiting is active.
+
+    """
+
+    def __init__(
+        self,
+        *,
+        qps: float,
+        burst: int,
+        caller_id: str | None = None,
+    ) -> None:
+        self.qps = qps
+        self.burst = burst
+        self.caller_id = caller_id
+        caller_part = f" for caller {caller_id!r}" if caller_id else ""
+        msg = (
+            f"Rate limit exceeded{caller_part}: "
+            f"{qps} queries/sec (burst={burst})"
+        )
+        full_message = msg + _docs_hint("RateLimitError")
+        super().__init__(full_message)
+
+
+# ---------------------------------------------------------------------------
+# User-facing error message sanitisation
+# ---------------------------------------------------------------------------
+
+import re as _re
+
+# Patterns that may leak internal details in exception messages.
+_INTERNAL_PATH_RE = _re.compile(
+    r"(?:/[a-zA-Z0-9_./-]+(?:\.py|\.so|\.pyd)(?::\d+)?)",
+)
+_TRACEBACK_RE = _re.compile(
+    r"(?:File \".+?\", line \d+|Traceback \(most recent call last\))",
+)
+
+
+def sanitize_error_message(exc: BaseException) -> str:
+    """Return a user-safe error string from *exc*.
+
+    Strips internal file paths and traceback fragments that could leak
+    implementation details.  The exception *type* name is preserved so the
+    user can still identify the category of error.
+    """
+    msg = str(exc)
+    msg = _INTERNAL_PATH_RE.sub("<internal>", msg)
+    msg = _TRACEBACK_RE.sub("", msg)
+    # Collapse any resulting double spaces.
+    msg = _re.sub(r"  +", " ", msg).strip()
+    return f"{type(exc).__name__}: {msg}" if msg else type(exc).__name__

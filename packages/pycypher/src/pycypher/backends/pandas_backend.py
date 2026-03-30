@@ -187,7 +187,7 @@ class PandasBackend:
     # ------------------------------------------------------------------
 
     def to_pandas(self, frame: pd.DataFrame) -> pd.DataFrame:
-        """Return a copy so callers cannot mutate backend state."""
+        """Return a lazy copy (O(1) with pandas 3.0+ CoW) for mutation safety."""
         return frame.copy()
 
     def row_count(self, frame: pd.DataFrame) -> int:

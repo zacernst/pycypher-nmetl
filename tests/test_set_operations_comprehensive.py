@@ -112,7 +112,7 @@ def comprehensive_context() -> Context:
                 "senior",
             ],
             "years_experience": [5, 2, 8, 12, 3, 6, 15, 1, 0, 7],
-        }
+        },
     )
 
     # Company entities for relationship testing
@@ -123,7 +123,7 @@ def comprehensive_context() -> Context:
             "industry": ["Technology", "Consulting", "Analytics"],
             "size": [500, 150, 75],
             "founded": [2010, 2015, 2018],
-        }
+        },
     )
 
     # Employee-Company relationships
@@ -149,7 +149,7 @@ def comprehensive_context() -> Context:
                 "Senior Dev",
             ],
             "remote": [True, False, True, False, True, True],
-        }
+        },
     )
 
     person_table = EntityTable(
@@ -241,10 +241,10 @@ def comprehensive_context() -> Context:
 
     return Context(
         entity_mapping=EntityMapping(
-            mapping={"Person": person_table, "Company": company_table}
+            mapping={"Person": person_table, "Company": company_table},
         ),
         relationship_mapping=RelationshipMapping(
-            mapping={"WORKS_AT": works_at_table}
+            mapping={"WORKS_AT": works_at_table},
         ),
     )
 
@@ -253,7 +253,8 @@ class TestBasicPropertySetting:
     """Test basic SET operations for single and multiple properties."""
 
     def test_set_single_string_property(
-        self, comprehensive_context: Context
+        self,
+        comprehensive_context: Context,
     ) -> None:
         """Test parsing single string property SET operation."""
         cypher = "MATCH (p:Person) WHERE p.name = 'Alice Johnson' SET p.title = 'Senior Engineer' RETURN p AS p"
@@ -264,9 +265,7 @@ class TestBasicPropertySetting:
 
         # Verify SET clause was parsed correctly
         set_clauses = [
-            clause
-            for clause in ast.clauses
-            if clause.__class__.__name__ == "Set"
+            clause for clause in ast.clauses if clause.__class__.__name__ == "Set"
         ]
         assert len(set_clauses) == 1
 
@@ -276,7 +275,8 @@ class TestBasicPropertySetting:
         assert set_clause.items[0].property == "title"  # Setting p.title
 
     def test_set_single_numeric_property(
-        self, comprehensive_context: Context
+        self,
+        comprehensive_context: Context,
     ) -> None:
         """Test parsing SET operation for single numeric property."""
         cypher = "MATCH (p:Person) WHERE p.name = 'Bob Smith' SET p.bonus = 5000 RETURN p AS p"
@@ -287,7 +287,8 @@ class TestBasicPropertySetting:
         assert ast is not None
 
     def test_set_single_boolean_property(
-        self, comprehensive_context: Context
+        self,
+        comprehensive_context: Context,
     ) -> None:
         """Test parsing SET operation for single boolean property."""
         cypher = "MATCH (p:Person) WHERE p.name = 'Carol White' SET p.verified = true RETURN p AS p"
@@ -297,7 +298,8 @@ class TestBasicPropertySetting:
         assert ast is not None
 
     def test_set_multiple_properties_same_type(
-        self, comprehensive_context: Context
+        self,
+        comprehensive_context: Context,
     ) -> None:
         """Test parsing SET operation for multiple string properties."""
         cypher = """
@@ -311,7 +313,8 @@ class TestBasicPropertySetting:
         assert ast is not None
 
     def test_set_multiple_properties_mixed_types(
-        self, comprehensive_context: Context
+        self,
+        comprehensive_context: Context,
     ) -> None:
         """Test parsing SET operation for properties of different types."""
         cypher = """
@@ -366,7 +369,8 @@ class TestComputedPropertySetting:
     """Test SET operations with computed expressions and transformations."""
 
     def test_set_arithmetic_computation(
-        self, comprehensive_context: Context
+        self,
+        comprehensive_context: Context,
     ) -> None:
         """Test SET with arithmetic expression."""
         cypher = """
@@ -380,7 +384,8 @@ class TestComputedPropertySetting:
         assert ast is not None
 
     def test_set_percentage_calculation(
-        self, comprehensive_context: Context
+        self,
+        comprehensive_context: Context,
     ) -> None:
         """Test SET with percentage calculation."""
         cypher = """
@@ -394,7 +399,8 @@ class TestComputedPropertySetting:
         assert ast is not None
 
     def test_set_string_concatenation(
-        self, comprehensive_context: Context
+        self,
+        comprehensive_context: Context,
     ) -> None:
         """Test SET with string concatenation."""
         cypher = """
@@ -408,7 +414,8 @@ class TestComputedPropertySetting:
         assert ast is not None
 
     def test_set_conditional_expression(
-        self, comprehensive_context: Context
+        self,
+        comprehensive_context: Context,
     ) -> None:
         """Test SET with CASE expression."""
         cypher = """
@@ -439,7 +446,8 @@ class TestComputedPropertySetting:
         assert ast is not None
 
     def test_set_nested_arithmetic(
-        self, comprehensive_context: Context
+        self,
+        comprehensive_context: Context,
     ) -> None:
         """Test SET with nested arithmetic expressions."""
         cypher = """
@@ -457,7 +465,8 @@ class TestPropertyTypeConversions:
     """Test SET operations involving type conversions and function calls."""
 
     def test_set_string_to_integer(
-        self, comprehensive_context: Context
+        self,
+        comprehensive_context: Context,
     ) -> None:
         """Test converting string to integer."""
         cypher = """
@@ -471,7 +480,8 @@ class TestPropertyTypeConversions:
         assert ast is not None
 
     def test_set_with_string_functions(
-        self, comprehensive_context: Context
+        self,
+        comprehensive_context: Context,
     ) -> None:
         """Test SET with string transformation functions."""
         cypher = """
@@ -487,7 +497,8 @@ class TestPropertyTypeConversions:
         assert ast is not None
 
     def test_set_with_coalesce_function(
-        self, comprehensive_context: Context
+        self,
+        comprehensive_context: Context,
     ) -> None:
         """Test SET with coalesce for null handling."""
         cypher = """
@@ -502,7 +513,8 @@ class TestPropertyTypeConversions:
         assert ast is not None
 
     def test_set_with_math_functions(
-        self, comprehensive_context: Context
+        self,
+        comprehensive_context: Context,
     ) -> None:
         """Test SET with mathematical functions."""
         cypher = """
@@ -518,7 +530,8 @@ class TestPropertyTypeConversions:
         assert ast is not None
 
     def test_set_with_type_validation(
-        self, comprehensive_context: Context
+        self,
+        comprehensive_context: Context,
     ) -> None:
         """Test SET with type checking and conversion."""
         cypher = """
@@ -564,7 +577,8 @@ class TestLabelOperations:
         assert ast is not None
 
     def test_set_conditional_labels(
-        self, comprehensive_context: Context
+        self,
+        comprehensive_context: Context,
     ) -> None:
         """Test conditional label setting."""
         cypher = """
@@ -578,7 +592,8 @@ class TestLabelOperations:
         assert ast is not None
 
     def test_set_role_based_labels(
-        self, comprehensive_context: Context
+        self,
+        comprehensive_context: Context,
     ) -> None:
         """Test parsing SET operation for labels based on role/department."""
         cypher = """
@@ -592,7 +607,8 @@ class TestLabelOperations:
         assert ast is not None
 
     def test_set_experience_level_labels(
-        self, comprehensive_context: Context
+        self,
+        comprehensive_context: Context,
     ) -> None:
         """Test parsing SET operation for labels based on experience level."""
         cypher = """
@@ -610,7 +626,8 @@ class TestPropertyMapOperations:
     """Test SET operations with property maps (replace and merge operations)."""
 
     def test_set_replace_all_properties(
-        self, comprehensive_context: Context
+        self,
+        comprehensive_context: Context,
     ) -> None:
         """Test replacing all properties with a map."""
         cypher = """
@@ -630,7 +647,8 @@ class TestPropertyMapOperations:
         assert ast is not None
 
     def test_set_merge_properties(
-        self, comprehensive_context: Context
+        self,
+        comprehensive_context: Context,
     ) -> None:
         """Test merging properties with existing ones using +=."""
         cypher = """
@@ -648,7 +666,8 @@ class TestPropertyMapOperations:
         assert ast is not None
 
     def test_set_selective_property_update(
-        self, comprehensive_context: Context
+        self,
+        comprehensive_context: Context,
     ) -> None:
         """Test selective property updates with partial map."""
         cypher = """
@@ -665,7 +684,8 @@ class TestPropertyMapOperations:
         assert ast is not None
 
     def test_set_nested_property_map(
-        self, comprehensive_context: Context
+        self,
+        comprehensive_context: Context,
     ) -> None:
         """Test parsing SET operation for nested property structures."""
         cypher = """
@@ -687,7 +707,8 @@ class TestPropertyMapOperations:
         assert ast is not None
 
     def test_set_dynamic_property_map(
-        self, comprehensive_context: Context
+        self,
+        comprehensive_context: Context,
     ) -> None:
         """Test parsing SET operation for properties with dynamic map construction."""
         cypher = """
@@ -713,7 +734,8 @@ class TestNullHandlingAndPropertyRemoval:
     """Test SET operations for null handling and property removal."""
 
     def test_set_null_to_remove_property(
-        self, comprehensive_context: Context
+        self,
+        comprehensive_context: Context,
     ) -> None:
         """Test parsing SET operation for property to null for removal."""
         cypher = """
@@ -727,7 +749,8 @@ class TestNullHandlingAndPropertyRemoval:
         assert ast is not None
 
     def test_set_conditional_null_replacement(
-        self, comprehensive_context: Context
+        self,
+        comprehensive_context: Context,
     ) -> None:
         """Test conditional null value replacement."""
         cypher = """
@@ -742,7 +765,8 @@ class TestNullHandlingAndPropertyRemoval:
         assert ast is not None
 
     def test_set_null_to_default_values(
-        self, comprehensive_context: Context
+        self,
+        comprehensive_context: Context,
     ) -> None:
         """Test parsing SET operation for null values to defaults across multiple properties."""
         cypher = """
@@ -759,7 +783,8 @@ class TestNullHandlingAndPropertyRemoval:
         assert ast is not None
 
     def test_set_explicit_null_assignments(
-        self, comprehensive_context: Context
+        self,
+        comprehensive_context: Context,
     ) -> None:
         """Test explicit null assignments for cleanup."""
         cypher = """
@@ -809,7 +834,8 @@ class TestComplexExpressionSetting:
         assert ast is not None
 
     def test_set_array_manipulation(
-        self, comprehensive_context: Context
+        self,
+        comprehensive_context: Context,
     ) -> None:
         """Test SET with array manipulation."""
         cypher = """
@@ -825,7 +851,8 @@ class TestComplexExpressionSetting:
         assert ast is not None
 
     def test_set_with_regular_expressions(
-        self, comprehensive_context: Context
+        self,
+        comprehensive_context: Context,
     ) -> None:
         """Test SET with pattern matching operations."""
         cypher = """
@@ -840,7 +867,8 @@ class TestComplexExpressionSetting:
         assert ast is not None
 
     def test_set_aggregation_based_values(
-        self, comprehensive_context: Context
+        self,
+        comprehensive_context: Context,
     ) -> None:
         """Test SET based on aggregated computations."""
         cypher = """
@@ -856,7 +884,8 @@ class TestComplexExpressionSetting:
         assert ast is not None
 
     def test_set_time_based_calculations(
-        self, comprehensive_context: Context
+        self,
+        comprehensive_context: Context,
     ) -> None:
         """Test SET with time-based calculations."""
         cypher = """
@@ -872,7 +901,8 @@ class TestComplexExpressionSetting:
         assert ast is not None
 
     def test_set_performance_metrics(
-        self, comprehensive_context: Context
+        self,
+        comprehensive_context: Context,
     ) -> None:
         """Test SET for performance metric calculations."""
         cypher = """
@@ -892,7 +922,8 @@ class TestBulkOperations:
     """Test SET operations affecting multiple entities simultaneously."""
 
     def test_set_department_wide_update(
-        self, comprehensive_context: Context
+        self,
+        comprehensive_context: Context,
     ) -> None:
         """Test bulk update for entire department."""
         cypher = """
@@ -908,7 +939,8 @@ class TestBulkOperations:
         assert ast is not None
 
     def test_set_salary_band_adjustment(
-        self, comprehensive_context: Context
+        self,
+        comprehensive_context: Context,
     ) -> None:
         """Test bulk salary adjustments by band."""
         cypher = """
@@ -929,7 +961,8 @@ class TestBulkOperations:
         assert ast is not None
 
     def test_set_performance_review_cycle(
-        self, comprehensive_context: Context
+        self,
+        comprehensive_context: Context,
     ) -> None:
         """Test bulk update for performance review cycle."""
         cypher = """
@@ -946,7 +979,8 @@ class TestBulkOperations:
         assert ast is not None
 
     def test_set_company_wide_policy_update(
-        self, comprehensive_context: Context
+        self,
+        comprehensive_context: Context,
     ) -> None:
         """Test company-wide policy implementation."""
         cypher = """
@@ -963,7 +997,8 @@ class TestBulkOperations:
         assert ast is not None
 
     def test_set_gradual_migration(
-        self, comprehensive_context: Context
+        self,
+        comprehensive_context: Context,
     ) -> None:
         """Test gradual data migration pattern."""
         cypher = """

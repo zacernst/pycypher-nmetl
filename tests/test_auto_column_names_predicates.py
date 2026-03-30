@@ -38,9 +38,9 @@ def ctx() -> ContextBuilder:
                     "name": ["Alice", "Bob", "Charlie"],
                     "age": [30, 25, 40],
                     "active": [True, False, True],
-                }
-            )
-        }
+                },
+            ),
+        },
     )
 
 
@@ -79,7 +79,7 @@ class TestComparisonColumnNames:
     def test_values_are_correct(self, star: Star) -> None:
         """Values produced for a comparison column must be correct booleans."""
         r = star.execute_query(
-            "MATCH (p:Person) RETURN p.age > 25 ORDER BY p.age"
+            "MATCH (p:Person) RETURN p.age > 25 ORDER BY p.age",
         )
         col = "age > 25"
         assert col in r.columns
@@ -97,7 +97,7 @@ class TestStringPredicateColumnNames:
     def test_starts_with(self, star: Star) -> None:
         """RETURN p.name STARTS WITH 'A' → column 'name STARTS WITH A'."""
         r = star.execute_query(
-            "MATCH (p:Person) RETURN p.name STARTS WITH 'A'"
+            "MATCH (p:Person) RETURN p.name STARTS WITH 'A'",
         )
         assert "name STARTS WITH A" in r.columns
         assert None not in r.columns
@@ -160,7 +160,7 @@ class TestBooleanConnectiveColumnNames:
     def test_and(self, star: Star) -> None:
         """RETURN p.age > 25 AND p.active → column 'age > 25 AND active'."""
         r = star.execute_query(
-            "MATCH (p:Person) RETURN p.age > 25 AND p.active"
+            "MATCH (p:Person) RETURN p.age > 25 AND p.active",
         )
         assert "age > 25 AND active" in r.columns
         assert None not in r.columns
@@ -168,7 +168,7 @@ class TestBooleanConnectiveColumnNames:
     def test_or(self, star: Star) -> None:
         """RETURN p.age < 30 OR p.active → column 'age < 30 OR active'."""
         r = star.execute_query(
-            "MATCH (p:Person) RETURN p.age < 30 OR p.active"
+            "MATCH (p:Person) RETURN p.age < 30 OR p.active",
         )
         assert "age < 30 OR active" in r.columns
 
@@ -187,7 +187,7 @@ class TestNoNonePredicateColumns:
     def test_two_predicates_distinct_columns(self, star: Star) -> None:
         """Two aliasless predicates must yield two distinct columns."""
         r = star.execute_query(
-            "MATCH (p:Person) RETURN p.age > 25, p.name CONTAINS 'li'"
+            "MATCH (p:Person) RETURN p.age > 25, p.name CONTAINS 'li'",
         )
         assert len(r.columns) == 2
         assert None not in r.columns

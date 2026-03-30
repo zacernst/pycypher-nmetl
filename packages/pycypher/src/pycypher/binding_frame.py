@@ -169,25 +169,80 @@ def _normalize_mapped_result(result: pd.Series) -> pd.Series:
     return result
 
 
-def _source_to_pandas(obj: Any) -> pd.DataFrame:
-    """Convert *obj* to a pandas DataFrame.
+# Re-export from dataframe_utils for backward compatibility.
+# New code should import directly from pycypher.dataframe_utils.
+from pycypher.dataframe_utils import source_to_pandas as _source_to_pandas
 
-    If PyArrow is installed and *obj* is a ``pyarrow.Table``, it is converted
-    via ``.to_pandas()``.  Otherwise *obj* is assumed to already be a
-    ``pd.DataFrame`` and is returned unchanged.
 
-    Args:
-        obj: A ``pd.DataFrame`` or ``pyarrow.Table``.
+def _coerce_pushdown_ids(
+    ids: FrameSeries,
+    target_col: pd.Series,
+) -> pd.Index:
+    """Build a ``pd.Index`` of unique pushdown IDs, coercing dtype to match *target_col*.
 
-    Returns:
-        A ``pd.DataFrame``.
-
+    When the DuckDB backend materialises join results via ``fetchdf()``,
+    originally-integer columns may come back as ``StringDtype``.  A naive
+    ``isin()`` then fails because ``'2' != 2``.  This helper converts the
+    pushdown IDs to the target column's dtype so the comparison succeeds.
     """
-    if _PYARROW_TABLE_TYPE is not None and isinstance(
-        obj, _PYARROW_TABLE_TYPE
+    unique_ids = ids.dropna().unique()
+    pushdown_idx = pd.Index(unique_ids)
+    target_dtype = target_col.dtype
+
+    # Fast path: dtypes already compatible.
+    if pushdown_idx.dtype == target_dtype:
+        return pushdown_idx
+
+    # String-like pushdown IDs vs numeric target — try numeric conversion.
+    if pd.api.types.is_string_dtype(pushdown_idx) and pd.api.types.is_numeric_dtype(
+        target_dtype
     ):
-        return obj.to_pandas()
-    return obj
+        try:
+            return pd.Index(pd.to_numeric(pushdown_idx))
+        except (ValueError, TypeError):
+            return pushdown_idx
+
+    # Numeric pushdown IDs vs object/string target — cast to object.
+    if pd.api.types.is_numeric_dtype(pushdown_idx) and (
+        target_dtype == object or pd.api.types.is_string_dtype(target_dtype)
+    ):
+        return pushdown_idx.astype(object)
+
+    return pushdown_idx
+
+
+def _coerce_pushdown_series(
+    ids: FrameSeries,
+    target_col: pd.Series,
+) -> pd.Series:
+    """Coerce a pushdown ID Series to match *target_col*'s dtype.
+
+    Used in :meth:`RelationshipScan.scan` to normalise pushdown IDs
+    before both the adjacency-index path and the table-scan path so that
+    dict lookups and ``isin()`` comparisons succeed across dtype boundaries.
+    """
+    target_dtype = target_col.dtype
+
+    # Fast path: already compatible.
+    if ids.dtype == target_dtype:
+        return ids
+
+    # String-like IDs vs numeric target — try numeric conversion.
+    if pd.api.types.is_string_dtype(ids.dtype) and pd.api.types.is_numeric_dtype(
+        target_dtype
+    ):
+        try:
+            return pd.to_numeric(ids)
+        except (ValueError, TypeError):
+            return ids
+
+    # Numeric IDs vs object/string target — cast to object.
+    if pd.api.types.is_numeric_dtype(ids.dtype) and (
+        target_dtype == object or pd.api.types.is_string_dtype(target_dtype)
+    ):
+        return ids.astype(object)
+
+    return ids
 
 
 def _backend_merge(
@@ -290,7 +345,9 @@ class BindingFrame:
     type_registry: dict[str, str]
     context: Any  # Context — typed as Any to avoid circular import at runtime
     _property_cache: dict[tuple[str, str], FrameSeries] = field(
-        default_factory=dict, repr=False, compare=False,
+        default_factory=dict,
+        repr=False,
+        compare=False,
     )
 
     # ------------------------------------------------------------------
@@ -333,7 +390,9 @@ class BindingFrame:
         if len(id_values) == 0 or len(target_index) == 0:
             return id_values
         # Detect type mismatch: binding IDs vs entity table index
-        sample_binding = id_values.iloc[0] if hasattr(id_values, 'iloc') else id_values[0]
+        sample_binding = (
+            id_values.iloc[0] if hasattr(id_values, "iloc") else id_values[0]
+        )
         sample_index = target_index[0]
         if type(sample_binding) is type(sample_index):
             return id_values
@@ -344,11 +403,11 @@ class BindingFrame:
                 return id_values  # Mixed types — don't coerce
         try:
             if isinstance(sample_index, (int, np.integer)):
-                if hasattr(id_values, 'astype'):
+                if hasattr(id_values, "astype"):
                     return id_values.astype(int)
                 return np.array(id_values, dtype=int)
-            elif isinstance(sample_index, str):
-                if hasattr(id_values, 'astype'):
+            if isinstance(sample_index, str):
+                if hasattr(id_values, "astype"):
                     return id_values.astype(str)
                 return np.array(id_values, dtype=str)
         except (ValueError, TypeError):
@@ -374,10 +433,14 @@ class BindingFrame:
         """
         shadow: dict[str, pd.DataFrame] = getattr(self.context, "_shadow", {})
         shadow_rels: dict[str, pd.DataFrame] = getattr(
-            self.context, "_shadow_rels", {},
+            self.context,
+            "_shadow_rels",
+            {},
         )
         cache: dict[str, pd.DataFrame] = getattr(
-            self.context, "_property_lookup_cache", {},
+            self.context,
+            "_property_lookup_cache",
+            {},
         )
 
         if entity_type in shadow:
@@ -475,8 +538,11 @@ class BindingFrame:
         if entity_type == "__MULTI__":
             row_values = self._get_property_multitype(var_name, prop_name)
             if row_values is not None:
+                self._property_cache[_cache_key] = row_values
                 return row_values
-            return _null_series(len(self.bindings), index=self.bindings.index)
+            result = _null_series(len(self.bindings), index=self.bindings.index)
+            self._property_cache[_cache_key] = result
+            return result
 
         # --- Vectorized fast path ---
         # Use np.searchsorted-based bulk lookup when the graph index manager
@@ -496,31 +562,40 @@ class BindingFrame:
                 if store is not None:
                     id_values = self.bindings[var_name].values
                     raw = store.fetch(id_values, prop_name)
-                    result = pd.Series(raw, index=self.bindings.index, dtype=object)
+                    result = pd.Series(
+                        raw, index=self.bindings.index, dtype=object
+                    )
                     # Apply same NaN→None and ndarray→list normalization as standard path
                     result = _normalize_mapped_result(result)
                     result.index = self.bindings.index
                     _used_vectorized = True
-            except Exception:
+            except (KeyError, ValueError, TypeError, IndexError, AttributeError):
                 LOGGER.debug(
                     "Vectorized fetch failed for %s.%s, falling back",
-                    entity_type, prop_name, exc_info=True,
+                    entity_type,
+                    prop_name,
+                    exc_info=True,
                 )
 
         if not _used_vectorized:
             # --- Standard path (hash-based map) ---
             indexed_df = self._get_indexed_dataframe(entity_type)
             if indexed_df is None:
-                return _null_series(len(self.bindings), index=self.bindings.index)
+                return _null_series(
+                    len(self.bindings), index=self.bindings.index
+                )
 
             if prop_name not in indexed_df.columns:
                 # Per Cypher semantics, accessing a nonexistent property returns null.
-                return _null_series(len(self.bindings), index=self.bindings.index)
+                return _null_series(
+                    len(self.bindings), index=self.bindings.index
+                )
             lookup: pd.Series = indexed_df[prop_name]
 
             # Map entity IDs in this frame to property values.
             id_series: pd.Series = self._coerce_ids(
-                self.bindings[var_name], indexed_df.index,
+                self.bindings[var_name],
+                indexed_df.index,
             )
             result: pd.Series = id_series.map(lookup)
 
@@ -538,7 +613,9 @@ class BindingFrame:
         return result
 
     def get_properties_batch(
-        self, var_name: str, prop_names: list[str]
+        self,
+        var_name: str,
+        prop_names: list[str],
     ) -> dict[str, FrameSeries]:
         """Fetch multiple properties for *var_name* in a single indexed join.
 
@@ -585,15 +662,18 @@ class BindingFrame:
                     raw_results = store.fetch_multi(id_values, prop_names)
                     results: dict[str, FrameSeries] = {}
                     for prop, raw in raw_results.items():
-                        series = pd.Series(raw, index=self.bindings.index, dtype=object)
+                        series = pd.Series(
+                            raw, index=self.bindings.index, dtype=object
+                        )
                         series = _normalize_mapped_result(series)
                         series.index = self.bindings.index
                         results[prop] = series
                     return results
-            except Exception:
+            except (KeyError, ValueError, TypeError, IndexError, AttributeError):
                 LOGGER.debug(
                     "Vectorized batch fetch failed for %s, falling back",
-                    entity_type, exc_info=True,
+                    entity_type,
+                    exc_info=True,
                 )
 
         # --- Standard path (reindex-based) ---
@@ -615,7 +695,7 @@ class BindingFrame:
         if available:
             # Reindex the entity table subset by IDs in one operation.
             id_values = self._coerce_ids(id_series, indexed_df.index)
-            if hasattr(id_values, 'values'):
+            if hasattr(id_values, "values"):
                 id_values = id_values.values
             subset = indexed_df[available].reindex(id_values)
             subset.index = self.bindings.index
@@ -625,10 +705,35 @@ class BindingFrame:
         # Missing properties → null Series
         for prop in missing:
             results[prop] = _null_series(
-                len(self.bindings), index=self.bindings.index
+                len(self.bindings),
+                index=self.bindings.index,
             )
 
         return results
+
+    def _get_id_to_etype_map(self) -> dict:
+        """Return a cached mapping from entity ID to entity type name.
+
+        Built once per context and cached as ``_id_etype_map`` on the context
+        object.  This allows ``_get_property_multitype`` to skip entity tables
+        whose IDs are not present in the current bindings — reducing iterations
+        from O(E) entity types to only the relevant ones.
+        """
+        ctx = self.context
+        existing = getattr(ctx, "_id_etype_map", None)
+        if existing is not None:
+            return existing
+        cache: dict = getattr(ctx, "_property_lookup_cache", {})
+        id_etype: dict = {}
+        for etype, table in ctx.entity_mapping.mapping.items():
+            if etype not in cache:
+                raw_df: pd.DataFrame = _source_to_pandas(table.source_obj)
+                cache[etype] = raw_df.set_index(ID_COLUMN)
+            ids = cache[etype].index
+            for eid in ids:
+                id_etype[eid] = etype
+        ctx._id_etype_map = id_etype  # noqa: SLF001
+        return id_etype
 
     def _get_property_multitype(
         self,
@@ -660,10 +765,17 @@ class BindingFrame:
         if not needed_ids:
             return _null_series(len(self.bindings), index=self.bindings.index)
 
+        # Use pre-computed ID→entity-type map to skip irrelevant tables.
+        id_etype_map = self._get_id_to_etype_map()
+        relevant_etypes = {id_etype_map[eid] for eid in needed_ids if eid in id_etype_map}
+
         id_to_value: dict = {}
         found_any = False
         for etype, table in self.context.entity_mapping.mapping.items():
             shadow_df = shadow.get(etype)
+            # Skip entity types with no matching IDs (unless shadowed).
+            if shadow_df is None and etype not in relevant_etypes:
+                continue
             if shadow_df is not None:
                 # Shadow data bypasses cache — may have SET-added columns
                 if (
@@ -770,7 +882,16 @@ class BindingFrame:
         if backend is not None:
             filtered = backend.filter(self.bindings, mask.values)
         else:
-            filtered = self.bindings[mask.values].reset_index(drop=True)
+            filtered = self.bindings[mask.values]
+            # Skip reset_index when already contiguous — avoids a full copy.
+            idx = filtered.index
+            if not (
+                isinstance(idx, pd.RangeIndex)
+                and idx.start == 0
+                and idx.step == 1
+                and idx.stop == len(filtered)
+            ):
+                filtered = filtered.reset_index(drop=True)
         if _DEBUG_ENABLED:
             _rows_after = len(filtered)
             LOGGER.debug(
@@ -835,7 +956,17 @@ class BindingFrame:
                 _drop.append(_c)
         if _drop:
             merged = merged.drop(columns=_drop)
-        return merged.reset_index(drop=True)
+        # Skip reset_index when the index is already a contiguous RangeIndex
+        # starting at 0 — avoids an unnecessary full-frame copy.
+        idx = merged.index
+        if not (
+            isinstance(idx, pd.RangeIndex)
+            and idx.start == 0
+            and idx.step == 1
+            and idx.stop == len(merged)
+        ):
+            merged = merged.reset_index(drop=True)
+        return merged
 
     # ------------------------------------------------------------------
     # Joining
@@ -905,10 +1036,7 @@ class BindingFrame:
             )
 
         backend = getattr(self.context, "backend", None)
-        if (
-            _plan.strategy == JoinStrategy.BROADCAST
-            and _right_len > _left_len
-        ):
+        if _plan.strategy == JoinStrategy.BROADCAST and _right_len > _left_len:
             # Swap so smaller side is the build table for the hash join.
             if backend is not None:
                 merged = _backend_merge(
@@ -1145,7 +1273,10 @@ class BindingFrame:
                 rename_map = {c: f"{c}_right" for c in collisions}
                 right_df = backend.rename(right_df, rename_map)
             merged: pd.DataFrame = backend.join(
-                self.bindings, right_df, on=[], how="cross",
+                self.bindings,
+                right_df,
+                on=[],
+                how="cross",
             )
         else:
             merged: pd.DataFrame = self.bindings.merge(
@@ -1473,7 +1604,9 @@ class EntityScan:
                         candidate_ids: frozenset | None = None
                         for prop_name, value in property_filters.items():
                             matching = index_mgr.indexed_property_lookup(
-                                self.entity_type, prop_name, value,
+                                self.entity_type,
+                                prop_name,
+                                value,
                             )
                             if matching is None:
                                 # No index for this property — skip pushdown
@@ -1485,8 +1618,9 @@ class EntityScan:
                                 candidate_ids = candidate_ids & matching
                         if candidate_ids is not None:
                             ids = pd.Series(
-                                list(candidate_ids), name=ID_COLUMN,
-                            ).reset_index(drop=True)
+                                list(candidate_ids),
+                                name=ID_COLUMN,
+                            )
                             _pushed_down = True
                             if _DEBUG_ENABLED:
                                 LOGGER.debug(
@@ -1498,7 +1632,7 @@ class EntityScan:
                                     len(ids),
                                     time.perf_counter() - _t0,
                                 )
-                    except Exception:
+                    except (KeyError, ValueError, TypeError, IndexError, AttributeError):
                         LOGGER.debug(
                             "EntityScan: predicate pushdown failed for %s, "
                             "falling back to full scan",
@@ -1510,13 +1644,15 @@ class EntityScan:
             # --- Standard full scan ---
             cache: dict = getattr(context, "_property_lookup_cache", {})
             if self.entity_type not in cache:
-                raw_df: pd.DataFrame = _source_to_pandas(entity_table.source_obj)
+                raw_df: pd.DataFrame = _source_to_pandas(
+                    entity_table.source_obj
+                )
                 cache[self.entity_type] = raw_df.set_index(ID_COLUMN)
             indexed_df = cache[self.entity_type]
             ids = pd.Series(
                 indexed_df.index.to_numpy(dtype=object),
                 name=ID_COLUMN,
-            ).reset_index(drop=True)
+            )
             if _DEBUG_ENABLED:
                 LOGGER.debug(
                     "EntityScan.scan  entity_type=%s  var=%s  rows=%d  elapsed=%.4fs",
@@ -1610,12 +1746,34 @@ class RelationshipScan:
                 f"{hint}",
             ) from None
 
+        # --- Coerce pushdown IDs to match relationship table dtypes ---
+        # When the DuckDB backend materialises join results via fetchdf(),
+        # originally-integer ID columns may come back as StringDtype.
+        # Coerce pushdown IDs early so both the index path and the
+        # table-scan path see consistent types.
+        if source_ids is not None or target_ids is not None:
+            raw_df_for_dtype: pd.DataFrame = _source_to_pandas(
+                rel_table.source_obj
+            )
+            if source_ids is not None:
+                source_ids = _coerce_pushdown_series(
+                    source_ids,
+                    raw_df_for_dtype[RELATIONSHIP_SOURCE_COLUMN],
+                )
+            if target_ids is not None:
+                target_ids = _coerce_pushdown_series(
+                    target_ids,
+                    raw_df_for_dtype[RELATIONSHIP_TARGET_COLUMN],
+                )
+
         # --- Fast path: adjacency index for O(degree) pushdown ---
         # When endpoint IDs are provided and no active shadow mutations exist,
         # use the adjacency index for O(degree) neighbor lookup instead of
         # O(E) table scan + isin() filter.
         _shadow_rels: dict = getattr(context, "_shadow_rels", {})
-        if (source_ids is not None or target_ids is not None) and self.rel_type not in _shadow_rels:
+        if (
+            source_ids is not None or target_ids is not None
+        ) and self.rel_type not in _shadow_rels:
             try:
                 index_mgr = getattr(context, "index_manager", None)
                 if index_mgr is not None:
@@ -1628,8 +1786,12 @@ class RelationshipScan:
                         bindings = pd.DataFrame(
                             {
                                 self.rel_var: idx_result[ID_COLUMN].values,
-                                self.src_col: idx_result[RELATIONSHIP_SOURCE_COLUMN].values,
-                                self.tgt_col: idx_result[RELATIONSHIP_TARGET_COLUMN].values,
+                                self.src_col: idx_result[
+                                    RELATIONSHIP_SOURCE_COLUMN
+                                ].values,
+                                self.tgt_col: idx_result[
+                                    RELATIONSHIP_TARGET_COLUMN
+                                ].values,
                             },
                         )
                         if _DEBUG_ENABLED:
@@ -1645,7 +1807,7 @@ class RelationshipScan:
                             type_registry={self.rel_var: self.rel_type},
                             context=context,
                         )
-            except Exception:
+            except (KeyError, ValueError, TypeError, IndexError, AttributeError):
                 # Fall through to table-scan path on any index error
                 LOGGER.debug(
                     "RelationshipScan: index scan failed for %s, falling back to table scan",
@@ -1667,16 +1829,22 @@ class RelationshipScan:
         # --- Predicate pushdown: filter at scan level ---
         # Apply endpoint filters BEFORE materialising the full DataFrame.
         # This ensures memory usage is proportional to the result set,
-        # not the source table — like only transferring the consciousness
-        # data that fits the target sleeve.
+        # not the source table.
         mask: pd.Series | None = None
         if source_ids is not None:
             # pd.Index for O(1) hash-based isin() — avoids Python set copy.
-            source_set = pd.Index(source_ids.dropna().unique())
+            # Coerce pushdown IDs to match the target column dtype so that
+            # comparisons succeed even when an upstream backend (e.g. DuckDB)
+            # returns string-typed columns for originally-integer IDs.
+            source_set = _coerce_pushdown_ids(
+                source_ids, indexed_df[RELATIONSHIP_SOURCE_COLUMN]
+            )
             src_mask = indexed_df[RELATIONSHIP_SOURCE_COLUMN].isin(source_set)
             mask = src_mask if mask is None else mask & src_mask
         if target_ids is not None:
-            target_set = pd.Index(target_ids.dropna().unique())
+            target_set = _coerce_pushdown_ids(
+                target_ids, indexed_df[RELATIONSHIP_TARGET_COLUMN]
+            )
             tgt_mask = indexed_df[RELATIONSHIP_TARGET_COLUMN].isin(target_set)
             mask = tgt_mask if mask is None else mask & tgt_mask
 
@@ -1689,7 +1857,7 @@ class RelationshipScan:
         ids = pd.Series(
             filtered.index.to_numpy(dtype=object),
             name=ID_COLUMN,
-        ).reset_index(drop=True)
+        )
         bindings = pd.DataFrame(
             {
                 self.rel_var: ids,

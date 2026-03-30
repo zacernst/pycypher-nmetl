@@ -72,7 +72,7 @@ for other vintages.
 
 ### `filter_us_nodes.py`
 
-**Input:** `$DATA_DIR/location_entities.json.bz2`
+**Input:** `$DATA_DIR/wikidata_compressed.json.bz2`
 **Also reads:** `$DATA_DIR/tl_2024_us_state.shp` (TIGER/Line state boundaries)
 **Output:** `$DATA_DIR/wikidata_us_points.json`
 

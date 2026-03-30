@@ -27,6 +27,17 @@ Query Execution
      - 20
      - Maximum BFS hops for unbounded variable-length paths (``[*]``).
        Higher values risk exponential memory growth in dense graphs.
+   * - ``PYCYPHER_MAX_COMPLEXITY_SCORE``
+     - None
+     - Hard ceiling on query complexity score.  Queries exceeding this are
+       rejected before execution with :class:`~pycypher.exceptions.QueryComplexityError`.
+       ``None`` (or ``0``) disables the gate.  Typical production values: 50–200.
+       Can also be set per-query via ``execute_query(max_complexity_score=...)``.
+   * - ``PYCYPHER_COMPLEXITY_WARN_THRESHOLD``
+     - None
+     - Soft threshold for query complexity warnings.  Queries scoring above
+       this emit a warning but still execute.  ``None`` (or ``0``) disables
+       warnings.  Set lower than ``PYCYPHER_MAX_COMPLEXITY_SCORE`` for early alerts.
 
 Caching
 -------

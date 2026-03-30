@@ -11,12 +11,11 @@ import pandas as pd
 import pytest
 from pycypher.backend_engine import (
     InstrumentedBackend,
-    PandasBackend,
-    _polars_agg_func,
-    _to_pandas,
     _try_create,
     select_backend,
 )
+from pycypher.backends._helpers import _polars_agg_func, _to_pandas
+from pycypher.backends.pandas_backend import PandasBackend
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -195,6 +194,7 @@ class TestPolarsAggFuncInvalid:
         # We need a col_expr-like object; the error is raised before
         # getattr is called, so any object will do.
         with pytest.raises(
-            ValueError, match="Unsupported aggregation function for Polars"
+            ValueError,
+            match="Unsupported aggregation function for Polars",
         ):
             _polars_agg_func(object(), "median_absolute_deviation")

@@ -53,6 +53,12 @@ class LiteralTransformer(Transformer):
         """Transform unsigned number literals into Python int or float values."""
         s = str(args[0])
         try:
+            # Check hex/octal prefixes before float heuristics, since hex
+            # digits (a-f) overlap with float suffixes (f, d, e).
+            if s.startswith(("0x", "0X")):
+                return int(s.replace("_", ""), 16)
+            if s.startswith(("0o", "0O")):
+                return int(s[2:].replace("_", ""), 8)
             if (
                 "." in s
                 or "e" in s.lower()
@@ -60,10 +66,6 @@ class LiteralTransformer(Transformer):
                 or "d" in s.lower()
             ):
                 return float(s.rstrip("fFdD"))
-            if s.startswith(("0x", "0X")):
-                return int(s.replace("_", ""), 16)
-            if s.startswith(("0o", "0O")):
-                return int(s[2:].replace("_", ""), 8)
             return int(s.replace("_", ""))
         except ValueError:
             if "inf" in s.lower():

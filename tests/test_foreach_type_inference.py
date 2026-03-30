@@ -26,7 +26,7 @@ from pycypher.star import Star
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture()
+@pytest.fixture
 def person_ctx() -> Context:
     """Two Person rows for loop variable type inference tests."""
     df = pd.DataFrame(
@@ -34,7 +34,7 @@ def person_ctx() -> Context:
             ID_COLUMN: [1, 2],
             "name": ["Alice", "Bob"],
             "processed": [False, False],
-        }
+        },
     )
     table = EntityTable(
         entity_type="Person",
@@ -56,50 +56,54 @@ class TestForeachLoopVariableTypeInference:
     """Loop variable in FOREACH inherits entity type from list element."""
 
     def test_set_on_loop_variable_from_single_entity_list(
-        self, person_ctx: Context
+        self,
+        person_ctx: Context,
     ) -> None:
         """FOREACH (x IN [p] | SET x.processed = true) works without KeyError."""
         star = Star(context=person_ctx)
         star.execute_query(
-            "MATCH (p:Person) FOREACH (x IN [p] | SET x.processed = true)"
+            "MATCH (p:Person) FOREACH (x IN [p] | SET x.processed = true)",
         )
         result = star.execute_query("MATCH (p:Person) RETURN p.processed AS v")
         assert all(result["v"].tolist())
 
     def test_set_on_loop_variable_does_not_raise(
-        self, person_ctx: Context
+        self,
+        person_ctx: Context,
     ) -> None:
         """Regression: FOREACH (x IN [p] | SET x.prop) must not raise KeyError."""
         star = Star(context=person_ctx)
         # Should not raise
         star.execute_query(
             "MATCH (p:Person) WHERE p.name = 'Alice' "
-            "FOREACH (x IN [p] | SET x.name = 'AliceUpdated')"
+            "FOREACH (x IN [p] | SET x.name = 'AliceUpdated')",
         )
 
     def test_set_on_loop_variable_single_person(
-        self, person_ctx: Context
+        self,
+        person_ctx: Context,
     ) -> None:
         """Loop variable SET only affects matched person, not all persons."""
         star = Star(context=person_ctx)
         star.execute_query(
             "MATCH (p:Person) WHERE p.name = 'Alice' "
-            "FOREACH (x IN [p] | SET x.processed = true)"
+            "FOREACH (x IN [p] | SET x.processed = true)",
         )
         result = star.execute_query(
-            "MATCH (p:Person) WHERE p.processed = true RETURN p.name AS name"
+            "MATCH (p:Person) WHERE p.processed = true RETURN p.name AS name",
         )
         # Only Alice was in the MATCH; only Alice gets processed=true
         assert set(result["name"].tolist()) == {"Alice"}
 
     def test_foreach_with_variable_list_does_not_break_outer_frame(
-        self, person_ctx: Context
+        self,
+        person_ctx: Context,
     ) -> None:
         """FOREACH (x IN [p] | ...) leaves the outer frame unchanged for RETURN."""
         star = Star(context=person_ctx)
         result = star.execute_query(
             "MATCH (p:Person) "
             "FOREACH (x IN [p] | SET x.processed = true) "
-            "RETURN p.name AS name"
+            "RETURN p.name AS name",
         )
         assert set(result["name"].tolist()) == {"Alice", "Bob"}

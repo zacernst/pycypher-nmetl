@@ -65,7 +65,7 @@ def _big_strings() -> pd.Series:
     return pd.Series(["Alice" if i % 2 == 0 else "Bob" for i in range(N)])
 
 
-@pytest.fixture()
+@pytest.fixture
 def names_star() -> Star:
     """A Star with a small Person table for integration tests."""
     df = pd.DataFrame(
@@ -78,7 +78,7 @@ def names_star() -> Star:
                 "charlie@example.com",
                 "alex@gmail.com",
             ],
-        }
+        },
     )
     table = EntityTable(
         entity_type="Person",
@@ -92,7 +92,7 @@ def names_star() -> Star:
         context=Context(
             entity_mapping=EntityMapping(mapping={"Person": table}),
             relationship_mapping=RelationshipMapping(mapping={}),
-        )
+        ),
     )
 
 
@@ -161,7 +161,7 @@ class TestEndsWithCorrectness:
 
     def test_multi_row(self) -> None:
         s = pd.Series(
-            ["alice@example.com", "bob@gmail.com", "carol@example.com"]
+            ["alice@example.com", "bob@gmail.com", "carol@example.com"],
         )
         result = _reg().execute("endsWith", [s, _s("@example.com")])
         assert _bool(result.iloc[0]) is True
@@ -190,7 +190,7 @@ class TestContainsCorrectness:
 
     def test_multi_row(self) -> None:
         s = pd.Series(
-            ["alice@example.com", "bob@gmail.com", "carol@example.com"]
+            ["alice@example.com", "bob@gmail.com", "carol@example.com"],
         )
         result = _reg().execute("contains", [s, _s("@gmail")])
         assert _bool(result.iloc[0]) is False
@@ -323,26 +323,26 @@ class TestRegexSafety:
 class TestCypherIntegration:
     def test_startswith_in_where(self, names_star: Star) -> None:
         r = names_star.execute_query(
-            "MATCH (p:Person) WHERE startsWith(p.name, 'A') RETURN p.name ORDER BY p.name"
+            "MATCH (p:Person) WHERE startsWith(p.name, 'A') RETURN p.name ORDER BY p.name",
         )
         # "Alice" and "alex" start with 'A' and 'a' respectively — 'A' only matches "Alice"
         assert list(r["name"]) == ["Alice"]
 
     def test_endswith_in_where(self, names_star: Star) -> None:
         r = names_star.execute_query(
-            "MATCH (p:Person) WHERE endsWith(p.email, '@gmail.com') RETURN p.name ORDER BY p.name"
+            "MATCH (p:Person) WHERE endsWith(p.email, '@gmail.com') RETURN p.name ORDER BY p.name",
         )
         assert sorted(r["name"].tolist()) == ["Bob", "alex"]
 
     def test_contains_in_where(self, names_star: Star) -> None:
         r = names_star.execute_query(
-            "MATCH (p:Person) WHERE contains(p.email, 'example') RETURN p.name ORDER BY p.name"
+            "MATCH (p:Person) WHERE contains(p.email, 'example') RETURN p.name ORDER BY p.name",
         )
         assert sorted(r["name"].tolist()) == ["Alice", "Charlie"]
 
     def test_startswith_in_return(self, names_star: Star) -> None:
         r = names_star.execute_query(
-            "MATCH (p:Person) RETURN p.name, startsWith(p.name, 'A') AS sw ORDER BY p.name"
+            "MATCH (p:Person) RETURN p.name, startsWith(p.name, 'A') AS sw ORDER BY p.name",
         )
         # Map name -> sw
         mapping = dict(zip(r["name"], r["sw"]))
@@ -351,7 +351,7 @@ class TestCypherIntegration:
 
     def test_chained_predicates(self, names_star: Star) -> None:
         r = names_star.execute_query(
-            "MATCH (p:Person) WHERE startsWith(p.email, 'alice') AND endsWith(p.email, '.com') RETURN p.name"
+            "MATCH (p:Person) WHERE startsWith(p.email, 'alice') AND endsWith(p.email, '.com') RETURN p.name",
         )
         assert list(r["name"]) == ["Alice"]
 
@@ -396,7 +396,7 @@ class TestStringPredicatePerformance:
         )
 
     def test_str_vs_apply_speedup(self) -> None:
-        """pandas .str.startswith must be >= 2× faster than .apply() at 10k rows."""
+        """Pandas .str.startswith must be >= 2× faster than .apply() at 10k rows."""
         s_obj = _big_strings()
 
         start = time.perf_counter()

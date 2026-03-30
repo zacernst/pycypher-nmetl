@@ -96,7 +96,7 @@ from pycypher.relational_models import (
 from pycypher.star import Star
 
 
-@pytest.fixture()
+@pytest.fixture
 def one_person_ctx() -> Context:
     df = pd.DataFrame({ID_COLUMN: [1], "name": ["Alice"]})
     table = EntityTable(
@@ -114,19 +114,21 @@ class TestSuggestCloseMatchIntegration:
     """Confirm the three call sites now use suggest_close_match."""
 
     def test_binding_evaluator_variable_error_has_suggestion(
-        self, one_person_ctx: Context
+        self,
+        one_person_ctx: Context,
     ) -> None:
         """_eval_variable 'Did you mean' hint still appears after refactor."""
         star = Star(context=one_person_ctx)
         with pytest.raises(ValueError) as exc_info:
             # Bind as 'person', then misspell as 'persn' in WHERE clause
             star.execute_query(
-                "MATCH (person:Person) WHERE persn.name = 'Alice' RETURN person.name AS name"
+                "MATCH (person:Person) WHERE persn.name = 'Alice' RETURN person.name AS name",
             )
         assert "did you mean" in str(exc_info.value).lower()
 
     def test_scalar_registry_execute_has_suggestion(
-        self, one_person_ctx: Context
+        self,
+        one_person_ctx: Context,
     ) -> None:
         """ScalarFunctionRegistry 'Did you mean' hint still appears after refactor."""
         star = Star(context=one_person_ctx)

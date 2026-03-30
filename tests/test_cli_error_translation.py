@@ -80,7 +80,9 @@ class TestCurrentCLIErrorTranslationIssues:
 
         # Create a more clearly malformed CSV file
         with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".csv", delete=False
+            mode="w",
+            suffix=".csv",
+            delete=False,
         ) as f:
             f.write("name,age\n")
             f.write("Alice,25\n")
@@ -136,8 +138,7 @@ class TestFixedCLIErrorTranslation:
 
         # Should have user-friendly error message
         assert (
-            "entity source" in result.output.lower()
-            or "file" in result.output.lower()
+            "entity source" in result.output.lower() or "file" in result.output.lower()
         ), "Should mention entity source or file in error message"
 
         # Should include the specific filename that was not found
@@ -227,9 +228,7 @@ class TestFixedCLIErrorTranslation:
         for args, error_type, filename in test_cases:
             result = runner.invoke(cli, args)
 
-            assert result.exit_code == 1, (
-                f"Should fail with exit code 1 for {args}"
-            )
+            assert result.exit_code == 1, f"Should fail with exit code 1 for {args}"
 
             # Consistent error message patterns
             assert error_type in result.output.lower(), (
@@ -240,9 +239,9 @@ class TestFixedCLIErrorTranslation:
             )
 
             # Should start with "Error:" for consistency
-            assert (
-                result.output.startswith("Error:") or "Error:" in result.output
-            ), f"Should include 'Error:' prefix for {args}"
+            assert result.output.startswith("Error:") or "Error:" in result.output, (
+                f"Should include 'Error:' prefix for {args}"
+            )
 
     def test_fixed_malformed_data_provides_helpful_guidance(self):
         """Test that malformed data files provide helpful guidance when they do fail."""
@@ -250,10 +249,12 @@ class TestFixedCLIErrorTranslation:
 
         # Create a clearly invalid file (not CSV at all)
         with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".csv", delete=False
+            mode="w",
+            suffix=".csv",
+            delete=False,
         ) as f:
             f.write(
-                "This is not CSV data at all, just plain text that should definitely fail"
+                "This is not CSV data at all, just plain text that should definitely fail",
             )
             malformed_csv = f.name
 
@@ -361,9 +362,7 @@ class TestFixedCLIErrorTranslation:
                     "CREATE VIEW",
                     "read_csv_auto",
                 ]
-            ), (
-                f"First line should not contain technical details: {user_facing_line}"
-            )
+            ), f"First line should not contain technical details: {user_facing_line}"
 
 
 class TestCLIErrorTranslationImplementation:
@@ -444,6 +443,4 @@ class TestCLIErrorTranslationImplementation:
 
         # Should handle the first error encountered gracefully
         # (May not process all missing files if first one fails)
-        assert len(result.output.strip()) > 0, (
-            "Should provide some error feedback"
-        )
+        assert len(result.output.strip()) > 0, "Should provide some error feedback"

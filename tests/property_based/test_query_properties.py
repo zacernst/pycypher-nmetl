@@ -11,27 +11,23 @@ Tests semantic properties that must hold for ALL valid inputs:
 
 from __future__ import annotations
 
-import math
 import sys
 from pathlib import Path
 
 import pandas as pd
-import pytest
-from hypothesis import assume, given, settings
+from hypothesis import given, settings
 from hypothesis import strategies as st
 from pycypher.relational_models import (
     Context,
     EntityMapping,
     EntityTable,
     RelationshipMapping,
-    RelationshipTable,
 )
 from pycypher.star import Star
 
 # Ensure the property_based package is importable
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from property_based.strategies import (
-    cypher_integers,
     social_stars,
 )
 
@@ -54,7 +50,7 @@ def _fixed_star(ages: list[int]) -> Star:
             ID_COLUMN: list(range(1, n + 1)),
             "name": [f"Person{i}" for i in range(1, n + 1)],
             "age": ages,
-        }
+        },
     )
     person_table = EntityTable(
         entity_type="Person",
@@ -196,8 +192,7 @@ class TestQueryEquivalence:
         """MATCH WHERE == MATCH WITH WHERE (same filter, different clause)."""
         star = _fixed_star(ages)
         q_direct = (
-            f"MATCH (n:Person) WHERE n.age > {threshold} "
-            f"RETURN n.name ORDER BY n.name"
+            f"MATCH (n:Person) WHERE n.age > {threshold} RETURN n.name ORDER BY n.name"
         )
         q_with = (
             f"MATCH (n:Person) "
@@ -229,8 +224,7 @@ class TestQueryEquivalence:
             f"RETURN n.name ORDER BY n.name"
         )
         q2 = (
-            f"MATCH (n:Person) WHERE n.age <= {threshold} "
-            f"RETURN n.name ORDER BY n.name"
+            f"MATCH (n:Person) WHERE n.age <= {threshold} RETURN n.name ORDER BY n.name"
         )
         r1 = star.execute_query(q1)
         r2 = star.execute_query(q2)
@@ -272,7 +266,7 @@ class TestAggregationInvariants:
         """min(x) <= max(x) for any non-empty set."""
         star = _fixed_star(ages)
         result = star.execute_query(
-            "MATCH (n:Person) RETURN min(n.age) AS lo, max(n.age) AS hi"
+            "MATCH (n:Person) RETURN min(n.age) AS lo, max(n.age) AS hi",
         )
         assert result["lo"].iloc[0] <= result["hi"].iloc[0]
 
@@ -289,7 +283,7 @@ class TestAggregationInvariants:
         star = _fixed_star(ages)
         result = star.execute_query(
             "MATCH (n:Person) "
-            "RETURN min(n.age) AS lo, avg(n.age) AS mid, max(n.age) AS hi"
+            "RETURN min(n.age) AS lo, avg(n.age) AS mid, max(n.age) AS hi",
         )
         lo = result["lo"].iloc[0]
         mid = result["mid"].iloc[0]
@@ -308,8 +302,7 @@ class TestAggregationInvariants:
         """sum(x) == count(x) * avg(x) (within floating point tolerance)."""
         star = _fixed_star(ages)
         result = star.execute_query(
-            "MATCH (n:Person) "
-            "RETURN sum(n.age) AS s, count(n) AS c, avg(n.age) AS a"
+            "MATCH (n:Person) RETURN sum(n.age) AS s, count(n) AS c, avg(n.age) AS a",
         )
         s = result["s"].iloc[0]
         c = result["c"].iloc[0]
@@ -339,10 +332,10 @@ class TestAggregationInvariants:
     )
     @SETTINGS
     def test_collect_length_equals_count(self, ages: list[int]) -> None:
-        """length of collect(x) == count(x)."""
+        """Length of collect(x) == count(x)."""
         star = _fixed_star(ages)
         result = star.execute_query(
-            "MATCH (n:Person) RETURN collect(n.age) AS ages, count(n) AS cnt"
+            "MATCH (n:Person) RETURN collect(n.age) AS ages, count(n) AS cnt",
         )
         collected = result["ages"].iloc[0]
         cnt = result["cnt"].iloc[0]
@@ -367,12 +360,14 @@ class TestLimitSkipInvariants:
     )
     @SETTINGS
     def test_limit_bounds_result_size(
-        self, ages: list[int], limit: int
+        self,
+        ages: list[int],
+        limit: int,
     ) -> None:
         """LIMIT n produces at most n rows."""
         star = _fixed_star(ages)
         result = star.execute_query(
-            f"MATCH (n:Person) RETURN n.name LIMIT {limit}"
+            f"MATCH (n:Person) RETURN n.name LIMIT {limit}",
         )
         assert len(result) <= limit
 
@@ -386,13 +381,15 @@ class TestLimitSkipInvariants:
     )
     @SETTINGS
     def test_skip_reduces_result_size(
-        self, ages: list[int], skip: int
+        self,
+        ages: list[int],
+        skip: int,
     ) -> None:
         """SKIP n produces max(0, total - n) rows."""
         star = _fixed_star(ages)
         full = star.execute_query("MATCH (n:Person) RETURN n.name")
         skipped = star.execute_query(
-            f"MATCH (n:Person) RETURN n.name SKIP {skip}"
+            f"MATCH (n:Person) RETURN n.name SKIP {skip}",
         )
         expected = max(0, len(full) - skip)
         assert len(skipped) == expected
@@ -408,16 +405,18 @@ class TestLimitSkipInvariants:
     )
     @SETTINGS
     def test_skip_plus_limit_partition(
-        self, ages: list[int], skip: int, limit: int
+        self,
+        ages: list[int],
+        skip: int,
+        limit: int,
     ) -> None:
         """SKIP + LIMIT produces subset of full result."""
         star = _fixed_star(ages)
         full = star.execute_query(
-            "MATCH (n:Person) RETURN n.name ORDER BY n.name"
+            "MATCH (n:Person) RETURN n.name ORDER BY n.name",
         )
         paged = star.execute_query(
-            f"MATCH (n:Person) RETURN n.name ORDER BY n.name "
-            f"SKIP {skip} LIMIT {limit}"
+            f"MATCH (n:Person) RETURN n.name ORDER BY n.name SKIP {skip} LIMIT {limit}",
         )
         assert len(paged) <= limit
         assert len(paged) <= max(0, len(full) - skip)
@@ -434,7 +433,8 @@ class TestDistinctInvariants:
     @given(
         ages=st.lists(
             st.integers(
-                min_value=1, max_value=10
+                min_value=1,
+                max_value=10,
             ),  # small range to get duplicates
             min_size=3,
             max_size=20,
@@ -446,7 +446,7 @@ class TestDistinctInvariants:
         star = _fixed_star(ages)
         r_all = star.execute_query("MATCH (n:Person) RETURN n.age")
         r_distinct = star.execute_query(
-            "MATCH (n:Person) RETURN DISTINCT n.age"
+            "MATCH (n:Person) RETURN DISTINCT n.age",
         )
         assert len(r_distinct) <= len(r_all)
 
@@ -485,7 +485,7 @@ class TestOrderByInvariants:
         """ORDER BY ASC produces sorted output."""
         star = _fixed_star(ages)
         result = star.execute_query(
-            "MATCH (n:Person) RETURN n.age ORDER BY n.age"
+            "MATCH (n:Person) RETURN n.age ORDER BY n.age",
         )
         values = list(result.iloc[:, 0])
         assert values == sorted(values)
@@ -502,7 +502,7 @@ class TestOrderByInvariants:
         """ORDER BY DESC produces reverse-sorted output."""
         star = _fixed_star(ages)
         result = star.execute_query(
-            "MATCH (n:Person) RETURN n.age ORDER BY n.age DESC"
+            "MATCH (n:Person) RETURN n.age ORDER BY n.age DESC",
         )
         values = list(result.iloc[:, 0])
         assert values == sorted(values, reverse=True)
@@ -520,7 +520,7 @@ class TestOrderByInvariants:
         star = _fixed_star(ages)
         r_unsorted = star.execute_query("MATCH (n:Person) RETURN n.age")
         r_sorted = star.execute_query(
-            "MATCH (n:Person) RETURN n.age ORDER BY n.age"
+            "MATCH (n:Person) RETURN n.age ORDER BY n.age",
         )
         assert len(r_unsorted) == len(r_sorted)
 
@@ -546,10 +546,10 @@ class TestArithmeticProperties:
         """n.age + k == k + n.age."""
         star = _fixed_star(ages)
         r1 = star.execute_query(
-            f"MATCH (n:Person) RETURN n.age + {k} AS v ORDER BY n.age"
+            f"MATCH (n:Person) RETURN n.age + {k} AS v ORDER BY n.age",
         )
         r2 = star.execute_query(
-            f"MATCH (n:Person) RETURN {k} + n.age AS v ORDER BY n.age"
+            f"MATCH (n:Person) RETURN {k} + n.age AS v ORDER BY n.age",
         )
         pd.testing.assert_frame_equal(r1, r2)
 
@@ -566,10 +566,10 @@ class TestArithmeticProperties:
         """n.age * k == k * n.age."""
         star = _fixed_star(ages)
         r1 = star.execute_query(
-            f"MATCH (n:Person) RETURN n.age * {k} AS v ORDER BY n.age"
+            f"MATCH (n:Person) RETURN n.age * {k} AS v ORDER BY n.age",
         )
         r2 = star.execute_query(
-            f"MATCH (n:Person) RETURN {k} * n.age AS v ORDER BY n.age"
+            f"MATCH (n:Person) RETURN {k} * n.age AS v ORDER BY n.age",
         )
         pd.testing.assert_frame_equal(r1, r2)
 
@@ -585,10 +585,10 @@ class TestArithmeticProperties:
         """n.age + 0 == n.age."""
         star = _fixed_star(ages)
         r1 = star.execute_query(
-            "MATCH (n:Person) RETURN n.age + 0 AS v ORDER BY n.age"
+            "MATCH (n:Person) RETURN n.age + 0 AS v ORDER BY n.age",
         )
         r2 = star.execute_query(
-            "MATCH (n:Person) RETURN n.age AS v ORDER BY n.age"
+            "MATCH (n:Person) RETURN n.age AS v ORDER BY n.age",
         )
         # Types may differ (int vs float), so compare values
         assert list(r1["v"]) == list(r2["v"])
@@ -605,9 +605,9 @@ class TestArithmeticProperties:
         """n.age * 1 == n.age."""
         star = _fixed_star(ages)
         r1 = star.execute_query(
-            "MATCH (n:Person) RETURN n.age * 1 AS v ORDER BY n.age"
+            "MATCH (n:Person) RETURN n.age * 1 AS v ORDER BY n.age",
         )
         r2 = star.execute_query(
-            "MATCH (n:Person) RETURN n.age AS v ORDER BY n.age"
+            "MATCH (n:Person) RETURN n.age AS v ORDER BY n.age",
         )
         assert list(r1["v"]) == list(r2["v"])

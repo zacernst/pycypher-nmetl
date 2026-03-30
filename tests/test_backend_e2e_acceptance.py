@@ -71,7 +71,7 @@ def _make_context(backend: str = "pandas") -> Context:
     return Context(
         entity_mapping=EntityMapping(mapping={"Person": person_table}),
         relationship_mapping=RelationshipMapping(
-            mapping={"KNOWS": knows_table}
+            mapping={"KNOWS": knows_table},
         ),
         backend=backend,
     )
@@ -269,5 +269,5 @@ class TestCrossBackendEquivalence:
         # Same values (sorted for determinism)
         for col in pandas_result.columns:
             assert sorted(pandas_result[col].tolist()) == sorted(
-                duckdb_result[col].tolist()
+                duckdb_result[col].tolist(),
             ), f"Column {col!r} differs between backends"

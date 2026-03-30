@@ -43,7 +43,7 @@ def _build_social_graph(n_persons: int, edges_per_node: int = 3) -> Context:
             ID_COLUMN: list(range(1, n_persons + 1)),
             "name": [f"P{i}" for i in range(1, n_persons + 1)],
             "age": rng.integers(18, 65, size=n_persons),
-        }
+        },
     )
     n_edges = n_persons * edges_per_node
     # Only half the nodes have outgoing edges (sources from first half)
@@ -57,7 +57,7 @@ def _build_social_graph(n_persons: int, edges_per_node: int = 3) -> Context:
             ID_COLUMN: list(range(1, n_actual + 1)),
             "__SOURCE__": sources,
             "__TARGET__": targets,
-        }
+        },
     )
     person_table = EntityTable(
         entity_type="Person",
@@ -80,7 +80,7 @@ def _build_social_graph(n_persons: int, edges_per_node: int = 3) -> Context:
     return Context(
         entity_mapping=EntityMapping(mapping={"Person": person_table}),
         relationship_mapping=RelationshipMapping(
-            mapping={"KNOWS": knows_table}
+            mapping={"KNOWS": knows_table},
         ),
     )
 
@@ -131,7 +131,7 @@ class TestExistsBatchOptimization:
         result = star.execute_query(
             "MATCH (p:Person) "
             "WHERE EXISTS { MATCH (p)-[:KNOWS]->(f:Person) RETURN f } "
-            "RETURN p.name AS name"
+            "RETURN p.name AS name",
         )
         assert len(result) > 0
         assert len(result) < 100  # Not all persons have outgoing edges
@@ -143,12 +143,12 @@ class TestExistsBatchOptimization:
         exists_result = star.execute_query(
             "MATCH (p:Person) "
             "WHERE EXISTS { MATCH (p)-[:KNOWS]->(f:Person) RETURN f } "
-            "RETURN p.name AS name"
+            "RETURN p.name AS name",
         )
         not_exists_result = star.execute_query(
             "MATCH (p:Person) "
             "WHERE NOT EXISTS { MATCH (p)-[:KNOWS]->(f:Person) RETURN f } "
-            "RETURN p.name AS name"
+            "RETURN p.name AS name",
         )
         # EXISTS + NOT EXISTS should cover all persons
         assert len(exists_result) + len(not_exists_result) == 100
@@ -161,7 +161,7 @@ class TestExistsBatchOptimization:
         result = star.execute_query(
             "MATCH (p:Person) "
             "WHERE EXISTS { MATCH (p)-[:KNOWS]->(f:Person) WHERE f.age > 50 RETURN f } "
-            "RETURN p.name AS name"
+            "RETURN p.name AS name",
         )
         assert len(result) >= 0  # May or may not have matches
 
@@ -177,7 +177,7 @@ class TestExistsBatchOptimization:
         )
         stats = _time_exists_query(star, query, n_warmup=1, n_iterations=3)
 
-        print(f"\n  EXISTS 500-person graph:")
+        print("\n  EXISTS 500-person graph:")
         print(f"    Median: {stats['median_seconds']:.4f}s")
         print(f"    Min:    {stats['min_seconds']:.4f}s")
         print(f"    Rows:   {stats['result_rows']}")
@@ -197,7 +197,7 @@ class TestExistsBatchOptimization:
         )
         stats = _time_exists_query(star, query, n_warmup=1, n_iterations=3)
 
-        print(f"\n  EXISTS+WHERE 500-person graph:")
+        print("\n  EXISTS+WHERE 500-person graph:")
         print(f"    Median: {stats['median_seconds']:.4f}s")
         print(f"    Min:    {stats['min_seconds']:.4f}s")
         print(f"    Rows:   {stats['result_rows']}")
@@ -227,10 +227,13 @@ def main() -> None:
             "RETURN p.name AS name"
         )
         stats = _time_exists_query(
-            star, query_basic, n_warmup=2, n_iterations=5
+            star,
+            query_basic,
+            n_warmup=2,
+            n_iterations=5,
         )
         print(
-            f"  Basic EXISTS:  median={stats['median_seconds']:.4f}s  rows={stats['result_rows']}"
+            f"  Basic EXISTS:  median={stats['median_seconds']:.4f}s  rows={stats['result_rows']}",
         )
 
         query_where = (
@@ -239,10 +242,13 @@ def main() -> None:
             "RETURN p.name AS name"
         )
         stats = _time_exists_query(
-            star, query_where, n_warmup=2, n_iterations=5
+            star,
+            query_where,
+            n_warmup=2,
+            n_iterations=5,
         )
         print(
-            f"  EXISTS+WHERE:  median={stats['median_seconds']:.4f}s  rows={stats['result_rows']}"
+            f"  EXISTS+WHERE:  median={stats['median_seconds']:.4f}s  rows={stats['result_rows']}",
         )
 
 

@@ -26,12 +26,12 @@ from pycypher.relational_models import (
 from pycypher.star import Star
 
 
-@pytest.fixture()
+@pytest.fixture
 def empty_star() -> Star:
     return Star(context=Context(entity_mapping=EntityMapping(mapping={})))
 
 
-@pytest.fixture()
+@pytest.fixture
 def person_star() -> Star:
     df = pd.DataFrame({ID_COLUMN: [1, 2], "name": ["Alice", "Bob"]})
     t = EntityTable(
@@ -43,7 +43,7 @@ def person_star() -> Star:
         source_obj=df,
     )
     return Star(
-        context=Context(entity_mapping=EntityMapping(mapping={"Person": t}))
+        context=Context(entity_mapping=EntityMapping(mapping={"Person": t})),
     )
 
 
@@ -58,20 +58,20 @@ class TestUnwindMaps:
     def test_unwind_maps_does_not_raise(self, empty_star: Star) -> None:
         """UNWIND of a map list must not raise TypeError."""
         empty_star.execute_query(
-            "UNWIND [{name: 'Alice'}, {name: 'Bob'}] AS row RETURN row.name"
+            "UNWIND [{name: 'Alice'}, {name: 'Bob'}] AS row RETURN row.name",
         )
 
     def test_unwind_maps_row_count(self, empty_star: Star) -> None:
         """UNWIND of a 2-element map list produces 2 rows."""
         r = empty_star.execute_query(
-            "UNWIND [{name: 'Alice'}, {name: 'Bob'}] AS row RETURN row.name"
+            "UNWIND [{name: 'Alice'}, {name: 'Bob'}] AS row RETURN row.name",
         )
         assert len(r) == 2
 
     def test_unwind_maps_values(self, empty_star: Star) -> None:
         """Row property values are correctly extracted."""
         r = empty_star.execute_query(
-            "UNWIND [{name: 'Alice'}, {name: 'Bob'}] AS row RETURN row.name"
+            "UNWIND [{name: 'Alice'}, {name: 'Bob'}] AS row RETURN row.name",
         )
         assert set(r["name"]) == {"Alice", "Bob"}
 
@@ -79,7 +79,7 @@ class TestUnwindMaps:
         """Multiple properties from each map row are accessible."""
         r = empty_star.execute_query(
             "UNWIND [{name: 'Alice', age: 30}, {name: 'Bob', age: 25}] AS row "
-            "RETURN row.name, row.age ORDER BY row.name"
+            "RETURN row.name, row.age ORDER BY row.name",
         )
         assert list(r["name"]) == ["Alice", "Bob"]
         assert [int(v) for v in r["age"]] == [30, 25]
@@ -89,17 +89,18 @@ class TestUnwindMaps:
         r = empty_star.execute_query(
             "UNWIND [{name: 'Alice', age: 30}, {name: 'Bob', age: 25}] AS row "
             "WITH row WHERE row.age > 26 "
-            "RETURN row.name"
+            "RETURN row.name",
         )
         assert list(r["name"]) == ["Alice"]
 
     def test_unwind_maps_missing_key_returns_null(
-        self, empty_star: Star
+        self,
+        empty_star: Star,
     ) -> None:
         """Accessing a key absent from a map returns null (not an error)."""
         r = empty_star.execute_query(
             "UNWIND [{name: 'Alice'}, {name: 'Bob', score: 99}] AS row "
-            "RETURN row.name, row.score"
+            "RETURN row.name, row.score",
         )
         assert len(r) == 2
         # First row: score is missing → null
@@ -110,7 +111,7 @@ class TestUnwindMaps:
         """Aggregation over UNWIND-ed maps works correctly."""
         r = empty_star.execute_query(
             "UNWIND [{val: 10}, {val: 20}, {val: 30}] AS row "
-            "RETURN sum(row.val) AS total"
+            "RETURN sum(row.val) AS total",
         )
         assert int(r["total"].iloc[0]) == 60
 
@@ -128,7 +129,7 @@ class TestUnwindMapsWithMatch:
         r = person_star.execute_query(
             "UNWIND [{uname: 'Alice'}, {uname: 'Bob'}] AS row "
             "MATCH (p:Person) WHERE p.name = row.uname "
-            "RETURN row.uname, p.name ORDER BY row.uname"
+            "RETURN row.uname, p.name ORDER BY row.uname",
         )
         assert len(r) == 2
         # Both rows should resolve to the matching person

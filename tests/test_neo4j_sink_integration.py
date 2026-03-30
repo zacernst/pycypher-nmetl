@@ -36,13 +36,16 @@ def _count_nodes(neo4j_session: Any, label: str) -> int:  # type: ignore[name-de
 def _count_rels(neo4j_session: Any, rel_type: str) -> int:  # type: ignore[name-defined]
     """Return the number of relationships of *rel_type* in the database."""
     result = neo4j_session.run(
-        f"MATCH ()-[r:`{rel_type}`]->() RETURN count(r) AS cnt"
+        f"MATCH ()-[r:`{rel_type}`]->() RETURN count(r) AS cnt",
     )
     return result.single()["cnt"]
 
 
 def _get_node(
-    neo4j_session: Any, label: str, id_prop: str, id_val: Any
+    neo4j_session: Any,
+    label: str,
+    id_prop: str,
+    id_val: Any,
 ) -> dict:  # type: ignore[name-defined]
     """Return the property dict of a single node identified by *id_val*."""
     result = neo4j_session.run(
@@ -80,11 +83,11 @@ def _get_rel(
 # ===========================================================================
 
 
-from typing import Any  # noqa: E402  (needed for type hints above)
+from typing import Any
 
 
-@pytest.fixture()
-def neo4j_sink(neo4j_session: Any) -> Neo4jSink:  # noqa: ARG001
+@pytest.fixture
+def neo4j_sink(neo4j_session: Any) -> Neo4jSink:
     """A Neo4jSink connected to the test database (graph already wiped)."""
     import os
 
@@ -95,7 +98,7 @@ def neo4j_sink(neo4j_session: Any) -> Neo4jSink:  # noqa: ARG001
         yield sink
 
 
-@pytest.fixture()
+@pytest.fixture
 def persons_df() -> pd.DataFrame:
     """Five-person DataFrame."""
     return pd.DataFrame(
@@ -103,11 +106,11 @@ def persons_df() -> pd.DataFrame:
             "pid": [1, 2, 3, 4, 5],
             "name": ["Alice", "Bob", "Carol", "Dave", "Eve"],
             "age": [30, 25, 40, 35, 28],
-        }
+        },
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def rels_df() -> pd.DataFrame:
     """Four-relationship DataFrame (persons must exist first)."""
     return pd.DataFrame(
@@ -115,11 +118,11 @@ def rels_df() -> pd.DataFrame:
             "src": [1, 1, 2, 3],
             "tgt": [2, 3, 3, 4],
             "since": [2018, 2019, 2020, 2021],
-        }
+        },
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def node_mapping() -> NodeMapping:
     """NodeMapping for persons_df."""
     return NodeMapping(
@@ -129,7 +132,7 @@ def node_mapping() -> NodeMapping:
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def rel_mapping() -> RelationshipMapping:
     """RelationshipMapping for rels_df."""
     return RelationshipMapping(
@@ -190,7 +193,7 @@ class TestNeo4jSinkNodesIntegration:
     ) -> None:
         neo4j_sink.write_nodes(persons_df, node_mapping)
         result = neo4j_session.run(
-            "MATCH (n:Person) WHERE n.id IS NULL RETURN count(n) AS cnt"
+            "MATCH (n:Person) WHERE n.id IS NULL RETURN count(n) AS cnt",
         )
         assert result.single()["cnt"] == 0
 
@@ -302,7 +305,7 @@ class TestNeo4jSinkNodesIntegration:
             ),
         )
         result = neo4j_session.run(
-            "MATCH (n:Code {code: 'A'}) RETURN n.value AS v"
+            "MATCH (n:Code {code: 'A'}) RETURN n.value AS v",
         )
         assert result.single()["v"] == 1
 
@@ -316,7 +319,7 @@ class TestNeo4jSinkNodesIntegration:
             {
                 "pid": range(n),
                 "name": [f"Person_{i}" for i in range(n)],
-            }
+            },
         )
         count = neo4j_sink.write_nodes(
             df,
@@ -336,7 +339,8 @@ class TestNeo4jSinkNodesIntegration:
     ) -> None:
         empty = pd.DataFrame({"pid": pd.Series([], dtype=int)})
         count = neo4j_sink.write_nodes(
-            empty, NodeMapping(label="Empty", id_column="pid")
+            empty,
+            NodeMapping(label="Empty", id_column="pid"),
         )
         assert count == 0
         assert _count_nodes(neo4j_session, "Empty") == 0
@@ -529,14 +533,14 @@ class TestNeo4jSinkRelationshipsIntegration:
             {
                 "pid": range(n_nodes),
                 "name": [f"P{i}" for i in range(n_nodes)],
-            }
+            },
         )
         # Every adjacent pair
         rels_df = pd.DataFrame(
             {
                 "src": range(n_nodes - 1),
                 "tgt": range(1, n_nodes),
-            }
+            },
         )
         neo4j_sink.write_nodes(
             nodes_df,
@@ -579,12 +583,12 @@ class TestNeo4jSinkPipelineIntegration:
                 ID_COLUMN: [1, 2, 3],
                 "name": ["Alice", "Bob", "Carol"],
                 "age": [30, 25, 40],
-            }
+            },
         )
         context = ContextBuilder().add_entity("Person", raw).build()
         star = Star(context=context)
         result = star.execute_query(
-            "MATCH (p:Person) RETURN p.__ID__ AS pid, p.name AS name, p.age AS age"
+            "MATCH (p:Person) RETURN p.__ID__ AS pid, p.name AS name, p.age AS age",
         )
 
         neo4j_sink.write_nodes(
@@ -619,14 +623,14 @@ class TestNeo4jSinkPipelineIntegration:
             {
                 ID_COLUMN: [1, 2, 3],
                 "name": ["Alice", "Bob", "Carol"],
-            }
+            },
         )
         knows_raw = pd.DataFrame(
             {
                 ID_COLUMN: [10, 11],
                 RELATIONSHIP_SOURCE_COLUMN: [1, 2],
                 RELATIONSHIP_TARGET_COLUMN: [2, 3],
-            }
+            },
         )
 
         context = (
@@ -639,7 +643,7 @@ class TestNeo4jSinkPipelineIntegration:
 
         # Write persons first
         persons_result = star.execute_query(
-            "MATCH (p:Person) RETURN p.__ID__ AS pid, p.name AS name"
+            "MATCH (p:Person) RETURN p.__ID__ AS pid, p.name AS name",
         )
         neo4j_sink.write_nodes(
             persons_result,
@@ -649,7 +653,7 @@ class TestNeo4jSinkPipelineIntegration:
         # Write relationships
         rels_result = star.execute_query(
             "MATCH (a:Person)-[r:KNOWS]->(b:Person) "
-            "RETURN a.__ID__ AS src_id, b.__ID__ AS tgt_id"
+            "RETURN a.__ID__ AS src_id, b.__ID__ AS tgt_id",
         )
         neo4j_sink.write_relationships(
             rels_result,
@@ -680,12 +684,12 @@ class TestNeo4jSinkPipelineIntegration:
                 ID_COLUMN: [1, 2, 3, 4],
                 "name": ["Alice", "Bob", "Carol", "Dave"],
                 "age": [30, 25, 40, 22],
-            }
+            },
         )
         context = ContextBuilder().add_entity("Person", raw).build()
         star = Star(context=context)
         result = star.execute_query(
-            "MATCH (p:Person) WHERE p.age >= 30 RETURN p.__ID__ AS pid, p.name AS name"
+            "MATCH (p:Person) WHERE p.age >= 30 RETURN p.__ID__ AS pid, p.name AS name",
         )
 
         neo4j_sink.write_nodes(
@@ -710,12 +714,12 @@ class TestNeo4jSinkPipelineIntegration:
                 ID_COLUMN: [1, 2, 3, 4],
                 "department": ["Eng", "Eng", "HR", "HR"],
                 "salary": [100, 120, 80, 90],
-            }
+            },
         )
         context = ContextBuilder().add_entity("Employee", raw).build()
         star = Star(context=context)
         result = star.execute_query(
-            "MATCH (e:Employee) RETURN e.department AS dept, count(e) AS headcount"
+            "MATCH (e:Employee) RETURN e.department AS dept, count(e) AS headcount",
         )
 
         # Use department string as the id
@@ -747,14 +751,14 @@ class TestNeo4jSinkPipelineIntegration:
             {
                 ID_COLUMN: [1, 2],
                 "name": ["Alice", "Bob"],
-            }
+            },
         )
         context = ContextBuilder().add_entity("Person", raw).build()
 
         for _ in range(2):
             star = Star(context=context)
             result = star.execute_query(
-                "MATCH (p:Person) RETURN p.__ID__ AS pid, p.name AS name"
+                "MATCH (p:Person) RETURN p.__ID__ AS pid, p.name AS name",
             )
             neo4j_sink.write_nodes(
                 result,

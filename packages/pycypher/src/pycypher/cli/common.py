@@ -28,14 +28,14 @@ from pycypher.exceptions import (
 
 # Import DuckDB exceptions for proper error handling
 try:
-    import duckdb  # noqa: F401 — import triggers _duckdb availability
+    import duckdb
     from _duckdb import IOException as DuckDBIOException
 except ImportError:
     # Handle case where DuckDB is not available
     DuckDBIOException = None  # type: ignore[assignment]  # fallback when duckdb unavailable
 
 if TYPE_CHECKING:
-    import pandas as pd
+    pass
 
 
 def cli_error(message: str, *, exit_code: int = 1) -> NoReturn:
@@ -134,7 +134,9 @@ def load_data_source(
     except ValidationError as exc:
         cli_error(format_validation_errors(exc), exit_code=2)
     except Exception as exc:
-        if DuckDBIOException is not None and isinstance(exc, DuckDBIOException):
+        if DuckDBIOException is not None and isinstance(
+            exc, DuckDBIOException
+        ):
             cli_error(translate_duckdb_error(exc, kind, path), exit_code=1)
         # Generic fallback for unexpected errors
         exc_name = type(exc).__name__
@@ -272,7 +274,7 @@ ADHOC_BUILTIN_LABELS: list[tuple[type[BaseException], str]] = [
 
 def match_error_label(
     exc: BaseException,
-    builtin_labels: list[tuple[type[BaseException], str]]
+    builtin_labels: list[tuple[type[BaseException], str]],
 ) -> str:
     """Find a user-friendly error label for an exception.
 

@@ -21,7 +21,7 @@ from pycypher.relational_models import (
 from pycypher.star import Star
 
 
-@pytest.fixture()
+@pytest.fixture
 def star() -> Star:
     df = pd.DataFrame({ID_COLUMN: [1], "n": [1]})
     table = EntityTable(
@@ -36,7 +36,7 @@ def star() -> Star:
         context=Context(
             entity_mapping=EntityMapping(mapping={"N": table}),
             relationship_mapping=RelationshipMapping(mapping={}),
-        )
+        ),
     )
 
 
@@ -54,7 +54,7 @@ class TestScalarMin:
 
     def test_min_strings(self, star: Star) -> None:
         r = star.execute_query(
-            "RETURN min(['banana', 'apple', 'cherry']) AS r"
+            "RETURN min(['banana', 'apple', 'cherry']) AS r",
         )
         assert r["r"].iloc[0] == "apple"
 
@@ -71,7 +71,7 @@ class TestScalarMin:
         assert pd.isna(r["r"].iloc[0])
 
     def test_min_ignores_null_elements(self, star: Star) -> None:
-        """null elements are ignored, not included in the min."""
+        """Null elements are ignored, not included in the min."""
         r = star.execute_query("RETURN min([3, null, 1]) AS r")
         assert r["r"].iloc[0] == 1
 
@@ -98,7 +98,7 @@ class TestScalarMax:
 
     def test_max_strings(self, star: Star) -> None:
         r = star.execute_query(
-            "RETURN max(['banana', 'apple', 'cherry']) AS r"
+            "RETURN max(['banana', 'apple', 'cherry']) AS r",
         )
         assert r["r"].iloc[0] == "cherry"
 

@@ -68,11 +68,13 @@ class TestConvertGenericRaisesOnFailure:
 
     def test_unknown_node_type_still_returns_none(self) -> None:
         """_convert_generic returns None (not raises) for a completely unknown
-        node type — graceful degradation for unknown grammar artefacts."""
+        node type — graceful degradation for unknown grammar artefacts.
+        """
         converter = ASTConverter()
         node = {"type": "CompletlyUnknownNodeType9999", "x": 1}
         result = converter._convert_generic(
-            node, "CompletlyUnknownNodeType9999"
+            node,
+            "CompletlyUnknownNodeType9999",
         )
         assert result is None
 
@@ -85,7 +87,8 @@ class TestConvertGenericRaisesOnFailure:
 class TestFromCypherErrorMessage:
     def test_is_none_check_not_falsy_check(self) -> None:
         """from_cypher() uses `is None` semantics, not `if not node`.
-        A valid non-None ASTNode should never be rejected as falsy."""
+        A valid non-None ASTNode should never be rejected as falsy.
+        """
         # We mock convert() to return a real ASTNode to confirm it passes through.
         from pycypher.ast_models import Query
 
@@ -103,7 +106,8 @@ class TestFromCypherErrorMessage:
 
     def test_none_result_raises_with_query_snippet(self) -> None:
         """When from_cypher() conversion returns None, the ValueError includes
-        a snippet of the query being parsed."""
+        a snippet of the query being parsed.
+        """
         # Clear cache to prevent interference from other tests
         _parse_cypher_cached.cache_clear()
         # Patch convert() to return None
@@ -113,7 +117,8 @@ class TestFromCypherErrorMessage:
 
     def test_none_result_error_does_not_say_falsey(self) -> None:
         """The improved error message must NOT contain the old opaque text
-        'Got a falsey object from AST conversion.'"""
+        'Got a falsey object from AST conversion.'
+        """
         # Clear cache to prevent interference from other tests
         _parse_cypher_cached.cache_clear()
         with patch.object(ASTConverter, "convert", return_value=None):
@@ -171,14 +176,15 @@ class TestNoEntityTypesError:
             context=Context(
                 entity_mapping=EntityMapping(mapping={}),
                 relationship_mapping=RelationshipMapping(mapping={}),
-            )
+            ),
         )
         with pytest.raises(ValueError):
             star.execute_query("MATCH (n) RETURN n")
 
     def test_error_message_mentions_context_builder(self) -> None:
         """The 'no entity types' error message mentions ContextBuilder so the
-        user knows how to fix it."""
+        user knows how to fix it.
+        """
         from pycypher.relational_models import (
             Context,
             EntityMapping,
@@ -190,14 +196,15 @@ class TestNoEntityTypesError:
             context=Context(
                 entity_mapping=EntityMapping(mapping={}),
                 relationship_mapping=RelationshipMapping(mapping={}),
-            )
+            ),
         )
         with pytest.raises(ValueError, match="ContextBuilder"):
             star.execute_query("MATCH (n) RETURN n")
 
     def test_error_message_mentions_labelled_pattern(self) -> None:
         """The 'no entity types' error message suggests using a labelled
-        pattern as an alternative fix."""
+        pattern as an alternative fix.
+        """
         from pycypher.relational_models import (
             Context,
             EntityMapping,
@@ -209,7 +216,7 @@ class TestNoEntityTypesError:
             context=Context(
                 entity_mapping=EntityMapping(mapping={}),
                 relationship_mapping=RelationshipMapping(mapping={}),
-            )
+            ),
         )
         with pytest.raises(ValueError) as exc_info:
             star.execute_query("MATCH (n) RETURN n")

@@ -26,7 +26,7 @@ def people_products_context() -> Context:
             ID_COLUMN: [1, 2, 3],
             "name": ["Alice", "Bob", "Carol"],
             "budget": [100, 50, 200],
-        }
+        },
     )
     people_table = EntityTable(
         entity_type="Person",
@@ -42,7 +42,7 @@ def people_products_context() -> Context:
             ID_COLUMN: [10, 20],
             "title": ["Widget", "Gadget"],
             "price": [60, 150],
-        }
+        },
     )
     products_table = EntityTable(
         entity_type="Product",
@@ -55,7 +55,7 @@ def people_products_context() -> Context:
 
     return Context(
         entity_mapping=EntityMapping(
-            mapping={"Person": people_table, "Product": products_table}
+            mapping={"Person": people_table, "Product": products_table},
         ),
         relationship_mapping=RelationshipMapping(mapping={}),
     )
@@ -68,7 +68,7 @@ def persons_context() -> Context:
         {
             ID_COLUMN: [1, 2, 3],
             "name": ["Alice", "Bob", "Carol"],
-        }
+        },
     )
     table = EntityTable(
         entity_type="Person",
@@ -91,24 +91,26 @@ def persons_context() -> Context:
 
 class TestCrossProductBasic:
     def test_cross_product_two_types(
-        self, people_products_context: Context
+        self,
+        people_products_context: Context,
     ) -> None:
         """MATCH (p:Person), (pr:Product) → 3 × 2 = 6 rows."""
         star = Star(context=people_products_context)
         result = star.execute_query(
-            "MATCH (p:Person), (pr:Product) RETURN p.name AS person, pr.title AS product"
+            "MATCH (p:Person), (pr:Product) RETURN p.name AS person, pr.title AS product",
         )
         assert len(result) == 6
         assert "person" in result.columns
         assert "product" in result.columns
 
     def test_cross_product_all_combinations_present(
-        self, people_products_context: Context
+        self,
+        people_products_context: Context,
     ) -> None:
         """Every (person, product) pair appears exactly once."""
         star = Star(context=people_products_context)
         result = star.execute_query(
-            "MATCH (p:Person), (pr:Product) RETURN p.name AS person, pr.title AS product"
+            "MATCH (p:Person), (pr:Product) RETURN p.name AS person, pr.title AS product",
         )
         pairs = set(zip(result["person"].tolist(), result["product"].tolist()))
         assert ("Alice", "Widget") in pairs
@@ -117,14 +119,15 @@ class TestCrossProductBasic:
         assert ("Carol", "Gadget") in pairs
 
     def test_cross_product_with_where_filter(
-        self, people_products_context: Context
+        self,
+        people_products_context: Context,
     ) -> None:
         """WHERE budget >= price filters the Cartesian product."""
         star = Star(context=people_products_context)
         result = star.execute_query(
             "MATCH (p:Person), (pr:Product) "
             "WHERE p.budget >= pr.price "
-            "RETURN p.name AS person, pr.title AS product"
+            "RETURN p.name AS person, pr.title AS product",
         )
         # Alice (100) can afford Widget (60) but not Gadget (150)
         # Bob (50) can afford neither
@@ -143,24 +146,26 @@ class TestCrossProductBasic:
 
 class TestSameTypeCrossProduct:
     def test_self_cross_product_row_count(
-        self, persons_context: Context
+        self,
+        persons_context: Context,
     ) -> None:
         """MATCH (p:Person), (q:Person) → 3 × 3 = 9 rows."""
         star = Star(context=persons_context)
         result = star.execute_query(
-            "MATCH (p:Person), (q:Person) RETURN p.name AS pname, q.name AS qname"
+            "MATCH (p:Person), (q:Person) RETURN p.name AS pname, q.name AS qname",
         )
         assert len(result) == 9
 
     def test_self_cross_product_filter_different(
-        self, persons_context: Context
+        self,
+        persons_context: Context,
     ) -> None:
         """WHERE p.name <> q.name keeps only the N²-N = 6 off-diagonal pairs."""
         star = Star(context=persons_context)
         result = star.execute_query(
             "MATCH (p:Person), (q:Person) "
             "WHERE p.name <> q.name "
-            "RETURN p.name AS pname, q.name AS qname"
+            "RETURN p.name AS pname, q.name AS qname",
         )
         assert len(result) == 6
         # Diagonal (same name) should be absent

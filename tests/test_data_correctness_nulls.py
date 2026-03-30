@@ -1,5 +1,4 @@
-"""
-Critical data correctness tests for null handling.
+"""Critical data correctness tests for null handling.
 Priority 1: Null propagation bugs cause silent data corruption.
 """
 
@@ -32,7 +31,7 @@ def null_test_context():
             "salary": [100000, 120000, None, 110000, None],  # Multiple nulls
             "score": [85.5, None, 92.0, None, 78.0],  # Float nulls
             "active": ["true", None, "false", "", "yes"],  # Boolean-ish nulls
-        }
+        },
     )
 
     person_table = EntityTable(
@@ -66,11 +65,11 @@ class TestNullArithmeticPropagation:
     """Test that arithmetic operations correctly propagate nulls."""
 
     def test_null_plus_number(self, null_test_context):
-        """null + number must equal null, not number."""
+        """Null + number must equal null, not number."""
         star = Star(context=null_test_context)
 
         result = star.execute_query(
-            "MATCH (p:Person) WITH p.age + 5 AS age_plus_five RETURN age_plus_five AS age_plus_five"
+            "MATCH (p:Person) WITH p.age + 5 AS age_plus_five RETURN age_plus_five AS age_plus_five",
         )
 
         # Should be [35, null, 30, 45, 40] - null preserved
@@ -80,11 +79,11 @@ class TestNullArithmeticPropagation:
         assert result["age_plus_five"].isna().sum() == 1  # Exactly one null
 
     def test_null_multiplication(self, null_test_context):
-        """null * number must equal null."""
+        """Null * number must equal null."""
         star = Star(context=null_test_context)
 
         result = star.execute_query(
-            "MATCH (p:Person) WITH p.salary * 2 AS double_salary RETURN double_salary AS double_salary"
+            "MATCH (p:Person) WITH p.salary * 2 AS double_salary RETURN double_salary AS double_salary",
         )
 
         # Should preserve nulls in salary column
@@ -94,11 +93,11 @@ class TestNullArithmeticPropagation:
         assert set(non_null_values) == {200000.0, 240000.0, 220000.0}
 
     def test_null_division(self, null_test_context):
-        """null / number must equal null."""
+        """Null / number must equal null."""
         star = Star(context=null_test_context)
 
         result = star.execute_query(
-            "MATCH (p:Person) WITH p.score / 2 AS half_score RETURN half_score AS half_score"
+            "MATCH (p:Person) WITH p.score / 2 AS half_score RETURN half_score AS half_score",
         )
 
         assert len(result) == 5
@@ -116,7 +115,7 @@ class TestNullStringFunctions:
         star = Star(context=null_test_context)
 
         result = star.execute_query(
-            "MATCH (p:Person) WITH toUpper(p.name) AS upper_name RETURN upper_name AS upper_name"
+            "MATCH (p:Person) WITH toUpper(p.name) AS upper_name RETURN upper_name AS upper_name",
         )
 
         assert len(result) == 5
@@ -136,7 +135,7 @@ class TestNullStringFunctions:
         star = Star(context=null_test_context)
 
         result = star.execute_query(
-            "MATCH (p:Person) WITH trim(p.name) AS trimmed_name RETURN trimmed_name AS trimmed_name"
+            "MATCH (p:Person) WITH trim(p.name) AS trimmed_name RETURN trimmed_name AS trimmed_name",
         )
 
         assert len(result) == 5
@@ -149,7 +148,7 @@ class TestNullStringFunctions:
         star = Star(context=null_test_context)
 
         result = star.execute_query(
-            "MATCH (p:Person) WITH size(p.name) AS name_length RETURN name_length AS name_length"
+            "MATCH (p:Person) WITH size(p.name) AS name_length RETURN name_length AS name_length",
         )
 
         assert len(result) == 5
@@ -171,7 +170,7 @@ class TestNullAggregations:
         star = Star(context=null_test_context)
 
         result = star.execute_query(
-            "MATCH (p:Person) WITH avg(p.age) AS avg_age RETURN avg_age AS avg_age"
+            "MATCH (p:Person) WITH avg(p.age) AS avg_age RETURN avg_age AS avg_age",
         )
 
         # Ages: [30, null, 25, 40, 35] → avg(30, 25, 40, 35) = 32.5
@@ -184,7 +183,7 @@ class TestNullAggregations:
         star = Star(context=null_test_context)
 
         result = star.execute_query(
-            "MATCH (p:Person) WITH sum(p.salary) AS total_salary RETURN total_salary AS total_salary"
+            "MATCH (p:Person) WITH sum(p.salary) AS total_salary RETURN total_salary AS total_salary",
         )
 
         # Salaries: [100000, 120000, null, 110000, null] → sum = 330000
@@ -197,21 +196,19 @@ class TestNullAggregations:
         star = Star(context=null_test_context)
 
         result = star.execute_query(
-            "MATCH (p:Person) WITH count(*) AS total_rows, count(p.age) AS non_null_ages RETURN total_rows AS total_rows, non_null_ages AS non_null_ages"
+            "MATCH (p:Person) WITH count(*) AS total_rows, count(p.age) AS non_null_ages RETURN total_rows AS total_rows, non_null_ages AS non_null_ages",
         )
 
         assert len(result) == 1
         assert result["total_rows"].iloc[0] == 5  # count(*) counts all rows
-        assert (
-            result["non_null_ages"].iloc[0] == 4
-        )  # count(p.age) ignores nulls
+        assert result["non_null_ages"].iloc[0] == 4  # count(p.age) ignores nulls
 
     def test_min_max_with_nulls(self, null_test_context):
         """min/max should ignore nulls."""
         star = Star(context=null_test_context)
 
         result = star.execute_query(
-            "MATCH (p:Person) WITH min(p.score) AS min_score, max(p.score) AS max_score RETURN min_score AS min_score, max_score AS max_score"
+            "MATCH (p:Person) WITH min(p.score) AS min_score, max(p.score) AS max_score RETURN min_score AS min_score, max_score AS max_score",
         )
 
         # Scores: [85.5, null, 92.0, null, 78.0] → min=78.0, max=92.0
@@ -228,18 +225,18 @@ class TestNullTypeConversions:
         star = Star(context=null_test_context)
 
         result = star.execute_query(
-            "MATCH (p:Person) WITH toInteger(p.score) AS int_score RETURN int_score AS int_score"
+            "MATCH (p:Person) WITH toInteger(p.score) AS int_score RETURN int_score AS int_score",
         )
 
         assert len(result) == 5
         assert result["int_score"].isna().sum() == 2  # Two null scores
 
     def test_toboolean_with_null_and_empty(self, null_test_context):
-        """toBoolean should handle null and empty string correctly."""
+        """ToBoolean should handle null and empty string correctly."""
         star = Star(context=null_test_context)
 
         result = star.execute_query(
-            "MATCH (p:Person) WITH toBoolean(p.active) AS is_active RETURN is_active AS is_active"
+            "MATCH (p:Person) WITH toBoolean(p.active) AS is_active RETURN is_active AS is_active",
         )
 
         assert len(result) == 5
@@ -255,7 +252,7 @@ class TestComplexNullScenarios:
         star = Star(context=null_test_context)
 
         result = star.execute_query(
-            "MATCH (p:Person) WITH toUpper(trim(p.name)) AS clean_upper_name RETURN clean_upper_name AS clean_upper_name"
+            "MATCH (p:Person) WITH toUpper(trim(p.name)) AS clean_upper_name RETURN clean_upper_name AS clean_upper_name",
         )
 
         assert len(result) == 5
@@ -264,11 +261,11 @@ class TestComplexNullScenarios:
         )  # One null propagated through
 
     def test_coalesce_null_handling(self, null_test_context):
-        """coalesce should work correctly with nulls."""
+        """Coalesce should work correctly with nulls."""
         star = Star(context=null_test_context)
 
         result = star.execute_query(
-            "MATCH (p:Person) WITH coalesce(p.name, 'Unknown') AS final_name RETURN final_name AS final_name"
+            "MATCH (p:Person) WITH coalesce(p.name, 'Unknown') AS final_name RETURN final_name AS final_name",
         )
 
         assert len(result) == 5
@@ -283,7 +280,7 @@ class TestComplexNullScenarios:
         star = Star(context=null_test_context)
 
         result = star.execute_query(
-            "MATCH (p:Person) WITH (p.age * 1000) + coalesce(p.salary, 0) AS combined_score RETURN combined_score AS combined_score"
+            "MATCH (p:Person) WITH (p.age * 1000) + coalesce(p.salary, 0) AS combined_score RETURN combined_score AS combined_score",
         )
 
         # This tests null handling in complex expressions

@@ -28,11 +28,11 @@ from pycypher.star import Star
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture()
+@pytest.fixture
 def social_star() -> Star:
     """Alice -KNOWS[w=0.8]-> Bob -KNOWS[w=0.5]-> Carol."""
     people_df = pd.DataFrame(
-        {ID_COLUMN: [1, 2, 3], "name": ["Alice", "Bob", "Carol"]}
+        {ID_COLUMN: [1, 2, 3], "name": ["Alice", "Bob", "Carol"]},
     )
     people_table = EntityTable(
         entity_type="Person",
@@ -48,7 +48,7 @@ def social_star() -> Star:
             "__SOURCE__": [1, 2],
             "__TARGET__": [2, 3],
             "weight": [0.8, 0.5],
-        }
+        },
     )
     knows_table = RelationshipTable(
         relationship_type="KNOWS",
@@ -62,9 +62,9 @@ def social_star() -> Star:
         context=Context(
             entity_mapping=EntityMapping(mapping={"Person": people_table}),
             relationship_mapping=RelationshipMapping(
-                mapping={"KNOWS": knows_table}
+                mapping={"KNOWS": knows_table},
             ),
-        )
+        ),
     )
 
 
@@ -77,11 +77,12 @@ class TestRelationshipShadowRouting:
     """SET on a relationship variable must route to _shadow_rels, not _shadow."""
 
     def test_entity_mapping_not_polluted_after_set_rel_property(
-        self, social_star: Star
+        self,
+        social_star: Star,
     ) -> None:
         """After SET r.weight = 1.0, entity_mapping must NOT gain a 'KNOWS' entry."""
         social_star.execute_query(
-            "MATCH (p:Person)-[r:KNOWS]->(f:Person) SET r.weight = 1.0"
+            "MATCH (p:Person)-[r:KNOWS]->(f:Person) SET r.weight = 1.0",
         )
         assert "KNOWS" not in social_star.context.entity_mapping.mapping, (
             "relationship type 'KNOWS' was incorrectly added to entity_mapping after "
@@ -89,12 +90,14 @@ class TestRelationshipShadowRouting:
         )
 
     def test_relationship_mapping_source_obj_updated_after_commit(
-        self, social_star: Star
+        self,
+        social_star: Star,
     ) -> None:
         """After SET r.weight = 1.0 and commit, relationship_mapping.source_obj
-        must reflect the updated weight."""
+        must reflect the updated weight.
+        """
         social_star.execute_query(
-            "MATCH (p:Person)-[r:KNOWS]->(f:Person) SET r.weight = 1.0"
+            "MATCH (p:Person)-[r:KNOWS]->(f:Person) SET r.weight = 1.0",
         )
         knows_source = social_star.context.relationship_mapping.mapping[
             "KNOWS"
@@ -103,7 +106,7 @@ class TestRelationshipShadowRouting:
             weights = set(knows_source["weight"].dropna().tolist())
         else:
             weights = set(
-                pd.DataFrame(knows_source)["weight"].dropna().tolist()
+                pd.DataFrame(knows_source)["weight"].dropna().tolist(),
             )
         assert weights == {1.0}, (
             f"relationship_mapping.source_obj still has stale weights {weights}; "
@@ -111,21 +114,20 @@ class TestRelationshipShadowRouting:
         )
 
     def test_relationship_shadow_cleared_after_rollback(
-        self, social_star: Star
+        self,
+        social_star: Star,
     ) -> None:
         """After a failed query (rollback), relationship_mapping must be unchanged."""
         original_weights = list(
             pd.DataFrame(
-                social_star.context.relationship_mapping.mapping[
-                    "KNOWS"
-                ].source_obj
-            )["weight"]
+                social_star.context.relationship_mapping.mapping["KNOWS"].source_obj,
+            )["weight"],
         )
         # Force a rollback by making the query fail after the SET via invalid RETURN
         try:
             social_star.execute_query(
                 "MATCH (p:Person)-[r:KNOWS]->(f:Person) SET r.weight = 99.0 "
-                "RETURN nonexistent_function_that_does_not_exist_xyz()"
+                "RETURN nonexistent_function_that_does_not_exist_xyz()",
             )
         except Exception:
             pass
@@ -133,26 +135,23 @@ class TestRelationshipShadowRouting:
         # relationship_mapping should not have been updated
         after_weights = list(
             pd.DataFrame(
-                social_star.context.relationship_mapping.mapping[
-                    "KNOWS"
-                ].source_obj
-            )["weight"]
+                social_star.context.relationship_mapping.mapping["KNOWS"].source_obj,
+            )["weight"],
         )
         assert after_weights == original_weights, (
             "Relationship source_obj was mutated despite rollback"
         )
 
     def test_entity_shadow_still_used_for_entity_mutations(
-        self, social_star: Star
+        self,
+        social_star: Star,
     ) -> None:
         """SET on an entity (node) variable must still route to _shadow, not _shadow_rels."""
         social_star.execute_query(
-            "MATCH (p:Person) WHERE p.name = 'Alice' SET p.age = 42"
+            "MATCH (p:Person) WHERE p.name = 'Alice' SET p.age = 42",
         )
         # Entity mapping must be updated
-        person_source = social_star.context.entity_mapping.mapping[
-            "Person"
-        ].source_obj
+        person_source = social_star.context.entity_mapping.mapping["Person"].source_obj
         if isinstance(person_source, pd.DataFrame):
             df = person_source
         else:
@@ -165,19 +164,20 @@ class TestRelationshipShadowRouting:
         assert "Person" not in social_star.context.relationship_mapping.mapping
 
     def test_commit_does_not_add_relationship_type_to_entity_mapping(
-        self, social_star: Star
+        self,
+        social_star: Star,
     ) -> None:
         """commit_query() must never create EntityTable entries for relationship types."""
         initial_entity_keys = set(
-            social_star.context.entity_mapping.mapping.keys()
+            social_star.context.entity_mapping.mapping.keys(),
         )
 
         social_star.execute_query(
-            "MATCH (p:Person)-[r:KNOWS]->(f:Person) SET r.weight = 2.5"
+            "MATCH (p:Person)-[r:KNOWS]->(f:Person) SET r.weight = 2.5",
         )
 
         final_entity_keys = set(
-            social_star.context.entity_mapping.mapping.keys()
+            social_star.context.entity_mapping.mapping.keys(),
         )
         assert final_entity_keys == initial_entity_keys, (
             f"entity_mapping grew from {initial_entity_keys} to {final_entity_keys}; "
@@ -194,44 +194,47 @@ class TestRelPropertySetCorrectness:
     """Observable correctness of SET on relationship properties."""
 
     def test_set_rel_property_value_visible_in_same_star(
-        self, social_star: Star
+        self,
+        social_star: Star,
     ) -> None:
         """Updated relationship property is readable in a follow-up query."""
         social_star.execute_query(
-            "MATCH (p:Person)-[r:KNOWS]->(f:Person) SET r.weight = 1.0"
+            "MATCH (p:Person)-[r:KNOWS]->(f:Person) SET r.weight = 1.0",
         )
         result = social_star.execute_query(
-            "MATCH (p:Person)-[r:KNOWS]->(f:Person) RETURN r.weight"
+            "MATCH (p:Person)-[r:KNOWS]->(f:Person) RETURN r.weight",
         )
         assert set(result["weight"].tolist()) == {1.0}
 
     def test_partial_set_rel_property_preserves_other_rows(
-        self, social_star: Star
+        self,
+        social_star: Star,
     ) -> None:
         """SET filtered by WHERE only updates the matched edge."""
         social_star.execute_query(
             "MATCH (p:Person)-[r:KNOWS]->(f:Person) "
-            "WHERE p.name = 'Alice' SET r.weight = 0.0"
+            "WHERE p.name = 'Alice' SET r.weight = 0.0",
         )
         result = social_star.execute_query(
             "MATCH (p:Person)-[r:KNOWS]->(f:Person) "
-            "RETURN p.name, r.weight ORDER BY p.name"
+            "RETURN p.name, r.weight ORDER BY p.name",
         )
         weights = dict(zip(result["name"], result["weight"]))
         assert weights["Alice"] == 0.0
         assert weights["Bob"] == 0.5  # unchanged
 
     def test_two_sequential_sets_on_same_relationship(
-        self, social_star: Star
+        self,
+        social_star: Star,
     ) -> None:
         """Chaining two SET queries on the same relationship gives the second value."""
         social_star.execute_query(
-            "MATCH (p:Person)-[r:KNOWS]->(f:Person) SET r.weight = 1.0"
+            "MATCH (p:Person)-[r:KNOWS]->(f:Person) SET r.weight = 1.0",
         )
         social_star.execute_query(
-            "MATCH (p:Person)-[r:KNOWS]->(f:Person) SET r.weight = 2.0"
+            "MATCH (p:Person)-[r:KNOWS]->(f:Person) SET r.weight = 2.0",
         )
         result = social_star.execute_query(
-            "MATCH (p:Person)-[r:KNOWS]->(f:Person) RETURN r.weight"
+            "MATCH (p:Person)-[r:KNOWS]->(f:Person) RETURN r.weight",
         )
         assert set(result["weight"].tolist()) == {2.0}

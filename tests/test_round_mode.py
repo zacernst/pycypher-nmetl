@@ -49,14 +49,17 @@ def ctx():
                 {
                     "__ID__": ["a", "b", "c", "d", "e"],
                     "val": [2.5, -2.5, 2.1, -2.1, 0.0],
-                }
-            )
-        }
+                },
+            ),
+        },
     )
 
 
 def _exec(
-    reg: ScalarFunctionRegistry, mode: str, value: float, prec: int = 0
+    reg: ScalarFunctionRegistry,
+    mode: str,
+    value: float,
+    prec: int = 0,
 ) -> float:
     """Shortcut: execute round(value, prec, mode) and return scalar result."""
     result = reg.execute(
@@ -66,14 +69,14 @@ def _exec(
     return result.iloc[0]
 
 
-@pytest.fixture()
+@pytest.fixture
 def round_star() -> Star:
     df = pd.DataFrame(
         {
             ID_COLUMN: [1, 2, 3, 4],
             "name": ["Alice", "Bob", "Carol", "Dave"],
             "val": [2.5, 3.5, -0.5, -2.5],
-        }
+        },
     )
     table = EntityTable(
         entity_type="Person",
@@ -87,7 +90,7 @@ def round_star() -> Star:
         context=Context(
             entity_mapping=EntityMapping(mapping={"Person": table}),
             relationship_mapping=RelationshipMapping(mapping={}),
-        )
+        ),
     )
 
 
@@ -100,31 +103,36 @@ class TestRoundDefaultHalfUp:
     """round() must use HALF_UP (tie away from zero) by default."""
 
     def test_two_point_five_rounds_to_three(
-        self, reg: ScalarFunctionRegistry
+        self,
+        reg: ScalarFunctionRegistry,
     ) -> None:
         result = reg.execute("round", [pd.Series([2.5])])
         assert result.iloc[0] == pytest.approx(3.0)
 
     def test_three_point_five_rounds_to_four(
-        self, reg: ScalarFunctionRegistry
+        self,
+        reg: ScalarFunctionRegistry,
     ) -> None:
         result = reg.execute("round", [pd.Series([3.5])])
         assert result.iloc[0] == pytest.approx(4.0)
 
     def test_negative_half_rounds_away_from_zero(
-        self, reg: ScalarFunctionRegistry
+        self,
+        reg: ScalarFunctionRegistry,
     ) -> None:
         result = reg.execute("round", [pd.Series([-0.5])])
         assert result.iloc[0] == pytest.approx(-1.0)
 
     def test_negative_two_point_five_rounds_to_minus_three(
-        self, reg: ScalarFunctionRegistry
+        self,
+        reg: ScalarFunctionRegistry,
     ) -> None:
         result = reg.execute("round", [pd.Series([-2.5])])
         assert result.iloc[0] == pytest.approx(-3.0)
 
     def test_exact_integer_unchanged(
-        self, reg: ScalarFunctionRegistry
+        self,
+        reg: ScalarFunctionRegistry,
     ) -> None:
         result = reg.execute("round", [pd.Series([3.0])])
         assert result.iloc[0] == pytest.approx(3.0)
@@ -159,7 +167,8 @@ class TestRoundDefaultPrecision:
         assert result.iloc[0] == pytest.approx(2.6)
 
     def test_precision_zero_same_as_no_precision(
-        self, reg: ScalarFunctionRegistry
+        self,
+        reg: ScalarFunctionRegistry,
     ) -> None:
         result = reg.execute("round", [pd.Series([2.5]), pd.Series([0])])
         assert result.iloc[0] == pytest.approx(3.0)
@@ -172,7 +181,7 @@ class TestRoundDefaultPrecision:
 class TestRoundInCypherQuery:
     def test_round_in_return_clause(self, round_star: Star) -> None:
         r = round_star.execute_query(
-            "MATCH (p:Person) RETURN round(p.val) AS r ORDER BY p.name"
+            "MATCH (p:Person) RETURN round(p.val) AS r ORDER BY p.name",
         )
         vals = list(r["r"])
         assert vals[0] == pytest.approx(3.0)  # Alice val=2.5 → 3
@@ -182,7 +191,7 @@ class TestRoundInCypherQuery:
 
     def test_round_in_where_clause(self, round_star: Star) -> None:
         r = round_star.execute_query(
-            "MATCH (p:Person) WHERE round(p.val) = 3.0 RETURN p.name"
+            "MATCH (p:Person) WHERE round(p.val) = 3.0 RETURN p.name",
         )
         assert list(r["name"]) == ["Alice"]
 
@@ -194,7 +203,8 @@ class TestRoundInCypherQuery:
 
 class TestRoundModeAccepted:
     def test_three_args_no_longer_raises_arity_error(
-        self, reg: ScalarFunctionRegistry
+        self,
+        reg: ScalarFunctionRegistry,
     ) -> None:
         """round(x, n, mode) must not raise 'accepts at most 2 arguments'."""
         result = reg.execute(
@@ -219,13 +229,15 @@ class TestHalfUp:
         assert _exec(reg, "HALF_UP", 2.5) == pytest.approx(3.0)
 
     def test_negative_tie_rounds_down(
-        self, reg: ScalarFunctionRegistry
+        self,
+        reg: ScalarFunctionRegistry,
     ) -> None:
         """Ties go away from zero, so -2.5 → -3."""
         assert _exec(reg, "HALF_UP", -2.5) == pytest.approx(-3.0)
 
     def test_non_tie_rounds_to_nearest(
-        self, reg: ScalarFunctionRegistry
+        self,
+        reg: ScalarFunctionRegistry,
     ) -> None:
         assert _exec(reg, "HALF_UP", 2.4) == pytest.approx(2.0)
         assert _exec(reg, "HALF_UP", 2.6) == pytest.approx(3.0)
@@ -250,7 +262,8 @@ class TestHalfUp:
 
 class TestHalfDown:
     def test_positive_tie_rounds_down(
-        self, reg: ScalarFunctionRegistry
+        self,
+        reg: ScalarFunctionRegistry,
     ) -> None:
         assert _exec(reg, "HALF_DOWN", 2.5) == pytest.approx(2.0)
 
@@ -259,7 +272,8 @@ class TestHalfDown:
         assert _exec(reg, "HALF_DOWN", -2.5) == pytest.approx(-2.0)
 
     def test_non_tie_rounds_to_nearest(
-        self, reg: ScalarFunctionRegistry
+        self,
+        reg: ScalarFunctionRegistry,
     ) -> None:
         assert _exec(reg, "HALF_DOWN", 2.6) == pytest.approx(3.0)
 
@@ -281,13 +295,15 @@ class TestHalfDown:
 
 class TestHalfEven:
     def test_tie_to_even_two_point_five(
-        self, reg: ScalarFunctionRegistry
+        self,
+        reg: ScalarFunctionRegistry,
     ) -> None:
         """2.5 → 2 (nearest even)."""
         assert _exec(reg, "HALF_EVEN", 2.5) == pytest.approx(2.0)
 
     def test_tie_to_even_three_point_five(
-        self, reg: ScalarFunctionRegistry
+        self,
+        reg: ScalarFunctionRegistry,
     ) -> None:
         """3.5 → 4 (nearest even)."""
         assert _exec(reg, "HALF_EVEN", 3.5) == pytest.approx(4.0)
@@ -296,7 +312,8 @@ class TestHalfEven:
         assert _exec(reg, "HALF_EVEN", -2.5) == pytest.approx(-2.0)
 
     def test_non_tie_rounds_to_nearest(
-        self, reg: ScalarFunctionRegistry
+        self,
+        reg: ScalarFunctionRegistry,
     ) -> None:
         assert _exec(reg, "HALF_EVEN", 2.6) == pytest.approx(3.0)
 
@@ -315,19 +332,22 @@ class TestHalfEven:
 
 class TestCeiling:
     def test_positive_fractional_rounds_up(
-        self, reg: ScalarFunctionRegistry
+        self,
+        reg: ScalarFunctionRegistry,
     ) -> None:
         """2.1 → 3.0."""
         assert _exec(reg, "CEILING", 2.1) == pytest.approx(3.0)
 
     def test_negative_fractional_rounds_toward_pos_inf(
-        self, reg: ScalarFunctionRegistry
+        self,
+        reg: ScalarFunctionRegistry,
     ) -> None:
         """-2.9 → -2.0."""
         assert _exec(reg, "CEILING", -2.9) == pytest.approx(-2.0)
 
     def test_exact_integer_unchanged(
-        self, reg: ScalarFunctionRegistry
+        self,
+        reg: ScalarFunctionRegistry,
     ) -> None:
         assert _exec(reg, "CEILING", 3.0) == pytest.approx(3.0)
 
@@ -346,25 +366,29 @@ class TestCeiling:
 
 class TestFloor:
     def test_positive_fractional_rounds_down(
-        self, reg: ScalarFunctionRegistry
+        self,
+        reg: ScalarFunctionRegistry,
     ) -> None:
         """2.9 → 2.0."""
         assert _exec(reg, "FLOOR", 2.9) == pytest.approx(2.0)
 
     def test_negative_fractional_rounds_toward_neg_inf(
-        self, reg: ScalarFunctionRegistry
+        self,
+        reg: ScalarFunctionRegistry,
     ) -> None:
         """-2.1 → -3.0."""
         assert _exec(reg, "FLOOR", -2.1) == pytest.approx(-3.0)
 
     def test_exact_integer_unchanged(
-        self, reg: ScalarFunctionRegistry
+        self,
+        reg: ScalarFunctionRegistry,
     ) -> None:
         assert _exec(reg, "FLOOR", 3.0) == pytest.approx(3.0)
 
     def test_null_propagates(self, reg: ScalarFunctionRegistry) -> None:
         result = reg.execute(
-            "round", [pd.Series([None]), pd.Series([0]), pd.Series(["FLOOR"])]
+            "round",
+            [pd.Series([None]), pd.Series([0]), pd.Series(["FLOOR"])],
         )
         assert result.iloc[0] is None or (result.iloc[0] != result.iloc[0])
 
@@ -376,25 +400,29 @@ class TestFloor:
 
 class TestUp:
     def test_small_positive_rounds_to_one(
-        self, reg: ScalarFunctionRegistry
+        self,
+        reg: ScalarFunctionRegistry,
     ) -> None:
         """0.1 → 1.0."""
         assert _exec(reg, "UP", 0.1) == pytest.approx(1.0)
 
     def test_small_negative_rounds_to_neg_one(
-        self, reg: ScalarFunctionRegistry
+        self,
+        reg: ScalarFunctionRegistry,
     ) -> None:
         """-0.1 → -1.0."""
         assert _exec(reg, "UP", -0.1) == pytest.approx(-1.0)
 
     def test_exact_integer_unchanged(
-        self, reg: ScalarFunctionRegistry
+        self,
+        reg: ScalarFunctionRegistry,
     ) -> None:
         assert _exec(reg, "UP", 2.0) == pytest.approx(2.0)
 
     def test_null_propagates(self, reg: ScalarFunctionRegistry) -> None:
         result = reg.execute(
-            "round", [pd.Series([None]), pd.Series([0]), pd.Series(["UP"])]
+            "round",
+            [pd.Series([None]), pd.Series([0]), pd.Series(["UP"])],
         )
         assert result.iloc[0] is None or (result.iloc[0] != result.iloc[0])
 
@@ -406,25 +434,29 @@ class TestUp:
 
 class TestDown:
     def test_positive_fractional_truncates(
-        self, reg: ScalarFunctionRegistry
+        self,
+        reg: ScalarFunctionRegistry,
     ) -> None:
         """2.9 → 2.0."""
         assert _exec(reg, "DOWN", 2.9) == pytest.approx(2.0)
 
     def test_negative_fractional_truncates(
-        self, reg: ScalarFunctionRegistry
+        self,
+        reg: ScalarFunctionRegistry,
     ) -> None:
         """-2.9 → -2.0."""
         assert _exec(reg, "DOWN", -2.9) == pytest.approx(-2.0)
 
     def test_exact_integer_unchanged(
-        self, reg: ScalarFunctionRegistry
+        self,
+        reg: ScalarFunctionRegistry,
     ) -> None:
         assert _exec(reg, "DOWN", 3.0) == pytest.approx(3.0)
 
     def test_null_propagates(self, reg: ScalarFunctionRegistry) -> None:
         result = reg.execute(
-            "round", [pd.Series([None]), pd.Series([0]), pd.Series(["DOWN"])]
+            "round",
+            [pd.Series([None]), pd.Series([0]), pd.Series(["DOWN"])],
         )
         assert result.iloc[0] is None or (result.iloc[0] != result.iloc[0])
 
@@ -468,14 +500,16 @@ class TestVectorised:
     def test_half_up_multi_row(self, reg: ScalarFunctionRegistry) -> None:
         s = pd.Series([0.5, 1.5, 2.5, 3.5])
         result = reg.execute(
-            "round", [s, pd.Series([0] * 4), pd.Series(["HALF_UP"] * 4)]
+            "round",
+            [s, pd.Series([0] * 4), pd.Series(["HALF_UP"] * 4)],
         )
         assert list(result) == pytest.approx([1.0, 2.0, 3.0, 4.0])
 
     def test_half_even_multi_row(self, reg: ScalarFunctionRegistry) -> None:
         s = pd.Series([0.5, 1.5, 2.5, 3.5])
         result = reg.execute(
-            "round", [s, pd.Series([0] * 4), pd.Series(["HALF_EVEN"] * 4)]
+            "round",
+            [s, pd.Series([0] * 4), pd.Series(["HALF_EVEN"] * 4)],
         )
         # 0.5→0, 1.5→2, 2.5→2, 3.5→4 (nearest even)
         assert list(result) == pytest.approx([0.0, 2.0, 2.0, 4.0])
@@ -483,37 +517,40 @@ class TestVectorised:
     def test_mixed_null_multi_row(self, reg: ScalarFunctionRegistry) -> None:
         s = pd.Series([2.5, None, 1.5])
         result = reg.execute(
-            "round", [s, pd.Series([0] * 3), pd.Series(["HALF_UP"] * 3)]
+            "round",
+            [s, pd.Series([0] * 3), pd.Series(["HALF_UP"] * 3)],
         )
         assert result.iloc[0] == pytest.approx(3.0)
         assert result.iloc[1] is None or (result.iloc[1] != result.iloc[1])
         assert result.iloc[2] == pytest.approx(2.0)
 
     def test_precision_with_mode_multi_row(
-        self, reg: ScalarFunctionRegistry
+        self,
+        reg: ScalarFunctionRegistry,
     ) -> None:
         # Mode is treated as a constant (first element used for all rows),
         # like precision — this matches Neo4j's semantics where mode is always
         # a string literal constant, not a per-row computed value.
         s = pd.Series([1.555, 2.545])
         result_up = reg.execute(
-            "round", [s, pd.Series([2, 2]), pd.Series(["HALF_UP", "HALF_UP"])]
+            "round",
+            [s, pd.Series([2, 2]), pd.Series(["HALF_UP", "HALF_UP"])],
         )
         assert result_up.iloc[0] == pytest.approx(
-            1.56
+            1.56,
         )  # HALF_UP: 1.555 → 1.56
         assert result_up.iloc[1] == pytest.approx(
-            2.55
+            2.55,
         )  # HALF_UP: 2.545 → 2.55
         result_even = reg.execute(
             "round",
             [s, pd.Series([2, 2]), pd.Series(["HALF_EVEN", "HALF_EVEN"])],
         )
-        assert (
-            result_even.iloc[0] == pytest.approx(1.56)
+        assert result_even.iloc[0] == pytest.approx(
+            1.56,
         )  # HALF_EVEN: 1.555 → 1.56 (5 is even? no: 5 rounds to 6 to make it even)
         assert result_even.iloc[1] == pytest.approx(
-            2.54
+            2.54,
         )  # HALF_EVEN: 2.545 → 2.54 (4 is even)
 
 
@@ -526,28 +563,28 @@ class TestCypherIntegration:
     def test_half_up_in_return(self, ctx: ContextBuilder) -> None:
         s = Star(context=ctx)
         result = s.execute_query(
-            'MATCH (n:Num) WHERE n.val = 2.5 RETURN round(n.val, 0, "HALF_UP") AS r'
+            'MATCH (n:Num) WHERE n.val = 2.5 RETURN round(n.val, 0, "HALF_UP") AS r',
         )
         assert result["r"].iloc[0] == pytest.approx(3.0)
 
     def test_half_even_in_return(self, ctx: ContextBuilder) -> None:
         s = Star(context=ctx)
         result = s.execute_query(
-            'MATCH (n:Num) WHERE n.val = 2.5 RETURN round(n.val, 0, "HALF_EVEN") AS r'
+            'MATCH (n:Num) WHERE n.val = 2.5 RETURN round(n.val, 0, "HALF_EVEN") AS r',
         )
         assert result["r"].iloc[0] == pytest.approx(2.0)
 
     def test_ceiling_in_return(self, ctx: ContextBuilder) -> None:
         s = Star(context=ctx)
         result = s.execute_query(
-            'MATCH (n:Num) WHERE n.val = 2.1 RETURN round(n.val, 0, "CEILING") AS r'
+            'MATCH (n:Num) WHERE n.val = 2.1 RETURN round(n.val, 0, "CEILING") AS r',
         )
         assert result["r"].iloc[0] == pytest.approx(3.0)
 
     def test_floor_negative_in_return(self, ctx: ContextBuilder) -> None:
         s = Star(context=ctx)
         result = s.execute_query(
-            'MATCH (n:Num) WHERE n.val = -2.1 RETURN round(n.val, 0, "FLOOR") AS r'
+            'MATCH (n:Num) WHERE n.val = -2.1 RETURN round(n.val, 0, "FLOOR") AS r',
         )
         assert result["r"].iloc[0] == pytest.approx(-3.0)
 
@@ -555,16 +592,17 @@ class TestCypherIntegration:
         """round(val, 0, 'DOWN') = 2.0 for val=2.5 or -2.5."""
         s = Star(context=ctx)
         result = s.execute_query(
-            'MATCH (n:Num) WHERE round(n.val, 0, "DOWN") = 2.0 RETURN n.val ORDER BY n.val'
+            'MATCH (n:Num) WHERE round(n.val, 0, "DOWN") = 2.0 RETURN n.val ORDER BY n.val',
         )
         # 2.5 truncates to 2, -2.5 truncates to -2 (toward zero)
         assert len(result) == 2  # both 2.5 and -2.5
 
     def test_mode_is_case_insensitive_in_cypher(
-        self, ctx: ContextBuilder
+        self,
+        ctx: ContextBuilder,
     ) -> None:
         s = Star(context=ctx)
         result = s.execute_query(
-            'MATCH (n:Num) WHERE n.val = 2.5 RETURN round(n.val, 0, "half_up") AS r'
+            'MATCH (n:Num) WHERE n.val = 2.5 RETURN round(n.val, 0, "half_up") AS r',
         )
         assert result["r"].iloc[0] == pytest.approx(3.0)

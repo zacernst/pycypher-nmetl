@@ -106,14 +106,20 @@ Running Tests
 
 .. code-block:: bash
 
-   # Run all tests
-   uv run pytest
+   # Quick iteration during development (parallel, minimal output, skips slow tests)
+   make test-quick
 
-   # Run with parallel execution
-   uv run pytest -n 4
+   # Run all tests (parallel, 8 threads)
+   make test
 
    # Run a specific test file
-   uv run pytest tests/test_ast_models.py
+   make test-file FILE=tests/test_ast_models.py
+
+   # Stop on first failure
+   make test-fast
+
+   # Re-run only previously failed tests
+   make test-failed
 
    # Run with coverage report
    make coverage
@@ -146,10 +152,14 @@ Pull Request Process
 
 1. **Create a branch** from ``main``
 2. **Make your changes** — keep PRs focused on a single concern
-3. **Run the test suite** — all tests must pass
-4. **Run the formatter** — ``make format``
-5. **Run the type checker** — ``uv run ty check``
-6. **Push and open a PR** against ``main``
+3. **Run the pre-PR check** — a single command that formats, lints, type-checks,
+   and runs the test suite:
+
+   .. code-block:: bash
+
+      make check   # runs: lock-check → format → lint → typecheck → test-fast
+
+4. **Push and open a PR** against ``main``
 
 PR descriptions should include:
 
@@ -189,3 +199,102 @@ Documentation
 
 Update documentation alongside code changes.  See :doc:`../tutorials/index`
 for tutorial conventions.
+
+Editor Integration (LSP)
+------------------------
+
+PyCypher includes a built-in Language Server Protocol (LSP) server that
+provides real-time Cypher query assistance in any LSP-capable editor.  No
+external extensions are required — the server uses only the standard library.
+
+Features
+~~~~~~~~
+
+- **Diagnostics** — parse errors and semantic validation as you type
+- **Completion** — keywords, functions, and entity labels
+- **Hover** — function documentation and signatures
+- **Signature Help** — parameter hints inside function calls
+- **Go to Definition** — jump to variable definitions
+- **Formatting** — auto-format Cypher queries
+
+Starting the Server
+~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: bash
+
+   python -m pycypher.cypher_lsp
+
+The server communicates via JSON-RPC over stdin/stdout per the LSP
+specification.
+
+VS Code
+~~~~~~~
+
+Add to your ``.vscode/settings.json``:
+
+.. code-block:: json
+
+   {
+       "pycypher.lspServer.path": "python -m pycypher.cypher_lsp"
+   }
+
+For workspace-specific configuration, create ``.vscode/settings.json`` at
+the repository root.
+
+Neovim (nvim-lspconfig)
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Add to your Neovim configuration (``init.lua`` or equivalent):
+
+.. code-block:: lua
+
+   local lspconfig = require('lspconfig')
+   local configs = require('lspconfig.configs')
+
+   if not configs.pycypher then
+       configs.pycypher = {
+           default_config = {
+               cmd = { 'python', '-m', 'pycypher.cypher_lsp' },
+               filetypes = { 'cypher' },
+               root_dir = lspconfig.util.find_git_ancestor,
+               settings = {},
+           },
+       }
+   end
+
+   lspconfig.pycypher.setup({})
+
+Emacs (lsp-mode)
+~~~~~~~~~~~~~~~~
+
+Add to your Emacs configuration:
+
+.. code-block:: elisp
+
+   (with-eval-after-load 'lsp-mode
+     (add-to-list 'lsp-language-id-configuration '(cypher-mode . "cypher"))
+     (lsp-register-client
+      (make-lsp-client
+       :new-connection (lsp-stdio-connection '("python" "-m" "pycypher.cypher_lsp"))
+       :activation-fn (lsp-activate-on "cypher")
+       :server-id 'pycypher-lsp)))
+
+File Type Detection
+~~~~~~~~~~~~~~~~~~~
+
+Most editors need to associate ``.cypher`` files with the Cypher file type.
+For Neovim, add:
+
+.. code-block:: lua
+
+   vim.filetype.add({ extension = { cypher = 'cypher' } })
+
+For VS Code, add to ``settings.json``:
+
+.. code-block:: json
+
+   {
+       "files.associations": {
+           "*.cypher": "cypher"
+       }
+   }

@@ -33,7 +33,7 @@ from pycypher.relational_models import (
 from pycypher.star import Star
 
 
-@pytest.fixture()
+@pytest.fixture
 def person_df() -> pd.DataFrame:
     """Person entity data: Alice(1), Bob(2), Carol(3)."""
     return pd.DataFrame(
@@ -41,11 +41,11 @@ def person_df() -> pd.DataFrame:
             ID_COLUMN: [1, 2, 3],
             "name": ["Alice", "Bob", "Carol"],
             "age": [30, 40, 25],
-        }
+        },
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def knows_df() -> pd.DataFrame:
     """KNOWS relationship data (Person→Person)."""
     return pd.DataFrame(
@@ -54,11 +54,11 @@ def knows_df() -> pd.DataFrame:
             RELATIONSHIP_SOURCE_COLUMN: [1, 2, 3],
             RELATIONSHIP_TARGET_COLUMN: [2, 3, 1],
             "since": [2020, 2021, 2019],
-        }
+        },
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def person_table(person_df: pd.DataFrame) -> EntityTable:
     return EntityTable(
         entity_type="Person",
@@ -70,7 +70,7 @@ def person_table(person_df: pd.DataFrame) -> EntityTable:
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def knows_table(knows_df: pd.DataFrame) -> RelationshipTable:
     return RelationshipTable(
         relationship_type="KNOWS",
@@ -95,7 +95,7 @@ def knows_table(knows_df: pd.DataFrame) -> RelationshipTable:
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def person_only_context(
     person_table: EntityTable,
     knows_table: RelationshipTable,
@@ -104,7 +104,7 @@ def person_only_context(
     return Context(
         entity_mapping=EntityMapping(mapping={"Person": person_table}),
         relationship_mapping=RelationshipMapping(
-            mapping={"KNOWS": knows_table}
+            mapping={"KNOWS": knows_table},
         ),
     )
 
@@ -144,10 +144,10 @@ class TestExecuteQueryMultiMatch:
                                         labels=["Person"],
                                         properties={},
                                     ),
-                                ]
-                            )
-                        ]
-                    )
+                                ],
+                            ),
+                        ],
+                    ),
                 ),
                 Match(
                     pattern=Pattern(
@@ -170,28 +170,30 @@ class TestExecuteQueryMultiMatch:
                                         labels=["Person"],
                                         properties={},
                                     ),
-                                ]
-                            )
-                        ]
-                    )
+                                ],
+                            ),
+                        ],
+                    ),
                 ),
                 Return(
                     items=[
                         ReturnItem(
                             expression=PropertyLookup(
-                                expression=Variable(name="p"), property="name"
+                                expression=Variable(name="p"),
+                                property="name",
                             ),
                             alias="p_name",
                         ),
                         ReturnItem(
                             expression=PropertyLookup(
-                                expression=Variable(name="r"), property="name"
+                                expression=Variable(name="r"),
+                                property="name",
                             ),
                             alias="r_name",
                         ),
-                    ]
+                    ],
                 ),
-            ]
+            ],
         )
 
         df = star.execute_query(query)

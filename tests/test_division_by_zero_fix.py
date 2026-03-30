@@ -109,24 +109,26 @@ class TestIntegrationWithStarQuery:
                 ID_COLUMN: [1, 2, 3],
                 "int_val": [1, -1, 0],
                 "float_val": [1.0, -1.0, 0.0],
-            }
+            },
         )
 
         table = EntityTable.from_dataframe("TestTable", df)
         context = Context(
-            entity_mapping=EntityMapping(mapping={"TestTable": table})
+            entity_mapping=EntityMapping(mapping={"TestTable": table}),
         )
         return Star(context=context)
 
     def test_integer_literal_division_by_zero_query(
-        self, star_context: Star
+        self,
+        star_context: Star,
     ) -> None:
         """Test 'RETURN 1 / 0' returns null."""
         result = star_context.execute_query("RETURN 1 / 0 AS r")
         assert pd.isna(result["r"].iloc[0])
 
     def test_float_literal_division_by_zero_query(
-        self, star_context: Star
+        self,
+        star_context: Star,
     ) -> None:
         """Test 'RETURN 1.0 / 0.0' returns infinity."""
         result = star_context.execute_query("RETURN 1.0 / 0.0 AS r")
@@ -134,7 +136,8 @@ class TestIntegrationWithStarQuery:
         assert math.isinf(val) and val > 0
 
     def test_negative_float_division_by_zero_query(
-        self, star_context: Star
+        self,
+        star_context: Star,
     ) -> None:
         """Test 'RETURN -1.0 / 0.0' returns negative infinity."""
         result = star_context.execute_query("RETURN -1.0 / 0.0 AS r")
@@ -142,7 +145,8 @@ class TestIntegrationWithStarQuery:
         assert math.isinf(val) and val < 0
 
     def test_zero_float_division_by_zero_query(
-        self, star_context: Star
+        self,
+        star_context: Star,
     ) -> None:
         """Test 'RETURN 0.0 / 0.0' returns NaN."""
         result = star_context.execute_query("RETURN 0.0 / 0.0 AS r")
@@ -151,7 +155,7 @@ class TestIntegrationWithStarQuery:
     def test_column_integer_division_by_zero(self, star_context: Star) -> None:
         """Test column integer division by zero returns null."""
         result = star_context.execute_query(
-            "MATCH (t:TestTable) RETURN t.int_val / 0 AS r"
+            "MATCH (t:TestTable) RETURN t.int_val / 0 AS r",
         )
         # All integer division by zero should be null
         assert result["r"].isna().all()
@@ -159,7 +163,7 @@ class TestIntegrationWithStarQuery:
     def test_column_float_division_by_zero(self, star_context: Star) -> None:
         """Test column float division by zero returns infinity."""
         result = star_context.execute_query(
-            "MATCH (t:TestTable) RETURN t.float_val / 0.0 AS r"
+            "MATCH (t:TestTable) RETURN t.float_val / 0.0 AS r",
         )
 
         results = result["r"].tolist()

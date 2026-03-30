@@ -33,12 +33,13 @@ References
 
 - Veldhuizen, T. L. (2014). "Leapfrog Triejoin: A Simple, Worst-Case
   Optimal Join Algorithm." ICDT 2014.
+
 """
 
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
@@ -232,7 +233,7 @@ def _build_relation_infos(
                 sorted_keys=sorted_keys,
                 row_indices=row_indices,
                 source_df=df,
-            )
+            ),
         )
     return infos
 
@@ -286,7 +287,9 @@ def _collect_matching_rows(
         for j, rs in enumerate(row_sets[1:], 1):
             # Use unique synthetic column names to avoid collisions
             if "_count" in combined.columns:
-                combined = combined.rename(columns={"_count": f"_count_{j-1}"})
+                combined = combined.rename(
+                    columns={"_count": f"_count_{j - 1}"}
+                )
             if "_count" in rs.columns:
                 rs = rs.rename(columns={"_count": f"_count_{j}"})
             combined = combined.merge(rs, how="cross")
@@ -373,7 +376,8 @@ def leapfrog_triejoin(
     intersection_keys = _leapfrog_intersect(iterators)
 
     LOGGER.debug(
-        "LeapfrogTriejoin: found %d intersection keys", len(intersection_keys)
+        "LeapfrogTriejoin: found %d intersection keys",
+        len(intersection_keys),
     )
 
     # Assemble result

@@ -46,7 +46,7 @@ class TestPhase1OptimizationTargets:
                 "name": [f"Person{i}" for i in range(1, 11)],
                 "age": [20 + i for i in range(10)],
                 "city": ["NYC", "LA", "Chicago", "NYC", "LA"] * 2,
-            }
+            },
         )
 
         # Create relationships for path testing
@@ -56,7 +56,7 @@ class TestPhase1OptimizationTargets:
                 "__SOURCE__": [1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5, 6],
                 "__TARGET__": [2, 3, 4, 5, 6, 7, 8, 9, 10, 3, 4, 5, 6, 7, 8],
                 "strength": [0.1 * i for i in range(1, 16)],
-            }
+            },
         )
 
         person_table = EntityTable.from_dataframe("Person", person_df)
@@ -65,29 +65,31 @@ class TestPhase1OptimizationTargets:
         context = Context(
             entity_mapping=EntityMapping(mapping={"Person": person_table}),
             relationship_mapping=RelationshipMapping(
-                mapping={"KNOWS": knows_table}
+                mapping={"KNOWS": knows_table},
             ),
         )
         return Star(context=context)
 
     def test_variable_length_path_frontier_copy_baseline(
-        self, comprehensive_test_star: Star
+        self,
+        comprehensive_test_star: Star,
     ) -> None:
         """Test baseline behavior of variable-length path frontier copy (RED phase)."""
-
         # Test query that triggers variable-length path with frontier copy
-        test_query = "MATCH (a:Person)-[*1..2]->(b:Person) RETURN count(b) AS path_count"
+        test_query = (
+            "MATCH (a:Person)-[*1..2]->(b:Person) RETURN count(b) AS path_count"
+        )
 
         # Execute and time the baseline query
         start_time = time.perf_counter()
         result = comprehensive_test_star.execute_query(test_query)
         execution_time = time.perf_counter() - start_time
 
-        print(f"Variable-length path frontier copy baseline:")
+        print("Variable-length path frontier copy baseline:")
         print(f"  Query: {test_query}")
         print(f"  Result: {result.iloc[0]['path_count']} paths found")
         print(f"  Execution time: {execution_time:.4f}s")
-        print(f"  Uses frontier = start_frame.bindings.copy() at star.py:476")
+        print("  Uses frontier = start_frame.bindings.copy() at star.py:476")
 
         # Baseline should work correctly
         assert len(result) == 1
@@ -101,23 +103,25 @@ class TestPhase1OptimizationTargets:
         print("✓ Variable-length path baseline established")
 
     def test_pattern_matching_binding_copy_baseline(
-        self, comprehensive_test_star: Star
+        self,
+        comprehensive_test_star: Star,
     ) -> None:
         """Test baseline behavior of pattern matching binding copy (RED phase)."""
-
         # Test query that triggers pattern matching with binding copy
-        test_query = "MATCH (p:Person) WHERE p.age > 25 RETURN p.name AS name, p.age AS age"
+        test_query = (
+            "MATCH (p:Person) WHERE p.age > 25 RETURN p.name AS name, p.age AS age"
+        )
 
         # Execute and time the baseline query
         start_time = time.perf_counter()
         result = comprehensive_test_star.execute_query(test_query)
         execution_time = time.perf_counter() - start_time
 
-        print(f"Pattern matching binding copy baseline:")
+        print("Pattern matching binding copy baseline:")
         print(f"  Query: {test_query}")
         print(f"  Result: {len(result)} people found")
         print(f"  Execution time: {execution_time:.4f}s")
-        print(f"  Uses new_bindings = frame.bindings.copy() at star.py:937")
+        print("  Uses new_bindings = frame.bindings.copy() at star.py:937")
 
         # Baseline should work correctly
         assert len(result) > 0
@@ -132,10 +136,10 @@ class TestPhase1OptimizationTargets:
         print("✓ Pattern matching baseline established")
 
     def test_query_result_assembly_copy_baseline(
-        self, comprehensive_test_star: Star
+        self,
+        comprehensive_test_star: Star,
     ) -> None:
         """Test baseline behavior of query result assembly copy (RED phase)."""
-
         # Test query that triggers result assembly with copy
         test_query = "MATCH (p:Person) RETURN p.name AS name, p.age AS age ORDER BY p.age LIMIT 5"
 
@@ -144,13 +148,13 @@ class TestPhase1OptimizationTargets:
         result = comprehensive_test_star.execute_query(test_query)
         execution_time = time.perf_counter() - start_time
 
-        print(f"Query result assembly copy baseline:")
+        print("Query result assembly copy baseline:")
         print(f"  Query: {test_query}")
         print(f"  Result: {len(result)} rows returned")
         print(f"  Columns: {list(result.columns)}")
         print(f"  Execution time: {execution_time:.4f}s")
         print(
-            f"  Uses df = frame.bindings.copy().reset_index() at star.py:1590"
+            "  Uses df = frame.bindings.copy().reset_index() at star.py:1590",
         )
 
         # Baseline should work correctly
@@ -171,7 +175,6 @@ class TestCopyOptimizationSafetyAnalysis:
 
     def test_frontier_copy_safety_analysis(self) -> None:
         """Test safety analysis for frontier copy optimization at star.py:476."""
-
         safety_analysis = {
             "Current Pattern": "frontier = start_frame.bindings.copy()",
             "Immediate Usage": "frontier[_VL_TIP_COL] = frontier[start_var]",
@@ -192,7 +195,6 @@ class TestCopyOptimizationSafetyAnalysis:
 
     def test_binding_copy_safety_analysis(self) -> None:
         """Test safety analysis for binding copy optimization at star.py:937."""
-
         safety_analysis = {
             "Current Pattern": "new_bindings = frame.bindings.copy()",
             "Immediate Usage": "new_bindings[hop_col] = fixed_hops",
@@ -213,7 +215,6 @@ class TestCopyOptimizationSafetyAnalysis:
 
     def test_result_assembly_copy_safety_analysis(self) -> None:
         """Test safety analysis for result assembly copy optimization at star.py:1590."""
-
         safety_analysis = {
             "Current Pattern": "df = frame.bindings.copy().reset_index(drop=True)",
             "Immediate Usage": "df[alias] = list_series",
@@ -234,7 +235,6 @@ class TestCopyOptimizationSafetyAnalysis:
 
     def test_comprehensive_safety_validation(self) -> None:
         """Test comprehensive safety validation for all three optimizations."""
-
         # All three patterns follow the safe optimization profile:
         safety_profile = {
             "Pattern Type": "Copy-then-modify",
@@ -256,7 +256,7 @@ class TestCopyOptimizationSafetyAnalysis:
         assert "assign()" in safety_profile["Optimization Strategy"]
 
         print(
-            "✓ All three optimizations validated as LOW risk with proven strategies"
+            "✓ All three optimizations validated as LOW risk with proven strategies",
         )
 
 
@@ -265,7 +265,6 @@ class TestOptimizationImplementationPlan:
 
     def test_optimization_implementation_methodology(self) -> None:
         """Test systematic methodology for implementing optimizations."""
-
         implementation_steps = {
             "Step 1 - Code Analysis": [
                 "Read current implementation context",
@@ -299,12 +298,11 @@ class TestOptimizationImplementationPlan:
             f"Should have comprehensive methodology, found {total_steps} steps"
         )
         print(
-            f"\n✓ Systematic implementation methodology established with {total_steps} validation steps"
+            f"\n✓ Systematic implementation methodology established with {total_steps} validation steps",
         )
 
     def test_performance_measurement_plan(self) -> None:
         """Test plan for measuring performance improvements from optimizations."""
-
         measurement_plan = {
             "Baseline Establishment": [
                 "Measure current execution times for target queries",
@@ -338,7 +336,6 @@ class TestOptimizationImplementationPlan:
 
     def test_regression_prevention_comprehensive(self) -> None:
         """Test comprehensive regression prevention strategy."""
-
         regression_prevention = {
             "Query Functionality": [
                 "All variable-length path queries must work correctly",
@@ -378,12 +375,11 @@ class TestOptimizationImplementationPlan:
             f"Should have comprehensive regression prevention, found {total_checks}"
         )
         print(
-            f"\n✓ Comprehensive regression prevention established with {total_checks} validation points"
+            f"\n✓ Comprehensive regression prevention established with {total_checks} validation points",
         )
 
     def test_ready_for_implementation(self) -> None:
         """Test that all prerequisites are ready for implementation."""
-
         readiness_checklist = {
             "TDD Infrastructure": "✓ Loop 273 restored DataFrame copy validation",
             "Pattern Analysis": "✓ 25 copy patterns identified and categorized",
@@ -400,9 +396,7 @@ class TestOptimizationImplementationPlan:
 
         # All items should be ready
         ready_count = sum(
-            1
-            for status in readiness_checklist.values()
-            if status.startswith("✓")
+            1 for status in readiness_checklist.values() if status.startswith("✓")
         )
         total_count = len(readiness_checklist)
 
@@ -412,5 +406,5 @@ class TestOptimizationImplementationPlan:
 
         print(f"\n✓ ALL PREREQUISITES READY ({ready_count}/{total_count})")
         print(
-            "✓ Performance Loop 274 DataFrame copy optimizations ready for implementation"
+            "✓ Performance Loop 274 DataFrame copy optimizations ready for implementation",
         )

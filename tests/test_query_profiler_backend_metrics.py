@@ -10,7 +10,6 @@ from dataclasses import dataclass, field
 from typing import Any
 
 import pandas as pd
-import pytest
 from pycypher.backend_engine import InstrumentedBackend, PandasBackend
 from pycypher.query_profiler import ProfileReport, QueryProfiler
 

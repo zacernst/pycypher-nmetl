@@ -55,9 +55,7 @@ def _dependency_names(pyproject: dict) -> list[str]:
     names = []
     for dep in deps:
         # Strip version specifier — take the package name before any >=, ==, <, etc.
-        name = (
-            dep.split(">")[0].split("=")[0].split("<")[0].split("[")[0].strip()
-        )
+        name = dep.split(">")[0].split("=")[0].split("<")[0].split("[")[0].strip()
         names.append(name.lower())
     return names
 
@@ -71,7 +69,7 @@ class TestDeadDependenciesRemoved:
     """Removed packages must no longer appear in pyproject.toml dependencies."""
 
     def test_ply_not_in_dependencies(self) -> None:
-        """ply must not be listed as a dependency (it has no importers)."""
+        """Ply must not be listed as a dependency (it has no importers)."""
         names = _dependency_names(_load_pyproject())
         assert "ply" not in names, (
             "ply is still listed as a dependency but is never imported. "
@@ -87,7 +85,7 @@ class TestDeadDependenciesRemoved:
         )
 
     def test_networkx_not_in_dependencies(self) -> None:
-        """networkx must not be listed (BFS is implemented in star.py directly)."""
+        """Networkx must not be listed (BFS is implemented in star.py directly)."""
         names = _dependency_names(_load_pyproject())
         assert "networkx" not in names, (
             "networkx is still listed but is never imported. "
@@ -112,32 +110,26 @@ class TestLowerBoundsAccurate:
     """Lower bounds must reflect what the code is actually tested against."""
 
     def test_pandas_lower_bound_is_3(self) -> None:
-        """pandas lower bound must be >=3.0.0 (only 3.x is tested)."""
-        deps: list[str] = (
-            _load_pyproject().get("project", {}).get("dependencies", [])
-        )
+        """Pandas lower bound must be >=3.0.0 (only 3.x is tested)."""
+        deps: list[str] = _load_pyproject().get("project", {}).get("dependencies", [])
         pandas_dep = next(
-            (d for d in deps if d.lower().startswith("pandas")), None
+            (d for d in deps if d.lower().startswith("pandas")),
+            None,
         )
-        assert pandas_dep is not None, (
-            "pandas must still be listed as a dependency"
-        )
+        assert pandas_dep is not None, "pandas must still be listed as a dependency"
         assert "3" in pandas_dep.split(">=")[-1].split(",")[0].split(".")[0], (
             f"pandas lower bound should be >=3.0.0 (tested on 3.x), "
             f"got: {pandas_dep!r}. Update to 'pandas>=3.0.0'."
         )
 
     def test_duckdb_lower_bound_is_1(self) -> None:
-        """duckdb lower bound must be >=1.0.0 (pre-1.0 API is incompatible)."""
-        deps: list[str] = (
-            _load_pyproject().get("project", {}).get("dependencies", [])
-        )
+        """Duckdb lower bound must be >=1.0.0 (pre-1.0 API is incompatible)."""
+        deps: list[str] = _load_pyproject().get("project", {}).get("dependencies", [])
         duckdb_dep = next(
-            (d for d in deps if d.lower().startswith("duckdb")), None
+            (d for d in deps if d.lower().startswith("duckdb")),
+            None,
         )
-        assert duckdb_dep is not None, (
-            "duckdb must still be listed as a dependency"
-        )
+        assert duckdb_dep is not None, "duckdb must still be listed as a dependency"
         lower = duckdb_dep.split(">=")[-1].split(",")[0].strip()
         major = int(lower.split(".")[0])
         assert major >= 1, (
@@ -180,10 +172,10 @@ class TestCoreFunctionalityIntact:
             context=Context(
                 entity_mapping=EntityMapping(mapping={"Person": table}),
                 relationship_mapping=RelationshipMapping(mapping={}),
-            )
+            ),
         )
         result = star.execute_query(
-            "MATCH (p:Person) RETURN p.name ORDER BY p.name"
+            "MATCH (p:Person) RETURN p.name ORDER BY p.name",
         )
         assert list(result["name"]) == ["Alice", "Bob"]
 
@@ -195,7 +187,7 @@ class TestCoreFunctionalityIntact:
         tree = parser.parse(
             "MATCH (n:Person)-[:KNOWS]->(m:Person) "
             "WHERE n.age > 30 "
-            "RETURN n.name, count(m) AS friends"
+            "RETURN n.name, count(m) AS friends",
         )
         assert tree is not None
 
@@ -207,7 +199,7 @@ class TestCoreFunctionalityIntact:
         cb = ContextBuilder.from_dict(
             {
                 "Person": pd.DataFrame({"__ID__": [1, 2], "name": ["X", "Y"]}),
-            }
+            },
         )
         assert cb is not None
 
@@ -224,7 +216,7 @@ class TestCoreFunctionalityIntact:
             context=Context(
                 entity_mapping=EntityMapping(mapping={}),
                 relationship_mapping=RelationshipMapping(mapping={}),
-            )
+            ),
         )
         result = star.execute_query("RETURN toUpper('hello') AS v")
         assert result["v"].iloc[0] == "HELLO"

@@ -43,7 +43,7 @@ class TestPerformanceBenchmarkValidation:
                 "name": [f"Person{i:02d}" for i in range(1, 51)],
                 "age": [20 + (i % 30) for i in range(50)],
                 "city": [cities[i % 5] for i in range(50)],
-            }
+            },
         )
 
         # Create 100 relationships for complex path scenarios
@@ -60,7 +60,7 @@ class TestPerformanceBenchmarkValidation:
                             "__SOURCE__": i,
                             "__TARGET__": target,
                             "strength": 0.1 + (rel_id % 10) * 0.1,
-                        }
+                        },
                     )
                     rel_id += 1
 
@@ -72,16 +72,16 @@ class TestPerformanceBenchmarkValidation:
         context = Context(
             entity_mapping=EntityMapping(mapping={"Person": person_table}),
             relationship_mapping=RelationshipMapping(
-                mapping={"KNOWS": knows_table}
+                mapping={"KNOWS": knows_table},
             ),
         )
         return Star(context=context)
 
     def test_variable_length_path_performance_improvement(
-        self, performance_test_star: Star
+        self,
+        performance_test_star: Star,
     ) -> None:
         """Test performance improvement for variable-length path queries."""
-
         # Test variable-length path queries that trigger frontier optimization
         path_queries = [
             "MATCH (a:Person)-[*1..2]->(b:Person) RETURN count(b) AS count_2hop",
@@ -109,17 +109,17 @@ class TestPerformanceBenchmarkValidation:
             print(f"    Time: {median_time:.4f}s (median of 5 runs)")
 
         print(f"  Total path query time: {total_time:.4f}s")
-        print(f"  Uses optimized assign() instead of copy() at star.py:476")
+        print("  Uses optimized assign() instead of copy() at star.py:476")
 
         # Queries should complete in reasonable time with correct results
         assert total_time < 2.0, "Path queries should be reasonably fast"
         print("✓ Variable-length path performance validated")
 
     def test_pattern_matching_performance_improvement(
-        self, performance_test_star: Star
+        self,
+        performance_test_star: Star,
     ) -> None:
         """Test performance improvement for pattern matching queries."""
-
         # Test pattern matching queries that trigger binding optimization
         match_queries = [
             "MATCH (p:Person) WHERE p.age > 30 RETURN count(p) AS older_people",
@@ -147,17 +147,17 @@ class TestPerformanceBenchmarkValidation:
             print(f"    Time: {median_time:.4f}s (median of 5 runs)")
 
         print(f"  Total matching query time: {total_time:.4f}s")
-        print(f"  Uses optimized assign() instead of copy() at star.py:937")
+        print("  Uses optimized assign() instead of copy() at star.py:937")
 
         # Queries should complete in reasonable time with correct results
         assert total_time < 1.0, "Matching queries should be fast"
         print("✓ Pattern matching performance validated")
 
     def test_query_result_assembly_performance_improvement(
-        self, performance_test_star: Star
+        self,
+        performance_test_star: Star,
     ) -> None:
         """Test performance improvement for query result assembly."""
-
         # Test result assembly queries that trigger result optimization
         result_queries = [
             "MATCH (p:Person) RETURN p.name AS name, p.age AS age ORDER BY p.age LIMIT 10",
@@ -182,13 +182,13 @@ class TestPerformanceBenchmarkValidation:
 
             print(f"  {query}")
             print(
-                f"    Result: {len(result)} rows, {len(result.columns)} columns"
+                f"    Result: {len(result)} rows, {len(result.columns)} columns",
             )
             print(f"    Time: {median_time:.4f}s (median of 5 runs)")
 
         print(f"  Total result assembly time: {total_time:.4f}s")
         print(
-            f"  Uses optimized reset_index().assign() instead of copy().reset_index() at star.py:1590"
+            "  Uses optimized reset_index().assign() instead of copy().reset_index() at star.py:1590",
         )
 
         # Queries should complete in reasonable time with correct results
@@ -196,10 +196,10 @@ class TestPerformanceBenchmarkValidation:
         print("✓ Query result assembly performance validated")
 
     def test_comprehensive_performance_comparison(
-        self, performance_test_star: Star
+        self,
+        performance_test_star: Star,
     ) -> None:
         """Test comprehensive performance comparison across all optimization categories."""
-
         # Comprehensive test queries hitting all optimization points
         comprehensive_queries = [
             # Variable-length paths (star.py:476)
@@ -236,7 +236,7 @@ class TestPerformanceBenchmarkValidation:
         total_time = sum(all_times)
         avg_time = total_time / len(all_times)
 
-        print(f"\nComprehensive performance summary:")
+        print("\nComprehensive performance summary:")
         print(f"  Total execution time: {total_time:.4f}s")
         print(f"  Average query time: {avg_time:.4f}s")
         print(f"  Total results processed: {total_results} rows")
@@ -249,7 +249,8 @@ class TestPerformanceBenchmarkValidation:
         print("✓ Comprehensive performance benchmark successful")
 
     def test_memory_efficiency_validation(
-        self, performance_test_star: Star
+        self,
+        performance_test_star: Star,
     ) -> None:
         """Validate that assign() produces identical results to copy-then-mutate.
 
@@ -258,7 +259,7 @@ class TestPerformanceBenchmarkValidation:
         same DataFrame, and assign() avoids an explicit copy() call.
         """
         test_df = pd.DataFrame(
-            {f"col_{i}": list(range(1000)) for i in range(10)}
+            {f"col_{i}": list(range(1000)) for i in range(10)},
         )
 
         # Old pattern: copy() then in-place mutate
@@ -277,17 +278,17 @@ class TestPerformanceBenchmarkValidation:
         )
 
         print(
-            "✓ Both patterns produce identical results; assign() avoids explicit copy"
+            "✓ Both patterns produce identical results; assign() avoids explicit copy",
         )
 
         del test_df, old_result, new_result
         gc.collect()
 
     def test_optimization_correctness_validation(
-        self, performance_test_star: Star
+        self,
+        performance_test_star: Star,
     ) -> None:
         """Test that optimizations maintain complete functional correctness."""
-
         # Test queries that exercise all optimized code paths
         correctness_queries = [
             # Variable-length path correctness
@@ -321,9 +322,7 @@ class TestPerformanceBenchmarkValidation:
             assert isinstance(result, pd.DataFrame), (
                 f"Query should return DataFrame: {description}"
             )
-            assert len(result.columns) > 0, (
-                f"Query should have columns: {description}"
-            )
+            assert len(result.columns) > 0, f"Query should have columns: {description}"
 
             # Data integrity checks
             if len(result) > 0:
@@ -343,14 +342,13 @@ class TestPerformanceBenchmarkValidation:
                     )
 
             print(
-                f"  ✓ {description}: {len(result)} results, {len(result.columns)} columns"
+                f"  ✓ {description}: {len(result)} results, {len(result.columns)} columns",
             )
 
         print("✓ All optimization correctness validations passed")
 
     def test_performance_improvement_summary(self) -> None:
         """Test summary of performance improvements achieved."""
-
         improvements_summary = {
             "Variable-Length Path Frontier (star.py:476)": {
                 "optimization": "frontier = start_frame.bindings.copy() → assign(**{_VL_TIP_COL: ...})",
@@ -386,21 +384,19 @@ class TestPerformanceBenchmarkValidation:
         print(f"\n{'=' * 70}")
         print(f"TOTAL OPTIMIZATIONS IMPLEMENTED: {total_optimizations}")
         print(
-            f"PERFORMANCE IMPACT: Reduced DataFrame copying in core query execution paths"
+            "PERFORMANCE IMPACT: Reduced DataFrame copying in core query execution paths",
         )
         print(
-            f"MEMORY IMPACT: Lower memory allocation and improved cache efficiency"
+            "MEMORY IMPACT: Lower memory allocation and improved cache efficiency",
         )
         print(
-            f"CORRECTNESS: All optimizations maintain complete functional equivalence"
+            "CORRECTNESS: All optimizations maintain complete functional equivalence",
         )
-        print(f"TESTING: Comprehensive validation through 25+ test cases")
+        print("TESTING: Comprehensive validation through 25+ test cases")
         print(f"{'=' * 70}")
 
         # All optimizations should be implemented
-        assert total_optimizations == 3, (
-            "Should have implemented 3 core optimizations"
-        )
+        assert total_optimizations == 3, "Should have implemented 3 core optimizations"
         print(
-            "✓ Performance Loop 274 Phase 1 optimization summary completed successfully"
+            "✓ Performance Loop 274 Phase 1 optimization summary completed successfully",
         )

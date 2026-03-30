@@ -261,7 +261,8 @@ def _score_expression(
             _score_node(expr.query, w, result, depth=depth + 1)
 
     elif isinstance(expr, ListComprehension) or isinstance(
-        expr, PatternComprehension
+        expr,
+        PatternComprehension,
     ):
         _add(result, "list_comprehension", w["list_comprehension"])
 

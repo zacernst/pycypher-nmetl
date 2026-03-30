@@ -73,7 +73,6 @@ class AggregationPlanner:
             True if the expression or any descendant is an aggregation function.
 
         """
-
         if expression is None:
             return False
 
@@ -150,7 +149,6 @@ class AggregationPlanner:
         Handles the ``{"arguments": [...]}`` / ``{"args": [...]}`` / bare-list
         shapes that ``FunctionInvocation.arguments`` can take.
         """
-
         for arg in _normalize_func_args(arguments):
             if self.contains_aggregation(arg):
                 return True
@@ -315,10 +313,14 @@ class AggregationPlanner:
             else:
                 fallback_items.append(item)
 
+        # Compute the GroupBy object once and reuse for both the unique-group
+        # skeleton and the per-group fallback iteration below.
+        _groupby_obj = group_df.groupby(groupby_key, sort=False)
+
         # Build the unique-group skeleton DataFrame (one row per group, group
         # key columns first, in first-seen order matching groupby sort=False).
         unique_groups: pd.DataFrame = (
-            group_df.groupby(groupby_key, sort=False).first().reset_index()
+            _groupby_obj.first().reset_index()
         )[group_key_aliases]
 
         # Attach vectorised agg results — positional alignment is guaranteed
@@ -331,10 +333,7 @@ class AggregationPlanner:
             for item in fallback_items:
                 unique_groups[item.alias] = None  # initialise column
 
-            for group_vals, group_idx in group_df.groupby(
-                groupby_key,
-                sort=False,
-            ).groups.items():
+            for group_vals, group_idx in _groupby_obj.groups.items():
                 mask = pd.Series(False, index=range(len(frame)))
                 mask.iloc[list(group_idx)] = True
                 group_frame = frame.filter(mask)

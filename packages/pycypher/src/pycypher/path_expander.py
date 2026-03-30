@@ -86,6 +86,7 @@ class PathExpander:
         Args:
             context: Execution context with entity/relationship tables
                 used for BFS frontier expansion.
+
         """
         self.context = context
 
@@ -318,7 +319,6 @@ class PathExpander:
             A BindingFrame with the shortest-path result rows.
 
         """
-
         _ANON_NODE_PREFIX = "_anon_node_"
 
         elements = path.elements

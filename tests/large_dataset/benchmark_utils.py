@@ -65,7 +65,7 @@ class BenchmarkResult:
     @property
     def stdev_time_s(self) -> float:
         """Standard deviation of execution times."""
-        if len(self.times_s) < 2:  # noqa: PLR2004
+        if len(self.times_s) < 2:
             return 0.0
         return statistics.stdev(self.times_s)
 
@@ -78,9 +78,7 @@ class BenchmarkResult:
     def median_memory_delta_mb(self) -> float:
         """Median net memory change across iterations."""
         return (
-            statistics.median(self.memory_deltas_mb)
-            if self.memory_deltas_mb
-            else 0.0
+            statistics.median(self.memory_deltas_mb) if self.memory_deltas_mb else 0.0
         )
 
     def assert_time_under(self, threshold_s: float) -> None:
@@ -151,7 +149,7 @@ def measure_performance(
                 peak_memory_mb=peak_mem,
                 rows_processed=rows,
                 query=query,
-            )
+            ),
         )
 
 
@@ -182,6 +180,7 @@ def run_benchmark(
     -------
     BenchmarkResult
         Aggregated performance metrics.
+
     """
     callable_fn = execute_fn  # type: ignore[assignment]
 

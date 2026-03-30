@@ -43,7 +43,6 @@ autodoc_mock_imports = [
     "pycypher.query",
     "pycypher.tree_mixin",
     "pycypher.lineage",
-    "pycypher.cli",
     # Optional telemetry dependency
     "pyroscope",
 ]

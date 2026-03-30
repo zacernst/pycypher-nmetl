@@ -1,5 +1,4 @@
-"""
-Testing Loop 288 - Collection Evaluator Pandas Array Ambiguity Fix TDD
+"""Testing Loop 288 - Collection Evaluator Pandas Array Ambiguity Fix TDD
 
 Comprehensive test suite for fixing the critical pandas array boolean evaluation
 error in _is_null_raw_list function that is blocking list comprehension operations.
@@ -45,7 +44,8 @@ class TestPandasArrayAmbiguityReproduction:
             _is_null_raw_list_original([])
 
         with pytest.raises(
-            ValueError, match="The truth value of an array.*is ambiguous"
+            ValueError,
+            match="The truth value of an array.*is ambiguous",
         ):
             _is_null_raw_list_original([1, 2, 3])
 
@@ -62,7 +62,6 @@ class TestPandasArrayAmbiguityReproduction:
 
     def test_pandas_isna_behavior_analysis(self):
         """Analyze how pd.isna behaves with different value types."""
-
         # Scalar values - pd.isna returns boolean
         assert pd.isna(None) is True
         assert pd.isna(pd.NA) is True
@@ -73,14 +72,16 @@ class TestPandasArrayAmbiguityReproduction:
         pandas_array = pd.array([1, 2, None])
         isna_result = pd.isna(pandas_array)
         assert isinstance(
-            isna_result, np.ndarray
+            isna_result,
+            np.ndarray,
         )  # Returns array, not boolean
         assert list(isna_result) == [False, False, True]
 
         pandas_series = pd.Series([1, None, 3])
         isna_result_series = pd.isna(pandas_series)
         assert isinstance(
-            isna_result_series, pd.Series
+            isna_result_series,
+            pd.Series,
         )  # Returns Series, not boolean
         assert list(isna_result_series) == [False, True, False]
 
@@ -177,7 +178,7 @@ class TestCollectionEvaluatorIntegration:
                 "__ID__": ["p1", "p2", "p3"],
                 "name": ["Alice", "Bob", "Carol"],
                 "age": [25, 30, 35],
-            }
+            },
         )
 
         context = ContextBuilder.from_dict({"Person": entities_df})
@@ -204,7 +205,7 @@ class TestCollectionEvaluatorIntegration:
                 "__ID__": ["p1", "p2", "p3"],
                 "name": ["Alice", "Bob", "Carol"],
                 "age": [25, 30, 35],
-            }
+            },
         )
 
         context = ContextBuilder.from_dict({"Person": entities_df})
@@ -233,7 +234,7 @@ class TestOriginalTestCaseExecution:
                 "name": [f"Person_{i}" for i in range(1, 101)],
                 "city": ["NYC", "LA", "Chicago"] * 33 + ["Boston"],
                 "age": list(range(20, 120)),
-            }
+            },
         )
 
         context = ContextBuilder.from_dict({"Person": entities_df})

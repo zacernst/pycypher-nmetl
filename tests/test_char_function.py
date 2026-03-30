@@ -20,13 +20,13 @@ from pycypher.relational_models import (
 from pycypher.star import Star
 
 
-@pytest.fixture()
+@pytest.fixture
 def star() -> Star:
     df = pd.DataFrame(
         {
             ID_COLUMN: [1, 2, 3],
             "code": [65, 97, 48],  # A, a, 0
-        }
+        },
     )
     table = EntityTable(
         entity_type="N",
@@ -40,7 +40,7 @@ def star() -> Star:
         context=Context(
             entity_mapping=EntityMapping(mapping={"N": table}),
             relationship_mapping=RelationshipMapping(mapping={}),
-        )
+        ),
     )
 
 
@@ -78,9 +78,9 @@ class TestCharFunction:
         assert pd.isna(r["r"].iloc[0])
 
     def test_column_input(self, star: Star) -> None:
-        """char applied to a column of code points."""
+        """Char applied to a column of code points."""
         r = star.execute_query(
-            "MATCH (n:N) RETURN char(n.code) AS r ORDER BY n.code"
+            "MATCH (n:N) RETURN char(n.code) AS r ORDER BY n.code",
         )
         result = r["r"].tolist()
         assert result == ["0", "A", "a"]

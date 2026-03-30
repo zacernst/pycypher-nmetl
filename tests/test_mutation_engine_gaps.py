@@ -8,7 +8,6 @@ relationships -- all driven through ``Star.execute_query()``.
 from __future__ import annotations
 
 import pandas as pd
-import pytest
 from pycypher.star import Star
 
 
@@ -24,7 +23,8 @@ class TestCreateBasicEntity:
         assert 30 in result["age"].tolist()
 
     def test_create_node_appears_in_subsequent_match(
-        self, social_star: Star
+        self,
+        social_star: Star,
     ) -> None:
         social_star.execute_query(
             "CREATE (n:Scientist {name: 'Marie', field: 'physics'})",
@@ -60,7 +60,8 @@ class TestDetachDelete:
     """DETACH DELETE removes entities and their relationships (line 620)."""
 
     def test_detach_delete_removes_relationships(
-        self, social_star: Star
+        self,
+        social_star: Star,
     ) -> None:
         social_star.execute_query("MATCH (n:Person) DETACH DELETE n")
 
@@ -173,7 +174,8 @@ class TestCreateWithRelationship:
         assert result["b_name"].iloc[0] == "Y"
 
     def test_created_relationship_is_queryable(
-        self, social_star: Star
+        self,
+        social_star: Star,
     ) -> None:
         social_star.execute_query(
             "CREATE (a:Person {name: 'P1'})-[:KNOWS]->(b:Person {name: 'P2'})",

@@ -11,7 +11,7 @@ name = "pycypher-workspace"
 version = "0.0.1"
 description = "PyCypher monorepo workspace"
 readme = "README.md"
-requires-python = ">=3.14.0"
+requires-python = ">=3.12"
 keywords = ["neo4j", "cypher", "parser", "relational algebra"]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -23,6 +23,7 @@ dependencies = [
     "pycypher",
     "shared",
     "fastopendata",
+    "httpx>=0.28.1",
 ]
 
 [[project.authors]]
@@ -48,7 +49,6 @@ python-version = "3.14"
 
 [tool.ty.src]
 exclude = [
-    "packages/nmetl/**",
     "packages/fastopendata/**",
     ".claude/worktrees/**",
 ]
@@ -96,6 +96,15 @@ exclude = [
 
 [tool.ruff.lint]
 select = ["ALL"]
+ignore = [
+    # Formatter-incompatible rules (ruff docs recommend disabling when using ruff format)
+    "COM812",  # missing-trailing-comma — handled by formatter
+    # Test-suite noise — assert is idiomatic in pytest
+    "S101",    # assert — 13K+ hits, all in tests
+    # Docstring rules that conflict with each other
+    "D203",    # incorrect-blank-line-before-class — conflicts with D211
+    "D213",    # multi-line-summary-second-line — conflicts with D212
+]
 
 [tool.coverage.run]
 source = [
@@ -104,6 +113,7 @@ source = [
 ]
 
 [tool.coverage.report]
+fail_under = 80
 exclude_also = [
     "def tree",
     "def print_tree",
@@ -158,9 +168,11 @@ skips = [
 targets = ["packages/pycypher/src", "packages/shared/src"]
 
 [dependency-groups]
-dev = [
+# Lightweight dev environment for core pycypher work (no Spark/Dask/Polars).
+# Install with: uv sync --group dev-core
+dev-core = [
     # Testing frameworks
-    "pytest>=8.3.2,<10.0.0",
+    "pytest>=8.3.2,<9.0.0",
     "pytest-cov>=6.0.0,<7.0.0",
     "pytest-xdist>=3.6.1,<4.0.0",
     "pytest-mock>=3.14.0,<4.0.0",
@@ -181,6 +193,15 @@ dev = [
     "sphinx>=7.4.7,<9.0.0",
     "sphinx-rtd-theme>=3.0.0,<4.0.0",  # Sphinx Read the Docs theme
 
+    # Runtime utilities used in tests
+    "psutil>=5.9.0,<8.0.0",           # System and process utilities for performance monitoring
+]
+
+# Full dev environment: includes dev-core + distributed computing + Neo4j.
+# Install with: uv sync --group dev
+dev = [
+    { include-group = "dev-core" },
+
     # PySpark and distributed computing dependencies
     "pyspark[sql]>=3.5.0,<5.0.0",     # Main PySpark library with SQL functionality
     "delta-spark>=3.0.0,<5.0.0",      # Delta Lake for advanced data management
@@ -190,9 +211,6 @@ dev = [
     "distributed>=2025.1.0,<2027.0.0",      # Dask distributed scheduler
     "polars>=1.0.0,<2.0.0",                 # Alternative high-performance backend
     "deltalake>=0.18.0,<2.0.0",             # Delta Lake Python bindings (storage layer)
-
-    # Runtime utilities used in tests
-    "psutil>=5.9.0,<8.0.0",           # System and process utilities for performance monitoring
 
     # Neo4j driver
     "neo4j>=5.0.0,<7.0.0",    # Official Neo4j Python driver (ceiling matches pycypher optional)

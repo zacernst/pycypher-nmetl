@@ -31,9 +31,7 @@ class TestGetDefaultParser:
         """get_default_parser() returns the exact same object every time."""
         p1 = get_default_parser()
         p2 = get_default_parser()
-        assert p1 is p2, (
-            "Expected cached singleton; got two different instances"
-        )
+        assert p1 is p2, "Expected cached singleton; got two different instances"
 
     def test_no_new_init_on_second_call(self) -> None:
         """Calling get_default_parser() twice does not call __init__ twice."""
@@ -100,9 +98,9 @@ class TestFromCypherUsesCache:
                         "__ID__": [1, 2, 3],
                         "name": ["Alice", "Bob", "Carol"],
                         "age": [30, 25, 35],
-                    }
-                )
-            }
+                    },
+                ),
+            },
         )
         star = Star(context=ctx)
 
@@ -126,8 +124,8 @@ class TestFromCypherUsesCache:
 class TestParserCacheCorrectness:
     """Regression: caching must not break query results."""
 
-    @pytest.fixture()
-    def star(self) -> "Star":  # type: ignore[name-defined]
+    @pytest.fixture
+    def star(self) -> Star:  # type: ignore[name-defined]
         from pycypher import Star
         from pycypher.ingestion import ContextBuilder
 
@@ -138,9 +136,9 @@ class TestParserCacheCorrectness:
                         "__ID__": [1, 2, 3],
                         "name": ["Alice", "Bob", "Carol"],
                         "age": [30, 25, 35],
-                    }
-                )
-            }
+                    },
+                ),
+            },
         )
         return Star(context=ctx)
 
@@ -153,10 +151,10 @@ class TestParserCacheCorrectness:
     def test_different_queries_correct_results(self, star) -> None:  # type: ignore[override]
         """Different queries interleaved still return correct independent results."""
         r_alice = star.execute_query(
-            "MATCH (p:Person) WHERE p.name = 'Alice' RETURN p.age AS age"
+            "MATCH (p:Person) WHERE p.name = 'Alice' RETURN p.age AS age",
         )
         r_bob = star.execute_query(
-            "MATCH (p:Person) WHERE p.name = 'Bob' RETURN p.age AS age"
+            "MATCH (p:Person) WHERE p.name = 'Bob' RETURN p.age AS age",
         )
         assert r_alice["age"].iloc[0] == 30
         assert r_bob["age"].iloc[0] == 25

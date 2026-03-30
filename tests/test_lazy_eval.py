@@ -27,7 +27,7 @@ class TestComputationGraph:
         """Nodes can be added and retrieved."""
         g = ComputationGraph()
         nid = g.add_node(
-            OpNode(op_type=OpType.SCAN, params={"table": "Person"})
+            OpNode(op_type=OpType.SCAN, params={"table": "Person"}),
         )
         assert nid == 0
         assert g.nodes[0].op_type == OpType.SCAN
@@ -121,13 +121,17 @@ class TestFilterFusion:
         scan = g.add_node(OpNode(op_type=OpType.SCAN))
         f1 = g.add_node(
             OpNode(
-                op_type=OpType.FILTER, inputs=[scan], params={"predicate": "a"}
+                op_type=OpType.FILTER,
+                inputs=[scan],
+                params={"predicate": "a"},
             ),
         )
         proj = g.add_node(OpNode(op_type=OpType.PROJECT, inputs=[f1]))
         f2 = g.add_node(
             OpNode(
-                op_type=OpType.FILTER, inputs=[proj], params={"predicate": "b"}
+                op_type=OpType.FILTER,
+                inputs=[proj],
+                params={"predicate": "b"},
             ),
         )
 
@@ -143,7 +147,9 @@ class TestFilterFusion:
         scan = g.add_node(OpNode(op_type=OpType.SCAN))
         g.add_node(
             OpNode(
-                op_type=OpType.FILTER, inputs=[scan], params={"predicate": "x"}
+                op_type=OpType.FILTER,
+                inputs=[scan],
+                params={"predicate": "x"},
             ),
         )
 
@@ -167,10 +173,10 @@ class TestPredicatePushdown:
         """Filter on left-only columns moves below join to left input."""
         g = ComputationGraph()
         scan_l = g.add_node(
-            OpNode(op_type=OpType.SCAN, params={"table": "left"})
+            OpNode(op_type=OpType.SCAN, params={"table": "left"}),
         )
         scan_r = g.add_node(
-            OpNode(op_type=OpType.SCAN, params={"table": "right"})
+            OpNode(op_type=OpType.SCAN, params={"table": "right"}),
         )
         join = g.add_node(
             OpNode(
@@ -197,9 +203,7 @@ class TestPredicatePushdown:
         # The filter should now be an input to the join, not after it
         order = optimised.topological_order()
         filter_nodes = [
-            nid
-            for nid in order
-            if optimised.nodes[nid].op_type == OpType.FILTER
+            nid for nid in order if optimised.nodes[nid].op_type == OpType.FILTER
         ]
         join_nodes = [
             nid for nid in order if optimised.nodes[nid].op_type == OpType.JOIN
@@ -213,10 +217,10 @@ class TestPredicatePushdown:
         """Filter on right-only columns moves below join to right input."""
         g = ComputationGraph()
         scan_l = g.add_node(
-            OpNode(op_type=OpType.SCAN, params={"table": "left"})
+            OpNode(op_type=OpType.SCAN, params={"table": "left"}),
         )
         scan_r = g.add_node(
-            OpNode(op_type=OpType.SCAN, params={"table": "right"})
+            OpNode(op_type=OpType.SCAN, params={"table": "right"}),
         )
         join = g.add_node(
             OpNode(
@@ -242,9 +246,7 @@ class TestPredicatePushdown:
         optimised = push_filters_down(g)
         order = optimised.topological_order()
         filter_nodes = [
-            nid
-            for nid in order
-            if optimised.nodes[nid].op_type == OpType.FILTER
+            nid for nid in order if optimised.nodes[nid].op_type == OpType.FILTER
         ]
         join_nodes = [
             nid for nid in order if optimised.nodes[nid].op_type == OpType.JOIN
@@ -280,9 +282,7 @@ class TestPredicatePushdown:
         optimised = push_filters_down(g)
         order = optimised.topological_order()
         filter_nodes = [
-            nid
-            for nid in order
-            if optimised.nodes[nid].op_type == OpType.FILTER
+            nid for nid in order if optimised.nodes[nid].op_type == OpType.FILTER
         ]
         join_nodes = [
             nid for nid in order if optimised.nodes[nid].op_type == OpType.JOIN

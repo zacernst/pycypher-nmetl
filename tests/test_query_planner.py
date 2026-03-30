@@ -21,13 +21,13 @@ from pycypher.query_planner import (
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture()
+@pytest.fixture
 def planner() -> QueryPlanner:
     """Default query planner."""
     return QueryPlanner()
 
 
-@pytest.fixture()
+@pytest.fixture
 def tight_planner() -> QueryPlanner:
     """Planner with a very tight memory budget (100MB)."""
     return QueryPlanner(memory_budget_bytes=100 * 1024 * 1024)

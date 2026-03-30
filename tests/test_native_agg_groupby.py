@@ -33,7 +33,7 @@ from pycypher.star import Star
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture()
+@pytest.fixture
 def person_star() -> Star:
     """100-person graph with age/score attributes for aggregation tests."""
     ids = list(range(1, 101))
@@ -45,7 +45,7 @@ def person_star() -> Star:
             "name": [f"P{i}" for i in ids],
             "age": ages,
             "score": scores,
-        }
+        },
     )
     table = EntityTable(
         entity_type="Person",
@@ -66,7 +66,7 @@ def person_star() -> Star:
     return Star(context=context)
 
 
-@pytest.fixture()
+@pytest.fixture
 def null_star() -> Star:
     """10-person graph where score is NULL for all, to test null-group semantics."""
     people_df = pd.DataFrame(
@@ -75,7 +75,7 @@ def null_star() -> Star:
             "name": [f"P{i}" for i in range(1, 11)],
             "group": ["A"] * 5 + ["B"] * 5,
             "score": [None] * 10,
-        }
+        },
     )
     table = EntityTable(
         entity_type="Person",
@@ -107,7 +107,7 @@ class TestNativeAggNullSemantics:
     def test_sum_all_null_group_returns_null(self, null_star: Star) -> None:
         """sum(score) for groups where every score is NULL must return null."""
         r = null_star.execute_query(
-            "MATCH (n:Person) RETURN n.group AS grp, sum(n.score) AS total"
+            "MATCH (n:Person) RETURN n.group AS grp, sum(n.score) AS total",
         )
         assert len(r) == 2, f"Expected 2 groups, got {len(r)}"
         # Both A and B groups have all-null scores
@@ -119,7 +119,7 @@ class TestNativeAggNullSemantics:
     def test_avg_all_null_group_returns_null(self, null_star: Star) -> None:
         """avg(score) for all-null groups must return null."""
         r = null_star.execute_query(
-            "MATCH (n:Person) RETURN n.group AS grp, avg(n.score) AS mean_val"
+            "MATCH (n:Person) RETURN n.group AS grp, avg(n.score) AS mean_val",
         )
         for val in r["mean_val"]:
             assert val is None or (isinstance(val, float) and pd.isna(val)), (
@@ -129,7 +129,7 @@ class TestNativeAggNullSemantics:
     def test_min_all_null_group_returns_null(self, null_star: Star) -> None:
         """min(score) for all-null groups must return null."""
         r = null_star.execute_query(
-            "MATCH (n:Person) RETURN n.group AS grp, min(n.score) AS min_val"
+            "MATCH (n:Person) RETURN n.group AS grp, min(n.score) AS min_val",
         )
         for val in r["min_val"]:
             assert val is None or (isinstance(val, float) and pd.isna(val)), (
@@ -139,7 +139,7 @@ class TestNativeAggNullSemantics:
     def test_max_all_null_group_returns_null(self, null_star: Star) -> None:
         """max(score) for all-null groups must return null."""
         r = null_star.execute_query(
-            "MATCH (n:Person) RETURN n.group AS grp, max(n.score) AS max_val"
+            "MATCH (n:Person) RETURN n.group AS grp, max(n.score) AS max_val",
         )
         for val in r["max_val"]:
             assert val is None or (isinstance(val, float) and pd.isna(val)), (
@@ -153,7 +153,7 @@ class TestNativeAggNullSemantics:
                 ID_COLUMN: [1, 2],
                 "grp": ["A", "B"],
                 "score": [5.0, 10.0],
-            }
+            },
         )
         table = EntityTable(
             entity_type="Person",
@@ -169,7 +169,7 @@ class TestNativeAggNullSemantics:
         )
         star = Star(context=context)
         r = star.execute_query(
-            "MATCH (n:Person) RETURN n.grp AS grp, stdev(n.score) AS sd"
+            "MATCH (n:Person) RETURN n.grp AS grp, stdev(n.score) AS sd",
         )
         for val in r["sd"]:
             assert val is None or (isinstance(val, float) and pd.isna(val)), (
@@ -188,7 +188,7 @@ class TestNativeAggCorrectness:
     def test_count_matches_exact(self, person_star: Star) -> None:
         """count(n.age) grouped by age bucket matches expected count."""
         r = person_star.execute_query(
-            "MATCH (n:Person) RETURN n.age AS age, count(n.age) AS cnt"
+            "MATCH (n:Person) RETURN n.age AS age, count(n.age) AS cnt",
         )
         # Each age bucket (20–69) should have exactly 2 people out of 100
         assert set(r["cnt"].unique()) == {2}, (
@@ -198,7 +198,7 @@ class TestNativeAggCorrectness:
     def test_sum_matches_expected(self, person_star: Star) -> None:
         """sum(score) per age group matches manually computed values."""
         r = person_star.execute_query(
-            "MATCH (n:Person) RETURN n.age AS age, sum(n.score) AS total"
+            "MATCH (n:Person) RETURN n.age AS age, sum(n.score) AS total",
         )
         # Each age bucket has 2 people; scores are 1.5*id
         # We just verify no result is suspiciously 0 (which would indicate
@@ -210,29 +210,27 @@ class TestNativeAggCorrectness:
     def test_avg_is_between_min_and_max(self, person_star: Star) -> None:
         """avg(score) for each group must be between the group's min and max."""
         avg_r = person_star.execute_query(
-            "MATCH (n:Person) RETURN n.age AS age, avg(n.score) AS mean_val"
+            "MATCH (n:Person) RETURN n.age AS age, avg(n.score) AS mean_val",
         )
         min_r = person_star.execute_query(
-            "MATCH (n:Person) RETURN n.age AS age, min(n.score) AS min_val"
+            "MATCH (n:Person) RETURN n.age AS age, min(n.score) AS min_val",
         )
         max_r = person_star.execute_query(
-            "MATCH (n:Person) RETURN n.age AS age, max(n.score) AS max_val"
+            "MATCH (n:Person) RETURN n.age AS age, max(n.score) AS max_val",
         )
         for i in range(len(avg_r)):
             avg = avg_r["mean_val"].iloc[i]
             lo = min_r["min_val"].iloc[i]
             hi = max_r["max_val"].iloc[i]
-            assert lo <= avg <= hi, (
-                f"avg {avg} not in [{lo}, {hi}] for row {i}"
-            )
+            assert lo <= avg <= hi, f"avg {avg} not in [{lo}, {hi}] for row {i}"
 
     def test_min_less_than_or_equal_max(self, person_star: Star) -> None:
         """min(score) <= max(score) for every group."""
         min_r = person_star.execute_query(
-            "MATCH (n:Person) RETURN n.age AS age, min(n.score) AS min_val"
+            "MATCH (n:Person) RETURN n.age AS age, min(n.score) AS min_val",
         )
         max_r = person_star.execute_query(
-            "MATCH (n:Person) RETURN n.age AS age, max(n.score) AS max_val"
+            "MATCH (n:Person) RETURN n.age AS age, max(n.score) AS max_val",
         )
         for lo, hi in zip(min_r["min_val"], max_r["max_val"]):
             assert lo <= hi
@@ -248,7 +246,9 @@ class TestNativeAggNoPythonPath:
 
     @pytest.mark.parametrize("func", ["count", "sum", "avg", "min", "max"])
     def test_lambda_agg_op_not_called_for_grouped(
-        self, person_star: Star, func: str
+        self,
+        person_star: Star,
+        func: str,
     ) -> None:
         """evaluate_aggregation_grouped must NOT call the Python lambda from
         _AGG_OPS for count/sum/avg/min/max — it should use pandas native
@@ -266,7 +266,7 @@ class TestNativeAggNoPythonPath:
         be._AGG_OPS[func] = tracking_fn
         try:
             person_star.execute_query(
-                f"MATCH (n:Person) RETURN n.age AS age, {func}(n.score) AS result"
+                f"MATCH (n:Person) RETURN n.age AS age, {func}(n.score) AS result",
             )
         finally:
             be._AGG_OPS[func] = original_fn
@@ -288,20 +288,18 @@ class TestNativeAggPerformance:
     """20 aggregate queries must complete significantly faster than the lambda path."""
 
     REPS = 20
-    THRESHOLD_SECONDS = (
-        1.0  # lambdas took ~41ms each = 820ms for 20; native ~5–10ms
-    )
+    THRESHOLD_SECONDS = 1.0  # lambdas took ~41ms each = 820ms for 20; native ~5–10ms
 
     def test_count_groupby_is_fast(self, person_star: Star) -> None:
         """20 grouped count() queries must finish under 1.0s total."""
         # Warm up AST cache
         person_star.execute_query(
-            "MATCH (n:Person) RETURN n.age AS age, count(n.score) AS cnt"
+            "MATCH (n:Person) RETURN n.age AS age, count(n.score) AS cnt",
         )
         start = time.perf_counter()
         for _ in range(self.REPS):
             person_star.execute_query(
-                "MATCH (n:Person) RETURN n.age AS age, count(n.score) AS cnt"
+                "MATCH (n:Person) RETURN n.age AS age, count(n.score) AS cnt",
             )
         elapsed = time.perf_counter() - start
         assert elapsed < self.THRESHOLD_SECONDS, (

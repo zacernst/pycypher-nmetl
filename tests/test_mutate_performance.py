@@ -48,7 +48,7 @@ def _large_person_context(n: int) -> Context:
             "name": names,
             "dept": depts,
             "salary": salaries,
-        }
+        },
     )
     table = EntityTable(
         entity_type="Person",
@@ -91,7 +91,7 @@ class TestMutatePerformance:
         star.execute_query(
             "MATCH (p:Person) WHERE p.dept = 'Engineering' "
             "SET p.team = 'tech' "
-            "RETURN p.name AS name"
+            "RETURN p.name AS name",
         )
         elapsed = time.perf_counter() - start
 
@@ -111,7 +111,7 @@ class TestMutatePerformance:
         star = Star(context=ctx)
 
         star.execute_query(
-            "MATCH (p:Person) WHERE p.dept = 'Engineering' SET p.team = 'tech'"
+            "MATCH (p:Person) WHERE p.dept = 'Engineering' SET p.team = 'tech'",
         )
 
         source = ctx.entity_mapping.mapping["Person"].source_obj
@@ -125,7 +125,7 @@ class TestMutatePerformance:
         # Sales (odd IDs) must have team=None / NaN
         sales_mask = source["dept"] == "Sales"
         sales_teams = source.loc[sales_mask, "team"]
-        assert (sales_teams.isna() | (sales_teams == None)).all(), (  # noqa: E711
+        assert (sales_teams.isna() | (sales_teams == None)).all(), (
             "All Sales persons must have team=None after partial SET"
         )
 
@@ -142,18 +142,16 @@ class TestMutatePerformance:
 
         # Record original salaries for odd-ID (Sales) persons
         source_before = (
-            ctx.entity_mapping.mapping["Person"]
-            .source_obj.copy()
-            .set_index(ID_COLUMN)
+            ctx.entity_mapping.mapping["Person"].source_obj.copy().set_index(ID_COLUMN)
         )
 
         star.execute_query(
-            "MATCH (p:Person) WHERE p.dept = 'Engineering' SET p.salary = 999999"
+            "MATCH (p:Person) WHERE p.dept = 'Engineering' SET p.salary = 999999",
         )
 
-        source_after = ctx.entity_mapping.mapping[
-            "Person"
-        ].source_obj.set_index(ID_COLUMN)
+        source_after = ctx.entity_mapping.mapping["Person"].source_obj.set_index(
+            ID_COLUMN,
+        )
 
         # Sales persons (odd IDs 1, 3, 5, ...) must have their original salary
         for i in range(1, n + 1, 2):  # odd = Sales
@@ -175,7 +173,7 @@ class TestMutatePerformance:
 
         start = time.perf_counter()
         star.execute_query(
-            "MATCH (p:Person) SET p.score = 42 RETURN p.name AS name"
+            "MATCH (p:Person) SET p.score = 42 RETURN p.name AS name",
         )
         elapsed = time.perf_counter() - start
 

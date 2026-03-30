@@ -109,9 +109,7 @@ class TestParseTreeStructure:
         for literal, lit_type in literals:
             query = f"RETURN {literal}"
             tree = parser.parse(query)
-            assert isinstance(tree, Tree), (
-                f"Failed to parse {lit_type} literal"
-            )
+            assert isinstance(tree, Tree), f"Failed to parse {lit_type} literal"
 
 
 # ============================================================================
@@ -311,8 +309,7 @@ class TestErrorMessages:
             error_msg = str(e).lower()
             # Error should mention parenthesis or bracket
             assert any(
-                word in error_msg
-                for word in ["parenthes", "bracket", "expected", ")"]
+                word in error_msg for word in ["parenthes", "bracket", "expected", ")"]
             )
 
     def test_invalid_keyword_error(self, parser):
@@ -321,7 +318,7 @@ class TestErrorMessages:
         try:
             parser.parse(query)
             pytest.fail("Should have raised parsing error")
-        except (LarkError, UnexpectedInput, CypherSyntaxError) as e:
+        except (LarkError, UnexpectedInput, CypherSyntaxError):
             # Should indicate unexpected token
             assert True
 
@@ -385,9 +382,7 @@ class TestSetClauseVariations:
 
     def test_set_merge_properties(self, parser):
         """SET merge properties using += operator."""
-        query = (
-            "MATCH (n:Person) SET n += {extra: 'value', more: 123} RETURN n"
-        )
+        query = "MATCH (n:Person) SET n += {extra: 'value', more: 123} RETURN n"
         tree = parser.parse(query)
         assert tree is not None
 

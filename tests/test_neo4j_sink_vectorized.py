@@ -115,7 +115,7 @@ class TestPerformanceNodeRows:
                 "name": [f"user_{i}" for i in range(_N)],
                 "age": np.random.randint(18, 90, size=_N),
                 "score": np.random.random(_N),
-            }
+            },
         )
         mapping = NodeMapping(
             label="Person",
@@ -139,7 +139,7 @@ class TestPerformanceNodeRows:
             {
                 "pid": np.arange(1, _N + 1, dtype=np.int64),
                 "name": [f"user_{i}" for i in range(_N)],
-            }
+            },
         )
         mapping = NodeMapping(
             label="Person",
@@ -162,7 +162,7 @@ class TestPerformanceRelRows:
                 "src": np.arange(1, _N + 1, dtype=np.int64),
                 "tgt": np.arange(_N + 1, 2 * _N + 1, dtype=np.int64),
                 "since": np.random.randint(2000, 2024, size=_N),
-            }
+            },
         )
         mapping = RelationshipMapping(
             rel_type="KNOWS",
@@ -189,7 +189,7 @@ class TestPerformanceRelRows:
             {
                 "src": np.arange(1, _N + 1, dtype=np.int64),
                 "tgt": np.arange(_N + 1, 2 * _N + 1, dtype=np.int64),
-            }
+            },
         )
         mapping = RelationshipMapping(
             rel_type="KNOWS",
@@ -218,10 +218,12 @@ class TestNullHandling:
             {
                 "pid": [1, None, 3, None, 5],
                 "name": ["a", "b", "c", "d", "e"],
-            }
+            },
         )
         mapping = NodeMapping(
-            label="N", id_column="pid", property_columns={"name": "name"}
+            label="N",
+            id_column="pid",
+            property_columns={"name": "name"},
         )
         rows = _build_node_rows(df, mapping)
         assert len(rows) == 3
@@ -233,7 +235,7 @@ class TestNullHandling:
             {
                 "src": [1, None, 3],
                 "tgt": [10, 20, None],
-            }
+            },
         )
         mapping = RelationshipMapping(
             rel_type="T",
@@ -248,7 +250,8 @@ class TestNullHandling:
         assert rows[0]["tgt_id"] == 10
 
     def test_build_node_rows_null_warning_emitted(
-        self, caplog: pytest.LogCaptureFixture
+        self,
+        caplog: pytest.LogCaptureFixture,
     ) -> None:
         """A warning must be logged when null ids are skipped."""
         import logging
@@ -262,12 +265,11 @@ class TestNullHandling:
         assert len(rows) == 2
         assert any(
             "null" in m.lower() or "skip" in m.lower() for m in caplog.messages
-        ), (
-            f"Expected a warning about skipped null-id rows; got: {caplog.messages}"
-        )
+        ), f"Expected a warning about skipped null-id rows; got: {caplog.messages}"
 
     def test_build_rel_rows_null_warning_emitted(
-        self, caplog: pytest.LogCaptureFixture
+        self,
+        caplog: pytest.LogCaptureFixture,
     ) -> None:
         """A warning must be logged when null endpoint rows are skipped."""
         import logging
@@ -308,7 +310,9 @@ class TestCoercionAfterVectorization:
     def test_numpy_float_property_coerced(self) -> None:
         df = pd.DataFrame({"pid": [1], "score": [np.float64(3.14)]})
         mapping = NodeMapping(
-            label="N", id_column="pid", property_columns={"score": "score"}
+            label="N",
+            id_column="pid",
+            property_columns={"score": "score"},
         )
         rows = _build_node_rows(df, mapping)
         assert isinstance(rows[0]["properties"]["score"], float)
@@ -331,7 +335,7 @@ class TestCoercionAfterVectorization:
             {
                 "src": pd.array([np.int64(1)]),
                 "tgt": pd.array([np.int64(2)]),
-            }
+            },
         )
         mapping = RelationshipMapping(
             rel_type="T",

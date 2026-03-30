@@ -39,28 +39,28 @@ _PEOPLE = pd.DataFrame(
         "__ID__": [1, 2, 3, 4, 5],
         "name": ["Alice", "Bob", "Carol", "Dave", "Eve"],
         "age": [30, 25, 35, 28, 32],
-    }
+    },
 )
 
 _COMPANIES = pd.DataFrame(
     {
         "__ID__": [10, 20],
         "name": ["Acme", "Globex"],
-    }
+    },
 )
 
 _KNOWS = pd.DataFrame(
     {
         "__SOURCE__": [1, 2, 3, 1],
         "__TARGET__": [2, 3, 4, 5],
-    }
+    },
 )
 
 _WORKS_AT = pd.DataFrame(
     {
         "__SOURCE__": [1, 2, 3],
         "__TARGET__": [10, 10, 20],
-    }
+    },
 )
 
 
@@ -127,7 +127,10 @@ class TestDataFrameComparison:
         df2 = pd.DataFrame({"a": [2, 1]})
         with pytest.raises(AssertionError, match="values differ"):
             assert_dataframes_equivalent(
-                df1, df2, "strict_order", check_row_order=True
+                df1,
+                df2,
+                "strict_order",
+                check_row_order=True,
             )
 
     def test_column_order_independent_by_default(self) -> None:
@@ -163,7 +166,7 @@ class TestContextBuilder:
         ctx = _people_context()
         star = Star(context=ctx)
         result = star.execute_query(
-            "MATCH (a:Person)-[:KNOWS]->(b:Person) RETURN a.name, b.name"
+            "MATCH (a:Person)-[:KNOWS]->(b:Person) RETURN a.name, b.name",
         )
         assert len(result) > 0
 
@@ -180,7 +183,8 @@ class TestSequentialExecution:
         """A single query should return its result."""
         ctx = _people_context()
         result = execute_sequential(
-            ctx, [("q1", "MATCH (p:Person) RETURN p.name")]
+            ctx,
+            [("q1", "MATCH (p:Person) RETURN p.name")],
         )
         assert len(result) == 5
 
@@ -210,10 +214,11 @@ class TestCombinedExecution:
         """A single query combined should produce same result as direct execution."""
         ctx = _people_context()
         direct = Star(context=ctx).execute_query(
-            "MATCH (p:Person) RETURN p.name"
+            "MATCH (p:Person) RETURN p.name",
         )
         combined = execute_combined(
-            ctx, [("q1", "MATCH (p:Person) RETURN p.name")]
+            ctx,
+            [("q1", "MATCH (p:Person) RETURN p.name")],
         )
         assert_dataframes_equivalent(combined, direct, "single_identity")
 
@@ -223,7 +228,7 @@ class TestCombinedExecution:
         combined = combiner.combine(
             [
                 ("q1", "MATCH (p:Person) RETURN p.name"),
-            ]
+            ],
         )
         # Should be valid — execute it
         ctx = _people_context()
@@ -259,7 +264,7 @@ class TestSemanticEquivalenceSingleQuery:
                 (
                     "q1",
                     "MATCH (p:Person) WHERE p.age > 30 RETURN p.name, p.age",
-                )
+                ),
             ],
         )
         assert_semantic_equivalence(scenario)
@@ -274,7 +279,7 @@ class TestSemanticEquivalenceSingleQuery:
                 (
                     "q1",
                     "MATCH (a:Person)-[:KNOWS]->(b:Person) RETURN a.name, b.name",
-                )
+                ),
             ],
         )
         assert_semantic_equivalence(scenario)
@@ -338,7 +343,7 @@ class TestSemanticEquivalenceWithRelationships:
                 (
                     "q1",
                     "MATCH (p:Person)-[:WORKS_AT]->(c:Company) RETURN p.name, c.name",
-                )
+                ),
             ],
         )
         assert_semantic_equivalence(scenario)
@@ -361,7 +366,7 @@ class TestSemanticEquivalenceEdgeCases:
                 (
                     "q1",
                     "MATCH (p:Person) WHERE p.age > 100 RETURN p.name",
-                )
+                ),
             ],
             expected_row_count=0,
         )
@@ -376,7 +381,7 @@ class TestSemanticEquivalenceEdgeCases:
                 (
                     "q1",
                     "MATCH (p:Person) WHERE p.name = 'Alice' RETURN p.name, p.age",
-                )
+                ),
             ],
             expected_row_count=1,
         )
@@ -389,7 +394,7 @@ class TestSemanticEquivalenceEdgeCases:
                 "__ID__": [1, 2, 3],
                 "name": ["Alice", "Bob", None],
                 "age": [30, None, 35],
-            }
+            },
         )
         scenario = TestScenario(
             name="null_values",
@@ -408,7 +413,7 @@ class TestSemanticEquivalenceEdgeCases:
                 "name": ["Alice", "Bob"],
                 "score": [3.14, 2.71],
                 "rank": [1, 2],
-            }
+            },
         )
         scenario = TestScenario(
             name="numeric_types",
@@ -446,7 +451,7 @@ class TestQueryCombinerOutput:
             [
                 ("q1", "MATCH (p:Person) RETURN p.name"),
                 ("q2", "MATCH (c:Company) RETURN c.name"),
-            ]
+            ],
         )
         assert "WITH *" in result
         # Only the last RETURN should be preserved (whichever query ends up last)
@@ -459,7 +464,7 @@ class TestQueryCombinerOutput:
             [
                 ("q1", "MATCH (p:Person) RETURN p.name"),
                 ("q2", "MATCH (c:Company) RETURN c.name"),
-            ]
+            ],
         )
         # Exactly one RETURN should remain — the first query in combined
         # order has its RETURN stripped, the last keeps it.
@@ -476,12 +481,11 @@ class TestQueryCombinerOutput:
             [
                 ("q2", "MATCH (p:Person) RETURN p.name"),
                 ("q1", "CREATE (p:Person {name: 'Test'})"),
-            ]
+            ],
         )
         # CREATE should come first in the output
         create_pos = result.find("CREATE")
         match_pos = result.find("MATCH")
         assert create_pos < match_pos, (
-            f"CREATE should precede MATCH in combined output.\n"
-            f"  Output: {result}"
+            f"CREATE should precede MATCH in combined output.\n  Output: {result}"
         )

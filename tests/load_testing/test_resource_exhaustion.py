@@ -8,11 +8,9 @@ complexity ceilings, and cross-join limits.
 from __future__ import annotations
 
 import gc
-import time
 
 import pytest
 from pycypher.exceptions import (
-    QueryMemoryBudgetError,
     QueryTimeoutError,
 )
 from pycypher.query_complexity import QueryComplexityError

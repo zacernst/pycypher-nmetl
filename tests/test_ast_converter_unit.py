@@ -6,32 +6,18 @@ the ~60 conversion methods and edge cases.
 
 from __future__ import annotations
 
-from typing import Any
-
 import pytest
 from pycypher.ast_converter import ASTConverter, _friendly_parse_error
 from pycypher.ast_models import (
     And,
-    Arithmetic,
     BooleanLiteral,
-    Call,
-    CaseExpression,
-    Clause,
     Comparison,
-    CountStar,
     Create,
     Delete,
-    Exists,
     FloatLiteral,
-    Foreach,
-    FunctionInvocation,
-    IndexLookup,
     IntegerLiteral,
-    LabelPredicate,
-    ListComprehension,
     ListLiteral,
     MapLiteral,
-    MapProjection,
     Match,
     Merge,
     NodePattern,
@@ -39,34 +25,21 @@ from pycypher.ast_models import (
     NullCheck,
     NullLiteral,
     Or,
-    OrderByItem,
     PathLength,
-    Pattern,
-    PatternComprehension,
-    PatternPath,
-    PropertyLookup,
-    Quantifier,
     Query,
-    Reduce,
     RelationshipDirection,
     RelationshipPattern,
     Remove,
     Return,
-    ReturnAll,
     ReturnItem,
     Set,
-    SetItem,
-    Slicing,
     StringLiteral,
     StringPredicate,
-    Unary,
     UnionQuery,
     Unwind,
     Variable,
-    WhenClause,
     With,
     Xor,
-    YieldItem,
 )
 
 # ===========================================================================
@@ -86,7 +59,7 @@ class TestFromCypher:
 
     def test_match_with_where(self) -> None:
         ast = ASTConverter.from_cypher(
-            "MATCH (n:Person) WHERE n.age > 30 RETURN n"
+            "MATCH (n:Person) WHERE n.age > 30 RETURN n",
         )
         match_clause = ast.clauses[0]
         assert isinstance(match_clause, Match)
@@ -94,7 +67,7 @@ class TestFromCypher:
 
     def test_match_relationship(self) -> None:
         ast = ASTConverter.from_cypher(
-            "MATCH (a:Person)-[:KNOWS]->(b:Person) RETURN a, b"
+            "MATCH (a:Person)-[:KNOWS]->(b:Person) RETURN a, b",
         )
         assert isinstance(ast, Query)
         match_clause = ast.clauses[0]
@@ -110,7 +83,7 @@ class TestFromCypher:
 
     def test_left_direction_relationship(self) -> None:
         ast = ASTConverter.from_cypher(
-            "MATCH (a:Person)<-[:KNOWS]-(b:Person) RETURN a"
+            "MATCH (a:Person)<-[:KNOWS]-(b:Person) RETURN a",
         )
         match = ast.clauses[0]
         rel = match.pattern.paths[0].elements[1]
@@ -119,7 +92,7 @@ class TestFromCypher:
 
     def test_undirected_relationship(self) -> None:
         ast = ASTConverter.from_cypher(
-            "MATCH (a:Person)-[:KNOWS]-(b:Person) RETURN a"
+            "MATCH (a:Person)-[:KNOWS]-(b:Person) RETURN a",
         )
         match = ast.clauses[0]
         rel = match.pattern.paths[0].elements[1]
@@ -128,7 +101,7 @@ class TestFromCypher:
 
     def test_variable_length_path(self) -> None:
         ast = ASTConverter.from_cypher(
-            "MATCH (a:Person)-[:KNOWS*1..3]->(b:Person) RETURN a, b"
+            "MATCH (a:Person)-[:KNOWS*1..3]->(b:Person) RETURN a, b",
         )
         match = ast.clauses[0]
         rel = match.pattern.paths[0].elements[1]
@@ -140,7 +113,7 @@ class TestFromCypher:
 
     def test_return_with_alias(self) -> None:
         ast = ASTConverter.from_cypher(
-            "MATCH (n:Person) RETURN n.name AS personName"
+            "MATCH (n:Person) RETURN n.name AS personName",
         )
         ret = ast.clauses[1]
         assert isinstance(ret, Return)
@@ -153,14 +126,14 @@ class TestFromCypher:
 
     def test_with_clause(self) -> None:
         ast = ASTConverter.from_cypher(
-            "MATCH (n:Person) WITH n.name AS name RETURN name"
+            "MATCH (n:Person) WITH n.name AS name RETURN name",
         )
         assert isinstance(ast, Query)
         assert any(isinstance(c, With) for c in ast.clauses)
 
     def test_create_clause(self) -> None:
         ast = ASTConverter.from_cypher(
-            "CREATE (n:Person {name: 'Alice', age: 30})"
+            "CREATE (n:Person {name: 'Alice', age: 30})",
         )
         assert isinstance(ast, Query)
         assert any(isinstance(c, Create) for c in ast.clauses)
@@ -188,14 +161,14 @@ class TestFromCypher:
 
     def test_order_by(self) -> None:
         ast = ASTConverter.from_cypher(
-            "MATCH (n:Person) RETURN n.name ORDER BY n.name"
+            "MATCH (n:Person) RETURN n.name ORDER BY n.name",
         )
         ret = [c for c in ast.clauses if isinstance(c, Return)][0]
         assert ret.order_by is not None
 
     def test_limit_skip(self) -> None:
         ast = ASTConverter.from_cypher(
-            "MATCH (n:Person) RETURN n SKIP 5 LIMIT 10"
+            "MATCH (n:Person) RETURN n SKIP 5 LIMIT 10",
         )
         ret = [c for c in ast.clauses if isinstance(c, Return)][0]
         assert ret.limit is not None
@@ -203,24 +176,20 @@ class TestFromCypher:
 
     def test_distinct(self) -> None:
         ast = ASTConverter.from_cypher(
-            "MATCH (n:Person) RETURN DISTINCT n.name"
+            "MATCH (n:Person) RETURN DISTINCT n.name",
         )
         ret = [c for c in ast.clauses if isinstance(c, Return)][0]
         assert ret.distinct is True
 
     def test_union(self) -> None:
         ast = ASTConverter.from_cypher(
-            "MATCH (n:Person) RETURN n.name "
-            "UNION "
-            "MATCH (m:Person) RETURN m.name"
+            "MATCH (n:Person) RETURN n.name UNION MATCH (m:Person) RETURN m.name",
         )
         assert isinstance(ast, (UnionQuery, Query))
 
     def test_optional_match(self) -> None:
         ast = ASTConverter.from_cypher(
-            "MATCH (a:Person) "
-            "OPTIONAL MATCH (a)-[:KNOWS]->(b:Person) "
-            "RETURN a, b"
+            "MATCH (a:Person) OPTIONAL MATCH (a)-[:KNOWS]->(b:Person) RETURN a, b",
         )
         matches = [c for c in ast.clauses if isinstance(c, Match)]
         assert any(m.optional for m in matches)
@@ -237,70 +206,70 @@ class TestExpressionParsing:
     def test_comparison_operators(self) -> None:
         for op in ["=", "<>", "<", ">", "<=", ">="]:
             ast = ASTConverter.from_cypher(
-                f"MATCH (n:Person) WHERE n.age {op} 30 RETURN n"
+                f"MATCH (n:Person) WHERE n.age {op} 30 RETURN n",
             )
             match_clause = ast.clauses[0]
             assert match_clause.where is not None
 
     def test_boolean_and(self) -> None:
         ast = ASTConverter.from_cypher(
-            "MATCH (n:Person) WHERE n.age > 20 AND n.age < 40 RETURN n"
+            "MATCH (n:Person) WHERE n.age > 20 AND n.age < 40 RETURN n",
         )
         match_clause = ast.clauses[0]
         assert isinstance(match_clause.where, And)
 
     def test_boolean_or(self) -> None:
         ast = ASTConverter.from_cypher(
-            "MATCH (n:Person) WHERE n.age < 20 OR n.age > 40 RETURN n"
+            "MATCH (n:Person) WHERE n.age < 20 OR n.age > 40 RETURN n",
         )
         match_clause = ast.clauses[0]
         assert isinstance(match_clause.where, Or)
 
     def test_boolean_xor(self) -> None:
         ast = ASTConverter.from_cypher(
-            "MATCH (n:Person) WHERE n.age < 20 XOR n.age > 40 RETURN n"
+            "MATCH (n:Person) WHERE n.age < 20 XOR n.age > 40 RETURN n",
         )
         match_clause = ast.clauses[0]
         assert isinstance(match_clause.where, Xor)
 
     def test_not(self) -> None:
         ast = ASTConverter.from_cypher(
-            "MATCH (n:Person) WHERE NOT n.age > 30 RETURN n"
+            "MATCH (n:Person) WHERE NOT n.age > 30 RETURN n",
         )
         match_clause = ast.clauses[0]
         assert isinstance(match_clause.where, Not)
 
     def test_null_check_is_null(self) -> None:
         ast = ASTConverter.from_cypher(
-            "MATCH (n:Person) WHERE n.age IS NULL RETURN n"
+            "MATCH (n:Person) WHERE n.age IS NULL RETURN n",
         )
         match_clause = ast.clauses[0]
         assert isinstance(match_clause.where, NullCheck)
 
     def test_null_check_is_not_null(self) -> None:
         ast = ASTConverter.from_cypher(
-            "MATCH (n:Person) WHERE n.age IS NOT NULL RETURN n"
+            "MATCH (n:Person) WHERE n.age IS NOT NULL RETURN n",
         )
         match_clause = ast.clauses[0]
         assert isinstance(match_clause.where, NullCheck)
 
     def test_string_predicate_starts_with(self) -> None:
         ast = ASTConverter.from_cypher(
-            "MATCH (n:Person) WHERE n.name STARTS WITH 'A' RETURN n"
+            "MATCH (n:Person) WHERE n.name STARTS WITH 'A' RETURN n",
         )
         match_clause = ast.clauses[0]
         assert isinstance(match_clause.where, StringPredicate)
 
     def test_string_predicate_contains(self) -> None:
         ast = ASTConverter.from_cypher(
-            "MATCH (n:Person) WHERE n.name CONTAINS 'li' RETURN n"
+            "MATCH (n:Person) WHERE n.name CONTAINS 'li' RETURN n",
         )
         match_clause = ast.clauses[0]
         assert isinstance(match_clause.where, StringPredicate)
 
     def test_string_predicate_ends_with(self) -> None:
         ast = ASTConverter.from_cypher(
-            "MATCH (n:Person) WHERE n.name ENDS WITH 'e' RETURN n"
+            "MATCH (n:Person) WHERE n.name ENDS WITH 'e' RETURN n",
         )
         match_clause = ast.clauses[0]
         assert isinstance(match_clause.where, StringPredicate)
@@ -320,7 +289,7 @@ class TestExpressionParsing:
 
     def test_function_invocation_distinct(self) -> None:
         ast = ASTConverter.from_cypher(
-            "MATCH (n:Person) RETURN count(DISTINCT n)"
+            "MATCH (n:Person) RETURN count(DISTINCT n)",
         )
         assert isinstance(ast, Query)
 
@@ -359,19 +328,19 @@ class TestExpressionParsing:
 
     def test_case_expression(self) -> None:
         ast = ASTConverter.from_cypher(
-            "MATCH (n:Person) RETURN CASE WHEN n.age > 30 THEN 'old' ELSE 'young' END"
+            "MATCH (n:Person) RETURN CASE WHEN n.age > 30 THEN 'old' ELSE 'young' END",
         )
         assert isinstance(ast, Query)
 
     def test_exists_subquery(self) -> None:
         ast = ASTConverter.from_cypher(
-            "MATCH (n:Person) WHERE EXISTS { (n)-[:KNOWS]->() } RETURN n"
+            "MATCH (n:Person) WHERE EXISTS { (n)-[:KNOWS]->() } RETURN n",
         )
         assert isinstance(ast, Query)
 
     def test_list_comprehension(self) -> None:
         ast = ASTConverter.from_cypher(
-            "RETURN [x IN [1, 2, 3] WHERE x > 1 | x * 2]"
+            "RETURN [x IN [1, 2, 3] WHERE x > 1 | x * 2]",
         )
         assert isinstance(ast, Query)
 
@@ -381,7 +350,7 @@ class TestExpressionParsing:
 
     def test_slice_access(self) -> None:
         ast = ASTConverter.from_cypher(
-            "WITH [1, 2, 3, 4, 5] AS list RETURN list[1..3]"
+            "WITH [1, 2, 3, 4, 5] AS list RETURN list[1..3]",
         )
         assert isinstance(ast, Query)
 
@@ -454,7 +423,7 @@ class TestConvertMethod:
             {
                 "type": "Query",
                 "clauses": [],
-            }
+            },
         )
         assert isinstance(result, Query)
 
@@ -488,7 +457,7 @@ class TestConvertMethod:
                 "operator": "=",
                 "left": {"type": "Variable", "name": "x"},
                 "right": {"type": "IntegerLiteral", "value": 1},
-            }
+            },
         )
         assert isinstance(result, Comparison)
 
@@ -501,7 +470,7 @@ class TestConvertMethod:
                     "type": "BooleanLiteral",
                     "value": True,
                 },
-            }
+            },
         )
         assert isinstance(result, Not)
 
@@ -512,7 +481,7 @@ class TestConvertMethod:
                 "type": "And",
                 "left": {"type": "BooleanLiteral", "value": True},
                 "right": {"type": "BooleanLiteral", "value": False},
-            }
+            },
         )
         assert isinstance(result, And)
 
@@ -523,7 +492,7 @@ class TestConvertMethod:
                 "type": "Or",
                 "left": {"type": "BooleanLiteral", "value": True},
                 "right": {"type": "BooleanLiteral", "value": False},
-            }
+            },
         )
         assert isinstance(result, Or)
 
@@ -540,7 +509,7 @@ class TestConvertMethod:
                 "type": "ReturnItem",
                 "expression": {"type": "Variable", "name": "n"},
                 "alias": "result",
-            }
+            },
         )
         assert isinstance(result, ReturnItem)
 
@@ -551,7 +520,7 @@ class TestConvertMethod:
                 "type": "NodePattern",
                 "variable": "n",
                 "labels": ["Person"],
-            }
+            },
         )
         assert isinstance(result, NodePattern)
 
@@ -563,7 +532,7 @@ class TestConvertMethod:
                 "min": 1,
                 "max": 3,
                 "unbounded": False,
-            }
+            },
         )
         assert isinstance(result, PathLength)
         assert result.min == 1
@@ -672,7 +641,8 @@ class TestFriendlyParseError:
             pass
 
         result = _friendly_parse_error(
-            FakeExc("raw error"), "MATCH (n) RETURN n"
+            FakeExc("raw error"),
+            "MATCH (n) RETURN n",
         )
         assert result == "raw error"
 
@@ -727,7 +697,8 @@ class TestErrorHandling:
         c = ASTConverter()
         # Variable is a valid ast type, should work via generic
         result = c._convert_generic(
-            {"type": "Variable", "name": "x"}, "Variable"
+            {"type": "Variable", "name": "x"},
+            "Variable",
         )
         assert isinstance(result, Variable)
 

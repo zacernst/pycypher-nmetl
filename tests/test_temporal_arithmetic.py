@@ -94,7 +94,7 @@ class TestDatePlusDuration:
 
     def test_add_combined_years_months_days(self) -> None:
         row = _q(
-            "RETURN date('2024-01-01') + duration({years: 1, months: 2, days: 3}) AS d"
+            "RETURN date('2024-01-01') + duration({years: 1, months: 2, days: 3}) AS d",
         )
         assert row["d"] == "2025-03-04"
 
@@ -103,7 +103,7 @@ class TestDatePlusDuration:
         assert row["d"] == "2024-01-15"
 
     def test_duration_plus_date_is_commutative(self) -> None:
-        """duration + date must equal date + duration."""
+        """Duration + date must equal date + duration."""
         row = _q("RETURN duration({days: 5}) + date('2024-01-15') AS d")
         assert row["d"] == "2024-01-20"
 
@@ -201,31 +201,31 @@ class TestDatetimePlusDuration:
 
     def test_add_hours(self) -> None:
         row = _q(
-            "RETURN datetime('2024-01-15T10:00:00') + duration({hours: 3}) AS dt"
+            "RETURN datetime('2024-01-15T10:00:00') + duration({hours: 3}) AS dt",
         )
         assert row["dt"] == "2024-01-15T13:00:00"
 
     def test_add_hours_crossing_midnight(self) -> None:
         row = _q(
-            "RETURN datetime('2024-01-15T23:00:00') + duration({hours: 3}) AS dt"
+            "RETURN datetime('2024-01-15T23:00:00') + duration({hours: 3}) AS dt",
         )
         assert row["dt"] == "2024-01-16T02:00:00"
 
     def test_add_days_to_datetime(self) -> None:
         row = _q(
-            "RETURN datetime('2024-01-15T12:00:00') + duration({days: 2}) AS dt"
+            "RETURN datetime('2024-01-15T12:00:00') + duration({days: 2}) AS dt",
         )
         assert row["dt"] == "2024-01-17T12:00:00"
 
     def test_add_minutes(self) -> None:
         row = _q(
-            "RETURN datetime('2024-01-15T10:00:00') + duration({minutes: 90}) AS dt"
+            "RETURN datetime('2024-01-15T10:00:00') + duration({minutes: 90}) AS dt",
         )
         assert row["dt"] == "2024-01-15T11:30:00"
 
     def test_add_months_to_datetime(self) -> None:
         row = _q(
-            "RETURN datetime('2024-01-15T10:00:00') + duration({months: 2}) AS dt"
+            "RETURN datetime('2024-01-15T10:00:00') + duration({months: 2}) AS dt",
         )
         assert row["dt"] == "2024-03-15T10:00:00"
 
@@ -240,13 +240,13 @@ class TestDatetimeMinusDuration:
 
     def test_subtract_hours(self) -> None:
         row = _q(
-            "RETURN datetime('2024-01-15T13:00:00') - duration({hours: 3}) AS dt"
+            "RETURN datetime('2024-01-15T13:00:00') - duration({hours: 3}) AS dt",
         )
         assert row["dt"] == "2024-01-15T10:00:00"
 
     def test_subtract_days(self) -> None:
         row = _q(
-            "RETURN datetime('2024-01-17T12:00:00') - duration({days: 2}) AS dt"
+            "RETURN datetime('2024-01-17T12:00:00') - duration({days: 2}) AS dt",
         )
         assert row["dt"] == "2024-01-15T12:00:00"
 
@@ -261,7 +261,7 @@ class TestDatetimeMinusDatetime:
 
     def test_same_datetime(self) -> None:
         row = _q(
-            "RETURN datetime('2024-01-15T10:00:00') - datetime('2024-01-15T10:00:00') AS dur"
+            "RETURN datetime('2024-01-15T10:00:00') - datetime('2024-01-15T10:00:00') AS dur",
         )
         d = row["dur"]
         assert d["days"] == 0
@@ -269,7 +269,7 @@ class TestDatetimeMinusDatetime:
 
     def test_two_hours_difference(self) -> None:
         row = _q(
-            "RETURN datetime('2024-01-15T12:00:00') - datetime('2024-01-15T10:00:00') AS dur"
+            "RETURN datetime('2024-01-15T12:00:00') - datetime('2024-01-15T10:00:00') AS dur",
         )
         d = row["dur"]
         # 2 hours = 7200 seconds
@@ -278,7 +278,7 @@ class TestDatetimeMinusDatetime:
 
     def test_one_day_difference(self) -> None:
         row = _q(
-            "RETURN datetime('2024-01-16T10:00:00') - datetime('2024-01-15T10:00:00') AS dur"
+            "RETURN datetime('2024-01-16T10:00:00') - datetime('2024-01-15T10:00:00') AS dur",
         )
         d = row["dur"]
         assert d["days"] == 1
@@ -300,7 +300,7 @@ class TestDurationArithmetic:
 
     def test_add_durations_mixed_components(self) -> None:
         row = _q(
-            "RETURN duration({months: 1, days: 5}) + duration({months: 2, days: 3}) AS dur"
+            "RETURN duration({months: 1, days: 5}) + duration({months: 2, days: 3}) AS dur",
         )
         d = row["dur"]
         assert d["months"] == 3
@@ -353,12 +353,12 @@ class TestTemporalArithmeticNullPropagation:
         )
         star = Star(context=ctx)
         result = star.execute_query(
-            "MATCH (p:P) RETURN p.birth + duration({days: 1}) AS d"
+            "MATCH (p:P) RETURN p.birth + duration({days: 1}) AS d",
         )
         assert pd.isna(result["d"].iloc[0])
 
     def test_date_minus_null_duration_is_null(self) -> None:
-        """date + null → null (when duration value is null)."""
+        """Date + null → null (when duration value is null)."""
         import pandas as _pd
         import pandas as pd
         from pycypher.relational_models import (
@@ -385,7 +385,7 @@ class TestTemporalArithmeticNullPropagation:
         )
         star = Star(context=ctx)
         result = star.execute_query(
-            "MATCH (p:P) RETURN date('2024-01-01') + duration(p.n) AS d"
+            "MATCH (p:P) RETURN date('2024-01-01') + duration(p.n) AS d",
         )
         assert pd.isna(result["d"].iloc[0])
 
@@ -398,7 +398,7 @@ class TestTemporalArithmeticNullPropagation:
 class TestTemporalArithmeticIntegration:
     """End-to-end Cypher queries using temporal arithmetic."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def star_with_events(self):
         """Context with an Events entity table containing date columns."""
         import pandas as pd
@@ -416,7 +416,7 @@ class TestTemporalArithmeticIntegration:
                 ID_COLUMN: [1, 2, 3],
                 "name": ["Alpha", "Beta", "Gamma"],
                 "event_date": ["2024-01-10", "2024-02-15", "2024-03-20"],
-            }
+            },
         )
         table = EntityTable(
             entity_type="Event",
@@ -439,12 +439,13 @@ class TestTemporalArithmeticIntegration:
         """RETURN event.date + duration({days: 30}) AS due_date."""
         result = star_with_events.execute_query(
             "MATCH (e:Event) WHERE e.name = 'Alpha' "
-            "RETURN e.event_date + duration({days: 30}) AS due"
+            "RETURN e.event_date + duration({days: 30}) AS due",
         )
         assert result["due"].iloc[0] == "2024-02-09"
 
     def test_filter_recent_events_with_date_arithmetic(
-        self, star_with_events
+        self,
+        star_with_events,
     ) -> None:
         """Filter events within Jan 1 – Mar 1 2024 (exclusive upper bound)."""
         # Window: date > 2024-01-01  AND  date < 2024-01-01 + 2 months = 2024-03-01
@@ -455,7 +456,7 @@ class TestTemporalArithmeticIntegration:
             "MATCH (e:Event) "
             "WHERE e.event_date > date('2024-01-01') - duration({days: 0}) "
             "AND e.event_date < date('2024-01-01') + duration({months: 2}) "
-            "RETURN e.name AS n ORDER BY e.name"
+            "RETURN e.name AS n ORDER BY e.name",
         )
         names = list(result["n"])
         assert "Alpha" in names
@@ -466,15 +467,15 @@ class TestTemporalArithmeticIntegration:
         """Pure expression RETURN without MATCH."""
         star = _star_empty()
         result = star.execute_query(
-            "RETURN date('2024-06-01') + duration({months: 6}) AS d"
+            "RETURN date('2024-06-01') + duration({months: 6}) AS d",
         )
         assert result["d"].iloc[0] == "2024-12-01"
 
     def test_standalone_date_minus_date(self) -> None:
-        """date - date in standalone RETURN."""
+        """Date - date in standalone RETURN."""
         star = _star_empty()
         result = star.execute_query(
-            "RETURN date('2024-02-01') - date('2024-01-01') AS dur"
+            "RETURN date('2024-02-01') - date('2024-01-01') AS dur",
         )
         d = result["dur"].iloc[0]
         assert d["days"] == 31  # January has 31 days
@@ -483,7 +484,7 @@ class TestTemporalArithmeticIntegration:
         """(date + duration) - duration must round-trip."""
         star = _star_empty()
         result = star.execute_query(
-            "RETURN date('2024-06-15') + duration({months: 3}) - duration({months: 3}) AS d"
+            "RETURN date('2024-06-15') + duration({months: 3}) - duration({months: 3}) AS d",
         )
         # Should round-trip back to the original date
         assert result["d"].iloc[0] == "2024-06-15"

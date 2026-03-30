@@ -18,7 +18,9 @@ class TestRegisteredFunction:
             return x + y
 
         reg_func = RegisteredFunction(
-            name="sample_func", implementation=sample_func, arity=2
+            name="sample_func",
+            implementation=sample_func,
+            arity=2,
         )
 
         assert reg_func.name == "sample_func"
@@ -45,7 +47,8 @@ class TestRegisteredFunction:
         reg_func = RegisteredFunction(name="add", implementation=add, arity=2)
 
         with pytest.raises(
-            ValueError, match="expects 2 arguments but 1 provided"
+            ValueError,
+            match="expects 2 arguments but 1 provided",
         ):
             reg_func(3)
 
@@ -58,7 +61,8 @@ class TestRegisteredFunction:
         reg_func = RegisteredFunction(name="add", implementation=add, arity=2)
 
         with pytest.raises(
-            ValueError, match="expects 2 arguments but 3 provided"
+            ValueError,
+            match="expects 2 arguments but 3 provided",
         ):
             reg_func(3, 5, 7)
 
@@ -69,7 +73,9 @@ class TestRegisteredFunction:
             return 42
 
         reg_func = RegisteredFunction(
-            name="get_constant", implementation=get_constant, arity=0
+            name="get_constant",
+            implementation=get_constant,
+            arity=0,
         )
 
         result = reg_func()
@@ -83,7 +89,9 @@ class TestRegisteredFunction:
 
         # When arity is 0 (default), no arity checking is performed
         reg_func = RegisteredFunction(
-            name="variadic_func", implementation=variadic_func, arity=0
+            name="variadic_func",
+            implementation=variadic_func,
+            arity=0,
         )
 
         # Should work with any number of arguments
@@ -104,7 +112,8 @@ class TestContextFunctionDecorator:
 
         assert "double" in context.cypher_functions
         assert isinstance(
-            context.cypher_functions["double"], RegisteredFunction
+            context.cypher_functions["double"],
+            RegisteredFunction,
         )
         assert context.cypher_functions["double"].name == "double"
         assert context.cypher_functions["double"].arity == 1
@@ -177,8 +186,7 @@ class TestContextFunctionDecorator:
 
         assert "my_custom_function" in context.cypher_functions
         assert (
-            context.cypher_functions["my_custom_function"].name
-            == "my_custom_function"
+            context.cypher_functions["my_custom_function"].name == "my_custom_function"
         )
 
     def test_function_overwrite(self):
@@ -214,7 +222,7 @@ class TestContextFunctionDecorator:
 
         assert context.cypher_functions["make_list"](5) == [0, 1, 2, 3, 4]
         assert context.cypher_functions["make_dict"]("name", "Alice") == {
-            "name": "Alice"
+            "name": "Alice",
         }
 
     def test_function_with_string_operations(self):
@@ -231,8 +239,7 @@ class TestContextFunctionDecorator:
 
         assert context.cypher_functions["uppercase"]("hello") == "HELLO"
         assert (
-            context.cypher_functions["concat"]("Hello, ", "World!")
-            == "Hello, World!"
+            context.cypher_functions["concat"]("Hello, ", "World!") == "Hello, World!"
         )
 
     def test_arity_enforcement_after_registration(self):

@@ -57,9 +57,9 @@ def _build_star(
         context=Context(
             entity_mapping=EntityMapping(mapping={"Person": person_table}),
             relationship_mapping=RelationshipMapping(
-                mapping={"KNOWS": knows_table}
+                mapping={"KNOWS": knows_table},
             ),
-        )
+        ),
     )
 
 
@@ -69,7 +69,11 @@ def _build_multi_type_star() -> Star:
     company_df = generate_company_dataframe(100, seed=43)
     knows_df = generate_relationship_dataframe(5000, 1000, seed=44)
     works_at_df = generate_relationship_dataframe(
-        1000, 1000, 100, seed=45, target_id_offset=10_000_001
+        1000,
+        1000,
+        100,
+        seed=45,
+        target_id_offset=10_000_001,
     )
 
     person_table = EntityTable.from_dataframe("Person", person_df)
@@ -114,15 +118,15 @@ def _build_multi_type_star() -> Star:
                 mapping={
                     "Person": person_table,
                     "Company": company_table,
-                }
+                },
             ),
             relationship_mapping=RelationshipMapping(
                 mapping={
                     "KNOWS": knows_table,
                     "WORKS_AT": works_at_table,
-                }
+                },
             ),
-        )
+        ),
     )
 
 
@@ -153,10 +157,10 @@ class TestQueryComplexityScaling:
 
     def test_multiple_where_conditions(self, small_star: Star) -> None:
         """Multiple WHERE conditions should not cause quadratic slowdown."""
-        simple_query = (
-            "MATCH (p:Person) WHERE p.age > 30 RETURN p.name AS name"
+        simple_query = "MATCH (p:Person) WHERE p.age > 30 RETURN p.name AS name"
+        complex_query = (
+            "MATCH (p:Person) WHERE p.age > 30 AND p.age < 60 RETURN p.name AS name"
         )
-        complex_query = "MATCH (p:Person) WHERE p.age > 30 AND p.age < 60 RETURN p.name AS name"
 
         simple_result = run_benchmark(
             lambda: small_star.execute_query(simple_query),
@@ -169,9 +173,10 @@ class TestQueryComplexityScaling:
 
         # Complex query should be < 5x slower than simple
         ratio = complex_result.median_time_s / max(
-            simple_result.median_time_s, 1e-6
+            simple_result.median_time_s,
+            1e-6,
         )
-        assert ratio < 5, (  # noqa: PLR2004
+        assert ratio < 5, (
             f"Complex WHERE is {ratio:.1f}x slower than simple (max 5x expected)"
         )
 
@@ -188,23 +193,24 @@ class TestMultiTypeGraphScaling:
     def test_multi_type_entity_scan(self, multi_type_star: Star) -> None:
         """Scan queries on different entity types should work."""
         person_result = multi_type_star.execute_query(
-            "MATCH (p:Person) RETURN count(p) AS cnt"
+            "MATCH (p:Person) RETURN count(p) AS cnt",
         )
         company_result = multi_type_star.execute_query(
-            "MATCH (c:Company) RETURN count(c) AS cnt"
+            "MATCH (c:Company) RETURN count(c) AS cnt",
         )
-        assert person_result["cnt"].iloc[0] == 1000  # noqa: PLR2004
-        assert company_result["cnt"].iloc[0] == 100  # noqa: PLR2004
+        assert person_result["cnt"].iloc[0] == 1000
+        assert company_result["cnt"].iloc[0] == 100
 
     def test_multi_type_relationship_traversal(
-        self, multi_type_star: Star
+        self,
+        multi_type_star: Star,
     ) -> None:
         """Traversal across different relationship types."""
         knows_result = multi_type_star.execute_query(
-            "MATCH (a:Person)-[r:KNOWS]->(b:Person) RETURN count(r) AS cnt"
+            "MATCH (a:Person)-[r:KNOWS]->(b:Person) RETURN count(r) AS cnt",
         )
         works_result = multi_type_star.execute_query(
-            "MATCH (p:Person)-[w:WORKS_AT]->(c:Company) RETURN count(w) AS cnt"
+            "MATCH (p:Person)-[w:WORKS_AT]->(c:Company) RETURN count(w) AS cnt",
         )
         assert knows_result["cnt"].iloc[0] > 0
         assert works_result["cnt"].iloc[0] > 0
@@ -233,7 +239,7 @@ class TestSequentialQueryExecution:
 
         # 50 queries should complete in reasonable time
         per_query = elapsed / len(queries)
-        assert per_query < 2.0, (  # noqa: PLR2004
+        assert per_query < 2.0, (
             f"Per-query time {per_query:.3f}s too slow for sequential "
             f"execution (50 queries in {elapsed:.1f}s)"
         )
@@ -249,9 +255,7 @@ class TestSequentialQueryExecution:
             small_star.execute_query(agg_query)
         elapsed = time.perf_counter() - start
 
-        assert elapsed < 30, (  # noqa: PLR2004
-            f"40 alternating queries took {elapsed:.1f}s (max 30s)"
-        )
+        assert elapsed < 30, f"40 alternating queries took {elapsed:.1f}s (max 30s)"
 
 
 # ---------------------------------------------------------------------------

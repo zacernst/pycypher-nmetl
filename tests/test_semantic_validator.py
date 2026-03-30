@@ -494,7 +494,7 @@ class TestAggregationRegistryConsistency:
     """
 
     def test_stdev_recognised_as_aggregation(self, parser, validator):
-        """stdev is an aggregation — validator must not warn about mixing."""
+        """Stdev is an aggregation — validator must not warn about mixing."""
         query = "MATCH (n:Person) RETURN stdev(n.age)"
         tree = parser.parse(query)
         errors = validator.validate(tree)
@@ -503,7 +503,7 @@ class TestAggregationRegistryConsistency:
         assert len(errors) == 0
 
     def test_stdevp_recognised_as_aggregation(self, parser, validator):
-        """stdevp is an aggregation — validator must not warn about mixing."""
+        """Stdevp is an aggregation — validator must not warn about mixing."""
         query = "MATCH (n:Person) RETURN stdevp(n.age)"
         tree = parser.parse(query)
         errors = validator.validate(tree)
@@ -511,7 +511,7 @@ class TestAggregationRegistryConsistency:
         assert len(errors) == 0
 
     def test_percentilecont_recognised_as_aggregation(self, parser, validator):
-        """percentileCont is an aggregation — mixing check should pass."""
+        """PercentileCont is an aggregation — mixing check should pass."""
         query = "MATCH (n:Person) RETURN percentileCont(n.age, 0.5)"
         tree = parser.parse(query)
         errors = validator.validate(tree)
@@ -519,7 +519,7 @@ class TestAggregationRegistryConsistency:
         assert len(errors) == 0
 
     def test_percentiledisc_recognised_as_aggregation(self, parser, validator):
-        """percentileDisc is an aggregation — mixing check should pass."""
+        """PercentileDisc is an aggregation — mixing check should pass."""
         query = "MATCH (n:Person) RETURN percentileDisc(n.age, 0.5)"
         tree = parser.parse(query)
         errors = validator.validate(tree)

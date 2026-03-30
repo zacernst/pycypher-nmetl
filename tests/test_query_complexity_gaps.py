@@ -9,7 +9,6 @@ from __future__ import annotations
 
 from typing import Any
 
-import pytest
 from pycypher.ast_models import ASTConverter
 from pycypher.query_complexity import (
     DEFAULT_WEIGHTS,
@@ -29,7 +28,7 @@ class TestUnionQueryHandling:
 
     def test_union_query_adds_union_weight(self) -> None:
         ast = _parse(
-            "MATCH (a:Person) RETURN a.name UNION MATCH (b:Dog) RETURN b.name"
+            "MATCH (a:Person) RETURN a.name UNION MATCH (b:Dog) RETURN b.name",
         )
         result = score_query(ast)
         assert "union" in result.breakdown
@@ -38,7 +37,7 @@ class TestUnionQueryHandling:
 
     def test_union_query_scores_child_statements(self) -> None:
         ast = _parse(
-            "MATCH (a:Person) RETURN a.name UNION MATCH (b:Dog) RETURN b.name"
+            "MATCH (a:Person) RETURN a.name UNION MATCH (b:Dog) RETURN b.name",
         )
         result = score_query(ast)
         # Each statement contributes clauses (MATCH + RETURN = 2 each, 4 total)
@@ -48,8 +47,7 @@ class TestUnionQueryHandling:
 
     def test_union_all_also_scored(self) -> None:
         ast = _parse(
-            "MATCH (a:Person) RETURN a.name "
-            "UNION ALL MATCH (b:Dog) RETURN b.name"
+            "MATCH (a:Person) RETURN a.name UNION ALL MATCH (b:Dog) RETURN b.name",
         )
         result = score_query(ast)
         assert "union" in result.breakdown
@@ -60,22 +58,17 @@ class TestWhereClauseScoring:
 
     def test_where_with_exists_scores_subquery(self) -> None:
         ast = _parse(
-            "MATCH (a:Person) "
-            "WHERE EXISTS { MATCH (a)-[:KNOWS]->(b) } "
-            "RETURN a.name"
+            "MATCH (a:Person) WHERE EXISTS { MATCH (a)-[:KNOWS]->(b) } RETURN a.name",
         )
         result = score_query(ast)
         assert "exists_subquery" in result.breakdown
-        assert (
-            result.breakdown["exists_subquery"]
-            == DEFAULT_WEIGHTS["exists_subquery"]
-        )
+        assert result.breakdown["exists_subquery"] == DEFAULT_WEIGHTS["exists_subquery"]
 
     def test_where_predicate_path_exercised(self) -> None:
         """A simple WHERE comparison still passes through _score_expression."""
         no_where = score_query(_parse("MATCH (a:Person) RETURN a.name"))
         with_where = score_query(
-            _parse("MATCH (a:Person) WHERE a.age > 21 RETURN a.name")
+            _parse("MATCH (a:Person) WHERE a.age > 21 RETURN a.name"),
         )
         # The WHERE path is exercised; basic comparisons add no extra weight
         # but the code path on line 222 is still reached.
@@ -118,9 +111,7 @@ class TestExistsSubquery:
 
     def test_exists_adds_weight(self) -> None:
         ast = _parse(
-            "MATCH (a:Person) "
-            "WHERE EXISTS { MATCH (a)-[:KNOWS]->(b) } "
-            "RETURN a.name"
+            "MATCH (a:Person) WHERE EXISTS { MATCH (a)-[:KNOWS]->(b) } RETURN a.name",
         )
         result = score_query(ast)
         assert (
@@ -130,14 +121,14 @@ class TestExistsSubquery:
 
     def test_exists_scores_higher_than_plain_where(self) -> None:
         plain = score_query(
-            _parse("MATCH (a:Person) WHERE a.age > 21 RETURN a.name")
+            _parse("MATCH (a:Person) WHERE a.age > 21 RETURN a.name"),
         )
         with_exists = score_query(
             _parse(
                 "MATCH (a:Person) "
                 "WHERE EXISTS { MATCH (a)-[:KNOWS]->(b) } "
-                "RETURN a.name"
-            )
+                "RETURN a.name",
+            ),
         )
         assert with_exists.total > plain.total
 
@@ -147,7 +138,7 @@ class TestListComprehension:
 
     def test_list_comprehension_adds_weight(self) -> None:
         ast = _parse(
-            "MATCH (a:Person) RETURN [x IN a.tags WHERE x > 1 | x * 2]"
+            "MATCH (a:Person) RETURN [x IN a.tags WHERE x > 1 | x * 2]",
         )
         result = score_query(ast)
         assert "list_comprehension" in result.breakdown
@@ -175,14 +166,11 @@ class TestCaseExpression:
 
     def test_case_expression_adds_weight(self) -> None:
         ast = _parse(
-            'MATCH (a:Person) RETURN CASE WHEN a.age > 21 THEN "adult" ELSE "minor" END'
+            'MATCH (a:Person) RETURN CASE WHEN a.age > 21 THEN "adult" ELSE "minor" END',
         )
         result = score_query(ast)
         assert "case_expression" in result.breakdown
-        assert (
-            result.breakdown["case_expression"]
-            == DEFAULT_WEIGHTS["case_expression"]
-        )
+        assert result.breakdown["case_expression"] == DEFAULT_WEIGHTS["case_expression"]
 
 
 class TestRecursiveSubExpressionLists:
@@ -199,6 +187,5 @@ class TestRecursiveSubExpressionLists:
         ast = _parse("MATCH (a:Person) RETURN count(a) + count(a)")
         result = score_query(ast)
         assert (
-            result.breakdown.get("aggregation", 0)
-            >= 2 * DEFAULT_WEIGHTS["aggregation"]
+            result.breakdown.get("aggregation", 0) >= 2 * DEFAULT_WEIGHTS["aggregation"]
         )

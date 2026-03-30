@@ -38,7 +38,8 @@ class TestMetricsEnvVarValidation:
     def test_non_numeric_falls_back_to_default(self) -> None:
         """Non-numeric value falls back to 1000ms instead of crashing."""
         with patch.dict(
-            os.environ, {"PYCYPHER_SLOW_QUERY_MS": "not_a_number"}
+            os.environ,
+            {"PYCYPHER_SLOW_QUERY_MS": "not_a_number"},
         ):
             from shared.metrics import _parse_slow_query_ms
 
@@ -92,7 +93,9 @@ class TestGrammarParserFileValidation:
 
         parser = GrammarParser()
         with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".cypher", delete=False
+            mode="w",
+            suffix=".cypher",
+            delete=False,
         ) as f:
             f.write("MATCH (n) RETURN n")
             f.flush()
@@ -125,7 +128,9 @@ class TestGrammarParserFileValidation:
 
         parser = GrammarParser()
         with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".cypher", delete=False
+            mode="w",
+            suffix=".cypher",
+            delete=False,
         ) as f:
             f.write("RETURN 1")
             f.flush()

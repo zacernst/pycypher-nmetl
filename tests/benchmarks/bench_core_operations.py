@@ -51,12 +51,15 @@ def _build_persons(n: int, *, rng: np.random.Generator) -> pd.DataFrame:
             "age": rng.integers(18, 65, size=n),
             "dept": rng.choice(depts, size=n),
             "salary": rng.integers(40_000, 200_000, size=n),
-        }
+        },
     )
 
 
 def _build_knows(
-    n_persons: int, *, avg_degree: int = 5, rng: np.random.Generator
+    n_persons: int,
+    *,
+    avg_degree: int = 5,
+    rng: np.random.Generator,
 ) -> pd.DataFrame:
     """Generate KNOWS relationship DataFrame."""
     n_edges = n_persons * avg_degree
@@ -71,7 +74,7 @@ def _build_knows(
             "__SOURCE__": sources,
             "__TARGET__": targets,
             "since": rng.integers(2000, 2026, size=n_actual),
-        }
+        },
     )
 
 
@@ -85,9 +88,7 @@ def _build_context(n_persons: int) -> Context:
         entity_type="Person",
         identifier="Person",
         column_names=list(persons_df.columns),
-        source_obj_attribute_map={
-            c: c for c in persons_df.columns if c != ID_COLUMN
-        },
+        source_obj_attribute_map={c: c for c in persons_df.columns if c != ID_COLUMN},
         attribute_map={c: c for c in persons_df.columns if c != ID_COLUMN},
         source_obj=persons_df,
     )
@@ -112,7 +113,7 @@ def _build_context(n_persons: int) -> Context:
     return Context(
         entity_mapping=EntityMapping(mapping={"Person": person_table}),
         relationship_mapping=RelationshipMapping(
-            mapping={"KNOWS": knows_table}
+            mapping={"KNOWS": knows_table},
         ),
     )
 
@@ -365,9 +366,7 @@ class TestQueryBenchmarks100K:
         """Single-hop on 100K rows."""
         benchmark.pedantic(
             star_100k.execute_query,
-            args=(
-                "MATCH (n:Person)-[r:KNOWS]->(m:Person) RETURN n.name, m.name",
-            ),
+            args=("MATCH (n:Person)-[r:KNOWS]->(m:Person) RETURN n.name, m.name",),
             iterations=1,
             rounds=3,
         )

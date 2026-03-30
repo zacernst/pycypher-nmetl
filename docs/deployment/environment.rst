@@ -93,6 +93,62 @@ the Docker network or on the host:
      - ``http://fastopendata-api:8000``
      - ``http://localhost:8093``
 
+Monitoring & Observability
+--------------------------
+
+.. list-table::
+   :widths: 30 20 50
+   :header-rows: 1
+
+   * - Variable
+     - Default
+     - Description
+   * - ``PYCYPHER_METRICS_ENABLED``
+     - ``1``
+     - Enable in-process metrics collection (``0`` to disable)
+   * - ``PYCYPHER_SLOW_QUERY_MS``
+     - ``1000``
+     - Threshold (ms) for flagging slow queries
+   * - ``PYCYPHER_METRICS_EXPORT``
+     - (empty)
+     - Comma-separated exporters: ``prometheus``, ``statsd``, ``json``
+   * - ``PYCYPHER_METRICS_PREFIX``
+     - ``pycypher``
+     - Metric name prefix for exporters
+   * - ``PYCYPHER_METRICS_EXPORT_INTERVAL_S``
+     - ``60``
+     - Push interval for metrics export (seconds)
+   * - ``PYCYPHER_STATSD_HOST``
+     - ``127.0.0.1``
+     - StatsD/Datadog agent host
+   * - ``PYCYPHER_STATSD_PORT``
+     - ``8125``
+     - StatsD/Datadog agent port
+   * - ``PYCYPHER_METRICS_JSON_PATH``
+     - ``metrics.jsonl``
+     - Output path for JSON file exporter
+   * - ``PYCYPHER_LOG_LEVEL``
+     - ``WARNING``
+     - Logging level (DEBUG, INFO, WARNING, ERROR)
+   * - ``PYCYPHER_LOG_FORMAT``
+     - ``rich``
+     - Log format: ``rich`` (console) or ``json`` (structured)
+   * - ``PYCYPHER_OTEL_ENABLED``
+     - ``0``
+     - Enable OpenTelemetry distributed tracing
+   * - ``OTEL_SERVICE_NAME``
+     - ``pycypher``
+     - Service name for OTel spans
+   * - ``PYROSCOPE_ENABLED``
+     - ``0``
+     - Enable Pyroscope continuous profiling
+   * - ``PYROSCOPE_SERVER``
+     - ``http://localhost:4040``
+     - Pyroscope server endpoint
+   * - ``PYROSCOPE_APP_NAME``
+     - ``pycypher``
+     - Application name for Pyroscope
+
 Python Environment
 ------------------
 

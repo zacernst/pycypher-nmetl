@@ -95,7 +95,7 @@ def relationship_context() -> Context:
                 "2023-11-15",
                 "2024-03-05",
             ],
-        }
+        },
     )
 
     # Post entities
@@ -144,7 +144,7 @@ def relationship_context() -> Context:
                 "draft",
                 "published",
             ],
-        }
+        },
     )
 
     # Friendship relationships
@@ -191,7 +191,7 @@ def relationship_context() -> Context:
                 "2024-03-06",
             ],
             "mutual_friends": [3, 2, 1, 4, 2, 0, 5, 6, 1, 2],
-        }
+        },
     )
 
     # Follow relationships
@@ -269,7 +269,7 @@ def relationship_context() -> Context:
                 8.1,
                 6.8,
             ],
-        }
+        },
     )
 
     # Like relationships (user likes post)
@@ -377,7 +377,7 @@ def relationship_context() -> Context:
                 1.0,
                 1.5,
             ],
-        }
+        },
     )
 
     user_table = EntityTable(
@@ -534,14 +534,14 @@ def relationship_context() -> Context:
 
     return Context(
         entity_mapping=EntityMapping(
-            mapping={"User": user_table, "Post": post_table}
+            mapping={"User": user_table, "Post": post_table},
         ),
         relationship_mapping=RelationshipMapping(
             mapping={
                 "FRIENDS": friends_table,
                 "FOLLOWS": follows_table,
                 "LIKES": likes_table,
-            }
+            },
         ),
     )
 
@@ -550,7 +550,8 @@ class TestBasicRelationshipPropertySET:
     """Test basic SET operations on relationship properties."""
 
     def test_set_relationship_single_property(
-        self, relationship_context: Context
+        self,
+        relationship_context: Context,
     ) -> None:
         """Test parsing setting single property on relationship."""
         cypher = """
@@ -565,7 +566,8 @@ class TestBasicRelationshipPropertySET:
         assert ast is not None
 
     def test_set_relationship_multiple_properties(
-        self, relationship_context: Context
+        self,
+        relationship_context: Context,
     ) -> None:
         """Test parsing setting multiple properties on relationship."""
         cypher = """
@@ -582,7 +584,8 @@ class TestBasicRelationshipPropertySET:
         assert ast is not None
 
     def test_set_relationship_computed_properties(
-        self, relationship_context: Context
+        self,
+        relationship_context: Context,
     ) -> None:
         """Test parsing setting computed properties on relationship."""
         cypher = """
@@ -601,7 +604,8 @@ class TestBasicRelationshipPropertySET:
         assert ast is not None
 
     def test_set_relationship_timestamp_update(
-        self, relationship_context: Context
+        self,
+        relationship_context: Context,
     ) -> None:
         """Test parsing updating timestamp properties on relationships."""
         cypher = """
@@ -618,7 +622,8 @@ class TestBasicRelationshipPropertySET:
         assert ast is not None
 
     def test_set_relationship_metadata(
-        self, relationship_context: Context
+        self,
+        relationship_context: Context,
     ) -> None:
         """Test parsing setting metadata properties on relationships."""
         cypher = """
@@ -641,7 +646,8 @@ class TestRelationshipConditionalSET:
     """Test SET operations on relationships with conditional logic."""
 
     def test_set_relationship_where_property(
-        self, relationship_context: Context
+        self,
+        relationship_context: Context,
     ) -> None:
         """Test parsing SET on relationships with WHERE on relationship property."""
         cypher = """
@@ -658,7 +664,8 @@ class TestRelationshipConditionalSET:
         assert ast is not None
 
     def test_set_relationship_where_node_property(
-        self, relationship_context: Context
+        self,
+        relationship_context: Context,
     ) -> None:
         """Test parsing SET on relationships based on connected node properties."""
         cypher = """
@@ -674,7 +681,8 @@ class TestRelationshipConditionalSET:
         assert ast is not None
 
     def test_set_relationship_conditional_status(
-        self, relationship_context: Context
+        self,
+        relationship_context: Context,
     ) -> None:
         """Test parsing conditional status updates on relationships."""
         cypher = """
@@ -691,7 +699,8 @@ class TestRelationshipConditionalSET:
         assert ast is not None
 
     def test_set_relationship_engagement_tiers(
-        self, relationship_context: Context
+        self,
+        relationship_context: Context,
     ) -> None:
         """Test parsing setting engagement tiers based on interaction patterns."""
         cypher = """
@@ -711,7 +720,8 @@ class TestRelationshipConditionalSET:
         assert ast is not None
 
     def test_set_relationship_mutual_properties(
-        self, relationship_context: Context
+        self,
+        relationship_context: Context,
     ) -> None:
         """Test parsing setting properties based on mutual relationship analysis."""
         cypher = """
@@ -733,7 +743,8 @@ class TestRelationshipBulkOperations:
     """Test bulk SET operations affecting multiple relationships."""
 
     def test_set_bulk_relationship_update(
-        self, relationship_context: Context
+        self,
+        relationship_context: Context,
     ) -> None:
         """Test parsing bulk update across relationship type."""
         cypher = """
@@ -749,7 +760,8 @@ class TestRelationshipBulkOperations:
         assert ast is not None
 
     def test_set_relationship_deprecation(
-        self, relationship_context: Context
+        self,
+        relationship_context: Context,
     ) -> None:
         """Test parsing bulk deprecation of old relationships."""
         cypher = """
@@ -766,7 +778,8 @@ class TestRelationshipBulkOperations:
         assert ast is not None
 
     def test_set_relationship_policy_compliance(
-        self, relationship_context: Context
+        self,
+        relationship_context: Context,
     ) -> None:
         """Test parsing policy compliance updates across relationships."""
         cypher = """
@@ -783,7 +796,8 @@ class TestRelationshipBulkOperations:
         assert ast is not None
 
     def test_set_relationship_analytics_batch(
-        self, relationship_context: Context
+        self,
+        relationship_context: Context,
     ) -> None:
         """Test parsing batch analytics property updates."""
         cypher = """
@@ -807,7 +821,8 @@ class TestRelationshipPatternBasedSET:
     """Test SET operations based on complex relationship patterns."""
 
     def test_set_triangular_relationship_pattern(
-        self, relationship_context: Context
+        self,
+        relationship_context: Context,
     ) -> None:
         """Test parsing SET based on triangular relationship patterns."""
         cypher = """
@@ -825,7 +840,8 @@ class TestRelationshipPatternBasedSET:
         assert ast is not None
 
     def test_set_influence_relationship_pattern(
-        self, relationship_context: Context
+        self,
+        relationship_context: Context,
     ) -> None:
         """Test parsing SET based on influence patterns (simplified)."""
         cypher = """
@@ -842,7 +858,8 @@ class TestRelationshipPatternBasedSET:
         assert ast is not None
 
     def test_set_reciprocal_follow_pattern(
-        self, relationship_context: Context
+        self,
+        relationship_context: Context,
     ) -> None:
         """Test parsing SET for reciprocal follow relationships."""
         cypher = """
@@ -860,7 +877,8 @@ class TestRelationshipPatternBasedSET:
         assert ast is not None
 
     def test_set_content_engagement_pattern(
-        self, relationship_context: Context
+        self,
+        relationship_context: Context,
     ) -> None:
         """Test parsing SET based on content engagement patterns."""
         cypher = """
@@ -878,7 +896,8 @@ class TestRelationshipPatternBasedSET:
         assert ast is not None
 
     def test_set_cross_relationship_influence(
-        self, relationship_context: Context
+        self,
+        relationship_context: Context,
     ) -> None:
         """Test parsing SET based on cross-relationship type influences."""
         cypher = """
@@ -900,7 +919,8 @@ class TestRelationshipCreationWithSET:
     """Test SET operations during relationship creation scenarios."""
 
     def test_set_during_relationship_match_create(
-        self, relationship_context: Context
+        self,
+        relationship_context: Context,
     ) -> None:
         """Test parsing SET during MATCH or CREATE relationship patterns."""
         cypher = """
@@ -919,7 +939,8 @@ class TestRelationshipCreationWithSET:
         assert ast is not None
 
     def test_set_new_relationship_defaults(
-        self, relationship_context: Context
+        self,
+        relationship_context: Context,
     ) -> None:
         """Test parsing SET with default values for new relationships."""
         cypher = """
@@ -939,7 +960,8 @@ class TestRelationshipCreationWithSET:
         assert ast is not None
 
     def test_set_relationship_with_inheritance(
-        self, relationship_context: Context
+        self,
+        relationship_context: Context,
     ) -> None:
         """Test parsing SET with property inheritance from nodes."""
         cypher = """
@@ -958,7 +980,8 @@ class TestRelationshipCreationWithSET:
         assert ast is not None
 
     def test_set_bulk_relationship_creation(
-        self, relationship_context: Context
+        self,
+        relationship_context: Context,
     ) -> None:
         """Test parsing bulk relationship creation with SET."""
         cypher = """
@@ -982,7 +1005,8 @@ class TestRelationshipMaintenanceOperations:
     """Test SET operations for relationship maintenance and cleanup."""
 
     def test_set_relationship_maintenance_flags(
-        self, relationship_context: Context
+        self,
+        relationship_context: Context,
     ) -> None:
         """Test parsing setting maintenance flags on relationships."""
         cypher = """
@@ -1003,7 +1027,8 @@ class TestRelationshipMaintenanceOperations:
         assert ast is not None
 
     def test_set_relationship_cleanup_markers(
-        self, relationship_context: Context
+        self,
+        relationship_context: Context,
     ) -> None:
         """Test parsing setting cleanup markers for relationship pruning."""
         cypher = """
@@ -1021,7 +1046,8 @@ class TestRelationshipMaintenanceOperations:
         assert ast is not None
 
     def test_set_relationship_archive_properties(
-        self, relationship_context: Context
+        self,
+        relationship_context: Context,
     ) -> None:
         """Test parsing setting archive properties before relationship deletion."""
         cypher = """
@@ -1039,7 +1065,8 @@ class TestRelationshipMaintenanceOperations:
         assert ast is not None
 
     def test_set_relationship_migration_tracking(
-        self, relationship_context: Context
+        self,
+        relationship_context: Context,
     ) -> None:
         """Test parsing setting migration tracking properties."""
         cypher = """
@@ -1060,7 +1087,8 @@ class TestRelationshipMaintenanceOperations:
         assert ast is not None
 
     def test_set_relationship_quality_scores(
-        self, relationship_context: Context
+        self,
+        relationship_context: Context,
     ) -> None:
         """Test parsing setting relationship quality assessment scores."""
         cypher = """

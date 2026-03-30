@@ -1,6 +1,6 @@
 """Filter a compressed Wikidata entity file to points inside the United States.
 
-Reads $DATA_DIR/location_entities.json.bz2 (produced upstream from the
+Reads $DATA_DIR/wikidata_compressed.json.bz2 (produced upstream from the
 Wikidata dump), checks each entity's P625 coordinate claim against U.S.
 state boundary polygons, and writes matching entities to
 $DATA_DIR/wikidata_us_points.json.
@@ -20,16 +20,21 @@ import bz2
 import json
 import multiprocessing as mp
 import os
+import signal
+import sys
+from pathlib import Path
 from typing import Any
 
 import geopandas as gpd
 from rich.progress import Progress
 from shapely.geometry import Point
 
-DATA_DIR: str = os.environ["DATA_DIR"]
-INPUT_FILE: str = os.path.join(DATA_DIR, "location_entities.json.bz2")
-STATE_SHAPEFILE: str = os.path.join(DATA_DIR, "tl_2024_us_state.shp")
-OUTPUT_FILE: str = os.path.join(DATA_DIR, "wikidata_us_points.json")
+from fastopendata.config import config
+
+DATA_DIR: Path = config.data_path
+INPUT_FILE: str = str(DATA_DIR / "wikidata_compressed.json.bz2")
+STATE_SHAPEFILE: str = str(DATA_DIR / "tl_2024_us_state.shp")
+OUTPUT_FILE: Path = DATA_DIR / "wikidata_us_points.json"
 
 # Number of worker processes for the point-in-polygon tests.
 _NUM_WORKERS: int = 10
@@ -45,7 +50,8 @@ def _load_state_gdf() -> gpd.GeoDataFrame:
 
 def _in_us(gdf: gpd.GeoDataFrame, longitude: float, latitude: float) -> bool:
     point = Point(longitude, latitude)
-    return any(row.geometry.contains(point) for _, row in gdf.iterrows())
+    candidates = gdf.sindex.query(point, predicate="intersects")
+    return len(candidates) > 0
 
 
 def _reader(jobs_queue: mp.Queue[bytes | None]) -> None:
@@ -66,9 +72,13 @@ def _worker(
         if item is None:
             write_queue.put(None)
             return
-        raw, counter_bytes = item.split(_SEP, 1)
-        counter = int(counter_bytes)
-        entity: dict[str, Any] = json.loads(raw)
+        try:
+            raw, counter_bytes = item.split(_SEP, 1)
+            counter = int(counter_bytes)
+            entity: dict[str, Any] = json.loads(raw)
+        except (ValueError, json.JSONDecodeError):
+            # Skip malformed lines rather than crashing the worker
+            continue
         try:
             loc = entity["claims"]["P625"][0]["mainsnak"]["datavalue"]["value"]
         except (KeyError, IndexError):
@@ -81,41 +91,84 @@ def _worker(
 def _writer(write_queue: mp.Queue[dict[str, Any] | None]) -> None:
     """Collect results and write them to the output file."""
     finished_workers = 0
-    with open(OUTPUT_FILE, "w", encoding="utf-8") as out:
-        with Progress() as progress:
-            task = progress.add_task(
-                "[cyan]Filtering to U.S. points...",
-                total=11_514_545,
-            )
-            while finished_workers < _NUM_WORKERS:
-                item = write_queue.get()
-                if item is None:
-                    finished_workers += 1
-                    continue
-                out.write(json.dumps(item) + "\n")
-                progress.update(task, completed=item["_counter"])
+    with OUTPUT_FILE.open("w", encoding="utf-8") as out, Progress() as progress:
+        task = progress.add_task(
+            "[cyan]Filtering to U.S. points...",
+            total=11_514_545,
+        )
+        while finished_workers < _NUM_WORKERS:
+            item = write_queue.get()
+            if item is None:
+                finished_workers += 1
+                continue
+            out.write(json.dumps(item) + "\n")
+            progress.update(task, completed=item["_counter"])
 
 
 if __name__ == "__main__":
+    for required, label in [
+        (INPUT_FILE, "Wikidata compressed input"),
+        (STATE_SHAPEFILE, "State boundaries shapefile"),
+    ]:
+        if not os.path.isfile(required):
+            msg = f"{label} not found: {required}"
+            raise SystemExit(msg)
+
     jobs: mp.Queue[bytes | None] = mp.Queue()
     results: mp.Queue[dict[str, Any] | None] = mp.Queue()
 
-    reader_proc = mp.Process(target=_reader, args=(jobs,))
+    reader_proc = mp.Process(target=_reader, args=(jobs,), name="wikidata-reader")
     worker_procs = [
-        mp.Process(target=_worker, args=(jobs, results))
-        for _ in range(_NUM_WORKERS)
+        mp.Process(target=_worker, args=(jobs, results), name=f"wikidata-worker-{i}")
+        for i in range(_NUM_WORKERS)
     ]
-    writer_proc = mp.Process(target=_writer, args=(results,))
+    writer_proc = mp.Process(target=_writer, args=(results,), name="wikidata-writer")
 
-    reader_proc.start()
-    for wp in worker_procs:
-        wp.start()
-    writer_proc.start()
+    all_procs = [reader_proc, *worker_procs, writer_proc]
 
-    reader_proc.join()
-    # Signal each worker to stop.
-    for _ in worker_procs:
-        jobs.put(None)
-    for wp in worker_procs:
-        wp.join()
-    writer_proc.join()
+    def _terminate_all(_signum: int, _frame: Any) -> None:
+        """Clean up child processes on SIGINT/SIGTERM."""
+        for p in all_procs:
+            if p.is_alive():
+                p.terminate()
+        sys.exit(1)
+
+    signal.signal(signal.SIGINT, _terminate_all)
+    signal.signal(signal.SIGTERM, _terminate_all)
+
+    try:
+        reader_proc.start()
+        for wp in worker_procs:
+            wp.start()
+        writer_proc.start()
+
+        reader_proc.join()
+        if reader_proc.exitcode != 0:
+            msg = f"Reader process failed with exit code {reader_proc.exitcode}"
+            raise RuntimeError(msg)
+
+        # Signal each worker to stop.
+        for _ in worker_procs:
+            jobs.put(None)
+        for wp in worker_procs:
+            wp.join()
+            if wp.exitcode != 0:
+                msg = f"Worker {wp.name} failed with exit code {wp.exitcode}"
+                raise RuntimeError(msg)
+
+        writer_proc.join()
+        if writer_proc.exitcode != 0:
+            msg = f"Writer process failed with exit code {writer_proc.exitcode}"
+            raise RuntimeError(msg)
+
+    except Exception:
+        for p in all_procs:
+            if p.is_alive():
+                p.terminate()
+                p.join(timeout=5)
+        raise
+
+    # Validate output is non-empty.
+    if not OUTPUT_FILE.exists() or OUTPUT_FILE.stat().st_size == 0:
+        msg = f"Output file is empty or missing: {OUTPUT_FILE}"
+        raise SystemExit(msg)

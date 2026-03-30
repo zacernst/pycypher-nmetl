@@ -40,7 +40,6 @@ from __future__ import annotations
 import json
 import logging
 import os
-import time
 from datetime import datetime, timezone
 from typing import Any
 
@@ -65,7 +64,8 @@ _TRUE_VALUES = frozenset({"1", "true", "yes"})
 def is_audit_enabled() -> bool:
     """Return whether the audit logger has any active handlers."""
     return AUDIT_LOGGER.isEnabledFor(logging.INFO) and bool(
-        AUDIT_LOGGER.handlers or (AUDIT_LOGGER.parent and AUDIT_LOGGER.parent.handlers)
+        AUDIT_LOGGER.handlers
+        or (AUDIT_LOGGER.parent and AUDIT_LOGGER.parent.handlers),
     )
 
 
@@ -76,8 +76,11 @@ def enable_audit_log(*, level: int = logging.INFO) -> None:
 
     Args:
         level: Logging level for the audit logger (default ``INFO``).
+
     """
-    if any(isinstance(h, logging.StreamHandler) for h in AUDIT_LOGGER.handlers):
+    if any(
+        isinstance(h, logging.StreamHandler) for h in AUDIT_LOGGER.handlers
+    ):
         return
     handler = logging.StreamHandler()
     handler.setFormatter(logging.Formatter("%(message)s"))
@@ -116,6 +119,7 @@ def audit_query_success(
         rows: Number of result rows.
         parameter_keys: Parameter names (values are never logged).
         cached: Whether the result was served from cache.
+
     """
     if not is_audit_enabled():
         return
@@ -130,7 +134,7 @@ def audit_query_success(
             "rows": rows,
             "cached": cached,
             "parameter_keys": parameter_keys or [],
-        }
+        },
     )
 
 
@@ -150,6 +154,7 @@ def audit_query_error(
         elapsed_s: Wall-clock execution time before failure.
         error_type: Exception class name.
         parameter_keys: Parameter names (values are never logged).
+
     """
     if not is_audit_enabled():
         return
@@ -163,7 +168,7 @@ def audit_query_error(
             "elapsed_ms": round(elapsed_s * 1000.0, 2),
             "error_type": error_type,
             "parameter_keys": parameter_keys or [],
-        }
+        },
     )
 
 

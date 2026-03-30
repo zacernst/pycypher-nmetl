@@ -47,14 +47,14 @@ def _make_chain_context(n_nodes: int = 5) -> Context:
         {
             ID_COLUMN: list(range(1, n_nodes + 1)),
             "name": [f"Node{i}" for i in range(1, n_nodes + 1)],
-        }
+        },
     )
     edges = pd.DataFrame(
         {
             ID_COLUMN: list(range(101, 101 + n_nodes - 1)),
             "__SOURCE__": list(range(1, n_nodes)),
             "__TARGET__": list(range(2, n_nodes + 1)),
-        }
+        },
     )
     person_table = EntityTable(
         entity_type="Node",
@@ -86,14 +86,14 @@ def _make_cycle_context() -> Context:
         {
             ID_COLUMN: [1, 2, 3],
             "name": ["A", "B", "C"],
-        }
+        },
     )
     edges = pd.DataFrame(
         {
             ID_COLUMN: [101, 102, 103],
             "__SOURCE__": [1, 2, 3],
             "__TARGET__": [2, 3, 1],
-        }
+        },
     )
     person_table = EntityTable(
         entity_type="Node",
@@ -247,7 +247,7 @@ class TestExpandVariableLengthPath:
                 ID_COLUMN: pd.Series(dtype=int),
                 "__SOURCE__": pd.Series(dtype=int),
                 "__TARGET__": pd.Series(dtype=int),
-            }
+            },
         )
         person_table = EntityTable(
             entity_type="Node",
@@ -270,7 +270,7 @@ class TestExpandVariableLengthPath:
         ctx = Context(
             entity_mapping=EntityMapping(mapping={"Node": person_table}),
             relationship_mapping=RelationshipMapping(
-                mapping={"NEXT": edge_table}
+                mapping={"NEXT": edge_table},
             ),
         )
         expander = PathExpander(ctx)
@@ -409,9 +409,7 @@ class TestShortestPath:
             context_frame: BindingFrame | None = None,
         ) -> BindingFrame:
             var_name = (
-                node.variable.name
-                if node.variable
-                else f"_anon_node_{anon_counter[0]}"
+                node.variable.name if node.variable else f"_anon_node_{anon_counter[0]}"
             )
             if node.variable is None:
                 anon_counter[0] += 1
@@ -421,7 +419,7 @@ class TestShortestPath:
         return scan
 
     def test_shortest_path_chain(self) -> None:
-        """shortestPath on chain finds direct paths."""
+        """ShortestPath on chain finds direct paths."""
         ctx = _make_chain_context(5)
         expander = PathExpander(ctx)
 
@@ -458,7 +456,7 @@ class TestShortestPath:
         assert "b" in frame.var_names
 
     def test_shortest_path_wrong_element_count(self) -> None:
-        """shortestPath with != 3 elements raises ValueError."""
+        """ShortestPath with != 3 elements raises ValueError."""
         ctx = _make_chain_context(3)
         expander = PathExpander(ctx)
 
@@ -476,7 +474,7 @@ class TestShortestPath:
             )
 
     def test_shortest_path_no_rel_type_raises(self) -> None:
-        """shortestPath without relationship type raises ValueError."""
+        """ShortestPath without relationship type raises ValueError."""
         ctx = _make_chain_context(3)
         expander = PathExpander(ctx)
 
@@ -509,7 +507,7 @@ class TestShortestPath:
             )
 
     def test_all_shortest_paths(self) -> None:
-        """allShortestPaths returns all shortest paths."""
+        """AllShortestPaths returns all shortest paths."""
         ctx = _make_chain_context(5)
         expander = PathExpander(ctx)
 
@@ -543,7 +541,7 @@ class TestShortestPath:
         assert len(frame.bindings) > 0
 
     def test_shortest_path_empty_result(self) -> None:
-        """shortestPath with no reachable endpoints returns empty frame."""
+        """ShortestPath with no reachable endpoints returns empty frame."""
         # Single node, no edges
         people_df = pd.DataFrame({ID_COLUMN: [1], "name": ["Alone"]})
         edges = pd.DataFrame(
@@ -551,7 +549,7 @@ class TestShortestPath:
                 ID_COLUMN: pd.Series(dtype=int),
                 "__SOURCE__": pd.Series(dtype=int),
                 "__TARGET__": pd.Series(dtype=int),
-            }
+            },
         )
         person_table = EntityTable(
             entity_type="Node",
@@ -574,7 +572,7 @@ class TestShortestPath:
         ctx = Context(
             entity_mapping=EntityMapping(mapping={"Node": person_table}),
             relationship_mapping=RelationshipMapping(
-                mapping={"NEXT": edge_table}
+                mapping={"NEXT": edge_table},
             ),
         )
         expander = PathExpander(ctx)
@@ -613,7 +611,7 @@ class TestShortestPath:
         assert frame.bindings.empty
 
     def test_shortest_path_no_scanner_raises(self) -> None:
-        """shortestPath without node_scanner when start not pre-bound raises."""
+        """ShortestPath without node_scanner when start not pre-bound raises."""
         ctx = _make_chain_context(3)
         expander = PathExpander(ctx)
 

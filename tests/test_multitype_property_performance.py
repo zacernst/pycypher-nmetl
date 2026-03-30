@@ -33,16 +33,16 @@ def large_multitype_ctx():
                     "__ID__": [f"p{i}" for i in range(5000)],
                     "score": rng.integers(0, 100, 5000).tolist(),
                     "name": [f"person_{i}" for i in range(5000)],
-                }
+                },
             ),
             "Company": pd.DataFrame(
                 {
                     "__ID__": [f"c{i}" for i in range(5000)],
                     "score": rng.integers(0, 100, 5000).tolist(),
                     "name": [f"company_{i}" for i in range(5000)],
-                }
+                },
             ),
-        }
+        },
     )
 
 
@@ -55,15 +55,15 @@ def small_multitype_ctx():
                 {
                     "__ID__": ["cat_a", "cat_b", "cat_c"],
                     "age": [3, 7, 1],
-                }
+                },
             ),
             "Dog": pd.DataFrame(
                 {
                     "__ID__": ["dog_x", "dog_y"],
                     "age": [5, 2],
-                }
+                },
             ),
-        }
+        },
     )
 
 
@@ -74,7 +74,8 @@ def small_multitype_ctx():
 
 class TestMultitypePropertyCorrectness:
     def test_unlabeled_match_returns_all_entities(
-        self, small_multitype_ctx: ContextBuilder
+        self,
+        small_multitype_ctx: ContextBuilder,
     ) -> None:
         s = Star(context=small_multitype_ctx)
         result = s.execute_query("MATCH (n) RETURN n.age")
@@ -82,7 +83,8 @@ class TestMultitypePropertyCorrectness:
         assert len(result) == 5
 
     def test_unlabeled_match_property_values_correct(
-        self, small_multitype_ctx: ContextBuilder
+        self,
+        small_multitype_ctx: ContextBuilder,
     ) -> None:
         s = Star(context=small_multitype_ctx)
         result = s.execute_query("MATCH (n) RETURN n.age ORDER BY n.age")
@@ -90,7 +92,8 @@ class TestMultitypePropertyCorrectness:
         assert ages == [1, 2, 3, 5, 7]
 
     def test_where_filter_on_multitype_property(
-        self, small_multitype_ctx: ContextBuilder
+        self,
+        small_multitype_ctx: ContextBuilder,
     ) -> None:
         s = Star(context=small_multitype_ctx)
         result = s.execute_query("MATCH (n) WHERE n.age > 3 RETURN n.age")
@@ -98,35 +101,38 @@ class TestMultitypePropertyCorrectness:
         assert ages == [5, 7]
 
     def test_multitype_string_property(
-        self, large_multitype_ctx: ContextBuilder
+        self,
+        large_multitype_ctx: ContextBuilder,
     ) -> None:
         s = Star(context=large_multitype_ctx)
         result = s.execute_query(
-            'MATCH (n) WHERE n.name = "person_0" RETURN n.name'
+            'MATCH (n) WHERE n.name = "person_0" RETURN n.name',
         )
         assert len(result) == 1
         assert result["name"].iloc[0] == "person_0"
 
     def test_labeled_match_unaffected(
-        self, large_multitype_ctx: ContextBuilder
+        self,
+        large_multitype_ctx: ContextBuilder,
     ) -> None:
         """Labeled MATCH should still work correctly after the fix."""
         s = Star(context=large_multitype_ctx)
         result = s.execute_query(
-            "MATCH (p:Person) WHERE p.score > 95 RETURN p.score"
+            "MATCH (p:Person) WHERE p.score > 95 RETURN p.score",
         )
         assert len(result) > 0
         assert all(v > 95 for v in result["score"].tolist())
 
     def test_null_for_missing_property_across_types(
-        self, small_multitype_ctx: ContextBuilder
+        self,
+        small_multitype_ctx: ContextBuilder,
     ) -> None:
         """Property absent in one entity type returns null for those rows."""
         ctx = ContextBuilder().from_dict(
             {
                 "Cat": pd.DataFrame({"__ID__": ["c1"], "sound": ["meow"]}),
                 "Dog": pd.DataFrame({"__ID__": ["d1"], "breed": ["labrador"]}),
-            }
+            },
         )
         s = Star(context=ctx)
         # sound is only on Cat; Dog rows should get null
@@ -143,7 +149,8 @@ class TestMultitypePropertyCorrectness:
 
 class TestMultitypePropertyPerformance:
     def test_20x_unlabeled_match_under_2_seconds(
-        self, large_multitype_ctx: ContextBuilder
+        self,
+        large_multitype_ctx: ContextBuilder,
     ) -> None:
         """20 queries on a 10k-row 2-entity context must complete in < 2s.
 
@@ -165,7 +172,8 @@ class TestMultitypePropertyPerformance:
         )
 
     def test_speedup_vs_baseline(
-        self, large_multitype_ctx: ContextBuilder
+        self,
+        large_multitype_ctx: ContextBuilder,
     ) -> None:
         """After fix, zip-based dict construction must be faster than iterrows().
 
@@ -176,7 +184,7 @@ class TestMultitypePropertyPerformance:
             {
                 "__ID__": [f"e{i}" for i in range(10_000)],
                 "val": list(range(10_000)),
-            }
+            },
         )
 
         # Old: iterrows()
@@ -206,7 +214,7 @@ class TestMultitypePropertyPerformance:
             {
                 "__ID__": [f"e{i}" for i in range(10_000)],
                 "val": list(range(10_000)),
-            }
+            },
         )
         N = 50
         t0 = time.perf_counter()

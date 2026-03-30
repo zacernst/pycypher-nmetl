@@ -32,31 +32,30 @@ class TestComplexityScoring:
         simple = score_query(_parse("MATCH (p:Person) RETURN p.name"))
         optional = score_query(
             _parse(
-                "MATCH (p:Person) OPTIONAL MATCH (p)-[:KNOWS]->(q) RETURN p.name"
-            )
+                "MATCH (p:Person) OPTIONAL MATCH (p)-[:KNOWS]->(q) RETURN p.name",
+            ),
         )
         assert optional.total > simple.total
 
     def test_variable_length_path_scores_high(self) -> None:
         fixed = score_query(
-            _parse("MATCH (a:Person)-[:KNOWS]->(b:Person) RETURN a.name")
+            _parse("MATCH (a:Person)-[:KNOWS]->(b:Person) RETURN a.name"),
         )
         varlen = score_query(
-            _parse("MATCH (a:Person)-[:KNOWS*1..3]->(b:Person) RETURN a.name")
+            _parse("MATCH (a:Person)-[:KNOWS*1..3]->(b:Person) RETURN a.name"),
         )
         assert varlen.total > fixed.total
 
     def test_unbounded_path_scores_highest(self) -> None:
         bounded = score_query(
-            _parse("MATCH (a:Person)-[:KNOWS*1..3]->(b:Person) RETURN a.name")
+            _parse("MATCH (a:Person)-[:KNOWS*1..3]->(b:Person) RETURN a.name"),
         )
         unbounded = score_query(
-            _parse("MATCH (a:Person)-[:KNOWS*]->(b:Person) RETURN a.name")
+            _parse("MATCH (a:Person)-[:KNOWS*]->(b:Person) RETURN a.name"),
         )
         assert unbounded.total > bounded.total
         assert any(
-            "unbounded" in w.lower() or "Unbounded" in w
-            for w in unbounded.warnings
+            "unbounded" in w.lower() or "Unbounded" in w for w in unbounded.warnings
         )
 
     def test_aggregation_adds_complexity(self) -> None:
@@ -68,14 +67,14 @@ class TestComplexityScoring:
         no_foreach = score_query(_parse("MATCH (p:Person) RETURN p.name"))
         with_foreach = score_query(
             _parse(
-                "MATCH (p:Person) FOREACH (x IN [1,2,3] | CREATE (n:Temp {v: x})) RETURN p.name"
-            )
+                "MATCH (p:Person) FOREACH (x IN [1,2,3] | CREATE (n:Temp {v: x})) RETURN p.name",
+            ),
         )
         assert with_foreach.total > no_foreach.total
 
     def test_multiple_match_warns_cross_product(self) -> None:
         score = score_query(
-            _parse("MATCH (a:Person) MATCH (b:Company) RETURN a.name, b.name")
+            _parse("MATCH (a:Person) MATCH (b:Company) RETURN a.name, b.name"),
         )
         assert any(
             "cross-product" in w.lower() or "cross_product" in w.lower()
@@ -85,7 +84,7 @@ class TestComplexityScoring:
     def test_distinct_adds_complexity(self) -> None:
         no_dist = score_query(_parse("MATCH (p:Person) RETURN p.name"))
         with_dist = score_query(
-            _parse("MATCH (p:Person) RETURN DISTINCT p.name")
+            _parse("MATCH (p:Person) RETURN DISTINCT p.name"),
         )
         assert with_dist.total > no_dist.total
 
@@ -157,7 +156,93 @@ class TestExecuteQueryIntegration:
     def test_subsequent_query_works_after_rejection(self, star: Star) -> None:
         with pytest.raises(QueryComplexityError):
             star.execute_query(
-                "MATCH (p:Person) RETURN p.name", max_complexity_score=1
+                "MATCH (p:Person) RETURN p.name",
+                max_complexity_score=1,
             )
         result = star.execute_query("MATCH (p:Person) RETURN p.name")
         assert len(result) == 2
+
+
+class TestCostGateConfig:
+    """Verify environment-variable-driven complexity cost gate."""
+
+    @pytest.fixture
+    def star(self) -> Star:
+        df = pd.DataFrame(
+            {"__ID__": [1, 2], "name": ["Alice", "Bob"]},
+        )
+        return Star(context=ContextBuilder().add_entity("Person", df).build())
+
+    def test_env_max_complexity_rejects(
+        self, star: Star, monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """PYCYPHER_MAX_COMPLEXITY_SCORE env var gates queries."""
+        import pycypher.config as cfg
+        import pycypher.star as star_mod
+
+        monkeypatch.setattr(cfg, "MAX_COMPLEXITY_SCORE", 1)
+        monkeypatch.setattr(star_mod, "_DEFAULT_MAX_COMPLEXITY", 1)
+
+        with pytest.raises(QueryComplexityError):
+            star.execute_query("MATCH (p:Person) RETURN p.name")
+
+    def test_env_max_complexity_allows(
+        self, star: Star, monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """High env threshold allows queries through."""
+        import pycypher.config as cfg
+        import pycypher.star as star_mod
+
+        monkeypatch.setattr(cfg, "MAX_COMPLEXITY_SCORE", 1000)
+        monkeypatch.setattr(star_mod, "_DEFAULT_MAX_COMPLEXITY", 1000)
+
+        result = star.execute_query("MATCH (p:Person) RETURN p.name")
+        assert len(result) == 2
+
+    def test_explicit_param_overrides_env(
+        self, star: Star, monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Per-query max_complexity_score overrides env default."""
+        import pycypher.config as cfg
+        import pycypher.star as star_mod
+
+        monkeypatch.setattr(cfg, "MAX_COMPLEXITY_SCORE", 1)
+        monkeypatch.setattr(star_mod, "_DEFAULT_MAX_COMPLEXITY", 1)
+
+        # Explicit high limit overrides env
+        result = star.execute_query(
+            "MATCH (p:Person) RETURN p.name",
+            max_complexity_score=1000,
+        )
+        assert len(result) == 2
+
+    @pytest.mark.xfail(reason="Pipeline does not yet propagate complexity_score metadata")
+    def test_warn_threshold_logs_warning(
+        self,
+        star: Star,
+        monkeypatch: pytest.MonkeyPatch,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """PYCYPHER_COMPLEXITY_WARN_THRESHOLD emits warning but allows query."""
+        import logging
+
+        import pycypher.star as star_mod
+
+        monkeypatch.setattr(star_mod, "_COMPLEXITY_WARN", 1)
+
+        with caplog.at_level(logging.WARNING):
+            result = star.execute_query("MATCH (p:Person) RETURN p.name")
+
+        assert len(result) == 2
+        assert any(
+            ("complexity score" in r.message.lower() and "warning" in r.message.lower())
+            or "exceeds warning" in r.message.lower()
+            for r in caplog.records
+        )
+
+    def test_config_shows_complexity_settings(self) -> None:
+        """show-config displays complexity cost gate settings."""
+        from pycypher import config as cfg
+
+        assert hasattr(cfg, "MAX_COMPLEXITY_SCORE")
+        assert hasattr(cfg, "COMPLEXITY_WARN_THRESHOLD")

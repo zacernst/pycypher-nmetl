@@ -27,14 +27,14 @@ from pycypher.relational_models import (
 from pycypher.star import Star
 
 
-@pytest.fixture()
+@pytest.fixture
 def social_star() -> Star:
     """Simple social graph: Alice -KNOWS-> Bob and Alice -KNOWS-> Carol."""
     people_df = pd.DataFrame(
         {
             ID_COLUMN: [1, 2, 3],
             "name": ["Alice", "Bob", "Carol"],
-        }
+        },
     )
     people_table = EntityTable(
         entity_type="Person",
@@ -49,7 +49,7 @@ def social_star() -> Star:
             ID_COLUMN: [10, 11],
             "__SOURCE__": [1, 1],
             "__TARGET__": [2, 3],
-        }
+        },
     )
     knows_table = RelationshipTable(
         relationship_type="KNOWS",
@@ -63,9 +63,9 @@ def social_star() -> Star:
         context=Context(
             entity_mapping=EntityMapping(mapping={"Person": people_table}),
             relationship_mapping=RelationshipMapping(
-                mapping={"KNOWS": knows_table}
+                mapping={"KNOWS": knows_table},
             ),
-        )
+        ),
     )
 
 
@@ -82,35 +82,35 @@ class TestExistsNoReturn:
         r = social_star.execute_query(
             "MATCH (p:Person) "
             "WHERE EXISTS { MATCH (p)-[:KNOWS]->(f:Person) WHERE f.name = 'Bob' } "
-            "RETURN p.name"
+            "RETURN p.name",
         )
         assert "Alice" in list(r["name"]), (
             f"Expected Alice (who knows Bob), got {list(r['name'])}"
         )
 
     def test_exists_without_return_excludes_non_match(
-        self, social_star: Star
+        self,
+        social_star: Star,
     ) -> None:
         """Bob and Carol don't know anyone → EXISTS returns False for them."""
         r = social_star.execute_query(
             "MATCH (p:Person) "
             "WHERE EXISTS { MATCH (p)-[:KNOWS]->(f:Person) WHERE f.name = 'Bob' } "
-            "RETURN p.name"
+            "RETURN p.name",
         )
         names = list(r["name"])
         assert "Bob" not in names, f"Bob should not be in results, got {names}"
-        assert "Carol" not in names, (
-            f"Carol should not be in results, got {names}"
-        )
+        assert "Carol" not in names, f"Carol should not be in results, got {names}"
 
     def test_exists_without_return_correct_count(
-        self, social_star: Star
+        self,
+        social_star: Star,
     ) -> None:
         """Exactly one person (Alice) matches EXISTS without RETURN."""
         r = social_star.execute_query(
             "MATCH (p:Person) "
             "WHERE EXISTS { MATCH (p)-[:KNOWS]->(f:Person) WHERE f.name = 'Bob' } "
-            "RETURN p.name"
+            "RETURN p.name",
         )
         assert len(r) == 1, f"Expected 1 row, got {len(r)}"
 
@@ -119,7 +119,7 @@ class TestExistsNoReturn:
         r = social_star.execute_query(
             "MATCH (p:Person) "
             "WHERE EXISTS { MATCH (p)-[:KNOWS]->(f:Person) } "
-            "RETURN p.name"
+            "RETURN p.name",
         )
         # Alice knows two people, Bob and Carol know nobody
         assert list(r["name"]) == ["Alice"], (
@@ -131,33 +131,32 @@ class TestExistsNoReturn:
         r = social_star.execute_query(
             "MATCH (p:Person) "
             "WHERE NOT EXISTS { MATCH (p)-[:KNOWS]->(f:Person) } "
-            "RETURN p.name ORDER BY p.name"
+            "RETURN p.name ORDER BY p.name",
         )
         names = list(r["name"])
         assert "Bob" in names, f"Expected Bob in results, got {names}"
         assert "Carol" in names, f"Expected Carol in results, got {names}"
-        assert "Alice" not in names, (
-            f"Alice should not be in results, got {names}"
-        )
+        assert "Alice" not in names, f"Alice should not be in results, got {names}"
 
     def test_exists_with_return_still_works(self, social_star: Star) -> None:
         """Existing behaviour (EXISTS with RETURN) must not regress."""
         r = social_star.execute_query(
             "MATCH (p:Person) "
             "WHERE EXISTS { MATCH (p)-[:KNOWS]->(f:Person) WHERE f.name = 'Bob' RETURN f } "
-            "RETURN p.name"
+            "RETURN p.name",
         )
         assert "Alice" in list(r["name"]), (
             f"Regression: EXISTS with RETURN should still work, got {list(r['name'])}"
         )
 
     def test_exists_without_return_no_match_returns_empty(
-        self, social_star: Star
+        self,
+        social_star: Star,
     ) -> None:
         """EXISTS { MATCH ... WHERE ... } with impossible condition returns empty."""
         r = social_star.execute_query(
             "MATCH (p:Person) "
             "WHERE EXISTS { MATCH (p)-[:KNOWS]->(f:Person) WHERE f.name = 'Zara' } "
-            "RETURN p.name"
+            "RETURN p.name",
         )
         assert len(r) == 0, f"Expected empty result, got {list(r['name'])}"

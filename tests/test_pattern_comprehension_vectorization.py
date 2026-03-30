@@ -62,7 +62,7 @@ def _make_knows_context(
             ID_COLUMN: list(range(1, n_people + 1)),
             "name": [f"P{i}" for i in range(1, n_people + 1)],
             "age": [i * 10 for i in range(1, n_people + 1)],
-        }
+        },
     )
     people_table = EntityTable(
         entity_type="Person",
@@ -80,7 +80,7 @@ def _make_knows_context(
             ID_COLUMN: list(range(100, 100 + len(edges))),
             "__SOURCE__": [s for s, _ in edges],
             "__TARGET__": [t for _, t in edges],
-        }
+        },
     )
     knows_table = RelationshipTable(
         relationship_type="KNOWS",
@@ -93,12 +93,12 @@ def _make_knows_context(
     return Context(
         entity_mapping=EntityMapping(mapping={"Person": people_table}),
         relationship_mapping=RelationshipMapping(
-            mapping={"KNOWS": knows_table}
+            mapping={"KNOWS": knows_table},
         ),
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def ctx() -> Context:
     return _make_knows_context()
 
@@ -116,7 +116,7 @@ class TestPatternComprehensionCorrectness:
         star = Star(context=ctx)
         result = star.execute_query(
             "MATCH (p:Person) WHERE p.name = 'P1' "
-            "RETURN [(p)-[:KNOWS]->(f:Person) | f.name] AS friends"
+            "RETURN [(p)-[:KNOWS]->(f:Person) | f.name] AS friends",
         )
         assert len(result) == 1
         friends = result["friends"].iloc[0]
@@ -127,12 +127,13 @@ class TestPatternComprehensionCorrectness:
         star = Star(context=ctx)
         result = star.execute_query(
             "MATCH (p:Person) WHERE p.name = 'P3' "
-            "RETURN [(p)-[:KNOWS]->(f:Person) | f.name] AS friends"
+            "RETURN [(p)-[:KNOWS]->(f:Person) | f.name] AS friends",
         )
         assert result["friends"].iloc[0] == []
 
     def test_multiple_anchor_rows_each_get_correct_list(
-        self, ctx: Context
+        self,
+        ctx: Context,
     ) -> None:
         """All three people get the correct friend list in a single multi-row query."""
         star = Star(context=ctx)
@@ -140,7 +141,7 @@ class TestPatternComprehensionCorrectness:
             "MATCH (p:Person) "
             "RETURN p.name AS person, "
             "       [(p)-[:KNOWS]->(f:Person) | f.name] AS friends "
-            "ORDER BY p.name"
+            "ORDER BY p.name",
         )
         assert len(result) == 3
         by_name = result.set_index("person")["friends"].to_dict()
@@ -152,12 +153,10 @@ class TestPatternComprehensionCorrectness:
         """The result column must be a Series where every element is a list."""
         star = Star(context=ctx)
         result = star.execute_query(
-            "MATCH (p:Person) RETURN [(p)-[:KNOWS]->(f:Person) | f.name] AS friends"
+            "MATCH (p:Person) RETURN [(p)-[:KNOWS]->(f:Person) | f.name] AS friends",
         )
         for cell in result["friends"]:
-            assert isinstance(cell, list), (
-                f"Expected list, got {type(cell)}: {cell!r}"
-            )
+            assert isinstance(cell, list), f"Expected list, got {type(cell)}: {cell!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -173,7 +172,7 @@ class TestPatternComprehensionWithWhere:
         star = Star(context=ctx)
         result = star.execute_query(
             "MATCH (p:Person) WHERE p.name = 'P1' "
-            "RETURN [(p)-[:KNOWS]->(f:Person) WHERE f.age > 15 | f.name] AS friends"
+            "RETURN [(p)-[:KNOWS]->(f:Person) WHERE f.age > 15 | f.name] AS friends",
         )
         assert set(result["friends"].iloc[0]) == {"P2", "P3"}
 
@@ -182,7 +181,7 @@ class TestPatternComprehensionWithWhere:
         star = Star(context=ctx)
         result = star.execute_query(
             "MATCH (p:Person) WHERE p.name = 'P1' "
-            "RETURN [(p)-[:KNOWS]->(f:Person) WHERE f.age > 9999 | f.name] AS friends"
+            "RETURN [(p)-[:KNOWS]->(f:Person) WHERE f.age > 9999 | f.name] AS friends",
         )
         assert result["friends"].iloc[0] == []
 
@@ -191,12 +190,13 @@ class TestPatternComprehensionWithWhere:
         star = Star(context=ctx)
         result = star.execute_query(
             "MATCH (p:Person) WHERE p.name = 'P1' "
-            "RETURN [(p)-[:KNOWS]->(f:Person) WHERE f.age > 20 | f.name] AS friends"
+            "RETURN [(p)-[:KNOWS]->(f:Person) WHERE f.age > 20 | f.name] AS friends",
         )
         assert result["friends"].iloc[0] == ["P3"]
 
     def test_where_applied_independently_per_anchor_row(
-        self, ctx: Context
+        self,
+        ctx: Context,
     ) -> None:
         """WHERE is applied per-match globally — each anchor gets its correctly filtered list."""
         star = Star(context=ctx)
@@ -204,7 +204,7 @@ class TestPatternComprehensionWithWhere:
             "MATCH (p:Person) "
             "RETURN p.name AS person, "
             "       [(p)-[:KNOWS]->(f:Person) WHERE f.age >= 20 | f.name] AS friends "
-            "ORDER BY p.name"
+            "ORDER BY p.name",
         )
         by_name = result.set_index("person")["friends"].to_dict()
         # P1 knows P2 (age=20, included) and P3 (age=30, included)
@@ -219,7 +219,7 @@ class TestPatternComprehensionWithWhere:
         star = Star(context=ctx)
         result = star.execute_query(
             "MATCH (p:Person) WHERE p.name = 'P1' "
-            "RETURN [(p)-[:KNOWS]->(f:Person) WHERE f.name = 'P2' | f.name] AS friends"
+            "RETURN [(p)-[:KNOWS]->(f:Person) WHERE f.name = 'P2' | f.name] AS friends",
         )
         assert result["friends"].iloc[0] == ["P2"]
 
@@ -237,7 +237,7 @@ class TestPatternComprehensionMapExpr:
         star = Star(context=ctx)
         result = star.execute_query(
             "MATCH (p:Person) WHERE p.name = 'P1' "
-            "RETURN [(p)-[:KNOWS]->(f:Person) | f.name] AS names"
+            "RETURN [(p)-[:KNOWS]->(f:Person) | f.name] AS names",
         )
         names = result["names"].iloc[0]
         assert set(names) == {"P2", "P3"}
@@ -249,19 +249,20 @@ class TestPatternComprehensionMapExpr:
         star = Star(context=ctx)
         result = star.execute_query(
             "MATCH (p:Person) WHERE p.name = 'P1' "
-            "RETURN [(p)-[:KNOWS]->(f:Person) | f.age] AS ages"
+            "RETURN [(p)-[:KNOWS]->(f:Person) | f.age] AS ages",
         )
         ages = result["ages"].iloc[0]
         assert set(ages) == {20, 30}
 
     def test_map_expr_with_where_evaluates_over_filtered_rows(
-        self, ctx: Context
+        self,
+        ctx: Context,
     ) -> None:
         """After WHERE filtering, map_expr is evaluated only over survivors."""
         star = Star(context=ctx)
         result = star.execute_query(
             "MATCH (p:Person) WHERE p.name = 'P1' "
-            "RETURN [(p)-[:KNOWS]->(f:Person) WHERE f.age > 20 | f.age] AS ages"
+            "RETURN [(p)-[:KNOWS]->(f:Person) WHERE f.age > 20 | f.age] AS ages",
         )
         ages = result["ages"].iloc[0]
         # Only P3 (age=30) survives the WHERE
@@ -277,7 +278,9 @@ class TestPatternComprehensionLargeGraph:
     """Correctness at scale — ensures vectorised path handles many rows/matches."""
 
     def _make_large_context(
-        self, n_people: int = 200, edges_per_person: int = 10
+        self,
+        n_people: int = 200,
+        edges_per_person: int = 10,
     ) -> Context:
         """Create context with *n_people* persons and *edges_per_person* outgoing edges each."""
         person_ids = list(range(1, n_people + 1))
@@ -286,7 +289,7 @@ class TestPatternComprehensionLargeGraph:
                 ID_COLUMN: person_ids,
                 "name": [f"P{i}" for i in person_ids],
                 "age": [i * 10 % 100 + 1 for i in person_ids],
-            }
+            },
         )
         people_table = EntityTable(
             entity_type="Person",
@@ -312,7 +315,7 @@ class TestPatternComprehensionLargeGraph:
                 ID_COLUMN: rel_ids,
                 "__SOURCE__": sources,
                 "__TARGET__": targets,
-            }
+            },
         )
         knows_table = RelationshipTable(
             relationship_type="KNOWS",
@@ -325,7 +328,7 @@ class TestPatternComprehensionLargeGraph:
         return Context(
             entity_mapping=EntityMapping(mapping={"Person": people_table}),
             relationship_mapping=RelationshipMapping(
-                mapping={"KNOWS": knows_table}
+                mapping={"KNOWS": knows_table},
             ),
         )
 
@@ -334,14 +337,12 @@ class TestPatternComprehensionLargeGraph:
         ctx = self._make_large_context(n_people=200, edges_per_person=10)
         star = Star(context=ctx)
         result = star.execute_query(
-            "MATCH (p:Person) RETURN [(p)-[:KNOWS]->(f:Person) | f.name] AS friends"
+            "MATCH (p:Person) RETURN [(p)-[:KNOWS]->(f:Person) | f.name] AS friends",
         )
         assert len(result) == 200
         for cell in result["friends"]:
             assert isinstance(cell, list)
-            assert len(cell) > 0, (
-                "Every person should have at least one friend"
-            )
+            assert len(cell) > 0, "Every person should have at least one friend"
 
     def test_large_graph_with_where_filter(self) -> None:
         """WHERE applied across 200×10 = 2 000 matches in one vectorised pass."""
@@ -349,7 +350,7 @@ class TestPatternComprehensionLargeGraph:
         star = Star(context=ctx)
         result = star.execute_query(
             "MATCH (p:Person) "
-            "RETURN [(p)-[:KNOWS]->(f:Person) WHERE f.age > 50 | f.name] AS rich_friends"
+            "RETURN [(p)-[:KNOWS]->(f:Person) WHERE f.age > 50 | f.name] AS rich_friends",
         )
         assert len(result) == 200
         # Every entry must be a list (may be empty for some anchors)
@@ -375,7 +376,7 @@ class TestPatternComprehensionPerformance:
                 ID_COLUMN: person_ids,
                 "name": [f"P{i}" for i in person_ids],
                 "age": [(i * 7) % 90 + 1 for i in person_ids],
-            }
+            },
         )
         people_table = EntityTable(
             entity_type="Person",
@@ -399,7 +400,7 @@ class TestPatternComprehensionPerformance:
                 ID_COLUMN: rel_ids,
                 "__SOURCE__": sources,
                 "__TARGET__": targets,
-            }
+            },
         )
         knows_table = RelationshipTable(
             relationship_type="KNOWS",
@@ -412,7 +413,7 @@ class TestPatternComprehensionPerformance:
         return Context(
             entity_mapping=EntityMapping(mapping={"Person": people_table}),
             relationship_mapping=RelationshipMapping(
-                mapping={"KNOWS": knows_table}
+                mapping={"KNOWS": knows_table},
             ),
         )
 
@@ -422,7 +423,7 @@ class TestPatternComprehensionPerformance:
         star = Star(context=ctx)
         start = time.perf_counter()
         result = star.execute_query(
-            "MATCH (p:Person) RETURN [(p)-[:KNOWS]->(f:Person) | f.name] AS friends"
+            "MATCH (p:Person) RETURN [(p)-[:KNOWS]->(f:Person) | f.name] AS friends",
         )
         elapsed = time.perf_counter() - start
         assert len(result) == 500
@@ -438,7 +439,7 @@ class TestPatternComprehensionPerformance:
         start = time.perf_counter()
         result = star.execute_query(
             "MATCH (p:Person) "
-            "RETURN [(p)-[:KNOWS]->(f:Person) WHERE f.age > 45 | f.name] AS friends"
+            "RETURN [(p)-[:KNOWS]->(f:Person) WHERE f.age > 45 | f.name] AS friends",
         )
         elapsed = time.perf_counter() - start
         assert len(result) == 500
@@ -452,7 +453,7 @@ class TestPatternComprehensionPerformance:
         star = Star(context=ctx)
         start = time.perf_counter()
         result = star.execute_query(
-            "MATCH (p:Person) RETURN [(p)-[:KNOWS]->(f:Person) | f.age] AS ages"
+            "MATCH (p:Person) RETURN [(p)-[:KNOWS]->(f:Person) | f.age] AS ages",
         )
         elapsed = time.perf_counter() - start
         assert len(result) == 500

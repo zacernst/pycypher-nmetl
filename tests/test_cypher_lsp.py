@@ -6,13 +6,17 @@ without requiring a real stdin/stdout transport.
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from pycypher.cypher_lsp import (
     _documents,
     _format_document,
     _get_completions,
+    _get_function_context,
+    _get_word_at_position,
+    _handle_hover,
     _handle_message,
+    _handle_signature_help,
     _publish_diagnostics,
 )
 
@@ -28,7 +32,7 @@ class TestInitialize:
                     "id": 1,
                     "method": "initialize",
                     "params": {},
-                }
+                },
             )
 
             mock_respond.assert_called_once()
@@ -48,7 +52,7 @@ class TestInitialize:
                     "id": 1,
                     "method": "initialize",
                     "params": {},
-                }
+                },
             )
 
             result = mock_respond.call_args[0][1]
@@ -71,7 +75,7 @@ class TestDocumentSync:
                             "text": "MATCH (n) RETURN n",
                         },
                     },
-                }
+                },
             )
 
         assert _documents.get("file:///test.cypher") == "MATCH (n) RETURN n"
@@ -89,7 +93,7 @@ class TestDocumentSync:
                         "textDocument": {"uri": "file:///test.cypher"},
                         "contentChanges": [{"text": "RETURN 42"}],
                     },
-                }
+                },
             )
 
         assert _documents["file:///test.cypher"] == "RETURN 42"
@@ -191,7 +195,7 @@ class TestCompletion:
                         "textDocument": {"uri": "file:///test.cypher"},
                         "position": {"line": 0, "character": 5},
                     },
-                }
+                },
             )
 
             mock_respond.assert_called_once()
@@ -228,12 +232,215 @@ class TestFormatting:
                         "textDocument": {"uri": "file:///test.cypher"},
                         "options": {},
                     },
-                }
+                },
             )
 
             mock_respond.assert_called_once()
             edits = mock_respond.call_args[0][1]
             assert isinstance(edits, list)
+
+
+class TestWordAtPosition:
+    """Verify word extraction utility."""
+
+    def test_simple_word(self) -> None:
+        assert _get_word_at_position("MATCH (n) RETURN n", 0, 2) == "MATCH"
+
+    def test_word_at_end(self) -> None:
+        assert _get_word_at_position("RETURN n", 0, 7) == "n"
+
+    def test_empty_position(self) -> None:
+        assert _get_word_at_position("MATCH (n)", 0, 6) == ""
+
+    def test_multiline(self) -> None:
+        text = "MATCH (n)\nRETURN n"
+        assert _get_word_at_position(text, 1, 0) == "RETURN"
+
+    def test_out_of_bounds(self) -> None:
+        assert _get_word_at_position("hello", 5, 0) == ""
+
+
+class TestFunctionContext:
+    """Verify function context detection."""
+
+    def test_inside_function_call(self) -> None:
+        assert _get_function_context("toUpper(n.name)", 0, 10) == "toUpper"
+
+    def test_outside_function_call(self) -> None:
+        assert _get_function_context("MATCH (n) RETURN n", 0, 10) is None
+
+    def test_nested_parens(self) -> None:
+        assert _get_function_context("toUpper(trim(x))", 0, 14) == "trim"
+
+    def test_after_comma(self) -> None:
+        assert _get_function_context("substring(s, 0, 5)", 0, 15) == "substring"
+
+
+class TestHover:
+    """Verify hover documentation."""
+
+    def test_hover_scalar_function(self) -> None:
+        _documents.clear()
+        _documents["file:///t.cypher"] = "RETURN toUpper(n.name)"
+        result = _handle_hover("file:///t.cypher", 0, 9)
+        assert result is not None
+        assert "markdown" in result["contents"]["kind"]
+        assert "toUpper" in result["contents"]["value"]
+
+    def test_hover_aggregate_function(self) -> None:
+        _documents.clear()
+        _documents["file:///t.cypher"] = "RETURN count(n)"
+        result = _handle_hover("file:///t.cypher", 0, 9)
+        assert result is not None
+        assert "count" in result["contents"]["value"].lower()
+        assert "Aggregate" in result["contents"]["value"]
+
+    def test_hover_keyword(self) -> None:
+        _documents.clear()
+        _documents["file:///t.cypher"] = "MATCH (n) RETURN n"
+        result = _handle_hover("file:///t.cypher", 0, 2)
+        assert result is not None
+        assert "MATCH" in result["contents"]["value"]
+
+    def test_hover_unknown_word(self) -> None:
+        _documents.clear()
+        _documents["file:///t.cypher"] = "RETURN xyzzy"
+        result = _handle_hover("file:///t.cypher", 0, 9)
+        assert result is None
+
+    def test_hover_empty_position(self) -> None:
+        _documents.clear()
+        _documents["file:///t.cypher"] = "MATCH (n)"
+        result = _handle_hover("file:///t.cypher", 0, 6)
+        assert result is None
+
+    def test_hover_via_handler(self) -> None:
+        _documents.clear()
+        _documents["file:///t.cypher"] = "RETURN toUpper(n.name)"
+        with patch("pycypher.cypher_lsp._respond") as mock_respond:
+            _handle_message(
+                {
+                    "jsonrpc": "2.0",
+                    "id": 10,
+                    "method": "textDocument/hover",
+                    "params": {
+                        "textDocument": {"uri": "file:///t.cypher"},
+                        "position": {"line": 0, "character": 9},
+                    },
+                },
+            )
+            mock_respond.assert_called_once()
+            result = mock_respond.call_args[0][1]
+            assert result is not None
+            assert "toUpper" in result["contents"]["value"]
+
+    def test_hover_function_description(self) -> None:
+        _documents.clear()
+        _documents["file:///t.cypher"] = "RETURN trim(s)"
+        result = _handle_hover("file:///t.cypher", 0, 8)
+        assert result is not None
+        content = result["contents"]["value"]
+        assert "trim" in content.lower()
+
+    def test_hover_where_keyword(self) -> None:
+        _documents.clear()
+        _documents["file:///t.cypher"] = "MATCH (n) WHERE n.age > 5 RETURN n"
+        result = _handle_hover("file:///t.cypher", 0, 12)
+        assert result is not None
+        assert "WHERE" in result["contents"]["value"]
+
+
+class TestSignatureHelp:
+    """Verify signature help for function calls."""
+
+    def test_scalar_function_signature(self) -> None:
+        _documents.clear()
+        _documents["file:///t.cypher"] = "RETURN toUpper(n.name)"
+        result = _handle_signature_help("file:///t.cypher", 0, 15)
+        assert result is not None
+        assert len(result["signatures"]) == 1
+        sig = result["signatures"][0]
+        assert "toUpper" in sig["label"]
+        assert "parameters" in sig
+
+    def test_aggregate_function_signature(self) -> None:
+        _documents.clear()
+        _documents["file:///t.cypher"] = "RETURN count(n)"
+        result = _handle_signature_help("file:///t.cypher", 0, 13)
+        assert result is not None
+        assert "count" in result["signatures"][0]["label"]
+
+    def test_no_signature_outside_call(self) -> None:
+        _documents.clear()
+        _documents["file:///t.cypher"] = "MATCH (n) RETURN n"
+        result = _handle_signature_help("file:///t.cypher", 0, 10)
+        assert result is None
+
+    def test_active_parameter_tracking(self) -> None:
+        _documents.clear()
+        _documents["file:///t.cypher"] = "RETURN substring(s, 0, 5)"
+        # After second comma, active param should be 2
+        result = _handle_signature_help("file:///t.cypher", 0, 23)
+        assert result is not None
+        assert result["activeParameter"] == 2
+
+    def test_signature_via_handler(self) -> None:
+        _documents.clear()
+        _documents["file:///t.cypher"] = "RETURN toUpper(x)"
+        with patch("pycypher.cypher_lsp._respond") as mock_respond:
+            _handle_message(
+                {
+                    "jsonrpc": "2.0",
+                    "id": 11,
+                    "method": "textDocument/signatureHelp",
+                    "params": {
+                        "textDocument": {"uri": "file:///t.cypher"},
+                        "position": {"line": 0, "character": 15},
+                    },
+                },
+            )
+            mock_respond.assert_called_once()
+            result = mock_respond.call_args[0][1]
+            assert result is not None
+
+    def test_signature_multiarg_function(self) -> None:
+        _documents.clear()
+        _documents["file:///t.cypher"] = "RETURN replace(s, a, b)"
+        result = _handle_signature_help("file:///t.cypher", 0, 16)
+        assert result is not None
+        sig = result["signatures"][0]
+        assert len(sig["parameters"]) >= 1
+
+
+class TestInitializeCapabilities:
+    """Verify new capabilities are advertised."""
+
+    def test_hover_provider_advertised(self) -> None:
+        with patch("pycypher.cypher_lsp._respond") as mock_respond:
+            _handle_message(
+                {
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "method": "initialize",
+                    "params": {},
+                },
+            )
+            caps = mock_respond.call_args[0][1]["capabilities"]
+            assert caps["hoverProvider"] is True
+
+    def test_signature_help_provider_advertised(self) -> None:
+        with patch("pycypher.cypher_lsp._respond") as mock_respond:
+            _handle_message(
+                {
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "method": "initialize",
+                    "params": {},
+                },
+            )
+            caps = mock_respond.call_args[0][1]["capabilities"]
+            assert "signatureHelpProvider" in caps
+            assert "(" in caps["signatureHelpProvider"]["triggerCharacters"]
 
 
 class TestShutdown:
@@ -247,7 +454,7 @@ class TestShutdown:
                     "id": 99,
                     "method": "shutdown",
                     "params": {},
-                }
+                },
             )
 
             mock_respond.assert_called_once_with(99, None)
@@ -261,7 +468,7 @@ class TestShutdown:
                     "jsonrpc": "2.0",
                     "method": "exit",
                     "params": {},
-                }
+                },
             )
 
     def test_unknown_request_returns_null(self) -> None:
@@ -272,7 +479,7 @@ class TestShutdown:
                     "id": 100,
                     "method": "textDocument/unknownMethod",
                     "params": {},
-                }
+                },
             )
 
             mock_respond.assert_called_once_with(100, None)

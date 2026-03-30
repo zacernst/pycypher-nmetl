@@ -13,7 +13,6 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 import pytest
-
 from pycypher.constants import (
     ID_COLUMN,
     RELATIONSHIP_SOURCE_COLUMN,
@@ -22,17 +21,15 @@ from pycypher.constants import (
 from pycypher.graph_index import (
     AdjacencyIndex,
     EntityLabelIndex,
-    GraphIndexManager,
     PropertyValueIndex,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture()
+@pytest.fixture
 def relationship_df() -> pd.DataFrame:
     """A small relationship DataFrame for testing adjacency indexes."""
     return pd.DataFrame(
@@ -40,11 +37,11 @@ def relationship_df() -> pd.DataFrame:
             ID_COLUMN: ["r1", "r2", "r3", "r4", "r5"],
             RELATIONSHIP_SOURCE_COLUMN: ["a", "a", "b", "c", "c"],
             RELATIONSHIP_TARGET_COLUMN: ["b", "c", "c", "a", "d"],
-        }
+        },
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def entity_df() -> pd.DataFrame:
     """A small entity DataFrame for testing property/label indexes."""
     return pd.DataFrame(
@@ -52,11 +49,11 @@ def entity_df() -> pd.DataFrame:
             ID_COLUMN: ["e1", "e2", "e3", "e4"],
             "name": ["Alice", "Bob", "Alice", "Charlie"],
             "age": [30, 25, 30, 35],
-        }
+        },
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def context_with_data():
     """A Context with entity and relationship data for integration tests."""
     from pycypher.relational_models import (
@@ -72,14 +69,14 @@ def context_with_data():
             ID_COLUMN: [1, 2, 3, 4],
             "name": ["Alice", "Bob", "Charlie", "Diana"],
             "age": [30, 25, 35, 28],
-        }
+        },
     )
     knows_df = pd.DataFrame(
         {
             ID_COLUMN: [101, 102, 103, 104, 105],
             RELATIONSHIP_SOURCE_COLUMN: [1, 1, 2, 3, 4],
             RELATIONSHIP_TARGET_COLUMN: [2, 3, 3, 4, 1],
-        }
+        },
     )
 
     person_table = EntityTable(
@@ -139,7 +136,7 @@ class TestAdjacencyIndex:
     def test_outgoing_batch(self, relationship_df):
         idx = AdjacencyIndex.build("KNOWS", relationship_df)
         rel_ids, src_ids, tgt_ids = idx.neighbors_outgoing_batch(
-            np.array(["a", "b"])
+            np.array(["a", "b"]),
         )
         assert len(rel_ids) == 3  # a→b, a→c, b→c
         assert set(rel_ids) == {"r1", "r2", "r3"}
@@ -147,7 +144,7 @@ class TestAdjacencyIndex:
     def test_incoming_batch(self, relationship_df):
         idx = AdjacencyIndex.build("KNOWS", relationship_df)
         rel_ids, src_ids, tgt_ids = idx.neighbors_incoming_batch(
-            pd.Series(["c", "d"])
+            pd.Series(["c", "d"]),
         )
         # c←a(r2), c←b(r3), d←c(r5)
         assert len(rel_ids) == 3
@@ -159,7 +156,7 @@ class TestAdjacencyIndex:
                 ID_COLUMN: pd.Series(dtype=object),
                 RELATIONSHIP_SOURCE_COLUMN: pd.Series(dtype=object),
                 RELATIONSHIP_TARGET_COLUMN: pd.Series(dtype=object),
-            }
+            },
         )
         idx = AdjacencyIndex.build("EMPTY", empty_df)
         assert idx.size == 0
@@ -168,7 +165,7 @@ class TestAdjacencyIndex:
     def test_batch_with_series(self, relationship_df):
         idx = AdjacencyIndex.build("KNOWS", relationship_df)
         rel_ids, src_ids, tgt_ids = idx.neighbors_outgoing_batch(
-            pd.Series(["c"])
+            pd.Series(["c"]),
         )
         assert len(rel_ids) == 2  # c→a, c→d
 
@@ -218,7 +215,7 @@ class TestPropertyValueIndex:
             {
                 ID_COLUMN: ["e1", "e2", "e3"],
                 "name": ["Alice", None, "Bob"],
-            }
+            },
         )
         idx = PropertyValueIndex.build("Person", "name", df)
         assert idx.distinct_values == 2

@@ -19,7 +19,7 @@ from pycypher.relational_models import Context, EntityMapping
 from pycypher.star import Star
 
 
-@pytest.fixture()
+@pytest.fixture
 def empty_ctx() -> Context:
     return Context(entity_mapping=EntityMapping(mapping={}))
 
@@ -52,7 +52,8 @@ class TestMakeSeedFrame:
         assert frame.context is empty_ctx
 
     def test_distinct_calls_produce_independent_frames(
-        self, empty_ctx: Context
+        self,
+        empty_ctx: Context,
     ) -> None:
         """Two calls return independent frames (not the same object)."""
         star = Star(context=empty_ctx)

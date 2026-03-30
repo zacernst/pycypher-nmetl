@@ -98,7 +98,7 @@ class TestStringFunctions:
     """Test built-in string functions."""
 
     def test_toupper_basic(self):
-        """toUpper converts strings to uppercase."""
+        """ToUpper converts strings to uppercase."""
         registry = ScalarFunctionRegistry.get_instance()
 
         input_series = pd.Series(["hello", "WORLD", "MiXeD"])
@@ -107,7 +107,7 @@ class TestStringFunctions:
         assert result.tolist() == ["HELLO", "WORLD", "MIXED"]
 
     def test_toupper_empty_string(self):
-        """toUpper handles empty strings."""
+        """ToUpper handles empty strings."""
         registry = ScalarFunctionRegistry.get_instance()
 
         input_series = pd.Series(["", "hello", ""])
@@ -116,7 +116,7 @@ class TestStringFunctions:
         assert result.tolist() == ["", "HELLO", ""]
 
     def test_tolower_basic(self):
-        """toLower converts strings to lowercase."""
+        """ToLower converts strings to lowercase."""
         registry = ScalarFunctionRegistry.get_instance()
 
         input_series = pd.Series(["HELLO", "world", "MiXeD"])
@@ -125,7 +125,7 @@ class TestStringFunctions:
         assert result.tolist() == ["hello", "world", "mixed"]
 
     def test_tolower_numbers(self):
-        """toLower handles strings with numbers."""
+        """ToLower handles strings with numbers."""
         registry = ScalarFunctionRegistry.get_instance()
 
         input_series = pd.Series(["ABC123", "def456"])
@@ -134,18 +134,18 @@ class TestStringFunctions:
         assert result.tolist() == ["abc123", "def456"]
 
     def test_trim_whitespace(self):
-        """trim removes leading and trailing whitespace."""
+        """Trim removes leading and trailing whitespace."""
         registry = ScalarFunctionRegistry.get_instance()
 
         input_series = pd.Series(
-            ["  hello  ", "world", "  spaces  ", "\t\ntabs\n"]
+            ["  hello  ", "world", "  spaces  ", "\t\ntabs\n"],
         )
         result = registry.execute("trim", [input_series])
 
         assert result.tolist() == ["hello", "world", "spaces", "tabs"]
 
     def test_trim_no_whitespace(self):
-        """trim leaves strings without whitespace unchanged."""
+        """Trim leaves strings without whitespace unchanged."""
         registry = ScalarFunctionRegistry.get_instance()
 
         input_series = pd.Series(["hello", "world"])
@@ -154,7 +154,7 @@ class TestStringFunctions:
         assert result.tolist() == ["hello", "world"]
 
     def test_substring_with_length(self):
-        """substring extracts substring with specified length."""
+        """Substring extracts substring with specified length."""
         registry = ScalarFunctionRegistry.get_instance()
 
         input_str = pd.Series(["hello world"])
@@ -165,7 +165,7 @@ class TestStringFunctions:
         assert result.iloc[0] == "hello"
 
     def test_substring_without_length(self):
-        """substring extracts from start to end without length."""
+        """Substring extracts from start to end without length."""
         registry = ScalarFunctionRegistry.get_instance()
 
         input_str = pd.Series(["hello world"])
@@ -175,7 +175,7 @@ class TestStringFunctions:
         assert result.iloc[0] == "world"
 
     def test_substring_zero_start(self):
-        """substring with start=0 extracts from beginning."""
+        """Substring with start=0 extracts from beginning."""
         registry = ScalarFunctionRegistry.get_instance()
 
         input_str = pd.Series(["hello"])
@@ -186,7 +186,7 @@ class TestStringFunctions:
         assert result.iloc[0] == "hel"
 
     def test_substring_multiple_rows(self):
-        """substring works on multiple rows."""
+        """Substring works on multiple rows."""
         registry = ScalarFunctionRegistry.get_instance()
 
         input_str = pd.Series(["hello", "world", "testing"])
@@ -197,7 +197,7 @@ class TestStringFunctions:
         assert result.tolist() == ["ell", "orl", "est"]
 
     def test_size_string(self):
-        """size returns string length."""
+        """Size returns string length."""
         registry = ScalarFunctionRegistry.get_instance()
 
         input_series = pd.Series(["hello", "hi", "", "testing"])
@@ -206,7 +206,7 @@ class TestStringFunctions:
         assert result.tolist() == [5, 2, 0, 7]
 
     def test_size_list(self):
-        """size returns list length."""
+        """Size returns list length."""
         registry = ScalarFunctionRegistry.get_instance()
 
         input_series = pd.Series([[1, 2, 3], [4, 5], []])
@@ -219,7 +219,7 @@ class TestConversionFunctions:
     """Test type conversion functions."""
 
     def test_tostring_integer(self):
-        """toString converts integers to strings."""
+        """ToString converts integers to strings."""
         registry = ScalarFunctionRegistry.get_instance()
 
         input_series = pd.Series([42, 0, -17])
@@ -228,7 +228,7 @@ class TestConversionFunctions:
         assert result.tolist() == ["42", "0", "-17"]
 
     def test_tostring_float(self):
-        """toString converts floats to strings."""
+        """ToString converts floats to strings."""
         registry = ScalarFunctionRegistry.get_instance()
 
         input_series = pd.Series([3.14, 2.71, 0.0])
@@ -237,7 +237,7 @@ class TestConversionFunctions:
         assert result.tolist() == ["3.14", "2.71", "0.0"]
 
     def test_tostring_boolean(self):
-        """toString converts booleans to strings."""
+        """ToString converts booleans to strings."""
         registry = ScalarFunctionRegistry.get_instance()
 
         input_series = pd.Series([True, False])
@@ -246,7 +246,7 @@ class TestConversionFunctions:
         assert result.tolist() == ["true", "false"]
 
     def test_tostring_preserves_nulls(self):
-        """toString preserves null values."""
+        """ToString preserves null values."""
         registry = ScalarFunctionRegistry.get_instance()
 
         input_series = pd.Series([42, None, 17])
@@ -257,7 +257,7 @@ class TestConversionFunctions:
         assert result.iloc[2] == "17"
 
     def test_tointeger_valid_strings(self):
-        """toInteger converts valid string integers."""
+        """ToInteger converts valid string integers."""
         registry = ScalarFunctionRegistry.get_instance()
 
         input_series = pd.Series(["42", "0", "-17"])
@@ -266,7 +266,7 @@ class TestConversionFunctions:
         assert result.tolist() == [42, 0, -17]
 
     def test_tointeger_float_strings(self):
-        """toInteger truncates float strings."""
+        """ToInteger truncates float strings."""
         registry = ScalarFunctionRegistry.get_instance()
 
         input_series = pd.Series(["3.14", "2.99"])
@@ -276,7 +276,7 @@ class TestConversionFunctions:
         assert result.iloc[1] == 2
 
     def test_tointeger_invalid_strings(self):
-        """toInteger returns null for invalid strings."""
+        """ToInteger returns null for invalid strings."""
         registry = ScalarFunctionRegistry.get_instance()
 
         input_series = pd.Series(["abc", "hello", "123abc"])
@@ -287,7 +287,7 @@ class TestConversionFunctions:
         assert pd.isna(result.iloc[2])
 
     def test_tointeger_mixed(self):
-        """toInteger handles mixed valid/invalid inputs."""
+        """ToInteger handles mixed valid/invalid inputs."""
         registry = ScalarFunctionRegistry.get_instance()
 
         input_series = pd.Series(["42", "invalid", "17"])
@@ -298,7 +298,7 @@ class TestConversionFunctions:
         assert result.iloc[2] == 17
 
     def test_tofloat_valid_strings(self):
-        """toFloat converts valid float strings."""
+        """ToFloat converts valid float strings."""
         registry = ScalarFunctionRegistry.get_instance()
 
         input_series = pd.Series(["3.14", "2.71", "0.0"])
@@ -307,7 +307,7 @@ class TestConversionFunctions:
         assert result.tolist() == [3.14, 2.71, 0.0]
 
     def test_tofloat_integer_strings(self):
-        """toFloat converts integer strings to floats."""
+        """ToFloat converts integer strings to floats."""
         registry = ScalarFunctionRegistry.get_instance()
 
         input_series = pd.Series(["42", "17"])
@@ -316,7 +316,7 @@ class TestConversionFunctions:
         assert result.tolist() == [42.0, 17.0]
 
     def test_tofloat_invalid_strings(self):
-        """toFloat returns null for invalid strings."""
+        """ToFloat returns null for invalid strings."""
         registry = ScalarFunctionRegistry.get_instance()
 
         input_series = pd.Series(["abc", "not_a_number"])
@@ -326,7 +326,7 @@ class TestConversionFunctions:
         assert pd.isna(result.iloc[1])
 
     def test_toboolean_true_values(self):
-        """toBoolean converts 'true' strings to True."""
+        """ToBoolean converts 'true' strings to True."""
         registry = ScalarFunctionRegistry.get_instance()
 
         input_series = pd.Series(["true", "TRUE", "True", "1"])
@@ -335,7 +335,7 @@ class TestConversionFunctions:
         assert result.tolist() == [True, True, True, True]
 
     def test_toboolean_false_values(self):
-        """toBoolean converts 'false' strings to False."""
+        """ToBoolean converts 'false' strings to False."""
         registry = ScalarFunctionRegistry.get_instance()
 
         input_series = pd.Series(["false", "FALSE", "False", "0"])
@@ -344,7 +344,7 @@ class TestConversionFunctions:
         assert result.tolist() == [False, False, False, False]
 
     def test_toboolean_invalid_values(self):
-        """toBoolean returns null for invalid strings."""
+        """ToBoolean returns null for invalid strings."""
         registry = ScalarFunctionRegistry.get_instance()
 
         input_series = pd.Series(["yes", "no", "maybe"])
@@ -355,7 +355,7 @@ class TestConversionFunctions:
         assert pd.isna(result.iloc[2])
 
     def test_toboolean_preserves_nulls(self):
-        """toBoolean preserves null inputs."""
+        """ToBoolean preserves null inputs."""
         registry = ScalarFunctionRegistry.get_instance()
 
         input_series = pd.Series(["true", None, "false"])
@@ -370,7 +370,7 @@ class TestUtilityFunctions:
     """Test utility functions."""
 
     def test_coalesce_first_non_null(self):
-        """coalesce returns first non-null value."""
+        """Coalesce returns first non-null value."""
         registry = ScalarFunctionRegistry.get_instance()
 
         s1 = pd.Series([None, None, "a"])
@@ -382,7 +382,7 @@ class TestUtilityFunctions:
         assert result.tolist() == ["c", "b", "a"]
 
     def test_coalesce_all_nulls(self):
-        """coalesce returns null when all values are null."""
+        """Coalesce returns null when all values are null."""
         registry = ScalarFunctionRegistry.get_instance()
 
         s1 = pd.Series([None, None])
@@ -394,7 +394,7 @@ class TestUtilityFunctions:
         assert pd.isna(result.iloc[1])
 
     def test_coalesce_single_argument(self):
-        """coalesce with single argument returns that argument."""
+        """Coalesce with single argument returns that argument."""
         registry = ScalarFunctionRegistry.get_instance()
 
         s1 = pd.Series(["a", None, "c"])
@@ -406,7 +406,7 @@ class TestUtilityFunctions:
         assert result.iloc[2] == "c"
 
     def test_coalesce_multiple_arguments(self):
-        """coalesce handles many arguments."""
+        """Coalesce handles many arguments."""
         registry = ScalarFunctionRegistry.get_instance()
 
         s1 = pd.Series([None])
@@ -419,7 +419,7 @@ class TestUtilityFunctions:
         assert result.iloc[0] == "found"
 
     def test_coalesce_mixed_types(self):
-        """coalesce works with mixed types."""
+        """Coalesce works with mixed types."""
         registry = ScalarFunctionRegistry.get_instance()
 
         s1 = pd.Series([None, None])
@@ -483,9 +483,7 @@ class TestFunctionErrorHandling:
         # Register a badly behaved function that returns wrong type
         registry.register_function(
             name="badFunction",
-            callable=lambda s: (
-                "wrong_type"
-            ),  # Returns string instead of Series
+            callable=lambda s: "wrong_type",  # Returns string instead of Series
             min_args=1,
             max_args=1,
         )

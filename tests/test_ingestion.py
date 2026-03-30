@@ -41,7 +41,7 @@ class TestArrowUtils:
     def test_normalize_entity_table_explicit_id_col(self) -> None:
         """Renaming an existing column to __ID__ works correctly."""
         table = pa.table(
-            {"person_id": [1, 2, 3], "name": ["Alice", "Bob", "Carol"]}
+            {"person_id": [1, 2, 3], "name": ["Alice", "Bob", "Carol"]},
         )
         result = normalize_entity_table(table, id_col="person_id")
         assert "__ID__" in result.schema.names
@@ -73,10 +73,12 @@ class TestArrowUtils:
     def test_normalize_relationship_table_renames_source_target(self) -> None:
         """source_col and target_col are renamed to __SOURCE__ and __TARGET__."""
         table = pa.table(
-            {"from_id": [1, 2], "to_id": [3, 4], "weight": [0.9, 0.5]}
+            {"from_id": [1, 2], "to_id": [3, 4], "weight": [0.9, 0.5]},
         )
         result = normalize_relationship_table(
-            table, source_col="from_id", target_col="to_id"
+            table,
+            source_col="from_id",
+            target_col="to_id",
         )
         assert "__SOURCE__" in result.schema.names
         assert "__TARGET__" in result.schema.names
@@ -87,7 +89,9 @@ class TestArrowUtils:
         """Without id_col a sequential __ID__ column is prepended."""
         table = pa.table({"from_id": [1], "to_id": [2]})
         result = normalize_relationship_table(
-            table, source_col="from_id", target_col="to_id"
+            table,
+            source_col="from_id",
+            target_col="to_id",
         )
         assert "__ID__" in result.schema.names
 
@@ -95,14 +99,18 @@ class TestArrowUtils:
         table = pa.table({"to_id": [1]})
         with pytest.raises(ValueError, match="source_col"):
             normalize_relationship_table(
-                table, source_col="from_id", target_col="to_id"
+                table,
+                source_col="from_id",
+                target_col="to_id",
             )
 
     def test_normalize_relationship_table_missing_target_raises(self) -> None:
         table = pa.table({"from_id": [1]})
         with pytest.raises(ValueError, match="target_col"):
             normalize_relationship_table(
-                table, source_col="from_id", target_col="to_id"
+                table,
+                source_col="from_id",
+                target_col="to_id",
             )
 
     def test_infer_attribute_map_excludes_reserved(self) -> None:
@@ -114,7 +122,7 @@ class TestArrowUtils:
                 "__TARGET__": [3],
                 "name": ["Alice"],
                 "age": [30],
-            }
+            },
         )
         attr_map = infer_attribute_map(table)
         assert "__ID__" not in attr_map
@@ -139,7 +147,10 @@ class TestDuckDBReader:
     def test_from_csv(self) -> None:
         """Reads a temp CSV file and returns an Arrow table."""
         with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".csv", delete=False, newline=""
+            mode="w",
+            suffix=".csv",
+            delete=False,
+            newline="",
         ) as f:
             writer = csv.writer(f)
             writer.writerow(["id", "name", "age"])
@@ -195,7 +206,7 @@ class TestEntityTableFromArrow:
 
     def _make_arrow_entity(self) -> pa.Table:
         return normalize_entity_table(
-            pa.table({"name": ["Alice", "Bob"], "age": [30, 40]})
+            pa.table({"name": ["Alice", "Bob"], "age": [30, 40]}),
         )
 
     def test_from_arrow_produces_correct_attribute_map(self) -> None:
@@ -239,7 +250,7 @@ class TestEntityTableFromArrow:
 
         # pandas path
         pd_df = pd.DataFrame(
-            {ID_COLUMN: [0, 1], "name": ["Alice", "Bob"], "age": [30, 40]}
+            {ID_COLUMN: [0, 1], "name": ["Alice", "Bob"], "age": [30, 40]},
         )
         et_pd = EntityTable(
             entity_type="Person",
@@ -251,7 +262,7 @@ class TestEntityTableFromArrow:
 
         # arrow path
         arrow_table = normalize_entity_table(
-            pa.table({"name": ["Alice", "Bob"], "age": [30, 40]})
+            pa.table({"name": ["Alice", "Bob"], "age": [30, 40]}),
         )
         et_arrow = EntityTable.from_arrow("Person", arrow_table)
 
@@ -279,10 +290,12 @@ class TestRelationshipTableFromArrow:
 
     def _make_arrow_rel(self) -> pa.Table:
         raw = pa.table(
-            {"from_id": [1, 2], "to_id": [2, 3], "weight": [0.9, 0.5]}
+            {"from_id": [1, 2], "to_id": [2, 3], "weight": [0.9, 0.5]},
         )
         return normalize_relationship_table(
-            raw, source_col="from_id", target_col="to_id"
+            raw,
+            source_col="from_id",
+            target_col="to_id",
         )
 
     def test_from_arrow_attribute_map(self) -> None:
@@ -321,9 +334,7 @@ class TestContextBuilder:
     def test_add_entity_from_dataframe(self) -> None:
         """add_entity with a pandas DataFrame builds the correct EntityMapping."""
         df = pd.DataFrame({"__ID__": [1, 2], "name": ["Alice", "Bob"]})
-        ctx = (
-            ContextBuilder().add_entity("Person", df, id_col="__ID__").build()
-        )
+        ctx = ContextBuilder().add_entity("Person", df, id_col="__ID__").build()
         assert "Person" in ctx.entity_mapping.mapping
         et = ctx.entity_mapping.mapping["Person"]
         assert et.entity_type == "Person"
@@ -331,17 +342,16 @@ class TestContextBuilder:
     def test_add_entity_from_arrow(self) -> None:
         """add_entity with a pa.Table builds the correct EntityMapping."""
         table = pa.table({"person_id": [1, 2], "name": ["Alice", "Bob"]})
-        ctx = (
-            ContextBuilder()
-            .add_entity("Person", table, id_col="person_id")
-            .build()
-        )
+        ctx = ContextBuilder().add_entity("Person", table, id_col="person_id").build()
         assert "Person" in ctx.entity_mapping.mapping
 
     def test_add_entity_from_csv(self) -> None:
         """add_entity with a CSV file path builds the correct EntityMapping."""
         with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".csv", delete=False, newline=""
+            mode="w",
+            suffix=".csv",
+            delete=False,
+            newline="",
         ) as f:
             writer = csv.writer(f)
             writer.writerow(["person_id", "name"])
@@ -349,9 +359,7 @@ class TestContextBuilder:
             path = f.name
         try:
             ctx = (
-                ContextBuilder()
-                .add_entity("Person", path, id_col="person_id")
-                .build()
+                ContextBuilder().add_entity("Person", path, id_col="person_id").build()
             )
             assert "Person" in ctx.entity_mapping.mapping
         finally:
@@ -400,7 +408,10 @@ class TestEndToEnd:
         from pycypher.star import Star
 
         with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".csv", delete=False, newline=""
+            mode="w",
+            suffix=".csv",
+            delete=False,
+            newline="",
         ) as f:
             writer = csv.writer(f)
             writer.writerow(["person_id", "name", "age"])
@@ -410,13 +421,11 @@ class TestEndToEnd:
             path = f.name
         try:
             ctx = (
-                ContextBuilder()
-                .add_entity("Person", path, id_col="person_id")
-                .build()
+                ContextBuilder().add_entity("Person", path, id_col="person_id").build()
             )
             star = Star(context=ctx)
             result = star.execute_query(
-                "MATCH (p:Person) WITH p.name AS name RETURN name AS name"
+                "MATCH (p:Person) WITH p.name AS name RETURN name AS name",
             )
             assert isinstance(result, pd.DataFrame)
             names = set(result["name"].tolist())
@@ -433,12 +442,12 @@ class TestEndToEnd:
                 "__ID__": [1, 2, 3],
                 "name": ["Alice", "Bob", "Carol"],
                 "age": [30, 40, 25],
-            }
+            },
         )
         ctx = ContextBuilder().add_entity("Person", df).build()
         star = Star(context=ctx)
         result = star.execute_query(
-            "MATCH (p:Person) WITH p.name AS name, p.age AS age RETURN name AS name, age AS age"
+            "MATCH (p:Person) WITH p.name AS name, p.age AS age RETURN name AS name, age AS age",
         )
         assert isinstance(result, pd.DataFrame)
         assert len(result) == 3

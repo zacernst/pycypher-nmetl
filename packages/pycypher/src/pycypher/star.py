@@ -130,12 +130,16 @@ from typing import Any
 import pandas as pd
 from shared.logger import LOGGER, reset_query_id, set_query_id
 from shared.metrics import QUERY_METRICS, get_rss_mb
+from shared.otel import trace_phase, trace_query
 
 from pycypher.ast_models import (
     ASTConverter,
     Variable,
 )
+from pycypher.audit import audit_query_error, audit_query_success
 from pycypher.binding_frame import BindingFrame
+from pycypher.config import COMPLEXITY_WARN_THRESHOLD as _COMPLEXITY_WARN
+from pycypher.config import MAX_COMPLEXITY_SCORE as _DEFAULT_MAX_COMPLEXITY
 from pycypher.config import QUERY_TIMEOUT_S as _DEFAULT_TIMEOUT_S
 from pycypher.config import RESULT_CACHE_MAX_MB as _DEFAULT_RESULT_CACHE_MAX_MB
 from pycypher.config import RESULT_CACHE_TTL_S as _DEFAULT_RESULT_CACHE_TTL_S
@@ -300,6 +304,8 @@ class ResultCache:
             # Move to end (most-recently-used).
             self._entries.move_to_end(key)
             self._hits += 1
+            # Lazy copy (O(1) with pandas 3.0+ CoW) — ensures callers get
+            # a distinct object so inplace mutations cannot corrupt the cache.
             return df.copy()
 
     def put(
@@ -313,13 +319,15 @@ class ResultCache:
         Args:
             query: The Cypher query string.
             parameters: Optional query parameters dict.
-            result: The DataFrame to cache (a copy is stored).
+            result: The DataFrame to cache (a lazy copy is stored).
 
         """
         if not self.enabled:
             return
 
         key = self._make_key(query, parameters)
+        # Lazy copy (O(1) with pandas 3.0+ CoW) — protects the cache from
+        # inplace mutations by the caller on the original *result*.
         df_copy = result.copy()
         entry_bytes = self._estimate_df_bytes(df_copy)
 
@@ -579,6 +587,7 @@ class Star:
             path_expander=self._path_expander,
             coerce_join_fn=self._frame_joiner.coerce_join,
             apply_where_fn=self._apply_where_filter,
+            multi_way_join_fn=self._frame_joiner.multi_way_join,
         )
 
         # Delegate expression rendering to the focused ExpressionRenderer.
@@ -613,6 +622,67 @@ class Star:
             max_size_bytes=_cache_mb * 1024 * 1024,
             ttl_seconds=_cache_ttl or 0.0,
         )
+
+        # Last optimization plan — populated by _analyze_and_plan().
+        self._last_optimization_plan: Any = None
+
+        # Cardinality feedback store — learns from execution history to
+        # correct heuristic estimates in future queries.
+        from pycypher.query_planner import CardinalityFeedbackStore
+
+        self._cardinality_feedback = CardinalityFeedbackStore()
+
+        # Last analysis result — stored for post-execution feedback.
+        self._last_analysis: Any = None
+
+        # Pre-warm the AST cache with common query templates for the
+        # entity/relationship types in this context.  This runs in a
+        # background thread so Star.__init__ returns immediately.
+        self._warmup_thread: threading.Thread | None = None
+        entity_types = list(self.context.entity_mapping.mapping.keys())
+        rel_types = list(self.context.relationship_mapping.mapping.keys())
+        if entity_types:
+            self._warmup_thread = threading.Thread(
+                target=self._warmup_ast_cache,
+                args=(entity_types, rel_types),
+                name="pycypher-ast-warmup",
+                daemon=True,
+            )
+            self._warmup_thread.start()
+
+    @staticmethod
+    def _warmup_ast_cache(
+        entity_types: list[str],
+        rel_types: list[str],
+    ) -> None:
+        """Pre-parse common query templates to populate the AST LRU cache.
+
+        By pre-parsing queries for the actual entity/relationship types in
+        the context, subsequent user queries that match these patterns hit
+        the cache instead of paying the ~10-20ms Earley parsing cost.
+        """
+        from pycypher.ast_converter import _parse_cypher_cached
+
+        templates = []
+        for etype in entity_types[:5]:  # cap to avoid excessive warm-up
+            templates.extend(
+                [
+                    f"MATCH (n:{etype}) RETURN n",
+                    f"MATCH (n:{etype}) RETURN count(n)",
+                    f"MATCH (n:{etype}) RETURN n LIMIT 10",
+                ]
+            )
+        for rtype in rel_types[:5]:
+            for etype in entity_types[:3]:
+                templates.append(
+                    f"MATCH (a:{etype})-[:{rtype}]->(b) RETURN a, b",
+                )
+
+        for q in templates:
+            try:
+                _parse_cypher_cached(q)
+            except Exception:
+                pass  # Template may fail for unusual type names; ignore.
 
     def __repr__(self) -> str:
         """Return an informative summary for REPL/notebook display.
@@ -731,7 +801,7 @@ class Star:
 
         if isinstance(parsed, UnionQuery):
             lines.append(
-                f"UNION query with {len(parsed.statements)} sub-queries"
+                f"UNION query with {len(parsed.statements)} sub-queries",
             )
             for i, sub_q in enumerate(parsed.statements):
                 lines.append(
@@ -771,7 +841,9 @@ class Star:
             lines.append("")
 
         # Query planner analysis
-        analysis = QueryPlanAnalyzer(parsed, self.context).analyze()
+        analysis = QueryPlanAnalyzer(
+            parsed, self.context, feedback_store=self._cardinality_feedback,
+        ).analyze()
         lines.append(
             f"Estimated peak memory: {analysis.estimated_peak_bytes:,} bytes",
         )
@@ -805,6 +877,46 @@ class Star:
                 lines.append(
                     f"  Filter on '{p.variable}' can be pushed before join",
                 )
+
+        # Complexity scoring
+        from pycypher.query_complexity import score_query
+
+        try:
+            complexity = score_query(parsed)
+            lines.append(f"Complexity score: {complexity.total}")
+            if complexity.breakdown:
+                top = sorted(
+                    complexity.breakdown.items(),
+                    key=lambda x: x[1],
+                    reverse=True,
+                )[:5]
+                detail = ", ".join(f"{k}={v}" for k, v in top)
+                lines.append(f"  Top contributors: {detail}")
+            for w in complexity.warnings:
+                lines.append(f"  Warning: {w}")
+        except Exception:
+            LOGGER.debug("PROFILE complexity analysis failed", exc_info=True)
+
+        # Rule-based optimizer analysis
+        from pycypher.query_optimizer import QueryOptimizer
+
+        opt_plan = QueryOptimizer.default().optimize(parsed, self.context)
+        if opt_plan.applied_rules:
+            lines.append("")
+            lines.append("Optimizer rules applied:")
+            for r in opt_plan.results:
+                if r.applied:
+                    speedup = (
+                        f" ({r.estimated_speedup:.1f}x)"
+                        if r.estimated_speedup > 1.0
+                        else ""
+                    )
+                    lines.append(
+                        f"  + {r.rule_name}: {r.description}{speedup}"
+                    )
+            lines.append(
+                f"  Total estimated speedup: {opt_plan.total_estimated_speedup:.2f}x",
+            )
 
         return "\n".join(lines)
 
@@ -866,7 +978,10 @@ class Star:
                 *max_complexity_score*.
 
         """
-        from pycypher.ast_models import Query, UnionQuery
+        # --- Rate limiting (pre-execution gate) ---
+        from pycypher.rate_limiter import get_global_limiter
+
+        get_global_limiter().acquire()
 
         # --- Input validation ---
         if isinstance(query, str) and not query.strip():
@@ -877,7 +992,7 @@ class Star:
             from pycypher.exceptions import WrongCypherTypeError
 
             raise WrongCypherTypeError(
-                f"parameters must be a dict, got {type(parameters).__name__}"
+                f"parameters must be a dict, got {type(parameters).__name__}",
             )
 
         # Resolve effective timeout: explicit parameter > env var > None.
@@ -942,6 +1057,14 @@ class Star:
             signal.alarm(max(1, int(_effective_timeout + 1)))
             _alarm_set = True
 
+        # --- OpenTelemetry: wrap the entire execution in a trace span ---
+        _otel_cm = trace_query(
+            _query_str,
+            query_id=_qid,
+            parameters=parameters,
+        )
+        _otel_span = _otel_cm.__enter__()
+
         # --- Result cache: fast path for repeated read-only queries ---
         # Skip cache for queries containing non-deterministic functions.
         _NON_DETERMINISTIC = {"rand(", "randomuuid(", "timestamp("}
@@ -957,64 +1080,101 @@ class Star:
             cached = self._result_cache.get(query, _cache_params)
             if cached is not None:
                 _elapsed = time.perf_counter() - _t0
+                _cached_rows = (
+                    len(cached) if isinstance(cached, pd.DataFrame) else 0
+                )
                 LOGGER.debug(
                     "execute_query: cache hit  elapsed=%.3fs  query=%r",
                     _elapsed,
                     _query_str[:80],
                 )
+                audit_query_success(
+                    query_id=_qid,
+                    query=_query_str,
+                    elapsed_s=_elapsed,
+                    rows=_cached_rows,
+                    parameter_keys=_param_keys,
+                    cached=True,
+                )
+                _otel_span.set_attribute("pycypher.cached", True)
+                _otel_span.set_attribute("result.rows", _cached_rows)
+                _otel_span.set_attribute(
+                    "pycypher.elapsed_ms", round(_elapsed * 1000.0, 2)
+                )
+                _otel_cm.__exit__(None, None, None)
                 return cached
 
         try:
-            # Parse string to AST if needed
-            if isinstance(query, str):
-                _parse_t0 = time.perf_counter()
-                converter = ASTConverter()
-                parsed_query = converter.from_cypher(query)
-                _parse_elapsed = time.perf_counter() - _parse_t0
-                _parse_elapsed_ms = _parse_elapsed * 1000.0
-                self._last_parse_time_ms = _parse_elapsed_ms
-                LOGGER.debug(
-                    "execute_query: parse  elapsed=%.3fs",
-                    _parse_elapsed,
-                )
-            else:
-                parsed_query = query
+            # --- Pipeline execution: parse → validate → execute ---
+            # The Pipeline abstraction decomposes the inline execution flow
+            # into composable stages that users can extend with custom stages
+            # (e.g. insert a lint stage between parse and validate).
+            from pycypher.pipeline import (
+                ExecuteStage,
+                ParseStage,
+                Pipeline,
+                ValidateStage,
+            )
 
-            # --- Complexity scoring (pre-execution gate) ---
-            if max_complexity_score is not None:
-                from pycypher.query_complexity import score_query
+            _effective_max_complexity = (
+                max_complexity_score
+                if max_complexity_score is not None
+                else _DEFAULT_MAX_COMPLEXITY
+            )
 
-                _complexity = score_query(
-                    parsed_query,
-                    max_score=max_complexity_score,
-                )
+            _pipeline = Pipeline([
+                ParseStage(),
+                ValidateStage(),
+                ExecuteStage(),
+            ])
+            _pipeline_result = _pipeline.run(
+                query=query,
+                star=self,
+                parameters=parameters,
+                max_complexity_score=_effective_max_complexity,
+                memory_budget_bytes=memory_budget_bytes,
+            )
+
+            result = _pipeline_result.result
+            parsed_query = _pipeline_result.metadata.get("parsed_ast", query)
+            _is_mutation = _pipeline_result.metadata.get("is_mutation", False)
+
+            # Extract parse timing from pipeline stage timings.
+            _parse_stage_time = _pipeline_result.stage_timings.get("parse", 0.0)
+            _parse_elapsed_ms = _parse_stage_time * 1000.0
+            self._last_parse_time_ms = _parse_elapsed_ms
+
+            # Log complexity warnings from the validate stage.
+            _effective_warn_complexity = _COMPLEXITY_WARN
+            _complexity_score = _pipeline_result.metadata.get("complexity_score")
+            if _complexity_score is not None:
                 LOGGER.debug(
                     "execute_query: complexity score=%d  breakdown=%s",
-                    _complexity.total,
-                    _complexity.breakdown,
+                    _complexity_score,
+                    _pipeline_result.metadata.get("complexity_details", {}),
                 )
-                for _cw in _complexity.warnings:
+                for _cw in _pipeline_result.metadata.get("complexity_warnings", []):
                     LOGGER.warning("query complexity: %s", _cw)
-
-            # Detect mutation clauses to decide cacheability.
-            _is_mutation = self._query_has_mutations(parsed_query)
-
-            if isinstance(parsed_query, UnionQuery):
-                result = self._execute_union_query(parsed_query)
-            elif not isinstance(parsed_query, Query):
-                from pycypher.exceptions import GrammarTransformerSyncError
-
-                raise GrammarTransformerSyncError(
-                    f"Internal error: parser returned "
-                    f"{type(parsed_query).__name__} instead of Query. "
-                    f"Please report this as a bug with your query.",
-                    missing_node_type=type(parsed_query).__name__,
-                    query_fragment=query if isinstance(query, str) else "",
-                )
-            else:
-                result = self._execute_query_binding_frame(
-                    parsed_query,
-                )
+                if (
+                    _effective_warn_complexity is not None
+                    and _complexity_score > _effective_warn_complexity
+                ):
+                    LOGGER.warning(
+                        "Query complexity score %d exceeds warning "
+                        "threshold %d. Top contributors: %s",
+                        _complexity_score,
+                        _effective_warn_complexity,
+                        ", ".join(
+                            f"{k}={v}"
+                            for k, v in sorted(
+                                _pipeline_result.metadata.get(
+                                    "complexity_details", {}
+                                ).items(),
+                                key=lambda x: x[1],
+                                reverse=True,
+                            )[:3]
+                        ),
+                    )
 
             _elapsed = time.perf_counter() - _t0
             _rss_after = get_rss_mb()
@@ -1026,6 +1186,13 @@ class Star:
                 _elapsed,
                 _mem_delta,
                 _query_str[:80],
+            )
+            audit_query_success(
+                query_id=_qid,
+                query=_query_str,
+                elapsed_s=_elapsed,
+                rows=_nrows,
+                parameter_keys=_param_keys,
             )
             # Record metrics for the successful query.
             _clause_names: list[str] = (
@@ -1058,6 +1225,20 @@ class Star:
                     _query_str[:80],
                 )
 
+            # Record OTel span attributes for successful execution.
+            _otel_span.set_attribute("result.rows", _nrows)
+            _otel_span.set_attribute(
+                "pycypher.elapsed_ms", round(_elapsed * 1000.0, 2)
+            )
+            _otel_span.set_attribute(
+                "pycypher.memory_delta_mb", round(_mem_delta, 2)
+            )
+            _otel_span.set_attribute("pycypher.cached", False)
+            if _parse_elapsed_ms is not None:
+                _otel_span.set_attribute(
+                    "pycypher.parse_time_ms", round(_parse_elapsed_ms, 2)
+                )
+
             # Cache read-only results; invalidate cache after mutations.
             if _is_mutation:
                 self._result_cache.invalidate()
@@ -1078,8 +1259,20 @@ class Star:
                 error_type=type(_exc).__name__,
                 elapsed_s=_elapsed,
             )
+            audit_query_error(
+                query_id=_qid,
+                query=_query_str,
+                elapsed_s=_elapsed,
+                error_type=type(_exc).__name__,
+                parameter_keys=_param_keys,
+            )
             raise
         finally:
+            # Close the OpenTelemetry trace span.
+            import sys as _sys
+
+            _ei = _sys.exc_info()
+            _otel_cm.__exit__(_ei[0], _ei[1], _ei[2])
             # Restore the query-ID contextvar so it doesn't leak into
             # subsequent queries or unrelated log output.
             reset_query_id(_qid_token)
@@ -1123,6 +1316,7 @@ class Star:
 
         Returns:
             DataFrame with columns matching the RETURN clause aliases.
+
         """
         import asyncio
 
@@ -1147,7 +1341,9 @@ class Star:
     ) -> pd.DataFrame:
         """Apply DISTINCT/ORDER BY/SKIP/LIMIT — delegates to :class:`ProjectionPlanner`."""
         return self._projection_planner.apply_projection_modifiers(
-            df, clause, frame
+            df,
+            clause,
+            frame,
         )
 
     def _return_from_frame(
@@ -1326,15 +1522,32 @@ class Star:
             )
             raise SecurityError(msg)
 
-        # PERFORMANCE: Use assign() instead of copy() for adding single column
-        df = frame.bindings.reset_index(drop=True).assign(
-            **{alias: list_series},
-        )
+        # PERFORMANCE: Use assign() instead of copy() for adding single column.
+        # Skip reset_index when already contiguous — avoids a full copy.
+        bindings = frame.bindings
+        idx = bindings.index
+        if not (
+            isinstance(idx, pd.RangeIndex)
+            and idx.start == 0
+            and idx.step == 1
+            and idx.stop == len(bindings)
+        ):
+            bindings = bindings.reset_index(drop=True)
+        df = bindings.assign(**{alias: list_series})
 
+        # explode with ignore_index=True already produces clean 0-based index.
         df = df.explode(alias, ignore_index=True)
 
         # pandas explode() converts empty lists to a single NaN row; drop those.
-        df = df.dropna(subset=[alias]).reset_index(drop=True)
+        df = df.dropna(subset=[alias])
+        idx = df.index
+        if not (
+            isinstance(idx, pd.RangeIndex)
+            and idx.start == 0
+            and idx.step == 1
+            and idx.stop == len(df)
+        ):
+            df = df.reset_index(drop=True)
 
         return BindingFrame(
             bindings=df,
@@ -1393,7 +1606,8 @@ class Star:
     ) -> BindingFrame:
         """Translate a WITH clause — delegates to :class:`ProjectionPlanner`."""
         return self._projection_planner.with_to_binding_frame(
-            with_clause, frame
+            with_clause,
+            frame,
         )
 
     # Mutation clause wrappers removed — calls inlined directly in the
@@ -1546,7 +1760,7 @@ class Star:
         clause_name: str,
         elapsed: float,
         size_before: str,
-        size_after: str
+        size_after: str,
     ) -> None:
         """Log debug information for clause execution performance."""
         LOGGER.debug(
@@ -1563,22 +1777,55 @@ class Star:
         clause_name: str,
         elapsed: float,
         size_before: str,
-        clause_timings: dict[str, float]
+        clause_timings: dict[str, float],
     ) -> pd.DataFrame | None:
         """Handle clause execution result, returning DataFrame if early exit needed.
 
         Returns:
             pd.DataFrame if the clause result triggers early return (RETURN clause),
             None if execution should continue with the next clause.
+
         """
         if isinstance(result, pd.DataFrame):
             self._log_clause_performance(
-                clause_name, elapsed, size_before, str(len(result))
+                clause_name,
+                elapsed,
+                size_before,
+                str(len(result)),
             )
             self._last_clause_timings = clause_timings
+            self._record_cardinality_feedback(len(result))
             return result
 
         return None
+
+    def _record_cardinality_feedback(self, actual_rows: int) -> None:
+        """Record actual row count into the cardinality feedback store.
+
+        Uses the last analysis result to compare estimated vs actual
+        cardinality per entity type, building up correction factors for
+        future queries.
+        """
+        analysis = self._last_analysis
+        if analysis is None:
+            return
+
+        # Record overall estimated vs actual for each entity type in the
+        # last analysis.  clause_cardinalities[-1] is the final estimate.
+        if analysis.clause_cardinalities:
+            final_estimate = analysis.clause_cardinalities[-1]
+            # Record feedback for each entity/relationship type seen in
+            # the analysis join plans.
+            entity_types_seen: set[str] = set()
+            for jp in analysis.join_plans:
+                entity_types_seen.add(jp.left_name)
+                entity_types_seen.add(jp.right_name)
+            for et in entity_types_seen:
+                self._cardinality_feedback.record(
+                    et, final_estimate, actual_rows,
+                )
+
+        self._last_analysis = None
 
     # ------------------------------------------------------------------
     # Query planning and clause dispatch helpers
@@ -1591,6 +1838,10 @@ class Star:
 
         * Builds a lazy computation graph via :meth:`_plan_query` for
           memory estimates and structural analysis.
+        * Runs :class:`~pycypher.query_optimizer.QueryOptimizer` to
+          produce an :class:`~pycypher.query_optimizer.OptimizationPlan`
+          with actionable hints (filter pushdown, limit pushdown, join
+          reordering, predicate simplification).
         * Runs :class:`~pycypher.query_planner.QueryPlanAnalyzer` for
           cardinality estimates, join strategies, and pushdown opportunities.
         * Enforces the memory budget (hard error with explicit budget,
@@ -1624,10 +1875,27 @@ class Star:
             _plan_hints["has_join"],
         )
 
+        # --- Rule-based query optimizer ---
+        from pycypher.query_optimizer import QueryOptimizer
+
+        _opt_plan = QueryOptimizer.default().optimize(query, self.context)
+        self._last_optimization_plan = _opt_plan
+        if _opt_plan.applied_rules:
+            LOGGER.debug(
+                "optimizer: %d rule(s) applied (%s), estimated speedup %.2fx in %.2fms",
+                len(_opt_plan.applied_rules),
+                ", ".join(_opt_plan.applied_rules),
+                _opt_plan.total_estimated_speedup,
+                _opt_plan.elapsed_ms,
+            )
+
         # --- Query planner analysis ---
         from pycypher.query_planner import QueryPlanAnalyzer
 
-        _analysis = QueryPlanAnalyzer(query, self.context).analyze()
+        _analysis = QueryPlanAnalyzer(
+            query, self.context, feedback_store=self._cardinality_feedback,
+        ).analyze()
+        self._last_analysis = _analysis
         if _analysis.join_plans:
             for _jp in _analysis.join_plans:
                 LOGGER.debug(
@@ -1646,6 +1914,11 @@ class Star:
                     _pd_opp.variable,
                     _pd_opp.predicate_summary,
                 )
+
+        # Pass pre-computed join plans to FrameJoiner so BindingFrame.join()
+        # uses them directly instead of re-planning each join.
+        if _analysis.join_plans:
+            self._frame_joiner.set_join_plans(_analysis.join_plans)
 
         # Memory budget enforcement.
         _budget = (
@@ -1667,14 +1940,158 @@ class Star:
                 f"{_analysis.estimated_peak_bytes:,}",
             )
 
+        # --- MATCH clause reordering based on cardinality estimates ---
+        self._apply_match_reordering(query)
+
         # --- LIMIT pushdown hint ---
-        _limit_hint = self._extract_limit_hint(query)
+        # Use the optimizer's limit_pushdown_value hint if it's a concrete
+        # integer (parameterized LIMIT produces a Parameter AST node, not int).
+        # Fall back to the manual extraction for safety.
+        _opt_limit = _opt_plan.hints.get("limit_pushdown_value")
+        _limit_hint = _opt_limit if isinstance(_opt_limit, int) else None
+        if _limit_hint is None:
+            _limit_hint = self._extract_limit_hint(query)
         if _limit_hint is not None:
             LOGGER.debug(
                 "LIMIT pushdown hint: %d rows",
                 _limit_hint,
             )
         return _limit_hint
+
+    def _apply_match_reordering(self, query: Any) -> None:
+        """Reorder consecutive MATCH clauses by estimated cardinality.
+
+        Processes MATCH clauses smallest-first to minimize intermediate
+        result sizes and reduce cross-join explosion risk.  Only reorders
+        *consecutive* MATCH runs — never moves a MATCH past a WITH, RETURN,
+        SET, or other clause boundary.
+
+        Mutates ``query.clauses`` in place.
+
+        """
+        from pycypher.ast_models import Match
+        from pycypher.query_optimizer import JoinReorderingRule
+
+        clauses = query.clauses
+        if len(clauses) < 2:
+            return
+
+        # Find runs of consecutive MATCH clauses (non-OPTIONAL only).
+        i = 0
+        reordered = False
+        while i < len(clauses):
+            # Start of a consecutive MATCH run?
+            if isinstance(clauses[i], Match) and not getattr(
+                clauses[i],
+                "optional",
+                False,
+            ):
+                run_start = i
+                while (
+                    i < len(clauses)
+                    and isinstance(clauses[i], Match)
+                    and not getattr(clauses[i], "optional", False)
+                ):
+                    i += 1
+                run_end = i  # exclusive
+
+                if run_end - run_start >= 2:
+                    run = clauses[run_start:run_end]
+
+                    # Skip reordering if any MATCH in the run uses
+                    # shortestPath / allShortestPaths — those patterns
+                    # rely on variables pre-bound by preceding MATCHes.
+                    has_shortest_path = any(
+                        getattr(p, "shortest_path_mode", "none") != "none"
+                        for m in run
+                        for p in getattr(m.pattern, "paths", [])
+                    )
+                    if has_shortest_path:
+                        LOGGER.debug(
+                            "Skipping MATCH reordering: run contains "
+                            "shortestPath / allShortestPaths pattern",
+                        )
+                        continue
+
+                    # Collect variables defined by each MATCH in the run.
+
+                    def _defined_vars(m: Match) -> set[str]:
+                        """Variable names introduced by a MATCH pattern."""
+                        names: set[str] = set()
+                        for path in getattr(m.pattern, "paths", []):
+                            for el in getattr(path, "elements", []):
+                                v = getattr(el, "variable", None)
+                                if v and hasattr(v, "name"):
+                                    names.add(v.name)
+                        return names
+
+                    def _referenced_vars(expr: Any) -> set[str]:
+                        """Variable names referenced in an expression tree.
+
+                        Delegates to the canonical
+                        :func:`~pycypher.ast_models.extract_referenced_variables`.
+                        """
+                        from pycypher.ast_models import (
+                            ASTNode,
+                            extract_referenced_variables,
+                        )
+
+                        if expr is None:
+                            return set()
+                        if isinstance(expr, ASTNode):
+                            return extract_referenced_variables(expr)
+                        return set()
+
+                    # Skip reordering if any WHERE clause references
+                    # variables defined by *other* MATCHes in the run.
+                    per_match_vars = [_defined_vars(m) for m in run]
+                    all_vars = set().union(*per_match_vars)
+                    has_cross_ref = False
+                    for idx, match in enumerate(run):
+                        if getattr(match, "where", None) is not None:
+                            where_refs = _referenced_vars(match.where)
+                            other_vars = all_vars - per_match_vars[idx]
+                            if where_refs & other_vars:
+                                has_cross_ref = True
+                                break
+
+                    if has_cross_ref:
+                        LOGGER.debug(
+                            "Skipping MATCH reordering: WHERE clause has "
+                            "cross-MATCH variable references",
+                        )
+                        continue
+
+                    # Estimate cardinalities for each MATCH in the run.
+                    estimates = []
+                    for idx, match in enumerate(run):
+                        est = JoinReorderingRule._estimate_match_cardinality(
+                            match,
+                            self.context,
+                        )
+                        estimates.append((idx, est))
+
+                    sorted_est = sorted(estimates, key=lambda x: x[1])
+                    optimal_order = [e[0] for e in sorted_est]
+                    current_order = list(range(len(run)))
+
+                    if optimal_order != current_order:
+                        reordered_run = [run[j] for j in optimal_order]
+                        clauses[run_start:run_end] = reordered_run
+                        reordered = True
+                        LOGGER.info(
+                            "Reordered %d MATCH clauses by cardinality: %s → %s "
+                            "(estimates: %s)",
+                            len(run),
+                            current_order,
+                            optimal_order,
+                            {i: c for i, c in estimates},
+                        )
+            else:
+                i += 1
+
+        if not reordered:
+            LOGGER.debug("No MATCH clause reordering needed")
 
     def _handle_match_clause(
         self,
@@ -1789,7 +2206,9 @@ class Star:
 
         if isinstance(clause, Match):
             result = self._handle_match_clause(
-                clause, current_frame, limit_hint,
+                clause,
+                current_frame,
+                limit_hint,
             )
             # _handle_match_clause returns pd.DataFrame for OPTIONAL
             # MATCH-as-first-clause with no matches — signal early exit.
@@ -1827,7 +2246,8 @@ class Star:
 
         if isinstance(clause, Create):
             return self._mutations.process_create(
-                clause, current_frame,
+                clause,
+                current_frame,
                 make_seed_frame=self._make_seed_frame,
             )
 
@@ -1836,7 +2256,8 @@ class Star:
 
         if isinstance(clause, Merge):
             return self._mutations.process_merge(
-                clause, current_frame,
+                clause,
+                current_frame,
                 match_to_binding_frame=self._pattern_matcher.match_to_binding_frame,
                 merge_frames_for_match=self._merge_frames_for_match,
                 make_seed_frame=self._make_seed_frame,
@@ -1844,7 +2265,8 @@ class Star:
 
         if isinstance(clause, Foreach):
             return self._mutations.process_foreach(
-                clause, current_frame,
+                clause,
+                current_frame,
                 make_seed_frame=self._make_seed_frame,
             )
 
@@ -1909,7 +2331,12 @@ class Star:
         _limit_hint = self._analyze_and_plan(query)
         current_frame: Any = initial_frame
 
-        for clause in query.clauses:
+        # --- Dead column elimination: compute live columns per clause ---
+        from pycypher.lazy_eval import compute_live_columns
+
+        _live_columns = compute_live_columns(query.clauses)
+
+        for clause_idx, clause in enumerate(query.clauses):
             self.context.check_timeout()
 
             _clause_name = type(clause).__name__
@@ -1917,7 +2344,9 @@ class Star:
             _clause_t0 = time.perf_counter()
 
             result = self._dispatch_clause(
-                clause, current_frame, _limit_hint,
+                clause,
+                current_frame,
+                _limit_hint,
             )
 
             _clause_elapsed = time.perf_counter() - _clause_t0
@@ -1928,18 +2357,60 @@ class Star:
 
             # Check if this is a final result (DataFrame) requiring early return
             early_result = self._handle_clause_result(
-                result, _clause_name, _clause_elapsed, _size_before, _clause_timings
+                result,
+                _clause_name,
+                _clause_elapsed,
+                _size_before,
+                _clause_timings,
             )
             if early_result is not None:
                 return early_result
 
+            # --- Dead column elimination ---
+            # Drop columns not needed by any subsequent clause.
+            _live = _live_columns[clause_idx]
+            if _live is not None and hasattr(result, "bindings"):
+                from pycypher.binding_frame import PATH_HOP_COLUMN_PREFIX
+
+                def _is_live(col: str) -> bool:
+                    if col in _live:
+                        return True
+                    # Keep _path_hop_X columns when path var X is live
+                    if col.startswith(PATH_HOP_COLUMN_PREFIX):
+                        path_var = col[len(PATH_HOP_COLUMN_PREFIX):]
+                        return path_var in _live
+                    return False
+
+                _dead_cols = [
+                    c for c in result.bindings.columns if not _is_live(c)
+                ]
+                if _dead_cols:
+                    LOGGER.debug(
+                        "dead column elimination after %s: dropping %s",
+                        _clause_name,
+                        _dead_cols,
+                    )
+                    result = BindingFrame(
+                        bindings=result.bindings.drop(columns=_dead_cols),
+                        type_registry={
+                            k: v
+                            for k, v in result.type_registry.items()
+                            if k not in _dead_cols
+                        },
+                        context=result.context,
+                    )
+
             # Continue with next clause - log performance and update current frame
             current_frame = result
             self._log_clause_performance(
-                _clause_name, _clause_elapsed, _size_before, self._frame_size(current_frame)
+                _clause_name,
+                _clause_elapsed,
+                _size_before,
+                self._frame_size(current_frame),
             )
 
         # Mutation queries (DELETE, SET, CREATE without RETURN) are valid — return
         # an empty DataFrame indicating successful execution with no output rows.
         self._last_clause_timings = _clause_timings
+        self._record_cardinality_feedback(0)
         return pd.DataFrame()

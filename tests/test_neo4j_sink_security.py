@@ -106,7 +106,9 @@ class TestNodeMappingIdPropertyValidation:
 
     def test_valid_id_property_accepted(self) -> None:
         m = NodeMapping(
-            label="Person", id_column="id", id_property="person_id"
+            label="Person",
+            id_column="id",
+            id_property="person_id",
         )
         assert m.id_property == "person_id"
 
@@ -211,7 +213,8 @@ class TestRelationshipMappingLabelValidation:
 class TestRelationshipMappingIdPropertyValidation:
     @pytest.mark.parametrize("bad_prop", _BACKTICK_CASES)
     def test_source_id_property_with_backtick_raises(
-        self, bad_prop: str
+        self,
+        bad_prop: str,
     ) -> None:
         with pytest.raises((ValueError, ValidationError)):
             RelationshipMapping(
@@ -225,7 +228,8 @@ class TestRelationshipMappingIdPropertyValidation:
 
     @pytest.mark.parametrize("bad_prop", _BACKTICK_CASES)
     def test_target_id_property_with_backtick_raises(
-        self, bad_prop: str
+        self,
+        bad_prop: str,
     ) -> None:
         with pytest.raises((ValueError, ValidationError)):
             RelationshipMapping(
@@ -276,13 +280,21 @@ class TestCypherTemplatePropertyQuoting:
 
     def test_rel_merge_cypher_quotes_src_id_property(self) -> None:
         cypher = _rel_merge_cypher(
-            "Person", "Person", "KNOWS", "person id", "id"
+            "Person",
+            "Person",
+            "KNOWS",
+            "person id",
+            "id",
         )
         assert "`person id`" in cypher
 
     def test_rel_merge_cypher_quotes_tgt_id_property(self) -> None:
         cypher = _rel_merge_cypher(
-            "Person", "Person", "KNOWS", "id", "target id"
+            "Person",
+            "Person",
+            "KNOWS",
+            "id",
+            "target id",
         )
         assert "`target id`" in cypher
 

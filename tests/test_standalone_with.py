@@ -15,7 +15,7 @@ from pycypher.relational_models import Context, EntityMapping
 from pycypher.star import Star
 
 
-@pytest.fixture()
+@pytest.fixture
 def empty_ctx() -> Context:
     """Context with no entity tables."""
     return Context(entity_mapping=EntityMapping(mapping={}))
@@ -58,7 +58,7 @@ class TestStandaloneWith:
         """WITH 5 AS x RETURN CASE WHEN x > 3 THEN 'big' ELSE 'small' END AS r."""
         star = Star(context=empty_ctx)
         result = star.execute_query(
-            "WITH 5 AS x RETURN CASE WHEN x > 3 THEN 'big' ELSE 'small' END AS r"
+            "WITH 5 AS x RETURN CASE WHEN x > 3 THEN 'big' ELSE 'small' END AS r",
         )
         assert result["r"].iloc[0] == "big"
 

@@ -26,14 +26,14 @@ from pycypher.relational_models import (
 from pycypher.star import Star
 
 
-@pytest.fixture()
+@pytest.fixture
 def person_star() -> Star:
     df = pd.DataFrame(
         {
             ID_COLUMN: [1, 2],
             "name": ["Alice", "Bob"],
             "age": [30, 25],
-        }
+        },
     )
     t = EntityTable(
         entity_type="Person",
@@ -47,7 +47,7 @@ def person_star() -> Star:
         context=Context(
             entity_mapping=EntityMapping(mapping={"Person": t}),
             relationship_mapping=RelationshipMapping(),
-        )
+        ),
     )
 
 
@@ -70,7 +70,8 @@ class TestSetAllPropertiesFromParameter:
         )
 
     def test_set_all_from_param_multiple_props(
-        self, person_star: Star
+        self,
+        person_star: Star,
     ) -> None:
         """SET p = $props with multiple keys sets all of them."""
         r = person_star.execute_query(
@@ -81,7 +82,8 @@ class TestSetAllPropertiesFromParameter:
         assert [int(x) for x in r["level"]] == [3, 3]
 
     def test_set_all_from_param_does_not_raise(
-        self, person_star: Star
+        self,
+        person_star: Star,
     ) -> None:
         """SET p = $props must not raise for a valid dict parameter."""
         person_star.execute_query(
@@ -110,7 +112,8 @@ class TestAddAllPropertiesFromParameter:
         assert list(r["score"]) == [100, 100]
 
     def test_add_from_param_preserves_existing(
-        self, person_star: Star
+        self,
+        person_star: Star,
     ) -> None:
         """SET p += $props keeps name and age intact."""
         r = person_star.execute_query(
@@ -140,7 +143,7 @@ class TestSetMapLiteralRegression:
     def test_literal_map_still_works(self, person_star: Star) -> None:
         """SET p = {status: 'ok'} (literal) must still set the property."""
         r = person_star.execute_query(
-            "MATCH (p:Person) SET p = {status: 'ok'} RETURN p.status AS status"
+            "MATCH (p:Person) SET p = {status: 'ok'} RETURN p.status AS status",
         )
         assert list(r["status"]) == ["ok", "ok"]
 
@@ -148,7 +151,7 @@ class TestSetMapLiteralRegression:
         """SET p += {status: 'ok'} (literal) must still set the property."""
         r = person_star.execute_query(
             "MATCH (p:Person) SET p += {score: 99} "
-            "RETURN p.name AS name, p.score AS score ORDER BY p.name"
+            "RETURN p.name AS name, p.score AS score ORDER BY p.name",
         )
         assert list(r["name"]) == ["Alice", "Bob"]
         assert list(r["score"]) == [99, 99]

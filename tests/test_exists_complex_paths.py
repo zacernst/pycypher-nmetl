@@ -25,11 +25,11 @@ from pycypher.relational_models import (
 from pycypher.star import Star
 
 
-@pytest.fixture()
+@pytest.fixture
 def chain_star() -> Star:
     """Alice -KNOWS-> Bob -KNOWS-> Carol -KNOWS-> Dave."""
     people_df = pd.DataFrame(
-        {ID_COLUMN: [1, 2, 3, 4], "name": ["Alice", "Bob", "Carol", "Dave"]}
+        {ID_COLUMN: [1, 2, 3, 4], "name": ["Alice", "Bob", "Carol", "Dave"]},
     )
     people_table = EntityTable(
         entity_type="Person",
@@ -44,7 +44,7 @@ def chain_star() -> Star:
             ID_COLUMN: [10, 11, 12],
             "__SOURCE__": [1, 2, 3],
             "__TARGET__": [2, 3, 4],
-        }
+        },
     )
     knows_table = RelationshipTable(
         relationship_type="KNOWS",
@@ -58,9 +58,9 @@ def chain_star() -> Star:
         context=Context(
             entity_mapping=EntityMapping(mapping={"Person": people_table}),
             relationship_mapping=RelationshipMapping(
-                mapping={"KNOWS": knows_table}
+                mapping={"KNOWS": knows_table},
             ),
-        )
+        ),
     )
 
 
@@ -73,20 +73,21 @@ class TestExistsComplexPaths:
             "MATCH (p:Person) "
             "WHERE (p)-[:KNOWS]->() "
             "AND EXISTS { MATCH (p)-[:KNOWS]->(f:Person) WHERE f.name = 'Bob' } "
-            "RETURN p.name ORDER BY p.name"
+            "RETURN p.name ORDER BY p.name",
         )
         # Alice knows Bob, Bob knows Carol, Carol knows Dave; only Alice-KNOWS-Bob match
         assert list(r["name"]) == ["Alice"]
 
     def test_two_hop_inline_and_single_hop_query_exists(
-        self, chain_star: Star
+        self,
+        chain_star: Star,
     ) -> None:
         """Two-hop inline predicate AND single-hop Query EXISTS."""
         r = chain_star.execute_query(
             "MATCH (p:Person) "
             "WHERE (p)-[:KNOWS]->()-[:KNOWS]->() "
             "AND EXISTS { (p)-[:KNOWS]->() } "
-            "RETURN p.name ORDER BY p.name"
+            "RETURN p.name ORDER BY p.name",
         )
         # Alice: 2-hop (Alice->Bob->Carol) and 1-hop (Alice->Bob) — both true
         # Bob: 2-hop (Bob->Carol->Dave) and 1-hop (Bob->Carol) — both true
@@ -97,7 +98,7 @@ class TestExistsComplexPaths:
         r = chain_star.execute_query(
             "MATCH (p:Person) "
             "WHERE NOT (p)-[:KNOWS]->()-[:KNOWS]->() "
-            "RETURN p.name ORDER BY p.name"
+            "RETURN p.name ORDER BY p.name",
         )
         # Carol: 1 hop (Carol->Dave), no 2-hop
         # Dave: no outgoing edges
@@ -109,7 +110,7 @@ class TestExistsComplexPaths:
             "MATCH (p:Person) "
             "WHERE (p)-[:KNOWS]->()-[:KNOWS]->() "
             "OR EXISTS { MATCH (p)-[:KNOWS]->(f:Person) WHERE f.name = 'Dave' } "
-            "RETURN p.name ORDER BY p.name"
+            "RETURN p.name ORDER BY p.name",
         )
         # Alice: 2-hop True
         # Bob: 2-hop True
@@ -121,7 +122,7 @@ class TestExistsComplexPaths:
         r = chain_star.execute_query(
             "MATCH (p:Person) "
             "WHERE (p)-[:KNOWS]->()-[:KNOWS]->()-[:KNOWS]->() "
-            "RETURN p.name"
+            "RETURN p.name",
         )
         # Alice->Bob->Carol->Dave: 3 hops — only Alice
         assert list(r["name"]) == ["Alice"]

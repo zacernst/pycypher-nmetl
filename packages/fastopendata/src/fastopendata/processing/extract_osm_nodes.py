@@ -19,9 +19,9 @@ Performance notes
   overhead and the associated index-build time.
 
 * O(1) trivial-key test — splitting the tag key on the first ``:`` and
-  checking the root word against a frozenset is 5–27× faster per call
+  checking the root word against a frozenset is 5-27x faster per call
   than the former ``any(key == p or key.startswith(p + ':') ...)`` loop
-  over 33 prefixes.  Measured at 16–27× on non-trivial keys such as
+  over 33 prefixes.  Measured at 16-27x on non-trivial keys such as
   ``amenity`` and ``cuisine``.
 
 * Single tag materialisation — ``o.tags`` is a C-backed proxy; iterating
@@ -30,7 +30,7 @@ Performance notes
   emptiness check and JSON encoding.
 
 * ``csv.writer`` (positional) instead of ``DictWriter`` — avoids dict
-  key lookup per row; benchmarked at 1.82× faster.
+  key lookup per row; benchmarked at 1.82x faster.
 
 * 1 MiB write buffer — reduces ``write()`` syscall frequency when many
   nodes pass the filter.
@@ -46,16 +46,20 @@ import base64
 import csv
 import json
 import os
+import sys
 import time
+from pathlib import Path
 
 import osmium
 from shared.logger import LOGGER
 
+from fastopendata.config import config
+
 LOGGER.setLevel("INFO")
 
-DATA_DIR: str = os.environ["DATA_DIR"]
-PBF_FILE: str = os.path.join(DATA_DIR, "us-latest.osm.pbf")
-OUTPUT_FILE: str = os.path.join(DATA_DIR, "united_states_nodes.csv")
+DATA_DIR: Path = config.data_path
+PBF_FILE: str = str(DATA_DIR / "us-latest.osm.pbf")
+OUTPUT_FILE: Path = DATA_DIR / "united_states_nodes.csv"
 
 # Stop early when this many filtered nodes have been written (-1 = no limit).
 MAX_NODES: int = -1
@@ -117,8 +121,10 @@ class NodeHandler(osmium.SimpleHandler):  # type: ignore[misc]
         self.node_count = 0
         self.filtered_node_count = 0
         # 1 MiB write buffer reduces syscall frequency.
-        self._file = open(
-            OUTPUT_FILE, "w", encoding="utf-8", buffering=1 << 20
+        self._file = OUTPUT_FILE.open(
+            "w",
+            encoding="utf-8",
+            buffering=1 << 20,
         )
         self._writer = csv.writer(self._file)
         self._writer.writerow(["longitude", "latitude", "encoded_tags", "id"])
@@ -143,10 +149,10 @@ class NodeHandler(osmium.SimpleHandler):  # type: ignore[misc]
         self.filtered_node_count += 1
         if MAX_NODES != -1 and self.filtered_node_count >= MAX_NODES:
             self._file.close()
-            os._exit(0)
+            sys.exit(0)
 
         encoded = base64.b64encode(
-            json.dumps(all_tags).encode("utf-8")
+            json.dumps(all_tags).encode("utf-8"),
         ).decode()
         self._writer.writerow(
             [o.location.lon, o.location.lat, encoded, o.id],
@@ -157,14 +163,37 @@ class NodeHandler(osmium.SimpleHandler):  # type: ignore[misc]
 
 
 if __name__ == "__main__":
+    if not os.path.isfile(PBF_FILE):
+        LOGGER.error(
+            "PBF file not found: %s. "
+            "Ensure the OSM download completed before running extraction.",
+            PBF_FILE,
+        )
+        raise SystemExit(1)
+
     LOGGER.info("Extracting point data from %s ...", PBF_FILE)
     handler = NodeHandler()
-    # locations=False (the default): node coordinates are always stored
-    # inline in the PBF; the location store is only needed for ways/relations.
-    handler.apply_file(PBF_FILE, locations=False)
+    try:
+        # locations=False (the default): node coordinates are always stored
+        # inline in the PBF; the location store is only needed for ways/relations.
+        handler.apply_file(PBF_FILE, locations=False)
+    except Exception as exc:
+        handler.close()
+        LOGGER.error("Failed to process PBF file %s: %s", PBF_FILE, exc)
+        raise SystemExit(1) from exc
     handler.close()
     LOGGER.info(
         "Done. Total nodes processed: %s  Written: %s",
         handler.node_count,
         handler.filtered_node_count,
     )
+
+    # Validate output was produced.
+    if handler.filtered_node_count == 0:
+        LOGGER.warning(
+            "No nodes passed the filter. Output file %s contains only headers.",
+            OUTPUT_FILE,
+        )
+    if not OUTPUT_FILE.exists() or OUTPUT_FILE.stat().st_size == 0:
+        LOGGER.error("Output file is empty or missing: %s", OUTPUT_FILE)
+        raise SystemExit(1)

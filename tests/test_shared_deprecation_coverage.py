@@ -7,8 +7,6 @@ from __future__ import annotations
 
 import warnings
 
-import pytest
-
 from shared.deprecation import _build_message, deprecated, emit_deprecation
 
 

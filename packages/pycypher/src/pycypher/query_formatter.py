@@ -138,6 +138,7 @@ def format_query(
 
     Returns:
         The formatted query string.
+
     """
     if not query or not query.strip():
         return query
@@ -220,7 +221,9 @@ def _uppercase_in_fragment(fragment: str) -> str:
     """Uppercase known keywords in a non-string fragment."""
     # Sort by length descending to match multi-word keywords first
     sorted_kw: list[str] = sorted(
-        _ALL_KEYWORDS, key=lambda s: len(s), reverse=True
+        _ALL_KEYWORDS,
+        key=lambda s: len(s),
+        reverse=True,
     )
     for kw in sorted_kw:
         pattern = re.compile(
@@ -235,7 +238,9 @@ def _split_clauses(text: str, *, indent: int) -> str:
     """Place each clause keyword on its own line."""
     # Sort clause keywords by length (longest first) to avoid partial matches
     sorted_clauses: list[str] = sorted(
-        _CLAUSE_KEYWORDS, key=lambda s: len(s), reverse=True
+        _CLAUSE_KEYWORDS,
+        key=lambda s: len(s),
+        reverse=True,
     )
 
     # Build regex pattern for clause boundaries
@@ -284,6 +289,7 @@ class LintIssue:
         column: 1-based column number (0 if not applicable).
         message: Human-readable description of the issue.
         severity: ``"warning"`` or ``"error"``.
+
     """
 
     line: int
@@ -307,6 +313,7 @@ def lint_query(query: str) -> list[LintIssue]:
 
     Returns:
         List of :class:`LintIssue` instances.
+
     """
     issues: list[LintIssue] = []
 

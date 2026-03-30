@@ -14,20 +14,21 @@ Missing lines targeted: 137, 176, 230-233, 289-294, 345, 354, 477-479,
 
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import Any
 
 import pytest
-
-from pycypher.ast_converter import ASTConverter, _friendly_parse_error, _parse_cypher_cached
+from pycypher.ast_converter import (
+    ASTConverter,
+    _friendly_parse_error,
+    _parse_cypher_cached,
+)
 from pycypher.ast_models import (
     BooleanLiteral,
-    Call,
     Create,
     Delete,
     FloatLiteral,
     Foreach,
     IntegerLiteral,
-    Match,
     Merge,
     PatternPath,
     Query,
@@ -35,14 +36,12 @@ from pycypher.ast_models import (
     RemoveItem,
     Return,
     ReturnAll,
-    ReturnItem,
     Set,
     SetItem,
     Unwind,
     Variable,
     With,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -107,16 +106,20 @@ class TestConvertLarkTree:
 
     def test_tree_with_children(self) -> None:
         """Lark Tree with children recurses into first child."""
+
         class FakeTree:
             children = ["hello"]
+
         result = _conv(FakeTree())
         assert isinstance(result, Variable)
         assert result.name == "hello"
 
     def test_tree_empty_children(self) -> None:
         """Lark Tree with empty children returns None."""
+
         class FakeTree:
             children = []
+
         result = _conv(FakeTree())
         assert result is None
 
@@ -167,12 +170,20 @@ class TestConvertStatements:
         node = {
             "type": "QueryStatement",
             "clauses": [
-                {"type": "MatchClause", "pattern": {"type": "Pattern", "paths": []}, "where": None, "optional": False},
+                {
+                    "type": "MatchClause",
+                    "pattern": {"type": "Pattern", "paths": []},
+                    "where": None,
+                    "optional": False,
+                },
             ],
             "return": {
                 "type": "ReturnStatement",
                 "distinct": False,
-                "body": {"type": "ReturnBody", "items": [{"type": "ReturnItem", "expression": "n", "alias": None}]},
+                "body": {
+                    "type": "ReturnBody",
+                    "items": [{"type": "ReturnItem", "expression": "n", "alias": None}],
+                },
                 "order": None,
                 "skip": None,
                 "limit": None,
@@ -186,7 +197,12 @@ class TestConvertStatements:
         node = {
             "type": "UpdateStatement",
             "prefix": [
-                {"type": "MatchClause", "pattern": {"type": "Pattern", "paths": []}, "where": None, "optional": False},
+                {
+                    "type": "MatchClause",
+                    "pattern": {"type": "Pattern", "paths": []},
+                    "where": None,
+                    "optional": False,
+                },
             ],
             "updates": [
                 {"type": "SetClause", "items": []},
@@ -208,7 +224,12 @@ class TestConvertStatements:
         node = {
             "type": "UpdateStatement",
             "clauses": [
-                {"type": "MatchClause", "pattern": {"type": "Pattern", "paths": []}, "where": None, "optional": False},
+                {
+                    "type": "MatchClause",
+                    "pattern": {"type": "Pattern", "paths": []},
+                    "where": None,
+                    "optional": False,
+                },
                 {"type": "SetClause", "items": []},
             ],
         }
@@ -231,9 +252,17 @@ class TestConvertMergeClause:
             "actions": [
                 {
                     "on": "create",
-                    "set": {"type": "SetClause", "items": [
-                        {"type": "SetProperty", "variable": "n", "property": "age", "value": 30},
-                    ]},
+                    "set": {
+                        "type": "SetClause",
+                        "items": [
+                            {
+                                "type": "SetProperty",
+                                "variable": "n",
+                                "property": "age",
+                                "value": 30,
+                            },
+                        ],
+                    },
                 },
             ],
         }
@@ -247,9 +276,17 @@ class TestConvertMergeClause:
             "actions": [
                 {
                     "on": "match",
-                    "set": {"type": "SetClause", "items": [
-                        {"type": "SetProperty", "variable": "n", "property": "age", "value": 30},
-                    ]},
+                    "set": {
+                        "type": "SetClause",
+                        "items": [
+                            {
+                                "type": "SetProperty",
+                                "variable": "n",
+                                "property": "age",
+                                "value": 30,
+                            },
+                        ],
+                    },
                 },
             ],
         }
@@ -267,8 +304,10 @@ class TestConvertReturnStatement:
 
     def test_limit_with_tree_object(self) -> None:
         """Limit with a Tree-like value (lines 633-634)."""
+
         class FakeTree:
             children = [5]
+
         node = {
             "type": "ReturnStatement",
             "distinct": False,
@@ -282,8 +321,10 @@ class TestConvertReturnStatement:
 
     def test_limit_with_value_attr(self) -> None:
         """Limit with a Token-like value having .value (lines 638-642)."""
+
         class FakeToken:
             value = "10"
+
         node = {
             "type": "ReturnStatement",
             "distinct": False,
@@ -298,8 +339,10 @@ class TestConvertReturnStatement:
 
     def test_limit_with_unconvertible_value_attr(self) -> None:
         """Token-like .value that can't be int (lines 640-642)."""
+
         class FakeToken:
             value = "not_a_number"
+
         node = {
             "type": "ReturnStatement",
             "distinct": False,
@@ -319,7 +362,10 @@ class TestConvertReturnStatement:
             "body": {"type": "ReturnBody", "items": []},
             "order": None,
             "skip": None,
-            "limit": {"type": "LimitClause", "value": {"type": "Parameter", "name": "lim"}},
+            "limit": {
+                "type": "LimitClause",
+                "value": {"type": "Parameter", "name": "lim"},
+            },
         }
         result = _conv(node)
         assert isinstance(result, Return)
@@ -354,8 +400,10 @@ class TestConvertReturnStatement:
 
     def test_skip_with_value_attr(self) -> None:
         """Skip with Token-like .value (lines 661-664)."""
+
         class FakeToken:
             value = "3"
+
         node = {
             "type": "ReturnStatement",
             "distinct": False,
@@ -437,7 +485,9 @@ class TestConvertCRUDNodes:
         node = {
             "type": "Merge",
             "pattern": {"type": "Pattern", "paths": []},
-            "on_create": [{"type": "SetProperty", "variable": "n", "property": "age", "value": 30}],
+            "on_create": [
+                {"type": "SetProperty", "variable": "n", "property": "age", "value": 30},
+            ],
         }
         result = _conv(node)
         assert isinstance(result, Merge)
@@ -447,7 +497,9 @@ class TestConvertCRUDNodes:
         node = {
             "type": "Merge",
             "pattern": {"type": "Pattern", "paths": []},
-            "on_match": [{"type": "SetProperty", "variable": "n", "property": "age", "value": 30}],
+            "on_match": [
+                {"type": "SetProperty", "variable": "n", "property": "age", "value": 30},
+            ],
         }
         result = _conv(node)
         assert isinstance(result, Merge)
@@ -478,7 +530,11 @@ class TestConvertCRUDNodes:
 
     def test_convert_set_all_properties(self) -> None:
         """_convert_SetAllProperties (line 918)."""
-        node = {"type": "SetAllProperties", "variable": "n", "value": {"type": "MapLiteral", "value": {}, "entries": {}}}
+        node = {
+            "type": "SetAllProperties",
+            "variable": "n",
+            "value": {"type": "MapLiteral", "value": {}, "entries": {}},
+        }
         result = _conv(node)
         assert isinstance(result, SetItem)
         assert result.property == "*"
@@ -503,7 +559,11 @@ class TestConvertCRUDNodes:
 
     def test_convert_unwind(self) -> None:
         """_convert_Unwind (line 986)."""
-        node = {"type": "Unwind", "expression": {"type": "ListLiteral", "elements": []}, "alias": "x"}
+        node = {
+            "type": "Unwind",
+            "expression": {"type": "ListLiteral", "elements": []},
+            "alias": "x",
+        }
         result = _conv(node)
         assert isinstance(result, Unwind)
 
@@ -521,7 +581,9 @@ class TestNormalizeProcedureName:
         assert result is None
 
     def test_dict_with_namespace_and_name(self) -> None:
-        result = ASTConverter()._normalize_procedure_name({"namespace": "db", "name": "info"})
+        result = ASTConverter()._normalize_procedure_name(
+            {"namespace": "db", "name": "info"},
+        )
         assert result == "db.info"
 
     def test_dict_with_name_only(self) -> None:
@@ -564,7 +626,11 @@ class TestConvertPatternPaths:
         node = {
             "type": "Pattern",
             "paths": [
-                {"type": "PathPattern", "variable": None, "element": {"type": "PatternElement", "parts": []}},
+                {
+                    "type": "PathPattern",
+                    "variable": None,
+                    "element": {"type": "PatternElement", "parts": []},
+                },
             ],
         }
         result = _conv(node)
@@ -627,8 +693,10 @@ class TestConvertWithClause:
 
     def test_with_skip_token_like(self) -> None:
         """WithClause skip with .value attribute (lines 742-745)."""
+
         class FakeToken:
             value = "2"
+
         node = {
             "type": "WithClause",
             "distinct": False,
@@ -659,8 +727,10 @@ class TestConvertWithClause:
 
     def test_with_limit_tree_like(self) -> None:
         """WithClause limit with Tree-like value (lines 765)."""
+
         class FakeTree:
             children = [10]
+
         node = {
             "type": "WithClause",
             "distinct": False,
@@ -675,8 +745,10 @@ class TestConvertWithClause:
 
     def test_with_limit_token_like(self) -> None:
         """WithClause limit with .value (lines 769-772)."""
+
         class FakeToken:
             value = "5"
+
         node = {
             "type": "WithClause",
             "distinct": False,
@@ -711,7 +783,14 @@ class TestConvertWithClause:
             "type": "WithClause",
             "distinct": False,
             "items": [],
-            "where": {"condition": {"type": "Comparison", "operator": ">", "left": "n", "right": 5}},
+            "where": {
+                "condition": {
+                    "type": "Comparison",
+                    "operator": ">",
+                    "left": "n",
+                    "right": 5,
+                },
+            },
             "order": None,
             "skip": None,
             "limit": None,
@@ -730,8 +809,10 @@ class TestFriendlyParseError:
 
     def test_missing_closing_brace(self) -> None:
         """Missing brace hint (line 176)."""
+
         class FakeExc(Exception):
             pass
+
         exc = FakeExc("Unexpected")
         exc.line = None
         exc.col = None
@@ -740,12 +821,23 @@ class TestFriendlyParseError:
 
     def test_close_match_suggestion(self) -> None:
         """Close-match keyword suggestion (line 137)."""
+
         class FakeExc(Exception):
             pass
+
         exc = FakeExc("Unexpected")
         exc.line = 1
         exc.column = 1
-        exc.expected = {"MATCH", "RETURN", "WITH", "WHERE", "CREATE", "DELETE", "SET", "REMOVE"}
+        exc.expected = {
+            "MATCH",
+            "RETURN",
+            "WITH",
+            "WHERE",
+            "CREATE",
+            "DELETE",
+            "SET",
+            "REMOVE",
+        }
         result = _friendly_parse_error(exc, "METCH (n) RETURN n")
         assert "MATCH" in result or "Syntax error" in result
 
@@ -760,6 +852,7 @@ class TestParseCypherCachedErrors:
 
     def test_syntax_error_raises_ast_conversion_error(self) -> None:
         from pycypher.exceptions import ASTConversionError
+
         with pytest.raises(ASTConversionError):
             _parse_cypher_cached("MATCH (n RETURN")
 

@@ -104,7 +104,7 @@ class TestCheckpointSerializationSafety:
 
         import pandas as pd
         import pyarrow as pa
-        import pyarrow.ipc as ipc
+        from pyarrow import ipc
 
         # Create test data
         df = pd.DataFrame({"__ID__": [1, 2, 3], "name": ["a", "b", "c"]})
@@ -132,7 +132,8 @@ class TestCheckpointSerializationSafety:
         df = pd.DataFrame({"__ID__": [1, 2, 3], "val": [10.0, 20.0, 30.0]})
 
         with tempfile.NamedTemporaryFile(
-            suffix=".parquet", delete=True
+            suffix=".parquet",
+            delete=True,
         ) as tmp:
             table = pa.Table.from_pandas(df)
             pq.write_table(table, tmp.name)
@@ -156,7 +157,7 @@ class TestCheckpointSerializationSafety:
         payload = pickle.dumps(MaliciousCheckpoint())
         # pickle.loads(payload) would execute eval("1+1") — proof of RCE
         # Arrow IPC cannot do this — it's a pure data format
-        result = pickle.loads(payload)  # noqa: S301
+        result = pickle.loads(payload)
         assert result == 2  # eval("1+1") executed during deserialization
 
 
@@ -291,9 +292,7 @@ class TestDaskBackendSecurityContract:
         security_params = [
             p
             for p in param_names
-            if "security" in p.lower()
-            or "tls" in p.lower()
-            or "encrypt" in p.lower()
+            if "security" in p.lower() or "tls" in p.lower() or "encrypt" in p.lower()
         ]
         assert security_params, (
             "DaskBackend.__init__ must accept a security configuration parameter "

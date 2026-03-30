@@ -48,9 +48,9 @@ def star_instance() -> Star:
                     "__ID__": ["p1"],
                     "age": [30],
                     "name": ["Alice"],
-                }
-            )
-        }
+                },
+            ),
+        },
     )
     return Star(context=ctx)
 
@@ -76,7 +76,8 @@ class TestUnaryDisplayText:
         expr = Unary(
             operator="-",
             operand=PropertyLookup(
-                variable=Variable(name="p"), property="age"
+                variable=Variable(name="p"),
+                property="age",
             ),
         )
         result = display(star_instance, expr)
@@ -119,7 +120,8 @@ class TestParameterDisplayText:
         assert "1" in result
 
     def test_parameter_in_query_produces_named_column(
-        self, star_instance: Star
+        self,
+        star_instance: Star,
     ) -> None:
         """RETURN $myParam should produce column named '$myParam' in the result."""
         # This requires the full pipeline; skip if parameterised RETURN not supported
@@ -226,9 +228,9 @@ class TestCountStarDisplayText:
                     {
                         "__ID__": ["i1", "i2", "i3"],
                         "val": [1, 2, 3],
-                    }
-                )
-            }
+                    },
+                ),
+            },
         )
         s = Star(context=ctx)
         r = s.execute_query("MATCH (i:Item) RETURN count(*)")
@@ -257,7 +259,8 @@ class TestListComprehensionDisplayText:
         )
 
     def test_list_comprehension_contains_variable(
-        self, star_instance: Star
+        self,
+        star_instance: Star,
     ) -> None:
         """Result must mention the iteration variable and the list."""
         expr = ListComprehension(
@@ -288,7 +291,7 @@ class TestCaseExpressionDisplayText:
                 WhenClause(
                     condition=IntegerLiteral(value=1),
                     result=StringLiteral(value="one"),
-                )
+                ),
             ],
             else_expr=StringLiteral(value="other"),
         )

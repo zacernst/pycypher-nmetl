@@ -35,13 +35,13 @@ from shared.metrics import QUERY_METRICS, QueryMetrics, get_rss_mb
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture()
+@pytest.fixture
 def fresh_metrics() -> QueryMetrics:
     """Return a fresh, isolated metrics collector for each test."""
     return QueryMetrics()
 
 
-@pytest.fixture()
+@pytest.fixture
 def simple_star() -> Star:
     """Three-person context: Alice (30), Bob (25), Carol (35)."""
     df = pd.DataFrame(
@@ -49,7 +49,7 @@ def simple_star() -> Star:
             ID_COLUMN: [1, 2, 3],
             "name": ["Alice", "Bob", "Carol"],
             "age": [30, 25, 35],
-        }
+        },
     )
     table = EntityTable(
         entity_type="Person",
@@ -63,7 +63,7 @@ def simple_star() -> Star:
         context=Context(
             entity_mapping=EntityMapping(mapping={"Person": table}),
             relationship_mapping=RelationshipMapping(mapping={}),
-        )
+        ),
     )
 
 
@@ -76,7 +76,8 @@ class TestQueryCounting:
     """Verify basic counting of queries and errors."""
 
     def test_initial_snapshot_is_zero(
-        self, fresh_metrics: QueryMetrics
+        self,
+        fresh_metrics: QueryMetrics,
     ) -> None:
         snap = fresh_metrics.snapshot()
         assert snap.total_queries == 0
@@ -85,7 +86,8 @@ class TestQueryCounting:
         assert snap.total_rows_returned == 0
 
     def test_record_query_increments_count(
-        self, fresh_metrics: QueryMetrics
+        self,
+        fresh_metrics: QueryMetrics,
     ) -> None:
         fresh_metrics.record_query(query_id="q1", elapsed_s=0.01, rows=10)
         fresh_metrics.record_query(query_id="q2", elapsed_s=0.02, rows=20)
@@ -94,16 +96,23 @@ class TestQueryCounting:
         assert snap.total_rows_returned == 30
 
     def test_record_error_increments_count(
-        self, fresh_metrics: QueryMetrics
+        self,
+        fresh_metrics: QueryMetrics,
     ) -> None:
         fresh_metrics.record_error(
-            query_id="q1", error_type="TypeError", elapsed_s=0.01
+            query_id="q1",
+            error_type="TypeError",
+            elapsed_s=0.01,
         )
         fresh_metrics.record_error(
-            query_id="q2", error_type="ValueError", elapsed_s=0.02
+            query_id="q2",
+            error_type="ValueError",
+            elapsed_s=0.02,
         )
         fresh_metrics.record_error(
-            query_id="q3", error_type="TypeError", elapsed_s=0.03
+            query_id="q3",
+            error_type="TypeError",
+            elapsed_s=0.03,
         )
         snap = fresh_metrics.snapshot()
         assert snap.total_errors == 3
@@ -114,7 +123,8 @@ class TestTimingPercentiles:
     """Verify timing percentile calculations."""
 
     def test_single_query_all_percentiles_equal(
-        self, fresh_metrics: QueryMetrics
+        self,
+        fresh_metrics: QueryMetrics,
     ) -> None:
         fresh_metrics.record_query(query_id="q1", elapsed_s=0.1, rows=5)
         snap = fresh_metrics.snapshot()
@@ -123,11 +133,14 @@ class TestTimingPercentiles:
         assert snap.timing_max_ms == pytest.approx(100.0)
 
     def test_multiple_queries_percentile_ordering(
-        self, fresh_metrics: QueryMetrics
+        self,
+        fresh_metrics: QueryMetrics,
     ) -> None:
         for i in range(100):
             fresh_metrics.record_query(
-                query_id=f"q{i}", elapsed_s=(i + 1) / 1000.0, rows=1
+                query_id=f"q{i}",
+                elapsed_s=(i + 1) / 1000.0,
+                rows=1,
             )
         snap = fresh_metrics.snapshot()
         assert snap.timing_p50_ms <= snap.timing_p90_ms
@@ -147,11 +160,15 @@ class TestSlowQueryDetection:
         assert snap.slow_queries == 1
 
     def test_slow_query_emits_warning(
-        self, fresh_metrics: QueryMetrics, caplog: pytest.LogCaptureFixture
+        self,
+        fresh_metrics: QueryMetrics,
+        caplog: pytest.LogCaptureFixture,
     ) -> None:
         with caplog.at_level(logging.WARNING):
             fresh_metrics.record_query(
-                query_id="slowpoke", elapsed_s=5.0, rows=42
+                query_id="slowpoke",
+                elapsed_s=5.0,
+                rows=42,
             )
         assert any("SLOW QUERY" in r.message for r in caplog.records)
         assert any("slowpoke" in r.message for r in caplog.records)
@@ -162,7 +179,10 @@ class TestClauseCounting:
 
     def test_clause_counts(self, fresh_metrics: QueryMetrics) -> None:
         fresh_metrics.record_query(
-            query_id="q1", elapsed_s=0.01, rows=1, clauses=["Match", "Return"]
+            query_id="q1",
+            elapsed_s=0.01,
+            rows=1,
+            clauses=["Match", "Return"],
         )
         fresh_metrics.record_query(
             query_id="q2",
@@ -182,7 +202,9 @@ class TestReset:
     def test_reset_zeros_everything(self, fresh_metrics: QueryMetrics) -> None:
         fresh_metrics.record_query(query_id="q1", elapsed_s=0.5, rows=100)
         fresh_metrics.record_error(
-            query_id="q2", error_type="RuntimeError", elapsed_s=0.1
+            query_id="q2",
+            error_type="RuntimeError",
+            elapsed_s=0.1,
         )
         fresh_metrics.reset()
         snap = fresh_metrics.snapshot()
@@ -204,13 +226,12 @@ class TestThreadSafety:
             barrier.wait()
             for i in range(n_per_thread):
                 fresh_metrics.record_query(
-                    query_id=f"t{tid}-q{i}", elapsed_s=0.001, rows=1
+                    query_id=f"t{tid}-q{i}",
+                    elapsed_s=0.001,
+                    rows=1,
                 )
 
-        threads = [
-            threading.Thread(target=worker, args=(t,))
-            for t in range(n_threads)
-        ]
+        threads = [threading.Thread(target=worker, args=(t,)) for t in range(n_threads)]
         for t in threads:
             t.start()
         for t in threads:
@@ -248,9 +269,9 @@ class TestStarMetricsIntegration:
 
     def test_failed_query_recorded(self, simple_star: Star) -> None:
         QUERY_METRICS.reset()
-        with pytest.raises(Exception):  # noqa: B017, PT011
+        with pytest.raises(Exception):
             simple_star.execute_query(
-                "MATCH (p:NonExistent) RETURN p.name AS name"
+                "MATCH (p:NonExistent) RETURN p.name AS name",
             )
         snap = QUERY_METRICS.snapshot()
         # Either error was recorded, or query succeeded with 0 rows (both valid)
@@ -274,16 +295,23 @@ class TestMemoryDeltaTracking:
 
     def test_memory_delta_recorded(self, fresh_metrics: QueryMetrics) -> None:
         fresh_metrics.record_query(
-            query_id="q1", elapsed_s=0.01, rows=1, memory_delta_mb=5.0
+            query_id="q1",
+            elapsed_s=0.01,
+            rows=1,
+            memory_delta_mb=5.0,
         )
         fresh_metrics.record_query(
-            query_id="q2", elapsed_s=0.01, rows=1, memory_delta_mb=10.0
+            query_id="q2",
+            elapsed_s=0.01,
+            rows=1,
+            memory_delta_mb=10.0,
         )
         snap = fresh_metrics.snapshot()
         assert snap.memory_delta_max_mb == pytest.approx(10.0)
 
     def test_no_memory_delta_when_none(
-        self, fresh_metrics: QueryMetrics
+        self,
+        fresh_metrics: QueryMetrics,
     ) -> None:
         fresh_metrics.record_query(query_id="q1", elapsed_s=0.01, rows=1)
         snap = fresh_metrics.snapshot()
@@ -291,7 +319,8 @@ class TestMemoryDeltaTracking:
         assert snap.memory_delta_p50_mb == 0.0
 
     def test_memory_delta_percentile_ordering(
-        self, fresh_metrics: QueryMetrics
+        self,
+        fresh_metrics: QueryMetrics,
     ) -> None:
         for i in range(100):
             fresh_metrics.record_query(
@@ -305,10 +334,14 @@ class TestMemoryDeltaTracking:
         assert snap.memory_delta_p90_mb <= snap.memory_delta_max_mb
 
     def test_reset_clears_memory_deltas(
-        self, fresh_metrics: QueryMetrics
+        self,
+        fresh_metrics: QueryMetrics,
     ) -> None:
         fresh_metrics.record_query(
-            query_id="q1", elapsed_s=0.01, rows=1, memory_delta_mb=42.0
+            query_id="q1",
+            elapsed_s=0.01,
+            rows=1,
+            memory_delta_mb=42.0,
         )
         fresh_metrics.reset()
         snap = fresh_metrics.snapshot()

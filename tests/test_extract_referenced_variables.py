@@ -7,7 +7,6 @@ nested comparisons, and function calls.
 
 from __future__ import annotations
 
-import pytest
 from pycypher.ast_converter import ASTConverter
 from pycypher.ast_models import (
     And,
@@ -46,12 +45,16 @@ class TestExtractReferencedVariables:
                 Comparison(
                     operator="=",
                     left=PropertyLookup(expression=Variable(name="p"), property="dept"),
-                    right=PropertyLookup(expression=Variable(name="q"), property="dept"),
+                    right=PropertyLookup(
+                        expression=Variable(name="q"), property="dept",
+                    ),
                 ),
                 Comparison(
                     operator="<>",
                     left=PropertyLookup(expression=Variable(name="p"), property="name"),
-                    right=PropertyLookup(expression=Variable(name="q"), property="name"),
+                    right=PropertyLookup(
+                        expression=Variable(name="q"), property="name",
+                    ),
                 ),
             ],
         )
@@ -80,7 +83,7 @@ class TestExtractReferencedVariables:
         query = ASTConverter.from_cypher(
             "MATCH (p:Person) MATCH (q:Person) "
             "WHERE p.dept = q.dept AND p.name <> q.name "
-            "RETURN p.name"
+            "RETURN p.name",
         )
         # WHERE is on the second MATCH clause
         where_clause = query.clauses[1].where

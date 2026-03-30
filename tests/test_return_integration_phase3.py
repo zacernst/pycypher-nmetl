@@ -52,7 +52,7 @@ def integration_context():
             "city": ["NYC", "NYC", "SF", "SF", "LA"],
             "age": [30, 25, 35, 40, 28],
             "salary": [100000, 80000, 120000, 140000, 90000],
-        }
+        },
     )
 
     person_table = EntityTable(
@@ -83,7 +83,7 @@ def integration_context():
             ID_COLUMN: [10, 11, 12, 13],
             RELATIONSHIP_SOURCE_COLUMN: [1, 1, 2, 3],
             RELATIONSHIP_TARGET_COLUMN: [2, 3, 3, 4],
-        }
+        },
     )
 
     knows_table = RelationshipTable(
@@ -102,7 +102,7 @@ def integration_context():
     return Context(
         entity_mapping=EntityMapping(mapping={"Person": person_table}),
         relationship_mapping=RelationshipMapping(
-            mapping={"KNOWS": knows_table}
+            mapping={"KNOWS": knows_table},
         ),
     )
 
@@ -125,24 +125,25 @@ class TestReturnGroupedAggregationIntegration:
                                         variable=Variable(name="p"),
                                         labels=["Person"],
                                         properties={},
-                                    )
-                                ]
-                            )
-                        ]
-                    )
+                                    ),
+                                ],
+                            ),
+                        ],
+                    ),
                 ),
                 Return(
                     items=[
                         ReturnItem(
                             expression=PropertyLookup(
-                                expression=Variable(name="p"), property="city"
+                                expression=Variable(name="p"),
+                                property="city",
                             ),
                             alias="city",
                         ),
                         ReturnItem(expression=CountStar(), alias="total"),
-                    ]
+                    ],
                 ),
-            ]
+            ],
         )
 
         result_df = star.execute_query(query)
@@ -154,7 +155,8 @@ class TestReturnGroupedAggregationIntegration:
         assert city_counts["LA"] == 1
 
     def test_match_return_group_by_city_with_aggregations(
-        self, integration_context
+        self,
+        integration_context,
     ):
         """Test MATCH (p:Person) RETURN p.city, count(*), avg(p.salary), collect(p.name)."""
         star = Star(context=integration_context)
@@ -170,17 +172,18 @@ class TestReturnGroupedAggregationIntegration:
                                         variable=Variable(name="p"),
                                         labels=["Person"],
                                         properties={},
-                                    )
-                                ]
-                            )
-                        ]
-                    )
+                                    ),
+                                ],
+                            ),
+                        ],
+                    ),
                 ),
                 Return(
                     items=[
                         ReturnItem(
                             expression=PropertyLookup(
-                                expression=Variable(name="p"), property="city"
+                                expression=Variable(name="p"),
+                                property="city",
                             ),
                             alias="city",
                         ),
@@ -192,7 +195,7 @@ class TestReturnGroupedAggregationIntegration:
                                     "expression": PropertyLookup(
                                         expression=Variable(name="p"),
                                         property="salary",
-                                    )
+                                    ),
                                 },
                             ),
                             alias="avg_salary",
@@ -204,14 +207,14 @@ class TestReturnGroupedAggregationIntegration:
                                     "expression": PropertyLookup(
                                         expression=Variable(name="p"),
                                         property="name",
-                                    )
+                                    ),
                                 },
                             ),
                             alias="names",
                         ),
-                    ]
+                    ],
                 ),
-            ]
+            ],
         )
 
         result_df = star.execute_query(query)
@@ -253,30 +256,32 @@ class TestReturnGroupedAggregationIntegration:
                                         variable=Variable(name="p"),
                                         labels=["Person"],
                                         properties={},
-                                    )
-                                ]
-                            )
-                        ]
-                    )
+                                    ),
+                                ],
+                            ),
+                        ],
+                    ),
                 ),
                 Return(
                     items=[
                         ReturnItem(
                             expression=PropertyLookup(
-                                expression=Variable(name="p"), property="city"
+                                expression=Variable(name="p"),
+                                property="city",
                             ),
                             alias="city",
                         ),
                         ReturnItem(
                             expression=PropertyLookup(
-                                expression=Variable(name="p"), property="age"
+                                expression=Variable(name="p"),
+                                property="age",
                             ),
                             alias="age",
                         ),
                         ReturnItem(expression=CountStar(), alias="total"),
-                    ]
+                    ],
                 ),
-            ]
+            ],
         )
 
         result_df = star.execute_query(query)
@@ -290,7 +295,8 @@ class TestReturnGroupedAggregationWithRelationships:
     """Test grouped aggregations with relationship patterns."""
 
     def test_match_relationship_group_by_source_city(
-        self, integration_context
+        self,
+        integration_context,
     ):
         """Test MATCH (a:Person)-[:KNOWS]->(b:Person) RETURN a.city, count(*) AS connections."""
         star = Star(context=integration_context)
@@ -321,25 +327,27 @@ class TestReturnGroupedAggregationWithRelationships:
                                         labels=["Person"],
                                         properties={},
                                     ),
-                                ]
-                            )
-                        ]
-                    )
+                                ],
+                            ),
+                        ],
+                    ),
                 ),
                 Return(
                     items=[
                         ReturnItem(
                             expression=PropertyLookup(
-                                expression=a_var, property="city"
+                                expression=a_var,
+                                property="city",
                             ),
                             alias="source_city",
                         ),
                         ReturnItem(
-                            expression=CountStar(), alias="connections"
+                            expression=CountStar(),
+                            alias="connections",
                         ),
-                    ]
+                    ],
                 ),
-            ]
+            ],
         )
 
         result_df = star.execute_query(query)
@@ -350,13 +358,14 @@ class TestReturnGroupedAggregationWithRelationships:
         # So: NYC=3, SF=1
         assert len(result_df) == 2
         city_connections = dict(
-            zip(result_df["source_city"], result_df["connections"])
+            zip(result_df["source_city"], result_df["connections"]),
         )
         assert city_connections["NYC"] == 3
         assert city_connections["SF"] == 1
 
     def test_match_relationship_group_by_cities_collect_names(
-        self, integration_context
+        self,
+        integration_context,
     ):
         """Test MATCH (a)-[:KNOWS]->(b) RETURN a.city, collect(b.name) AS known_people."""
         star = Star(context=integration_context)
@@ -387,16 +396,17 @@ class TestReturnGroupedAggregationWithRelationships:
                                         labels=["Person"],
                                         properties={},
                                     ),
-                                ]
-                            )
-                        ]
-                    )
+                                ],
+                            ),
+                        ],
+                    ),
                 ),
                 Return(
                     items=[
                         ReturnItem(
                             expression=PropertyLookup(
-                                expression=a_var, property="city"
+                                expression=a_var,
+                                property="city",
                             ),
                             alias="source_city",
                         ),
@@ -405,15 +415,16 @@ class TestReturnGroupedAggregationWithRelationships:
                                 name="collect",
                                 arguments={
                                     "expression": PropertyLookup(
-                                        expression=b_var, property="name"
-                                    )
+                                        expression=b_var,
+                                        property="name",
+                                    ),
                                 },
                             ),
                             alias="known_people",
                         ),
-                    ]
+                    ],
                 ),
-            ]
+            ],
         )
 
         result_df = star.execute_query(query)
@@ -437,7 +448,7 @@ class TestReturnGroupedAggregationStringParsing:
         star = Star(context=integration_context)
 
         result_df = star.execute_query(
-            "MATCH (p:Person) RETURN p.city AS city, count(*) AS total"
+            "MATCH (p:Person) RETURN p.city AS city, count(*) AS total",
         )
 
         assert len(result_df) == 3
@@ -451,27 +462,26 @@ class TestReturnGroupedAggregationStringParsing:
         star = Star(context=integration_context)
 
         result_df = star.execute_query(
-            "MATCH (p:Person) RETURN p.city AS city, collect(p.name) AS names"
+            "MATCH (p:Person) RETURN p.city AS city, collect(p.name) AS names",
         )
 
         assert len(result_df) == 3
         assert set(result_df.columns) == {"city", "names"}
 
-        city_names = {
-            row["city"]: set(row["names"]) for _, row in result_df.iterrows()
-        }
+        city_names = {row["city"]: set(row["names"]) for _, row in result_df.iterrows()}
         assert city_names["NYC"] == {"Alice", "Bob"}
         assert city_names["SF"] == {"Carol", "Dave"}
         assert city_names["LA"] == {"Eve"}
 
     def test_string_query_multiple_grouping_keys_and_aggregations(
-        self, integration_context
+        self,
+        integration_context,
     ):
         """Test parsing complex grouped aggregation query."""
         star = Star(context=integration_context)
 
         result_df = star.execute_query(
-            "MATCH (p:Person) RETURN p.city AS city, count(*) AS total, avg(p.salary) AS avg_salary"
+            "MATCH (p:Person) RETURN p.city AS city, count(*) AS total, avg(p.salary) AS avg_salary",
         )
 
         assert len(result_df) == 3
@@ -493,7 +503,7 @@ class TestReturnGroupedAggregationStringParsing:
         star = Star(context=integration_context)
 
         result_df = star.execute_query(
-            "MATCH (p:Person) RETURN p.city AS city, p.age AS age, count(*) AS total"
+            "MATCH (p:Person) RETURN p.city AS city, p.age AS age, count(*) AS total",
         )
 
         assert len(result_df) == 5

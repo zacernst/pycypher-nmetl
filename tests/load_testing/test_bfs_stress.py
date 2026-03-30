@@ -16,11 +16,10 @@ from pycypher.ingestion import ContextBuilder
 from pycypher.path_expander import (
     _MAX_FRONTIER_ROWS,
     _MAX_UNBOUNDED_PATH_HOPS,
-    PathExpander,
 )
 from pycypher.star import Star
 
-from .load_generator import SCALE_MEDIUM, SCALE_SMALL, build_graph
+from .load_generator import SCALE_SMALL, build_graph
 
 
 @pytest.fixture(scope="module")
@@ -43,21 +42,24 @@ def dense_star() -> Star:
         {
             "__ID__": person_ids,
             "name": [f"Dense_{i}" for i in range(n_nodes)],
-        }
+        },
     )
 
     knows_df = pd.DataFrame(
         {
             "__SOURCE__": rng.choice(person_ids, size=n_edges).tolist(),
             "__TARGET__": rng.choice(person_ids, size=n_edges).tolist(),
-        }
+        },
     )
 
     ctx = (
         ContextBuilder()
         .add_entity("Person", person_df, id_col="__ID__")
         .add_relationship(
-            "KNOWS", knows_df, source_col="__SOURCE__", target_col="__TARGET__"
+            "KNOWS",
+            knows_df,
+            source_col="__SOURCE__",
+            target_col="__TARGET__",
         )
         .build()
     )
@@ -74,8 +76,7 @@ class TestBFSFrontierLimits:
         """``[*]`` patterns must be capped at _MAX_UNBOUNDED_PATH_HOPS."""
         # This should not hang or OOM — the hop cap prevents infinite expansion.
         result = small_star.execute_query(
-            "MATCH (a:Person)-[:KNOWS*]->(b:Person) "
-            "RETURN a.name, b.name LIMIT 100",
+            "MATCH (a:Person)-[:KNOWS*]->(b:Person) RETURN a.name, b.name LIMIT 100",
             timeout_seconds=30.0,
         )
         assert len(result) <= 100
@@ -126,14 +127,14 @@ class TestBFSCyclicGraphs:
             {
                 "__ID__": ["x"],
                 "name": ["Self"],
-            }
+            },
         )
         # Self-loop: x -> x.
         knows_df = pd.DataFrame(
             {
                 "__SOURCE__": ["x"],
                 "__TARGET__": ["x"],
-            }
+            },
         )
         ctx = (
             ContextBuilder()
@@ -160,13 +161,13 @@ class TestBFSCyclicGraphs:
             {
                 "__ID__": ["a", "b"],
                 "name": ["Alice", "Bob"],
-            }
+            },
         )
         knows_df = pd.DataFrame(
             {
                 "__SOURCE__": ["a", "b"],
                 "__TARGET__": ["b", "a"],
-            }
+            },
         )
         ctx = (
             ContextBuilder()
@@ -181,8 +182,7 @@ class TestBFSCyclicGraphs:
         )
         star = Star(ctx)
         result = star.execute_query(
-            "MATCH (a:Person)-[:KNOWS*1..10]->(b:Person) "
-            "RETURN a.name, b.name",
+            "MATCH (a:Person)-[:KNOWS*1..10]->(b:Person) RETURN a.name, b.name",
             timeout_seconds=10.0,
         )
         # With dedup, frontier converges quickly.
@@ -196,7 +196,7 @@ class TestBFSCyclicGraphs:
             {
                 "__ID__": ids,
                 "name": [f"Node_{i}" for i in range(n)],
-            }
+            },
         )
         # Complete graph: n*(n-1) edges.
         src, tgt = [], []

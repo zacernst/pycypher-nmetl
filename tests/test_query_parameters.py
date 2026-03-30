@@ -28,7 +28,7 @@ def star() -> Star:
             "name": ["Alice", "Bob", "Carol"],
             "age": [30, 25, 35],
             "dept": ["eng", "sales", "eng"],
-        }
+        },
     )
     return Star(context=ContextBuilder.from_dict({"Person": df}))
 

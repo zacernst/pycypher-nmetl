@@ -21,8 +21,11 @@ def sample_dataframe() -> pd.DataFrame:
             "id": range(100),
             "label": ["Person"] * 50 + ["Company"] * 50,
             "value": rng.standard_normal(100),
-        }
+        },
     )
+
+
+dask = pytest.importorskip("dask", reason="dask not installed")
 
 
 class TestDaskCompatibility:
@@ -30,12 +33,12 @@ class TestDaskCompatibility:
 
     def test_dask_import(self) -> None:
         import dask
-        import dask.dataframe  # noqa: F401
+        import dask.dataframe
 
         assert dask.__version__
 
     def test_distributed_import(self) -> None:
-        import distributed
+        distributed = pytest.importorskip("distributed", reason="distributed not installed")
 
         assert distributed.__version__
 
@@ -66,7 +69,7 @@ class TestDaskCompatibility:
 
         ddf = dd.from_pandas(sample_dataframe, npartitions=2)
         agg = ddf.groupby("label").agg({"value": "sum"}).compute()
-        assert len(agg) == 2  # noqa: PLR2004
+        assert len(agg) == 2
 
     @pytest.mark.integration
     def test_dask_local_cluster(self) -> None:
@@ -126,7 +129,7 @@ class TestPolarsCompatibility:
 
         pldf = pl.from_pandas(sample_dataframe)
         agg = pldf.group_by("label").agg(pl.col("value").sum())
-        assert agg.height == 2  # noqa: PLR2004
+        assert agg.height == 2
 
     def test_polars_lazy(self, sample_dataframe: pd.DataFrame) -> None:
         import polars as pl
@@ -139,7 +142,7 @@ class TestPolarsCompatibility:
             .agg(pl.col("value").mean())
             .collect()
         )
-        assert result.height == 2  # noqa: PLR2004
+        assert result.height == 2
 
 
 class TestDuckDBLargeDatasetPatterns:
@@ -172,13 +175,15 @@ class TestDuckDBLargeDatasetPatterns:
         conn = duckdb.connect()
         conn.register("t", sample_dataframe)
         result = conn.execute(
-            "SELECT label, COUNT(*), AVG(value) FROM t GROUP BY label"
+            "SELECT label, COUNT(*), AVG(value) FROM t GROUP BY label",
         ).df()
-        assert len(result) == 2  # noqa: PLR2004
+        assert len(result) == 2
         conn.close()
 
     def test_duckdb_parquet_roundtrip(
-        self, sample_dataframe: pd.DataFrame, tmp_path: object
+        self,
+        sample_dataframe: pd.DataFrame,
+        tmp_path: object,
     ) -> None:
         from pathlib import Path
 
@@ -189,11 +194,14 @@ class TestDuckDBLargeDatasetPatterns:
         conn.register("t", sample_dataframe)
         conn.execute(f"COPY t TO '{parquet_path}' (FORMAT PARQUET)")
         count = conn.execute(
-            f"SELECT COUNT(*) FROM read_parquet('{parquet_path}')"
+            f"SELECT COUNT(*) FROM read_parquet('{parquet_path}')",
         ).fetchone()
         assert count is not None
         assert count[0] == len(sample_dataframe)
         conn.close()
+
+
+deltalake = pytest.importorskip("deltalake", reason="deltalake not installed")
 
 
 class TestDeltaLakeCompatibility:
@@ -205,7 +213,9 @@ class TestDeltaLakeCompatibility:
         assert deltalake.__version__
 
     def test_deltalake_write_read(
-        self, sample_dataframe: pd.DataFrame, tmp_path: object
+        self,
+        sample_dataframe: pd.DataFrame,
+        tmp_path: object,
     ) -> None:
         from pathlib import Path
 
@@ -218,7 +228,9 @@ class TestDeltaLakeCompatibility:
         assert len(result) == len(sample_dataframe)
 
     def test_deltalake_duckdb_cross_read(
-        self, sample_dataframe: pd.DataFrame, tmp_path: object
+        self,
+        sample_dataframe: pd.DataFrame,
+        tmp_path: object,
     ) -> None:
         from pathlib import Path
 
@@ -230,7 +242,7 @@ class TestDeltaLakeCompatibility:
 
         conn = duckdb.connect()
         count = conn.execute(
-            f"SELECT COUNT(*) FROM delta_scan('{delta_path}')"
+            f"SELECT COUNT(*) FROM delta_scan('{delta_path}')",
         ).fetchone()
         assert count is not None
         assert count[0] == len(sample_dataframe)
@@ -241,6 +253,7 @@ class TestCrossBackendInterop:
     """Verify backends can exchange data via Arrow/pandas."""
 
     def test_dask_to_duckdb(self, sample_dataframe: pd.DataFrame) -> None:
+        pytest.importorskip("dask", reason="dask not installed")
         import dask.dataframe as dd
         import duckdb
 

@@ -39,6 +39,8 @@ Every custom exception inherits from a Python built-in, so existing
 ``except ValueError`` or ``except TypeError`` handlers continue to work
 without modification.
 
+.. _cyphersyntaxerror:
+
 Catching Parse Errors
 ---------------------
 
@@ -55,6 +57,10 @@ queries that might have typos:
    except CypherSyntaxError as e:
        print(f"Syntax error at line {e.line}, column {e.column}")
        # e.query contains the original query string
+
+.. _variablenotfounderror:
+.. _unsupportedfunctionerror:
+.. _graphtypenotfounderror:
 
 Catching Runtime Errors
 -----------------------
@@ -82,6 +88,10 @@ For dynamic queries, catch the specific exception types:
    except GraphTypeNotFoundError as e:
        # e.type_name
        print(f"No entity type '{e.type_name}' registered")
+
+.. _querytimeouterror:
+.. _querymemorybudgeterror:
+.. _querycomplexityerror:
 
 Resource Limit Errors
 ---------------------
@@ -119,6 +129,20 @@ Use :func:`~pycypher.semantic_validator.validate_query` to catch errors
    for error in errors:
        print(f"{error.severity.value}: {error.message}")
        # "error: Variable 'm' is not defined..."
+
+.. _cyclicdependencyerror:
+.. _securityerror:
+
+Security and Pipeline Errors
+-----------------------------
+
+:class:`~pycypher.exceptions.SecurityError` is raised when SQL injection,
+path traversal, or SSRF attempts are detected in data source URIs or
+DuckDB queries.
+
+:class:`~pycypher.exceptions.CyclicDependencyError` is raised when a
+multi-query pipeline contains circular dependencies that prevent
+topological ordering.
 
 Best Practices
 --------------

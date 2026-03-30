@@ -9,11 +9,10 @@ from __future__ import annotations
 
 import pandas as pd
 import pytest
-
 from pycypher import ContextBuilder, Star
 
 
-@pytest.fixture()
+@pytest.fixture
 def star_with_people() -> Star:
     """Star instance with Person entities and KNOWS relationships."""
     people = pd.DataFrame(
@@ -35,7 +34,9 @@ def star_with_people() -> Star:
     ctx = (
         ContextBuilder()
         .add_entity("Person", people)
-        .add_relationship("KNOWS", rels, source_col="__SOURCE__", target_col="__TARGET__")
+        .add_relationship(
+            "KNOWS", rels, source_col="__SOURCE__", target_col="__TARGET__",
+        )
         .build()
     )
     return Star(context=ctx)
@@ -51,7 +52,7 @@ class TestTemporalFieldExtraction:
 
     def test_year_from_date_string(self, star_with_people: Star) -> None:
         result = star_with_people.execute_query(
-            "MATCH (p:Person) RETURN p.born AS born, p.name AS name ORDER BY p.name"
+            "MATCH (p:Person) RETURN p.born AS born, p.name AS name ORDER BY p.name",
         )
         # Verify dates are present
         assert result["born"].iloc[0] == "1994-03-15"
@@ -62,7 +63,7 @@ class TestTemporalFieldExtraction:
             "MATCH (p:Person) "
             "WITH {born: p.born} AS info, p.name AS name "
             "RETURN info.born AS born, name "
-            "ORDER BY name"
+            "ORDER BY name",
         )
         assert len(result) == 3
 
@@ -81,7 +82,7 @@ class TestEvalReduce:
             "MATCH (p:Person) "
             "WITH [1, 2, 3, 4, 5] AS nums, p.name AS name "
             "RETURN reduce(total = 0, x IN nums | total + x) AS sum_val, name "
-            "ORDER BY name"
+            "ORDER BY name",
         )
         assert result["sum_val"].iloc[0] == 15
 
@@ -91,7 +92,7 @@ class TestEvalReduce:
             "MATCH (p:Person) "
             "WITH null AS nums, p.name AS name "
             "RETURN reduce(total = 0, x IN nums | total + x) AS sum_val, name "
-            "ORDER BY name"
+            "ORDER BY name",
         )
         assert result["sum_val"].iloc[0] == 0
 
@@ -101,7 +102,7 @@ class TestEvalReduce:
             "MATCH (p:Person) "
             "WITH [] AS nums, p.name AS name "
             "RETURN reduce(total = 42, x IN nums | total + x) AS sum_val, name "
-            "ORDER BY name"
+            "ORDER BY name",
         )
         assert result["sum_val"].iloc[0] == 42
 
@@ -111,7 +112,7 @@ class TestEvalReduce:
             "MATCH (p:Person) "
             "WITH ['a', 'b', 'c'] AS chars, p.name AS name "
             "RETURN reduce(s = '', c IN chars | s + c) AS concat_val, name "
-            "ORDER BY name"
+            "ORDER BY name",
         )
         assert result["concat_val"].iloc[0] == "abc"
 
@@ -128,15 +129,13 @@ class TestEvalMapLiteral:
         result = star_with_people.execute_query(
             "MATCH (p:Person) "
             "RETURN {name: p.name, age: p.age} AS info "
-            "ORDER BY p.name"
+            "ORDER BY p.name",
         )
         assert result["info"].iloc[0] == {"name": "Alice", "age": 30}
 
     def test_empty_map_literal(self, star_with_people: Star) -> None:
         result = star_with_people.execute_query(
-            "MATCH (p:Person) "
-            "RETURN {} AS empty_map, p.name AS name "
-            "ORDER BY name"
+            "MATCH (p:Person) RETURN {} AS empty_map, p.name AS name ORDER BY name",
         )
         assert result["empty_map"].iloc[0] == {}
 
@@ -144,7 +143,7 @@ class TestEvalMapLiteral:
         result = star_with_people.execute_query(
             "MATCH (p:Person) "
             "RETURN {doubled_age: p.age * 2, upper_name: toUpper(p.name)} AS info "
-            "ORDER BY p.name"
+            "ORDER BY p.name",
         )
         info = result["info"].iloc[0]
         assert info["doubled_age"] == 60
@@ -161,9 +160,7 @@ class TestEvalMapProjection:
 
     def test_property_projection(self, star_with_people: Star) -> None:
         result = star_with_people.execute_query(
-            "MATCH (p:Person) "
-            "RETURN p{.name, .age} AS proj "
-            "ORDER BY p.name"
+            "MATCH (p:Person) RETURN p{.name, .age} AS proj ORDER BY p.name",
         )
         proj = result["proj"].iloc[0]
         assert proj["name"] == "Alice"
@@ -173,7 +170,7 @@ class TestEvalMapProjection:
         result = star_with_people.execute_query(
             "MATCH (p:Person) "
             "RETURN p{.name, double_age: p.age * 2} AS proj "
-            "ORDER BY p.name"
+            "ORDER BY p.name",
         )
         proj = result["proj"].iloc[0]
         assert proj["name"] == "Alice"
@@ -181,9 +178,7 @@ class TestEvalMapProjection:
 
     def test_all_properties_projection(self, star_with_people: Star) -> None:
         result = star_with_people.execute_query(
-            "MATCH (p:Person) "
-            "RETURN p{.*} AS proj "
-            "ORDER BY p.name"
+            "MATCH (p:Person) RETURN p{.*} AS proj ORDER BY p.name",
         )
         proj = result["proj"].iloc[0]
         # The all_properties projection returns a dict; properties depend on
@@ -205,7 +200,7 @@ class TestEvalListComprehension:
             "MATCH (p:Person) "
             "WITH [1, 2, 3, 4, 5] AS nums, p.name AS name "
             "RETURN [x IN nums WHERE x > 3] AS filtered, name "
-            "ORDER BY name"
+            "ORDER BY name",
         )
         assert result["filtered"].iloc[0] == [4, 5]
 
@@ -214,7 +209,7 @@ class TestEvalListComprehension:
             "MATCH (p:Person) "
             "WITH [1, 2, 3] AS nums, p.name AS name "
             "RETURN [x IN nums | x * 2] AS doubled, name "
-            "ORDER BY name"
+            "ORDER BY name",
         )
         assert result["doubled"].iloc[0] == [2, 4, 6]
 
@@ -223,7 +218,7 @@ class TestEvalListComprehension:
             "MATCH (p:Person) "
             "WITH [1, 2, 3, 4, 5] AS nums, p.name AS name "
             "RETURN [x IN nums WHERE x > 2 | x * 10] AS result, name "
-            "ORDER BY name"
+            "ORDER BY name",
         )
         assert result["result"].iloc[0] == [30, 40, 50]
 
@@ -232,7 +227,7 @@ class TestEvalListComprehension:
             "MATCH (p:Person) "
             "WITH [] AS nums, p.name AS name "
             "RETURN [x IN nums | x * 2] AS result, name "
-            "ORDER BY name"
+            "ORDER BY name",
         )
         assert result["result"].iloc[0] == []
 
@@ -241,7 +236,7 @@ class TestEvalListComprehension:
             "MATCH (p:Person) "
             "WITH null AS nums, p.name AS name "
             "RETURN [x IN nums | x * 2] AS result, name "
-            "ORDER BY name"
+            "ORDER BY name",
         )
         assert result["result"].iloc[0] == []
 
@@ -259,7 +254,7 @@ class TestEvalQuantifier:
             "MATCH (p:Person) "
             "WITH [1, 2, 3] AS nums, p.name AS name "
             "RETURN any(x IN nums WHERE x > 2) AS has_large, name "
-            "ORDER BY name"
+            "ORDER BY name",
         )
         assert bool(result["has_large"].iloc[0]) is True
 
@@ -268,7 +263,7 @@ class TestEvalQuantifier:
             "MATCH (p:Person) "
             "WITH [1, 2, 3] AS nums, p.name AS name "
             "RETURN any(x IN nums WHERE x > 10) AS has_large, name "
-            "ORDER BY name"
+            "ORDER BY name",
         )
         assert bool(result["has_large"].iloc[0]) is False
 
@@ -277,7 +272,7 @@ class TestEvalQuantifier:
             "MATCH (p:Person) "
             "WITH [2, 4, 6] AS nums, p.name AS name "
             "RETURN all(x IN nums WHERE x > 0) AS all_positive, name "
-            "ORDER BY name"
+            "ORDER BY name",
         )
         assert bool(result["all_positive"].iloc[0]) is True
 
@@ -286,7 +281,7 @@ class TestEvalQuantifier:
             "MATCH (p:Person) "
             "WITH [2, -1, 6] AS nums, p.name AS name "
             "RETURN all(x IN nums WHERE x > 0) AS all_positive, name "
-            "ORDER BY name"
+            "ORDER BY name",
         )
         assert bool(result["all_positive"].iloc[0]) is False
 
@@ -295,7 +290,7 @@ class TestEvalQuantifier:
             "MATCH (p:Person) "
             "WITH [1, 2, 3] AS nums, p.name AS name "
             "RETURN none(x IN nums WHERE x > 10) AS none_large, name "
-            "ORDER BY name"
+            "ORDER BY name",
         )
         assert bool(result["none_large"].iloc[0]) is True
 
@@ -304,7 +299,7 @@ class TestEvalQuantifier:
             "MATCH (p:Person) "
             "WITH [] AS nums, p.name AS name "
             "RETURN any(x IN nums WHERE x > 0) AS result, name "
-            "ORDER BY name"
+            "ORDER BY name",
         )
         assert bool(result["result"].iloc[0]) is False
 
@@ -313,7 +308,7 @@ class TestEvalQuantifier:
             "MATCH (p:Person) "
             "WITH [] AS nums, p.name AS name "
             "RETURN all(x IN nums WHERE x > 0) AS result, name "
-            "ORDER BY name"
+            "ORDER BY name",
         )
         # ALL of empty = true (vacuous truth)
         assert bool(result["result"].iloc[0]) is True
@@ -323,7 +318,7 @@ class TestEvalQuantifier:
             "MATCH (p:Person) "
             "WITH [] AS nums, p.name AS name "
             "RETURN none(x IN nums WHERE x > 0) AS result, name "
-            "ORDER BY name"
+            "ORDER BY name",
         )
         assert bool(result["result"].iloc[0]) is True
 
@@ -341,7 +336,7 @@ class TestEvalSlicing:
             "MATCH (p:Person) "
             "WITH [1, 2, 3, 4, 5] AS nums, p.name AS name "
             "RETURN nums[1..3] AS sliced, name "
-            "ORDER BY name"
+            "ORDER BY name",
         )
         assert result["sliced"].iloc[0] == [2, 3]
 
@@ -350,7 +345,7 @@ class TestEvalSlicing:
             "MATCH (p:Person) "
             "WITH [1, 2, 3, 4, 5] AS nums, p.name AS name "
             "RETURN nums[..2] AS sliced, name "
-            "ORDER BY name"
+            "ORDER BY name",
         )
         assert result["sliced"].iloc[0] == [1, 2]
 
@@ -359,7 +354,7 @@ class TestEvalSlicing:
             "MATCH (p:Person) "
             "WITH [1, 2, 3, 4, 5] AS nums, p.name AS name "
             "RETURN nums[3..] AS sliced, name "
-            "ORDER BY name"
+            "ORDER BY name",
         )
         assert result["sliced"].iloc[0] == [4, 5]
 
@@ -368,7 +363,7 @@ class TestEvalSlicing:
             "MATCH (p:Person) "
             "WITH null AS nums, p.name AS name "
             "RETURN nums[0..2] AS sliced, name "
-            "ORDER BY name"
+            "ORDER BY name",
         )
         assert result["sliced"].iloc[0] is None
 
@@ -385,7 +380,7 @@ class TestPropertyLookupOnMaps:
         result = star_with_people.execute_query(
             "UNWIND [{name: 'X', val: 1}, {name: 'Y', val: 2}] AS item "
             "RETURN item.name AS name, item.val AS val "
-            "ORDER BY name"
+            "ORDER BY name",
         )
         assert list(result["name"]) == ["X", "Y"]
         assert list(result["val"]) == [1, 2]
@@ -395,6 +390,6 @@ class TestPropertyLookupOnMaps:
             "MATCH (p:Person) "
             "WITH {n: p.name, a: p.age} AS info "
             "RETURN info.n AS name, info.a AS age "
-            "ORDER BY name"
+            "ORDER BY name",
         )
         assert list(result["name"]) == ["Alice", "Bob", "Carol"]

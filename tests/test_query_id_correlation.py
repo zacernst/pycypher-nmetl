@@ -27,7 +27,7 @@ from pycypher.star import Star
 _LOGGER_NAME = "shared.logger"
 
 
-@pytest.fixture()
+@pytest.fixture
 def simple_star() -> Star:
     """Three-person context: Alice (30), Bob (25), Carol (35)."""
     df = pd.DataFrame(
@@ -35,7 +35,7 @@ def simple_star() -> Star:
             ID_COLUMN: [1, 2, 3],
             "name": ["Alice", "Bob", "Carol"],
             "age": [30, 25, 35],
-        }
+        },
     )
     table = EntityTable(
         entity_type="Person",
@@ -49,7 +49,7 @@ def simple_star() -> Star:
         context=Context(
             entity_mapping=EntityMapping(mapping={"Person": table}),
             relationship_mapping=RelationshipMapping(mapping={}),
-        )
+        ),
     )
 
 
@@ -57,7 +57,9 @@ class TestQueryIdPresence:
     """Every log record from execute_query must carry a query_id extra."""
 
     def test_debug_records_have_query_id(
-        self, simple_star: Star, caplog: pytest.LogCaptureFixture
+        self,
+        simple_star: Star,
+        caplog: pytest.LogCaptureFixture,
     ) -> None:
         with caplog.at_level(logging.DEBUG, logger=_LOGGER_NAME):
             simple_star.execute_query("MATCH (p:Person) RETURN p.name AS name")
@@ -78,7 +80,9 @@ class TestQueryIdPresence:
             assert record.query_id is not None  # type: ignore[attr-defined]
 
     def test_info_records_have_query_id(
-        self, simple_star: Star, caplog: pytest.LogCaptureFixture
+        self,
+        simple_star: Star,
+        caplog: pytest.LogCaptureFixture,
     ) -> None:
         with caplog.at_level(logging.INFO, logger=_LOGGER_NAME):
             simple_star.execute_query("MATCH (p:Person) RETURN p.name AS name")
@@ -92,7 +96,9 @@ class TestQueryIdConsistency:
     """All records from one query share the same query_id."""
 
     def test_all_records_share_same_query_id(
-        self, simple_star: Star, caplog: pytest.LogCaptureFixture
+        self,
+        simple_star: Star,
+        caplog: pytest.LogCaptureFixture,
     ) -> None:
         with caplog.at_level(logging.DEBUG, logger=_LOGGER_NAME):
             simple_star.execute_query("MATCH (p:Person) RETURN p.name AS name")
@@ -107,7 +113,9 @@ class TestQueryIdConsistency:
         )
 
     def test_different_queries_get_different_ids(
-        self, simple_star: Star, caplog: pytest.LogCaptureFixture
+        self,
+        simple_star: Star,
+        caplog: pytest.LogCaptureFixture,
     ) -> None:
         with caplog.at_level(logging.DEBUG, logger=_LOGGER_NAME):
             simple_star.execute_query("MATCH (p:Person) RETURN p.name AS name")
@@ -116,70 +124,68 @@ class TestQueryIdConsistency:
         with caplog.at_level(logging.DEBUG, logger=_LOGGER_NAME):
             simple_star.execute_query("MATCH (p:Person) RETURN p.age AS age")
         qid_2 = caplog.records[0].query_id  # type: ignore[attr-defined]
-        assert qid_1 != qid_2, (
-            "Two separate queries must have distinct query_ids"
-        )
+        assert qid_1 != qid_2, "Two separate queries must have distinct query_ids"
 
 
 class TestErrorPathLogging:
     """Failed queries must emit an ERROR log with query_id."""
 
     def test_error_log_emitted_on_failure(
-        self, simple_star: Star, caplog: pytest.LogCaptureFixture
+        self,
+        simple_star: Star,
+        caplog: pytest.LogCaptureFixture,
     ) -> None:
         with caplog.at_level(logging.DEBUG, logger=_LOGGER_NAME):
             with pytest.raises(Exception):
                 simple_star.execute_query(
-                    "MATCH (x:NonExistentLabel) RETURN x.foo"
+                    "MATCH (x:NonExistentLabel) RETURN x.foo",
                 )
-        error_records = [
-            r for r in caplog.records if r.levelno == logging.ERROR
-        ]
+        error_records = [r for r in caplog.records if r.levelno == logging.ERROR]
         assert error_records, "Expected an ERROR record on query failure"
 
     def test_error_log_has_query_id(
-        self, simple_star: Star, caplog: pytest.LogCaptureFixture
+        self,
+        simple_star: Star,
+        caplog: pytest.LogCaptureFixture,
     ) -> None:
         with caplog.at_level(logging.DEBUG, logger=_LOGGER_NAME):
             with pytest.raises(Exception):
                 simple_star.execute_query(
-                    "MATCH (x:NonExistentLabel) RETURN x.foo"
+                    "MATCH (x:NonExistentLabel) RETURN x.foo",
                 )
-        error_records = [
-            r for r in caplog.records if r.levelno == logging.ERROR
-        ]
+        error_records = [r for r in caplog.records if r.levelno == logging.ERROR]
         assert error_records
         for record in error_records:
             assert hasattr(record, "query_id")
             assert record.query_id is not None  # type: ignore[attr-defined]
 
     def test_error_log_includes_exc_info(
-        self, simple_star: Star, caplog: pytest.LogCaptureFixture
+        self,
+        simple_star: Star,
+        caplog: pytest.LogCaptureFixture,
     ) -> None:
         with caplog.at_level(logging.DEBUG, logger=_LOGGER_NAME):
             with pytest.raises(Exception):
                 simple_star.execute_query(
-                    "MATCH (x:NonExistentLabel) RETURN x.foo"
+                    "MATCH (x:NonExistentLabel) RETURN x.foo",
                 )
-        error_records = [
-            r for r in caplog.records if r.levelno == logging.ERROR
-        ]
+        error_records = [r for r in caplog.records if r.levelno == logging.ERROR]
         assert error_records
         assert error_records[0].exc_info is not None, (
             "ERROR record should include exc_info for traceback"
         )
 
     def test_error_log_mentions_query_text(
-        self, simple_star: Star, caplog: pytest.LogCaptureFixture
+        self,
+        simple_star: Star,
+        caplog: pytest.LogCaptureFixture,
     ) -> None:
         with caplog.at_level(logging.DEBUG, logger=_LOGGER_NAME):
             with pytest.raises(Exception):
                 simple_star.execute_query(
-                    "MATCH (x:NonExistentLabel) RETURN x.foo"
+                    "MATCH (x:NonExistentLabel) RETURN x.foo",
                 )
-        error_records = [
-            r for r in caplog.records if r.levelno == logging.ERROR
-        ]
+        error_records = [r for r in caplog.records if r.levelno == logging.ERROR]
         assert error_records
         assert "NonExistentLabel" in error_records[0].message
 

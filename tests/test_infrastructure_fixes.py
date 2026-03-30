@@ -43,7 +43,7 @@ class TestDataFrameCopyMockingFixes:
                 ID_COLUMN: [1, 2, 3, 4],
                 "name": ["Alice", "Bob", "Carol", "Dave"],
                 "age": [30, 25, 35, 40],
-            }
+            },
         )
 
         # Create relationships (friendship network)
@@ -53,7 +53,7 @@ class TestDataFrameCopyMockingFixes:
                 "__SOURCE__": [1, 2, 1, 3, 4],
                 "__TARGET__": [2, 3, 3, 4, 1],
                 "strength": [0.8, 0.6, 0.9, 0.7, 0.5],
-            }
+            },
         )
 
         person_table = EntityTable.from_dataframe("Person", person_df)
@@ -62,16 +62,16 @@ class TestDataFrameCopyMockingFixes:
         context = Context(
             entity_mapping=EntityMapping(mapping={"Person": person_table}),
             relationship_mapping=RelationshipMapping(
-                mapping={"KNOWS": knows_table}
+                mapping={"KNOWS": knows_table},
             ),
         )
         return Star(context=context)
 
     def test_correct_wrapper_class_approach_with_proper_signature(
-        self, graph_star_with_relationships: Star
+        self,
+        graph_star_with_relationships: Star,
     ) -> None:
         """Test that demonstrates why wrapper class approaches fail and validates the simple approach."""
-
         # LESSON: Wrapper class approaches fail because they interfere with pandas internals
         # This test demonstrates the correct simple approach that actually works
 
@@ -87,24 +87,24 @@ class TestDataFrameCopyMockingFixes:
         # Use simple direct patching instead of complex wrapper
         with patch.object(pd.DataFrame, "copy", track_copy_calls):
             result = graph_star_with_relationships.execute_query(
-                "MATCH (a:Person)-[*1..2]->(b:Person) RETURN count(b) AS count"
+                "MATCH (a:Person)-[*1..2]->(b:Person) RETURN count(b) AS count",
             )
 
         # Verify execution and tracking
         assert result.iloc[0]["count"] > 0
         assert copy_count > 0
         print(
-            f"✓ Simple direct patching works: {copy_count} copy calls tracked"
+            f"✓ Simple direct patching works: {copy_count} copy calls tracked",
         )
         print(
-            "✓ Lesson: wrapper classes are unnecessary complexity for DataFrame copy tracking"
+            "✓ Lesson: wrapper classes are unnecessary complexity for DataFrame copy tracking",
         )
 
     def test_correct_magicmock_approach_with_proper_side_effect(
-        self, graph_star_with_relationships: Star
+        self,
+        graph_star_with_relationships: Star,
     ) -> None:
         """Test that demonstrates why MagicMock approaches fail and validates the simple approach."""
-
         # LESSON: MagicMock approaches fail because they interfere with pandas internals
         # This test demonstrates the correct simple approach that actually works
 
@@ -112,7 +112,8 @@ class TestDataFrameCopyMockingFixes:
         copy_calls = []
 
         def track_and_delegate(
-            self, deep=True
+            self,
+            deep=True,
         ):  # Simple direct patching signature
             copy_calls.append({"deep": deep, "shape": self.shape})
             return original_copy(self, deep=deep)
@@ -120,7 +121,7 @@ class TestDataFrameCopyMockingFixes:
         # Use simple direct patching instead of MagicMock
         with patch.object(pd.DataFrame, "copy", track_and_delegate):
             result = graph_star_with_relationships.execute_query(
-                "MATCH (a:Person)-[*1..2]->(b:Person) RETURN count(b) AS count"
+                "MATCH (a:Person)-[*1..2]->(b:Person) RETURN count(b) AS count",
             )
 
         # Verify execution and detailed tracking
@@ -128,21 +129,21 @@ class TestDataFrameCopyMockingFixes:
         assert len(copy_calls) > 0
 
         print(
-            f"✓ Simple direct patching works: {len(copy_calls)} copy calls with detailed tracking"
+            f"✓ Simple direct patching works: {len(copy_calls)} copy calls with detailed tracking",
         )
         for i, call in enumerate(copy_calls[:3]):  # Show first 3
             print(
-                f"  Call {i + 1}: shape={call['shape']}, deep={call['deep']}"
+                f"  Call {i + 1}: shape={call['shape']}, deep={call['deep']}",
             )
         print(
-            "✓ Lesson: MagicMock is unnecessary complexity for DataFrame copy tracking"
+            "✓ Lesson: MagicMock is unnecessary complexity for DataFrame copy tracking",
         )
 
     def test_simple_copy_counting_without_complex_mocking(
-        self, graph_star_with_relationships: Star
+        self,
+        graph_star_with_relationships: Star,
     ) -> None:
         """Test simple copy counting approach that avoids signature complexity."""
-
         # Store reference to original method BEFORE patching
         original_copy = pd.DataFrame.copy
         copy_count = 0
@@ -156,25 +157,24 @@ class TestDataFrameCopyMockingFixes:
         # Use direct patching with proper signature
         with patch.object(pd.DataFrame, "copy", count_copy_calls):
             result = graph_star_with_relationships.execute_query(
-                "MATCH (a:Person)-[*1..2]->(b:Person) RETURN count(b) AS count"
+                "MATCH (a:Person)-[*1..2]->(b:Person) RETURN count(b) AS count",
             )
 
         # Verify execution and tracking
         assert result.iloc[0]["count"] > 0
         assert copy_count > 0
         print(
-            f"✓ Simple approach: {copy_count} copy calls tracked without complex mocking"
+            f"✓ Simple approach: {copy_count} copy calls tracked without complex mocking",
         )
 
     def test_performance_measurement_methodology_fix(self) -> None:
         """Test corrected performance measurement that shows views are faster than copies."""
-
         # Create test data with sufficient size for meaningful timing differences
         large_df = pd.DataFrame(
             {
                 f"col_{i}": list(range(1000))
                 for i in range(50)  # 50k elements total
-            }
+            },
         )
 
         # Measure copy operations with proper warm-up and multiple iterations
@@ -195,9 +195,7 @@ class TestDataFrameCopyMockingFixes:
         for trial in range(5):
             start_time = time.perf_counter()
             for i in range(20):
-                view = large_df[
-                    list(large_df.columns[:10])
-                ]  # View operation (no copy)
+                view = large_df[list(large_df.columns[:10])]  # View operation (no copy)
                 # Do same read work with the view
                 len(view)
             end_time = time.perf_counter()
@@ -213,7 +211,7 @@ class TestDataFrameCopyMockingFixes:
             else float("inf")
         )
 
-        print(f"Fixed performance measurement:")
+        print("Fixed performance measurement:")
         print(f"Copy operations (median): {median_copy_time:.4f}s")
         print(f"View operations (median): {median_view_time:.4f}s")
         print(f"Speedup: {speedup:.1f}x faster for views")
@@ -225,7 +223,7 @@ class TestDataFrameCopyMockingFixes:
         assert median_view_time > 0, "View measurement must be positive"
         if speedup > 1.1:
             print(
-                f"✓ Measurable performance improvement: {speedup:.1f}x speedup"
+                f"✓ Measurable performance improvement: {speedup:.1f}x speedup",
             )
         else:
             print(f"✓ Measurement valid, speedup within noise: {speedup:.2f}x")
@@ -236,14 +234,13 @@ class TestDataFrameCopyMockingFixes:
 
     def test_memory_measurement_alternative_using_object_size(self) -> None:
         """Test alternative memory measurement using sys.getsizeof for reliability."""
-
         # Create test DataFrame for measurement
         test_df = pd.DataFrame(
             {
                 "A": list(range(2000)),
                 "B": list(range(2000)),
                 "C": list(range(2000)),
-            }
+            },
         )
 
         # Measure object sizes directly
@@ -257,24 +254,18 @@ class TestDataFrameCopyMockingFixes:
         view_df = test_df[["A", "B"]]
         view_size = sys.getsizeof(view_df)
 
-        print(f"Reliable object-level memory measurement:")
+        print("Reliable object-level memory measurement:")
         print(f"Original DataFrame: {original_size / 1024:.1f} KB")
         print(f"Copied DataFrame: {copy_size / 1024:.1f} KB")
         print(f"View DataFrame: {view_size / 1024:.1f} KB")
 
         # Copy should be substantial size (contains data)
-        assert (
-            copy_size >= original_size * 0.5
-        )  # Copy should be meaningful size
+        assert copy_size >= original_size * 0.5  # Copy should be meaningful size
         # View should not be larger than original (shares data)
         assert view_size <= original_size
 
-        copy_overhead_ratio = (
-            copy_size / original_size if original_size > 0 else 1.0
-        )
-        view_overhead_ratio = (
-            view_size / original_size if original_size > 0 else 1.0
-        )
+        copy_overhead_ratio = copy_size / original_size if original_size > 0 else 1.0
+        view_overhead_ratio = view_size / original_size if original_size > 0 else 1.0
 
         print(f"✓ Copy overhead ratio: {copy_overhead_ratio:.2f}x")
         print(f"✓ View overhead ratio: {view_overhead_ratio:.2f}x")
@@ -298,15 +289,15 @@ class TestTDDInfrastructureValidation:
         person_df = pd.DataFrame({ID_COLUMN: [1, 2], "name": ["Alice", "Bob"]})
         person_table = EntityTable.from_dataframe("Person", person_df)
         context = Context(
-            entity_mapping=EntityMapping(mapping={"Person": person_table})
+            entity_mapping=EntityMapping(mapping={"Person": person_table}),
         )
         return Star(context=context)
 
     def test_fixed_infrastructure_can_track_operations_reliably(
-        self, test_star: Star
+        self,
+        test_star: Star,
     ) -> None:
         """Test that fixed mocking infrastructure tracks DataFrame operations without breaking."""
-
         # Use the fixed non-recursive approach with correct signature
         original_copy = pd.DataFrame.copy
         operations_tracked = []
@@ -318,14 +309,14 @@ class TestTDDInfrastructureValidation:
                     "shape": self.shape,
                     "deep": deep,
                     "columns": list(self.columns),
-                }
+                },
             )
             return original_copy(self, deep=deep)
 
         with patch.object(pd.DataFrame, "copy", track_copy_operations):
             # Execute a query that should trigger DataFrame operations
             result = test_star.execute_query(
-                "MATCH (p:Person) RETURN p.name AS name"
+                "MATCH (p:Person) RETURN p.name AS name",
             )
 
         # Verify query worked
@@ -335,7 +326,7 @@ class TestTDDInfrastructureValidation:
         # Verify tracking worked
         assert len(operations_tracked) > 0
         print(
-            f"✓ Successfully tracked {len(operations_tracked)} DataFrame operations:"
+            f"✓ Successfully tracked {len(operations_tracked)} DataFrame operations:",
         )
 
         for i, op in enumerate(operations_tracked[:5]):  # Show first 5
@@ -344,7 +335,8 @@ class TestTDDInfrastructureValidation:
         print("✓ Fixed TDD infrastructure successfully validated")
 
     def test_performance_optimization_validation_with_fixed_methodology(
-        self, test_star: Star
+        self,
+        test_star: Star,
     ) -> None:
         """Test performance optimization validation using the fixed measurement approach."""
 
@@ -366,7 +358,7 @@ class TestTDDInfrastructureValidation:
         query = "MATCH (p:Person) RETURN p.name AS name"
         execution_time = measure_query_performance(query)
 
-        print(f"Query performance measurement:")
+        print("Query performance measurement:")
         print(f"Query: {query}")
         print(f"Execution time (median): {execution_time:.4f}s")
 

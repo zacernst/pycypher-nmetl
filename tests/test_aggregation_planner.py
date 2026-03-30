@@ -12,11 +12,8 @@ from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pandas as pd
-import pytest
-
 from pycypher.aggregation_planner import AggregationPlanner
 from pycypher.ast_models import (
-    BinaryExpression,
     Comparison,
     CountStar,
     FunctionInvocation,
@@ -29,7 +26,6 @@ from pycypher.ast_models import (
     Unary,
     Variable,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -91,35 +87,66 @@ class TestContainsAggregationFunctions:
         self.planner = AggregationPlanner()
 
     def test_known_aggregation_count(self) -> None:
-        assert self.planner.contains_aggregation(_func("count", [Variable(name="n")])) is True
+        assert (
+            self.planner.contains_aggregation(_func("count", [Variable(name="n")]))
+            is True
+        )
 
     def test_known_aggregation_sum(self) -> None:
-        assert self.planner.contains_aggregation(_func("sum", [_prop("p", "salary")])) is True
+        assert (
+            self.planner.contains_aggregation(_func("sum", [_prop("p", "salary")]))
+            is True
+        )
 
     def test_known_aggregation_avg(self) -> None:
-        assert self.planner.contains_aggregation(_func("avg", [_prop("p", "age")])) is True
+        assert (
+            self.planner.contains_aggregation(_func("avg", [_prop("p", "age")])) is True
+        )
 
     def test_known_aggregation_collect(self) -> None:
-        assert self.planner.contains_aggregation(_func("collect", [Variable(name="n")])) is True
+        assert (
+            self.planner.contains_aggregation(_func("collect", [Variable(name="n")]))
+            is True
+        )
 
     def test_scalar_function_toupper(self) -> None:
-        assert self.planner.contains_aggregation(_func("toUpper", [_prop("p", "name")])) is False
+        assert (
+            self.planner.contains_aggregation(_func("toUpper", [_prop("p", "name")]))
+            is False
+        )
 
     def test_scalar_function_tolower(self) -> None:
-        assert self.planner.contains_aggregation(_func("toLower", [_prop("p", "name")])) is False
+        assert (
+            self.planner.contains_aggregation(_func("toLower", [_prop("p", "name")]))
+            is False
+        )
 
     def test_unknown_function_treated_as_scalar(self) -> None:
         """Unknown functions are treated as scalar — contains_aggregation is False."""
-        assert self.planner.contains_aggregation(_func("myCustomFunc", [Variable(name="x")])) is False
+        assert (
+            self.planner.contains_aggregation(
+                _func("myCustomFunc", [Variable(name="x")]),
+            )
+            is False
+        )
 
     def test_graph_function_labels(self) -> None:
-        assert self.planner.contains_aggregation(_func("labels", [Variable(name="n")])) is False
+        assert (
+            self.planner.contains_aggregation(_func("labels", [Variable(name="n")]))
+            is False
+        )
 
     def test_graph_function_type(self) -> None:
-        assert self.planner.contains_aggregation(_func("type", [Variable(name="r")])) is False
+        assert (
+            self.planner.contains_aggregation(_func("type", [Variable(name="r")]))
+            is False
+        )
 
     def test_graph_function_elementid(self) -> None:
-        assert self.planner.contains_aggregation(_func("elementid", [Variable(name="n")])) is False
+        assert (
+            self.planner.contains_aggregation(_func("elementid", [Variable(name="n")]))
+            is False
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -142,12 +169,16 @@ class TestContainsAggregationDualPurpose:
         assert self.planner.contains_aggregation(expr) is True
 
     def test_min_with_list_literal_is_scalar(self) -> None:
-        list_lit = ListLiteral(value=[1, 2, 3], elements=[IntegerLiteral(value=i) for i in (1, 2, 3)])
+        list_lit = ListLiteral(
+            value=[1, 2, 3], elements=[IntegerLiteral(value=i) for i in (1, 2, 3)],
+        )
         expr = _func("min", [list_lit])
         assert self.planner.contains_aggregation(expr) is False
 
     def test_max_with_list_literal_is_scalar(self) -> None:
-        list_lit = ListLiteral(value=[5, 10], elements=[IntegerLiteral(value=i) for i in (5, 10)])
+        list_lit = ListLiteral(
+            value=[5, 10], elements=[IntegerLiteral(value=i) for i in (5, 10)],
+        )
         expr = _func("max", [list_lit])
         assert self.planner.contains_aggregation(expr) is False
 
@@ -358,7 +389,9 @@ class TestAggregateItemsGrouped:
 
         evaluator_instance = MagicMock()
         evaluator_instance.evaluate = MagicMock(return_value=dept_series)
-        evaluator_instance.evaluate_aggregation_grouped = MagicMock(return_value=count_grouped_series)
+        evaluator_instance.evaluate_aggregation_grouped = MagicMock(
+            return_value=count_grouped_series,
+        )
 
         items = [
             _return_item(Variable(name="dept"), "dept"),

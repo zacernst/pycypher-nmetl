@@ -16,7 +16,6 @@ Or via pytest::
 from __future__ import annotations
 
 import time
-from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
@@ -32,9 +31,6 @@ from pycypher.relational_models import (
 )
 from pycypher.star import Star
 
-if TYPE_CHECKING:
-    pass
-
 # ---------------------------------------------------------------------------
 # Graph builders
 # ---------------------------------------------------------------------------
@@ -49,7 +45,7 @@ def _build_dense_graph(n_persons: int, edges_per_node: int = 5) -> Context:
         {
             _ID: list(range(1, n_persons + 1)),
             "name": [f"P{i}" for i in range(1, n_persons + 1)],
-        }
+        },
     )
     n_edges = n_persons * edges_per_node
     sources = rng.integers(1, n_persons + 1, size=n_edges)
@@ -63,7 +59,7 @@ def _build_dense_graph(n_persons: int, edges_per_node: int = 5) -> Context:
             "__SOURCE__": sources,
             "__TARGET__": targets,
             "since": [2020] * n_actual,
-        }
+        },
     )
     person_table = EntityTable(
         entity_type="Person",
@@ -86,7 +82,7 @@ def _build_dense_graph(n_persons: int, edges_per_node: int = 5) -> Context:
     return Context(
         entity_mapping=EntityMapping(mapping={"Person": person_table}),
         relationship_mapping=RelationshipMapping(
-            mapping={"KNOWS": knows_table}
+            mapping={"KNOWS": knows_table},
         ),
     )
 
@@ -167,7 +163,7 @@ class TestBFSDedupOptimization:
 
         # Run the query and verify it returns non-empty results
         result = star.execute_query(
-            "MATCH (a:Person)-[:KNOWS*1..3]->(b:Person) RETURN a.name, b.name"
+            "MATCH (a:Person)-[:KNOWS*1..3]->(b:Person) RETURN a.name, b.name",
         )
         assert len(result) > 0
         assert "a.name" in result.columns
@@ -180,7 +176,7 @@ class TestBFSDedupOptimization:
             {
                 _ID: list(range(1, 6)),
                 "name": [f"P{i}" for i in range(1, 6)],
-            }
+            },
         )
         knows_df = pd.DataFrame(
             {
@@ -188,7 +184,7 @@ class TestBFSDedupOptimization:
                 "__SOURCE__": [1, 2, 3, 4],
                 "__TARGET__": [2, 3, 4, 5],
                 "since": [2020] * 4,
-            }
+            },
         )
         person_table = EntityTable(
             entity_type="Person",
@@ -211,13 +207,13 @@ class TestBFSDedupOptimization:
         ctx = Context(
             entity_mapping=EntityMapping(mapping={"Person": person_table}),
             relationship_mapping=RelationshipMapping(
-                mapping={"KNOWS": knows_table}
+                mapping={"KNOWS": knows_table},
             ),
         )
         star = Star(context=ctx)
 
         result = star.execute_query(
-            "MATCH (a:Person)-[:KNOWS*1..3]->(b:Person) RETURN a.name, b.name"
+            "MATCH (a:Person)-[:KNOWS*1..3]->(b:Person) RETURN a.name, b.name",
         )
         # 1→{2,3,4}, 2→{3,4,5}, 3→{4,5}, 4→{5} = 3+3+2+1 = 9
         assert len(result) == 9
@@ -225,7 +221,7 @@ class TestBFSDedupOptimization:
     def test_dedup_eliminates_duplicates(self) -> None:
         """Diamond graph: A→B, A→C, B→D, C→D — dedup on (start, tip)."""
         persons_df = pd.DataFrame(
-            {_ID: [1, 2, 3, 4], "name": ["A", "B", "C", "D"]}
+            {_ID: [1, 2, 3, 4], "name": ["A", "B", "C", "D"]},
         )
         knows_df = pd.DataFrame(
             {
@@ -233,7 +229,7 @@ class TestBFSDedupOptimization:
                 "__SOURCE__": [1, 1, 2, 3],
                 "__TARGET__": [2, 3, 3, 4],
                 "since": [2020] * 4,
-            }
+            },
         )
         person_table = EntityTable(
             entity_type="Person",
@@ -256,13 +252,13 @@ class TestBFSDedupOptimization:
         ctx = Context(
             entity_mapping=EntityMapping(mapping={"Person": person_table}),
             relationship_mapping=RelationshipMapping(
-                mapping={"KNOWS": knows_table}
+                mapping={"KNOWS": knows_table},
             ),
         )
         star = Star(context=ctx)
         result = star.execute_query(
             "MATCH (a:Person)-[:KNOWS*1..2]->(b:Person) "
-            "WHERE a.name = 'A' RETURN b.name AS bname"
+            "WHERE a.name = 'A' RETURN b.name AS bname",
         )
         names = sorted(result["bname"].tolist())
         # 1-hop: B, C; 2-hop: C (via B), D (via C) — dedup means C appears once
@@ -273,10 +269,13 @@ class TestBFSDedupOptimization:
         """Benchmark BFS expansion on a 500-node dense graph."""
         ctx = _build_dense_graph(500, edges_per_node=5)
         stats = _time_bfs_expansion(
-            ctx, max_hops=3, n_warmup=1, n_iterations=3
+            ctx,
+            max_hops=3,
+            n_warmup=1,
+            n_iterations=3,
         )
 
-        print(f"\n  BFS 500-node dense graph, 3 hops:")
+        print("\n  BFS 500-node dense graph, 3 hops:")
         print(f"    Median: {stats['median_seconds']:.4f}s")
         print(f"    Min:    {stats['min_seconds']:.4f}s")
         print(f"    Max:    {stats['max_seconds']:.4f}s")
@@ -301,7 +300,10 @@ def main() -> None:
         print(f"\n--- {n_persons} nodes, 5 edges/node, 3 hops ---")
         ctx = _build_dense_graph(n_persons, edges_per_node=5)
         stats = _time_bfs_expansion(
-            ctx, max_hops=3, n_warmup=2, n_iterations=5
+            ctx,
+            max_hops=3,
+            n_warmup=2,
+            n_iterations=5,
         )
         print(f"  Median: {stats['median_seconds']:.4f}s")
         print(f"  Min:    {stats['min_seconds']:.4f}s")

@@ -415,7 +415,12 @@ class ValidateStage(Stage):
     """Run semantic validation and complexity scoring.
 
     Checks query complexity against ``ctx.max_complexity_score`` if set.
-    Populates ``ctx.metadata["complexity_score"]`` when scoring runs.
+    Populates ``ctx.metadata["complexity_score"]``,
+    ``ctx.metadata["complexity_details"]``, and
+    ``ctx.metadata["complexity_warnings"]`` when scoring runs.
+
+    When ``max_complexity_score`` is provided, :func:`score_query` will
+    raise :class:`QueryComplexityError` if the score exceeds the limit.
     """
 
     name: str = "validate"
@@ -428,10 +433,13 @@ class ValidateStage(Stage):
         if ctx.max_complexity_score is not None:
             from pycypher.query_complexity import score_query
 
-            score_result = score_query(ctx.ast)
+            score_result = score_query(
+                ctx.ast,
+                max_score=ctx.max_complexity_score,
+            )
             ctx.metadata["complexity_score"] = score_result.total
             ctx.metadata["complexity_details"] = score_result.breakdown
-            # score_query raises QueryComplexityError internally if exceeded
+            ctx.metadata["complexity_warnings"] = score_result.warnings
 
         return ctx
 
@@ -472,7 +480,7 @@ class PlanStage(Stage):
             # Memory budget check
             budget = ctx.memory_budget_bytes
             if budget is not None and analysis.exceeds_budget(
-                budget_bytes=budget
+                budget_bytes=budget,
             ):
                 from pycypher.exceptions import QueryMemoryBudgetError
 
@@ -482,7 +490,7 @@ class PlanStage(Stage):
                 )
         except ImportError:
             LOGGER.debug(
-                "QueryPlanAnalyzer not available, skipping plan stage"
+                "QueryPlanAnalyzer not available, skipping plan stage",
             )
 
         return ctx
@@ -491,8 +499,14 @@ class PlanStage(Stage):
 class ExecuteStage(Stage):
     """Execute the parsed query against the Star engine.
 
-    Delegates to :meth:`Star.execute_query` with the parsed AST.
-    Populates ``ctx.result`` with the output DataFrame.
+    Dispatches to the appropriate Star internal execution method based
+    on the AST type (``Query`` vs ``UnionQuery``).  This stage calls
+    the inner execution methods directly rather than delegating back to
+    :meth:`Star.execute_query`, which allows the pipeline to be used
+    *from within* ``execute_query()`` without circular delegation.
+
+    Populates ``ctx.result`` with the output DataFrame and stores the
+    parsed AST and mutation flag in ``ctx.metadata`` for downstream use.
     """
 
     name: str = "execute"
@@ -507,13 +521,34 @@ class ExecuteStage(Stage):
             )
             raise ValueError(msg)
 
-        # Delegate to Star.execute_query with the original input
-        # This preserves all existing behavior (caching, timeout, metrics)
-        ctx.result = ctx.star.execute_query(
-            ctx.query_input,
-            parameters=ctx.parameters or None,
-            timeout_seconds=ctx.timeout_seconds,
-            memory_budget_bytes=ctx.memory_budget_bytes,
-            max_complexity_score=ctx.max_complexity_score,
-        )
+        if ctx.ast is None:
+            msg = (
+                "Parsed AST required for execution. "
+                "Ensure ParseStage runs before ExecuteStage, or set "
+                "ctx.ast before running the ExecuteStage."
+            )
+            raise ValueError(msg)
+
+        from pycypher.ast_models import Query, UnionQuery
+
+        parsed = ctx.ast
+        is_mutation = ctx.star._query_has_mutations(parsed)
+        ctx.metadata["is_mutation"] = is_mutation
+        ctx.metadata["parsed_ast"] = parsed
+
+        if isinstance(parsed, UnionQuery):
+            ctx.result = ctx.star._execute_union_query(parsed)
+        elif isinstance(parsed, Query):
+            ctx.result = ctx.star._execute_query_binding_frame(parsed)
+        else:
+            from pycypher.exceptions import GrammarTransformerSyncError
+
+            raise GrammarTransformerSyncError(
+                f"Internal error: parser returned "
+                f"{type(parsed).__name__} instead of Query. "
+                f"Please report this as a bug with your query.",
+                missing_node_type=type(parsed).__name__,
+                query_fragment=ctx.query_string or "",
+            )
+
         return ctx

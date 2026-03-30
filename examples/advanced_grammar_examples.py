@@ -1,10 +1,7 @@
-"""
-Extended openCypher Grammar Parser - Advanced Examples
+"""Extended openCypher Grammar Parser - Advanced Examples
 
 This file demonstrates the comprehensive openCypher support in the extended grammar parser.
 """
-
-import json
 
 from pycypher.grammar_parser import GrammarParser
 
@@ -87,7 +84,9 @@ def main():
         "MATCH (p:Person) RETURN p{.name, age: 2024 - p.birthYear}",
     )
     test_query(
-        parser, "Map projection - all properties", "MATCH (n) RETURN n{.*}"
+        parser,
+        "Map projection - all properties",
+        "MATCH (n) RETURN n{.*}",
     )
 
     # Subqueries and EXISTS
@@ -111,13 +110,19 @@ def main():
         "MATCH (team) WHERE ALL(m IN team.members WHERE m.certified) RETURN team",
     )
     test_query(
-        parser, "ANY quantifier", "RETURN ANY(x IN [1,2,3] WHERE x > 5)"
+        parser,
+        "ANY quantifier",
+        "RETURN ANY(x IN [1,2,3] WHERE x > 5)",
     )
     test_query(
-        parser, "SINGLE quantifier", "RETURN SINGLE(x IN [1,2,3] WHERE x = 2)"
+        parser,
+        "SINGLE quantifier",
+        "RETURN SINGLE(x IN [1,2,3] WHERE x = 2)",
     )
     test_query(
-        parser, "NONE quantifier", "RETURN NONE(x IN [1,2,3] WHERE x < 0)"
+        parser,
+        "NONE quantifier",
+        "RETURN NONE(x IN [1,2,3] WHERE x < 0)",
     )
     test_query(
         parser,
@@ -151,7 +156,9 @@ def main():
         "MATCH (d:Document) WHERE d.text CONTAINS 'keyword' RETURN d",
     )
     test_query(
-        parser, "Regex match", "MATCH (p) WHERE p.name =~ '.*Smith.*' RETURN p"
+        parser,
+        "Regex match",
+        "MATCH (p) WHERE p.name =~ '.*Smith.*' RETURN p",
     )
     test_query(
         parser,
@@ -272,11 +279,13 @@ def main():
         parser,
         "MERGE with actions",
         "MERGE (p:Person {email: 'alice@example.com'}) "
-        + "ON CREATE SET p.created = timestamp() "
-        + "ON MATCH SET p.accessed = timestamp()",
+        "ON CREATE SET p.created = timestamp() "
+        "ON MATCH SET p.accessed = timestamp()",
     )
     test_query(
-        parser, "SET property", "MATCH (p:Person) SET p.verified = true"
+        parser,
+        "SET property",
+        "MATCH (p:Person) SET p.verified = true",
     )
     test_query(parser, "SET labels", "MATCH (p:Person) SET p:Verified:Active")
     test_query(
@@ -285,18 +294,22 @@ def main():
         "MATCH (p:Person) SET p += {verified: true, updated: timestamp()}",
     )
     test_query(
-        parser, "REMOVE property", "MATCH (p:Person) REMOVE p.tempField"
+        parser,
+        "REMOVE property",
+        "MATCH (p:Person) REMOVE p.tempField",
     )
     test_query(parser, "REMOVE labels", "MATCH (p:Person) REMOVE p:Inactive")
     test_query(
-        parser, "DELETE with DETACH", "MATCH (p:Person) DETACH DELETE p"
+        parser,
+        "DELETE with DETACH",
+        "MATCH (p:Person) DETACH DELETE p",
     )
 
     print_section("Summary")
     print("✅ All advanced openCypher features are supported!")
     print("✅ Parser handles the complete openCypher specification")
     print(
-        "✅ Ready for production use in query validation, transformation, and analysis"
+        "✅ Ready for production use in query validation, transformation, and analysis",
     )
 
 

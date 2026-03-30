@@ -38,9 +38,9 @@ def ctx() -> ContextBuilder:
                     "age": [30, 25, 40],
                     "score": [1.5, 2.0, 3.5],
                     "active": [True, False, True],
-                }
-            )
-        }
+                },
+            ),
+        },
     )
 
 
@@ -59,28 +59,28 @@ class TestStartsWithTypeError:
         """STARTS WITH on integer column raises TypeError, not AttributeError."""
         with pytest.raises(TypeError, match="STARTS WITH"):
             star.execute_query(
-                "MATCH (p:Person) WHERE p.age STARTS WITH '3' RETURN p.name"
+                "MATCH (p:Person) WHERE p.age STARTS WITH '3' RETURN p.name",
             )
 
     def test_float_operand(self, star: Star) -> None:
         """STARTS WITH on float column raises TypeError."""
         with pytest.raises(TypeError, match="STARTS WITH"):
             star.execute_query(
-                "MATCH (p:Person) WHERE p.score STARTS WITH '1' RETURN p.name"
+                "MATCH (p:Person) WHERE p.score STARTS WITH '1' RETURN p.name",
             )
 
     def test_boolean_operand(self, star: Star) -> None:
         """STARTS WITH on boolean column raises TypeError."""
         with pytest.raises(TypeError, match="STARTS WITH"):
             star.execute_query(
-                "MATCH (p:Person) WHERE p.active STARTS WITH 'T' RETURN p.name"
+                "MATCH (p:Person) WHERE p.active STARTS WITH 'T' RETURN p.name",
             )
 
     def test_error_message_mentions_operator(self, star: Star) -> None:
         """TypeError message must name the operator."""
         with pytest.raises(TypeError) as exc_info:
             star.execute_query(
-                "MATCH (p:Person) WHERE p.age STARTS WITH '3' RETURN p.name"
+                "MATCH (p:Person) WHERE p.age STARTS WITH '3' RETURN p.name",
             )
         assert "STARTS WITH" in str(exc_info.value)
 
@@ -88,14 +88,14 @@ class TestStartsWithTypeError:
         """TypeError message should hint at toString() as a fix."""
         with pytest.raises(TypeError) as exc_info:
             star.execute_query(
-                "MATCH (p:Person) WHERE p.age STARTS WITH '3' RETURN p.name"
+                "MATCH (p:Person) WHERE p.age STARTS WITH '3' RETURN p.name",
             )
         assert "toString" in str(exc_info.value)
 
     def test_string_operand_still_works(self, star: Star) -> None:
         """STARTS WITH on a real string column must NOT raise."""
         r = star.execute_query(
-            "MATCH (p:Person) WHERE p.name STARTS WITH 'A' RETURN p.name"
+            "MATCH (p:Person) WHERE p.name STARTS WITH 'A' RETURN p.name",
         )
         assert len(r) == 1
         assert r["name"].iloc[0] == "Alice"
@@ -111,13 +111,13 @@ class TestEndsWithTypeError:
         """ENDS WITH on integer column raises TypeError."""
         with pytest.raises(TypeError, match="ENDS WITH"):
             star.execute_query(
-                "MATCH (p:Person) WHERE p.age ENDS WITH '5' RETURN p.name"
+                "MATCH (p:Person) WHERE p.age ENDS WITH '5' RETURN p.name",
             )
 
     def test_string_operand_still_works(self, star: Star) -> None:
         """ENDS WITH on string column must NOT raise."""
         r = star.execute_query(
-            "MATCH (p:Person) WHERE p.name ENDS WITH 'e' RETURN p.name"
+            "MATCH (p:Person) WHERE p.name ENDS WITH 'e' RETURN p.name",
         )
         assert len(r) == 2  # Alice, Charlie
 
@@ -132,13 +132,13 @@ class TestContainsTypeError:
         """CONTAINS on integer column raises TypeError."""
         with pytest.raises(TypeError, match="CONTAINS"):
             star.execute_query(
-                "MATCH (p:Person) WHERE p.age CONTAINS '2' RETURN p.name"
+                "MATCH (p:Person) WHERE p.age CONTAINS '2' RETURN p.name",
             )
 
     def test_string_operand_still_works(self, star: Star) -> None:
         """CONTAINS on string column must NOT raise."""
         r = star.execute_query(
-            "MATCH (p:Person) WHERE p.name CONTAINS 'ob' RETURN p.name"
+            "MATCH (p:Person) WHERE p.name CONTAINS 'ob' RETURN p.name",
         )
         assert len(r) == 1
         assert r["name"].iloc[0] == "Bob"
@@ -154,13 +154,13 @@ class TestRegexTypeError:
         """=~ on integer column raises TypeError."""
         with pytest.raises(TypeError, match="=~"):
             star.execute_query(
-                "MATCH (p:Person) WHERE p.age =~ '\\\\d+' RETURN p.name"
+                "MATCH (p:Person) WHERE p.age =~ '\\\\d+' RETURN p.name",
             )
 
     def test_string_operand_still_works(self, star: Star) -> None:
         """=~ on string column must NOT raise."""
         r = star.execute_query(
-            "MATCH (p:Person) WHERE p.name =~ 'A.*' RETURN p.name"
+            "MATCH (p:Person) WHERE p.name =~ 'A.*' RETURN p.name",
         )
         assert len(r) == 1
         assert r["name"].iloc[0] == "Alice"
@@ -180,14 +180,14 @@ class TestNullColumnNotRejected:
                     {
                         "__ID__": ["t1", "t2"],
                         "label": [None, None],
-                    }
-                )
-            }
+                    },
+                ),
+            },
         )
         s = Star(context=ctx)
         # All-null column: STARTS WITH should return null (not raise)
         r = s.execute_query(
-            "MATCH (t:Thing) WHERE t.label STARTS WITH 'A' RETURN t.label"
+            "MATCH (t:Thing) WHERE t.label STARTS WITH 'A' RETURN t.label",
         )
         # No rows match (null IS NOT 'A...'), result is empty or all-false
         assert len(r) == 0 or r["label"].isna().all()

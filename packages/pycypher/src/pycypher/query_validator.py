@@ -104,7 +104,7 @@ class CombinedQueryValidator:
         if return_count > 1:
             errors.append(
                 f"Multiple RETURN clauses found ({return_count}). "
-                f"A combined query must have at most one RETURN clause."
+                f"A combined query must have at most one RETURN clause.",
             )
 
     def _check_return_position(
@@ -118,7 +118,7 @@ class CombinedQueryValidator:
                 errors.append(
                     f"RETURN clause at position {i} is not the final "
                     f"clause. RETURN must be the last clause in a "
-                    f"combined query."
+                    f"combined query.",
                 )
 
     def _check_clause_ordering(
@@ -142,5 +142,5 @@ class CombinedQueryValidator:
                 errors.append(
                     "RETURN clause appears before any MATCH, CREATE, "
                     "MERGE, or WITH clause. This is likely a construction "
-                    "error in the combined query."
+                    "error in the combined query.",
                 )

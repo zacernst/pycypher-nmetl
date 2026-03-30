@@ -33,7 +33,7 @@ from pycypher.star import Star
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture()
+@pytest.fixture
 def mixed_null_ctx() -> Context:
     """Context with a mix of null and non-null string and float properties."""
     df = pd.DataFrame(
@@ -41,7 +41,7 @@ def mixed_null_ctx() -> Context:
             ID_COLUMN: [1, 2, 3],
             "name": ["Alice", None, "Bob"],
             "score": [1.5, None, 3.0],
-        }
+        },
     )
     table = EntityTable(
         entity_type="Item",
@@ -54,7 +54,7 @@ def mixed_null_ctx() -> Context:
     return Context(entity_mapping=EntityMapping(mapping={"Item": table}))
 
 
-@pytest.fixture()
+@pytest.fixture
 def star(mixed_null_ctx: Context) -> Star:
     return Star(context=mixed_null_ctx)
 
@@ -123,46 +123,50 @@ class TestTypePredicatesOnNullProperty:
         )
 
     def test_isstring_on_null_string_property_returns_null(
-        self, star: Star
+        self,
+        star: Star,
     ) -> None:
         """isString(null_string_prop) must return null, not False."""
         result = star.execute_query(
-            "MATCH (i:Item) RETURN isString(i.name) AS v"
+            "MATCH (i:Item) RETURN isString(i.name) AS v",
         )
         self._assert_null(result["v"].iloc[1], "isString", "null_string")
 
     def test_isstring_on_missing_property_returns_null(
-        self, star: Star
+        self,
+        star: Star,
     ) -> None:
         """isString(missing_prop) must return null, not False."""
         result = star.execute_query(
-            "MATCH (i:Item) RETURN isString(i.nonexistent) AS v"
+            "MATCH (i:Item) RETURN isString(i.nonexistent) AS v",
         )
         for i, val in enumerate(result["v"]):
             self._assert_null(val, "isString", "missing")
 
     def test_isfloat_on_null_float_property_returns_null(
-        self, star: Star
+        self,
+        star: Star,
     ) -> None:
         """isFloat(null_float_prop) must return null, not True.
 
         Bug: float('nan') passes isinstance(x, float) → isFloat was returning True.
         """
         result = star.execute_query(
-            "MATCH (i:Item) RETURN isFloat(i.score) AS v"
+            "MATCH (i:Item) RETURN isFloat(i.score) AS v",
         )
         self._assert_null(result["v"].iloc[1], "isFloat", "null_float")
 
     def test_isinteger_on_null_returns_null(self, star: Star) -> None:
         """isInteger(null_prop) must return null."""
         result = star.execute_query(
-            "MATCH (i:Item) RETURN isInteger(i.age) AS v"
+            "MATCH (i:Item) RETURN isInteger(i.age) AS v",
         )
         for i, val in enumerate(result["v"]):
             self._assert_null(val, "isInteger", "missing")
 
     def test_isnan_on_null_string_property_returns_null(
-        self, star: Star
+        self,
+        star: Star,
     ) -> None:
         """isNaN(null_string_prop) must return null, not True.
 
@@ -173,27 +177,29 @@ class TestTypePredicatesOnNullProperty:
         self._assert_null(result["v"].iloc[1], "isNaN", "null_string")
 
     def test_isnan_on_null_float_property_returns_null(
-        self, star: Star
+        self,
+        star: Star,
     ) -> None:
         """isNaN(null_float_prop) must return null, not True."""
         result = star.execute_query(
-            "MATCH (i:Item) RETURN isNaN(i.score) AS v"
+            "MATCH (i:Item) RETURN isNaN(i.score) AS v",
         )
         self._assert_null(result["v"].iloc[1], "isNaN", "null_float")
 
     def test_isinfinite_on_null_property_returns_null(
-        self, star: Star
+        self,
+        star: Star,
     ) -> None:
         """isInfinite(null_prop) must return null, not False."""
         result = star.execute_query(
-            "MATCH (i:Item) RETURN isInfinite(i.score) AS v"
+            "MATCH (i:Item) RETURN isInfinite(i.score) AS v",
         )
         self._assert_null(result["v"].iloc[1], "isInfinite", "null_float")
 
     def test_isfinite_on_null_property_returns_null(self, star: Star) -> None:
         """isFinite(null_prop) must return null, not False."""
         result = star.execute_query(
-            "MATCH (i:Item) RETURN isFinite(i.score) AS v"
+            "MATCH (i:Item) RETURN isFinite(i.score) AS v",
         )
         self._assert_null(result["v"].iloc[1], "isFinite", "null_float")
 
@@ -208,24 +214,24 @@ class TestTypePredicatesNonNullUnaffected:
 
     def test_isstring_true_for_string(self, star: Star) -> None:
         result = star.execute_query(
-            "MATCH (i:Item) RETURN isString(i.name) AS v"
+            "MATCH (i:Item) RETURN isString(i.name) AS v",
         )
-        assert result["v"].iloc[0] == True  # noqa: E712  (Alice → string)
-        assert result["v"].iloc[2] == True  # noqa: E712  (Bob → string)
+        assert result["v"].iloc[0] == True
+        assert result["v"].iloc[2] == True
 
     def test_isfloat_true_for_float(self, star: Star) -> None:
         result = star.execute_query(
-            "MATCH (i:Item) RETURN isFloat(i.score) AS v"
+            "MATCH (i:Item) RETURN isFloat(i.score) AS v",
         )
-        assert result["v"].iloc[0] == True  # noqa: E712  (1.5 → float)
-        assert result["v"].iloc[2] == True  # noqa: E712  (3.0 → float)
+        assert result["v"].iloc[0] == True
+        assert result["v"].iloc[2] == True
 
     def test_isnan_false_for_non_nan(self, star: Star) -> None:
         result = star.execute_query(
-            "MATCH (i:Item) RETURN isNaN(i.score) AS v"
+            "MATCH (i:Item) RETURN isNaN(i.score) AS v",
         )
-        assert result["v"].iloc[0] == False  # noqa: E712  (1.5 → not NaN)
-        assert result["v"].iloc[2] == False  # noqa: E712  (3.0 → not NaN)
+        assert result["v"].iloc[0] == False
+        assert result["v"].iloc[2] == False
 
 
 # ---------------------------------------------------------------------------
@@ -237,11 +243,12 @@ class TestNullSemanticsRegressionGuards:
     """Existing null-handling behaviour must still work after the fix."""
 
     def test_is_null_check_still_returns_true_for_null_props(
-        self, star: Star
+        self,
+        star: Star,
     ) -> None:
         """``n.name IS NULL`` must still return True where name is null."""
         result = star.execute_query(
-            "MATCH (i:Item) RETURN i.name IS NULL AS v"
+            "MATCH (i:Item) RETURN i.name IS NULL AS v",
         )
         assert result["v"].iloc[0] == False  # Alice is not null
         assert result["v"].iloc[1] == True  # None is null
@@ -250,21 +257,21 @@ class TestNullSemanticsRegressionGuards:
     def test_where_is_null_still_filters(self, star: Star) -> None:
         """``WHERE i.name IS NULL`` must still select only null-name rows."""
         result = star.execute_query(
-            "MATCH (i:Item) WHERE i.name IS NULL RETURN i.name AS v"
+            "MATCH (i:Item) WHERE i.name IS NULL RETURN i.name AS v",
         )
         assert len(result) == 1
 
     def test_coalesce_null_string_still_substitutes(self, star: Star) -> None:
         """``coalesce(null_string_prop, 'fallback')`` must still return 'fallback'."""
         result = star.execute_query(
-            "MATCH (i:Item) RETURN coalesce(i.name, 'fallback') AS v"
+            "MATCH (i:Item) RETURN coalesce(i.name, 'fallback') AS v",
         )
         assert result["v"].iloc[1] == "fallback"
 
     def test_coalesce_missing_prop_still_substitutes(self, star: Star) -> None:
         """``coalesce(missing_prop, 99)`` must still return 99."""
         result = star.execute_query(
-            "MATCH (i:Item) RETURN coalesce(i.age, 99) AS v"
+            "MATCH (i:Item) RETURN coalesce(i.age, 99) AS v",
         )
         for val in result["v"]:
             assert val == 99

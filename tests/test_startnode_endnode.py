@@ -22,17 +22,17 @@ def star() -> Star:
             "__ID__": ["p1", "p2", "p3"],
             "name": ["Alice", "Bob", "Carol"],
             "age": [30, 25, 35],
-        }
+        },
     )
     knows = pd.DataFrame(
         {
             "__SOURCE__": ["p1", "p2"],
             "__TARGET__": ["p2", "p3"],
             "since": [2020, 2021],
-        }
+        },
     )
     return Star(
-        context=ContextBuilder.from_dict({"Person": persons, "KNOWS": knows})
+        context=ContextBuilder.from_dict({"Person": persons, "KNOWS": knows}),
     )
 
 
@@ -43,7 +43,7 @@ class TestStartNodeEndNode:
         """startNode(r) returns the source node ID for each relationship."""
         result = star.execute_query(
             "MATCH (a:Person)-[r:KNOWS]->(b:Person) "
-            "RETURN startNode(r) AS src ORDER BY a.name ASC"
+            "RETURN startNode(r) AS src ORDER BY a.name ASC",
         )
         assert list(result["src"]) == ["p1", "p2"]
 
@@ -51,7 +51,7 @@ class TestStartNodeEndNode:
         """endNode(r) returns the target node ID for each relationship."""
         result = star.execute_query(
             "MATCH (a:Person)-[r:KNOWS]->(b:Person) "
-            "RETURN endNode(r) AS tgt ORDER BY a.name ASC"
+            "RETURN endNode(r) AS tgt ORDER BY a.name ASC",
         )
         assert list(result["tgt"]) == ["p2", "p3"]
 
@@ -59,7 +59,7 @@ class TestStartNodeEndNode:
         """startNode(r) equals the a variable in MATCH (a)-[r]->(b)."""
         result = star.execute_query(
             "MATCH (a:Person)-[r:KNOWS]->(b:Person) "
-            "RETURN startNode(r) AS src, a AS a_id ORDER BY a.name ASC"
+            "RETURN startNode(r) AS src, a AS a_id ORDER BY a.name ASC",
         )
         for _, row in result.iterrows():
             assert row["src"] == row["a_id"]
@@ -68,7 +68,7 @@ class TestStartNodeEndNode:
         """endNode(r) equals the b variable in MATCH (a)-[r]->(b)."""
         result = star.execute_query(
             "MATCH (a:Person)-[r:KNOWS]->(b:Person) "
-            "RETURN endNode(r) AS tgt, b AS b_id ORDER BY a.name ASC"
+            "RETURN endNode(r) AS tgt, b AS b_id ORDER BY a.name ASC",
         )
         for _, row in result.iterrows():
             assert row["tgt"] == row["b_id"]
@@ -78,7 +78,7 @@ class TestStartNodeEndNode:
         result = star.execute_query(
             "MATCH (a:Person)-[r:KNOWS]->(b:Person) "
             "WHERE startNode(r) = 'p1' "
-            "RETURN b.name AS friend"
+            "RETURN b.name AS friend",
         )
         assert list(result["friend"]) == ["Bob"]
 
@@ -87,7 +87,7 @@ class TestStartNodeEndNode:
         result = star.execute_query(
             "MATCH (a:Person)-[r:KNOWS]->(b:Person) "
             "WHERE endNode(r) = 'p3' "
-            "RETURN a.name AS person"
+            "RETURN a.name AS person",
         )
         assert list(result["person"]) == ["Bob"]
 
@@ -96,7 +96,7 @@ class TestStartNodeEndNode:
         result = star.execute_query(
             "MATCH (a:Person)-[r:KNOWS]->(b:Person) "
             "WITH startNode(r) AS src_id "
-            "RETURN src_id ORDER BY src_id ASC"
+            "RETURN src_id ORDER BY src_id ASC",
         )
         assert list(result["src_id"]) == ["p1", "p2"]
 
@@ -104,7 +104,7 @@ class TestStartNodeEndNode:
         """endNode(r) returns the correct target for every row."""
         result = star.execute_query(
             "MATCH (a:Person)-[r:KNOWS]->(b:Person) "
-            "RETURN endNode(r) AS tgt, b.name AS name ORDER BY a.name ASC"
+            "RETURN endNode(r) AS tgt, b.name AS name ORDER BY a.name ASC",
         )
         assert len(result) == 2
         # First edge: p1→p2 (Alice→Bob)

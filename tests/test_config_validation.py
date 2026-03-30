@@ -33,7 +33,7 @@ class TestConfigDefaults:
             import pycypher.config as cfg
 
             cfg = importlib.reload(cfg)
-            assert cfg.MAX_CROSS_JOIN_ROWS == 10_000_000
+            assert cfg.MAX_CROSS_JOIN_ROWS == 1_000_000
 
     def test_default_result_cache_max_mb(self) -> None:
         with patch.dict("os.environ", {}, clear=True):
@@ -65,11 +65,12 @@ class TestConfigOverrides:
             import pycypher.config as cfg
 
             cfg = importlib.reload(cfg)
-            assert cfg.QUERY_TIMEOUT_S == pytest.approx(30.5)
+            assert pytest.approx(30.5) == cfg.QUERY_TIMEOUT_S
 
     def test_max_cross_join_override(self) -> None:
         with patch.dict(
-            "os.environ", {"PYCYPHER_MAX_CROSS_JOIN_ROWS": "5000"}
+            "os.environ",
+            {"PYCYPHER_MAX_CROSS_JOIN_ROWS": "5000"},
         ):
             import pycypher.config as cfg
 
@@ -78,7 +79,8 @@ class TestConfigOverrides:
 
     def test_underscore_separator_in_int(self) -> None:
         with patch.dict(
-            "os.environ", {"PYCYPHER_MAX_CROSS_JOIN_ROWS": "1_000_000"}
+            "os.environ",
+            {"PYCYPHER_MAX_CROSS_JOIN_ROWS": "1_000_000"},
         ):
             import pycypher.config as cfg
 
@@ -101,14 +103,14 @@ class TestConfigValidation:
             import pycypher.config as cfg
 
             cfg = importlib.reload(cfg)
-            assert cfg.MAX_CROSS_JOIN_ROWS == 10_000_000
+            assert cfg.MAX_CROSS_JOIN_ROWS == 1_000_000
 
     def test_negative_int_falls_back(self) -> None:
         with patch.dict("os.environ", {"PYCYPHER_MAX_CROSS_JOIN_ROWS": "-1"}):
             import pycypher.config as cfg
 
             cfg = importlib.reload(cfg)
-            assert cfg.MAX_CROSS_JOIN_ROWS == 10_000_000
+            assert cfg.MAX_CROSS_JOIN_ROWS == 1_000_000
 
     def test_negative_float_falls_back(self) -> None:
         with patch.dict("os.environ", {"PYCYPHER_QUERY_TIMEOUT_S": "-5.0"}):

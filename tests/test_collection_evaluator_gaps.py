@@ -17,7 +17,7 @@ from pycypher.ingestion import ContextBuilder
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture()
+@pytest.fixture
 def star() -> Star:
     """Star with a single-row entity for standalone RETURN queries."""
     df = pd.DataFrame(
@@ -26,12 +26,12 @@ def star() -> Star:
             "name": ["Alice", "Bob", "Carol"],
             "nums": [[10, 20, 30], [1, 2], [100]],
             "tags": [["a", "b"], None, ["c"]],
-        }
+        },
     )
     return Star(context=ContextBuilder.from_dict({"Person": df}))
 
 
-@pytest.fixture()
+@pytest.fixture
 def minimal_star() -> Star:
     """Minimal star for standalone RETURN queries without MATCH."""
     df = pd.DataFrame({"__ID__": [1], "x": [1]})
@@ -49,21 +49,21 @@ class TestNullSlicing:
     def test_null_slice_returns_null(self, minimal_star: Star) -> None:
         """RETURN null[0..2] should yield null."""
         result = minimal_star.execute_query(
-            "UNWIND [1] AS _ RETURN null[0..2] AS result"
+            "UNWIND [1] AS _ RETURN null[0..2] AS result",
         )
         assert pd.isna(result["result"].iloc[0])
 
     def test_null_slice_open_end(self, minimal_star: Star) -> None:
         """RETURN null[1..] should yield null."""
         result = minimal_star.execute_query(
-            "UNWIND [1] AS _ RETURN null[1..] AS result"
+            "UNWIND [1] AS _ RETURN null[1..] AS result",
         )
         assert pd.isna(result["result"].iloc[0])
 
     def test_null_slice_open_start(self, minimal_star: Star) -> None:
         """RETURN null[..3] should yield null."""
         result = minimal_star.execute_query(
-            "UNWIND [1] AS _ RETURN null[..3] AS result"
+            "UNWIND [1] AS _ RETURN null[..3] AS result",
         )
         assert pd.isna(result["result"].iloc[0])
 
@@ -72,7 +72,7 @@ class TestNullSlicing:
         # Bob's tags are null, so Bob's slice should be null
         result = star.execute_query(
             "MATCH (p:Person) RETURN p.name AS name, p.tags[0..1] AS sl "
-            "ORDER BY name ASC"
+            "ORDER BY name ASC",
         )
         alice_sl = result.loc[result["name"] == "Alice", "sl"].iloc[0]
         bob_sl = result.loc[result["name"] == "Bob", "sl"].iloc[0]
@@ -92,7 +92,7 @@ class TestSliceTypeError:
         """Slicing an integer should silently return null."""
         # UNWIND an integer, then try to slice it
         result = star.execute_query(
-            "UNWIND [42] AS val RETURN val[0..2] AS result"
+            "UNWIND [42] AS val RETURN val[0..2] AS result",
         )
         # An integer cannot be sliced; should get null
         val = result["result"].iloc[0]
@@ -116,7 +116,7 @@ class TestEmptyMapLiteral:
     def test_non_empty_map_literal(self, minimal_star: Star) -> None:
         """Contrast: non-empty map literal returns populated dict."""
         result = minimal_star.execute_query(
-            "UNWIND [1] AS _ RETURN {a: 1, b: 2} AS m"
+            "UNWIND [1] AS _ RETURN {a: 1, b: 2} AS m",
         )
         val = result["m"].iloc[0]
         assert val["a"] == 1
@@ -136,52 +136,52 @@ class TestQuantifierNullList:
         # Bob has tags=null
         result = star.execute_query(
             "MATCH (p:Person) WHERE p.name = 'Bob' "
-            "RETURN any(t IN p.tags WHERE t = 'a') AS result"
+            "RETURN any(t IN p.tags WHERE t = 'a') AS result",
         )
         val = result["result"].iloc[0]
-        assert val is False or val == False  # noqa: E712
+        assert val is False or val == False
 
     def test_all_null_list_returns_true(self, star: Star) -> None:
         """ALL on a null list should return true (vacuous truth)."""
         result = star.execute_query(
             "MATCH (p:Person) WHERE p.name = 'Bob' "
-            "RETURN all(t IN p.tags WHERE t = 'a') AS result"
+            "RETURN all(t IN p.tags WHERE t = 'a') AS result",
         )
         val = result["result"].iloc[0]
-        assert val is True or val == True  # noqa: E712
+        assert val is True or val == True
 
     def test_none_null_list_returns_true(self, star: Star) -> None:
         """NONE on a null list should return true."""
         result = star.execute_query(
             "MATCH (p:Person) WHERE p.name = 'Bob' "
-            "RETURN none(t IN p.tags WHERE t = 'a') AS result"
+            "RETURN none(t IN p.tags WHERE t = 'a') AS result",
         )
         val = result["result"].iloc[0]
-        assert val is True or val == True  # noqa: E712
+        assert val is True or val == True
 
     def test_any_empty_list_returns_false(self, minimal_star: Star) -> None:
         """ANY on an empty literal list returns false."""
         result = minimal_star.execute_query(
-            "UNWIND [1] AS _ RETURN any(x IN [] WHERE x > 0) AS result"
+            "UNWIND [1] AS _ RETURN any(x IN [] WHERE x > 0) AS result",
         )
         val = result["result"].iloc[0]
-        assert val is False or val == False  # noqa: E712
+        assert val is False or val == False
 
     def test_all_empty_list_returns_true(self, minimal_star: Star) -> None:
         """ALL on an empty literal list returns true (vacuous truth)."""
         result = minimal_star.execute_query(
-            "UNWIND [1] AS _ RETURN all(x IN [] WHERE x > 0) AS result"
+            "UNWIND [1] AS _ RETURN all(x IN [] WHERE x > 0) AS result",
         )
         val = result["result"].iloc[0]
-        assert val is True or val == True  # noqa: E712
+        assert val is True or val == True
 
     def test_none_empty_list_returns_true(self, minimal_star: Star) -> None:
         """NONE on an empty literal list returns true."""
         result = minimal_star.execute_query(
-            "UNWIND [1] AS _ RETURN none(x IN [] WHERE x > 0) AS result"
+            "UNWIND [1] AS _ RETURN none(x IN [] WHERE x > 0) AS result",
         )
         val = result["result"].iloc[0]
-        assert val is True or val == True  # noqa: E712
+        assert val is True or val == True
 
 
 # ===========================================================================
@@ -195,14 +195,14 @@ class TestReduceVaryingLengths:
     def test_reduce_empty_list(self, minimal_star: Star) -> None:
         """reduce() on an empty list returns the initial value."""
         result = minimal_star.execute_query(
-            "UNWIND [1] AS _ RETURN reduce(s = 0, x IN [] | s + x) AS result"
+            "UNWIND [1] AS _ RETURN reduce(s = 0, x IN [] | s + x) AS result",
         )
         assert result["result"].iloc[0] == 0
 
     def test_reduce_single_element(self, minimal_star: Star) -> None:
         """reduce() on a single-element list."""
         result = minimal_star.execute_query(
-            "UNWIND [1] AS _ RETURN reduce(s = 10, x IN [5] | s + x) AS result"
+            "UNWIND [1] AS _ RETURN reduce(s = 10, x IN [5] | s + x) AS result",
         )
         assert result["result"].iloc[0] == 15
 
@@ -215,7 +215,7 @@ class TestReduceVaryingLengths:
         result = star.execute_query(
             "MATCH (p:Person) "
             "RETURN p.name AS name, reduce(s = 0, x IN p.nums | s + x) AS total "
-            "ORDER BY name ASC"
+            "ORDER BY name ASC",
         )
         # Alice: 10+20+30=60, Bob: 1+2=3, Carol: 100
         alice_total = result.loc[result["name"] == "Alice", "total"].iloc[0]
@@ -230,7 +230,7 @@ class TestReduceVaryingLengths:
         # Bob has tags=null
         result = star.execute_query(
             "MATCH (p:Person) WHERE p.name = 'Bob' "
-            "RETURN reduce(s = 'init', t IN p.tags | s + t) AS result"
+            "RETURN reduce(s = 'init', t IN p.tags | s + t) AS result",
         )
         assert result["result"].iloc[0] == "init"
 
@@ -247,8 +247,7 @@ class TestListComprehensionNullHandling:
         """[x IN null_list | x] should return empty list for null source."""
         # Bob has tags=null
         result = star.execute_query(
-            "MATCH (p:Person) WHERE p.name = 'Bob' "
-            "RETURN [t IN p.tags | t] AS result"
+            "MATCH (p:Person) WHERE p.name = 'Bob' RETURN [t IN p.tags | t] AS result",
         )
         val = result["result"].iloc[0]
         assert val == [] or val is None or pd.isna(val)
@@ -257,7 +256,7 @@ class TestListComprehensionNullHandling:
         """[x IN list | x] with a normal list returns the elements."""
         result = star.execute_query(
             "MATCH (p:Person) WHERE p.name = 'Alice' "
-            "RETURN [t IN p.tags | t] AS result"
+            "RETURN [t IN p.tags | t] AS result",
         )
         val = result["result"].iloc[0]
         assert val == ["a", "b"]
@@ -267,7 +266,7 @@ class TestListComprehensionNullHandling:
         result = star.execute_query(
             "MATCH (p:Person) "
             "RETURN p.name AS name, [t IN p.tags | t] AS result "
-            "ORDER BY name ASC"
+            "ORDER BY name ASC",
         )
         alice_val = result.loc[result["name"] == "Alice", "result"].iloc[0]
         bob_val = result.loc[result["name"] == "Bob", "result"].iloc[0]
@@ -281,7 +280,7 @@ class TestListComprehensionNullHandling:
         """[x IN null_list WHERE cond | x] with null source list."""
         result = star.execute_query(
             "MATCH (p:Person) WHERE p.name = 'Bob' "
-            "RETURN [t IN p.tags WHERE t = 'a' | t] AS result"
+            "RETURN [t IN p.tags WHERE t = 'a' | t] AS result",
         )
         val = result["result"].iloc[0]
         assert val == [] or val is None or pd.isna(val)
@@ -289,7 +288,7 @@ class TestListComprehensionNullHandling:
     def test_list_comp_empty_literal_list(self, minimal_star: Star) -> None:
         """[x IN [] | x * 2] with empty literal list returns empty list."""
         result = minimal_star.execute_query(
-            "UNWIND [1] AS _ RETURN [x IN [] | x * 2] AS result"
+            "UNWIND [1] AS _ RETURN [x IN [] | x * 2] AS result",
         )
         val = result["result"].iloc[0]
         assert val == []

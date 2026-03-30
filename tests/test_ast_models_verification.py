@@ -1,5 +1,4 @@
-"""
-Verification tests for AST models.
+"""Verification tests for AST models.
 
 These tests rigorously check the structure and properties of the generated AST
 to ensure that the Cypher-to-AST translation is correct.
@@ -328,7 +327,9 @@ class TestWithClauseVerification:
 
     def test_with_distinct_and_ordering(self, parse_to_ast):
         """Test WITH DISTINCT with ordering, skip, and limit."""
-        query = "MATCH (n) WITH DISTINCT n ORDER BY n.name DESC SKIP 5 LIMIT 10 RETURN n"
+        query = (
+            "MATCH (n) WITH DISTINCT n ORDER BY n.name DESC SKIP 5 LIMIT 10 RETURN n"
+        )
         ast = parse_to_ast(query)
 
         with_clause = ast.clauses[1]
@@ -372,7 +373,8 @@ class TestMergeClauseVerification:
         merge_clause = ast.clauses[0]
         assert isinstance(merge_clause, Merge)
         assert isinstance(
-            merge_clause.pattern.paths[0].elements[0], NodePattern
+            merge_clause.pattern.paths[0].elements[0],
+            NodePattern,
         )
         node = merge_clause.pattern.paths[0].elements[0]
         assert node.labels == ["Person"]

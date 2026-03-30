@@ -1,5 +1,4 @@
-"""
-Architecture Loop Phase 5: ScalarFunctionEvaluator Extraction TDD Tests.
+"""Architecture Loop Phase 5: ScalarFunctionEvaluator Extraction TDD Tests.
 
 This module provides comprehensive test coverage for the extraction of scalar function
 evaluation logic from BindingExpressionEvaluator into a dedicated ScalarFunctionEvaluator
@@ -32,7 +31,8 @@ class TestScalarFunctionEvaluatorUnit:
     """Test core ScalarFunctionEvaluator instantiation and basic methods."""
 
     def test_evaluator_instantiation(
-        self, minimal_binding_frame: BindingFrame
+        self,
+        minimal_binding_frame: BindingFrame,
     ) -> None:
         """Test ScalarFunctionEvaluator can be instantiated with a binding frame."""
         evaluator = ScalarFunctionEvaluator(minimal_binding_frame)
@@ -41,7 +41,8 @@ class TestScalarFunctionEvaluatorUnit:
         assert hasattr(evaluator, "evaluate_scalar_function")
 
     def test_evaluator_frame_reference_immutable(
-        self, minimal_binding_frame: BindingFrame
+        self,
+        minimal_binding_frame: BindingFrame,
     ) -> None:
         """Test that the frame reference is stored correctly and remains consistent."""
         evaluator = ScalarFunctionEvaluator(minimal_binding_frame)
@@ -58,7 +59,7 @@ class TestGraphIntrospectionFunctions:
     def test_labels_function_with_entity_type(self, star: Star) -> None:
         """Test labels() function returns entity type label list."""
         result = star.execute_query(
-            "MATCH (p:Person) RETURN labels(p) AS labels"
+            "MATCH (p:Person) RETURN labels(p) AS labels",
         )
 
         expected_labels = [["Person"]]
@@ -67,7 +68,7 @@ class TestGraphIntrospectionFunctions:
     def test_labels_function_multiple_rows(self, star: Star) -> None:
         """Test labels() function returns same labels for all rows."""
         result = star.execute_query(
-            "MATCH (p:Person) RETURN labels(p) AS labels"
+            "MATCH (p:Person) RETURN labels(p) AS labels",
         )
 
         # All rows should have the same labels
@@ -77,7 +78,7 @@ class TestGraphIntrospectionFunctions:
     def test_type_function_with_relationship_type(self, star: Star) -> None:
         """Test type() function returns relationship type string."""
         result = star.execute_query(
-            "MATCH ()-[r:KNOWS]->() RETURN type(r) AS rel_type"
+            "MATCH ()-[r:KNOWS]->() RETURN type(r) AS rel_type",
         )
 
         # All rows should have "KNOWS" relationship type
@@ -87,7 +88,7 @@ class TestGraphIntrospectionFunctions:
     def test_keys_function_returns_property_names(self, star: Star) -> None:
         """Test keys() function returns list of property column names."""
         result = star.execute_query(
-            "MATCH (p:Person) RETURN keys(p) AS prop_keys"
+            "MATCH (p:Person) RETURN keys(p) AS prop_keys",
         )
 
         # Should return property column names excluding internal columns
@@ -101,7 +102,7 @@ class TestGraphIntrospectionFunctions:
     def test_keys_function_excludes_internal_columns(self, star: Star) -> None:
         """Test keys() function properly excludes graph internal columns."""
         result = star.execute_query(
-            "MATCH ()-[r:KNOWS]->() RETURN keys(r) AS rel_keys"
+            "MATCH ()-[r:KNOWS]->() RETURN keys(r) AS rel_keys",
         )
 
         keys_list = result["rel_keys"].iloc[0]
@@ -114,7 +115,7 @@ class TestGraphIntrospectionFunctions:
     def test_properties_function_returns_dict(self, star: Star) -> None:
         """Test properties() function returns dict of all properties."""
         result = star.execute_query(
-            "MATCH (p:Person) RETURN properties(p) AS props"
+            "MATCH (p:Person) RETURN properties(p) AS props",
         )
 
         props_dict = result["props"].iloc[0]
@@ -126,13 +127,14 @@ class TestGraphIntrospectionFunctions:
             assert col not in props_dict
 
     def test_properties_function_shadow_layer_support(
-        self, star: Star
+        self,
+        star: Star,
     ) -> None:
         """Test properties() function works with shadow layer updates."""
         # This tests that shadow layer data is used when available
         # The specific behavior depends on context._shadow implementation
         result = star.execute_query(
-            "MATCH (p:Person) RETURN properties(p) AS props"
+            "MATCH (p:Person) RETURN properties(p) AS props",
         )
 
         # Should successfully return properties dict without internal columns
@@ -142,7 +144,7 @@ class TestGraphIntrospectionFunctions:
     def test_startnode_function_returns_source_id(self, star: Star) -> None:
         """Test startNode() function returns relationship source node ID."""
         result = star.execute_query(
-            "MATCH (a)-[r:KNOWS]->(b) RETURN startNode(r) AS start_id"
+            "MATCH (a)-[r:KNOWS]->(b) RETURN startNode(r) AS start_id",
         )
 
         # Should return the source node IDs
@@ -152,7 +154,7 @@ class TestGraphIntrospectionFunctions:
     def test_endnode_function_returns_target_id(self, star: Star) -> None:
         """Test endNode() function returns relationship target node ID."""
         result = star.execute_query(
-            "MATCH (a)-[r:KNOWS]->(b) RETURN endNode(r) AS end_id"
+            "MATCH (a)-[r:KNOWS]->(b) RETURN endNode(r) AS end_id",
         )
 
         # Should return the target node IDs
@@ -163,14 +165,12 @@ class TestGraphIntrospectionFunctions:
         """Test startNode() and endNode() return consistent source/target mapping."""
         result = star.execute_query(
             "MATCH (a)-[r:KNOWS]->(b) "
-            "RETURN startNode(r) AS start_id, endNode(r) AS end_id, a.name AS start_name, b.name AS end_name"
+            "RETURN startNode(r) AS start_id, endNode(r) AS end_id, a.name AS start_name, b.name AS end_name",
         )
 
         # Verify that start/end nodes correspond to the correct entities
         for _, row in result.iterrows():
-            assert (
-                row["start_id"] != row["end_id"]
-            )  # Should be different nodes
+            assert row["start_id"] != row["end_id"]  # Should be different nodes
 
 
 class TestPathLengthFunction:
@@ -188,9 +188,7 @@ class TestPathLengthFunction:
 
         # Should return integer hop counts
         hop_counts = result["hop_count"].tolist()
-        assert all(
-            isinstance(count, int) and 1 <= count <= 3 for count in hop_counts
-        )
+        assert all(isinstance(count, int) and 1 <= count <= 3 for count in hop_counts)
 
     def test_length_function_creates_correct_column_name(self) -> None:
         """Test that length() looks for correctly prefixed hop count columns."""
@@ -200,7 +198,7 @@ class TestPathLengthFunction:
             {
                 f"{PATH_HOP_COLUMN_PREFIX}mypath": [1, 2, 3],
                 "other_column": ["a", "b", "c"],
-            }
+            },
         )
 
         evaluator = ScalarFunctionEvaluator(mock_frame)
@@ -211,7 +209,8 @@ class TestPathLengthFunction:
         result = evaluator.evaluate_scalar_function("length", [path_var], None)
 
         expected = pd.Series(
-            [1, 2, 3], name=f"{PATH_HOP_COLUMN_PREFIX}mypath"
+            [1, 2, 3],
+            name=f"{PATH_HOP_COLUMN_PREFIX}mypath",
         ).reset_index(drop=True)
         pd.testing.assert_series_equal(result, expected)
 
@@ -220,45 +219,60 @@ class TestAggregationValidation:
     """Test prevention of aggregation functions in scalar contexts."""
 
     def test_count_function_raises_error_in_scalar_context(
-        self, minimal_scalar_evaluator: ScalarFunctionEvaluator
+        self,
+        minimal_scalar_evaluator: ScalarFunctionEvaluator,
     ) -> None:
         """Test that count() raises ValueError when used in scalar context."""
         with pytest.raises(
-            (ValueError, TypeError), match="'count' is an aggregation function"
+            (ValueError, TypeError),
+            match="'count' is an aggregation function",
         ):
             minimal_scalar_evaluator.evaluate_scalar_function(
-                "count", [Literal(value=1)], None
+                "count",
+                [Literal(value=1)],
+                None,
             )
 
     def test_sum_function_raises_error_in_scalar_context(
-        self, minimal_scalar_evaluator: ScalarFunctionEvaluator
+        self,
+        minimal_scalar_evaluator: ScalarFunctionEvaluator,
     ) -> None:
         """Test that sum() raises ValueError when used in scalar context."""
         with pytest.raises(
-            (ValueError, TypeError), match="'sum' is an aggregation function"
+            (ValueError, TypeError),
+            match="'sum' is an aggregation function",
         ):
             minimal_scalar_evaluator.evaluate_scalar_function(
-                "sum", [Literal(value=1)], None
+                "sum",
+                [Literal(value=1)],
+                None,
             )
 
     def test_avg_function_raises_error_in_scalar_context(
-        self, minimal_scalar_evaluator: ScalarFunctionEvaluator
+        self,
+        minimal_scalar_evaluator: ScalarFunctionEvaluator,
     ) -> None:
         """Test that avg() raises ValueError when used in scalar context."""
         with pytest.raises(
-            (ValueError, TypeError), match="'avg' is an aggregation function"
+            (ValueError, TypeError),
+            match="'avg' is an aggregation function",
         ):
             minimal_scalar_evaluator.evaluate_scalar_function(
-                "avg", [Literal(value=1)], None
+                "avg",
+                [Literal(value=1)],
+                None,
             )
 
     def test_aggregation_error_message_format(
-        self, minimal_scalar_evaluator: ScalarFunctionEvaluator
+        self,
+        minimal_scalar_evaluator: ScalarFunctionEvaluator,
     ) -> None:
         """Test that aggregation error messages provide clear guidance."""
         with pytest.raises((ValueError, TypeError)) as exc_info:
             minimal_scalar_evaluator.evaluate_scalar_function(
-                "count", [Literal(value=1)], None
+                "count",
+                [Literal(value=1)],
+                None,
             )
 
         error_msg = str(exc_info.value)
@@ -272,7 +286,8 @@ class TestRegistryDelegation:
     """Test ScalarFunctionRegistry integration for standard scalar functions."""
 
     def test_tointeger_function_delegates_to_registry(
-        self, star: Star
+        self,
+        star: Star,
     ) -> None:
         """Test that toInteger() is properly delegated to ScalarFunctionRegistry."""
         result = star.execute_query("RETURN toInteger('42') AS int_value")
@@ -286,11 +301,12 @@ class TestRegistryDelegation:
         assert result["lower_value"].iloc[0] == "hello"
 
     def test_substring_function_delegates_to_registry(
-        self, star: Star
+        self,
+        star: Star,
     ) -> None:
         """Test that substring() is properly delegated to ScalarFunctionRegistry."""
         result = star.execute_query(
-            "RETURN substring('hello world', 0, 5) AS substr"
+            "RETURN substring('hello world', 0, 5) AS substr",
         )
 
         assert result["substr"].iloc[0] == "hello"
@@ -307,7 +323,7 @@ class TestRegistryDelegation:
     def test_registry_function_with_multiple_args(self, star: Star) -> None:
         """Test registry functions with multiple arguments work correctly."""
         result = star.execute_query(
-            "RETURN replace('hello world', 'world', 'universe') AS replaced"
+            "RETURN replace('hello world', 'world', 'universe') AS replaced",
         )
 
         assert result["replaced"].iloc[0] == "hello universe"
@@ -315,7 +331,7 @@ class TestRegistryDelegation:
     def test_min_max_special_case_list_args(self, star: Star) -> None:
         """Test that min/max with list arguments are treated as scalar functions."""
         result = star.execute_query(
-            "RETURN min([1, 2, 3]) AS min_val, max([1, 2, 3]) AS max_val"
+            "RETURN min([1, 2, 3]) AS min_val, max([1, 2, 3]) AS max_val",
         )
 
         assert result["min_val"].iloc[0] == 1
@@ -326,7 +342,8 @@ class TestErrorHandling:
     """Test error handling for variable not found, unknown functions, type errors."""
 
     def test_variable_not_found_in_labels(
-        self, minimal_scalar_evaluator: ScalarFunctionEvaluator
+        self,
+        minimal_scalar_evaluator: ScalarFunctionEvaluator,
     ) -> None:
         """Test that labels() with unknown variable falls through to registry."""
         unknown_var = Variable(name="unknown_variable")
@@ -334,33 +351,39 @@ class TestErrorHandling:
 
         # Mock the registry to raise an error when unknown function is called
         mock_expr_evaluator.scalar_registry.execute.side_effect = ValueError(
-            "Unknown function"
+            "Unknown function",
         )
         mock_expr_evaluator.evaluate.return_value = pd.Series([1])
 
         # Should fall through to registry which raises appropriate error
         with pytest.raises(ValueError, match="Unknown function"):
             minimal_scalar_evaluator.evaluate_scalar_function(
-                "labels", [unknown_var], mock_expr_evaluator
+                "labels",
+                [unknown_var],
+                mock_expr_evaluator,
             )
 
     def test_unknown_function_name_raises_error(
-        self, minimal_scalar_evaluator: ScalarFunctionEvaluator
+        self,
+        minimal_scalar_evaluator: ScalarFunctionEvaluator,
     ) -> None:
         """Test that unknown function names raise appropriate errors."""
         mock_expr_evaluator = Mock()
         mock_expr_evaluator.evaluate.return_value = pd.Series([1])
         mock_expr_evaluator.scalar_registry.execute.side_effect = ValueError(
-            "Unknown function"
+            "Unknown function",
         )
 
         with pytest.raises(ValueError, match="Unknown function"):
             minimal_scalar_evaluator.evaluate_scalar_function(
-                "unknownFunction", [Literal(value=1)], mock_expr_evaluator
+                "unknownFunction",
+                [Literal(value=1)],
+                mock_expr_evaluator,
             )
 
     def test_invalid_argument_count_handled(
-        self, minimal_scalar_evaluator: ScalarFunctionEvaluator
+        self,
+        minimal_scalar_evaluator: ScalarFunctionEvaluator,
     ) -> None:
         """Test that invalid argument counts are handled properly."""
         mock_expr_evaluator = Mock()
@@ -368,27 +391,32 @@ class TestErrorHandling:
         # labels() requires exactly 1 argument
         with pytest.raises((ValueError, TypeError)):
             minimal_scalar_evaluator.evaluate_scalar_function(
-                "labels", [], mock_expr_evaluator
+                "labels",
+                [],
+                mock_expr_evaluator,
             )
 
     def test_type_error_in_graph_functions(
-        self, minimal_scalar_evaluator: ScalarFunctionEvaluator
+        self,
+        minimal_scalar_evaluator: ScalarFunctionEvaluator,
     ) -> None:
         """Test that type errors in graph functions are handled gracefully."""
         # Non-Variable argument to labels() should fall through to registry
         mock_expr_evaluator = Mock()
         literal_arg = Literal(value="not_a_variable")
         mock_expr_evaluator.evaluate.return_value = pd.Series(
-            ["not_a_variable"]
+            ["not_a_variable"],
         )
         mock_expr_evaluator.scalar_registry.execute.side_effect = TypeError(
-            "Type error"
+            "Type error",
         )
 
         # Should fall through to registry (which will handle the error)
         with pytest.raises(TypeError, match="Type error"):
             minimal_scalar_evaluator.evaluate_scalar_function(
-                "labels", [literal_arg], mock_expr_evaluator
+                "labels",
+                [literal_arg],
+                mock_expr_evaluator,
             )
 
     def test_missing_path_hop_column(self) -> None:
@@ -403,12 +431,14 @@ class TestErrorHandling:
         mock_expr_evaluator = Mock()
         mock_expr_evaluator.evaluate.return_value = pd.Series([1])
         mock_expr_evaluator.scalar_registry.execute.side_effect = KeyError(
-            "Missing column"
+            "Missing column",
         )
 
         with pytest.raises(KeyError, match="Missing column"):
             evaluator.evaluate_scalar_function(
-                "length", [path_var], mock_expr_evaluator
+                "length",
+                [path_var],
+                mock_expr_evaluator,
             )
 
 
@@ -464,7 +494,8 @@ class TestIntegrationWithStar:
         """Test that ScalarFunctionEvaluator errors propagate correctly in queries."""
         # Use an aggregation function in a WHERE clause (scalar context)
         with pytest.raises(
-            (ValueError, TypeError), match="aggregation function"
+            (ValueError, TypeError),
+            match="aggregation function",
         ):
             star.execute_query("""
                 MATCH (p:Person)
@@ -487,18 +518,10 @@ class TestIntegrationWithStar:
         # Should handle multi-row results efficiently
         if len(result) > 0:
             # Verify all rows have consistent data types
-            assert all(
-                isinstance(labels, list) for labels in result["start_labels"]
-            )
-            assert all(
-                isinstance(labels, list) for labels in result["end_labels"]
-            )
-            assert all(
-                isinstance(count, int) for count in result["start_prop_count"]
-            )
-            assert all(
-                isinstance(count, int) for count in result["end_prop_count"]
-            )
+            assert all(isinstance(labels, list) for labels in result["start_labels"])
+            assert all(isinstance(labels, list) for labels in result["end_labels"])
+            assert all(isinstance(count, int) for count in result["start_prop_count"])
+            assert all(isinstance(count, int) for count in result["end_prop_count"])
 
 
 # Test Fixtures
@@ -510,7 +533,7 @@ def people_df() -> pd.DataFrame:
             "__ID__": ["p1", "p2", "p3"],
             "name": ["Alice", "Bob", "Carol"],
             "age": [30, 25, 35],
-        }
+        },
     )
 
 
@@ -523,7 +546,7 @@ def relationships_df() -> pd.DataFrame:
             "__SOURCE__": ["p1", "p2"],
             "__TARGET__": ["p2", "p3"],
             "since": [2020, 2021],
-        }
+        },
     )
 
 
@@ -533,7 +556,7 @@ def star(people_df: pd.DataFrame, relationships_df: pd.DataFrame) -> Star:
     from pycypher.ingestion import ContextBuilder
 
     context = ContextBuilder.from_dict(
-        {"Person": people_df, "KNOWS": relationships_df}
+        {"Person": people_df, "KNOWS": relationships_df},
     )
     return Star(context=context)
 

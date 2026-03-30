@@ -26,19 +26,19 @@ from pycypher.scalar_functions import ScalarFunctionRegistry
 from pycypher.star import Star
 
 
-@pytest.fixture()
+@pytest.fixture
 def reg() -> ScalarFunctionRegistry:
     return ScalarFunctionRegistry.get_instance()
 
 
-@pytest.fixture()
+@pytest.fixture
 def name_star() -> Star:
     df = pd.DataFrame(
         {
             ID_COLUMN: [1, 2, 3],
             "name": ["Alice", "BOB", "carol"],
             "val": [8.0, 27.0, 64.0],
-        }
+        },
     )
     table = EntityTable(
         entity_type="Person",
@@ -52,7 +52,7 @@ def name_star() -> Star:
         context=Context(
             entity_mapping=EntityMapping(mapping={"Person": table}),
             relationship_mapping=RelationshipMapping(mapping={}),
-        )
+        ),
     )
 
 
@@ -68,7 +68,7 @@ class TestUpperAlias:
     def test_agrees_with_toupper(self, reg: ScalarFunctionRegistry) -> None:
         s = pd.Series(["hello", "World"])
         assert list(reg.execute("upper", [s])) == list(
-            reg.execute("toUpper", [s])
+            reg.execute("toUpper", [s]),
         )
 
     def test_value(self, reg: ScalarFunctionRegistry) -> None:
@@ -81,13 +81,13 @@ class TestUpperAlias:
 
     def test_in_return_clause(self, name_star: Star) -> None:
         r = name_star.execute_query(
-            "MATCH (p:Person) RETURN upper(p.name) AS u ORDER BY p.name"
+            "MATCH (p:Person) RETURN upper(p.name) AS u ORDER BY p.name",
         )
         assert list(r["u"]) == ["ALICE", "BOB", "CAROL"]
 
     def test_in_where_clause(self, name_star: Star) -> None:
         r = name_star.execute_query(
-            "MATCH (p:Person) WHERE upper(p.name) = 'BOB' RETURN p.name"
+            "MATCH (p:Person) WHERE upper(p.name) = 'BOB' RETURN p.name",
         )
         assert list(r["name"]) == ["BOB"]
 
@@ -104,7 +104,7 @@ class TestLowerAlias:
     def test_agrees_with_tolower(self, reg: ScalarFunctionRegistry) -> None:
         s = pd.Series(["HELLO", "World"])
         assert list(reg.execute("lower", [s])) == list(
-            reg.execute("toLower", [s])
+            reg.execute("toLower", [s]),
         )
 
     def test_value(self, reg: ScalarFunctionRegistry) -> None:
@@ -117,13 +117,13 @@ class TestLowerAlias:
 
     def test_in_return_clause(self, name_star: Star) -> None:
         r = name_star.execute_query(
-            "MATCH (p:Person) RETURN lower(p.name) AS l ORDER BY p.name"
+            "MATCH (p:Person) RETURN lower(p.name) AS l ORDER BY p.name",
         )
         assert list(r["l"]) == ["alice", "bob", "carol"]
 
     def test_in_where_clause(self, name_star: Star) -> None:
         r = name_star.execute_query(
-            "MATCH (p:Person) WHERE lower(p.name) = 'alice' RETURN p.name"
+            "MATCH (p:Person) WHERE lower(p.name) = 'alice' RETURN p.name",
         )
         assert list(r["name"]) == ["Alice"]
 
@@ -172,7 +172,7 @@ class TestCbrt:
 
     def test_in_return_clause(self, name_star: Star) -> None:
         r = name_star.execute_query(
-            "MATCH (p:Person) RETURN cbrt(p.val) AS c ORDER BY p.name"
+            "MATCH (p:Person) RETURN cbrt(p.val) AS c ORDER BY p.name",
         )
         vals = list(r["c"])
         assert vals[0] == pytest.approx(2.0)  # cbrt(8)

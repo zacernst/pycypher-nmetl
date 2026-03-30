@@ -24,7 +24,7 @@ def star() -> Star:
             "__ID__": ["p1", "p2", "p3", "p4", "p5"],
             "name": ["Alice", "Bob", "Carol", "Dave", "Eve"],
             "age": [10, 20, 30, 40, 50],
-        }
+        },
     )
     return Star(context=ContextBuilder.from_dict({"Person": persons}))
 
@@ -61,11 +61,12 @@ class TestReturnLimitSkipParameters:
         assert list(result["nm"]) == ["Bob", "Carol"]
 
     def test_return_limit_integer_literal_still_works(
-        self, star: Star
+        self,
+        star: Star,
     ) -> None:
         """Integer literal LIMIT continues to work after the fix (regression)."""
         result = star.execute_query(
-            "MATCH (p:Person) RETURN p.name AS nm ORDER BY p.age ASC LIMIT 2"
+            "MATCH (p:Person) RETURN p.name AS nm ORDER BY p.age ASC LIMIT 2",
         )
         assert len(result) == 2
         assert list(result["nm"]) == ["Alice", "Bob"]
@@ -73,7 +74,7 @@ class TestReturnLimitSkipParameters:
     def test_return_skip_integer_literal_still_works(self, star: Star) -> None:
         """Integer literal SKIP continues to work after the fix (regression)."""
         result = star.execute_query(
-            "MATCH (p:Person) RETURN p.name AS nm ORDER BY p.age ASC SKIP 4"
+            "MATCH (p:Person) RETURN p.name AS nm ORDER BY p.age ASC SKIP 4",
         )
         assert len(result) == 1
         assert list(result["nm"]) == ["Eve"]
@@ -103,7 +104,7 @@ class TestWithLimitSkipParameters:
     def test_with_limit_integer_literal_still_works(self, star: Star) -> None:
         """Integer literal LIMIT in WITH continues to work (regression)."""
         result = star.execute_query(
-            "MATCH (p:Person) WITH p.name AS nm ORDER BY p.age ASC LIMIT 3 RETURN nm"
+            "MATCH (p:Person) WITH p.name AS nm ORDER BY p.age ASC LIMIT 3 RETURN nm",
         )
         assert len(result) == 3
 

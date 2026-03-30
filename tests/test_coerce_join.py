@@ -29,7 +29,9 @@ from pycypher.star import Star
 
 
 def make_frame(
-    bindings: dict, type_registry: dict, ctx: Context
+    bindings: dict,
+    type_registry: dict,
+    ctx: Context,
 ) -> BindingFrame:
     """Build a BindingFrame directly for white-box tests."""
     return BindingFrame(
@@ -39,7 +41,7 @@ def make_frame(
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def empty_ctx() -> Context:
     """Empty context — no entities or relationships."""
     return Context(entity_mapping=EntityMapping(mapping={}))
@@ -54,7 +56,8 @@ class TestCoerceJoinUnit:
     """Direct tests for Star._coerce_join()."""
 
     def test_shared_variable_triggers_inner_join(
-        self, empty_ctx: Context
+        self,
+        empty_ctx: Context,
     ) -> None:
         """When frames share a variable, _coerce_join performs a keyed inner join."""
         star = Star(context=empty_ctx)
@@ -69,7 +72,8 @@ class TestCoerceJoinUnit:
         assert set(result.bindings["p"].tolist()) == {2, 3}
 
     def test_no_shared_variable_triggers_cross_join(
-        self, empty_ctx: Context
+        self,
+        empty_ctx: Context,
     ) -> None:
         """When frames share no variable, _coerce_join performs a Cartesian product."""
         star = Star(context=empty_ctx)
@@ -80,7 +84,8 @@ class TestCoerceJoinUnit:
         assert len(result.bindings) == 4
 
     def test_cross_join_contains_all_combinations(
-        self, empty_ctx: Context
+        self,
+        empty_ctx: Context,
     ) -> None:
         """Cross-join result has every combination from both frames."""
         star = Star(context=empty_ctx)
@@ -94,7 +99,8 @@ class TestCoerceJoinUnit:
         assert q_vals == [10, 10, 20, 20]
 
     def test_single_row_frames_join_correctly(
-        self, empty_ctx: Context
+        self,
+        empty_ctx: Context,
     ) -> None:
         """Single-row frames with shared variable produce single-row output."""
         star = Star(context=empty_ctx)
@@ -105,7 +111,8 @@ class TestCoerceJoinUnit:
         assert result.bindings["y"].iloc[0] == 99
 
     def test_mismatched_shared_variable_produces_empty(
-        self, empty_ctx: Context
+        self,
+        empty_ctx: Context,
     ) -> None:
         """When shared variable has no common ID values, inner-join returns empty."""
         star = Star(context=empty_ctx)
@@ -120,12 +127,12 @@ class TestCoerceJoinUnit:
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture()
+@pytest.fixture
 def two_table_ctx() -> Context:
     """Context with Person and Company entity types."""
     persons_df = pd.DataFrame({ID_COLUMN: [1, 2], "name": ["Alice", "Bob"]})
     companies_df = pd.DataFrame(
-        {ID_COLUMN: [10, 20], "industry": ["Tech", "Finance"]}
+        {ID_COLUMN: [10, 20], "industry": ["Tech", "Finance"]},
     )
     persons_table = EntityTable(
         entity_type="Person",
@@ -145,8 +152,8 @@ def two_table_ctx() -> Context:
     )
     return Context(
         entity_mapping=EntityMapping(
-            mapping={"Person": persons_table, "Company": companies_table}
-        )
+            mapping={"Person": persons_table, "Company": companies_table},
+        ),
     )
 
 
@@ -154,19 +161,21 @@ class TestCoerceJoinIntegration:
     """Integration tests confirming _coerce_join governs MATCH cross-products."""
 
     def test_two_independent_matches_produce_cross_product(
-        self, two_table_ctx: Context
+        self,
+        two_table_ctx: Context,
     ) -> None:
         """Two MATCH clauses with no shared variables → cross product."""
         star = Star(context=two_table_ctx)
         result = star.execute_query(
             "MATCH (p:Person) MATCH (c:Company) "
-            "RETURN p.name AS person, c.industry AS industry"
+            "RETURN p.name AS person, c.industry AS industry",
         )
         # 2 persons × 2 companies = 4 rows
         assert len(result) == 4
 
     def test_query_still_works_after_refactor(
-        self, two_table_ctx: Context
+        self,
+        two_table_ctx: Context,
     ) -> None:
         """Basic MATCH + WHERE + RETURN works correctly after helper extraction."""
         star = Star(context=two_table_ctx)

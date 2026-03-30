@@ -26,7 +26,8 @@ from .dataset_generator import SCALE_SMALL, SCALE_TINY, generate_social_graph
 ID_COLUMN = "__ID__"
 
 psutil = pytest.importorskip(
-    "psutil", reason="psutil required for memory tests"
+    "psutil",
+    reason="psutil required for memory tests",
 )
 
 
@@ -60,9 +61,9 @@ def _build_star(
         context=Context(
             entity_mapping=EntityMapping(mapping={"Person": person_table}),
             relationship_mapping=RelationshipMapping(
-                mapping={"KNOWS": knows_table}
+                mapping={"KNOWS": knows_table},
             ),
-        )
+        ),
     )
 
 
@@ -100,7 +101,7 @@ class TestMemoryLeakDetection:
 
         # Allow up to 50MB growth (generous bound for GC variance)
         growth_mb = final_mb - baseline_mb
-        assert growth_mb < 50, (  # noqa: PLR2004
+        assert growth_mb < 50, (
             f"Memory grew by {growth_mb:.1f}MB over 20 iterations "
             f"(baseline={baseline_mb:.1f}MB, final={final_mb:.1f}MB)"
         )
@@ -124,7 +125,7 @@ class TestMemoryLeakDetection:
         final_mb = _get_process_memory_mb()
 
         growth_mb = final_mb - baseline_mb
-        assert growth_mb < 100, (  # noqa: PLR2004
+        assert growth_mb < 100, (
             f"Memory grew by {growth_mb:.1f}MB over 10 join iterations "
             f"(baseline={baseline_mb:.1f}MB, final={final_mb:.1f}MB)"
         )
@@ -145,7 +146,7 @@ class TestMemoryLeakDetection:
         final_mb = _get_process_memory_mb()
 
         growth_mb = final_mb - baseline_mb
-        assert growth_mb < 50, (  # noqa: PLR2004
+        assert growth_mb < 50, (
             f"Memory grew by {growth_mb:.1f}MB over 10 aggregation iterations"
         )
 
@@ -178,7 +179,7 @@ class TestMemoryBounds:
             gc.collect()
 
         # Memory growth should be sub-quadratic relative to data size
-        if measurements[0][1] > 0.1:  # noqa: PLR2004
+        if measurements[0][1] > 0.1:
             rows_ratio = measurements[1][0] / measurements[0][0]
             mem_ratio = measurements[1][1] / max(measurements[0][1], 0.01)
             # Memory should grow at most 3x the data growth

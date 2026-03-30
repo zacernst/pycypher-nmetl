@@ -28,6 +28,7 @@ Or via CLI::
 from __future__ import annotations
 
 import cmd
+import logging
 import os
 import readline
 import time
@@ -38,6 +39,8 @@ import click
 
 if TYPE_CHECKING:
     import pandas as pd
+
+_logger = logging.getLogger(__name__)
 
 # History file location
 _HISTORY_DIR = Path.home() / ".pycypher"
@@ -52,7 +55,11 @@ def _ensure_history() -> None:
         try:
             readline.read_history_file(str(_HISTORY_FILE))
         except OSError:
-            pass
+            _logger.debug(
+                "Could not read REPL history file %s",
+                _HISTORY_FILE,
+                exc_info=True,
+            )
     readline.set_history_length(_MAX_HISTORY)
 
 
@@ -61,7 +68,11 @@ def _save_history() -> None:
     try:
         readline.write_history_file(str(_HISTORY_FILE))
     except OSError:
-        pass
+        _logger.debug(
+            "Could not save REPL history file %s",
+            _HISTORY_FILE,
+            exc_info=True,
+        )
 
 
 class CypherRepl(cmd.Cmd):
@@ -72,6 +83,7 @@ class CypherRepl(cmd.Cmd):
         rel_specs: Relationship source specs (``"REL=path.csv:src:tgt"``).
         default_id_col: Default ID column name.
         prompt_str: Custom prompt string.
+
     """
 
     intro = (
@@ -129,18 +141,29 @@ class CypherRepl(cmd.Cmd):
         from pycypher.ingestion.context_builder import ContextBuilder
         from pycypher.star import Star
 
-        builder = ContextBuilder()
+        n_sources = len(self._entity_specs) + len(self._rel_specs)
+        click.echo(f"Loading {n_sources} data source(s) …")
+        t0 = time.perf_counter()
 
-        for spec in self._entity_specs:
+        builder = ContextBuilder()
+        loaded = 0
+
+        for i, spec in enumerate(self._entity_specs, 1):
             label, path, id_col = _parse_entity_spec(spec)
             effective_id = id_col or self._default_id_col
             try:
                 builder.add_entity(label, path, id_col=effective_id)
-                click.echo(f"  Loaded entity: {label} <- {path}")
-            except Exception as exc:  # noqa: BLE001
-                click.echo(f"  Error loading entity {label}: {exc}")
+                loaded += 1
+                click.echo(f"  [{i}/{n_sources}] entity {label} <- {path}")
+            except Exception as exc:
+                from pycypher.exceptions import sanitize_error_message
 
-        for spec in self._rel_specs:
+                click.echo(
+                    f"  [{i}/{n_sources}] FAILED entity {label}: {sanitize_error_message(exc)}"
+                )
+
+        for j, spec in enumerate(self._rel_specs, 1):
+            idx = len(self._entity_specs) + j
             rel_type, path, src_col, tgt_col = _parse_rel_spec(spec)
             try:
                 builder.add_relationship(
@@ -149,18 +172,24 @@ class CypherRepl(cmd.Cmd):
                     source_col=src_col,
                     target_col=tgt_col,
                 )
+                loaded += 1
                 click.echo(
-                    f"  Loaded relationship: {rel_type} <- {path}",
+                    f"  [{idx}/{n_sources}] relationship {rel_type} <- {path}",
                 )
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
+                from pycypher.exceptions import sanitize_error_message
+
                 click.echo(
-                    f"  Error loading relationship {rel_type}: {exc}",
+                    f"  [{idx}/{n_sources}] FAILED relationship {rel_type}: {sanitize_error_message(exc)}",
                 )
 
+        elapsed_ms = (time.perf_counter() - t0) * 1000.0
         try:
             self._context = builder.build()
             self._star = Star(context=self._context)
-            click.echo("  Context ready.\n")
+            click.echo(
+                f"  Context ready ({loaded}/{n_sources} loaded, {elapsed_ms:.0f}ms).\n"
+            )
         except (ValueError, RuntimeError) as exc:
             click.echo(f"  Error building context: {exc}\n")
 
@@ -221,8 +250,10 @@ class CypherRepl(cmd.Cmd):
         t0 = time.perf_counter()
         try:
             result = self._star.execute_query(query)
-        except Exception as exc:  # noqa: BLE001
-            click.echo(f"Error: {type(exc).__name__}: {exc}")
+        except Exception as exc:
+            from pycypher.exceptions import sanitize_error_message
+
+            click.echo(f"Error: {sanitize_error_message(exc)}")
             return
         elapsed_ms = (time.perf_counter() - t0) * 1000.0
 
@@ -260,8 +291,10 @@ class CypherRepl(cmd.Cmd):
             else:
                 click.echo("Validation: OK")
 
-        except Exception as exc:  # noqa: BLE001
-            click.echo(f"Error: {type(exc).__name__}: {exc}")
+        except Exception as exc:
+            from pycypher.exceptions import sanitize_error_message
+
+            click.echo(f"Error: {sanitize_error_message(exc)}")
 
     def _profile_query(self, query: str) -> None:
         """Execute query with profiling and show detailed breakdown."""
@@ -285,8 +318,10 @@ class CypherRepl(cmd.Cmd):
             self._query_count += 1
             self._total_time_ms += report.total_time_ms
 
-        except Exception as exc:  # noqa: BLE001
-            click.echo(f"Error: {type(exc).__name__}: {exc}")
+        except Exception as exc:
+            from pycypher.exceptions import sanitize_error_message
+
+            click.echo(f"Error: {sanitize_error_message(exc)}")
 
     # -----------------------------------------------------------------
     # Dot-commands
@@ -559,9 +594,7 @@ class CypherRepl(cmd.Cmd):
             return [c for c in commands if c.startswith(text)]
         # Complete Cypher keywords (case-insensitive match)
         upper = text.upper()
-        matches = [
-            kw for kw in self._CYPHER_KEYWORDS if kw.startswith(upper)
-        ]
+        matches = [kw for kw in self._CYPHER_KEYWORDS if kw.startswith(upper)]
         if matches:
             return matches
         return super().completenames(text, *ignored)
@@ -677,6 +710,8 @@ def _display_result(result: pd.DataFrame | None) -> None:
         max_rows = 50
     if len(result) > max_rows:
         click.echo(result.head(max_rows).to_string(index=False))
-        click.echo(f"... ({len(result) - max_rows} more rows)")
+        click.echo(
+            f"... ({len(result) - max_rows} more rows, set PYCYPHER_REPL_MAX_ROWS to show more)",
+        )
     else:
         click.echo(result.to_string(index=False))

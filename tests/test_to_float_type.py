@@ -22,7 +22,7 @@ from pycypher.relational_models import (
 from pycypher.star import Star
 
 
-@pytest.fixture()
+@pytest.fixture
 def int_star() -> Star:
     df = pd.DataFrame({ID_COLUMN: [1, 2], "score": [30, 75]})
     t = EntityTable(
@@ -37,17 +37,17 @@ def int_star() -> Star:
         context=Context(
             entity_mapping=EntityMapping(mapping={"Item": t}),
             relationship_mapping=RelationshipMapping(),
-        )
+        ),
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def empty_star() -> Star:
     return Star(
         context=Context(
             entity_mapping=EntityMapping(),
             relationship_mapping=RelationshipMapping(),
-        )
+        ),
     )
 
 
@@ -70,7 +70,7 @@ class TestToFloatAlwaysFloat:
     def test_integer_column_returns_float(self, int_star: Star) -> None:
         """toFloat(integer_property_column) → float dtype."""
         r = int_star.execute_query(
-            "MATCH (i:Item) RETURN toFloat(i.score) AS f ORDER BY i.score"
+            "MATCH (i:Item) RETURN toFloat(i.score) AS f ORDER BY i.score",
         )
         val = r["f"].iloc[0]
         assert isinstance(val, (float, np.floating)), (
@@ -78,9 +78,9 @@ class TestToFloatAlwaysFloat:
         )
 
     def test_integer_column_values_correct(self, int_star: Star) -> None:
-        """toFloat on integer column preserves values."""
+        """ToFloat on integer column preserves values."""
         r = int_star.execute_query(
-            "MATCH (i:Item) RETURN toFloat(i.score) AS f ORDER BY f"
+            "MATCH (i:Item) RETURN toFloat(i.score) AS f ORDER BY f",
         )
         assert float(r["f"].iloc[0]) == 30.0
         assert float(r["f"].iloc[1]) == 75.0

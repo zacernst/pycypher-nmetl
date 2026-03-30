@@ -35,7 +35,7 @@ class TestQueryCombinerInterfaceContract:
         result = combiner.combine(
             [
                 ("q1", "CREATE (n:Person {name: 'Alice'})"),
-            ]
+            ],
         )
         assert isinstance(result, str)
 
@@ -73,7 +73,7 @@ class TestWithClauseInsertion:
             [
                 ("q1", "CREATE (n:Person {name: 'Alice'})"),
                 ("q2", "MATCH (n:Person) RETURN n.name"),
-            ]
+            ],
         )
         assert "WITH *" in result
 
@@ -85,7 +85,7 @@ class TestWithClauseInsertion:
         result = combiner.combine(
             [
                 ("q1", "CREATE (n:Person {name: 'Alice'})"),
-            ]
+            ],
         )
         assert "WITH *" not in result
 
@@ -99,7 +99,7 @@ class TestWithClauseInsertion:
                 ("q1", "CREATE (p:Person {name: 'Alice'})"),
                 ("q2", "MATCH (p:Person) CREATE (e:Employee {n: p.name})"),
                 ("q3", "MATCH (e:Employee) RETURN e.n"),
-            ]
+            ],
         )
         # Should have exactly 2 WITH * separators
         assert result.count("WITH *") == 2
@@ -123,7 +123,7 @@ class TestOrderingPreservation:
             [
                 ("q2", "MATCH (n:Person) RETURN n.name"),
                 ("q1", "CREATE (n:Person {name: 'Alice'})"),
-            ]
+            ],
         )
         create_pos = result.find("CREATE")
         match_pos = result.find("MATCH")
@@ -138,7 +138,7 @@ class TestOrderingPreservation:
             [
                 ("q1", "CREATE (p:Person {name: 'Alice'})"),
                 ("q2", "CREATE (c:Company {name: 'Acme'})"),
-            ]
+            ],
         )
         assert "Person" in result
         assert "Company" in result
@@ -153,7 +153,7 @@ class TestOrderingPreservation:
                 ("q3", "MATCH (e:Employee) RETURN e.n"),
                 ("q1", "CREATE (p:Person {name: 'Alice'})"),
                 ("q2", "MATCH (p:Person) CREATE (e:Employee {n: p.name})"),
-            ]
+            ],
         )
         # Find positions of the type-specific keywords
         person_create = result.find("CREATE (p:Person")
@@ -180,7 +180,7 @@ class TestReturnClauseHandling:
             [
                 ("q1", "CREATE (n:Person {name: 'Alice'}) RETURN n"),
                 ("q2", "MATCH (n:Person) RETURN n.name"),
-            ]
+            ],
         )
         # Only one RETURN in the combined output
         assert result.count("RETURN") == 1
@@ -196,7 +196,7 @@ class TestReturnClauseHandling:
             [
                 ("q1", "CREATE (n:Person {name: 'Alice'})"),
                 ("q2", "MATCH (n:Person) RETURN n.name"),
-            ]
+            ],
         )
         assert "RETURN n.name" in result
 
@@ -219,7 +219,7 @@ class TestCypherSyntaxValidity:
             [
                 ("q1", "CREATE (n:Person {name: 'Alice'})"),
                 ("q2", "MATCH (n:Person) RETURN n.name"),
-            ]
+            ],
         )
         # Should not raise
         ast = ASTConverter.from_cypher(result)
@@ -237,7 +237,7 @@ class TestCypherSyntaxValidity:
                 ("q1", "CREATE (p:Person {name: 'Alice'})"),
                 ("q2", "MATCH (p:Person) CREATE (e:Employee {n: p.name})"),
                 ("q3", "MATCH (e:Employee) RETURN e.n"),
-            ]
+            ],
         )
         ast = ASTConverter.from_cypher(result)
         assert ast is not None
@@ -284,7 +284,7 @@ class TestSemanticEquivalence:
             [
                 ("q1", "CREATE (n:Person {name: 'Alice'})"),
                 ("q2", "MATCH (n:Person) RETURN n.name"),
-            ]
+            ],
         )
         combined_result = star2.execute_query(combined)
 
@@ -326,7 +326,7 @@ class TestSemanticEquivalence:
                 ("q1", "CREATE (p:Person {name: 'Bob'})"),
                 ("q2", "MATCH (p:Person) CREATE (e:Employee {n: p.name})"),
                 ("q3", "MATCH (e:Employee) RETURN e.n"),
-            ]
+            ],
         )
         comb_result = star2.execute_query(combined)
 
@@ -361,7 +361,7 @@ class TestSemanticEquivalence:
             [
                 ("q1", "CREATE (p:Person {name: 'Alice'})"),
                 ("q2", "CREATE (c:Company {name: 'Acme'})"),
-            ]
+            ],
         )
         star2.execute_query(combined)
         comb_persons = star2.execute_query(

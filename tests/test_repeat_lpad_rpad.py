@@ -22,14 +22,14 @@ from pycypher.relational_models import (
 from pycypher.star import Star
 
 
-@pytest.fixture()
+@pytest.fixture
 def star() -> Star:
     df = pd.DataFrame(
         {
             ID_COLUMN: [1, 2, 3],
             "name": ["Alice", "Bob", None],
             "n": [3, 0, 2],
-        }
+        },
     )
     table = EntityTable(
         entity_type="Person",
@@ -43,7 +43,7 @@ def star() -> Star:
         context=Context(
             entity_mapping=EntityMapping(mapping={"Person": table}),
             relationship_mapping=RelationshipMapping(mapping={}),
-        )
+        ),
     )
 
 
@@ -77,13 +77,13 @@ class TestRepeat:
 
     def test_column_input(self, star: Star) -> None:
         r = star.execute_query(
-            "MATCH (p:Person) WHERE p.name = 'Bob' RETURN repeat('*', 4) AS r"
+            "MATCH (p:Person) WHERE p.name = 'Bob' RETURN repeat('*', 4) AS r",
         )
         assert r["r"].iloc[0] == "****"
 
     def test_in_where_clause(self, star: Star) -> None:
         r = star.execute_query(
-            "MATCH (p:Person) WHERE repeat('x', 2) = 'xx' RETURN p.name ORDER BY p.name"
+            "MATCH (p:Person) WHERE repeat('x', 2) = 'xx' RETURN p.name ORDER BY p.name",
         )
         # All non-null-name rows match (repeat is a constant expression here)
         names = [

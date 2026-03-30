@@ -31,8 +31,8 @@ from pycypher.binding_evaluator import (
     _TEMPORAL_FIELD_ACCESSORS,
     BindingExpressionEvaluator,
     _extract_temporal_field,
-    _is_null_raw_list,
 )
+from shared.helpers import is_null_raw_list as _is_null_raw_list
 from pycypher.binding_frame import BindingFrame
 from pycypher.comparison_evaluator import (
     _CMP_OPS,
@@ -60,7 +60,7 @@ def _make_frame(n: int = 4) -> BindingFrame:
         {
             "p": range(1, n + 1),
             ID_COLUMN: range(1, n + 1),
-        }
+        },
     )
     person_table = EntityTable.from_dataframe(
         "Person",
@@ -69,7 +69,7 @@ def _make_frame(n: int = 4) -> BindingFrame:
                 ID_COLUMN: range(1, n + 1),
                 "name": [f"Person{i}" for i in range(1, n + 1)],
                 "age": [20 + i for i in range(1, n + 1)],
-            }
+            },
         ),
     )
     context = Context(
@@ -112,7 +112,8 @@ class TestExtractTemporalField:
     def test_extract_millisecond_from_datetime(self) -> None:
         assert (
             _extract_temporal_field(
-                "2024-03-15T10:30:00.123456", "millisecond"
+                "2024-03-15T10:30:00.123456",
+                "millisecond",
             )
             == 123
         )
@@ -120,7 +121,8 @@ class TestExtractTemporalField:
     def test_extract_microsecond_from_datetime(self) -> None:
         assert (
             _extract_temporal_field(
-                "2024-03-15T10:30:00.123456", "microsecond"
+                "2024-03-15T10:30:00.123456",
+                "microsecond",
             )
             == 123456
         )
@@ -371,7 +373,7 @@ class TestEvaluateComparison:
                 operator="=",
                 left=IntegerLiteral(value=1),
                 right=IntegerLiteral(value=1),
-            )
+            ),
         )
         assert all(result)
 
@@ -383,7 +385,7 @@ class TestEvaluateComparison:
                 operator="<>",
                 left=IntegerLiteral(value=1),
                 right=IntegerLiteral(value=2),
-            )
+            ),
         )
         assert all(result)
 
@@ -395,7 +397,7 @@ class TestEvaluateComparison:
                 operator="<",
                 left=IntegerLiteral(value=1),
                 right=IntegerLiteral(value=2),
-            )
+            ),
         )
         assert all(result)
 
@@ -407,7 +409,7 @@ class TestEvaluateComparison:
                 operator="=",
                 left=NullLiteral(),
                 right=IntegerLiteral(value=1),
-            )
+            ),
         )
         assert all(v is None for v in result)
 
@@ -422,7 +424,7 @@ class TestEvaluateComparison:
                     operator="===",
                     left=IntegerLiteral(value=1),
                     right=IntegerLiteral(value=1),
-                )
+                ),
             )
 
 
@@ -433,7 +435,7 @@ class TestEvaluateNullCheck:
         frame = _make_frame(2)
         ev = BindingExpressionEvaluator(frame)
         result = ev.evaluate(
-            NullCheck(operator="IS NULL", operand=NullLiteral())
+            NullCheck(operator="IS NULL", operand=NullLiteral()),
         )
         assert all(result)
 
@@ -441,7 +443,7 @@ class TestEvaluateNullCheck:
         frame = _make_frame(2)
         ev = BindingExpressionEvaluator(frame)
         result = ev.evaluate(
-            NullCheck(operator="IS NOT NULL", operand=IntegerLiteral(value=5))
+            NullCheck(operator="IS NOT NULL", operand=IntegerLiteral(value=5)),
         )
         assert all(result)
 
@@ -449,7 +451,7 @@ class TestEvaluateNullCheck:
         frame = _make_frame(2)
         ev = BindingExpressionEvaluator(frame)
         result = ev.evaluate(
-            NullCheck(operator="IS NULL", operand=IntegerLiteral(value=5))
+            NullCheck(operator="IS NULL", operand=IntegerLiteral(value=5)),
         )
         assert not any(result)
 
@@ -461,7 +463,7 @@ class TestEvaluateUnary:
         frame = _make_frame(2)
         ev = BindingExpressionEvaluator(frame)
         result = ev.evaluate(
-            Unary(operator="+", operand=IntegerLiteral(value=42))
+            Unary(operator="+", operand=IntegerLiteral(value=42)),
         )
         assert list(result) == [42, 42]
 
@@ -469,7 +471,7 @@ class TestEvaluateUnary:
         frame = _make_frame(2)
         ev = BindingExpressionEvaluator(frame)
         result = ev.evaluate(
-            Unary(operator="-", operand=IntegerLiteral(value=42))
+            Unary(operator="-", operand=IntegerLiteral(value=42)),
         )
         assert list(result) == [-42, -42]
 
@@ -499,8 +501,8 @@ class TestEvaluateBooleanLogic:
                 operands=[
                     BooleanLiteral(value=True),
                     BooleanLiteral(value=True),
-                ]
-            )
+                ],
+            ),
         )
         for v in result:
             assert v
@@ -513,8 +515,8 @@ class TestEvaluateBooleanLogic:
                 operands=[
                     BooleanLiteral(value=True),
                     BooleanLiteral(value=False),
-                ]
-            )
+                ],
+            ),
         )
         for v in result:
             assert not v
@@ -527,8 +529,8 @@ class TestEvaluateBooleanLogic:
                 operands=[
                     BooleanLiteral(value=False),
                     BooleanLiteral(value=True),
-                ]
-            )
+                ],
+            ),
         )
         for v in result:
             assert v
@@ -548,8 +550,8 @@ class TestEvaluateBooleanLogic:
                 operands=[
                     BooleanLiteral(value=True),
                     BooleanLiteral(value=False),
-                ]
-            )
+                ],
+            ),
         )
         for v in result:
             assert v
@@ -566,7 +568,7 @@ class TestEvaluateArithmetic:
                 operator="+",
                 left=IntegerLiteral(value=3),
                 right=IntegerLiteral(value=4),
-            )
+            ),
         )
         assert list(result) == [7, 7]
 
@@ -578,7 +580,7 @@ class TestEvaluateArithmetic:
                 operator="-",
                 left=IntegerLiteral(value=10),
                 right=IntegerLiteral(value=3),
-            )
+            ),
         )
         assert list(result) == [7, 7]
 
@@ -590,7 +592,7 @@ class TestEvaluateArithmetic:
                 operator="*",
                 left=IntegerLiteral(value=3),
                 right=IntegerLiteral(value=4),
-            )
+            ),
         )
         assert list(result) == [12, 12]
 
@@ -611,7 +613,7 @@ class TestEvaluateCaseExpression:
                     ),
                 ],
                 else_expr=StringLiteral(value="no"),
-            )
+            ),
         )
         assert list(result) == ["yes", "yes"]
 
@@ -628,7 +630,7 @@ class TestEvaluateCaseExpression:
                     ),
                 ],
                 else_expr=StringLiteral(value="no"),
-            )
+            ),
         )
         assert list(result) == ["no", "no"]
 

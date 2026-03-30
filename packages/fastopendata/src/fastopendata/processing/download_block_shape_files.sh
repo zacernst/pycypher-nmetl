@@ -15,7 +15,7 @@ TIGER_URL="https://www2.census.gov/geo/tiger/TIGER2024/BG/"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 echo "Downloading TIGER/Line 2024 Block Group shapefiles to ${DATA_DIR}..."
-wget --no-check-certificate \
+wget \
      -e robots=off \
      --user-agent='Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1)' \
      -P "${DATA_DIR}/" \

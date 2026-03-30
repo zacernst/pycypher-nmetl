@@ -13,7 +13,7 @@
 
 set -euo pipefail
 
-DATA_DIR="${DATA_DIR:-$(dirname "$0")/../../../../raw_data}"
+DATA_DIR="${DATA_DIR:-$(dirname "$0")/../../../raw_data}"
 
 echo "Extracting PUMA20 zip files from ${DATA_DIR}/geo/tiger/TIGER2024/PUMA20/ ..."
 for zipfile in "${DATA_DIR}"/geo/tiger/TIGER2024/PUMA20/*.zip; do

@@ -25,7 +25,7 @@ class TestAggregationRegistryContract:
     def test_known_aggregations_equals_agg_ops_union_percentile(self) -> None:
         """KNOWN_AGGREGATIONS must be derivable from the dispatch tables."""
         expected = frozenset(_AGG_OPS.keys()) | _PERCENTILE_AGGREGATIONS
-        assert KNOWN_AGGREGATIONS == expected, (
+        assert expected == KNOWN_AGGREGATIONS, (
             f"KNOWN_AGGREGATIONS diverged from dispatch tables.\n"
             f"  In KNOWN_AGGREGATIONS but not in dispatch tables: "
             f"{KNOWN_AGGREGATIONS - expected}\n"
@@ -50,9 +50,7 @@ class TestAggregationRegistryContract:
 
     def test_no_unknown_entries_in_known_aggregations(self) -> None:
         """KNOWN_AGGREGATIONS must not contain functions absent from dispatch tables."""
-        all_dispatch_names = (
-            frozenset(_AGG_OPS.keys()) | _PERCENTILE_AGGREGATIONS
-        )
+        all_dispatch_names = frozenset(_AGG_OPS.keys()) | _PERCENTILE_AGGREGATIONS
         extra = KNOWN_AGGREGATIONS - all_dispatch_names
         assert not extra, (
             f"KNOWN_AGGREGATIONS contains entries not in any dispatch table: {extra}"

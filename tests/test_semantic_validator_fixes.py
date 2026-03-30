@@ -21,12 +21,12 @@ from pycypher.grammar_parser import GrammarParser
 from pycypher.semantic_validator import ErrorSeverity, SemanticValidator
 
 
-@pytest.fixture()
+@pytest.fixture
 def parser() -> GrammarParser:
     return GrammarParser()
 
 
-@pytest.fixture()
+@pytest.fixture
 def validator() -> SemanticValidator:
     return SemanticValidator()
 
@@ -40,7 +40,9 @@ class TestNodePatternVariableExtraction:
     """MATCH (n:Label {prop: var}) — 'n' must be defined, not 'var'."""
 
     def test_match_with_property_predicate_no_false_positive(
-        self, parser, validator
+        self,
+        parser,
+        validator,
     ) -> None:
         """MATCH (n:Person {id: id}) RETURN n — no false-positive for n."""
         q = "MATCH (n:Person {id: id}) RETURN n.name AS name"
@@ -79,7 +81,9 @@ class TestNodePatternVariableExtraction:
         )
 
     def test_match_with_multiple_property_predicates(
-        self, parser, validator
+        self,
+        parser,
+        validator,
     ) -> None:
         """MATCH (n:Person {age: a, name: b}) — n still correctly defined."""
         q = (

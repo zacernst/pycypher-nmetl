@@ -28,7 +28,7 @@ ID_COLUMN = "__ID__"
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture()
+@pytest.fixture
 def large_context() -> Context:
     """Context with enough data to demonstrate pushdown benefit."""
     n_entities = 1000
@@ -49,10 +49,14 @@ def large_context() -> Context:
         {
             ID_COLUMN: list(range(1, n_rels + 1)),
             "__SOURCE__": rng.integers(
-                1, n_entities + 1, size=n_rels
+                1,
+                n_entities + 1,
+                size=n_rels,
             ).tolist(),
             "__TARGET__": rng.integers(
-                1, n_entities + 1, size=n_rels
+                1,
+                n_entities + 1,
+                size=n_rels,
             ).tolist(),
         },
     )
@@ -81,7 +85,7 @@ def large_context() -> Context:
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def large_star(large_context: Context) -> Star:
     """Star for large context."""
     return Star(context=large_context)

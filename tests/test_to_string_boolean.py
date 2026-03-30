@@ -23,14 +23,14 @@ from pycypher.relational_models import (
 from pycypher.star import Star
 
 
-@pytest.fixture()
+@pytest.fixture
 def star() -> Star:
     df = pd.DataFrame(
         {
             ID_COLUMN: [1, 2, 3],
             "flag": [True, False, None],
             "name": ["Alice", "Bob", "Carol"],
-        }
+        },
     )
     table = EntityTable(
         entity_type="Person",
@@ -44,7 +44,7 @@ def star() -> Star:
         context=Context(
             entity_mapping=EntityMapping(mapping={"Person": table}),
             relationship_mapping=RelationshipMapping(mapping={}),
-        )
+        ),
     )
 
 
@@ -59,19 +59,19 @@ class TestToStringBoolean:
 
     def test_true_column_is_lowercase(self, star: Star) -> None:
         r = star.execute_query(
-            "MATCH (p:Person) WHERE p.name = 'Alice' RETURN toString(p.flag) AS r"
+            "MATCH (p:Person) WHERE p.name = 'Alice' RETURN toString(p.flag) AS r",
         )
         assert r["r"].iloc[0] == "true"
 
     def test_false_column_is_lowercase(self, star: Star) -> None:
         r = star.execute_query(
-            "MATCH (p:Person) WHERE p.name = 'Bob' RETURN toString(p.flag) AS r"
+            "MATCH (p:Person) WHERE p.name = 'Bob' RETURN toString(p.flag) AS r",
         )
         assert r["r"].iloc[0] == "false"
 
     def test_null_column_is_null(self, star: Star) -> None:
         r = star.execute_query(
-            "MATCH (p:Person) WHERE p.name = 'Carol' RETURN toString(p.flag) AS r"
+            "MATCH (p:Person) WHERE p.name = 'Carol' RETURN toString(p.flag) AS r",
         )
         assert pd.isna(r["r"].iloc[0])
 

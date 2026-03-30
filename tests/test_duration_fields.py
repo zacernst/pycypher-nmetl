@@ -138,7 +138,7 @@ class TestDurationMapForm:
                 "hours": 4,
                 "minutes": 5,
                 "seconds": 6,
-            }
+            },
         )
         assert d["years"] == 1
         assert d["months"] == 2
@@ -189,6 +189,6 @@ class TestDurationCypherIntegration:
         """MATCH (n:Person) WHERE duration('PT1H').hours > 0 RETURN n.name."""
         star = _empty_star()
         result = star.execute_query(
-            "MATCH (n:Person) WHERE duration('PT1H').hours > 0 RETURN n.name AS name"
+            "MATCH (n:Person) WHERE duration('PT1H').hours > 0 RETURN n.name AS name",
         )
         assert len(result) == 1

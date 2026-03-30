@@ -244,6 +244,7 @@ class ValidationResult(BaseModel):
             node: Optional reference to the AST node that triggered the issue.
             code: Optional machine-readable issue identifier for programmatic
                 handling.
+
         """
         self.issues.append(
             ValidationIssue(
@@ -277,6 +278,7 @@ class ValidationResult(BaseModel):
             node: Optional reference to the AST node that triggered the error.
             code: Optional machine-readable issue identifier for programmatic
                 handling.
+
         """
         self.issues.append(
             ValidationIssue(
@@ -311,6 +313,7 @@ class ValidationResult(BaseModel):
             node: Optional reference to the AST node that triggered the warning.
             code: Optional machine-readable issue identifier for programmatic
                 handling.
+
         """
         self.issues.append(
             ValidationIssue(
@@ -345,6 +348,7 @@ class ValidationResult(BaseModel):
             node: Optional reference to the AST node related to the observation.
             code: Optional machine-readable issue identifier for programmatic
                 handling.
+
         """
         self.issues.append(
             ValidationIssue(
@@ -1721,7 +1725,8 @@ def _validate_unreachable_conditions(
 
             # Check for contradictory literal comparisons
             _check_contradictory_comparisons(
-                cast("Match", match).where, result
+                cast("Match", match).where,
+                result,
             )
 
 

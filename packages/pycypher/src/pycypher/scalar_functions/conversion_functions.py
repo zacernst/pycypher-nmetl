@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 from shared.helpers import is_null_value
 
-from pycypher.constants import _null_series
+from pycypher.constants import _init_null_result
 
 if TYPE_CHECKING:
     from pycypher.scalar_functions import ScalarFunctionRegistry
@@ -283,19 +283,12 @@ def register(registry: ScalarFunctionRegistry) -> None:
         if len(s) == 0:
             return s.copy()
 
-        # Start with all None values
-        result = _null_series(len(s), index=s.index)
-
-        # Preserve original nulls (already None in result)
-        null_mask = s.isna()
-
-        # Handle non-null values
-        non_null_mask = ~null_mask
-        if not non_null_mask.any():
-            return result
+        nr = _init_null_result(s)
+        if nr.all_null:
+            return nr.result
 
         # Convert all non-null values to string and normalize (vectorized)
-        s_str = s[non_null_mask].astype(str).str.lower()
+        s_str = nr.non_null_vals.astype(str).str.lower()
 
         # Define accepted boolean mappings
         bool_map = {"true": True, "false": False, "1": True, "0": False}
@@ -305,14 +298,14 @@ def register(registry: ScalarFunctionRegistry) -> None:
 
         # Only keep values that were successfully mapped (not NaN)
         valid_mask = mapped_values.notna()
-        result_mask = non_null_mask.copy()
-        result_mask[non_null_mask] = valid_mask
+        result_mask = nr.non_null_mask.copy()
+        result_mask[nr.non_null_mask] = valid_mask
 
         # Set the valid boolean results
-        result[result_mask] = mapped_values[valid_mask]
+        nr.result[result_mask] = mapped_values[valid_mask]
 
         # All other values remain None (invalid conversions)
-        return result
+        return nr.result
 
     registry.register_function(
         name="toBooleanOrNull",

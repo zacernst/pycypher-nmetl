@@ -57,6 +57,7 @@ class ExistsEvaluator:
         Args:
             frame: The :class:`BindingFrame` to evaluate EXISTS predicates
                 and pattern comprehensions against.
+
         """
         self.frame = frame
 
@@ -64,7 +65,9 @@ class ExistsEvaluator:
     # EXISTS predicate
     # ------------------------------------------------------------------
 
-    def evaluate_exists(self, content: Any, evaluator: ExpressionEvaluatorProtocol) -> FrameSeries:
+    def evaluate_exists(
+        self, content: Any, evaluator: ExpressionEvaluatorProtocol
+    ) -> FrameSeries:
         """Evaluate an ``EXISTS { pattern }`` predicate.
 
         For each row in the current BindingFrame, returns ``True`` if the
@@ -87,7 +90,7 @@ class ExistsEvaluator:
                 "exists: content_type=%s  rows=%d",
                 type(content).__name__,
                 len(self.frame),
-        )
+            )
         from pycypher.ast_models import Pattern, PatternComprehension, Query
 
         if isinstance(content, Query):

@@ -43,7 +43,7 @@ class TestShortestPathErrors:
         result = social_star.execute_query(
             "MATCH p = shortestPath((a:Person)-[:KNOWS]->(b:Person)) "
             "WHERE a.name = 'Alice' AND b.name = 'Bob' "
-            "RETURN a.name, b.name"
+            "RETURN a.name, b.name",
         )
         assert len(result) >= 1
 
@@ -51,7 +51,7 @@ class TestShortestPathErrors:
         result = social_star.execute_query(
             "MATCH p = shortestPath((a:Person)-[:KNOWS]->(b:Person)) "
             "WHERE a.name = 'Alice' "
-            "RETURN a.name, b.name"
+            "RETURN a.name, b.name",
         )
         assert len(result) >= 1
 
@@ -63,16 +63,17 @@ class TestVariableLengthPaths:
         result = social_star.execute_query(
             "MATCH (a:Person)-[:KNOWS*1..2]->(b:Person) "
             "WHERE a.name = 'Alice' "
-            "RETURN a.name, b.name"
+            "RETURN a.name, b.name",
         )
         assert len(result) >= 1
 
     def test_variable_length_with_anonymous_rel(
-        self, social_star: Star
+        self,
+        social_star: Star,
     ) -> None:
         result = social_star.execute_query(
             "MATCH (a:Person)-[:KNOWS*1..3]->(b:Person) "
-            "RETURN a.name AS src, b.name AS tgt"
+            "RETURN a.name AS src, b.name AS tgt",
         )
         assert len(result) >= 1
 
@@ -84,7 +85,7 @@ class TestUnionQueries:
         result = social_star.execute_query(
             "MATCH (n:Person) WHERE n.age > 30 RETURN n.name AS name "
             "UNION ALL "
-            "MATCH (n:Person) WHERE n.age < 26 RETURN n.name AS name"
+            "MATCH (n:Person) WHERE n.age < 26 RETURN n.name AS name",
         )
         assert len(result) >= 2
 
@@ -92,7 +93,7 @@ class TestUnionQueries:
         result = social_star.execute_query(
             "MATCH (n:Person) WHERE n.dept = 'eng' RETURN n.dept AS d "
             "UNION "
-            "MATCH (n:Person) WHERE n.dept = 'eng' RETURN n.dept AS d"
+            "MATCH (n:Person) WHERE n.dept = 'eng' RETURN n.dept AS d",
         )
         # UNION deduplicates
         assert len(result) >= 1
@@ -103,39 +104,39 @@ class TestCreateDeleteMerge:
 
     def test_create_node(self, social_star: Star) -> None:
         result = social_star.execute_query(
-            "CREATE (n:Person {name: 'Eve', age: 22}) RETURN n.name"
+            "CREATE (n:Person {name: 'Eve', age: 22}) RETURN n.name",
         )
         assert len(result) == 1
         assert result.iloc[0, 0] == "Eve"
 
     def test_merge_existing_node(self, social_star: Star) -> None:
         result = social_star.execute_query(
-            "MERGE (n:Person {name: 'Alice'}) RETURN n.name"
+            "MERGE (n:Person {name: 'Alice'}) RETURN n.name",
         )
         assert len(result) >= 1
 
     def test_merge_new_node(self, social_star: Star) -> None:
         result = social_star.execute_query(
-            "MERGE (n:Person {name: 'Zara'}) RETURN n.name"
+            "MERGE (n:Person {name: 'Zara'}) RETURN n.name",
         )
         assert len(result) == 1
         assert result.iloc[0, 0] == "Zara"
 
     def test_delete_node(self, social_star: Star) -> None:
         social_star.execute_query(
-            "MATCH (n:Person) WHERE n.name = 'Dave' DELETE n"
+            "MATCH (n:Person) WHERE n.name = 'Dave' DELETE n",
         )
         result = social_star.execute_query(
-            "MATCH (n:Person) WHERE n.name = 'Dave' RETURN n.name"
+            "MATCH (n:Person) WHERE n.name = 'Dave' RETURN n.name",
         )
         assert len(result) == 0
 
     def test_set_property(self, social_star: Star) -> None:
         social_star.execute_query(
-            "MATCH (n:Person) WHERE n.name = 'Alice' SET n.age = 31"
+            "MATCH (n:Person) WHERE n.name = 'Alice' SET n.age = 31",
         )
         result = social_star.execute_query(
-            "MATCH (n:Person) WHERE n.name = 'Alice' RETURN n.age"
+            "MATCH (n:Person) WHERE n.name = 'Alice' RETURN n.age",
         )
         assert result.iloc[0, 0] == 31
 
@@ -146,10 +147,10 @@ class TestForeachClause:
     def test_foreach_set(self, social_star: Star) -> None:
         social_star.execute_query(
             "MATCH (n:Person) WHERE n.dept = 'eng' "
-            "FOREACH (x IN [1] | SET n.reviewed = true)"
+            "FOREACH (x IN [1] | SET n.reviewed = true)",
         )
         result = social_star.execute_query(
-            "MATCH (n:Person) WHERE n.reviewed = true RETURN n.name"
+            "MATCH (n:Person) WHERE n.reviewed = true RETURN n.name",
         )
         # At least the eng people should be marked
         assert len(result) >= 1
@@ -160,7 +161,7 @@ class TestWithReturnEdgeCases:
 
     def test_with_distinct(self, social_star: Star) -> None:
         result = social_star.execute_query(
-            "MATCH (n:Person) WITH DISTINCT n.dept AS dept RETURN dept"
+            "MATCH (n:Person) WITH DISTINCT n.dept AS dept RETURN dept",
         )
         # 3 distinct departments: eng, mktg, sales
         assert len(result) == 3
@@ -169,13 +170,13 @@ class TestWithReturnEdgeCases:
         result = social_star.execute_query(
             "MATCH (n:Person) "
             "WITH n.name AS name ORDER BY name SKIP 1 LIMIT 2 "
-            "RETURN name"
+            "RETURN name",
         )
         assert len(result) == 2
 
     def test_with_aggregation(self, social_star: Star) -> None:
         result = social_star.execute_query(
-            "MATCH (n:Person) WITH n.dept AS dept, count(n) AS cnt RETURN dept, cnt"
+            "MATCH (n:Person) WITH n.dept AS dept, count(n) AS cnt RETURN dept, cnt",
         )
         assert len(result) >= 1
 
@@ -184,13 +185,13 @@ class TestWithReturnEdgeCases:
         result = social_star.execute_query(
             "MATCH (n:Person) "
             "WITH n.dept AS dept, n.age > 29 AS senior, count(n) AS cnt "
-            "RETURN dept, senior, cnt"
+            "RETURN dept, senior, cnt",
         )
         assert len(result) >= 2
 
     def test_return_star(self, social_star: Star) -> None:
         result = social_star.execute_query(
-            "MATCH (n:Person) WHERE n.name = 'Alice' RETURN *"
+            "MATCH (n:Person) WHERE n.name = 'Alice' RETURN *",
         )
         assert len(result) == 1
 

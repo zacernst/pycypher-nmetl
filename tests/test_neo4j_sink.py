@@ -38,7 +38,7 @@ pytestmark = pytest.mark.unit
 # ===========================================================================
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_driver_ctx() -> Any:
     """Patch GraphDatabase.driver and yield (driver_mock, session_mock)."""
     with patch("pycypher.sinks.neo4j.GraphDatabase") as mock_gdb:
@@ -51,7 +51,7 @@ def mock_driver_ctx() -> Any:
         yield driver, session
 
 
-@pytest.fixture()
+@pytest.fixture
 def sink(mock_driver_ctx: Any) -> Neo4jSink:
     """A Neo4jSink backed by a fully mocked driver."""
     driver, _ = mock_driver_ctx
@@ -60,7 +60,7 @@ def sink(mock_driver_ctx: Any) -> Neo4jSink:
         return Neo4jSink("bolt://localhost:7687", "neo4j", "pw")
 
 
-@pytest.fixture()
+@pytest.fixture
 def sink_batch2(mock_driver_ctx: Any) -> Neo4jSink:
     """A Neo4jSink with batch_size=2 for batching tests."""
     driver, _ = mock_driver_ctx
@@ -69,7 +69,7 @@ def sink_batch2(mock_driver_ctx: Any) -> Neo4jSink:
         return Neo4jSink("bolt://localhost:7687", "neo4j", "pw", batch_size=2)
 
 
-@pytest.fixture()
+@pytest.fixture
 def persons_df() -> pd.DataFrame:
     """Three-row persons DataFrame."""
     return pd.DataFrame(
@@ -77,11 +77,11 @@ def persons_df() -> pd.DataFrame:
             "pid": [1, 2, 3],
             "name": ["Alice", "Bob", "Carol"],
             "age": [30, 25, 40],
-        }
+        },
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def rels_df() -> pd.DataFrame:
     """Two-row relationships DataFrame."""
     return pd.DataFrame(
@@ -89,11 +89,11 @@ def rels_df() -> pd.DataFrame:
             "src": [1, 2],
             "tgt": [2, 3],
             "since": [2020, 2021],
-        }
+        },
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def node_mapping() -> NodeMapping:
     """Basic NodeMapping for persons_df."""
     return NodeMapping(
@@ -103,7 +103,7 @@ def node_mapping() -> NodeMapping:
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def rel_mapping() -> RelationshipMapping:
     """Basic RelationshipMapping for rels_df."""
     return RelationshipMapping(
@@ -139,7 +139,9 @@ class TestNodeMapping:
 
     def test_custom_id_property(self) -> None:
         mapping = NodeMapping(
-            label="Person", id_column="pid", id_property="person_id"
+            label="Person",
+            id_column="pid",
+            id_property="person_id",
         )
         assert mapping.id_property == "person_id"
 
@@ -531,7 +533,11 @@ class TestRelMergeCypher:
 
     def test_contains_src_id_property(self) -> None:
         cypher = _rel_merge_cypher(
-            "Person", "Person", "KNOWS", "person_id", "id"
+            "Person",
+            "Person",
+            "KNOWS",
+            "person_id",
+            "id",
         )
         assert "person_id" in cypher
 
@@ -571,7 +577,9 @@ class TestBuildNodeRows:
     def test_basic_serialisation(self) -> None:
         df = pd.DataFrame({"pid": [1], "name": ["Alice"]})
         mapping = NodeMapping(
-            label="Person", id_column="pid", property_columns={"name": "name"}
+            label="Person",
+            id_column="pid",
+            property_columns={"name": "name"},
         )
         rows = _build_node_rows(df, mapping)
         assert len(rows) == 1
@@ -581,7 +589,9 @@ class TestBuildNodeRows:
     def test_multiple_rows(self) -> None:
         df = pd.DataFrame({"pid": [1, 2, 3], "name": ["A", "B", "C"]})
         mapping = NodeMapping(
-            label="Person", id_column="pid", property_columns={"name": "name"}
+            label="Person",
+            id_column="pid",
+            property_columns={"name": "name"},
         )
         rows = _build_node_rows(df, mapping)
         assert len(rows) == 3
@@ -598,7 +608,9 @@ class TestBuildNodeRows:
     def test_drops_null_property_values(self) -> None:
         df = pd.DataFrame({"pid": [1], "name": [None]})
         mapping = NodeMapping(
-            label="Person", id_column="pid", property_columns={"name": "name"}
+            label="Person",
+            id_column="pid",
+            property_columns={"name": "name"},
         )
         rows = _build_node_rows(df, mapping)
         assert "name" not in rows[0]["properties"]
@@ -606,7 +618,9 @@ class TestBuildNodeRows:
     def test_keeps_non_null_properties(self) -> None:
         df = pd.DataFrame({"pid": [1], "age": [30]})
         mapping = NodeMapping(
-            label="Person", id_column="pid", property_columns={"age": "age"}
+            label="Person",
+            id_column="pid",
+            property_columns={"age": "age"},
         )
         rows = _build_node_rows(df, mapping)
         assert rows[0]["properties"]["age"] == 30
@@ -627,7 +641,9 @@ class TestBuildNodeRows:
     def test_coerces_numpy_property(self) -> None:
         df = pd.DataFrame({"pid": [1], "score": [np.float64(9.5)]})
         mapping = NodeMapping(
-            label="Node", id_column="pid", property_columns={"score": "score"}
+            label="Node",
+            id_column="pid",
+            property_columns={"score": "score"},
         )
         rows = _build_node_rows(df, mapping)
         assert isinstance(rows[0]["properties"]["score"], float)
@@ -741,7 +757,7 @@ class TestBuildRelRows:
             {
                 "src": pd.Series([], dtype=int),
                 "tgt": pd.Series([], dtype=int),
-            }
+            },
         )
         mapping = RelationshipMapping(
             rel_type="KNOWS",
@@ -811,7 +827,9 @@ class TestNeo4jSinkWriteNodes:
     """Tests for Neo4jSink.write_nodes."""
 
     def test_returns_row_count(
-        self, mock_driver_ctx: Any, persons_df: pd.DataFrame
+        self,
+        mock_driver_ctx: Any,
+        persons_df: pd.DataFrame,
     ) -> None:
         driver, _ = mock_driver_ctx
         with patch("pycypher.sinks.neo4j.GraphDatabase") as mock_gdb:
@@ -828,58 +846,71 @@ class TestNeo4jSinkWriteNodes:
             s = Neo4jSink("bolt://x", "u", "p")
             empty = pd.DataFrame({"pid": pd.Series([], dtype=int)})
             count = s.write_nodes(
-                empty, NodeMapping(label="P", id_column="pid")
+                empty,
+                NodeMapping(label="P", id_column="pid"),
             )
         assert count == 0
         session.run.assert_not_called()
 
     def test_calls_session_run(
-        self, mock_driver_ctx: Any, persons_df: pd.DataFrame
+        self,
+        mock_driver_ctx: Any,
+        persons_df: pd.DataFrame,
     ) -> None:
         driver, session = mock_driver_ctx
         with patch("pycypher.sinks.neo4j.GraphDatabase") as mock_gdb:
             mock_gdb.driver.return_value = driver
             s = Neo4jSink("bolt://x", "u", "p")
             s.write_nodes(
-                persons_df, NodeMapping(label="Person", id_column="pid")
+                persons_df,
+                NodeMapping(label="Person", id_column="pid"),
             )
         session.run.assert_called_once()
 
     def test_cypher_contains_label(
-        self, mock_driver_ctx: Any, persons_df: pd.DataFrame
+        self,
+        mock_driver_ctx: Any,
+        persons_df: pd.DataFrame,
     ) -> None:
         driver, session = mock_driver_ctx
         with patch("pycypher.sinks.neo4j.GraphDatabase") as mock_gdb:
             mock_gdb.driver.return_value = driver
             s = Neo4jSink("bolt://x", "u", "p")
             s.write_nodes(
-                persons_df, NodeMapping(label="Person", id_column="pid")
+                persons_df,
+                NodeMapping(label="Person", id_column="pid"),
             )
         cypher = session.run.call_args[0][0]
         assert "Person" in cypher
 
     def test_cypher_contains_merge(
-        self, mock_driver_ctx: Any, persons_df: pd.DataFrame
+        self,
+        mock_driver_ctx: Any,
+        persons_df: pd.DataFrame,
     ) -> None:
         driver, session = mock_driver_ctx
         with patch("pycypher.sinks.neo4j.GraphDatabase") as mock_gdb:
             mock_gdb.driver.return_value = driver
             s = Neo4jSink("bolt://x", "u", "p")
             s.write_nodes(
-                persons_df, NodeMapping(label="Person", id_column="pid")
+                persons_df,
+                NodeMapping(label="Person", id_column="pid"),
             )
         cypher = session.run.call_args[0][0]
         assert "MERGE" in cypher
 
     def test_rows_kwarg_passed_to_run(
-        self, mock_driver_ctx: Any, persons_df: pd.DataFrame
+        self,
+        mock_driver_ctx: Any,
+        persons_df: pd.DataFrame,
     ) -> None:
         driver, session = mock_driver_ctx
         with patch("pycypher.sinks.neo4j.GraphDatabase") as mock_gdb:
             mock_gdb.driver.return_value = driver
             s = Neo4jSink("bolt://x", "u", "p")
             s.write_nodes(
-                persons_df, NodeMapping(label="Person", id_column="pid")
+                persons_df,
+                NodeMapping(label="Person", id_column="pid"),
             )
         kwargs = session.run.call_args[1]
         assert "rows" in kwargs
@@ -896,7 +927,8 @@ class TestNeo4jSinkWriteNodes:
                 s.write_nodes(df, NodeMapping(label="P", id_column="pid"))
 
     def test_raises_on_missing_property_column(
-        self, mock_driver_ctx: Any
+        self,
+        mock_driver_ctx: Any,
     ) -> None:
         driver, _ = mock_driver_ctx
         with patch("pycypher.sinks.neo4j.GraphDatabase") as mock_gdb:
@@ -914,7 +946,9 @@ class TestNeo4jSinkWriteNodes:
                 )
 
     def test_reraises_driver_exception(
-        self, mock_driver_ctx: Any, persons_df: pd.DataFrame
+        self,
+        mock_driver_ctx: Any,
+        persons_df: pd.DataFrame,
     ) -> None:
         driver, session = mock_driver_ctx
         session.run.side_effect = RuntimeError("neo4j error")
@@ -923,7 +957,8 @@ class TestNeo4jSinkWriteNodes:
             s = Neo4jSink("bolt://x", "u", "p")
             with pytest.raises(RuntimeError, match="neo4j error"):
                 s.write_nodes(
-                    persons_df, NodeMapping(label="P", id_column="pid")
+                    persons_df,
+                    NodeMapping(label="P", id_column="pid"),
                 )
 
 
@@ -952,7 +987,7 @@ class TestNeo4jSinkWriteRelationships:
                 {
                     "src": pd.Series([], dtype=int),
                     "tgt": pd.Series([], dtype=int),
-                }
+                },
             )
             mapping = RelationshipMapping(
                 rel_type="KNOWS",
@@ -995,7 +1030,8 @@ class TestNeo4jSinkWriteRelationships:
         assert "MERGE (src)-[r:" in cypher
 
     def test_raises_on_missing_source_column(
-        self, mock_driver_ctx: Any
+        self,
+        mock_driver_ctx: Any,
     ) -> None:
         driver, _ = mock_driver_ctx
         with patch("pycypher.sinks.neo4j.GraphDatabase") as mock_gdb:
@@ -1013,7 +1049,8 @@ class TestNeo4jSinkWriteRelationships:
                 s.write_relationships(df, mapping)
 
     def test_raises_on_missing_target_column(
-        self, mock_driver_ctx: Any
+        self,
+        mock_driver_ctx: Any,
     ) -> None:
         driver, _ = mock_driver_ctx
         with patch("pycypher.sinks.neo4j.GraphDatabase") as mock_gdb:
@@ -1040,7 +1077,8 @@ class TestBatching:
     """Tests for batch-splitting logic inside _write_batches."""
 
     def test_single_batch_when_rows_lt_batch_size(
-        self, mock_driver_ctx: Any
+        self,
+        mock_driver_ctx: Any,
     ) -> None:
         driver, session = mock_driver_ctx
         with patch("pycypher.sinks.neo4j.GraphDatabase") as mock_gdb:
@@ -1051,7 +1089,8 @@ class TestBatching:
         assert session.run.call_count == 1
 
     def test_single_batch_when_rows_eq_batch_size(
-        self, mock_driver_ctx: Any
+        self,
+        mock_driver_ctx: Any,
     ) -> None:
         driver, session = mock_driver_ctx
         with patch("pycypher.sinks.neo4j.GraphDatabase") as mock_gdb:
@@ -1062,7 +1101,8 @@ class TestBatching:
         assert session.run.call_count == 1
 
     def test_two_batches_when_rows_eq_batch_size_plus_one(
-        self, mock_driver_ctx: Any
+        self,
+        mock_driver_ctx: Any,
     ) -> None:
         driver, session = mock_driver_ctx
         with patch("pycypher.sinks.neo4j.GraphDatabase") as mock_gdb:
@@ -1073,7 +1113,8 @@ class TestBatching:
         assert session.run.call_count == 2
 
     def test_three_batches_for_five_rows_batch_size_two(
-        self, mock_driver_ctx: Any
+        self,
+        mock_driver_ctx: Any,
     ) -> None:
         driver, session = mock_driver_ctx
         with patch("pycypher.sinks.neo4j.GraphDatabase") as mock_gdb:
@@ -1106,7 +1147,8 @@ class TestBatching:
         assert batch_sizes == [3, 2]
 
     def test_total_count_returned_with_batching(
-        self, mock_driver_ctx: Any
+        self,
+        mock_driver_ctx: Any,
     ) -> None:
         driver, _ = mock_driver_ctx
         with patch("pycypher.sinks.neo4j.GraphDatabase") as mock_gdb:

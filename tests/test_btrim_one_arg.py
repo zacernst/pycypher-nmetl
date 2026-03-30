@@ -15,7 +15,7 @@ from pycypher.relational_models import Context, EntityMapping
 from pycypher.star import Star
 
 
-@pytest.fixture()
+@pytest.fixture
 def empty_ctx() -> Context:
     return Context(entity_mapping=EntityMapping(mapping={}))
 

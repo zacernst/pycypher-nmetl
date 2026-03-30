@@ -27,7 +27,7 @@ def simple_context() -> Context:
             ID_COLUMN: [1, 2, 3],
             "name": ["Alice", "Bob", "Carol"],
             "salary": [90_000, 80_000, 70_000],
-        }
+        },
     )
     table = EntityTable(
         entity_type="Person",
@@ -61,7 +61,8 @@ class TestContainsAggregationUnit:
         assert star._contains_aggregation(CountStar()) is True
 
     def test_function_invocation_count_is_aggregation(
-        self, simple_context: Context
+        self,
+        simple_context: Context,
     ) -> None:
         from pycypher.ast_models import (
             FunctionInvocation,
@@ -75,15 +76,17 @@ class TestContainsAggregationUnit:
             arguments={
                 "arguments": [
                     PropertyLookup(
-                        expression=Variable(name="n"), property="name"
-                    )
-                ]
+                        expression=Variable(name="n"),
+                        property="name",
+                    ),
+                ],
             },
         )
         assert star._contains_aggregation(expr) is True
 
     def test_function_invocation_sum_is_aggregation(
-        self, simple_context: Context
+        self,
+        simple_context: Context,
     ) -> None:
         from pycypher.ast_models import (
             FunctionInvocation,
@@ -97,15 +100,17 @@ class TestContainsAggregationUnit:
             arguments={
                 "arguments": [
                     PropertyLookup(
-                        expression=Variable(name="n"), property="salary"
-                    )
-                ]
+                        expression=Variable(name="n"),
+                        property="salary",
+                    ),
+                ],
             },
         )
         assert star._contains_aggregation(expr) is True
 
     def test_plain_property_is_not_aggregation(
-        self, simple_context: Context
+        self,
+        simple_context: Context,
     ) -> None:
         from pycypher.ast_models import PropertyLookup, Variable
 
@@ -114,7 +119,8 @@ class TestContainsAggregationUnit:
         assert star._contains_aggregation(expr) is False
 
     def test_scalar_function_is_not_aggregation(
-        self, simple_context: Context
+        self,
+        simple_context: Context,
     ) -> None:
         from pycypher.ast_models import (
             FunctionInvocation,
@@ -128,15 +134,17 @@ class TestContainsAggregationUnit:
             arguments={
                 "arguments": [
                     PropertyLookup(
-                        expression=Variable(name="n"), property="name"
-                    )
-                ]
+                        expression=Variable(name="n"),
+                        property="name",
+                    ),
+                ],
             },
         )
         assert star._contains_aggregation(expr) is False
 
     def test_arithmetic_of_non_agg_is_not_aggregation(
-        self, simple_context: Context
+        self,
+        simple_context: Context,
     ) -> None:
         from pycypher.ast_models import (
             Arithmetic,
@@ -149,14 +157,16 @@ class TestContainsAggregationUnit:
         expr = Arithmetic(
             operator="+",
             left=PropertyLookup(
-                expression=Variable(name="n"), property="salary"
+                expression=Variable(name="n"),
+                property="salary",
             ),
             right=IntegerLiteral(value=1),
         )
         assert star._contains_aggregation(expr) is False
 
     def test_aggregation_plus_literal_is_aggregation(
-        self, simple_context: Context
+        self,
+        simple_context: Context,
     ) -> None:
         """count(n.name) + 1 — aggregation nested inside Arithmetic."""
         from pycypher.ast_models import (
@@ -173,9 +183,10 @@ class TestContainsAggregationUnit:
             arguments={
                 "arguments": [
                     PropertyLookup(
-                        expression=Variable(name="n"), property="name"
-                    )
-                ]
+                        expression=Variable(name="n"),
+                        property="name",
+                    ),
+                ],
             },
         )
         expr = Arithmetic(
@@ -186,7 +197,8 @@ class TestContainsAggregationUnit:
         assert star._contains_aggregation(expr) is True
 
     def test_aggregation_times_literal_is_aggregation(
-        self, simple_context: Context
+        self,
+        simple_context: Context,
     ) -> None:
         """sum(n.salary) * 2 — aggregation nested inside Arithmetic."""
         from pycypher.ast_models import (
@@ -203,9 +215,10 @@ class TestContainsAggregationUnit:
             arguments={
                 "arguments": [
                     PropertyLookup(
-                        expression=Variable(name="n"), property="salary"
-                    )
-                ]
+                        expression=Variable(name="n"),
+                        property="salary",
+                    ),
+                ],
             },
         )
         expr = Arithmetic(
@@ -216,7 +229,8 @@ class TestContainsAggregationUnit:
         assert star._contains_aggregation(expr) is True
 
     def test_two_aggregations_added_is_aggregation(
-        self, simple_context: Context
+        self,
+        simple_context: Context,
     ) -> None:
         """sum(n.salary) + count(*) — aggregations in both branches."""
         from pycypher.ast_models import (
@@ -233,9 +247,10 @@ class TestContainsAggregationUnit:
             arguments={
                 "arguments": [
                     PropertyLookup(
-                        expression=Variable(name="n"), property="salary"
-                    )
-                ]
+                        expression=Variable(name="n"),
+                        property="salary",
+                    ),
+                ],
             },
         )
         expr = Arithmetic(
@@ -258,7 +273,7 @@ class TestNestedAggregationExecution:
         """RETURN count(*) + 1 — should be 4 (3 people + 1)."""
         star = Star(context=simple_context)
         result = star.execute_query(
-            "MATCH (p:Person) RETURN count(*) + 1 AS n"
+            "MATCH (p:Person) RETURN count(*) + 1 AS n",
         )
         assert len(result) == 1
         assert result["n"].iloc[0] == 4
@@ -267,7 +282,7 @@ class TestNestedAggregationExecution:
         """RETURN sum(p.salary) * 2 — should be 480_000."""
         star = Star(context=simple_context)
         result = star.execute_query(
-            "MATCH (p:Person) RETURN sum(p.salary) * 2 AS total"
+            "MATCH (p:Person) RETURN sum(p.salary) * 2 AS total",
         )
         assert len(result) == 1
         assert result["total"].iloc[0] == 480_000
@@ -276,7 +291,7 @@ class TestNestedAggregationExecution:
         """WITH count(*) + 1 AS n RETURN n — same as above but via WITH."""
         star = Star(context=simple_context)
         result = star.execute_query(
-            "MATCH (p:Person) WITH count(*) + 1 AS n RETURN n"
+            "MATCH (p:Person) WITH count(*) + 1 AS n RETURN n",
         )
         assert len(result) == 1
         assert result["n"].iloc[0] == 4

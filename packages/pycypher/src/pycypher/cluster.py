@@ -107,6 +107,7 @@ class Worker(Protocol):
 
         Raises:
             Exception: On query failure.
+
         """
         ...
 
@@ -132,6 +133,7 @@ class WorkerHealth:
         avg_latency_ms: Rolling average query latency in ms.
         last_heartbeat: Monotonic timestamp of last successful heartbeat.
         active_queries: Number of queries currently executing.
+
     """
 
     worker_id: str
@@ -161,6 +163,7 @@ class ClusterHealth:
         cluster_error_rate: Aggregate error rate (0.0–1.0).
         avg_latency_ms: Weighted average latency across workers.
         worker_health: Per-worker health snapshots.
+
     """
 
     total_workers: int
@@ -198,6 +201,7 @@ class QueryRouter(Protocol):
 
         Raises:
             RuntimeError: If no suitable worker is available.
+
         """
         ...
 
@@ -234,6 +238,7 @@ class RoundRobinRouter:
 
         Raises:
             RuntimeError: If workers list is empty.
+
         """
         if not workers:
             msg = "No active workers available"
@@ -266,6 +271,7 @@ class LeastLoadedRouter:
 
         Raises:
             RuntimeError: If workers list is empty.
+
         """
         if not workers:
             msg = "No active workers available"
@@ -288,6 +294,7 @@ class LocalWorker:
         worker_id: Unique identifier for this worker.
         star: Optional pre-configured Star instance.  If ``None``,
             a default Star is created.
+
     """
 
     def __init__(self, worker_id: str, star: Any | None = None) -> None:
@@ -297,6 +304,7 @@ class LocalWorker:
             worker_id: Unique identifier for this worker.
             star: Optional pre-configured :class:`~pycypher.star.Star`
                 instance.  If ``None``, a default Star is created lazily.
+
         """
         self._worker_id = worker_id
         self._status = WorkerStatus.ACTIVE
@@ -338,6 +346,7 @@ class LocalWorker:
 
         Returns:
             DataFrame with result rows.
+
         """
         with self._lock:
             self._active_queries += 1
@@ -351,7 +360,7 @@ class LocalWorker:
                 self._total_latency_ms += elapsed_ms
                 self._last_heartbeat = time.monotonic()
             return result
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             elapsed_ms = (time.perf_counter() - t0) * 1000.0
             snippet = query[:80]
             with self._lock:
@@ -377,6 +386,7 @@ class LocalWorker:
 
         Returns:
             WorkerHealth with current counters and latency.
+
         """
         with self._lock:
             total = self._queries_executed
@@ -409,6 +419,7 @@ class ClusterCoordinator:
             :class:`RoundRobinRouter`.
         heartbeat_timeout_s: Seconds after which a worker with no
             heartbeat is marked unavailable.
+
     """
 
     router: QueryRouter = field(default_factory=RoundRobinRouter)
@@ -424,6 +435,7 @@ class ClusterCoordinator:
 
         Raises:
             ValueError: If a worker with the same ID is already registered.
+
         """
         with self._lock:
             if worker.worker_id in self._workers:
@@ -439,6 +451,7 @@ class ClusterCoordinator:
 
         Raises:
             ValueError: If worker_id is not registered.
+
         """
         with self._lock:
             if worker_id not in self._workers:
@@ -475,6 +488,7 @@ class ClusterCoordinator:
 
         Raises:
             RuntimeError: If no active workers are available.
+
         """
         with self._lock:
             active = self._active_workers()
@@ -486,6 +500,7 @@ class ClusterCoordinator:
 
         Returns:
             ClusterHealth with per-worker and aggregate metrics.
+
         """
         with self._lock:
             workers = list(self._workers.values())

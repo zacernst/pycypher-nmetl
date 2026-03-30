@@ -14,7 +14,7 @@ def person_df() -> pd.DataFrame:
             ID_COLUMN: [1, 2, 3],
             "name": ["Alice", "Bob", "Carol"],
             "age": [30, 25, 35],
-        }
+        },
     )
 
 
@@ -25,7 +25,7 @@ def product_df() -> pd.DataFrame:
             ID_COLUMN: [10, 20],
             "title": ["Widget", "Gadget"],
             "price": [9.99, 49.99],
-        }
+        },
     )
 
 
@@ -36,7 +36,8 @@ class TestContextBuilderFromDict:
         assert isinstance(ctx, Context)
 
     def test_single_entity_type_queryable(
-        self, person_df: pd.DataFrame
+        self,
+        person_df: pd.DataFrame,
     ) -> None:
         """Entity registered via from_dict() is reachable in a query."""
         ctx = ContextBuilder.from_dict({"Person": person_df})
@@ -45,16 +46,18 @@ class TestContextBuilderFromDict:
         assert set(result["name"].tolist()) == {"Alice", "Bob", "Carol"}
 
     def test_multiple_entity_types(
-        self, person_df: pd.DataFrame, product_df: pd.DataFrame
+        self,
+        person_df: pd.DataFrame,
+        product_df: pd.DataFrame,
     ) -> None:
         """Multiple entity types can be registered in one call."""
         ctx = ContextBuilder.from_dict(
-            {"Person": person_df, "Product": product_df}
+            {"Person": person_df, "Product": product_df},
         )
         star = Star(context=ctx)
         persons = star.execute_query("MATCH (p:Person) RETURN p.name AS name")
         products = star.execute_query(
-            "MATCH (pr:Product) RETURN pr.title AS title"
+            "MATCH (pr:Product) RETURN pr.title AS title",
         )
         assert len(persons) == 3
         assert set(products["title"].tolist()) == {"Widget", "Gadget"}
@@ -83,6 +86,6 @@ class TestContextBuilderFromDict:
         ctx = ContextBuilder.from_dict({"Person": person_df})
         star = Star(context=ctx)
         result = star.execute_query(
-            "MATCH (p:Person) WHERE p.age > 28 RETURN p.name AS name"
+            "MATCH (p:Person) WHERE p.age > 28 RETURN p.name AS name",
         )
         assert set(result["name"].tolist()) == {"Alice", "Carol"}

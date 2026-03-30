@@ -88,7 +88,7 @@ class TestDecodeRejectsPickle:
         """
         # Encode a harmless object as pickle to create a pickle payload
         pickle_payload = base64.b64encode(
-            pickle.dumps({"key": "value"})
+            pickle.dumps({"key": "value"}),
         ).decode()
         with pytest.raises(ValueError):
             decode(pickle_payload)

@@ -42,16 +42,16 @@ def main() -> None:
     rewriter = MultiQueryRewriter()
     dependency_graph = rewriter.analyze_dependencies(queries)
 
-    print("=== Dependency Analysis ===")  # noqa: T201
+    print("=== Dependency Analysis ===")
     for node in dependency_graph.nodes:
-        print(f"Query: {node.query_id}")  # noqa: T201
-        print(f"  Produces: {node.produces}")  # noqa: T201
-        print(f"  Consumes: {node.consumes}")  # noqa: T201
-        print(f"  Dependencies: {node.dependencies}")  # noqa: T201
-        print()  # noqa: T201
+        print(f"Query: {node.query_id}")
+        print(f"  Produces: {node.produces}")
+        print(f"  Consumes: {node.consumes}")
+        print(f"  Dependencies: {node.dependencies}")
+        print()
 
     execution_order = dependency_graph.topological_sort()
-    print(  # noqa: T201
+    print(
         "Execution order:",
         [node.query_id for node in execution_order],
     )

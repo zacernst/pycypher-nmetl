@@ -46,9 +46,9 @@ def ctx_arrow() -> ContextBuilder:
                     "__ID__": [f"p{i}" for i in range(500)],
                     "name": [f"Person{i}" for i in range(500)],
                     "age": rng.integers(20, 80, 500).tolist(),
-                }
-            )
-        }
+                },
+            ),
+        },
     )
 
 
@@ -59,10 +59,12 @@ def ctx_arrow() -> ContextBuilder:
 
 class TestArrowToPandasCallCount:
     def test_source_to_pandas_called_once_for_first_query(
-        self, ctx_arrow: ContextBuilder
+        self,
+        ctx_arrow: ContextBuilder,
     ) -> None:
         """During the first query, _source_to_pandas must be called at most once
-        for the Person entity type, regardless of how many properties are accessed."""
+        for the Person entity type, regardless of how many properties are accessed.
+        """
         star = Star(context=ctx_arrow)
         calls: list[int] = []
         original = _source_to_pandas
@@ -72,10 +74,12 @@ class TestArrowToPandasCallCount:
             return original(obj)
 
         with patch.object(
-            bf_module, "_source_to_pandas", side_effect=counting
+            bf_module,
+            "_source_to_pandas",
+            side_effect=counting,
         ):
             star.execute_query(
-                "MATCH (p:Person) WHERE p.age > 30 RETURN p.name, p.age"
+                "MATCH (p:Person) WHERE p.age > 30 RETURN p.name, p.age",
             )
 
         # p.name and p.age both access Person — only 1 _source_to_pandas call needed
@@ -86,10 +90,12 @@ class TestArrowToPandasCallCount:
         )
 
     def test_source_to_pandas_zero_calls_after_warmup(
-        self, ctx_arrow: ContextBuilder
+        self,
+        ctx_arrow: ContextBuilder,
     ) -> None:
         """After the first query warms the cache, subsequent read-only queries
-        must call _source_to_pandas exactly 0 times."""
+        must call _source_to_pandas exactly 0 times.
+        """
         star = Star(context=ctx_arrow)
 
         # Warm the cache
@@ -103,11 +109,13 @@ class TestArrowToPandasCallCount:
             return original(obj)
 
         with patch.object(
-            bf_module, "_source_to_pandas", side_effect=counting
+            bf_module,
+            "_source_to_pandas",
+            side_effect=counting,
         ):
             for _ in range(10):
                 star.execute_query(
-                    "MATCH (p:Person) WHERE p.age > 30 RETURN p.name, p.age"
+                    "MATCH (p:Person) WHERE p.age > 30 RETURN p.name, p.age",
                 )
 
         assert len(calls) == 0, (
@@ -117,7 +125,8 @@ class TestArrowToPandasCallCount:
         )
 
     def test_total_calls_across_many_queries(
-        self, ctx_arrow: ContextBuilder
+        self,
+        ctx_arrow: ContextBuilder,
     ) -> None:
         """Over 20 queries, total _source_to_pandas calls must be ≤1 (one miss)."""
         star = Star(context=ctx_arrow)
@@ -129,7 +138,9 @@ class TestArrowToPandasCallCount:
             return original(obj)
 
         with patch.object(
-            bf_module, "_source_to_pandas", side_effect=counting
+            bf_module,
+            "_source_to_pandas",
+            side_effect=counting,
         ):
             for _ in range(20):
                 star.execute_query("MATCH (p:Person) RETURN p.name, p.age")
@@ -146,7 +157,7 @@ class TestArrowToPandasCallCount:
         star = Star(context=ctx_arrow)
         r = star.execute_query(
             "MATCH (p:Person) WHERE p.age > 30 RETURN p.name, p.age "
-            "ORDER BY p.age LIMIT 5"
+            "ORDER BY p.age LIMIT 5",
         )
         assert "name" in r.columns
         assert "age" in r.columns
@@ -173,7 +184,7 @@ class TestArrowPandasCachePerformance:
         for _ in range(20):
             star.execute_query(
                 "MATCH (p:Person) WHERE p.age > 30 RETURN p.name, p.age "
-                "ORDER BY p.age LIMIT 10"
+                "ORDER BY p.age LIMIT 10",
             )
         elapsed = time.perf_counter() - t0
         assert elapsed < 2.0, (

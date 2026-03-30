@@ -68,11 +68,16 @@ class AdjacencyIndex:
         outgoing: Maps source node ID → list of (relationship_id, target_id).
         incoming: Maps target node ID → list of (relationship_id, source_id).
         size: Total number of relationships indexed.
+
     """
 
     rel_type: str
-    outgoing: dict[Any, tuple[tuple[Any, Any], ...]] = field(default_factory=dict)
-    incoming: dict[Any, tuple[tuple[Any, Any], ...]] = field(default_factory=dict)
+    outgoing: dict[Any, tuple[tuple[Any, Any], ...]] = field(
+        default_factory=dict
+    )
+    incoming: dict[Any, tuple[tuple[Any, Any], ...]] = field(
+        default_factory=dict
+    )
     size: int = 0
 
     @classmethod
@@ -86,6 +91,7 @@ class AdjacencyIndex:
         Returns:
             Populated AdjacencyIndex.  All adjacency lists are frozen tuples
             for thread-safe read access after build.
+
         """
         t0 = time.perf_counter()
 
@@ -112,7 +118,9 @@ class AdjacencyIndex:
         incoming = {k: tuple(v) for k, v in in_tmp.items()}
         size = len(rel_ids)
 
-        idx = cls(rel_type=rel_type, outgoing=outgoing, incoming=incoming, size=size)
+        idx = cls(
+            rel_type=rel_type, outgoing=outgoing, incoming=incoming, size=size
+        )
 
         elapsed = time.perf_counter() - t0
         LOGGER.debug(
@@ -124,25 +132,29 @@ class AdjacencyIndex:
         return idx
 
     def neighbors_outgoing(
-        self, source_id: Any
+        self,
+        source_id: Any,
     ) -> tuple[tuple[Any, Any], ...]:
         """Return outgoing neighbors: tuple of (rel_id, target_id)."""
         return self.outgoing.get(source_id, ())
 
     def neighbors_incoming(
-        self, target_id: Any
+        self,
+        target_id: Any,
     ) -> tuple[tuple[Any, Any], ...]:
         """Return incoming neighbors: tuple of (rel_id, source_id)."""
         return self.incoming.get(target_id, ())
 
     def neighbors_outgoing_batch(
-        self, source_ids: np.ndarray | pd.Series
+        self,
+        source_ids: np.ndarray | pd.Series,
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Batch lookup outgoing neighbors for multiple source IDs.
 
         Returns:
             Tuple of (rel_ids, src_ids, tgt_ids) arrays — the subset of
             relationships where __SOURCE__ is in source_ids.
+
         """
         if isinstance(source_ids, pd.Series):
             source_ids = source_ids.values
@@ -168,13 +180,15 @@ class AdjacencyIndex:
         )
 
     def neighbors_incoming_batch(
-        self, target_ids: np.ndarray | pd.Series
+        self,
+        target_ids: np.ndarray | pd.Series,
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Batch lookup incoming neighbors for multiple target IDs.
 
         Returns:
             Tuple of (rel_ids, src_ids, tgt_ids) arrays — the subset of
             relationships where __TARGET__ is in target_ids.
+
         """
         if isinstance(target_ids, pd.Series):
             target_ids = target_ids.values
@@ -211,6 +225,7 @@ class PropertyValueIndex:
         property_name: Property being indexed.
         value_to_ids: Maps property value → frozenset of entity IDs.
         size: Total number of indexed entries.
+
     """
 
     entity_type: str
@@ -220,7 +235,10 @@ class PropertyValueIndex:
 
     @classmethod
     def build(
-        cls, entity_type: str, property_name: str, source_df: pd.DataFrame
+        cls,
+        entity_type: str,
+        property_name: str,
+        source_df: pd.DataFrame,
     ) -> PropertyValueIndex:
         """Build property value index from an entity DataFrame.
 
@@ -231,12 +249,16 @@ class PropertyValueIndex:
 
         Returns:
             Populated PropertyValueIndex.
+
         """
         t0 = time.perf_counter()
 
         idx = cls(entity_type=entity_type, property_name=property_name)
 
-        if property_name not in source_df.columns or ID_COLUMN not in source_df.columns:
+        if (
+            property_name not in source_df.columns
+            or ID_COLUMN not in source_df.columns
+        ):
             return idx
 
         ids = source_df[ID_COLUMN].values
@@ -283,13 +305,16 @@ class EntityLabelIndex:
     Attributes:
         entity_type: Entity type label.
         ids: Sorted numpy array of entity IDs.
+
     """
 
     entity_type: str
     ids: np.ndarray = field(default_factory=lambda: np.array([], dtype=object))
 
     @classmethod
-    def build(cls, entity_type: str, source_df: pd.DataFrame) -> EntityLabelIndex:
+    def build(
+        cls, entity_type: str, source_df: pd.DataFrame
+    ) -> EntityLabelIndex:
         """Build label index from an entity DataFrame.
 
         Args:
@@ -298,6 +323,7 @@ class EntityLabelIndex:
 
         Returns:
             Populated EntityLabelIndex.
+
         """
         if ID_COLUMN not in source_df.columns:
             return cls(entity_type=entity_type)
@@ -315,7 +341,9 @@ class EntityLabelIndex:
         return len(self.ids)
 
 
-def _coerce_query_ids(sorted_ids: np.ndarray, query_ids: np.ndarray) -> np.ndarray:
+def _coerce_query_ids(
+    sorted_ids: np.ndarray, query_ids: np.ndarray
+) -> np.ndarray:
     """Coerce query_ids element types to match sorted_ids for correct comparison.
 
     Both arrays may be object dtype but contain different Python types
@@ -330,9 +358,9 @@ def _coerce_query_ids(sorted_ids: np.ndarray, query_ids: np.ndarray) -> np.ndarr
     try:
         if isinstance(sample_sorted, (int, np.integer)):
             return np.array([int(x) for x in query_ids], dtype=object)
-        elif isinstance(sample_sorted, (float, np.floating)):
+        if isinstance(sample_sorted, (float, np.floating)):
             return np.array([float(x) for x in query_ids], dtype=object)
-        elif isinstance(sample_sorted, str):
+        if isinstance(sample_sorted, str):
             return np.array([str(x) for x in query_ids], dtype=object)
     except (ValueError, TypeError):
         pass
@@ -354,10 +382,14 @@ class VectorizedPropertyStore:
 
     entity_type: str
     sorted_ids: np.ndarray  # dtype=object, sorted
-    property_arrays: dict[str, np.ndarray]  # prop_name → values aligned with sorted_ids
+    property_arrays: dict[
+        str, np.ndarray
+    ]  # prop_name → values aligned with sorted_ids
 
     @classmethod
-    def build(cls, entity_type: str, source_df: pd.DataFrame) -> VectorizedPropertyStore:
+    def build(
+        cls, entity_type: str, source_df: pd.DataFrame
+    ) -> VectorizedPropertyStore:
         """Build a vectorized store from an entity DataFrame.
 
         Args:
@@ -366,6 +398,7 @@ class VectorizedPropertyStore:
 
         Returns:
             A new VectorizedPropertyStore.
+
         """
         if source_df is None or len(source_df) == 0:
             return cls(
@@ -421,6 +454,7 @@ class VectorizedPropertyStore:
         Returns:
             Array of property values aligned with query_ids.
             Missing IDs get None.
+
         """
         if prop_name not in self.property_arrays:
             result = np.empty(len(query_ids), dtype=object)
@@ -458,7 +492,9 @@ class VectorizedPropertyStore:
         return result
 
     def fetch_multi(
-        self, query_ids: np.ndarray, prop_names: list[str]
+        self,
+        query_ids: np.ndarray,
+        prop_names: list[str],
     ) -> dict[str, np.ndarray]:
         """Fetch multiple properties in a single searchsorted pass.
 
@@ -471,11 +507,11 @@ class VectorizedPropertyStore:
 
         Returns:
             Dict mapping property names to value arrays aligned with query_ids.
+
         """
         if not prop_names or len(query_ids) == 0:
             return {
-                p: np.empty(len(query_ids), dtype=object)
-                for p in prop_names
+                p: np.empty(len(query_ids), dtype=object) for p in prop_names
             }
 
         if len(self.sorted_ids) == 0:
@@ -501,7 +537,9 @@ class VectorizedPropertyStore:
             result = np.empty(len(query_ids), dtype=object)
             result[:] = None
             if prop in self.property_arrays and match_mask.any():
-                result[match_mask] = self.property_arrays[prop][safe_positions[match_mask]]
+                result[match_mask] = self.property_arrays[prop][
+                    safe_positions[match_mask]
+                ]
             results[prop] = result
         return results
 
@@ -514,6 +552,7 @@ class GraphIndexManager:
 
     Attributes:
         context: The query Context whose data is being indexed.
+
     """
 
     def __init__(self, context: Context) -> None:
@@ -566,7 +605,9 @@ class GraphIndexManager:
             return index
 
     def get_property_index(
-        self, entity_type: str, property_name: str
+        self,
+        entity_type: str,
+        property_name: str,
     ) -> PropertyValueIndex | None:
         """Get or build property value index.
 
@@ -592,7 +633,9 @@ class GraphIndexManager:
             if property_name not in source_df.columns:
                 return None
 
-            index = PropertyValueIndex.build(entity_type, property_name, source_df)
+            index = PropertyValueIndex.build(
+                entity_type, property_name, source_df
+            )
             self._property[key] = index
             return index
 
@@ -636,6 +679,7 @@ class GraphIndexManager:
         Returns:
             DataFrame with columns (rel_id, source_id, target_id), or None
             if no index is available (caller should fall back to table scan).
+
         """
         if source_ids is None and target_ids is None:
             return None  # No pushdown — full scan needed, no index benefit
@@ -646,14 +690,16 @@ class GraphIndexManager:
 
         if source_ids is not None and target_ids is not None:
             # Both endpoints constrained — use source pushdown, then filter
-            rel_ids, src_ids, tgt_ids = adj.neighbors_outgoing_batch(source_ids)
+            rel_ids, src_ids, tgt_ids = adj.neighbors_outgoing_batch(
+                source_ids
+            )
             if len(rel_ids) == 0:
                 return pd.DataFrame(
                     {
                         ID_COLUMN: pd.Series(dtype=object),
                         RELATIONSHIP_SOURCE_COLUMN: pd.Series(dtype=object),
                         RELATIONSHIP_TARGET_COLUMN: pd.Series(dtype=object),
-                    }
+                    },
                 )
             target_set = set(target_ids.dropna().unique())
             mask = np.array([t in target_set for t in tgt_ids])
@@ -662,14 +708,18 @@ class GraphIndexManager:
                     ID_COLUMN: rel_ids[mask],
                     RELATIONSHIP_SOURCE_COLUMN: src_ids[mask],
                     RELATIONSHIP_TARGET_COLUMN: tgt_ids[mask],
-                }
+                },
             )
 
         if source_ids is not None:
-            rel_ids, src_ids, tgt_ids = adj.neighbors_outgoing_batch(source_ids)
+            rel_ids, src_ids, tgt_ids = adj.neighbors_outgoing_batch(
+                source_ids
+            )
         else:
             assert target_ids is not None
-            rel_ids, src_ids, tgt_ids = adj.neighbors_incoming_batch(target_ids)
+            rel_ids, src_ids, tgt_ids = adj.neighbors_incoming_batch(
+                target_ids
+            )
 
         if len(rel_ids) == 0:
             return pd.DataFrame(
@@ -677,7 +727,7 @@ class GraphIndexManager:
                     ID_COLUMN: pd.Series(dtype=object),
                     RELATIONSHIP_SOURCE_COLUMN: pd.Series(dtype=object),
                     RELATIONSHIP_TARGET_COLUMN: pd.Series(dtype=object),
-                }
+                },
             )
 
         return pd.DataFrame(
@@ -685,7 +735,7 @@ class GraphIndexManager:
                 ID_COLUMN: rel_ids,
                 RELATIONSHIP_SOURCE_COLUMN: src_ids,
                 RELATIONSHIP_TARGET_COLUMN: tgt_ids,
-            }
+            },
         )
 
     def indexed_property_lookup(
@@ -698,13 +748,16 @@ class GraphIndexManager:
 
         Returns:
             Frozenset of matching entity IDs, or None if no index available.
+
         """
         idx = self.get_property_index(entity_type, property_name)
         if idx is None:
             return None
         return idx.lookup(value)
 
-    def get_vectorized_store(self, entity_type: str) -> VectorizedPropertyStore | None:
+    def get_vectorized_store(
+        self, entity_type: str
+    ) -> VectorizedPropertyStore | None:
         """Get or build a VectorizedPropertyStore for an entity type.
 
         The store pre-sorts entity IDs and aligns property columns for
@@ -757,22 +810,58 @@ class GraphIndexManager:
         return {
             "epoch": self._epoch,
             "adjacency_indexes": {
-                rt: {"edges": idx.size, "sources": len(idx.outgoing), "targets": len(idx.incoming)}
+                rt: {
+                    "edges": idx.size,
+                    "sources": len(idx.outgoing),
+                    "targets": len(idx.incoming),
+                }
                 for rt, idx in self._adjacency.items()
             },
             "property_indexes": {
-                f"{et}.{prop}": {"entries": idx.size, "distinct": idx.distinct_values}
+                f"{et}.{prop}": {
+                    "entries": idx.size,
+                    "distinct": idx.distinct_values,
+                }
                 for (et, prop), idx in self._property.items()
             },
             "label_indexes": {
-                et: {"count": idx.count()}
-                for et, idx in self._label.items()
+                et: {"count": idx.count()} for et, idx in self._label.items()
             },
             "vectorized_stores": {
-                et: {"entities": store.size, "properties": len(store.properties)}
+                et: {
+                    "entities": store.size,
+                    "properties": len(store.properties),
+                }
                 for et, store in self._vectorized.items()
             },
         }
+
+    def eager_build_vectorized_stores(self) -> None:
+        """Pre-build VectorizedPropertyStores for all entity and relationship types.
+
+        Call this at query start to ensure the fast O(k log N) path in
+        ``BindingFrame.get_property()`` is always available, avoiding fallback
+        to the slower hash-based ``pd.Series.map()`` path.
+
+        Build cost is O(N log N) per entity type (one-time sort), amortised
+        across all subsequent property lookups in the query.
+        """
+        t0 = time.perf_counter()
+        built = 0
+        for etype in self._context.entity_mapping.mapping:
+            if etype not in self._vectorized:
+                self.get_vectorized_store(etype)
+                built += 1
+        for rtype in self._context.relationship_mapping.mapping:
+            if rtype not in self._vectorized:
+                self.get_vectorized_store(rtype)
+                built += 1
+        if built > 0:
+            LOGGER.debug(
+                "eager_build_vectorized_stores: built %d stores in %.4fs",
+                built,
+                time.perf_counter() - t0,
+            )
 
     def invalidate(self) -> None:
         """Force invalidation of all indexes."""

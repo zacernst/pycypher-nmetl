@@ -123,10 +123,7 @@ class TestFormat:
         assert CsvFormat().view_sql("/f.csv") == "read_csv_auto('/f.csv')"
 
     def test_parquet_view_sql(self) -> None:
-        assert (
-            ParquetFormat().view_sql("/f.parquet")
-            == "read_parquet('/f.parquet')"
-        )
+        assert ParquetFormat().view_sql("/f.parquet") == "read_parquet('/f.parquet')"
 
     def test_json_view_sql_default(self) -> None:
         assert JsonFormat().view_sql("/f.json") == "read_json_auto('/f.json')"
@@ -224,7 +221,9 @@ class TestFileDataSource:
     def test_csv_query_override(self, tmp_path: Path) -> None:
         p = _make_csv(tmp_path, _SAMPLE_DATA)
         src = FileDataSource(
-            str(p), CsvFormat(), query="SELECT name FROM source WHERE id = 1"
+            str(p),
+            CsvFormat(),
+            query="SELECT name FROM source WHERE id = 1",
         )
         result = src.read()
         assert result.num_rows == 1
@@ -233,7 +232,9 @@ class TestFileDataSource:
     def test_parquet_query_override(self, tmp_path: Path) -> None:
         p = _make_parquet(tmp_path, {"id": [1, 2], "name": ["Alice", "Bob"]})
         src = FileDataSource(
-            str(p), ParquetFormat(), query="SELECT name FROM source"
+            str(p),
+            ParquetFormat(),
+            query="SELECT name FROM source",
         )
         result = src.read()
         assert result.column_names == ["name"]
@@ -241,7 +242,9 @@ class TestFileDataSource:
     def test_json_query_override(self, tmp_path: Path) -> None:
         p = _make_json(tmp_path, _SAMPLE_DATA)
         src = FileDataSource(
-            str(p), JsonFormat(), query="SELECT name FROM source WHERE id = 1"
+            str(p),
+            JsonFormat(),
+            query="SELECT name FROM source WHERE id = 1",
         )
         result = src.read()
         assert result.num_rows == 1
@@ -282,7 +285,9 @@ _PRESET_TABLE = pa.table({"id": [1, 2], "name": ["Alice", "Bob"]})
 
 class TestRemoteSourceMocking:
     def _assert_view_sql_contains(
-        self, mock_connect: MagicMock, fragment: str
+        self,
+        mock_connect: MagicMock,
+        fragment: str,
     ) -> None:
         """Assert that the first execute() call on the connection contains *fragment*."""
         con = mock_connect.return_value
@@ -294,7 +299,8 @@ class TestRemoteSourceMocking:
         with patch("duckdb.connect", mock_connect):
             result = FileDataSource("s3://bucket/data.csv", CsvFormat()).read()
         self._assert_view_sql_contains(
-            mock_connect, "read_csv_auto('s3://bucket/data.csv')"
+            mock_connect,
+            "read_csv_auto('s3://bucket/data.csv')",
         )
         assert result is _PRESET_TABLE
         mock_connect.assert_called_once()
@@ -303,10 +309,12 @@ class TestRemoteSourceMocking:
         mock_connect = _mock_duckdb_connect(_PRESET_TABLE)
         with patch("duckdb.connect", mock_connect):
             result = FileDataSource(
-                "s3://bucket/data.parquet", ParquetFormat()
+                "s3://bucket/data.parquet",
+                ParquetFormat(),
             ).read()
         self._assert_view_sql_contains(
-            mock_connect, "read_parquet('s3://bucket/data.parquet')"
+            mock_connect,
+            "read_parquet('s3://bucket/data.parquet')",
         )
         assert result is _PRESET_TABLE
         mock_connect.assert_called_once()
@@ -316,7 +324,8 @@ class TestRemoteSourceMocking:
         with patch("duckdb.connect", mock_connect):
             FileDataSource("gs://bucket/data.parquet", ParquetFormat()).read()
         self._assert_view_sql_contains(
-            mock_connect, "read_parquet('gs://bucket/data.parquet')"
+            mock_connect,
+            "read_parquet('gs://bucket/data.parquet')",
         )
 
     def test_https_csv_uri_passes_through(self) -> None:
@@ -329,7 +338,8 @@ class TestRemoteSourceMocking:
         ):
             FileDataSource("https://host/data.csv", CsvFormat()).read()
         self._assert_view_sql_contains(
-            mock_connect, "read_csv_auto('https://host/data.csv')"
+            mock_connect,
+            "read_csv_auto('https://host/data.csv')",
         )
 
     def test_abfss_json_uri_passes_through(self) -> None:
@@ -338,7 +348,8 @@ class TestRemoteSourceMocking:
         with patch("duckdb.connect", mock_connect):
             FileDataSource(uri, JsonFormat()).read()
         self._assert_view_sql_contains(
-            mock_connect, f"read_json_auto('{uri}')"
+            mock_connect,
+            f"read_json_auto('{uri}')",
         )
 
     def test_file_scheme_stripped_before_duckdb(self) -> None:
@@ -347,7 +358,8 @@ class TestRemoteSourceMocking:
             FileDataSource("file:///abs/path.csv", CsvFormat()).read()
         # scheme must be stripped; bare path passed
         self._assert_view_sql_contains(
-            mock_connect, "read_csv_auto('/abs/path.csv')"
+            mock_connect,
+            "read_csv_auto('/abs/path.csv')",
         )
 
     def test_custom_query_passed_as_second_execute(self) -> None:
@@ -420,33 +432,38 @@ class TestFileDataSourceFixtures:
 
     def test_csv_pipe_delimiter(self) -> None:
         src = FileDataSource(
-            str(FIXTURES_DATA / "sample_pipe.csv"), CsvFormat(delimiter="|")
+            str(FIXTURES_DATA / "sample_pipe.csv"),
+            CsvFormat(delimiter="|"),
         )
         result = src.read()
         assert result.num_rows == 2
         assert set(result.column_names) == {"id", "name", "value"}
 
     def test_parquet_bare_path_row_count(
-        self, sample_parquet_path: Path
+        self,
+        sample_parquet_path: Path,
     ) -> None:
         src = FileDataSource(str(sample_parquet_path), ParquetFormat())
         assert src.read().num_rows == 2
 
     def test_parquet_bare_path_columns(
-        self, sample_parquet_path: Path
+        self,
+        sample_parquet_path: Path,
     ) -> None:
         src = FileDataSource(str(sample_parquet_path), ParquetFormat())
         assert set(src.read().column_names) == {"id", "name", "value"}
 
     def test_parquet_file_uri_row_count(
-        self, sample_parquet_path: Path
+        self,
+        sample_parquet_path: Path,
     ) -> None:
         uri = sample_parquet_path.as_uri()
         src = FileDataSource(uri, ParquetFormat())
         assert src.read().num_rows == 2
 
     def test_parquet_query_override_filters(
-        self, sample_parquet_path: Path
+        self,
+        sample_parquet_path: Path,
     ) -> None:
         src = FileDataSource(
             str(sample_parquet_path),
@@ -756,7 +773,7 @@ class TestDuckDBConnectionCleanup:
         mock_con.__exit__ = MagicMock(return_value=False)
         # con.execute(sql).to_arrow_table() chain
         mock_con.execute.return_value.to_arrow_table.return_value = pa.table(
-            {"x": [1]}
+            {"x": [1]},
         )
         return mock_con
 
@@ -793,7 +810,8 @@ class TestDuckDBConnectionCleanup:
         mock_con.__exit__.assert_called_once()
 
     def test_connection_closed_even_if_execute_raises(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         """DuckDB connection must be closed even when execute() raises."""
         src = FileDataSource(str(tmp_path / "f.csv"), CsvFormat())

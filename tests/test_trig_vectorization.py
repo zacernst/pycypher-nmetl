@@ -94,9 +94,7 @@ class TestCotRegistered:
 
     def test_cot_quarter_pi(self) -> None:
         result = _reg().execute("cot", [_s(math.pi / 4)])
-        assert _approx(result, 1.0), (
-            f"cot(π/4) should be 1.0, got {result.iloc[0]}"
-        )
+        assert _approx(result, 1.0), f"cot(π/4) should be 1.0, got {result.iloc[0]}"
 
     def test_cot_pi_over_6(self) -> None:
         result = _reg().execute("cot", [_s(math.pi / 6)])
@@ -132,7 +130,7 @@ class TestCotRegistered:
             context=Context(
                 entity_mapping=EntityMapping(mapping={}),
                 relationship_mapping=RelationshipMapping(mapping={}),
-            )
+            ),
         )
         result = star.execute_query(f"RETURN cot({math.pi / 4}) AS v")
         assert _approx(pd.Series([result["v"].iloc[0]]), 1.0)
@@ -148,15 +146,11 @@ class TestHaversinRegistered:
 
     def test_haversin_zero(self) -> None:
         result = _reg().execute("haversin", [_s(0.0)])
-        assert _approx(result, 0.0), (
-            f"haversin(0) should be 0.0, got {result.iloc[0]}"
-        )
+        assert _approx(result, 0.0), f"haversin(0) should be 0.0, got {result.iloc[0]}"
 
     def test_haversin_pi(self) -> None:
         result = _reg().execute("haversin", [_s(math.pi)])
-        assert _approx(result, 1.0), (
-            f"haversin(π) should be 1.0, got {result.iloc[0]}"
-        )
+        assert _approx(result, 1.0), f"haversin(π) should be 1.0, got {result.iloc[0]}"
 
     def test_haversin_half_pi(self) -> None:
         result = _reg().execute("haversin", [_s(math.pi / 2)])
@@ -175,7 +169,7 @@ class TestHaversinRegistered:
         assert _is_null(result.iloc[2])
 
     def test_haversin_cypher_integration(self) -> None:
-        """haversin is the standard Neo4j great-circle building block."""
+        """Haversin is the standard Neo4j great-circle building block."""
         from pycypher.relational_models import (
             Context,
             EntityMapping,
@@ -187,7 +181,7 @@ class TestHaversinRegistered:
             context=Context(
                 entity_mapping=EntityMapping(mapping={}),
                 relationship_mapping=RelationshipMapping(mapping={}),
-            )
+            ),
         )
         result = star.execute_query("RETURN haversin(0.0) AS v")
         assert _approx(pd.Series([result["v"].iloc[0]]), 0.0)
@@ -315,14 +309,15 @@ class TestTrigVectorisationPerformance:
         """
         arr = self._big_series().to_numpy(dtype=np.float64)
         s_obj = pd.Series(
-            arr, dtype=object
+            arr,
+            dtype=object,
         )  # object dtype matches .apply() path
 
         # Baseline: simulate the old .apply() path on 10k float values
         start = time.perf_counter()
         for _ in range(REPS):
             s_obj.apply(
-                lambda x: math.sin(float(x)) if x is not None else None
+                lambda x: math.sin(float(x)) if x is not None else None,
             )
         baseline = time.perf_counter() - start
 

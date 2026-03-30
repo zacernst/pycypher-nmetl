@@ -1,5 +1,4 @@
-"""
-Critical data correctness tests for complex expressions and mathematical edge cases.
+"""Critical data correctness tests for complex expressions and mathematical edge cases.
 Priority 3: Complex expression evaluation and mathematical accuracy.
 """
 
@@ -43,7 +42,7 @@ def expression_test_context():
             ],
             "years": [5, 10, 2, 7, 4],
             "rating": [4.2, 3.8, 4.5, 4.1, 3.9],
-        }
+        },
     )
 
     person_table = EntityTable(
@@ -100,7 +99,7 @@ class TestComplexArithmeticExpressions:
         star = Star(context=expression_test_context)
 
         result = star.execute_query(
-            "MATCH (p:Person) WITH (p.salary + p.bonus) * p.years / 100 AS complex_calc RETURN complex_calc AS complex_calc"
+            "MATCH (p:Person) WITH (p.salary + p.bonus) * p.years / 100 AS complex_calc RETURN complex_calc AS complex_calc",
         )
 
         # Should be: (salary + bonus) * years / 100
@@ -116,7 +115,7 @@ class TestComplexArithmeticExpressions:
         star = Star(context=expression_test_context)
 
         result = star.execute_query(
-            "MATCH (p:Person) WITH ((p.age * 2) + (p.years * 3)) - ((p.rating * 10) / 2) AS deep_calc RETURN deep_calc AS deep_calc"
+            "MATCH (p:Person) WITH ((p.age * 2) + (p.years * 3)) - ((p.rating * 10) / 2) AS deep_calc RETURN deep_calc AS deep_calc",
         )
 
         # First row: ((30 * 2) + (5 * 3)) - ((4.2 * 10) / 2) = (60 + 15) - (42 / 2) = 75 - 21 = 54
@@ -128,7 +127,7 @@ class TestComplexArithmeticExpressions:
         star = Star(context=expression_test_context)
 
         result = star.execute_query(
-            "MATCH (p:Person) WITH p.age + p.years * 2 AS without_parens, (p.age + p.years) * 2 AS with_parens RETURN without_parens AS without_parens, with_parens AS with_parens"
+            "MATCH (p:Person) WITH p.age + p.years * 2 AS without_parens, (p.age + p.years) * 2 AS with_parens RETURN without_parens AS without_parens, with_parens AS with_parens",
         )
 
         # First row: age=30, years=5
@@ -146,7 +145,7 @@ class TestComplexStringExpressions:
         star = Star(context=expression_test_context)
 
         result = star.execute_query(
-            "MATCH (p:Person) WITH toUpper(trim(p.name)) AS clean_upper RETURN clean_upper AS clean_upper"
+            "MATCH (p:Person) WITH toUpper(trim(p.name)) AS clean_upper RETURN clean_upper AS clean_upper",
         )
 
         clean_names = result["clean_upper"].tolist()
@@ -162,7 +161,7 @@ class TestComplexStringExpressions:
         star = Star(context=expression_test_context)
 
         result = star.execute_query(
-            "MATCH (p:Person) WITH substring(toLower(p.name), 0, 3) AS first_three_lower RETURN first_three_lower AS first_three_lower"
+            "MATCH (p:Person) WITH substring(toLower(p.name), 0, 3) AS first_three_lower RETURN first_three_lower AS first_three_lower",
         )
 
         # Should process: "Alice Smith" -> "alice smith" -> "ali"
@@ -178,7 +177,7 @@ class TestComplexStringExpressions:
         star = Star(context=expression_test_context)
 
         result = star.execute_query(
-            "MATCH (p:Person) WITH size(p.name) + p.age AS name_age_sum RETURN name_age_sum AS name_age_sum"
+            "MATCH (p:Person) WITH size(p.name) + p.age AS name_age_sum RETURN name_age_sum AS name_age_sum",
         )
 
         # First row: size("Alice Smith") + 30 = 11 + 30 = 41
@@ -195,7 +194,7 @@ class TestBooleanLogicExpressions:
 
         # Test if AND has higher precedence than OR
         result = star.execute_query(
-            "MATCH (p:Person) WHERE p.age > 25 AND p.salary > 100000 OR p.department = 'Sales' RETURN p.name AS name"
+            "MATCH (p:Person) WHERE p.age > 25 AND p.salary > 100000 OR p.department = 'Sales' RETURN p.name AS name",
         )
 
         # Should be: (age > 25 AND salary > 100000) OR (department = 'Sales')
@@ -208,7 +207,7 @@ class TestBooleanLogicExpressions:
         star = Star(context=expression_test_context)
 
         result = star.execute_query(
-            "MATCH (p:Person) WITH (p.age > 30) AS is_senior RETURN is_senior AS is_senior"
+            "MATCH (p:Person) WITH (p.age > 30) AS is_senior RETURN is_senior AS is_senior",
         )
 
         senior_flags = result["is_senior"].tolist()
@@ -226,7 +225,7 @@ class TestCoalesceAndNullHandling:
 
         # Add some null data for testing
         result = star.execute_query(
-            "MATCH (p:Person) WITH coalesce(p.bonus / 1000, p.rating, 0) AS fallback_score RETURN fallback_score AS fallback_score"
+            "MATCH (p:Person) WITH coalesce(p.bonus / 1000, p.rating, 0) AS fallback_score RETURN fallback_score AS fallback_score",
         )
 
         # Should use bonus/1000 for most cases since bonus is not null
@@ -239,7 +238,7 @@ class TestCoalesceAndNullHandling:
         star = Star(context=expression_test_context)
 
         result = star.execute_query(
-            "MATCH (p:Person) WITH coalesce(null, coalesce(null, p.rating, 1.0), 0.0) AS nested_fallback RETURN nested_fallback AS nested_fallback"
+            "MATCH (p:Person) WITH coalesce(null, coalesce(null, p.rating, 1.0), 0.0) AS nested_fallback RETURN nested_fallback AS nested_fallback",
         )
 
         # Should resolve to p.rating values since inner coalesce finds rating first
@@ -256,7 +255,7 @@ class TestAggregationComplexity:
         star = Star(context=expression_test_context)
 
         result = star.execute_query(
-            "MATCH (p:Person) WITH avg(p.salary + p.bonus) AS avg_total_comp RETURN avg_total_comp AS avg_total_comp"
+            "MATCH (p:Person) WITH avg(p.salary + p.bonus) AS avg_total_comp RETURN avg_total_comp AS avg_total_comp",
         )
 
         # Should compute total comp for each person, then average
@@ -270,7 +269,7 @@ class TestAggregationComplexity:
         star = Star(context=expression_test_context)
 
         result = star.execute_query(
-            "MATCH (p:Person) WITH sum(CASE WHEN p.department = 'Engineering' THEN p.salary ELSE 0 END) AS eng_total_salary RETURN eng_total_salary AS eng_total_salary"
+            "MATCH (p:Person) WITH sum(CASE WHEN p.department = 'Engineering' THEN p.salary ELSE 0 END) AS eng_total_salary RETURN eng_total_salary AS eng_total_salary",
         )
 
         # Engineering salaries: 100000 + 90000 = 190000
@@ -285,7 +284,7 @@ class TestExpressionEdgeCases:
         star = Star(context=expression_test_context)
 
         result = star.execute_query(
-            "MATCH (p:Person) WITH size(p.name) * 2 AS double_name_length RETURN double_name_length AS double_name_length"
+            "MATCH (p:Person) WITH size(p.name) * 2 AS double_name_length RETURN double_name_length AS double_name_length",
         )
 
         # Empty string should give size 0, so 0 * 2 = 0
@@ -304,7 +303,7 @@ class TestExpressionEdgeCases:
                  p.years AS years
             WITH age + salary / 1000 + bonus / 1000 + years * 10 AS mega_score
             WITH mega_score * 1.5 AS final_score
-            RETURN final_score AS final_score"""
+            RETURN final_score AS final_score""",
         )
 
         # Test that complex multi-stage WITH clauses work correctly
@@ -330,7 +329,7 @@ class TestDataIntegrityThroughTransformations:
             """MATCH (p:Person)
             WITH p.name AS original_name, toUpper(p.name) AS upper_name
             WITH original_name AS orig, toLower(upper_name) AS round_trip
-            RETURN orig AS orig, round_trip AS round_trip"""
+            RETURN orig AS orig, round_trip AS round_trip""",
         )
 
         # Round-trip: name -> toUpper -> toLower should preserve case changes
@@ -351,7 +350,7 @@ class TestDataIntegrityThroughTransformations:
             WITH age * 1000 AS age_thousands, salary / 1000 AS salary_thousands
             WITH age_thousands / 1000 AS age_restored, salary_thousands * 1000 AS salary_restored
             RETURN age_restored AS age_restored, salary_restored AS salary_restored
-            ORDER BY age_restored ASC"""
+            ORDER BY age_restored ASC""",
         )
 
         # Chain: age → age*1000 → /1000 = age; salary → /1000 → *1000 = salary
@@ -373,7 +372,7 @@ class TestDataIntegrityThroughTransformations:
             """MATCH (p:Person)
             WITH toString(p.age) AS age_str, toFloat(p.rating) AS rating_float
             WITH toInteger(age_str) AS age_back, rating_float * 1.0 AS rating_preserved
-            RETURN age_back AS age_back, rating_preserved AS rating_preserved"""
+            RETURN age_back AS age_back, rating_preserved AS rating_preserved""",
         )
 
         # Type conversions should work correctly

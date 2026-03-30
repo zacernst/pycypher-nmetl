@@ -64,9 +64,7 @@ def _build_context(n: int, n_rels: int | None = None) -> Context:
         entity_type="Person",
         identifier="Person",
         column_names=list(entity_df.columns),
-        source_obj_attribute_map={
-            c: c for c in entity_df.columns if c != ID_COLUMN
-        },
+        source_obj_attribute_map={c: c for c in entity_df.columns if c != ID_COLUMN},
         attribute_map={c: c for c in entity_df.columns if c != ID_COLUMN},
         source_obj=entity_df,
     )
@@ -86,25 +84,25 @@ def _build_context(n: int, n_rels: int | None = None) -> Context:
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def small_ctx() -> Context:
     """Small context (100 entities, 300 rels)."""
     return _build_context(100)
 
 
-@pytest.fixture()
+@pytest.fixture
 def small_star(small_ctx: Context) -> Star:
     """Star with small context."""
     return Star(context=small_ctx)
 
 
-@pytest.fixture()
+@pytest.fixture
 def medium_ctx() -> Context:
     """Medium context (10K entities, 30K rels)."""
     return _build_context(10_000)
 
 
-@pytest.fixture()
+@pytest.fixture
 def medium_star(medium_ctx: Context) -> Star:
     """Star with medium context."""
     return Star(context=medium_ctx)
@@ -217,10 +215,10 @@ class TestBackendEquivalence:
             # Sort both to handle non-deterministic row order
             sort_cols = list(pandas_result.columns)
             p_sorted = pandas_result.sort_values(sort_cols).reset_index(
-                drop=True
+                drop=True,
             )
             d_sorted = duckdb_result.sort_values(sort_cols).reset_index(
-                drop=True
+                drop=True,
             )
             pd.testing.assert_frame_equal(
                 p_sorted,

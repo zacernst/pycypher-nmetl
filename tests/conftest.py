@@ -64,7 +64,7 @@ def sample_parquet_path(tmp_path_factory: pytest.TempPathFactory) -> Path:
             "id": pa.array([1, 2], type=pa.int64()),
             "name": pa.array(["Alice", "Bob"], type=pa.string()),
             "value": pa.array([1.1, 2.2], type=pa.float64()),
-        }
+        },
     )
     pq.write_table(table, str(p))
     return p
@@ -96,11 +96,11 @@ def _people_df_template() -> pd.DataFrame:
             "age": [30, 25, 35, 28],
             "dept": ["eng", "mktg", "eng", "sales"],
             "salary": [100_000, 80_000, 110_000, 90_000],
-        }
+        },
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def people_df(_people_df_template: pd.DataFrame) -> pd.DataFrame:
     """Four-person DataFrame used across 13+ test files (copy per test)."""
     return _people_df_template.copy()
@@ -115,11 +115,11 @@ def _knows_df_template() -> pd.DataFrame:
             "__SOURCE__": [1, 2, 3],
             "__TARGET__": [2, 3, 1],
             "since": [2020, 2021, 2019],
-        }
+        },
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def knows_df(_knows_df_template: pd.DataFrame) -> pd.DataFrame:
     """Friendship relationships between people (copy per test)."""
     return _knows_df_template.copy()
@@ -130,7 +130,7 @@ def knows_df(_knows_df_template: pd.DataFrame) -> pd.DataFrame:
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture()
+@pytest.fixture
 def person_entity_table(people_df: pd.DataFrame) -> EntityTable:
     """EntityTable for Person nodes."""
     return EntityTable(
@@ -153,7 +153,7 @@ def person_entity_table(people_df: pd.DataFrame) -> EntityTable:
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def knows_rel_table(knows_df: pd.DataFrame) -> RelationshipTable:
     """RelationshipTable for KNOWS edges."""
     return RelationshipTable(
@@ -168,7 +168,7 @@ def knows_rel_table(knows_df: pd.DataFrame) -> RelationshipTable:
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def person_context(person_entity_table: EntityTable) -> Context:
     """Context with Person entities only (no relationships)."""
     return Context(
@@ -177,7 +177,7 @@ def person_context(person_entity_table: EntityTable) -> Context:
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def social_context(
     person_entity_table: EntityTable,
     knows_rel_table: RelationshipTable,
@@ -186,24 +186,24 @@ def social_context(
     return Context(
         entity_mapping=EntityMapping(mapping={"Person": person_entity_table}),
         relationship_mapping=RelationshipMapping(
-            mapping={"KNOWS": knows_rel_table}
+            mapping={"KNOWS": knows_rel_table},
         ),
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def person_star(person_context: Context) -> Star:
     """Star with Person entities only."""
     return Star(context=person_context)
 
 
-@pytest.fixture()
+@pytest.fixture
 def social_star(social_context: Context) -> Star:
     """Star with Person entities and KNOWS relationships."""
     return Star(context=social_context)
 
 
-@pytest.fixture()
+@pytest.fixture
 def empty_context() -> Context:
     """Empty context with no entities or relationships."""
     return Context(
@@ -212,7 +212,7 @@ def empty_context() -> Context:
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def empty_star(empty_context: Context) -> Star:
     """Star with empty context."""
     return Star(context=empty_context)
@@ -318,12 +318,10 @@ def make_context(
 
     """
     entity_tables = {
-        label: make_entity_table(label, data)
-        for label, data in entities.items()
+        label: make_entity_table(label, data) for label, data in entities.items()
     }
     rel_tables = {
-        rt: make_rel_table(rt, data)
-        for rt, data in (relationships or {}).items()
+        rt: make_rel_table(rt, data) for rt, data in (relationships or {}).items()
     }
     return Context(
         entity_mapping=EntityMapping(mapping=entity_tables),
@@ -380,7 +378,7 @@ def spark_session():  # type: ignore[return]
         spark.sparkContext.setLogLevel("WARN")
         yield spark
         spark.stop()
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         pytest.skip(f"Could not connect to Spark ({master}): {exc}")
 
 
@@ -407,7 +405,7 @@ def neo4j_driver():  # type: ignore[return]
         driver.verify_connectivity()
         yield driver
         driver.close()
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         pytest.skip(f"Could not connect to Neo4j ({uri}): {exc}")
 
 

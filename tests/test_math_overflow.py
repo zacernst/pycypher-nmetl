@@ -28,19 +28,19 @@ from pycypher.scalar_functions import ScalarFunctionRegistry
 from pycypher.star import Star
 
 
-@pytest.fixture()
+@pytest.fixture
 def reg() -> ScalarFunctionRegistry:
     return ScalarFunctionRegistry.get_instance()
 
 
-@pytest.fixture()
+@pytest.fixture
 def exp_star() -> Star:
     df = pd.DataFrame(
         {
             ID_COLUMN: [1, 2, 3],
             "name": ["Alice", "Bob", "Carol"],
             "val": [1.0, 1000.0, -1000.0],
-        }
+        },
     )
     table = EntityTable(
         entity_type="Person",
@@ -54,7 +54,7 @@ def exp_star() -> Star:
         context=Context(
             entity_mapping=EntityMapping(mapping={"Person": table}),
             relationship_mapping=RelationshipMapping(mapping={}),
-        )
+        ),
     )
 
 
@@ -65,24 +65,28 @@ def exp_star() -> Star:
 
 class TestExpOverflow:
     def test_overflow_does_not_crash(
-        self, reg: ScalarFunctionRegistry
+        self,
+        reg: ScalarFunctionRegistry,
     ) -> None:
         reg.execute("exp", [pd.Series([1000.0])])
 
     def test_overflow_returns_positive_infinity(
-        self, reg: ScalarFunctionRegistry
+        self,
+        reg: ScalarFunctionRegistry,
     ) -> None:
         result = reg.execute("exp", [pd.Series([1000.0])])
         assert math.isinf(result.iloc[0]) and result.iloc[0] > 0
 
     def test_large_negative_returns_zero(
-        self, reg: ScalarFunctionRegistry
+        self,
+        reg: ScalarFunctionRegistry,
     ) -> None:
         result = reg.execute("exp", [pd.Series([-1000.0])])
         assert result.iloc[0] == pytest.approx(0.0, abs=1e-100)
 
     def test_normal_values_unchanged(
-        self, reg: ScalarFunctionRegistry
+        self,
+        reg: ScalarFunctionRegistry,
     ) -> None:
         result = reg.execute("exp", [pd.Series([1.0])])
         assert result.iloc[0] == pytest.approx(math.e)
@@ -105,7 +109,7 @@ class TestExpOverflow:
 
     def test_in_return_clause(self, exp_star: Star) -> None:
         r = exp_star.execute_query(
-            "MATCH (p:Person) RETURN exp(p.val) AS e ORDER BY p.name"
+            "MATCH (p:Person) RETURN exp(p.val) AS e ORDER BY p.name",
         )
         vals = list(r["e"])
         assert vals[0] == pytest.approx(math.e)
@@ -114,20 +118,22 @@ class TestExpOverflow:
 
     def test_isfinite_of_overflow_is_false(self, exp_star: Star) -> None:
         r = exp_star.execute_query(
-            "MATCH (p:Person) WHERE p.val = 1000.0 RETURN isFinite(exp(p.val)) AS r"
+            "MATCH (p:Person) WHERE p.val = 1000.0 RETURN isFinite(exp(p.val)) AS r",
         )
         result_val = r["r"].iloc[0]
-        assert result_val is False or result_val == False  # noqa: E712
+        assert result_val is False or result_val == False
 
     def test_overflow_emits_no_runtime_warning(
-        self, reg: ScalarFunctionRegistry
+        self,
+        reg: ScalarFunctionRegistry,
     ) -> None:
         with warnings.catch_warnings():
             warnings.simplefilter("error", RuntimeWarning)
             reg.execute("exp", [pd.Series([1000.0])])
 
     def test_mixed_column_emits_no_runtime_warning(
-        self, reg: ScalarFunctionRegistry
+        self,
+        reg: ScalarFunctionRegistry,
     ) -> None:
         with warnings.catch_warnings():
             warnings.simplefilter("error", RuntimeWarning)
@@ -141,18 +147,21 @@ class TestExpOverflow:
 
 class TestPowOverflow:
     def test_overflow_does_not_crash(
-        self, reg: ScalarFunctionRegistry
+        self,
+        reg: ScalarFunctionRegistry,
     ) -> None:
         reg.execute("pow", [pd.Series([10.0]), pd.Series([400.0])])
 
     def test_overflow_returns_infinity(
-        self, reg: ScalarFunctionRegistry
+        self,
+        reg: ScalarFunctionRegistry,
     ) -> None:
         result = reg.execute("pow", [pd.Series([10.0]), pd.Series([400.0])])
         assert math.isinf(result.iloc[0]) and result.iloc[0] > 0
 
     def test_normal_values_unchanged(
-        self, reg: ScalarFunctionRegistry
+        self,
+        reg: ScalarFunctionRegistry,
     ) -> None:
         result = reg.execute("pow", [pd.Series([2.0]), pd.Series([10.0])])
         assert result.iloc[0] == pytest.approx(1024.0)
@@ -162,19 +171,22 @@ class TestPowOverflow:
         assert pd.isna(result.iloc[0])
 
     def test_null_exponent_propagates(
-        self, reg: ScalarFunctionRegistry
+        self,
+        reg: ScalarFunctionRegistry,
     ) -> None:
         result = reg.execute("pow", [pd.Series([2.0]), pd.Series([None])])
         assert pd.isna(result.iloc[0])
 
     def test_zero_exponent_returns_one(
-        self, reg: ScalarFunctionRegistry
+        self,
+        reg: ScalarFunctionRegistry,
     ) -> None:
         result = reg.execute("pow", [pd.Series([5.0]), pd.Series([0.0])])
         assert result.iloc[0] == pytest.approx(1.0)
 
     def test_negative_base_positive_exponent(
-        self, reg: ScalarFunctionRegistry
+        self,
+        reg: ScalarFunctionRegistry,
     ) -> None:
         result = reg.execute("pow", [pd.Series([-2.0]), pd.Series([3.0])])
         assert result.iloc[0] == pytest.approx(-8.0)

@@ -38,7 +38,7 @@ class TestDataFrameCopyOptimization:
                 "name": [f"Person{i}" for i in range(1, n_people + 1)],
                 "age": [(20 + i % 50) for i in range(1, n_people + 1)],
                 "active": [i % 3 == 0 for i in range(1, n_people + 1)],
-            }
+            },
         )
 
         # Create relationships between people
@@ -46,16 +46,12 @@ class TestDataFrameCopyOptimization:
         knows_df = pd.DataFrame(
             {
                 ID_COLUMN: list(range(1, n_relationships + 1)),
-                "__SOURCE__": [
-                    ((i % n_people) + 1) for i in range(n_relationships)
-                ],
+                "__SOURCE__": [((i % n_people) + 1) for i in range(n_relationships)],
                 "__TARGET__": [
                     ((i + 100) % n_people + 1) for i in range(n_relationships)
                 ],
-                "strength": [
-                    0.1 + (i % 10) * 0.1 for i in range(n_relationships)
-                ],
-            }
+                "strength": [0.1 + (i % 10) * 0.1 for i in range(n_relationships)],
+            },
         )
 
         person_table = EntityTable.from_dataframe("Person", person_df)
@@ -66,7 +62,7 @@ class TestDataFrameCopyOptimization:
         context = Context(
             entity_mapping=EntityMapping(mapping={"Person": person_table}),
             relationship_mapping=RelationshipMapping(
-                mapping={"KNOWS": knows_table}
+                mapping={"KNOWS": knows_table},
             ),
         )
         return Star(context=context)
@@ -82,9 +78,7 @@ class TestDataFrameCopyOptimization:
             text=True,
         )
 
-        copy_lines = (
-            result.stdout.strip().split("\n") if result.stdout.strip() else []
-        )
+        copy_lines = result.stdout.strip().split("\n") if result.stdout.strip() else []
 
         # Document current copy usage
         print(f"Found {len(copy_lines)} .copy() calls in source code:")
@@ -98,10 +92,10 @@ class TestDataFrameCopyOptimization:
         assert len(copy_lines) <= 18  # Verify optimization reduced copy count
 
     def test_frontier_copy_in_variable_length_path(
-        self, large_graph_star: Star
+        self,
+        large_graph_star: Star,
     ) -> None:
         """Test frontier DataFrame copying in variable-length path traversal."""
-
         # This query triggers variable-length path logic which uses frontier.copy()
         # Line: frontier = start_frame.bindings.copy()
         query = "MATCH (p:Person)-[*1..2]->(connected) RETURN count(connected) AS count"
@@ -120,12 +114,14 @@ class TestDataFrameCopyOptimization:
         # This copy happens for every variable-length path traversal
 
     def test_edge_dataframe_copy_in_relationship_traversal(
-        self, large_graph_star: Star
+        self,
+        large_graph_star: Star,
     ) -> None:
         """Test edge DataFrame copying in relationship traversal."""
-
         # This triggers: edge_df = rel_df[[src_col, tgt_col]].copy()
-        query = "MATCH (p:Person)-[r:KNOWS]->(friend) RETURN count(friend) AS friend_count"
+        query = (
+            "MATCH (p:Person)-[r:KNOWS]->(friend) RETURN count(friend) AS friend_count"
+        )
 
         start_time = time.perf_counter()
         result = large_graph_star.execute_query(query)
@@ -140,14 +136,12 @@ class TestDataFrameCopyOptimization:
         # Column selection creates a view, so the .copy() might be redundant
 
     def test_bindings_copy_in_aggregation(
-        self, large_graph_star: Star
+        self,
+        large_graph_star: Star,
     ) -> None:
         """Test bindings copying in aggregation operations."""
-
         # This might trigger: df = frame.bindings.copy()
-        query = (
-            "MATCH (p:Person) RETURN avg(p.age) AS avg_age, count(p) AS total"
-        )
+        query = "MATCH (p:Person) RETURN avg(p.age) AS avg_age, count(p) AS total"
 
         start_time = time.perf_counter()
         result = large_graph_star.execute_query(query)
@@ -160,10 +154,10 @@ class TestDataFrameCopyOptimization:
         assert 20 <= result.iloc[0]["avg_age"] <= 70  # Age range check
 
     def test_copy_call_frequency_during_complex_query(
-        self, large_graph_star: Star
+        self,
+        large_graph_star: Star,
     ) -> None:
         """Test how many DataFrame copies occur during a complex query."""
-
         original_copy = pd.DataFrame.copy
         copy_call_count = 0
 
@@ -186,7 +180,7 @@ class TestDataFrameCopyOptimization:
             result = large_graph_star.execute_query(query)
 
         print(
-            f"Complex query triggered {copy_call_count} DataFrame.copy() calls"
+            f"Complex query triggered {copy_call_count} DataFrame.copy() calls",
         )
 
         # Verify correctness
@@ -201,14 +195,13 @@ class TestDataFrameCopyOptimization:
 
     def test_unnecessary_copy_in_column_selection(self) -> None:
         """Test that column selection doesn't need .copy() for read-only operations."""
-
         # Create test DataFrame
         df = pd.DataFrame(
             {
                 "id": [1, 2, 3],
                 "name": ["Alice", "Bob", "Carol"],
                 "age": [30, 25, 35],
-            }
+            },
         )
 
         # Column selection with copy (current pattern)
@@ -233,7 +226,6 @@ class TestDataFrameCopyOptimization:
 
     def test_copy_vs_view_performance_difference(self) -> None:
         """Test performance difference between .copy() and view operations."""
-
         # Create large DataFrame for meaningful performance test
         large_df = pd.DataFrame(
             {
@@ -241,7 +233,7 @@ class TestDataFrameCopyOptimization:
                 "value1": list(range(100000)),
                 "value2": list(range(100000)),
                 "value3": list(range(100000)),
-            }
+            },
         )
 
         # Time column selection with copy
@@ -268,7 +260,6 @@ class TestDataFrameCopyOptimization:
 
     def test_identify_safe_copy_elimination_candidates(self) -> None:
         """Identify DataFrame copies that can safely be eliminated."""
-
         # Categories of potentially unnecessary copies:
         # 1. Column selection for read-only operations
         # 2. Temporary variables that aren't modified
@@ -289,7 +280,7 @@ class TestDataFrameCopyOptimization:
         # - No concurrent access to the original DataFrame
 
         print(
-            f"Identified {len(candidates)} potential copy elimination candidates:"
+            f"Identified {len(candidates)} potential copy elimination candidates:",
         )
         for candidate in candidates:
             print(f"  - {candidate}")
@@ -298,10 +289,10 @@ class TestDataFrameCopyOptimization:
         assert len(candidates) >= 4
 
     def test_copy_elimination_preserves_correctness(
-        self, large_graph_star: Star
+        self,
+        large_graph_star: Star,
     ) -> None:
         """Test that optimizations preserve query correctness."""
-
         # Run the same query multiple times to ensure consistency
         query = "MATCH (p:Person) WHERE p.age > 40 RETURN count(p) AS count"
 
@@ -317,10 +308,9 @@ class TestDataFrameCopyOptimization:
 
     def test_memory_usage_reduction_with_fewer_copies(self) -> None:
         """Test that reducing copies reduces memory usage."""
-
         # Create large DataFrame to make memory difference measurable
         large_df = pd.DataFrame(
-            {f"col_{i}": list(range(50000)) for i in range(20)}
+            {f"col_{i}": list(range(50000)) for i in range(20)},
         )
 
         import os
@@ -346,7 +336,7 @@ class TestDataFrameCopyOptimization:
 
         memory_increase = memory_with_copies - initial_memory
         print(
-            f"Memory increase with 10 copies: {memory_increase / 1024 / 1024:.1f} MB"
+            f"Memory increase with 10 copies: {memory_increase / 1024 / 1024:.1f} MB",
         )
 
         # Demonstrates the memory cost of unnecessary copies

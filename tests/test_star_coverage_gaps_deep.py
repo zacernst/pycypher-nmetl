@@ -9,12 +9,11 @@ from __future__ import annotations
 
 import pandas as pd
 import pytest
-
 from pycypher import ContextBuilder, Star, get_cache_stats
 from pycypher.star import ResultCache, _literal_from_python_value
 
 
-@pytest.fixture()
+@pytest.fixture
 def star() -> Star:
     """Star with Person entities and KNOWS relationships."""
     people = pd.DataFrame(
@@ -35,7 +34,9 @@ def star() -> Star:
     ctx = (
         ContextBuilder()
         .add_entity("Person", people)
-        .add_relationship("KNOWS", rels, source_col="__SOURCE__", target_col="__TARGET__")
+        .add_relationship(
+            "KNOWS", rels, source_col="__SOURCE__", target_col="__TARGET__",
+        )
         .build()
     )
     return Star(context=ctx)
@@ -227,13 +228,13 @@ class TestExplainQuery:
 
     def test_explain_with_where(self, star: Star) -> None:
         plan = star.explain_query(
-            "MATCH (n:Person) WHERE n.age > 25 RETURN n.name"
+            "MATCH (n:Person) WHERE n.age > 25 RETURN n.name",
         )
         assert isinstance(plan, str)
 
     def test_explain_with_relationship(self, star: Star) -> None:
         plan = star.explain_query(
-            "MATCH (a:Person)-[:KNOWS]->(b:Person) RETURN a.name, b.name"
+            "MATCH (a:Person)-[:KNOWS]->(b:Person) RETURN a.name, b.name",
         )
         assert isinstance(plan, str)
 
@@ -250,7 +251,7 @@ class TestUnionQuery:
         result = star.execute_query(
             "MATCH (n:Person) WHERE n.age > 30 RETURN n.name AS name "
             "UNION ALL "
-            "MATCH (n:Person) WHERE n.age < 30 RETURN n.name AS name"
+            "MATCH (n:Person) WHERE n.age < 30 RETURN n.name AS name",
         )
         names = set(result["name"])
         assert "Carol" in names
@@ -260,7 +261,7 @@ class TestUnionQuery:
         result = star.execute_query(
             "MATCH (n:Person) RETURN n.name AS name "
             "UNION "
-            "MATCH (n:Person) RETURN n.name AS name"
+            "MATCH (n:Person) RETURN n.name AS name",
         )
         # UNION removes duplicates
         assert len(result) == 3
@@ -276,20 +277,20 @@ class TestLimitSkip:
 
     def test_limit(self, star: Star) -> None:
         result = star.execute_query(
-            "MATCH (n:Person) RETURN n.name AS name ORDER BY name LIMIT 2"
+            "MATCH (n:Person) RETURN n.name AS name ORDER BY name LIMIT 2",
         )
         assert len(result) == 2
 
     def test_skip(self, star: Star) -> None:
         result = star.execute_query(
-            "MATCH (n:Person) RETURN n.name AS name ORDER BY name SKIP 1"
+            "MATCH (n:Person) RETURN n.name AS name ORDER BY name SKIP 1",
         )
         assert len(result) == 2
         assert result["name"].iloc[0] == "Bob"
 
     def test_limit_and_skip(self, star: Star) -> None:
         result = star.execute_query(
-            "MATCH (n:Person) RETURN n.name AS name ORDER BY name SKIP 1 LIMIT 1"
+            "MATCH (n:Person) RETURN n.name AS name ORDER BY name SKIP 1 LIMIT 1",
         )
         assert len(result) == 1
         assert result["name"].iloc[0] == "Bob"
@@ -326,7 +327,7 @@ class TestMultiMatch:
             "MATCH (a:Person) "
             "MATCH (b:Person) "
             "WHERE a.name = 'Alice' AND b.name = 'Bob' "
-            "RETURN a.name AS a_name, b.name AS b_name"
+            "RETURN a.name AS a_name, b.name AS b_name",
         )
         assert len(result) >= 1
         assert result["a_name"].iloc[0] == "Alice"
@@ -343,7 +344,7 @@ class TestUnwind:
 
     def test_unwind_simple(self, star: Star) -> None:
         result = star.execute_query(
-            "UNWIND [1, 2, 3] AS x RETURN x ORDER BY x"
+            "UNWIND [1, 2, 3] AS x RETURN x ORDER BY x",
         )
         assert list(result["x"]) == [1, 2, 3]
 
@@ -353,7 +354,7 @@ class TestUnwind:
             "WITH p.name AS name "
             "UNWIND [1, 2] AS x "
             "RETURN name, x "
-            "ORDER BY name, x"
+            "ORDER BY name, x",
         )
         assert len(result) == 6  # 3 people × 2 elements
 
@@ -368,9 +369,7 @@ class TestWithClause:
 
     def test_with_alias(self, star: Star) -> None:
         result = star.execute_query(
-            "MATCH (p:Person) "
-            "WITH p.name AS n, p.age AS a "
-            "RETURN n, a ORDER BY n"
+            "MATCH (p:Person) WITH p.name AS n, p.age AS a RETURN n, a ORDER BY n",
         )
         assert list(result["n"]) == ["Alice", "Bob", "Carol"]
 
@@ -379,7 +378,7 @@ class TestWithClause:
             "MATCH (p:Person) "
             "WITH p.name AS n, p.age AS a "
             "WHERE a > 25 "
-            "RETURN n ORDER BY n"
+            "RETURN n ORDER BY n",
         )
         assert "Bob" not in list(result["n"])
 
@@ -394,12 +393,12 @@ class TestWhereFilter:
 
     def test_where_comparison(self, star: Star) -> None:
         result = star.execute_query(
-            "MATCH (p:Person) WHERE p.age >= 30 RETURN p.name AS name ORDER BY name"
+            "MATCH (p:Person) WHERE p.age >= 30 RETURN p.name AS name ORDER BY name",
         )
         assert set(result["name"]) == {"Alice", "Carol"}
 
     def test_where_string_comparison(self, star: Star) -> None:
         result = star.execute_query(
-            "MATCH (p:Person) WHERE p.name = 'Bob' RETURN p.age AS age"
+            "MATCH (p:Person) WHERE p.name = 'Bob' RETURN p.age AS age",
         )
         assert result["age"].iloc[0] == 25

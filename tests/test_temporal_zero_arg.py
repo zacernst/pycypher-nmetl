@@ -19,7 +19,7 @@ from pycypher.relational_models import Context, EntityMapping
 from pycypher.star import Star
 
 
-@pytest.fixture()
+@pytest.fixture
 def empty_star() -> Star:
     return Star(context=Context(entity_mapping=EntityMapping(mapping={})))
 
@@ -92,7 +92,8 @@ class TestDatetimeNoArgs:
         assert len(val) > 0
 
     def test_datetime_no_args_contains_time_component(
-        self, empty_star: Star
+        self,
+        empty_star: Star,
     ) -> None:
         """datetime() result contains 'T' separator (ISO 8601)."""
         result = empty_star.execute_query("RETURN datetime() AS dt")
@@ -100,11 +101,12 @@ class TestDatetimeNoArgs:
         assert "T" in val, f"No time component in: {val!r}"
 
     def test_datetime_with_arg_still_parses_string(
-        self, empty_star: Star
+        self,
+        empty_star: Star,
     ) -> None:
         """datetime('2024-03-15T10:30:00') must still parse correctly."""
         result = empty_star.execute_query(
-            "RETURN datetime('2024-03-15T10:30:00') AS dt"
+            "RETURN datetime('2024-03-15T10:30:00') AS dt",
         )
         val = str(result["dt"].iloc[0])
         assert "2024-03-15" in val
@@ -119,20 +121,23 @@ class TestLocaldatetimeNoArgs:
     """localdatetime() with no arguments must return the current local datetime."""
 
     def test_localdatetime_no_args_does_not_raise(
-        self, empty_star: Star
+        self,
+        empty_star: Star,
     ) -> None:
         """RETURN localdatetime() AS ldt must not raise."""
         empty_star.execute_query("RETURN localdatetime() AS ldt")
 
     def test_localdatetime_no_args_returns_one_row(
-        self, empty_star: Star
+        self,
+        empty_star: Star,
     ) -> None:
         """localdatetime() returns exactly one row."""
         result = empty_star.execute_query("RETURN localdatetime() AS ldt")
         assert len(result) == 1
 
     def test_localdatetime_no_args_contains_date(
-        self, empty_star: Star
+        self,
+        empty_star: Star,
     ) -> None:
         """localdatetime() result contains a date portion."""
         result = empty_star.execute_query("RETURN localdatetime() AS ldt")

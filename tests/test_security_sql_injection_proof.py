@@ -48,7 +48,7 @@ class TestSQLInjectionProofOfConcept:
                     or "multiple sql statements" in str(exc_info.value).lower()
                 )
                 print(
-                    "SUCCESS: SQL injection attack properly blocked by security validation!"
+                    "SUCCESS: SQL injection attack properly blocked by security validation!",
                 )
 
             finally:
@@ -81,14 +81,14 @@ class TestSQLInjectionProofOfConcept:
                     result = DuckDBReader.from_csv(malicious_path)
                     # If this doesn't raise an error, the injection attempt was processed
                     print(
-                        f"Path injection attempt processed: {malicious_path}"
+                        f"Path injection attempt processed: {malicious_path}",
                     )
                 except Exception as e:
                     # Check if the error message reveals SQL injection processing
                     error_msg = str(e)
                     if "SELECT 'injected'" in error_msg or "SQL" in error_msg:
                         print(
-                            f"Path injection vulnerability detected in error: {error_msg}"
+                            f"Path injection vulnerability detected in error: {error_msg}",
                         )
                         # This would indicate the injected SQL was parsed
                         assert True  # Vulnerability confirmed

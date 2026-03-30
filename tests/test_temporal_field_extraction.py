@@ -29,14 +29,8 @@ class TestTemporalFieldExtraction:
         expected_day_of_year = _dt.date(2024, 3, 15).timetuple().tm_yday
 
         assert _extract_temporal_field(date_str, "week") == expected_week
-        assert (
-            _extract_temporal_field(date_str, "dayOfWeek")
-            == expected_day_of_week
-        )
-        assert (
-            _extract_temporal_field(date_str, "dayOfYear")
-            == expected_day_of_year
-        )
+        assert _extract_temporal_field(date_str, "dayOfWeek") == expected_day_of_week
+        assert _extract_temporal_field(date_str, "dayOfYear") == expected_day_of_year
 
     def test_date_fields_quarter(self) -> None:
         """Test quarter field extraction."""
@@ -95,12 +89,8 @@ class TestTemporalFieldExtraction:
 
         # Invalid date strings
         assert _extract_temporal_field("invalid-date", "year") is None
-        assert (
-            _extract_temporal_field("2024-13-01", "year") is None
-        )  # Invalid month
-        assert (
-            _extract_temporal_field("2024-02-30", "year") is None
-        )  # Invalid day
+        assert _extract_temporal_field("2024-13-01", "year") is None  # Invalid month
+        assert _extract_temporal_field("2024-02-30", "year") is None  # Invalid day
 
         # Invalid field names
         assert _extract_temporal_field("2024-03-15", "invalid_field") is None

@@ -26,18 +26,18 @@ ID_COLUMN = "__ID__"
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture()
+@pytest.fixture
 def _person_df() -> pd.DataFrame:
     return pd.DataFrame(
         {
             ID_COLUMN: [1, 2, 3],
             "name": ["Alice", "Bob", "Carol"],
             "age": [30, 25, 35],
-        }
+        },
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def _knows_df() -> pd.DataFrame:
     return pd.DataFrame(
         {
@@ -45,11 +45,11 @@ def _knows_df() -> pd.DataFrame:
             "__SOURCE__": [1, 2],
             "__TARGET__": [2, 3],
             "since": [2020, 2021],
-        }
+        },
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def _star(_person_df: pd.DataFrame, _knows_df: pd.DataFrame) -> Star:
     person_table = EntityTable.from_dataframe("Person", _person_df)
     knows_table = RelationshipTable(
@@ -65,7 +65,7 @@ def _star(_person_df: pd.DataFrame, _knows_df: pd.DataFrame) -> Star:
     ctx = Context(
         entity_mapping=EntityMapping(mapping={"Person": person_table}),
         relationship_mapping=RelationshipMapping(
-            mapping={"KNOWS": knows_table}
+            mapping={"KNOWS": knows_table},
         ),
     )
     return Star(context=ctx)
@@ -85,53 +85,53 @@ class TestStarExecuteQueryContract:
 
     def test_column_names_match_aliases(self, _star: Star) -> None:
         result = _star.execute_query(
-            "MATCH (p:Person) RETURN p.name AS name, p.age AS age"
+            "MATCH (p:Person) RETURN p.name AS name, p.age AS age",
         )
         assert list(result.columns) == ["name", "age"]
 
     def test_row_count_matches_data(self, _star: Star) -> None:
         result = _star.execute_query("MATCH (p:Person) RETURN p.name AS name")
-        assert len(result) == 3  # noqa: PLR2004
+        assert len(result) == 3
 
     def test_where_clause_filters(self, _star: Star) -> None:
         result = _star.execute_query(
-            "MATCH (p:Person) WHERE p.age > 28 RETURN p.name AS name"
+            "MATCH (p:Person) WHERE p.age > 28 RETURN p.name AS name",
         )
         assert set(result["name"]) == {"Alice", "Carol"}
 
     def test_relationship_traversal(self, _star: Star) -> None:
         result = _star.execute_query(
-            "MATCH (a:Person)-[r:KNOWS]->(b:Person) RETURN a.name AS src, b.name AS tgt"
+            "MATCH (a:Person)-[r:KNOWS]->(b:Person) RETURN a.name AS src, b.name AS tgt",
         )
-        assert len(result) == 2  # noqa: PLR2004
+        assert len(result) == 2
         assert isinstance(result, pd.DataFrame)
 
     def test_order_by(self, _star: Star) -> None:
         result = _star.execute_query(
-            "MATCH (p:Person) RETURN p.name AS name ORDER BY p.age ASC"
+            "MATCH (p:Person) RETURN p.name AS name ORDER BY p.age ASC",
         )
         assert list(result["name"]) == ["Bob", "Alice", "Carol"]
 
     def test_limit(self, _star: Star) -> None:
         result = _star.execute_query(
-            "MATCH (p:Person) RETURN p.name AS name LIMIT 2"
+            "MATCH (p:Person) RETURN p.name AS name LIMIT 2",
         )
-        assert len(result) == 2  # noqa: PLR2004
+        assert len(result) == 2
 
     def test_distinct(self, _star: Star) -> None:
         result = _star.execute_query(
-            "MATCH (p:Person) RETURN DISTINCT p.age > 28 AS over28"
+            "MATCH (p:Person) RETURN DISTINCT p.age > 28 AS over28",
         )
-        assert len(result) == 2  # noqa: PLR2004
+        assert len(result) == 2
 
     def test_aggregation_count(self, _star: Star) -> None:
         result = _star.execute_query("MATCH (p:Person) RETURN count(p) AS cnt")
-        assert result["cnt"].iloc[0] == 3  # noqa: PLR2004
+        assert result["cnt"].iloc[0] == 3
 
     def test_with_clause(self, _star: Star) -> None:
         result = _star.execute_query(
             "MATCH (p:Person) WITH p.name AS name, p.age AS age "
-            "WHERE age > 28 RETURN name"
+            "WHERE age > 28 RETURN name",
         )
         assert set(result["name"]) == {"Alice", "Carol"}
 
@@ -174,7 +174,8 @@ class TestContextContract:
     """Verify Context construction patterns remain stable."""
 
     def test_context_accepts_entity_mapping(
-        self, _person_df: pd.DataFrame
+        self,
+        _person_df: pd.DataFrame,
     ) -> None:
         table = EntityTable.from_dataframe("Person", _person_df)
         ctx = Context(
@@ -203,7 +204,7 @@ class TestReturnTypeConsistency:
 
     def test_empty_result_is_dataframe(self, _star: Star) -> None:
         result = _star.execute_query(
-            "MATCH (p:Person) WHERE p.age > 100 RETURN p.name AS name"
+            "MATCH (p:Person) WHERE p.age > 100 RETURN p.name AS name",
         )
         assert isinstance(result, pd.DataFrame)
         assert len(result) == 0
@@ -215,6 +216,6 @@ class TestReturnTypeConsistency:
 
     def test_null_values_in_optional_match(self, _star: Star) -> None:
         result = _star.execute_query(
-            "OPTIONAL MATCH (p:Person) WHERE p.age > 100 RETURN p.name AS name"
+            "OPTIONAL MATCH (p:Person) WHERE p.age > 100 RETURN p.name AS name",
         )
         assert isinstance(result, pd.DataFrame)

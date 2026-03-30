@@ -9,8 +9,6 @@ uniqueness checks, and error diagnostics.
 
 from __future__ import annotations
 
-import pytest
-
 # ---------------------------------------------------------------------------
 # Interface contract tests
 # ---------------------------------------------------------------------------
@@ -37,7 +35,7 @@ class TestInputValidatorInterfaceContract:
         result = validator.validate(
             [
                 ("q1", "MATCH (n:Person) RETURN n.name"),
-            ]
+            ],
         )
         assert isinstance(result, InputValidationResult)
 
@@ -49,7 +47,7 @@ class TestInputValidatorInterfaceContract:
         result = validator.validate(
             [
                 ("q1", "MATCH (n:Person) RETURN n.name"),
-            ]
+            ],
         )
         assert isinstance(result.is_valid, bool)
 
@@ -61,7 +59,7 @@ class TestInputValidatorInterfaceContract:
         result = validator.validate(
             [
                 ("q1", "MATCH (n:Person) RETURN n.name"),
-            ]
+            ],
         )
         assert isinstance(result.errors, list)
 
@@ -82,7 +80,7 @@ class TestValidInputAcceptance:
         result = validator.validate(
             [
                 ("q1", "MATCH (n:Person) RETURN n.name"),
-            ]
+            ],
         )
         assert result.is_valid
 
@@ -95,7 +93,7 @@ class TestValidInputAcceptance:
             [
                 ("q1", "CREATE (n:Person {name: 'Alice'})"),
                 ("q2", "MATCH (n:Person) RETURN n.name"),
-            ]
+            ],
         )
         assert result.is_valid
 
@@ -125,7 +123,7 @@ class TestQueryIdUniqueness:
             [
                 ("q1", "CREATE (n:Person {name: 'Alice'})"),
                 ("q1", "MATCH (n:Person) RETURN n.name"),
-            ]
+            ],
         )
         assert not result.is_valid
         assert any("duplicate" in str(e).lower() for e in result.errors)
@@ -163,7 +161,7 @@ class TestEmptyQueryDetection:
         result = validator.validate(
             [
                 ("", "MATCH (n:Person) RETURN n.name"),
-            ]
+            ],
         )
         assert not result.is_valid
 
@@ -184,7 +182,7 @@ class TestParseValidation:
         result = validator.validate(
             [
                 ("q1", "THIS IS NOT VALID CYPHER AT ALL"),
-            ]
+            ],
         )
         assert not result.is_valid
         assert any("parse" in str(e).lower() for e in result.errors)
@@ -216,7 +214,7 @@ class TestInputErrorDiagnostics:
             [
                 ("q1", ""),
                 ("q1", "   "),
-            ]
+            ],
         )
         assert not result.is_valid
         # Should report both empty content AND duplicate ID
@@ -230,7 +228,7 @@ class TestInputErrorDiagnostics:
         result = validator.validate(
             [
                 ("q1", "MATCH (n:Person) RETURN n.name"),
-            ]
+            ],
         )
         assert isinstance(str(result), str)
         assert len(str(result)) > 0

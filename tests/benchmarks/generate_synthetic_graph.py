@@ -201,7 +201,7 @@ def _generate_persons(n: int, *, rng: np.random.Generator) -> pd.DataFrame:
             "dept": rng.choice(DEPARTMENTS, size=n),
             "salary": rng.integers(30_000, 300_000, size=n),
             "active": rng.choice([True, False], size=n, p=[0.85, 0.15]),
-        }
+        },
     )
 
 
@@ -219,8 +219,7 @@ def _generate_companies(n: int, *, rng: np.random.Generator) -> pd.DataFrame:
     ]
     suffixes = ["Corp", "Inc", "LLC", "Systems", "Labs", "Solutions", "Group"]
     names = [
-        f"{rng.choice(prefixes)} {rng.choice(suffixes)} {i}"
-        for i in range(1, n + 1)
+        f"{rng.choice(prefixes)} {rng.choice(suffixes)} {i}" for i in range(1, n + 1)
     ]
     return pd.DataFrame(
         {
@@ -229,7 +228,7 @@ def _generate_companies(n: int, *, rng: np.random.Generator) -> pd.DataFrame:
             "industry": rng.choice(INDUSTRIES, size=n),
             "employees": rng.integers(10, 100_000, size=n),
             "founded": rng.integers(1950, 2025, size=n),
-        }
+        },
     )
 
 
@@ -243,7 +242,7 @@ def _generate_locations(n: int, *, rng: np.random.Generator) -> pd.DataFrame:
             "latitude": rng.uniform(-90, 90, size=n).round(4),
             "longitude": rng.uniform(-180, 180, size=n).round(4),
             "population": rng.integers(1_000, 10_000_000, size=n),
-        }
+        },
     )
 
 
@@ -272,7 +271,7 @@ def _generate_knows(
             "__TARGET__": pairs[:, 1],
             "since": rng.integers(2000, 2026, size=n_actual),
             "strength": rng.uniform(0.0, 1.0, size=n_actual).round(3),
-        }
+        },
     )
 
 
@@ -286,7 +285,9 @@ def _generate_works_at(
     """Generate WORKS_AT relationships (Person→Company)."""
     n_workers = int(n_persons * fraction)
     person_ids = rng.choice(
-        np.arange(1, n_persons + 1), size=n_workers, replace=False
+        np.arange(1, n_persons + 1),
+        size=n_workers,
+        replace=False,
     )
     company_ids = rng.integers(1, n_companies + 1, size=n_workers)
     return pd.DataFrame(
@@ -299,7 +300,7 @@ def _generate_works_at(
                 size=n_workers,
             ),
             "start_year": rng.integers(2010, 2026, size=n_workers),
-        }
+        },
     )
 
 
@@ -313,7 +314,9 @@ def _generate_lives_in(
     """Generate LIVES_IN relationships (Person→Location)."""
     n_residents = int(n_persons * fraction)
     person_ids = rng.choice(
-        np.arange(1, n_persons + 1), size=n_residents, replace=False
+        np.arange(1, n_persons + 1),
+        size=n_residents,
+        replace=False,
     )
     location_ids = rng.integers(1, n_locations + 1, size=n_residents)
     return pd.DataFrame(
@@ -322,7 +325,7 @@ def _generate_lives_in(
             "__SOURCE__": person_ids,
             "__TARGET__": location_ids,
             "since_year": rng.integers(1990, 2026, size=n_residents),
-        }
+        },
     )
 
 
@@ -380,10 +383,16 @@ def generate_graph(
         locations=_generate_locations(n_locations, rng=rng),
         knows=_generate_knows(n_persons, cfg["knows_per_person"], rng=rng),
         works_at=_generate_works_at(
-            n_persons, n_companies, cfg["works_at_fraction"], rng=rng
+            n_persons,
+            n_companies,
+            cfg["works_at_fraction"],
+            rng=rng,
         ),
         lives_in=_generate_lives_in(
-            n_persons, n_locations, cfg["lives_in_fraction"], rng=rng
+            n_persons,
+            n_locations,
+            cfg["lives_in_fraction"],
+            rng=rng,
         ),
         metadata={
             "profile": profile,
@@ -511,19 +520,25 @@ def load_into_context(graph: SyntheticGraph) -> Any:
             "Person": _make_entity("Person", graph.persons),
             "Company": _make_entity("Company", graph.companies),
             "Location": _make_entity("Location", graph.locations),
-        }
+        },
     )
 
     relationship_mapping = RelationshipMapping(
         mapping={
             "KNOWS": _make_rel("KNOWS", graph.knows, "Person", "Person"),
             "WORKS_AT": _make_rel(
-                "WORKS_AT", graph.works_at, "Person", "Company"
+                "WORKS_AT",
+                graph.works_at,
+                "Person",
+                "Company",
             ),
             "LIVES_IN": _make_rel(
-                "LIVES_IN", graph.lives_in, "Person", "Location"
+                "LIVES_IN",
+                graph.lives_in,
+                "Person",
+                "Location",
             ),
-        }
+        },
     )
 
     return Context(
@@ -549,7 +564,10 @@ def main() -> None:
         help="Named scale profile",
     )
     parser.add_argument(
-        "--nodes", type=int, default=None, help="Override Person count"
+        "--nodes",
+        type=int,
+        default=None,
+        help="Override Person count",
     )
     parser.add_argument(
         "--density",
@@ -575,7 +593,7 @@ def main() -> None:
 
     profile = args.profile or "tiny"
     print(
-        f"Generating '{profile}' graph (density={args.density}, seed={args.seed})..."
+        f"Generating '{profile}' graph (density={args.density}, seed={args.seed})...",
     )
 
     graph = generate_graph(

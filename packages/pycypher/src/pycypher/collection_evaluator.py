@@ -16,10 +16,13 @@ The evaluator follows the established delegation pattern from previous god objec
 extractions (AggregationExpressionEvaluator, ArithmeticExpressionEvaluator).
 """
 
+from __future__ import annotations
+
 import logging
 import time
 from typing import TYPE_CHECKING, Any
 
+import numpy as np
 import pandas as pd
 
 if TYPE_CHECKING:
@@ -31,12 +34,10 @@ if TYPE_CHECKING:
         PatternComprehension,
         Quantifier,
         Reduce,
-        Slicing,
     )
     from pycypher.evaluator_protocol import ExpressionEvaluatorProtocol
-from shared.logger import LOGGER
-
 from shared.helpers import is_null_raw_list as _is_null_raw_list
+from shared.logger import LOGGER
 
 from pycypher.binding_frame import BindingFrame
 from pycypher.constants import _broadcast_series, _null_series
@@ -61,6 +62,7 @@ def _extract_temporal_field(value: object, field: str) -> object:
 
     Returns:
         Field value as integer, or None if extraction fails
+
     """
     if not isinstance(value, str):
         return None
@@ -127,6 +129,7 @@ class CollectionExpressionEvaluator:
 
     Args:
         frame: The BindingFrame containing the current evaluation context.
+
     """
 
     def __init__(self, frame: BindingFrame) -> None:
@@ -135,6 +138,7 @@ class CollectionExpressionEvaluator:
         Args:
             frame: BindingFrame providing variable bindings and context for
                 collection expression evaluation.
+
         """
         self.frame = frame
 
@@ -164,6 +168,7 @@ class CollectionExpressionEvaluator:
 
         Returns:
             A ``pd.Series`` of extracted property values, one per frame row.
+
         """
         _t0 = time.perf_counter()
         if _DEBUG_ENABLED:
@@ -219,7 +224,7 @@ class CollectionExpressionEvaluator:
                 for v in values
             ],
             dtype=object,
-        ).reset_index(drop=True)
+        )
         if _DEBUG_ENABLED:
             LOGGER.debug(
                 "collection: property_lookup  elapsed=%.4fs",
@@ -252,6 +257,7 @@ class CollectionExpressionEvaluator:
 
         Returns:
             A ``pd.Series`` of sliced values.
+
         """
         n = len(self.frame)
         coll = expression_evaluator.evaluate(coll_expr)
@@ -294,7 +300,7 @@ class CollectionExpressionEvaluator:
                 for c, s, e in zip(coll, start, end, strict=False)
             ],
             dtype=object,
-        ).reset_index(drop=True)
+        )
 
     def eval_list_comprehension(
         self,
@@ -317,6 +323,7 @@ class CollectionExpressionEvaluator:
 
         Returns:
             A ``pd.Series`` of lists, one per row in the current BindingFrame.
+
         """
         _t0 = time.perf_counter()
         if _DEBUG_ENABLED:
@@ -359,15 +366,15 @@ class CollectionExpressionEvaluator:
 
         if lc.where is not None:
             keep_series: pd.Series = flat_evaluator.evaluate(lc.where)
-            keep_mask: list[bool] = list(
-                keep_series.fillna(False).astype(bool),
+            mask_arr: np.ndarray = (
+                keep_series.fillna(False).to_numpy(dtype=bool, copy=False)
             )
-            surviving_row_idx: list[int] = [
-                r for r, k in zip(row_indices, keep_mask, strict=False) if k
-            ]
-            surviving_elem_pos: list[int] = [
-                i for i, k in enumerate(keep_mask) if k
-            ]
+            (surviving_elem_pos_arr,) = np.nonzero(mask_arr)
+            surviving_elem_pos: list[int] = surviving_elem_pos_arr.tolist()
+            row_arr = np.asarray(row_indices)
+            surviving_row_idx: list[int] = row_arr[
+                surviving_elem_pos_arr
+            ].tolist()
         else:
             surviving_row_idx = row_indices
             surviving_elem_pos = list(range(len(elements)))
@@ -425,6 +432,7 @@ class CollectionExpressionEvaluator:
 
         Returns:
             A ``pd.Series`` of boolean results.
+
         """
         _t0 = time.perf_counter()
         _qtype = getattr(q, "quantifier", "?")
@@ -464,6 +472,7 @@ class CollectionExpressionEvaluator:
 
         Returns:
             A ``pd.Series`` of boolean results.
+
         """
         import numpy as np
 
@@ -539,7 +548,9 @@ class CollectionExpressionEvaluator:
 
                 for i, (row_idx, bool_result) in enumerate(
                     zip(
-                        exploded_row_indices, where_results_list, strict=False
+                        exploded_row_indices,
+                        where_results_list,
+                        strict=False,
                     ),
                 ):
                     if row_idx not in row_matches:
@@ -588,9 +599,11 @@ class CollectionExpressionEvaluator:
                 elif q.quantifier.lower() == "single":
                     results[i] = False
 
-        return pd.Series(results, dtype=bool).reset_index(drop=True)
+        return pd.Series(results, dtype=bool)
 
-    def eval_reduce(self, r: Reduce, expression_evaluator: ExpressionEvaluatorProtocol) -> FrameSeries:
+    def eval_reduce(
+        self, r: Reduce, expression_evaluator: ExpressionEvaluatorProtocol
+    ) -> FrameSeries:
         """Evaluate REDUCE expressions using batch-per-step vectorization.
 
         Performance Loop 291: Replaces O(rows × elements) evaluation pattern
@@ -603,6 +616,7 @@ class CollectionExpressionEvaluator:
 
         Returns:
             A ``pd.Series`` of reduced values.
+
         """
         _t0 = time.perf_counter()
         if _DEBUG_ENABLED:
@@ -637,7 +651,7 @@ class CollectionExpressionEvaluator:
         # Step 3: Find maximum list length
         if not lists or all(len(lst) == 0 for lst in lists):
             # All lists are empty/null - return initial values
-            return pd.Series(accumulators, dtype=object).reset_index(drop=True)
+            return pd.Series(accumulators, dtype=object)
 
         max_len = max(len(lst) for lst in lists if len(lst) > 0)
 
@@ -687,7 +701,7 @@ class CollectionExpressionEvaluator:
                 accumulators[row_idx] = new_accs.iloc[j]
 
         # Step 5: Return Series of final accumulators
-        result = pd.Series(accumulators, dtype=object).reset_index(drop=True)
+        result = pd.Series(accumulators, dtype=object)
         if _DEBUG_ENABLED:
             LOGGER.debug(
                 "collection: reduce  steps=%d  elapsed=%.4fs",
@@ -709,6 +723,7 @@ class CollectionExpressionEvaluator:
 
         Returns:
             A ``pd.Series`` of pattern comprehension results.
+
         """
         # Pattern comprehensions are complex and involve graph pattern matching
         # This is a simplified implementation that delegates to the main Star execution
@@ -722,7 +737,7 @@ class CollectionExpressionEvaluator:
             # For now, return empty list as placeholder
             results.append([])
 
-        return pd.Series(results, dtype=object).reset_index(drop=True)
+        return pd.Series(results, dtype=object)
 
     def eval_map_literal(
         self,
@@ -741,6 +756,7 @@ class CollectionExpressionEvaluator:
 
         Returns:
             A ``pd.Series`` of map objects.
+
         """
         _t0 = time.perf_counter()
         n = len(self.frame)
@@ -755,12 +771,14 @@ class CollectionExpressionEvaluator:
                     value_expr,
                 )
 
-            # Step 2: Build result maps using vectorized operations (O(n))
+            # Step 2: Build result maps using itertuples (avoids full materialization)
             if evaluated_columns:
-                # Stack all evaluated Series into a DataFrame
                 df = pd.DataFrame(evaluated_columns)
-                # Convert to list of dicts using pandas built-in vectorized operation
-                results = df.to_dict("records")
+                cols = df.columns.tolist()
+                results = [
+                    dict(zip(cols, row, strict=False))
+                    for row in df.itertuples(index=False, name=None)
+                ]
                 result = pd.Series(results, dtype=object).reset_index(
                     drop=True,
                 )
@@ -777,7 +795,7 @@ class CollectionExpressionEvaluator:
                     "collection: map_literal  keys=0  elapsed=%.4fs",
                     time.perf_counter() - _t0,
                 )
-            return _broadcast_series({}, n).reset_index(drop=True)
+            return _broadcast_series({}, n)
 
         # Otherwise use the raw val dict for all rows
         if hasattr(map_literal, "val") and map_literal.val:
@@ -786,9 +804,7 @@ class CollectionExpressionEvaluator:
                     "collection: map_literal  raw_val  elapsed=%.4fs",
                     time.perf_counter() - _t0,
                 )
-            return _broadcast_series(map_literal.val, n).reset_index(
-                drop=True,
-            )
+            return _broadcast_series(map_literal.val, n)
 
         # Empty map
         if _DEBUG_ENABLED:
@@ -796,7 +812,7 @@ class CollectionExpressionEvaluator:
                 "collection: map_literal  empty  elapsed=%.4fs",
                 time.perf_counter() - _t0,
             )
-        return _broadcast_series({}, n).reset_index(drop=True)
+        return _broadcast_series({}, n)
 
     def eval_map_projection(
         self,
@@ -823,6 +839,7 @@ class CollectionExpressionEvaluator:
 
         Returns:
             A ``pd.Series`` of projected map objects.
+
         """
         _t0 = time.perf_counter()
         from pycypher.constants import ID_COLUMN
@@ -927,23 +944,25 @@ class CollectionExpressionEvaluator:
                 expr_series = expression_evaluator.evaluate(element.expression)
                 projection_columns[element.property] = expr_series
 
-        # Step 2: Build result maps using vectorized operations (when no all_properties)
+        # Step 2: Build result maps using itertuples (avoids full materialization)
         if projection_columns:
-            # Create DataFrame from all evaluated columns
             df = pd.DataFrame(projection_columns)
-            # Convert to list of dicts using pandas built-in vectorized operation
-            results = df.to_dict("records")
+            cols = df.columns.tolist()
+            results = [
+                dict(zip(cols, row, strict=False))
+                for row in df.itertuples(index=False, name=None)
+            ]
             if _DEBUG_ENABLED:
                 LOGGER.debug(
                     "collection: map_projection  keys=%d  elapsed=%.4fs",
                     len(projection_columns),
                     time.perf_counter() - _t0,
                 )
-            return pd.Series(results, dtype=object).reset_index(drop=True)
+            return pd.Series(results, dtype=object)
         # Empty projection
         if _DEBUG_ENABLED:
             LOGGER.debug(
                 "collection: map_projection  empty  elapsed=%.4fs",
                 time.perf_counter() - _t0,
             )
-        return _broadcast_series({}, n).reset_index(drop=True)
+        return _broadcast_series({}, n)

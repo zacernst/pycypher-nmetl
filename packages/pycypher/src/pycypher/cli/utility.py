@@ -8,9 +8,16 @@ import click
 @click.command("compat-check")
 @click.option(
     "--component",
-    type=click.Choice([
-        "python", "pandas", "duckdb", "neo4j", "all"
-    ], case_sensitive=False),
+    type=click.Choice(
+        [
+            "python",
+            "pandas",
+            "duckdb",
+            "neo4j",
+            "all",
+        ],
+        case_sensitive=False,
+    ),
     default="all",
     help="Check compatibility for specific components (default: all).",
 )

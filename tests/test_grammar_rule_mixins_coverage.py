@@ -18,7 +18,6 @@ import math
 from typing import Any
 
 import pytest
-
 from pycypher.grammar_rule_mixins import (
     ClauseRulesMixin,
     ExpressionRulesMixin,
@@ -27,14 +26,15 @@ from pycypher.grammar_rule_mixins import (
     PatternRulesMixin,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helper: parse Cypher via grammar_parser
 # ---------------------------------------------------------------------------
 
+
 def _parse(query: str) -> Any:
     """Parse a Cypher query and return the raw AST dict."""
     from pycypher.grammar_parser import get_default_parser
+
     parser = get_default_parser()
     return parser.parse_to_ast(query)
 
@@ -160,7 +160,7 @@ class TestExpressionRulesMixinDirect:
 
     # Operator extractors (lines 322-334)
     def test_add_op(self) -> None:
-        assert self._mixin().add_op(["+"])  == "+"
+        assert self._mixin().add_op(["+"]) == "+"
 
     def test_mult_op(self) -> None:
         assert self._mixin().mult_op(["*"]) == "*"
@@ -198,7 +198,9 @@ class TestExpressionRulesMixinDirect:
         assert self._mixin().string_predicate_expression(["val"]) == "val"
 
     def test_string_predicate_expression_with_op(self) -> None:
-        result = self._mixin().string_predicate_expression(["left", "CONTAINS", "right"])
+        result = self._mixin().string_predicate_expression(
+            ["left", "CONTAINS", "right"],
+        )
         assert result["type"] == "StringPredicate"
         assert result["operator"] == "CONTAINS"
         assert result["left"] == "left"
@@ -271,12 +273,14 @@ class TestStringPredicateOp:
 
     def test_token_with_value(self) -> None:
         from lark import Token
+
         tok = Token("STARTS_KEYWORD", "STARTS")
         result = self._mixin().string_predicate_op([tok, Token("WITH_KEYWORD", "WITH")])
         assert result == "STARTS WITH"
 
     def test_empty_value_uses_type(self) -> None:
         from lark import Token
+
         tok = Token("IN_KEYWORD", "")
         result = self._mixin().string_predicate_op([tok])
         assert result == "IN_KEYWORD"
@@ -364,7 +368,9 @@ class TestClauseRulesMixinDirect:
 
     # cypher_query / statement / statement_list (lines 2778-2815)
     def test_cypher_query_single_statement(self) -> None:
-        result = self._mixin().cypher_query([{"type": "QueryStatement", "clauses": [], "return": None}])
+        result = self._mixin().cypher_query(
+            [{"type": "QueryStatement", "clauses": [], "return": None}],
+        )
         assert result["type"] == "Query"
 
     def test_statement_list_no_union(self) -> None:
@@ -383,7 +389,11 @@ class TestClauseRulesMixinDirect:
         assert result["all_flags"] == [False]
 
     def test_cypher_query_union(self) -> None:
-        union_list = {"type": "UnionStatementList", "stmts": [1, 2], "all_flags": [True]}
+        union_list = {
+            "type": "UnionStatementList",
+            "stmts": [1, 2],
+            "all_flags": [True],
+        }
         result = self._mixin().cypher_query([union_list])
         assert result["type"] == "UnionQuery"
 
@@ -460,12 +470,15 @@ class TestClauseRulesMixinDirect:
 
     def test_merge_action_with_token(self) -> None:
         from lark import Token
+
         set_c = {"type": "SetClause", "items": []}
-        result = self._mixin().merge_action([
-            Token("ON_KEYWORD", "ON"),
-            Token("CREATE_KEYWORD", "CREATE"),
-            set_c,
-        ])
+        result = self._mixin().merge_action(
+            [
+                Token("ON_KEYWORD", "ON"),
+                Token("CREATE_KEYWORD", "CREATE"),
+                set_c,
+            ],
+        )
         assert result["on"] == "create"
 
     def test_merge_action_no_type_defaults_create(self) -> None:
@@ -484,6 +497,7 @@ class TestClauseRulesMixinDirect:
 
     def test_merge_action_type_token(self) -> None:
         from lark import Token
+
         result = self._mixin().merge_action_type([Token("CREATE_KEYWORD", "CREATE")])
         assert result == "CREATE"
 
@@ -714,17 +728,23 @@ class TestGrammarParserIntegration:
 
     def test_merge_on_create_set(self) -> None:
         """MERGE ON CREATE SET triggers merge_action."""
-        ast = _parse("MERGE (n:Person {name: 'Alice'}) ON CREATE SET n.age = 30 RETURN n")
+        ast = _parse(
+            "MERGE (n:Person {name: 'Alice'}) ON CREATE SET n.age = 30 RETURN n",
+        )
         assert ast is not None
 
     def test_union_query(self) -> None:
         """UNION triggers statement_list union path."""
-        ast = _parse("MATCH (n:Person) RETURN n.name UNION MATCH (m:Person) RETURN m.name")
+        ast = _parse(
+            "MATCH (n:Person) RETURN n.name UNION MATCH (m:Person) RETURN m.name",
+        )
         assert ast is not None
 
     def test_union_all_query(self) -> None:
         """UNION ALL triggers union with all=True."""
-        ast = _parse("MATCH (n:Person) RETURN n.name UNION ALL MATCH (m:Person) RETURN m.name")
+        ast = _parse(
+            "MATCH (n:Person) RETURN n.name UNION ALL MATCH (m:Person) RETURN m.name",
+        )
         assert ast is not None
 
     def test_with_distinct(self) -> None:
@@ -816,6 +836,6 @@ class TestGrammarParserIntegration:
             "ORDER BY name "
             "SKIP 1 "
             "LIMIT 5 "
-            "RETURN name"
+            "RETURN name",
         )
         assert ast is not None

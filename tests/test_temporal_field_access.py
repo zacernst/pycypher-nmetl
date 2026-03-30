@@ -31,19 +31,19 @@ from pycypher.relational_models import (
 from pycypher.star import Star
 
 
-@pytest.fixture()
+@pytest.fixture
 def empty_star() -> Star:
     return Star(context=Context(entity_mapping=EntityMapping(mapping={})))
 
 
-@pytest.fixture()
+@pytest.fixture
 def event_star() -> Star:
     df = pd.DataFrame(
         {
             ID_COLUMN: [1, 2],
             "date_str": ["2024-03-15", "2023-12-25"],
             "dt_str": ["2024-03-15T10:30:45", "2023-12-25T23:59:59"],
-        }
+        },
     )
     table = EntityTable(
         entity_type="Event",
@@ -54,7 +54,7 @@ def event_star() -> Star:
         source_obj=df,
     )
     return Star(
-        context=Context(entity_mapping=EntityMapping(mapping={"Event": table}))
+        context=Context(entity_mapping=EntityMapping(mapping={"Event": table})),
     )
 
 
@@ -90,7 +90,7 @@ class TestDateLiteralFieldAccess:
     def test_date_day_of_week(self, empty_star: Star) -> None:
         """date('2024-03-15').dayOfWeek == 5 (Friday, ISO weekday)."""
         r = empty_star.execute_query(
-            "RETURN date('2024-03-15').dayOfWeek AS dow"
+            "RETURN date('2024-03-15').dayOfWeek AS dow",
         )
         # ISO: Mon=1 … Sun=7; 2024-03-15 is a Friday = 5
         assert int(r["dow"].iloc[0]) == 5
@@ -98,7 +98,7 @@ class TestDateLiteralFieldAccess:
     def test_date_day_of_year(self, empty_star: Star) -> None:
         """date('2024-03-15').dayOfYear is correct."""
         r = empty_star.execute_query(
-            "RETURN date('2024-03-15').dayOfYear AS doy"
+            "RETURN date('2024-03-15').dayOfYear AS doy",
         )
         expected = _dt.date(2024, 3, 15).timetuple().tm_yday
         assert int(r["doy"].iloc[0]) == expected
@@ -125,56 +125,56 @@ class TestDatetimeLiteralFieldAccess:
     def test_datetime_year(self, empty_star: Star) -> None:
         """datetime('2024-03-15T10:30:45').year == 2024."""
         r = empty_star.execute_query(
-            "RETURN datetime('2024-03-15T10:30:45').year AS y"
+            "RETURN datetime('2024-03-15T10:30:45').year AS y",
         )
         assert int(r["y"].iloc[0]) == 2024
 
     def test_datetime_month(self, empty_star: Star) -> None:
         """datetime('2024-03-15T10:30:45').month == 3."""
         r = empty_star.execute_query(
-            "RETURN datetime('2024-03-15T10:30:45').month AS m"
+            "RETURN datetime('2024-03-15T10:30:45').month AS m",
         )
         assert int(r["m"].iloc[0]) == 3
 
     def test_datetime_day(self, empty_star: Star) -> None:
         """datetime('2024-03-15T10:30:45').day == 15."""
         r = empty_star.execute_query(
-            "RETURN datetime('2024-03-15T10:30:45').day AS d"
+            "RETURN datetime('2024-03-15T10:30:45').day AS d",
         )
         assert int(r["d"].iloc[0]) == 15
 
     def test_datetime_hour(self, empty_star: Star) -> None:
         """datetime('2024-03-15T10:30:45').hour == 10."""
         r = empty_star.execute_query(
-            "RETURN datetime('2024-03-15T10:30:45').hour AS h"
+            "RETURN datetime('2024-03-15T10:30:45').hour AS h",
         )
         assert int(r["h"].iloc[0]) == 10
 
     def test_datetime_minute(self, empty_star: Star) -> None:
         """datetime('2024-03-15T10:30:45').minute == 30."""
         r = empty_star.execute_query(
-            "RETURN datetime('2024-03-15T10:30:45').minute AS mi"
+            "RETURN datetime('2024-03-15T10:30:45').minute AS mi",
         )
         assert int(r["mi"].iloc[0]) == 30
 
     def test_datetime_second(self, empty_star: Star) -> None:
         """datetime('2024-03-15T10:30:45').second == 45."""
         r = empty_star.execute_query(
-            "RETURN datetime('2024-03-15T10:30:45').second AS s"
+            "RETURN datetime('2024-03-15T10:30:45').second AS s",
         )
         assert int(r["s"].iloc[0]) == 45
 
     def test_datetime_millisecond(self, empty_star: Star) -> None:
         """datetime('2024-03-15T10:30:45.123').millisecond == 123."""
         r = empty_star.execute_query(
-            "RETURN datetime('2024-03-15T10:30:45.123000').millisecond AS ms"
+            "RETURN datetime('2024-03-15T10:30:45.123000').millisecond AS ms",
         )
         assert int(r["ms"].iloc[0]) == 123
 
     def test_datetime_microsecond(self, empty_star: Star) -> None:
         """datetime('2024-03-15T10:30:45.123456').microsecond == 123456."""
         r = empty_star.execute_query(
-            "RETURN datetime('2024-03-15T10:30:45.123456').microsecond AS us"
+            "RETURN datetime('2024-03-15T10:30:45.123456').microsecond AS us",
         )
         assert int(r["us"].iloc[0]) == 123456
 
@@ -212,21 +212,23 @@ class TestEntityDatePropertyFieldAccess:
     """date(e.date_str).year works when property holds a date string."""
 
     def test_field_via_date_function_on_property(
-        self, event_star: Star
+        self,
+        event_star: Star,
     ) -> None:
         """date(e.date_str).year returns correct years for each row."""
         r = event_star.execute_query(
-            "MATCH (e:Event) RETURN date(e.date_str).year AS y ORDER BY y"
+            "MATCH (e:Event) RETURN date(e.date_str).year AS y ORDER BY y",
         )
         years = sorted(int(v) for v in r["y"])
         assert years == [2023, 2024]
 
     def test_field_via_datetime_function_on_property(
-        self, event_star: Star
+        self,
+        event_star: Star,
     ) -> None:
         """datetime(e.dt_str).hour returns correct hours for each row."""
         r = event_star.execute_query(
-            "MATCH (e:Event) RETURN datetime(e.dt_str).hour AS h ORDER BY h"
+            "MATCH (e:Event) RETURN datetime(e.dt_str).hour AS h ORDER BY h",
         )
         hours = sorted(int(v) for v in r["h"])
         assert hours == [10, 23]

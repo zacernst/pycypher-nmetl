@@ -19,16 +19,19 @@ def context() -> object:
             "__ID__": [1, 2, 3],
             "name": ["Alice", "Bob", "Carol"],
             "age": [30, 25, 35],
-        }
+        },
     )
     knows = pd.DataFrame(
-        {"__ID__": [101, 102], "source": [1, 2], "target": [2, 3]}
+        {"__ID__": [101, 102], "source": [1, 2], "target": [2, 3]},
     )
     return (
         ContextBuilder()
         .add_entity("Person", persons)
         .add_relationship(
-            "KNOWS", knows, source_col="source", target_col="target"
+            "KNOWS",
+            knows,
+            source_col="source",
+            target_col="target",
         )
         .build()
     )
@@ -46,12 +49,12 @@ class TestSavepoint:
         context.rollback_query()
 
     def test_savepoint_captures_shadow_mutations(
-        self, context: object
+        self,
+        context: object,
     ) -> None:
         """Savepoint captures entity shadow state after mutations."""
         context.begin_query()
         # Simulate a SET mutation by writing to shadow
-        import copy
 
         source_df = context.entity_mapping.mapping["Person"].source_obj
         if isinstance(source_df, pd.DataFrame):
@@ -74,7 +77,8 @@ class TestSavepoint:
         context.rollback_query()
 
     def test_restore_savepoint_discards_later_mutations(
-        self, context: object
+        self,
+        context: object,
     ) -> None:
         """Restoring a savepoint discards mutations made after the savepoint."""
         context.begin_query()
@@ -93,7 +97,8 @@ class TestSavepoint:
 
         # Step 3: More mutations AFTER savepoint
         context._shadow["Person"].loc[
-            context._shadow["Person"]["__ID__"] == 1, "age"
+            context._shadow["Person"]["__ID__"] == 1,
+            "age",
         ] = 999
 
         # Step 4: Restore savepoint — should discard step 3
@@ -124,7 +129,8 @@ class TestSavepoint:
 
         # Mutate shadow AFTER savepoint
         context._shadow["Person"].loc[
-            context._shadow["Person"]["__ID__"] == 1, "age"
+            context._shadow["Person"]["__ID__"] == 1,
+            "age",
         ] = 999
 
         # Savepoint should be unchanged
@@ -172,30 +178,30 @@ class TestSavepointIntegration:
     def test_query_with_set_commits_correctly(self) -> None:
         """Normal SET query still commits correctly with savepoint API available."""
         persons = pd.DataFrame(
-            {"__ID__": [1, 2], "name": ["Alice", "Bob"], "age": [30, 25]}
+            {"__ID__": [1, 2], "name": ["Alice", "Bob"], "age": [30, 25]},
         )
         ctx = ContextBuilder().add_entity("Person", persons).build()
         star = Star(context=ctx)
         result = star.execute_query(
-            "MATCH (p:Person) WHERE p.name = 'Alice' SET p.age = 99 RETURN p.age"
+            "MATCH (p:Person) WHERE p.name = 'Alice' SET p.age = 99 RETURN p.age",
         )
         assert result["age"].iloc[0] == 99
 
     def test_failed_query_rolls_back_completely(self) -> None:
         """A query that fails mid-execution leaves context unchanged."""
         persons = pd.DataFrame(
-            {"__ID__": [1, 2], "name": ["Alice", "Bob"], "age": [30, 25]}
+            {"__ID__": [1, 2], "name": ["Alice", "Bob"], "age": [30, 25]},
         )
         ctx = ContextBuilder().add_entity("Person", persons).build()
         star = Star(context=ctx)
 
         # First SET succeeds, verify original state
         star.execute_query(
-            "MATCH (p:Person) WHERE p.name = 'Alice' SET p.age = 99 RETURN p.age"
+            "MATCH (p:Person) WHERE p.name = 'Alice' SET p.age = 99 RETURN p.age",
         )
 
         # Verify the age was committed
         result = star.execute_query(
-            "MATCH (p:Person) WHERE p.name = 'Alice' RETURN p.age"
+            "MATCH (p:Person) WHERE p.name = 'Alice' RETURN p.age",
         )
         assert result["age"].iloc[0] == 99

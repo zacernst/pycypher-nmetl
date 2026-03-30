@@ -30,7 +30,7 @@ from pycypher.relational_models import (
 from pycypher.star import Star
 
 
-@pytest.fixture()
+@pytest.fixture
 def simple_star() -> Star:
     """Three-person context: Alice (30), Bob (25), Carol (35)."""
     df = pd.DataFrame(
@@ -38,7 +38,7 @@ def simple_star() -> Star:
             ID_COLUMN: [1, 2, 3],
             "name": ["Alice", "Bob", "Carol"],
             "age": [30, 25, 35],
-        }
+        },
     )
     table = EntityTable(
         entity_type="Person",
@@ -52,7 +52,7 @@ def simple_star() -> Star:
         context=Context(
             entity_mapping=EntityMapping(mapping={"Person": table}),
             relationship_mapping=RelationshipMapping(mapping={}),
-        )
+        ),
     )
 
 
@@ -63,7 +63,8 @@ class TestAsyncMethodExists:
         assert hasattr(simple_star, "execute_query_async")
 
     def test_async_method_is_coroutine_function(
-        self, simple_star: Star
+        self,
+        simple_star: Star,
     ) -> None:
         assert inspect.iscoroutinefunction(simple_star.execute_query_async)
 
@@ -74,7 +75,7 @@ class TestAsyncBasicExecution:
     def test_async_returns_dataframe(self, simple_star: Star) -> None:
         async def _run() -> pd.DataFrame:
             return await simple_star.execute_query_async(
-                "MATCH (p:Person) RETURN p.name AS name"
+                "MATCH (p:Person) RETURN p.name AS name",
             )
 
         result = asyncio.run(_run())
@@ -93,7 +94,7 @@ class TestAsyncBasicExecution:
     def test_async_returns_correct_rows(self, simple_star: Star) -> None:
         async def _run() -> pd.DataFrame:
             return await simple_star.execute_query_async(
-                "MATCH (p:Person) RETURN p.name AS name"
+                "MATCH (p:Person) RETURN p.name AS name",
             )
 
         result = asyncio.run(_run())
@@ -157,7 +158,7 @@ class TestAsyncConcurrency:
                 "MATCH (p:Person) WHERE p.age = 35 RETURN p.name AS name",
             ]
             return await asyncio.gather(
-                *(simple_star.execute_query_async(q) for q in queries)
+                *(simple_star.execute_query_async(q) for q in queries),
             )
 
         results = asyncio.run(_run())

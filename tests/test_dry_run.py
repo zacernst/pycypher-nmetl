@@ -9,12 +9,12 @@ import pytest
 from click.testing import CliRunner
 
 
-@pytest.fixture()
+@pytest.fixture
 def runner():
     return CliRunner()
 
 
-@pytest.fixture()
+@pytest.fixture
 def cli():
     from pycypher.nmetl_cli import cli as _cli
 
@@ -54,7 +54,7 @@ def test_dry_run_all_ok(tmp_path, runner, cli):
             inline: "MATCH (n:Person) RETURN n.name"
         output:
           - query_id: q1
-            uri: "{tmp_path / 'out.csv'}"
+            uri: "{tmp_path / "out.csv"}"
         """,
     )
 
@@ -178,7 +178,7 @@ def test_dry_run_invalid_output_ref(tmp_path, runner, cli):
             inline: "MATCH (n:Thing) RETURN n"
         output:
           - query_id: nonexistent_query
-            uri: "{tmp_path / 'out.csv'}"
+            uri: "{tmp_path / "out.csv"}"
         """,
     )
 

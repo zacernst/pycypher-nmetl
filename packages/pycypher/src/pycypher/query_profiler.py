@@ -46,6 +46,7 @@ class ProfileReport:
         hotspot: The clause type that consumed the most time, or ``None``.
         recommendations: List of optimization suggestions based on the profile.
         memory_delta_mb: RSS change during execution (MB).
+
     """
 
     query: str
@@ -105,6 +106,7 @@ class QueryProfiler:
 
     Args:
         star: The Star instance to profile queries against.
+
     """
 
     star: Any
@@ -125,6 +127,7 @@ class QueryProfiler:
 
         Returns:
             A :class:`ProfileReport` with timing breakdown and recommendations.
+
         """
         from shared.metrics import get_rss_mb
 
@@ -179,7 +182,8 @@ class QueryProfiler:
         # Collect backend operation timings if an InstrumentedBackend is attached.
         backend_timings: dict[str, dict[str, float]] = {}
         if self.backend is not None and hasattr(
-            self.backend, "timing_summary"
+            self.backend,
+            "timing_summary",
         ):
             backend_timings = self.backend.timing_summary()
 
@@ -217,6 +221,7 @@ class QueryProfiler:
 
         Returns:
             Dict with combined clause-level and operation-level metrics.
+
         """
         clause_totals: dict[str, float] = {}
         for report in self.history:
@@ -225,7 +230,8 @@ class QueryProfiler:
 
         backend_timings: dict[str, dict[str, float]] = {}
         if self.backend is not None and hasattr(
-            self.backend, "timing_summary"
+            self.backend,
+            "timing_summary",
         ):
             backend_timings = self.backend.timing_summary()
 
@@ -263,6 +269,7 @@ def _generate_recommendations(
 
     Returns:
         List of recommendation strings.
+
     """
     recs: list[str] = []
 

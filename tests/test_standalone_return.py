@@ -15,7 +15,7 @@ from pycypher.relational_models import Context, EntityMapping
 from pycypher.star import Star
 
 
-@pytest.fixture()
+@pytest.fixture
 def empty_ctx() -> Context:
     """Context with no entity tables."""
     return Context(entity_mapping=EntityMapping(mapping={}))
@@ -47,7 +47,7 @@ class TestStandaloneReturn:
         """RETURN true AS b → True."""
         star = Star(context=empty_ctx)
         result = star.execute_query("RETURN true AS b")
-        assert result["b"].iloc[0] is True or result["b"].iloc[0] == True  # noqa: E712
+        assert result["b"].iloc[0] is True or result["b"].iloc[0] == True
 
     def test_return_scalar_function(self, empty_ctx: Context) -> None:
         """RETURN toUpper('hello') AS u → 'HELLO'."""

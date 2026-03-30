@@ -7,12 +7,17 @@ from consuming all available memory.
 
 from __future__ import annotations
 
+import logging
 from unittest.mock import patch
 
 import pandas as pd
 import pytest
 from pycypher import ContextBuilder, Star
-from pycypher.binding_frame import MAX_CROSS_JOIN_ROWS, BindingFrame
+from pycypher.binding_frame import (
+    CROSS_JOIN_WARN_THRESHOLDS,
+    MAX_CROSS_JOIN_ROWS,
+    BindingFrame,
+)
 from pycypher.exceptions import QueryMemoryBudgetError
 
 
@@ -42,7 +47,8 @@ class TestCrossJoinLimit:
         assert len(result) == 4
 
     def test_exceeding_limit_raises_query_memory_budget_error(
-        self, context: object
+        self,
+        context: object,
     ) -> None:
         """Cross-join exceeding MAX_CROSS_JOIN_ROWS raises QueryMemoryBudgetError."""
         # Create frames whose product exceeds the limit
@@ -59,7 +65,8 @@ class TestCrossJoinLimit:
             )
             # 20 x 10 = 200 > 100 limit
             with pytest.raises(
-                QueryMemoryBudgetError, match="200"
+                QueryMemoryBudgetError,
+                match="200",
             ) as exc_info:
                 bf_left.cross_join(bf_right)
             # Verify structured attributes are set
@@ -96,7 +103,8 @@ class TestCrossJoinLimit:
                 context=context,
             )
             with pytest.raises(
-                QueryMemoryBudgetError, match=r"10.*×.*10"
+                QueryMemoryBudgetError,
+                match=r"10.*×.*10",
             ) as exc_info:
                 bf_left.cross_join(bf_right)
             msg = str(exc_info.value)
@@ -122,9 +130,105 @@ class TestCrossJoinLimit:
 class TestCrossJoinLimitDefault:
     """Verify the default limit value."""
 
-    def test_default_limit_is_10_million(self) -> None:
-        """Default MAX_CROSS_JOIN_ROWS is 10 million."""
-        assert MAX_CROSS_JOIN_ROWS == 10_000_000
+    def test_default_limit_is_1_million(self) -> None:
+        """Default MAX_CROSS_JOIN_ROWS is 1 million."""
+        assert MAX_CROSS_JOIN_ROWS == 1_000_000
+
+    def test_warn_thresholds_are_sorted(self) -> None:
+        """Warning thresholds are in ascending order."""
+        assert list(CROSS_JOIN_WARN_THRESHOLDS) == sorted(
+            CROSS_JOIN_WARN_THRESHOLDS,
+        )
+
+    def test_warn_thresholds_below_hard_limit(self) -> None:
+        """All warning thresholds are at or below the hard limit."""
+        for t in CROSS_JOIN_WARN_THRESHOLDS:
+            assert t <= MAX_CROSS_JOIN_ROWS
+
+
+class TestCrossJoinProgressiveWarnings:
+    """Verify progressive warnings fire at configured thresholds."""
+
+    def test_no_warning_below_first_threshold(
+        self,
+        context: object,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Cross-join below lowest threshold emits no warning."""
+        with (
+            patch(
+                "pycypher.binding_frame.CROSS_JOIN_WARN_THRESHOLDS",
+                (100,),
+            ),
+            patch("pycypher.binding_frame.MAX_CROSS_JOIN_ROWS", 10_000),
+        ):
+            bf_left = BindingFrame(
+                bindings=pd.DataFrame({"a": list(range(5))}),
+                type_registry={"a": "Person"},
+                context=context,
+            )
+            bf_right = BindingFrame(
+                bindings=pd.DataFrame({"b": list(range(5))}),
+                type_registry={"b": "Person"},
+                context=context,
+            )
+            with caplog.at_level(logging.WARNING, logger="pycypher"):
+                bf_left.cross_join(bf_right)  # 25 rows < 100
+            warning_msgs = [
+                r.message for r in caplog.records if r.levelno >= logging.WARNING
+            ]
+            assert not any("warning threshold" in m for m in warning_msgs)
+
+    def test_warning_above_threshold(
+        self,
+        context: object,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Cross-join above a threshold emits a warning."""
+        with (
+            patch(
+                "pycypher.binding_frame.CROSS_JOIN_WARN_THRESHOLDS",
+                (10,),
+            ),
+            patch("pycypher.binding_frame.MAX_CROSS_JOIN_ROWS", 10_000),
+        ):
+            bf_left = BindingFrame(
+                bindings=pd.DataFrame({"a": list(range(5))}),
+                type_registry={"a": "Person"},
+                context=context,
+            )
+            bf_right = BindingFrame(
+                bindings=pd.DataFrame({"b": list(range(5))}),
+                type_registry={"b": "Person"},
+                context=context,
+            )
+            with caplog.at_level(logging.WARNING, logger="pycypher"):
+                bf_left.cross_join(bf_right)  # 25 rows > 10
+            warning_msgs = [
+                r.message for r in caplog.records if r.levelno >= logging.WARNING
+            ]
+            assert any("warning threshold" in m for m in warning_msgs)
+
+    def test_cardinality_logged_at_info(
+        self,
+        context: object,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Cross-join logs cardinality estimate at INFO level."""
+        bf_left = BindingFrame(
+            bindings=pd.DataFrame({"a": [1, 2]}),
+            type_registry={"a": "Person"},
+            context=context,
+        )
+        bf_right = BindingFrame(
+            bindings=pd.DataFrame({"b": [3, 4]}),
+            type_registry={"b": "Person"},
+            context=context,
+        )
+        with caplog.at_level(logging.INFO, logger="shared.logger"):
+            bf_left.cross_join(bf_right)
+        info_msgs = [r.message for r in caplog.records if r.levelno == logging.INFO]
+        assert any("cardinality estimate" in m for m in info_msgs)
 
 
 class TestCrossJoinLimitIntegration:

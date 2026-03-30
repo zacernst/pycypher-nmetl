@@ -26,13 +26,12 @@ from pycypher.string_predicate_evaluator import (
     _validate_regex_pattern,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture()
+@pytest.fixture
 def people_star() -> Star:
     """Star with Person entities including names for string predicate tests."""
     df = pd.DataFrame(
@@ -40,24 +39,24 @@ def people_star() -> Star:
             "__ID__": ["p1", "p2", "p3", "p4"],
             "name": ["Alice", "Bob", "Charlie", "Dave"],
             "age": [30, 25, 40, 28],
-        }
+        },
     )
     return Star(context=ContextBuilder.from_dict({"Person": df}))
 
 
-@pytest.fixture()
+@pytest.fixture
 def nullable_star() -> Star:
     """Star with Person entities where some names are null."""
     df = pd.DataFrame(
         {
             "__ID__": ["p1", "p2", "p3", "p4"],
             "name": ["Alice", None, "Charlie", None],
-        }
+        },
     )
     return Star(context=ContextBuilder.from_dict({"Person": df}))
 
 
-@pytest.fixture()
+@pytest.fixture
 def tags_star() -> Star:
     """Star with Person entities having list-typed tags (some with nulls)."""
     df = pd.DataFrame(
@@ -70,7 +69,7 @@ def tags_star() -> Star:
                 [],
                 None,
             ],
-        }
+        },
     )
     return Star(context=ContextBuilder.from_dict({"Person": df}))
 
@@ -123,14 +122,14 @@ class TestRegexViaQuery:
     def test_regex_match_basic(self, people_star: Star) -> None:
         """=~ with a valid regex returns matching rows."""
         result = people_star.execute_query(
-            "MATCH (p:Person) WHERE p.name =~ 'A.*' RETURN p.name AS name"
+            "MATCH (p:Person) WHERE p.name =~ 'A.*' RETURN p.name AS name",
         )
         assert list(result["name"]) == ["Alice"]
 
     def test_regex_fullmatch_semantics(self, people_star: Star) -> None:
         """=~ requires a full match — partial pattern should not match."""
         result = people_star.execute_query(
-            "MATCH (p:Person) WHERE p.name =~ 'Ali' RETURN p.name AS name"
+            "MATCH (p:Person) WHERE p.name =~ 'Ali' RETURN p.name AS name",
         )
         # 'Ali' does not fully match 'Alice'
         assert len(result) == 0
@@ -138,7 +137,7 @@ class TestRegexViaQuery:
     def test_regex_with_null_values(self, nullable_star: Star) -> None:
         """=~ on a column with nulls: null rows produce null (filtered out)."""
         result = nullable_star.execute_query(
-            "MATCH (p:Person) WHERE p.name =~ 'A.*' RETURN p.name AS name"
+            "MATCH (p:Person) WHERE p.name =~ 'A.*' RETURN p.name AS name",
         )
         assert list(result["name"]) == ["Alice"]
 
@@ -154,14 +153,14 @@ class TestNullMaskOnStringPredicates:
     def test_starts_with_null_rows_filtered(self, nullable_star: Star) -> None:
         """STARTS WITH on column with nulls: null rows are excluded."""
         result = nullable_star.execute_query(
-            "MATCH (p:Person) WHERE p.name STARTS WITH 'A' RETURN p.name AS name"
+            "MATCH (p:Person) WHERE p.name STARTS WITH 'A' RETURN p.name AS name",
         )
         assert list(result["name"]) == ["Alice"]
 
     def test_ends_with_null_rows_filtered(self, nullable_star: Star) -> None:
         """ENDS WITH on column with nulls: null rows are excluded."""
         result = nullable_star.execute_query(
-            "MATCH (p:Person) WHERE p.name ENDS WITH 'e' RETURN p.name AS name"
+            "MATCH (p:Person) WHERE p.name ENDS WITH 'e' RETURN p.name AS name",
         )
         names = sorted(result["name"].tolist())
         assert "Alice" in names
@@ -170,7 +169,7 @@ class TestNullMaskOnStringPredicates:
     def test_contains_null_rows_filtered(self, nullable_star: Star) -> None:
         """CONTAINS on column with nulls: null rows are excluded."""
         result = nullable_star.execute_query(
-            "MATCH (p:Person) WHERE p.name CONTAINS 'li' RETURN p.name AS name"
+            "MATCH (p:Person) WHERE p.name CONTAINS 'li' RETURN p.name AS name",
         )
         names = sorted(result["name"].tolist())
         assert "Alice" in names
@@ -179,7 +178,7 @@ class TestNullMaskOnStringPredicates:
     def test_regex_null_rows_filtered(self, nullable_star: Star) -> None:
         """=~ on column with nulls: null rows are excluded."""
         result = nullable_star.execute_query(
-            "MATCH (p:Person) WHERE p.name =~ '.*lie' RETURN p.name AS name"
+            "MATCH (p:Person) WHERE p.name =~ '.*lie' RETURN p.name AS name",
         )
         assert list(result["name"]) == ["Charlie"]
 
@@ -205,11 +204,11 @@ class TestValidateStringOperandObjectDtype:
             {
                 "__ID__": ["p1", "p2", "p3"],
                 "label": [float("nan"), None, "hello"],
-            }
+            },
         )
         star = Star(context=ContextBuilder.from_dict({"Thing": df}))
         result = star.execute_query(
-            "MATCH (t:Thing) WHERE t.label STARTS WITH 'h' RETURN t.label AS label"
+            "MATCH (t:Thing) WHERE t.label STARTS WITH 'h' RETURN t.label AS label",
         )
         assert list(result["label"]) == ["hello"]
 
@@ -223,11 +222,11 @@ class TestValidateStringOperandObjectDtype:
             {
                 "__ID__": ["p1", "p2"],
                 "label": pd.array(["hello", pd.NA], dtype=object),
-            }
+            },
         )
         star = Star(context=ContextBuilder.from_dict({"Thing": df}))
         result = star.execute_query(
-            "MATCH (t:Thing) WHERE t.label STARTS WITH 'h' RETURN t.label AS label"
+            "MATCH (t:Thing) WHERE t.label STARTS WITH 'h' RETURN t.label AS label",
         )
         assert list(result["label"]) == ["hello"]
 
@@ -237,12 +236,12 @@ class TestValidateStringOperandObjectDtype:
             {
                 "__ID__": ["p1", "p2"],
                 "value": pd.array([None, 42], dtype=object),
-            }
+            },
         )
         star = Star(context=ContextBuilder.from_dict({"Thing": df}))
         with pytest.raises(TypeError, match="STARTS WITH"):
             star.execute_query(
-                "MATCH (t:Thing) WHERE t.value STARTS WITH 'x' RETURN t.value"
+                "MATCH (t:Thing) WHERE t.value STARTS WITH 'x' RETURN t.value",
             )
 
     def test_object_dtype_all_none_no_raise(self) -> None:
@@ -251,11 +250,11 @@ class TestValidateStringOperandObjectDtype:
             {
                 "__ID__": ["p1", "p2"],
                 "label": pd.array([None, None], dtype=object),
-            }
+            },
         )
         star = Star(context=ContextBuilder.from_dict({"Thing": df}))
         result = star.execute_query(
-            "MATCH (t:Thing) WHERE t.label STARTS WITH 'x' RETURN t.label AS label"
+            "MATCH (t:Thing) WHERE t.label STARTS WITH 'x' RETURN t.label AS label",
         )
         # All-null: no rows match
         assert len(result) == 0
@@ -275,14 +274,14 @@ class TestInPredicateThreeValuedLogic:
         """
         # Bob has tags = ['java', None]
         result = tags_star.execute_query(
-            "MATCH (p:Person) WHERE 'java' IN p.tags RETURN p.name AS name"
+            "MATCH (p:Person) WHERE 'java' IN p.tags RETURN p.name AS name",
         )
         assert "Bob" in result["name"].tolist()
 
     def test_in_with_empty_list_returns_false(self, tags_star: Star) -> None:
         """'x' IN [] → False for Carol (tags = [])."""
         result = tags_star.execute_query(
-            "MATCH (p:Person) WHERE 'python' IN p.tags RETURN p.name AS name"
+            "MATCH (p:Person) WHERE 'python' IN p.tags RETURN p.name AS name",
         )
         # Carol has empty list — should not match
         assert "Carol" not in result["name"].tolist()
@@ -290,7 +289,7 @@ class TestInPredicateThreeValuedLogic:
     def test_not_in_with_null_in_rhs(self, tags_star: Star) -> None:
         """NOT IN with null items in the list uses three-valued negation."""
         result = tags_star.execute_query(
-            "MATCH (p:Person) WHERE 'python' NOT IN p.tags RETURN p.name AS name ORDER BY p.name"
+            "MATCH (p:Person) WHERE 'python' NOT IN p.tags RETURN p.name AS name ORDER BY p.name",
         )
         # Alice has python → False, Bob has [java, null] → null (filtered),
         # Carol has [] → True, Dave has null tags → filtered
@@ -298,16 +297,16 @@ class TestInPredicateThreeValuedLogic:
         assert "Alice" not in result["name"].tolist()
 
     def test_not_in_empty_list_returns_all(self) -> None:
-        """value NOT IN [] → True for all non-null values."""
+        """Value NOT IN [] → True for all non-null values."""
         df = pd.DataFrame(
             {
                 "__ID__": ["p1", "p2"],
                 "name": ["Alice", "Bob"],
-            }
+            },
         )
         star = Star(context=ContextBuilder.from_dict({"Person": df}))
         result = star.execute_query(
-            "MATCH (p:Person) WHERE p.name NOT IN [] RETURN p.name AS name ORDER BY p.name"
+            "MATCH (p:Person) WHERE p.name NOT IN [] RETURN p.name AS name ORDER BY p.name",
         )
         assert list(result["name"]) == ["Alice", "Bob"]
 
@@ -315,7 +314,7 @@ class TestInPredicateThreeValuedLogic:
         """Standard IN with literal list — basic coverage."""
         result = people_star.execute_query(
             "MATCH (p:Person) WHERE p.name IN ['Alice', 'Dave'] "
-            "RETURN p.name AS name ORDER BY p.name"
+            "RETURN p.name AS name ORDER BY p.name",
         )
         assert list(result["name"]) == ["Alice", "Dave"]
 
@@ -360,41 +359,41 @@ class TestStringPredicateEdgeCases:
     def test_starts_with_empty_string_matches_all(self, people_star: Star) -> None:
         """Every string starts with the empty string."""
         result = people_star.execute_query(
-            "MATCH (p:Person) WHERE p.name STARTS WITH '' RETURN p.name AS name"
+            "MATCH (p:Person) WHERE p.name STARTS WITH '' RETURN p.name AS name",
         )
         assert len(result) == 4
 
     def test_ends_with_empty_string_matches_all(self, people_star: Star) -> None:
         """Every string ends with the empty string."""
         result = people_star.execute_query(
-            "MATCH (p:Person) WHERE p.name ENDS WITH '' RETURN p.name AS name"
+            "MATCH (p:Person) WHERE p.name ENDS WITH '' RETURN p.name AS name",
         )
         assert len(result) == 4
 
     def test_contains_empty_string_matches_all(self, people_star: Star) -> None:
         """Every string contains the empty string."""
         result = people_star.execute_query(
-            "MATCH (p:Person) WHERE p.name CONTAINS '' RETURN p.name AS name"
+            "MATCH (p:Person) WHERE p.name CONTAINS '' RETURN p.name AS name",
         )
         assert len(result) == 4
 
     def test_starts_with_full_string(self, people_star: Star) -> None:
         """A string starts with itself."""
         result = people_star.execute_query(
-            "MATCH (p:Person) WHERE p.name STARTS WITH 'Alice' RETURN p.name AS name"
+            "MATCH (p:Person) WHERE p.name STARTS WITH 'Alice' RETURN p.name AS name",
         )
         assert list(result["name"]) == ["Alice"]
 
     def test_ends_with_full_string(self, people_star: Star) -> None:
         """A string ends with itself."""
         result = people_star.execute_query(
-            "MATCH (p:Person) WHERE p.name ENDS WITH 'Alice' RETURN p.name AS name"
+            "MATCH (p:Person) WHERE p.name ENDS WITH 'Alice' RETURN p.name AS name",
         )
         assert list(result["name"]) == ["Alice"]
 
     def test_contains_full_string(self, people_star: Star) -> None:
         """A string contains itself."""
         result = people_star.execute_query(
-            "MATCH (p:Person) WHERE p.name CONTAINS 'Alice' RETURN p.name AS name"
+            "MATCH (p:Person) WHERE p.name CONTAINS 'Alice' RETURN p.name AS name",
         )
         assert list(result["name"]) == ["Alice"]

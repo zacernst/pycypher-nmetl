@@ -24,7 +24,7 @@ def person_context() -> Context:
             "name": ["Alice", "Bob", "Carol"],
             "age": [30, 25, 35],
             "dept": ["eng", "hr", "eng"],
-        }
+        },
     )
     table = EntityTable(
         entity_type="Person",
@@ -49,17 +49,18 @@ class TestWithStar:
         """WITH * passes all variables; RETURN can access them."""
         star = Star(context=person_context)
         result = star.execute_query(
-            "MATCH (p:Person) WITH * RETURN p.name AS name"
+            "MATCH (p:Person) WITH * RETURN p.name AS name",
         )
         assert set(result["name"].tolist()) == {"Alice", "Bob", "Carol"}
 
     def test_with_star_row_count_unchanged(
-        self, person_context: Context
+        self,
+        person_context: Context,
     ) -> None:
         """WITH * preserves the same number of rows as the MATCH."""
         star = Star(context=person_context)
         result = star.execute_query(
-            "MATCH (p:Person) WITH * RETURN p.name AS name"
+            "MATCH (p:Person) WITH * RETURN p.name AS name",
         )
         assert len(result) == 3
 
@@ -67,17 +68,18 @@ class TestWithStar:
         """WITH * WHERE filters rows using the passed-through variables."""
         star = Star(context=person_context)
         result = star.execute_query(
-            "MATCH (p:Person) WITH * WHERE p.age > 28 RETURN p.name AS name"
+            "MATCH (p:Person) WITH * WHERE p.age > 28 RETURN p.name AS name",
         )
         assert set(result["name"].tolist()) == {"Alice", "Carol"}
 
     def test_with_star_multiple_properties(
-        self, person_context: Context
+        self,
+        person_context: Context,
     ) -> None:
         """WITH * allows RETURN to access multiple properties of passed variables."""
         star = Star(context=person_context)
         result = star.execute_query(
-            "MATCH (p:Person) WITH * RETURN p.name AS name, p.age AS age"
+            "MATCH (p:Person) WITH * RETURN p.name AS name, p.age AS age",
         )
         assert len(result) == 3
         assert set(result.columns) == {"name", "age"}
@@ -86,7 +88,7 @@ class TestWithStar:
         """WITH * followed by aggregation in RETURN works correctly."""
         star = Star(context=person_context)
         result = star.execute_query(
-            "MATCH (p:Person) WITH * RETURN count(p) AS n"
+            "MATCH (p:Person) WITH * RETURN count(p) AS n",
         )
         assert int(result["n"].iloc[0]) == 3
 
@@ -94,7 +96,7 @@ class TestWithStar:
         """WITH * ORDER BY applies ordering to passed-through rows."""
         star = Star(context=person_context)
         result = star.execute_query(
-            "MATCH (p:Person) WITH * ORDER BY p.age ASC RETURN p.name AS name"
+            "MATCH (p:Person) WITH * ORDER BY p.age ASC RETURN p.name AS name",
         )
         assert result["name"].tolist() == ["Bob", "Alice", "Carol"]
 
@@ -102,7 +104,7 @@ class TestWithStar:
         """WITH * LIMIT caps the number of rows."""
         star = Star(context=person_context)
         result = star.execute_query(
-            "MATCH (p:Person) WITH * ORDER BY p.name ASC LIMIT 2 RETURN p.name AS name"
+            "MATCH (p:Person) WITH * ORDER BY p.name ASC LIMIT 2 RETURN p.name AS name",
         )
         assert len(result) == 2
         assert result["name"].tolist() == ["Alice", "Bob"]
@@ -111,7 +113,7 @@ class TestWithStar:
         """WITH * can appear in a chain: MATCH ... WITH * WITH ... RETURN."""
         star = Star(context=person_context)
         result = star.execute_query(
-            "MATCH (p:Person) WITH * WITH p.name AS name, p.dept AS dept RETURN name, dept"
+            "MATCH (p:Person) WITH * WITH p.name AS name, p.dept AS dept RETURN name, dept",
         )
         assert len(result) == 3
         assert "name" in result.columns and "dept" in result.columns

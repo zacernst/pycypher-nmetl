@@ -167,7 +167,8 @@ class TestNmetlCliPathTraversal:
             """)
 
     def test_path_traversal_in_source_is_rejected(
-        self, tmp_path: pathlib.Path
+        self,
+        tmp_path: pathlib.Path,
     ) -> None:
         """A source like ../../../../etc/passwd must raise an error, not read the file."""
         from click.testing import CliRunner
@@ -175,7 +176,7 @@ class TestNmetlCliPathTraversal:
 
         config_file = tmp_path / "pipeline.yml"
         config_file.write_text(
-            self._make_pipeline_config("../../../../etc/passwd")
+            self._make_pipeline_config("../../../../etc/passwd"),
         )
 
         runner = CliRunner()
@@ -192,7 +193,8 @@ class TestNmetlCliPathTraversal:
         )
 
     def test_absolute_path_source_is_rejected(
-        self, tmp_path: pathlib.Path
+        self,
+        tmp_path: pathlib.Path,
     ) -> None:
         """An absolute source path outside config_dir must be rejected."""
         from click.testing import CliRunner
@@ -213,7 +215,8 @@ class TestNmetlCliPathTraversal:
         )
 
     def test_sibling_directory_source_is_rejected(
-        self, tmp_path: pathlib.Path
+        self,
+        tmp_path: pathlib.Path,
     ) -> None:
         """A source using ../sibling/file must not escape config_dir."""
         sibling_dir = tmp_path / "sibling"
@@ -225,7 +228,7 @@ class TestNmetlCliPathTraversal:
         config_dir.mkdir()
         config_file = config_dir / "pipeline.yml"
         config_file.write_text(
-            self._make_pipeline_config("../sibling/secret.cypher")
+            self._make_pipeline_config("../sibling/secret.cypher"),
         )
 
         from click.testing import CliRunner
@@ -243,7 +246,8 @@ class TestNmetlCliPathTraversal:
         )
 
     def test_safe_relative_source_is_accepted(
-        self, tmp_path: pathlib.Path
+        self,
+        tmp_path: pathlib.Path,
     ) -> None:
         """A query source within config_dir must be accepted (not blocked)."""
         from click.testing import CliRunner
@@ -256,7 +260,7 @@ class TestNmetlCliPathTraversal:
 
         config_file = tmp_path / "pipeline.yml"
         config_file.write_text(
-            self._make_pipeline_config("queries/my_query.cypher")
+            self._make_pipeline_config("queries/my_query.cypher"),
         )
 
         runner = CliRunner()

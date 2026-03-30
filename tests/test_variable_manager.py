@@ -14,7 +14,6 @@ from __future__ import annotations
 
 from typing import Protocol, runtime_checkable
 
-import pytest
 from pycypher.ast_models import (
     ASTNode,
     Match,
@@ -75,18 +74,14 @@ def _make_path(
 def _make_return(*names: str) -> Return:
     """Build a RETURN clause returning named variables."""
     return Return(
-        items=[
-            ReturnItem(expression=Variable(name=n), alias=None) for n in names
-        ],
+        items=[ReturnItem(expression=Variable(name=n), alias=None) for n in names],
     )
 
 
 def _make_with(*names: str) -> With:
     """Build a WITH clause projecting named variables."""
     return With(
-        items=[
-            ReturnItem(expression=Variable(name=n), alias=None) for n in names
-        ],
+        items=[ReturnItem(expression=Variable(name=n), alias=None) for n in names],
     )
 
 
@@ -315,7 +310,9 @@ class TestGenerateUniqueVariableNames:
 
         manager = VariableManager()
         result = manager.generate_unique_name(
-            "x", existing=set(), prefix="sub_"
+            "x",
+            existing=set(),
+            prefix="sub_",
         )
         assert result == "sub_x"
 
@@ -565,7 +562,8 @@ class TestPreserveVariableBindings:
             _make_return("a", "b"),
         )
         rewritten = manager.rename_variables(
-            original, {"a": "__va", "b": "__vb", "r": "__vr"}
+            original,
+            {"a": "__va", "b": "__vb", "r": "__vr"},
         )
         all_vars = {v.name for v in rewritten.find_all(Variable)}
         assert all_vars == {"__va", "__vb", "__vr"}

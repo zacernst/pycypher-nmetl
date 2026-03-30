@@ -138,7 +138,7 @@ class TestComponentIntegration:
             [
                 ("q1", "CREATE (p:Person {name: 'Alice'})"),
                 ("q2", "CREATE (c:Company {name: 'Acme'})"),
-            ]
+            ],
         )
 
         ast = ASTConverter.from_cypher(combined)
@@ -182,12 +182,12 @@ class TestComponentIntegration:
                 Return(
                     items=[
                         ReturnItem(expression=Variable(name="n")),
-                    ]
+                    ],
                 ),
                 Return(
                     items=[
                         ReturnItem(expression=Variable(name="m")),
-                    ]
+                    ],
                 ),
             ],
         )
@@ -285,7 +285,7 @@ class TestDependencyGraphCorrectness:
                 ("q1", "CREATE (p:Person {name: 'Alice'})"),
                 ("q2", "CREATE (c:Company {name: 'Acme'})"),
                 ("q3", "MATCH (p:Person), (c:Company) RETURN p, c"),
-            ]
+            ],
         )
 
         q3 = next(n for n in graph.nodes if n.query_id == "q3")
@@ -301,7 +301,7 @@ class TestDependencyGraphCorrectness:
                 ("q3", "MATCH (e:Employee) RETURN e.n"),
                 ("q1", "CREATE (p:Person {name: 'Alice'})"),
                 ("q2", "MATCH (p:Person) CREATE (e:Employee {n: p.name})"),
-            ]
+            ],
         )
 
         # CREATE Person must appear before CREATE Employee
@@ -320,31 +320,9 @@ class TestCrossModuleIntegration:
 
     def test_all_modules_importable(self) -> None:
         """All multi-query modules import cleanly."""
-        from pycypher.ast_rewriter import ASTRewriter  # noqa: F401
-        from pycypher.input_validator import (  # noqa: F401
-            InputValidationResult,
-            InputValidator,
-        )
-        from pycypher.multi_query_analyzer import (  # noqa: F401
-            DependencyGraph,
-            QueryDependencyAnalyzer,
-            QueryNode,
-        )
-        from pycypher.multi_query_executor import (  # noqa: F401
-            MultiQueryExecutor,
-        )
-        from pycypher.query_combiner import QueryCombiner  # noqa: F401
-        from pycypher.query_validator import (  # noqa: F401
-            CombinedQueryValidator,
-            ValidationResult,
-        )
-        from pycypher.variable_manager import (  # noqa: F401
-            VariableManager,
-        )
 
     def test_variable_manager_with_dependency_analysis(self) -> None:
         """Variable manager and dependency analyzer work on same ASTs."""
-        from pycypher.ast_models import ASTConverter
         from pycypher.multi_query_analyzer import QueryDependencyAnalyzer
         from pycypher.variable_manager import VariableManager
 
@@ -355,7 +333,7 @@ class TestCrossModuleIntegration:
             [
                 ("q1", "CREATE (n:Person {name: 'Alice'})"),
                 ("q2", "MATCH (n:Person) RETURN n.name"),
-            ]
+            ],
         )
 
         # Both queries use variable 'n'

@@ -21,13 +21,13 @@ from pycypher.relational_models import (
 from pycypher.star import Star
 
 
-@pytest.fixture()
+@pytest.fixture
 def star() -> Star:
     df = pd.DataFrame(
         {
             ID_COLUMN: [1, 2, 3],
             "word": ["ABC", "hello", "☺"],
-        }
+        },
     )
     table = EntityTable(
         entity_type="N",
@@ -41,7 +41,7 @@ def star() -> Star:
         context=Context(
             entity_mapping=EntityMapping(mapping={"N": table}),
             relationship_mapping=RelationshipMapping(mapping={}),
-        )
+        ),
     )
 
 
@@ -89,6 +89,6 @@ class TestCharCodeAt:
 
     def test_column_input(self, star: Star) -> None:
         r = star.execute_query(
-            "MATCH (n:N) WHERE n.word = 'ABC' RETURN charCodeAt(n.word, 0) AS r"
+            "MATCH (n:N) WHERE n.word = 'ABC' RETURN charCodeAt(n.word, 0) AS r",
         )
         assert r["r"].iloc[0] == 65  # A

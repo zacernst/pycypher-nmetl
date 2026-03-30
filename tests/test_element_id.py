@@ -21,13 +21,13 @@ from pycypher.relational_models import (
 from pycypher.star import Star
 
 
-@pytest.fixture()
+@pytest.fixture
 def star() -> Star:
     df = pd.DataFrame(
         {
             ID_COLUMN: [10, 20, 30],
             "name": ["Alice", "Bob", "Carol"],
-        }
+        },
     )
     table = EntityTable(
         entity_type="Person",
@@ -41,7 +41,7 @@ def star() -> Star:
         context=Context(
             entity_mapping=EntityMapping(mapping={"Person": table}),
             relationship_mapping=RelationshipMapping(mapping={}),
-        )
+        ),
     )
 
 
@@ -51,20 +51,20 @@ class TestElementId:
 
     def test_returns_id_for_node(self, star: Star) -> None:
         r = star.execute_query(
-            "MATCH (p:Person) WHERE p.name = 'Alice' RETURN elementId(p) AS r"
+            "MATCH (p:Person) WHERE p.name = 'Alice' RETURN elementId(p) AS r",
         )
         assert r["r"].iloc[0] == 10
 
     def test_matches_id_function(self, star: Star) -> None:
         """elementId(p) must return the same value as id(p)."""
         r = star.execute_query(
-            "MATCH (p:Person) RETURN id(p) AS a, elementId(p) AS b ORDER BY p.name"
+            "MATCH (p:Person) RETURN id(p) AS a, elementId(p) AS b ORDER BY p.name",
         )
         assert list(r["a"]) == list(r["b"])
 
     def test_all_rows(self, star: Star) -> None:
         r = star.execute_query(
-            "MATCH (p:Person) RETURN elementId(p) AS r ORDER BY r"
+            "MATCH (p:Person) RETURN elementId(p) AS r ORDER BY r",
         )
         assert list(r["r"]) == [10, 20, 30]
 

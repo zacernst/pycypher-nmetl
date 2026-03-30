@@ -14,6 +14,7 @@ Handles:
 
 from __future__ import annotations
 
+from collections import deque
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
@@ -50,12 +51,27 @@ class FrameJoiner:
                 :class:`BindingFrame`.
             where_fn: Callback to apply a WHERE filter to a
                 :class:`BindingFrame`.
+
         """
         self._context = context
         self._match_fn = match_fn
         self._where_fn = where_fn
+        self._precomputed_join_plans: deque[object] = deque()
 
-    def coerce_join(self, frame_a: BindingFrame, frame_b: BindingFrame) -> BindingFrame:
+    def set_join_plans(self, plans: list[object]) -> None:
+        """Store pre-computed join plans from QueryPlanAnalyzer.
+
+        Plans are consumed in FIFO order by :meth:`coerce_join`.
+        """
+        self._precomputed_join_plans = deque(plans)
+
+    def coerce_join(
+        self,
+        frame_a: BindingFrame,
+        frame_b: BindingFrame,
+        *,
+        join_plan: object | None = None,
+    ) -> BindingFrame:
         """Join two BindingFrame objects.
 
         Selects the join strategy based on shared variables:
@@ -66,16 +82,60 @@ class FrameJoiner:
         Args:
             frame_a: The left :class:`~pycypher.binding_frame.BindingFrame`.
             frame_b: The right :class:`~pycypher.binding_frame.BindingFrame`.
+            join_plan: Optional pre-computed :class:`JoinPlan` from
+                :class:`QueryPlanAnalyzer` to avoid redundant planning.
 
         Returns:
             A merged :class:`~pycypher.binding_frame.BindingFrame`.
 
         """
+        # Consume pre-computed plan from the queue if no explicit plan given.
+        if join_plan is None and self._precomputed_join_plans:
+            join_plan = self._precomputed_join_plans.popleft()
+
         common_vars = set(frame_a.var_names) & set(frame_b.var_names)
         if common_vars:
             var = next(iter(common_vars))
-            return frame_a.join(frame_b, var, var)
+            return frame_a.join(frame_b, var, var, join_plan=join_plan)
         return frame_a.cross_join(frame_b)
+
+    def multi_way_join(self, frames: list[BindingFrame]) -> BindingFrame:
+        """Join multiple frames using LeapfrogTriejoin when applicable.
+
+        When 3+ frames share a common variable, uses the worst-case optimal
+        LeapfrogTriejoin algorithm. Otherwise falls back to iterated pairwise
+        joins.
+
+        Args:
+            frames: Two or more BindingFrames to join.
+
+        Returns:
+            A single merged BindingFrame.
+
+        """
+        if len(frames) < 2:
+            return frames[0] if frames else self.make_seed_frame()
+
+        if len(frames) >= 3:
+            from pycypher.leapfrog_triejoin import (
+                can_use_leapfrog,
+                leapfrog_triejoin,
+            )
+
+            applicable, join_var = can_use_leapfrog(frames)
+            if applicable and join_var is not None:
+                LOGGER.info(
+                    "Using LeapfrogTriejoin for %d-way join on '%s'",
+                    len(frames),
+                    join_var,
+                )
+                return leapfrog_triejoin(frames, join_var)
+
+        # Fallback: iterated pairwise joins
+        result = frames[0]
+        for frame in frames[1:]:
+            result = self.coerce_join(result, frame)
+        return result
 
     def merge_frames_for_match(
         self,
@@ -87,9 +147,12 @@ class FrameJoiner:
 
         When a query contains multiple MATCH clauses, each new result frame
         must be combined with the accumulated frame via either a keyed join
-        (shared variable) or a cross-join (no shared variables).  If the
-        MATCH carries a WHERE clause, it is applied after the join so that
-        cross-MATCH predicates have access to all bound variables.
+        (shared variable) or a cross-join (no shared variables).
+
+        **Filter pushdown**: WHERE conjuncts that reference only variables
+        from ``match_frame`` are applied *before* the join to reduce
+        intermediate result sizes.  Remaining predicates (those referencing
+        variables from both frames) are applied after the join.
 
         Args:
             current_frame: The accumulated BindingFrame from preceding clauses.
@@ -100,12 +163,30 @@ class FrameJoiner:
             The merged :class:`~pycypher.binding_frame.BindingFrame`.
 
         """
-        result = self.coerce_join(current_frame, match_frame)
         if where_clause is not None:
-            result = self._where_fn(where_clause, result)
+            pre_filter, post_filter = _split_pushdown_predicates(
+                where_clause,
+                set(match_frame.var_names),
+                set(current_frame.var_names),
+            )
+            if pre_filter is not None:
+                LOGGER.debug(
+                    "filter pushdown: applying predicate to match_frame "
+                    "before join (%d rows)",
+                    len(match_frame.bindings),
+                )
+                match_frame = self._where_fn(pre_filter, match_frame)
+        else:
+            post_filter = None
+
+        result = self.coerce_join(current_frame, match_frame)
+        if post_filter is not None:
+            result = self._where_fn(post_filter, result)
         return result
 
-    def process_optional_match(self, clause: Any, current_frame: BindingFrame) -> BindingFrame:
+    def process_optional_match(
+        self, clause: Any, current_frame: BindingFrame
+    ) -> BindingFrame:
         """Execute an OPTIONAL MATCH clause against an existing frame.
 
         Attempts a regular match and left-joins the result on any shared
@@ -215,3 +296,77 @@ class FrameJoiner:
             type_registry={},
             context=self._context,
         )
+
+
+# ---------------------------------------------------------------------------
+# Filter pushdown helpers
+# ---------------------------------------------------------------------------
+
+
+def _extract_conjuncts(predicate: Any) -> list[Any]:
+    """Split an AND-connected predicate into its conjunct list.
+
+    Non-AND predicates are returned as a single-element list.
+    """
+    from pycypher.ast_models import And
+
+    if isinstance(predicate, And) and predicate.operands:
+        conjuncts: list[Any] = []
+        for op in predicate.operands:
+            conjuncts.extend(_extract_conjuncts(op))
+        return conjuncts
+    return [predicate]
+
+
+def _rebuild_and(conjuncts: list[Any]) -> Any | None:
+    """Rebuild an AND node from a list of conjuncts, or return None if empty."""
+    if not conjuncts:
+        return None
+    if len(conjuncts) == 1:
+        return conjuncts[0]
+    from pycypher.ast_models import And
+
+    return And(operands=conjuncts)
+
+
+def _predicate_variables(predicate: Any) -> set[str]:
+    """Extract variable names referenced by a predicate."""
+    from pycypher.ast_models import ASTNode, extract_referenced_variables
+
+    if isinstance(predicate, ASTNode):
+        return extract_referenced_variables(predicate)
+    return set()
+
+
+def _split_pushdown_predicates(
+    where_clause: Any,
+    match_vars: set[str],
+    current_vars: set[str],
+) -> tuple[Any | None, Any | None]:
+    """Split a WHERE clause into pre-join and post-join predicates.
+
+    Conjuncts whose variables are all in *match_vars* (and NOT in
+    *current_vars*, unless also in *match_vars*) can be pushed down to
+    filter ``match_frame`` before the join.
+
+    Args:
+        where_clause: The WHERE predicate AST node.
+        match_vars: Variables available in the new MATCH frame.
+        current_vars: Variables available in the accumulated frame.
+
+    Returns:
+        ``(pre_filter, post_filter)`` — either may be ``None``.
+
+    """
+    conjuncts = _extract_conjuncts(where_clause)
+    pre: list[Any] = []
+    post: list[Any] = []
+
+    for conj in conjuncts:
+        refs = _predicate_variables(conj)
+        if refs and refs.issubset(match_vars):
+            pre.append(conj)
+        else:
+            post.append(conj)
+
+    return _rebuild_and(pre), _rebuild_and(post)

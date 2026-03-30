@@ -10,7 +10,7 @@ from pathlib import Path
 
 # The _rand function was refactored from scalar_functions.py into scalar_functions/list_functions.py
 _RAND_SOURCE_FILE = Path(
-    "packages/pycypher/src/pycypher/scalar_functions/list_functions.py"
+    "packages/pycypher/src/pycypher/scalar_functions/list_functions.py",
 )
 
 import pandas as pd
@@ -55,8 +55,7 @@ class TestCurrentRandSecurityVulnerability:
         insecure_usage_lines = [
             line
             for line in lines
-            if "random.random()" in line
-            and "secure_random.random()" not in line
+            if "random.random()" in line and "secure_random.random()" not in line
         ]
         assert len(insecure_usage_lines) == 0, (
             f"rand() function should not use insecure random.random(). Found: {insecure_usage_lines}"
@@ -87,12 +86,8 @@ class TestCurrentRandSecurityVulnerability:
         assert values1 != values2, (
             "rand() with cryptographically secure implementation should produce different sequences even with same seed"
         )
-        assert len(set(values1)) > 1, (
-            "Should produce different values within sequence"
-        )
-        assert len(set(values2)) > 1, (
-            "Should produce different values within sequence"
-        )
+        assert len(set(values1)) > 1, "Should produce different values within sequence"
+        assert len(set(values2)) > 1, "Should produce different values within sequence"
 
     def test_current_rand_implementation_is_not_cryptographically_secure(self):
         """Test that current implementation fails cryptographic randomness requirements."""
@@ -100,7 +95,7 @@ class TestCurrentRandSecurityVulnerability:
 
         # Generate large sample (100 values)
         result = star.execute_query(
-            "UNWIND range(1, 100) AS x RETURN rand() AS r"
+            "UNWIND range(1, 100) AS x RETURN rand() AS r",
         )
         values = result["r"].values
 
@@ -138,10 +133,7 @@ class TestCurrentRandSecurityVulnerability:
                 violations_found.append(f"Line {i}: {line.strip()}")
 
             # Check for random.random() that's NOT part of secure_random.random()
-            if (
-                "random.random()" in line
-                and "secure_random.random()" not in line
-            ):
+            if "random.random()" in line and "secure_random.random()" not in line:
                 violations_found.append(f"Line {i}: {line.strip()}")
 
         assert len(violations_found) == 0, (
@@ -193,7 +185,7 @@ class TestFixedRandSecurityImplementation:
         sequences = []
         for _ in range(5):
             result = star.execute_query(
-                "UNWIND [1,2,3,4,5] AS x RETURN rand() AS r"
+                "UNWIND [1,2,3,4,5] AS x RETURN rand() AS r",
             )
             sequences.append(result["r"].tolist())
 
@@ -224,12 +216,12 @@ class TestFixedRandSecurityImplementation:
         star = Star(context=Context(entity_mapping=EntityMapping(mapping={})))
 
         result = star.execute_query(
-            "UNWIND range(1, 100) AS x RETURN rand() AS r"
+            "UNWIND range(1, 100) AS x RETURN rand() AS r",
         )
         values = result["r"].values
 
         # Statistical tests for uniform distribution in [0, 1)
-        assert 0.0 <= values.min(), "Min should be >= 0.0"
+        assert values.min() >= 0.0, "Min should be >= 0.0"
         assert values.max() < 1.0, "Max should be < 1.0"
 
         # Mean should be around 0.5 for uniform distribution
@@ -237,9 +229,7 @@ class TestFixedRandSecurityImplementation:
         assert 0.4 < mean < 0.6, f"Mean should be ~0.5, got {mean}"
 
         # Should have good spread across the range
-        assert values.std() > 0.2, (
-            "Standard deviation should indicate good spread"
-        )
+        assert values.std() > 0.2, "Standard deviation should indicate good spread"
 
     def test_no_s311_security_violations_after_fix(self):
         """Test that security scanners no longer flag S311 violations in rand()."""
@@ -275,18 +265,12 @@ class TestFixedRandSecurityImplementation:
         registry = ScalarFunctionRegistry.get_instance()
 
         # Should still be registered
-        assert "rand" in registry._functions, (
-            "rand() should still be registered"
-        )
+        assert "rand" in registry._functions, "rand() should still be registered"
 
         # Should have correct metadata
         func_info = registry._functions["rand"]
-        assert func_info.min_args == 0, (
-            "rand() should require 0 minimum arguments"
-        )
-        assert func_info.max_args == 0, (
-            "rand() should require 0 maximum arguments"
-        )
+        assert func_info.min_args == 0, "rand() should require 0 minimum arguments"
+        assert func_info.max_args == 0, "rand() should require 0 maximum arguments"
         assert "random float" in func_info.description.lower(), (
             "Description should mention random float"
         )
@@ -297,13 +281,13 @@ class TestFixedRandSecurityImplementation:
         from pycypher.relational_models import EntityTable, RelationshipMapping
 
         people = pd.DataFrame(
-            {"__ID__": [1, 2, 3], "name": ["Alice", "Bob", "Carol"]}
+            {"__ID__": [1, 2, 3], "name": ["Alice", "Bob", "Carol"]},
         )
 
         entity_mapping = EntityMapping(
             mapping={
-                "Person": EntityTable(source_obj=people, entity_type="Person")
-            }
+                "Person": EntityTable(source_obj=people, entity_type="Person"),
+            },
         )
 
         context = Context(
@@ -315,7 +299,7 @@ class TestFixedRandSecurityImplementation:
 
         # Test rand() in WHERE clause for sampling
         result = star.execute_query(
-            "MATCH (p:Person) WHERE rand() >= 0.0 RETURN p.name"
+            "MATCH (p:Person) WHERE rand() >= 0.0 RETURN p.name",
         )
         assert len(result) <= 3, "Should return subset or all people"
         assert "name" in result.columns, "Should return name column"

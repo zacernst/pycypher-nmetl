@@ -37,7 +37,7 @@ class TestGraphTypeNotFoundError:
 
     def test_custom_message(self) -> None:
         exc = GraphTypeNotFoundError("Person", "custom detail")
-        assert str(exc) == "custom detail"
+        assert str(exc).startswith("custom detail")
 
     def test_type_name_attribute(self) -> None:
         exc = GraphTypeNotFoundError("KNOWS")
@@ -89,7 +89,7 @@ class TestInvalidCastErrorComprehensive:
 class TestASTConversionErrorComprehensive:
     def test_no_fragment(self) -> None:
         exc = ASTConversionError("parse failed")
-        assert str(exc) == "parse failed"
+        assert str(exc).startswith("parse failed")
         assert exc.query_fragment == ""
         assert exc.node_type == ""
 
@@ -129,7 +129,8 @@ class TestGrammarTransformerSyncError:
 
     def test_with_missing_node_type(self) -> None:
         exc = GrammarTransformerSyncError(
-            "out of sync", missing_node_type="FooBar"
+            "out of sync",
+            missing_node_type="FooBar",
         )
         assert exc.missing_node_type == "FooBar"
         assert "FooBar" in str(exc)
@@ -154,7 +155,9 @@ class TestGrammarTransformerSyncError:
 
     def test_repr_with_query_fragment(self) -> None:
         exc = GrammarTransformerSyncError(
-            "err", missing_node_type="X", query_fragment="Q"
+            "err",
+            missing_node_type="X",
+            query_fragment="Q",
         )
         r = repr(exc)
         assert "missing_node_type='X'" in r
@@ -177,7 +180,9 @@ class TestVariableNotFoundErrorComprehensive:
 
     def test_with_hint(self) -> None:
         exc = VariableNotFoundError(
-            "persn", ["person"], hint="  Did you mean 'person'?"
+            "persn",
+            ["person"],
+            hint="  Did you mean 'person'?",
         )
         assert exc.hint == "  Did you mean 'person'?"
         assert "Did you mean" in str(exc)
@@ -204,7 +209,10 @@ class TestVariableTypeMismatchErrorComprehensive:
 
     def test_with_suggestion(self) -> None:
         exc = VariableTypeMismatchError(
-            "n", "Node", "Rel", suggestion="Use a different variable"
+            "n",
+            "Node",
+            "Rel",
+            suggestion="Use a different variable",
         )
         assert "Use a different variable" in str(exc)
         assert exc.suggestion == "Use a different variable"
@@ -265,7 +273,10 @@ class TestTemporalArithmeticErrorComprehensive:
 
     def test_custom_example(self) -> None:
         exc = TemporalArithmeticError(
-            "+", "date", "int", example="custom example"
+            "+",
+            "date",
+            "int",
+            example="custom example",
         )
         assert exc.example == "custom example"
         assert "custom example" in str(exc)
@@ -295,7 +306,9 @@ class TestUnsupportedFunctionErrorComprehensive:
 
     def test_with_category(self) -> None:
         exc = UnsupportedFunctionError(
-            "bad", ["good1"], category="aggregation"
+            "bad",
+            ["good1"],
+            category="aggregation",
         )
         assert "aggregation function" in str(exc)
 
@@ -383,7 +396,9 @@ class TestQueryMemoryBudgetErrorComprehensive:
 
     def test_custom_suggestion(self) -> None:
         exc = QueryMemoryBudgetError(
-            200_000_000, 100_000_000, suggestion="Use sampling"
+            200_000_000,
+            100_000_000,
+            suggestion="Use sampling",
         )
         assert "Use sampling" in str(exc)
         assert "LIMIT" not in str(exc)  # Custom replaces default

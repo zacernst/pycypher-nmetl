@@ -49,6 +49,24 @@ __all__ = [
     "get_default_parser",
 ]
 
+
+def _eager_compile_parser() -> None:
+    """Compile the Lark Earley parser in a background thread.
+
+    Grammar compilation takes ~96ms.  By starting it eagerly at import
+    time in a daemon thread, the parser is ready before the first query
+    arrives, eliminating the cold-start penalty for interactive use.
+    """
+    try:
+        # Trigger class-level cache population for the default (debug=False) mode.
+        GrammarParser(debug=False)
+    except Exception:
+        LOGGER.debug(
+            "Eager parser compilation failed; will retry on first use",
+            exc_info=True,
+        )
+
+
 # Complete Lark grammar for openCypher
 # Based on the official openCypher grammar specification
 CYPHER_GRAMMAR = r"""
@@ -729,6 +747,7 @@ def _log_parse_failure(query: str, exc: Exception) -> None:
     Args:
         query: The original Cypher query string.
         exc: The Lark UnexpectedInput exception.
+
     """
     snippet = query[:_MAX_QUERY_LOG_LEN]
     if len(query) > _MAX_QUERY_LOG_LEN:
@@ -1018,6 +1037,19 @@ def get_default_parser(*, debug: bool = False) -> GrammarParser:
 
     """
     return GrammarParser(debug=debug)
+
+
+# ---------------------------------------------------------------------------
+# Eager background compilation
+# ---------------------------------------------------------------------------
+# Kick off Lark grammar compilation in a daemon thread at import time so the
+# ~96ms compilation cost is absorbed before the first query arrives.
+_eager_compile_thread = threading.Thread(
+    target=_eager_compile_parser,
+    name="pycypher-parser-warmup",
+    daemon=True,
+)
+_eager_compile_thread.start()
 
 
 def main() -> None:

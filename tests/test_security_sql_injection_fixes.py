@@ -1,5 +1,4 @@
-"""
-TDD tests for Security Loop 270 - SQL Injection prevention improvements.
+"""TDD tests for Security Loop 270 - SQL Injection prevention improvements.
 
 Tests focus on SQL injection vulnerabilities in DuckDB query construction.
 Tests are written to demonstrate current security measures and potential improvements.
@@ -26,7 +25,6 @@ class TestSQLInjectionPrevention:
 
     def test_validate_sql_string_literal_blocks_injection(self):
         """Test that _validate_sql_string_literal blocks basic injection attempts."""
-
         # These should be safe
         safe_values = [
             "normal_file.csv",
@@ -55,7 +53,6 @@ class TestSQLInjectionPrevention:
 
     def test_csv_format_view_sql_prevents_injection(self):
         """Test that CsvFormat.view_sql prevents SQL injection."""
-
         # Test safe CSV format
         safe_format = CsvFormat(delimiter=",", header=True)
         safe_sql = safe_format.view_sql("data/file.csv")
@@ -71,13 +68,13 @@ class TestSQLInjectionPrevention:
         # Test that malicious delimiters are rejected
         with pytest.raises(ValueError):
             malicious_format = CsvFormat(
-                delimiter="'; DROP TABLE users; --", header=True
+                delimiter="'; DROP TABLE users; --",
+                header=True,
             )
             malicious_format.view_sql("safe_file.csv")
 
     def test_duckdb_reader_injection_prevention(self):
         """Test that DuckDBReader methods prevent SQL injection."""
-
         # Test that malicious paths are rejected
         malicious_paths = [
             "'; DROP TABLE users; --",
@@ -95,10 +92,11 @@ class TestSQLInjectionPrevention:
 
     def test_file_data_source_injection_prevention(self):
         """Test that FileDataSource prevents SQL injection through view_sql."""
-
         # Create a temporary CSV file for testing
         with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".csv", delete=False
+            mode="w",
+            suffix=".csv",
+            delete=False,
         ) as f:
             f.write("id,name\n1,test\n2,data\n")
             temp_file = f.name
@@ -106,7 +104,8 @@ class TestSQLInjectionPrevention:
         try:
             # Safe file source should work
             safe_source = FileDataSource(
-                uri=f"file://{temp_file}", format=CsvFormat()
+                uri=f"file://{temp_file}",
+                format=CsvFormat(),
             )
 
             # This should not raise an exception
@@ -126,7 +125,6 @@ class TestSQLInjectionPrevention:
 
     def test_advanced_injection_techniques_blocked(self):
         """Test that advanced SQL injection techniques are blocked."""
-
         # Test various encoding and obfuscation techniques
         advanced_attacks = [
             # Unicode normalization attacks
@@ -153,7 +151,7 @@ class TestSQLInjectionPrevention:
                     _validate_sql_string_literal(attack, "test_field")
                     # This currently passes but shouldn't - it's a security vulnerability
                     print(
-                        f"SECURITY GAP: URL encoded attack bypasses validation: {attack}"
+                        f"SECURITY GAP: URL encoded attack bypasses validation: {attack}",
                     )
                 except ValueError:
                     # Good, it was caught
@@ -161,7 +159,6 @@ class TestSQLInjectionPrevention:
 
     def test_parameterized_query_pattern(self):
         """Document the preferred parameterized query pattern."""
-
         # This test documents what would be a better approach
         # Current DuckDB doesn't support parameterized queries for table-valued functions
         # But we can document the pattern for when it becomes available
@@ -188,12 +185,12 @@ class TestSQLInjectionPrevention:
             options_str = ", ".join(safe_options)
             if options_str:
                 return f"read_csv_auto({quoted_path}, {options_str})"
-            else:
-                return f"read_csv_auto({quoted_path})"
+            return f"read_csv_auto({quoted_path})"
 
         # Test the secure construction
         result = secure_query_construction(
-            "data/file.csv", {"delim": ";", "header": "true"}
+            "data/file.csv",
+            {"delim": ";", "header": "true"},
         )
         expected = "read_csv_auto('data/file.csv', delim=';', header='true')"
         assert result == expected
@@ -204,7 +201,8 @@ class TestSQLInjectionPrevention:
 
         with pytest.raises(ValueError):
             secure_query_construction(
-                "safe.csv", {"delim': 'x'; DROP TABLE users; --": "safe"}
+                "safe.csv",
+                {"delim': 'x'; DROP TABLE users; --": "safe"},
             )
 
 
@@ -213,7 +211,6 @@ class TestSecurityHardening:
 
     def test_whitelist_approach_for_file_extensions(self):
         """Test whitelist-based approach for file extensions."""
-
         allowed_extensions = {".csv", ".parquet", ".json", ".txt", ".tsv"}
 
         def validate_file_extension(path: str) -> None:
@@ -221,7 +218,7 @@ class TestSecurityHardening:
             path_obj = Path(path)
             if path_obj.suffix.lower() not in allowed_extensions:
                 raise ValueError(
-                    f"File extension {path_obj.suffix} not allowed"
+                    f"File extension {path_obj.suffix} not allowed",
                 )
 
         # Safe extensions should pass
@@ -263,7 +260,7 @@ class TestSecurityHardening:
                 path_obj.relative_to(base_resolved)
             except ValueError:
                 raise SecurityError(
-                    f"Path {path} is outside allowed directory {base_dir}"
+                    f"Path {path} is outside allowed directory {base_dir}",
                 )
 
             return path_obj

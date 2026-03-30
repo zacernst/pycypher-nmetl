@@ -74,7 +74,8 @@ class TestCsvPathValidation:
 
     def test_valid_path_raises_non_validation_error(self) -> None:
         """A path without injection characters passes validation; DuckDB raises
-        its own error (missing file), not a ValueError from our guard."""
+        its own error (missing file), not a ValueError from our guard.
+        """
         with pytest.raises(Exception) as exc_info:
             DuckDBReader.from_csv("/nonexistent/definitely_missing.csv")
         assert not isinstance(exc_info.value, ValueError), (
@@ -118,7 +119,7 @@ class TestParquetPathValidation:
     def test_valid_path_raises_non_validation_error(self) -> None:
         with pytest.raises(Exception) as exc_info:
             DuckDBReader.from_parquet(
-                "/nonexistent/definitely_missing.parquet"
+                "/nonexistent/definitely_missing.parquet",
             )
         assert not isinstance(exc_info.value, ValueError), (
             f"Expected a non-ValueError (file-not-found), got ValueError: {exc_info.value}"
@@ -158,12 +159,14 @@ class TestJsonPathValidation:
 
 class TestUnaffectedMethods:
     """from_dataframe, from_arrow, and from_sql do not interpolate path into
-    SQL string literals, so they have no injection surface to guard."""
+    SQL string literals, so they have no injection surface to guard.
+    """
 
     def test_from_sql_accepts_connection_string_with_quote(self) -> None:
         """from_sql passes connection_string to duckdb.connect() — not embedded
         in a SQL literal — so it should not be rejected by our path guard.
-        We expect a DuckDB connection error, not a ValueError."""
+        We expect a DuckDB connection error, not a ValueError.
+        """
         with pytest.raises(Exception) as exc_info:
             # This will fail at DuckDB level (bad connection), not at our guard
             DuckDBReader.from_sql(

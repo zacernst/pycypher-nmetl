@@ -8,10 +8,7 @@ node properties, and all literal/expression types in _expr_to_cypher.
 
 from __future__ import annotations
 
-from typing import Any
-
 import pytest
-
 from pycypher.ast_models import (
     BooleanLiteral,
     Comparison,
@@ -42,7 +39,7 @@ from pycypher.ast_models import (
 from pycypher.ast_rewriter import ASTRewriter
 
 
-@pytest.fixture()
+@pytest.fixture
 def rewriter() -> ASTRewriter:
     """Provide a fresh ASTRewriter instance."""
     return ASTRewriter()

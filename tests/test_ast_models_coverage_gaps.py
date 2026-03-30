@@ -217,7 +217,7 @@ class TestReduceConversions:
                             "operator": "*",
                             "left": {"type": "Variable", "name": "item"},
                             "right": {"type": "IntegerLiteral", "value": 2},
-                        }
+                        },
                     ],
                 },
             },
@@ -341,7 +341,7 @@ class TestPatternComprehensionConversions:
                                 "labels": ["Person"],
                             },
                         ],
-                    }
+                    },
                 ],
             },
             "map": {
@@ -374,9 +374,9 @@ class TestPatternComprehensionConversions:
                                 "type": "NodePattern",
                                 "variable": "n",
                                 "labels": ["Person"],
-                            }
+                            },
                         ],
-                    }
+                    },
                 ],
             },
             "where": {
@@ -468,9 +468,7 @@ class TestCaseExpressionConversions:
         result = self.converter.convert(node)
 
         assert isinstance(result, CaseExpression)
-        assert (
-            result.expression is None
-        )  # Searched case has no test expression
+        assert result.expression is None  # Searched case has no test expression
         assert len(result.when_clauses) == 2
         assert all(w.condition is not None for w in result.when_clauses)
         assert isinstance(result.else_expr, StringLiteral)
@@ -489,7 +487,7 @@ class TestCaseExpressionConversions:
                         "right": {"type": "IntegerLiteral", "value": 1},
                     },
                     "result": {"type": "StringLiteral", "value": "one"},
-                }
+                },
             ],
         }
 
@@ -532,11 +530,11 @@ class TestCaseExpressionConversions:
                                     "type": "StringLiteral",
                                     "value": "A+",
                                 },
-                            }
+                            },
                         ],
                         "else": {"type": "StringLiteral", "value": "A"},
                     },
-                }
+                },
             ],
             "else": {"type": "StringLiteral", "value": "B"},
         }
@@ -1017,7 +1015,7 @@ class TestASTTraversalMethods:
 
         # Find all Variable nodes with name starting with 'x'
         results = comp.find_all(
-            lambda n: isinstance(n, Variable) and n.name.startswith("x")
+            lambda n: isinstance(n, Variable) and n.name.startswith("x"),
         )
 
         assert isinstance(results[0], Variable)

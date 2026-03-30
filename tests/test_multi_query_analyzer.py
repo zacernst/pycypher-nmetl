@@ -109,7 +109,7 @@ class TestExtractProducedTypes:
         graph = analyzer.analyze(
             [
                 ("q1", "CREATE (n:Person {name: 'Alice'})"),
-            ]
+            ],
         )
         assert graph.nodes[0].produces == {"Person"}
 
@@ -121,7 +121,7 @@ class TestExtractProducedTypes:
         graph = analyzer.analyze(
             [
                 ("q1", "CREATE (a:Person)-[:KNOWS]->(b:Person)"),
-            ]
+            ],
         )
         assert "KNOWS" in graph.nodes[0].produces
         assert "Person" in graph.nodes[0].produces
@@ -134,7 +134,7 @@ class TestExtractProducedTypes:
         graph = analyzer.analyze(
             [
                 ("q1", "CREATE (p:Person), (c:Company)"),
-            ]
+            ],
         )
         assert graph.nodes[0].produces == {"Person", "Company"}
 
@@ -146,7 +146,7 @@ class TestExtractProducedTypes:
         graph = analyzer.analyze(
             [
                 ("q1", "MATCH (n:Person) RETURN n"),
-            ]
+            ],
         )
         assert graph.nodes[0].produces == set()
 
@@ -162,7 +162,7 @@ class TestExtractConsumedTypes:
         graph = analyzer.analyze(
             [
                 ("q1", "MATCH (n:Person) RETURN n"),
-            ]
+            ],
         )
         assert graph.nodes[0].consumes == {"Person"}
 
@@ -174,7 +174,7 @@ class TestExtractConsumedTypes:
         graph = analyzer.analyze(
             [
                 ("q1", "MATCH (a:Person)-[:KNOWS]->(b:Person) RETURN a, b"),
-            ]
+            ],
         )
         assert "KNOWS" in graph.nodes[0].consumes
         assert "Person" in graph.nodes[0].consumes
@@ -187,7 +187,7 @@ class TestExtractConsumedTypes:
         graph = analyzer.analyze(
             [
                 ("q1", "CREATE (n:Person {name: 'Alice'})"),
-            ]
+            ],
         )
         assert graph.nodes[0].consumes == set()
 
@@ -209,7 +209,7 @@ class TestBuildDependencyGraph:
             [
                 ("q1", "CREATE (n:Person {name: 'Alice'})"),
                 ("q2", "MATCH (n:Person) RETURN n.name"),
-            ]
+            ],
         )
         q1 = next(n for n in graph.nodes if n.query_id == "q1")
         q2 = next(n for n in graph.nodes if n.query_id == "q2")
@@ -225,7 +225,7 @@ class TestBuildDependencyGraph:
             [
                 ("q1", "CREATE (n:Person {name: 'Alice'})"),
                 ("q2", "CREATE (c:Company {name: 'Acme'})"),
-            ]
+            ],
         )
         q1 = next(n for n in graph.nodes if n.query_id == "q1")
         q2 = next(n for n in graph.nodes if n.query_id == "q2")
@@ -242,7 +242,7 @@ class TestBuildDependencyGraph:
                 ("q1", "CREATE (p:Person {name: 'Alice'})"),
                 ("q2", "CREATE (c:Company {name: 'Acme'})"),
                 ("q3", "MATCH (p:Person), (c:Company) RETURN p, c"),
-            ]
+            ],
         )
         q3 = next(n for n in graph.nodes if n.query_id == "q3")
         assert q3.dependencies == {"q1", "q2"}
@@ -257,7 +257,7 @@ class TestBuildDependencyGraph:
                 ("q1", "CREATE (p:Person {name: 'Alice'})"),
                 ("q2", "MATCH (p:Person) CREATE (e:Employee {name: p.name})"),
                 ("q3", "MATCH (e:Employee) RETURN e.name"),
-            ]
+            ],
         )
         q1 = next(n for n in graph.nodes if n.query_id == "q1")
         q2 = next(n for n in graph.nodes if n.query_id == "q2")
@@ -285,7 +285,7 @@ class TestTopologicalSort:
                 ("q1", "CREATE (p:Person {name: 'Alice'})"),
                 ("q2", "MATCH (p:Person) CREATE (e:Employee {name: p.name})"),
                 ("q3", "MATCH (e:Employee) RETURN e.name"),
-            ]
+            ],
         )
         order = graph.topological_sort()
         ids = [n.query_id for n in order]
@@ -302,7 +302,7 @@ class TestTopologicalSort:
             [
                 ("q1", "CREATE (p:Person {name: 'Alice'})"),
                 ("q2", "CREATE (c:Company {name: 'Acme'})"),
-            ]
+            ],
         )
         order = graph.topological_sort()
         assert len(order) == 2
@@ -318,7 +318,7 @@ class TestTopologicalSort:
                 ("q1", "CREATE (p:Person {name: 'Alice'})"),
                 ("q2", "CREATE (c:Company {name: 'Acme'})"),
                 ("q3", "MATCH (p:Person), (c:Company) RETURN p, c"),
-            ]
+            ],
         )
         order = graph.topological_sort()
         ids = [n.query_id for n in order]
@@ -393,7 +393,7 @@ class TestMergeClauseHandling:
         graph = analyzer.analyze(
             [
                 ("q1", "MERGE (n:Person {name: 'Alice'})"),
-            ]
+            ],
         )
         node = graph.nodes[0]
         # MERGE is an upsert — consumes (match) AND produces (create)
@@ -417,7 +417,7 @@ class TestEdgeCases:
         graph = analyzer.analyze(
             [
                 ("q1", "MATCH (n:Person) RETURN n"),
-            ]
+            ],
         )
         assert len(graph.nodes) == 1
         assert graph.nodes[0].dependencies == set()
@@ -448,6 +448,6 @@ class TestEdgeCases:
         graph = analyzer.analyze(
             [
                 ("q1", "MATCH (n:Person) RETURN n"),
-            ]
+            ],
         )
         assert isinstance(graph.nodes[0].ast, Query)

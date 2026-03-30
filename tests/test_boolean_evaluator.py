@@ -170,7 +170,7 @@ class TestBooleanExpressionEvaluator:
                 ID_COLUMN: [1, 2, 3, 4],
                 "Person__active": [True, False, True, False],
                 "Person__verified": [True, True, False, False],
-            }
+            },
         )
 
         person_table = EntityTable.from_dataframe(
@@ -180,21 +180,24 @@ class TestBooleanExpressionEvaluator:
                     ID_COLUMN: [1, 2, 3, 4],
                     "active": [True, False, True, False],
                     "verified": [True, True, False, False],
-                }
+                },
             ),
         )
 
         context = Context(
-            entity_mapping=EntityMapping(mapping={"Person": person_table})
+            entity_mapping=EntityMapping(mapping={"Person": person_table}),
         )
         type_registry = {"p": "Person"}
         return BindingFrame(
-            bindings=df, context=context, type_registry=type_registry
+            bindings=df,
+            context=context,
+            type_registry=type_registry,
         )
 
     @pytest.fixture
     def boolean_evaluator(
-        self, test_frame: BindingFrame
+        self,
+        test_frame: BindingFrame,
     ) -> BooleanExpressionEvaluator:
         """Create BooleanExpressionEvaluator instance."""
         return BooleanExpressionEvaluator(test_frame)
@@ -205,7 +208,8 @@ class TestBooleanExpressionEvaluator:
         assert evaluator.frame is test_frame
 
     def test_evaluate_and_basic(
-        self, boolean_evaluator: BooleanExpressionEvaluator
+        self,
+        boolean_evaluator: BooleanExpressionEvaluator,
     ) -> None:
         """Test AND evaluation with basic operands."""
 
@@ -214,22 +218,24 @@ class TestBooleanExpressionEvaluator:
             def evaluate(expr):
                 if expr == "true_expr":
                     return pd.Series([True, True, True, True])
-                elif expr == "false_expr":
+                if expr == "false_expr":
                     return pd.Series([False, False, False, False])
-                elif expr == "mixed_expr":
+                if expr == "mixed_expr":
                     return pd.Series([True, False, True, False])
                 return pd.Series([True, True, True, True])
 
         mock_evaluator = MockExpressionEvaluator()
         result = boolean_evaluator.evaluate_and(
-            ["true_expr", "mixed_expr"], mock_evaluator
+            ["true_expr", "mixed_expr"],
+            mock_evaluator,
         )
 
         expected = pd.Series([True, False, True, False], dtype=object)
         pd.testing.assert_series_equal(result, expected)
 
     def test_evaluate_and_empty_operands(
-        self, boolean_evaluator: BooleanExpressionEvaluator
+        self,
+        boolean_evaluator: BooleanExpressionEvaluator,
     ) -> None:
         """Test AND evaluation with empty operands (should return True)."""
 
@@ -243,7 +249,8 @@ class TestBooleanExpressionEvaluator:
         pd.testing.assert_series_equal(result, expected)
 
     def test_evaluate_or_basic(
-        self, boolean_evaluator: BooleanExpressionEvaluator
+        self,
+        boolean_evaluator: BooleanExpressionEvaluator,
     ) -> None:
         """Test OR evaluation with basic operands."""
 
@@ -252,20 +259,22 @@ class TestBooleanExpressionEvaluator:
             def evaluate(expr):
                 if expr == "false_expr":
                     return pd.Series([False, False, False, False])
-                elif expr == "mixed_expr":
+                if expr == "mixed_expr":
                     return pd.Series([True, False, True, False])
                 return pd.Series([False, False, False, False])
 
         mock_evaluator = MockExpressionEvaluator()
         result = boolean_evaluator.evaluate_or(
-            ["false_expr", "mixed_expr"], mock_evaluator
+            ["false_expr", "mixed_expr"],
+            mock_evaluator,
         )
 
         expected = pd.Series([True, False, True, False], dtype=object)
         pd.testing.assert_series_equal(result, expected)
 
     def test_evaluate_or_empty_operands(
-        self, boolean_evaluator: BooleanExpressionEvaluator
+        self,
+        boolean_evaluator: BooleanExpressionEvaluator,
     ) -> None:
         """Test OR evaluation with empty operands (should return False)."""
 
@@ -279,7 +288,8 @@ class TestBooleanExpressionEvaluator:
         pd.testing.assert_series_equal(result, expected)
 
     def test_evaluate_not_basic(
-        self, boolean_evaluator: BooleanExpressionEvaluator
+        self,
+        boolean_evaluator: BooleanExpressionEvaluator,
     ) -> None:
         """Test NOT evaluation with basic operand."""
 
@@ -297,7 +307,8 @@ class TestBooleanExpressionEvaluator:
         pd.testing.assert_series_equal(result, expected)
 
     def test_evaluate_xor_basic(
-        self, boolean_evaluator: BooleanExpressionEvaluator
+        self,
+        boolean_evaluator: BooleanExpressionEvaluator,
     ) -> None:
         """Test XOR evaluation with basic operands."""
 
@@ -306,20 +317,22 @@ class TestBooleanExpressionEvaluator:
             def evaluate(expr):
                 if expr == "left_expr":
                     return pd.Series([True, False, True, False])
-                elif expr == "right_expr":
+                if expr == "right_expr":
                     return pd.Series([True, True, False, False])
                 return pd.Series([False, False, False, False])
 
         mock_evaluator = MockExpressionEvaluator()
         result = boolean_evaluator.evaluate_xor(
-            ["left_expr", "right_expr"], mock_evaluator
+            ["left_expr", "right_expr"],
+            mock_evaluator,
         )
 
         expected = pd.Series([False, True, True, False], dtype=object)
         pd.testing.assert_series_equal(result, expected)
 
     def test_evaluate_xor_empty_operands(
-        self, boolean_evaluator: BooleanExpressionEvaluator
+        self,
+        boolean_evaluator: BooleanExpressionEvaluator,
     ) -> None:
         """Test XOR evaluation with empty operands (should return False)."""
 
@@ -333,7 +346,8 @@ class TestBooleanExpressionEvaluator:
         pd.testing.assert_series_equal(result, expected)
 
     def test_evaluate_bool_chain_and(
-        self, boolean_evaluator: BooleanExpressionEvaluator
+        self,
+        boolean_evaluator: BooleanExpressionEvaluator,
     ) -> None:
         """Test boolean chain evaluation with AND operation."""
 
@@ -342,13 +356,15 @@ class TestBooleanExpressionEvaluator:
             def evaluate(expr):
                 if expr == "expr1":
                     return pd.Series([True, True, False, None])
-                elif expr == "expr2":
+                if expr == "expr2":
                     return pd.Series([True, False, False, True])
                 return pd.Series([True, True, True, True])
 
         mock_evaluator = MockExpressionEvaluator()
         result = boolean_evaluator.evaluate_bool_chain(
-            "and", ["expr1", "expr2"], mock_evaluator
+            "and",
+            ["expr1", "expr2"],
+            mock_evaluator,
         )
 
         # null-safe operation: None becomes False
@@ -356,7 +372,8 @@ class TestBooleanExpressionEvaluator:
         pd.testing.assert_series_equal(result, expected)
 
     def test_evaluate_bool_chain_or(
-        self, boolean_evaluator: BooleanExpressionEvaluator
+        self,
+        boolean_evaluator: BooleanExpressionEvaluator,
     ) -> None:
         """Test boolean chain evaluation with OR operation."""
 
@@ -365,13 +382,15 @@ class TestBooleanExpressionEvaluator:
             def evaluate(expr):
                 if expr == "expr1":
                     return pd.Series([False, False, True, None])
-                elif expr == "expr2":
+                if expr == "expr2":
                     return pd.Series([False, True, False, False])
                 return pd.Series([False, False, False, False])
 
         mock_evaluator = MockExpressionEvaluator()
         result = boolean_evaluator.evaluate_bool_chain(
-            "or", ["expr1", "expr2"], mock_evaluator
+            "or",
+            ["expr1", "expr2"],
+            mock_evaluator,
         )
 
         # null-safe operation: None becomes False
@@ -379,7 +398,8 @@ class TestBooleanExpressionEvaluator:
         pd.testing.assert_series_equal(result, expected)
 
     def test_evaluate_bool_chain_empty_operands(
-        self, boolean_evaluator: BooleanExpressionEvaluator
+        self,
+        boolean_evaluator: BooleanExpressionEvaluator,
     ) -> None:
         """Test boolean chain evaluation with empty operands."""
 
@@ -390,27 +410,34 @@ class TestBooleanExpressionEvaluator:
 
         # AND with empty operands returns True
         result_and = boolean_evaluator.evaluate_bool_chain(
-            "and", [], mock_evaluator
+            "and",
+            [],
+            mock_evaluator,
         )
         expected_and = pd.Series([True, True, True, True])
         pd.testing.assert_series_equal(result_and, expected_and)
 
         # OR with empty operands returns False
         result_or = boolean_evaluator.evaluate_bool_chain(
-            "or", [], mock_evaluator
+            "or",
+            [],
+            mock_evaluator,
         )
         expected_or = pd.Series([False, False, False, False])
         pd.testing.assert_series_equal(result_or, expected_or)
 
         # XOR with empty operands returns False
         result_xor = boolean_evaluator.evaluate_bool_chain(
-            "xor", [], mock_evaluator
+            "xor",
+            [],
+            mock_evaluator,
         )
         expected_xor = pd.Series([False, False, False, False])
         pd.testing.assert_series_equal(result_xor, expected_xor)
 
     def test_evaluate_bool_chain_unsupported_operation(
-        self, boolean_evaluator: BooleanExpressionEvaluator
+        self,
+        boolean_evaluator: BooleanExpressionEvaluator,
     ) -> None:
         """Test boolean chain evaluation with unsupported operation raises ValueError."""
 
@@ -423,11 +450,14 @@ class TestBooleanExpressionEvaluator:
 
         with pytest.raises(ValueError, match="Unsupported boolean operator"):
             boolean_evaluator.evaluate_bool_chain(
-                "nand", ["expr1"], mock_evaluator
+                "nand",
+                ["expr1"],
+                mock_evaluator,
             )
 
     def test_null_safe_helper(
-        self, boolean_evaluator: BooleanExpressionEvaluator
+        self,
+        boolean_evaluator: BooleanExpressionEvaluator,
     ) -> None:
         """Test null-safe helper function."""
         series = pd.Series([True, False, None, None])
@@ -440,14 +470,14 @@ class TestBooleanExpressionEvaluator:
 class TestBooleanEvaluatorIntegration:
     """Test BooleanExpressionEvaluator integration scenarios."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def evaluator_and_mock(self) -> tuple[BooleanExpressionEvaluator, type]:
         """Create evaluator with a 6-row frame and a configurable mock."""
         df = pd.DataFrame(
             {
                 ID_COLUMN: range(6),
                 "X__val": [True, False, None, True, False, None],
-            }
+            },
         )
         person_table = EntityTable.from_dataframe(
             "X",
@@ -455,7 +485,7 @@ class TestBooleanEvaluatorIntegration:
                 {
                     ID_COLUMN: range(6),
                     "val": [True, False, None, True, False, None],
-                }
+                },
             ),
         )
         context = Context(
@@ -740,7 +770,9 @@ class TestBooleanEvaluatorRegression:
                 return pd.Series([True, False])
 
         result = ev.evaluate_bool_chain(
-            "and", ["null_expr", "true_false"], MockEval
+            "and",
+            ["null_expr", "true_false"],
+            MockEval,
         )
         # null coerced to False: [False AND True, False AND False] = [False, False]
         assert not result.iloc[0]

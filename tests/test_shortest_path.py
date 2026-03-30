@@ -35,14 +35,14 @@ from pycypher.star import Star
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture()
+@pytest.fixture
 def diamond_star() -> Star:
     """Diamond graph with two equal-length shortest paths Alice→Dave."""
     people_df = pd.DataFrame(
         {
             ID_COLUMN: [1, 2, 3, 4],
             "name": ["Alice", "Bob", "Carol", "Dave"],
-        }
+        },
     )
     people_table = EntityTable(
         entity_type="Person",
@@ -58,7 +58,7 @@ def diamond_star() -> Star:
             ID_COLUMN: [10, 11, 12, 13],
             "__SOURCE__": [1, 1, 2, 3],
             "__TARGET__": [2, 3, 4, 4],
-        }
+        },
     )
     knows_table = RelationshipTable(
         relationship_type="KNOWS",
@@ -77,7 +77,7 @@ def diamond_star() -> Star:
     return Star(context=context)
 
 
-@pytest.fixture()
+@pytest.fixture
 def chain_star() -> Star:
     """Linear chain: Alice -KNOWS-> Bob -KNOWS-> Carol.
 
@@ -87,7 +87,7 @@ def chain_star() -> Star:
         {
             ID_COLUMN: [1, 2, 3],
             "name": ["Alice", "Bob", "Carol"],
-        }
+        },
     )
     people_table = EntityTable(
         entity_type="Person",
@@ -102,7 +102,7 @@ def chain_star() -> Star:
             ID_COLUMN: [10, 11],
             "__SOURCE__": [1, 2],
             "__TARGET__": [2, 3],
-        }
+        },
     )
     knows_table = RelationshipTable(
         relationship_type="KNOWS",
@@ -130,20 +130,20 @@ class TestShortestPathASTConversion:
     """The ASTConverter must not raise ValidationError on shortestPath."""
 
     def test_ast_converts_without_validation_error(self) -> None:
-        """shortestPath query must parse to a valid AST without ValidationError."""
+        """ShortestPath query must parse to a valid AST without ValidationError."""
         from pycypher.ast_models import ASTConverter
 
         ast = ASTConverter.from_cypher(
-            "MATCH p = shortestPath((a:Person)-[:KNOWS*]->(b:Person)) RETURN a, b"
+            "MATCH p = shortestPath((a:Person)-[:KNOWS*]->(b:Person)) RETURN a, b",
         )
         assert ast is not None
 
     def test_all_shortest_paths_ast_converts(self) -> None:
-        """allShortestPaths query must parse without ValidationError."""
+        """AllShortestPaths query must parse without ValidationError."""
         from pycypher.ast_models import ASTConverter
 
         ast = ASTConverter.from_cypher(
-            "MATCH p = allShortestPaths((a:Person)-[:KNOWS*]->(b:Person)) RETURN a, b"
+            "MATCH p = allShortestPaths((a:Person)-[:KNOWS*]->(b:Person)) RETURN a, b",
         )
         assert ast is not None
 
@@ -161,7 +161,7 @@ class TestShortestPathBasic:
         r = chain_star.execute_query(
             "MATCH (a:Person {name: 'Alice'}), (b:Person {name: 'Bob'}) "
             "MATCH p = shortestPath((a)-[:KNOWS*]->(b)) "
-            "RETURN a.name AS start_name, b.name AS end_name"
+            "RETURN a.name AS start_name, b.name AS end_name",
         )
         assert len(r) == 1
         assert r["start_name"].iloc[0] == "Alice"
@@ -172,25 +172,27 @@ class TestShortestPathBasic:
         r = chain_star.execute_query(
             "MATCH (a:Person {name: 'Alice'}), (b:Person {name: 'Carol'}) "
             "MATCH p = shortestPath((a)-[:KNOWS*]->(b)) "
-            "RETURN a.name AS start_name, b.name AS end_name"
+            "RETURN a.name AS start_name, b.name AS end_name",
         )
         assert len(r) == 1
         assert r["start_name"].iloc[0] == "Alice"
         assert r["end_name"].iloc[0] == "Carol"
 
     def test_shortest_path_no_connection_returns_empty(
-        self, chain_star: Star
+        self,
+        chain_star: Star,
     ) -> None:
         """Carol→Alice: no forward path, returns empty result."""
         r = chain_star.execute_query(
             "MATCH (a:Person {name: 'Carol'}), (b:Person {name: 'Alice'}) "
             "MATCH p = shortestPath((a)-[:KNOWS*]->(b)) "
-            "RETURN a.name AS start_name, b.name AS end_name"
+            "RETURN a.name AS start_name, b.name AS end_name",
         )
         assert len(r) == 0
 
     def test_shortest_path_diamond_one_row_per_pair(
-        self, diamond_star: Star
+        self,
+        diamond_star: Star,
     ) -> None:
         """Diamond graph: Alice→Dave has two equal-length paths.
 
@@ -199,7 +201,7 @@ class TestShortestPathBasic:
         r = diamond_star.execute_query(
             "MATCH (a:Person {name: 'Alice'}), (b:Person {name: 'Dave'}) "
             "MATCH p = shortestPath((a)-[:KNOWS*]->(b)) "
-            "RETURN a.name AS start_name, b.name AS end_name"
+            "RETURN a.name AS start_name, b.name AS end_name",
         )
         assert len(r) == 1
         assert r["start_name"].iloc[0] == "Alice"
@@ -215,21 +217,21 @@ class TestShortestPathLength:
     """length(p) returns hop count of shortest path."""
 
     def test_length_of_one_hop_path(self, chain_star: Star) -> None:
-        """shortestPath from Alice to Bob is 1 hop."""
+        """ShortestPath from Alice to Bob is 1 hop."""
         r = chain_star.execute_query(
             "MATCH (a:Person {name: 'Alice'}), (b:Person {name: 'Bob'}) "
             "MATCH p = shortestPath((a)-[:KNOWS*]->(b)) "
-            "RETURN length(p) AS hops"
+            "RETURN length(p) AS hops",
         )
         assert len(r) == 1
         assert r["hops"].iloc[0] == 1
 
     def test_length_of_two_hop_path(self, chain_star: Star) -> None:
-        """shortestPath from Alice to Carol is 2 hops."""
+        """ShortestPath from Alice to Carol is 2 hops."""
         r = chain_star.execute_query(
             "MATCH (a:Person {name: 'Alice'}), (b:Person {name: 'Carol'}) "
             "MATCH p = shortestPath((a)-[:KNOWS*]->(b)) "
-            "RETURN length(p) AS hops"
+            "RETURN length(p) AS hops",
         )
         assert len(r) == 1
         assert r["hops"].iloc[0] == 2
@@ -239,7 +241,7 @@ class TestShortestPathLength:
         r = diamond_star.execute_query(
             "MATCH (a:Person {name: 'Alice'}), (b:Person {name: 'Dave'}) "
             "MATCH p = shortestPath((a)-[:KNOWS*]->(b)) "
-            "RETURN length(p) AS hops"
+            "RETURN length(p) AS hops",
         )
         assert len(r) == 1
         assert r["hops"].iloc[0] == 2
@@ -258,20 +260,21 @@ class TestAllShortestPaths:
         r = chain_star.execute_query(
             "MATCH (a:Person {name: 'Alice'}), (b:Person {name: 'Bob'}) "
             "MATCH p = allShortestPaths((a)-[:KNOWS*]->(b)) "
-            "RETURN a.name AS start_name, b.name AS end_name"
+            "RETURN a.name AS start_name, b.name AS end_name",
         )
         assert len(r) >= 1
         assert (r["start_name"] == "Alice").all()
         assert (r["end_name"] == "Bob").all()
 
     def test_all_shortest_paths_diamond_at_least_one_row(
-        self, diamond_star: Star
+        self,
+        diamond_star: Star,
     ) -> None:
         """Diamond: Alice→Dave allShortestPaths returns >= 1 row at min-length."""
         r = diamond_star.execute_query(
             "MATCH (a:Person {name: 'Alice'}), (b:Person {name: 'Dave'}) "
             "MATCH p = allShortestPaths((a)-[:KNOWS*]->(b)) "
-            "RETURN a.name AS start_name, b.name AS end_name, length(p) AS hops"
+            "RETURN a.name AS start_name, b.name AS end_name, length(p) AS hops",
         )
         assert len(r) >= 1
         # All returned rows must be at the minimum hop count

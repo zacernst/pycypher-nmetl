@@ -20,13 +20,13 @@ from pycypher.relational_models import (
 from pycypher.star import Star
 
 
-@pytest.fixture()
+@pytest.fixture
 def star() -> Star:
     df = pd.DataFrame(
         {
             ID_COLUMN: [1, 2, 3],
             "lst": [[1, 2, 3], None, [4, 5]],
-        }
+        },
     )
     table = EntityTable(
         entity_type="N",
@@ -40,7 +40,7 @@ def star() -> Star:
         context=Context(
             entity_mapping=EntityMapping(mapping={"N": table}),
             relationship_mapping=RelationshipMapping(mapping={}),
-        )
+        ),
     )
 
 
@@ -49,14 +49,14 @@ class TestListComprehensionNullList:
 
     def test_null_list_gives_empty(self, star: Star) -> None:
         r = star.execute_query(
-            "MATCH (n:N) WHERE n.lst IS NULL RETURN [x IN n.lst | x * 2] AS r"
+            "MATCH (n:N) WHERE n.lst IS NULL RETURN [x IN n.lst | x * 2] AS r",
         )
         assert r["r"].iloc[0] == []
 
     def test_non_null_list_maps_correctly(self, star: Star) -> None:
         r = star.execute_query(
             "MATCH (n:N) WHERE n.lst IS NOT NULL RETURN [x IN n.lst | x + 1] AS r"
-            " ORDER BY n.lst[0]"
+            " ORDER BY n.lst[0]",
         )
         results = r["r"].tolist()
         assert results[0] == [2, 3, 4]
@@ -64,7 +64,7 @@ class TestListComprehensionNullList:
 
     def test_null_list_in_where_filter(self, star: Star) -> None:
         r = star.execute_query(
-            "MATCH (n:N) WHERE n.lst IS NULL RETURN [x IN n.lst WHERE x > 0 | x] AS r"
+            "MATCH (n:N) WHERE n.lst IS NULL RETURN [x IN n.lst WHERE x > 0 | x] AS r",
         )
         assert r["r"].iloc[0] == []
 
@@ -78,27 +78,27 @@ class TestQuantifierNullList:
 
     def test_any_on_null_list_is_false(self, star: Star) -> None:
         r = star.execute_query(
-            "MATCH (n:N) WHERE n.lst IS NULL RETURN any(x IN n.lst WHERE x > 0) AS r"
+            "MATCH (n:N) WHERE n.lst IS NULL RETURN any(x IN n.lst WHERE x > 0) AS r",
         )
         assert r["r"].iloc[0] == False
 
     def test_all_on_null_list_is_true(self, star: Star) -> None:
         """all() on empty/null list is vacuously true."""
         r = star.execute_query(
-            "MATCH (n:N) WHERE n.lst IS NULL RETURN all(x IN n.lst WHERE x > 0) AS r"
+            "MATCH (n:N) WHERE n.lst IS NULL RETURN all(x IN n.lst WHERE x > 0) AS r",
         )
         assert r["r"].iloc[0] == True
 
     def test_none_on_null_list_is_true(self, star: Star) -> None:
         """none() on empty/null list is vacuously true."""
         r = star.execute_query(
-            "MATCH (n:N) WHERE n.lst IS NULL RETURN none(x IN n.lst WHERE x > 0) AS r"
+            "MATCH (n:N) WHERE n.lst IS NULL RETURN none(x IN n.lst WHERE x > 0) AS r",
         )
         assert r["r"].iloc[0] == True
 
     def test_single_on_null_list_is_false(self, star: Star) -> None:
         r = star.execute_query(
-            "MATCH (n:N) WHERE n.lst IS NULL RETURN single(x IN n.lst WHERE x > 0) AS r"
+            "MATCH (n:N) WHERE n.lst IS NULL RETURN single(x IN n.lst WHERE x > 0) AS r",
         )
         assert r["r"].iloc[0] == False
 
@@ -109,21 +109,21 @@ class TestReduceNullList:
     def test_reduce_on_null_list_returns_init(self, star: Star) -> None:
         r = star.execute_query(
             "MATCH (n:N) WHERE n.lst IS NULL "
-            "RETURN reduce(acc = 0, x IN n.lst | acc + x) AS r"
+            "RETURN reduce(acc = 0, x IN n.lst | acc + x) AS r",
         )
         assert r["r"].iloc[0] == 0
 
     def test_reduce_with_non_zero_init(self, star: Star) -> None:
         r = star.execute_query(
             "MATCH (n:N) WHERE n.lst IS NULL "
-            "RETURN reduce(acc = 99, x IN n.lst | acc + x) AS r"
+            "RETURN reduce(acc = 99, x IN n.lst | acc + x) AS r",
         )
         assert r["r"].iloc[0] == 99
 
     def test_reduce_on_normal_list(self, star: Star) -> None:
         r = star.execute_query(
             "MATCH (n:N) WHERE n.lst IS NOT NULL AND n.lst[0] = 1 "
-            "RETURN reduce(acc = 0, x IN n.lst | acc + x) AS r"
+            "RETURN reduce(acc = 0, x IN n.lst | acc + x) AS r",
         )
         assert r["r"].iloc[0] == 6  # 1+2+3
 
@@ -138,7 +138,7 @@ class TestIsNullRawListHelper:
             "RETURN "
             "  [x IN n.lst | x] AS lc, "
             "  any(x IN n.lst WHERE x > 0) AS q, "
-            "  reduce(acc = 42, x IN n.lst | acc + x) AS red"
+            "  reduce(acc = 42, x IN n.lst | acc + x) AS red",
         )
         assert r["lc"].iloc[0] == []
         assert r["q"].iloc[0] == False

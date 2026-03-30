@@ -1,5 +1,4 @@
-"""
-Performance Loop 290: Quantifier Vectorization TDD Tests.
+"""Performance Loop 290: Quantifier Vectorization TDD Tests.
 
 This module implements TDD tests for vectorizing quantifier evaluation
 (ANY, ALL, NONE, SINGLE) to eliminate the O(rows × elements) performance
@@ -47,21 +46,21 @@ class TestQuantifierVectorizationBaseline:
         # Warm up
         star.execute_query(
             "MATCH (p:Person) WHERE any(x IN p.scores WHERE x > 100) "
-            "RETURN p.name AS name"
+            "RETURN p.name AS name",
         )
 
         # Measure performance
         start = time.perf_counter()
         result = star.execute_query(
             "MATCH (p:Person) WHERE any(x IN p.scores WHERE x > 100) "
-            "RETURN p.name AS name"
+            "RETURN p.name AS name",
         )
         elapsed = time.perf_counter() - start
 
         # Current performance should be slow (>4s)
         # This documents the current regression state for TDD red phase
         print(
-            f"Current quantifier performance: {elapsed:.3f}s for 200×50 any()"
+            f"Current quantifier performance: {elapsed:.3f}s for 200×50 any()",
         )
         assert isinstance(result, pd.DataFrame)
         # Expect slow performance in current state (this will be the red phase)
@@ -101,11 +100,11 @@ class TestQuantifierVectorizationBaseline:
             ):
                 result = star.execute_query(
                     "MATCH (p:Person) WHERE any(x IN p.scores WHERE x > 100) "
-                    "RETURN p.name AS name"
+                    "RETURN p.name AS name",
                 )
 
         print(
-            f"Allocations for 10×5 quantifier: {binding_frame_count} BindingFrames, {evaluator_count} Evaluators"
+            f"Allocations for 10×5 quantifier: {binding_frame_count} BindingFrames, {evaluator_count} Evaluators",
         )
 
         # Current pattern: O(rows × elements) allocations
@@ -143,7 +142,7 @@ class TestQuantifierVectorizationImplementation:
 
         for quantifier_expr, qtype in test_cases:
             result = star.execute_query(
-                f"MATCH (p:Person) WHERE {quantifier_expr} RETURN p.name AS name"
+                f"MATCH (p:Person) WHERE {quantifier_expr} RETURN p.name AS name",
             )
 
             # Verify results are correct (functional preservation)
@@ -177,16 +176,13 @@ class TestQuantifierVectorizationImplementation:
 
         def capture_exploded_evaluate(self, expression):
             # Capture the frame structure during evaluation
-            if (
-                hasattr(self.frame, "bindings")
-                and len(self.frame.bindings) > 5
-            ):
+            if hasattr(self.frame, "bindings") and len(self.frame.bindings) > 5:
                 # This might be the exploded frame (more rows than original)
                 exploded_frames.append(
                     {
                         "frame_length": len(self.frame.bindings),
                         "columns": list(self.frame.bindings.columns),
-                    }
+                    },
                 )
             return original_evaluate(self, expression)
 
@@ -195,11 +191,13 @@ class TestQuantifierVectorizationImplementation:
         original_evaluate = BindingExpressionEvaluator.evaluate
 
         with patch.object(
-            BindingExpressionEvaluator, "evaluate", capture_exploded_evaluate
+            BindingExpressionEvaluator,
+            "evaluate",
+            capture_exploded_evaluate,
         ):
             result = star.execute_query(
                 "MATCH (p:Person) WHERE any(x IN p.scores WHERE x > 2) "
-                "RETURN p.name AS name"
+                "RETURN p.name AS name",
             )
 
         # After vectorization, should see exploded frame with 5×3=15 rows
@@ -220,14 +218,14 @@ class TestQuantifierVectorizationPerformance:
         # Warm up
         star.execute_query(
             "MATCH (p:Person) WHERE any(x IN p.scores WHERE x > 100) "
-            "RETURN p.name AS name"
+            "RETURN p.name AS name",
         )
 
         # Measure performance
         start = time.perf_counter()
         result = star.execute_query(
             "MATCH (p:Person) WHERE any(x IN p.scores WHERE x > 100) "
-            "RETURN p.name AS name"
+            "RETURN p.name AS name",
         )
         elapsed = time.perf_counter() - start
 
@@ -240,7 +238,8 @@ class TestQuantifierVectorizationPerformance:
     def test_vectorized_vs_baseline_speedup_measurement(self):
         """Measure actual speedup achieved by vectorization."""
         ctx = _make_large_ctx(
-            n_people=100, n_scores=25
+            n_people=100,
+            n_scores=25,
         )  # Smaller for comparison
         star = Star(context=ctx)
 
@@ -250,7 +249,7 @@ class TestQuantifierVectorizationPerformance:
         start = time.perf_counter()
         result = star.execute_query(
             "MATCH (p:Person) WHERE any(x IN p.scores WHERE x > 30) "
-            "RETURN p.name AS name"
+            "RETURN p.name AS name",
         )
         elapsed = time.perf_counter() - start
 
@@ -287,7 +286,7 @@ class TestQuantifierVectorizationEdgeCases:
             "RETURN p.name AS name, "
             "any(x IN p.scores WHERE x > 2) AS any_gt2, "
             "all(x IN p.scores WHERE x > 0) AS all_gt0, "
-            "none(x IN p.scores WHERE x < 0) AS none_lt0"
+            "none(x IN p.scores WHERE x < 0) AS none_lt0",
         )
 
         assert len(result) == 4
@@ -328,7 +327,7 @@ class TestQuantifierVectorizationEdgeCases:
 
         for query_expr in complex_queries:
             result = star.execute_query(
-                f"MATCH (p:Person) WHERE {query_expr} RETURN p.name AS name"
+                f"MATCH (p:Person) WHERE {query_expr} RETURN p.name AS name",
             )
             # Should execute without error and return valid results
             assert isinstance(result, pd.DataFrame)

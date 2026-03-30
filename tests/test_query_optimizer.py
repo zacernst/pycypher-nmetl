@@ -7,7 +7,6 @@ pipeline integration, and custom rule extensibility.
 from __future__ import annotations
 
 from typing import Any
-from unittest.mock import MagicMock
 
 import pytest
 from pycypher.ast_converter import ASTConverter
@@ -209,9 +208,7 @@ class TestJoinReorderingRule:
         rule = JoinReorderingRule()
         result = rule.analyze(ast, context=social_star.context)
         # With same-label matches, order is already optimal
-        assert (
-            result.applied is False or result.applied is True
-        )  # Either is valid
+        assert result.applied is False or result.applied is True  # Either is valid
 
     def test_non_query_ast(self) -> None:
         from pycypher.ast_models import Variable
@@ -274,7 +271,7 @@ class TestQueryOptimizer:
         plan = opt.optimize(ast)
 
         assert isinstance(plan, OptimizationPlan)
-        assert len(plan.results) == 4  # All 4 default rules ran
+        assert len(plan.results) == 5  # All 5 default rules ran
         assert plan.elapsed_ms >= 0
         assert "filter_pushdown" in plan.applied_rules
         assert "limit_pushdown" in plan.applied_rules
@@ -305,7 +302,9 @@ class TestQueryOptimizer:
             name = "broken"
 
             def analyze(
-                self, ast: Any, context: Any = None
+                self,
+                ast: Any,
+                context: Any = None,
             ) -> OptimizationResult:
                 msg = "kaboom"
                 raise RuntimeError(msg)
@@ -326,7 +325,9 @@ class TestQueryOptimizer:
             name = "always"
 
             def analyze(
-                self, ast: Any, context: Any = None
+                self,
+                ast: Any,
+                context: Any = None,
             ) -> OptimizationResult:
                 return OptimizationResult(
                     rule_name=self.name,
@@ -370,7 +371,8 @@ class TestOptimizeStage:
 
         assert "optimization_plan" in result.metadata
         assert isinstance(
-            result.metadata["optimization_plan"], OptimizationPlan
+            result.metadata["optimization_plan"],
+            OptimizationPlan,
         )
         assert "optimization_applied_rules" in result.metadata
         assert "optimization_speedup" in result.metadata
@@ -433,7 +435,79 @@ class TestOptimizerIntegration:
         plan = opt.optimize(ast, context=social_star.context)
 
         # join_reordering should have run with cardinality estimates
-        join_result = next(
-            r for r in plan.results if r.rule_name == "join_reordering"
-        )
+        join_result = next(r for r in plan.results if r.rule_name == "join_reordering")
         assert join_result is not None
+
+
+# ---------------------------------------------------------------------------
+# CardinalityFeedbackStore tests
+# ---------------------------------------------------------------------------
+
+
+class TestCardinalityFeedbackStore:
+    """Tests for the cardinality feedback loop."""
+
+    def test_no_history_returns_unity(self) -> None:
+        from pycypher.query_planner import CardinalityFeedbackStore
+
+        store = CardinalityFeedbackStore()
+        assert store.correction_factor("Person") == 1.0
+
+    def test_record_and_correct(self) -> None:
+        from pycypher.query_planner import CardinalityFeedbackStore
+
+        store = CardinalityFeedbackStore()
+        # Estimator consistently overestimates by 2x
+        store.record("Person", estimated=100, actual=50)
+        store.record("Person", estimated=200, actual=100)
+        factor = store.correction_factor("Person")
+        assert 0.45 <= factor <= 0.55  # should be ~0.5
+
+    def test_underestimate_correction(self) -> None:
+        from pycypher.query_planner import CardinalityFeedbackStore
+
+        store = CardinalityFeedbackStore()
+        # Estimator consistently underestimates by 3x
+        store.record("Order", estimated=10, actual=30)
+        store.record("Order", estimated=20, actual=60)
+        factor = store.correction_factor("Order")
+        assert 2.5 <= factor <= 3.5  # should be ~3.0
+
+    def test_correction_clamped(self) -> None:
+        from pycypher.query_planner import CardinalityFeedbackStore
+
+        store = CardinalityFeedbackStore()
+        # Extreme underestimate — correction should be clamped to 100
+        store.record("Huge", estimated=1, actual=100_000)
+        assert store.correction_factor("Huge") <= 100.0
+
+    def test_zero_estimates_skipped(self) -> None:
+        from pycypher.query_planner import CardinalityFeedbackStore
+
+        store = CardinalityFeedbackStore()
+        store.record("Empty", estimated=0, actual=0)
+        assert store.correction_factor("Empty") == 1.0
+        assert store.entity_types_tracked == []
+
+    def test_clear(self) -> None:
+        from pycypher.query_planner import CardinalityFeedbackStore
+
+        store = CardinalityFeedbackStore()
+        store.record("Person", estimated=100, actual=50)
+        assert "Person" in store.entity_types_tracked
+        store.clear()
+        assert store.entity_types_tracked == []
+        assert store.correction_factor("Person") == 1.0
+
+    def test_rolling_window(self) -> None:
+        from pycypher.query_planner import CardinalityFeedbackStore, _MAX_HISTORY
+
+        store = CardinalityFeedbackStore()
+        # Fill beyond window with overestimates
+        for _ in range(_MAX_HISTORY + 10):
+            store.record("X", estimated=100, actual=50)
+        # Then add accurate estimates
+        store.record("X", estimated=100, actual=100)
+        # Factor should still be close to 0.5 since window is mostly old data
+        factor = store.correction_factor("X")
+        assert factor < 0.7

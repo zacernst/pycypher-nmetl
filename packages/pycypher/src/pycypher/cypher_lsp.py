@@ -32,6 +32,8 @@ Supported LSP methods:
 - ``initialize`` / ``initialized``
 - ``textDocument/didOpen`` / ``textDocument/didChange`` — triggers diagnostics
 - ``textDocument/completion`` — keyword, function, and label completion
+- ``textDocument/hover`` — function documentation on hover
+- ``textDocument/signatureHelp`` — parameter hints for function calls
 - ``textDocument/formatting`` — query formatting
 - ``shutdown`` / ``exit``
 """
@@ -39,6 +41,7 @@ Supported LSP methods:
 from __future__ import annotations
 
 import json
+import re
 import sys
 from typing import Any
 
@@ -100,7 +103,7 @@ def _respond(request_id: int | str | None, result: Any) -> None:
             "jsonrpc": "2.0",
             "id": request_id,
             "result": result,
-        }
+        },
     )
 
 
@@ -111,7 +114,7 @@ def _notify(method: str, params: dict[str, Any]) -> None:
             "jsonrpc": "2.0",
             "method": method,
             "params": params,
-        }
+        },
     )
 
 
@@ -132,6 +135,194 @@ def _store_document(uri: str, text: str) -> None:
     while len(_documents) > _MAX_DOCUMENTS:
         oldest = next(iter(_documents))
         _documents.pop(oldest)
+
+
+# ---------------------------------------------------------------------------
+# Go-to-definition: variable binding extraction
+# ---------------------------------------------------------------------------
+
+
+def _extract_variable_bindings(text: str) -> dict[str, tuple[int, int]]:
+    """Parse text and extract variable binding positions.
+
+    Returns a mapping from variable name to (line, character) of its
+    first binding site in the source text.  Binding sites are:
+    - Node patterns: ``(n:Label)`` — the variable ``n``
+    - Relationship patterns: ``-[r:TYPE]->`` — the variable ``r``
+    - UNWIND ... AS alias
+    - WITH expr AS alias
+    - RETURN expr AS alias
+    - FOREACH (x IN ...)
+    """
+    binding_names: list[str] = []
+
+    try:
+        from pycypher.grammar_parser import GrammarParser
+
+        parser = GrammarParser()
+        ast = parser.parse(text)
+        if ast is None:
+            return {}
+        _collect_binding_names(ast, binding_names)
+    except (SyntaxError, ValueError, KeyError, AttributeError, ImportError):
+        LOGGER.debug("Go-to-definition: parse failed", exc_info=True)
+        return {}
+
+    # Find the first occurrence of each binding name in the source text.
+    # We look specifically for pattern-context occurrences to avoid matching
+    # variable references in WHERE/RETURN clauses.
+    result: dict[str, tuple[int, int]] = {}
+    for var_name in binding_names:
+        if var_name in result:
+            continue
+        pos = _find_binding_position(text, var_name)
+        if pos is not None:
+            result[var_name] = pos
+
+    return result
+
+
+def _collect_binding_names(node: Any, names: list[str]) -> None:
+    """Recursively walk AST and collect variable names from binding sites."""
+    from pycypher.ast_models import (
+        Foreach,
+        NodePattern,
+        RelationshipPattern,
+        ReturnItem,
+        Unwind,
+        With,
+    )
+
+    if isinstance(node, NodePattern) or isinstance(node, RelationshipPattern):
+        if node.variable is not None:
+            names.append(node.variable.name)
+    elif isinstance(node, Unwind):
+        if node.alias:
+            names.append(node.alias)
+    elif isinstance(node, Foreach):
+        if node.variable:
+            names.append(node.variable)
+
+    # WITH/RETURN aliases
+    if isinstance(node, (With,)):
+        for item in getattr(node, "items", []):
+            if isinstance(item, ReturnItem) and item.alias:
+                names.append(item.alias)
+
+    # Recurse into child fields
+    if hasattr(node, "__dataclass_fields__"):
+        for field_name in node.__dataclass_fields__:
+            child = getattr(node, field_name, None)
+            if child is None:
+                continue
+            if isinstance(child, list):
+                for item in child:
+                    if hasattr(item, "__dataclass_fields__"):
+                        _collect_binding_names(item, names)
+            elif hasattr(child, "__dataclass_fields__"):
+                _collect_binding_names(child, names)
+    # Pydantic model support
+    elif hasattr(node, "model_fields"):
+        for field_name in node.model_fields:
+            child = getattr(node, field_name, None)
+            if child is None:
+                continue
+            if isinstance(child, list):
+                for item in child:
+                    if hasattr(item, "model_fields") or hasattr(
+                        item,
+                        "__dataclass_fields__",
+                    ):
+                        _collect_binding_names(item, names)
+            elif hasattr(child, "model_fields") or hasattr(
+                child,
+                "__dataclass_fields__",
+            ):
+                _collect_binding_names(child, names)
+
+
+def _find_binding_position(
+    text: str,
+    var_name: str,
+) -> tuple[int, int] | None:
+    """Find the source position of a variable binding.
+
+    Searches for the variable name in binding contexts:
+    - After ``(`` in node patterns
+    - After ``[`` in relationship patterns
+    - After ``AS`` keyword
+    - After ``FOREACH (``
+    """
+    lines = text.split("\n")
+
+    # Pattern contexts where a variable is bound (not just referenced):
+    # (varName   — node pattern
+    # [varName   — relationship pattern
+    # AS varName — alias
+    # FOREACH (varName — foreach binding
+    binding_patterns = [
+        # Node pattern: ( followed by optional whitespace then var name
+        re.compile(
+            r"\(\s*" + re.escape(var_name) + r"(?=[\s:)\]]|\b)", re.IGNORECASE
+        ),
+        # Relationship pattern: [ followed by optional whitespace then var name
+        re.compile(
+            r"\[\s*" + re.escape(var_name) + r"(?=[\s:|\])]|\b)", re.IGNORECASE
+        ),
+        # AS alias
+        re.compile(r"\bAS\s+" + re.escape(var_name) + r"\b", re.IGNORECASE),
+        # FOREACH (var
+        re.compile(
+            r"\bFOREACH\s*\(\s*" + re.escape(var_name) + r"\b",
+            re.IGNORECASE,
+        ),
+    ]
+
+    for line_idx, line_text in enumerate(lines):
+        for pat in binding_patterns:
+            m = pat.search(line_text)
+            if m:
+                # Find the exact position of the variable name within the match
+                var_start = m.group().lower().rfind(var_name.lower())
+                if var_start >= 0:
+                    char_pos = m.start() + var_start
+                else:
+                    char_pos = m.start()
+                return (line_idx, char_pos)
+
+    # Fallback: first occurrence of the variable name as a whole word
+    word_pat = re.compile(r"\b" + re.escape(var_name) + r"\b")
+    for line_idx, line_text in enumerate(lines):
+        m = word_pat.search(line_text)
+        if m:
+            return (line_idx, m.start())
+
+    return None
+
+
+def _handle_definition(
+    uri: str,
+    line: int,
+    character: int,
+) -> dict[str, Any] | None:
+    """Return go-to-definition location for the variable at cursor."""
+    text = _documents.get(uri, "")
+    word = _get_word_at_position(text, line, character)
+    if not word:
+        return None
+
+    bindings = _extract_variable_bindings(text)
+    if word not in bindings:
+        return None
+
+    bind_line, bind_char = bindings[word]
+    return {
+        "uri": uri,
+        "range": {
+            "start": {"line": bind_line, "character": bind_char},
+            "end": {"line": bind_line, "character": bind_char + len(word)},
+        },
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -182,16 +373,20 @@ def _publish_diagnostics(uri: str, text: str) -> None:
                         "severity": 2,  # Warning
                         "source": "pycypher",
                         "message": str(err),
-                    }
+                    },
                 )
-        except Exception:
+        except (ValueError, TypeError, KeyError, AttributeError, ImportError):
             LOGGER.debug(
-                "Semantic validation failed for %s", uri, exc_info=True
+                "Semantic validation failed for %s",
+                uri,
+                exc_info=True,
             )
 
     except Exception as exc:
         # Parse error — report as error diagnostic
-        msg = str(exc)
+        from pycypher.exceptions import sanitize_error_message
+
+        msg = sanitize_error_message(exc)
         # Use line/column from CypherSyntaxError when available
         err_line = getattr(exc, "line", None)
         err_col = getattr(exc, "column", None)
@@ -216,7 +411,7 @@ def _publish_diagnostics(uri: str, text: str) -> None:
                 "severity": 1,  # Error
                 "source": "pycypher",
                 "message": f"Parse error: {msg}",
-            }
+            },
         )
 
     # Lint warnings
@@ -240,9 +435,9 @@ def _publish_diagnostics(uri: str, text: str) -> None:
                         "severity": 2,  # Warning
                         "source": "pycypher-lint",
                         "message": issue.message,
-                    }
+                    },
                 )
-    except Exception:
+    except (SyntaxError, ValueError, TypeError, KeyError, AttributeError, ImportError):
         LOGGER.debug("Lint query failed for %s", uri, exc_info=True)
 
     _notify(
@@ -312,7 +507,7 @@ def _get_completions() -> list[dict[str, Any]]:
                 "kind": 14,  # Keyword
                 "detail": "Cypher keyword",
                 "insertText": kw,
-            }
+            },
         )
 
     # Scalar functions
@@ -328,11 +523,12 @@ def _get_completions() -> list[dict[str, Any]]:
                     "detail": "Scalar function",
                     "insertText": f"{name}($0)",
                     "insertTextFormat": 2,  # Snippet
-                }
+                },
             )
-    except Exception:
+    except (ImportError, AttributeError, KeyError):
         LOGGER.debug(
-            "Scalar function registry introspection failed", exc_info=True
+            "Scalar function registry introspection failed",
+            exc_info=True,
         )
 
     # Aggregate functions
@@ -356,7 +552,7 @@ def _get_completions() -> list[dict[str, Any]]:
                 "detail": "Aggregate function",
                 "insertText": f"{func}($0)",
                 "insertTextFormat": 2,  # Snippet
-            }
+            },
         )
 
     return items
@@ -384,11 +580,253 @@ def _format_document(text: str) -> list[dict[str, Any]]:
                     "end": {"line": last_line, "character": last_char},
                 },
                 "newText": formatted,
-            }
+            },
         ]
-    except Exception:
+    except (SyntaxError, ValueError, TypeError, KeyError, AttributeError, ImportError):
         LOGGER.debug("Query formatting failed", exc_info=True)
         return []
+
+
+# ---------------------------------------------------------------------------
+# Text utilities
+# ---------------------------------------------------------------------------
+
+_WORD_RE = re.compile(r"[a-zA-Z_]\w*")
+
+
+def _get_word_at_position(text: str, line: int, character: int) -> str:
+    """Extract the word under the cursor position."""
+    lines = text.split("\n")
+    if line < 0 or line >= len(lines):
+        return ""
+    row = lines[line]
+    for m in _WORD_RE.finditer(row):
+        if m.start() <= character <= m.end():
+            return m.group()
+    return ""
+
+
+def _get_function_context(
+    text: str,
+    line: int,
+    character: int,
+) -> str | None:
+    """Return function name if cursor is inside a function call's parens."""
+    lines = text.split("\n")
+    if line < 0 or line >= len(lines):
+        return None
+    row = lines[line]
+    prefix = row[:character]
+    # Walk backwards through parens to find the enclosing function name
+    depth = 0
+    for i in range(len(prefix) - 1, -1, -1):
+        ch = prefix[i]
+        if ch == ")":
+            depth += 1
+        elif ch == "(":
+            if depth > 0:
+                depth -= 1
+            else:
+                # Found the opening paren — extract preceding word
+                m = re.search(r"([a-zA-Z_]\w*)\s*$", prefix[:i])
+                if m:
+                    return m.group(1)
+                return None
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Hover
+# ---------------------------------------------------------------------------
+
+# Cypher keyword documentation for hover
+_KEYWORD_DOCS: dict[str, str] = {
+    "match": "**MATCH** — Find graph patterns.\n\nBinds variables to nodes and relationships matching a given pattern.",
+    "where": "**WHERE** — Filter results.\n\nApplies a boolean predicate to filter rows from MATCH or WITH.",
+    "return": "**RETURN** — Project results.\n\nDefines which expressions to include in the query output.",
+    "with": "**WITH** — Intermediate projection.\n\nPipes results between query parts, enabling chained transformations.",
+    "create": "**CREATE** — Create graph elements.\n\nInserts new nodes and relationships into the graph.",
+    "merge": "**MERGE** — Match or create.\n\nEnsures a pattern exists; creates it if missing.",
+    "delete": "**DELETE** — Remove graph elements.\n\nRemoves nodes or relationships (use DETACH DELETE for nodes with relationships).",
+    "set": "**SET** — Update properties.\n\nSets or updates property values on nodes and relationships.",
+    "unwind": "**UNWIND** — Expand a list.\n\nTransforms a list into individual rows for processing.",
+    "foreach": "**FOREACH** — Iterate and mutate.\n\nApplies mutation operations for each element in a list.",
+    "order by": "**ORDER BY** — Sort results.\n\nSorts output rows by one or more expressions (ASC or DESC).",
+    "skip": "**SKIP** — Skip rows.\n\nSkips the first N rows of the result set.",
+    "limit": "**LIMIT** — Limit rows.\n\nRestricts the result set to at most N rows.",
+    "union": "**UNION** — Combine results.\n\nCombines results from multiple queries (deduplicates by default; use UNION ALL to keep duplicates).",
+    "exists": "**EXISTS** — Subquery existence check.\n\nReturns true if the subquery pattern has at least one match.",
+    "case": "**CASE** — Conditional expression.\n\nReturns different values based on conditions (WHEN/THEN/ELSE/END).",
+    "distinct": "**DISTINCT** — Deduplicate results.\n\nRemoves duplicate rows from the output.",
+    "optional match": "**OPTIONAL MATCH** — Left outer join pattern.\n\nLike MATCH, but returns NULL for variables that have no match.",
+    "call": "**CALL** — Invoke a procedure.\n\nExecutes a stored procedure and optionally YIELDs its output columns.",
+}
+
+# Aggregate function documentation
+_AGGREGATE_DOCS: dict[str, tuple[str, str, int, int | None]] = {
+    # name -> (description, example, min_args, max_args)
+    "count": (
+        "Count the number of values or rows",
+        "count(n) or count(*)",
+        0,
+        1,
+    ),
+    "sum": ("Sum numeric values", "sum(n.price)", 1, 1),
+    "avg": ("Calculate arithmetic mean", "avg(n.score)", 1, 1),
+    "min": ("Return the minimum value", "min(n.age)", 1, 1),
+    "max": ("Return the maximum value", "max(n.age)", 1, 1),
+    "collect": ("Collect values into a list", "collect(n.name)", 1, 1),
+    "stdev": ("Standard deviation (sample)", "stDev(n.value)", 1, 1),
+    "stdevp": ("Standard deviation (population)", "stDevP(n.value)", 1, 1),
+    "percentiledisc": (
+        "Discrete percentile",
+        "percentileDisc(n.score, 0.5)",
+        2,
+        2,
+    ),
+    "percentilecont": (
+        "Continuous percentile",
+        "percentileCont(n.score, 0.5)",
+        2,
+        2,
+    ),
+}
+
+
+def _handle_hover(
+    uri: str, line: int, character: int
+) -> dict[str, Any] | None:
+    """Return hover documentation for the word at the given position."""
+    text = _documents.get(uri, "")
+    word = _get_word_at_position(text, line, character)
+    if not word:
+        return None
+
+    word_lower = word.lower()
+
+    # Check scalar functions first
+    try:
+        from pycypher.scalar_functions import ScalarFunctionRegistry
+
+        registry = ScalarFunctionRegistry.get_instance()
+        if word_lower in registry._functions:
+            meta = registry._functions[word_lower]
+            args_str = f"{meta.min_args}"
+            if meta.max_args is None:
+                args_str += "+"
+            elif meta.max_args != meta.min_args:
+                args_str = f"{meta.min_args}-{meta.max_args}"
+
+            md = f"**{meta.name}**({args_str} args) — Scalar function\n\n"
+            if meta.description:
+                md += f"{meta.description}\n\n"
+            if meta.example:
+                md += f"```\n{meta.example}\n```"
+
+            return {"contents": {"kind": "markdown", "value": md}}
+    except (ImportError, AttributeError, KeyError):
+        LOGGER.debug("Hover: scalar function lookup failed", exc_info=True)
+
+    # Check aggregate functions
+    if word_lower in _AGGREGATE_DOCS:
+        desc, example, min_a, max_a = _AGGREGATE_DOCS[word_lower]
+        md = f"**{word}**  — Aggregate function\n\n{desc}\n\n```\n{example}\n```"
+        return {"contents": {"kind": "markdown", "value": md}}
+
+    # Check keywords (match two-word keywords by checking preceding word)
+    if word_lower in _KEYWORD_DOCS:
+        return {
+            "contents": {
+                "kind": "markdown",
+                "value": _KEYWORD_DOCS[word_lower],
+            },
+        }
+
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Signature help
+# ---------------------------------------------------------------------------
+
+
+def _handle_signature_help(
+    uri: str,
+    line: int,
+    character: int,
+) -> dict[str, Any] | None:
+    """Return signature help when inside a function call."""
+    text = _documents.get(uri, "")
+    func_name = _get_function_context(text, line, character)
+    if not func_name:
+        return None
+
+    func_lower = func_name.lower()
+    signatures: list[dict[str, Any]] = []
+
+    # Check scalar functions
+    try:
+        from pycypher.scalar_functions import ScalarFunctionRegistry
+
+        registry = ScalarFunctionRegistry.get_instance()
+        if func_lower in registry._functions:
+            meta = registry._functions[func_lower]
+            params = []
+            for i in range(meta.min_args):
+                params.append({"label": f"arg{i + 1}"})
+            if meta.max_args is not None:
+                for i in range(meta.min_args, meta.max_args):
+                    params.append({"label": f"[arg{i + 1}]"})
+
+            param_labels = ", ".join(p["label"] for p in params)
+            label = f"{meta.name}({param_labels})"
+            sig: dict[str, Any] = {"label": label, "parameters": params}
+            if meta.description:
+                sig["documentation"] = {
+                    "kind": "markdown",
+                    "value": meta.description,
+                }
+            signatures.append(sig)
+    except (ImportError, AttributeError, KeyError):
+        LOGGER.debug("SignatureHelp: scalar lookup failed", exc_info=True)
+
+    # Check aggregate functions
+    if not signatures and func_lower in _AGGREGATE_DOCS:
+        desc, example, min_a, max_a = _AGGREGATE_DOCS[func_lower]
+        params = [{"label": f"arg{i + 1}"} for i in range(min_a or 1)]
+        param_labels = ", ".join(p["label"] for p in params)
+        label = f"{func_name}({param_labels})"
+        signatures.append(
+            {
+                "label": label,
+                "documentation": {"kind": "markdown", "value": desc},
+                "parameters": params,
+            },
+        )
+
+    if not signatures:
+        return None
+
+    # Count commas before cursor to determine active parameter
+    lines = text.split("\n")
+    row = lines[line] if line < len(lines) else ""
+    prefix = row[:character]
+    # Count commas at the current paren depth
+    active_param = 0
+    depth = 0
+    for ch in prefix:
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+        elif ch == "," and depth > 0:
+            active_param += 1
+
+    return {
+        "signatures": signatures,
+        "activeSignature": 0,
+        "activeParameter": active_param,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -414,11 +852,16 @@ def _handle_message(msg: dict[str, Any]) -> None:
                     "completionProvider": {
                         "triggerCharacters": [".", ":", "("],
                     },
+                    "hoverProvider": True,
+                    "definitionProvider": True,
+                    "signatureHelpProvider": {
+                        "triggerCharacters": ["(", ","],
+                    },
                     "documentFormattingProvider": True,
                 },
                 "serverInfo": {
                     "name": "pycypher-lsp",
-                    "version": "0.1.0",
+                    "version": "0.2.0",
                 },
             },
         )
@@ -449,6 +892,37 @@ def _handle_message(msg: dict[str, Any]) -> None:
 
     elif method == "textDocument/completion":
         _respond(request_id, _get_completions())
+
+    elif method == "textDocument/hover":
+        td = params.get("textDocument", {})
+        uri = td.get("uri", "")
+        pos = params.get("position", {})
+        result = _handle_hover(
+            uri, pos.get("line", 0), pos.get("character", 0)
+        )
+        _respond(request_id, result)
+
+    elif method == "textDocument/definition":
+        td = params.get("textDocument", {})
+        uri = td.get("uri", "")
+        pos = params.get("position", {})
+        result = _handle_definition(
+            uri,
+            pos.get("line", 0),
+            pos.get("character", 0),
+        )
+        _respond(request_id, result)
+
+    elif method == "textDocument/signatureHelp":
+        td = params.get("textDocument", {})
+        uri = td.get("uri", "")
+        pos = params.get("position", {})
+        result = _handle_signature_help(
+            uri,
+            pos.get("line", 0),
+            pos.get("character", 0),
+        )
+        _respond(request_id, result)
 
     elif method == "textDocument/formatting":
         td = params.get("textDocument", {})

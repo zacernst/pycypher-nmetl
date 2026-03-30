@@ -76,12 +76,14 @@ def _generate_entity_df(n_rows: int, seed: int = 42) -> pd.DataFrame:
             "value": rng.standard_normal(n_rows),
             "category": rng.choice(["A", "B", "C", "D"], size=n_rows),
             "score": rng.integers(0, 100, size=n_rows),
-        }
+        },
     )
 
 
 def _generate_relationship_df(
-    n_entities: int, avg_degree: int = 3, seed: int = 42
+    n_entities: int,
+    avg_degree: int = 3,
+    seed: int = 42,
 ) -> pd.DataFrame:
     """Generate synthetic relationship DataFrame."""
     rng = np.random.default_rng(seed)
@@ -94,7 +96,7 @@ def _generate_relationship_df(
             "__SOURCE__": sources,
             "__TARGET__": targets,
             "weight": rng.uniform(0, 1, size=n_rels),
-        }
+        },
     )
 
 
@@ -115,9 +117,7 @@ def scaled_context(scale_tier: str) -> Context:
         entity_type="Node",
         identifier="Node",
         column_names=list(entity_df.columns),
-        source_obj_attribute_map={
-            c: c for c in entity_df.columns if c != "__ID__"
-        },
+        source_obj_attribute_map={c: c for c in entity_df.columns if c != "__ID__"},
         attribute_map={c: c for c in entity_df.columns if c != "__ID__"},
         source_obj=entity_df,
     )
@@ -150,7 +150,8 @@ def dask_cluster() -> Any:
     module complete.
     """
     distributed = pytest.importorskip(
-        "distributed", reason="distributed not installed"
+        "distributed",
+        reason="distributed not installed",
     )
     cluster = distributed.LocalCluster(
         n_workers=2,
@@ -176,7 +177,7 @@ class TestDaskClusterSimulation:
         """Verify LocalCluster creates workers."""
         client, _cluster = dask_cluster
         workers = client.scheduler_info()["workers"]
-        assert len(workers) == 2  # noqa: PLR2004
+        assert len(workers) == 2
 
     def test_dask_dataframe_distributed(self, dask_cluster: Any) -> None:
         """Run a Dask DataFrame operation through the cluster."""
@@ -188,10 +189,7 @@ class TestDaskClusterSimulation:
 
         # Filter + aggregate through distributed scheduler
         result = (
-            ddf[ddf["value"] > 0]
-            .groupby("category")
-            .agg({"score": "mean"})
-            .compute()
+            ddf[ddf["value"] > 0].groupby("category").agg({"score": "mean"}).compute()
         )
         assert len(result) > 0
 
@@ -201,14 +199,16 @@ class TestDaskClusterSimulation:
 
         client, _cluster = dask_cluster
         left = dd.from_pandas(
-            _generate_entity_df(5_000, seed=1), npartitions=2
+            _generate_entity_df(5_000, seed=1),
+            npartitions=2,
         )
         right = dd.from_pandas(
-            _generate_entity_df(5_000, seed=2), npartitions=2
+            _generate_entity_df(5_000, seed=2),
+            npartitions=2,
         )
         merged = left.merge(right, on="__ID__", suffixes=("_l", "_r"))
         result = merged.compute()
-        assert len(result) == 5_000  # noqa: PLR2004
+        assert len(result) == 5_000
 
 
 # ---------------------------------------------------------------------------
@@ -240,7 +240,9 @@ class TestBackendEquivalence:
 
         pandas_result = PandasBackend().join(left, right, on="__ID__")
         duckdb_result = DuckDBBackend().join(
-            left.copy(), right.copy(), on="__ID__"
+            left.copy(),
+            right.copy(),
+            on="__ID__",
         )
 
         assert len(pandas_result) == len(duckdb_result)
@@ -252,7 +254,9 @@ class TestBackendEquivalence:
         agg_specs = {"avg_score": ("score", "mean")}
         pandas_result = PandasBackend().aggregate(df, ["category"], agg_specs)
         duckdb_result = DuckDBBackend().aggregate(
-            df.copy(), ["category"], agg_specs
+            df.copy(),
+            ["category"],
+            agg_specs,
         )
 
         assert len(pandas_result) == len(duckdb_result)
@@ -267,45 +271,53 @@ class TestScaleTierValidation:
     """Run core queries at different scale tiers."""
 
     def test_simple_match_return(
-        self, scaled_context: Context, scale_tier: str
+        self,
+        scaled_context: Context,
+        scale_tier: str,
     ) -> None:
         """MATCH (n:Node) RETURN n.name LIMIT 10 works at all scales."""
         star = Star(context=scaled_context)
         result = star.execute_query("MATCH (n:Node) RETURN n.name LIMIT 10")
-        assert len(result) == 10  # noqa: PLR2004
+        assert len(result) == 10
 
     def test_filtered_match(
-        self, scaled_context: Context, scale_tier: str
+        self,
+        scaled_context: Context,
+        scale_tier: str,
     ) -> None:
         """MATCH with WHERE clause works at all scales."""
         star = Star(context=scaled_context)
         result = star.execute_query(
-            "MATCH (n:Node) WHERE n.score > 50 RETURN n.name AS name, n.score AS score"
+            "MATCH (n:Node) WHERE n.score > 50 RETURN n.name AS name, n.score AS score",
         )
         assert len(result) > 0
-        assert all(row["score"] > 50 for _, row in result.iterrows())  # noqa: PLR2004
+        assert all(row["score"] > 50 for _, row in result.iterrows())
 
     def test_aggregation_at_scale(
-        self, scaled_context: Context, scale_tier: str
+        self,
+        scaled_context: Context,
+        scale_tier: str,
     ) -> None:
         """Aggregation works at all scales."""
         star = Star(context=scaled_context)
         result = star.execute_query(
-            "MATCH (n:Node) RETURN n.category, count(n) AS cnt"
+            "MATCH (n:Node) RETURN n.category, count(n) AS cnt",
         )
         n = SCALE_TIERS[scale_tier]
         total = result["cnt"].sum()
         assert total == n
 
     def test_relationship_traversal(
-        self, scaled_context: Context, scale_tier: str
+        self,
+        scaled_context: Context,
+        scale_tier: str,
     ) -> None:
         """Relationship traversal works at all scales."""
         star = Star(context=scaled_context)
         result = star.execute_query(
-            "MATCH (a:Node)-[r:EDGE]->(b:Node) RETURN a.name, b.name LIMIT 10"
+            "MATCH (a:Node)-[r:EDGE]->(b:Node) RETURN a.name, b.name LIMIT 10",
         )
-        assert len(result) <= 10  # noqa: PLR2004
+        assert len(result) <= 10
 
 
 # ---------------------------------------------------------------------------
@@ -326,9 +338,7 @@ class TestMemoryStability:
             entity_type="Node",
             identifier="Node",
             column_names=list(entity_df.columns),
-            source_obj_attribute_map={
-                c: c for c in entity_df.columns if c != "__ID__"
-            },
+            source_obj_attribute_map={c: c for c in entity_df.columns if c != "__ID__"},
             attribute_map={c: c for c in entity_df.columns if c != "__ID__"},
             source_obj=entity_df,
         )
@@ -344,7 +354,7 @@ class TestMemoryStability:
 
         for _ in range(100):
             star.execute_query(
-                "MATCH (n:Node) WHERE n.score > 50 RETURN n.name LIMIT 10"
+                "MATCH (n:Node) WHERE n.score > 50 RETURN n.name LIMIT 10",
             )
 
         gc.collect()
@@ -353,7 +363,7 @@ class TestMemoryStability:
 
         # Allow up to 50MB growth for 100 iterations of a 10K-row query.
         # Anything more suggests a leak.
-        assert growth_mb < 50, (  # noqa: PLR2004
+        assert growth_mb < 50, (
             f"Memory grew by {growth_mb:.1f} MB over 100 iterations "
             f"(baseline={baseline_mb:.1f} MB, final={final_mb:.1f} MB)"
         )

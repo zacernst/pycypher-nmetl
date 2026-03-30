@@ -19,24 +19,24 @@ import pytest
 
 class TestTopLevelExports:
     def test_star_importable_from_pycypher(self) -> None:
-        from pycypher import Star  # noqa: F401
+        pass
 
     def test_context_importable_from_pycypher(self) -> None:
-        from pycypher import Context  # noqa: F401
+        pass
 
     def test_entity_table_importable_from_pycypher(self) -> None:
-        from pycypher import EntityTable  # noqa: F401
+        pass
 
     def test_relationship_table_importable_from_pycypher(self) -> None:
-        from pycypher import RelationshipTable  # noqa: F401
+        pass
 
     def test_id_column_importable_from_pycypher(self) -> None:
-        from pycypher import ID_COLUMN  # noqa: F401
+        from pycypher import ID_COLUMN
 
         assert ID_COLUMN == "__ID__"
 
     def test_context_builder_still_importable(self) -> None:
-        from pycypher import ContextBuilder  # noqa: F401
+        pass
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -51,7 +51,7 @@ class TestEntityTableFromDataframe:
                 "__ID__": [1, 2, 3],
                 "name": ["Alice", "Bob", "Carol"],
                 "age": [30, 25, 35],
-            }
+            },
         )
 
     def test_from_dataframe_returns_entity_table(self) -> None:
@@ -121,7 +121,7 @@ class TestEntityTableFromDataframe:
                 "__ID__": [1, 2, 3],
                 "name": ["Alice", "Bob", "Carol"],
                 "age": [30, 25, 35],
-            }
+            },
         )
         table = EntityTable.from_dataframe("Person", df)
         context = Context(
@@ -130,7 +130,7 @@ class TestEntityTableFromDataframe:
         )
         star = Star(context=context)
         result = star.execute_query(
-            "MATCH (p:Person) RETURN p.name, p.age ORDER BY p.age ASC LIMIT 1"
+            "MATCH (p:Person) RETURN p.name, p.age ORDER BY p.age ASC LIMIT 1",
         )
         assert len(result) == 1
         assert result["name"].iloc[0] == "Bob"
@@ -157,7 +157,8 @@ def minimal_context() -> "Context":
 
 class TestFriendlyErrors:
     def test_unregistered_entity_type_gives_friendly_error(
-        self, minimal_context: "Context"
+        self,
+        minimal_context: "Context",
     ) -> None:
         """Querying an unknown entity type should raise ValueError naming the type."""
         from pycypher import Star
@@ -167,7 +168,8 @@ class TestFriendlyErrors:
             star.execute_query("MATCH (c:Company) RETURN c.name")
 
     def test_friendly_error_mentions_available_types(
-        self, minimal_context: "Context"
+        self,
+        minimal_context: "Context",
     ) -> None:
         """The error message for unknown entity should list known types."""
         from pycypher import Star

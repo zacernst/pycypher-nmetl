@@ -32,7 +32,7 @@ class TestFromDataframeBasic:
                 ID_COLUMN: [1, 2],
                 RELATIONSHIP_SOURCE_COLUMN: [10, 20],
                 RELATIONSHIP_TARGET_COLUMN: [30, 40],
-            }
+            },
         )
         table = RelationshipTable.from_dataframe("KNOWS", df)
         assert table.relationship_type == "KNOWS"
@@ -47,7 +47,7 @@ class TestFromDataframeBasic:
                 RELATIONSHIP_TARGET_COLUMN: [20],
                 "since": [2020],
                 "weight": [0.5],
-            }
+            },
         )
         table = RelationshipTable.from_dataframe("KNOWS", df)
         assert "since" in table.attribute_map
@@ -62,7 +62,7 @@ class TestFromDataframeBasic:
                 ID_COLUMN: [1],
                 RELATIONSHIP_SOURCE_COLUMN: [10],
                 RELATIONSHIP_TARGET_COLUMN: [20],
-            }
+            },
         )
         table = RelationshipTable.from_dataframe("WORKS_AT", df)
         assert ID_COLUMN in table.column_names
@@ -79,7 +79,7 @@ class TestFromDataframeCustomColumns:
                 "rel_id": [1, 2],
                 RELATIONSHIP_SOURCE_COLUMN: [10, 20],
                 RELATIONSHIP_TARGET_COLUMN: [30, 40],
-            }
+            },
         )
         table = RelationshipTable.from_dataframe("KNOWS", df, id_col="rel_id")
         assert ID_COLUMN in table.source_obj.columns
@@ -90,7 +90,7 @@ class TestFromDataframeCustomColumns:
                 ID_COLUMN: [1],
                 "from_node": [10],
                 RELATIONSHIP_TARGET_COLUMN: [20],
-            }
+            },
         )
         table = RelationshipTable.from_dataframe(
             "KNOWS",
@@ -105,7 +105,7 @@ class TestFromDataframeCustomColumns:
                 ID_COLUMN: [1],
                 RELATIONSHIP_SOURCE_COLUMN: [10],
                 "to_node": [20],
-            }
+            },
         )
         table = RelationshipTable.from_dataframe(
             "KNOWS",
@@ -121,7 +121,7 @@ class TestFromDataframeCustomColumns:
                 "src": [10],
                 "dst": [20],
                 "weight": [0.9],
-            }
+            },
         )
         table = RelationshipTable.from_dataframe(
             "KNOWS",
@@ -144,7 +144,7 @@ class TestFromDataframeErrors:
             {
                 RELATIONSHIP_SOURCE_COLUMN: [10],
                 RELATIONSHIP_TARGET_COLUMN: [20],
-            }
+            },
         )
         with pytest.raises(ValueError, match="__ID__"):
             RelationshipTable.from_dataframe("KNOWS", df)
@@ -154,7 +154,7 @@ class TestFromDataframeErrors:
             {
                 ID_COLUMN: [1],
                 RELATIONSHIP_TARGET_COLUMN: [20],
-            }
+            },
         )
         with pytest.raises(ValueError, match="__SOURCE__"):
             RelationshipTable.from_dataframe("KNOWS", df)
@@ -164,7 +164,7 @@ class TestFromDataframeErrors:
             {
                 ID_COLUMN: [1],
                 RELATIONSHIP_SOURCE_COLUMN: [10],
-            }
+            },
         )
         with pytest.raises(ValueError, match="__TARGET__"):
             RelationshipTable.from_dataframe("KNOWS", df)
@@ -175,7 +175,7 @@ class TestFromDataframeErrors:
                 ID_COLUMN: [1],
                 RELATIONSHIP_SOURCE_COLUMN: [10],
                 RELATIONSHIP_TARGET_COLUMN: [20],
-            }
+            },
         )
         with pytest.raises(ValueError, match="nonexistent"):
             RelationshipTable.from_dataframe("KNOWS", df, id_col="nonexistent")
@@ -186,7 +186,7 @@ class TestFromDataframeErrors:
                 ID_COLUMN: [1],
                 RELATIONSHIP_SOURCE_COLUMN: [10],
                 RELATIONSHIP_TARGET_COLUMN: [20],
-            }
+            },
         )
         with pytest.raises(ValueError, match="nonexistent"):
             RelationshipTable.from_dataframe(
@@ -201,7 +201,7 @@ class TestFromDataframeErrors:
                 ID_COLUMN: [1],
                 RELATIONSHIP_SOURCE_COLUMN: [10],
                 RELATIONSHIP_TARGET_COLUMN: [20],
-            }
+            },
         )
         with pytest.raises(ValueError, match="nonexistent"):
             RelationshipTable.from_dataframe(
@@ -219,14 +219,14 @@ class TestFromDataframeIntegration:
             {
                 ID_COLUMN: [1, 2, 3],
                 "name": ["Alice", "Bob", "Charlie"],
-            }
+            },
         )
         knows = pd.DataFrame(
             {
                 ID_COLUMN: [100, 101],
                 RELATIONSHIP_SOURCE_COLUMN: [1, 2],
                 RELATIONSHIP_TARGET_COLUMN: [2, 3],
-            }
+            },
         )
 
         entity_table = EntityTable.from_dataframe("Person", people)

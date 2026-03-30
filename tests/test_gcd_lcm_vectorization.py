@@ -32,14 +32,17 @@ def registry() -> ScalarFunctionRegistry:
 
 class TestGcdLcmVectorizationPerformance:
     def test_gcd_10k_rows_is_fast(
-        self, registry: ScalarFunctionRegistry
+        self,
+        registry: ScalarFunctionRegistry,
     ) -> None:
-        """gcd on 10 000-element Series must complete in < 100 ms."""
+        """Gcd on 10 000-element Series must complete in < 100 ms."""
         a = pd.Series(
-            np.random.randint(1, 1000, size=ARRAY_SIZE), dtype=object
+            np.random.randint(1, 1000, size=ARRAY_SIZE),
+            dtype=object,
         )
         b = pd.Series(
-            np.random.randint(1, 1000, size=ARRAY_SIZE), dtype=object
+            np.random.randint(1, 1000, size=ARRAY_SIZE),
+            dtype=object,
         )
 
         start = time.perf_counter()
@@ -53,14 +56,17 @@ class TestGcdLcmVectorizationPerformance:
         )
 
     def test_lcm_10k_rows_is_fast(
-        self, registry: ScalarFunctionRegistry
+        self,
+        registry: ScalarFunctionRegistry,
     ) -> None:
-        """lcm on 10 000-element Series must complete in < 100 ms."""
+        """Lcm on 10 000-element Series must complete in < 100 ms."""
         a = pd.Series(
-            np.random.randint(1, 1000, size=ARRAY_SIZE), dtype=object
+            np.random.randint(1, 1000, size=ARRAY_SIZE),
+            dtype=object,
         )
         b = pd.Series(
-            np.random.randint(1, 1000, size=ARRAY_SIZE), dtype=object
+            np.random.randint(1, 1000, size=ARRAY_SIZE),
+            dtype=object,
         )
 
         start = time.perf_counter()
@@ -74,7 +80,8 @@ class TestGcdLcmVectorizationPerformance:
         )
 
     def test_gcd_null_propagation_preserved(
-        self, registry: ScalarFunctionRegistry
+        self,
+        registry: ScalarFunctionRegistry,
     ) -> None:
         """Null propagation still works after vectorization."""
         a = pd.Series([12, None, 15], dtype=object)
@@ -87,7 +94,8 @@ class TestGcdLcmVectorizationPerformance:
         assert result.iloc[2] is None or pd.isna(result.iloc[2])
 
     def test_lcm_null_propagation_preserved(
-        self, registry: ScalarFunctionRegistry
+        self,
+        registry: ScalarFunctionRegistry,
     ) -> None:
         """Null propagation still works after vectorization."""
         a = pd.Series([4, None, 15], dtype=object)

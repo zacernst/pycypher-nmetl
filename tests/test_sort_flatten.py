@@ -21,7 +21,7 @@ from pycypher.relational_models import (
 from pycypher.star import Star
 
 
-@pytest.fixture()
+@pytest.fixture
 def star() -> Star:
     df = pd.DataFrame({ID_COLUMN: [1], "n": [1]})
     table = EntityTable(
@@ -36,7 +36,7 @@ def star() -> Star:
         context=Context(
             entity_mapping=EntityMapping(mapping={"N": table}),
             relationship_mapping=RelationshipMapping(mapping={}),
-        )
+        ),
     )
 
 
@@ -51,7 +51,7 @@ class TestSort:
 
     def test_sort_strings(self, star: Star) -> None:
         r = star.execute_query(
-            "RETURN sort(['banana', 'apple', 'cherry']) AS r"
+            "RETURN sort(['banana', 'apple', 'cherry']) AS r",
         )
         result = r["r"].iloc[0]
         assert result == ["apple", "banana", "cherry"]
@@ -110,7 +110,7 @@ class TestFlatten:
         assert pd.isna(r["r"].iloc[0])
 
     def test_flatten_single_level_deep(self, star: Star) -> None:
-        """flatten only goes one level deep per openCypher spec."""
+        """Flatten only goes one level deep per openCypher spec."""
         r = star.execute_query("RETURN flatten([[1, [2, 3]], [4]]) AS r")
         result = r["r"].iloc[0]
         # [1, [2, 3], 4] — only first level flattened

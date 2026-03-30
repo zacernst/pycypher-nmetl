@@ -7,8 +7,6 @@ from unique queries.
 
 from __future__ import annotations
 
-import os
-
 import pytest
 from pycypher.grammar_parser import GrammarParser
 

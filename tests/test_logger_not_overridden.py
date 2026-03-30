@@ -21,8 +21,7 @@ class TestLoggerNotOverridden:
     def test_relational_models_import_does_not_force_debug(self) -> None:
         """Importing relational_models must not set the shared logger to DEBUG."""
         # Import the module under test (may already be cached in sys.modules)
-        import pycypher.relational_models  # noqa: F401, PLC0415
-        from shared.logger import LOGGER  # noqa: PLC0415
+        from shared.logger import LOGGER
 
         assert LOGGER.level != logging.DEBUG, (
             "relational_models sets LOGGER.setLevel('DEBUG') at module load time, "
@@ -31,8 +30,7 @@ class TestLoggerNotOverridden:
 
     def test_pycypher_full_import_does_not_force_debug(self) -> None:
         """A full `import pycypher` must leave the shared logger at WARNING."""
-        import pycypher  # noqa: F401, PLC0415
-        from shared.logger import LOGGER  # noqa: PLC0415
+        from shared.logger import LOGGER
 
         assert LOGGER.level == logging.WARNING, (
             f"Expected WARNING ({logging.WARNING}) after pycypher import, "
@@ -41,6 +39,6 @@ class TestLoggerNotOverridden:
 
     def test_shared_logger_default_level_is_warning(self) -> None:
         """The shared logger's own module sets WARNING as its default."""
-        from shared import logger as logger_module  # noqa: PLC0415
+        from shared import logger as logger_module
 
         assert logger_module.LOGGING_LEVEL == "WARNING"

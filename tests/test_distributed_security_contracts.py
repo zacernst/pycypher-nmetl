@@ -373,14 +373,12 @@ class TestLoggingSecurity:
         try:
             # Parse a URI with embedded credentials
             result = ensure_uri(
-                "postgresql://admin:s3cret_pw@db.internal:5432/prod"
+                "postgresql://admin:s3cret_pw@db.internal:5432/prod",
             )
             # Check that the password is not in any log record
             for record in records:
                 msg = record.getMessage()
-                assert "s3cret_pw" not in msg, (
-                    f"Password leaked in log message: {msg}"
-                )
+                assert "s3cret_pw" not in msg, f"Password leaked in log message: {msg}"
         finally:
             LOGGER.setLevel(old_level)
             LOGGER.removeHandler(handler)

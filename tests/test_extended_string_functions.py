@@ -20,7 +20,7 @@ from pycypher.relational_models import (
 from pycypher.star import Star
 
 
-@pytest.fixture()
+@pytest.fixture
 def str_context() -> Context:
     """Context with diverse string data for testing."""
     df = pd.DataFrame(
@@ -30,7 +30,7 @@ def str_context() -> Context:
             "padded": ["  hello  ", "***Bob***", "  trim me  ", None],
             "csv": ["a,b,c", "x,,y", None, "single"],
             "code": [65, 72, None, 233],  # Unicode code points
-        }
+        },
     )
     table = EntityTable(
         entity_type="Item",
@@ -365,7 +365,7 @@ class TestNormalize:
         """normalize() with no form argument uses NFC."""
         # Use the actual decomposed form: 'e' + combining acute accent
         decomposed = "cafe\u0301"  # e + combining accent (NFD form)
-        composed = "caf\u00e9"     # single é character (NFC form)
+        composed = "caf\u00e9"  # single é character (NFC form)
         result = _query(
             str_context,
             f"MATCH (x:Item) WHERE x.name = 'Alice' RETURN normalize('{decomposed}') AS s",

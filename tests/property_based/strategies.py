@@ -43,14 +43,14 @@ def entity_dataframes(
             ),
             min_size=n,
             max_size=n,
-        )
+        ),
     )
     ages = draw(
         st.lists(
             st.integers(min_value=1, max_value=100),
             min_size=n,
             max_size=n,
-        )
+        ),
     )
     return pd.DataFrame({ID_COLUMN: ids, "name": names, "age": ages})
 
@@ -69,21 +69,21 @@ def relationship_dataframes(
                 ID_COLUMN: pd.Series(dtype=int),
                 "__SOURCE__": pd.Series(dtype=int),
                 "__TARGET__": pd.Series(dtype=int),
-            }
+            },
         )
     n = draw(st.integers(min_value=min_edges, max_value=max_edges))
     sources = draw(
-        st.lists(st.sampled_from(entity_ids), min_size=n, max_size=n)
+        st.lists(st.sampled_from(entity_ids), min_size=n, max_size=n),
     )
     targets = draw(
-        st.lists(st.sampled_from(entity_ids), min_size=n, max_size=n)
+        st.lists(st.sampled_from(entity_ids), min_size=n, max_size=n),
     )
     return pd.DataFrame(
         {
             ID_COLUMN: list(range(101, 101 + n)),
             "__SOURCE__": sources,
             "__TARGET__": targets,
-        }
+        },
     )
 
 
@@ -119,7 +119,7 @@ def social_stars(
     ctx = Context(
         entity_mapping=EntityMapping(mapping={"Person": person_table}),
         relationship_mapping=RelationshipMapping(
-            mapping={"KNOWS": knows_table}
+            mapping={"KNOWS": knows_table},
         ),
     )
     return Star(context=ctx)
@@ -128,7 +128,10 @@ def social_stars(
 # Scalar value strategies
 cypher_integers = st.integers(min_value=-1_000_000, max_value=1_000_000)
 cypher_floats = st.floats(
-    min_value=-1e6, max_value=1e6, allow_nan=False, allow_infinity=False
+    min_value=-1e6,
+    max_value=1e6,
+    allow_nan=False,
+    allow_infinity=False,
 )
 cypher_strings = st.text(
     alphabet=st.characters(whitelist_categories=("L", "N")),

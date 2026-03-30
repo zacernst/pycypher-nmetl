@@ -36,7 +36,7 @@ class TestEdgeDataFrameCopyElimination:
                 ID_COLUMN: [1, 2, 3, 4],
                 "name": ["Alice", "Bob", "Carol", "Dave"],
                 "age": [30, 25, 35, 40],
-            }
+            },
         )
 
         # Create relationships (friendship network)
@@ -46,7 +46,7 @@ class TestEdgeDataFrameCopyElimination:
                 "__SOURCE__": [1, 2, 1, 3, 4],
                 "__TARGET__": [2, 3, 3, 4, 1],
                 "strength": [0.8, 0.6, 0.9, 0.7, 0.5],
-            }
+            },
         )
 
         person_table = EntityTable.from_dataframe("Person", person_df)
@@ -55,7 +55,7 @@ class TestEdgeDataFrameCopyElimination:
         context = Context(
             entity_mapping=EntityMapping(mapping={"Person": person_table}),
             relationship_mapping=RelationshipMapping(
-                mapping={"KNOWS": knows_table}
+                mapping={"KNOWS": knows_table},
             ),
         )
         return Star(context=context)
@@ -65,7 +65,6 @@ class TestEdgeDataFrameCopyElimination:
         # The BFS expansion code now lives in path_expander.py (extracted from star.py).
         with open(
             "/Users/zernst/git/pycypher-nmetl/packages/pycypher/src/pycypher/path_expander.py",
-            "r",
         ) as f:
             source_code = f.read()
 
@@ -76,7 +75,8 @@ class TestEdgeDataFrameCopyElimination:
         print("✓ Confirmed: edge_df copy optimization is implemented")
 
     def test_edge_df_is_used_only_for_read_operations(
-        self, graph_star_with_relationships: Star
+        self,
+        graph_star_with_relationships: Star,
     ) -> None:
         """Test that edge_df is used only for read-only operations (merge)."""
         # This test documents that edge_df is only used in merge operations
@@ -84,7 +84,7 @@ class TestEdgeDataFrameCopyElimination:
 
         # Execute a variable-length path query that triggers the edge_df usage
         result = graph_star_with_relationships.execute_query(
-            "MATCH (a:Person)-[*1..2]->(b:Person) RETURN count(b) AS connected_count"
+            "MATCH (a:Person)-[*1..2]->(b:Person) RETURN count(b) AS connected_count",
         )
 
         # Verify the query works correctly
@@ -119,7 +119,7 @@ class TestEdgeDataFrameCopyElimination:
     def test_column_selection_creates_view_not_copy(self) -> None:
         """Test that DataFrame column selection creates a view, not a copy."""
         original_df = pd.DataFrame(
-            {"A": [1, 2, 3], "B": [4, 5, 6], "C": [7, 8, 9]}
+            {"A": [1, 2, 3], "B": [4, 5, 6], "C": [7, 8, 9]},
         )
 
         # Column selection creates a view
@@ -135,7 +135,7 @@ class TestEdgeDataFrameCopyElimination:
         assert list(selected.columns) == ["A", "B"]
 
         print(
-            "✓ Confirmed: column selection creates view suitable for read-only operations"
+            "✓ Confirmed: column selection creates view suitable for read-only operations",
         )
 
     def test_performance_difference_copy_vs_view(self) -> None:
@@ -152,7 +152,7 @@ class TestEdgeDataFrameCopyElimination:
                 "weight": [i * 0.1 for i in range(10000)],
                 "extra1": list(range(10000)),
                 "extra2": list(range(10000)),
-            }
+            },
         )
 
         # Column selection without copy creates a view sharing underlying data
@@ -162,9 +162,7 @@ class TestEdgeDataFrameCopyElimination:
         # Structural check: copy allocates new memory, view does not
         # The copy's numpy buffers should NOT share memory with the original
         for col in ["src", "tgt"]:
-            view_shares = view_df[col].values.base is large_df[
-                col
-            ].values.base or (
+            view_shares = view_df[col].values.base is large_df[col].values.base or (
                 view_df[col].values.base is not None
                 and large_df[col].values.base is not None
                 and view_df[col].values.base is large_df[col].values.base
@@ -178,21 +176,22 @@ class TestEdgeDataFrameCopyElimination:
             # Under CoW mode it may not share, but it still avoids eager allocation.
             if view_shares:
                 print(
-                    f"  Column '{col}': view shares memory with original (optimal)"
+                    f"  Column '{col}': view shares memory with original (optimal)",
                 )
             else:
                 print(
-                    f"  Column '{col}': view does not share memory (CoW mode likely active)"
+                    f"  Column '{col}': view does not share memory (CoW mode likely active)",
                 )
 
         # Verify both produce identical data regardless of memory layout
         pd.testing.assert_frame_equal(view_df, copy_df)
         print(
-            "✓ View and copy produce identical data; view avoids eager allocation"
+            "✓ View and copy produce identical data; view avoids eager allocation",
         )
 
     def test_edge_df_copy_elimination_preserves_correctness(
-        self, graph_star_with_relationships: Star
+        self,
+        graph_star_with_relationships: Star,
     ) -> None:
         """Test that eliminating edge_df copy preserves query correctness."""
         # Run variable-length path queries that use edge_df internally
@@ -228,9 +227,7 @@ class TestEdgeDataFrameCopyElimination:
             text=True,
         )
 
-        patterns = (
-            result.stdout.strip().split("\n") if result.stdout.strip() else []
-        )
+        patterns = result.stdout.strip().split("\n") if result.stdout.strip() else []
 
         print("Found column selection + copy patterns:")
         for pattern in patterns:
@@ -241,7 +238,8 @@ class TestEdgeDataFrameCopyElimination:
         # Pattern: df[columns].copy() where result is used read-only
 
     def test_mock_edge_df_optimization_simulation(
-        self, graph_star_with_relationships: Star
+        self,
+        graph_star_with_relationships: Star,
     ) -> None:
         """Simulate the edge_df optimization using mocking."""
         original_getitem = pd.DataFrame.__getitem__
@@ -270,11 +268,11 @@ class TestEdgeDataFrameCopyElimination:
         ):
             # Execute query that uses edge_df
             result = graph_star_with_relationships.execute_query(
-                "MATCH (a:Person)-[*1..2]->(b:Person) RETURN count(b) AS count"
+                "MATCH (a:Person)-[*1..2]->(b:Person) RETURN count(b) AS count",
             )
 
         print(
-            f"Query triggered {copy_calls} copy calls and {getitem_calls} column selection calls"
+            f"Query triggered {copy_calls} copy calls and {getitem_calls} column selection calls",
         )
 
         # Verify query correctness
@@ -302,7 +300,7 @@ class TestEdgeDataFrameCopyElimination:
                 "extra_col1": list(range(10000)),
                 "extra_col2": list(range(10000)),
                 "extra_col3": list(range(10000)),
-            }
+            },
         )
 
         n_trials = 7
@@ -314,9 +312,7 @@ class TestEdgeDataFrameCopyElimination:
             # Time the copy pattern (simulating pre-optimization behavior)
             t0 = time.perf_counter()
             for _i in range(n_iters):
-                edge_df_copy = large_rel_df[
-                    ["__SOURCE__", "__TARGET__"]
-                ].copy()
+                edge_df_copy = large_rel_df[["__SOURCE__", "__TARGET__"]].copy()
                 len(edge_df_copy)
             copy_times.append(time.perf_counter() - t0)
 
@@ -329,11 +325,9 @@ class TestEdgeDataFrameCopyElimination:
 
         median_copy = statistics.median(copy_times)
         median_view = statistics.median(view_times)
-        speedup = (
-            median_copy / median_view if median_view > 0 else float("inf")
-        )
+        speedup = median_copy / median_view if median_view > 0 else float("inf")
 
-        print(f"Performance validation for copy elimination:")
+        print("Performance validation for copy elimination:")
         print(f"Copy pattern median: {median_copy:.4f}s")
         print(f"View pattern median: {median_view:.4f}s")
         print(f"Performance improvement: {speedup:.1f}x faster")
@@ -347,5 +341,5 @@ class TestEdgeDataFrameCopyElimination:
         )
 
         print(
-            "✓ Copy elimination optimization successfully validated through performance testing"
+            "✓ Copy elimination optimization successfully validated through performance testing",
         )

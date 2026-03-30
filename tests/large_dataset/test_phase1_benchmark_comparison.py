@@ -34,18 +34,14 @@ from pycypher import (
 # Configuration (mirrors bench_memory_baseline.py)
 # ---------------------------------------------------------------------------
 
-BASELINE_PATH = (
-    Path(__file__).parent.parent / "benchmarks" / "baseline_report.json"
-)
+BASELINE_PATH = Path(__file__).parent.parent / "benchmarks" / "baseline_report.json"
 
 SCALE_FACTORS: list[int] = [100, 1_000, 10_000]
 
 QUERIES: dict[str, str] = {
     "simple_scan": "MATCH (n:Person) RETURN n.name",
     "filtered_scan": "MATCH (n:Person) WHERE n.age > 30 RETURN n.name, n.age",
-    "single_hop": (
-        "MATCH (n:Person)-[r:KNOWS]->(m:Person) RETURN n.name, m.name"
-    ),
+    "single_hop": ("MATCH (n:Person)-[r:KNOWS]->(m:Person) RETURN n.name, m.name"),
     "filtered_hop": (
         "MATCH (n:Person)-[r:KNOWS]->(m:Person) "
         "WHERE n.age > 25 RETURN n.name, m.name, r.since"
@@ -55,9 +51,7 @@ QUERIES: dict[str, str] = {
         "RETURN a.name, c.name"
     ),
     "aggregation_count": "MATCH (n:Person) RETURN n.dept, count(n) AS cnt",
-    "aggregation_avg": (
-        "MATCH (n:Person) RETURN n.dept, avg(n.salary) AS avg_sal"
-    ),
+    "aggregation_avg": ("MATCH (n:Person) RETURN n.dept, avg(n.salary) AS avg_sal"),
     "varlength_path": (
         "MATCH (a:Person)-[:KNOWS*1..3]->(b:Person) RETURN a.name, b.name"
     ),
@@ -90,12 +84,15 @@ def _generate_persons(n: int, *, rng: np.random.Generator) -> pd.DataFrame:
             "age": rng.integers(18, 65, size=n),
             "dept": rng.choice(depts, size=n),
             "salary": rng.integers(40_000, 200_000, size=n),
-        }
+        },
     )
 
 
 def _generate_knows(
-    n_persons: int, *, avg_degree: int = 5, rng: np.random.Generator
+    n_persons: int,
+    *,
+    avg_degree: int = 5,
+    rng: np.random.Generator,
 ) -> pd.DataFrame:
     n_edges = n_persons * avg_degree
     sources = rng.integers(1, n_persons + 1, size=n_edges)
@@ -109,12 +106,15 @@ def _generate_knows(
             "__SOURCE__": sources,
             "__TARGET__": targets,
             "since": rng.integers(2000, 2026, size=n_actual),
-        }
+        },
     )
 
 
 def _build_context(
-    n_persons: int, *, rng: np.random.Generator, backend: str | None = None
+    n_persons: int,
+    *,
+    rng: np.random.Generator,
+    backend: str | None = None,
 ) -> Context:
     persons_df = _generate_persons(n_persons, rng=rng)
     knows_df = _generate_knows(n_persons, rng=rng)
@@ -141,7 +141,7 @@ def _build_context(
     kwargs: dict[str, Any] = {
         "entity_mapping": EntityMapping(mapping={"Person": person_table}),
         "relationship_mapping": RelationshipMapping(
-            mapping={"KNOWS": knows_table}
+            mapping={"KNOWS": knows_table},
         ),
     }
     if backend is not None:
@@ -196,7 +196,9 @@ def _load_baseline() -> dict[str, Any] | None:
 
 
 def _baseline_measurement(
-    baseline: dict[str, Any], query_name: str, scale: int
+    baseline: dict[str, Any],
+    query_name: str,
+    scale: int,
 ) -> dict[str, Any] | None:
     """Find a baseline measurement by query name and scale."""
     for m in baseline.get("measurements", []):
@@ -215,7 +217,7 @@ def baseline() -> dict[str, Any] | None:
     return _load_baseline()
 
 
-@pytest.fixture()
+@pytest.fixture
 def rng() -> np.random.Generator:
     """Fresh rng per test for deterministic, independent data generation."""
     return np.random.default_rng(42)
@@ -298,10 +300,14 @@ class TestPhase1ResultCorrectness:
         query = QUERIES[query_name]
         # Use identical seeds so both contexts get the same data
         pandas_ctx = _build_context(
-            scale, rng=np.random.default_rng(42), backend="pandas"
+            scale,
+            rng=np.random.default_rng(42),
+            backend="pandas",
         )
         duckdb_ctx = _build_context(
-            scale, rng=np.random.default_rng(42), backend="duckdb"
+            scale,
+            rng=np.random.default_rng(42),
+            backend="duckdb",
         )
 
         pandas_m = _measure_query(Star(context=pandas_ctx), query, scale)
@@ -423,7 +429,8 @@ class TestLimitPushdownBenchmark:
 
         # LIMIT should not be 2x slower than full
         assert limit_m["elapsed_seconds"] < max(
-            full_m["elapsed_seconds"] * 2, 1.0
+            full_m["elapsed_seconds"] * 2,
+            1.0,
         ), (
             f"LIMIT 10 ({limit_m['elapsed_seconds']:.4f}s) slower than "
             f"full ({full_m['elapsed_seconds']:.4f}s)"
@@ -447,7 +454,8 @@ class TestLimitPushdownBenchmark:
 
         # LIMIT should not use more memory than full
         assert limit_m["peak_memory_bytes"] <= max(
-            full_m["peak_memory_bytes"] * 1.5, 10 * 1024 * 1024
+            full_m["peak_memory_bytes"] * 1.5,
+            10 * 1024 * 1024,
         ), (
             f"LIMIT 10 memory ({limit_m['peak_memory_bytes'] / 1024:.0f}KB) "
             f"> full ({full_m['peak_memory_bytes'] / 1024:.0f}KB)"
@@ -465,7 +473,8 @@ class TestDuckDBComparison:
 
     @pytest.mark.parametrize("scale", [1_000, 10_000])
     @pytest.mark.parametrize(
-        "query_name", ["single_hop", "two_hop", "aggregation_count"]
+        "query_name",
+        ["single_hop", "two_hop", "aggregation_count"],
     )
     def test_both_backends_complete(
         self,
@@ -486,7 +495,7 @@ class TestDuckDBComparison:
                 pytest.skip(f"{backend}: {m['error']}")
 
             # 30s time budget for 10K scale
-            assert m["elapsed_seconds"] < 30, (  # noqa: PLR2004
+            assert m["elapsed_seconds"] < 30, (
                 f"{backend} {query_name}@{scale}: "
                 f"{m['elapsed_seconds']:.2f}s exceeds 30s budget"
             )
@@ -512,11 +521,10 @@ class TestDuckDBComparison:
         # DuckDB should not be >5x slower (it may be slower at small scale
         # due to overhead, but should not be catastrophically worse)
         ratio = duckdb_m["elapsed_seconds"] / max(
-            pandas_m["elapsed_seconds"], 1e-6
+            pandas_m["elapsed_seconds"],
+            1e-6,
         )
-        assert ratio < 5, (  # noqa: PLR2004
-            f"DuckDB {ratio:.1f}x slower than pandas at {scale} rows"
-        )
+        assert ratio < 5, f"DuckDB {ratio:.1f}x slower than pandas at {scale} rows"
 
 
 # ---------------------------------------------------------------------------
@@ -530,7 +538,8 @@ class TestScaleSweep:
 
     @pytest.mark.parametrize("scale", SCALE_FACTORS)
     @pytest.mark.parametrize(
-        "query_name", ["simple_scan", "single_hop", "aggregation_count"]
+        "query_name",
+        ["simple_scan", "single_hop", "aggregation_count"],
     )
     def test_pandas_completes_at_scale(
         self,

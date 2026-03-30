@@ -10,10 +10,19 @@ import click
 @click.command()
 @click.option(
     "--category",
-    type=click.Choice([
-        "string", "math", "list", "aggregation", "temporal",
-        "type", "graph", "all"
-    ], case_sensitive=False),
+    type=click.Choice(
+        [
+            "string",
+            "math",
+            "list",
+            "aggregation",
+            "temporal",
+            "type",
+            "graph",
+            "all",
+        ],
+        case_sensitive=False,
+    ),
     default="all",
     help="Filter functions by category (default: show all).",
 )

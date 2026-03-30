@@ -41,13 +41,13 @@ def two_type_ctx() -> ContextBuilder:
             "__ID__": [f"p{i}" for i in range(5000)],
             "name": [f"Person{i}" for i in range(5000)],
             "score": [float(i) for i in range(5000)],
-        }
+        },
     )
     animals = pd.DataFrame(
         {
             "__ID__": [f"a{i}" for i in range(5000)],
             "name": [f"Animal{i}" for i in range(5000)],
-        }
+        },
     )
     return ContextBuilder().from_dict({"Person": people, "Animal": animals})
 
@@ -59,13 +59,13 @@ def large_ctx() -> ContextBuilder:
         {
             "__ID__": [f"p{i}" for i in range(20_000)],
             "name": [f"P{i}" for i in range(20_000)],
-        }
+        },
     )
     animals = pd.DataFrame(
         {
             "__ID__": [f"a{i}" for i in range(20_000)],
             "name": [f"A{i}" for i in range(20_000)],
-        }
+        },
     )
     return ContextBuilder().from_dict({"Person": people, "Animal": animals})
 
@@ -77,7 +77,8 @@ def large_ctx() -> ContextBuilder:
 
 class TestLabelPredicateCorrectness:
     def test_single_label_returns_correct_rows(
-        self, two_type_ctx: ContextBuilder
+        self,
+        two_type_ctx: ContextBuilder,
     ) -> None:
         """WHERE n:Person returns exactly the Person rows."""
         s = Star(context=two_type_ctx)
@@ -86,7 +87,8 @@ class TestLabelPredicateCorrectness:
         assert all(result["name"].str.startswith("Person"))
 
     def test_single_label_animal_returns_correct_rows(
-        self, two_type_ctx: ContextBuilder
+        self,
+        two_type_ctx: ContextBuilder,
     ) -> None:
         """WHERE n:Animal returns exactly the Animal rows."""
         s = Star(context=two_type_ctx)
@@ -95,7 +97,8 @@ class TestLabelPredicateCorrectness:
         assert all(result["name"].str.startswith("Animal"))
 
     def test_nonexistent_label_returns_empty(
-        self, two_type_ctx: ContextBuilder
+        self,
+        two_type_ctx: ContextBuilder,
     ) -> None:
         """WHERE n:Unicorn returns no rows when no such entity type exists."""
         s = Star(context=two_type_ctx)
@@ -103,22 +106,24 @@ class TestLabelPredicateCorrectness:
         assert len(result) == 0
 
     def test_multi_label_always_false_in_single_type_model(
-        self, two_type_ctx: ContextBuilder
+        self,
+        two_type_ctx: ContextBuilder,
     ) -> None:
         """WHERE n:Person:Animal is always False — single-type entity model."""
         s = Star(context=two_type_ctx)
         result = s.execute_query(
-            "MATCH (n) WHERE n:Person AND n:Animal RETURN n.name"
+            "MATCH (n) WHERE n:Person AND n:Animal RETURN n.name",
         )
         assert len(result) == 0
 
     def test_label_predicate_with_property_filter(
-        self, two_type_ctx: ContextBuilder
+        self,
+        two_type_ctx: ContextBuilder,
     ) -> None:
         """WHERE n:Person AND n.score > 4990 returns 9 Person rows."""
         s = Star(context=two_type_ctx)
         result = s.execute_query(
-            "MATCH (n) WHERE n:Person AND n.score > 4990 RETURN n.name"
+            "MATCH (n) WHERE n:Person AND n.score > 4990 RETURN n.name",
         )
         assert len(result) == 9  # scores 4991..4999
 
@@ -130,12 +135,13 @@ class TestLabelPredicateCorrectness:
         assert all(result["name"].str.startswith("Animal"))
 
     def test_labeled_match_unaffected(
-        self, two_type_ctx: ContextBuilder
+        self,
+        two_type_ctx: ContextBuilder,
     ) -> None:
         """Labeled MATCH (n:Person) still uses the fast path, not the slow path."""
         s = Star(context=two_type_ctx)
         result = s.execute_query(
-            "MATCH (n:Person) WHERE n:Person RETURN n.name"
+            "MATCH (n:Person) WHERE n:Person RETURN n.name",
         )
         assert len(result) == 5000
 
@@ -144,18 +150,19 @@ class TestLabelPredicateCorrectness:
         ctx = ContextBuilder().from_dict(
             {
                 "Person": pd.DataFrame(
-                    {"__ID__": ["p1", "p2"], "name": ["Alice", "Bob"]}
+                    {"__ID__": ["p1", "p2"], "name": ["Alice", "Bob"]},
                 ),
                 "Animal": pd.DataFrame({"__ID__": ["a1"], "name": ["Dog"]}),
                 "Plant": pd.DataFrame({"__ID__": ["pl1"], "name": ["Oak"]}),
-            }
+            },
         )
         s = Star(context=ctx)
         result = s.execute_query("MATCH (n) WHERE n:Person RETURN n.name")
         assert sorted(result["name"].tolist()) == ["Alice", "Bob"]
 
     def test_result_row_values_correct(
-        self, two_type_ctx: ContextBuilder
+        self,
+        two_type_ctx: ContextBuilder,
     ) -> None:
         """Spot-check: Person0 and Person4999 are in results, Animal0 is not."""
         s = Star(context=two_type_ctx)
@@ -174,7 +181,8 @@ class TestLabelPredicateCorrectness:
 @pytest.mark.performance
 class TestLabelPredicatePerformance:
     def test_5k_plus_5k_under_threshold(
-        self, two_type_ctx: ContextBuilder
+        self,
+        two_type_ctx: ContextBuilder,
     ) -> None:
         """5k+5k context: 10 queries must complete in < 600ms total.
 
@@ -212,7 +220,8 @@ class TestLabelPredicatePerformance:
         )
 
     def test_absolute_vectorised_time_under_10ms(
-        self, two_type_ctx: ContextBuilder
+        self,
+        two_type_ctx: ContextBuilder,
     ) -> None:
         """Single query on 5k+5k should complete in < 10ms after vectorisation."""
         s = Star(context=two_type_ctx)
@@ -223,6 +232,4 @@ class TestLabelPredicatePerformance:
             s.execute_query("MATCH (n) WHERE n:Person RETURN n.name")
             times.append(time.perf_counter() - t0)
         avg = sum(times) / len(times)
-        assert avg < 0.050, (
-            f"Expected < 50ms per query; got {avg * 1000:.1f}ms"
-        )
+        assert avg < 0.050, f"Expected < 50ms per query; got {avg * 1000:.1f}ms"

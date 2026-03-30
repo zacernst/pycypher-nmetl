@@ -22,7 +22,7 @@ def star() -> Star:
             "name": ["Alice", "Bob", "Carol", "Dave"],
             "age": [30, 25, 35, 28],
             "dept": ["eng", "sales", "eng", "mktg"],
-        }
+        },
     )
     return Star(context=ContextBuilder.from_dict({"Person": df}))
 
@@ -33,7 +33,7 @@ class TestNotInPredicate:
     def test_not_in_integers(self, star: Star) -> None:
         result = star.execute_query(
             "MATCH (p:Person) WHERE p.age NOT IN [25, 30] "
-            "RETURN p.name AS name ORDER BY p.name ASC"
+            "RETURN p.name AS name ORDER BY p.name ASC",
         )
         # Ages 35 (Carol) and 28 (Dave) are NOT in [25, 30]
         assert list(result["name"]) == ["Carol", "Dave"]
@@ -41,7 +41,7 @@ class TestNotInPredicate:
     def test_not_in_strings(self, star: Star) -> None:
         result = star.execute_query(
             "MATCH (p:Person) WHERE p.dept NOT IN ['eng', 'sales'] "
-            "RETURN p.name AS name ORDER BY p.name ASC"
+            "RETURN p.name AS name ORDER BY p.name ASC",
         )
         # Only Dave (mktg) is not in ['eng', 'sales']
         assert list(result["name"]) == ["Dave"]
@@ -49,14 +49,14 @@ class TestNotInPredicate:
     def test_not_in_single_element_list(self, star: Star) -> None:
         result = star.execute_query(
             "MATCH (p:Person) WHERE p.dept NOT IN ['eng'] "
-            "RETURN p.name AS name ORDER BY p.name ASC"
+            "RETURN p.name AS name ORDER BY p.name ASC",
         )
         assert list(result["name"]) == ["Bob", "Dave"]
 
     def test_not_in_empty_list_returns_all(self, star: Star) -> None:
         result = star.execute_query(
             "MATCH (p:Person) WHERE p.age NOT IN [] "
-            "RETURN p.name AS name ORDER BY p.name ASC"
+            "RETURN p.name AS name ORDER BY p.name ASC",
         )
         # Nothing is in an empty list, so NOT IN [] is always True
         assert list(result["name"]) == ["Alice", "Bob", "Carol", "Dave"]
@@ -64,7 +64,7 @@ class TestNotInPredicate:
     def test_not_in_combined_with_and(self, star: Star) -> None:
         result = star.execute_query(
             "MATCH (p:Person) WHERE p.age NOT IN [25, 30] AND p.age > 28 "
-            "RETURN p.name AS name ORDER BY p.name ASC"
+            "RETURN p.name AS name ORDER BY p.name ASC",
         )
         # age NOT IN [25,30] → Carol(35), Dave(28). age > 28 → Alice(30),Carol(35)
         # Intersection: Carol(35)
@@ -75,17 +75,17 @@ class TestNotInPredicate:
             "MATCH (p:Person) "
             "WITH p.name AS name, p.dept AS dept "
             "WHERE dept NOT IN ['eng'] "
-            "RETURN name ORDER BY name ASC"
+            "RETURN name ORDER BY name ASC",
         )
         assert list(result["name"]) == ["Bob", "Dave"]
 
     def test_in_and_not_in_complement(self, star: Star) -> None:
         """IN and NOT IN on the same list must yield complementary row sets."""
         in_result = star.execute_query(
-            "MATCH (p:Person) WHERE p.dept IN ['eng'] RETURN p.name AS name"
+            "MATCH (p:Person) WHERE p.dept IN ['eng'] RETURN p.name AS name",
         )
         not_in_result = star.execute_query(
-            "MATCH (p:Person) WHERE p.dept NOT IN ['eng'] RETURN p.name AS name"
+            "MATCH (p:Person) WHERE p.dept NOT IN ['eng'] RETURN p.name AS name",
         )
         in_names = set(in_result["name"])
         not_in_names = set(not_in_result["name"])

@@ -1,5 +1,4 @@
-"""
-Critical data correctness tests for aggregation mathematical accuracy.
+"""Critical data correctness tests for aggregation mathematical accuracy.
 Aggregations are critical for ETL data quality and must be mathematically precise.
 """
 
@@ -83,7 +82,7 @@ def aggregation_test_context():
                 4.0,
                 4.4,
             ],  # Precise decimals
-        }
+        },
     )
 
     person_table = EntityTable(
@@ -137,7 +136,7 @@ class TestBasicAggregationAccuracy:
         star = Star(context=aggregation_test_context)
 
         result = star.execute_query(
-            "MATCH (p:Person) WITH sum(p.bonus) AS total_bonus RETURN total_bonus AS total_bonus"
+            "MATCH (p:Person) WITH sum(p.bonus) AS total_bonus RETURN total_bonus AS total_bonus",
         )
 
         # Bonuses: [5000, 8000, 3000, 6000, 4000, 7000, 5500, 6500]
@@ -150,7 +149,7 @@ class TestBasicAggregationAccuracy:
         star = Star(context=aggregation_test_context)
 
         result = star.execute_query(
-            "MATCH (p:Person) WITH avg(p.age) AS avg_age RETURN avg_age AS avg_age"
+            "MATCH (p:Person) WITH avg(p.age) AS avg_age RETURN avg_age AS avg_age",
         )
 
         # Ages: [30, null, 25, 40, 35, null, 28, 32] -> [30, 25, 40, 35, 28, 32]
@@ -163,7 +162,7 @@ class TestBasicAggregationAccuracy:
         star = Star(context=aggregation_test_context)
 
         result = star.execute_query(
-            "MATCH (p:Person) WITH count(*) AS total_rows, count(p.age) AS non_null_ages, count(p.salary) AS non_null_salaries RETURN total_rows AS total_rows, non_null_ages AS non_null_ages, non_null_salaries AS non_null_salaries"
+            "MATCH (p:Person) WITH count(*) AS total_rows, count(p.age) AS non_null_ages, count(p.salary) AS non_null_salaries RETURN total_rows AS total_rows, non_null_ages AS non_null_ages, non_null_salaries AS non_null_salaries",
         )
 
         assert result["total_rows"].iloc[0] == 8  # All rows
@@ -175,7 +174,7 @@ class TestBasicAggregationAccuracy:
         star = Star(context=aggregation_test_context)
 
         result = star.execute_query(
-            "MATCH (p:Person) WITH min(p.score) AS min_score, max(p.score) AS max_score RETURN min_score AS min_score, max_score AS max_score"
+            "MATCH (p:Person) WITH min(p.score) AS min_score, max(p.score) AS max_score RETURN min_score AS min_score, max_score AS max_score",
         )
 
         # Scores: [85.5, 92.3, 78.9, 88.1, 91.7, 87.2, 83.4, 89.6]
@@ -188,7 +187,7 @@ class TestBasicAggregationAccuracy:
         star = Star(context=aggregation_test_context)
 
         result = star.execute_query(
-            "MATCH (p:Person) WITH collect(p.years) AS all_years RETURN all_years AS all_years"
+            "MATCH (p:Person) WITH collect(p.years) AS all_years RETURN all_years AS all_years",
         )
 
         # Years: [1, 5, 2, 10, 3, 7, 4, 8] - no nulls, should collect all
@@ -205,7 +204,7 @@ class TestGroupedAggregationAccuracy:
         star = Star(context=aggregation_test_context)
 
         result = star.execute_query(
-            "MATCH (p:Person) WITH p.department AS dept, sum(p.bonus) AS dept_total_bonus RETURN dept AS dept, dept_total_bonus AS dept_total_bonus"
+            "MATCH (p:Person) WITH p.department AS dept, sum(p.bonus) AS dept_total_bonus RETURN dept AS dept, dept_total_bonus AS dept_total_bonus",
         )
 
         # Group bonuses by department:
@@ -226,7 +225,7 @@ class TestGroupedAggregationAccuracy:
         star = Star(context=aggregation_test_context)
 
         result = star.execute_query(
-            "MATCH (p:Person) WITH p.department AS dept, avg(p.age) AS avg_age RETURN dept AS dept, avg_age AS avg_age"
+            "MATCH (p:Person) WITH p.department AS dept, avg(p.age) AS avg_age RETURN dept AS dept, avg_age AS avg_age",
         )
 
         # Ages by department (ignoring nulls):
@@ -248,7 +247,7 @@ class TestGroupedAggregationAccuracy:
         star = Star(context=aggregation_test_context)
 
         result = star.execute_query(
-            "MATCH (p:Person) WITH p.department AS dept, count(*) AS people_count, count(p.salary) AS salary_count RETURN dept AS dept, people_count AS people_count, salary_count AS salary_count"
+            "MATCH (p:Person) WITH p.department AS dept, count(*) AS people_count, count(p.salary) AS salary_count RETURN dept AS dept, people_count AS people_count, salary_count AS salary_count",
         )
 
         # People per department: Eng=4, Sales=2, Marketing=2
@@ -273,7 +272,7 @@ class TestAggregationFloatingPointPrecision:
         star = Star(context=aggregation_test_context)
 
         result = star.execute_query(
-            "MATCH (p:Person) WITH sum(p.rating) AS total_rating RETURN total_rating AS total_rating"
+            "MATCH (p:Person) WITH sum(p.rating) AS total_rating RETURN total_rating AS total_rating",
         )
 
         # Ratings: [4.2, 3.8, 4.5, 4.1, 3.9, 4.3, 4.0, 4.4]
@@ -286,7 +285,7 @@ class TestAggregationFloatingPointPrecision:
         star = Star(context=aggregation_test_context)
 
         result = star.execute_query(
-            "MATCH (p:Person) WITH avg(p.rating) AS avg_rating RETURN avg_rating AS avg_rating"
+            "MATCH (p:Person) WITH avg(p.rating) AS avg_rating RETURN avg_rating AS avg_rating",
         )
 
         # Average: 33.2 / 8 = 4.15
@@ -298,7 +297,7 @@ class TestAggregationFloatingPointPrecision:
         star = Star(context=aggregation_test_context)
 
         result = star.execute_query(
-            "MATCH (p:Person) WITH p.department AS dept, avg(p.rating) AS avg_rating RETURN dept AS dept, avg_rating AS avg_rating"
+            "MATCH (p:Person) WITH p.department AS dept, avg(p.rating) AS avg_rating RETURN dept AS dept, avg_rating AS avg_rating",
         )
 
         # Should maintain decimal precision for each group
@@ -319,7 +318,7 @@ class TestAggregationEdgeCases:
             {
                 ID_COLUMN: [1, 2, 3],
                 "all_null": [None, None, None],
-            }
+            },
         )
 
         person_table_nulls = EntityTable(
@@ -333,7 +332,7 @@ class TestAggregationEdgeCases:
 
         context_nulls = Context(
             entity_mapping=EntityMapping(
-                mapping={"Person": person_table_nulls}
+                mapping={"Person": person_table_nulls},
             ),
             relationship_mapping=RelationshipMapping(mapping={}),
         )
@@ -341,7 +340,7 @@ class TestAggregationEdgeCases:
         star = Star(context=context_nulls)
 
         result = star.execute_query(
-            "MATCH (p:Person) WITH sum(p.all_null) AS sum_nulls, avg(p.all_null) AS avg_nulls, count(p.all_null) AS count_nulls RETURN sum_nulls AS sum_nulls, avg_nulls AS avg_nulls, count_nulls AS count_nulls"
+            "MATCH (p:Person) WITH sum(p.all_null) AS sum_nulls, avg(p.all_null) AS avg_nulls, count(p.all_null) AS count_nulls RETURN sum_nulls AS sum_nulls, avg_nulls AS avg_nulls, count_nulls AS count_nulls",
         )
 
         # All aggregations on all-null column should return null (except count which should be 0)
@@ -354,7 +353,7 @@ class TestAggregationEdgeCases:
         star = Star(context=aggregation_test_context)
 
         result = star.execute_query(
-            "MATCH (p:Person) WHERE p.age > 1000 WITH count(*) AS impossible_count, sum(p.salary) AS impossible_sum RETURN impossible_count AS impossible_count, impossible_sum AS impossible_sum"
+            "MATCH (p:Person) WHERE p.age > 1000 WITH count(*) AS impossible_count, sum(p.salary) AS impossible_sum RETURN impossible_count AS impossible_count, impossible_sum AS impossible_sum",
         )
 
         # Should return one row with count=0 and sum=null
@@ -368,14 +367,12 @@ class TestAggregationEdgeCases:
 
         # Filter to single person and aggregate
         result = star.execute_query(
-            "MATCH (p:Person) WHERE p.name = 'Alice' WITH sum(p.bonus) AS single_sum, avg(p.bonus) AS single_avg, count(*) AS single_count RETURN single_sum AS single_sum, single_avg AS single_avg, single_count AS single_count"
+            "MATCH (p:Person) WHERE p.name = 'Alice' WITH sum(p.bonus) AS single_sum, avg(p.bonus) AS single_avg, count(*) AS single_count RETURN single_sum AS single_sum, single_avg AS single_avg, single_count AS single_count",
         )
 
         # Alice's bonus: 5000
         assert result["single_sum"].iloc[0] == 5000
-        assert (
-            result["single_avg"].iloc[0] == 5000.0
-        )  # avg of single value = value
+        assert result["single_avg"].iloc[0] == 5000.0  # avg of single value = value
         assert result["single_count"].iloc[0] == 1
 
 
@@ -383,13 +380,14 @@ class TestComplexAggregationExpressions:
     """Test aggregations of computed expressions."""
 
     def test_aggregation_of_arithmetic_expression(
-        self, aggregation_test_context
+        self,
+        aggregation_test_context,
     ):
         """Test aggregating computed values."""
         star = Star(context=aggregation_test_context)
 
         result = star.execute_query(
-            "MATCH (p:Person) WITH sum(p.bonus * 2) AS doubled_bonus_sum RETURN doubled_bonus_sum AS doubled_bonus_sum"
+            "MATCH (p:Person) WITH sum(p.bonus * 2) AS doubled_bonus_sum RETURN doubled_bonus_sum AS doubled_bonus_sum",
         )
 
         # Sum of (bonus * 2) = (sum of bonus) * 2 = 45000 * 2 = 90000
@@ -401,7 +399,7 @@ class TestComplexAggregationExpressions:
         star = Star(context=aggregation_test_context)
 
         result = star.execute_query(
-            "MATCH (p:Person) WITH avg(p.bonus / 1000.0) AS avg_bonus_k RETURN avg_bonus_k AS avg_bonus_k"
+            "MATCH (p:Person) WITH avg(p.bonus / 1000.0) AS avg_bonus_k RETURN avg_bonus_k AS avg_bonus_k",
         )
 
         # Average of bonuses in thousands: 45000 / 8 / 1000 = 5.625
@@ -413,7 +411,7 @@ class TestComplexAggregationExpressions:
         star = Star(context=aggregation_test_context)
 
         result = star.execute_query(
-            "MATCH (p:Person) WITH sum(toInteger(p.rating)) AS sum_rounded_ratings RETURN sum_rounded_ratings AS sum_rounded_ratings"
+            "MATCH (p:Person) WITH sum(toInteger(p.rating)) AS sum_rounded_ratings RETURN sum_rounded_ratings AS sum_rounded_ratings",
         )
 
         # toInteger on ratings: [4, 3, 4, 4, 3, 4, 4, 4] (truncated)
@@ -436,8 +434,7 @@ class TestAggregationConsistency:
 
         # Results should be identical
         assert (
-            abs(result1["avg_score"].iloc[0] - result2["avg_score"].iloc[0])
-            < 0.000001
+            abs(result1["avg_score"].iloc[0] - result2["avg_score"].iloc[0]) < 0.000001
         )
         assert result1["total_bonus"].iloc[0] == result2["total_bonus"].iloc[0]
 
@@ -446,7 +443,7 @@ class TestAggregationConsistency:
         star = Star(context=aggregation_test_context)
 
         result = star.execute_query(
-            "MATCH (p:Person) WITH sum(p.bonus) AS total, avg(p.bonus) AS average, count(*) AS count RETURN total AS total, average AS average, count AS count"
+            "MATCH (p:Person) WITH sum(p.bonus) AS total, avg(p.bonus) AS average, count(*) AS count RETURN total AS total, average AS average, count AS count",
         )
 
         total = result["total"].iloc[0]

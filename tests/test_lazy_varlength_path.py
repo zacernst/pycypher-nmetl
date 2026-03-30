@@ -31,7 +31,7 @@ def _build_chain_graph(n_persons: int, n_edges: int) -> tuple[Context, Star]:
         {
             ID: list(range(1, n_persons + 1)),
             "name": [f"P{i}" for i in range(1, n_persons + 1)],
-        }
+        },
     )
     # Chain: 1→2, 2→3, ..., (n-1)→n
     actual_edges = min(n_edges, n_persons - 1)
@@ -41,7 +41,7 @@ def _build_chain_graph(n_persons: int, n_edges: int) -> tuple[Context, Star]:
             "__SOURCE__": list(range(1, actual_edges + 1)),
             "__TARGET__": list(range(2, actual_edges + 2)),
             "since": [2020] * actual_edges,
-        }
+        },
     )
     person_table = EntityTable(
         entity_type="Person",
@@ -64,14 +64,15 @@ def _build_chain_graph(n_persons: int, n_edges: int) -> tuple[Context, Star]:
     ctx = Context(
         entity_mapping=EntityMapping(mapping={"Person": person_table}),
         relationship_mapping=RelationshipMapping(
-            mapping={"KNOWS": knows_table}
+            mapping={"KNOWS": knows_table},
         ),
     )
     return ctx, Star(context=ctx)
 
 
 def _build_dense_graph(
-    n_persons: int, edges_per_node: int = 5
+    n_persons: int,
+    edges_per_node: int = 5,
 ) -> tuple[Context, Star]:
     """Build a dense random-ish graph for stress testing."""
     import numpy as np
@@ -81,7 +82,7 @@ def _build_dense_graph(
         {
             ID: list(range(1, n_persons + 1)),
             "name": [f"P{i}" for i in range(1, n_persons + 1)],
-        }
+        },
     )
     n_edges = n_persons * edges_per_node
     sources = rng.integers(1, n_persons + 1, size=n_edges)
@@ -96,7 +97,7 @@ def _build_dense_graph(
             "__SOURCE__": sources,
             "__TARGET__": targets,
             "since": [2020] * n_actual,
-        }
+        },
     )
     person_table = EntityTable(
         entity_type="Person",
@@ -119,7 +120,7 @@ def _build_dense_graph(
     ctx = Context(
         entity_mapping=EntityMapping(mapping={"Person": person_table}),
         relationship_mapping=RelationshipMapping(
-            mapping={"KNOWS": knows_table}
+            mapping={"KNOWS": knows_table},
         ),
     )
     return ctx, Star(context=ctx)
@@ -138,7 +139,7 @@ class TestVarLengthPathCorrectness:
         ctx, star = _build_chain_graph(4, 3)
         result = star.execute_query(
             "MATCH (a:Person)-[:KNOWS*1..2]->(b:Person) "
-            "WHERE a.name = 'P1' RETURN a.name, b.name"
+            "WHERE a.name = 'P1' RETURN a.name, b.name",
         )
         endpoints = sorted(result["b.name"].tolist())
         # 1 hop: 1→2; 2 hops: 1→2→3
@@ -149,7 +150,7 @@ class TestVarLengthPathCorrectness:
         ctx, star = _build_chain_graph(5, 4)
         result = star.execute_query(
             "MATCH (a:Person)-[:KNOWS*1..3]->(b:Person) "
-            "WHERE a.name = 'P1' RETURN a.name, b.name"
+            "WHERE a.name = 'P1' RETURN a.name, b.name",
         )
         endpoints = sorted(result["b.name"].tolist())
         assert endpoints == ["P2", "P3", "P4"]
@@ -159,7 +160,7 @@ class TestVarLengthPathCorrectness:
         ctx, star = _build_chain_graph(4, 3)
         result = star.execute_query(
             "MATCH (a:Person)-[:KNOWS*5..6]->(b:Person) "
-            "WHERE a.name = 'P1' RETURN a.name, b.name"
+            "WHERE a.name = 'P1' RETURN a.name, b.name",
         )
         assert len(result) == 0
 
@@ -167,7 +168,7 @@ class TestVarLengthPathCorrectness:
         """All nodes as start points in a chain."""
         ctx, star = _build_chain_graph(4, 3)
         result = star.execute_query(
-            "MATCH (a:Person)-[:KNOWS*1..2]->(b:Person) RETURN a.name, b.name"
+            "MATCH (a:Person)-[:KNOWS*1..2]->(b:Person) RETURN a.name, b.name",
         )
         # Node 1: reaches 2, 3; Node 2: reaches 3, 4; Node 3: reaches 4
         # Total: 5 rows
@@ -182,10 +183,10 @@ class TestVarLengthPathWithLimit:
         ctx, star = _build_dense_graph(100, edges_per_node=5)
         # Get full result count
         full = star.execute_query(
-            "MATCH (a:Person)-[:KNOWS*1..2]->(b:Person) RETURN a.name, b.name"
+            "MATCH (a:Person)-[:KNOWS*1..2]->(b:Person) RETURN a.name, b.name",
         )
         limited = star.execute_query(
-            "MATCH (a:Person)-[:KNOWS*1..2]->(b:Person) RETURN a.name, b.name LIMIT 10"
+            "MATCH (a:Person)-[:KNOWS*1..2]->(b:Person) RETURN a.name, b.name LIMIT 10",
         )
         assert len(limited) == 10
         assert len(full) > 10  # Sanity check
@@ -195,7 +196,7 @@ class TestVarLengthPathWithLimit:
         ctx, star = _build_chain_graph(4, 3)
         result = star.execute_query(
             "MATCH (a:Person)-[:KNOWS*1..2]->(b:Person) "
-            "WHERE a.name = 'P1' RETURN a.name, b.name LIMIT 100"
+            "WHERE a.name = 'P1' RETURN a.name, b.name LIMIT 100",
         )
         assert len(result) == 2  # Only 2 reachable nodes
 
@@ -203,7 +204,7 @@ class TestVarLengthPathWithLimit:
         """LIMIT 1 returns exactly one row."""
         ctx, star = _build_dense_graph(100, edges_per_node=5)
         result = star.execute_query(
-            "MATCH (a:Person)-[:KNOWS*1..3]->(b:Person) RETURN a.name, b.name LIMIT 1"
+            "MATCH (a:Person)-[:KNOWS*1..3]->(b:Person) RETURN a.name, b.name LIMIT 1",
         )
         assert len(result) == 1
 
@@ -217,7 +218,7 @@ class TestLimitPushdownWiring:
         # This query has the safe pattern: MATCH ... RETURN ... LIMIT N
         # (no aggregation, no DISTINCT, no ORDER BY, no SKIP)
         result = star.execute_query(
-            "MATCH (a:Person)-[:KNOWS*1..3]->(b:Person) RETURN a.name, b.name LIMIT 10"
+            "MATCH (a:Person)-[:KNOWS*1..3]->(b:Person) RETURN a.name, b.name LIMIT 10",
         )
         assert len(result) == 10
 
@@ -226,7 +227,7 @@ class TestLimitPushdownWiring:
         ctx, star = _build_dense_graph(50, edges_per_node=3)
         result = star.execute_query(
             "MATCH (a:Person)-[:KNOWS*1..2]->(b:Person) "
-            "RETURN DISTINCT a.name, b.name LIMIT 5"
+            "RETURN DISTINCT a.name, b.name LIMIT 5",
         )
         assert len(result) <= 5
 
@@ -235,7 +236,7 @@ class TestLimitPushdownWiring:
         ctx, star = _build_dense_graph(50, edges_per_node=3)
         result = star.execute_query(
             "MATCH (a:Person)-[:KNOWS*1..2]->(b:Person) "
-            "RETURN a.name, count(b) AS cnt LIMIT 5"
+            "RETURN a.name, count(b) AS cnt LIMIT 5",
         )
         assert len(result) <= 5
 
@@ -244,7 +245,7 @@ class TestLimitPushdownWiring:
         ctx, star = _build_dense_graph(50, edges_per_node=3)
         result = star.execute_query(
             "MATCH (a:Person)-[:KNOWS*1..2]->(b:Person) "
-            "RETURN a.name, b.name ORDER BY a.name LIMIT 5"
+            "RETURN a.name, b.name ORDER BY a.name LIMIT 5",
         )
         assert len(result) == 5
 
@@ -254,7 +255,7 @@ class TestLimitPushdownWiring:
 
         converter = ASTConverter()
         query = converter.from_cypher(
-            "MATCH (a:Person)-[:KNOWS*1..2]->(b:Person) RETURN a.name, b.name LIMIT 10"
+            "MATCH (a:Person)-[:KNOWS*1..2]->(b:Person) RETURN a.name, b.name LIMIT 10",
         )
         ctx, star = _build_dense_graph(10, edges_per_node=2)
         hint = star._extract_limit_hint(query)
@@ -266,7 +267,7 @@ class TestLimitPushdownWiring:
 
         converter = ASTConverter()
         query = converter.from_cypher(
-            "MATCH (a:Person) RETURN a.dept, count(a) AS cnt LIMIT 10"
+            "MATCH (a:Person) RETURN a.dept, count(a) AS cnt LIMIT 10",
         )
         ctx, star = _build_dense_graph(10, edges_per_node=2)
         hint = star._extract_limit_hint(query)

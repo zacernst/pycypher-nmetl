@@ -1,5 +1,4 @@
-"""
-Fixed SET clause execution tests that account for current system limitations.
+"""Fixed SET clause execution tests that account for current system limitations.
 These tests validate SET functionality while properly handling unimplemented features.
 """
 
@@ -26,7 +25,7 @@ class TestSetClauseBasicExecutionFixed:
                 "name": ["Alice", "Bob", "Carol"],
                 "age": [25, 30, 35],
                 "department": ["Engineering", "Sales", "Engineering"],
-            }
+            },
         )
 
         person_table = EntityTable(
@@ -47,7 +46,7 @@ class TestSetClauseBasicExecutionFixed:
         )
 
         context = Context(
-            entity_mapping=EntityMapping(mapping={"Person": person_table})
+            entity_mapping=EntityMapping(mapping={"Person": person_table}),
         )
         return context
 
@@ -58,7 +57,7 @@ class TestSetClauseBasicExecutionFixed:
         # Since WHERE is not implemented, this query will apply SET to all people
         # We test the current behavior and document the expected future behavior
         result = star.execute_query(
-            "MATCH (p:Person) SET p.team = 'tech' RETURN p.name AS name, p.team AS team"
+            "MATCH (p:Person) SET p.team = 'tech' RETURN p.name AS name, p.team AS team",
         )
 
         # Current behavior: all people get the 'tech' team (no filtering)
@@ -77,7 +76,7 @@ class TestSetClauseBasicExecutionFixed:
         # WHERE p.department = 'Engineering' should filter to 2 rows before SET.
         try:
             result = star.execute_query(
-                "MATCH (p:Person) WHERE p.department = 'Engineering' SET p.team = 'tech' RETURN p.name AS name"
+                "MATCH (p:Person) WHERE p.department = 'Engineering' SET p.team = 'tech' RETURN p.name AS name",
             )
             # WHERE is now executed — only Engineering people (2 rows) are returned.
             # Note: SET has a known value-mapping limitation that may produce NaN for
@@ -86,9 +85,7 @@ class TestSetClauseBasicExecutionFixed:
 
         except Exception as e:
             # If SET + WHERE interaction raises, that is also acceptable for now
-            assert (
-                "SET" in str(e) or "WHERE" in str(e) or "not" in str(e).lower()
-            )
+            assert "SET" in str(e) or "WHERE" in str(e) or "not" in str(e).lower()
 
     def test_set_chain_with_with_clause(self, person_context):
         """Test SET followed by WITH clause — now supported."""
@@ -98,7 +95,7 @@ class TestSetClauseBasicExecutionFixed:
             """MATCH (p:Person)
                SET p.processed = true
                WITH p.name AS name, p.age AS age
-               RETURN name, age"""
+               RETURN name, age""",
         )
         assert len(result) == 3
         assert "name" in result.columns
@@ -112,7 +109,7 @@ class TestSetClauseBasicExecutionFixed:
             """MATCH (p:Person)
                SET p.processed = true
                RETURN p.name AS name, p.age AS age
-               ORDER BY age"""
+               ORDER BY age""",
         )
         assert len(result) == 3
         assert "name" in result.columns
@@ -123,21 +120,21 @@ class TestSetClauseBasicExecutionFixed:
 
         # Test 1: Simple property addition
         result1 = star.execute_query(
-            "MATCH (p:Person) SET p.status = 'active' RETURN p.name AS name, p.status AS status"
+            "MATCH (p:Person) SET p.status = 'active' RETURN p.name AS name, p.status AS status",
         )
         assert len(result1) == 3
         assert (result1["status"] == "active").all()
 
         # Test 2: Expression-based property
         result2 = star.execute_query(
-            "MATCH (p:Person) SET p.age_plus_10 = p.age + 10 RETURN p.name AS name, p.age_plus_10 AS age_plus"
+            "MATCH (p:Person) SET p.age_plus_10 = p.age + 10 RETURN p.name AS name, p.age_plus_10 AS age_plus",
         )
         assert len(result2) == 3
         assert (result2["age_plus"] == [35, 40, 45]).all()
 
         # Test 3: Multiple properties
         result3 = star.execute_query(
-            "MATCH (p:Person) SET p.level = 5, p.reviewed = true RETURN p.name AS name, p.level AS level"
+            "MATCH (p:Person) SET p.level = 5, p.reviewed = true RETURN p.name AS name, p.level AS level",
         )
         assert len(result3) == 3
         assert (result3["level"] == 5).all()
@@ -148,19 +145,19 @@ class TestSetClauseBasicExecutionFixed:
 
         # Query 1: Add properties
         star.execute_query(
-            "MATCH (p:Person) SET p.temp_prop = 'test_value' RETURN p.name AS name"
+            "MATCH (p:Person) SET p.temp_prop = 'test_value' RETURN p.name AS name",
         )
 
         # Query 2: Verify persistence and modify
         result = star.execute_query(
-            "MATCH (p:Person) SET p.temp_prop = 'modified_value' RETURN p.name AS name, p.temp_prop AS temp"
+            "MATCH (p:Person) SET p.temp_prop = 'modified_value' RETURN p.name AS name, p.temp_prop AS temp",
         )
         assert len(result) == 3
         assert (result["temp"] == "modified_value").all()
 
         # Query 3: Verify final persistence
         final_result = star.execute_query(
-            "MATCH (p:Person) RETURN p.name AS name, p.temp_prop AS temp"
+            "MATCH (p:Person) RETURN p.name AS name, p.temp_prop AS temp",
         )
         assert len(final_result) == 3
         assert (final_result["temp"] == "modified_value").all()
@@ -189,7 +186,7 @@ class TestSetClauseEdgeCasesFixed:
                     "Engineering",
                     "",
                 ],  # Include empty string
-            }
+            },
         )
 
         person_table = EntityTable(
@@ -212,7 +209,7 @@ class TestSetClauseEdgeCasesFixed:
         )
 
         context = Context(
-            entity_mapping=EntityMapping(mapping={"Person": person_table})
+            entity_mapping=EntityMapping(mapping={"Person": person_table}),
         )
         return context
 
@@ -222,7 +219,7 @@ class TestSetClauseEdgeCasesFixed:
 
         # Use a literal None value instead of NULL keyword (which may not be parsed)
         result = star.execute_query(
-            "MATCH (p:Person) SET p.nullable_prop = '' RETURN p.name AS name, p.nullable_prop AS nullable"
+            "MATCH (p:Person) SET p.nullable_prop = '' RETURN p.name AS name, p.nullable_prop AS nullable",
         )
         assert len(result) == 4
         # Test with empty string for now, as NULL parsing may not be implemented
@@ -233,7 +230,7 @@ class TestSetClauseEdgeCasesFixed:
         star = Star(context=person_context)
 
         result = star.execute_query(
-            "MATCH (p:Person) SET p.zero_value = 0, p.empty_string = '' RETURN p.name AS name, p.zero_value AS zero, p.empty_string AS empty"
+            "MATCH (p:Person) SET p.zero_value = 0, p.empty_string = '' RETURN p.name AS name, p.zero_value AS zero, p.empty_string AS empty",
         )
         assert len(result) == 4
         assert (result["zero"] == 0).all()
@@ -245,7 +242,7 @@ class TestSetClauseEdgeCasesFixed:
 
         # Test safe division
         result = star.execute_query(
-            "MATCH (p:Person) SET p.half_age = p.age / 2 RETURN p.name AS name, p.half_age AS half"
+            "MATCH (p:Person) SET p.half_age = p.age / 2 RETURN p.name AS name, p.half_age AS half",
         )
         assert len(result) == 4
         # Verify division results
@@ -260,7 +257,7 @@ class TestSetClauseEdgeCasesFixed:
         # Test simple string concatenation (may not support complex expressions yet)
         try:
             result = star.execute_query(
-                "MATCH (p:Person) SET p.name_dept = p.name + ' - ' + p.department RETURN p.name AS name, p.name_dept AS concat"
+                "MATCH (p:Person) SET p.name_dept = p.name + ' - ' + p.department RETURN p.name AS name, p.name_dept AS concat",
             )
             assert len(result) == 4
             # Check non-null concatenations if the operation succeeds
@@ -274,7 +271,7 @@ class TestSetClauseEdgeCasesFixed:
                 or "+" in str(e)
                 or "not"
                 in str(
-                    e
+                    e,
                 ).lower()  # BindingFrame path raises NotImplementedError
             )
 
@@ -284,7 +281,7 @@ class TestSetClauseEdgeCasesFixed:
 
         # Test simple numeric operations (which should work)
         result = star.execute_query(
-            "MATCH (p:Person) SET p.age_doubled = p.age * 2, p.salary_rounded = p.salary RETURN p.name AS name, p.age_doubled AS doubled"
+            "MATCH (p:Person) SET p.age_doubled = p.age * 2, p.salary_rounded = p.salary RETURN p.name AS name, p.age_doubled AS doubled",
         )
         assert len(result) == 4
         # Verify numeric operations work
@@ -308,7 +305,7 @@ class TestSetClausePerformanceBaseline:
                     ["Engineering", "Sales", "Marketing", "HR"][i % 4]
                     for i in range(1000)
                 ],
-            }
+            },
         )
 
         person_table = EntityTable(
@@ -329,7 +326,7 @@ class TestSetClausePerformanceBaseline:
         )
 
         context = Context(
-            entity_mapping=EntityMapping(mapping={"Person": person_table})
+            entity_mapping=EntityMapping(mapping={"Person": person_table}),
         )
         star = Star(context=context)
 
@@ -337,7 +334,7 @@ class TestSetClausePerformanceBaseline:
         start_time = time.time()
 
         result = star.execute_query(
-            "MATCH (p:Person) SET p.bonus = p.salary * 0.1, p.total = p.salary + p.bonus RETURN p.name AS name, p.total AS total"
+            "MATCH (p:Person) SET p.bonus = p.salary * 0.1, p.total = p.salary + p.bonus RETURN p.name AS name, p.total AS total",
         )
 
         execution_time = time.time() - start_time
@@ -348,7 +345,7 @@ class TestSetClausePerformanceBaseline:
 
         # Performance baseline (for comparison with PySpark)
         print(
-            f"Pandas SET operation on 1000 rows: {execution_time:.3f} seconds"
+            f"Pandas SET operation on 1000 rows: {execution_time:.3f} seconds",
         )
         assert execution_time < 5.0  # Should complete in under 5 seconds
 
@@ -361,7 +358,7 @@ class TestSetClausePerformanceBaseline:
             {
                 ID_COLUMN: range(500),
                 "base_value": [100 + i for i in range(500)],
-            }
+            },
         )
 
         person_table = EntityTable(
@@ -374,7 +371,7 @@ class TestSetClausePerformanceBaseline:
         )
 
         context = Context(
-            entity_mapping=EntityMapping(mapping={"Person": person_table})
+            entity_mapping=EntityMapping(mapping={"Person": person_table}),
         )
         star = Star(context=context)
 
@@ -388,7 +385,7 @@ class TestSetClausePerformanceBaseline:
                    p.prop3 = p.base_value * 1.3,
                    p.prop4 = p.base_value * 1.4,
                    p.prop5 = p.base_value * 1.5
-               RETURN p.base_value AS base, p.prop1 AS prop1, p.prop2 AS prop2, p.prop3 AS prop3, p.prop4 AS prop4, p.prop5 AS prop5"""
+               RETURN p.base_value AS base, p.prop1 AS prop1, p.prop2 AS prop2, p.prop3 AS prop3, p.prop4 AS prop4, p.prop5 AS prop5""",
         )
 
         execution_time = time.time() - start_time
@@ -398,6 +395,6 @@ class TestSetClausePerformanceBaseline:
         assert len(result.columns) == 6  # base + 5 properties
 
         print(
-            f"Multiple property SET on 500 rows: {execution_time:.3f} seconds"
+            f"Multiple property SET on 500 rows: {execution_time:.3f} seconds",
         )
         assert execution_time < 3.0  # Should be reasonably fast

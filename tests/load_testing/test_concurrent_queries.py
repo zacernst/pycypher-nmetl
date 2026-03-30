@@ -10,9 +10,7 @@ true parallelism where available.
 
 from __future__ import annotations
 
-import gc
 import threading
-import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 
@@ -141,13 +139,9 @@ class TestConcurrentQueryExecution:
         assert len(results_b) == 10
         # All runs of query_a should produce identical results.
         for r in results_a[1:]:
-            assert r == results_a[0], (
-                "Query A results inconsistent across threads"
-            )
+            assert r == results_a[0], "Query A results inconsistent across threads"
         for r in results_b[1:]:
-            assert r == results_b[0], (
-                "Query B results inconsistent across threads"
-            )
+            assert r == results_b[0], "Query B results inconsistent across threads"
 
 
 class TestThroughputUnderLoad:

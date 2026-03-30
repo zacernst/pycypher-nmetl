@@ -27,7 +27,9 @@ def parse(cypher_query: str, *, as_json: bool, run_validation: bool) -> None:
     from pycypher.nmetl_cli import parse as _original_parse
 
     # Delegate to original implementation
-    _original_parse(cypher_query, as_json=as_json, run_validation=run_validation)
+    _original_parse(
+        cypher_query, as_json=as_json, run_validation=run_validation
+    )
 
 
 @click.command()

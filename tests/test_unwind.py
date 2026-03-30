@@ -31,7 +31,7 @@ def people_context() -> Context:
                 ["java"],
                 ["python", "sql", "graph"],
             ],
-        }
+        },
     )
     table = EntityTable(
         entity_type="Person",
@@ -61,7 +61,7 @@ class TestUnwindBasic:
         """UNWIND on an integer literal list produces one row per element."""
         star = Star(context=people_context)
         result = star.execute_query(
-            "MATCH (p:Person) WITH collect(p.age) AS ages UNWIND ages AS a RETURN a"
+            "MATCH (p:Person) WITH collect(p.age) AS ages UNWIND ages AS a RETURN a",
         )
         assert len(result) == 3
         assert set(result["a"].tolist()) == {30, 25, 35}
@@ -74,7 +74,7 @@ class TestUnwindBasic:
             "MATCH (p:Person) "
             "WITH collect(p.age) AS ages ORDER BY ages "
             "UNWIND ages AS a "
-            "RETURN a"
+            "RETURN a",
         )
         # After ORDER BY (on the list as a whole, not individual elements)
         # Just verify all values present
@@ -87,7 +87,7 @@ class TestUnwindBasic:
             "MATCH (p:Person) "
             "WITH collect(p.name) AS names "
             "UNWIND names AS name "
-            "RETURN name"
+            "RETURN name",
         )
         assert len(result) == 3
         assert set(result["name"].tolist()) == {"Alice", "Bob", "Carol"}
@@ -100,7 +100,8 @@ class TestUnwindBasic:
 
 class TestUnwindAfterMatch:
     def test_unwind_entity_list_property(
-        self, people_context: Context
+        self,
+        people_context: Context,
     ) -> None:
         """Explode p.tags — Alice has 2 tags, Bob has 1, Carol has 3 → 6 rows."""
         star = Star(context=people_context)
@@ -108,14 +109,15 @@ class TestUnwindAfterMatch:
             "MATCH (p:Person) "
             "WITH p.name AS name, p.tags AS tags "
             "UNWIND tags AS tag "
-            "RETURN name, tag"
+            "RETURN name, tag",
         )
         assert len(result) == 6  # 2 + 1 + 3
         assert "tag" in result.columns
         assert "name" in result.columns
 
     def test_unwind_entity_tags_with_filter(
-        self, people_context: Context
+        self,
+        people_context: Context,
     ) -> None:
         """Filter tags to 'python' rows only — Alice and Carol → 2 rows."""
         star = Star(context=people_context)
@@ -124,14 +126,15 @@ class TestUnwindAfterMatch:
             "WITH p.name AS name, p.tags AS tags "
             "UNWIND tags AS tag "
             "WITH name, tag WHERE tag = 'python' "
-            "RETURN name, tag"
+            "RETURN name, tag",
         )
         assert len(result) == 2
         assert set(result["name"].tolist()) == {"Alice", "Carol"}
         assert all(t == "python" for t in result["tag"].tolist())
 
     def test_unwind_produces_correct_name_tag_pairs(
-        self, people_context: Context
+        self,
+        people_context: Context,
     ) -> None:
         """Bob has only ['java'] — check his row is correct."""
         star = Star(context=people_context)
@@ -140,7 +143,7 @@ class TestUnwindAfterMatch:
             "WITH p.name AS name, p.tags AS tags "
             "UNWIND tags AS tag "
             "WITH name, tag WHERE name = 'Bob' "
-            "RETURN name, tag"
+            "RETURN name, tag",
         )
         assert len(result) == 1
         assert result["tag"].iloc[0] == "java"
@@ -156,12 +159,13 @@ class TestUnwindReturnColumn:
         """The UNWIND alias is available as a RETURN column."""
         star = Star(context=people_context)
         result = star.execute_query(
-            "MATCH (p:Person) WITH collect(p.name) AS names UNWIND names AS n RETURN n"
+            "MATCH (p:Person) WITH collect(p.name) AS names UNWIND names AS n RETURN n",
         )
         assert "n" in result.columns
 
     def test_unwind_alias_available_in_where(
-        self, people_context: Context
+        self,
+        people_context: Context,
     ) -> None:
         """The UNWIND alias is usable in a subsequent WITH WHERE clause."""
         star = Star(context=people_context)
@@ -170,7 +174,7 @@ class TestUnwindReturnColumn:
             "WITH collect(p.age) AS ages "
             "UNWIND ages AS age "
             "WITH age WHERE age > 25 "
-            "RETURN age"
+            "RETURN age",
         )
         assert all(a > 25 for a in result["age"].tolist())
         assert len(result) == 2  # Alice (30) and Carol (35)

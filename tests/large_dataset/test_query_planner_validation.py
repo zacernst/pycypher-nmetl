@@ -21,12 +21,12 @@ from pycypher.query_planner import (
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture()
+@pytest.fixture
 def planner() -> QueryPlanner:
     return QueryPlanner()
 
 
-@pytest.fixture()
+@pytest.fixture
 def tight_planner() -> QueryPlanner:
     """Planner with a tight 100MB memory budget."""
     return QueryPlanner(memory_budget_bytes=100 * 1024 * 1024)
@@ -100,7 +100,8 @@ class TestJoinStrategySelection:
         assert plan.strategy != JoinStrategy.MERGE
 
     def test_memory_warning_on_large_hash(
-        self, tight_planner: QueryPlanner
+        self,
+        tight_planner: QueryPlanner,
     ) -> None:
         """Hash join exceeding budget should produce warning in notes."""
         plan = tight_planner.plan_join(
@@ -148,7 +149,8 @@ class TestAggregationStrategySelection:
         assert plan.strategy == AggStrategy.STREAMING_AGG
 
     def test_sorted_takes_precedence_over_streaming(
-        self, planner: QueryPlanner
+        self,
+        planner: QueryPlanner,
     ) -> None:
         """Sorted input prefers sort-agg even for very large data."""
         plan = planner.plan_aggregation(
@@ -168,7 +170,8 @@ class TestCrossJoinPlanning:
     """Verify cross join plans with safety warnings."""
 
     def test_cross_join_calculates_output_rows(
-        self, planner: QueryPlanner
+        self,
+        planner: QueryPlanner,
     ) -> None:
         plan = planner.plan_cross_join(
             left_name="A",
@@ -176,11 +179,12 @@ class TestCrossJoinPlanning:
             left_rows=100,
             right_rows=200,
         )
-        assert plan.estimated_rows == 20_000  # noqa: PLR2004
+        assert plan.estimated_rows == 20_000
         assert plan.strategy == JoinStrategy.NESTED_LOOP
 
     def test_cross_join_warning_for_large_output(
-        self, planner: QueryPlanner
+        self,
+        planner: QueryPlanner,
     ) -> None:
         """Cross join producing >100K rows should warn."""
         plan = planner.plan_cross_join(
@@ -189,7 +193,7 @@ class TestCrossJoinPlanning:
             left_rows=1_000,
             right_rows=1_000,
         )
-        assert plan.estimated_rows == 1_000_000  # noqa: PLR2004
+        assert plan.estimated_rows == 1_000_000
         assert "WARNING" in plan.notes
 
     def test_cross_join_small_no_warning(self, planner: QueryPlanner) -> None:
@@ -200,7 +204,7 @@ class TestCrossJoinPlanning:
             left_rows=10,
             right_rows=10,
         )
-        assert plan.estimated_rows == 100  # noqa: PLR2004
+        assert plan.estimated_rows == 100
         assert "WARNING" not in plan.notes
 
 
@@ -219,7 +223,8 @@ class TestMemoryEstimation:
         assert est["total_estimated_bytes"] == 0
 
     def test_plan_with_joins_accumulates_memory(
-        self, planner: QueryPlanner
+        self,
+        planner: QueryPlanner,
     ) -> None:
         plan = QueryPlan(
             joins=[
@@ -237,7 +242,7 @@ class TestMemoryEstimation:
                     strategy=JoinStrategy.HASH,
                     estimated_memory_bytes=300 * 1024 * 1024,
                 ),
-            ]
+            ],
         )
         est = planner.estimate_memory(plan)
         assert est["total_estimated_mb"] == pytest.approx(800, abs=1)
@@ -253,7 +258,8 @@ class TestMemoryEstimation:
         assert est["total_estimated_mb"] == pytest.approx(100, abs=1)
 
     def test_budget_exceeded_detection(
-        self, tight_planner: QueryPlanner
+        self,
+        tight_planner: QueryPlanner,
     ) -> None:
         """Plan exceeding budget should be detected."""
         plan = QueryPlan(
@@ -265,11 +271,11 @@ class TestMemoryEstimation:
                     strategy=JoinStrategy.HASH,
                     estimated_memory_bytes=200 * 1024 * 1024,
                 ),
-            ]
+            ],
         )
         est = tight_planner.estimate_memory(plan)
         assert est["within_budget"] is False
-        assert est["utilisation_pct"] > 100  # noqa: PLR2004
+        assert est["utilisation_pct"] > 100
 
 
 # ---------------------------------------------------------------------------

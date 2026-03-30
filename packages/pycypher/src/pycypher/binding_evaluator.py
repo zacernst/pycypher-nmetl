@@ -102,7 +102,10 @@ _DEBUG_ENABLED: bool = LOGGER.isEnabledFor(logging.DEBUG)
 
 
 def _broadcast_scalar(
-    val: object, n: int, *, dtype: type | str | None = None
+    val: object,
+    n: int,
+    *,
+    dtype: type | str | None = None,
 ) -> pd.Series:
     """Create a length-*n* Series filled with *val*, avoiding ``[val] * n``.
 
@@ -303,17 +306,13 @@ def _extract_temporal_field(value: object, field: str) -> object:
             LOGGER.debug(
                 "Temporal field extraction failed: %r is not a valid date/datetime string",
                 value,
-        )
+            )
         return None
 
 
 # Aggregation dispatch helpers (_agg_sum, _agg_avg, etc.), _AGG_OPS, and
 # _PERCENTILE_AGGREGATIONS now live exclusively in aggregation_evaluator.py.
 # KNOWN_AGGREGATIONS is re-exported above for backward compatibility.
-
-from shared.helpers import (
-    is_null_raw_list as _is_null_raw_list,  # noqa: E402, F401
-)
 
 
 class BindingExpressionEvaluator:
@@ -485,8 +484,8 @@ class BindingExpressionEvaluator:
             ValueError: For semantic errors (unknown variable, missing property).
 
         """
-        _t0 = time.perf_counter()
         if _DEBUG_ENABLED:
+            _t0 = time.perf_counter()
             _expr_type = type(expression).__name__
             LOGGER.debug("evaluate: %s  rows=%d", _expr_type, len(self.frame))
 
@@ -814,7 +813,7 @@ class BindingExpressionEvaluator:
             Boolean ``pd.Series`` of length equal to the frame size.
 
         """
-        from pycypher.binding_frame import _source_to_pandas
+        from pycypher.dataframe_utils import source_to_pandas as _source_to_pandas
         from pycypher.constants import ID_COLUMN
 
         n_rows = len(self.frame.bindings)
@@ -890,7 +889,9 @@ class BindingExpressionEvaluator:
 
         """
         return self.comparison_evaluator.evaluate_null_check(
-            op, operand_expr, self
+            op,
+            operand_expr,
+            self,
         )
 
     def _eval_string_predicate(
@@ -1043,6 +1044,7 @@ class BindingExpressionEvaluator:
         Raises:
             ValueError: If *func_name* is an aggregation function used in a
                 scalar context, or if the function is unknown to the registry.
+
         """
         return self.scalar_function_evaluator.evaluate_scalar_function(
             func_name,

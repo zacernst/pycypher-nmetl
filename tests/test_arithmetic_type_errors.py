@@ -38,7 +38,7 @@ def _star_empty():
         context=Context(
             entity_mapping=EntityMapping(mapping={}),
             relationship_mapping=RelationshipMapping(mapping={}),
-        )
+        ),
     )
 
 
@@ -63,7 +63,7 @@ def _star_with_people():
             "name": ["Alice", "Bob"],
             "age": [30, 25],
             "score": [9.5, 8.0],
-        }
+        },
     )
     table = EntityTable(
         entity_type="Person",
@@ -81,7 +81,7 @@ def _star_with_people():
         context=Context(
             entity_mapping=EntityMapping(mapping={"Person": table}),
             relationship_mapping=RelationshipMapping(mapping={}),
-        )
+        ),
     )
 
 
@@ -92,7 +92,8 @@ def _star_with_people():
 
 class TestArithmeticTypeMismatchFromProperties:
     """Arithmetic between incompatible property types must raise TypeError
-    with a message that names both operand types and the operator."""
+    with a message that names both operand types and the operator.
+    """
 
     def test_int_plus_string_raises_type_error(self) -> None:
         star = _star_with_people()
@@ -207,7 +208,7 @@ class TestTemporalArithmeticTypeMismatch:
         assert result["d"].iloc[0] == "2024-01-06"
 
     def test_date_plus_string_raises_type_error(self) -> None:
-        """date + arbitrary string (not a duration) must raise."""
+        """Date + arbitrary string (not a duration) must raise."""
         with pytest.raises(TypeError):
             _q("RETURN date('2024-01-01') + 'not a duration' AS d")
 
@@ -240,12 +241,12 @@ class TestValidArithmeticStillWorks:
     def test_property_int_plus_int(self) -> None:
         star = _star_with_people()
         result = star.execute_query(
-            "MATCH (p:Person) WHERE p.name = 'Alice' RETURN p.age + 10 AS v"
+            "MATCH (p:Person) WHERE p.name = 'Alice' RETURN p.age + 10 AS v",
         )
         assert result["v"].iloc[0] == 40
 
     def test_null_arithmetic_still_returns_null(self) -> None:
-        """null + 5 must still return null, not raise."""
+        """Null + 5 must still return null, not raise."""
         import pandas as pd
         from pycypher.relational_models import (
             ID_COLUMN,
@@ -269,7 +270,7 @@ class TestValidArithmeticStillWorks:
             context=Context(
                 entity_mapping=EntityMapping(mapping={"P": table}),
                 relationship_mapping=RelationshipMapping(mapping={}),
-            )
+            ),
         )
         result = star.execute_query("MATCH (p:P) RETURN p.x + 5 AS v")
         assert pd.isna(result["v"].iloc[0])

@@ -136,6 +136,7 @@ class BooleanExpressionEvaluator:
 
         Args:
             frame: BindingFrame providing variable and expression evaluation context
+
         """
         self.frame = frame
 
@@ -152,6 +153,7 @@ class BooleanExpressionEvaluator:
 
         Returns:
             Series with boolean AND results using Kleene logic
+
         """
         _t0 = time.perf_counter()
         if _DEBUG_ENABLED:
@@ -166,7 +168,9 @@ class BooleanExpressionEvaluator:
         for operand in operands[1:]:
             result = kleene_and(result, expression_evaluator.evaluate(operand))
         if _DEBUG_ENABLED:
-            LOGGER.debug("boolean: AND  elapsed=%.4fs", time.perf_counter() - _t0)
+            LOGGER.debug(
+                "boolean: AND  elapsed=%.4fs", time.perf_counter() - _t0
+            )
         return result
 
     def evaluate_or(
@@ -182,6 +186,7 @@ class BooleanExpressionEvaluator:
 
         Returns:
             Series with boolean OR results using Kleene logic
+
         """
         _t0 = time.perf_counter()
         if _DEBUG_ENABLED:
@@ -196,7 +201,9 @@ class BooleanExpressionEvaluator:
         for operand in operands[1:]:
             result = kleene_or(result, expression_evaluator.evaluate(operand))
         if _DEBUG_ENABLED:
-            LOGGER.debug("boolean: OR  elapsed=%.4fs", time.perf_counter() - _t0)
+            LOGGER.debug(
+                "boolean: OR  elapsed=%.4fs", time.perf_counter() - _t0
+            )
         return result
 
     def evaluate_not(
@@ -216,6 +223,7 @@ class BooleanExpressionEvaluator:
 
         Returns:
             Series with boolean NOT results using Kleene logic
+
         """
         _t0 = time.perf_counter()
         if _DEBUG_ENABLED:
@@ -223,7 +231,9 @@ class BooleanExpressionEvaluator:
         operand = expression_evaluator.evaluate(operand_expr)
         result = kleene_not(operand)
         if _DEBUG_ENABLED:
-            LOGGER.debug("boolean: NOT  elapsed=%.4fs", time.perf_counter() - _t0)
+            LOGGER.debug(
+                "boolean: NOT  elapsed=%.4fs", time.perf_counter() - _t0
+            )
         return result
 
     def evaluate_xor(
@@ -239,6 +249,7 @@ class BooleanExpressionEvaluator:
 
         Returns:
             Series with boolean XOR results using Kleene logic
+
         """
         _t0 = time.perf_counter()
         if _DEBUG_ENABLED:
@@ -253,7 +264,9 @@ class BooleanExpressionEvaluator:
         for operand in operands[1:]:
             result = kleene_xor(result, expression_evaluator.evaluate(operand))
         if _DEBUG_ENABLED:
-            LOGGER.debug("boolean: XOR  elapsed=%.4fs", time.perf_counter() - _t0)
+            LOGGER.debug(
+                "boolean: XOR  elapsed=%.4fs", time.perf_counter() - _t0
+            )
         return result
 
     def evaluate_bool_chain(
@@ -277,6 +290,7 @@ class BooleanExpressionEvaluator:
 
         Raises:
             ValueError: If key is not a supported boolean operation
+
         """
         _t0 = time.perf_counter()
         if _DEBUG_ENABLED:
@@ -288,7 +302,9 @@ class BooleanExpressionEvaluator:
             )
         if key not in _BOOL_FOLD_OPS:
             raise UnsupportedOperatorError(
-                key, list(_BOOL_FOLD_OPS), category="boolean"
+                key,
+                list(_BOOL_FOLD_OPS),
+                category="boolean",
             )
 
         bin_op, identity = _BOOL_FOLD_OPS[key]
@@ -318,5 +334,6 @@ class BooleanExpressionEvaluator:
 
         Returns:
             Series with nulls replaced by False
+
         """
         return series.fillna(False)

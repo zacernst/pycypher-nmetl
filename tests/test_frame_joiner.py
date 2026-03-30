@@ -12,13 +12,10 @@ Tests the five public methods of ``FrameJoiner``:
 from __future__ import annotations
 
 from typing import Any
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pandas as pd
-import pytest
-
 from pycypher.frame_joiner import FrameJoiner
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -39,7 +36,9 @@ def _make_joiner(
     )
 
 
-def _mock_frame(var_names: list[str], bindings: pd.DataFrame | None = None) -> MagicMock:
+def _mock_frame(
+    var_names: list[str], bindings: pd.DataFrame | None = None,
+) -> MagicMock:
     """Create a mock BindingFrame with specified var_names."""
     frame = MagicMock()
     frame.var_names = var_names
@@ -67,7 +66,7 @@ class TestCoerceJoin:
 
         result = joiner.coerce_join(frame_a, frame_b)
 
-        frame_a.join.assert_called_once_with(frame_b, "y", "y")
+        frame_a.join.assert_called_once_with(frame_b, "y", "y", join_plan=None)
         assert result is joined
 
     def test_no_shared_variable_uses_cross_join(self) -> None:
@@ -156,7 +155,95 @@ class TestMergeFramesForMatch:
 
         result = joiner.merge_frames_for_match(current, match)
 
-        current.join.assert_called_once_with(match, "p", "p")
+        current.join.assert_called_once_with(match, "p", "p", join_plan=None)
+
+    def test_pushdown_filters_match_only_vars_before_join(self) -> None:
+        """WHERE referencing only match_frame vars is applied before the join."""
+        from pycypher.ast_models import Comparison, PropertyLookup, Variable
+
+        where_fn = MagicMock(side_effect=lambda expr, frame: frame)
+        joiner = _make_joiner(where_fn=where_fn)
+        current = _mock_frame(["x"])
+        match = _mock_frame(["y"])
+        joined = MagicMock()
+        current.cross_join = MagicMock(return_value=joined)
+
+        # WHERE y.name = 'Alice' — references only 'y' (match_frame var)
+        where_expr = Comparison(
+            left=PropertyLookup(variable=Variable(name="y"), property_name="name"),
+            operator="=",
+            right=Variable(name="y"),
+        )
+        joiner.merge_frames_for_match(current, match, where_clause=where_expr)
+
+        # where_fn should be called with match frame (pre-join), not joined
+        assert where_fn.call_count == 1
+        call_args = where_fn.call_args
+        assert call_args[0][1] is match  # applied to match_frame, not joined
+
+    def test_cross_frame_predicate_stays_post_join(self) -> None:
+        """WHERE referencing vars from both frames stays after the join."""
+        from pycypher.ast_models import Comparison, PropertyLookup, Variable
+
+        filtered = MagicMock()
+        where_fn = MagicMock(return_value=filtered)
+        joiner = _make_joiner(where_fn=where_fn)
+        current = _mock_frame(["x"])
+        match = _mock_frame(["y"])
+        joined = MagicMock()
+        current.cross_join = MagicMock(return_value=joined)
+
+        # WHERE x.id = y.id — references both 'x' and 'y'
+        where_expr = Comparison(
+            left=PropertyLookup(variable=Variable(name="x"), property_name="id"),
+            operator="=",
+            right=PropertyLookup(variable=Variable(name="y"), property_name="id"),
+        )
+        result = joiner.merge_frames_for_match(current, match, where_clause=where_expr)
+
+        # where_fn should be called post-join on the joined frame
+        where_fn.assert_called_once_with(where_expr, joined)
+        assert result is filtered
+
+    def test_and_predicate_split_pushdown(self) -> None:
+        """AND with mixed vars: match-only conjuncts push down, rest stay."""
+        from pycypher.ast_models import And, Comparison, PropertyLookup, Variable
+
+        call_log: list[tuple[Any, Any]] = []
+
+        def tracking_where(expr: Any, frame: Any) -> Any:
+            call_log.append((expr, frame))
+            return frame
+
+        joiner = _make_joiner(where_fn=tracking_where)
+        current = _mock_frame(["x"])
+        match = _mock_frame(["y"])
+        joined = MagicMock()
+        current.cross_join = MagicMock(return_value=joined)
+
+        # y.age > 21 (pushable) AND x.id = y.id (not pushable)
+        conj_push = Comparison(
+            left=PropertyLookup(variable=Variable(name="y"), property_name="age"),
+            operator=">",
+            right=Variable(name="y"),
+        )
+        conj_stay = Comparison(
+            left=PropertyLookup(variable=Variable(name="x"), property_name="id"),
+            operator="=",
+            right=PropertyLookup(variable=Variable(name="y"), property_name="id"),
+        )
+        where_expr = And(operands=[conj_push, conj_stay])
+
+        joiner.merge_frames_for_match(current, match, where_clause=where_expr)
+
+        # Two calls: first pre-join on match, then post-join
+        assert len(call_log) == 2
+        # First call: pushable predicate on match_frame
+        assert call_log[0][0] is conj_push
+        assert call_log[0][1] is match
+        # Second call: remaining predicate on joined frame
+        assert call_log[1][0] is conj_stay
+        assert call_log[1][1] is joined
 
 
 # ---------------------------------------------------------------------------
@@ -201,7 +288,9 @@ class TestProcessOptionalMatch:
 
     def test_successful_match_no_shared_variable_empty(self) -> None:
         """Empty match result with no shared vars → failure path."""
-        match_frame = _mock_frame(["q"], bindings=pd.DataFrame({"q": pd.Series([], dtype=object)}))
+        match_frame = _mock_frame(
+            ["q"], bindings=pd.DataFrame({"q": pd.Series([], dtype=object)}),
+        )
 
         match_fn = MagicMock(return_value=match_frame)
         current = _mock_frame(["p"])

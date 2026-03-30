@@ -39,7 +39,7 @@ def main() -> None:
                 "Marketing",
                 "Sales",
             ],
-        }
+        },
     )
 
     person_table = EntityTable(
@@ -74,7 +74,7 @@ def main() -> None:
 
     print("=== Example 1: toUpper in WHERE ===")
     result = star.execute_query(
-        "MATCH (p:Person) WHERE toUpper(trim(p.name)) = 'ALICE' RETURN p.name AS name"
+        "MATCH (p:Person) WHERE toUpper(trim(p.name)) = 'ALICE' RETURN p.name AS name",
     )
     print(result)
 
@@ -84,7 +84,7 @@ def main() -> None:
 
     print("\n=== Example 2: size() in WHERE ===")
     result = star.execute_query(
-        "MATCH (p:Person) WHERE size(trim(p.name)) > 4 RETURN p.name AS name, p.age AS age"
+        "MATCH (p:Person) WHERE size(trim(p.name)) > 4 RETURN p.name AS name, p.age AS age",
     )
     print(result)
 
@@ -94,7 +94,7 @@ def main() -> None:
 
     print("\n=== Example 3: abs() in WHERE ===")
     result = star.execute_query(
-        "MATCH (p:Person) WHERE abs(p.score) > 80.0 RETURN p.name AS name, p.score AS score"
+        "MATCH (p:Person) WHERE abs(p.score) > 80.0 RETURN p.name AS name, p.score AS score",
     )
     print(result)
 
@@ -106,7 +106,7 @@ def main() -> None:
     result = star.execute_query(
         "MATCH (p:Person) "
         "WHERE toUpper(p.department) = 'ENGINEERING' AND p.age < 30 "
-        "RETURN p.name AS name, p.age AS age"
+        "RETURN p.name AS name, p.age AS age",
     )
     print(result)
 
@@ -118,7 +118,7 @@ def main() -> None:
     result = star.execute_query(
         "MATCH (p:Person) "
         "WHERE NOT toLower(p.department) = 'sales' "
-        "RETURN p.name AS name, p.department AS department"
+        "RETURN p.name AS name, p.department AS department",
     )
     print(result)
 
@@ -127,13 +127,13 @@ def main() -> None:
     # ---------------------------------------------------------------------------
 
     print(
-        "\n=== Example 6: WITH...WHERE with function on original property ==="
+        "\n=== Example 6: WITH...WHERE with function on original property ===",
     )
     result = star.execute_query(
         "MATCH (p:Person) "
         "WITH p.name AS name, p.score AS score "
         "WHERE toUpper(p.name) = 'BOB' "
-        "RETURN name AS name, score AS score"
+        "RETURN name AS name, score AS score",
     )
     print(result)
 
@@ -154,7 +154,7 @@ def main() -> None:
     )
 
     result = star.execute_query(
-        "MATCH (p:Person) WHERE is_long_name(p.name) RETURN p.name AS name"
+        "MATCH (p:Person) WHERE is_long_name(p.name) RETURN p.name AS name",
     )
     print(result)
 
@@ -164,7 +164,7 @@ def main() -> None:
 
     print("\n=== Example 8: toInteger() conversion in WHERE ===")
     result = star.execute_query(
-        "MATCH (p:Person) WHERE toInteger(p.age) > 30 RETURN p.name AS name, p.age AS age"
+        "MATCH (p:Person) WHERE toInteger(p.age) > 30 RETURN p.name AS name, p.age AS age",
     )
     print(result)
 

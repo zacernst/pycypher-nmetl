@@ -1,5 +1,4 @@
-"""
-Performance comparison TDD framework for Pandas vs PySpark backends.
+"""Performance comparison TDD framework for Pandas vs PySpark backends.
 
 This module provides Test-Driven Development framework for performance testing
 and optimization of the dual-backend architecture. Tests define performance
@@ -27,7 +26,6 @@ except ImportError:
     PSUTIL_AVAILABLE = False
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Tuple
 
 from pycypher.relational_models import (
     ID_COLUMN,
@@ -62,16 +60,13 @@ class PerformanceComparison:
     dataset_size: int
     pandas_measurement: PerformanceMeasurement
     spark_measurement: PerformanceMeasurement
-    speedup_factor: (
-        float  # spark_time / pandas_time (< 1.0 means Spark is faster)
-    )
+    speedup_factor: float  # spark_time / pandas_time (< 1.0 means Spark is faster)
     memory_efficiency: float  # spark_memory / pandas_memory
     recommendation: str  # Which backend to use
 
 
 class PerformanceMeasurementUtility:
-    """
-    Utility class for measuring and comparing backend performance.
+    """Utility class for measuring and comparing backend performance.
 
     This class provides TDD-driven utilities for systematic performance
     measurement and comparison between Pandas and PySpark backends.
@@ -80,10 +75,11 @@ class PerformanceMeasurementUtility:
     @staticmethod
     @contextmanager
     def measure_performance(
-        operation_name: str, backend: str, dataset_size: int
+        operation_name: str,
+        backend: str,
+        dataset_size: int,
     ):
-        """
-        Context manager for measuring performance of operations.
+        """Context manager for measuring performance of operations.
 
         Args:
             operation_name: Name of the operation being measured
@@ -92,6 +88,7 @@ class PerformanceMeasurementUtility:
 
         Yields:
             PerformanceMeasurement object to be populated
+
         """
         measurement = PerformanceMeasurement(
             operation=operation_name,
@@ -142,10 +139,10 @@ class PerformanceMeasurementUtility:
 
     @staticmethod
     def create_test_dataset(
-        size: int, entity_type: str = "Person"
-    ) -> Tuple[pd.DataFrame, EntityTable]:
-        """
-        Create test dataset of specified size for performance testing.
+        size: int,
+        entity_type: str = "Person",
+    ) -> tuple[pd.DataFrame, EntityTable]:
+        """Create test dataset of specified size for performance testing.
 
         Args:
             size: Number of rows in the dataset
@@ -153,6 +150,7 @@ class PerformanceMeasurementUtility:
 
         Returns:
             Tuple of (pandas DataFrame, EntityTable)
+
         """
         if size <= 1000:
             # Small dataset
@@ -166,7 +164,7 @@ class PerformanceMeasurementUtility:
                         for i in range(size)
                     ],
                     "salary": [50000 + (i % 50000) for i in range(size)],
-                }
+                },
             )
         else:
             # Large dataset - optimize creation
@@ -178,10 +176,11 @@ class PerformanceMeasurementUtility:
                     "name": [f"Person_{i}" for i in range(size)],
                     "age": np.random.randint(18, 80, size),
                     "department": np.random.choice(
-                        ["Engineering", "Sales", "Marketing", "HR"], size
+                        ["Engineering", "Sales", "Marketing", "HR"],
+                        size,
                     ),
                     "salary": np.random.randint(40000, 150000, size),
-                }
+                },
             )
 
         entity_table = EntityTable(
@@ -210,8 +209,7 @@ class PerformanceMeasurementUtility:
         pandas_measurement: PerformanceMeasurement,
         spark_measurement: PerformanceMeasurement,
     ) -> PerformanceComparison:
-        """
-        Compare performance measurements between backends.
+        """Compare performance measurements between backends.
 
         Args:
             pandas_measurement: Pandas backend measurement
@@ -219,12 +217,12 @@ class PerformanceMeasurementUtility:
 
         Returns:
             PerformanceComparison with analysis and recommendations
+
         """
         # Calculate speedup factor (< 1.0 means Spark is faster)
         if pandas_measurement.execution_time > 0:
             speedup_factor = (
-                spark_measurement.execution_time
-                / pandas_measurement.execution_time
+                spark_measurement.execution_time / pandas_measurement.execution_time
             )
         else:
             speedup_factor = float("inf")
@@ -232,15 +230,16 @@ class PerformanceMeasurementUtility:
         # Calculate memory efficiency
         if pandas_measurement.memory_usage > 0:
             memory_efficiency = (
-                spark_measurement.memory_usage
-                / pandas_measurement.memory_usage
+                spark_measurement.memory_usage / pandas_measurement.memory_usage
             )
         else:
             memory_efficiency = 1.0
 
         # Generate recommendation
         if speedup_factor < 0.8 and memory_efficiency < 1.2:
-            recommendation = "Use PySpark - significantly faster with acceptable memory usage"
+            recommendation = (
+                "Use PySpark - significantly faster with acceptable memory usage"
+            )
         elif speedup_factor < 1.0:
             recommendation = "Use PySpark - faster execution"
         elif speedup_factor > 2.0:
@@ -248,9 +247,7 @@ class PerformanceMeasurementUtility:
         elif memory_efficiency < 0.8:
             recommendation = "Use PySpark - much more memory efficient"
         else:
-            recommendation = (
-                "Use Pandas - better overall performance for this scale"
-            )
+            recommendation = "Use Pandas - better overall performance for this scale"
 
         return PerformanceComparison(
             operation=pandas_measurement.operation,
@@ -264,8 +261,7 @@ class PerformanceMeasurementUtility:
 
 
 class TestPerformanceComparisonTDD:
-    """
-    TDD tests for performance comparison framework.
+    """TDD tests for performance comparison framework.
 
     These tests define the performance contracts and benchmarking requirements
     for the dual-backend implementation.
@@ -274,7 +270,9 @@ class TestPerformanceComparisonTDD:
     def test_performance_measurement_utility_basic(self):
         """Test basic performance measurement utility functionality."""
         with PerformanceMeasurementUtility.measure_performance(
-            "test_operation", "pandas", 100
+            "test_operation",
+            "pandas",
+            100,
         ) as measurement:
             # Simulate some work
             time.sleep(0.01)
@@ -290,7 +288,7 @@ class TestPerformanceComparisonTDD:
     def test_test_dataset_creation_small(self):
         """Test creation of small test datasets."""
         df, entity_table = PerformanceMeasurementUtility.create_test_dataset(
-            100
+            100,
         )
 
         assert len(df) == 100
@@ -305,7 +303,7 @@ class TestPerformanceComparisonTDD:
     def test_test_dataset_creation_large(self):
         """Test creation of large test datasets for performance testing."""
         df, entity_table = PerformanceMeasurementUtility.create_test_dataset(
-            10000
+            10000,
         )
 
         assert len(df) == 10000
@@ -341,19 +339,17 @@ class TestPerformanceComparisonTDD:
         )
 
         comparison = PerformanceMeasurementUtility.compare_measurements(
-            pandas_measurement, spark_measurement
+            pandas_measurement,
+            spark_measurement,
         )
 
         assert comparison.speedup_factor == 0.5  # Spark is 2x faster
-        assert (
-            comparison.memory_efficiency == 0.8
-        )  # Spark uses 80% of Pandas memory
+        assert comparison.memory_efficiency == 0.8  # Spark uses 80% of Pandas memory
         assert "PySpark" in comparison.recommendation
 
 
 class TestBackendPerformanceContractsTDD:
-    """
-    TDD performance contracts for backend implementations.
+    """TDD performance contracts for backend implementations.
 
     These tests define the performance expectations and contracts that
     the PySpark implementation must meet in Phase 2.
@@ -361,25 +357,26 @@ class TestBackendPerformanceContractsTDD:
 
     @pytest.mark.parametrize("dataset_size", [1000, 10000, 100000])
     def test_pandas_performance_baseline(self, dataset_size):
-        """
-        Establish performance baselines for Pandas backend.
+        """Establish performance baselines for Pandas backend.
 
         These baselines will be used to validate PySpark performance improvements.
         """
         df, entity_table = PerformanceMeasurementUtility.create_test_dataset(
-            dataset_size
+            dataset_size,
         )
         context = Context(
-            entity_mapping=EntityMapping(mapping={"Person": entity_table})
+            entity_mapping=EntityMapping(mapping={"Person": entity_table}),
         )
 
         # Test basic MATCH query
         with PerformanceMeasurementUtility.measure_performance(
-            f"match_query", "pandas", dataset_size
+            "match_query",
+            "pandas",
+            dataset_size,
         ) as measurement:
             star = Star(context=context)
             result = star.execute_query(
-                "MATCH (p:Person) RETURN p.name AS name, p.age AS age"
+                "MATCH (p:Person) RETURN p.name AS name, p.age AS age",
             )
             measurement.result_size = len(result)
 
@@ -412,14 +409,16 @@ class TestBackendPerformanceContractsTDD:
     def test_pandas_set_operation_baseline(self):
         """Establish baseline for SET operation performance."""
         df, entity_table = PerformanceMeasurementUtility.create_test_dataset(
-            5000
+            5000,
         )
         context = Context(
-            entity_mapping=EntityMapping(mapping={"Person": entity_table})
+            entity_mapping=EntityMapping(mapping={"Person": entity_table}),
         )
 
         with PerformanceMeasurementUtility.measure_performance(
-            "set_operation", "pandas", 5000
+            "set_operation",
+            "pandas",
+            5000,
         ) as measurement:
             star = Star(context=context)
             result = star.execute_query("""
@@ -438,8 +437,7 @@ class TestBackendPerformanceContractsTDD:
 
     @pytest.mark.skip(reason="Phase 2: PySpark implementation not complete")
     def test_spark_performance_contracts_tdd(self):
-        """
-        TDD: Define performance contracts for PySpark implementation.
+        """TDD: Define performance contracts for PySpark implementation.
 
         These tests will be enabled in Phase 2 and define the expected
         performance characteristics of the PySpark backend.
@@ -473,11 +471,10 @@ class TestBackendPerformanceContractsTDD:
             # Additional contract validation will be implemented in Phase 2
 
     @pytest.mark.skip(
-        reason="Phase 2: Comparative benchmarking not implemented"
+        reason="Phase 2: Comparative benchmarking not implemented",
     )
     def test_comprehensive_performance_comparison_tdd(self):
-        """
-        TDD: Comprehensive performance comparison between backends.
+        """TDD: Comprehensive performance comparison between backends.
 
         This test defines the framework for systematic comparison that
         will guide optimization decisions in Phase 2.
@@ -509,8 +506,7 @@ class TestBackendPerformanceContractsTDD:
             # Actual validation will be implemented in Phase 2
 
     def test_performance_regression_detection_tdd(self):
-        """
-        TDD: Framework for detecting performance regressions.
+        """TDD: Framework for detecting performance regressions.
 
         Defines how to detect if changes negatively impact performance.
         """
@@ -534,8 +530,7 @@ class TestBackendPerformanceContractsTDD:
 
 
 class TestOptimizationGuidanceTDD:
-    """
-    TDD guidance for optimization strategies and decisions.
+    """TDD guidance for optimization strategies and decisions.
 
     These tests document optimization strategies and provide guidance
     for Phase 2 implementation decisions.
@@ -646,7 +641,7 @@ def performance_test_datasets():
 
     for size in sizes:
         df, entity_table = PerformanceMeasurementUtility.create_test_dataset(
-            size
+            size,
         )
         datasets[f"dataset_{size}"] = {
             "dataframe": df,

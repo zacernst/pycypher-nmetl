@@ -45,18 +45,18 @@ from pycypher.relational_models import (
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture()
+@pytest.fixture
 def simple_context() -> Context:
     """Minimal context: 3 Person nodes, 2 KNOWS edges (Alice->Bob, Alice->Carol)."""
     people_df = pd.DataFrame(
-        {ID_COLUMN: [1, 2, 3], "name": ["Alice", "Bob", "Carol"]}
+        {ID_COLUMN: [1, 2, 3], "name": ["Alice", "Bob", "Carol"]},
     )
     knows_df = pd.DataFrame(
         {
             ID_COLUMN: [101, 102],
             RELATIONSHIP_SOURCE_COLUMN: [1, 1],
             RELATIONSHIP_TARGET_COLUMN: [2, 3],
-        }
+        },
     )
     return Context(
         entity_mapping=EntityMapping(
@@ -68,25 +68,29 @@ def simple_context() -> Context:
                     source_obj_attribute_map={"name": "name"},
                     attribute_map={"name": "name"},
                     source_obj=people_df,
-                )
-            }
+                ),
+            },
         ),
         relationship_mapping=RelationshipMapping(
             mapping={
                 "KNOWS": RelationshipTable(
                     relationship_type="KNOWS",
                     identifier="KNOWS",
-                    column_names=[ID_COLUMN, RELATIONSHIP_SOURCE_COLUMN, RELATIONSHIP_TARGET_COLUMN],
+                    column_names=[
+                        ID_COLUMN,
+                        RELATIONSHIP_SOURCE_COLUMN,
+                        RELATIONSHIP_TARGET_COLUMN,
+                    ],
                     source_obj_attribute_map={},
                     attribute_map={},
                     source_obj=knows_df,
-                )
-            }
+                ),
+            },
         ),
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def alice_frame(simple_context: Context) -> BindingFrame:
     """Frame with 3 bound person rows."""
     bindings = pd.DataFrame({"p": [1, 2, 3]})
@@ -97,7 +101,7 @@ def alice_frame(simple_context: Context) -> BindingFrame:
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def evaluator_mock() -> MagicMock:
     """Mock for ExpressionEvaluatorProtocol."""
     return MagicMock()
@@ -112,7 +116,9 @@ class TestEvaluateExistsEdgeCases:
     """Edge cases in evaluate_exists dispatch logic."""
 
     def test_non_pattern_non_query_returns_all_false(
-        self, alice_frame: BindingFrame, evaluator_mock: MagicMock
+        self,
+        alice_frame: BindingFrame,
+        evaluator_mock: MagicMock,
     ) -> None:
         """Content that is neither Pattern nor Query → all False."""
         ee = ExistsEvaluator(alice_frame)
@@ -120,7 +126,9 @@ class TestEvaluateExistsEdgeCases:
         assert list(result) == [False, False, False]
 
     def test_none_content_returns_all_false(
-        self, alice_frame: BindingFrame, evaluator_mock: MagicMock
+        self,
+        alice_frame: BindingFrame,
+        evaluator_mock: MagicMock,
     ) -> None:
         """None content → all False."""
         ee = ExistsEvaluator(alice_frame)
@@ -128,7 +136,9 @@ class TestEvaluateExistsEdgeCases:
         assert list(result) == [False, False, False]
 
     def test_integer_content_returns_all_false(
-        self, alice_frame: BindingFrame, evaluator_mock: MagicMock
+        self,
+        alice_frame: BindingFrame,
+        evaluator_mock: MagicMock,
     ) -> None:
         """Arbitrary non-AST content → all False."""
         ee = ExistsEvaluator(alice_frame)
@@ -136,7 +146,9 @@ class TestEvaluateExistsEdgeCases:
         assert list(result) == [False, False, False]
 
     def test_empty_frame_returns_empty_series(
-        self, simple_context: Context, evaluator_mock: MagicMock
+        self,
+        simple_context: Context,
+        evaluator_mock: MagicMock,
     ) -> None:
         """Empty frame → empty boolean series."""
         empty_frame = BindingFrame(
@@ -158,7 +170,9 @@ class TestEvaluateExistsQuery:
     """EXISTS with Query content (full subquery path)."""
 
     def test_query_without_return_gets_synthetic_return(
-        self, alice_frame: BindingFrame, evaluator_mock: MagicMock
+        self,
+        alice_frame: BindingFrame,
+        evaluator_mock: MagicMock,
     ) -> None:
         """Query lacking RETURN clause gets a synthetic RETURN 1 AS _exists_flag."""
         source = NodePattern(variable=Variable(name="p"), labels=["Person"])
@@ -184,7 +198,9 @@ class TestEvaluateExistsQuery:
         assert result.iloc[2] is np.bool_(False)
 
     def test_query_with_return_uses_existing_return(
-        self, alice_frame: BindingFrame, evaluator_mock: MagicMock
+        self,
+        alice_frame: BindingFrame,
+        evaluator_mock: MagicMock,
     ) -> None:
         """Query with RETURN clause is used as-is."""
         source = NodePattern(variable=Variable(name="p"), labels=["Person"])
@@ -198,7 +214,7 @@ class TestEvaluateExistsQuery:
         pattern = Pattern(paths=[path])
         match = Match(pattern=pattern, where=None)
         ret = Return(
-            items=[ReturnItem(expression=Variable(name="f"), alias="f")]
+            items=[ReturnItem(expression=Variable(name="f"), alias="f")],
         )
         subquery = Query(clauses=[match, ret])
 
@@ -218,7 +234,9 @@ class TestEvaluateExistsPattern:
     """EXISTS with Pattern content (single-hop shortcut path)."""
 
     def test_single_hop_pattern_uses_comprehension_shortcut(
-        self, alice_frame: BindingFrame, evaluator_mock: MagicMock
+        self,
+        alice_frame: BindingFrame,
+        evaluator_mock: MagicMock,
     ) -> None:
         """Single-hop pattern goes through pattern comprehension."""
         source = NodePattern(variable=Variable(name="p"), labels=["Person"])
@@ -235,12 +253,14 @@ class TestEvaluateExistsPattern:
         result = ee.evaluate_exists(pattern, evaluator_mock)
 
         assert result.dtype == bool
-        assert result.iloc[0] is np.bool_(True)   # Alice knows people
-        assert result.iloc[1] is np.bool_(False)   # Bob knows nobody
-        assert result.iloc[2] is np.bool_(False)   # Carol knows nobody
+        assert result.iloc[0] is np.bool_(True)  # Alice knows people
+        assert result.iloc[1] is np.bool_(False)  # Bob knows nobody
+        assert result.iloc[2] is np.bool_(False)  # Carol knows nobody
 
     def test_multi_hop_pattern_falls_back_to_query(
-        self, alice_frame: BindingFrame, evaluator_mock: MagicMock
+        self,
+        alice_frame: BindingFrame,
+        evaluator_mock: MagicMock,
     ) -> None:
         """Multi-hop pattern (!=3 elements) falls back to query execution."""
         source = NodePattern(variable=Variable(name="p"), labels=["Person"])
@@ -267,7 +287,9 @@ class TestEvaluateExistsPattern:
         assert len(result) == 3
 
     def test_empty_pattern_no_paths(
-        self, alice_frame: BindingFrame, evaluator_mock: MagicMock
+        self,
+        alice_frame: BindingFrame,
+        evaluator_mock: MagicMock,
     ) -> None:
         """Pattern with no paths → falls back to query (0 elements != 3)."""
         pattern = Pattern(paths=[])
@@ -287,18 +309,25 @@ class TestPatternComprehensionErrors:
     """Error handling in evaluate_pattern_comprehension."""
 
     def test_none_pattern_returns_empty_lists(
-        self, alice_frame: BindingFrame, evaluator_mock: MagicMock
+        self,
+        alice_frame: BindingFrame,
+        evaluator_mock: MagicMock,
     ) -> None:
         """PatternComprehension with None pattern → empty lists."""
         pc = PatternComprehension(
-            pattern=None, variable=None, where=None, map_expr=None
+            pattern=None,
+            variable=None,
+            where=None,
+            map_expr=None,
         )
         ee = ExistsEvaluator(alice_frame)
         result = ee.evaluate_pattern_comprehension(pc, evaluator_mock)
         assert all(lst == [] for lst in result)
 
     def test_empty_paths_returns_empty_lists(
-        self, alice_frame: BindingFrame, evaluator_mock: MagicMock
+        self,
+        alice_frame: BindingFrame,
+        evaluator_mock: MagicMock,
     ) -> None:
         """PatternComprehension with empty paths → empty lists."""
         pc = PatternComprehension(
@@ -312,7 +341,9 @@ class TestPatternComprehensionErrors:
         assert all(lst == [] for lst in result)
 
     def test_non_single_hop_raises_error(
-        self, alice_frame: BindingFrame, evaluator_mock: MagicMock
+        self,
+        alice_frame: BindingFrame,
+        evaluator_mock: MagicMock,
     ) -> None:
         """Multi-hop pattern in comprehension → PatternComprehensionError."""
         source = NodePattern(variable=Variable(name="p"), labels=["Person"])
@@ -341,7 +372,9 @@ class TestPatternComprehensionErrors:
             ee.evaluate_pattern_comprehension(pc, evaluator_mock)
 
     def test_non_node_source_raises_error(
-        self, alice_frame: BindingFrame, evaluator_mock: MagicMock
+        self,
+        alice_frame: BindingFrame,
+        evaluator_mock: MagicMock,
     ) -> None:
         """Non-NodePattern as source element → PatternComprehensionError."""
         rel_as_source = RelationshipPattern(
@@ -368,7 +401,9 @@ class TestPatternComprehensionErrors:
             ee.evaluate_pattern_comprehension(pc, evaluator_mock)
 
     def test_non_relationship_middle_raises_error(
-        self, alice_frame: BindingFrame, evaluator_mock: MagicMock
+        self,
+        alice_frame: BindingFrame,
+        evaluator_mock: MagicMock,
     ) -> None:
         """Non-RelationshipPattern as middle element → PatternComprehensionError."""
         source = NodePattern(variable=Variable(name="p"), labels=["Person"])
@@ -396,7 +431,9 @@ class TestPatternComprehensionFunctional:
     """Functional tests for pattern comprehension evaluation."""
 
     def test_right_direction_returns_targets(
-        self, alice_frame: BindingFrame, evaluator_mock: MagicMock
+        self,
+        alice_frame: BindingFrame,
+        evaluator_mock: MagicMock,
     ) -> None:
         """(p)-[:KNOWS]->(f) returns target IDs for each anchor."""
         source = NodePattern(variable=Variable(name="p"), labels=["Person"])
@@ -423,7 +460,9 @@ class TestPatternComprehensionFunctional:
         assert result.iloc[2] == []
 
     def test_left_direction_returns_sources(
-        self, alice_frame: BindingFrame, evaluator_mock: MagicMock
+        self,
+        alice_frame: BindingFrame,
+        evaluator_mock: MagicMock,
     ) -> None:
         """(p)<-[:KNOWS]-(f) returns source IDs (incoming edges)."""
         source = NodePattern(variable=Variable(name="p"), labels=["Person"])
@@ -451,7 +490,9 @@ class TestPatternComprehensionFunctional:
         assert result.iloc[2] == [1]
 
     def test_unknown_rel_type_returns_empty_lists(
-        self, alice_frame: BindingFrame, evaluator_mock: MagicMock
+        self,
+        alice_frame: BindingFrame,
+        evaluator_mock: MagicMock,
     ) -> None:
         """Relationship type not in context → empty lists."""
         source = NodePattern(variable=Variable(name="p"), labels=["Person"])
@@ -474,7 +515,9 @@ class TestPatternComprehensionFunctional:
         assert all(lst == [] for lst in result)
 
     def test_anchor_var_not_in_frame_tries_other(
-        self, simple_context: Context, evaluator_mock: MagicMock
+        self,
+        simple_context: Context,
+        evaluator_mock: MagicMock,
     ) -> None:
         """When source var not in frame but target var is, uses target as anchor."""
         # Frame has 'f' bound but source pattern uses 'p'
@@ -506,7 +549,9 @@ class TestPatternComprehensionFunctional:
         assert result.iloc[1] == [1]  # Carol's incoming source
 
     def test_neither_var_in_frame_returns_empty(
-        self, simple_context: Context, evaluator_mock: MagicMock
+        self,
+        simple_context: Context,
+        evaluator_mock: MagicMock,
     ) -> None:
         """Neither source nor target var in frame → empty lists."""
         frame = BindingFrame(
@@ -546,7 +591,8 @@ class TestExistsViaQueryExecution:
         assert _EXISTS_SENTINEL == "__exists_row_idx__"
 
     def test_no_matches_returns_all_false(
-        self, simple_context: Context
+        self,
+        simple_context: Context,
     ) -> None:
         """Subquery where no rows match → all False.
 
@@ -569,7 +615,7 @@ class TestExistsViaQueryExecution:
         pattern = Pattern(paths=[path])
         match = Match(pattern=pattern, where=None)
         ret = Return(
-            items=[ReturnItem(expression=IntegerLiteral(value=1), alias="_flag")]
+            items=[ReturnItem(expression=IntegerLiteral(value=1), alias="_flag")],
         )
         subquery = Query(clauses=[match, ret])
 

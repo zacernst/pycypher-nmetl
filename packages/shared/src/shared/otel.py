@@ -28,6 +28,7 @@ Usage::
 
 Attributes:
     OTEL_ENABLED: Whether OpenTelemetry tracing is active.
+
 """
 
 from __future__ import annotations
@@ -77,7 +78,7 @@ if OTEL_ENABLED:
             "opentelemetry-api not installed — tracing disabled",
         )
         OTEL_ENABLED = False
-    except Exception:  # noqa: BLE001
+    except Exception:
         _logger.warning(
             "OpenTelemetry configuration failed — tracing disabled",
             exc_info=True,
@@ -93,15 +94,17 @@ if OTEL_ENABLED:
 class _NullSpan:
     """No-op span that silently discards all attribute/event/status calls."""
 
-    def set_attribute(self, key: str, value: Any) -> None:  # noqa: ARG002
+    def set_attribute(self, key: str, value: Any) -> None:
         """No-op."""
 
-    def set_status(self, status: Any, description: str | None = None) -> None:  # noqa: ARG002
+    def set_status(self, status: Any, description: str | None = None) -> None:
         """No-op."""
 
     def add_event(
-        self, name: str, attributes: dict[str, Any] | None = None
-    ) -> None:  # noqa: ARG002
+        self,
+        name: str,
+        attributes: dict[str, Any] | None = None,
+    ) -> None:
         """No-op."""
 
     def record_exception(
@@ -109,7 +112,7 @@ class _NullSpan:
         exception: BaseException,
         *,
         attributes: dict[str, Any] | None = None,
-    ) -> None:  # noqa: ARG002
+    ) -> None:
         """No-op."""
 
     def __enter__(self) -> _NullSpan:
@@ -124,8 +127,8 @@ class _NullTracer:
 
     def start_as_current_span(
         self,
-        name: str,  # noqa: ARG002
-        **kwargs: Any,  # noqa: ARG002
+        name: str,
+        **kwargs: Any,
     ) -> _NullSpan:
         """Return a no-op span context manager."""
         return _NullSpan()
@@ -146,6 +149,7 @@ def get_tracer() -> Any:
     Returns:
         An OpenTelemetry ``Tracer`` if enabled and installed,
         otherwise a :class:`_NullTracer` that silently discards all calls.
+
     """
     if _tracer is not None:
         return _tracer
@@ -184,6 +188,7 @@ def trace_query(
         with trace_query("MATCH (n) RETURN n", query_id="q-123") as span:
             result = star.execute_query(query)
             span.set_attribute("result.rows", len(result))
+
     """
     if not OTEL_ENABLED or _tracer is None:
         yield _NULL_SPAN
@@ -226,6 +231,7 @@ def trace_phase(
 
     Yields:
         The active span (real or :class:`_NullSpan`).
+
     """
     if not OTEL_ENABLED or _tracer is None:
         yield _NULL_SPAN
@@ -254,6 +260,7 @@ def record_metrics_to_span(
     Args:
         span: An OpenTelemetry span (or :class:`_NullSpan`).
         snapshot: A :class:`~shared.metrics.MetricsSnapshot` instance.
+
     """
     span.set_attribute("pycypher.total_queries", snapshot.total_queries)
     span.set_attribute("pycypher.total_errors", snapshot.total_errors)
@@ -286,7 +293,7 @@ def _extract_operation(query: str) -> str | None:
             "WITH",
             "RETURN",
             "CALL",
-        }
+        },
     )
     for token in query.split():
         upper = token.upper()

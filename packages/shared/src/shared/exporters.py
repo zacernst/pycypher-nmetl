@@ -64,6 +64,7 @@ class MetricsExporter(Protocol):
 
         Args:
             snapshot: A metrics snapshot from ``QueryMetrics.snapshot()``.
+
         """
         ...
 
@@ -85,6 +86,7 @@ class PrometheusExporter:
 
     Args:
         prefix: Metric name prefix.  Default: ``pycypher``.
+
     """
 
     def __init__(self, prefix: str = _PREFIX) -> None:
@@ -103,6 +105,7 @@ class PrometheusExporter:
 
         Returns:
             Multi-line string in Prometheus text format.
+
         """
         p = self._prefix
         lines: list[str] = []
@@ -273,6 +276,7 @@ class PrometheusExporter:
 
         Args:
             snapshot: A :class:`~shared.metrics.MetricsSnapshot`.
+
         """
         text = self.render(snapshot)
         _logger.info(
@@ -298,6 +302,7 @@ class StatsDExporter:
         port: StatsD port.  Default from ``PYCYPHER_STATSD_PORT`` or
             ``8125``.
         prefix: Metric name prefix.
+
     """
 
     def __init__(
@@ -347,6 +352,7 @@ class StatsDExporter:
 
         Args:
             snapshot: A :class:`~shared.metrics.MetricsSnapshot`.
+
         """
         self._send("queries.total", snapshot.total_queries, "c")
         self._send("errors.total", snapshot.total_errors, "c")
@@ -391,6 +397,7 @@ class JSONFileExporter:
     Args:
         path: Output file path.  Default from ``PYCYPHER_METRICS_JSON_PATH``
             or ``metrics.jsonl``.
+
     """
 
     def __init__(self, path: str | None = None) -> None:
@@ -409,6 +416,7 @@ class JSONFileExporter:
 
         Args:
             snapshot: A :class:`~shared.metrics.MetricsSnapshot`.
+
         """
         entry = snapshot.to_dict()
         entry["_timestamp"] = time.time()
@@ -449,6 +457,7 @@ def get_exporters() -> list[MetricsExporter]:
         # In .env:  PYCYPHER_METRICS_EXPORT=prometheus,json
         exporters = get_exporters()
         # Returns [PrometheusExporter(), JSONFileExporter()]
+
     """
     raw = os.environ.get("PYCYPHER_METRICS_EXPORT", "")
     if not raw.strip():
@@ -478,11 +487,12 @@ def export_once(snapshot: Any) -> None:
 
     Args:
         snapshot: A :class:`~shared.metrics.MetricsSnapshot`.
+
     """
     for exporter in get_exporters():
         try:
             exporter.export(snapshot)
-        except Exception:  # noqa: BLE001
+        except Exception:
             _logger.warning(
                 "Metrics export failed for %s",
                 exporter.name,

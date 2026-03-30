@@ -26,7 +26,9 @@ class TestErrorRate:
     def test_error_rate_zero_when_all_succeed(self) -> None:
         for i in range(5):
             QUERY_METRICS.record_query(
-                query_id=f"q{i}", elapsed_s=0.01, rows=1
+                query_id=f"q{i}",
+                elapsed_s=0.01,
+                rows=1,
             )
         snap = QUERY_METRICS.snapshot()
         assert snap.error_rate == 0.0
@@ -34,7 +36,9 @@ class TestErrorRate:
     def test_error_rate_one_when_all_fail(self) -> None:
         for i in range(5):
             QUERY_METRICS.record_error(
-                query_id=f"e{i}", error_type="ValueError", elapsed_s=0.01
+                query_id=f"e{i}",
+                error_type="ValueError",
+                elapsed_s=0.01,
             )
         snap = QUERY_METRICS.snapshot()
         assert snap.error_rate == 1.0
@@ -42,11 +46,15 @@ class TestErrorRate:
     def test_error_rate_mixed(self) -> None:
         for i in range(8):
             QUERY_METRICS.record_query(
-                query_id=f"q{i}", elapsed_s=0.01, rows=1
+                query_id=f"q{i}",
+                elapsed_s=0.01,
+                rows=1,
             )
         for i in range(2):
             QUERY_METRICS.record_error(
-                query_id=f"e{i}", error_type="TypeError", elapsed_s=0.01
+                query_id=f"e{i}",
+                error_type="TypeError",
+                elapsed_s=0.01,
             )
         snap = QUERY_METRICS.snapshot()
         assert abs(snap.error_rate - 0.2) < 1e-9
@@ -63,10 +71,14 @@ class TestRecentErrorRate:
     def test_recent_error_rate_after_errors(self) -> None:
         for i in range(3):
             QUERY_METRICS.record_query(
-                query_id=f"q{i}", elapsed_s=0.01, rows=1
+                query_id=f"q{i}",
+                elapsed_s=0.01,
+                rows=1,
             )
         QUERY_METRICS.record_error(
-            query_id="e1", error_type="ValueError", elapsed_s=0.01
+            query_id="e1",
+            error_type="ValueError",
+            elapsed_s=0.01,
         )
         snap = QUERY_METRICS.snapshot()
         # 1 error out of 4 total ops in the window
@@ -82,7 +94,9 @@ class TestErrorRateReset:
 
     def test_reset_clears_error_timestamps(self) -> None:
         QUERY_METRICS.record_error(
-            query_id="e1", error_type="ValueError", elapsed_s=0.01
+            query_id="e1",
+            error_type="ValueError",
+            elapsed_s=0.01,
         )
         QUERY_METRICS.reset()
         snap = QUERY_METRICS.snapshot()

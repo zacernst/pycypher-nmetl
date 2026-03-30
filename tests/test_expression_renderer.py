@@ -158,7 +158,8 @@ class TestExpressionRendererOperators:
 
     def test_label_predicate(self) -> None:
         expr = LabelPredicate(
-            operand=Variable(name="n"), labels=["Person", "Employee"]
+            operand=Variable(name="n"),
+            labels=["Person", "Employee"],
         )
         assert self.renderer.render(expr) == "n:Person:Employee"
 
@@ -252,9 +253,9 @@ class TestExpressionRendererIntegrationWithStar:
         ctx = Context(
             entity_mapping=EntityMapping(
                 mapping={
-                    "Person": EntityTable.from_dataframe("Person", person_df)
-                }
-            )
+                    "Person": EntityTable.from_dataframe("Person", person_df),
+                },
+            ),
         )
         star = Star(context=ctx)
 
@@ -278,15 +279,16 @@ class TestExpressionRendererIntegrationWithStar:
         ctx = Context(
             entity_mapping=EntityMapping(
                 mapping={
-                    "Person": EntityTable.from_dataframe("Person", person_df)
-                }
-            )
+                    "Person": EntityTable.from_dataframe("Person", person_df),
+                },
+            ),
         )
         star = Star(context=ctx)
 
         renderer = ExpressionRenderer()
         expr = FunctionInvocation(
-            name="count", arguments={"arguments": [Variable(name="n")]}
+            name="count",
+            arguments={"arguments": [Variable(name="n")]},
         )
 
         assert star._renderer.render(expr) == renderer.render(expr)

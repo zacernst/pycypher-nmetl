@@ -9,7 +9,12 @@ import numpy as np
 import pandas as pd
 from shared.helpers import is_null_value
 
-from pycypher.constants import _broadcast_series, _null_series
+from pycypher.constants import (
+    _broadcast_series,
+    _init_null_result,
+    _scalar_int,
+    _scalar_int_opt,
+)
 
 if TYPE_CHECKING:
     from pycypher.scalar_functions import ScalarFunctionRegistry
@@ -38,36 +43,29 @@ def register(registry: ScalarFunctionRegistry) -> None:
     def _to_list(s: pd.Series) -> pd.Series:
         """Wrap scalar in a list, or return list unchanged; null → null."""
         # Further vectorized implementation eliminating remaining .apply() anti-patterns
-        result = _null_series(len(s), index=s.index)
+        nr = _init_null_result(s)
+        if nr.all_null:
+            return nr.result
 
-        # Handle null values first
-        null_mask = s.isna()
+        # Create mask for list types using vectorized operations
+        list_indices = []
+        scalar_values = []
+        scalar_indices = []
 
-        # Vectorized type checking without .apply() - pre-allocate and batch process
-        non_null_mask = ~null_mask
-        if non_null_mask.any():
-            non_null_values = s[non_null_mask]
+        # Process in batch - single pass through non-null values
+        for idx, val in nr.non_null_vals.items():
+            if isinstance(val, list):
+                list_indices.append(idx)
+                nr.result[idx] = val  # Pass through unchanged
+            else:
+                scalar_indices.append(idx)
+                scalar_values.append([val])  # Wrap in list
 
-            # Create mask for list types using vectorized operations
-            list_indices = []
-            scalar_values = []
-            scalar_indices = []
+        # Batch assignment of scalar values wrapped in lists
+        if scalar_indices:
+            nr.result[scalar_indices] = scalar_values
 
-            # Process in batch - single pass through non-null values
-            for idx, val in non_null_values.items():
-                if isinstance(val, list):
-                    list_indices.append(idx)
-                    result[idx] = val  # Pass through unchanged
-                else:
-                    scalar_indices.append(idx)
-                    scalar_values.append([val])  # Wrap in list
-
-            # Batch assignment of scalar values wrapped in lists
-            if scalar_indices:
-                result[scalar_indices] = scalar_values
-
-        # Nulls remain None (already set in initialization)
-        return result
+        return nr.result
 
     registry.register_function(
         name="toList",
@@ -90,32 +88,22 @@ def register(registry: ScalarFunctionRegistry) -> None:
 
         """
         # Vectorized implementation replacing .apply(_get_head) anti-pattern
-        result = _null_series(len(s), index=s.index)
+        nr = _init_null_result(s)
+        if nr.all_null:
+            return nr.result
 
-        # Handle null values - they remain None
-        null_mask = s.isna()
+        list_indices = []
+        first_element_values = []
 
-        # Process non-null values
-        non_null_mask = ~null_mask
-        if non_null_mask.any():
-            # Get non-null values
-            non_null_vals = s[non_null_mask]
+        for idx, val in nr.non_null_vals.items():
+            if isinstance(val, list) and len(val) > 0:
+                list_indices.append(idx)
+                first_element_values.append(val[0])
 
-            # Vectorized list processing - eliminate .apply() anti-patterns
-            list_indices = []
-            first_element_values = []
+        if list_indices:
+            nr.result[list_indices] = first_element_values
 
-            # Single pass through non-null values for batch processing
-            for idx, val in non_null_vals.items():
-                if isinstance(val, list) and len(val) > 0:
-                    list_indices.append(idx)
-                    first_element_values.append(val[0])
-
-            # Batch assignment if we found any valid lists
-            if list_indices:
-                result[list_indices] = first_element_values
-
-        return result
+        return nr.result
 
     registry.register_function(
         name="head",
@@ -138,32 +126,22 @@ def register(registry: ScalarFunctionRegistry) -> None:
 
         """
         # Vectorized implementation replacing .apply(_get_last) anti-pattern
-        result = _null_series(len(s), index=s.index)
+        nr = _init_null_result(s)
+        if nr.all_null:
+            return nr.result
 
-        # Handle null values - they remain None
-        null_mask = s.isna()
+        list_indices = []
+        last_element_values = []
 
-        # Process non-null values
-        non_null_mask = ~null_mask
-        if non_null_mask.any():
-            # Get non-null values
-            non_null_vals = s[non_null_mask]
+        for idx, val in nr.non_null_vals.items():
+            if isinstance(val, list) and len(val) > 0:
+                list_indices.append(idx)
+                last_element_values.append(val[-1])
 
-            # Vectorized list processing - eliminate .apply() anti-patterns
-            list_indices = []
-            last_element_values = []
+        if list_indices:
+            nr.result[list_indices] = last_element_values
 
-            # Single pass through non-null values for batch processing
-            for idx, val in non_null_vals.items():
-                if isinstance(val, list) and len(val) > 0:
-                    list_indices.append(idx)
-                    last_element_values.append(val[-1])
-
-            # Batch assignment if we found any valid lists
-            if list_indices:
-                result[list_indices] = last_element_values
-
-        return result
+        return nr.result
 
     registry.register_function(
         name="last",
@@ -186,33 +164,22 @@ def register(registry: ScalarFunctionRegistry) -> None:
 
         """
         # Vectorized implementation replacing .apply(_get_tail) anti-pattern
-        result = _null_series(len(s), index=s.index)
+        nr = _init_null_result(s)
+        if nr.all_null:
+            return nr.result
 
-        # Handle null values - they remain None
-        null_mask = s.isna()
+        list_indices = []
+        tail_element_values = []
 
-        # Process non-null values
-        non_null_mask = ~null_mask
-        if non_null_mask.any():
-            # Get non-null values
-            non_null_vals = s[non_null_mask]
+        for idx, val in nr.non_null_vals.items():
+            if isinstance(val, list):
+                list_indices.append(idx)
+                tail_element_values.append(val[1:])
 
-            # Vectorized list processing - eliminate .apply() anti-patterns
-            list_indices = []
-            tail_element_values = []
+        if list_indices:
+            nr.result[list_indices] = tail_element_values
 
-            # Single pass through non-null values for batch processing
-            for idx, val in non_null_vals.items():
-                if isinstance(val, list):
-                    list_indices.append(idx)
-                    # Extract tail (all elements except first), empty lists become []
-                    tail_element_values.append(val[1:])
-
-            # Batch assignment if we found any lists
-            if list_indices:
-                result[list_indices] = tail_element_values
-
-        return result
+        return nr.result
 
     registry.register_function(
         name="tail",
@@ -243,11 +210,9 @@ def register(registry: ScalarFunctionRegistry) -> None:
         from pycypher.config import MAX_COLLECTION_SIZE
         from pycypher.exceptions import SecurityError
 
-        start_val = int(start.iloc[0]) if len(start) > 0 else 0
-        end_val = int(end.iloc[0]) if len(end) > 0 else 0
-        step_val = (
-            int(step.iloc[0]) if step is not None and len(step) > 0 else 1
-        )
+        start_val = _scalar_int(start)
+        end_val = _scalar_int(end)
+        step_val = _scalar_int_opt(step, 1)
         # Check size before materializing to prevent memory exhaustion.
         if step_val != 0:
             estimated_size = abs((end_val - start_val) // step_val) + 1
@@ -526,37 +491,25 @@ def register(registry: ScalarFunctionRegistry) -> None:
 
         """
         # Vectorized implementation replacing .apply(_sort_one) anti-pattern
-        result = _null_series(len(s), index=s.index)
+        nr = _init_null_result(s)
+        if nr.all_null:
+            return nr.result
 
-        # Handle null values - they remain None
-        null_mask = s.isna()
+        list_indices = []
+        sorted_list_values = []
 
-        # Process non-null values
-        non_null_mask = ~null_mask
-        if non_null_mask.any():
-            # Get non-null values
-            non_null_vals = s[non_null_mask]
+        for idx, val in nr.non_null_vals.items():
+            if isinstance(val, list):
+                non_null = [v for v in val if v is not None]
+                nulls = [v for v in val if v is None]
+                sorted_list = sorted(non_null) + nulls
+                list_indices.append(idx)
+                sorted_list_values.append(sorted_list)
 
-            # Vectorized list processing - eliminate .apply() anti-patterns
-            list_indices = []
-            sorted_list_values = []
+        if list_indices:
+            nr.result[list_indices] = sorted_list_values
 
-            # Single pass through non-null values for batch processing
-            for idx, val in non_null_vals.items():
-                if isinstance(val, list):
-                    # Sort list with nulls at the end (Neo4j semantics)
-                    non_null = [v for v in val if v is not None]
-                    nulls = [v for v in val if v is None]
-                    sorted_list = sorted(non_null) + nulls
-
-                    list_indices.append(idx)
-                    sorted_list_values.append(sorted_list)
-
-            # Batch assignment if we found any lists
-            if list_indices:
-                result[list_indices] = sorted_list_values
-
-        return result
+        return nr.result
 
     registry.register_function(
         name="sort",
@@ -582,40 +535,28 @@ def register(registry: ScalarFunctionRegistry) -> None:
 
         """
         # Vectorized implementation replacing .apply(_flatten_one) anti-pattern
-        result = _null_series(len(s), index=s.index)
+        nr = _init_null_result(s)
+        if nr.all_null:
+            return nr.result
 
-        # Handle null values - they remain None
-        null_mask = s.isna()
+        list_indices = []
+        flattened_list_values = []
 
-        # Process non-null values
-        non_null_mask = ~null_mask
-        if non_null_mask.any():
-            # Get non-null values
-            non_null_vals = s[non_null_mask]
+        for idx, val in nr.non_null_vals.items():
+            if isinstance(val, list):
+                result_list: list[object] = []
+                for item in val:
+                    if isinstance(item, list):
+                        result_list.extend(item)
+                    else:
+                        result_list.append(item)
+                list_indices.append(idx)
+                flattened_list_values.append(result_list)
 
-            # Vectorized list processing - eliminate .apply() anti-patterns
-            list_indices = []
-            flattened_list_values = []
+        if list_indices:
+            nr.result[list_indices] = flattened_list_values
 
-            # Single pass through non-null values for batch processing
-            for idx, val in non_null_vals.items():
-                if isinstance(val, list):
-                    # Flatten one level (openCypher semantics)
-                    result_list: list[object] = []
-                    for item in val:
-                        if isinstance(item, list):
-                            result_list.extend(item)
-                        else:
-                            result_list.append(item)
-
-                    list_indices.append(idx)
-                    flattened_list_values.append(result_list)
-
-            # Batch assignment if we found any lists
-            if list_indices:
-                result[list_indices] = flattened_list_values
-
-        return result
+        return nr.result
 
     registry.register_function(
         name="flatten",
@@ -631,25 +572,17 @@ def register(registry: ScalarFunctionRegistry) -> None:
     def _to_string_list(s: pd.Series) -> pd.Series:
         """Apply toString to each element of a list (null-safe)."""
         # Vectorized implementation eliminating .apply() anti-pattern
-        result = _null_series(len(s), index=s.index)
+        nr = _init_null_result(s)
+        if nr.all_null:
+            return nr.result
 
-        # Handle null values using vectorized mask
-        non_null_mask = ~s.isna()
-        if not non_null_mask.any():
-            return result
-
-        non_null_values = s[non_null_mask]
-
-        # Vectorized list processing
         list_indices = []
         string_list_values = []
 
-        # Single pass through non-null values for batch processing
-        for idx, val in non_null_values.items():
+        for idx, val in nr.non_null_vals.items():
             if _is_null(val) or not isinstance(val, list):
-                continue  # Leave as None
+                continue
 
-            # Convert each element in the list to string
             converted_list = []
             for v in val:
                 if v is None:
@@ -662,11 +595,10 @@ def register(registry: ScalarFunctionRegistry) -> None:
             list_indices.append(idx)
             string_list_values.append(converted_list)
 
-        # Batch assignment if we found any valid lists
         if list_indices:
-            result[list_indices] = string_list_values
+            nr.result[list_indices] = string_list_values
 
-        return result
+        return nr.result
 
     registry.register_function(
         name="toStringList",
@@ -679,17 +611,10 @@ def register(registry: ScalarFunctionRegistry) -> None:
 
     def _to_integer_list(s: pd.Series) -> pd.Series:
         """Apply toInteger to each element of a list (null-safe)."""
-        # Vectorized implementation eliminating .apply() anti-pattern
-        result = _null_series(len(s), index=s.index)
+        nr = _init_null_result(s)
+        if nr.all_null:
+            return nr.result
 
-        # Handle null values using vectorized mask
-        non_null_mask = ~s.isna()
-        if not non_null_mask.any():
-            return result
-
-        non_null_values = s[non_null_mask]
-
-        # Helper function for conversion
         def _cvt(v: object) -> object:
             if v is None:
                 return None
@@ -700,26 +625,20 @@ def register(registry: ScalarFunctionRegistry) -> None:
             except (ValueError, TypeError):
                 return None
 
-        # Vectorized list processing
         list_indices = []
         integer_list_values = []
 
-        # Single pass through non-null values for batch processing
-        for idx, val in non_null_values.items():
+        for idx, val in nr.non_null_vals.items():
             if _is_null(val) or not isinstance(val, list):
-                continue  # Leave as None
-
-            # Convert each element in the list to integer
-            converted_list = [_cvt(v) for v in val]
+                continue
 
             list_indices.append(idx)
-            integer_list_values.append(converted_list)
+            integer_list_values.append([_cvt(v) for v in val])
 
-        # Batch assignment if we found any valid lists
         if list_indices:
-            result[list_indices] = integer_list_values
+            nr.result[list_indices] = integer_list_values
 
-        return result
+        return nr.result
 
     registry.register_function(
         name="toIntegerList",
@@ -732,50 +651,37 @@ def register(registry: ScalarFunctionRegistry) -> None:
 
     def _to_float_list(s: pd.Series) -> pd.Series:
         """Apply toFloat to each element of a list (null-safe)."""
-        # Vectorized implementation eliminating .apply() anti-pattern
-        result = _null_series(len(s), index=s.index)
+        nr = _init_null_result(s)
+        if nr.all_null:
+            return nr.result
 
-        # Handle null values using vectorized mask
-        non_null_mask = ~s.isna()
-        if not non_null_mask.any():
-            return result
-
-        non_null_values = s[non_null_mask]
-
-        # Helper function for conversion
         def _cvt(v: object) -> object:
             if v is None:
                 return None
             try:
-                result = float(str(v))
+                fval = float(str(v))
                 return (
                     None
-                    if math.isnan(result) and str(v) not in ("nan", "NaN")
-                    else result
+                    if math.isnan(fval) and str(v) not in ("nan", "NaN")
+                    else fval
                 )
             except (ValueError, TypeError):
                 return None
 
-        # Vectorized list processing
         list_indices = []
         float_list_values = []
 
-        # Single pass through non-null values for batch processing
-        for idx, val in non_null_values.items():
+        for idx, val in nr.non_null_vals.items():
             if _is_null(val) or not isinstance(val, list):
-                continue  # Leave as None
-
-            # Convert each element in the list to float
-            converted_list = [_cvt(v) for v in val]
+                continue
 
             list_indices.append(idx)
-            float_list_values.append(converted_list)
+            float_list_values.append([_cvt(v) for v in val])
 
-        # Batch assignment if we found any valid lists
         if list_indices:
-            result[list_indices] = float_list_values
+            nr.result[list_indices] = float_list_values
 
-        return result
+        return nr.result
 
     registry.register_function(
         name="toFloatList",
@@ -788,17 +694,10 @@ def register(registry: ScalarFunctionRegistry) -> None:
 
     def _to_boolean_list(s: pd.Series) -> pd.Series:
         """Apply toBoolean to each element of a list (null-safe)."""
-        # Vectorized implementation eliminating .apply() anti-pattern
-        result = _null_series(len(s), index=s.index)
+        nr = _init_null_result(s)
+        if nr.all_null:
+            return nr.result
 
-        # Handle null values using vectorized mask
-        non_null_mask = ~s.isna()
-        if not non_null_mask.any():
-            return result
-
-        non_null_values = s[non_null_mask]
-
-        # Helper function for conversion
         def _cvt(v: object) -> object:
             if v is None:
                 return None
@@ -811,26 +710,20 @@ def register(registry: ScalarFunctionRegistry) -> None:
                 return False
             return None
 
-        # Vectorized list processing
         list_indices = []
         boolean_list_values = []
 
-        # Single pass through non-null values for batch processing
-        for idx, val in non_null_values.items():
+        for idx, val in nr.non_null_vals.items():
             if _is_null(val) or not isinstance(val, list):
-                continue  # Leave as None
-
-            # Convert each element in the list to boolean
-            converted_list = [_cvt(v) for v in val]
+                continue
 
             list_indices.append(idx)
-            boolean_list_values.append(converted_list)
+            boolean_list_values.append([_cvt(v) for v in val])
 
-        # Batch assignment if we found any valid lists
         if list_indices:
-            result[list_indices] = boolean_list_values
+            nr.result[list_indices] = boolean_list_values
 
-        return result
+        return nr.result
 
     registry.register_function(
         name="toBooleanList",

@@ -1,5 +1,4 @@
-"""
-Unit tests for SET clause property ID alignment.
+"""Unit tests for SET clause property ID alignment.
 
 These tests specifically cover the correctness of `PropertyModification._update_source_entity_tables`,
 which must use index-based (ID-keyed) alignment when writing changed values back to the entity table.
@@ -116,7 +115,7 @@ class TestPartialSetAlignment:
         result = _star(ctx).execute_query(
             "MATCH (p:Person) WHERE p.department = 'Engineering' "
             "SET p.team = 'tech' "
-            "RETURN p.name AS name, p.team AS team"
+            "RETURN p.name AS name, p.team AS team",
         )
         # Only matched rows are returned
         assert set(result["name"]) == {"Alice", "Carol"}
@@ -128,7 +127,7 @@ class TestPartialSetAlignment:
         _star(ctx).execute_query(
             "MATCH (p:Person) WHERE p.department = 'Engineering' "
             "SET p.team = 'tech' "
-            "RETURN p.name AS name, p.team AS team"
+            "RETURN p.name AS name, p.team AS team",
         )
         entity_table = ctx.entity_mapping.mapping["Person"]
         source = entity_table.source_obj.set_index(ID_COLUMN)
@@ -148,16 +147,14 @@ class TestPartialSetAlignment:
         _star(ctx).execute_query(
             "MATCH (p:Person) WHERE p.department = 'Engineering' "
             "SET p.team = 'tech' "
-            "RETURN p.name AS name, p.team AS team"
+            "RETURN p.name AS name, p.team AS team",
         )
         entity_table = ctx.entity_mapping.mapping["Person"]
         source = entity_table.source_obj.set_index(ID_COLUMN)
 
         # Bob is row with id=2
         assert source.at[2, "name"] == "Bob", "Bob's name was corrupted"
-        assert source.at[2, "department"] == "Sales", (
-            "Bob's department was corrupted"
-        )
+        assert source.at[2, "department"] == "Sales", "Bob's department was corrupted"
         assert source.at[2, "age"] == 30, "Bob's age was corrupted"
 
     def test_alice_properties_not_corrupted_by_partial_set(self) -> None:
@@ -166,7 +163,7 @@ class TestPartialSetAlignment:
         _star(ctx).execute_query(
             "MATCH (p:Person) WHERE p.department = 'Engineering' "
             "SET p.team = 'tech' "
-            "RETURN p.name AS name, p.team AS team"
+            "RETURN p.name AS name, p.team AS team",
         )
         entity_table = ctx.entity_mapping.mapping["Person"]
         source = entity_table.source_obj.set_index(ID_COLUMN)
@@ -182,7 +179,7 @@ class TestPartialSetAlignment:
         _star(ctx).execute_query(
             "MATCH (p:Person) WHERE p.department = 'Engineering' "
             "SET p.team = 'tech' "
-            "RETURN p.name AS name, p.team AS team"
+            "RETURN p.name AS name, p.team AS team",
         )
         entity_table = ctx.entity_mapping.mapping["Person"]
         source = entity_table.source_obj.set_index(ID_COLUMN)
@@ -206,7 +203,7 @@ class TestFullTableSet:
         ctx = _make_person_context()
         result = _star(ctx).execute_query(
             "MATCH (p:Person) SET p.bonus = 1000 "
-            "RETURN p.name AS name, p.bonus AS bonus"
+            "RETURN p.name AS name, p.bonus AS bonus",
         )
         assert len(result) == 3
         assert (result["bonus"] == 1000).all()
@@ -220,7 +217,7 @@ class TestFullTableSet:
         ctx = _make_person_context()
         result = _star(ctx).execute_query(
             "MATCH (p:Person) SET p.active = true "
-            "RETURN p.name AS name, p.active AS active"
+            "RETURN p.name AS name, p.active AS active",
         )
         assert set(result["name"]) == {"Alice", "Bob", "Carol"}
         assert (result["active"] == True).all()
@@ -229,7 +226,7 @@ class TestFullTableSet:
         """Modifying an existing property updates all rows."""
         ctx = _make_person_context()
         result = _star(ctx).execute_query(
-            "MATCH (p:Person) SET p.age = 99 RETURN p.name AS name, p.age AS age"
+            "MATCH (p:Person) SET p.age = 99 RETURN p.name AS name, p.age AS age",
         )
         assert len(result) == 3
         assert (result["age"] == 99).all()
@@ -241,7 +238,7 @@ class TestFullTableSet:
         ctx = _make_person_context()
         result = _star(ctx).execute_query(
             "MATCH (p:Person) SET p.raise_amount = p.salary * 0.1 "
-            "RETURN p.name AS name, p.raise_amount AS raise_amount"
+            "RETURN p.name AS name, p.raise_amount AS raise_amount",
         )
         assert len(result) == 3
         assert result["raise_amount"].dtype.kind == "f", (
@@ -267,19 +264,17 @@ class TestNewPropertyScope:
         _star(ctx).execute_query(
             "MATCH (p:Person) WHERE p.department = 'Engineering' "
             "SET p.team = 'tech' "
-            "RETURN p.name AS name, p.team AS team"
+            "RETURN p.name AS name, p.team AS team",
         )
         entity_table = ctx.entity_mapping.mapping["Person"]
         assert "team" in entity_table.source_obj.columns, (
             "'team' column must be present in entity table after SET"
         )
-        bob_row = entity_table.source_obj[
-            entity_table.source_obj["name"] == "Bob"
-        ]
+        bob_row = entity_table.source_obj[entity_table.source_obj["name"] == "Bob"]
         assert len(bob_row) == 1
-        assert (
-            pd.isna(bob_row["team"].iloc[0]) or bob_row["team"].iloc[0] is None
-        ), "Bob's team must be None/NaN since he was not matched by WHERE"
+        assert pd.isna(bob_row["team"].iloc[0]) or bob_row["team"].iloc[0] is None, (
+            "Bob's team must be None/NaN since he was not matched by WHERE"
+        )
 
     def test_new_property_registered_in_attribute_map(self) -> None:
         """New property is added to entity_table.attribute_map after SET."""
@@ -287,7 +282,7 @@ class TestNewPropertyScope:
         _star(ctx).execute_query(
             "MATCH (p:Person) WHERE p.department = 'Engineering' "
             "SET p.team = 'tech' "
-            "RETURN p.name AS name, p.team AS team"
+            "RETURN p.name AS name, p.team AS team",
         )
         entity_table = ctx.entity_mapping.mapping["Person"]
         assert "team" in entity_table.attribute_map, (
@@ -303,20 +298,18 @@ class TestNewPropertyScope:
         _star(ctx).execute_query(
             "MATCH (p:Person) WHERE p.name = 'Alice' "
             "SET p.manager = true "
-            "RETURN p.name AS name, p.manager AS manager"
+            "RETURN p.name AS name, p.manager AS manager",
         )
         entity_table = ctx.entity_mapping.mapping["Person"]
         source = entity_table.source_obj.set_index(ID_COLUMN)
 
-        assert (
-            source.at[1, "manager"] is True or source.at[1, "manager"] == True
+        assert source.at[1, "manager"] is True or source.at[1, "manager"] == True
+        assert pd.isna(source.at[2, "manager"]) or source.at[2, "manager"] is None, (
+            "Bob was not matched; his manager property must be None"
         )
-        assert (
-            pd.isna(source.at[2, "manager"]) or source.at[2, "manager"] is None
-        ), "Bob was not matched; his manager property must be None"
-        assert (
-            pd.isna(source.at[3, "manager"]) or source.at[3, "manager"] is None
-        ), "Carol was not matched; her manager property must be None"
+        assert pd.isna(source.at[3, "manager"]) or source.at[3, "manager"] is None, (
+            "Carol was not matched; her manager property must be None"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -332,7 +325,7 @@ class TestMultiPropertySet:
         ctx = _make_person_context()
         result = _star(ctx).execute_query(
             "MATCH (p:Person) SET p.status = 'active', p.level = 1 "
-            "RETURN p.name AS name, p.status AS status, p.level AS level"
+            "RETURN p.name AS name, p.status AS status, p.level AS level",
         )
         assert len(result) == 3
         assert (result["status"] == "active").all()
@@ -344,7 +337,7 @@ class TestMultiPropertySet:
         result = _star(ctx).execute_query(
             "MATCH (p:Person) WHERE p.department = 'Engineering' "
             "SET p.team = 'tech', p.tier = 2 "
-            "RETURN p.name AS name, p.team AS team, p.tier AS tier"
+            "RETURN p.name AS name, p.team AS team, p.tier AS tier",
         )
         assert set(result["name"]) == {"Alice", "Carol"}
         assert (result["team"] == "tech").all()
@@ -370,7 +363,7 @@ class TestArithmeticSet:
         ctx = _make_person_context()
         result = _star(ctx).execute_query(
             "MATCH (p:Person) SET p.new_salary = p.salary + 5000 "
-            "RETURN p.name AS name, p.salary AS salary, p.new_salary AS new_salary"
+            "RETURN p.name AS name, p.salary AS salary, p.new_salary AS new_salary",
         )
         assert len(result) == 3
         for _, row in result.iterrows():
@@ -384,7 +377,7 @@ class TestArithmeticSet:
         _star(ctx).execute_query(
             "MATCH (p:Person) WHERE p.department = 'Engineering' "
             "SET p.raise_amount = p.salary * 0.1 "
-            "RETURN p.name AS name, p.raise_amount AS raise_amount"
+            "RETURN p.name AS name, p.raise_amount AS raise_amount",
         )
         entity_table = ctx.entity_mapping.mapping["Person"]
         source = entity_table.source_obj.set_index(ID_COLUMN)
@@ -412,7 +405,7 @@ class TestChainedSetReturn:
         """A property SET on all entities is accessible in RETURN."""
         ctx = _make_person_context()
         result = _star(ctx).execute_query(
-            "MATCH (p:Person) SET p.score = 100 RETURN p.name AS name, p.score AS score"
+            "MATCH (p:Person) SET p.score = 100 RETURN p.name AS name, p.score AS score",
         )
         assert len(result) == 3
         assert "score" in result.columns
@@ -424,7 +417,7 @@ class TestChainedSetReturn:
         result = _star(ctx).execute_query(
             "MATCH (p:Person) WHERE p.department = 'Engineering' "
             "SET p.team = 'tech' "
-            "RETURN p.name AS name, p.team AS team"
+            "RETURN p.name AS name, p.team AS team",
         )
         assert set(result["name"]) == {"Alice", "Carol"}
         assert set(result["team"]) == {"tech"}
@@ -435,7 +428,7 @@ class TestChainedSetReturn:
         result = _star(ctx).execute_query(
             "MATCH (p:Person) WHERE p.name = 'Alice' "
             "SET p.promoted_salary = p.salary + 10000 "
-            "RETURN p.name AS name, p.promoted_salary AS promoted_salary"
+            "RETURN p.name AS name, p.promoted_salary AS promoted_salary",
         )
         assert len(result) == 1
         assert result.iloc[0]["name"] == "Alice"
@@ -452,8 +445,7 @@ class TestWriteBackScope:
     """Only the explicitly SET property names are written to the entity table."""
 
     def test_enriched_columns_do_not_overwrite_entity_table(self) -> None:
-        """
-        _ensure_full_entity_data enriches the working DF with all entity columns
+        """_ensure_full_entity_data enriches the working DF with all entity columns
         so that expressions can reference p.salary etc.  After the SET those
         enriched columns must NOT be written back to the entity table — only the
         property being SET should be.
@@ -464,14 +456,15 @@ class TestWriteBackScope:
             ctx.entity_mapping.mapping["Person"].source_obj[ID_COLUMN] == 2
         ][0]
         ctx.entity_mapping.mapping["Person"].source_obj.at[
-            bob_idx, "salary"
+            bob_idx,
+            "salary",
         ] = 99999.0
 
         # SET only affects Engineering persons, computing team from salary
         _star(ctx).execute_query(
             "MATCH (p:Person) WHERE p.department = 'Engineering' "
             "SET p.team = 'tech' "
-            "RETURN p.name AS name, p.team AS team"
+            "RETURN p.name AS name, p.team AS team",
         )
 
         entity_table = ctx.entity_mapping.mapping["Person"]
@@ -496,7 +489,7 @@ class TestToPandasColumnConstruction:
         """The output of to_pandas must not contain a raw '__ID__' user column."""
         ctx = _make_person_context()
         result = _star(ctx).execute_query(
-            "MATCH (p:Person) SET p.flag = true RETURN p.name AS name, p.flag AS flag"
+            "MATCH (p:Person) SET p.flag = true RETURN p.name AS name, p.flag AS flag",
         )
         # __ID__ must never appear as a result column alias
         assert "__ID__" not in result.columns, (
@@ -508,7 +501,7 @@ class TestToPandasColumnConstruction:
         ctx = _make_person_context()
         result = _star(ctx).execute_query(
             "MATCH (p:Person) SET p.badge = 'gold' "
-            "RETURN p.name AS name, p.badge AS badge"
+            "RETURN p.name AS name, p.badge AS badge",
         )
         assert "badge" in result.columns
         assert "Person__badge" not in result.columns
@@ -527,7 +520,7 @@ class TestExpressionEvaluatorPostSet:
         ctx = _make_person_context()
         result = _star(ctx).execute_query(
             "MATCH (p:Person) SET p.role = 'engineer' "
-            "RETURN p.name AS name, p.role AS role"
+            "RETURN p.name AS name, p.role AS role",
         )
         assert len(result) == 3
         assert (result["role"] == "engineer").all()
@@ -536,7 +529,7 @@ class TestExpressionEvaluatorPostSet:
         """RETURN reads a modified numeric property after SET."""
         ctx = _make_person_context()
         result = _star(ctx).execute_query(
-            "MATCH (p:Person) SET p.age = 0 RETURN p.name AS name, p.age AS age"
+            "MATCH (p:Person) SET p.age = 0 RETURN p.name AS name, p.age AS age",
         )
         assert (result["age"] == 0).all()
 
@@ -545,7 +538,7 @@ class TestExpressionEvaluatorPostSet:
         ctx = _make_person_context()
         result = _star(ctx).execute_query(
             "MATCH (p:Person) SET p.verified = true "
-            "RETURN p.name AS name, p.verified AS verified"
+            "RETURN p.name AS name, p.verified AS verified",
         )
         assert (result["verified"] == True).all()
 
@@ -567,7 +560,7 @@ class TestDtypePreservation:
         """Integer-valued SET property has integer dtype in result."""
         ctx = _make_person_context()
         result = _star(ctx).execute_query(
-            "MATCH (p:Person) SET p.level = 5 RETURN p.name AS name, p.level AS level"
+            "MATCH (p:Person) SET p.level = 5 RETURN p.name AS name, p.level AS level",
         )
         assert result["level"].dtype.kind in ("i", "f"), (
             f"Expected numeric dtype for integer literal, got {result['level'].dtype}"
@@ -578,7 +571,7 @@ class TestDtypePreservation:
         ctx = _make_person_context()
         result = _star(ctx).execute_query(
             "MATCH (p:Person) SET p.rate = p.salary * 0.1 "
-            "RETURN p.name AS name, p.rate AS rate"
+            "RETURN p.name AS name, p.rate AS rate",
         )
         assert result["rate"].dtype.kind == "f", (
             f"Expected float dtype, got {result['rate'].dtype}"
@@ -589,7 +582,7 @@ class TestDtypePreservation:
         ctx = _make_person_context()
         result = _star(ctx).execute_query(
             "MATCH (p:Person) SET p.salary = 80000 "
-            "RETURN p.name AS name, p.salary AS salary"
+            "RETURN p.name AS name, p.salary AS salary",
         )
         assert result["salary"].dtype.kind in ("i", "f"), (
             f"salary should stay numeric after SET, got {result['salary'].dtype}"
@@ -611,14 +604,14 @@ class TestSequentialSet:
         s = _star(ctx)
         s.execute_query(
             "MATCH (p:Person) WHERE p.name = 'Alice' SET p.grade = 'A' "
-            "RETURN p.name AS name, p.grade AS grade"
+            "RETURN p.name AS name, p.grade AS grade",
         )
         s.execute_query(
             "MATCH (p:Person) WHERE p.name = 'Bob' SET p.grade = 'B' "
-            "RETURN p.name AS name, p.grade AS grade"
+            "RETURN p.name AS name, p.grade AS grade",
         )
         source = ctx.entity_mapping.mapping["Person"].source_obj.set_index(
-            ID_COLUMN
+            ID_COLUMN,
         )
         assert source.at[1, "grade"] == "A", "Alice's grade should be 'A'"
         assert source.at[2, "grade"] == "B", "Bob's grade should be 'B'"

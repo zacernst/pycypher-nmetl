@@ -31,10 +31,10 @@ from pycypher.relational_models import (
 from pycypher.star import Star
 
 
-@pytest.fixture()
+@pytest.fixture
 def social_star() -> Star:
     people_df = pd.DataFrame(
-        {ID_COLUMN: [1, 2, 3], "name": ["Alice", "Bob", "Carol"]}
+        {ID_COLUMN: [1, 2, 3], "name": ["Alice", "Bob", "Carol"]},
     )
     people_table = EntityTable(
         entity_type="Person",
@@ -45,7 +45,7 @@ def social_star() -> Star:
         source_obj=people_df,
     )
     knows_df = pd.DataFrame(
-        {ID_COLUMN: [10, 11], "__SOURCE__": [1, 2], "__TARGET__": [2, 3]}
+        {ID_COLUMN: [10, 11], "__SOURCE__": [1, 2], "__TARGET__": [2, 3]},
     )
     knows_table = RelationshipTable(
         relationship_type="KNOWS",
@@ -59,9 +59,9 @@ def social_star() -> Star:
         context=Context(
             entity_mapping=EntityMapping(mapping={"Person": people_table}),
             relationship_mapping=RelationshipMapping(
-                mapping={"KNOWS": knows_table}
+                mapping={"KNOWS": knows_table},
             ),
-        )
+        ),
     )
 
 
@@ -76,7 +76,9 @@ class TestNoSpuriousWarnings:
     """Graph-introspection functions must not emit 'Unknown function' warnings."""
 
     def test_labels_no_warning(
-        self, social_star: Star, caplog: pytest.LogCaptureFixture
+        self,
+        social_star: Star,
+        caplog: pytest.LogCaptureFixture,
     ) -> None:
         """labels(p) must not emit an 'Unknown function' warning."""
         msgs = _capture_warnings(
@@ -84,13 +86,13 @@ class TestNoSpuriousWarnings:
             social_star,
             "MATCH (p:Person) RETURN labels(p) AS l ORDER BY p.name LIMIT 1",
         )
-        unknown = [
-            m for m in msgs if "Unknown function" in m and "labels" in m
-        ]
+        unknown = [m for m in msgs if "Unknown function" in m and "labels" in m]
         assert unknown == [], f"Unexpected warnings: {unknown}"
 
     def test_type_no_warning(
-        self, social_star: Star, caplog: pytest.LogCaptureFixture
+        self,
+        social_star: Star,
+        caplog: pytest.LogCaptureFixture,
     ) -> None:
         """type(r) must not emit an 'Unknown function' warning."""
         msgs = _capture_warnings(
@@ -98,13 +100,13 @@ class TestNoSpuriousWarnings:
             social_star,
             "MATCH (p:Person)-[r:KNOWS]->(f:Person) RETURN type(r) AS t LIMIT 1",
         )
-        unknown = [
-            m for m in msgs if "Unknown function" in m and "type" in m.lower()
-        ]
+        unknown = [m for m in msgs if "Unknown function" in m and "type" in m.lower()]
         assert unknown == [], f"Unexpected warnings: {unknown}"
 
     def test_startnode_no_warning(
-        self, social_star: Star, caplog: pytest.LogCaptureFixture
+        self,
+        social_star: Star,
+        caplog: pytest.LogCaptureFixture,
     ) -> None:
         """startNode(r) must not emit an 'Unknown function' warning."""
         msgs = _capture_warnings(
@@ -112,13 +114,13 @@ class TestNoSpuriousWarnings:
             social_star,
             "MATCH (p:Person)-[r:KNOWS]->(f:Person) RETURN startNode(r) AS sn LIMIT 1",
         )
-        unknown = [
-            m for m in msgs if "Unknown function" in m and "startNode" in m
-        ]
+        unknown = [m for m in msgs if "Unknown function" in m and "startNode" in m]
         assert unknown == [], f"Unexpected warnings: {unknown}"
 
     def test_endnode_no_warning(
-        self, social_star: Star, caplog: pytest.LogCaptureFixture
+        self,
+        social_star: Star,
+        caplog: pytest.LogCaptureFixture,
     ) -> None:
         """endNode(r) must not emit an 'Unknown function' warning."""
         msgs = _capture_warnings(
@@ -126,38 +128,40 @@ class TestNoSpuriousWarnings:
             social_star,
             "MATCH (p:Person)-[r:KNOWS]->(f:Person) RETURN endNode(r) AS en LIMIT 1",
         )
-        unknown = [
-            m for m in msgs if "Unknown function" in m and "endNode" in m
-        ]
+        unknown = [m for m in msgs if "Unknown function" in m and "endNode" in m]
         assert unknown == [], f"Unexpected warnings: {unknown}"
 
     def test_labels_still_returns_correct_value(
-        self, social_star: Star
+        self,
+        social_star: Star,
     ) -> None:
         """labels(p) still returns the correct label list after the fix."""
         r = social_star.execute_query(
-            "MATCH (p:Person) RETURN labels(p) AS l ORDER BY p.name LIMIT 1"
+            "MATCH (p:Person) RETURN labels(p) AS l ORDER BY p.name LIMIT 1",
         )
         assert r["l"].iloc[0] == ["Person"]
 
     def test_type_still_returns_correct_value(self, social_star: Star) -> None:
         """type(r) still returns the correct type string after the fix."""
         r = social_star.execute_query(
-            "MATCH (p:Person)-[r:KNOWS]->(f:Person) RETURN type(r) AS t LIMIT 1"
+            "MATCH (p:Person)-[r:KNOWS]->(f:Person) RETURN type(r) AS t LIMIT 1",
         )
         assert r["t"].iloc[0] == "KNOWS"
 
     def test_startnode_still_returns_correct_value(
-        self, social_star: Star
+        self,
+        social_star: Star,
     ) -> None:
         """startNode(r) still returns the correct node ID after the fix."""
         r = social_star.execute_query(
-            "MATCH (p:Person {name: 'Alice'})-[r:KNOWS]->(f:Person) RETURN startNode(r) AS sn"
+            "MATCH (p:Person {name: 'Alice'})-[r:KNOWS]->(f:Person) RETURN startNode(r) AS sn",
         )
         assert r["sn"].iloc[0] == 1  # Alice's ID
 
     def test_truly_unknown_function_still_warns(
-        self, social_star: Star, caplog: pytest.LogCaptureFixture
+        self,
+        social_star: Star,
+        caplog: pytest.LogCaptureFixture,
     ) -> None:
         """A genuinely unknown function (e.g. bogusFunc) still emits the warning."""
         try:
@@ -168,11 +172,7 @@ class TestNoSpuriousWarnings:
             )
         except Exception:
             # Execution raises after the warning — that's fine
-            msgs = [
-                r.message
-                for r in caplog.records
-                if r.levelno == logging.WARNING
-            ]
+            msgs = [r.message for r in caplog.records if r.levelno == logging.WARNING]
         # Either a warning was emitted OR an exception was raised; both indicate
         # the function is correctly treated as unknown (not silently suppressed).
         unknown = [m for m in msgs if "Unknown function" in m]

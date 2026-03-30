@@ -6,7 +6,6 @@ import threading
 import time
 
 import pytest
-
 from pycypher.exceptions import RateLimitError
 from pycypher.rate_limiter import (
     QueryRateLimiter,
@@ -14,7 +13,6 @@ from pycypher.rate_limiter import (
     get_global_limiter,
     reset_global_limiter,
 )
-
 
 # ---------------------------------------------------------------------------
 # _TokenBucket unit tests
@@ -240,6 +238,7 @@ class TestGlobalLimiter:
         import importlib
 
         import pycypher.config
+
         importlib.reload(pycypher.config)
 
         reset_global_limiter()

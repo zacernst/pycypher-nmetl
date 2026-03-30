@@ -82,6 +82,7 @@ import pandas as pd
 from shared.helpers import is_null_value, suggest_close_match
 from shared.logger import LOGGER
 
+from pycypher.constants import _scalar_int, _scalar_int_opt
 from pycypher.scalar_functions import (
     conversion_functions,
     extended_string_functions,
@@ -524,11 +525,11 @@ class ScalarFunctionRegistry:
 
             """
             # Convert start to integer (use first value if constant)
-            start_val = int(start.iloc[0]) if len(start) > 0 else 0
+            start_val = _scalar_int(start)
 
             if length is not None:
                 # Extract with specified length
-                length_val = int(length.iloc[0]) if len(length) > 0 else 0
+                length_val = _scalar_int(length)
                 return s.str.slice(start_val, start_val + length_val)
             # Extract from start to end
             return s.str.slice(start_val)
@@ -918,7 +919,9 @@ class ScalarFunctionRegistry:
                 lambda v: (
                     None
                     if _null_guard(v)
-                    else _hl.md5(str(v).encode("utf-8"), usedforsecurity=False).hexdigest()
+                    else _hl.md5(
+                        str(v).encode("utf-8"), usedforsecurity=False
+                    ).hexdigest()
                 ),
             )
 
@@ -928,7 +931,9 @@ class ScalarFunctionRegistry:
                 lambda v: (
                     None
                     if _null_guard(v)
-                    else _hl.sha1(str(v).encode("utf-8"), usedforsecurity=False).hexdigest()
+                    else _hl.sha1(
+                        str(v).encode("utf-8"), usedforsecurity=False
+                    ).hexdigest()
                 ),
             )
 

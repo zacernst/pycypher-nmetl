@@ -14,7 +14,7 @@ from pycypher.relational_models import Context, EntityMapping
 from pycypher.star import Star
 
 
-@pytest.fixture()
+@pytest.fixture
 def empty_star() -> Star:
     return Star(context=Context(entity_mapping=EntityMapping(mapping={})))
 
@@ -43,7 +43,7 @@ class TestRandFunction:
         assert 0.0 <= v < 1.0
 
     def test_rand_is_in_available_functions(self, empty_star: Star) -> None:
-        """rand must appear in Star.available_functions()."""
+        """Rand must appear in Star.available_functions()."""
         assert "rand" in empty_star.available_functions()
 
     def test_rand_in_where_clause(self) -> None:
@@ -54,14 +54,14 @@ class TestRandFunction:
         ctx = ContextBuilder.from_dict(
             {
                 "Item": pd.DataFrame(
-                    {"__ID__": list(range(100)), "val": list(range(100))}
-                )
-            }
+                    {"__ID__": list(range(100)), "val": list(range(100))},
+                ),
+            },
         )
         star = Star(context=ctx)
         # With rand() always >= 0.0, no rows should be filtered out when using < 1.0
         result = star.execute_query(
-            "MATCH (i:Item) WHERE rand() < 1.0 RETURN count(i) AS n"
+            "MATCH (i:Item) WHERE rand() < 1.0 RETURN count(i) AS n",
         )
         assert int(result["n"].iloc[0]) == 100
 

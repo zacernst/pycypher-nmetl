@@ -1,5 +1,4 @@
-"""
-Critical data correctness tests for type coercion and conversion.
+"""Critical data correctness tests for type coercion and conversion.
 Priority 2: Type coercion bugs can silently corrupt data.
 """
 
@@ -54,7 +53,7 @@ def type_test_context():
                 "text",
                 "",
             ],  # Empty vs null vs whitespace
-        }
+        },
     )
 
     person_table = EntityTable(
@@ -101,11 +100,11 @@ class TestIntegerFloatArithmetic:
     """Test mixed integer/float arithmetic produces correct types."""
 
     def test_int_plus_float(self, type_test_context):
-        """int + float should produce float with correct precision."""
+        """Int + float should produce float with correct precision."""
         star = Star(context=type_test_context)
 
         result = star.execute_query(
-            "MATCH (p:Person) WITH p.age_int + p.age_float AS sum_result RETURN sum_result AS sum_result"
+            "MATCH (p:Person) WITH p.age_int + p.age_float AS sum_result RETURN sum_result AS sum_result",
         )
 
         assert len(result) == 5
@@ -115,18 +114,17 @@ class TestIntegerFloatArithmetic:
         sums = result["sum_result"].tolist()
         assert abs(sums[0] - 60.0) < 0.001
         assert abs(sums[1] - 80.5) < 0.001
-        assert all(
-            isinstance(val, float) for val in sums
-        )  # All should be floats
+        assert all(isinstance(val, float) for val in sums)  # All should be floats
 
     def test_float_division_precision(self, type_test_context):
         """Integer / integer uses truncating integer division (openCypher spec).
-        Float / integer still produces float results."""
+        Float / integer still produces float results.
+        """
         star = Star(context=type_test_context)
 
         # Integer column / integer literal → integer (truncation toward zero)
         result = star.execute_query(
-            "MATCH (p:Person) WITH p.age_int / 3 AS third_age RETURN third_age AS third_age"
+            "MATCH (p:Person) WITH p.age_int / 3 AS third_age RETURN third_age AS third_age",
         )
         # 30/3=10, 40/3=13 (truncated), 25/3=8 (truncated)
         thirds = result["third_age"].tolist()
@@ -136,7 +134,7 @@ class TestIntegerFloatArithmetic:
 
         # Float column / integer literal → float
         result_f = star.execute_query(
-            "MATCH (p:Person) WITH p.age_float / 3 AS third_age RETURN third_age AS third_age"
+            "MATCH (p:Person) WITH p.age_float / 3 AS third_age RETURN third_age AS third_age",
         )
         thirds_f = result_f["third_age"].tolist()
         # age_float[1] = 40.5, so 40.5 / 3 = 13.5
@@ -147,7 +145,7 @@ class TestIntegerFloatArithmetic:
         star = Star(context=type_test_context)
 
         result = star.execute_query(
-            "MATCH (p:Person) WITH p.age_int / 3 AS int_div, p.age_float / 3 AS float_div RETURN int_div AS int_div, float_div AS float_div"
+            "MATCH (p:Person) WITH p.age_int / 3 AS int_div, p.age_float / 3 AS float_div RETURN int_div AS int_div, float_div AS float_div",
         )
 
         # Check column dtypes (iterrows upcasts values, so check the Series dtype instead)
@@ -163,11 +161,11 @@ class TestStringToNumberConversion:
     """Test string to number conversion accuracy."""
 
     def test_tointeger_conversion_accuracy(self, type_test_context):
-        """toInteger should truncate, not round."""
+        """ToInteger should truncate, not round."""
         star = Star(context=type_test_context)
 
         result = star.execute_query(
-            "MATCH (p:Person) WITH toInteger(p.salary_str) AS int_salary RETURN int_salary AS int_salary"
+            "MATCH (p:Person) WITH toInteger(p.salary_str) AS int_salary RETURN int_salary AS int_salary",
         )
 
         assert len(result) == 5
@@ -178,11 +176,11 @@ class TestStringToNumberConversion:
         assert int_salaries == expected
 
     def test_tofloat_conversion_accuracy(self, type_test_context):
-        """toFloat should preserve decimal precision."""
+        """ToFloat should preserve decimal precision."""
         star = Star(context=type_test_context)
 
         result = star.execute_query(
-            "MATCH (p:Person) WITH toFloat(p.salary_str) AS float_salary RETURN float_salary AS float_salary"
+            "MATCH (p:Person) WITH toFloat(p.salary_str) AS float_salary RETURN float_salary AS float_salary",
         )
 
         float_salaries = result["float_salary"].tolist()
@@ -196,7 +194,7 @@ class TestStringToNumberConversion:
         star = Star(context=type_test_context)
 
         result = star.execute_query(
-            "MATCH (p:Person) WITH toInteger(p.score_mixed) AS int_score RETURN int_score AS int_score"
+            "MATCH (p:Person) WITH toInteger(p.score_mixed) AS int_score RETURN int_score AS int_score",
         )
 
         # "invalid" and "" should become null
@@ -210,11 +208,11 @@ class TestBooleanConversion:
     """Test boolean conversion edge cases."""
 
     def test_toboolean_string_conversion(self, type_test_context):
-        """toBoolean should handle string values correctly."""
+        """ToBoolean should handle string values correctly."""
         star = Star(context=type_test_context)
 
         result = star.execute_query(
-            "MATCH (p:Person) WITH toBoolean(p.bool_str) AS bool_result RETURN bool_result AS bool_result"
+            "MATCH (p:Person) WITH toBoolean(p.bool_str) AS bool_result RETURN bool_result AS bool_result",
         )
 
         bool_results = result["bool_result"].dropna().tolist()
@@ -235,7 +233,7 @@ class TestBooleanConversion:
         star = Star(context=type_test_context)
 
         result = star.execute_query(
-            "MATCH (p:Person) WITH toBoolean('true') + 5 AS bool_plus_int RETURN bool_plus_int AS bool_plus_int"
+            "MATCH (p:Person) WITH toBoolean('true') + 5 AS bool_plus_int RETURN bool_plus_int AS bool_plus_int",
         )
 
         # True + 5 should equal 6 (if boolean coercion to int works)
@@ -251,7 +249,7 @@ class TestMathematicalEdgeCases:
         star = Star(context=type_test_context)
 
         result = star.execute_query(
-            "MATCH (p:Person) WITH p.age_float / 0.0 AS inf_result RETURN inf_result AS inf_result"
+            "MATCH (p:Person) WITH p.age_float / 0.0 AS inf_result RETURN inf_result AS inf_result",
         )
 
         # Should produce positive infinity for positive numbers
@@ -263,7 +261,7 @@ class TestMathematicalEdgeCases:
         star = Star(context=type_test_context)
 
         result = star.execute_query(
-            "MATCH (p:Person) WITH 0.0 / 0.0 AS nan_result RETURN nan_result AS nan_result"
+            "MATCH (p:Person) WITH 0.0 / 0.0 AS nan_result RETURN nan_result AS nan_result",
         )
 
         nan_results = result["nan_result"].tolist()
@@ -274,7 +272,7 @@ class TestMathematicalEdgeCases:
         star = Star(context=type_test_context)
 
         result = star.execute_query(
-            "MATCH (p:Person) WITH -p.age_float / 0.0 AS neg_inf_result RETURN neg_inf_result AS neg_inf_result"
+            "MATCH (p:Person) WITH -p.age_float / 0.0 AS neg_inf_result RETURN neg_inf_result AS neg_inf_result",
         )
 
         neg_inf_results = result["neg_inf_result"].tolist()
@@ -285,7 +283,7 @@ class TestMathematicalEdgeCases:
         star = Star(context=type_test_context)
 
         result = star.execute_query(
-            "MATCH (p:Person) WITH p.age_int * 999999999999 AS huge_result RETURN huge_result AS huge_result"
+            "MATCH (p:Person) WITH p.age_int * 999999999999 AS huge_result RETURN huge_result AS huge_result",
         )
 
         # Should handle large numbers gracefully
@@ -302,7 +300,7 @@ class TestFloatingPointPrecision:
         star = Star(context=type_test_context)
 
         result = star.execute_query(
-            "MATCH (p:Person) WITH 0.1 + 0.2 AS decimal_sum RETURN decimal_sum AS decimal_sum"
+            "MATCH (p:Person) WITH 0.1 + 0.2 AS decimal_sum RETURN decimal_sum AS decimal_sum",
         )
 
         decimal_sums = result["decimal_sum"].tolist()
@@ -315,7 +313,7 @@ class TestFloatingPointPrecision:
         star = Star(context=type_test_context)
 
         result = star.execute_query(
-            "MATCH (p:Person) WITH 1000000000000.0 + 0.001 AS precision_test RETURN precision_test AS precision_test"
+            "MATCH (p:Person) WITH 1000000000000.0 + 0.001 AS precision_test RETURN precision_test AS precision_test",
         )
 
         # Test if small precision is preserved when adding to large numbers
@@ -334,7 +332,7 @@ class TestEmptyStringVsNull:
         star = Star(context=type_test_context)
 
         result = star.execute_query(
-            "MATCH (p:Person) WITH size(p.empty_or_null) AS str_length RETURN str_length AS str_length"
+            "MATCH (p:Person) WITH size(p.empty_or_null) AS str_length RETURN str_length AS str_length",
         )
 
         lengths = result["str_length"].tolist()
@@ -350,7 +348,7 @@ class TestEmptyStringVsNull:
         star = Star(context=type_test_context)
 
         result = star.execute_query(
-            "MATCH (p:Person) WITH p.empty_or_null + '_suffix' AS concat_result RETURN concat_result AS concat_result"
+            "MATCH (p:Person) WITH p.empty_or_null + '_suffix' AS concat_result RETURN concat_result AS concat_result",
         )
 
         concat_results = result["concat_result"].tolist()
@@ -372,7 +370,7 @@ class TestComplexTypeCoercion:
             WITH toFloat(p.salary_str) AS float_sal,
                  p.age_int AS int_age
             WITH float_sal / int_age AS ratio
-            RETURN ratio AS ratio"""
+            RETURN ratio AS ratio""",
         )
 
         # Should produce float results from string->float / int
@@ -387,7 +385,7 @@ class TestComplexTypeCoercion:
         star = Star(context=type_test_context)
 
         result = star.execute_query(
-            "MATCH (p:Person) WITH toString(toInteger(toFloat(p.salary_str))) AS converted_back RETURN converted_back AS converted_back"
+            "MATCH (p:Person) WITH toString(toInteger(toFloat(p.salary_str))) AS converted_back RETURN converted_back AS converted_back",
         )
 
         # String -> Float -> Integer -> String
@@ -395,6 +393,4 @@ class TestComplexTypeCoercion:
         converted = result["converted_back"].tolist()
         assert all(isinstance(val, str) for val in converted)
         assert "100000" in converted
-        assert (
-            "120000" in converted
-        )  # 120000.50 -> 120000.0 -> 120000 -> "120000"
+        assert "120000" in converted  # 120000.50 -> 120000.0 -> 120000 -> "120000"

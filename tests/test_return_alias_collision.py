@@ -28,7 +28,7 @@ from pycypher.star import Star
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture()
+@pytest.fixture
 def friends_star() -> Star:
     """Two Person nodes connected by a KNOWS relationship."""
     persons = pd.DataFrame(
@@ -36,10 +36,10 @@ def friends_star() -> Star:
             ID_COLUMN: [1, 2, 3],
             "name": ["Alice", "Bob", "Carol"],
             "age": [30, 25, 35],
-        }
+        },
     )
     rels = pd.DataFrame(
-        {"__ID__": [10, 11], "__SOURCE__": [1, 2], "__TARGET__": [2, 3]}
+        {"__ID__": [10, 11], "__SOURCE__": [1, 2], "__TARGET__": [2, 3]},
     )
     pt = EntityTable(
         entity_type="Person",
@@ -59,7 +59,7 @@ def friends_star() -> Star:
         context=Context(
             entity_mapping=EntityMapping(mapping={"Person": pt}),
             relationship_mapping=RelationshipMapping(mapping={"KNOWS": rt}),
-        )
+        ),
     )
 
 
@@ -74,31 +74,28 @@ class TestReturnAliasCollision:
     def test_both_columns_present(self, friends_star: Star) -> None:
         """RETURN p.name, f.name must produce two columns, not one."""
         r = friends_star.execute_query(
-            "MATCH (p:Person)-[:KNOWS]->(f:Person) RETURN p.name, f.name"
+            "MATCH (p:Person)-[:KNOWS]->(f:Person) RETURN p.name, f.name",
         )
         assert len(r.columns) == 2, (
             f"Expected 2 columns, got {len(r.columns)}: {r.columns.tolist()}"
         )
 
     def test_qualified_column_names_for_collision(
-        self, friends_star: Star
+        self,
+        friends_star: Star,
     ) -> None:
         """Ambiguous aliases must be qualified to 'p.name' and 'f.name'."""
         r = friends_star.execute_query(
-            "MATCH (p:Person)-[:KNOWS]->(f:Person) RETURN p.name, f.name"
+            "MATCH (p:Person)-[:KNOWS]->(f:Person) RETURN p.name, f.name",
         )
-        assert "p.name" in r.columns, (
-            f"Missing 'p.name' in {r.columns.tolist()}"
-        )
-        assert "f.name" in r.columns, (
-            f"Missing 'f.name' in {r.columns.tolist()}"
-        )
+        assert "p.name" in r.columns, f"Missing 'p.name' in {r.columns.tolist()}"
+        assert "f.name" in r.columns, f"Missing 'f.name' in {r.columns.tolist()}"
 
     def test_correct_values_in_both_columns(self, friends_star: Star) -> None:
         """Values in both columns must be correct after disambiguation."""
         r = friends_star.execute_query(
             "MATCH (p:Person)-[:KNOWS]->(f:Person) "
-            "RETURN p.name, f.name ORDER BY p.name"
+            "RETURN p.name, f.name ORDER BY p.name",
         )
         assert list(r["p.name"]) == ["Alice", "Bob"], r.to_dict()
         assert list(r["f.name"]) == ["Bob", "Carol"], r.to_dict()
@@ -114,7 +111,7 @@ class TestReturnAliasCollision:
     def test_no_collision_keeps_short_alias(self, friends_star: Star) -> None:
         """When there is no collision, short aliases remain unchanged."""
         r = friends_star.execute_query(
-            "MATCH (p:Person)-[:KNOWS]->(f:Person) RETURN p.name, f.age"
+            "MATCH (p:Person)-[:KNOWS]->(f:Person) RETURN p.name, f.age",
         )
         # name appears once, age appears once → no collision
         assert "name" in r.columns
@@ -124,7 +121,7 @@ class TestReturnAliasCollision:
         """Explicit AS alias always wins — disambiguation must not override it."""
         r = friends_star.execute_query(
             "MATCH (p:Person)-[:KNOWS]->(f:Person) "
-            "RETURN p.name AS pname, f.name AS fname"
+            "RETURN p.name AS pname, f.name AS fname",
         )
         assert "pname" in r.columns
         assert "fname" in r.columns
@@ -132,13 +129,14 @@ class TestReturnAliasCollision:
         assert "f.name" not in r.columns
 
     def test_optional_match_both_columns_present(
-        self, friends_star: Star
+        self,
+        friends_star: Star,
     ) -> None:
         """OPTIONAL MATCH with same-named property must not drop outer column."""
         r = friends_star.execute_query(
             "MATCH (p:Person) "
             "OPTIONAL MATCH (p)-[:KNOWS]->(f:Person) "
-            "RETURN p.name, f.name"
+            "RETURN p.name, f.name",
         )
         assert len(r.columns) == 2, (
             f"Expected 2 columns, got {len(r.columns)}: {r.columns.tolist()}"
@@ -151,7 +149,7 @@ class TestReturnAliasCollision:
         r = friends_star.execute_query(
             "MATCH (p:Person) "
             "OPTIONAL MATCH (p)-[:KNOWS]->(f:Person) "
-            "RETURN p.name, f.name ORDER BY p.name"
+            "RETURN p.name, f.name ORDER BY p.name",
         )
         # All 3 persons; only Alice→Bob and Bob→Carol exist
         assert list(r["p.name"]) == ["Alice", "Bob", "Carol"]

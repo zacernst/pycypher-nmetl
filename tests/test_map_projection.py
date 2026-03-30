@@ -24,7 +24,7 @@ def star() -> Star:
             "name": ["Alice", "Bob", "Carol"],
             "age": [30, 25, 35],
             "dept": ["eng", "sales", "eng"],
-        }
+        },
     )
     return Star(context=ContextBuilder.from_dict({"Person": df}))
 
@@ -35,14 +35,14 @@ class TestMapProjection:
     def test_single_property_selector(self, star: Star) -> None:
         """n{.name} returns a dict with a 'name' key."""
         result = star.execute_query(
-            "MATCH (p:Person) WHERE p.name = 'Alice' RETURN p{.name} AS m"
+            "MATCH (p:Person) WHERE p.name = 'Alice' RETURN p{.name} AS m",
         )
         assert result["m"].iloc[0] == {"name": "Alice"}
 
     def test_two_property_selectors(self, star: Star) -> None:
         """n{.name, .age} returns a dict with both keys."""
         result = star.execute_query(
-            "MATCH (p:Person) WHERE p.name = 'Alice' RETURN p{.name, .age} AS m"
+            "MATCH (p:Person) WHERE p.name = 'Alice' RETURN p{.name, .age} AS m",
         )
         row = result["m"].iloc[0]
         assert row["name"] == "Alice"
@@ -52,7 +52,7 @@ class TestMapProjection:
         """n{double_age: n.age * 2} includes a computed key."""
         result = star.execute_query(
             "MATCH (p:Person) WHERE p.name = 'Alice' "
-            "RETURN p{double_age: p.age * 2} AS m"
+            "RETURN p{double_age: p.age * 2} AS m",
         )
         assert result["m"].iloc[0] == {"double_age": 60}
 
@@ -60,16 +60,16 @@ class TestMapProjection:
         """n{.name, senior: n.age > 30} mixes selector and computed."""
         result = star.execute_query(
             "MATCH (p:Person) WHERE p.name = 'Alice' "
-            "RETURN p{.name, senior: p.age > 30} AS m"
+            "RETURN p{.name, senior: p.age > 30} AS m",
         )
         row = result["m"].iloc[0]
         assert row["name"] == "Alice"
-        assert row["senior"] is False or row["senior"] == False  # noqa: E712
+        assert row["senior"] is False or row["senior"] == False
 
     def test_all_rows(self, star: Star) -> None:
         """Map projection applied to all rows returns correct dicts."""
         result = star.execute_query(
-            "MATCH (p:Person) RETURN p{.name} AS m ORDER BY p.name ASC"
+            "MATCH (p:Person) RETURN p{.name} AS m ORDER BY p.name ASC",
         )
         names = [row["name"] for row in result["m"]]
         assert names == ["Alice", "Bob", "Carol"]
@@ -79,7 +79,7 @@ class TestMapProjection:
         result = star.execute_query(
             "MATCH (p:Person) WHERE p.name = 'Alice' "
             "WITH p{.name, .dept} AS info "
-            "RETURN info"
+            "RETURN info",
         )
         row = result["info"].iloc[0]
         assert row["name"] == "Alice"

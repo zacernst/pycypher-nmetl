@@ -29,10 +29,7 @@ from pycypher.star import Star
 # ---------------------------------------------------------------------------
 
 _DATA_DIR = (
-    Path(__file__).resolve().parent.parent
-    / "examples"
-    / "social_network"
-    / "data"
+    Path(__file__).resolve().parent.parent / "examples" / "social_network" / "data"
 )
 
 
@@ -123,7 +120,8 @@ class TestBasicQueries:
     """Basic MATCH / RETURN queries (mirrors demo section 2)."""
 
     def test_return_all_person_names_and_cities(
-        self, social_star: Star
+        self,
+        social_star: Star,
     ) -> None:
         """Demo query: MATCH (p:Person) RETURN p.name AS name, p.city AS city."""
         df = _q(
@@ -137,7 +135,8 @@ class TestBasicQueries:
     def test_return_multiple_properties(self, social_star: Star) -> None:
         """Return name and age."""
         df = _q(
-            social_star, "MATCH (p:Person) RETURN p.name AS name, p.age AS age"
+            social_star,
+            "MATCH (p:Person) RETURN p.name AS name, p.age AS age",
         )
         assert len(df) == 12
         assert {"name", "age"} <= set(df.columns)
@@ -377,9 +376,7 @@ class TestScalarFunctions:
             """,
         )
         assert len(df) == 12
-        assert all(
-            isinstance(n, str) and n == n.upper() for n in df["city_upper"]
-        )
+        assert all(isinstance(n, str) and n == n.upper() for n in df["city_upper"])
         assert all(int(nl) > 0 for nl in df["name_length"])
 
     def test_abs_function(self, social_star: Star) -> None:
@@ -479,12 +476,12 @@ class TestErrorHandling:
 
     def test_unknown_variable_raises(self, social_star: Star) -> None:
         """Demo: MATCH (p) RETURN x.name — unknown variable x."""
-        with pytest.raises(Exception):  # noqa: B017, PT011
+        with pytest.raises(Exception):
             _q(social_star, "MATCH (p:Person) RETURN x.name")
 
     def test_unknown_function_raises(self, social_star: Star) -> None:
         """Demo: toUppper(p.name) — typo in function name."""
-        with pytest.raises(Exception):  # noqa: B017, PT011
+        with pytest.raises(Exception):
             _q(social_star, "MATCH (p:Person) RETURN toUppper(p.name)")
 
     def test_syntax_error_raises(self) -> None:
@@ -492,7 +489,7 @@ class TestErrorHandling:
         from pycypher.grammar_parser import GrammarParser
 
         parser = GrammarParser()
-        with pytest.raises(Exception):  # noqa: B017, PT011
+        with pytest.raises(Exception):
             parser.parse("MATCCH (n) RTRN n")
 
 

@@ -62,6 +62,7 @@ def build_graph(scale: GraphScale, *, seed: int = 42) -> Context:
 
     Returns:
         Populated execution context.
+
     """
     rng = np.random.default_rng(seed)
 
@@ -72,7 +73,7 @@ def build_graph(scale: GraphScale, *, seed: int = 42) -> Context:
             "__ID__": person_ids,
             "name": [f"Person_{i}" for i in range(scale.person_count)],
             "age": rng.integers(18, 80, size=scale.person_count).tolist(),
-        }
+        },
     )
 
     # --- Companies ---
@@ -82,9 +83,11 @@ def build_graph(scale: GraphScale, *, seed: int = 42) -> Context:
             "__ID__": company_ids,
             "name": [f"Company_{i}" for i in range(scale.company_count)],
             "size": rng.integers(
-                10, 10_000, size=scale.company_count
+                10,
+                10_000,
+                size=scale.company_count,
             ).tolist(),
-        }
+        },
     )
 
     # --- KNOWS edges (person -> person) ---
@@ -95,7 +98,7 @@ def build_graph(scale: GraphScale, *, seed: int = 42) -> Context:
             "__SOURCE__": knows_src,
             "__TARGET__": knows_tgt,
             "since": rng.integers(2000, 2025, size=scale.knows_edges).tolist(),
-        }
+        },
     )
 
     # --- WORKS_AT edges (person -> company) ---
@@ -109,7 +112,7 @@ def build_graph(scale: GraphScale, *, seed: int = 42) -> Context:
                 ["Engineer", "Manager", "Analyst", "Director"],
                 size=scale.works_at_edges,
             ).tolist(),
-        }
+        },
     )
 
     ctx = (
@@ -117,7 +120,10 @@ def build_graph(scale: GraphScale, *, seed: int = 42) -> Context:
         .add_entity("Person", person_df, id_col="__ID__")
         .add_entity("Company", company_df, id_col="__ID__")
         .add_relationship(
-            "KNOWS", knows_df, source_col="__SOURCE__", target_col="__TARGET__"
+            "KNOWS",
+            knows_df,
+            source_col="__SOURCE__",
+            target_col="__TARGET__",
         )
         .add_relationship(
             "WORKS_AT",
@@ -167,8 +173,7 @@ QUERY_WORKLOAD: list[dict[str, Any]] = [
     {
         "name": "cross_type_join",
         "query": (
-            "MATCH (p:Person)-[:WORKS_AT]->(c:Company) "
-            "RETURN p.name, c.name LIMIT 100"
+            "MATCH (p:Person)-[:WORKS_AT]->(c:Company) RETURN p.name, c.name LIMIT 100"
         ),
         "category": "join",
     },
@@ -187,16 +192,13 @@ QUERY_WORKLOAD: list[dict[str, Any]] = [
     },
     {
         "name": "distinct",
-        "query": (
-            "MATCH (a:Person)-[:KNOWS]->(b:Person) RETURN DISTINCT b.name"
-        ),
+        "query": ("MATCH (a:Person)-[:KNOWS]->(b:Person) RETURN DISTINCT b.name"),
         "category": "distinct",
     },
     {
         "name": "variable_length_bounded",
         "query": (
-            "MATCH (a:Person)-[:KNOWS*1..3]->(b:Person) "
-            "RETURN a.name, b.name LIMIT 200"
+            "MATCH (a:Person)-[:KNOWS*1..3]->(b:Person) RETURN a.name, b.name LIMIT 200"
         ),
         "category": "bfs",
     },
@@ -308,6 +310,7 @@ def execute_workload(
 
     Returns:
         Aggregated load test report.
+
     """
     all_metrics: list[ExecutionMetrics] = []
     t0 = time.perf_counter()
@@ -332,7 +335,7 @@ def execute_workload(
                         rss_delta_mb=rss_after - rss_before,
                         row_count=len(result),
                         success=True,
-                    )
+                    ),
                 )
             except Exception as exc:
                 elapsed = time.perf_counter() - qt0
@@ -346,7 +349,7 @@ def execute_workload(
                         row_count=0,
                         success=False,
                         error=f"{type(exc).__name__}: {exc}",
-                    )
+                    ),
                 )
 
     total_elapsed = time.perf_counter() - t0

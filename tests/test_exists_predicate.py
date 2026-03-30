@@ -21,7 +21,7 @@ from pycypher.relational_models import (
 from pycypher.star import Star
 
 
-@pytest.fixture()
+@pytest.fixture
 def knows_context() -> Context:
     """Three people; Alice knows Bob and Carol; Bob knows Carol."""
     people_df = pd.DataFrame(
@@ -29,7 +29,7 @@ def knows_context() -> Context:
             ID_COLUMN: [1, 2, 3],
             "name": ["Alice", "Bob", "Carol"],
             "age": [30, 25, 35],
-        }
+        },
     )
     people_table = EntityTable(
         entity_type="Person",
@@ -45,7 +45,7 @@ def knows_context() -> Context:
             ID_COLUMN: [101, 102, 103],
             "__SOURCE__": [1, 1, 2],
             "__TARGET__": [2, 3, 3],
-        }
+        },
     )
     knows_table = RelationshipTable(
         relationship_type="KNOWS",
@@ -58,7 +58,7 @@ def knows_context() -> Context:
     return Context(
         entity_mapping=EntityMapping(mapping={"Person": people_table}),
         relationship_mapping=RelationshipMapping(
-            mapping={"KNOWS": knows_table}
+            mapping={"KNOWS": knows_table},
         ),
     )
 
@@ -67,33 +67,36 @@ class TestExistsPredicate:
     """EXISTS { pattern } in WHERE clause."""
 
     def test_exists_returns_true_for_rows_with_matches(
-        self, knows_context: Context
+        self,
+        knows_context: Context,
     ) -> None:
         """Alice and Bob have outgoing KNOWS — EXISTS returns True for them."""
         star = Star(context=knows_context)
         result = star.execute_query(
-            "MATCH (p:Person) WHERE EXISTS { (p)-[:KNOWS]->(f) } RETURN p.name AS name"
+            "MATCH (p:Person) WHERE EXISTS { (p)-[:KNOWS]->(f) } RETURN p.name AS name",
         )
         names = set(result["name"].tolist())
         assert names == {"Alice", "Bob"}
 
     def test_exists_returns_false_for_rows_without_matches(
-        self, knows_context: Context
+        self,
+        knows_context: Context,
     ) -> None:
         """Carol has no outgoing KNOWS — she is excluded."""
         star = Star(context=knows_context)
         result = star.execute_query(
-            "MATCH (p:Person) WHERE EXISTS { (p)-[:KNOWS]->(f) } RETURN p.name AS name"
+            "MATCH (p:Person) WHERE EXISTS { (p)-[:KNOWS]->(f) } RETURN p.name AS name",
         )
         assert "Carol" not in result["name"].tolist()
 
     def test_not_exists_inverts_the_predicate(
-        self, knows_context: Context
+        self,
+        knows_context: Context,
     ) -> None:
         """NOT EXISTS selects rows where no match exists."""
         star = Star(context=knows_context)
         result = star.execute_query(
-            "MATCH (p:Person) WHERE NOT EXISTS { (p)-[:KNOWS]->(f) } RETURN p.name AS name"
+            "MATCH (p:Person) WHERE NOT EXISTS { (p)-[:KNOWS]->(f) } RETURN p.name AS name",
         )
         assert result["name"].tolist() == ["Carol"]
 
@@ -103,7 +106,7 @@ class TestExistsPredicate:
         result = star.execute_query(
             "MATCH (p:Person) "
             "WHERE p.age < 31 AND EXISTS { (p)-[:KNOWS]->(f) } "
-            "RETURN p.name AS name"
+            "RETURN p.name AS name",
         )
         # Alice (age=30, has KNOWS) passes; Bob (age=25, has KNOWS) passes;
         # Carol (age=35) fails age filter; no one else
@@ -111,11 +114,12 @@ class TestExistsPredicate:
         assert names == {"Alice", "Bob"}
 
     def test_exists_does_not_raise_not_implemented(
-        self, knows_context: Context
+        self,
+        knows_context: Context,
     ) -> None:
         """EXISTS must not raise NotImplementedError."""
         star = Star(context=knows_context)
         result = star.execute_query(
-            "MATCH (p:Person) WHERE EXISTS { (p)-[:KNOWS]->(f) } RETURN p.name AS name"
+            "MATCH (p:Person) WHERE EXISTS { (p)-[:KNOWS]->(f) } RETURN p.name AS name",
         )
         assert result is not None

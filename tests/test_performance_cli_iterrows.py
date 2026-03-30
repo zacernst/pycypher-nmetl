@@ -12,7 +12,7 @@ from unittest.mock import patch
 
 import pandas as pd
 import pytest
-from pycypher.nmetl_cli import _print_table
+from pycypher._cli_query import _print_table
 
 pytestmark = pytest.mark.performance
 
@@ -31,7 +31,7 @@ class TestCurrentPerformanceIssue:
                 "id": [1, 2, 3, 4, 5],
                 "name": ["Alice", "Bob", "Charlie", "David", "Eve"],
                 "value": [100, 200, 300, 400, 500],
-            }
+            },
         )
 
         # Capture the output
@@ -60,10 +60,8 @@ class TestCurrentPerformanceIssue:
                 "id": range(1000),
                 "name": [f"User_{i}" for i in range(1000)],
                 "value": range(1000, 2000),
-                "description": [
-                    f"Description for user {i}" for i in range(1000)
-                ],
-            }
+                "description": [f"Description for user {i}" for i in range(1000)],
+            },
         )
 
         # Time the current implementation
@@ -84,7 +82,7 @@ class TestCurrentPerformanceIssue:
         # (This will be used to verify performance improvement)
         assert elapsed_time > 0  # Basic sanity check
         print(
-            f"Current iterrows implementation took: {elapsed_time:.4f}s for 1000 rows"
+            f"Current iterrows implementation took: {elapsed_time:.4f}s for 1000 rows",
         )
 
     def test_empty_dataframe_handling(self):
@@ -113,7 +111,7 @@ class TestVectorizedPerformanceImplementation:
                 "id": [1, 2, 3],
                 "name": ["Alice", "Bob", "Charlie"],
                 "score": [95.5, 87.2, 92.8],
-            }
+            },
         )
 
         # Test current output
@@ -147,7 +145,7 @@ class TestVectorizedPerformanceImplementation:
                 "username": [f"user_{i:04d}" for i in range(2000)],
                 "email": [f"user{i}@example.com" for i in range(2000)],
                 "score": [i * 0.1 for i in range(2000)],
-            }
+            },
         )
 
         # Time the vectorized implementation
@@ -169,7 +167,7 @@ class TestVectorizedPerformanceImplementation:
         # For 2000 rows, vectorized should be under 0.1 seconds
         # while iterrows might take 0.5+ seconds
         print(
-            f"Vectorized implementation took: {vectorized_time:.4f}s for 2000 rows"
+            f"Vectorized implementation took: {vectorized_time:.4f}s for 2000 rows",
         )
 
         # This assertion will initially fail (current implementation is slow)
@@ -188,7 +186,7 @@ class TestVectorizedPerformanceImplementation:
                 "float_col": [1.1, 2.2, 3.3],
                 "bool_col": [True, False, True],
                 "none_col": [None, "value", None],
-            }
+            },
         )
 
         output_buffer = io.StringIO()
@@ -203,10 +201,7 @@ class TestVectorizedPerformanceImplementation:
         assert "True" in output
         assert "False" in output
         assert (
-            "NULL" in output
-            or "None" in output
-            or "NaN" in output
-            or "nan" in output
+            "NULL" in output or "None" in output or "NaN" in output or "nan" in output
         )
 
     def test_vectorized_empty_dataframe(self):
@@ -227,7 +222,7 @@ class TestVectorizedPerformanceImplementation:
         # Mock iterrows to detect if it's called
         with patch.object(pd.DataFrame, "iterrows") as mock_iterrows:
             mock_iterrows.side_effect = Exception(
-                "iterrows should not be called in vectorized implementation!"
+                "iterrows should not be called in vectorized implementation!",
             )
 
             # This should work without calling iterrows

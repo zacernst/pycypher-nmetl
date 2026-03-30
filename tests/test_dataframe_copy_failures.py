@@ -1,5 +1,4 @@
-"""
-Testing Loop 287 - DataFrame Copy Optimization Test Failures TDD
+"""Testing Loop 287 - DataFrame Copy Optimization Test Failures TDD
 
 Comprehensive diagnostic test suite documenting the 2 failing DataFrame copy
 optimization tests and validating fix approaches.
@@ -33,18 +32,14 @@ class TestGrammarParserWildcardSupport:
 
         # Verify it's a parsing error related to wildcard position
         error_msg = str(exc_info.value)
-        assert (
-            "column 27" in error_msg or "col 27" in error_msg
-        )  # Position of the *
+        assert "column 27" in error_msg or "col 27" in error_msg  # Position of the *
 
     def test_explicit_property_syntax_works(self):
         """Explicit property listing should work as alternative to wildcards."""
         converter = ASTConverter()
 
         # This should work fine
-        query_explicit = (
-            "MATCH (p:Person) RETURN p.name, p.age ORDER BY p.age DESC"
-        )
+        query_explicit = "MATCH (p:Person) RETURN p.name, p.age ORDER BY p.age DESC"
 
         # Should parse successfully
         ast = converter.from_cypher(query_explicit)
@@ -68,14 +63,16 @@ class TestGrammarParserWildcardSupport:
         """Test that explicit property queries work end-to-end."""
         # Create test data
         entities_df = pd.DataFrame(
-            {"__ID__": ["p1", "p2"], "name": ["Alice", "Bob"], "age": [25, 30]}
+            {"__ID__": ["p1", "p2"], "name": ["Alice", "Bob"], "age": [25, 30]},
         )
 
         context = ContextBuilder.from_dict({"Person": entities_df})
         star = Star(context=context)
 
         # Use explicit properties instead of wildcard
-        query = "MATCH (p:Person) RETURN p.name AS name, p.age AS age ORDER BY p.age DESC"
+        query = (
+            "MATCH (p:Person) RETURN p.name AS name, p.age AS age ORDER BY p.age DESC"
+        )
         result = star.execute_query(query)
 
         assert len(result) == 2
@@ -93,9 +90,7 @@ def _count_copy_patterns() -> int:
         text=True,
         cwd="/Users/zernst/git/pycypher-nmetl",
     )
-    copy_lines = (
-        result.stdout.strip().split("\n") if result.stdout.strip() else []
-    )
+    copy_lines = result.stdout.strip().split("\n") if result.stdout.strip() else []
     return len(copy_lines)
 
 
@@ -125,9 +120,7 @@ class TestDataFrameCopyPatternCounting:
             cwd="/Users/zernst/git/pycypher-nmetl",
         )
 
-        copy_lines = (
-            result.stdout.strip().split("\n") if result.stdout.strip() else []
-        )
+        copy_lines = result.stdout.strip().split("\n") if result.stdout.strip() else []
 
         # Group by file
         file_counts: dict[str, int] = {}
@@ -153,7 +146,7 @@ class TestDataFrameCopyPatternCounting:
         assert actual_count <= 30  # Reasonable upper bound
 
         print(
-            f"Recommended test expectation: >= {expected_minimum} (actual: {actual_count})"
+            f"Recommended test expectation: >= {expected_minimum} (actual: {actual_count})",
         )
 
 
@@ -166,7 +159,9 @@ class TestTestInfrastructureUpdates:
         original_query = "MATCH (p:Person) RETURN p.* ORDER BY p.age DESC"
 
         # Fixed query with explicit properties
-        fixed_query = "MATCH (p:Person) RETURN p.name AS name, p.age AS age ORDER BY p.age DESC"
+        fixed_query = (
+            "MATCH (p:Person) RETURN p.name AS name, p.age AS age ORDER BY p.age DESC"
+        )
 
         converter = ASTConverter()
 
@@ -215,7 +210,7 @@ class TestFixValidation:
         """Test that fixing the query still allows copy analysis."""
         # Create test data
         entities_df = pd.DataFrame(
-            {"__ID__": ["p1", "p2"], "name": ["Alice", "Bob"], "age": [25, 30]}
+            {"__ID__": ["p1", "p2"], "name": ["Alice", "Bob"], "age": [25, 30]},
         )
 
         context = ContextBuilder.from_dict({"Person": entities_df})
@@ -242,9 +237,7 @@ class TestFixValidation:
         actual_patterns = 12
 
         # Should still be worth optimizing
-        assert actual_patterns >= 10, (
-            "Still enough patterns to justify optimization"
-        )
+        assert actual_patterns >= 10, "Still enough patterns to justify optimization"
 
         # Phases can still be meaningful
         phase1_targets = 3  # High impact

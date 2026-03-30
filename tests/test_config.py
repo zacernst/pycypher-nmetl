@@ -17,6 +17,8 @@ from unittest.mock import MagicMock, patch
 import pyarrow as pa
 import pytest
 from pycypher.ingestion.config import (
+    CURRENT_CONFIG_VERSION,
+    SUPPORTED_CONFIG_VERSIONS,
     EntitySourceConfig,
     ErrorHandlingPolicy,
     FunctionConfig,
@@ -115,14 +117,18 @@ class TestEntitySourceConfig:
     def test_on_error_string_coercion(self) -> None:
         """String values are coerced to the enum."""
         e = EntitySourceConfig(
-            id="x", uri="file:///x.csv", entity_type="X", on_error="skip"
+            id="x",
+            uri="file:///x.csv",
+            entity_type="X",
+            on_error="skip",
         )
         assert e.on_error is ErrorHandlingPolicy.SKIP
 
     def test_missing_required_fields(self) -> None:
         with pytest.raises(ValidationError):
             EntitySourceConfig(
-                id="x", uri="file:///x.csv"
+                id="x",
+                uri="file:///x.csv",
             )  # missing entity_type
 
 
@@ -203,7 +209,9 @@ class TestSourcesConfig:
 
     def test_entities_populated(self) -> None:
         entity = EntitySourceConfig(
-            id="p", uri="file:///p.csv", entity_type="Person"
+            id="p",
+            uri="file:///p.csv",
+            entity_type="Person",
         )
         s = SourcesConfig(entities=[entity])
         assert len(s.entities) == 1
@@ -322,7 +330,9 @@ class TestOutputConfig:
 
     def test_format_string_coercion(self) -> None:
         o = OutputConfig(
-            query_id="q1", uri="file:///r.parquet", format="parquet"
+            query_id="q1",
+            uri="file:///r.parquet",
+            format="parquet",
         )
         assert o.format is OutputFormat.PARQUET
 
@@ -347,9 +357,30 @@ class TestPipelineConfig:
         cfg = PipelineConfig()
         assert cfg.version == "1.0"
 
-    def test_custom_version(self) -> None:
-        cfg = PipelineConfig(version="2.0")
-        assert cfg.version == "2.0"
+    def test_supported_version_accepted(self) -> None:
+        for v in SUPPORTED_CONFIG_VERSIONS:
+            cfg = PipelineConfig(version=v)
+            assert cfg.version == v
+
+    def test_newer_major_version_rejected(self) -> None:
+        with pytest.raises(ValidationError, match="newer than this version"):
+            PipelineConfig(version="2.0")
+
+    def test_unknown_minor_version_warns(self) -> None:
+        with pytest.warns(FutureWarning, match="not explicitly supported"):
+            cfg = PipelineConfig(version="1.1")
+        assert cfg.version == "1.1"
+
+    def test_invalid_version_format_rejected(self) -> None:
+        with pytest.raises(ValidationError, match="Invalid config version format"):
+            PipelineConfig(version="latest")
+
+    def test_invalid_version_format_no_dot(self) -> None:
+        with pytest.raises(ValidationError, match="Invalid config version format"):
+            PipelineConfig(version="1")
+
+    def test_version_constants_consistent(self) -> None:
+        assert CURRENT_CONFIG_VERSION in SUPPORTED_CONFIG_VERSIONS
 
 
 # ===========================================================================
@@ -359,7 +390,8 @@ class TestPipelineConfig:
 
 class TestEnvVarSubstitution:
     def test_string_substitution(
-        self, monkeypatch: pytest.MonkeyPatch
+        self,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         monkeypatch.setenv("MY_VAR", "hello")
         result = _substitute_env_vars("${MY_VAR} world")
@@ -372,7 +404,8 @@ class TestEnvVarSubstitution:
         assert result == "${UNSET_TEST_VAR_XYZ}/path"
 
     def test_nested_dict_substitution(
-        self, monkeypatch: pytest.MonkeyPatch
+        self,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         monkeypatch.setenv("DB_HOST", "localhost")
         monkeypatch.setenv("DB_PORT", "5432")
@@ -381,7 +414,8 @@ class TestEnvVarSubstitution:
         assert result == {"uri": "postgresql://user@localhost:5432/db"}
 
     def test_nested_list_substitution(
-        self, monkeypatch: pytest.MonkeyPatch
+        self,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         monkeypatch.setenv("BUCKET", "my-bucket")
         data = ["s3://${BUCKET}/a.parquet", "s3://${BUCKET}/b.parquet"]
@@ -398,7 +432,8 @@ class TestEnvVarSubstitution:
         assert _substitute_env_vars(None) is None
 
     def test_multiple_vars_in_one_string(
-        self, monkeypatch: pytest.MonkeyPatch
+        self,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         monkeypatch.setenv("USER", "alice")
         monkeypatch.setenv("PASS", "secret")
@@ -478,25 +513,19 @@ class TestLoadPipelineConfigFullPipeline:
 
     def test_relationship_cols(self) -> None:
         cfg = _load("full_pipeline.yaml")
-        emp = next(
-            r for r in cfg.sources.relationships if r.id == "employment"
-        )
+        emp = next(r for r in cfg.sources.relationships if r.id == "employment")
         assert emp.source_col == "person_id"
         assert emp.target_col == "company_id"
         assert emp.id_col == "employment_id"
 
     def test_function_module_form(self) -> None:
         cfg = _load("full_pipeline.yaml")
-        f = next(
-            fn for fn in cfg.functions if fn.module == "mypackage.string_utils"
-        )
+        f = next(fn for fn in cfg.functions if fn.module == "mypackage.string_utils")
         assert f.names == ["normalize_name", "parse_phone_number"]
 
     def test_function_wildcard_form(self) -> None:
         cfg = _load("full_pipeline.yaml")
-        f = next(
-            fn for fn in cfg.functions if fn.module == "mypackage.math_utils"
-        )
+        f = next(fn for fn in cfg.functions if fn.module == "mypackage.math_utils")
         assert f.names == "*"
 
     def test_function_callable_form(self) -> None:
@@ -627,9 +656,7 @@ class TestLoadPipelineConfigWithSchemaHints:
 class TestLoadPipelineConfigWithOnError:
     def test_fail_policy(self) -> None:
         cfg = _load("with_on_error.yaml")
-        required = next(
-            e for e in cfg.sources.entities if e.id == "required_persons"
-        )
+        required = next(e for e in cfg.sources.entities if e.id == "required_persons")
         assert required.on_error is ErrorHandlingPolicy.FAIL
 
     def test_skip_policy(self) -> None:
@@ -641,9 +668,7 @@ class TestLoadPipelineConfigWithOnError:
 
     def test_warn_policy(self) -> None:
         cfg = _load("with_on_error.yaml")
-        advisory = next(
-            e for e in cfg.sources.entities if e.id == "advisory_data"
-        )
+        advisory = next(e for e in cfg.sources.entities if e.id == "advisory_data")
         assert advisory.on_error is ErrorHandlingPolicy.WARN
 
     def test_relationship_warn_policy(self) -> None:
@@ -654,7 +679,8 @@ class TestLoadPipelineConfigWithOnError:
 
 class TestLoadPipelineConfigWithEnvVars:
     def test_resolved_vars_substituted(
-        self, monkeypatch: pytest.MonkeyPatch
+        self,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         monkeypatch.setenv("PIPELINE_NAME", "prod_pipeline")
         monkeypatch.setenv("ENVIRONMENT", "production")
@@ -750,12 +776,19 @@ class TestLoadPipelineConfigEdgeCases:
 
     def test_version_string_preserved(self, tmp_path: Path) -> None:
         f = tmp_path / "v.yaml"
-        f.write_text('version: "2.0"\n', encoding="utf-8")
+        f.write_text('version: "1.0"\n', encoding="utf-8")
         cfg = load_pipeline_config(f)
-        assert cfg.version == "2.0"
+        assert cfg.version == "1.0"
+
+    def test_unsupported_version_rejected_from_file(self, tmp_path: Path) -> None:
+        f = tmp_path / "v2.yaml"
+        f.write_text('version: "2.0"\n', encoding="utf-8")
+        with pytest.raises(ValidationError, match="newer than this version"):
+            load_pipeline_config(f)
 
     def test_sources_key_absent_gives_empty_sources(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         f = tmp_path / "nosources.yaml"
         f.write_text("version: '1.0'\n", encoding="utf-8")
@@ -780,7 +813,9 @@ class TestEntitySourceUriValidation:
 
     def test_bare_parquet_path(self) -> None:
         cfg = EntitySourceConfig(
-            id="s", uri="/data/f.parquet", entity_type="X"
+            id="s",
+            uri="/data/f.parquet",
+            entity_type="X",
         )
         assert cfg.uri == "/data/f.parquet"
 
@@ -790,19 +825,25 @@ class TestEntitySourceUriValidation:
 
     def test_file_uri_csv(self) -> None:
         cfg = EntitySourceConfig(
-            id="s", uri="file:///data/f.csv", entity_type="X"
+            id="s",
+            uri="file:///data/f.csv",
+            entity_type="X",
         )
         assert cfg.uri == "file:///data/f.csv"
 
     def test_s3_parquet(self) -> None:
         cfg = EntitySourceConfig(
-            id="s", uri="s3://bucket/prefix/f.parquet", entity_type="X"
+            id="s",
+            uri="s3://bucket/prefix/f.parquet",
+            entity_type="X",
         )
         assert cfg.uri == "s3://bucket/prefix/f.parquet"
 
     def test_https_json(self) -> None:
         cfg = EntitySourceConfig(
-            id="s", uri="https://example.com/data.json", entity_type="X"
+            id="s",
+            uri="https://example.com/data.json",
+            entity_type="X",
         )
         assert cfg.uri == "https://example.com/data.json"
 
@@ -845,20 +886,24 @@ class TestEntitySourceUriValidation:
 
     def test_unsupported_extension_raises(self) -> None:
         with pytest.raises(
-            ValidationError, match="unrecognised file extension"
+            ValidationError,
+            match="unrecognised file extension",
         ):
             EntitySourceConfig(id="s", uri="/data/f.xlsx", entity_type="X")
 
     def test_no_extension_raises(self) -> None:
         with pytest.raises(
-            ValidationError, match="unrecognised file extension"
+            ValidationError,
+            match="unrecognised file extension",
         ):
             EntitySourceConfig(id="s", uri="/data/file", entity_type="X")
 
     def test_sql_without_query_raises(self) -> None:
         with pytest.raises(ValidationError, match="SQL scheme"):
             EntitySourceConfig(
-                id="s", uri="postgresql://host/db", entity_type="X"
+                id="s",
+                uri="postgresql://host/db",
+                entity_type="X",
             )
 
     def test_mysql_without_query_raises(self) -> None:
@@ -868,7 +913,9 @@ class TestEntitySourceUriValidation:
     def test_sqlite_without_query_raises(self) -> None:
         with pytest.raises(ValidationError, match="SQL scheme"):
             EntitySourceConfig(
-                id="s", uri="sqlite:///path/to/db.sqlite", entity_type="X"
+                id="s",
+                uri="sqlite:///path/to/db.sqlite",
+                entity_type="X",
             )
 
 
@@ -884,14 +931,16 @@ class TestRelationshipSourceUriValidation:
     }
 
     def _cfg(
-        self, uri: str, query: str | None = None
+        self,
+        uri: str,
+        query: str | None = None,
     ) -> RelationshipSourceConfig:
         return RelationshipSourceConfig(
             **{
                 **self._REQUIRED,
                 "uri": uri,
                 **({"query": query} if query else {}),
-            }
+            },
         )
 
     def test_valid_csv(self) -> None:
@@ -912,7 +961,8 @@ class TestRelationshipSourceUriValidation:
 
     def test_bad_extension_raises(self) -> None:
         with pytest.raises(
-            ValidationError, match="unrecognised file extension"
+            ValidationError,
+            match="unrecognised file extension",
         ):
             self._cfg("/data/edges.tsv")
 
@@ -942,20 +992,23 @@ class TestOutputUriValidation:
 
     def test_bad_extension_raises(self) -> None:
         with pytest.raises(
-            ValidationError, match="unrecognised file extension"
+            ValidationError,
+            match="unrecognised file extension",
         ):
             OutputConfig(query_id="q", uri="/out/result.xlsx")
 
     def test_no_extension_raises(self) -> None:
         with pytest.raises(
-            ValidationError, match="unrecognised file extension"
+            ValidationError,
+            match="unrecognised file extension",
         ):
             OutputConfig(query_id="q", uri="/out/result")
 
     def test_sql_scheme_rejected_for_output(self) -> None:
         """SQL-scheme URIs are not valid output sinks."""
         with pytest.raises(
-            ValidationError, match="unrecognised file extension"
+            ValidationError,
+            match="unrecognised file extension",
         ):
             OutputConfig(query_id="q", uri="postgresql://host/db")
 
@@ -971,7 +1024,7 @@ class TestSourceIdUniqueness:
             entities=[
                 EntitySourceConfig(id="a", uri="/f.csv", entity_type="A"),
                 EntitySourceConfig(id="b", uri="/g.csv", entity_type="B"),
-            ]
+            ],
         )
         assert len(cfg.entities) == 2
 
@@ -980,12 +1033,16 @@ class TestSourceIdUniqueness:
             SourcesConfig(
                 entities=[
                     EntitySourceConfig(
-                        id="same", uri="/f.csv", entity_type="A"
+                        id="same",
+                        uri="/f.csv",
+                        entity_type="A",
                     ),
                     EntitySourceConfig(
-                        id="same", uri="/g.csv", entity_type="B"
+                        id="same",
+                        uri="/g.csv",
+                        entity_type="B",
                     ),
-                ]
+                ],
             )
 
     def test_duplicate_relationship_ids_raises(self) -> None:
@@ -1006,7 +1063,7 @@ class TestSourceIdUniqueness:
                         source_col="s",
                         target_col="t",
                     ),
-                ]
+                ],
             )
 
     def test_duplicate_across_entity_and_relationship_raises(self) -> None:
@@ -1014,7 +1071,9 @@ class TestSourceIdUniqueness:
             SourcesConfig(
                 entities=[
                     EntitySourceConfig(
-                        id="shared", uri="/f.csv", entity_type="A"
+                        id="shared",
+                        uri="/f.csv",
+                        entity_type="A",
                     ),
                 ],
                 relationships=[
@@ -1033,12 +1092,16 @@ class TestSourceIdUniqueness:
             SourcesConfig(
                 entities=[
                     EntitySourceConfig(
-                        id="persons", uri="/f.csv", entity_type="A"
+                        id="persons",
+                        uri="/f.csv",
+                        entity_type="A",
                     ),
                     EntitySourceConfig(
-                        id="persons", uri="/g.csv", entity_type="B"
+                        id="persons",
+                        uri="/g.csv",
+                        entity_type="B",
                     ),
-                ]
+                ],
             )
 
     def test_fixture_duplicate_entity_ids(self) -> None:
@@ -1052,8 +1115,8 @@ class TestSourceIdUniqueness:
     def test_single_source_always_valid(self) -> None:
         cfg = SourcesConfig(
             entities=[
-                EntitySourceConfig(id="only", uri="/f.csv", entity_type="X")
-            ]
+                EntitySourceConfig(id="only", uri="/f.csv", entity_type="X"),
+            ],
         )
         assert cfg.entities[0].id == "only"
 
@@ -1255,12 +1318,14 @@ sources:
 """
         cfg_path = self._write_yaml(tmp_path, yaml_content)
         boom = RuntimeError("disk error")
-        with patch(
-            "pycypher.ingestion.data_sources.data_source_from_uri",
-            side_effect=self._make_failing_factory(boom),
+        with (
+            patch(
+                "pycypher.ingestion.data_sources.data_source_from_uri",
+                side_effect=self._make_failing_factory(boom),
+            ),
+            pytest.raises(RuntimeError, match="disk error"),
         ):
-            with pytest.raises(RuntimeError, match="disk error"):
-                PipelineConfig.load_with_sources(cfg_path)
+            PipelineConfig.load_with_sources(cfg_path)
 
     def test_default_policy_propagates_exception(self, tmp_path: Path) -> None:
         """No on_error field → default is FAIL; exception must propagate."""
@@ -1273,12 +1338,14 @@ sources:
 """
         cfg_path = self._write_yaml(tmp_path, yaml_content)
         boom = RuntimeError("default fail")
-        with patch(
-            "pycypher.ingestion.data_sources.data_source_from_uri",
-            side_effect=self._make_failing_factory(boom),
+        with (
+            patch(
+                "pycypher.ingestion.data_sources.data_source_from_uri",
+                side_effect=self._make_failing_factory(boom),
+            ),
+            pytest.raises(RuntimeError, match="default fail"),
         ):
-            with pytest.raises(RuntimeError, match="default fail"):
-                PipelineConfig.load_with_sources(cfg_path)
+            PipelineConfig.load_with_sources(cfg_path)
 
     # -- SKIP policy ---------------------------------------------------------
 
@@ -1301,7 +1368,8 @@ sources:
         assert "broken" not in sources
 
     def test_skip_policy_other_sources_still_loaded(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         """on_error: skip on one source does not prevent others from loading."""
         good_table = pa.table({"id": [1], "name": ["Alice"]})
@@ -1354,7 +1422,7 @@ sources:
             side_effect=self._make_failing_factory(ValueError("bad uri")),
         ):
             config, sources, _ = PipelineConfig.load_with_sources(
-                cfg_path
+                cfg_path,
             )  # must not raise
         assert isinstance(config, PipelineConfig)
         assert isinstance(sources, dict)
@@ -1399,7 +1467,6 @@ sources:
 
     def test_warn_policy_emits_log_warning(self, tmp_path: Path) -> None:
         """on_error: warn — a warning is logged with the source id."""
-
         yaml_content = f"""\
 sources:
   entities:
@@ -1409,12 +1476,14 @@ sources:
       on_error: warn
 """
         cfg_path = self._write_yaml(tmp_path, yaml_content)
-        with patch(
-            "pycypher.ingestion.data_sources.data_source_from_uri",
-            side_effect=self._make_failing_factory(RuntimeError("warn me")),
+        with (
+            patch(
+                "pycypher.ingestion.data_sources.data_source_from_uri",
+                side_effect=self._make_failing_factory(RuntimeError("warn me")),
+            ),
+            self._assert_log_warning("my_source"),
         ):
-            with self._assert_log_warning("my_source"):
-                PipelineConfig.load_with_sources(cfg_path)
+            PipelineConfig.load_with_sources(cfg_path)
 
     @staticmethod
     def _assert_log_warning(source_id: str):
@@ -1448,7 +1517,7 @@ sources:
                 if not found:
                     raise AssertionError(
                         f"No WARNING log containing '{source_id}' was emitted. "
-                        f"Records: {[r.getMessage() for r in handler.records]}"
+                        f"Records: {[r.getMessage() for r in handler.records]}",
                     )
 
         return _CM()
@@ -1456,7 +1525,8 @@ sources:
     # -- SecurityError always propagates regardless of policy ----------------
 
     def test_security_error_propagates_despite_skip_policy(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         """SecurityError must always propagate, even with on_error: skip."""
         from pycypher.exceptions import SecurityError
@@ -1470,17 +1540,20 @@ sources:
       on_error: skip
 """
         cfg_path = self._write_yaml(tmp_path, yaml_content)
-        with patch(
-            "pycypher.ingestion.data_sources.data_source_from_uri",
-            side_effect=self._make_failing_factory(
-                SecurityError("path traversal detected")
+        with (
+            patch(
+                "pycypher.ingestion.data_sources.data_source_from_uri",
+                side_effect=self._make_failing_factory(
+                    SecurityError("path traversal detected"),
+                ),
             ),
+            pytest.raises(SecurityError, match="path traversal"),
         ):
-            with pytest.raises(SecurityError, match="path traversal"):
-                PipelineConfig.load_with_sources(cfg_path)
+            PipelineConfig.load_with_sources(cfg_path)
 
     def test_security_error_propagates_despite_warn_policy(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         """SecurityError must always propagate, even with on_error: warn."""
         from pycypher.exceptions import SecurityError
@@ -1494,19 +1567,22 @@ sources:
       on_error: warn
 """
         cfg_path = self._write_yaml(tmp_path, yaml_content)
-        with patch(
-            "pycypher.ingestion.data_sources.data_source_from_uri",
-            side_effect=self._make_failing_factory(
-                SecurityError("SQL injection attempt")
+        with (
+            patch(
+                "pycypher.ingestion.data_sources.data_source_from_uri",
+                side_effect=self._make_failing_factory(
+                    SecurityError("SQL injection attempt"),
+                ),
             ),
+            pytest.raises(SecurityError, match="SQL injection"),
         ):
-            with pytest.raises(SecurityError, match="SQL injection"):
-                PipelineConfig.load_with_sources(cfg_path)
+            PipelineConfig.load_with_sources(cfg_path)
 
     # -- Audit trail (skipped list) ------------------------------------------
 
     def test_skip_policy_populates_skipped_audit_trail(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         """on_error: skip — skipped source appears in audit trail."""
         from pycypher.ingestion.config import SkippedSource
@@ -1534,7 +1610,8 @@ sources:
         assert skipped[0].policy == ErrorHandlingPolicy.SKIP
 
     def test_warn_policy_populates_skipped_audit_trail(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         """on_error: warn — warned source appears in audit trail."""
         yaml_content = f"""\
@@ -1556,7 +1633,8 @@ sources:
         assert skipped[0].policy == ErrorHandlingPolicy.WARN
 
     def test_fail_policy_does_not_populate_skipped_audit_trail(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         """on_error: fail — no audit trail entry (exception propagates)."""
         yaml_content = f"""\
@@ -1568,15 +1646,18 @@ sources:
       on_error: fail
 """
         cfg_path = self._write_yaml(tmp_path, yaml_content)
-        with patch(
-            "pycypher.ingestion.data_sources.data_source_from_uri",
-            side_effect=self._make_failing_factory(RuntimeError("fatal")),
+        with (
+            patch(
+                "pycypher.ingestion.data_sources.data_source_from_uri",
+                side_effect=self._make_failing_factory(RuntimeError("fatal")),
+            ),
+            pytest.raises(RuntimeError, match="fatal"),
         ):
-            with pytest.raises(RuntimeError, match="fatal"):
-                PipelineConfig.load_with_sources(cfg_path)
+            PipelineConfig.load_with_sources(cfg_path)
 
     def test_successful_load_returns_empty_skipped_list(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         """All sources succeed — skipped list is empty."""
         good_table = pa.table({"id": [1]})
@@ -1610,12 +1691,14 @@ sources:
 class TestGetSourceById:
     """SourcesConfig.get_source_by_id() and the PipelineConfig passthrough."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def sources(self) -> SourcesConfig:
         return SourcesConfig(
             entities=[
                 EntitySourceConfig(
-                    id="persons", uri="s3://b/p.csv", entity_type="Person"
+                    id="persons",
+                    uri="s3://b/p.csv",
+                    entity_type="Person",
                 ),
                 EntitySourceConfig(
                     id="companies",
@@ -1644,7 +1727,8 @@ class TestGetSourceById:
         assert result.id == "persons"
 
     def test_find_relationship_source_by_id(
-        self, sources: SourcesConfig
+        self,
+        sources: SourcesConfig,
     ) -> None:
         """get_source_by_id returns the correct RelationshipSourceConfig."""
         result = sources.get_source_by_id("knows")
@@ -1664,7 +1748,8 @@ class TestGetSourceById:
         assert result.id == "companies"
 
     def test_pipeline_config_missing_returns_none(
-        self, sources: SourcesConfig
+        self,
+        sources: SourcesConfig,
     ) -> None:
         """PipelineConfig.get_source_by_id() returns None for missing id."""
         config = PipelineConfig(sources=sources)

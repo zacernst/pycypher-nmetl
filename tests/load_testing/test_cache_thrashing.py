@@ -7,10 +7,6 @@ queries, alternating access patterns, and cache size pressure.
 
 from __future__ import annotations
 
-import gc
-import time
-from typing import Any
-
 import pytest
 from pycypher.grammar_parser import GrammarParser
 from pycypher.star import Star
@@ -131,9 +127,7 @@ class TestResultCacheThrashing:
         if small_star._result_cache is not None:
             stats = small_star._result_cache.stats()
             # Cache should not exceed its configured max.
-            assert (
-                stats["result_cache_size_mb"] <= 10.5
-            )  # 10MB + small tolerance
+            assert stats["result_cache_size_mb"] <= 10.5  # 10MB + small tolerance
 
     def test_repeated_query_uses_cache(self, small_star: Star) -> None:
         """Repeating the same query must produce cache hits."""

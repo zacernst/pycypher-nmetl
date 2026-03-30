@@ -42,7 +42,7 @@ if _enabled:
         _logger.debug(
             "pyroscope not installed — continuous profiling disabled",
         )
-    except Exception:  # noqa: BLE001
+    except Exception:
         _logger.warning(
             "pyroscope configuration failed — profiling disabled",
             exc_info=True,

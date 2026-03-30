@@ -42,7 +42,7 @@ def integration_context():
             "name": ["Alice", "Bob", "Carol", "Dave"],
             "age": [30, 40, 25, 35],
             "city": ["NYC", "LA", "NYC", "SF"],
-        }
+        },
     )
 
     person_table = EntityTable(
@@ -68,7 +68,7 @@ def integration_context():
             RELATIONSHIP_SOURCE_COLUMN: [1, 2, 3],
             RELATIONSHIP_TARGET_COLUMN: [2, 3, 4],
             "since": [2020, 2021, 2019],
-        }
+        },
     )
 
     knows_table = RelationshipTable(
@@ -88,7 +88,7 @@ def integration_context():
     return Context(
         entity_mapping=EntityMapping(mapping={"Person": person_table}),
         relationship_mapping=RelationshipMapping(
-            mapping={"KNOWS": knows_table}
+            mapping={"KNOWS": knows_table},
         ),
     )
 
@@ -111,23 +111,24 @@ class TestExecuteQueryBasic:
                                         variable=Variable(name="p"),
                                         labels=["Person"],
                                         properties={},
-                                    )
-                                ]
-                            )
-                        ]
-                    )
+                                    ),
+                                ],
+                            ),
+                        ],
+                    ),
                 ),
                 Return(
                     items=[
                         ReturnItem(
                             expression=PropertyLookup(
-                                expression=Variable(name="p"), property="name"
+                                expression=Variable(name="p"),
+                                property="name",
                             ),
                             alias="name",
-                        )
-                    ]
+                        ),
+                    ],
                 ),
-            ]
+            ],
         )
 
         result_df = star.execute_query(query)
@@ -151,35 +152,38 @@ class TestExecuteQueryBasic:
                                         variable=Variable(name="p"),
                                         labels=["Person"],
                                         properties={},
-                                    )
-                                ]
-                            )
-                        ]
-                    )
+                                    ),
+                                ],
+                            ),
+                        ],
+                    ),
                 ),
                 Return(
                     items=[
                         ReturnItem(
                             expression=PropertyLookup(
-                                expression=Variable(name="p"), property="name"
+                                expression=Variable(name="p"),
+                                property="name",
                             ),
                             alias="name",
                         ),
                         ReturnItem(
                             expression=PropertyLookup(
-                                expression=Variable(name="p"), property="age"
+                                expression=Variable(name="p"),
+                                property="age",
                             ),
                             alias="age",
                         ),
                         ReturnItem(
                             expression=PropertyLookup(
-                                expression=Variable(name="p"), property="city"
+                                expression=Variable(name="p"),
+                                property="city",
                             ),
                             alias="city",
                         ),
-                    ]
+                    ],
                 ),
-            ]
+            ],
         )
 
         result_df = star.execute_query(query)
@@ -207,20 +211,21 @@ class TestExecuteQueryBasic:
                                         variable=Variable(name="p"),
                                         labels=["Person"],
                                         properties={},
-                                    )
-                                ]
-                            )
-                        ]
-                    )
+                                    ),
+                                ],
+                            ),
+                        ],
+                    ),
                 ),
                 Return(
                     items=[
                         ReturnItem(
-                            expression=Variable(name="p"), alias="person_id"
-                        )
-                    ]
+                            expression=Variable(name="p"),
+                            alias="person_id",
+                        ),
+                    ],
                 ),
-            ]
+            ],
         )
 
         result_df = star.execute_query(query)
@@ -260,22 +265,24 @@ class TestExecuteQueryWithRelationships:
                                         labels=["Person"],
                                         properties={},
                                     ),
-                                ]
-                            )
-                        ]
-                    )
+                                ],
+                            ),
+                        ],
+                    ),
                 ),
                 Return(
                     items=[
                         ReturnItem(
-                            expression=Variable(name="a"), alias="from_id"
+                            expression=Variable(name="a"),
+                            alias="from_id",
                         ),
                         ReturnItem(
-                            expression=Variable(name="b"), alias="to_id"
+                            expression=Variable(name="b"),
+                            alias="to_id",
                         ),
-                    ]
+                    ],
                 ),
-            ]
+            ],
         )
 
         result_df = star.execute_query(query)
@@ -316,28 +323,30 @@ class TestExecuteQueryWithRelationships:
                                         labels=["Person"],
                                         properties={},
                                     ),
-                                ]
-                            )
-                        ]
-                    )
+                                ],
+                            ),
+                        ],
+                    ),
                 ),
                 Return(
                     items=[
                         ReturnItem(
                             expression=PropertyLookup(
-                                expression=Variable(name="a"), property="name"
+                                expression=Variable(name="a"),
+                                property="name",
                             ),
                             alias="from_name",
                         ),
                         ReturnItem(
                             expression=PropertyLookup(
-                                expression=Variable(name="b"), property="name"
+                                expression=Variable(name="b"),
+                                property="name",
                             ),
                             alias="to_name",
                         ),
-                    ]
+                    ],
                 ),
-            ]
+            ],
         )
 
         result_df = star.execute_query(query)
@@ -347,13 +356,16 @@ class TestExecuteQueryWithRelationships:
 
         # Check specific relationships
         assert ("Alice", "Bob") in zip(
-            result_df["from_name"], result_df["to_name"]
+            result_df["from_name"],
+            result_df["to_name"],
         )
         assert ("Bob", "Carol") in zip(
-            result_df["from_name"], result_df["to_name"]
+            result_df["from_name"],
+            result_df["to_name"],
         )
         assert ("Carol", "Dave") in zip(
-            result_df["from_name"], result_df["to_name"]
+            result_df["from_name"],
+            result_df["to_name"],
         )
 
 
@@ -379,13 +391,14 @@ class TestExecuteQueryErrors:
                     items=[
                         ReturnItem(
                             expression=PropertyLookup(
-                                expression=Variable(name="p"), property="name"
+                                expression=Variable(name="p"),
+                                property="name",
                             ),
                             alias="name",
-                        )
-                    ]
-                )
-            ]
+                        ),
+                    ],
+                ),
+            ],
         )
 
         with pytest.raises((ValueError, KeyError)):
@@ -397,7 +410,7 @@ class TestExecuteQueryErrors:
 
         # This should parse the query string
         result_df = star.execute_query(
-            "MATCH (p:Person) RETURN p.name AS name"
+            "MATCH (p:Person) RETURN p.name AS name",
         )
 
         assert len(result_df) == 4

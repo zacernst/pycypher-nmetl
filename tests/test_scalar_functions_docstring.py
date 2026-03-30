@@ -18,7 +18,7 @@ _INTERNAL_FUNCTIONS: frozenset[str] = frozenset(
     {
         "exists",  # handled at the AST/evaluator level, not a "scalar function"
         "id",  # identity accessor, not a standard Neo4j scalar
-    }
+    },
 )
 
 
@@ -35,7 +35,7 @@ def test_all_registered_functions_appear_in_module_docstring() -> None:
             missing.append(name_lower)
 
     assert not missing, (
-        f"The following registered function(s) are not mentioned in the "
-        f"scalar_functions.py module docstring:\n"
+        "The following registered function(s) are not mentioned in the "
+        "scalar_functions.py module docstring:\n"
         + "\n".join(f"  - {n}" for n in sorted(missing))
     )

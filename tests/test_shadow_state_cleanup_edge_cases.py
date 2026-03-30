@@ -34,7 +34,7 @@ def person_df() -> pd.DataFrame:
             ID_COLUMN: [1, 2, 3],
             "name": ["Alice", "Bob", "Carol"],
             "age": [30, 25, 35],
-        }
+        },
     )
 
 
@@ -64,10 +64,10 @@ class TestCommitQueryCleanupOnFailure:
         # Simulate a mutation by injecting shadow data directly.
         ctx.begin_query()
         ctx._shadow["Person"] = pd.DataFrame(
-            {ID_COLUMN: [99], "name": ["Oops"]}
+            {ID_COLUMN: [99], "name": ["Oops"]},
         )
         ctx._shadow_rels["FAKE"] = pd.DataFrame(
-            {"__SOURCE__": [1], "__TARGET__": [2]}
+            {"__SOURCE__": [1], "__TARGET__": [2]},
         )
 
         # Patch EntityTable construction to explode during commit.
@@ -78,7 +78,7 @@ class TestCommitQueryCleanupOnFailure:
         ):
             # Inject a NEW entity type so the EntityTable constructor path runs.
             ctx._shadow["NewLabel"] = pd.DataFrame(
-                {ID_COLUMN: [100], "x": [1]}
+                {ID_COLUMN: [100], "x": [1]},
             )
             with pytest.raises(RuntimeError, match="simulated commit failure"):
                 ctx.commit_query()
@@ -98,16 +98,18 @@ class TestCommitQueryCleanupOnFailure:
             {
                 "__SOURCE__": [1],
                 "__TARGET__": [2],
-            }
+            },
         )
 
-        with patch.object(
-            RelationshipTable,
-            "__init__",
-            side_effect=RuntimeError("rel commit boom"),
+        with (
+            patch.object(
+                RelationshipTable,
+                "__init__",
+                side_effect=RuntimeError("rel commit boom"),
+            ),
+            pytest.raises(RuntimeError, match="rel commit boom"),
         ):
-            with pytest.raises(RuntimeError, match="rel commit boom"):
-                ctx.commit_query()
+            ctx.commit_query()
 
         assert ctx._shadow == {}
         assert ctx._shadow_rels == {}
@@ -155,13 +157,13 @@ class TestUnionQueryAtomicity:
             {
                 ID_COLUMN: [1, 2],
                 "name": ["Alice", "Bob"],
-            }
+            },
         )
         animal_df = pd.DataFrame(
             {
                 ID_COLUMN: [10, 11],
                 "name": ["Rex", "Spot"],
-            }
+            },
         )
         person_table = EntityTable.from_dataframe("Person", person_df)
         animal_table = EntityTable.from_dataframe("Animal", animal_df)
@@ -177,7 +179,7 @@ class TestUnionQueryAtomicity:
         result = star_for_union.execute_query(
             "MATCH (p:Person) RETURN p.name AS name "
             "UNION ALL "
-            "MATCH (a:Animal) RETURN a.name AS name"
+            "MATCH (a:Animal) RETURN a.name AS name",
         )
         assert len(result) == 4
         names = set(result["name"])
@@ -201,7 +203,7 @@ class TestUnionQueryAtomicity:
             star_for_union.execute_query(
                 "MATCH (p:Person) RETURN p.name AS name "
                 "UNION ALL "
-                "MATCH (z:Nonexistent) RETURN z.name AS name"
+                "MATCH (z:Nonexistent) RETURN z.name AS name",
             )
         except (ValueError, KeyError):
             pass  # Expected — Nonexistent label doesn't exist.
@@ -221,7 +223,8 @@ class TestShadowStateAfterQueryFailure:
     """Shadow state must be clean after any kind of query failure."""
 
     def test_shadow_clean_after_parse_error(
-        self, star_with_people: Star
+        self,
+        star_with_people: Star,
     ) -> None:
         """Parse errors should not leave shadow state dirty."""
         with pytest.raises(Exception):
@@ -231,20 +234,22 @@ class TestShadowStateAfterQueryFailure:
         assert star_with_people.context._shadow_rels == {}
 
     def test_shadow_clean_after_runtime_error(
-        self, star_with_people: Star
+        self,
+        star_with_people: Star,
     ) -> None:
         """Runtime errors should not leave shadow state dirty."""
         with pytest.raises(Exception):
             # Reference a non-existent label to trigger a runtime error.
             star_with_people.execute_query(
-                "MATCH (x:NonExistent) SET x.foo = 1 RETURN x"
+                "MATCH (x:NonExistent) SET x.foo = 1 RETURN x",
             )
 
         assert star_with_people.context._shadow == {}
         assert star_with_people.context._shadow_rels == {}
 
     def test_sequential_queries_after_failure(
-        self, star_with_people: Star
+        self,
+        star_with_people: Star,
     ) -> None:
         """A failed query must not poison subsequent successful queries."""
         # First query fails.
@@ -253,7 +258,7 @@ class TestShadowStateAfterQueryFailure:
 
         # Second query should succeed cleanly with no shadow leakage.
         result = star_with_people.execute_query(
-            "MATCH (p:Person) RETURN p.name AS name"
+            "MATCH (p:Person) RETURN p.name AS name",
         )
         assert len(result) == 3
         assert set(result["name"]) == {"Alice", "Bob", "Carol"}
@@ -276,7 +281,7 @@ class TestBaseExceptionShadowCleanup:
         # Inject shadow data to simulate a mutation in progress.
         ctx.begin_query()
         ctx._shadow["Person"] = pd.DataFrame(
-            {"__ID__": [99], "name": ["Interrupted"]}
+            {"__ID__": [99], "name": ["Interrupted"]},
         )
 
         # Manually roll back to simulate what the finally block does.

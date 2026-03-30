@@ -248,10 +248,10 @@ class TestBackendParity:
         duckdb_result = DuckDBBackend().join(left, right, on="__ID__")
         # Sort both for deterministic comparison
         pandas_sorted = pandas_result.sort_values("__ID__").reset_index(
-            drop=True
+            drop=True,
         )
         duckdb_sorted = duckdb_result.sort_values("__ID__").reset_index(
-            drop=True
+            drop=True,
         )
         pd.testing.assert_frame_equal(pandas_sorted, duckdb_sorted)
 

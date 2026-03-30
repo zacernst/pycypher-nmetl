@@ -13,6 +13,9 @@ Learning Objectives
 * Combine multiple MATCH clauses for cross-product queries
 * Collect graph neighbours with pattern comprehensions
 * Test list conditions with quantifier predicates and EXISTS subqueries
+* Fold lists with REDUCE expressions
+* Transform lists inline with list comprehensions
+* Pass external values safely with query parameters
 
 Prerequisites
 -------------
@@ -341,6 +344,105 @@ of a list:
        "MATCH (p:Person) WHERE single(s IN p.scores WHERE s > 90) "
        "RETURN p.name AS name"
    )
+
+
+REDUCE Expressions
+-------------------
+
+``reduce(accumulator = initial, variable IN list | step)`` folds a list into
+a single value.  The accumulator carries the running result through each
+element:
+
+.. code-block:: python
+
+   # Sum of all scores for each person
+   result = star.execute_query(
+       "MATCH (p:Person) "
+       "RETURN p.name AS name, "
+       "       reduce(total = 0, s IN p.scores | total + s) AS score_sum"
+   )
+   # Alice: 177, Bob: 125, Carol: 243, Dave: 40
+
+   # Count elements that meet a condition (scores above 80)
+   result = star.execute_query(
+       "MATCH (p:Person) "
+       "RETURN p.name AS name, "
+       "       reduce(cnt = 0, s IN p.scores | "
+       "              CASE WHEN s > 80 THEN cnt + 1 ELSE cnt END) AS high_scores"
+   )
+
+   # Build a running maximum
+   result = star.execute_query(
+       "MATCH (p:Person) "
+       "RETURN p.name AS name, "
+       "       reduce(m = -1, s IN p.scores | "
+       "              CASE WHEN s > m THEN s ELSE m END) AS max_score"
+   )
+
+REDUCE is the Cypher equivalent of Python's ``functools.reduce()`` — use it
+when aggregation functions like ``sum()`` or ``max()`` don't cover your
+use case.
+
+
+List Comprehensions
+--------------------
+
+List comprehensions transform each element of a list inline:
+
+``[variable IN list | map_expression]``
+
+.. code-block:: python
+
+   # Double every score
+   result = star.execute_query(
+       "MATCH (p:Person) "
+       "RETURN p.name AS name, "
+       "       [s IN p.scores | s * 2] AS doubled"
+   )
+
+   # Add a WHERE filter to keep only high scores
+   result = star.execute_query(
+       "MATCH (p:Person) "
+       "RETURN p.name AS name, "
+       "       [s IN p.scores WHERE s >= 80 | s] AS high_scores"
+   )
+
+   # Transform to strings
+   result = star.execute_query(
+       "MATCH (p:Person) "
+       "RETURN p.name AS name, "
+       "       [s IN p.scores | toString(s)] AS score_strings"
+   )
+
+List comprehensions differ from *pattern* comprehensions (above) — they
+operate on an existing list property rather than traversing graph edges.
+
+
+Query Parameters
+-----------------
+
+Use ``$name`` syntax to safely pass external values into queries without
+string interpolation:
+
+.. code-block:: python
+
+   # Parameterized lookup — safe from injection
+   result = star.execute_query(
+       "MATCH (p:Person) WHERE p.name = $target RETURN p.age AS age",
+       parameters={"target": "Alice"},
+   )
+
+   # Multiple parameters
+   result = star.execute_query(
+       "MATCH (p:Person) WHERE p.age >= $min_age AND p.age <= $max_age "
+       "RETURN p.name AS name, p.age AS age",
+       parameters={"min_age": 25, "max_age": 32},
+   )
+
+.. warning::
+
+   Never interpolate user input directly into query strings.  Always use
+   ``parameters={}`` — see :doc:`integration_guide` for safety patterns.
 
 
 Performance Tips

@@ -22,7 +22,7 @@ def star() -> Star:
             "name": ["Alice", "Bob", "Carol"],
             "age": [30, 25, 35],
             "dept": ["eng", "sales", "eng"],
-        }
+        },
     )
     return Star(context=ContextBuilder.from_dict({"Person": df}))
 
@@ -38,7 +38,7 @@ class TestReturnStar:
     def test_return_star_after_with_alias(self, star: Star) -> None:
         """RETURN * after WITH alias returns the aliased columns."""
         result = star.execute_query(
-            "MATCH (p:Person) WITH p.name AS name RETURN * ORDER BY name ASC"
+            "MATCH (p:Person) WITH p.name AS name RETURN * ORDER BY name ASC",
         )
         assert "name" in result.columns
         assert list(result["name"]) == ["Alice", "Bob", "Carol"]
@@ -49,7 +49,7 @@ class TestReturnStar:
             "MATCH (p:Person) "
             "WITH p.name AS name, p.age AS age "
             "RETURN * "
-            "ORDER BY name ASC"
+            "ORDER BY name ASC",
         )
         assert "name" in result.columns
         assert "age" in result.columns
@@ -60,14 +60,14 @@ class TestReturnStar:
         """RETURN * ORDER BY works correctly."""
         result = star.execute_query(
             "MATCH (p:Person) WITH p.name AS name, p.age AS age "
-            "RETURN * ORDER BY age ASC"
+            "RETURN * ORDER BY age ASC",
         )
         assert list(result["name"]) == ["Bob", "Alice", "Carol"]
 
     def test_return_star_with_limit(self, star: Star) -> None:
         """RETURN * LIMIT works correctly."""
         result = star.execute_query(
-            "MATCH (p:Person) WITH p.name AS name ORDER BY name ASC RETURN * LIMIT 2"
+            "MATCH (p:Person) WITH p.name AS name ORDER BY name ASC RETURN * LIMIT 2",
         )
         assert len(result) == 2
 
@@ -75,6 +75,6 @@ class TestReturnStar:
         """RETURN * only returns rows passing WHERE filter."""
         result = star.execute_query(
             "MATCH (p:Person) WHERE p.dept = 'eng' "
-            "WITH p.name AS name RETURN * ORDER BY name ASC"
+            "WITH p.name AS name RETURN * ORDER BY name ASC",
         )
         assert list(result["name"]) == ["Alice", "Carol"]

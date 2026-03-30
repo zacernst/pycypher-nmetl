@@ -34,7 +34,15 @@ from pycypher.constants import (
 )
 
 if TYPE_CHECKING:
-    from pycypher.ast_models import Call, Create, Delete, Foreach, Merge, Remove, Set
+    from pycypher.ast_models import (
+        Call,
+        Create,
+        Delete,
+        Foreach,
+        Merge,
+        Remove,
+        Set,
+    )
     from pycypher.binding_frame import BindingFrame
     from pycypher.relational_models import Context
 
@@ -83,6 +91,7 @@ class MutationEngine:
         Args:
             context: The execution context holding entity and relationship
                 mappings. Mutations are applied through the shadow-write layer.
+
         """
         self.context: Context = context
 
@@ -187,7 +196,9 @@ class MutationEngine:
 
     @staticmethod
     def _max_id_from_df(
-        df: pd.DataFrame, type_label: str, source_label: str,
+        df: pd.DataFrame,
+        type_label: str,
+        source_label: str,
     ) -> int:
         """Extract the maximum integer ID from a DataFrame's ID column.
 
@@ -238,15 +249,19 @@ class MutationEngine:
             A ``pd.Series`` of *n* integer IDs.
 
         """
-        from pycypher.binding_frame import _source_to_pandas
+        from pycypher.dataframe_utils import source_to_pandas as _source_to_pandas
 
         max_id: int = 0
         if type_label in mapping:
             source_df = _source_to_pandas(mapping[type_label].source_obj)
-            max_id = max(max_id, self._max_id_from_df(source_df, type_label, "live"))
+            max_id = max(
+                max_id, self._max_id_from_df(source_df, type_label, "live")
+            )
         shadow_df = shadow_dict.get(type_label)
         if shadow_df is not None:
-            max_id = max(max_id, self._max_id_from_df(shadow_df, type_label, "shadow"))
+            max_id = max(
+                max_id, self._max_id_from_df(shadow_df, type_label, "shadow")
+            )
         start = max_id + 1
         return pd.Series(range(start, start + n), dtype=int)
 
@@ -294,7 +309,7 @@ class MutationEngine:
             A ``pd.DataFrame`` to append new rows to.
 
         """
-        from pycypher.binding_frame import _source_to_pandas
+        from pycypher.dataframe_utils import source_to_pandas as _source_to_pandas
 
         if type_label in shadow_dict:
             return shadow_dict[type_label]
@@ -368,7 +383,11 @@ class MutationEngine:
             rel_type,
             self.context._shadow_rels,
             self.context.relationship_mapping.mapping,
-            [ID_COLUMN, RELATIONSHIP_SOURCE_COLUMN, RELATIONSHIP_TARGET_COLUMN],
+            [
+                ID_COLUMN,
+                RELATIONSHIP_SOURCE_COLUMN,
+                RELATIONSHIP_TARGET_COLUMN,
+            ],
         )
 
         new_df = pd.DataFrame(
@@ -560,7 +579,7 @@ class MutationEngine:
         t0 = time.perf_counter()
         from pycypher.ast_models import Variable
         from pycypher.binding_evaluator import BindingExpressionEvaluator
-        from pycypher.binding_frame import _source_to_pandas
+        from pycypher.dataframe_utils import source_to_pandas as _source_to_pandas
 
         detach = getattr(clause, "detach", False)
         LOGGER.debug(
@@ -661,7 +680,9 @@ class MutationEngine:
         current_frame: BindingFrame | None,
         *,
         match_to_binding_frame: Callable[..., BindingFrame],
-        merge_frames_for_match: Callable[[BindingFrame, BindingFrame], BindingFrame],
+        merge_frames_for_match: Callable[
+            [BindingFrame, BindingFrame], BindingFrame
+        ],
         make_seed_frame: Callable[[], BindingFrame],
     ) -> BindingFrame | None:
         """Execute a MERGE clause — match existing or create new.
@@ -815,7 +836,7 @@ class MutationEngine:
                                 loop_frame,
                                 make_seed_frame=make_seed_frame,
                             )
-                except Exception as exc:  # noqa: BLE001
+                except Exception as exc:
                     clause_type = type(inner).__name__
                     msg = (
                         f"FOREACH failed at iteration {iteration_index} "

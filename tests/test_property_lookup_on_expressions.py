@@ -23,7 +23,7 @@ from pycypher.relational_models import (
 from pycypher.star import Star
 
 
-@pytest.fixture()
+@pytest.fixture
 def person_context() -> Context:
     """Two people: Alice (age=30) and Bob (age=25)."""
     people_df = pd.DataFrame(
@@ -31,7 +31,7 @@ def person_context() -> Context:
             ID_COLUMN: [1, 2],
             "name": ["Alice", "Bob"],
             "age": [30, 25],
-        }
+        },
     )
     people_table = EntityTable(
         entity_type="Person",
@@ -46,7 +46,7 @@ def person_context() -> Context:
             ID_COLUMN: [101],
             "__SOURCE__": [1],
             "__TARGET__": [2],
-        }
+        },
     )
     knows_table = RelationshipTable(
         relationship_type="KNOWS",
@@ -59,7 +59,7 @@ def person_context() -> Context:
     return Context(
         entity_mapping=EntityMapping(mapping={"Person": people_table}),
         relationship_mapping=RelationshipMapping(
-            mapping={"KNOWS": knows_table}
+            mapping={"KNOWS": knows_table},
         ),
     )
 
@@ -68,57 +68,62 @@ class TestPropertyLookupOnMapLiteral:
     """PropertyLookup on inline MapLiteral expressions."""
 
     def test_map_literal_property_returns_value(
-        self, person_context: Context
+        self,
+        person_context: Context,
     ) -> None:
         """Accessing a key on a MapLiteral returns the corresponding value."""
         star = Star(context=person_context)
         result = star.execute_query(
             "MATCH (p:Person) WHERE p.name = 'Alice' "
-            "RETURN {key: 'hello', num: 42}.key AS label"
+            "RETURN {key: 'hello', num: 42}.key AS label",
         )
         assert len(result) == 1
         assert result["label"].iloc[0] == "hello"
 
     def test_map_literal_numeric_property(
-        self, person_context: Context
+        self,
+        person_context: Context,
     ) -> None:
         """Accessing a numeric key from MapLiteral works correctly."""
         star = Star(context=person_context)
         result = star.execute_query(
             "MATCH (p:Person) WHERE p.name = 'Alice' "
-            "RETURN {key: 'hello', num: 42}.num AS value"
+            "RETURN {key: 'hello', num: 42}.num AS value",
         )
         assert result["value"].iloc[0] == 42
 
     def test_map_literal_missing_key_returns_null(
-        self, person_context: Context
+        self,
+        person_context: Context,
     ) -> None:
         """Accessing a missing key on a MapLiteral returns None (null)."""
         star = Star(context=person_context)
         result = star.execute_query(
             "MATCH (p:Person) WHERE p.name = 'Alice' "
-            "RETURN {key: 'hello'}.missing AS val"
+            "RETURN {key: 'hello'}.missing AS val",
         )
         assert result["val"].iloc[0] is None
 
     def test_map_literal_with_dynamic_values(
-        self, person_context: Context
+        self,
+        person_context: Context,
     ) -> None:
         """MapLiteral keys with runtime expression values support property lookup."""
         star = Star(context=person_context)
         result = star.execute_query(
             "MATCH (p:Person) WHERE p.name = 'Alice' "
-            "RETURN {name: p.name, age: p.age}.name AS extracted"
+            "RETURN {name: p.name, age: p.age}.name AS extracted",
         )
         assert result["extracted"].iloc[0] == "Alice"
 
     def test_map_literal_does_not_raise_not_implemented(
-        self, person_context: Context
+        self,
+        person_context: Context,
     ) -> None:
         """Regression: MapLiteral property lookup must not raise NotImplementedError."""
         star = Star(context=person_context)
         result = star.execute_query(
-            "MATCH (p:Person) WHERE p.name = 'Alice' RETURN {key: 'v'}.key AS k"
+            "MATCH (p:Person) WHERE p.name = 'Alice' RETURN {key: 'v'}.key AS k",
         )
         assert result is not None
 
@@ -127,44 +132,48 @@ class TestPropertyLookupOnMapProjection:
     """PropertyLookup on map-projection expressions (n {.prop1, .prop2})."""
 
     def test_map_projection_property_access(
-        self, person_context: Context
+        self,
+        person_context: Context,
     ) -> None:
         """Accessing a property on a MapProjection result returns the right value."""
         star = Star(context=person_context)
         result = star.execute_query(
             "MATCH (p:Person) WHERE p.name = 'Alice' "
-            "RETURN p {.name, .age}.name AS extracted"
+            "RETURN p {.name, .age}.name AS extracted",
         )
         assert result["extracted"].iloc[0] == "Alice"
 
     def test_map_projection_multiple_rows(
-        self, person_context: Context
+        self,
+        person_context: Context,
     ) -> None:
         """MapProjection property lookup works across multiple rows."""
         star = Star(context=person_context)
         result = star.execute_query(
-            "MATCH (p:Person) RETURN p {.name, .age}.age AS age ORDER BY age"
+            "MATCH (p:Person) RETURN p {.name, .age}.age AS age ORDER BY age",
         )
         assert len(result) == 2
         ages = result["age"].tolist()
         assert ages == [25, 30]
 
     def test_map_projection_missing_key_returns_null(
-        self, person_context: Context
+        self,
+        person_context: Context,
     ) -> None:
         """Accessing a key not in the projection returns None."""
         star = Star(context=person_context)
         result = star.execute_query(
-            "MATCH (p:Person) WHERE p.name = 'Alice' RETURN p {.name}.missing AS val"
+            "MATCH (p:Person) WHERE p.name = 'Alice' RETURN p {.name}.missing AS val",
         )
         assert result["val"].iloc[0] is None
 
     def test_map_projection_does_not_raise_not_implemented(
-        self, person_context: Context
+        self,
+        person_context: Context,
     ) -> None:
         """Regression: MapProjection property lookup must not raise NotImplementedError."""
         star = Star(context=person_context)
         result = star.execute_query(
-            "MATCH (p:Person) WHERE p.name = 'Alice' RETURN p {.name}.name AS n"
+            "MATCH (p:Person) WHERE p.name = 'Alice' RETURN p {.name}.name AS n",
         )
         assert result is not None

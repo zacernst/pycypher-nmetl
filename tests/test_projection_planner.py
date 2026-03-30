@@ -15,19 +15,15 @@ from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pandas as pd
-import pytest
-
 from pycypher.ast_models import (
     CountStar,
     FunctionInvocation,
     IntegerLiteral,
-    OrderByItem,
     PropertyLookup,
     ReturnItem,
     Variable,
 )
 from pycypher.projection_planner import ProjectionPlanner
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -55,7 +51,9 @@ def _prop(var_name: str, prop_name: str) -> PropertyLookup:
     return PropertyLookup(expression=Variable(name=var_name), property=prop_name)
 
 
-def _make_frame(df: pd.DataFrame, type_registry: dict[str, str] | None = None) -> MagicMock:
+def _make_frame(
+    df: pd.DataFrame, type_registry: dict[str, str] | None = None,
+) -> MagicMock:
     """Create a mock BindingFrame."""
     frame = MagicMock()
     frame.bindings = df
@@ -262,7 +260,9 @@ class TestReturnFromFrame:
     def test_return_star_no_items(self) -> None:
         """RETURN * returns all non-internal columns."""
         planner = _make_planner()
-        df = pd.DataFrame({"name": ["Alice", "Bob"], "_internal": [1, 2], "age": [30, 25]})
+        df = pd.DataFrame(
+            {"name": ["Alice", "Bob"], "_internal": [1, 2], "age": [30, 25]},
+        )
         frame = _make_frame(df)
 
         return_clause = MagicMock()
@@ -382,7 +382,8 @@ class TestWithToBindingFrame:
         # Check that type_registry was passed with "p" -> "Person"
         first_call_kwargs = MockBF.call_args_list[0]
         passed_registry = first_call_kwargs.kwargs.get(
-            "type_registry", first_call_kwargs[1].get("type_registry", {})
+            "type_registry",
+            first_call_kwargs[1].get("type_registry", {}),
         )
         assert passed_registry.get("p") == "Person"
 

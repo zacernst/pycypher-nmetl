@@ -26,7 +26,7 @@ from pycypher.star import Star
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture()
+@pytest.fixture
 def person_context() -> Context:
     """Three persons with name, age, and optional score."""
     df = pd.DataFrame(
@@ -35,7 +35,7 @@ def person_context() -> Context:
             "name": ["Alice", "Bob", "Charlie"],
             "age": [25, 30, 35],
             "score": [100.0, 200.0, 300.0],
-        }
+        },
     )
     table = EntityTable(
         entity_type="Person",
@@ -71,7 +71,7 @@ class TestRemoveProperty:
         """REMOVE p.score nullifies the score for all matched persons."""
         star = Star(context=person_context)
         star.execute_query(
-            "MATCH (p:Person) REMOVE p.score RETURN p.name AS nm"
+            "MATCH (p:Person) REMOVE p.score RETURN p.name AS nm",
         )
         # After execution, the score column must be null for all persons
         result = star.execute_query("MATCH (p:Person) RETURN p.score AS sc")
@@ -80,51 +80,50 @@ class TestRemoveProperty:
         )
 
     def test_remove_property_followed_by_return(
-        self, person_context: Context
+        self,
+        person_context: Context,
     ) -> None:
         """MATCH … REMOVE … RETURN works as a single pipeline."""
         star = Star(context=person_context)
         result = star.execute_query(
-            "MATCH (p:Person) REMOVE p.score RETURN p.name AS nm, p.score AS sc"
+            "MATCH (p:Person) REMOVE p.score RETURN p.name AS nm, p.score AS sc",
         )
         assert len(result) == 3
         assert result["sc"].isna().all()
         assert set(result["nm"]) == {"Alice", "Bob", "Charlie"}
 
     def test_remove_property_does_not_affect_other_properties(
-        self, person_context: Context
+        self,
+        person_context: Context,
     ) -> None:
         """Removing score must not touch name or age."""
         star = Star(context=person_context)
         result = star.execute_query(
-            "MATCH (p:Person) REMOVE p.score RETURN p.name AS nm, p.age AS ag"
+            "MATCH (p:Person) REMOVE p.score RETURN p.name AS nm, p.age AS ag",
         )
         assert not result["nm"].isna().any()
         assert not result["ag"].isna().any()
 
     def test_remove_with_where_only_affects_matched_rows(
-        self, person_context: Context
+        self,
+        person_context: Context,
     ) -> None:
         """REMOVE after WHERE nullifies score only for matching persons."""
         star = Star(context=person_context)
         # Remove score only for Alice
         star.execute_query(
-            "MATCH (p:Person) WHERE p.name = 'Alice' REMOVE p.score RETURN p.name"
+            "MATCH (p:Person) WHERE p.name = 'Alice' REMOVE p.score RETURN p.name",
         )
         result = star.execute_query(
-            "MATCH (p:Person) RETURN p.name AS nm, p.score AS sc ORDER BY p.age ASC"
+            "MATCH (p:Person) RETURN p.name AS nm, p.score AS sc ORDER BY p.age ASC",
         )
         alice_row = result[result["nm"] == "Alice"]
         bob_row = result[result["nm"] == "Bob"]
         charlie_row = result[result["nm"] == "Charlie"]
 
         assert alice_row["sc"].isna().all(), "Alice's score should be null"
-        assert not bob_row["sc"].isna().any(), (
-            "Bob's score should be unchanged"
-        )
-        assert not charlie_row["sc"].isna().any(), (
-            "Charlie's score should be unchanged"
-        )
+        assert not bob_row["sc"].isna().any(), "Bob's score should be unchanged"
+        assert not charlie_row["sc"].isna().any(), "Charlie's score should be unchanged"
 
     def test_remove_multiple_properties(self, person_context: Context) -> None:
         """REMOVE p.score REMOVE p.age in separate clauses both nullify."""
@@ -132,7 +131,7 @@ class TestRemoveProperty:
         result = star.execute_query(
             "MATCH (p:Person) WHERE p.name = 'Alice' "
             "REMOVE p.score "
-            "RETURN p.name AS nm, p.score AS sc, p.age AS ag"
+            "RETURN p.name AS nm, p.score AS sc, p.age AS ag",
         )
         assert result["sc"].isna().all()
         # age must still have its original value (only score was removed)
@@ -148,13 +147,14 @@ class TestRemoveLabel:
     """REMOVE p:Label is architecturally a no-op but must not raise."""
 
     def test_remove_label_does_not_raise(
-        self, person_context: Context
+        self,
+        person_context: Context,
     ) -> None:
         """REMOVE p:Person must execute without raising any exception."""
         star = Star(context=person_context)
         # Should not raise NotImplementedError or any other exception
         result = star.execute_query(
-            "MATCH (p:Person) REMOVE p:Person RETURN p.name AS nm"
+            "MATCH (p:Person) REMOVE p:Person RETURN p.name AS nm",
         )
         # Label removal doesn't change the result rows — they're still returned
         assert len(result) == 3

@@ -26,7 +26,6 @@ import sys
 from collections.abc import Generator
 from typing import Any
 
-import rich  # noqa: F401  (imported for side-effects: enables rich tracebacks)
 from rich.progress import MofNCompleteColumn, Progress, SpinnerColumn
 
 _APPROX_TOTAL_LINES = 98_631_069_547
@@ -42,7 +41,14 @@ def _filtered_lines() -> Generator[tuple[dict[str, Any], int]]:
         # Cheap string check before paying for JSON parsing.
         if len(raw) < 3 or "latitude" not in raw:
             continue
-        entity: dict[str, Any] = json.loads(raw.rstrip(",\n"))
+        try:
+            entity: dict[str, Any] = json.loads(raw.rstrip(",\n"))
+        except json.JSONDecodeError:
+            print(
+                f"WARNING: Skipping malformed JSON at line {_total_lines}",
+                file=sys.stderr,
+            )
+            continue
         # Keep only the English facets of multilingual fields.
         for field in ("descriptions", "labels", "aliases"):
             if field in entity and "en" in entity[field]:
@@ -59,7 +65,8 @@ with Progress(
     MofNCompleteColumn(),
 ) as progress:
     task = progress.add_task(
-        "Filtering Wikidata...", total=_APPROX_TOTAL_LINES
+        "Filtering Wikidata...",
+        total=_APPROX_TOTAL_LINES,
     )
     for entity, line_number in _filtered_lines():
         sys.stdout.write(json.dumps(entity) + "\n")

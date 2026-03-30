@@ -45,7 +45,7 @@ def _entity_table(
         {
             ID_COLUMN: [r["__id"] for r in rows],
             **{a: [r[a] for r in rows] for a in attrs},
-        }
+        },
     )
     attr_map = {a: a for a in attrs}
     return EntityTable(
@@ -68,7 +68,7 @@ def _relationship_table(
             ID_COLUMN: [r["__id"] for r in rows],
             RELATIONSHIP_SOURCE_COLUMN: [r["__src"] for r in rows],
             RELATIONSHIP_TARGET_COLUMN: [r["__tgt"] for r in rows],
-        }
+        },
     )
     return RelationshipTable(
         relationship_type=rel_type,
@@ -154,7 +154,7 @@ class TestSingleEntityPatterns:
     def test_match_return_multiple_properties(self, star: Star) -> None:
         """MATCH + RETURN multiple properties produces correct columns and values."""
         result = star.execute_query(
-            "MATCH (p:Person) RETURN p.name AS name, p.age AS age, p.dept AS dept"
+            "MATCH (p:Person) RETURN p.name AS name, p.age AS age, p.dept AS dept",
         )
         assert set(result.columns) == {"name", "age", "dept"}
         assert len(result) == 4
@@ -167,14 +167,14 @@ class TestSingleEntityPatterns:
     def test_where_equality_filter(self, star: Star) -> None:
         """WHERE equality filter returns only matching rows."""
         result = star.execute_query(
-            "MATCH (p:Person) WHERE p.dept = 'Engineering' RETURN p.name AS name"
+            "MATCH (p:Person) WHERE p.dept = 'Engineering' RETURN p.name AS name",
         )
         assert set(result["name"]) == {"Alice", "Carol"}
 
     def test_where_numeric_comparison(self, star: Star) -> None:
         """WHERE numeric comparison (>) returns correct subset."""
         result = star.execute_query(
-            "MATCH (p:Person) WHERE p.age > 29 RETURN p.name AS name"
+            "MATCH (p:Person) WHERE p.age > 29 RETURN p.name AS name",
         )
         assert set(result["name"]) == {"Alice", "Carol"}
 
@@ -182,7 +182,7 @@ class TestSingleEntityPatterns:
         """WHERE with AND correctly intersects conditions."""
         result = star.execute_query(
             "MATCH (p:Person) WHERE p.dept = 'Engineering' AND p.age < 35 "
-            "RETURN p.name AS name"
+            "RETURN p.name AS name",
         )
         assert set(result["name"]) == {"Alice"}
 
@@ -190,14 +190,14 @@ class TestSingleEntityPatterns:
         """WHERE with OR correctly unions conditions."""
         result = star.execute_query(
             "MATCH (p:Person) WHERE p.dept = 'Sales' OR p.dept = 'Marketing' "
-            "RETURN p.name AS name"
+            "RETURN p.name AS name",
         )
         assert set(result["name"]) == {"Bob", "Dave"}
 
     def test_where_not_operator(self, star: Star) -> None:
         """WHERE with NOT correctly excludes matching rows."""
         result = star.execute_query(
-            "MATCH (p:Person) WHERE NOT p.dept = 'Engineering' RETURN p.name AS name"
+            "MATCH (p:Person) WHERE NOT p.dept = 'Engineering' RETURN p.name AS name",
         )
         assert set(result["name"]) == {"Bob", "Dave"}
 
@@ -206,7 +206,7 @@ class TestSingleEntityPatterns:
     def test_arithmetic_in_return(self, star: Star) -> None:
         """Arithmetic expression in RETURN produces correct per-row values."""
         result = star.execute_query(
-            "MATCH (p:Person) RETURN p.name AS name, p.salary * 0.1 AS bonus"
+            "MATCH (p:Person) RETURN p.name AS name, p.salary * 0.1 AS bonus",
         )
         by_name = result.set_index("name")["bonus"].to_dict()
         assert abs(by_name["Alice"] - 9000.0) < 0.01
@@ -217,7 +217,7 @@ class TestSingleEntityPatterns:
     def test_arithmetic_addition_in_return(self, star: Star) -> None:
         """Addition arithmetic in RETURN is evaluated per row."""
         result = star.execute_query(
-            "MATCH (p:Person) RETURN p.name AS name, p.age + 5 AS future_age"
+            "MATCH (p:Person) RETURN p.name AS name, p.age + 5 AS future_age",
         )
         by_name = result.set_index("name")["future_age"].to_dict()
         assert by_name["Alice"] == 35
@@ -228,7 +228,7 @@ class TestSingleEntityPatterns:
     def test_scalar_function_toUpper_in_return(self, star: Star) -> None:
         """toUpper() in RETURN produces uppercase string values."""
         result = star.execute_query(
-            "MATCH (p:Person) RETURN p.name AS name, toUpper(p.name) AS upper_name"
+            "MATCH (p:Person) RETURN p.name AS name, toUpper(p.name) AS upper_name",
         )
         for _, row in result.iterrows():
             assert row["upper_name"] == row["name"].upper()
@@ -236,7 +236,7 @@ class TestSingleEntityPatterns:
     def test_scalar_function_size_in_return(self, star: Star) -> None:
         """size() in RETURN returns correct string lengths."""
         result = star.execute_query(
-            "MATCH (p:Person) RETURN p.name AS name, size(p.name) AS name_len"
+            "MATCH (p:Person) RETURN p.name AS name, size(p.name) AS name_len",
         )
         for _, row in result.iterrows():
             assert row["name_len"] == len(row["name"])
@@ -244,7 +244,7 @@ class TestSingleEntityPatterns:
     def test_scalar_function_in_where(self, star: Star) -> None:
         """Scalar function in WHERE correctly filters rows."""
         result = star.execute_query(
-            "MATCH (p:Person) WHERE size(p.name) = 3 RETURN p.name AS name"
+            "MATCH (p:Person) WHERE size(p.name) = 3 RETURN p.name AS name",
         )
         # "Bob" and "Dave" have length 3 and 4 respectively; "Bob" = 3
         assert set(result["name"]) == {"Bob"}
@@ -252,21 +252,19 @@ class TestSingleEntityPatterns:
     def test_toString_in_return(self, star: Star) -> None:
         """toString() converts numeric values to string representation."""
         result = star.execute_query(
-            "MATCH (p:Person) RETURN p.name AS name, toString(p.age) AS age_str"
+            "MATCH (p:Person) RETURN p.name AS name, toString(p.age) AS age_str",
         )
         for _, row in result.iterrows():
             assert isinstance(row["age_str"], str)
             assert (
                 int(row["age_str"])
-                == {"Alice": 30, "Bob": 25, "Carol": 35, "Dave": 28}[
-                    row["name"]
-                ]
+                == {"Alice": 30, "Bob": 25, "Carol": 35, "Dave": 28}[row["name"]]
             )
 
     def test_toInteger_in_return(self, star: Star) -> None:
         """toInteger() on a float truncates correctly."""
         result = star.execute_query(
-            "MATCH (p:Person) RETURN p.name AS name, toInteger(p.salary / 1000) AS k_salary"
+            "MATCH (p:Person) RETURN p.name AS name, toInteger(p.salary / 1000) AS k_salary",
         )
         by_name = result.set_index("name")["k_salary"].to_dict()
         assert by_name["Alice"] == 90
@@ -277,14 +275,14 @@ class TestSingleEntityPatterns:
     def test_with_renames_property(self, star: Star) -> None:
         """WITH clause renames a property into a new alias."""
         result = star.execute_query(
-            "MATCH (p:Person) WITH p.name AS n RETURN n"
+            "MATCH (p:Person) WITH p.name AS n RETURN n",
         )
         assert set(result["n"]) == {"Alice", "Bob", "Carol", "Dave"}
 
     def test_with_computes_expression(self, star: Star) -> None:
         """WITH clause evaluates an arithmetic expression into an alias."""
         result = star.execute_query(
-            "MATCH (p:Person) WITH p.name AS name, p.salary / 1000 AS k RETURN name, k"
+            "MATCH (p:Person) WITH p.name AS name, p.salary / 1000 AS k RETURN name, k",
         )
         by_name = result.set_index("name")["k"].to_dict()
         assert by_name["Alice"] == 90
@@ -294,7 +292,7 @@ class TestSingleEntityPatterns:
         """MATCH + WHERE filters rows before WITH projection."""
         result = star.execute_query(
             "MATCH (p:Person) WHERE p.dept = 'Engineering' "
-            "WITH p.name AS name RETURN name"
+            "WITH p.name AS name RETURN name",
         )
         assert set(result["name"]) == {"Alice", "Carol"}
 
@@ -303,28 +301,28 @@ class TestSingleEntityPatterns:
     def test_count_star(self, star: Star) -> None:
         """count(*) returns total number of matched rows."""
         result = star.execute_query(
-            "MATCH (p:Person) WITH count(*) AS total RETURN total"
+            "MATCH (p:Person) WITH count(*) AS total RETURN total",
         )
         assert result["total"].iloc[0] == 4
 
     def test_count_with_filter(self, star: Star) -> None:
         """count(*) after WHERE returns filtered count."""
         result = star.execute_query(
-            "MATCH (p:Person) WHERE p.dept = 'Engineering' WITH count(*) AS n RETURN n"
+            "MATCH (p:Person) WHERE p.dept = 'Engineering' WITH count(*) AS n RETURN n",
         )
         assert result["n"].iloc[0] == 2
 
     def test_sum_aggregation(self, star: Star) -> None:
         """sum() aggregation returns correct total."""
         result = star.execute_query(
-            "MATCH (p:Person) WITH sum(p.salary) AS total_salary RETURN total_salary"
+            "MATCH (p:Person) WITH sum(p.salary) AS total_salary RETURN total_salary",
         )
         assert result["total_salary"].iloc[0] == 315000
 
     def test_avg_aggregation(self, star: Star) -> None:
         """avg() aggregation returns correct mean."""
         result = star.execute_query(
-            "MATCH (p:Person) WITH avg(p.age) AS mean_age RETURN mean_age"
+            "MATCH (p:Person) WITH avg(p.age) AS mean_age RETURN mean_age",
         )
         expected = (30 + 25 + 35 + 28) / 4  # = 29.5
         assert abs(result["mean_age"].iloc[0] - expected) < 0.001
@@ -334,7 +332,7 @@ class TestSingleEntityPatterns:
         result = star.execute_query(
             "MATCH (p:Person) "
             "WITH min(p.age) AS youngest, max(p.age) AS oldest "
-            "RETURN youngest, oldest"
+            "RETURN youngest, oldest",
         )
         assert result["youngest"].iloc[0] == 25
         assert result["oldest"].iloc[0] == 35
@@ -342,7 +340,7 @@ class TestSingleEntityPatterns:
     def test_grouped_aggregation(self, star: Star) -> None:
         """Grouped aggregation (WITH dept, count(*)) produces one row per group."""
         result = star.execute_query(
-            "MATCH (p:Person) WITH p.dept AS dept, count(*) AS n RETURN dept, n"
+            "MATCH (p:Person) WITH p.dept AS dept, count(*) AS n RETURN dept, n",
         )
         by_dept = result.set_index("dept")["n"].to_dict()
         assert by_dept["Engineering"] == 2
@@ -354,7 +352,7 @@ class TestSingleEntityPatterns:
         result = star.execute_query(
             "MATCH (p:Person) "
             "WITH p.dept AS dept, sum(p.salary) AS total "
-            "RETURN dept, total"
+            "RETURN dept, total",
         )
         by_dept = result.set_index("dept")["total"].to_dict()
         assert by_dept["Engineering"] == 185000  # 90000 + 95000
@@ -366,16 +364,16 @@ class TestSingleEntityPatterns:
     def test_set_new_property(self, star: Star) -> None:
         """SET adds a new property to all matched entities."""
         result = star.execute_query(
-            "MATCH (p:Person) SET p.active = true RETURN p.name AS name, p.active AS active"
+            "MATCH (p:Person) SET p.active = true RETURN p.name AS name, p.active AS active",
         )
         assert len(result) == 4
-        assert (result["active"] == True).all()  # noqa: E712
+        assert (result["active"] == True).all()
 
     def test_set_computed_property(self, star: Star) -> None:
         """SET with arithmetic expression computes per-row values correctly."""
         result = star.execute_query(
             "MATCH (p:Person) SET p.bonus = p.salary * 0.15 "
-            "RETURN p.name AS name, p.bonus AS bonus"
+            "RETURN p.name AS name, p.bonus AS bonus",
         )
         by_name = result.set_index("name")["bonus"].to_dict()
         assert abs(by_name["Alice"] - 13500.0) < 0.01
@@ -384,7 +382,7 @@ class TestSingleEntityPatterns:
     def test_set_modifies_existing_property(self, star: Star) -> None:
         """SET overwrites an existing property with a new value."""
         result = star.execute_query(
-            "MATCH (p:Person) SET p.age = p.age + 1 RETURN p.name AS name, p.age AS age"
+            "MATCH (p:Person) SET p.age = p.age + 1 RETURN p.name AS name, p.age AS age",
         )
         by_name = result.set_index("name")["age"].to_dict()
         assert by_name["Alice"] == 31
@@ -394,7 +392,7 @@ class TestSingleEntityPatterns:
         """SET after WHERE modifies only matching rows; non-matching rows absent."""
         result = star.execute_query(
             "MATCH (p:Person) WHERE p.dept = 'Engineering' "
-            "SET p.team = 'tech' RETURN p.name AS name, p.team AS team"
+            "SET p.team = 'tech' RETURN p.name AS name, p.team AS team",
         )
         assert set(result["name"]) == {"Alice", "Carol"}
         assert (result["team"] == "tech").all()
@@ -405,7 +403,7 @@ class TestSingleEntityPatterns:
             "MATCH (p:Person) "
             "SET p.score = p.salary / 1000 "
             "WITH p.name AS name, p.score AS score "
-            "RETURN name, score"
+            "RETURN name, score",
         )
         by_name = result.set_index("name")["score"].to_dict()
         assert by_name["Alice"] == 90
@@ -417,7 +415,7 @@ class TestSingleEntityPatterns:
             "MATCH (p:Person) "
             "SET p.base = 100 "
             "SET p.doubled = p.base * 2 "
-            "RETURN p.name AS name, p.doubled AS doubled"
+            "RETURN p.name AS name, p.doubled AS doubled",
         )
         assert (result["doubled"] == 200).all()
 
@@ -425,7 +423,7 @@ class TestSingleEntityPatterns:
         """SET p.prop = null produces a null column in the result."""
         result = star.execute_query(
             "MATCH (p:Person) SET p.optional = null "
-            "RETURN p.name AS name, p.optional AS optional"
+            "RETURN p.name AS name, p.optional AS optional",
         )
         assert len(result) == 4
         assert result["optional"].isna().all()
@@ -473,10 +471,10 @@ class TestCrossTypeRelationshipPatterns:
         )
         return Context(
             entity_mapping=EntityMapping(
-                mapping={"Person": person_table, "Company": company_table}
+                mapping={"Person": person_table, "Company": company_table},
             ),
             relationship_mapping=RelationshipMapping(
-                mapping={"WORKS_AT": works_at_table}
+                mapping={"WORKS_AT": works_at_table},
             ),
         )
 
@@ -488,7 +486,7 @@ class TestCrossTypeRelationshipPatterns:
         """Simple join returns one row per relationship."""
         result = star.execute_query(
             "MATCH (p:Person)-[r:WORKS_AT]->(c:Company) "
-            "RETURN p.name AS person, c.cname AS company"
+            "RETURN p.name AS person, c.cname AS company",
         )
         assert len(result) == 3
         pairs = set(zip(result["person"], result["company"]))
@@ -501,7 +499,7 @@ class TestCrossTypeRelationshipPatterns:
         result = star.execute_query(
             "MATCH (p:Person)-[r:WORKS_AT]->(c:Company) "
             "WHERE p.name = 'Alice' "
-            "RETURN p.name AS person, c.cname AS company"
+            "RETURN p.name AS person, c.cname AS company",
         )
         assert len(result) == 2
         assert set(result["company"]) == {"Acme", "Globex"}
@@ -511,7 +509,7 @@ class TestCrossTypeRelationshipPatterns:
         result = star.execute_query(
             "MATCH (p:Person)-[r:WORKS_AT]->(c:Company) "
             "WHERE c.industry = 'Tech' "
-            "RETURN p.name AS person, c.cname AS company"
+            "RETURN p.name AS person, c.cname AS company",
         )
         assert len(result) == 2
         assert set(result["person"]) == {"Alice", "Bob"}
@@ -522,19 +520,20 @@ class TestCrossTypeRelationshipPatterns:
         result = star.execute_query(
             "MATCH (p:Person)-[r:WORKS_AT]->(c:Company) "
             "WITH c.cname AS company, count(*) AS n "
-            "RETURN company, n"
+            "RETURN company, n",
         )
         by_company = result.set_index("company")["n"].to_dict()
         assert by_company["Acme"] == 2
         assert by_company["Globex"] == 1
 
     def test_join_with_both_entity_properties_in_return(
-        self, star: Star
+        self,
+        star: Star,
     ) -> None:
         """RETURN can access properties from both sides of a join."""
         result = star.execute_query(
             "MATCH (p:Person)-[r:WORKS_AT]->(c:Company) "
-            "RETURN p.name AS person, p.dept AS dept, c.cname AS company, c.industry AS industry"
+            "RETURN p.name AS person, p.dept AS dept, c.cname AS company, c.industry AS industry",
         )
         assert set(result.columns) == {"person", "dept", "company", "industry"}
         alice_rows = result[result["person"] == "Alice"]
@@ -607,10 +606,10 @@ class TestMultiHopDifferentTypePatterns:
                     "Person": person_table,
                     "Team": team_table,
                     "Project": project_table,
-                }
+                },
             ),
             relationship_mapping=RelationshipMapping(
-                mapping={"MEMBER_OF": member_of, "WORKS_ON": works_on}
+                mapping={"MEMBER_OF": member_of, "WORKS_ON": works_on},
             ),
         )
 
@@ -622,7 +621,7 @@ class TestMultiHopDifferentTypePatterns:
         """Two-hop path across three different entity types returns correct rows."""
         result = star.execute_query(
             "MATCH (p:Person)-[m:MEMBER_OF]->(t:Team)-[w:WORKS_ON]->(proj:Project) "
-            "RETURN p.name AS person, t.team_name AS team, proj.proj_name AS project"
+            "RETURN p.name AS person, t.team_name AS team, proj.proj_name AS project",
         )
         # Alice → Alpha → Apollo
         # Bob → Alpha → Apollo
@@ -638,7 +637,7 @@ class TestMultiHopDifferentTypePatterns:
         result = star.execute_query(
             "MATCH (p:Person)-[m:MEMBER_OF]->(t:Team)-[w:WORKS_ON]->(proj:Project) "
             "WHERE t.team_name = 'Beta' "
-            "RETURN p.name AS person, proj.proj_name AS project"
+            "RETURN p.name AS person, proj.proj_name AS project",
         )
         assert len(result) == 1
         assert result["person"].iloc[0] == "Bob"
@@ -649,7 +648,7 @@ class TestMultiHopDifferentTypePatterns:
         result = star.execute_query(
             "MATCH (p:Person)-[m:MEMBER_OF]->(t:Team)-[w:WORKS_ON]->(proj:Project) "
             "WITH p.name AS person, count(*) AS project_count "
-            "RETURN person, project_count"
+            "RETURN person, project_count",
         )
         by_person = result.set_index("person")["project_count"].to_dict()
         assert by_person["Alice"] == 1  # only Apollo via Alpha
@@ -675,7 +674,7 @@ class TestNullHandling:
                 "name": ["Alice", "Bob", "Carol"],
                 "score": [85.0, float("nan"), 70.0],
                 "bonus": [float("nan"), 500.0, float("nan")],
-            }
+            },
         )
         attr_map = {"name": "name", "score": "score", "bonus": "bonus"}
         table = EntityTable(
@@ -698,7 +697,7 @@ class TestNullHandling:
     def test_null_in_arithmetic_propagates(self, star: Star) -> None:
         """Null operand in arithmetic produces null result."""
         result = star.execute_query(
-            "MATCH (i:Item) RETURN i.name AS name, i.score + 10 AS adjusted"
+            "MATCH (i:Item) RETURN i.name AS name, i.score + 10 AS adjusted",
         )
         by_name = result.set_index("name")["adjusted"]
         assert abs(by_name["Alice"] - 95.0) < 0.001
@@ -708,7 +707,7 @@ class TestNullHandling:
     def test_coalesce_replaces_null(self, star: Star) -> None:
         """coalesce() returns the first non-null value."""
         result = star.execute_query(
-            "MATCH (i:Item) RETURN i.name AS name, coalesce(i.score, 0) AS safe_score"
+            "MATCH (i:Item) RETURN i.name AS name, coalesce(i.score, 0) AS safe_score",
         )
         by_name = result.set_index("name")["safe_score"].to_dict()
         assert by_name["Alice"] == 85.0
@@ -718,7 +717,7 @@ class TestNullHandling:
     def test_avg_ignores_null(self, star: Star) -> None:
         """avg() aggregation ignores null values (Bob's score excluded)."""
         result = star.execute_query(
-            "MATCH (i:Item) WITH avg(i.score) AS mean_score RETURN mean_score"
+            "MATCH (i:Item) WITH avg(i.score) AS mean_score RETURN mean_score",
         )
         # Only Alice (85) and Carol (70) have scores: avg = 77.5
         assert abs(result["mean_score"].iloc[0] - 77.5) < 0.001
@@ -726,21 +725,21 @@ class TestNullHandling:
     def test_count_star_includes_null_rows(self, star: Star) -> None:
         """count(*) counts all rows regardless of null properties."""
         result = star.execute_query(
-            "MATCH (i:Item) WITH count(*) AS n RETURN n"
+            "MATCH (i:Item) WITH count(*) AS n RETURN n",
         )
         assert result["n"].iloc[0] == 3
 
     def test_is_null_check(self, star: Star) -> None:
         """IS NULL correctly identifies null values."""
         result = star.execute_query(
-            "MATCH (i:Item) WHERE i.score IS NULL RETURN i.name AS name"
+            "MATCH (i:Item) WHERE i.score IS NULL RETURN i.name AS name",
         )
         assert set(result["name"]) == {"Bob"}
 
     def test_is_not_null_check(self, star: Star) -> None:
         """IS NOT NULL correctly identifies non-null values."""
         result = star.execute_query(
-            "MATCH (i:Item) WHERE i.score IS NOT NULL RETURN i.name AS name"
+            "MATCH (i:Item) WHERE i.score IS NOT NULL RETURN i.name AS name",
         )
         assert set(result["name"]) == {"Alice", "Carol"}
 
@@ -778,7 +777,7 @@ class TestScalarFunctions:
 
     def test_toUpper(self, star: Star) -> None:
         result = star.execute_query(
-            "MATCH (w:Word) RETURN w.text AS text, toUpper(w.text) AS up"
+            "MATCH (w:Word) RETURN w.text AS text, toUpper(w.text) AS up",
         )
         by_text = dict(zip(result["text"], result["up"]))
         assert by_text["hello"] == "HELLO"
@@ -786,14 +785,14 @@ class TestScalarFunctions:
 
     def test_toLower(self, star: Star) -> None:
         result = star.execute_query(
-            "MATCH (w:Word) RETURN w.text AS text, toLower(w.text) AS low"
+            "MATCH (w:Word) RETURN w.text AS text, toLower(w.text) AS low",
         )
         by_text = dict(zip(result["text"], result["low"]))
         assert by_text["Foo"] == "foo"
 
     def test_trim(self, star: Star) -> None:
         result = star.execute_query(
-            "MATCH (w:Word) RETURN w.text AS text, trim(w.text) AS trimmed"
+            "MATCH (w:Word) RETURN w.text AS text, trim(w.text) AS trimmed",
         )
         by_text = dict(zip(result["text"], result["trimmed"]))
         assert by_text["  world  "] == "world"
@@ -801,7 +800,7 @@ class TestScalarFunctions:
 
     def test_size_of_string(self, star: Star) -> None:
         result = star.execute_query(
-            "MATCH (w:Word) RETURN w.text AS text, size(w.text) AS sz"
+            "MATCH (w:Word) RETURN w.text AS text, size(w.text) AS sz",
         )
         by_text = dict(zip(result["text"], result["sz"]))
         assert by_text["hello"] == 5
@@ -810,13 +809,13 @@ class TestScalarFunctions:
     def test_substring(self, star: Star) -> None:
         result = star.execute_query(
             "MATCH (w:Word) WHERE w.text = 'hello' "
-            "RETURN substring(w.text, 1, 3) AS sub"
+            "RETURN substring(w.text, 1, 3) AS sub",
         )
         assert result["sub"].iloc[0] == "ell"
 
     def test_toString_of_integer(self, star: Star) -> None:
         result = star.execute_query(
-            "MATCH (w:Word) RETURN w.num AS num, toString(w.num) AS s"
+            "MATCH (w:Word) RETURN w.num AS num, toString(w.num) AS s",
         )
         for _, row in result.iterrows():
             assert isinstance(row["s"], str)
@@ -824,7 +823,7 @@ class TestScalarFunctions:
 
     def test_toInteger_from_float(self, star: Star) -> None:
         result = star.execute_query(
-            "MATCH (w:Word) RETURN w.num AS num, toInteger(w.num / 10) AS d"
+            "MATCH (w:Word) RETURN w.num AS num, toInteger(w.num / 10) AS d",
         )
         by_num = result.set_index("num")["d"].to_dict()
         assert by_num[42] == 4
@@ -833,7 +832,7 @@ class TestScalarFunctions:
     def test_nested_functions(self, star: Star) -> None:
         """Nested function calls: size(toUpper(text)) === size(text)."""
         result = star.execute_query(
-            "MATCH (w:Word) RETURN w.text AS text, size(toUpper(w.text)) AS sz"
+            "MATCH (w:Word) RETURN w.text AS text, size(toUpper(w.text)) AS sz",
         )
         for _, row in result.iterrows():
             assert row["sz"] == len(row["text"])
@@ -883,31 +882,31 @@ class TestAggregationAccuracy:
 
     def test_sum(self, star: Star) -> None:
         result = star.execute_query(
-            "MATCH (n:Num) WITH sum(n.val) AS s RETURN s"
+            "MATCH (n:Num) WITH sum(n.val) AS s RETURN s",
         )
         assert result["s"].iloc[0] == self.EXPECTED_SUM
 
     def test_avg(self, star: Star) -> None:
         result = star.execute_query(
-            "MATCH (n:Num) WITH avg(n.val) AS a RETURN a"
+            "MATCH (n:Num) WITH avg(n.val) AS a RETURN a",
         )
         assert abs(result["a"].iloc[0] - self.EXPECTED_AVG) < 0.001
 
     def test_min(self, star: Star) -> None:
         result = star.execute_query(
-            "MATCH (n:Num) WITH min(n.val) AS m RETURN m"
+            "MATCH (n:Num) WITH min(n.val) AS m RETURN m",
         )
         assert result["m"].iloc[0] == self.EXPECTED_MIN
 
     def test_max(self, star: Star) -> None:
         result = star.execute_query(
-            "MATCH (n:Num) WITH max(n.val) AS m RETURN m"
+            "MATCH (n:Num) WITH max(n.val) AS m RETURN m",
         )
         assert result["m"].iloc[0] == self.EXPECTED_MAX
 
     def test_count_star(self, star: Star) -> None:
         result = star.execute_query(
-            "MATCH (n:Num) WITH count(*) AS c RETURN c"
+            "MATCH (n:Num) WITH count(*) AS c RETURN c",
         )
         assert result["c"].iloc[0] == self.EXPECTED_COUNT
 
@@ -916,7 +915,7 @@ class TestAggregationAccuracy:
         result = star.execute_query(
             "MATCH (n:Num) "
             "WITH sum(n.val) AS s, avg(n.val) AS a, min(n.val) AS lo, max(n.val) AS hi "
-            "RETURN s, a, lo, hi"
+            "RETURN s, a, lo, hi",
         )
         row = result.iloc[0]
         assert row["s"] == self.EXPECTED_SUM
@@ -927,7 +926,7 @@ class TestAggregationAccuracy:
     def test_count_after_filter(self, star: Star) -> None:
         """count(*) after WHERE counts only matching rows."""
         result = star.execute_query(
-            "MATCH (n:Num) WHERE n.val > 25 WITH count(*) AS c RETURN c"
+            "MATCH (n:Num) WHERE n.val > 25 WITH count(*) AS c RETURN c",
         )
         # 30, 40, 50 qualify
         assert result["c"].iloc[0] == 3
@@ -935,7 +934,7 @@ class TestAggregationAccuracy:
     def test_sum_after_filter(self, star: Star) -> None:
         """sum() after WHERE sums only matching rows."""
         result = star.execute_query(
-            "MATCH (n:Num) WHERE n.val <= 30 WITH sum(n.val) AS s RETURN s"
+            "MATCH (n:Num) WHERE n.val <= 30 WITH sum(n.val) AS s RETURN s",
         )
         assert result["s"].iloc[0] == 60  # 10 + 20 + 30
 
@@ -984,7 +983,7 @@ class TestCaseExpressions:
                               ELSE 'C'
                           END
             RETURN s.name AS name, s.grade AS grade
-            """
+            """,
         )
         by_name = result.set_index("name")["grade"].to_dict()
         assert by_name["Alice"] == "A"
@@ -1031,7 +1030,7 @@ def _knows_ctx_8() -> Context:
     return Context(
         entity_mapping=EntityMapping(mapping={"Person": person_table}),
         relationship_mapping=RelationshipMapping(
-            mapping={"KNOWS": knows_table}
+            mapping={"KNOWS": knows_table},
         ),
     )
 
@@ -1048,7 +1047,7 @@ class TestSameTypeSelfJoin:
         """MATCH (p:Person)-[:KNOWS]->(q:Person) returns one row per directed edge."""
         result = knows_star_8.execute_query(
             "MATCH (p:Person)-[:KNOWS]->(q:Person) "
-            "RETURN p.name AS source, q.name AS target"
+            "RETURN p.name AS source, q.name AS target",
         )
         assert len(result) == 4
         pairs = set(zip(result["source"], result["target"]))
@@ -1062,7 +1061,7 @@ class TestSameTypeSelfJoin:
         result = knows_star_8.execute_query(
             "MATCH (p:Person)-[:KNOWS]->(q:Person) "
             "WHERE p.name = 'Alice' "
-            "RETURN p.name AS source, q.name AS target"
+            "RETURN p.name AS source, q.name AS target",
         )
         assert len(result) == 2
         assert set(result["target"]) == {"Bob", "Carol"}
@@ -1072,7 +1071,7 @@ class TestSameTypeSelfJoin:
         result = knows_star_8.execute_query(
             "MATCH (p:Person)-[:KNOWS]->(q:Person) "
             "WHERE q.name = 'Carol' "
-            "RETURN p.name AS source, q.name AS target"
+            "RETURN p.name AS source, q.name AS target",
         )
         assert len(result) == 2
         assert set(result["source"]) == {"Bob", "Alice"}
@@ -1082,7 +1081,7 @@ class TestSameTypeSelfJoin:
         result = knows_star_8.execute_query(
             "MATCH (p:Person)-[:KNOWS]->(q:Person) "
             "WITH p.name AS person, count(*) AS out_degree "
-            "RETURN person, out_degree"
+            "RETURN person, out_degree",
         )
         by_person = result.set_index("person")["out_degree"].to_dict()
         assert by_person["Alice"] == 2
@@ -1095,7 +1094,7 @@ class TestSameTypeSelfJoin:
         result = knows_star_8.execute_query(
             "MATCH (p:Person)-[:KNOWS]->(q:Person) "
             "RETURN p.name AS source, p.age AS source_age, "
-            "q.name AS target, q.age AS target_age"
+            "q.name AS target, q.age AS target_age",
         )
         alice_bob = result[
             (result["source"] == "Alice") & (result["target"] == "Bob")
@@ -1111,7 +1110,7 @@ class TestMultiHopSameType:
         """(a:Person)-[:KNOWS]->(b)-[:KNOWS]->(c) returns correct row count."""
         result = knows_star_8.execute_query(
             "MATCH (a:Person)-[:KNOWS]->(b:Person)-[:KNOWS]->(c:Person) "
-            "RETURN a.name AS a, b.name AS b, c.name AS c"
+            "RETURN a.name AS a, b.name AS b, c.name AS c",
         )
         assert len(result) == 3
 
@@ -1119,7 +1118,7 @@ class TestMultiHopSameType:
         """Two-hop same-type paths contain exactly the expected (a, b, c) triples."""
         result = knows_star_8.execute_query(
             "MATCH (a:Person)-[:KNOWS]->(b:Person)-[:KNOWS]->(c:Person) "
-            "RETURN a.name AS a, b.name AS b, c.name AS c"
+            "RETURN a.name AS a, b.name AS b, c.name AS c",
         )
         triples = set(zip(result["a"], result["b"], result["c"]))
         assert ("Alice", "Bob", "Carol") in triples
@@ -1131,7 +1130,7 @@ class TestMultiHopSameType:
         result = knows_star_8.execute_query(
             "MATCH (a:Person)-[:KNOWS]->(b:Person)-[:KNOWS]->(c:Person) "
             "WHERE a.name = 'Alice' "
-            "RETURN a.name AS a, b.name AS b, c.name AS c"
+            "RETURN a.name AS a, b.name AS b, c.name AS c",
         )
         assert len(result) == 2
         triples = set(zip(result["a"], result["b"], result["c"]))
@@ -1143,7 +1142,7 @@ class TestMultiHopSameType:
         result = knows_star_8.execute_query(
             "MATCH (a:Person)-[:KNOWS]->(b:Person)-[:KNOWS]->(c:Person) "
             "WHERE c.name = 'Dave' "
-            "RETURN a.name AS a, b.name AS b"
+            "RETURN a.name AS a, b.name AS b",
         )
         assert len(result) == 2
         pairs = set(zip(result["a"], result["b"]))
@@ -1154,7 +1153,7 @@ class TestMultiHopSameType:
         """Three-hop same-type path: Alice→Bob→Carol→Dave."""
         result = knows_star_8.execute_query(
             "MATCH (a:Person)-[:KNOWS]->(b:Person)-[:KNOWS]->(c:Person)-[:KNOWS]->(d:Person) "
-            "RETURN a.name AS a, b.name AS b, c.name AS c, d.name AS d"
+            "RETURN a.name AS a, b.name AS b, c.name AS c, d.name AS d",
         )
         assert len(result) == 1
         row = result.iloc[0]
@@ -1207,7 +1206,7 @@ class TestCaseExpressionClauses:
                        WHEN s.score >= 70 THEN 'C'
                        ELSE 'F'
                    END AS grade
-            """
+            """,
         )
         by_name = result.set_index("name")["grade"].to_dict()
         assert by_name["Alice"] == "A"
@@ -1222,7 +1221,7 @@ class TestCaseExpressionClauses:
             MATCH (s:Student)
             WHERE CASE WHEN s.score >= 80 THEN true ELSE false END = true
             RETURN s.name AS name
-            """
+            """,
         )
         assert set(result["name"]) == {"Alice", "Bob"}
 
@@ -1234,7 +1233,7 @@ class TestCaseExpressionClauses:
             WITH s.name AS name,
                  CASE WHEN s.score >= 80 THEN 'pass' ELSE 'fail' END AS status
             RETURN name, status
-            """
+            """,
         )
         by_name = result.set_index("name")["status"].to_dict()
         assert by_name["Alice"] == "pass"
@@ -1250,7 +1249,7 @@ class TestCaseExpressionClauses:
             WITH count(CASE WHEN s.score >= 80 THEN 1 END) AS passing,
                  count(CASE WHEN s.score < 80  THEN 1 END) AS failing
             RETURN passing, failing
-            """
+            """,
         )
         row = result.iloc[0]
         assert row["passing"] == 2
@@ -1270,18 +1269,19 @@ class TestCyclicAndVariableLengthPaths:
         # In our dataset there are NO mutual KNOWS edges, so result should be empty.
         result = knows_star_8.execute_query(
             "MATCH (p:Person)-[:KNOWS]->(q:Person)-[:KNOWS]->(p:Person) "
-            "RETURN p.name AS a, q.name AS b"
+            "RETURN p.name AS a, q.name AS b",
         )
         assert len(result) == 0
 
     def test_variable_length_path_reachability(
-        self, knows_star_8: Star
+        self,
+        knows_star_8: Star,
     ) -> None:
         """MATCH (a)-[:KNOWS*1..2]->(b) finds nodes reachable in 1 or 2 hops."""
         result = knows_star_8.execute_query(
             "MATCH (a:Person)-[:KNOWS*1..2]->(b:Person) "
             "WHERE a.name = 'Alice' "
-            "RETURN b.name AS reachable"
+            "RETURN b.name AS reachable",
         )
         # 1-hop: Bob, Carol; 2-hop: Carol (via Bob), Dave (via Carol)
         assert set(result["reachable"]) == {"Bob", "Carol", "Dave"}
@@ -1291,7 +1291,7 @@ class TestCyclicAndVariableLengthPaths:
         result = knows_star_8.execute_query(
             "MATCH p = (a:Person)-[:KNOWS*]->(b:Person) "
             "WHERE a.name = 'Alice' AND b.name = 'Dave' "
-            "RETURN length(p) AS hops"
+            "RETURN length(p) AS hops",
         )
         # Shortest: Alice → Carol → Dave (2 hops)
         assert result["hops"].min() == 2

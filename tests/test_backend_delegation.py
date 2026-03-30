@@ -7,15 +7,9 @@ calling raw pandas operations directly.
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
-
 import pandas as pd
-import pytest
-
 from pycypher.backends.pandas_backend import PandasBackend
 from pycypher.binding_frame import BindingFrame
-from pycypher.constants import ID_COLUMN
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

@@ -9,6 +9,7 @@ Includes ReDoS protection for the ``=~`` regex operator.
 
 from __future__ import annotations
 
+import functools
 import logging
 import re
 from typing import TYPE_CHECKING
@@ -47,8 +48,26 @@ _REDOS_PATTERNS: tuple[re.Pattern[str], ...] = (
 )
 
 
-def _validate_regex_pattern(pattern: str) -> None:
-    """Raise ``ValueError`` if *pattern* could cause catastrophic backtracking.
+@functools.lru_cache(maxsize=256)
+def _compile_regex(pattern: str) -> re.Pattern[str]:
+    """Compile and cache a regex pattern.
+
+    The LRU cache avoids recompiling the same pattern on every ``=~``
+    evaluation.  The maxsize of 256 is generous for typical workloads
+    while bounding memory usage.
+
+    Args:
+        pattern: A regex pattern string (already validated).
+
+    Returns:
+        Compiled :class:`re.Pattern`.
+
+    """
+    return re.compile(pattern)
+
+
+def _validate_regex_pattern(pattern: str) -> re.Pattern[str]:
+    """Validate and compile a regex pattern, raising on dangerous inputs.
 
     Checks:
 
@@ -59,6 +78,9 @@ def _validate_regex_pattern(pattern: str) -> None:
 
     Args:
         pattern: User-supplied regex string from a Cypher ``=~`` predicate.
+
+    Returns:
+        The compiled :class:`re.Pattern` (cached for reuse).
 
     Raises:
         ValueError: If the pattern is invalid, too long, or contains a
@@ -73,12 +95,6 @@ def _validate_regex_pattern(pattern: str) -> None:
         )
         raise ValueError(msg)
 
-    try:
-        re.compile(pattern)
-    except re.error as exc:
-        msg = f"Invalid regex pattern: {exc}"
-        raise ValueError(msg) from exc
-
     for redos_re in _REDOS_PATTERNS:
         if redos_re.search(pattern):
             msg = (
@@ -88,6 +104,12 @@ def _validate_regex_pattern(pattern: str) -> None:
                 "avoid denial-of-service."
             )
             raise ValueError(msg)
+
+    try:
+        return _compile_regex(pattern)
+    except re.error as exc:
+        msg = f"Invalid regex pattern: {exc}"
+        raise ValueError(msg) from exc
 
 
 class StringPredicateEvaluator:
@@ -155,8 +177,8 @@ class StringPredicateEvaluator:
                 na=False,
             ).astype(object)
         elif op == "=~":
-            _validate_regex_pattern(right_val)
-            result = left.str.fullmatch(right_val, na=False).astype(object)
+            compiled = _validate_regex_pattern(right_val)
+            result = left.str.fullmatch(compiled, na=False).astype(object)
         else:
             result = None
 

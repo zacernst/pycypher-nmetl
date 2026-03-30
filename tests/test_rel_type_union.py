@@ -29,11 +29,11 @@ from pycypher.star import Star
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture()
+@pytest.fixture
 def multi_rel_ctx() -> Context:
     """Person nodes with two relationship types: KNOWS and LIKES."""
     pdf = pd.DataFrame(
-        {ID_COLUMN: [1, 2, 3], "name": ["Alice", "Bob", "Carol"]}
+        {ID_COLUMN: [1, 2, 3], "name": ["Alice", "Bob", "Carol"]},
     )
     ptable = EntityTable(
         entity_type="Person",
@@ -49,7 +49,7 @@ def multi_rel_ctx() -> Context:
             ID_COLUMN: [10],
             RELATIONSHIP_SOURCE_COLUMN: [1],
             RELATIONSHIP_TARGET_COLUMN: [2],
-        }
+        },
     )
     ktable = RelationshipTable(
         relationship_type="KNOWS",
@@ -69,7 +69,7 @@ def multi_rel_ctx() -> Context:
             ID_COLUMN: [20],
             RELATIONSHIP_SOURCE_COLUMN: [1],
             RELATIONSHIP_TARGET_COLUMN: [3],
-        }
+        },
     )
     ltable = RelationshipTable(
         relationship_type="LIKES",
@@ -86,7 +86,7 @@ def multi_rel_ctx() -> Context:
     return Context(
         entity_mapping=EntityMapping(mapping={"Person": ptable}),
         relationship_mapping=RelationshipMapping(
-            mapping={"KNOWS": ktable, "LIKES": ltable}
+            mapping={"KNOWS": ktable, "LIKES": ltable},
         ),
     )
 
@@ -100,13 +100,14 @@ class TestColonPipeUnion:
     """[:KNOWS|:LIKES] matches both relationship types."""
 
     def test_colon_pipe_union_returns_both_targets(
-        self, multi_rel_ctx: Context
+        self,
+        multi_rel_ctx: Context,
     ) -> None:
         """[:KNOWS|:LIKES] returns Bob and Carol as targets of Alice."""
         star = Star(context=multi_rel_ctx)
         result = star.execute_query(
             "MATCH (p:Person {name: 'Alice'})-[:KNOWS|:LIKES]->(q:Person) "
-            "RETURN q.name AS name ORDER BY name"
+            "RETURN q.name AS name ORDER BY name",
         )
         assert sorted(result["name"].tolist()) == ["Bob", "Carol"]
 
@@ -115,7 +116,7 @@ class TestColonPipeUnion:
         star = Star(context=multi_rel_ctx)
         result = star.execute_query(
             "MATCH (p:Person)-[:KNOWS|:LIKES]->(q:Person) "
-            "RETURN p.name AS p, q.name AS q"
+            "RETURN p.name AS p, q.name AS q",
         )
         assert len(result) == 2
 
@@ -123,7 +124,7 @@ class TestColonPipeUnion:
         """[:KNOWS] alone still only matches KNOWS edges."""
         star = Star(context=multi_rel_ctx)
         result = star.execute_query(
-            "MATCH (p:Person)-[:KNOWS]->(q:Person) RETURN q.name AS name"
+            "MATCH (p:Person)-[:KNOWS]->(q:Person) RETURN q.name AS name",
         )
         assert result["name"].tolist() == ["Bob"]
 
@@ -137,22 +138,24 @@ class TestNocolonPipeUnion:
     """[:KNOWS|LIKES] (no second colon) parses and matches both types."""
 
     def test_no_colon_union_parses_without_error(
-        self, multi_rel_ctx: Context
+        self,
+        multi_rel_ctx: Context,
     ) -> None:
         """[:KNOWS|LIKES] must not raise a parse error."""
         star = Star(context=multi_rel_ctx)
         # Should not raise
         star.execute_query(
-            "MATCH (p:Person)-[:KNOWS|LIKES]->(q:Person) RETURN q.name AS name"
+            "MATCH (p:Person)-[:KNOWS|LIKES]->(q:Person) RETURN q.name AS name",
         )
 
     def test_no_colon_union_returns_both_targets(
-        self, multi_rel_ctx: Context
+        self,
+        multi_rel_ctx: Context,
     ) -> None:
         """[:KNOWS|LIKES] returns Bob and Carol (both relationship types)."""
         star = Star(context=multi_rel_ctx)
         result = star.execute_query(
             "MATCH (p:Person {name: 'Alice'})-[:KNOWS|LIKES]->(q:Person) "
-            "RETURN q.name AS name ORDER BY name"
+            "RETURN q.name AS name ORDER BY name",
         )
         assert sorted(result["name"].tolist()) == ["Bob", "Carol"]

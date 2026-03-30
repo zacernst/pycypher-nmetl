@@ -210,7 +210,7 @@ def integration_context() -> Context:
                 9,
             ],
             "team_size": [3, 0, 5, 8, 0, 6, 0, 0, 12, 15, 0, 0, 4, 0, 10],
-        }
+        },
     )
 
     # Project entities
@@ -279,7 +279,7 @@ def integration_context() -> Context:
             ],
             "team_size": [8, 5, 12, 6, 4, 3, 15, 18],
             "completion_percentage": [45, 100, 25, 10, 60, 100, 5, 30],
-        }
+        },
     )
 
     # Assignment relationships
@@ -421,7 +421,7 @@ def integration_context() -> Context:
                 4.3,
                 4.7,
             ],
-        }
+        },
     )
 
     # Management relationships
@@ -466,7 +466,7 @@ def integration_context() -> Context:
                 "medium",
                 "high",
             ],
-        }
+        },
     )
 
     employee_table = EntityTable(
@@ -619,13 +619,13 @@ def integration_context() -> Context:
 
     return Context(
         entity_mapping=EntityMapping(
-            mapping={"Employee": employee_table, "Project": project_table}
+            mapping={"Employee": employee_table, "Project": project_table},
         ),
         relationship_mapping=RelationshipMapping(
             mapping={
                 "ASSIGNED_TO": assigned_to_table,
                 "MANAGES": manages_table,
-            }
+            },
         ),
     )
 
@@ -634,7 +634,8 @@ class TestSETWithWITHClauseIntegration:
     """Test SET operations integrated with WITH clauses."""
 
     def test_set_with_aggregation_calculation(
-        self, integration_context: Context
+        self,
+        integration_context: Context,
     ) -> None:
         """Test parsing SET with aggregated values from WITH clause."""
         cypher = """
@@ -653,7 +654,8 @@ class TestSETWithWITHClauseIntegration:
         assert ast is not None
 
     def test_set_with_filtering_and_computation(
-        self, integration_context: Context
+        self,
+        integration_context: Context,
     ) -> None:
         """Test parsing SET with filtered data from WITH clause."""
         cypher = """
@@ -671,7 +673,8 @@ class TestSETWithWITHClauseIntegration:
         assert ast is not None
 
     def test_set_with_ranking_calculation(
-        self, integration_context: Context
+        self,
+        integration_context: Context,
     ) -> None:
         """Test parsing SET with ranking from WITH clause."""
         cypher = """
@@ -689,7 +692,8 @@ class TestSETWithWITHClauseIntegration:
         assert ast is not None
 
     def test_set_with_percentile_calculation(
-        self, integration_context: Context
+        self,
+        integration_context: Context,
     ) -> None:
         """Test parsing SET with percentile calculations from WITH."""
         cypher = """
@@ -711,7 +715,8 @@ class TestSETWithWITHClauseIntegration:
         assert ast is not None
 
     def test_set_with_complex_grouping(
-        self, integration_context: Context
+        self,
+        integration_context: Context,
     ) -> None:
         """Test parsing SET with complex grouping and aggregations."""
         cypher = """
@@ -736,7 +741,8 @@ class TestSETWithRETURNIntegration:
     """Test SET operations with various RETURN clause combinations."""
 
     def test_set_return_modified_properties(
-        self, integration_context: Context
+        self,
+        integration_context: Context,
     ) -> None:
         """Test parsing SET with RETURN showing both old and new values."""
         cypher = """
@@ -756,7 +762,8 @@ class TestSETWithRETURNIntegration:
         assert ast is not None
 
     def test_set_return_computed_results(
-        self, integration_context: Context
+        self,
+        integration_context: Context,
     ) -> None:
         """Test parsing SET with RETURN of computed properties."""
         cypher = """
@@ -775,7 +782,8 @@ class TestSETWithRETURNIntegration:
         assert ast is not None
 
     def test_set_return_aggregated_results(
-        self, integration_context: Context
+        self,
+        integration_context: Context,
     ) -> None:
         """Test parsing SET followed by aggregated RETURN."""
         cypher = """
@@ -796,7 +804,8 @@ class TestSETWithRETURNIntegration:
         assert ast is not None
 
     def test_set_return_relationship_updates(
-        self, integration_context: Context
+        self,
+        integration_context: Context,
     ) -> None:
         """Test parsing SET on relationships with RETURN of relationship data."""
         cypher = """
@@ -815,7 +824,8 @@ class TestSETWithRETURNIntegration:
         assert ast is not None
 
     def test_set_return_conditional_results(
-        self, integration_context: Context
+        self,
+        integration_context: Context,
     ) -> None:
         """Test parsing SET with conditional RETURN logic."""
         cypher = """
@@ -844,7 +854,8 @@ class TestSETInMultiStepPipelines:
     """Test SET operations in complex multi-step query pipelines."""
 
     def test_set_multi_step_employee_analysis(
-        self, integration_context: Context
+        self,
+        integration_context: Context,
     ) -> None:
         """Test multi-step pipeline with SET operations."""
         cypher = """
@@ -867,7 +878,8 @@ class TestSETInMultiStepPipelines:
         assert ast is not None
 
     def test_set_cascading_property_updates(
-        self, integration_context: Context
+        self,
+        integration_context: Context,
     ) -> None:
         """Test cascading SET operations through pipeline."""
         cypher = """
@@ -892,7 +904,8 @@ class TestSETInMultiStepPipelines:
         assert ast is not None
 
     def test_set_project_resource_optimization(
-        self, integration_context: Context
+        self,
+        integration_context: Context,
     ) -> None:
         """Test parsing SET for project resource optimization pipeline."""
         cypher = """
@@ -922,7 +935,8 @@ class TestSETInMultiStepPipelines:
         assert ast is not None
 
     def test_set_performance_normalization_pipeline(
-        self, integration_context: Context
+        self,
+        integration_context: Context,
     ) -> None:
         """Test performance score normalization across departments."""
         cypher = """
@@ -957,7 +971,8 @@ class TestSETWithComplexExpressions:
     """Test SET operations with complex expression evaluation."""
 
     def test_set_nested_case_expressions(
-        self, integration_context: Context
+        self,
+        integration_context: Context,
     ) -> None:
         """Test parsing SET with deeply nested CASE expressions."""
         cypher = """
@@ -991,7 +1006,8 @@ class TestSETWithComplexExpressions:
         assert ast is not None
 
     def test_set_mathematical_calculations(
-        self, integration_context: Context
+        self,
+        integration_context: Context,
     ) -> None:
         """Test parsing SET with complex mathematical expressions."""
         cypher = """
@@ -1009,7 +1025,8 @@ class TestSETWithComplexExpressions:
         assert ast is not None
 
     def test_set_string_manipulation_expressions(
-        self, integration_context: Context
+        self,
+        integration_context: Context,
     ) -> None:
         """Test parsing SET with complex string operations."""
         cypher = """
@@ -1032,7 +1049,8 @@ class TestSETWithComplexExpressions:
         assert ast is not None
 
     def test_set_temporal_calculations(
-        self, integration_context: Context
+        self,
+        integration_context: Context,
     ) -> None:
         """Test parsing SET with date/time calculations."""
         cypher = """
@@ -1060,7 +1078,8 @@ class TestSETErrorHandlingAndEdgeCases:
     """Test SET operations with error handling and edge cases."""
 
     def test_set_null_safe_operations(
-        self, integration_context: Context
+        self,
+        integration_context: Context,
     ) -> None:
         """Test parsing SET with null-safe operations."""
         cypher = """
@@ -1081,7 +1100,8 @@ class TestSETErrorHandlingAndEdgeCases:
         assert ast is not None
 
     def test_set_division_by_zero_protection(
-        self, integration_context: Context
+        self,
+        integration_context: Context,
     ) -> None:
         """Test parsing SET with division by zero protection."""
         cypher = """
@@ -1103,7 +1123,8 @@ class TestSETErrorHandlingAndEdgeCases:
         assert ast is not None
 
     def test_set_boundary_condition_handling(
-        self, integration_context: Context
+        self,
+        integration_context: Context,
     ) -> None:
         """Test parsing SET with boundary condition handling."""
         cypher = """
@@ -1128,7 +1149,8 @@ class TestSETErrorHandlingAndEdgeCases:
         assert ast is not None
 
     def test_set_type_conversion_safety(
-        self, integration_context: Context
+        self,
+        integration_context: Context,
     ) -> None:
         """Test parsing SET with safe type conversions."""
         cypher = """
@@ -1152,7 +1174,8 @@ class TestSETPerformanceOptimization:
     """Test SET operations optimized for performance patterns."""
 
     def test_set_batch_property_updates(
-        self, integration_context: Context
+        self,
+        integration_context: Context,
     ) -> None:
         """Test efficient batch updates with SET."""
         cypher = """
@@ -1171,7 +1194,8 @@ class TestSETPerformanceOptimization:
         assert ast is not None
 
     def test_set_indexed_property_updates(
-        self, integration_context: Context
+        self,
+        integration_context: Context,
     ) -> None:
         """Test parsing SET operations on potentially indexed properties."""
         cypher = """
@@ -1192,7 +1216,8 @@ class TestSETPerformanceOptimization:
         assert ast is not None
 
     def test_set_minimal_property_updates(
-        self, integration_context: Context
+        self,
+        integration_context: Context,
     ) -> None:
         """Test parsing SET with minimal property updates for efficiency."""
         cypher = """
@@ -1210,7 +1235,8 @@ class TestSETPerformanceOptimization:
         assert ast is not None
 
     def test_set_conditional_bulk_updates(
-        self, integration_context: Context
+        self,
+        integration_context: Context,
     ) -> None:
         """Test conditional bulk updates with SET."""
         cypher = """

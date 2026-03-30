@@ -33,18 +33,18 @@ from pycypher.star import ResultCache, Star, get_cache_stats
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture()
+@pytest.fixture
 def people_df() -> pd.DataFrame:
     return pd.DataFrame(
         {
             ID_COLUMN: [1, 2, 3],
             "name": ["Alice", "Bob", "Carol"],
             "age": [30, 25, 35],
-        }
+        },
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def star_with_cache(people_df: pd.DataFrame) -> Star:
     """Star with result cache enabled (default 100 MB)."""
     table = EntityTable(
@@ -64,7 +64,7 @@ def star_with_cache(people_df: pd.DataFrame) -> Star:
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def star_no_cache(people_df: pd.DataFrame) -> Star:
     """Star with result cache disabled."""
     table = EntityTable(
@@ -217,7 +217,7 @@ class TestResultCacheIntegration:
 
         # Mutation invalidates cache
         star_with_cache.execute_query(
-            "MATCH (p:Person {name: 'Alice'}) SET p.age = 99 RETURN p.name"
+            "MATCH (p:Person {name: 'Alice'}) SET p.age = 99 RETURN p.name",
         )
 
         # Should be a cache miss now
@@ -230,13 +230,14 @@ class TestResultCacheIntegration:
         assert stats_after["result_cache_misses"] > misses_before
 
     def test_cache_invalidated_after_create(
-        self, star_with_cache: Star
+        self,
+        star_with_cache: Star,
     ) -> None:
         query = "MATCH (p:Person) RETURN p.name AS name"
         star_with_cache.execute_query(query)
 
         star_with_cache.execute_query(
-            "CREATE (p:Person {name: 'Dave', age: 40})"
+            "CREATE (p:Person {name: 'Dave', age: 40})",
         )
 
         # Cache generation bumped — next get of the old query should miss
@@ -284,7 +285,7 @@ class TestResultCacheIntegration:
     def test_mutation_query_not_cached(self, star_with_cache: Star) -> None:
         # Mutation queries should NOT be stored in the cache
         star_with_cache.execute_query(
-            "MATCH (p:Person {name: 'Alice'}) SET p.age = 31 RETURN p.name"
+            "MATCH (p:Person {name: 'Alice'}) SET p.age = 31 RETURN p.name",
         )
         stats = star_with_cache._result_cache.stats()
         # The cache entry count should be 0 (mutation queries aren't cached)

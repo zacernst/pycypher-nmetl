@@ -28,7 +28,7 @@ from pycypher.star import Star
 pytestmark = [pytest.mark.slow, pytest.mark.performance]
 
 
-@pytest.fixture()
+@pytest.fixture
 def performance_star() -> Star:
     """Create a Star with sufficient data for performance testing."""
     # Create dataset with 500 rows for performance testing
@@ -39,11 +39,9 @@ def performance_star() -> Star:
             "name": [f"person_{i}" for i in range(n_rows)],
             "age": [20 + (i % 50) for i in range(n_rows)],
             "score": [80 + (i % 20) for i in range(n_rows)],
-            "city": [
-                ["NYC", "SF", "LA", "CHI", "BOS"][i % 5] for i in range(n_rows)
-            ],
+            "city": [["NYC", "SF", "LA", "CHI", "BOS"][i % 5] for i in range(n_rows)],
             "salary": [50000 + (i * 1000) for i in range(n_rows)],
-        }
+        },
     )
     table = EntityTable(
         entity_type="Person",
@@ -67,8 +65,8 @@ def performance_star() -> Star:
     )
     return Star(
         context=Context(
-            entity_mapping=EntityMapping(mapping={"Person": table})
-        )
+            entity_mapping=EntityMapping(mapping={"Person": table}),
+        ),
     )
 
 
@@ -76,7 +74,8 @@ class TestMapLiteralCurrentBehavior:
     """Document current map literal evaluation behavior (TDD red phase)."""
 
     def test_basic_map_literal_functionality(
-        self, performance_star: Star
+        self,
+        performance_star: Star,
     ) -> None:
         """Test basic map literal creates correct structure."""
         query = """
@@ -98,7 +97,8 @@ class TestMapLiteralCurrentBehavior:
         assert first_map["age"] == 20
 
     def test_map_literal_with_expressions(
-        self, performance_star: Star
+        self,
+        performance_star: Star,
     ) -> None:
         """Test map literals with computed expressions."""
         query = """
@@ -136,7 +136,8 @@ class TestMapLiteralCurrentBehavior:
         assert all(result["empty_map"] == {})
 
     def test_map_literal_with_null_handling(
-        self, performance_star: Star
+        self,
+        performance_star: Star,
     ) -> None:
         """Test map literals handle null values correctly."""
         query = """
@@ -204,7 +205,8 @@ class TestMapLiteralPerformanceBaseline:
 
     @pytest.mark.slow
     def test_current_performance_10_keys_critical(
-        self, performance_star: Star
+        self,
+        performance_star: Star,
     ) -> None:
         """Measure baseline performance with 10 keys (critical test case matching original)."""
         query = """
@@ -241,7 +243,8 @@ class TestVectorizedMapLiteralTarget:
     """Define target behavior for vectorized map literal implementation (TDD green phase)."""
 
     def test_vectorized_correctness_preservation(
-        self, performance_star: Star
+        self,
+        performance_star: Star,
     ) -> None:
         """Vectorized implementation must preserve all semantic behavior."""
         query = """
@@ -272,7 +275,8 @@ class TestVectorizedMapLiteralTarget:
 
     @pytest.mark.performance_target
     def test_vectorized_performance_target_10_keys(
-        self, performance_star: Star
+        self,
+        performance_star: Star,
     ) -> None:
         """Vectorized implementation must meet performance target."""
         query = """
@@ -299,13 +303,12 @@ class TestVectorizedMapLiteralTarget:
         print(f"Vectorized 10-key map literal (500 rows): {elapsed:.3f}s")
 
         # This should pass after vectorization
-        assert elapsed < 2.0, (
-            f"Vectorized 10-key map took {elapsed:.3f}s (target <2s)"
-        )
+        assert elapsed < 2.0, f"Vectorized 10-key map took {elapsed:.3f}s (target <2s)"
 
     @pytest.mark.performance_target
     def test_vectorized_scalability_1000_rows(
-        self, performance_star: Star
+        self,
+        performance_star: Star,
     ) -> None:
         """Vectorized implementation should scale to larger datasets."""
         # Create larger dataset for scalability testing
@@ -316,7 +319,7 @@ class TestVectorizedMapLiteralTarget:
                 "name": [f"person_{i}" for i in range(n_rows)],
                 "age": [20 + (i % 50) for i in range(n_rows)],
                 "score": [80 + (i % 20) for i in range(n_rows)],
-            }
+            },
         )
         table = EntityTable(
             entity_type="Person",
@@ -332,8 +335,8 @@ class TestVectorizedMapLiteralTarget:
         )
         large_star = Star(
             context=Context(
-                entity_mapping=EntityMapping(mapping={"Person": table})
-            )
+                entity_mapping=EntityMapping(mapping={"Person": table}),
+            ),
         )
 
         query = """
@@ -365,7 +368,8 @@ class TestPerformanceImprovement:
 
     @pytest.mark.performance_comparison
     def test_performance_improvement_measurement(
-        self, performance_star: Star
+        self,
+        performance_star: Star,
     ) -> None:
         """Measure and validate performance improvement."""
         query = """
@@ -394,6 +398,4 @@ class TestPerformanceImprovement:
 
         # After vectorization, should be significantly faster
         # Target: At least 2x improvement over baseline
-        assert avg_time < 3.0, (
-            f"Average time {avg_time:.3f}s exceeds target 3s"
-        )
+        assert avg_time < 3.0, f"Average time {avg_time:.3f}s exceeds target 3s"

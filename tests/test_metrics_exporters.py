@@ -255,7 +255,7 @@ class TestStatsDExporter:
         assert mock_sock.sendto.call_count > 0
         first_call = mock_sock.sendto.call_args_list[0]
         data = first_call[0][0].decode("utf-8")
-        assert "pycypher.queries.total:1000|c" == data
+        assert data == "pycypher.queries.total:1000|c"
 
     def test_export_handles_socket_error(
         self,
@@ -280,8 +280,7 @@ class TestStatsDExporter:
         exporter.export(snapshot)
 
         all_data = [
-            call[0][0].decode("utf-8")
-            for call in mock_sock.sendto.call_args_list
+            call[0][0].decode("utf-8") for call in mock_sock.sendto.call_args_list
         ]
         assert "pycypher.health_status:0|g" in all_data
 
@@ -431,42 +430,42 @@ class TestExportOnce:
         self,
         snapshot: MagicMock,
     ) -> None:
-        with patch.dict(
-            os.environ,
-            {"PYCYPHER_METRICS_EXPORT": "prometheus,statsd"},
+        with (
+            patch.dict(
+                os.environ,
+                {"PYCYPHER_METRICS_EXPORT": "prometheus,statsd"},
+            ),
+            patch.object(
+                PrometheusExporter,
+                "export",
+            ) as prom_mock,
+            patch.object(
+                StatsDExporter,
+                "export",
+            ) as statsd_mock,
         ):
-            with (
-                patch.object(
-                    PrometheusExporter,
-                    "export",
-                ) as prom_mock,
-                patch.object(
-                    StatsDExporter,
-                    "export",
-                ) as statsd_mock,
-            ):
-                export_once(snapshot)
-                prom_mock.assert_called_once_with(snapshot)
-                statsd_mock.assert_called_once_with(snapshot)
+            export_once(snapshot)
+            prom_mock.assert_called_once_with(snapshot)
+            statsd_mock.assert_called_once_with(snapshot)
 
     def test_continues_on_exporter_error(
         self,
         snapshot: MagicMock,
     ) -> None:
-        with patch.dict(
-            os.environ,
-            {"PYCYPHER_METRICS_EXPORT": "prometheus,json"},
+        with (
+            patch.dict(
+                os.environ,
+                {"PYCYPHER_METRICS_EXPORT": "prometheus,json"},
+            ),
+            patch.object(
+                PrometheusExporter,
+                "export",
+                side_effect=RuntimeError("boom"),
+            ),
+            patch.object(
+                JSONFileExporter,
+                "export",
+            ) as json_mock,
         ):
-            with (
-                patch.object(
-                    PrometheusExporter,
-                    "export",
-                    side_effect=RuntimeError("boom"),
-                ),
-                patch.object(
-                    JSONFileExporter,
-                    "export",
-                ) as json_mock,
-            ):
-                export_once(snapshot)
-                json_mock.assert_called_once_with(snapshot)
+            export_once(snapshot)
+            json_mock.assert_called_once_with(snapshot)

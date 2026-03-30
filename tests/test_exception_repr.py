@@ -158,7 +158,9 @@ class TestASTConversionErrorRepr:
 
     def test_repr_contains_context_when_set(self) -> None:
         exc = ASTConversionError(
-            "failed", query_fragment="MATCH (n)", node_type="Foo"
+            "failed",
+            query_fragment="MATCH (n)",
+            node_type="Foo",
         )
         r = repr(exc)
         assert "query_fragment='MATCH (n)'" in r
@@ -168,12 +170,14 @@ class TestASTConversionErrorRepr:
 class TestGrammarTransformerSyncErrorRepr:
     def test_repr_contains_class_name(self) -> None:
         exc = GrammarTransformerSyncError(
-            "out of sync", missing_node_type="FooBar"
+            "out of sync",
+            missing_node_type="FooBar",
         )
         assert repr(exc).startswith("GrammarTransformerSyncError(")
 
     def test_repr_contains_missing_node_type(self) -> None:
         exc = GrammarTransformerSyncError(
-            "sync issue", missing_node_type="FooBar"
+            "sync issue",
+            missing_node_type="FooBar",
         )
         assert "missing_node_type='FooBar'" in repr(exc)

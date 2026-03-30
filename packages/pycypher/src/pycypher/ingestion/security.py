@@ -6,9 +6,12 @@ and other security vulnerabilities in data source operations.
 
 from __future__ import annotations
 
+import logging
 import re
 from pathlib import Path
 from urllib.parse import urlparse
+
+_logger = logging.getLogger(__name__)
 
 # Re-export for backward compatibility — canonical definition is in exceptions.py.
 from pycypher.exceptions import SecurityError as SecurityError
@@ -484,7 +487,7 @@ def _check_ssrf_hostname(hostname: str) -> None:
             "localhost.localdomain",
             "ip6-localhost",
             "ip6-loopback",
-        }
+        },
     )
     if hostname_lower in _INTERNAL_HOSTNAMES:
         msg = (
@@ -500,7 +503,9 @@ def _check_ssrf_hostname(hostname: str) -> None:
         # Not a literal IP — resolve DNS to check the actual address.
         try:
             resolved = socket.getaddrinfo(
-                hostname, None, proto=socket.IPPROTO_TCP
+                hostname,
+                None,
+                proto=socket.IPPROTO_TCP,
             )
         except socket.gaierror as exc:
             # SECURITY: Reject on DNS failure rather than allowing the request
@@ -617,6 +622,9 @@ def mask_uri_credentials(uri: str) -> str:
     try:
         parsed = urlparse(uri)
     except Exception:
+        _logger.debug(
+            "URI parse failed during password masking", exc_info=True
+        )
         return uri
 
     if not parsed.password:
@@ -635,5 +643,12 @@ def mask_uri_credentials(uri: str) -> str:
     from urllib.parse import urlunparse
 
     return urlunparse(
-        (parsed.scheme, masked_netloc, parsed.path, parsed.params, parsed.query, parsed.fragment)
+        (
+            parsed.scheme,
+            masked_netloc,
+            parsed.path,
+            parsed.params,
+            parsed.query,
+            parsed.fragment,
+        ),
     )

@@ -51,7 +51,7 @@ def _star_empty():
         context=Context(
             entity_mapping=EntityMapping(mapping={}),
             relationship_mapping=RelationshipMapping(mapping={}),
-        )
+        ),
     )
 
 
@@ -76,7 +76,7 @@ def _star_with_people():
             "name": ["Alice", "Bob", "Carol", "Dan"],
             "age": [30, 17, 25, 40],
             "active": [True, False, True, False],
-        }
+        },
     )
     table = EntityTable(
         entity_type="Person",
@@ -98,7 +98,7 @@ def _star_with_people():
         context=Context(
             entity_mapping=EntityMapping(mapping={"Person": table}),
             relationship_mapping=RelationshipMapping(mapping={}),
-        )
+        ),
     )
 
 
@@ -116,7 +116,7 @@ def _reference_kleene_not(s: pd.Series) -> pd.Series:
             None
             if (x is None or (isinstance(x, float) and math.isnan(x)))
             else not bool(x)
-        )
+        ),
     )
 
 
@@ -133,14 +133,14 @@ class TestKleeneNotTruthTable:
 
         s = pd.Series([True], dtype=object)
         result = kleene_not(s)
-        assert result.iloc[0] is False or result.iloc[0] == False  # noqa: E712
+        assert result.iloc[0] is False or result.iloc[0] == False
 
     def test_not_false_is_true(self) -> None:
         from pycypher.boolean_evaluator import kleene_not
 
         s = pd.Series([False], dtype=object)
         result = kleene_not(s)
-        assert result.iloc[0] is True or result.iloc[0] == True  # noqa: E712
+        assert result.iloc[0] is True or result.iloc[0] == True
 
     def test_not_none_is_none(self) -> None:
         from pycypher.boolean_evaluator import kleene_not
@@ -174,26 +174,26 @@ class TestKleeneNotTruthTable:
 
         s = pd.Series([True, False, None, True, None, False], dtype=object)
         result = kleene_not(s)
-        assert result.iloc[0] is False or result.iloc[0] == False  # noqa: E712
-        assert result.iloc[1] is True or result.iloc[1] == True  # noqa: E712
+        assert result.iloc[0] is False or result.iloc[0] == False
+        assert result.iloc[1] is True or result.iloc[1] == True
         assert pd.isna(result.iloc[2])
-        assert result.iloc[3] is False or result.iloc[3] == False  # noqa: E712
+        assert result.iloc[3] is False or result.iloc[3] == False
         assert pd.isna(result.iloc[4])
-        assert result.iloc[5] is True or result.iloc[5] == True  # noqa: E712
+        assert result.iloc[5] is True or result.iloc[5] == True
 
     def test_all_true_series(self) -> None:
         from pycypher.boolean_evaluator import kleene_not
 
         s = pd.Series([True, True, True], dtype=object)
         result = kleene_not(s)
-        assert all(v is False or v == False for v in result)  # noqa: E712
+        assert all(v is False or v == False for v in result)
 
     def test_all_false_series(self) -> None:
         from pycypher.boolean_evaluator import kleene_not
 
         s = pd.Series([False, False, False], dtype=object)
         result = kleene_not(s)
-        assert all(v is True or v == True for v in result)  # noqa: E712
+        assert all(v is True or v == True for v in result)
 
     def test_all_null_series(self) -> None:
         from pycypher.boolean_evaluator import kleene_not
@@ -209,9 +209,9 @@ class TestKleeneNotTruthTable:
         s = pd.Series([True, False, None], dtype=object)
         result = kleene_not(kleene_not(s))
         # True→False→True
-        assert result.iloc[0] is True or result.iloc[0] == True  # noqa: E712
+        assert result.iloc[0] is True or result.iloc[0] == True
         # False→True→False
-        assert result.iloc[1] is False or result.iloc[1] == False  # noqa: E712
+        assert result.iloc[1] is False or result.iloc[1] == False
         # None→None→None
         assert pd.isna(result.iloc[2])
 
@@ -258,7 +258,7 @@ class TestKleeneNotPerformance:
     REPS = 50
     N = 5_000
 
-    @pytest.fixture()
+    @pytest.fixture
     def large_bool_series(self) -> pd.Series:
         vals = [
             True if i % 3 == 0 else (None if i % 3 == 1 else False)
@@ -267,7 +267,8 @@ class TestKleeneNotPerformance:
         return pd.Series(vals, dtype=object)
 
     def test_kleene_not_faster_than_apply(
-        self, large_bool_series: pd.Series
+        self,
+        large_bool_series: pd.Series,
     ) -> None:
         """kleene_not(5 000 rows × 50 reps) must be faster than apply.
 
@@ -299,7 +300,8 @@ class TestKleeneNotPerformance:
         )
 
     def test_kleene_not_absolute_threshold(
-        self, large_bool_series: pd.Series
+        self,
+        large_bool_series: pd.Series,
     ) -> None:
         """50 × kleene_not on 5 000 rows must complete in under 0.5s."""
         from pycypher.boolean_evaluator import kleene_not
@@ -327,7 +329,7 @@ class TestNotInWhereClause:
         """WHERE NOT p.active returns only inactive people."""
         star = _star_with_people()
         result = star.execute_query(
-            "MATCH (p:Person) WHERE NOT p.active RETURN p.name"
+            "MATCH (p:Person) WHERE NOT p.active RETURN p.name",
         )
         names = set(result["name"])
         assert "Bob" in names
@@ -339,7 +341,7 @@ class TestNotInWhereClause:
         """WHERE NOT (p.age > 30) returns people 30 or younger."""
         star = _star_with_people()
         result = star.execute_query(
-            "MATCH (p:Person) WHERE NOT (p.age > 30) RETURN p.name"
+            "MATCH (p:Person) WHERE NOT (p.age > 30) RETURN p.name",
         )
         names = set(result["name"])
         assert "Alice" in names  # age=30: NOT (30 > 30) = NOT false = true
@@ -351,7 +353,7 @@ class TestNotInWhereClause:
         """WHERE NOT p.active AND p.age < 30."""
         star = _star_with_people()
         result = star.execute_query(
-            "MATCH (p:Person) WHERE NOT p.active AND p.age < 30 RETURN p.name"
+            "MATCH (p:Person) WHERE NOT p.active AND p.age < 30 RETURN p.name",
         )
         names = set(result["name"])
         # Bob: NOT active=False → True; age=17 < 30 → True; both → True
@@ -363,18 +365,18 @@ class TestNotInWhereClause:
         """WHERE NOT NOT p.active == WHERE p.active."""
         star = _star_with_people()
         with_double_not = star.execute_query(
-            "MATCH (p:Person) WHERE NOT NOT p.active RETURN p.name ORDER BY p.name"
+            "MATCH (p:Person) WHERE NOT NOT p.active RETURN p.name ORDER BY p.name",
         )
         without_not = star.execute_query(
-            "MATCH (p:Person) WHERE p.active RETURN p.name ORDER BY p.name"
+            "MATCH (p:Person) WHERE p.active RETURN p.name ORDER BY p.name",
         )
         assert list(with_double_not["name"]) == list(without_not["name"])
 
     def test_not_in_standalone_return(self) -> None:
         """NOT in a standalone RETURN expression."""
         result = _q("RETURN NOT true AS a, NOT false AS b")
-        assert result["a"].iloc[0] == False  # noqa: E712
-        assert result["b"].iloc[0] == True  # noqa: E712
+        assert result["a"].iloc[0] == False
+        assert result["b"].iloc[0] == True
 
     def test_not_null_is_null(self) -> None:
         """RETURN NOT null AS v — must return null, not True or False."""
@@ -387,7 +389,7 @@ class TestNotInWhereClause:
         """WHERE NOT p.name IN ['Bob', 'Dan'] returns Alice and Carol."""
         star = _star_with_people()
         result = star.execute_query(
-            "MATCH (p:Person) WHERE NOT p.name IN ['Bob', 'Dan'] RETURN p.name"
+            "MATCH (p:Person) WHERE NOT p.name IN ['Bob', 'Dan'] RETURN p.name",
         )
         names = set(result["name"])
         assert "Alice" in names

@@ -33,15 +33,17 @@ from __future__ import annotations
 
 import os
 import re
+import warnings
 from enum import StrEnum
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 from urllib.parse import urlparse
 
 import yaml
 from pydantic import BaseModel, Field, field_validator, model_validator
 from shared.logger import LOGGER as _logger
 
+from pycypher.exceptions import SecurityError
 from pycypher.ingestion.data_sources import _SQL_SCHEMES, _SUPPORTED_EXTENSIONS
 
 # ---------------------------------------------------------------------------
@@ -76,7 +78,11 @@ def _check_source_uri(uri: str, query: str | None) -> None:
 
     """
     if not uri or not uri.strip():
-        msg = "uri must not be empty."
+        msg = (
+            "Source 'uri' must not be empty. "
+            "Provide a file path (e.g. 'data/people.csv') or a SQL-scheme URI "
+            f"({_SQL_LIST})."
+        )
         raise ValueError(msg)
 
     parsed = urlparse(uri)
@@ -119,7 +125,10 @@ def _check_output_uri(uri: str) -> None:
 
     """
     if not uri or not uri.strip():
-        msg = "uri must not be empty."
+        msg = (
+            "Output 'uri' must not be empty. "
+            f"Provide a file path with a supported extension ({_EXT_LIST})."
+        )
         raise ValueError(msg)
 
     parsed = urlparse(uri)
@@ -152,6 +161,25 @@ class ErrorHandlingPolicy(StrEnum):
     FAIL = "fail"
     WARN = "warn"
     SKIP = "skip"
+
+
+class SkippedSource(NamedTuple):
+    """Record of a data source that was suppressed by an error policy.
+
+    Returned by :meth:`PipelineConfig.load_with_sources` so callers can
+    programmatically inspect which sources failed and why, rather than
+    relying solely on log output.
+
+    Attributes:
+        source_id: The ``id`` of the source that failed.
+        error: The exception that caused the failure.
+        policy: The error handling policy that suppressed the failure.
+
+    """
+
+    source_id: str
+    error: Exception
+    policy: ErrorHandlingPolicy
 
 
 class OutputFormat(StrEnum):
@@ -543,6 +571,19 @@ class OutputConfig(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Config schema versioning
+# ---------------------------------------------------------------------------
+
+#: Versions that the current code can fully load without any migration.
+SUPPORTED_CONFIG_VERSIONS: frozenset[str] = frozenset({"1.0"})
+
+#: The latest schema version — used as the default for new configs.
+CURRENT_CONFIG_VERSION: str = "1.0"
+
+_VERSION_RE = re.compile(r"^\d+\.\d+$")
+
+
+# ---------------------------------------------------------------------------
 # Top-level pipeline configuration
 # ---------------------------------------------------------------------------
 
@@ -551,8 +592,8 @@ class PipelineConfig(BaseModel):
     """Root configuration model for a pycypher ETL pipeline.
 
     Attributes:
-        version: Configuration schema version (reserved for future migration
-            support).  Defaults to ``"1.0"``.
+        version: Configuration schema version.  Must match a version in
+            :data:`SUPPORTED_CONFIG_VERSIONS`.  Defaults to ``"1.0"``.
         project: Optional project metadata (name, description).
         sources: Entity and relationship source definitions.
         functions: Python callables to register as Cypher functions.
@@ -569,6 +610,49 @@ class PipelineConfig(BaseModel):
     functions: list[FunctionConfig] = Field(default_factory=list)
     queries: list[QueryConfig] = Field(default_factory=list)
     output: list[OutputConfig] = Field(default_factory=list)
+
+    @field_validator("version")
+    @classmethod
+    def check_version(cls, v: str) -> str:
+        """Validate that *version* is a supported config schema version.
+
+        Raises :class:`ValueError` for unknown versions with actionable
+        guidance, and emits a :class:`FutureWarning` for versions that look
+        newer than the current code supports (e.g. ``"2.0"`` when only
+        ``"1.0"`` is supported).
+        """
+        if not _VERSION_RE.match(v):
+            msg = (
+                f"Invalid config version format: {v!r}. "
+                "Expected '<major>.<minor>' (e.g. '1.0')."
+            )
+            raise ValueError(msg)
+
+        if v in SUPPORTED_CONFIG_VERSIONS:
+            return v
+
+        # Parse major.minor for a more helpful message.
+        major, minor = v.split(".")
+        current_major, _ = CURRENT_CONFIG_VERSION.split(".")
+
+        if int(major) > int(current_major):
+            msg = (
+                f"Config version {v!r} is newer than this version of pycypher "
+                f"supports (supported: {', '.join(sorted(SUPPORTED_CONFIG_VERSIONS))}). "
+                "Please upgrade pycypher, or downgrade your config file."
+            )
+            raise ValueError(msg)
+
+        # Same major but unknown minor — warn but allow (forward-compatible
+        # within a major version by convention).
+        warnings.warn(
+            f"Config version {v!r} is not explicitly supported "
+            f"(supported: {', '.join(sorted(SUPPORTED_CONFIG_VERSIONS))}). "
+            "Loading will proceed but some fields may be ignored.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        return v
 
     def get_source_by_id(
         self,
@@ -591,7 +675,7 @@ class PipelineConfig(BaseModel):
     def load_with_sources(
         cls,
         path: str | Path,
-    ) -> tuple[PipelineConfig, dict[str, Any]]:
+    ) -> tuple[PipelineConfig, dict[str, Any], list[SkippedSource]]:
         """Load a config file and eagerly read all data sources into Arrow tables.
 
         This is the single entry point for pipelines that want both a validated
@@ -601,9 +685,11 @@ class PipelineConfig(BaseModel):
             path: Path to the YAML pipeline configuration file.
 
         Returns:
-            A ``(config, sources)`` tuple where *config* is a validated
-            :class:`PipelineConfig` and *sources* is a ``dict`` mapping each
-            source ``id`` to its ``pa.Table``.
+            A ``(config, sources, skipped)`` tuple where *config* is a
+            validated :class:`PipelineConfig`, *sources* is a ``dict``
+            mapping each source ``id`` to its ``pa.Table``, and *skipped*
+            is a list of :class:`SkippedSource` records for any sources
+            suppressed by a WARN or SKIP error policy.
 
         Raises:
             FileNotFoundError: If *path* does not exist.
@@ -616,6 +702,7 @@ class PipelineConfig(BaseModel):
 
         config = load_pipeline_config(path)
         result: dict[str, Any] = {}
+        skipped: list[SkippedSource] = []
         for source in [
             *config.sources.entities,
             *config.sources.relationships,
@@ -624,9 +711,20 @@ class PipelineConfig(BaseModel):
                 ds = data_source_from_uri(source.uri, query=source.query)
                 result[source.id] = ds.read()
             except Exception as exc:
+                # SecurityError must always propagate — error policies must
+                # never suppress security violations (path traversal, injection, etc.).
+                if isinstance(exc, SecurityError):
+                    raise
                 policy = source.on_error or ErrorHandlingPolicy.FAIL
                 if policy is ErrorHandlingPolicy.FAIL:
                     raise
+                skipped.append(
+                    SkippedSource(
+                        source_id=source.id,
+                        error=exc,
+                        policy=policy,
+                    )
+                )
                 if policy is ErrorHandlingPolicy.WARN:
                     _logger.warning(
                         f"Source '{source.id}' failed to load and will be skipped: {exc}",
@@ -635,7 +733,7 @@ class PipelineConfig(BaseModel):
                     _logger.debug(
                         f"Source '{source.id}' skipped due to error (on_error=skip): {exc}",
                     )
-        return config, result
+        return config, result, skipped
 
 
 # ---------------------------------------------------------------------------

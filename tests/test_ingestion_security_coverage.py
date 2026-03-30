@@ -11,7 +11,6 @@ from __future__ import annotations
 from unittest.mock import patch
 
 import pytest
-
 from pycypher.exceptions import SecurityError
 from pycypher.ingestion.security import (
     _count_unquoted_semicolons,
@@ -24,7 +23,6 @@ from pycypher.ingestion.security import (
     validate_sql_query,
     validate_uri_scheme,
 )
-
 
 # ---------------------------------------------------------------------------
 # sanitize_file_path
@@ -83,9 +81,10 @@ class TestSanitizeFilePath:
 
     def test_invalid_path_raises(self) -> None:
         """Path that causes OSError during resolve."""
-        with patch("pycypher.ingestion.security.Path.resolve", side_effect=OSError("bad")):
-            with pytest.raises(SecurityError, match="Invalid path"):
-                sanitize_file_path("some_file.csv")
+        with patch(
+            "pycypher.ingestion.security.Path.resolve", side_effect=OSError("bad"),
+        ), pytest.raises(SecurityError, match="Invalid path"):
+            sanitize_file_path("some_file.csv")
 
 
 # ---------------------------------------------------------------------------
@@ -274,12 +273,14 @@ class TestValidateSqlQuery:
 
     def test_parse_error_raises_security_error(self) -> None:
         """If comment stripping raises a non-SecurityError, wrap it."""
-        with patch(
-            "pycypher.ingestion.security._strip_sql_comments",
-            side_effect=ValueError("parse boom"),
+        with (
+            patch(
+                "pycypher.ingestion.security._strip_sql_comments",
+                side_effect=ValueError("parse boom"),
+            ),
+            pytest.raises(SecurityError, match="Failed to parse"),
         ):
-            with pytest.raises(SecurityError, match="Failed to parse"):
-                validate_sql_query("SELECT 1")
+            validate_sql_query("SELECT 1")
 
 
 # ---------------------------------------------------------------------------
@@ -338,10 +339,16 @@ class TestValidateUriScheme:
             validate_uri_scheme("")
 
     def test_http_allowed(self) -> None:
-        assert validate_uri_scheme("http://example.com/data.csv") == "http://example.com/data.csv"
+        assert (
+            validate_uri_scheme("http://example.com/data.csv")
+            == "http://example.com/data.csv"
+        )
 
     def test_https_allowed(self) -> None:
-        assert validate_uri_scheme("https://example.com/data") == "https://example.com/data"
+        assert (
+            validate_uri_scheme("https://example.com/data")
+            == "https://example.com/data"
+        )
 
     def test_s3_allowed(self) -> None:
         assert validate_uri_scheme("s3://bucket/key") == "s3://bucket/key"
@@ -367,7 +374,10 @@ class TestValidateUriScheme:
     def test_https_with_external_host_passes(self) -> None:
         # Mock DNS to avoid network calls
         with patch("pycypher.ingestion.security._check_ssrf_hostname"):
-            assert validate_uri_scheme("https://api.example.com/data") == "https://api.example.com/data"
+            assert (
+                validate_uri_scheme("https://api.example.com/data")
+                == "https://api.example.com/data"
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -404,18 +414,18 @@ class TestCheckSsrfHostname:
 
     def test_dns_resolution_failure_blocked(self) -> None:
         """If DNS fails, block the request (unresolvable hosts are suspicious)."""
-        from pycypher.ingestion.security import _check_ssrf_hostname
-
         import socket
+
+        from pycypher.ingestion.security import _check_ssrf_hostname
 
         with patch("socket.getaddrinfo", side_effect=socket.gaierror("no such host")):
             with pytest.raises(SecurityError, match="SSRF"):
                 _check_ssrf_hostname("nonexistent.invalid.test")
 
     def test_dns_resolves_to_private_blocked(self) -> None:
-        from pycypher.ingestion.security import _check_ssrf_hostname
-
         import socket
+
+        from pycypher.ingestion.security import _check_ssrf_hostname
 
         fake_result = [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("10.0.0.1", 0))]
         with patch("socket.getaddrinfo", return_value=fake_result):
@@ -429,9 +439,9 @@ class TestCheckSsrfHostname:
             _check_ssrf_hostname("empty-dns.test")  # should not raise
 
     def test_dns_invalid_address_format_allowed(self) -> None:
-        from pycypher.ingestion.security import _check_ssrf_hostname
-
         import socket
+
+        from pycypher.ingestion.security import _check_ssrf_hostname
 
         fake_result = [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("not-an-ip", 0))]
         with patch("socket.getaddrinfo", return_value=fake_result):

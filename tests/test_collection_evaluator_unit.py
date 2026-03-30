@@ -40,7 +40,7 @@ class TestListComprehensionEvaluation:
                 ID_COLUMN: [1, 2, 3],
                 "name": ["Alice", "Bob", "Carol"],
                 "numbers": [[1, 2, 3], [4, 5, 6], [7, 8, 9]],
-            }
+            },
         )
 
         table = EntityTable.from_dataframe("Person", df)
@@ -50,7 +50,7 @@ class TestListComprehensionEvaluation:
         """Test basic list comprehension evaluation."""
         star = Star(context=list_context)
         result = star.execute_query(
-            "MATCH (p:Person) RETURN [x IN p.numbers | x * 2] AS doubled"
+            "MATCH (p:Person) RETURN [x IN p.numbers | x * 2] AS doubled",
         )
 
         # Should return doubled values for each list
@@ -61,12 +61,13 @@ class TestListComprehensionEvaluation:
             assert row["doubled"] == expected_values[i]
 
     def test_list_comprehension_with_where(
-        self, list_context: Context
+        self,
+        list_context: Context,
     ) -> None:
         """Test list comprehension with WHERE clause filtering."""
         star = Star(context=list_context)
         result = star.execute_query(
-            "MATCH (p:Person) RETURN [x IN p.numbers WHERE x > 2 | x] AS filtered"
+            "MATCH (p:Person) RETURN [x IN p.numbers WHERE x > 2 | x] AS filtered",
         )
 
         # Should filter values > 2
@@ -86,17 +87,17 @@ class TestListComprehensionEvaluation:
                     [{"value": 10}, {"value": 20}],
                     [{"value": 30}, {"value": 40}],
                 ],
-            }
+            },
         )
 
         table = EntityTable.from_dataframe("Group", df)
         context = Context(
-            entity_mapping=EntityMapping(mapping={"Group": table})
+            entity_mapping=EntityMapping(mapping={"Group": table}),
         )
 
         star = Star(context=context)
         result = star.execute_query(
-            "MATCH (g:Group) RETURN [item IN g.items | item.value] AS values"
+            "MATCH (g:Group) RETURN [item IN g.items | item.value] AS values",
         )
 
         # Should extract value from each nested item
@@ -121,19 +122,19 @@ class TestQuantifierEvaluation:
                     [95, 92, 98],
                     [60, 65, 70],
                 ],
-            }
+            },
         )
 
         table = EntityTable.from_dataframe("Student", df)
         return Context(
-            entity_mapping=EntityMapping(mapping={"Student": table})
+            entity_mapping=EntityMapping(mapping={"Student": table}),
         )
 
     def test_any_quantifier(self, quantifier_context: Context) -> None:
         """Test ANY quantifier evaluation."""
         star = Star(context=quantifier_context)
         result = star.execute_query(
-            "MATCH (s:Student) RETURN s.name AS name, ANY(score IN s.scores WHERE score > 90) AS has_high_score"
+            "MATCH (s:Student) RETURN s.name AS name, ANY(score IN s.scores WHERE score > 90) AS has_high_score",
         )
 
         # Alice: [90, 85, 88] - no score > 90 = false
@@ -149,7 +150,7 @@ class TestQuantifierEvaluation:
         """Test ALL quantifier evaluation."""
         star = Star(context=quantifier_context)
         result = star.execute_query(
-            "MATCH (s:Student) RETURN s.name AS name, ALL(score IN s.scores WHERE score >= 75) AS all_passing"
+            "MATCH (s:Student) RETURN s.name AS name, ALL(score IN s.scores WHERE score >= 75) AS all_passing",
         )
 
         # Alice: [90, 85, 88] - all >= 75 = true
@@ -165,7 +166,7 @@ class TestQuantifierEvaluation:
         """Test NONE quantifier evaluation."""
         star = Star(context=quantifier_context)
         result = star.execute_query(
-            "MATCH (s:Student) RETURN s.name AS name, NONE(score IN s.scores WHERE score < 60) AS none_failing"
+            "MATCH (s:Student) RETURN s.name AS name, NONE(score IN s.scores WHERE score < 60) AS none_failing",
         )
 
         # All students have scores >= 60, so none have scores < 60
@@ -185,7 +186,7 @@ class TestReduceEvaluation:
                 ID_COLUMN: [1, 2, 3],
                 "name": ["Alice", "Bob", "Carol"],
                 "values": [[1, 2, 3], [4, 5], [6, 7, 8, 9]],
-            }
+            },
         )
 
         table = EntityTable.from_dataframe("Person", df)
@@ -196,7 +197,7 @@ class TestReduceEvaluation:
         star = Star(context=reduce_context)
         result = star.execute_query(
             "MATCH (p:Person) RETURN p.name AS name, "
-            "REDUCE(total = 0, value IN p.values | total + value) AS sum"
+            "REDUCE(total = 0, value IN p.values | total + value) AS sum",
         )
 
         # Alice: 1+2+3 = 6
@@ -212,7 +213,7 @@ class TestReduceEvaluation:
         star = Star(context=reduce_context)
         result = star.execute_query(
             "MATCH (p:Person) RETURN p.name AS name, "
-            "REDUCE(acc = '', value IN p.values | acc + toString(value) + ',') AS concatenated"
+            "REDUCE(acc = '', value IN p.values | acc + toString(value) + ',') AS concatenated",
         )
 
         # Should concatenate all values with commas
@@ -227,7 +228,7 @@ class TestReduceEvaluation:
         result = star.execute_query(
             "MATCH (p:Person) RETURN p.name AS name, "
             "REDUCE(max_val = 0, value IN p.values | "
-            "CASE WHEN value > max_val THEN value ELSE max_val END) AS max_value"
+            "CASE WHEN value > max_val THEN value ELSE max_val END) AS max_value",
         )
 
         # Alice: max(1,2,3) = 3
@@ -251,7 +252,7 @@ class TestPatternComprehensionEvaluation:
                 ID_COLUMN: [1, 2, 3, 4],
                 "name": ["Alice", "Bob", "Carol", "Dave"],
                 "age": [25, 30, 35, 40],
-            }
+            },
         )
 
         # Create relationships
@@ -261,7 +262,7 @@ class TestPatternComprehensionEvaluation:
                 "__SOURCE__": [1, 1, 2, 3],
                 "__TARGET__": [2, 3, 4, 1],
                 "since": [2020, 2018, 2019, 2021],
-            }
+            },
         )
 
         person_table = EntityTable.from_dataframe("Person", person_df)
@@ -270,18 +271,19 @@ class TestPatternComprehensionEvaluation:
         return Context(
             entity_mapping=EntityMapping(mapping={"Person": person_table}),
             relationship_mapping=RelationshipMapping(
-                mapping={"FRIEND": friend_table}
+                mapping={"FRIEND": friend_table},
             ),
         )
 
     def test_pattern_comprehension_basic(
-        self, pattern_context: Context
+        self,
+        pattern_context: Context,
     ) -> None:
         """Test basic pattern comprehension evaluation."""
         star = Star(context=pattern_context)
         result = star.execute_query(
             "MATCH (p:Person) RETURN p.name AS name, "
-            "[(p)-[:FRIEND]->(friend) | friend.name] AS friend_names"
+            "[(p)-[:FRIEND]->(friend) | friend.name] AS friend_names",
         )
 
         # Alice friends: Bob, Carol
@@ -301,13 +303,14 @@ class TestPatternComprehensionEvaluation:
             assert sorted(friends) == sorted(expected_friends[name])
 
     def test_pattern_comprehension_with_where(
-        self, pattern_context: Context
+        self,
+        pattern_context: Context,
     ) -> None:
         """Test pattern comprehension with WHERE filtering."""
         star = Star(context=pattern_context)
         result = star.execute_query(
             "MATCH (p:Person) RETURN p.name AS name, "
-            "[(p)-[:FRIEND]->(friend) WHERE friend.age > 30 | friend.name] AS older_friends"
+            "[(p)-[:FRIEND]->(friend) WHERE friend.age > 30 | friend.name] AS older_friends",
         )
 
         # Filter friends where age > 30
@@ -344,7 +347,7 @@ class TestSlicingEvaluation:
                     [10, 20, 30],
                     [100, 200, 300, 400],
                 ],
-            }
+            },
         )
 
         table = EntityTable.from_dataframe("Person", df)
@@ -354,7 +357,7 @@ class TestSlicingEvaluation:
         """Test basic list slicing operations."""
         star = Star(context=slicing_context)
         result = star.execute_query(
-            "MATCH (p:Person) RETURN p.name AS name, p.numbers[1..3] AS sliced"
+            "MATCH (p:Person) RETURN p.name AS name, p.numbers[1..3] AS sliced",
         )
 
         # Alice: [1,2,3,4,5][1..3] = [2,3] (exclusive end)
@@ -369,7 +372,7 @@ class TestSlicingEvaluation:
         """Test string slicing operations."""
         star = Star(context=slicing_context)
         result = star.execute_query(
-            "MATCH (p:Person) RETURN p.name AS name, p.text[0..5] AS prefix"
+            "MATCH (p:Person) RETURN p.name AS name, p.text[0..5] AS prefix",
         )
 
         # Should get first 5 characters of each text (exclusive end)
@@ -382,7 +385,7 @@ class TestSlicingEvaluation:
         """Test slicing with negative indices."""
         star = Star(context=slicing_context)
         result = star.execute_query(
-            "MATCH (p:Person) RETURN p.name AS name, p.numbers[-2..] AS last_two"
+            "MATCH (p:Person) RETURN p.name AS name, p.numbers[-2..] AS last_two",
         )
 
         # Get last 2 elements from each list
@@ -408,7 +411,7 @@ class TestPropertyLookupEvaluation:
                     {"street": "456 Oak Ave", "city": "LA"},
                     {"street": "789 Pine Rd", "city": "Chicago"},
                 ],
-            }
+            },
         )
 
         table = EntityTable.from_dataframe("Person", df)
@@ -418,7 +421,7 @@ class TestPropertyLookupEvaluation:
         """Test basic property access."""
         star = Star(context=property_context)
         result = star.execute_query(
-            "MATCH (p:Person) RETURN p.name AS name, p.age AS age"
+            "MATCH (p:Person) RETURN p.name AS name, p.age AS age",
         )
 
         expected_names = ["Alice", "Bob", "Carol"]
@@ -432,7 +435,7 @@ class TestPropertyLookupEvaluation:
         """Test nested property access."""
         star = Star(context=property_context)
         result = star.execute_query(
-            "MATCH (p:Person) RETURN p.name AS name, p.address.city AS city"
+            "MATCH (p:Person) RETURN p.name AS name, p.address.city AS city",
         )
 
         expected_cities = ["NYC", "LA", "Chicago"]
@@ -444,7 +447,7 @@ class TestPropertyLookupEvaluation:
         """Test property lookup for non-existent properties."""
         star = Star(context=property_context)
         result = star.execute_query(
-            "MATCH (p:Person) RETURN p.name AS name, p.nonexistent AS missing"
+            "MATCH (p:Person) RETURN p.name AS name, p.nonexistent AS missing",
         )
 
         # Missing properties should return null
@@ -464,7 +467,7 @@ class TestMapOperationsEvaluation:
                 "name": ["Alice", "Bob", "Carol"],
                 "age": [25, 30, 35],
                 "salary": [50000, 75000, 100000],
-            }
+            },
         )
 
         table = EntityTable.from_dataframe("Person", df)
@@ -474,7 +477,7 @@ class TestMapOperationsEvaluation:
         """Test map literal construction."""
         star = Star(context=map_context)
         result = star.execute_query(
-            "MATCH (p:Person) RETURN {name: p.name, age: p.age, employed: true} AS person_map"
+            "MATCH (p:Person) RETURN {name: p.name, age: p.age, employed: true} AS person_map",
         )
 
         expected_maps = [
@@ -490,7 +493,7 @@ class TestMapOperationsEvaluation:
         """Test basic map projection operations."""
         star = Star(context=map_context)
         result = star.execute_query(
-            "MATCH (p:Person) RETURN p{name, age} AS projected_person"
+            "MATCH (p:Person) RETURN p{name, age} AS projected_person",
         )
 
         # Should project only specified properties
@@ -509,12 +512,13 @@ class TestMapOperationsEvaluation:
             )  # Should not include unprojected properties
 
     def test_map_projection_with_computed_values(
-        self, map_context: Context
+        self,
+        map_context: Context,
     ) -> None:
         """Test map projection with computed property values."""
         star = Star(context=map_context)
         result = star.execute_query(
-            "MATCH (p:Person) RETURN p{name, double_age: p.age * 2} AS computed_map"
+            "MATCH (p:Person) RETURN p{name, double_age: p.age * 2} AS computed_map",
         )
 
         expected = [
@@ -555,16 +559,17 @@ class TestCollectionEvaluatorIntegration:
                         {"name": "Model", "hours": 45},
                     ],
                 ],
-            }
+            },
         )
 
         person_table = EntityTable.from_dataframe("Person", person_df)
         return Context(
-            entity_mapping=EntityMapping(mapping={"Person": person_table})
+            entity_mapping=EntityMapping(mapping={"Person": person_table}),
         )
 
     def test_complex_collection_query(
-        self, integration_context: Context
+        self,
+        integration_context: Context,
     ) -> None:
         """Test complex query combining multiple collection operations."""
         star = Star(context=integration_context)
@@ -573,7 +578,7 @@ class TestCollectionEvaluatorIntegration:
             "RETURN p.name AS name, "
             "p.skills[0..2] AS top_skills, "  # Slicing
             "[skill IN p.skills WHERE skill CONTAINS 'a' | skill] AS skills_with_a, "  # List comprehension with WHERE
-            "REDUCE(total = 0, proj IN p.projects | total + proj.hours) AS total_hours "  # Reduce
+            "REDUCE(total = 0, proj IN p.projects | total + proj.hours) AS total_hours ",  # Reduce
         )
 
         expected_results = [
@@ -581,7 +586,7 @@ class TestCollectionEvaluatorIntegration:
                 "name": "Alice",
                 "top_skills": ["Python", "SQL"],
                 "skills_with_a": [
-                    "Data Analysis"
+                    "Data Analysis",
                 ],  # Only "Data Analysis" contains 'a'
                 "total_hours": 70,  # 40 + 30
             },
@@ -610,7 +615,8 @@ class TestCollectionEvaluatorIntegration:
             assert row["total_hours"] == expected["total_hours"]
 
     def test_nested_collection_operations(
-        self, integration_context: Context
+        self,
+        integration_context: Context,
     ) -> None:
         """Test nested collection operations (comprehension within comprehension)."""
         star = Star(context=integration_context)
@@ -618,7 +624,7 @@ class TestCollectionEvaluatorIntegration:
             "MATCH (p:Person) "
             "RETURN p.name AS name, "
             "[proj IN p.projects | {name: proj.name, category: "
-            "CASE WHEN proj.hours > 40 THEN 'large' ELSE 'small' END}] AS categorized_projects"
+            "CASE WHEN proj.hours > 40 THEN 'large' ELSE 'small' END}] AS categorized_projects",
         )
 
         expected = [
@@ -632,7 +638,7 @@ class TestCollectionEvaluatorIntegration:
             {
                 "name": "Bob",
                 "categorized_projects": [
-                    {"name": "Backend", "category": "large"}  # 50 > 40
+                    {"name": "Backend", "category": "large"},  # 50 > 40
                 ],
             },
             {
@@ -646,10 +652,7 @@ class TestCollectionEvaluatorIntegration:
 
         for i, (_, row) in enumerate(result.iterrows()):
             assert row["name"] == expected[i]["name"]
-            assert (
-                row["categorized_projects"]
-                == expected[i]["categorized_projects"]
-            )
+            assert row["categorized_projects"] == expected[i]["categorized_projects"]
 
     def test_performance_large_collection_operations(self) -> None:
         """Test collection operations performance with larger datasets."""
@@ -663,12 +666,12 @@ class TestCollectionEvaluatorIntegration:
                 "values": [
                     list(range(i, i + 50)) for i in range(1, 101)
                 ],  # 50 values each
-            }
+            },
         )
 
         table = EntityTable.from_dataframe("Person", large_df)
         context = Context(
-            entity_mapping=EntityMapping(mapping={"Person": table})
+            entity_mapping=EntityMapping(mapping={"Person": table}),
         )
         star = Star(context=context)
 
@@ -676,7 +679,7 @@ class TestCollectionEvaluatorIntegration:
         start_time = time.perf_counter()
         result = star.execute_query(
             "MATCH (p:Person) "
-            "RETURN count([x IN p.values WHERE x % 2 = 0 | x]) AS even_count"
+            "RETURN count([x IN p.values WHERE x % 2 = 0 | x]) AS even_count",
         )
         end_time = time.perf_counter()
 

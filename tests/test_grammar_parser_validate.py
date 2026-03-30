@@ -40,20 +40,23 @@ def parser() -> GrammarParser:
 
 class TestNonParseExceptionsPropagateAfterFix:
     def test_non_lark_exception_propagates(
-        self, parser: GrammarParser
+        self,
+        parser: GrammarParser,
     ) -> None:
         """An AttributeError inside parse() must NOT be swallowed by validate().
 
         Before fix: validate() catches Exception and returns False.
         After fix: AttributeError propagates to the caller.
         """
-        with patch.object(
-            parser,
-            "parse",
-            side_effect=AttributeError("simulated internal bug"),
+        with (
+            patch.object(
+                parser,
+                "parse",
+                side_effect=AttributeError("simulated internal bug"),
+            ),
+            pytest.raises(AttributeError, match="simulated internal bug"),
         ):
-            with pytest.raises(AttributeError, match="simulated internal bug"):
-                parser.validate("MATCH (n) RETURN n")
+            parser.validate("MATCH (n) RETURN n")
 
     def test_visit_error_propagates(self, parser: GrammarParser) -> None:
         """A VisitError (transformer bug) must NOT be swallowed by validate().
@@ -81,28 +84,29 @@ class TestValidateRegressionGuards:
         assert parser.validate("MATCH (n:Person) RETURN n.name") is True
 
     def test_valid_query_with_where_returns_true(
-        self, parser: GrammarParser
+        self,
+        parser: GrammarParser,
     ) -> None:
         """A valid query with WHERE clause returns True."""
-        assert (
-            parser.validate("MATCH (n:Person) WHERE n.age > 30 RETURN n")
-            is True
-        )
+        assert parser.validate("MATCH (n:Person) WHERE n.age > 30 RETURN n") is True
 
     def test_invalid_cypher_missing_paren_returns_false(
-        self, parser: GrammarParser
+        self,
+        parser: GrammarParser,
     ) -> None:
         """Missing closing parenthesis is a genuine parse error → False."""
         assert parser.validate("MATCH (n RETURN n") is False
 
     def test_invalid_cypher_garbage_returns_false(
-        self, parser: GrammarParser
+        self,
+        parser: GrammarParser,
     ) -> None:
         """Garbage input is a genuine parse error → False."""
         assert parser.validate("!@#$%^&*") is False
 
     def test_invalid_cypher_unexpected_eof_returns_false(
-        self, parser: GrammarParser
+        self,
+        parser: GrammarParser,
     ) -> None:
         """Truncated query (unexpected EOF) is a genuine parse error → False."""
         assert parser.validate("MATCH () RETURN") is False

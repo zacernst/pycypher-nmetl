@@ -80,9 +80,7 @@ def generate_entity_df(n: int, n_attrs: int = 5) -> pd.DataFrame:
     rng = np.random.default_rng(42)
     data: dict[str, Any] = {ID_COLUMN: list(range(1, n + 1))}
     for i in range(n_attrs):
-        data[f"attr_{i}"] = [
-            f"value_{rng.integers(0, 1000)}" for _ in range(n)
-        ]
+        data[f"attr_{i}"] = [f"value_{rng.integers(0, 1000)}" for _ in range(n)]
     return pd.DataFrame(data)
 
 
@@ -119,9 +117,7 @@ def build_context(
         entity_type="Node",
         identifier="Node",
         column_names=list(entity_df.columns),
-        source_obj_attribute_map={
-            c: c for c in entity_df.columns if c != ID_COLUMN
-        },
+        source_obj_attribute_map={c: c for c in entity_df.columns if c != ID_COLUMN},
         attribute_map={c: c for c in entity_df.columns if c != ID_COLUMN},
         source_obj=entity_df,
     )
@@ -165,9 +161,7 @@ def run_benchmark(
         memory_after_mb=after.rss_mb,
         memory_delta_mb=after.rss_mb - before.rss_mb,
         peak_memory_mb=after.rss_mb,
-        extra={"result_type": type(result).__name__}
-        if result is not None
-        else {},
+        extra={"result_type": type(result).__name__} if result is not None else {},
     )
 
 
@@ -180,13 +174,13 @@ SMALL_ENTITIES = 1_000
 SMALL_RELS = 5_000
 
 
-@pytest.fixture()
+@pytest.fixture
 def small_context() -> Context:
     """Small context for baseline measurements."""
     return build_context(SMALL_ENTITIES, SMALL_RELS)
 
 
-@pytest.fixture()
+@pytest.fixture
 def small_star(small_context: Context) -> Star:
     """Star with small dataset."""
     return Star(context=small_context)
@@ -205,9 +199,7 @@ class TestBaselineEntityScan:
             SMALL_ENTITIES,
         )
         # Baseline: just record, don't assert strict limits yet
-        assert result.duration_s < 30, (
-            f"Entity scan took {result.duration_s:.2f}s"
-        )
+        assert result.duration_s < 30, f"Entity scan took {result.duration_s:.2f}s"
         assert result.memory_delta_mb < 500, (
             f"Memory delta: {result.memory_delta_mb:.1f}MB"
         )
@@ -236,9 +228,7 @@ class TestBaselineJoin:
             ),
             SMALL_RELS,
         )
-        assert result.duration_s < 30, (
-            f"Single hop took {result.duration_s:.2f}s"
-        )
+        assert result.duration_s < 30, f"Single hop took {result.duration_s:.2f}s"
 
     def test_two_hop_join(self, small_star: Star) -> None:
         """Measure memory for two-hop relationship traversal."""
@@ -303,13 +293,13 @@ MEDIUM_ENTITIES = 100_000
 MEDIUM_RELS = 500_000
 
 
-@pytest.fixture()
+@pytest.fixture
 def medium_context() -> Context:
     """Medium context for scaling measurements."""
     return build_context(MEDIUM_ENTITIES, MEDIUM_RELS, n_attrs=10)
 
 
-@pytest.fixture()
+@pytest.fixture
 def medium_star(medium_context: Context) -> Star:
     """Star with medium dataset."""
     return Star(context=medium_context)

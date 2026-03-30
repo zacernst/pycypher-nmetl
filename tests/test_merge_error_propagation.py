@@ -31,7 +31,7 @@ from pycypher.star import Star
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture()
+@pytest.fixture
 def empty_context() -> Context:
     """Context with no entity or relationship tables."""
     return Context(
@@ -40,7 +40,7 @@ def empty_context() -> Context:
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def person_context() -> Context:
     """Context with one Person entity table (Alice, age=30)."""
     df = pd.DataFrame({ID_COLUMN: ["p1"], "name": ["Alice"], "age": [30]})
@@ -99,14 +99,16 @@ class TestGraphTypeNotFoundError:
 
 class TestEntityScanRaisesGraphTypeNotFoundError:
     def test_raises_graph_type_not_found_for_unknown_label(
-        self, empty_context: Context
+        self,
+        empty_context: Context,
     ) -> None:
         """EntityScan raises GraphTypeNotFoundError when label not in context."""
         with pytest.raises(GraphTypeNotFoundError):
             EntityScan(entity_type="Ghost", var_name="g").scan(empty_context)
 
     def test_error_message_names_missing_type(
-        self, empty_context: Context
+        self,
+        empty_context: Context,
     ) -> None:
         """Error message includes the missing entity type name."""
         with pytest.raises(GraphTypeNotFoundError, match="Ghost"):
@@ -120,7 +122,7 @@ class TestEntityScanRaisesGraphTypeNotFoundError:
     def test_known_type_does_not_raise(self, person_context: Context) -> None:
         """EntityScan with a known type succeeds without error."""
         frame = EntityScan(entity_type="Person", var_name="p").scan(
-            person_context
+            person_context,
         )
         assert len(frame.bindings) == 1
 
@@ -132,21 +134,23 @@ class TestEntityScanRaisesGraphTypeNotFoundError:
 
 class TestRelationshipScanRaisesGraphTypeNotFoundError:
     def test_raises_graph_type_not_found_for_unknown_rel_type(
-        self, empty_context: Context
+        self,
+        empty_context: Context,
     ) -> None:
         """RelationshipScan raises GraphTypeNotFoundError when rel type not in context."""
         with pytest.raises(GraphTypeNotFoundError):
             RelationshipScan(rel_type="GHOST_REL", rel_var="r").scan(
-                empty_context
+                empty_context,
             )
 
     def test_error_message_names_missing_type(
-        self, empty_context: Context
+        self,
+        empty_context: Context,
     ) -> None:
         """Error message includes the missing relationship type name."""
         with pytest.raises(GraphTypeNotFoundError, match="GHOST_REL"):
             RelationshipScan(rel_type="GHOST_REL", rel_var="r").scan(
-                empty_context
+                empty_context,
             )
 
 
@@ -163,7 +167,8 @@ class TestMergeCreatesWhenTypeAbsent:
         assert result is not None
 
     def test_merge_new_type_on_existing_context(
-        self, person_context: Context
+        self,
+        person_context: Context,
     ) -> None:
         """MERGE on a new label alongside an existing label creates correctly."""
         star = Star(context=person_context)
@@ -178,7 +183,8 @@ class TestMergeCreatesWhenTypeAbsent:
 
 class TestMergePropagatesRealErrors:
     def test_merge_with_invalid_property_expression_raises(
-        self, person_context: Context
+        self,
+        person_context: Context,
     ) -> None:
         """MERGE with a syntactically broken query raises, not silently creates.
 

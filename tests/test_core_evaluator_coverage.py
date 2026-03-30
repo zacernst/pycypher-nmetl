@@ -12,7 +12,6 @@ from types import SimpleNamespace
 from typing import Any
 from unittest.mock import MagicMock
 
-import numpy as np
 import pandas as pd
 import pytest
 from pycypher.arithmetic_evaluator import (
@@ -262,7 +261,9 @@ class TestTemporalArithPair:
 
     def test_datetime_minus_datetime(self) -> None:
         result = _temporal_arith_pair(
-            "-", "2024-01-20T12:00:00", "2024-01-15T12:00:00"
+            "-",
+            "2024-01-20T12:00:00",
+            "2024-01-15T12:00:00",
         )
         assert isinstance(result, dict)
         assert result["days"] == 5
@@ -337,7 +338,7 @@ class TestArithmeticEvaluatorClass:
         frame = _make_frame(1)
         ev = ArithmeticExpressionEvaluator(frame)
         mock_eval = _make_evaluator(
-            {"L": pd.Series(["a"]), "R": pd.Series([1])}
+            {"L": pd.Series(["a"]), "R": pd.Series([1])},
         )
         with pytest.raises(TypeError, match="incompatible"):
             ev.evaluate_arithmetic("-", "L", "R", mock_eval)
@@ -358,7 +359,7 @@ class TestArithmeticEvaluatorClass:
         right_s = pd.Series([1, 2])
         mock_eval = _make_evaluator({"L": left_s, "R": right_s})
         result = ev.evaluate_comparison("=", "L", "R", mock_eval)
-        assert result.iloc[0] is True or result.iloc[0] == True  # noqa: E712
+        assert result.iloc[0] is True or result.iloc[0] == True
         assert result.iloc[1] is None
 
     def test_evaluate_comparison_unsupported_op(self) -> None:
@@ -417,10 +418,10 @@ class TestArithmeticEvaluatorClass:
                             "milliseconds": 0,
                             "microseconds": 0,
                             "nanoseconds": 0,
-                        }
-                    ]
+                        },
+                    ],
                 ),
-            }
+            },
         )
         result = ev.evaluate_arithmetic("+", "L", "R", mock_eval)
         assert result.iloc[0] == "2024-01-20"
@@ -434,7 +435,7 @@ class TestArithmeticEvaluatorClass:
 class TestKleeneAnd:
     def test_true_and_true(self) -> None:
         r = kleene_and(pd.Series([True]), pd.Series([True]))
-        assert r.iloc[0] == False or r.iloc[0] is False or r.iloc[0] == True  # noqa: E712
+        assert r.iloc[0] == False or r.iloc[0] is False or r.iloc[0] == True
         # More precise:
         assert bool(r.iloc[0]) is True
 
@@ -452,7 +453,8 @@ class TestKleeneAnd:
 
     def test_null_and_null(self) -> None:
         r = kleene_and(
-            pd.Series([None], dtype=object), pd.Series([None], dtype=object)
+            pd.Series([None], dtype=object),
+            pd.Series([None], dtype=object),
         )
         assert r.iloc[0] is None
 
@@ -516,7 +518,7 @@ class TestBooleanEvaluatorClass:
             {
                 "a": pd.Series([True, True]),
                 "b": pd.Series([True, False]),
-            }
+            },
         )
         result = ev.evaluate_and(["a", "b"], mock_eval)
         assert bool(result.iloc[0]) is True
@@ -535,7 +537,7 @@ class TestBooleanEvaluatorClass:
             {
                 "a": pd.Series([False, False]),
                 "b": pd.Series([True, False]),
-            }
+            },
         )
         result = ev.evaluate_or(["a", "b"], mock_eval)
         assert bool(result.iloc[0]) is True
@@ -562,7 +564,7 @@ class TestBooleanEvaluatorClass:
             {
                 "a": pd.Series([True, True]),
                 "b": pd.Series([False, True]),
-            }
+            },
         )
         result = ev.evaluate_xor(["a", "b"], mock_eval)
         assert bool(result.iloc[0]) is True
@@ -581,7 +583,7 @@ class TestBooleanEvaluatorClass:
             {
                 "a": pd.Series([True, True]),
                 "b": pd.Series([True, False]),
-            }
+            },
         )
         result = ev.evaluate_bool_chain("and", ["a", "b"], mock_eval)
         assert bool(result.iloc[0]) is True
@@ -613,7 +615,7 @@ class TestComparisonEvaluatorClass:
             {
                 "L": pd.Series([1, 2, 3]),
                 "R": pd.Series([1, 9, 3]),
-            }
+            },
         )
         result = ev.evaluate_comparison("=", "L", "R", mock_eval)
         assert list(result) == [True, False, True]
@@ -625,7 +627,7 @@ class TestComparisonEvaluatorClass:
             {
                 "L": pd.Series([1, None], dtype=object),
                 "R": pd.Series([1, 2]),
-            }
+            },
         )
         result = ev.evaluate_comparison("=", "L", "R", mock_eval)
         assert result.iloc[1] is None
@@ -641,7 +643,7 @@ class TestComparisonEvaluatorClass:
         frame = _make_frame(3)
         ev = ComparisonEvaluator(frame)
         mock_eval = _make_evaluator(
-            {"X": pd.Series([1, None, 3], dtype=object)}
+            {"X": pd.Series([1, None, 3], dtype=object)},
         )
         result = ev.evaluate_null_check("IS NULL", "X", mock_eval)
         assert list(result) == [False, True, False]
@@ -650,7 +652,7 @@ class TestComparisonEvaluatorClass:
         frame = _make_frame(3)
         ev = ComparisonEvaluator(frame)
         mock_eval = _make_evaluator(
-            {"X": pd.Series([1, None, 3], dtype=object)}
+            {"X": pd.Series([1, None, 3], dtype=object)},
         )
         result = ev.evaluate_null_check("IS NOT NULL", "X", mock_eval)
         assert list(result) == [True, False, True]

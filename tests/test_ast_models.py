@@ -163,7 +163,7 @@ class TestASTTraversal:
         var = Variable(name="test_var")
         prop = PropertyLookup(expression=var, property="test_prop")
         found = prop.find_first(
-            lambda n: isinstance(n, Variable) and n.name == "test_var"
+            lambda n: isinstance(n, Variable) and n.name == "test_var",
         )
         assert found is not None
         assert found.name == "test_var"
@@ -192,22 +192,21 @@ class TestASTTraversal:
         nodes = list(map_literal.traverse())
 
         assert any(
-            isinstance(node, IntegerLiteral) and node.value == 42
-            for node in nodes
+            isinstance(node, IntegerLiteral) and node.value == 42 for node in nodes
         )
 
     def test_traverse_includes_nested_dict_children(self):
         """Ensure traversal walks nested AST nodes inside dict containers."""
         inner_variable = Variable(name="nested")
         function_call = FunctionInvocation(
-            name="identity", arguments={"arg": inner_variable}
+            name="identity",
+            arguments={"arg": inner_variable},
         )
 
         nodes = list(function_call.traverse())
 
         assert any(
-            isinstance(node, Variable) and node.name == "nested"
-            for node in nodes
+            isinstance(node, Variable) and node.name == "nested" for node in nodes
         )
 
 
@@ -226,7 +225,7 @@ class TestFunctionInvocationFunctionName:
     def test_dict_name_returns_qualified_name(self) -> None:
         # Namespace-qualified functions return "namespace.name" for registry lookup
         fi = FunctionInvocation(
-            name={"namespace": "apoc.text", "name": "join"}
+            name={"namespace": "apoc.text", "name": "join"},
         )
         assert fi.function_name == "apoc.text.join"
 

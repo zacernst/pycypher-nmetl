@@ -9,7 +9,14 @@ from typing import TYPE_CHECKING, Any
 import pandas as pd
 from shared.helpers import is_null_value
 
-from pycypher.constants import _null_series
+from pycypher.constants import (
+    _init_null_result,
+    _null_series,
+    _scalar_int,
+    _scalar_raw,
+    _scalar_str,
+    _scalar_str_opt,
+)
 
 if TYPE_CHECKING:
     from pycypher.scalar_functions import ScalarFunctionRegistry
@@ -47,7 +54,7 @@ def register(registry: ScalarFunctionRegistry) -> None:
             Series of substrings
 
         """
-        n_val = int(n.iloc[0]) if len(n) > 0 else 0
+        n_val = _scalar_int(n)
         return s.str[:n_val]
 
     registry.register_function(
@@ -71,7 +78,7 @@ def register(registry: ScalarFunctionRegistry) -> None:
             Series of substrings
 
         """
-        n_val = int(n.iloc[0]) if len(n) > 0 else 0
+        n_val = _scalar_int(n)
         return s.str[-n_val:] if n_val > 0 else s.str[0:0]
 
     registry.register_function(
@@ -120,8 +127,8 @@ def register(registry: ScalarFunctionRegistry) -> None:
             Series with replacements applied
 
         """
-        search_val = str(search.iloc[0]) if len(search) > 0 else ""
-        replace_val = str(replacement.iloc[0]) if len(replacement) > 0 else ""
+        search_val = _scalar_str(search)
+        replace_val = _scalar_str(replacement)
         return s.str.replace(search_val, replace_val, regex=False)
 
     registry.register_function(
@@ -145,7 +152,7 @@ def register(registry: ScalarFunctionRegistry) -> None:
             Series of lists
 
         """
-        delim_val = str(delimiter.iloc[0]) if len(delimiter) > 0 else ""
+        delim_val = _scalar_str(delimiter)
         return s.str.split(delim_val)
 
     registry.register_function(
@@ -274,7 +281,7 @@ def register(registry: ScalarFunctionRegistry) -> None:
         from pycypher.config import MAX_COLLECTION_SIZE
         from pycypher.exceptions import SecurityError
 
-        size_val = int(size.iloc[0]) if len(size) > 0 else 0
+        size_val = _scalar_int(size)
         if size_val > MAX_COLLECTION_SIZE:
             msg = (
                 f"lpad() size ({size_val:,}) exceeds limit of "
@@ -282,25 +289,18 @@ def register(registry: ScalarFunctionRegistry) -> None:
                 f"Adjust PYCYPHER_MAX_COLLECTION_SIZE to increase."
             )
             raise SecurityError(msg)
-        fill_val = (
-            str(fill.iloc[0]) if fill is not None and len(fill) > 0 else " "
-        )
+        fill_val = _scalar_str_opt(fill, " ")
 
         # Vectorized implementation replacing .apply(_pad_one) anti-pattern
         if len(s) == 0:
             return s.copy()
 
-        # Handle nulls first
-        result = _null_series(len(s), index=s.index)
-        null_mask = s.isna()
-
-        # Process non-null values
-        non_null_mask = ~null_mask
-        if not non_null_mask.any():
-            return result
+        nr = _init_null_result(s)
+        if nr.all_null:
+            return nr.result
 
         # Convert non-null values to string (vectorized)
-        s_str = s[non_null_mask].astype(str)
+        s_str = nr.non_null_vals.astype(str)
 
         # Create string length mask (vectorized)
         str_lengths = s_str.str.len()
@@ -317,17 +317,15 @@ def register(registry: ScalarFunctionRegistry) -> None:
         # Handle padding (vectorized)
         if needs_padding.any() and size_val > 0:
             pad_amounts = size_val - str_lengths[needs_padding]
-            # Create padding strings (vectorized)
             padding = pd.Series(
                 [fill_val] * len(pad_amounts),
                 index=pad_amounts.index,
             ).str.repeat(pad_amounts)
             result_values[needs_padding] = padding + s_str[needs_padding]
 
-        # Set results back
-        result[non_null_mask] = result_values
+        nr.result[nr.non_null_mask] = result_values
 
-        return result
+        return nr.result
 
     registry.register_function(
         name="lpad",
@@ -361,7 +359,7 @@ def register(registry: ScalarFunctionRegistry) -> None:
         from pycypher.config import MAX_COLLECTION_SIZE
         from pycypher.exceptions import SecurityError
 
-        size_val = int(size.iloc[0]) if len(size) > 0 else 0
+        size_val = _scalar_int(size)
         if size_val > MAX_COLLECTION_SIZE:
             msg = (
                 f"rpad() size ({size_val:,}) exceeds limit of "
@@ -369,52 +367,40 @@ def register(registry: ScalarFunctionRegistry) -> None:
                 f"Adjust PYCYPHER_MAX_COLLECTION_SIZE to increase."
             )
             raise SecurityError(msg)
-        fill_val = (
-            str(fill.iloc[0]) if fill is not None and len(fill) > 0 else " "
-        )
+        fill_val = _scalar_str_opt(fill, " ")
 
         # Vectorized implementation replacing .apply(_pad_one) anti-pattern
         if len(s) == 0:
             return s.copy()
 
         # Handle nulls first
-        result = _null_series(len(s), index=s.index)
-        null_mask = s.isna()
+        nr = _init_null_result(s)
+        if nr.all_null:
+            return nr.result
 
-        # Process non-null values
-        non_null_mask = ~null_mask
-        if not non_null_mask.any():
-            return result
+        s_str = nr.non_null_vals.astype(str)
 
-        # Convert non-null values to string (vectorized)
-        s_str = s[non_null_mask].astype(str)
-
-        # Create string length mask (vectorized)
         str_lengths = s_str.str.len()
         needs_truncation = str_lengths >= size_val
         needs_padding = str_lengths < size_val
 
-        # Handle truncation (vectorized)
         result_values = s_str.copy()
         if needs_truncation.any():
             result_values[needs_truncation] = s_str[needs_truncation].str[
                 :size_val
             ]
 
-        # Handle padding (vectorized) - right padding
         if needs_padding.any() and size_val > 0:
             pad_amounts = size_val - str_lengths[needs_padding]
-            # Create padding strings (vectorized)
             padding = pd.Series(
                 [fill_val] * len(pad_amounts),
                 index=pad_amounts.index,
             ).str.repeat(pad_amounts)
             result_values[needs_padding] = s_str[needs_padding] + padding
 
-        # Set results back
-        result[non_null_mask] = result_values
+        nr.result[nr.non_null_mask] = result_values
 
-        return result
+        return nr.result
 
     registry.register_function(
         name="rpad",
@@ -440,7 +426,7 @@ def register(registry: ScalarFunctionRegistry) -> None:
         from pycypher.config import MAX_COLLECTION_SIZE
         from pycypher.exceptions import SecurityError
 
-        n_val_raw = n.iloc[0] if len(n) > 0 else None
+        n_val_raw = _scalar_raw(n)
 
         if _is_null(n_val_raw):
             return _null_series(len(s), index=s.index)
@@ -489,7 +475,7 @@ def register(registry: ScalarFunctionRegistry) -> None:
         """
         if trim_char is None:
             return s.str.strip()
-        tc = str(trim_char.iloc[0]) if len(trim_char) > 0 else " "
+        tc = _scalar_str(trim_char, " ")
         return s.str.strip(tc)
 
     registry.register_function(
@@ -537,8 +523,8 @@ def register(registry: ScalarFunctionRegistry) -> None:
         uniform_from = len(from_pos) == 1 or len(set(from_pos.dropna())) <= 1
 
         if uniform_search and uniform_from:
-            search_val = str(search.iloc[0]) if len(search) > 0 else ""
-            from_val = int(from_pos.iloc[0]) if len(from_pos) > 0 else 0
+            search_val = _scalar_str(search)
+            from_val = _scalar_int(from_pos)
 
             # Fast path: pandas string methods when from_val == 0 and uniform values
             if from_val == 0 and hasattr(s, "str"):

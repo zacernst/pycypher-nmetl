@@ -5,11 +5,12 @@ This script tests both the programmatic Python and declarative YAML CLI
 execution methods to verify they produce identical results.
 """
 
+import shutil
 import subprocess
 import sys
 from pathlib import Path
+
 import pandas as pd
-import shutil
 
 
 def cleanup_output():
@@ -25,12 +26,22 @@ def run_python_method():
     print("🔄 Testing Python script execution...")
 
     # Python script must run from project root due to absolute path usage
-    project_root = Path.cwd().parent.parent  # Go up two levels from examples/retail_analytics
+    project_root = (
+        Path.cwd().parent.parent
+    )  # Go up two levels from examples/retail_analytics
     script_path = "examples/retail_analytics/run_pipeline.py"
 
-    result = subprocess.run([
-        "uv", "run", "python", script_path
-    ], capture_output=True, text=True, cwd=project_root)
+    result = subprocess.run(
+        [
+            "uv",
+            "run",
+            "python",
+            script_path,
+        ],
+        capture_output=True,
+        text=True,
+        cwd=project_root,
+    )
 
     if result.returncode != 0:
         print(f"❌ Python script failed: {result.stderr}")
@@ -47,10 +58,21 @@ def run_cli_method():
     # Clean up first
     cleanup_output()
 
-    result = subprocess.run([
-        "uv", "run", "python", "-m", "pycypher.nmetl_cli",
-        "run", "pipeline.yaml", "--verbose"
-    ], capture_output=True, text=True, cwd=Path.cwd())
+    result = subprocess.run(
+        [
+            "uv",
+            "run",
+            "python",
+            "-m",
+            "pycypher.nmetl_cli",
+            "run",
+            "pipeline.yaml",
+            "--verbose",
+        ],
+        capture_output=True,
+        text=True,
+        cwd=Path.cwd(),
+    )
 
     if result.returncode != 0:
         print(f"❌ CLI execution failed: {result.stderr}")
@@ -58,7 +80,7 @@ def run_cli_method():
 
     print("✅ CLI executed successfully")
     print("   CLI output preview:")
-    for line in result.stdout.strip().split('\n')[-5:]:
+    for line in result.stdout.strip().split("\n")[-5:]:
         print(f"   {line}")
     return True
 
@@ -69,7 +91,7 @@ def verify_output_files():
         "output/customer_metrics.csv",
         "output/customer_segments.csv",
         "output/product_performance.csv",
-        "output/executive_report.csv"
+        "output/executive_report.csv",
     ]
 
     missing_files = []
@@ -96,15 +118,15 @@ def verify_data_consistency():
 
         # Check key metrics are reasonable
         row = exec_report.iloc[0]
-        if row['total_customers'] != 50.0:
+        if row["total_customers"] != 50.0:
             print(f"❌ Expected 50 customers, got {row['total_customers']}")
             return False
 
-        if row['total_revenue'] < 30000 or row['total_revenue'] > 40000:
+        if row["total_revenue"] < 30000 or row["total_revenue"] > 40000:
             print(f"❌ Revenue seems unreasonable: ${row['total_revenue']}")
             return False
 
-        print(f"✅ Data validation passed:")
+        print("✅ Data validation passed:")
         print(f"   📊 Customers: {row['total_customers']}")
         print(f"   💰 Revenue: ${row['total_revenue']:,.2f}")
         print(f"   📈 Profit Margin: {row['profit_margin_percent']}%")

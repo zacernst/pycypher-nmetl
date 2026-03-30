@@ -58,13 +58,13 @@ class TestSimulatedScanFilterProject:
         """Full pipeline: scan → filter → project → sort → limit."""
         # Step 1: Scan entity IDs
         ids = backend.scan_entity(person_df, "Person")
-        assert backend.row_count(ids) == 5_000  # noqa: PLR2004
+        assert backend.row_count(ids) == 5_000
 
         # Step 2: Filter (simulating WHERE p.age > 30)
         # In real execution, the evaluator computes the mask
         mask = person_df["age"] > 30
         filtered = backend.filter(person_df, mask)
-        assert backend.row_count(filtered) < 5_000  # noqa: PLR2004
+        assert backend.row_count(filtered) < 5_000
         assert backend.row_count(filtered) > 0
 
         # Step 3: Sort (ORDER BY age DESC)
@@ -75,7 +75,7 @@ class TestSimulatedScanFilterProject:
 
         # Step 4: Limit
         limited = backend.limit(sorted_df, 10)
-        assert backend.row_count(limited) == 10  # noqa: PLR2004
+        assert backend.row_count(limited) == 10
 
 
 # ---------------------------------------------------------------------------
@@ -98,18 +98,24 @@ class TestSimulatedJoinPipeline:
 
         # Step 2: Join on source → person (a)
         person_ids = person_df[[ID_COLUMN, "name"]].rename(
-            columns={ID_COLUMN: SOURCE_COLUMN, "name": "src_name"}
+            columns={ID_COLUMN: SOURCE_COLUMN, "name": "src_name"},
         )
         joined_src = backend.join(
-            rel_cols, person_ids, on=SOURCE_COLUMN, how="inner"
+            rel_cols,
+            person_ids,
+            on=SOURCE_COLUMN,
+            how="inner",
         )
 
         # Step 3: Join on target → person (b)
         person_ids_tgt = person_df[[ID_COLUMN, "name"]].rename(
-            columns={ID_COLUMN: TARGET_COLUMN, "name": "tgt_name"}
+            columns={ID_COLUMN: TARGET_COLUMN, "name": "tgt_name"},
         )
         joined_both = backend.join(
-            joined_src, person_ids_tgt, on=TARGET_COLUMN, how="inner"
+            joined_src,
+            person_ids_tgt,
+            on=TARGET_COLUMN,
+            how="inner",
         )
 
         result = backend.to_pandas(joined_both)
@@ -145,7 +151,7 @@ class TestSimulatedAggregationPipeline:
         assert len(result_pd) > 0
         assert set(result_pd.columns) >= {"city", "cnt", "avg_age"}
         # Sum of counts should equal total rows
-        assert result_pd["cnt"].sum() == 5_000  # noqa: PLR2004
+        assert result_pd["cnt"].sum() == 5_000
 
     def test_grouped_multi_agg_same_source(
         self,
@@ -162,7 +168,7 @@ class TestSimulatedAggregationPipeline:
         if backend.name == "pandas":
             pytest.xfail(
                 "PandasBackend.aggregate() cannot handle multiple aggs "
-                "on the same source column (dict key collision)"
+                "on the same source column (dict key collision)",
             )
 
         result = backend.aggregate(
@@ -194,8 +200,8 @@ class TestSimulatedAggregationPipeline:
             },
         )
         result_pd = backend.to_pandas(result)
-        assert result_pd["total"].iloc[0] == 5_000  # noqa: PLR2004
-        assert 18 < result_pd["avg_age"].iloc[0] < 80  # noqa: PLR2004
+        assert result_pd["total"].iloc[0] == 5_000
+        assert 18 < result_pd["avg_age"].iloc[0] < 80
 
 
 # ---------------------------------------------------------------------------
@@ -212,7 +218,7 @@ class TestProtocolCompleteness:
             {
                 ID_COLUMN: pd.array([], dtype="int64"),
                 "name": pd.array([], dtype="str"),
-            }
+            },
         )
 
         # Scan
@@ -257,7 +263,7 @@ class TestProtocolCompleteness:
         """LIMIT N where N > row count should return all rows."""
         df = pd.DataFrame({ID_COLUMN: [1, 2, 3]})
         result = backend.limit(df, 1000)
-        assert backend.row_count(result) == 3  # noqa: PLR2004
+        assert backend.row_count(result) == 3
 
     def test_sort_multiple_columns(self, backend: BackendEngine) -> None:
         """Multi-column sort with mixed directions."""
@@ -266,10 +272,10 @@ class TestProtocolCompleteness:
                 "city": ["NYC", "NYC", "LA", "LA"],
                 "age": [30, 25, 35, 20],
                 "name": ["A", "B", "C", "D"],
-            }
+            },
         )
         result = backend.to_pandas(
-            backend.sort(df, by=["city", "age"], ascending=[True, False])
+            backend.sort(df, by=["city", "age"], ascending=[True, False]),
         )
         # LA before NYC (ascending), within each city age descending
         assert list(result["city"]) == ["LA", "LA", "NYC", "NYC"]
@@ -277,27 +283,29 @@ class TestProtocolCompleteness:
         assert la_ages == [35, 20]
 
     def test_cross_join_produces_cartesian(
-        self, backend: BackendEngine
+        self,
+        backend: BackendEngine,
     ) -> None:
         """Cross join should produce n*m rows."""
         left = pd.DataFrame({"a": [1, 2, 3]})
         right = pd.DataFrame({"b": [4, 5]})
         result = backend.join(left, right, on=[], how="cross")
-        assert backend.row_count(result) == 6  # noqa: PLR2004
+        assert backend.row_count(result) == 6
 
     def test_left_join_preserves_all_left_rows(
-        self, backend: BackendEngine
+        self,
+        backend: BackendEngine,
     ) -> None:
         """Left join preserves all left-side rows with NULLs."""
         left = pd.DataFrame({"id": [1, 2, 3], "a": ["x", "y", "z"]})
         right = pd.DataFrame({"id": [2], "b": ["p"]})
         result = backend.to_pandas(
-            backend.join(left, right, on="id", how="left")
+            backend.join(left, right, on="id", how="left"),
         )
-        assert len(result) == 3  # noqa: PLR2004
+        assert len(result) == 3
         # id=1 and id=3 should have null in column 'b'
         null_count = result["b"].isna().sum()
-        assert null_count == 2  # noqa: PLR2004
+        assert null_count == 2
 
 
 # ---------------------------------------------------------------------------

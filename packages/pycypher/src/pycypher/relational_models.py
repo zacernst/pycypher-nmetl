@@ -334,6 +334,9 @@ class Context(BaseModel):
     #: Data epoch counter — incremented on every mutation commit.
     #: Used by query result caching to detect stale entries.
     _data_epoch: int = PrivateAttr(default=0)
+    #: Graph-native index manager for O(degree) neighbor lookups and
+    #: O(1) property equality lookups.  Created lazily on first access.
+    _index_manager: Any = PrivateAttr(default=None)
 
     def model_post_init(self, __context: Any) -> None:
         """Resolve the backend engine after Pydantic initialisation."""
@@ -349,6 +352,10 @@ class Context(BaseModel):
                 when ``None`` or ``"pandas"``.
             **data: Pydantic field values — typically ``entity_mapping``,
                 ``relationship_mapping``, and ``functions``.
+
+        .. note:: The backend is stored but **not yet used** by the execution
+           path.  See :mod:`pycypher.backend_engine` for integration status.
+
         """
         super().__init__(**data)
         if backend is None or (
@@ -385,6 +392,20 @@ class Context(BaseModel):
     def backend_name(self) -> str:
         """Return the name of the active backend engine (e.g. ``'pandas'``, ``'duckdb'``, ``'polars'``)."""
         return getattr(self._backend, "name", "unknown")
+
+    @property
+    def index_manager(self) -> Any:
+        """Return the :class:`~pycypher.graph_index.GraphIndexManager`.
+
+        Created lazily on first access.  Automatically invalidates when
+        the data epoch changes (after mutation commits).
+        """
+        if self._index_manager is None:
+            from pycypher.graph_index import GraphIndexManager
+
+            self._index_manager = GraphIndexManager(self)
+            self._index_manager.eager_build_vectorized_stores()
+        return self._index_manager
 
     def __repr__(self) -> str:
         """Return an informative summary for REPL/notebook display.
@@ -572,7 +593,8 @@ class Context(BaseModel):
         }
 
     def restore_savepoint(
-        self, savepoint: dict[str, dict[str, pd.DataFrame]]
+        self,
+        savepoint: dict[str, dict[str, pd.DataFrame]],
     ) -> None:
         """Restore shadow state to a previous savepoint.
 
@@ -938,6 +960,7 @@ class EntityTable(Relation):
 
         Returns:
             A ``pd.DataFrame`` with type-prefixed column names.
+
         """
         import pyarrow as _pa
 

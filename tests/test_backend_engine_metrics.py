@@ -7,7 +7,6 @@ are instrumented with timing, logging, and QUERY_METRICS integration.
 from __future__ import annotations
 
 import logging
-import time
 
 import pandas as pd
 import pytest
@@ -26,21 +25,21 @@ def _reset_metrics() -> None:
     QUERY_METRICS.reset()
 
 
-@pytest.fixture()
+@pytest.fixture
 def backend() -> InstrumentedBackend:
     """Return an instrumented pandas backend."""
     return InstrumentedBackend(PandasBackend())
 
 
-@pytest.fixture()
+@pytest.fixture
 def sample_frame() -> pd.DataFrame:
     """Return a small test DataFrame with ID column."""
     return pd.DataFrame(
-        {ID_COLUMN: ["a", "b", "c"], "name": ["Alice", "Bob", "Carol"]}
+        {ID_COLUMN: ["a", "b", "c"], "name": ["Alice", "Bob", "Carol"]},
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def sample_right_frame() -> pd.DataFrame:
     """Return a second test DataFrame for joins."""
     return pd.DataFrame({ID_COLUMN: ["b", "c", "d"], "age": [30, 40, 50]})
@@ -56,7 +55,9 @@ class TestInstrumentedBackendDelegation:
         assert len(result) == 2
 
     def test_delegates_filter(
-        self, backend: InstrumentedBackend, sample_frame: pd.DataFrame
+        self,
+        backend: InstrumentedBackend,
+        sample_frame: pd.DataFrame,
     ) -> None:
         mask = sample_frame["name"] == "Alice"
         result = backend.filter(sample_frame, mask)
@@ -77,13 +78,16 @@ class TestInstrumentedBackendDelegation:
         assert len(result) == 2
 
     def test_delegates_sort(
-        self, backend: InstrumentedBackend, sample_frame: pd.DataFrame
+        self,
+        backend: InstrumentedBackend,
+        sample_frame: pd.DataFrame,
     ) -> None:
         result = backend.sort(sample_frame, by=["name"])
         assert result["name"].iloc[0] == "Alice"
 
     def test_delegates_name_property(
-        self, backend: InstrumentedBackend
+        self,
+        backend: InstrumentedBackend,
     ) -> None:
         assert backend.name == "pandas"
 
@@ -104,7 +108,9 @@ class TestOperationTimingMetrics:
         assert timings["join"][0] >= 0.0
 
     def test_filter_records_timing(
-        self, backend: InstrumentedBackend, sample_frame: pd.DataFrame
+        self,
+        backend: InstrumentedBackend,
+        sample_frame: pd.DataFrame,
     ) -> None:
         mask = sample_frame["name"] == "Bob"
         backend.filter(sample_frame, mask)
@@ -112,21 +118,25 @@ class TestOperationTimingMetrics:
         assert len(backend.operation_timings["filter"]) == 1
 
     def test_scan_entity_records_timing(
-        self, backend: InstrumentedBackend
+        self,
+        backend: InstrumentedBackend,
     ) -> None:
         source = pd.DataFrame({ID_COLUMN: ["a"], "x": [1]})
         backend.scan_entity(source, "Node")
         assert "scan_entity" in backend.operation_timings
 
     def test_aggregate_records_timing(
-        self, backend: InstrumentedBackend
+        self,
+        backend: InstrumentedBackend,
     ) -> None:
         df = pd.DataFrame({"g": ["a", "b"], "v": [1, 2]})
         backend.aggregate(df, ["g"], {"s": ("v", "sum")})
         assert "aggregate" in backend.operation_timings
 
     def test_sort_records_timing(
-        self, backend: InstrumentedBackend, sample_frame: pd.DataFrame
+        self,
+        backend: InstrumentedBackend,
+        sample_frame: pd.DataFrame,
     ) -> None:
         backend.sort(sample_frame, by=["name"])
         assert "sort" in backend.operation_timings

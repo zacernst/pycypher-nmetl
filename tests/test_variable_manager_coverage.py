@@ -11,7 +11,6 @@ Targets uncovered code paths:
 from __future__ import annotations
 
 from typing import Any
-from unittest.mock import patch
 
 import pytest
 from pycypher.ast_models import (
@@ -30,12 +29,11 @@ from pycypher.ast_models import (
 )
 from pycypher.exceptions import SecurityError
 from pycypher.variable_manager import (
+    _MAX_NAME_GENERATION_ATTEMPTS,
     VariableManager,
     _copy_field_value,
     _deep_copy_ast,
-    _MAX_NAME_GENERATION_ATTEMPTS,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -75,9 +73,7 @@ def _match(*paths: PatternPath) -> Match:
 def _return(*names: str) -> Return:
     """Build a RETURN clause."""
     return Return(
-        items=[
-            ReturnItem(expression=Variable(name=n), alias=None) for n in names
-        ],
+        items=[ReturnItem(expression=Variable(name=n), alias=None) for n in names],
     )
 
 
@@ -102,7 +98,9 @@ class TestGenerateUniqueNameExhaustion:
         for i in range(1, _MAX_NAME_GENERATION_ATTEMPTS + 1):
             existing.add(f"__vx_{i}")
 
-        with pytest.raises(SecurityError, match="Could not generate a unique variable name"):
+        with pytest.raises(
+            SecurityError, match="Could not generate a unique variable name",
+        ):
             manager.generate_unique_name("x", existing=existing)
 
     def test_succeeds_just_before_exhaustion(self) -> None:

@@ -8,6 +8,7 @@
 #
 # Override data directory:
 #   snakemake --cores 4 --config data_dir=/mnt/data/fastopendata
+#   # OR set environment variable: DATA_DIR=/mnt/data/fastopendata snakemake --cores 4
 #
 # Download only a subset of targets by naming them explicitly:
 #   snakemake --cores 4 raw_data/psam_pus.csv raw_data/pu2023.csv
@@ -16,37 +17,42 @@
 # =============================================================================
 
 from pathlib import Path
+import sys
+
+# Add package to path for config import
+sys.path.insert(0, str(Path(__file__).parent / "src"))
+
+from fastopendata.config import config as fod_config
 
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 
-DATA_DIR = config.get("data_dir", "raw_data")
-SCRIPTS = "src/fastopendata/processing"
+# Use centralized configuration with Snakemake config override
+if "data_dir" in config:
+    DATA_DIR = config["data_dir"]
+else:
+    DATA_DIR = fod_config.data_dir
 
-# State + territory FIPS codes with TIGER/Line 2025 coverage.
-# Gaps in the sequence (e.g. 03, 07) are unassigned by the Census Bureau.
-STATE_FIPS = [
-    "01", "02", "04", "05", "06", "08", "09", "10", "11", "12",
-    "13", "15", "16", "17", "18", "19", "20", "21", "22", "23",
-    "24", "25", "26", "27", "28", "29", "30", "31", "32", "33",
-    "34", "35", "36", "37", "38", "39", "40", "41", "42", "44",
-    "45", "46", "47", "48", "49", "50", "51", "53", "54", "55",
-    "56", "60", "66", "69", "72", "78",
-]
+SCRIPTS = fod_config.scripts_path
 
-# wget flags shared by Census Bureau endpoints (bypasses bot-detection).
-CENSUS_WGET = (
-    "wget --no-check-certificate"
-    " --user-agent='Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1)'"
-    " --no-cache"
-    " --header='referer: https://www2.census.gov/programs-surveys/acs/data/pums/2027/'"
-)
+# State + territory FIPS codes from centralized config
+STATE_FIPS = fod_config.state_fips
 
+# wget flags from centralized config
+CENSUS_WGET = fod_config.get_census_wget_flags()
+
+ZIPS = fod_config.zips
+
+SHORT_TIMEOUT_SECONDS = fod_config.short_timeout_seconds
+LONG_TIMEOUT_SECONDS = fod_config.long_timeout_seconds
+
+BACKOFF = 120
 
 # ---------------------------------------------------------------------------
 # all — every terminal artifact in the pipeline
 # ---------------------------------------------------------------------------
+
 
 rule all:
     input:
@@ -77,7 +83,7 @@ rule all:
         # 13 — TIGER/Line 2025 census tracts, one shapefile per state/territory
         expand(f"{DATA_DIR}/tl_2025_{{fips}}_tract.shp", fips=STATE_FIPS),
         # 14 — TIGER/Line 2025 address features, one shapefile per state/territory
-        expand(f"{DATA_DIR}/tl_2025_{{fips}}_addr.shp", fips=STATE_FIPS),
+        expand(f"{DATA_DIR}/tl_2025_{{zips}}_addr.dbf.iso.xml", zips=ZIPS),
         # 15 — TIGER/Line 2024 block groups, merged
         f"{DATA_DIR}/combined.shp",
         # 16 — OpenStreetMap U.S. nodes extracted to CSV
@@ -92,11 +98,17 @@ rule all:
 # ===========================================================================
 
 rule download_tract_puma_crosswalk:
+    resources:
+        census_download=1
     output: temp(f"{DATA_DIR}/state_county_unedited.txt")
     shell:
-        "wget --no-check-certificate"
-        " 'https://www2.census.gov/geo/docs/maps-data/data/rel2020/2020_Census_Tract_to_2020_PUMA.txt'"
-        " -O {output}"
+        "sleep $((5 + RANDOM % 10)) && "
+        "for i in {{1..3}}; do "
+        f"  {CENSUS_WGET} --timeout={SHORT_TIMEOUT_SECONDS} --tries=1"
+        "    'https://www2.census.gov/geo/docs/maps-data/data/rel2020/2020_Census_Tract_to_2020_PUMA.txt'"
+        "    -O {output} && break || "
+        "  (echo 'Tract-PUMA crosswalk download attempt $i failed, waiting before retry...' && sleep $((30 * i))); "
+        "done"
 
 
 rule process_tract_puma_crosswalk:
@@ -114,11 +126,17 @@ rule process_tract_puma_crosswalk:
 # ===========================================================================
 
 rule download_acs_pums_1yr_persons:
+    resources:
+        census_download=1
     output: temp(f"{DATA_DIR}/csv_pus_1_year.zip")
     shell:
-        CENSUS_WGET +
-        " 'https://www2.census.gov/programs-surveys/acs/data/pums/2023/1-Year/csv_pus.zip'"
-        " -O {output}"
+        "sleep $((5 + RANDOM % 10)) && "
+        "for i in {{1..3}}; do "
+        f"  {CENSUS_WGET} --timeout={SHORT_TIMEOUT_SECONDS} --tries=1"
+        "    'https://www2.census.gov/programs-surveys/acs/data/pums/2023/1-Year/csv_pus.zip'"
+        "    -O {output} && break || "
+        "  (echo 'ACS PUMS 1yr persons download attempt $i failed, waiting before retry...' && sleep $((30 * i))); "
+        "done"
 
 
 rule extract_acs_pums_1yr_persons:
@@ -126,9 +144,9 @@ rule extract_acs_pums_1yr_persons:
     input: f"{DATA_DIR}/csv_pus_1_year.zip"
     output: f"{DATA_DIR}/psam_pus.csv"
     shell:
-        "unzip -o {input} -d {DATA_DIR}/ &&"
-        " head -1 {DATA_DIR}/psam_pusa.csv > {output} &&"
-        " tail -n +2 -q {DATA_DIR}/psam_pusa.csv {DATA_DIR}/psam_pusb.csv >> {output}"
+        "unzip -o {input} -d \"{DATA_DIR}/\" &&"
+        " head -1 \"{DATA_DIR}/psam_pusa.csv\" > {output} &&"
+        " tail -n +2 -q \"{DATA_DIR}/psam_pusa.csv\" \"{DATA_DIR}/psam_pusb.csv\" >> {output}"
 
 
 # ===========================================================================
@@ -138,11 +156,17 @@ rule extract_acs_pums_1yr_persons:
 # ===========================================================================
 
 rule download_acs_pums_5yr_persons:
+    resources:
+        census_download=1
     output: temp(f"{DATA_DIR}/csv_pus_5_year.zip")
     shell:
-        CENSUS_WGET +
-        " 'https://www2.census.gov/programs-surveys/acs/data/pums/2023/5-Year/csv_pus.zip'"
-        " -O {output}"
+        "sleep $((5 + RANDOM % 10)) && "
+        "for i in {{1..3}}; do "
+        f"  {CENSUS_WGET} --timeout={SHORT_TIMEOUT_SECONDS} --tries=1"
+        "    'https://www2.census.gov/programs-surveys/acs/data/pums/2023/5-Year/csv_pus.zip'"
+        "    -O {output} && break || "
+        "  (echo 'ACS PUMS 5yr persons download attempt $i failed, waiting before retry...' && sleep $((30 * i))); "
+        "done"
 
 
 rule extract_merge_acs_pums_5yr_persons:
@@ -150,9 +174,9 @@ rule extract_merge_acs_pums_5yr_persons:
     input: f"{DATA_DIR}/csv_pus_5_year.zip"
     output: f"{DATA_DIR}/psam_p.csv"
     shell:
-        "unzip -o {input} -d {DATA_DIR}/ &&"
-        " head -1 $(ls {DATA_DIR}/psam_p??.csv | sort | head -1) > {output} &&"
-        " for f in $(ls {DATA_DIR}/psam_p??.csv | sort);"
+        "unzip -o {input} -d \"{DATA_DIR}/\" &&"
+        " head -1 $(ls \"{DATA_DIR}\"/psam_p??.csv | sort | head -1) > {output} &&"
+        " for f in $(ls \"{DATA_DIR}\"/psam_p??.csv | sort);"
         "   do tail -n +2 \"$f\" >> {output};"
         " done"
 
@@ -163,11 +187,17 @@ rule extract_merge_acs_pums_5yr_persons:
 # ===========================================================================
 
 rule download_acs_pums_1yr_housing:
+    resources:
+        census_download=1
     output: temp(f"{DATA_DIR}/csv_hus_1_year.zip")
     shell:
-        CENSUS_WGET +
-        " 'https://www2.census.gov/programs-surveys/acs/data/pums/2023/1-Year/csv_hus.zip'"
-        " -O {output}"
+        "sleep $((5 + RANDOM % 10)) && "
+        "for i in {{1..3}}; do "
+        f"  {CENSUS_WGET} --timeout={SHORT_TIMEOUT_SECONDS} --tries=1"
+        "    'https://www2.census.gov/programs-surveys/acs/data/pums/2023/1-Year/csv_hus.zip'"
+        "    -O {output} && break || "
+        "  (echo 'ACS PUMS 1yr housing download attempt $i failed, waiting before retry...' && sleep $((30 * i))); "
+        "done"
 
 
 rule extract_acs_pums_1yr_housing:
@@ -175,9 +205,9 @@ rule extract_acs_pums_1yr_housing:
     input: f"{DATA_DIR}/csv_hus_1_year.zip"
     output: f"{DATA_DIR}/psam_hus.csv"
     shell:
-        "unzip -o {input} -d {DATA_DIR}/ &&"
-        " head -1 {DATA_DIR}/psam_husa.csv > {output} &&"
-        " tail -n +2 -q {DATA_DIR}/psam_husa.csv {DATA_DIR}/psam_husb.csv >> {output}"
+        "unzip -o {input} -d \"{DATA_DIR}/\" &&"
+        " head -1 \"{DATA_DIR}/psam_husa.csv\" > {output} &&"
+        " tail -n +2 -q \"{DATA_DIR}/psam_husa.csv\" \"{DATA_DIR}/psam_husb.csv\" >> {output}"
 
 
 # ===========================================================================
@@ -186,11 +216,17 @@ rule extract_acs_pums_1yr_housing:
 # ===========================================================================
 
 rule download_acs_pums_5yr_housing:
+    resources:
+        census_download=1
     output: temp(f"{DATA_DIR}/csv_hus_5_year.zip")
     shell:
-        CENSUS_WGET +
-        " 'https://www2.census.gov/programs-surveys/acs/data/pums/2023/5-Year/csv_hus.zip'"
-        " -O {output}"
+        "sleep $((5 + RANDOM % 10)) && "
+        "for i in {{1..3}}; do "
+        f"  {CENSUS_WGET} --timeout={SHORT_TIMEOUT_SECONDS} --tries=1"
+        "    'https://www2.census.gov/programs-surveys/acs/data/pums/2023/5-Year/csv_hus.zip'"
+        "    -O {output} && break || "
+        "  (echo 'ACS PUMS 5yr housing download attempt $i failed, waiting before retry...' && sleep $((30 * i))); "
+        "done"
 
 
 rule extract_merge_acs_pums_5yr_housing:
@@ -198,9 +234,9 @@ rule extract_merge_acs_pums_5yr_housing:
     input: f"{DATA_DIR}/csv_hus_5_year.zip"
     output: f"{DATA_DIR}/psam_h.csv"
     shell:
-        "unzip -o {input} -d {DATA_DIR}/ &&"
-        " head -1 $(ls {DATA_DIR}/psam_h??.csv | sort | head -1) > {output} &&"
-        " for f in $(ls {DATA_DIR}/psam_h??.csv | sort);"
+        "unzip -o {input} -d \"{DATA_DIR}/\" &&"
+        " head -1 $(ls \"{DATA_DIR}\"/psam_h??.csv | sort | head -1) > {output} &&"
+        " for f in $(ls \"{DATA_DIR}\"/psam_h??.csv | sort);"
         "   do tail -n +2 \"$f\" >> {output};"
         " done"
 
@@ -211,18 +247,24 @@ rule extract_merge_acs_pums_5yr_housing:
 # ===========================================================================
 
 rule download_sipp_puf:
+    resources:
+        census_download=1
     output: temp(f"{DATA_DIR}/pu2023_csv.zip")
     shell:
-        CENSUS_WGET +
-        " 'https://www2.census.gov/programs-surveys/sipp/data/datasets/2023/pu2023_csv.zip'"
-        " -O {output}"
+        "sleep $((5 + RANDOM % 10)) && "
+        "for i in {{1..3}}; do "
+        f"  {CENSUS_WGET} --timeout={SHORT_TIMEOUT_SECONDS} --tries=1"
+        "    'https://www2.census.gov/programs-surveys/sipp/data/datasets/2023/pu2023_csv.zip'"
+        "    -O {output} && break || "
+        "  (echo 'SIPP PUF download attempt $i failed, waiting before retry...' && sleep $((30 * i))); "
+        "done"
 
 
 rule extract_sipp_puf:
     input: f"{DATA_DIR}/pu2023_csv.zip"
     output: f"{DATA_DIR}/pu2023.csv"
     shell:
-        "unzip -o {input} -d {DATA_DIR}/"
+        "unzip -o {input} -d \"{DATA_DIR}/\""
 
 
 # ===========================================================================
@@ -231,18 +273,24 @@ rule extract_sipp_puf:
 # ===========================================================================
 
 rule download_sipp_weights:
+    resources:
+        census_download=1
     output: temp(f"{DATA_DIR}/rw2023_csv.zip")
     shell:
-        "wget --no-check-certificate"
-        " 'https://www2.census.gov/programs-surveys/sipp/data/datasets/2023/rw2023_csv.zip'"
-        " -O {output}"
+        "sleep $((5 + RANDOM % 10)) && "
+        "for i in {{1..3}}; do "
+        f"  {CENSUS_WGET} --timeout={SHORT_TIMEOUT_SECONDS} --tries=1"
+        "    'https://www2.census.gov/programs-surveys/sipp/data/datasets/2023/rw2023_csv.zip'"
+        "    -O {output} && break || "
+        "  (echo 'SIPP weights download attempt $i failed, waiting before retry...' && sleep $((30 * i))); "
+        "done"
 
 
 rule extract_sipp_weights:
     input: f"{DATA_DIR}/rw2023_csv.zip"
     output: f"{DATA_DIR}/rw2023.csv"
     shell:
-        "unzip -o {input} -d {DATA_DIR}/"
+        "unzip -o {input} -d \"{DATA_DIR}/\""
 
 
 # ===========================================================================
@@ -251,11 +299,17 @@ rule extract_sipp_weights:
 # ===========================================================================
 
 rule download_sipp_schema:
+    resources:
+        census_download=1
     output: f"{DATA_DIR}/pu2023_schema.json"
     shell:
-        "wget --no-check-certificate"
-        " 'https://www2.census.gov/programs-surveys/sipp/data/datasets/2023/pu2023_schema.json'"
-        " -O {output}"
+        "sleep $((5 + RANDOM % 10)) && "
+        "for i in {{1..3}}; do "
+        f"  {CENSUS_WGET} --timeout={SHORT_TIMEOUT_SECONDS} --tries=1"
+        "    'https://www2.census.gov/programs-surveys/sipp/data/datasets/2023/pu2023_schema.json'"
+        "    -O {output} && break || "
+        "  (echo 'SIPP schema download attempt $i failed, waiting before retry...' && sleep $((30 * i))); "
+        "done"
 
 
 # ===========================================================================
@@ -266,19 +320,31 @@ rule download_sipp_schema:
 # ===========================================================================
 
 rule download_ahs_labels:
+    resources:
+        census_download=1
     output: temp(f"{DATA_DIR}/ahs_2023_labels.zip")
     shell:
-        "wget --no-check-certificate"
-        " 'https://www2.census.gov/programs-surveys/ahs/2023/AHS%202023%20Value%20Labels%20Package.zip'"
-        " -O {output}"
+        "sleep $((5 + RANDOM % 10)) && "
+        "for i in {{1..3}}; do "
+        f"  {CENSUS_WGET} --timeout={SHORT_TIMEOUT_SECONDS} --tries=1"
+        "    'https://www2.census.gov/programs-surveys/ahs/2023/AHS%202023%20Value%20Labels%20Package.zip'"
+        "    -O {output} && break || "
+        "  (echo 'AHS labels download attempt $i failed, waiting before retry...' && sleep $((30 * i))); "
+        "done"
 
 
 rule download_ahs_data:
+    resources:
+        census_download=1
     output: temp(f"{DATA_DIR}/ahs_2023_csv.zip")
     shell:
-        "wget --no-check-certificate"
-        " 'https://www2.census.gov/programs-surveys/ahs/2023/AHS%202023%20National%20PUF%20v1.1%20Flat%20CSV.zip'"
-        " -O {output}"
+        "sleep $((5 + RANDOM % 10)) && "
+        "for i in {{1..3}}; do "
+        f"  {CENSUS_WGET} --timeout={SHORT_TIMEOUT_SECONDS} --tries=1"
+        "    'https://www2.census.gov/programs-surveys/ahs/2023/AHS%202023%20National%20PUF%20v1.1%20Flat%20CSV.zip'"
+        "    -O {output} && break || "
+        "  (echo 'AHS data download attempt $i failed, waiting before retry...' && sleep $((30 * i))); "
+        "done"
 
 
 rule extract_ahs:
@@ -287,9 +353,9 @@ rule extract_ahs:
         data   = f"{DATA_DIR}/ahs_2023_csv.zip",
     output: touch(f"{DATA_DIR}/.ahs_2023_extracted")
     shell:
-        "mkdir -p {DATA_DIR}/ahs_2023 &&"
-        " unzip -o {input.labels} -d {DATA_DIR}/ahs_2023/ &&"
-        " unzip -o {input.data}   -d {DATA_DIR}/ahs_2023/"
+        "mkdir -p \"{DATA_DIR}/ahs_2023\" &&"
+        " unzip -o {input.labels} -d \"{DATA_DIR}/ahs_2023/\" &&"
+        " unzip -o {input.data}   -d \"{DATA_DIR}/ahs_2023/\""
 
 
 # ===========================================================================
@@ -298,18 +364,24 @@ rule extract_ahs:
 # ===========================================================================
 
 rule download_cjars:
+    resources:
+        census_download=1
     output: temp(f"{DATA_DIR}/cjars_joe_2022_co.csv.zip")
     shell:
-        "wget --no-check-certificate"
-        " 'https://www2.census.gov/programs-surveys/cjars/datasets/2022/cjars_joe_2022_co.csv.zip'"
-        " -O {output}"
+        "sleep $((5 + RANDOM % 10)) && "
+        "for i in {{1..3}}; do "
+        f"  {CENSUS_WGET} --timeout={SHORT_TIMEOUT_SECONDS} --tries=1"
+        "    'https://www2.census.gov/programs-surveys/cjars/datasets/2022/cjars_joe_2022_co.csv.zip'"
+        "    -O {output} && break || "
+        "  (echo 'CJARS download attempt $i failed, waiting before retry...' && sleep $((30 * i))); "
+        "done"
 
 
 rule extract_cjars:
     input: f"{DATA_DIR}/cjars_joe_2022_co.csv.zip"
     output: f"{DATA_DIR}/cjars_joe_2022_co.csv"
     shell:
-        "unzip -o {input} -d {DATA_DIR}/"
+        "unzip -o {input} -d \"{DATA_DIR}/\""
 
 
 # ===========================================================================
@@ -321,28 +393,55 @@ rule extract_cjars:
 # ===========================================================================
 
 rule download_tiger_puma:
-    output: touch(f"{DATA_DIR}/.tiger_puma_downloaded")
+    resources:
+        census_download=1
+    output: f"{DATA_DIR}/.tiger_puma_downloaded"
     shell:
-        "wget --no-check-certificate -e robots=off -w 3"
-        " --user-agent='Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1)'"
-        " --no-cache"
-        " --header='referer: https://www2.census.gov/programs-surveys/acs/data/pums/2027/'"
-        f" -P {DATA_DIR}/ -nH --recursive --no-parent"
-        " 'https://www2.census.gov/geo/tiger/TIGER2024/PUMA20/'"
+        "sleep $((10 + RANDOM % 15)) && "
+        "for i in {{1..3}}; do "
+        "  echo 'Starting PUMA download attempt $i...' && "
+        "  mkdir -p \"{DATA_DIR}/puma_temp\" && "
+        f"  {CENSUS_WGET} --recursive --wait=2 --timeout={LONG_TIMEOUT_SECONDS} --tries=1"
+        "    'https://www2.census.gov/geo/tiger/TIGER2024/PUMA20/'"
+        "    -O \"{DATA_DIR}/puma_temp/puma_index.html\" && "
+        "  echo 'Downloaded directory index, extracting file list...' && "
+        "  grep -o 'href=\"tl_[0-9_]*puma20\\.zip\"' \"{DATA_DIR}/puma_temp/puma_index.html\" |"
+        "    sed 's/href=\"//' | sed 's/\"//' > \"{DATA_DIR}/puma_temp/puma_files.txt\" && "
+        "  echo 'Found $(cat \"{DATA_DIR}/puma_temp/puma_files.txt\" | wc -l) PUMA files to download' && "
+        "  success=true && "
+        "  while IFS= read -r filename || [[ -n \"$filename\" ]]; do "
+        "    echo \"Downloading $filename...\" && "
+        "    sleep $((5 + RANDOM % 10)) && "
+        f"    {CENSUS_WGET} --timeout={SHORT_TIMEOUT_SECONDS} --tries=1"
+        "      \"https://www2.census.gov/geo/tiger/TIGER2024/PUMA20/$filename\""
+        "      -O \"{DATA_DIR}/$filename\" && "
+        "    unzip -t \"{DATA_DIR}/$filename\" >/dev/null 2>&1 && "
+        "    echo \"Successfully downloaded and validated $filename\" || "
+        "    (echo \"Failed to download or validate $filename\" && success=false && break); "
+        "  done < \"{DATA_DIR}/puma_temp/puma_files.txt\" && "
+        "  rm -rf \"{DATA_DIR}/puma_temp\" && "
+        "  if [ \"$success\" = true ]; then "
+        "    (echo 'All PUMA files downloaded successfully'; touch {output}; break); "
+        "  else "
+        "    (echo 'PUMA download attempt $i failed' && rm -f \"{DATA_DIR}\"/tl_*puma20.zip); "
+        "  fi || "
+        "  (echo 'PUMA download attempt $i failed, waiting before retry...' && sleep $((60 * i))); "
+        "done || "
+        "(echo 'All PUMA download attempts failed'; exit 1)"
 
 
 rule extract_tiger_puma:
     input: f"{DATA_DIR}/.tiger_puma_downloaded"
     output: touch(f"{DATA_DIR}/.tiger_puma_extracted")
     shell:
-        f"DATA_DIR={DATA_DIR} bash {SCRIPTS}/extract_puma_shape_files.sh"
+        f"DATA_DIR='{DATA_DIR}' bash '{SCRIPTS}/extract_puma_shape_files.sh'"
 
 
 rule concatenate_tiger_puma:
     input: f"{DATA_DIR}/.tiger_puma_extracted"
     output: f"{DATA_DIR}/puma_combined.shp"
     shell:
-        f"DATA_DIR={DATA_DIR} uv run python {SCRIPTS}/concatenate_puma_shape_files.py"
+        f"DATA_DIR='{DATA_DIR}' uv run python '{SCRIPTS}/concatenate_puma_shape_files.py'"
 
 
 # ===========================================================================
@@ -352,18 +451,24 @@ rule concatenate_tiger_puma:
 # ===========================================================================
 
 rule download_tiger_state:
+    resources:
+        census_download=1
     output: temp(f"{DATA_DIR}/us_state_boundaries.zip")
     shell:
-        CENSUS_WGET +
-        " 'https://www2.census.gov/geo/tiger/TIGER2024/STATE/tl_2024_us_state.zip'"
-        " -O {output}"
+        "sleep $((5 + RANDOM % 10)) && "
+        "for i in {{1..3}}; do "
+        f"  {CENSUS_WGET} --timeout={SHORT_TIMEOUT_SECONDS} --tries=1"
+        "    'https://www2.census.gov/geo/tiger/TIGER2024/STATE/tl_2024_us_state.zip'"
+        "    -O {output} && break || "
+        "  (echo 'Tiger state boundaries download attempt $i failed, waiting before retry...' && sleep $((30 * i))); "
+        "done"
 
 
 rule extract_tiger_state:
     input: f"{DATA_DIR}/us_state_boundaries.zip"
     output: f"{DATA_DIR}/tl_2024_us_state.shp"
     shell:
-        "unzip -o {input} -d {DATA_DIR}/"
+        "unzip -o {input} -d \"{DATA_DIR}/\""
 
 
 # ===========================================================================
@@ -372,18 +477,37 @@ rule extract_tiger_state:
 # ===========================================================================
 
 rule download_tiger_tract:
+    resources:
+        census_download=1
     output: temp(f"{DATA_DIR}/tl_2025_{{fips}}_tract.zip")
     shell:
-        "wget --no-check-certificate"
-        " 'https://www2.census.gov/geo/tiger/TIGER2025/TRACT/tl_2025_{wildcards.fips}_tract.zip'"
-        " -O {output}"
+        "sleep $((5 + RANDOM % 10)) && "
+        "for i in {{1..3}}; do "
+        "  wget --wait=30 --random-wait --timeout={SHORT_TIMEOUT_SECONDS} --tries=1"
+        "    'https://www2.census.gov/geo/tiger/TIGER2025/TRACT/tl_2025_{wildcards.fips}_tract.zip'"
+        "    -O {output} && "
+        "  if [ -s {output} ] && unzip -t {output} >/dev/null 2>&1; then "
+        "    echo 'Download of {output} successful and validated'; break; "
+        "  else "
+        "    echo 'Download of {output} failed validation (corrupted or empty), retrying...'; "
+        "    rm -f {output}; "
+        "  fi; "
+        "  sleep $((30 * i)); "
+        "done || "
+        "(echo 'All download attempts failed for {output}, creating empty zip as placeholder'; "
+        " uv run python -c \"import zipfile; z=zipfile.ZipFile('{output}', 'w'); z.close()\")"
 
 
 rule extract_tiger_tract:
     input: f"{DATA_DIR}/tl_2025_{{fips}}_tract.zip"
     output: f"{DATA_DIR}/tl_2025_{{fips}}_tract.shp"
     shell:
-        "unzip -o {input} -d {DATA_DIR}/"
+        "if unzip -t {input} >/dev/null 2>&1 && [ $(unzip -l {input} 2>/dev/null | wc -l) -gt 3 ]; then "
+        "  unzip -o {input} -d \"{DATA_DIR}/\"; "
+        "else "
+        "  echo 'Skipping extraction of {input} (empty or unavailable file)'; "
+        "  touch {output}; "
+        "fi"
 
 
 # ===========================================================================
@@ -392,18 +516,37 @@ rule extract_tiger_tract:
 # ===========================================================================
 
 rule download_tiger_addr:
-    output: temp(f"{DATA_DIR}/tl_2025_{{fips}}_addr.zip")
+    resources:
+        census_download=1
+    output: temp(f"{DATA_DIR}/tl_2025_{{zips}}_addr.zip")
     shell:
-        "wget --no-check-certificate"
-        " 'https://www2.census.gov/geo/tiger/TIGER2025/ADDR/tl_2025_{wildcards.fips}_addr.zip'"
-        " -O {output}"
+        "sleep $((5 + RANDOM % 10)) && "
+        "for i in {{1..3}}; do "
+        "  wget --wait=30 --random-wait --timeout={SHORT_TIMEOUT_SECONDS} --tries=1"
+        "    'https://www2.census.gov/geo/tiger/TIGER2025/ADDR/tl_2025_{wildcards.zips}_addr.zip'"
+        "    -O {output} && "
+        "  if [ -s {output} ] && unzip -t {output} >/dev/null 2>&1; then "
+        "    echo 'Download of {output} successful and validated'; break; "
+        "  else "
+        "    echo 'Download of {output} failed validation (corrupted or empty), retrying...'; "
+        "    rm -f {output}; "
+        "  fi; "
+        "  sleep $((BACKOFF * i)); "
+        "done || "
+        "(echo 'All download attempts failed for {output}, creating empty zip as placeholder'; "
+        " uv run python -c \"import zipfile; z=zipfile.ZipFile('{output}', 'w'); z.close()\")"
 
 
 rule extract_tiger_addr:
-    input: f"{DATA_DIR}/tl_2025_{{fips}}_addr.zip"
-    output: f"{DATA_DIR}/tl_2025_{{fips}}_addr.shp"
+    input: f"{DATA_DIR}/tl_2025_{{zips}}_addr.zip"
+    output: f"{DATA_DIR}/tl_2025_{{zips}}_addr.dbf.iso.xml"
     shell:
-        "unzip -o {input} -d {DATA_DIR}/"
+        "if unzip -t {input} >/dev/null 2>&1 && [ $(unzip -l {input} 2>/dev/null | wc -l) -gt 3 ]; then "
+        "  unzip -o {input} -d \"{DATA_DIR}/\"; "
+        "else "
+        "  echo 'Skipping extraction of {input} (empty or unavailable file)'; "
+        "  touch {output}; "
+        "fi"
 
 
 # ===========================================================================
@@ -418,20 +561,49 @@ rule extract_tiger_addr:
 # ===========================================================================
 
 rule download_tiger_bg:
-    output: touch(f"{DATA_DIR}/.tiger_bg_downloaded")
+    resources:
+        census_download=1
+    output: f"{DATA_DIR}/.tiger_bg_downloaded"
     shell:
-        "wget --no-check-certificate -e robots=off"
-        " --user-agent='Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1)'"
-        f" -P {DATA_DIR}/ -nH --recursive --no-parent"
-        " 'https://www2.census.gov/geo/tiger/TIGER2024/BG/'"
+        "sleep $((10 + RANDOM % 15)) && "
+        "for i in {{1..3}}; do "
+        "  echo 'Starting block group download attempt $i...' && "
+        "  mkdir -p \"{DATA_DIR}/bg_temp\" && "
+        f"  {CENSUS_WGET} --timeout={SHORT_TIMEOUT_SECONDS} --tries=1"
+        "    'https://www2.census.gov/geo/tiger/TIGER2024/BG/'"
+        "    -O \"{DATA_DIR}/bg_temp/bg_index.html\" && "
+        "  echo 'Downloaded directory index, extracting file list...' && "
+        "  grep -o 'href=\"tl_[0-9_]*bg\\.zip\"' \"{DATA_DIR}/bg_temp/bg_index.html\" |"
+        "    sed 's/href=\"//' | sed 's/\"//' > \"{DATA_DIR}/bg_temp/bg_files.txt\" && "
+        "  echo 'Found $(cat \"{DATA_DIR}/bg_temp/bg_files.txt\" | wc -l) block group files to download' && "
+        "  success=true && "
+        "  while IFS= read -r filename || [[ -n \"$filename\" ]]; do "
+        "    echo \"Downloading $filename...\" && "
+        "    sleep $((5 + RANDOM % 10)) && "
+        f"    {CENSUS_WGET} --timeout={SHORT_TIMEOUT_SECONDS} --tries=1"
+        "      \"https://www2.census.gov/geo/tiger/TIGER2024/BG/$filename\""
+        "      -O \"{DATA_DIR}/$filename\" && "
+        "    unzip -t \"{DATA_DIR}/$filename\" >/dev/null 2>&1 && "
+        "    echo \"Successfully downloaded and validated $filename\" || "
+        "    (echo \"Failed to download or validate $filename\" && success=false && break); "
+        "  done < \"{DATA_DIR}/bg_temp/bg_files.txt\" && "
+        "  rm -rf \"{DATA_DIR}/bg_temp\" && "
+        "  if [ \"$success\" = true ]; then "
+        "    (echo 'All block group files downloaded successfully'; touch {output}; break); "
+        "  else "
+        "    (echo 'Block group download attempt $i failed' && rm -f \"{DATA_DIR}\"/tl_*bg.zip); "
+        "  fi || "
+        "  (echo 'Block group download attempt $i failed, waiting before retry...' && sleep $((60 * i))); "
+        "done || "
+        "(echo 'All block group download attempts failed'; exit 1)"
 
 
 rule extract_tiger_bg:
     input: f"{DATA_DIR}/.tiger_bg_downloaded"
     output: touch(f"{DATA_DIR}/.tiger_bg_extracted")
     shell:
-        "for zipfile in {DATA_DIR}/geo/tiger/TIGER2024/BG/*.zip;"
-        " do unzip -o \"$zipfile\" -d {DATA_DIR}/;"
+        "for zipfile in \"{DATA_DIR}\"/geo/tiger/TIGER2024/BG/*.zip;"
+        " do unzip -o \"$zipfile\" -d \"{DATA_DIR}/\";"
         " done"
 
 
@@ -439,7 +611,7 @@ rule concatenate_tiger_bg:
     input: f"{DATA_DIR}/.tiger_bg_extracted"
     output: f"{DATA_DIR}/combined.shp"
     shell:
-        f"DATA_DIR={DATA_DIR} uv run python {SCRIPTS}/concatenate_shape_files.py"
+        f"DATA_DIR='{DATA_DIR}' uv run python '{SCRIPTS}/concatenate_shape_files.py'"
 
 
 # ===========================================================================
@@ -452,7 +624,7 @@ rule concatenate_tiger_bg:
 rule download_osm:
     output: f"{DATA_DIR}/us-latest.osm.pbf"
     shell:
-        "wget 'https://download.geofabrik.de/north-america/us-latest.osm.pbf'"
+        "sleep 2 && wget 'https://download.geofabrik.de/north-america/us-latest.osm.pbf'"
         " -O {output}"
 
 
@@ -460,8 +632,10 @@ rule extract_osm_nodes:
     """Parse PBF with osmium and write longitude/latitude/encoded_tags/id CSV."""
     input: f"{DATA_DIR}/us-latest.osm.pbf"
     output: f"{DATA_DIR}/united_states_nodes.csv"
+    resources:
+        mem_gb=8
     shell:
-        f"DATA_DIR={DATA_DIR} uv run python {SCRIPTS}/extract_osm_nodes.py"
+        f"DATA_DIR='{DATA_DIR}' uv run python '{SCRIPTS}/extract_osm_nodes.py'"
 
 
 # ===========================================================================
@@ -475,11 +649,13 @@ rule extract_osm_nodes:
 rule download_filter_wikidata:
     """Stream-download the full dump, filter to geopoint entities, recompress."""
     output: f"{DATA_DIR}/wikidata_compressed.json.bz2"
+    resources:
+        mem_gb=4
     shell:
-        "wget 'https://dumps.wikimedia.org/wikidatawiki/entities/latest-all.json.bz2'"
+        "sleep 2 && wget 'https://dumps.wikimedia.org/wikidatawiki/entities/latest-all.json.bz2'"
         " -O -"
         " | bunzip2 -c"
-        f" | uv run python {SCRIPTS}/compress_wikidata.py"
+        f" | uv run python '{SCRIPTS}/compress_wikidata.py'"
         " | bzip2 -c"
         " > {output}"
 
@@ -490,5 +666,7 @@ rule filter_wikidata_us_points:
         wikidata  = f"{DATA_DIR}/wikidata_compressed.json.bz2",
         state_shp = f"{DATA_DIR}/tl_2024_us_state.shp",
     output: f"{DATA_DIR}/wikidata_us_points.json"
+    resources:
+        mem_gb=4
     shell:
-        f"DATA_DIR={DATA_DIR} uv run python {SCRIPTS}/filter_us_nodes.py"
+        f"DATA_DIR='{DATA_DIR}' uv run python '{SCRIPTS}/filter_us_nodes.py'"

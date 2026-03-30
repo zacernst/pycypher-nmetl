@@ -27,20 +27,20 @@ from pycypher.relational_models import (
 from pycypher.star import Star
 
 
-@pytest.fixture()
+@pytest.fixture
 def empty_star() -> Star:
     return Star(
         context=Context(
             entity_mapping=EntityMapping(),
             relationship_mapping=RelationshipMapping(),
-        )
+        ),
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def word_star() -> Star:
     df = pd.DataFrame(
-        {ID_COLUMN: [1, 2, 3], "word": ["hello", "world", "abc"]}
+        {ID_COLUMN: [1, 2, 3], "word": ["hello", "world", "abc"]},
     )
     t = EntityTable(
         entity_type="Word",
@@ -54,7 +54,7 @@ def word_star() -> Star:
         context=Context(
             entity_mapping=EntityMapping(mapping={"Word": t}),
             relationship_mapping=RelationshipMapping(),
-        )
+        ),
     )
 
 
@@ -97,11 +97,11 @@ class TestCharAtFunction:
         assert r["c"].iloc[0] is None or pd.isna(r["c"].iloc[0])
 
     def test_does_not_raise(self, empty_star: Star) -> None:
-        """charAt must not raise for valid inputs."""
+        """CharAt must not raise for valid inputs."""
         empty_star.execute_query("RETURN charAt('abc', 1) AS c")
 
     def test_in_available_functions(self, empty_star: Star) -> None:
-        """charAt must appear in available_functions() (lowercased)."""
+        """CharAt must appear in available_functions() (lowercased)."""
         fns = empty_star.available_functions()
         assert "charat" in fns or "charAt" in fns
 
@@ -109,7 +109,7 @@ class TestCharAtFunction:
         """charAt(w.word, 0) extracts the first char for each row."""
         r = word_star.execute_query(
             "MATCH (w:Word) RETURN w.word AS word, charAt(w.word, 0) AS first "
-            "ORDER BY w.word"
+            "ORDER BY w.word",
         )
         result = dict(zip(r["word"], r["first"]))
         assert result["abc"] == "a"
@@ -119,6 +119,6 @@ class TestCharAtFunction:
     def test_in_where_clause(self, word_star: Star) -> None:
         """WHERE charAt(w.word, 0) = 'h' filters correctly."""
         r = word_star.execute_query(
-            "MATCH (w:Word) WHERE charAt(w.word, 0) = 'h' RETURN w.word AS word"
+            "MATCH (w:Word) WHERE charAt(w.word, 0) = 'h' RETURN w.word AS word",
         )
         assert list(r["word"]) == ["hello"]

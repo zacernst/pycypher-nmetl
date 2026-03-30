@@ -1,5 +1,4 @@
-"""
-Integration tests for NullCheck and StringPredicate WHERE clause predicates.
+"""Integration tests for NullCheck and StringPredicate WHERE clause predicates.
 
 Tests via Star.execute_query() (end-to-end via BindingFrame path).
 
@@ -44,7 +43,7 @@ def pred_df():
             ],
             "tag": ["admin", "user", "admin", "guest", "user", "guest"],
             "score": [85, 72, 91, 68, 79, 55],
-        }
+        },
     )
 
 
@@ -73,7 +72,7 @@ def pred_context(pred_df):
 def execute_cypher(context: Context, where_clause: str) -> list[str]:
     star = Star(context=context)
     result = star.execute_query(
-        f"MATCH (p:Person) WHERE {where_clause} RETURN p.name AS name"
+        f"MATCH (p:Person) WHERE {where_clause} RETURN p.name AS name",
     )
     return sorted(result["name"].dropna().tolist())
 
@@ -89,14 +88,14 @@ class TestNullCheckIntegration:
     def test_where_is_null(self, pred_context):
         star = Star(context=pred_context)
         result = star.execute_query(
-            "MATCH (p:Person) WHERE p.name IS NULL RETURN p.email AS email"
+            "MATCH (p:Person) WHERE p.name IS NULL RETURN p.email AS email",
         )
         assert result["email"].tolist() == ["dave@test.org"]
 
     def test_where_is_not_null(self, pred_context):
         star = Star(context=pred_context)
         result = star.execute_query(
-            "MATCH (p:Person) WHERE p.name IS NOT NULL RETURN p.name AS name"
+            "MATCH (p:Person) WHERE p.name IS NOT NULL RETURN p.name AS name",
         )
         assert sorted(result["name"].tolist()) == [
             "Alice",
@@ -110,7 +109,7 @@ class TestNullCheckIntegration:
         # name IS NULL OR score < 60
         star = Star(context=pred_context)
         result = star.execute_query(
-            "MATCH (p:Person) WHERE p.name IS NULL OR p.score < 60 RETURN p.score AS score"
+            "MATCH (p:Person) WHERE p.name IS NULL OR p.score < 60 RETURN p.score AS score",
         )
         # name IS NULL → id 4 (score 68); score < 60 → id 6 (score 55)
         assert sorted(result["score"].tolist()) == [55, 68]
@@ -119,7 +118,7 @@ class TestNullCheckIntegration:
         # email IS NOT NULL AND score > 80
         star = Star(context=pred_context)
         result = star.execute_query(
-            "MATCH (p:Person) WHERE p.email IS NOT NULL AND p.score > 80 RETURN p.name AS name"
+            "MATCH (p:Person) WHERE p.email IS NOT NULL AND p.score > 80 RETURN p.name AS name",
         )
         # email not null: 1,2,3,4,6; score>80: 1(85),3(91) → 1,3
         assert sorted(result["name"].tolist()) == ["Alice", "Carol"]
@@ -153,27 +152,29 @@ class TestStringPredicateIntegration:
     def test_where_in_integer_list(self, pred_context):
         star = Star(context=pred_context)
         result = star.execute_query(
-            "MATCH (p:Person) WHERE p.score IN [85, 91, 72] RETURN p.name AS name"
+            "MATCH (p:Person) WHERE p.score IN [85, 91, 72] RETURN p.name AS name",
         )
         assert sorted(result["name"].tolist()) == ["Alice", "Bob", "Carol"]
 
     def test_where_starts_with_and_is_not_null(self, pred_context):
         names = execute_cypher(
-            pred_context, "p.email STARTS WITH 'alice' AND p.name IS NOT NULL"
+            pred_context,
+            "p.email STARTS WITH 'alice' AND p.name IS NOT NULL",
         )
         assert names == ["Alice"]
 
     def test_where_contains_or_is_null(self, pred_context):
         star = Star(context=pred_context)
         result = star.execute_query(
-            "MATCH (p:Person) WHERE p.name CONTAINS 'a' OR p.email IS NULL RETURN p.score AS score"
+            "MATCH (p:Person) WHERE p.name CONTAINS 'a' OR p.email IS NULL RETURN p.score AS score",
         )
         # contains-a: Carol(91), Frank(55); email null: Eve(79) → scores 55,79,91
         assert sorted(result["score"].tolist()) == [55, 79, 91]
 
     def test_where_in_with_comparison(self, pred_context):
         names = execute_cypher(
-            pred_context, "p.tag IN ['user'] AND p.score > 75"
+            pred_context,
+            "p.tag IN ['user'] AND p.score > 75",
         )
         # user: Bob(72), Eve(79); >75: Eve(79) only
         assert names == ["Eve"]
@@ -181,7 +182,7 @@ class TestStringPredicateIntegration:
     def test_where_ends_with_email_domain(self, pred_context):
         star = Star(context=pred_context)
         result = star.execute_query(
-            "MATCH (p:Person) WHERE p.email ENDS WITH '.org' RETURN p.email AS email"
+            "MATCH (p:Person) WHERE p.email ENDS WITH '.org' RETURN p.email AS email",
         )
         assert sorted(result["email"].tolist()) == [
             "bob@test.org",

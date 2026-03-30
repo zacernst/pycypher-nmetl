@@ -26,7 +26,7 @@ ID_COLUMN = "__ID__"
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture()
+@pytest.fixture
 def social_star() -> Star:
     """Star with Person entities, City entities, KNOWS and LIVES_IN rels."""
     people_df = pd.DataFrame(
@@ -36,14 +36,14 @@ def social_star() -> Star:
             "age": [30, 25, 35, 28, 40],
             "dept": ["eng", "mktg", "eng", "sales", "eng"],
             "salary": [100_000, 80_000, 110_000, 90_000, 120_000],
-        }
+        },
     )
     city_df = pd.DataFrame(
         {
             ID_COLUMN: [10, 11, 12],
             "name": ["NYC", "SF", "LA"],
             "population": [8_000_000, 800_000, 4_000_000],
-        }
+        },
     )
     knows_df = pd.DataFrame(
         {
@@ -51,14 +51,14 @@ def social_star() -> Star:
             "__SOURCE__": [1, 2, 3, 1, 4],
             "__TARGET__": [2, 3, 1, 3, 5],
             "since": [2020, 2021, 2019, 2022, 2023],
-        }
+        },
     )
     lives_in_df = pd.DataFrame(
         {
             ID_COLUMN: [201, 202, 203, 204, 205],
             "__SOURCE__": [1, 2, 3, 4, 5],
             "__TARGET__": [10, 11, 10, 12, 11],
-        }
+        },
     )
     person_table = EntityTable(
         entity_type="Person",
@@ -114,13 +114,13 @@ def social_star() -> Star:
     )
     ctx = Context(
         entity_mapping=EntityMapping(
-            mapping={"Person": person_table, "City": city_table}
+            mapping={"Person": person_table, "City": city_table},
         ),
         relationship_mapping=RelationshipMapping(
             mapping={
                 "KNOWS": knows_table,
                 "LIVES_IN": lives_in_table,
-            }
+            },
         ),
     )
     return Star(context=ctx)
@@ -137,7 +137,7 @@ class TestMatchWhereReturn:
     def test_simple_where_filter(self, social_star: Star) -> None:
         """WHERE filters rows before RETURN."""
         result = social_star.execute_query(
-            "MATCH (n:Person) WHERE n.age > 30 RETURN n.name"
+            "MATCH (n:Person) WHERE n.age > 30 RETURN n.name",
         )
         names = set(result.iloc[:, 0])
         assert names == {"Carol", "Eve"}
@@ -145,7 +145,7 @@ class TestMatchWhereReturn:
     def test_where_with_and(self, social_star: Star) -> None:
         """WHERE with AND combines conditions."""
         result = social_star.execute_query(
-            "MATCH (n:Person) WHERE n.age > 25 AND n.dept = 'eng' RETURN n.name"
+            "MATCH (n:Person) WHERE n.age > 25 AND n.dept = 'eng' RETURN n.name",
         )
         names = set(result.iloc[:, 0])
         assert names == {"Alice", "Carol", "Eve"}
@@ -153,7 +153,7 @@ class TestMatchWhereReturn:
     def test_where_with_or(self, social_star: Star) -> None:
         """WHERE with OR combines conditions."""
         result = social_star.execute_query(
-            "MATCH (n:Person) WHERE n.age < 26 OR n.age > 39 RETURN n.name"
+            "MATCH (n:Person) WHERE n.age < 26 OR n.age > 39 RETURN n.name",
         )
         names = set(result.iloc[:, 0])
         assert names == {"Bob", "Eve"}
@@ -163,14 +163,14 @@ class TestMatchWhereReturn:
         result = social_star.execute_query(
             "MATCH (a:Person)-[r:KNOWS]->(b:Person) "
             "WHERE r.since >= 2022 "
-            "RETURN a.name, b.name"
+            "RETURN a.name, b.name",
         )
         assert len(result) == 2  # Alice->Carol(2022), Dave->Eve(2023)
 
     def test_where_string_predicate(self, social_star: Star) -> None:
         """WHERE with STARTS WITH string predicate."""
         result = social_star.execute_query(
-            "MATCH (n:Person) WHERE n.name STARTS WITH 'A' RETURN n.name"
+            "MATCH (n:Person) WHERE n.name STARTS WITH 'A' RETURN n.name",
         )
         assert len(result) == 1
         assert result.iloc[0, 0] == "Alice"
@@ -178,7 +178,7 @@ class TestMatchWhereReturn:
     def test_where_null_check(self, social_star: Star) -> None:
         """WHERE with IS NOT NULL."""
         result = social_star.execute_query(
-            "MATCH (n:Person) WHERE n.age IS NOT NULL RETURN n.name"
+            "MATCH (n:Person) WHERE n.age IS NOT NULL RETURN n.name",
         )
         assert len(result) == 5
 
@@ -194,7 +194,7 @@ class TestMatchWithReturn:
     def test_with_alias_then_return(self, social_star: Star) -> None:
         """WITH creates alias for downstream use."""
         result = social_star.execute_query(
-            "MATCH (n:Person) WITH n.name AS personName RETURN personName"
+            "MATCH (n:Person) WITH n.name AS personName RETURN personName",
         )
         assert len(result) == 5
         assert "personName" in result.columns
@@ -202,10 +202,7 @@ class TestMatchWithReturn:
     def test_with_where_filter(self, social_star: Star) -> None:
         """WITH + WHERE filters intermediate results."""
         result = social_star.execute_query(
-            "MATCH (n:Person) "
-            "WITH n, n.age AS age "
-            "WHERE age > 30 "
-            "RETURN n.name"
+            "MATCH (n:Person) WITH n, n.age AS age WHERE age > 30 RETURN n.name",
         )
         names = set(result.iloc[:, 0])
         assert names == {"Carol", "Eve"}
@@ -216,7 +213,7 @@ class TestMatchWithReturn:
             "MATCH (n:Person) "
             "WITH n.name AS name, n.age AS age "
             "WITH name, age * 2 AS doubleAge "
-            "RETURN name, doubleAge"
+            "RETURN name, doubleAge",
         )
         assert len(result) == 5
         # Alice: 30 * 2 = 60
@@ -229,7 +226,7 @@ class TestMatchWithReturn:
             "MATCH (n:Person) "
             "WITH n.dept AS dept, count(n) AS cnt "
             "RETURN dept, cnt "
-            "ORDER BY cnt DESC"
+            "ORDER BY cnt DESC",
         )
         # eng: 3, mktg: 1, sales: 1
         eng_row = result[result["dept"] == "eng"]
@@ -238,9 +235,7 @@ class TestMatchWithReturn:
     def test_with_order_by_limit(self, social_star: Star) -> None:
         """WITH clause with ORDER BY and LIMIT."""
         result = social_star.execute_query(
-            "MATCH (n:Person) "
-            "WITH n ORDER BY n.age DESC LIMIT 3 "
-            "RETURN n.name, n.age"
+            "MATCH (n:Person) WITH n ORDER BY n.age DESC LIMIT 3 RETURN n.name, n.age",
         )
         assert len(result) == 3
         # Top 3 by age: Eve(40), Carol(35), Alice(30)
@@ -261,7 +256,7 @@ class TestRelationshipTraversal:
         result = social_star.execute_query(
             "MATCH (a:Person)-[:KNOWS]->(b:Person) "
             "WHERE b.age > 30 "
-            "RETURN a.name, b.name"
+            "RETURN a.name, b.name",
         )
         # b must be Carol(35) or Eve(40)
         b_names = set(result.iloc[:, 1])
@@ -271,15 +266,14 @@ class TestRelationshipTraversal:
         """Two-hop relationship traversal."""
         result = social_star.execute_query(
             "MATCH (a:Person)-[:KNOWS]->(b:Person)-[:KNOWS]->(c:Person) "
-            "RETURN a.name, b.name, c.name"
+            "RETURN a.name, b.name, c.name",
         )
         assert len(result) > 0
 
     def test_variable_length_path(self, social_star: Star) -> None:
         """Variable-length path [*1..2]."""
         result = social_star.execute_query(
-            "MATCH (a:Person)-[:KNOWS*1..2]->(b:Person) "
-            "RETURN DISTINCT a.name, b.name"
+            "MATCH (a:Person)-[:KNOWS*1..2]->(b:Person) RETURN DISTINCT a.name, b.name",
         )
         # Should find both direct and 2-hop connections
         assert len(result) > 5  # More than just direct edges
@@ -287,7 +281,7 @@ class TestRelationshipTraversal:
     def test_cross_type_relationship(self, social_star: Star) -> None:
         """Traverse Person->LIVES_IN->City."""
         result = social_star.execute_query(
-            "MATCH (p:Person)-[:LIVES_IN]->(c:City) RETURN p.name, c.name"
+            "MATCH (p:Person)-[:LIVES_IN]->(c:City) RETURN p.name, c.name",
         )
         assert len(result) == 5
         # Alice lives in NYC
@@ -306,22 +300,21 @@ class TestAggregation:
     def test_count_with_group_by(self, social_star: Star) -> None:
         """GROUP BY via WITH aggregation."""
         result = social_star.execute_query(
-            "MATCH (n:Person) RETURN n.dept AS dept, count(n) AS cnt"
+            "MATCH (n:Person) RETURN n.dept AS dept, count(n) AS cnt",
         )
         assert len(result) == 3  # eng, mktg, sales
 
     def test_sum_aggregation(self, social_star: Star) -> None:
         """SUM aggregation."""
         result = social_star.execute_query(
-            "MATCH (n:Person) WHERE n.dept = 'eng' "
-            "RETURN sum(n.salary) AS total"
+            "MATCH (n:Person) WHERE n.dept = 'eng' RETURN sum(n.salary) AS total",
         )
         assert result["total"].iloc[0] == 330_000
 
     def test_avg_aggregation(self, social_star: Star) -> None:
         """AVG aggregation."""
         result = social_star.execute_query(
-            "MATCH (n:Person) RETURN avg(n.age) AS avgAge"
+            "MATCH (n:Person) RETURN avg(n.age) AS avgAge",
         )
         # (30 + 25 + 35 + 28 + 40) / 5 = 31.6
         assert abs(result["avgAge"].iloc[0] - 31.6) < 0.1
@@ -329,8 +322,7 @@ class TestAggregation:
     def test_min_max_aggregation(self, social_star: Star) -> None:
         """MIN and MAX aggregation."""
         result = social_star.execute_query(
-            "MATCH (n:Person) "
-            "RETURN min(n.age) AS youngest, max(n.age) AS oldest"
+            "MATCH (n:Person) RETURN min(n.age) AS youngest, max(n.age) AS oldest",
         )
         assert result["youngest"].iloc[0] == 25
         assert result["oldest"].iloc[0] == 40
@@ -338,8 +330,7 @@ class TestAggregation:
     def test_collect_aggregation(self, social_star: Star) -> None:
         """COLLECT aggregation."""
         result = social_star.execute_query(
-            "MATCH (n:Person) WHERE n.dept = 'eng' "
-            "RETURN collect(n.name) AS engineers"
+            "MATCH (n:Person) WHERE n.dept = 'eng' RETURN collect(n.name) AS engineers",
         )
         engineers = result["engineers"].iloc[0]
         assert set(engineers) == {"Alice", "Carol", "Eve"}
@@ -358,7 +349,7 @@ class TestOptionalMatch:
         result = social_star.execute_query(
             "MATCH (p:Person) "
             "OPTIONAL MATCH (p)-[:KNOWS]->(friend:Person) "
-            "RETURN p.name, friend.name"
+            "RETURN p.name, friend.name",
         )
         # All 5 persons should appear, some with null friends
         assert len(result) >= 5
@@ -383,7 +374,7 @@ class TestUnwind:
         result = social_star.execute_query(
             "UNWIND ['Alice', 'Bob'] AS name "
             "MATCH (n:Person) WHERE n.name = name "
-            "RETURN n.name, n.age"
+            "RETURN n.name, n.age",
         )
         assert len(result) == 2
         names = set(result.iloc[:, 0])
@@ -401,14 +392,14 @@ class TestReturnVariants:
     def test_return_distinct(self, social_star: Star) -> None:
         """RETURN DISTINCT removes duplicates."""
         result = social_star.execute_query(
-            "MATCH (n:Person) RETURN DISTINCT n.dept"
+            "MATCH (n:Person) RETURN DISTINCT n.dept",
         )
         assert len(result) == 3
 
     def test_return_order_by(self, social_star: Star) -> None:
         """RETURN with ORDER BY."""
         result = social_star.execute_query(
-            "MATCH (n:Person) RETURN n.name ORDER BY n.name"
+            "MATCH (n:Person) RETURN n.name ORDER BY n.name",
         )
         names = list(result.iloc[:, 0])
         assert names == sorted(names)
@@ -416,7 +407,7 @@ class TestReturnVariants:
     def test_return_order_by_desc(self, social_star: Star) -> None:
         """RETURN with ORDER BY DESC."""
         result = social_star.execute_query(
-            "MATCH (n:Person) RETURN n.age ORDER BY n.age DESC"
+            "MATCH (n:Person) RETURN n.age ORDER BY n.age DESC",
         )
         ages = list(result.iloc[:, 0])
         assert ages == sorted(ages, reverse=True)
@@ -424,36 +415,35 @@ class TestReturnVariants:
     def test_return_limit(self, social_star: Star) -> None:
         """RETURN with LIMIT."""
         result = social_star.execute_query(
-            "MATCH (n:Person) RETURN n.name LIMIT 2"
+            "MATCH (n:Person) RETURN n.name LIMIT 2",
         )
         assert len(result) == 2
 
     def test_return_skip(self, social_star: Star) -> None:
         """RETURN with SKIP."""
         result = social_star.execute_query(
-            "MATCH (n:Person) RETURN n.name ORDER BY n.name SKIP 2"
+            "MATCH (n:Person) RETURN n.name ORDER BY n.name SKIP 2",
         )
         assert len(result) == 3  # 5 - 2 = 3
 
     def test_return_skip_limit(self, social_star: Star) -> None:
         """RETURN with SKIP + LIMIT for pagination."""
         result = social_star.execute_query(
-            "MATCH (n:Person) RETURN n.name ORDER BY n.name SKIP 1 LIMIT 2"
+            "MATCH (n:Person) RETURN n.name ORDER BY n.name SKIP 1 LIMIT 2",
         )
         assert len(result) == 2
 
     def test_return_expression(self, social_star: Star) -> None:
         """RETURN with computed expression."""
         result = social_star.execute_query(
-            "MATCH (n:Person) WHERE n.name = 'Alice' "
-            "RETURN n.age + 10 AS agePlus10"
+            "MATCH (n:Person) WHERE n.name = 'Alice' RETURN n.age + 10 AS agePlus10",
         )
         assert result["agePlus10"].iloc[0] == 40
 
     def test_return_multiple_columns(self, social_star: Star) -> None:
         """RETURN multiple columns."""
         result = social_star.execute_query(
-            "MATCH (n:Person) RETURN n.name, n.age, n.dept"
+            "MATCH (n:Person) RETURN n.name, n.age, n.dept",
         )
         assert len(result.columns) == 3
         assert len(result) == 5
@@ -468,14 +458,15 @@ class TestComplexCombinations:
     """Complex multi-clause scenarios."""
 
     def test_match_with_aggregation_where_return(
-        self, social_star: Star
+        self,
+        social_star: Star,
     ) -> None:
         """MATCH + WITH (aggregation) + WHERE + RETURN pipeline."""
         result = social_star.execute_query(
             "MATCH (n:Person) "
             "WITH n.dept AS dept, count(n) AS cnt "
             "WHERE cnt > 1 "
-            "RETURN dept, cnt"
+            "RETURN dept, cnt",
         )
         # Only eng(3) has count > 1
         assert len(result) == 1
@@ -487,7 +478,7 @@ class TestComplexCombinations:
         result = social_star.execute_query(
             "MATCH (a:Person)-[:KNOWS]->(b:Person) "
             "RETURN a.name, count(b) AS friends "
-            "ORDER BY friends DESC"
+            "ORDER BY friends DESC",
         )
         # Alice has 2 outgoing KNOWS, Bob has 1, Carol has 1, Dave has 1
         alice_row = result[result.iloc[:, 0] == "Alice"]
@@ -496,9 +487,7 @@ class TestComplexCombinations:
     def test_multi_match_cross_type(self, social_star: Star) -> None:
         """Multi-pattern MATCH across entity types."""
         result = social_star.execute_query(
-            "MATCH (p:Person)-[:LIVES_IN]->(c:City) "
-            "WHERE c.name = 'NYC' "
-            "RETURN p.name"
+            "MATCH (p:Person)-[:LIVES_IN]->(c:City) WHERE c.name = 'NYC' RETURN p.name",
         )
         # Alice and Carol live in NYC
         names = set(result.iloc[:, 0])
@@ -507,7 +496,7 @@ class TestComplexCombinations:
     def test_function_in_where(self, social_star: Star) -> None:
         """Function call in WHERE clause."""
         result = social_star.execute_query(
-            "MATCH (n:Person) WHERE toUpper(n.name) = 'ALICE' RETURN n.name"
+            "MATCH (n:Person) WHERE toUpper(n.name) = 'ALICE' RETURN n.name",
         )
         assert len(result) == 1
         assert result.iloc[0, 0] == "Alice"
@@ -518,7 +507,7 @@ class TestComplexCombinations:
             "MATCH (n:Person) "
             "RETURN n.name, "
             "CASE WHEN n.age >= 35 THEN 'senior' ELSE 'junior' END AS level "
-            "ORDER BY n.name"
+            "ORDER BY n.name",
         )
         alice_row = result[result.iloc[:, 0] == "Alice"]
         assert alice_row["level"].iloc[0] == "junior"

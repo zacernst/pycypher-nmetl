@@ -40,12 +40,12 @@ def large_rel_df() -> pd.DataFrame:
     return generate_relationship_dataframe(50_000, 10_000, seed=43)
 
 
-@pytest.fixture()
+@pytest.fixture
 def pandas_backend() -> PandasBackend:
     return PandasBackend()
 
 
-@pytest.fixture()
+@pytest.fixture
 def duckdb_backend() -> DuckDBBackend:
     return DuckDBBackend()
 
@@ -70,7 +70,7 @@ class TestScanEquivalence:
 
         assert len(pandas_result) == len(duckdb_result)
         assert sorted(pandas_result[ID_COLUMN].tolist()) == sorted(
-            duckdb_result[ID_COLUMN].tolist()
+            duckdb_result[ID_COLUMN].tolist(),
         )
 
     def test_scan_row_count(
@@ -137,13 +137,13 @@ class TestJoinEquivalence:
             {
                 "id": np.arange(1000),
                 "val_l": np.random.default_rng(42).standard_normal(1000),
-            }
+            },
         )
         right = pd.DataFrame(
             {
                 "id": np.arange(500, 1500),
                 "val_r": np.random.default_rng(43).standard_normal(1000),
-            }
+            },
         )
 
         p = pandas_backend.join(left, right, on="id", how="inner")
@@ -166,7 +166,7 @@ class TestJoinEquivalence:
         p = pandas_backend.join(left, right, on="id", how="left")
         d = duckdb_backend.join(left, right, on="id", how="left")
 
-        assert len(p) == len(d) == 3  # noqa: PLR2004
+        assert len(p) == len(d) == 3
         # Both should have null for id=1's right side
         p_sorted = p.sort_values("id").reset_index(drop=True)
         d_sorted = d.sort_values("id").reset_index(drop=True)
@@ -259,7 +259,8 @@ class TestAggregationEquivalence:
 
         assert p["total"].iloc[0] == d["total"].iloc[0]
         assert p["avg_age"].iloc[0] == pytest.approx(
-            d["avg_age"].iloc[0], rel=1e-10
+            d["avg_age"].iloc[0],
+            rel=1e-10,
         )
 
 
@@ -292,7 +293,7 @@ class TestSortLimitEquivalence:
         p = pandas_backend.limit(large_person_df, 100)
         d = duckdb_backend.limit(large_person_df, 100)
 
-        assert len(p) == len(d) == 100  # noqa: PLR2004
+        assert len(p) == len(d) == 100
 
 
 # ---------------------------------------------------------------------------
@@ -315,9 +316,7 @@ class TestMemoryEstimationEquivalence:
 
         # Both should be within 10x of each other
         ratio = max(p_est, d_est) / max(min(p_est, d_est), 1)
-        assert ratio < 10, (  # noqa: PLR2004
-            f"Memory estimates diverge: pandas={p_est}, duckdb={d_est}"
-        )
+        assert ratio < 10, f"Memory estimates diverge: pandas={p_est}, duckdb={d_est}"
 
 
 # ---------------------------------------------------------------------------

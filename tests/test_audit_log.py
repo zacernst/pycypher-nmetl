@@ -4,11 +4,8 @@ from __future__ import annotations
 
 import json
 import logging
-import os
-from unittest.mock import patch
 
 import pytest
-
 
 # ---------------------------------------------------------------------------
 # Module import & basic API
@@ -86,7 +83,7 @@ class _CaptureHandler(logging.Handler):
         self.records.append(self.format(record))
 
 
-@pytest.fixture()
+@pytest.fixture
 def audit_capture():
     """Enable audit logging with a capture handler, yield records list."""
     from pycypher.audit import AUDIT_LOGGER
@@ -223,7 +220,6 @@ def test_audit_no_parameter_values_logged(audit_capture):
 def test_audit_integration_with_star(audit_capture):
     """Star.execute_query() emits audit records when audit is enabled."""
     import pandas as pd
-
     from pycypher.constants import ID_COLUMN
     from pycypher.relational_models import (
         Context,
@@ -246,7 +242,7 @@ def test_audit_integration_with_star(audit_capture):
         context=Context(
             entity_mapping=EntityMapping(mapping={"Person": table}),
             relationship_mapping=RelationshipMapping(mapping={}),
-        )
+        ),
     )
 
     result = star.execute_query("MATCH (n:Person) RETURN n.name")
@@ -265,7 +261,7 @@ def test_audit_integration_error(audit_capture):
     from pycypher.star import Star
 
     star = Star(
-        context=Context(entity_mapping=EntityMapping(mapping={}))
+        context=Context(entity_mapping=EntityMapping(mapping={})),
     )
     with pytest.raises(Exception):
         star.execute_query("MATCH (n:NonExistent) RETURN n")

@@ -27,7 +27,9 @@ class TestSummaryMethod:
     def test_summary_includes_query_count(self) -> None:
         for i in range(5):
             QUERY_METRICS.record_query(
-                query_id=f"q{i}", elapsed_s=0.01, rows=10
+                query_id=f"q{i}",
+                elapsed_s=0.01,
+                rows=10,
             )
         snap = QUERY_METRICS.snapshot()
         summary = snap.summary()
@@ -36,7 +38,9 @@ class TestSummaryMethod:
     def test_summary_includes_error_rate(self) -> None:
         QUERY_METRICS.record_query(query_id="q1", elapsed_s=0.01, rows=1)
         QUERY_METRICS.record_error(
-            query_id="e1", error_type="ValueError", elapsed_s=0.01
+            query_id="e1",
+            error_type="ValueError",
+            elapsed_s=0.01,
         )
         snap = QUERY_METRICS.snapshot()
         summary = snap.summary()
@@ -61,7 +65,9 @@ class TestHealthStatus:
     def test_healthy_when_no_errors(self) -> None:
         for i in range(10):
             QUERY_METRICS.record_query(
-                query_id=f"q{i}", elapsed_s=0.01, rows=1
+                query_id=f"q{i}",
+                elapsed_s=0.01,
+                rows=1,
             )
         snap = QUERY_METRICS.snapshot()
         assert snap.health_status() == "healthy"
@@ -74,10 +80,14 @@ class TestHealthStatus:
         # 9 successes + 1 error = 10% error rate -> degraded
         for i in range(9):
             QUERY_METRICS.record_query(
-                query_id=f"q{i}", elapsed_s=0.01, rows=1
+                query_id=f"q{i}",
+                elapsed_s=0.01,
+                rows=1,
             )
         QUERY_METRICS.record_error(
-            query_id="e1", error_type="ValueError", elapsed_s=0.01
+            query_id="e1",
+            error_type="ValueError",
+            elapsed_s=0.01,
         )
         snap = QUERY_METRICS.snapshot()
         assert snap.health_status() == "degraded"
@@ -86,11 +96,15 @@ class TestHealthStatus:
         # 3 successes + 2 errors = 40% error rate -> unhealthy
         for i in range(3):
             QUERY_METRICS.record_query(
-                query_id=f"q{i}", elapsed_s=0.01, rows=1
+                query_id=f"q{i}",
+                elapsed_s=0.01,
+                rows=1,
             )
         for i in range(2):
             QUERY_METRICS.record_error(
-                query_id=f"e{i}", error_type="ValueError", elapsed_s=0.01
+                query_id=f"e{i}",
+                error_type="ValueError",
+                elapsed_s=0.01,
             )
         snap = QUERY_METRICS.snapshot()
         assert snap.health_status() == "unhealthy"
@@ -99,7 +113,9 @@ class TestHealthStatus:
         # 10 queries, 2 slow = 20% slow rate -> degraded
         for i in range(8):
             QUERY_METRICS.record_query(
-                query_id=f"q{i}", elapsed_s=0.01, rows=1
+                query_id=f"q{i}",
+                elapsed_s=0.01,
+                rows=1,
             )
         for i in range(2):
             QUERY_METRICS.record_query(query_id=f"s{i}", elapsed_s=2.0, rows=1)

@@ -66,7 +66,7 @@ def _build_social_context(**ctx_kwargs: object) -> tuple[Context, Star]:
     ctx = Context(
         entity_mapping=EntityMapping(mapping={"Person": person_table}),
         relationship_mapping=RelationshipMapping(
-            mapping={"KNOWS": knows_table}
+            mapping={"KNOWS": knows_table},
         ),
         **ctx_kwargs,
     )

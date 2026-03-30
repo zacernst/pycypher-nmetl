@@ -96,7 +96,8 @@ class TestErrorPolicyTracker:
         assert tracker.failed is True
 
     def test_skip_policy_no_output(
-        self, capsys: pytest.CaptureFixture[str]
+        self,
+        capsys: pytest.CaptureFixture[str],
     ) -> None:
         tracker = _ErrorPolicyTracker("skip")
         tracker.handle("silent failure")
@@ -153,7 +154,9 @@ class TestValidateCommand:
         assert "valid" in result.output.lower()
 
     def test_validate_verbose_shows_project(
-        self, runner: CliRunner, tmp_path: Path
+        self,
+        runner: CliRunner,
+        tmp_path: Path,
     ) -> None:
         cfg = _make_full_config(tmp_path)
         result = runner.invoke(cli, ["validate", str(cfg), "--verbose"])
@@ -162,7 +165,9 @@ class TestValidateCommand:
         assert "A test pipeline" in result.output
 
     def test_validate_verbose_shows_entity_sources(
-        self, runner: CliRunner, tmp_path: Path
+        self,
+        runner: CliRunner,
+        tmp_path: Path,
     ) -> None:
         cfg = _make_full_config(tmp_path)
         result = runner.invoke(cli, ["validate", str(cfg), "--verbose"])
@@ -170,7 +175,9 @@ class TestValidateCommand:
         assert "Sample" in result.output
 
     def test_validate_verbose_shows_relationship_sources(
-        self, runner: CliRunner, tmp_path: Path
+        self,
+        runner: CliRunner,
+        tmp_path: Path,
     ) -> None:
         cfg = _make_full_config(tmp_path)
         result = runner.invoke(cli, ["validate", str(cfg), "--verbose"])
@@ -178,7 +185,9 @@ class TestValidateCommand:
         assert "KNOWS" in result.output
 
     def test_validate_verbose_shows_queries(
-        self, runner: CliRunner, tmp_path: Path
+        self,
+        runner: CliRunner,
+        tmp_path: Path,
     ) -> None:
         cfg = _make_full_config(tmp_path)
         result = runner.invoke(cli, ["validate", str(cfg), "--verbose"])
@@ -186,7 +195,9 @@ class TestValidateCommand:
         assert "q1" in result.output
 
     def test_validate_verbose_shows_outputs(
-        self, runner: CliRunner, tmp_path: Path
+        self,
+        runner: CliRunner,
+        tmp_path: Path,
     ) -> None:
         cfg = _make_full_config(tmp_path)
         result = runner.invoke(cli, ["validate", str(cfg), "--verbose"])
@@ -194,13 +205,17 @@ class TestValidateCommand:
         assert "query:q1" in result.output
 
     def test_validate_nonexistent_config(
-        self, runner: CliRunner, tmp_path: Path
+        self,
+        runner: CliRunner,
+        tmp_path: Path,
     ) -> None:
         result = runner.invoke(cli, ["validate", str(tmp_path / "nope.yaml")])
         assert result.exit_code != 0
 
     def test_validate_invalid_schema(
-        self, runner: CliRunner, tmp_path: Path
+        self,
+        runner: CliRunner,
+        tmp_path: Path,
     ) -> None:
         bad = tmp_path / "bad.yaml"
         bad.write_text("version: '1.0'\nsources:\n  entities: 'not_a_list'\n")
@@ -215,7 +230,9 @@ class TestValidateCommand:
 
 class TestListQueriesCommand:
     def test_list_queries_shows_ids(
-        self, runner: CliRunner, tmp_path: Path
+        self,
+        runner: CliRunner,
+        tmp_path: Path,
     ) -> None:
         cfg = _make_full_config(tmp_path)
         result = runner.invoke(cli, ["list-queries", str(cfg)])
@@ -223,14 +240,18 @@ class TestListQueriesCommand:
         assert "q1" in result.output
 
     def test_list_queries_shows_description(
-        self, runner: CliRunner, tmp_path: Path
+        self,
+        runner: CliRunner,
+        tmp_path: Path,
     ) -> None:
         cfg = _make_full_config(tmp_path)
         result = runner.invoke(cli, ["list-queries", str(cfg)])
         assert "Get all sample names" in result.output
 
     def test_list_queries_no_queries(
-        self, runner: CliRunner, tmp_path: Path
+        self,
+        runner: CliRunner,
+        tmp_path: Path,
     ) -> None:
         config_text = f"""\
 version: "1.0"
@@ -249,7 +270,9 @@ queries: []
         assert "No queries" in result.output
 
     def test_list_queries_external_source(
-        self, runner: CliRunner, tmp_path: Path
+        self,
+        runner: CliRunner,
+        tmp_path: Path,
     ) -> None:
         """Queries with source: field show file reference."""
         config_text = f"""\
@@ -283,14 +306,18 @@ class TestCliGroupFlags:
         assert "version" in result.output.lower() or "." in result.output
 
     def test_verbose_flag_on_group(
-        self, runner: CliRunner, tmp_path: Path
+        self,
+        runner: CliRunner,
+        tmp_path: Path,
     ) -> None:
         cfg = _make_full_config(tmp_path)
         result = runner.invoke(cli, ["-v", "validate", str(cfg)])
         assert result.exit_code == 0
 
     def test_debug_flag_on_group(
-        self, runner: CliRunner, tmp_path: Path
+        self,
+        runner: CliRunner,
+        tmp_path: Path,
     ) -> None:
         cfg = _make_full_config(tmp_path)
         result = runner.invoke(cli, ["--debug", "validate", str(cfg)])
@@ -325,7 +352,9 @@ class TestPrintTableEdgeCases:
 
 class TestRunVerboseEdgeCases:
     def test_verbose_unnamed_project(
-        self, runner: CliRunner, tmp_path: Path
+        self,
+        runner: CliRunner,
+        tmp_path: Path,
     ) -> None:
         config_text = f"""\
 version: "1.0"
@@ -346,7 +375,9 @@ queries:
         assert "(unnamed)" in result.output
 
     def test_verbose_done_message(
-        self, runner: CliRunner, tmp_path: Path
+        self,
+        runner: CliRunner,
+        tmp_path: Path,
     ) -> None:
         cfg = _make_full_config(tmp_path)
         result = runner.invoke(cli, ["run", str(cfg), "--verbose"])
@@ -354,12 +385,14 @@ queries:
         assert "Done" in result.output
 
     def test_verbose_shows_query_running(
-        self, runner: CliRunner, tmp_path: Path
+        self,
+        runner: CliRunner,
+        tmp_path: Path,
     ) -> None:
         cfg = _make_full_config(tmp_path)
         result = runner.invoke(cli, ["run", str(cfg), "--verbose"])
         assert result.exit_code == 0
-        assert "Running query" in result.output
+        assert "query [" in result.output
 
 
 # ===========================================================================
@@ -369,7 +402,9 @@ queries:
 
 class TestRunPathTraversal:
     def test_query_source_outside_config_dir_fails(
-        self, runner: CliRunner, tmp_path: Path
+        self,
+        runner: CliRunner,
+        tmp_path: Path,
     ) -> None:
         config_text = f"""\
 version: "1.0"
@@ -396,9 +431,11 @@ queries:
 
 class TestRunContextBuildErrors:
     def test_missing_source_file_exits_nonzero(
-        self, runner: CliRunner, tmp_path: Path
+        self,
+        runner: CliRunner,
+        tmp_path: Path,
     ) -> None:
-        config_text = f"""\
+        config_text = """\
 version: "1.0"
 sources:
   entities:
@@ -423,7 +460,9 @@ queries:
 
 class TestRunWarnPolicyMessage:
     def test_warn_policy_shows_completion_warning(
-        self, runner: CliRunner, tmp_path: Path
+        self,
+        runner: CliRunner,
+        tmp_path: Path,
     ) -> None:
         config_text = f"""\
 version: "1.0"
@@ -442,10 +481,7 @@ queries:
         result = runner.invoke(cli, ["run", str(cfg), "--on-error", "warn"])
         assert result.exit_code == 0
         full = (result.output or "") + (getattr(result, "stderr", "") or "")
-        assert (
-            "completed with warnings" in full.lower()
-            or "warning" in full.lower()
-        )
+        assert "completed with warnings" in full.lower() or "warning" in full.lower()
 
 
 # ===========================================================================
@@ -455,7 +491,9 @@ queries:
 
 class TestQueryVerboseOutput:
     def test_verbose_with_output_file_shows_row_count(
-        self, runner: CliRunner, tmp_path: Path
+        self,
+        runner: CliRunner,
+        tmp_path: Path,
     ) -> None:
         out = tmp_path / "result.csv"
         result = runner.invoke(
@@ -482,7 +520,9 @@ class TestQueryVerboseOutput:
 
 class TestQueryOutputFormatErrors:
     def test_unknown_extension_exits_nonzero(
-        self, runner: CliRunner, tmp_path: Path
+        self,
+        runner: CliRunner,
+        tmp_path: Path,
     ) -> None:
         out = tmp_path / "result.xlsx"
         result = runner.invoke(
@@ -519,7 +559,8 @@ class TestQuerySyntaxError:
         assert result.exit_code != 0
 
     def test_runtime_query_error_exits_nonzero(
-        self, runner: CliRunner
+        self,
+        runner: CliRunner,
     ) -> None:
         """Query that parses but fails at execution."""
         result = runner.invoke(
@@ -596,7 +637,9 @@ class TestConfigCommand:
 
     def test_config_shows_env_override(self, runner: CliRunner) -> None:
         result = runner.invoke(
-            cli, ["config"], env={"PYCYPHER_QUERY_TIMEOUT_S": "42"}
+            cli,
+            ["config"],
+            env={"PYCYPHER_QUERY_TIMEOUT_S": "42"},
         )
         assert result.exit_code == 0
         assert "42" in result.output
@@ -606,7 +649,9 @@ class TestConfigCommand:
         import json
 
         result = runner.invoke(
-            cli, ["config", "--json"], env={"PYCYPHER_QUERY_TIMEOUT_S": "42"}
+            cli,
+            ["config", "--json"],
+            env={"PYCYPHER_QUERY_TIMEOUT_S": "42"},
         )
         data = json.loads(result.output)
         timeout_entry = next(
@@ -623,27 +668,31 @@ class TestConfigCommand:
 
 class TestListQueriesDeps:
     def test_list_queries_without_deps(
-        self, runner: CliRunner, tmp_path: Path
+        self,
+        runner: CliRunner,
+        tmp_path: Path,
     ) -> None:
         cfg = tmp_path / "pipe.yaml"
         cfg.write_text(
             'version: "1.0"\n'
             "queries:\n"
-            '  - id: q1\n    inline: "MATCH (p:Person) RETURN p.name"\n'
+            '  - id: q1\n    inline: "MATCH (p:Person) RETURN p.name"\n',
         )
         result = runner.invoke(cli, ["list-queries", str(cfg)])
         assert result.exit_code == 0
         assert "q1" in result.output
 
     def test_list_queries_with_deps(
-        self, runner: CliRunner, tmp_path: Path
+        self,
+        runner: CliRunner,
+        tmp_path: Path,
     ) -> None:
         cfg = tmp_path / "pipe.yaml"
         cfg.write_text(
             'version: "1.0"\n'
             "queries:\n"
             "  - id: q1\n    inline: \"CREATE (p:Person {name: 'Alice'})\"\n"
-            '  - id: q2\n    inline: "MATCH (p:Person) RETURN p.name"\n'
+            '  - id: q2\n    inline: "MATCH (p:Person) RETURN p.name"\n',
         )
         result = runner.invoke(cli, ["list-queries", str(cfg), "--deps"])
         assert result.exit_code == 0
@@ -653,21 +702,25 @@ class TestListQueriesDeps:
         assert "Execution order:" in result.output
 
     def test_list_queries_deps_shows_dependency(
-        self, runner: CliRunner, tmp_path: Path
+        self,
+        runner: CliRunner,
+        tmp_path: Path,
     ) -> None:
         cfg = tmp_path / "pipe.yaml"
         cfg.write_text(
             'version: "1.0"\n'
             "queries:\n"
             "  - id: create_people\n    inline: \"CREATE (p:Person {name: 'A'})\"\n"
-            '  - id: query_people\n    inline: "MATCH (p:Person) RETURN p.name"\n'
+            '  - id: query_people\n    inline: "MATCH (p:Person) RETURN p.name"\n',
         )
         result = runner.invoke(cli, ["list-queries", str(cfg), "--deps"])
         assert result.exit_code == 0
         assert "depends on: create_people" in result.output
 
     def test_list_queries_no_queries(
-        self, runner: CliRunner, tmp_path: Path
+        self,
+        runner: CliRunner,
+        tmp_path: Path,
     ) -> None:
         cfg = tmp_path / "empty.yaml"
         cfg.write_text('version: "1.0"\nqueries: []\n')
@@ -696,7 +749,7 @@ class TestFormatValidationErrors:
 
     def test_truncates_long_error_lists(self) -> None:
         from pycypher.nmetl_cli import _format_validation_errors
-        from pydantic import BaseModel, Field, ValidationError
+        from pydantic import BaseModel, ValidationError
 
         class _Many(BaseModel):
             a: str
@@ -715,7 +768,9 @@ class TestFormatValidationErrors:
         assert "nmetl validate" in result
 
     def test_invalid_config_shows_concise_errors(
-        self, runner: CliRunner, tmp_path: Path
+        self,
+        runner: CliRunner,
+        tmp_path: Path,
     ) -> None:
         cfg = tmp_path / "bad.yaml"
         cfg.write_text("version: '1.0'\nsources:\n  entities:\n    - uri: x\n")

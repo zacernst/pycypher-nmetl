@@ -156,9 +156,7 @@ class TestDeleteWithoutDetach:
         assert result.has_warnings
 
         delete_warnings = [
-            issue
-            for issue in result.issues
-            if "without DETACH" in issue.message
+            issue for issue in result.issues if "without DETACH" in issue.message
         ]
         assert len(delete_warnings) == 1
         assert "DETACH DELETE" in delete_warnings[0].suggestion
@@ -173,9 +171,7 @@ class TestExpensivePatterns:
         result = parse_and_validate(parser, converter, query)
 
         cartesian_warnings = [
-            issue
-            for issue in result.issues
-            if "Cartesian product" in issue.message
+            issue for issue in result.issues if "Cartesian product" in issue.message
         ]
         assert len(cartesian_warnings) == 1
         # The suggestion might be "Ensure MATCH patterns share variables..."
@@ -187,9 +183,7 @@ class TestExpensivePatterns:
         result = parse_and_validate(parser, converter, query)
 
         cartesian_warnings = [
-            issue
-            for issue in result.issues
-            if "Cartesian product" in issue.message
+            issue for issue in result.issues if "Cartesian product" in issue.message
         ]
         assert len(cartesian_warnings) == 0
 
@@ -232,8 +226,7 @@ class TestComplexValidation:
         error_and_warning_count = sum(
             1
             for issue in result.issues
-            if issue.severity
-            in (ValidationSeverity.ERROR, ValidationSeverity.WARNING)
+            if issue.severity in (ValidationSeverity.ERROR, ValidationSeverity.WARNING)
         )
         # Should have minimal warnings (maybe unused r)
         assert error_and_warning_count <= 1
@@ -295,8 +288,7 @@ class TestEdgeCases:
         undefined_errors = [
             issue
             for issue in result.issues
-            if issue.severity == ValidationSeverity.ERROR
-            and "x" in issue.message
+            if issue.severity == ValidationSeverity.ERROR and "x" in issue.message
         ]
         assert len(undefined_errors) == 0
 
@@ -309,7 +301,6 @@ class TestEdgeCases:
         undefined_errors = [
             issue
             for issue in result.issues
-            if issue.severity == ValidationSeverity.ERROR
-            and "name" in issue.message
+            if issue.severity == ValidationSeverity.ERROR and "name" in issue.message
         ]
         assert len(undefined_errors) == 0

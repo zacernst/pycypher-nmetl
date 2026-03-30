@@ -25,7 +25,6 @@ Architecture
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
 
 import pandas as pd
 from pycypher.ingestion.context_builder import ContextBuilder
@@ -36,6 +35,7 @@ from pycypher.star import Star
 
 @dataclass
 class TestScenario:
+    __test__ = False  # Prevent pytest collection (not a test class)
     """A complete test scenario for semantic equivalence validation.
 
     Attributes:
@@ -201,12 +201,11 @@ def assert_dataframes_equivalent(
                 if a.at[idx, col] != e.at[idx, col]:
                     diff_details.append(
                         f"  Row {idx}, col '{col}': "
-                        f"actual={a.at[idx, col]!r}, expected={e.at[idx, col]!r}"
+                        f"actual={a.at[idx, col]!r}, expected={e.at[idx, col]!r}",
                     )
 
-        msg = (
-            f"{prefix}DataFrame values differ in {diff_count} row(s).\n"
-            + "\n".join(diff_details)
+        msg = f"{prefix}DataFrame values differ in {diff_count} row(s).\n" + "\n".join(
+            diff_details,
         )
         if diff_count > 5:
             msg += f"\n  ... and {diff_count - 5} more differences"
@@ -243,7 +242,7 @@ def assert_semantic_equivalence(
     # Optional assertions on expected shape
     if scenario.expected_columns is not None:
         assert set(sequential_result.columns) >= set(
-            scenario.expected_columns
+            scenario.expected_columns,
         ), (
             f"[{scenario.name}] Sequential result missing expected columns: "
             f"{set(scenario.expected_columns) - set(sequential_result.columns)}"

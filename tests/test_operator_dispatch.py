@@ -78,24 +78,19 @@ def _eval(frame: BindingFrame, expr) -> object:
 
 class TestArithmeticOperators:
     def test_add(self, frame: BindingFrame) -> None:
-        assert (
-            _eval(frame, Arithmetic(operator="+", left=_int(3), right=_int(4)))
-            == 7
-        )
+        assert _eval(frame, Arithmetic(operator="+", left=_int(3), right=_int(4))) == 7
 
     def test_subtract(self, frame: BindingFrame) -> None:
         assert (
             _eval(
-                frame, Arithmetic(operator="-", left=_int(10), right=_int(3))
+                frame,
+                Arithmetic(operator="-", left=_int(10), right=_int(3)),
             )
             == 7
         )
 
     def test_multiply(self, frame: BindingFrame) -> None:
-        assert (
-            _eval(frame, Arithmetic(operator="*", left=_int(3), right=_int(4)))
-            == 12
-        )
+        assert _eval(frame, Arithmetic(operator="*", left=_int(3), right=_int(4))) == 12
 
     def test_divide(self, frame: BindingFrame) -> None:
         assert _eval(
@@ -106,23 +101,25 @@ class TestArithmeticOperators:
     def test_modulo(self, frame: BindingFrame) -> None:
         assert (
             _eval(
-                frame, Arithmetic(operator="%", left=_int(10), right=_int(3))
+                frame,
+                Arithmetic(operator="%", left=_int(10), right=_int(3)),
             )
             == 1
         )
 
     def test_power(self, frame: BindingFrame) -> None:
         assert (
-            _eval(frame, Arithmetic(operator="^", left=_int(2), right=_int(8)))
-            == 256
+            _eval(frame, Arithmetic(operator="^", left=_int(2), right=_int(8))) == 256
         )
 
     def test_unsupported_operator_raises(self, frame: BindingFrame) -> None:
         with pytest.raises(
-            ValueError, match="Unsupported arithmetic operator"
+            ValueError,
+            match="Unsupported arithmetic operator",
         ):
             _eval(
-                frame, Arithmetic(operator="//", left=_int(10), right=_int(3))
+                frame,
+                Arithmetic(operator="//", left=_int(10), right=_int(3)),
             )
 
 
@@ -134,110 +131,114 @@ class TestArithmeticOperators:
 class TestComparisonOperators:
     def test_equal_true(self, frame: BindingFrame) -> None:
         assert (
-            _eval(frame, Comparison(operator="=", left=_int(5), right=_int(5)))
-            == True
-        )  # noqa: E712
+            _eval(frame, Comparison(operator="=", left=_int(5), right=_int(5))) == True
+        )
 
     def test_equal_false(self, frame: BindingFrame) -> None:
         assert (
-            _eval(frame, Comparison(operator="=", left=_int(5), right=_int(6)))
-            == False
-        )  # noqa: E712
+            _eval(frame, Comparison(operator="=", left=_int(5), right=_int(6))) == False
+        )
 
     def test_not_equal_true(self, frame: BindingFrame) -> None:
         assert (
             _eval(
-                frame, Comparison(operator="<>", left=_int(5), right=_int(6))
+                frame,
+                Comparison(operator="<>", left=_int(5), right=_int(6)),
             )
             == True
-        )  # noqa: E712
+        )
 
     def test_not_equal_false(self, frame: BindingFrame) -> None:
         assert (
             _eval(
-                frame, Comparison(operator="<>", left=_int(5), right=_int(5))
+                frame,
+                Comparison(operator="<>", left=_int(5), right=_int(5)),
             )
             == False
-        )  # noqa: E712
+        )
 
     def test_less_than_true(self, frame: BindingFrame) -> None:
         assert (
-            _eval(frame, Comparison(operator="<", left=_int(3), right=_int(5)))
-            == True
-        )  # noqa: E712
+            _eval(frame, Comparison(operator="<", left=_int(3), right=_int(5))) == True
+        )
 
     def test_less_than_false(self, frame: BindingFrame) -> None:
         assert (
-            _eval(frame, Comparison(operator="<", left=_int(5), right=_int(3)))
-            == False
-        )  # noqa: E712
+            _eval(frame, Comparison(operator="<", left=_int(5), right=_int(3))) == False
+        )
 
     def test_greater_than_true(self, frame: BindingFrame) -> None:
         assert (
-            _eval(frame, Comparison(operator=">", left=_int(5), right=_int(3)))
-            == True
-        )  # noqa: E712
+            _eval(frame, Comparison(operator=">", left=_int(5), right=_int(3))) == True
+        )
 
     def test_greater_than_false(self, frame: BindingFrame) -> None:
         assert (
-            _eval(frame, Comparison(operator=">", left=_int(3), right=_int(5)))
-            == False
-        )  # noqa: E712
+            _eval(frame, Comparison(operator=">", left=_int(3), right=_int(5))) == False
+        )
 
     def test_less_than_or_equal_equal(self, frame: BindingFrame) -> None:
         assert (
             _eval(
-                frame, Comparison(operator="<=", left=_int(5), right=_int(5))
+                frame,
+                Comparison(operator="<=", left=_int(5), right=_int(5)),
             )
             == True
-        )  # noqa: E712
+        )
 
     def test_less_than_or_equal_less(self, frame: BindingFrame) -> None:
         assert (
             _eval(
-                frame, Comparison(operator="<=", left=_int(4), right=_int(5))
+                frame,
+                Comparison(operator="<=", left=_int(4), right=_int(5)),
             )
             == True
-        )  # noqa: E712
+        )
 
     def test_less_than_or_equal_greater(self, frame: BindingFrame) -> None:
         assert (
             _eval(
-                frame, Comparison(operator="<=", left=_int(6), right=_int(5))
+                frame,
+                Comparison(operator="<=", left=_int(6), right=_int(5)),
             )
             == False
-        )  # noqa: E712
+        )
 
     def test_greater_than_or_equal_equal(self, frame: BindingFrame) -> None:
         assert (
             _eval(
-                frame, Comparison(operator=">=", left=_int(5), right=_int(5))
+                frame,
+                Comparison(operator=">=", left=_int(5), right=_int(5)),
             )
             == True
-        )  # noqa: E712
+        )
 
     def test_greater_than_or_equal_greater(self, frame: BindingFrame) -> None:
         assert (
             _eval(
-                frame, Comparison(operator=">=", left=_int(6), right=_int(5))
+                frame,
+                Comparison(operator=">=", left=_int(6), right=_int(5)),
             )
             == True
-        )  # noqa: E712
+        )
 
     def test_greater_than_or_equal_less(self, frame: BindingFrame) -> None:
         assert (
             _eval(
-                frame, Comparison(operator=">=", left=_int(4), right=_int(5))
+                frame,
+                Comparison(operator=">=", left=_int(4), right=_int(5)),
             )
             == False
-        )  # noqa: E712
+        )
 
     def test_unsupported_operator_raises(self, frame: BindingFrame) -> None:
         with pytest.raises(
-            ValueError, match="Unsupported comparison operator"
+            ValueError,
+            match="Unsupported comparison operator",
         ):
             _eval(
-                frame, Comparison(operator="!=", left=_int(1), right=_int(2))
+                frame,
+                Comparison(operator="!=", left=_int(1), right=_int(2)),
             )
 
 
@@ -255,7 +256,8 @@ class TestUnaryOperators:
 
     def test_unary_minus_float(self, frame: BindingFrame) -> None:
         assert _eval(
-            frame, Unary(operator="-", operand=_float(3.5))
+            frame,
+            Unary(operator="-", operand=_float(3.5)),
         ) == pytest.approx(-3.5)
 
     def test_unsupported_unary_raises(self, frame: BindingFrame) -> None:
@@ -271,25 +273,28 @@ class TestUnaryOperators:
 class TestNullCheckOperators:
     def test_is_null_on_null(self, frame: BindingFrame) -> None:
         result = _eval(
-            frame, NullCheck(operator="IS NULL", operand=NullLiteral())
+            frame,
+            NullCheck(operator="IS NULL", operand=NullLiteral()),
         )
-        assert result == True  # noqa: E712
+        assert result == True
 
     def test_is_null_on_non_null(self, frame: BindingFrame) -> None:
         result = _eval(frame, NullCheck(operator="IS NULL", operand=_int(5)))
-        assert result == False  # noqa: E712
+        assert result == False
 
     def test_is_not_null_on_non_null(self, frame: BindingFrame) -> None:
         result = _eval(
-            frame, NullCheck(operator="IS NOT NULL", operand=_str("hello"))
+            frame,
+            NullCheck(operator="IS NOT NULL", operand=_str("hello")),
         )
-        assert result == True  # noqa: E712
+        assert result == True
 
     def test_is_not_null_on_null(self, frame: BindingFrame) -> None:
         result = _eval(
-            frame, NullCheck(operator="IS NOT NULL", operand=NullLiteral())
+            frame,
+            NullCheck(operator="IS NOT NULL", operand=NullLiteral()),
         )
-        assert result == False  # noqa: E712
+        assert result == False
 
     def test_unknown_null_check_raises(self, frame: BindingFrame) -> None:
         with pytest.raises((ValueError, NotImplementedError)):

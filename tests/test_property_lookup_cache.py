@@ -36,7 +36,7 @@ from pycypher.star import Star
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture()
+@pytest.fixture
 def people_context() -> Context:
     """A 5 000-row Person context with age, name, dept attributes."""
     n = 5_000
@@ -46,7 +46,7 @@ def people_context() -> Context:
             "name": [f"P{i}" for i in range(1, n + 1)],
             "age": [20 + (i % 50) for i in range(1, n + 1)],
             "dept": [f"D{i % 10}" for i in range(1, n + 1)],
-        }
+        },
     )
     table = EntityTable(
         entity_type="Person",
@@ -66,7 +66,7 @@ def people_context() -> Context:
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def people_star(people_context: Context) -> Star:
     return Star(context=people_context)
 
@@ -91,7 +91,8 @@ class TestPropertyLookupCachePopulation:
         people_context._property_lookup_cache.clear()  # type: ignore[attr-defined]
         people_context.begin_query()
         frame: BindingFrame = EntityScan(
-            entity_type="Person", var_name="p"
+            entity_type="Person",
+            var_name="p",
         ).scan(people_context)
 
         # After scan, cache must be populated (EntityScan pre-warms it)
@@ -106,20 +107,19 @@ class TestPropertyLookupCachePopulation:
         assert result.iloc[0] == "P1"
 
     def test_cache_entry_is_indexed_dataframe(
-        self, people_context: Context
+        self,
+        people_context: Context,
     ) -> None:
         """The cached object must be a DataFrame indexed by ID_COLUMN."""
         from pycypher.binding_frame import EntityScan
 
         people_context.begin_query()
         frame = EntityScan(entity_type="Person", var_name="p").scan(
-            people_context
+            people_context,
         )
         frame.get_property("p", "age")
 
-        cached_df: pd.DataFrame = people_context._property_lookup_cache[
-            "Person"
-        ]  # type: ignore[attr-defined]
+        cached_df: pd.DataFrame = people_context._property_lookup_cache["Person"]  # type: ignore[attr-defined]
         assert isinstance(cached_df, pd.DataFrame), (
             f"Cache entry must be a DataFrame, got {type(cached_df)}"
         )
@@ -129,7 +129,8 @@ class TestPropertyLookupCachePopulation:
         )
 
     def test_multiple_properties_reuse_same_cache_entry(
-        self, people_context: Context
+        self,
+        people_context: Context,
     ) -> None:
         """Accessing three properties after EntityScan must call set_index 0 times.
 
@@ -143,17 +144,17 @@ class TestPropertyLookupCachePopulation:
         people_context.begin_query()
         # EntityScan.scan() populates the cache (BEFORE patch is active)
         frame = EntityScan(entity_type="Person", var_name="p").scan(
-            people_context
+            people_context,
         )
 
-        original_source = people_context.entity_mapping.mapping[
-            "Person"
-        ].source_obj
+        original_source = people_context.entity_mapping.mapping["Person"].source_obj
         set_index_calls = {"n": 0}
         orig_fn = pd.DataFrame.set_index
 
         def counting_set_index(
-            df_self: pd.DataFrame, *args: object, **kwargs: object
+            df_self: pd.DataFrame,
+            *args: object,
+            **kwargs: object,
         ) -> pd.DataFrame:
             if df_self is original_source:
                 set_index_calls["n"] += 1
@@ -181,23 +182,22 @@ class TestPropertyLookupCacheInvalidation:
     """commit_query() must clear the cache after mutations; retain it after read-only queries."""
 
     def test_cache_cleared_after_mutating_commit(
-        self, people_context: Context
+        self,
+        people_context: Context,
     ) -> None:
         """_property_lookup_cache must be empty after commit_query() that had mutations."""
         from pycypher.binding_frame import EntityScan
 
         people_context.begin_query()
         frame = EntityScan(entity_type="Person", var_name="p").scan(
-            people_context
+            people_context,
         )
         frame.get_property("p", "name")
 
         assert "Person" in people_context._property_lookup_cache  # type: ignore[attr-defined]
 
         # Simulate a mutation by injecting a shadow entry before commit.
-        canonical_df = people_context.entity_mapping.mapping[
-            "Person"
-        ].source_obj
+        canonical_df = people_context.entity_mapping.mapping["Person"].source_obj
         people_context._shadow["Person"] = canonical_df.copy()  # type: ignore[attr-defined]
 
         people_context.commit_query()
@@ -208,14 +208,15 @@ class TestPropertyLookupCacheInvalidation:
         )
 
     def test_cache_retained_after_readonly_commit(
-        self, people_context: Context
+        self,
+        people_context: Context,
     ) -> None:
         """Cache is NOT cleared after a read-only commit — the data is unchanged."""
         from pycypher.binding_frame import EntityScan
 
         people_context.begin_query()
         frame = EntityScan(entity_type="Person", var_name="p").scan(
-            people_context
+            people_context,
         )
         frame.get_property("p", "name")
         assert "Person" in people_context._property_lookup_cache  # type: ignore[attr-defined]
@@ -229,14 +230,15 @@ class TestPropertyLookupCacheInvalidation:
         )
 
     def test_cache_repopulated_after_commit(
-        self, people_context: Context
+        self,
+        people_context: Context,
     ) -> None:
         """After commit, the next get_property call must rebuild the cache."""
         from pycypher.binding_frame import EntityScan
 
         people_context.begin_query()
         frame = EntityScan(entity_type="Person", var_name="p").scan(
-            people_context
+            people_context,
         )
         frame.get_property("p", "name")
         people_context.commit_query()
@@ -244,7 +246,7 @@ class TestPropertyLookupCacheInvalidation:
         # New query — begin_query + get_property should repopulate cache
         people_context.begin_query()
         frame2 = EntityScan(entity_type="Person", var_name="p").scan(
-            people_context
+            people_context,
         )
         frame2.get_property("p", "name")
 
@@ -265,7 +267,7 @@ class TestPropertyLookupCacheCorrectness:
 
         people_context.begin_query()
         frame = EntityScan(entity_type="Person", var_name="p").scan(
-            people_context
+            people_context,
         )
 
         # First call populates cache; second call uses it
@@ -277,9 +279,7 @@ class TestPropertyLookupCacheCorrectness:
             result2.reset_index(drop=True),
             check_names=False,
         )
-        assert result1.iloc[0] == "P1", (
-            f"Expected 'P1', got {result1.iloc[0]!r}"
-        )
+        assert result1.iloc[0] == "P1", f"Expected 'P1', got {result1.iloc[0]!r}"
 
     def test_age_lookup_correct(self, people_context: Context) -> None:
         """get_property('p', 'age') values are in the expected range."""
@@ -287,7 +287,7 @@ class TestPropertyLookupCacheCorrectness:
 
         people_context.begin_query()
         frame = EntityScan(entity_type="Person", var_name="p").scan(
-            people_context
+            people_context,
         )
         ages = frame.get_property("p", "age")
         assert ages.between(20, 69).all(), "Ages should all be in [20, 69]"
@@ -295,7 +295,7 @@ class TestPropertyLookupCacheCorrectness:
     def test_query_results_unchanged(self, people_star: Star) -> None:
         """Full query results must be unchanged after the cache is introduced."""
         result = people_star.execute_query(
-            "MATCH (p:Person) WHERE p.age = 20 RETURN p.name AS name ORDER BY p.name"
+            "MATCH (p:Person) WHERE p.age = 20 RETURN p.name AS name ORDER BY p.name",
         )
         # IDs 1, 51, 101, ... have age 20+0=20. Check we got the right count.
         # With n=5000 and age=20+(i%50) for i in 1..5000: age==20 when i%50==0 → i=50,100,...
@@ -316,7 +316,8 @@ class TestPropertyLookupCachePerformance:
     """With caching, 100 queries × 3 properties = 100 set_index calls, not 300."""
 
     def test_set_index_call_count_with_caching(
-        self, people_star: Star
+        self,
+        people_star: Star,
     ) -> None:
         """set_index must be called ≤ REPS times (once per query-begin) for a
         repeated query that accesses 3 properties.
@@ -342,7 +343,7 @@ class TestPropertyLookupCachePerformance:
             for _ in range(REPS):
                 people_star.execute_query(
                     "MATCH (p:Person) WHERE p.age > 30 "
-                    "RETURN p.name AS name, p.dept AS dept, p.age AS age"
+                    "RETURN p.name AS name, p.dept AS dept, p.age AS age",
                 )
 
         # Without caching: 3 set_index calls per query = REPS * 3 = 60
@@ -361,14 +362,14 @@ class TestPropertyLookupCachePerformance:
         # Warm up AST cache
         people_star.execute_query(
             "MATCH (p:Person) WHERE p.age > 30 "
-            "RETURN p.name AS name, p.dept AS dept, p.age AS age"
+            "RETURN p.name AS name, p.dept AS dept, p.age AS age",
         )
 
         start = time.perf_counter()
         for _ in range(REPS):
             people_star.execute_query(
                 "MATCH (p:Person) WHERE p.age > 30 "
-                "RETURN p.name AS name, p.dept AS dept, p.age AS age"
+                "RETURN p.name AS name, p.dept AS dept, p.age AS age",
             )
         elapsed = time.perf_counter() - start
 

@@ -83,7 +83,9 @@ class TestFileIO:
     def test_parse_file_valid(self, parser):
         """Test parsing from a valid file."""
         with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".cypher", delete=False
+            mode="w",
+            suffix=".cypher",
+            delete=False,
         ) as f:
             f.write("MATCH (n:Person) RETURN n")
             temp_path = f.name
@@ -97,7 +99,9 @@ class TestFileIO:
     def test_parse_file_to_ast_valid(self, parser):
         """Test parsing file directly to AST."""
         with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".cypher", delete=False
+            mode="w",
+            suffix=".cypher",
+            delete=False,
         ) as f:
             f.write("MATCH (n:Person {name: 'Alice'}) RETURN n.age")
             temp_path = f.name
@@ -118,7 +122,9 @@ class TestFileIO:
     def test_parse_file_empty_file(self, parser):
         """Test parsing empty file."""
         with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".cypher", delete=False
+            mode="w",
+            suffix=".cypher",
+            delete=False,
         ) as f:
             temp_path = f.name
 
@@ -131,7 +137,9 @@ class TestFileIO:
     def test_parse_file_with_path_object(self, parser):
         """Test parsing with Path object."""
         with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".cypher", delete=False
+            mode="w",
+            suffix=".cypher",
+            delete=False,
         ) as f:
             f.write("RETURN 42")
             temp_path = Path(f.name)
@@ -152,7 +160,9 @@ class TestFileIO:
         ORDER BY p.age DESC
         """
         with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".cypher", delete=False
+            mode="w",
+            suffix=".cypher",
+            delete=False,
         ) as f:
             f.write(query)
             temp_path = f.name

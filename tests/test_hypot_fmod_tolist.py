@@ -35,12 +35,12 @@ from pycypher.star import Star
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture()
+@pytest.fixture
 def reg() -> ScalarFunctionRegistry:
     return ScalarFunctionRegistry.get_instance()
 
 
-@pytest.fixture()
+@pytest.fixture
 def geo_star() -> Star:
     """A Star with a small GeoPoint table for integration tests."""
     df = pd.DataFrame(
@@ -51,7 +51,7 @@ def geo_star() -> Star:
             "dy": [4.0, 0.0, 12.0],
             "x": [5.0, 3.0, 7.0],
             "y": [2.5, 3.0, 0.0],
-        }
+        },
     )
     table = EntityTable(
         entity_type="Point",
@@ -77,7 +77,7 @@ def geo_star() -> Star:
         context=Context(
             entity_mapping=EntityMapping(mapping={"Point": table}),
             relationship_mapping=RelationshipMapping(mapping={}),
-        )
+        ),
     )
 
 
@@ -109,7 +109,7 @@ class TestHypot:
         assert result.iloc[0] == pytest.approx(0.0)
 
     def test_negative_inputs(self, reg: ScalarFunctionRegistry) -> None:
-        """hypot is symmetric — sign does not matter."""
+        """Hypot is symmetric — sign does not matter."""
         result = reg.execute("hypot", [_s(-3.0), _s(-4.0)])
         assert result.iloc[0] == pytest.approx(5.0)
 
@@ -140,7 +140,7 @@ class TestHypot:
 
     def test_in_return_clause(self, geo_star: Star) -> None:
         r = geo_star.execute_query(
-            "MATCH (p:Point) RETURN hypot(p.dx, p.dy) AS dist ORDER BY p.name"
+            "MATCH (p:Point) RETURN hypot(p.dx, p.dy) AS dist ORDER BY p.name",
         )
         vals = list(r["dist"])
         assert vals[0] == pytest.approx(5.0)  # A: 3,4 → 5
@@ -150,7 +150,7 @@ class TestHypot:
     def test_in_where_clause(self, geo_star: Star) -> None:
         """Filter points whose distance from origin > 10."""
         r = geo_star.execute_query(
-            "MATCH (p:Point) WHERE hypot(p.dx, p.dy) > 10.0 RETURN p.name"
+            "MATCH (p:Point) WHERE hypot(p.dx, p.dy) > 10.0 RETURN p.name",
         )
         assert list(r["name"]) == ["C"]
 
@@ -188,12 +188,13 @@ class TestFmod:
         assert result.iloc[0] == pytest.approx(0.9)
 
     def test_negative_dividend(self, reg: ScalarFunctionRegistry) -> None:
-        """fmod preserves sign of dividend (IEEE 754 definition)."""
+        """Fmod preserves sign of dividend (IEEE 754 definition)."""
         result = reg.execute("fmod", [_s(-10.0), _s(3.0)])
         assert result.iloc[0] == pytest.approx(-1.0)
 
     def test_zero_divisor_returns_null(
-        self, reg: ScalarFunctionRegistry
+        self,
+        reg: ScalarFunctionRegistry,
     ) -> None:
         assert _null(reg.execute("fmod", [_s(5.0), _s(0.0)]).iloc[0])
 
@@ -212,9 +213,9 @@ class TestFmod:
         assert result.iloc[2] == pytest.approx(-2.0)
 
     def test_in_return_clause(self, geo_star: Star) -> None:
-        """fmod available in RETURN expressions."""
+        """Fmod available in RETURN expressions."""
         r = geo_star.execute_query(
-            "MATCH (p:Point) RETURN fmod(p.x, 3.0) AS rem ORDER BY p.name"
+            "MATCH (p:Point) RETURN fmod(p.x, 3.0) AS rem ORDER BY p.name",
         )
         vals = list(r["rem"])
         assert vals[0] == pytest.approx(2.0)  # A: 5 mod 3 = 2
@@ -276,16 +277,17 @@ class TestToList:
         assert result.iloc[3] == [4, 5]
 
     def test_in_return_clause(self, geo_star: Star) -> None:
-        """toList wraps scalar properties in a list per row."""
+        """ToList wraps scalar properties in a list per row."""
         r = geo_star.execute_query(
-            "MATCH (p:Point) RETURN toList(p.dx) AS wrapped ORDER BY p.name"
+            "MATCH (p:Point) RETURN toList(p.dx) AS wrapped ORDER BY p.name",
         )
         assert r["wrapped"].iloc[0] == [3.0]
         assert r["wrapped"].iloc[1] == [0.0]
         assert r["wrapped"].iloc[2] == [-5.0]
 
     def test_result_is_series_of_lists(
-        self, reg: ScalarFunctionRegistry
+        self,
+        reg: ScalarFunctionRegistry,
     ) -> None:
         s = pd.Series([1, 2, 3])
         result = reg.execute("toList", [s])

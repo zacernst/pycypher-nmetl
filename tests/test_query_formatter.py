@@ -131,9 +131,7 @@ class TestLintQuery:
 
     def test_lowercase_keyword_detected(self) -> None:
         issues = lint_query("match (n) return n")
-        keyword_issues = [
-            i for i in issues if "should be uppercase" in i.message
-        ]
+        keyword_issues = [i for i in issues if "should be uppercase" in i.message]
         assert len(keyword_issues) > 0
 
     def test_trailing_whitespace_detected(self) -> None:
@@ -146,9 +144,7 @@ class TestLintQuery:
         # Filter out parse errors (some queries may not fully parse)
         style_issues = [i for i in issues if i.severity == "warning"]
         # Simple MATCH...RETURN should have few or no style issues
-        keyword_issues = [
-            i for i in style_issues if "should be uppercase" in i.message
-        ]
+        keyword_issues = [i for i in style_issues if "should be uppercase" in i.message]
         assert len(keyword_issues) == 0
 
     def test_lint_issue_dataclass(self) -> None:
@@ -172,9 +168,7 @@ class TestLintQuery:
 
     def test_mixed_case_query(self) -> None:
         issues = lint_query("Match (n) Return n")
-        keyword_issues = [
-            i for i in issues if "should be uppercase" in i.message
-        ]
+        keyword_issues = [i for i in issues if "should be uppercase" in i.message]
         assert len(keyword_issues) >= 2
 
 

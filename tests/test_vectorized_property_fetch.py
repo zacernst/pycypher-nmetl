@@ -16,7 +16,6 @@ import time
 import numpy as np
 import pandas as pd
 import pytest
-
 from pycypher.constants import (
     ID_COLUMN,
     RELATIONSHIP_SOURCE_COLUMN,
@@ -24,13 +23,12 @@ from pycypher.constants import (
 )
 from pycypher.graph_index import VectorizedPropertyStore
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture()
+@pytest.fixture
 def entity_df() -> pd.DataFrame:
     """A small entity DataFrame for testing."""
     return pd.DataFrame(
@@ -39,11 +37,11 @@ def entity_df() -> pd.DataFrame:
             "name": ["Alice", "Bob", "Charlie", "Diana", "Eve"],
             "age": [30, 25, 35, 28, 42],
             "city": ["NYC", "LA", "NYC", "Chicago", "LA"],
-        }
+        },
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def large_entity_df() -> pd.DataFrame:
     """A larger entity DataFrame for performance testing."""
     n = 10_000
@@ -54,11 +52,11 @@ def large_entity_df() -> pd.DataFrame:
             "name": [f"Person{i}" for i in range(n)],
             "age": rng.integers(18, 80, size=n).tolist(),
             "score": rng.random(size=n).tolist(),
-        }
+        },
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def context_with_data():
     """A Context for integration tests."""
     from pycypher.relational_models import (
@@ -74,14 +72,14 @@ def context_with_data():
             ID_COLUMN: [1, 2, 3, 4],
             "name": ["Alice", "Bob", "Charlie", "Diana"],
             "age": [30, 25, 35, 28],
-        }
+        },
     )
     knows_df = pd.DataFrame(
         {
             ID_COLUMN: [101, 102, 103, 104, 105],
             RELATIONSHIP_SOURCE_COLUMN: [1, 1, 2, 3, 4],
             RELATIONSHIP_TARGET_COLUMN: [2, 3, 3, 4, 1],
-        }
+        },
     )
 
     person_table = EntityTable(
@@ -170,7 +168,8 @@ class TestVectorizedPropertyStore:
     def test_fetch_multi_with_missing(self, entity_df):
         store = VectorizedPropertyStore.build("Person", entity_df)
         result = store.fetch_multi(
-            np.array([1, 99]), ["name", "nonexistent"]
+            np.array([1, 99]),
+            ["name", "nonexistent"],
         )
         assert result["name"][0] == "Alice"
         assert result["name"][1] is None
@@ -189,7 +188,7 @@ class TestVectorizedPropertyStore:
 
     def test_build_empty_df(self):
         empty_df = pd.DataFrame(
-            {ID_COLUMN: pd.Series(dtype=object), "name": pd.Series(dtype=object)}
+            {ID_COLUMN: pd.Series(dtype=object), "name": pd.Series(dtype=object)},
         )
         store = VectorizedPropertyStore.build("Empty", empty_df)
         assert store.size == 0
@@ -214,7 +213,7 @@ class TestVectorizedPropertyStore:
             {
                 ID_COLUMN: [1, 2, 3],
                 "name": ["Alice", None, "Charlie"],
-            }
+            },
         )
         store = VectorizedPropertyStore.build("Person", df)
         result = store.fetch(np.array([1, 2, 3]), "name")
@@ -228,7 +227,7 @@ class TestVectorizedPropertyStore:
             {
                 ID_COLUMN: [1, 1, 2],
                 "name": ["Alice1", "Alice2", "Bob"],
-            }
+            },
         )
         store = VectorizedPropertyStore.build("Person", df)
         # searchsorted finds one of the duplicates — both have valid values
@@ -241,7 +240,7 @@ class TestVectorizedPropertyStore:
             {
                 ID_COLUMN: ["c", "a", "b"],
                 "name": ["Charlie", "Alice", "Bob"],
-            }
+            },
         )
         store = VectorizedPropertyStore.build("Person", df)
         result = store.fetch(np.array(["a", "b", "c", "z"]), "name")
@@ -366,7 +365,7 @@ class TestShadowBypass:
                 ID_COLUMN: [1, 2, 3, 4],
                 "name": ["ShadowAlice", "ShadowBob", "ShadowCharlie", "ShadowDiana"],
                 "age": [31, 26, 36, 29],
-            }
+            },
         )
         context_with_data._shadow = {"Person": shadow_df}
 
@@ -450,7 +449,8 @@ class TestPerformanceCharacteristics:
 
         rng = np.random.default_rng(42)
         query_ids = np.array(
-            rng.choice(10_000, size=5000, replace=True), dtype=object
+            rng.choice(10_000, size=5000, replace=True),
+            dtype=object,
         )
         query_series = pd.Series(query_ids)
 
@@ -485,7 +485,8 @@ class TestPerformanceCharacteristics:
 
         rng = np.random.default_rng(42)
         query_ids = np.array(
-            rng.choice(10_000, size=5000, replace=True), dtype=object
+            rng.choice(10_000, size=5000, replace=True),
+            dtype=object,
         )
         props = ["name", "age", "score"]
 

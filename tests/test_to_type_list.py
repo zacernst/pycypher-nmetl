@@ -20,7 +20,7 @@ from pycypher.relational_models import (
 from pycypher.star import Star
 
 
-@pytest.fixture()
+@pytest.fixture
 def star() -> Star:
     df = pd.DataFrame({ID_COLUMN: [1], "n": [1]})
     table = EntityTable(
@@ -35,7 +35,7 @@ def star() -> Star:
         context=Context(
             entity_mapping=EntityMapping(mapping={"N": table}),
             relationship_mapping=RelationshipMapping(mapping={}),
-        )
+        ),
     )
 
 
@@ -111,7 +111,7 @@ class TestToFloatList:
 
     def test_invalid_string_becomes_null(self, star: Star) -> None:
         r = star.execute_query(
-            "RETURN toFloatList(['1.1', 'abc', '3.3']) AS r"
+            "RETURN toFloatList(['1.1', 'abc', '3.3']) AS r",
         )
         result = r["r"].iloc[0]
         assert abs(result[0] - 1.1) < 1e-9
@@ -135,7 +135,7 @@ class TestToBooleanList:
 
     def test_invalid_string_becomes_null(self, star: Star) -> None:
         r = star.execute_query(
-            "RETURN toBooleanList(['true', 'yes', 'false']) AS r"
+            "RETURN toBooleanList(['true', 'yes', 'false']) AS r",
         )
         result = r["r"].iloc[0]
         assert result[0] is True

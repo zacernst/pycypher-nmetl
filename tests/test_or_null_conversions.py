@@ -20,7 +20,7 @@ from pycypher.relational_models import Context, EntityMapping
 from pycypher.star import Star
 
 
-@pytest.fixture()
+@pytest.fixture
 def empty_star() -> Star:
     return Star(context=Context(entity_mapping=EntityMapping(mapping={})))
 
@@ -69,7 +69,7 @@ class TestToBooleanOrNull:
         assert bool(r["b"].iloc[0]) is False
 
     def test_does_not_raise(self, empty_star: Star) -> None:
-        """toBooleanOrNull must not raise for any valid input."""
+        """ToBooleanOrNull must not raise for any valid input."""
         empty_star.execute_query("RETURN toBooleanOrNull('true') AS b")
 
 
@@ -108,7 +108,7 @@ class TestToIntegerOrNull:
         assert int(r["n"].iloc[0]) == -7
 
     def test_does_not_raise(self, empty_star: Star) -> None:
-        """toIntegerOrNull must not raise for invalid inputs."""
+        """ToIntegerOrNull must not raise for invalid inputs."""
         empty_star.execute_query("RETURN toIntegerOrNull('bad') AS n")
 
 
@@ -146,5 +146,5 @@ class TestToFloatOrNull:
         assert float(r["f"].iloc[0]) == -1.5
 
     def test_does_not_raise(self, empty_star: Star) -> None:
-        """toFloatOrNull must not raise for invalid inputs."""
+        """ToFloatOrNull must not raise for invalid inputs."""
         empty_star.execute_query("RETURN toFloatOrNull('bad') AS f")

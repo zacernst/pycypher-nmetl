@@ -36,9 +36,7 @@ def _make_config(
     """Write a minimal pipeline YAML to ``tmp_path/pipeline.yaml``."""
     if not source_uri:
         source_uri = str(_SAMPLE_CSV)
-    project_block = (
-        f"project:\n  name: {project_name}\n" if project_name else ""
-    )
+    project_block = f"project:\n  name: {project_name}\n" if project_name else ""
     text = f"""\
 version: "1.0"
 {project_block}
@@ -76,28 +74,36 @@ def runner() -> CliRunner:
 
 class TestDryRun:
     def test_dry_run_exits_zero(
-        self, runner: CliRunner, tmp_path: Path
+        self,
+        runner: CliRunner,
+        tmp_path: Path,
     ) -> None:
         cfg = _make_config(tmp_path)
         result = runner.invoke(cli, ["run", str(cfg), "--dry-run"])
         assert result.exit_code == 0, result.output
 
     def test_dry_run_shows_query_id(
-        self, runner: CliRunner, tmp_path: Path
+        self,
+        runner: CliRunner,
+        tmp_path: Path,
     ) -> None:
         cfg = _make_config(tmp_path)
         result = runner.invoke(cli, ["run", str(cfg), "--dry-run"])
         assert "q1" in result.output
 
     def test_dry_run_no_data_loaded(
-        self, runner: CliRunner, tmp_path: Path
+        self,
+        runner: CliRunner,
+        tmp_path: Path,
     ) -> None:
         cfg = _make_config(tmp_path)
         result = runner.invoke(cli, ["run", str(cfg), "--dry-run"])
         assert "No data loaded" in result.output
 
     def test_dry_run_does_not_create_output_file(
-        self, runner: CliRunner, tmp_path: Path
+        self,
+        runner: CliRunner,
+        tmp_path: Path,
     ) -> None:
         out_path = tmp_path / "out.csv"
         output_section = f'output:\n  - query_id: q1\n    uri: "{out_path}"\n'
@@ -113,15 +119,20 @@ class TestDryRun:
 
 class TestConfigErrors:
     def test_missing_config_exits_nonzero(
-        self, runner: CliRunner, tmp_path: Path
+        self,
+        runner: CliRunner,
+        tmp_path: Path,
     ) -> None:
         result = runner.invoke(
-            cli, ["run", str(tmp_path / "nonexistent.yaml")]
+            cli,
+            ["run", str(tmp_path / "nonexistent.yaml")],
         )
         assert result.exit_code != 0
 
     def test_invalid_yaml_exits_2(
-        self, runner: CliRunner, tmp_path: Path
+        self,
+        runner: CliRunner,
+        tmp_path: Path,
     ) -> None:
         bad = tmp_path / "bad.yaml"
         bad.write_text(": invalid: [yaml")
@@ -136,14 +147,18 @@ class TestConfigErrors:
 
 class TestRunExecutesAndWrites:
     def test_run_exits_zero_with_no_output(
-        self, runner: CliRunner, tmp_path: Path
+        self,
+        runner: CliRunner,
+        tmp_path: Path,
     ) -> None:
         cfg = _make_config(tmp_path)
         result = runner.invoke(cli, ["run", str(cfg)])
         assert result.exit_code == 0, result.output
 
     def test_run_writes_csv_output(
-        self, runner: CliRunner, tmp_path: Path
+        self,
+        runner: CliRunner,
+        tmp_path: Path,
     ) -> None:
         out_path = tmp_path / "output.csv"
         output_section = f'output:\n  - query_id: q1\n    uri: "{out_path}"\n'
@@ -156,7 +171,9 @@ class TestRunExecutesAndWrites:
         assert set(df["name"]) == {"Alice", "Bob"}
 
     def test_run_writes_parquet_output(
-        self, runner: CliRunner, tmp_path: Path
+        self,
+        runner: CliRunner,
+        tmp_path: Path,
     ) -> None:
         out_path = tmp_path / "output.parquet"
         output_section = f'output:\n  - query_id: q1\n    uri: "{out_path}"\n'
@@ -168,7 +185,9 @@ class TestRunExecutesAndWrites:
         assert len(df) == 2
 
     def test_run_writes_json_output(
-        self, runner: CliRunner, tmp_path: Path
+        self,
+        runner: CliRunner,
+        tmp_path: Path,
     ) -> None:
         out_path = tmp_path / "output.json"
         output_section = f'output:\n  - query_id: q1\n    uri: "{out_path}"\n'
@@ -180,7 +199,9 @@ class TestRunExecutesAndWrites:
         assert len(df) == 2
 
     def test_run_multiple_outputs_for_same_query(
-        self, runner: CliRunner, tmp_path: Path
+        self,
+        runner: CliRunner,
+        tmp_path: Path,
     ) -> None:
         out_csv = tmp_path / "output.csv"
         out_parquet = tmp_path / "output.parquet"
@@ -196,7 +217,9 @@ class TestRunExecutesAndWrites:
         assert out_parquet.exists()
 
     def test_run_external_query_file(
-        self, runner: CliRunner, tmp_path: Path
+        self,
+        runner: CliRunner,
+        tmp_path: Path,
     ) -> None:
         """Query text loaded from a .cypher file referenced by source:."""
         cypher_dir = tmp_path / "queries"
@@ -235,7 +258,9 @@ output:
 
 class TestQueryIdFilter:
     def test_query_id_runs_only_selected(
-        self, runner: CliRunner, tmp_path: Path
+        self,
+        runner: CliRunner,
+        tmp_path: Path,
     ) -> None:
         out1 = tmp_path / "out1.csv"
         out2 = tmp_path / "out2.csv"
@@ -266,11 +291,14 @@ output:
         assert not out2.exists()
 
     def test_unknown_query_id_warns(
-        self, runner: CliRunner, tmp_path: Path
+        self,
+        runner: CliRunner,
+        tmp_path: Path,
     ) -> None:
         cfg = _make_config(tmp_path)
         result = runner.invoke(
-            cli, ["run", str(cfg), "--query-id", "nonexistent"]
+            cli,
+            ["run", str(cfg), "--query-id", "nonexistent"],
         )
         # Should not hard-fail; just warn
         full_output = (result.output or "") + (result.stderr or "")
@@ -284,7 +312,9 @@ output:
 
 class TestOnErrorPolicy:
     def test_on_error_warn_continues_after_failure(
-        self, runner: CliRunner, tmp_path: Path
+        self,
+        runner: CliRunner,
+        tmp_path: Path,
     ) -> None:
         """--on-error=warn: a failing query logs a warning but exits 0."""
         out_good = tmp_path / "out_good.csv"
@@ -312,7 +342,9 @@ output:
         assert out_good.exists()
 
     def test_on_error_skip_continues_silently(
-        self, runner: CliRunner, tmp_path: Path
+        self,
+        runner: CliRunner,
+        tmp_path: Path,
     ) -> None:
         out_good = tmp_path / "out_good.csv"
         config_text = f"""\
@@ -339,7 +371,9 @@ output:
         assert out_good.exists()
 
     def test_on_error_fail_aborts_on_failure(
-        self, runner: CliRunner, tmp_path: Path
+        self,
+        runner: CliRunner,
+        tmp_path: Path,
     ) -> None:
         """Default (fail) policy: exits non-zero if any query fails."""
         config_text = f"""\
@@ -367,7 +401,9 @@ queries:
 
 class TestVerboseFlag:
     def test_verbose_shows_project_name(
-        self, runner: CliRunner, tmp_path: Path
+        self,
+        runner: CliRunner,
+        tmp_path: Path,
     ) -> None:
         cfg = _make_config(tmp_path, project_name="my-pipeline")
         result = runner.invoke(cli, ["run", str(cfg), "--verbose"])
@@ -375,7 +411,9 @@ class TestVerboseFlag:
         assert "my-pipeline" in result.output
 
     def test_verbose_shows_source_count(
-        self, runner: CliRunner, tmp_path: Path
+        self,
+        runner: CliRunner,
+        tmp_path: Path,
     ) -> None:
         cfg = _make_config(tmp_path)
         result = runner.invoke(cli, ["run", str(cfg), "--verbose"])

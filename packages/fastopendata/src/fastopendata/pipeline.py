@@ -171,7 +171,10 @@ class GraphPipeline:
         """
         df = pd.DataFrame(records)
         return self.add_relationship_dataframe(
-            relationship_type, df, source_col=source_col, target_col=target_col,
+            relationship_type,
+            df,
+            source_col=source_col,
+            target_col=target_col,
         )
 
     # ── Streaming view ingestion ─────────────────────────────────────
@@ -255,7 +258,10 @@ class GraphPipeline:
 
         for rel_type, (df, source_col, target_col) in self._relationship_frames.items():
             builder.add_relationship(
-                rel_type, df, source_col=source_col, target_col=target_col,
+                rel_type,
+                df,
+                source_col=source_col,
+                target_col=target_col,
             )
 
         return builder.build()

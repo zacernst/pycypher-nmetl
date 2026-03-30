@@ -258,7 +258,9 @@ def snapshot_api_surface(module_name: str) -> APISurface:
     mod = importlib.import_module(module_name)
     version = getattr(mod, "__version__", "unknown")
     names: list[str] = getattr(
-        mod, "__all__", [n for n in dir(mod) if not n.startswith("_")]
+        mod,
+        "__all__",
+        [n for n in dir(mod) if not n.startswith("_")],
     )
 
     symbols: dict[str, SymbolInfo] = {}
@@ -277,7 +279,9 @@ def snapshot_api_surface(module_name: str) -> APISurface:
         )
 
     return APISurface(
-        module_name=module_name, version=version, symbols=symbols
+        module_name=module_name,
+        version=version,
+        symbols=symbols,
     )
 
 
@@ -350,7 +354,7 @@ class SurfaceDiff:
             lines.append("\nSignature changes (BREAKING):")
             for old, new in self.changed:
                 lines.append(
-                    f"  - {old.name}: {old.signature} → {new.signature}"
+                    f"  - {old.name}: {old.signature} → {new.signature}",
                 )
         if self.added:
             lines.append("\nAdded:")

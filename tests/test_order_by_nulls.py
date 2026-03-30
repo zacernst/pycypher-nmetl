@@ -34,9 +34,9 @@ def ctx():
                     "__ID__": ["p1", "p2", "p3", "p4", "p5"],
                     "name": ["Alice", "Bob", "Carol", "Dave", "Eve"],
                     "score": [10.0, None, 30.0, None, 20.0],
-                }
-            )
-        }
+                },
+            ),
+        },
     )
 
 
@@ -50,9 +50,9 @@ def multi_null_ctx():
                     "__ID__": ["i1", "i2", "i3", "i4", "i5", "i6"],
                     "val": [3.0, None, 1.0, None, 2.0, None],
                     "tag": ["c", "x", "a", "y", "b", "z"],
-                }
-            )
-        }
+                },
+            ),
+        },
     )
 
 
@@ -64,60 +64,64 @@ def multi_null_ctx():
 class TestOrderByNullsParsing:
     def test_nulls_last_asc_parses(self, parser: GrammarParser) -> None:
         tree = parser.parse(
-            "MATCH (n:Person) RETURN n.score ORDER BY n.score ASC NULLS LAST"
+            "MATCH (n:Person) RETURN n.score ORDER BY n.score ASC NULLS LAST",
         )
         assert tree is not None
 
     def test_nulls_first_asc_parses(self, parser: GrammarParser) -> None:
         tree = parser.parse(
-            "MATCH (n:Person) RETURN n.score ORDER BY n.score ASC NULLS FIRST"
+            "MATCH (n:Person) RETURN n.score ORDER BY n.score ASC NULLS FIRST",
         )
         assert tree is not None
 
     def test_nulls_first_desc_parses(self, parser: GrammarParser) -> None:
         tree = parser.parse(
-            "MATCH (n:Person) RETURN n.score ORDER BY n.score DESC NULLS FIRST"
+            "MATCH (n:Person) RETURN n.score ORDER BY n.score DESC NULLS FIRST",
         )
         assert tree is not None
 
     def test_nulls_last_desc_parses(self, parser: GrammarParser) -> None:
         tree = parser.parse(
-            "MATCH (n:Person) RETURN n.score ORDER BY n.score DESC NULLS LAST"
+            "MATCH (n:Person) RETURN n.score ORDER BY n.score DESC NULLS LAST",
         )
         assert tree is not None
 
     def test_nulls_first_without_direction_parses(
-        self, parser: GrammarParser
+        self,
+        parser: GrammarParser,
     ) -> None:
         """NULLS FIRST without explicit ASC/DESC should parse (defaults to ASC)."""
         tree = parser.parse(
-            "MATCH (n:Person) RETURN n.score ORDER BY n.score NULLS FIRST"
+            "MATCH (n:Person) RETURN n.score ORDER BY n.score NULLS FIRST",
         )
         assert tree is not None
 
     def test_nulls_last_without_direction_parses(
-        self, parser: GrammarParser
+        self,
+        parser: GrammarParser,
     ) -> None:
         tree = parser.parse(
-            "MATCH (n:Person) RETURN n.score ORDER BY n.score NULLS LAST"
+            "MATCH (n:Person) RETURN n.score ORDER BY n.score NULLS LAST",
         )
         assert tree is not None
 
     def test_multiple_order_items_with_nulls_parses(
-        self, parser: GrammarParser
+        self,
+        parser: GrammarParser,
     ) -> None:
         tree = parser.parse(
             "MATCH (n:Person) RETURN n.score, n.name "
-            "ORDER BY n.score ASC NULLS FIRST, n.name DESC NULLS LAST"
+            "ORDER BY n.score ASC NULLS FIRST, n.name DESC NULLS LAST",
         )
         assert tree is not None
 
     def test_existing_order_by_still_parses(
-        self, parser: GrammarParser
+        self,
+        parser: GrammarParser,
     ) -> None:
         """Plain ORDER BY without NULLS must still work."""
         tree = parser.parse(
-            "MATCH (n:Person) RETURN n.score ORDER BY n.score DESC"
+            "MATCH (n:Person) RETURN n.score ORDER BY n.score DESC",
         )
         assert tree is not None
 
@@ -130,7 +134,7 @@ class TestOrderByNullsParsing:
 class TestOrderByItemAST:
     def test_nulls_first_in_ast(self, parser: GrammarParser) -> None:
         ast = ASTConverter.from_cypher(
-            "MATCH (n:Person) RETURN n.score ORDER BY n.score ASC NULLS FIRST"
+            "MATCH (n:Person) RETURN n.score ORDER BY n.score ASC NULLS FIRST",
         )
         return_clause = ast.clauses[-1]
         order_item: OrderByItem = return_clause.order_by[0]
@@ -139,7 +143,7 @@ class TestOrderByItemAST:
 
     def test_nulls_last_in_ast(self, parser: GrammarParser) -> None:
         ast = ASTConverter.from_cypher(
-            "MATCH (n:Person) RETURN n.score ORDER BY n.score DESC NULLS LAST"
+            "MATCH (n:Person) RETURN n.score ORDER BY n.score DESC NULLS LAST",
         )
         return_clause = ast.clauses[-1]
         order_item: OrderByItem = return_clause.order_by[0]
@@ -148,17 +152,18 @@ class TestOrderByItemAST:
 
     def test_no_nulls_keyword_gives_none(self, parser: GrammarParser) -> None:
         ast = ASTConverter.from_cypher(
-            "MATCH (n:Person) RETURN n.score ORDER BY n.score"
+            "MATCH (n:Person) RETURN n.score ORDER BY n.score",
         )
         return_clause = ast.clauses[-1]
         order_item: OrderByItem = return_clause.order_by[0]
         assert order_item.nulls_placement is None
 
     def test_nulls_first_without_direction_ascending_true(
-        self, parser: GrammarParser
+        self,
+        parser: GrammarParser,
     ) -> None:
         ast = ASTConverter.from_cypher(
-            "MATCH (n:Person) RETURN n.score ORDER BY n.score NULLS FIRST"
+            "MATCH (n:Person) RETURN n.score ORDER BY n.score NULLS FIRST",
         )
         return_clause = ast.clauses[-1]
         order_item: OrderByItem = return_clause.order_by[0]
@@ -176,7 +181,7 @@ class TestOrderByNullsExecution:
         """Default behavior: ascending with nulls at end."""
         s = Star(context=ctx)
         result = s.execute_query(
-            "MATCH (n:Person) RETURN n.score ORDER BY n.score"
+            "MATCH (n:Person) RETURN n.score ORDER BY n.score",
         )
         scores = result["score"].tolist()
         non_null = [v for v in scores if v is not None and v == v]
@@ -192,7 +197,7 @@ class TestOrderByNullsExecution:
         """NULLS FIRST puts null rows before non-null rows."""
         s = Star(context=ctx)
         result = s.execute_query(
-            "MATCH (n:Person) RETURN n.score ORDER BY n.score ASC NULLS FIRST"
+            "MATCH (n:Person) RETURN n.score ORDER BY n.score ASC NULLS FIRST",
         )
         scores = result["score"].tolist()
         # First two should be null (Dave and Bob have null scores)
@@ -208,7 +213,7 @@ class TestOrderByNullsExecution:
         """DESC NULLS LAST: non-nulls descending, nulls at end."""
         s = Star(context=ctx)
         result = s.execute_query(
-            "MATCH (n:Person) RETURN n.score ORDER BY n.score DESC NULLS LAST"
+            "MATCH (n:Person) RETURN n.score ORDER BY n.score DESC NULLS LAST",
         )
         scores = result["score"].tolist()
         non_null = [v for v in scores if v is not None and v == v]
@@ -222,7 +227,7 @@ class TestOrderByNullsExecution:
         """DESC NULLS FIRST: nulls appear before descending non-nulls."""
         s = Star(context=ctx)
         result = s.execute_query(
-            "MATCH (n:Person) RETURN n.score ORDER BY n.score DESC NULLS FIRST"
+            "MATCH (n:Person) RETURN n.score ORDER BY n.score DESC NULLS FIRST",
         )
         scores = result["score"].tolist()
         null_count = 2
@@ -240,37 +245,39 @@ class TestOrderByNullsExecution:
                     {
                         "__ID__": ["a", "b", "c"],
                         "val": [3.0, 1.0, 2.0],
-                    }
-                )
-            }
+                    },
+                ),
+            },
         )
         s = Star(context=ctx)
         result = s.execute_query(
-            "MATCH (n:Num) RETURN n.val ORDER BY n.val ASC NULLS FIRST"
+            "MATCH (n:Num) RETURN n.val ORDER BY n.val ASC NULLS FIRST",
         )
         assert list(result["val"]) == [1.0, 2.0, 3.0]
 
     def test_nulls_last_explicit_same_as_default(
-        self, ctx: ContextBuilder
+        self,
+        ctx: ContextBuilder,
     ) -> None:
         """Explicit NULLS LAST must match the default (no keyword) behavior."""
         s = Star(context=ctx)
         result_default = s.execute_query(
-            "MATCH (n:Person) RETURN n.score ORDER BY n.score ASC"
+            "MATCH (n:Person) RETURN n.score ORDER BY n.score ASC",
         )
         result_explicit = s.execute_query(
-            "MATCH (n:Person) RETURN n.score ORDER BY n.score ASC NULLS LAST"
+            "MATCH (n:Person) RETURN n.score ORDER BY n.score ASC NULLS LAST",
         )
         assert list(result_default["score"]) == list(result_explicit["score"])
 
     def test_multi_column_mixed_null_placement(
-        self, multi_null_ctx: ContextBuilder
+        self,
+        multi_null_ctx: ContextBuilder,
     ) -> None:
         """Two sort keys with different null placements."""
         s = Star(context=multi_null_ctx)
         result = s.execute_query(
             "MATCH (n:Item) RETURN n.val, n.tag "
-            "ORDER BY n.val ASC NULLS FIRST, n.tag ASC NULLS LAST"
+            "ORDER BY n.val ASC NULLS FIRST, n.tag ASC NULLS LAST",
         )
         vals = result["val"].tolist()
         # Nulls first for val: the 3 null-val rows come first
@@ -286,9 +293,9 @@ class TestOrderByNullsExecution:
                     {
                         "__ID__": ["l1"],
                         "nums": [[1, 2, 3]],
-                    }
-                )
-            }
+                    },
+                ),
+            },
         )
         s = Star(context=ctx)
         result = s.execute_query("MATCH (n:Lst) RETURN last(n.nums) AS v")

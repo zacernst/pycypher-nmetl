@@ -75,4 +75,19 @@ Related Resources
 * :doc:`../user_guide/index` — In-depth reference guides
 * :doc:`../user_guide/performance_tuning` — Production optimization
 * :doc:`../api/pycypher` — Full API reference
-* ``examples/`` directory — Runnable scripts (``uv run python examples/quickstart.py``)
+
+Example Scripts
+~~~~~~~~~~~~~~~
+
+The ``examples/`` directory contains runnable scripts that complement these
+tutorials.  Run any script with ``uv run python examples/<script>.py``:
+
+* ``quickstart.py`` — Minimal end-to-end query (pairs with :doc:`basic_query_parsing`)
+* ``advanced_grammar_examples.py`` — Complex Cypher patterns including
+  variable-length paths, comprehensions, and REDUCE (pairs with :doc:`pattern_matching`)
+* ``functions_in_where.py`` — Using scalar functions inside WHERE predicates
+* ``scalar_functions_in_with.py`` — Transforming data with functions in WITH clauses
+* ``ast_conversion_example.py`` — Programmatic AST inspection and traversal
+  (pairs with :doc:`ast_manipulation`)
+* ``multi_query_composition.py`` — Multi-query ETL pipelines with cross-query
+  dependencies (pairs with :doc:`data_etl_pipeline`)

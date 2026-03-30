@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 from shared.helpers import is_null_value
 
-from pycypher.constants import _broadcast_series
+from pycypher.constants import _broadcast_series, _scalar_raw
 
 if TYPE_CHECKING:
     from pycypher.scalar_functions import ScalarFunctionRegistry
@@ -117,7 +117,7 @@ def register(registry: ScalarFunctionRegistry) -> None:
             Series matching v1 except positions where v1 == v2 are None.
 
         """
-        cmp_val = v2.iloc[0] if len(v2) > 0 else None
+        cmp_val = _scalar_raw(v2)
 
         # Vectorized implementation: use pandas where() for conditional replacement
         # This replaces the .apply(_check) anti-pattern with vectorized operations

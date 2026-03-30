@@ -117,6 +117,7 @@ def run_health_server(
 
     Raises:
         KeyboardInterrupt: Cleanly shuts down on Ctrl-C.
+
     """
     server = HTTPServer((host, port), _HealthHandler)
     LOGGER.info("Health server listening on %s:%d", host, port)

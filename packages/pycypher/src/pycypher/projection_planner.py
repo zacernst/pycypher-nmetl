@@ -60,6 +60,7 @@ class ProjectionPlanner:
                 explicit ``AS`` alias is provided.
             where_fn: Callback to apply a WHERE filter to a
                 :class:`BindingFrame`.
+
         """
         self._agg_planner = agg_planner
         self._renderer = renderer
@@ -378,7 +379,8 @@ class ProjectionPlanner:
 
         result_frame = BindingFrame(
             bindings=self._agg_planner.aggregate_items(
-                with_clause.items, frame
+                with_clause.items,
+                frame,
             ),
             type_registry=preserved_types,
             context=frame.context,

@@ -42,9 +42,9 @@ def _make_star(n: int) -> Star:
                     "name": [f"Person_{i}" for i in range(n)],
                     "age": [20 + (i % 60) for i in range(n)],
                     "dept": [f"dept_{i % 10}" for i in range(n)],
-                }
-            )
-        }
+                },
+            ),
+        },
     )
     return Star(context=ctx)
 
@@ -69,17 +69,18 @@ class TestPropertiesCorrectness:
 
     def test_properties_returns_dict_per_row(self, star_small: Star) -> None:
         result = star_small.execute_query(
-            "MATCH (p:Person) RETURN properties(p) AS props LIMIT 1"
+            "MATCH (p:Person) RETURN properties(p) AS props LIMIT 1",
         )
         assert len(result) == 1
         props = result["props"].iloc[0]
         assert isinstance(props, dict)
 
     def test_properties_contains_all_user_fields(
-        self, star_small: Star
+        self,
+        star_small: Star,
     ) -> None:
         result = star_small.execute_query(
-            "MATCH (p:Person) WHERE p.name = 'Person_0' RETURN properties(p) AS props"
+            "MATCH (p:Person) WHERE p.name = 'Person_0' RETURN properties(p) AS props",
         )
         props = result["props"].iloc[0]
         assert "name" in props
@@ -87,17 +88,18 @@ class TestPropertiesCorrectness:
         assert "dept" in props
 
     def test_properties_excludes_internal_id_column(
-        self, star_small: Star
+        self,
+        star_small: Star,
     ) -> None:
         result = star_small.execute_query(
-            "MATCH (p:Person) WHERE p.name = 'Person_0' RETURN properties(p) AS props"
+            "MATCH (p:Person) WHERE p.name = 'Person_0' RETURN properties(p) AS props",
         )
         props = result["props"].iloc[0]
         assert "__ID__" not in props, "__ID__ must not appear in properties()"
 
     def test_properties_values_are_correct(self, star_small: Star) -> None:
         result = star_small.execute_query(
-            "MATCH (p:Person) WHERE p.name = 'Person_3' RETURN properties(p) AS props"
+            "MATCH (p:Person) WHERE p.name = 'Person_3' RETURN properties(p) AS props",
         )
         props = result["props"].iloc[0]
         assert props["name"] == "Person_3"
@@ -106,16 +108,17 @@ class TestPropertiesCorrectness:
 
     def test_properties_all_rows_have_dict(self, star_small: Star) -> None:
         result = star_small.execute_query(
-            "MATCH (p:Person) RETURN properties(p) AS props"
+            "MATCH (p:Person) RETURN properties(p) AS props",
         )
         assert len(result) == 10
         assert all(isinstance(v, dict) for v in result["props"])
 
     def test_properties_each_row_has_correct_name(
-        self, star_small: Star
+        self,
+        star_small: Star,
     ) -> None:
         result = star_small.execute_query(
-            "MATCH (p:Person) RETURN properties(p) AS props"
+            "MATCH (p:Person) RETURN properties(p) AS props",
         )
         names = {row["name"] for row in result["props"]}
         expected = {f"Person_{i}" for i in range(10)}
@@ -124,7 +127,7 @@ class TestPropertiesCorrectness:
     def test_properties_no_cross_contamination(self, star_small: Star) -> None:
         """Each row gets its own dict, not a shared mutable reference."""
         result = star_small.execute_query(
-            "MATCH (p:Person) RETURN properties(p) AS props"
+            "MATCH (p:Person) RETURN properties(p) AS props",
         )
         dicts = result["props"].tolist()
         # Mutate the first dict and verify others are unaffected
@@ -139,8 +142,7 @@ class TestPropertiesCorrectness:
 
 
 class TestPropertiesPerformance:
-    """
-    Performance regression guard for properties(n).
+    """Performance regression guard for properties(n).
 
     The iterrows()-based implementation takes ~500ms on 5k rows (extrapolating
     from 156ms/10k — actually 78ms/5k from the baseline).  After fixing to
@@ -161,14 +163,14 @@ class TestPropertiesPerformance:
     def test_properties_on_5k_rows_is_fast(self, star_large: Star) -> None:
         # Warm up the cache
         star_large.execute_query(
-            "MATCH (p:Person) RETURN properties(p) AS props LIMIT 1"
+            "MATCH (p:Person) RETURN properties(p) AS props LIMIT 1",
         )
 
         reps = 3
         t0 = time.perf_counter()
         for _ in range(reps):
             result = star_large.execute_query(
-                "MATCH (p:Person) RETURN properties(p) AS props"
+                "MATCH (p:Person) RETURN properties(p) AS props",
             )
         elapsed = time.perf_counter() - t0
 

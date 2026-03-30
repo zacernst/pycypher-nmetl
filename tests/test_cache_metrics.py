@@ -25,7 +25,7 @@ from pycypher.relational_models import (
 from pycypher.star import Star, get_cache_stats
 
 
-@pytest.fixture()
+@pytest.fixture
 def simple_star() -> Star:
     """Three-person context: Alice (30), Bob (25), Carol (35)."""
     df = pd.DataFrame(
@@ -33,7 +33,7 @@ def simple_star() -> Star:
             ID_COLUMN: [1, 2, 3],
             "name": ["Alice", "Bob", "Carol"],
             "age": [30, 25, 35],
-        }
+        },
     )
     table = EntityTable(
         entity_type="Person",
@@ -47,7 +47,7 @@ def simple_star() -> Star:
         context=Context(
             entity_mapping=EntityMapping(mapping={"Person": table}),
             relationship_mapping=RelationshipMapping(mapping={}),
-        )
+        ),
     )
 
 
@@ -96,7 +96,7 @@ class TestCacheStatsAfterParsing:
 
         # Parse a unique query
         ASTConverter.from_cypher(
-            "MATCH (uniqueNode1:Person) RETURN uniqueNode1.name AS n"
+            "MATCH (uniqueNode1:Person) RETURN uniqueNode1.name AS n",
         )
 
         stats_after = get_cache_stats()
@@ -153,9 +153,7 @@ class TestCacheStatsEndToEnd:
         # The second call hits either the result cache (fast path) or the
         # LRU parse cache — both are valid cache-hit outcomes.
         lru_hit = stats_after["lru_hits"] > lru_hits_before
-        result_hit = (
-            stats_after.get("result_cache_hits", 0) > result_hits_before
-        )
+        result_hit = stats_after.get("result_cache_hits", 0) > result_hits_before
         assert lru_hit or result_hit, (
             f"Expected a cache hit on repeated query. "
             f"LRU hits: {lru_hits_before} -> {stats_after['lru_hits']}, "

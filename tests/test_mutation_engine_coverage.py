@@ -183,7 +183,9 @@ class TestShadowCreateEntity:
         ctx = _empty_context()
         engine = MutationEngine(context=ctx)
         engine.shadow_create_entity(
-            "Animal", [1, 2], {"species": ["Cat", "Dog"]}
+            "Animal",
+            [1, 2],
+            {"species": ["Cat", "Dog"]},
         )
         shadow = ctx._shadow["Animal"]
         assert len(shadow) == 2
@@ -200,7 +202,9 @@ class TestShadowCreateEntity:
         ctx = _people_context()
         engine = MutationEngine(context=ctx)
         engine.shadow_create_entity(
-            "Person", [4], {"name": ["Dave"], "age": [40]}
+            "Person",
+            [4],
+            {"name": ["Dave"], "age": [40]},
         )
         shadow = ctx._shadow["Person"]
         assert len(shadow) == 4  # 3 existing + 1 new
@@ -210,7 +214,9 @@ class TestShadowCreateEntity:
         ctx = _people_context()
         engine = MutationEngine(context=ctx)
         engine.shadow_create_entity(
-            "Person", [4], {"email": ["d@example.com"]}
+            "Person",
+            [4],
+            {"email": ["d@example.com"]},
         )
         et = ctx.entity_mapping.mapping["Person"]
         assert "email" in et.attribute_map
@@ -248,7 +254,7 @@ class TestProcessCreateViaQuery:
     def test_create_node_with_properties(self) -> None:
         star = Star(context=_people_context())
         result = star.execute_query(
-            "CREATE (a:Person {name: 'Dave', age: 40}) RETURN a.name AS name"
+            "CREATE (a:Person {name: 'Dave', age: 40}) RETURN a.name AS name",
         )
         assert result is not None
         names = result["name"].tolist()
@@ -312,10 +318,10 @@ class TestProcessMergeViaQuery:
     def test_merge_on_create_sets_property(self) -> None:
         star = Star(context=_people_context())
         star.execute_query(
-            "MERGE (p:Person {name: 'Eve'}) ON CREATE SET p.age = 28"
+            "MERGE (p:Person {name: 'Eve'}) ON CREATE SET p.age = 28",
         )
         result = star.execute_query(
-            "MATCH (p:Person {name: 'Eve'}) RETURN p.age AS age"
+            "MATCH (p:Person {name: 'Eve'}) RETURN p.age AS age",
         )
         assert result is not None
         assert result["age"].iloc[0] == 28
@@ -323,10 +329,10 @@ class TestProcessMergeViaQuery:
     def test_merge_on_match_sets_property(self) -> None:
         star = Star(context=_people_context())
         star.execute_query(
-            "MERGE (p:Person {name: 'Alice'}) ON MATCH SET p.age = 99"
+            "MERGE (p:Person {name: 'Alice'}) ON MATCH SET p.age = 99",
         )
         result = star.execute_query(
-            "MATCH (p:Person {name: 'Alice'}) RETURN p.age AS age"
+            "MATCH (p:Person {name: 'Alice'}) RETURN p.age AS age",
         )
         assert result is not None
         assert result["age"].iloc[0] == 99
@@ -338,7 +344,7 @@ class TestProcessForeachViaQuery:
     def test_foreach_creates_nodes(self) -> None:
         star = Star(context=_empty_context())
         star.execute_query(
-            "FOREACH (name IN ['X', 'Y', 'Z'] | CREATE (n:Person {name: name}))"
+            "FOREACH (name IN ['X', 'Y', 'Z'] | CREATE (n:Person {name: name}))",
         )
         result = star.execute_query("MATCH (p:Person) RETURN p.name AS name")
         assert result is not None
@@ -362,7 +368,7 @@ class TestRemovePropertiesViaQuery:
         star = Star(context=_people_context())
         star.execute_query("MATCH (p:Person {name: 'Alice'}) REMOVE p.age")
         result = star.execute_query(
-            "MATCH (p:Person {name: 'Alice'}) RETURN p.age AS age"
+            "MATCH (p:Person {name: 'Alice'}) RETURN p.age AS age",
         )
         assert result is not None
         assert pd.isna(result["age"].iloc[0])
@@ -383,7 +389,7 @@ class TestSetPropertiesEdgeCases:
         star = Star(context=_people_context())
         star.execute_query("MATCH (p:Person {name: 'Alice'}) SET p.age = null")
         result = star.execute_query(
-            "MATCH (p:Person {name: 'Alice'}) RETURN p.age AS age"
+            "MATCH (p:Person {name: 'Alice'}) RETURN p.age AS age",
         )
         assert result is not None
         assert pd.isna(result["age"].iloc[0])

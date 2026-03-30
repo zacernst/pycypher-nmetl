@@ -40,10 +40,10 @@ def _star() -> Star:
         {
             "__ID__": ["r1", "r2"],
             "code": pd.array(["hello", "world"], dtype=object),
-        }
+        },
     )
     int_df = pd.DataFrame(
-        {"__ID__": ["i1", "i2"], "count": pd.array([10, 20], dtype=object)}
+        {"__ID__": ["i1", "i2"], "count": pd.array([10, 20], dtype=object)},
     )
     ctx = ContextBuilder.from_dict({"Str": str_df, "Int": int_df})
     return Star(context=ctx)
@@ -59,29 +59,26 @@ class TestIsString:
         assert _reg().has_function("isstring")
 
     def test_string_returns_true(self) -> None:
-        assert (
-            _call("isString", "hello") is True
-            or _call("isString", "hello") == True
-        )  # noqa: E712
+        assert _call("isString", "hello") is True or _call("isString", "hello") == True
 
     def test_integer_returns_false(self) -> None:
-        assert _call("isString", 42) == False  # noqa: E712
+        assert _call("isString", 42) == False
 
     def test_float_returns_false(self) -> None:
-        assert _call("isString", 3.14) == False  # noqa: E712
+        assert _call("isString", 3.14) == False
 
     def test_bool_returns_false(self) -> None:
-        assert _call("isString", True) == False  # noqa: E712
+        assert _call("isString", True) == False
 
     def test_list_returns_false(self) -> None:
-        assert _call("isString", [1, 2]) == False  # noqa: E712
+        assert _call("isString", [1, 2]) == False
 
     def test_null_returns_null(self) -> None:
         result = _call("isString", None)
         assert result is None or pd.isna(result)
 
     def test_empty_string_is_string(self) -> None:
-        assert _call("isString", "") == True  # noqa: E712
+        assert _call("isString", "") == True
 
 
 # ---------------------------------------------------------------------------
@@ -94,20 +91,20 @@ class TestIsInteger:
         assert _reg().has_function("isinteger")
 
     def test_int_returns_true(self) -> None:
-        assert _call("isInteger", 42) == True  # noqa: E712
+        assert _call("isInteger", 42) == True
 
     def test_numpy_int64_returns_true(self) -> None:
-        assert _call("isInteger", np.int64(99)) == True  # noqa: E712
+        assert _call("isInteger", np.int64(99)) == True
 
     def test_float_returns_false(self) -> None:
-        assert _call("isInteger", 3.14) == False  # noqa: E712
+        assert _call("isInteger", 3.14) == False
 
     def test_bool_returns_false(self) -> None:
-        """bool is a subclass of int — isInteger(True) must return false."""
-        assert _call("isInteger", True) == False  # noqa: E712
+        """Bool is a subclass of int — isInteger(True) must return false."""
+        assert _call("isInteger", True) == False
 
     def test_string_returns_false(self) -> None:
-        assert _call("isInteger", "42") == False  # noqa: E712
+        assert _call("isInteger", "42") == False
 
     def test_null_returns_null(self) -> None:
         result = _call("isInteger", None)
@@ -124,23 +121,23 @@ class TestIsFloat:
         assert _reg().has_function("isfloat")
 
     def test_float_returns_true(self) -> None:
-        assert _call("isFloat", 3.14) == True  # noqa: E712
+        assert _call("isFloat", 3.14) == True
 
     def test_numpy_float64_returns_true(self) -> None:
-        assert _call("isFloat", np.float64(2.5)) == True  # noqa: E712
+        assert _call("isFloat", np.float64(2.5)) == True
 
     def test_nan_returns_true(self) -> None:
         """float('nan') is a float value — isFloat(nan) must return true."""
-        assert _call("isFloat", float("nan")) == True  # noqa: E712
+        assert _call("isFloat", float("nan")) == True
 
     def test_integer_returns_false(self) -> None:
-        assert _call("isFloat", 42) == False  # noqa: E712
+        assert _call("isFloat", 42) == False
 
     def test_string_returns_false(self) -> None:
-        assert _call("isFloat", "3.14") == False  # noqa: E712
+        assert _call("isFloat", "3.14") == False
 
     def test_bool_returns_false(self) -> None:
-        assert _call("isFloat", True) == False  # noqa: E712
+        assert _call("isFloat", True) == False
 
     def test_null_returns_null(self) -> None:
         result = _call("isFloat", None)
@@ -157,20 +154,20 @@ class TestIsBoolean:
         assert _reg().has_function("isboolean")
 
     def test_true_returns_true(self) -> None:
-        assert _call("isBoolean", True) == True  # noqa: E712
+        assert _call("isBoolean", True) == True
 
     def test_false_returns_true(self) -> None:
-        assert _call("isBoolean", False) == True  # noqa: E712
+        assert _call("isBoolean", False) == True
 
     def test_numpy_bool_returns_true(self) -> None:
-        assert _call("isBoolean", np.bool_(True)) == True  # noqa: E712
+        assert _call("isBoolean", np.bool_(True)) == True
 
     def test_integer_1_returns_false(self) -> None:
         """1 is not a boolean in Cypher — only true/false literals are."""
-        assert _call("isBoolean", 1) == False  # noqa: E712
+        assert _call("isBoolean", 1) == False
 
     def test_string_returns_false(self) -> None:
-        assert _call("isBoolean", "true") == False  # noqa: E712
+        assert _call("isBoolean", "true") == False
 
     def test_null_returns_null(self) -> None:
         result = _call("isBoolean", None)
@@ -187,19 +184,19 @@ class TestIsList:
         assert _reg().has_function("islist")
 
     def test_list_returns_true(self) -> None:
-        assert _call("isList", [1, 2, 3]) == True  # noqa: E712
+        assert _call("isList", [1, 2, 3]) == True
 
     def test_empty_list_returns_true(self) -> None:
-        assert _call("isList", []) == True  # noqa: E712
+        assert _call("isList", []) == True
 
     def test_dict_returns_false(self) -> None:
-        assert _call("isList", {"a": 1}) == False  # noqa: E712
+        assert _call("isList", {"a": 1}) == False
 
     def test_string_returns_false(self) -> None:
-        assert _call("isList", "abc") == False  # noqa: E712
+        assert _call("isList", "abc") == False
 
     def test_integer_returns_false(self) -> None:
-        assert _call("isList", 42) == False  # noqa: E712
+        assert _call("isList", 42) == False
 
     def test_null_returns_null(self) -> None:
         result = _call("isList", None)
@@ -216,19 +213,19 @@ class TestIsMap:
         assert _reg().has_function("ismap")
 
     def test_dict_returns_true(self) -> None:
-        assert _call("isMap", {"a": 1, "b": 2}) == True  # noqa: E712
+        assert _call("isMap", {"a": 1, "b": 2}) == True
 
     def test_empty_dict_returns_true(self) -> None:
-        assert _call("isMap", {}) == True  # noqa: E712
+        assert _call("isMap", {}) == True
 
     def test_list_returns_false(self) -> None:
-        assert _call("isMap", [1, 2]) == False  # noqa: E712
+        assert _call("isMap", [1, 2]) == False
 
     def test_string_returns_false(self) -> None:
-        assert _call("isMap", "hello") == False  # noqa: E712
+        assert _call("isMap", "hello") == False
 
     def test_integer_returns_false(self) -> None:
-        assert _call("isMap", 42) == False  # noqa: E712
+        assert _call("isMap", 42) == False
 
     def test_null_returns_null(self) -> None:
         result = _call("isMap", None)
@@ -276,7 +273,7 @@ class TestTypePredicateCypherIntegration:
         """WHERE isString(n.code) keeps rows where code is a string."""
         star = _star()
         result = star.execute_query(
-            "MATCH (n:Str) WHERE isString(n.code) RETURN n.code AS v"
+            "MATCH (n:Str) WHERE isString(n.code) RETURN n.code AS v",
         )
         assert set(result["v"].tolist()) == {"hello", "world"}
 
@@ -284,7 +281,7 @@ class TestTypePredicateCypherIntegration:
         """WHERE isInteger(n.count) keeps rows where count is an integer."""
         star = _star()
         result = star.execute_query(
-            "MATCH (n:Int) WHERE isInteger(n.count) RETURN n.count AS v"
+            "MATCH (n:Int) WHERE isInteger(n.count) RETURN n.count AS v",
         )
         assert set(result["v"].tolist()) == {10, 20}
 
@@ -292,6 +289,6 @@ class TestTypePredicateCypherIntegration:
         """WHERE NOT isString(n.count) when count holds integers → all rows pass."""
         star = _star()
         result = star.execute_query(
-            "MATCH (n:Int) WHERE NOT isString(n.count) RETURN n.count AS v"
+            "MATCH (n:Int) WHERE NOT isString(n.count) RETURN n.count AS v",
         )
         assert len(result) == 2

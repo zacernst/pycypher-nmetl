@@ -198,7 +198,12 @@ class Config:
     def _validate_required_structure(data: dict[str, Any]) -> None:
         """Check that all required sections and keys are present."""
         required_sections = [
-            "paths", "downloads", "datasets", "api", "processing", "logging",
+            "paths",
+            "downloads",
+            "datasets",
+            "api",
+            "processing",
+            "logging",
         ]
         missing = [s for s in required_sections if s not in data]
         if missing:
@@ -267,10 +272,23 @@ class Config:
     # Path configuration with environment variable overrides
 
     # Directories that should never be used as a data directory.
-    _FORBIDDEN_DATA_DIRS: frozenset[str] = frozenset({
-        "/", "/bin", "/boot", "/dev", "/etc", "/lib", "/lib64",
-        "/proc", "/root", "/sbin", "/sys", "/usr", "/var",
-    })
+    _FORBIDDEN_DATA_DIRS: frozenset[str] = frozenset(
+        {
+            "/",
+            "/bin",
+            "/boot",
+            "/dev",
+            "/etc",
+            "/lib",
+            "/lib64",
+            "/proc",
+            "/root",
+            "/sbin",
+            "/sys",
+            "/usr",
+            "/var",
+        },
+    )
 
     # Characters that are dangerous when interpolated into shell commands.
     _SHELL_METACHARACTERS: frozenset[str] = frozenset(";&|`$(){}!#~")
@@ -292,6 +310,7 @@ class Config:
         Raises:
             ValueError: If the resolved path is a forbidden system directory or
                 contains dangerous shell metacharacters.
+
         """
         bad_chars = Config._SHELL_METACHARACTERS.intersection(path_str)
         if bad_chars:
@@ -311,7 +330,7 @@ class Config:
             # Block direct children of critical system dirs (e.g. /etc/shadow_dir)
             # but allow deeper user-controlled paths (e.g. /var/lib/myapp/data)
             if forbidden != "/" and resolved.startswith(forbidden + "/"):
-                parts_after = resolved[len(forbidden) + 1:]
+                parts_after = resolved[len(forbidden) + 1 :]
                 if "/" not in parts_after:
                     msg = (
                         f"DATA_DIR resolved to a direct child of system directory "
@@ -337,7 +356,6 @@ class Config:
     @property
     def long_timeout_seconds(self) -> int:
         return self._data["downloads"]["long_timeout_seconds"]
-
 
     @property
     def scripts_dir(self) -> str:

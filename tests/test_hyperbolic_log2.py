@@ -27,12 +27,12 @@ from pycypher.scalar_functions import ScalarFunctionRegistry
 from pycypher.star import Star
 
 
-@pytest.fixture()
+@pytest.fixture
 def reg() -> ScalarFunctionRegistry:
     return ScalarFunctionRegistry.get_instance()
 
 
-@pytest.fixture()
+@pytest.fixture
 def math_star() -> Star:
     df = pd.DataFrame(
         {
@@ -40,7 +40,7 @@ def math_star() -> Star:
             "name": ["Alice", "Bob", "Carol"],
             "x": [0.0, 1.0, -1.0],
             "pos": [1.0, 4.0, 8.0],  # for log2 (must be > 0)
-        }
+        },
     )
     table = EntityTable(
         entity_type="Person",
@@ -54,7 +54,7 @@ def math_star() -> Star:
         context=Context(
             entity_mapping=EntityMapping(mapping={"Person": table}),
             relationship_mapping=RelationshipMapping(mapping={}),
-        )
+        ),
     )
 
 
@@ -68,19 +68,17 @@ class TestSinh:
         assert reg.has_function("sinh")
 
     def test_zero(self, reg: ScalarFunctionRegistry) -> None:
-        assert reg.execute("sinh", [pd.Series([0.0])]).iloc[
-            0
-        ] == pytest.approx(0.0)
+        assert reg.execute("sinh", [pd.Series([0.0])]).iloc[0] == pytest.approx(0.0)
 
     def test_one(self, reg: ScalarFunctionRegistry) -> None:
-        assert reg.execute("sinh", [pd.Series([1.0])]).iloc[
-            0
-        ] == pytest.approx(math.sinh(1.0))
+        assert reg.execute("sinh", [pd.Series([1.0])]).iloc[0] == pytest.approx(
+            math.sinh(1.0),
+        )
 
     def test_negative(self, reg: ScalarFunctionRegistry) -> None:
-        assert reg.execute("sinh", [pd.Series([-1.0])]).iloc[
-            0
-        ] == pytest.approx(math.sinh(-1.0))
+        assert reg.execute("sinh", [pd.Series([-1.0])]).iloc[0] == pytest.approx(
+            math.sinh(-1.0),
+        )
 
     def test_null_propagation(self, reg: ScalarFunctionRegistry) -> None:
         assert pd.isna(reg.execute("sinh", [pd.Series([None])]).iloc[0])
@@ -92,7 +90,7 @@ class TestSinh:
 
     def test_in_return_clause(self, math_star: Star) -> None:
         r = math_star.execute_query(
-            "MATCH (p:Person) RETURN sinh(p.x) AS s ORDER BY p.name"
+            "MATCH (p:Person) RETURN sinh(p.x) AS s ORDER BY p.name",
         )
         vals = list(r["s"])
         assert vals[0] == pytest.approx(math.sinh(0.0))  # Alice  x=0.0
@@ -116,14 +114,12 @@ class TestCosh:
         assert reg.has_function("cosh")
 
     def test_zero(self, reg: ScalarFunctionRegistry) -> None:
-        assert reg.execute("cosh", [pd.Series([0.0])]).iloc[
-            0
-        ] == pytest.approx(1.0)
+        assert reg.execute("cosh", [pd.Series([0.0])]).iloc[0] == pytest.approx(1.0)
 
     def test_one(self, reg: ScalarFunctionRegistry) -> None:
-        assert reg.execute("cosh", [pd.Series([1.0])]).iloc[
-            0
-        ] == pytest.approx(math.cosh(1.0))
+        assert reg.execute("cosh", [pd.Series([1.0])]).iloc[0] == pytest.approx(
+            math.cosh(1.0),
+        )
 
     def test_negative(self, reg: ScalarFunctionRegistry) -> None:
         # cosh is even: cosh(-x) == cosh(x)
@@ -150,17 +146,15 @@ class TestTanh:
         assert reg.has_function("tanh")
 
     def test_zero(self, reg: ScalarFunctionRegistry) -> None:
-        assert reg.execute("tanh", [pd.Series([0.0])]).iloc[
-            0
-        ] == pytest.approx(0.0)
+        assert reg.execute("tanh", [pd.Series([0.0])]).iloc[0] == pytest.approx(0.0)
 
     def test_one(self, reg: ScalarFunctionRegistry) -> None:
-        assert reg.execute("tanh", [pd.Series([1.0])]).iloc[
-            0
-        ] == pytest.approx(math.tanh(1.0))
+        assert reg.execute("tanh", [pd.Series([1.0])]).iloc[0] == pytest.approx(
+            math.tanh(1.0),
+        )
 
     def test_range(self, reg: ScalarFunctionRegistry) -> None:
-        """tanh values are always in (-1, 1)."""
+        """Tanh values are always in (-1, 1)."""
         result = reg.execute("tanh", [pd.Series([0.0, 10.0, -10.0])])
         for v in result:
             assert -1.0 < v < 1.0
@@ -184,22 +178,17 @@ class TestLog2:
         assert reg.has_function("log2")
 
     def test_one(self, reg: ScalarFunctionRegistry) -> None:
-        assert reg.execute("log2", [pd.Series([1.0])]).iloc[
-            0
-        ] == pytest.approx(0.0)
+        assert reg.execute("log2", [pd.Series([1.0])]).iloc[0] == pytest.approx(0.0)
 
     def test_two(self, reg: ScalarFunctionRegistry) -> None:
-        assert reg.execute("log2", [pd.Series([2.0])]).iloc[
-            0
-        ] == pytest.approx(1.0)
+        assert reg.execute("log2", [pd.Series([2.0])]).iloc[0] == pytest.approx(1.0)
 
     def test_eight(self, reg: ScalarFunctionRegistry) -> None:
-        assert reg.execute("log2", [pd.Series([8.0])]).iloc[
-            0
-        ] == pytest.approx(3.0)
+        assert reg.execute("log2", [pd.Series([8.0])]).iloc[0] == pytest.approx(3.0)
 
     def test_non_positive_returns_null(
-        self, reg: ScalarFunctionRegistry
+        self,
+        reg: ScalarFunctionRegistry,
     ) -> None:
         """log2(0) and log2(-1) → null (domain error)."""
         assert pd.isna(reg.execute("log2", [pd.Series([0.0])]).iloc[0])
@@ -214,11 +203,11 @@ class TestLog2:
 
     def test_in_return_clause(self, math_star: Star) -> None:
         r = math_star.execute_query(
-            "MATCH (p:Person) RETURN log2(p.pos) AS l ORDER BY p.name"
+            "MATCH (p:Person) RETURN log2(p.pos) AS l ORDER BY p.name",
         )
         vals = list(r["l"])
         assert vals[0] == pytest.approx(
-            math.log2(1.0)
+            math.log2(1.0),
         )  # Alice pos=1 → log2(1)=0
         assert vals[1] == pytest.approx(math.log2(4.0))  # Bob pos=4 → 2.0
         assert vals[2] == pytest.approx(math.log2(8.0))  # Carol pos=8 → 3.0
@@ -226,7 +215,7 @@ class TestLog2:
     def test_in_where_clause(self, math_star: Star) -> None:
         """Filter by log2 threshold."""
         r = math_star.execute_query(
-            "MATCH (p:Person) WHERE log2(p.pos) >= 2.0 RETURN p.name ORDER BY p.name"
+            "MATCH (p:Person) WHERE log2(p.pos) >= 2.0 RETURN p.name ORDER BY p.name",
         )
         # pos=4 (log2=2), pos=8 (log2=3) both qualify
         assert list(r["name"]) == ["Bob", "Carol"]

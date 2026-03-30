@@ -166,7 +166,7 @@ class TestInvalidPatterns:
         """Test error for malformed relationship."""
         with pytest.raises(_PARSE_ERRORS):
             parser.parse(
-                "MATCH (a)--[]--(b) RETURN a, b"
+                "MATCH (a)--[]--(b) RETURN a, b",
             )  # May or may not be valid
 
 
@@ -433,7 +433,7 @@ class TestLexerErrors:
         """Test error for invalid character."""
         # Try various invalid characters that shouldn't appear
         with pytest.raises(
-            (LarkError, UnexpectedCharacters, CypherSyntaxError)
+            (LarkError, UnexpectedCharacters, CypherSyntaxError),
         ):
             parser.parse("RETURN @#$%")
 

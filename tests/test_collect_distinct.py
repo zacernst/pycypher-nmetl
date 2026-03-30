@@ -24,7 +24,7 @@ def dept_context() -> Context:
             "name": ["Alice", "Bob", "Carol", "Dave", "Eve"],
             "dept": ["eng", "eng", "hr", "hr", "eng"],
             "score": [90, 90, 80, 85, 90],
-        }
+        },
     )
     table = EntityTable(
         entity_type="Person",
@@ -49,7 +49,7 @@ class TestCollectDistinct:
         """collect(DISTINCT p.dept) returns only unique departments."""
         star = Star(context=dept_context)
         result = star.execute_query(
-            "MATCH (p:Person) RETURN collect(DISTINCT p.dept) AS depts"
+            "MATCH (p:Person) RETURN collect(DISTINCT p.dept) AS depts",
         )
         depts = result["depts"].iloc[0]
         assert sorted(depts) == ["eng", "hr"]
@@ -58,7 +58,7 @@ class TestCollectDistinct:
         """collect(DISTINCT p.score) deduplicates 90."""
         star = Star(context=dept_context)
         result = star.execute_query(
-            "MATCH (p:Person) RETURN collect(DISTINCT p.score) AS scores"
+            "MATCH (p:Person) RETURN collect(DISTINCT p.score) AS scores",
         )
         scores = result["scores"].iloc[0]
         assert sorted(scores) == [80, 85, 90]
@@ -69,7 +69,7 @@ class TestSumAvgDistinct:
         """sum(DISTINCT p.score): 80 + 85 + 90 = 255 (not 80+85+90+90+90=435)."""
         star = Star(context=dept_context)
         result = star.execute_query(
-            "MATCH (p:Person) RETURN sum(DISTINCT p.score) AS total"
+            "MATCH (p:Person) RETURN sum(DISTINCT p.score) AS total",
         )
         assert float(result["total"].iloc[0]) == 255.0
 
@@ -77,6 +77,6 @@ class TestSumAvgDistinct:
         """avg(DISTINCT p.score): (80+85+90)/3 = 85.0."""
         star = Star(context=dept_context)
         result = star.execute_query(
-            "MATCH (p:Person) RETURN avg(DISTINCT p.score) AS mean"
+            "MATCH (p:Person) RETURN avg(DISTINCT p.score) AS mean",
         )
         assert abs(float(result["mean"].iloc[0]) - 85.0) < 0.01

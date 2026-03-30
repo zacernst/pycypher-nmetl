@@ -618,9 +618,7 @@ class TestStringPredicates:
 
     def test_is_null_in_complex_expression(self, parser):
         """Test IS NULL in complex expression."""
-        query = (
-            "MATCH (n) WHERE n.prop1 IS NULL OR n.prop2 IS NOT NULL RETURN n"
-        )
+        query = "MATCH (n) WHERE n.prop1 IS NULL OR n.prop2 IS NOT NULL RETURN n"
         tree = parser.parse(query)
         assert tree is not None
 

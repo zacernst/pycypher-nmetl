@@ -22,7 +22,9 @@ def _s(*values: object) -> pd.Series:
 
 
 def approx_equal(
-    series: pd.Series, expected: float, rel: float = 1e-9
+    series: pd.Series,
+    expected: float,
+    rel: float = 1e-9,
 ) -> bool:
     """Return True if the single value in series is close to expected."""
     val = series.iloc[0]
@@ -73,7 +75,7 @@ class TestSinCosTan:
         assert pd.isna(result.iloc[0])
 
     def test_vectorized_sin(self, registry: ScalarFunctionRegistry) -> None:
-        """sin works on multi-row Series; sin(π) is nearly 0 (floating-point)."""
+        """Sin works on multi-row Series; sin(π) is nearly 0 (floating-point)."""
         result = registry.execute("sin", [_s(0.0, math.pi / 2, math.pi)])
         assert approx_equal(result.iloc[[0]], 0.0)
         assert approx_equal(result.iloc[[1]], 1.0)
@@ -134,7 +136,8 @@ class TestInverseTrig:
         assert approx_equal(result, math.pi / 4)
 
     def test_atan2_positive_y_zero_x(
-        self, registry: ScalarFunctionRegistry
+        self,
+        registry: ScalarFunctionRegistry,
     ) -> None:
         result = registry.execute("atan2", [_s(1.0), _s(0.0)])
         assert approx_equal(result, math.pi / 2)
@@ -181,7 +184,8 @@ class TestDegreesRadians:
         assert pd.isna(result.iloc[0])
 
     def test_degrees_radians_roundtrip(
-        self, registry: ScalarFunctionRegistry
+        self,
+        registry: ScalarFunctionRegistry,
     ) -> None:
         result_rad = registry.execute("radians", [_s(90.0)])
         result_deg = registry.execute("degrees", [result_rad])
@@ -232,14 +236,16 @@ class TestLog10:
         assert pd.isna(result.iloc[0])
 
     def test_log10_zero_returns_none(
-        self, registry: ScalarFunctionRegistry
+        self,
+        registry: ScalarFunctionRegistry,
     ) -> None:
         """log10(0) is undefined; Cypher spec requires null (None), not NaN."""
         result = registry.execute("log10", [_s(0.0)])
         assert pd.isna(result.iloc[0])
 
     def test_log10_negative_returns_none(
-        self, registry: ScalarFunctionRegistry
+        self,
+        registry: ScalarFunctionRegistry,
     ) -> None:
         """log10 of a negative number is undefined; must return null."""
         result = registry.execute("log10", [_s(-5.0)])
@@ -283,7 +289,8 @@ class TestPow:
 
     def test_pow_vectorized(self, registry: ScalarFunctionRegistry) -> None:
         result = registry.execute(
-            "pow", [_s(2.0, 3.0, 4.0), _s(2.0, 2.0, 2.0)]
+            "pow",
+            [_s(2.0, 3.0, 4.0), _s(2.0, 2.0, 2.0)],
         )
         assert approx_equal(result.iloc[[0]], 4.0)
         assert approx_equal(result.iloc[[1]], 9.0)
@@ -304,28 +311,32 @@ class TestTwoArgLengthMismatch:
     """
 
     def test_atan2_length_mismatch_raises(
-        self, registry: ScalarFunctionRegistry
+        self,
+        registry: ScalarFunctionRegistry,
     ) -> None:
         """atan2 with mismatched Series lengths must raise ValueError."""
         with pytest.raises(ValueError, match="same length"):
             registry.execute("atan2", [_s(1.0, 2.0, 3.0), _s(1.0, 1.0)])
 
     def test_pow_length_mismatch_raises(
-        self, registry: ScalarFunctionRegistry
+        self,
+        registry: ScalarFunctionRegistry,
     ) -> None:
-        """pow with mismatched Series lengths must raise ValueError."""
+        """Pow with mismatched Series lengths must raise ValueError."""
         with pytest.raises(ValueError, match="same length"):
             registry.execute("pow", [_s(2.0, 3.0), _s(2.0, 2.0, 2.0)])
 
     def test_atan2_equal_lengths_still_works(
-        self, registry: ScalarFunctionRegistry
+        self,
+        registry: ScalarFunctionRegistry,
     ) -> None:
         """Same-length Series must not be rejected."""
         result = registry.execute("atan2", [_s(1.0, 0.0), _s(1.0, 1.0)])
         assert len(result) == 2
 
     def test_pow_equal_lengths_still_works(
-        self, registry: ScalarFunctionRegistry
+        self,
+        registry: ScalarFunctionRegistry,
     ) -> None:
         """Same-length Series must not be rejected."""
         result = registry.execute("pow", [_s(2.0, 3.0), _s(3.0, 2.0)])

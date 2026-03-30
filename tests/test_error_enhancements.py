@@ -136,7 +136,7 @@ class TestCypherSyntaxErrorAttributes:
         assert "MATCH" in exc_info.value.keyword_suggestion
 
     def test_repr_format(self, parser):
-        """repr should show line and column."""
+        """Repr should show line and column."""
         with pytest.raises(CypherSyntaxError) as exc_info:
             parser.parse("MACH (n) RETURN n")
         repr_str = repr(exc_info.value)

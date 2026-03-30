@@ -23,7 +23,7 @@ from pycypher.star import Star
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture()
+@pytest.fixture
 def event_context() -> Context:
     """Context with an Event entity that has string date fields."""
     df = pd.DataFrame(
@@ -31,7 +31,7 @@ def event_context() -> Context:
             ID_COLUMN: [1, 2, 3],
             "name": ["Birthday", "Meeting", "Holiday"],
             "date_str": ["2024-03-15", "2024-06-01", "2024-12-25"],
-        }
+        },
     )
     table = EntityTable(
         entity_type="Event",
@@ -44,13 +44,13 @@ def event_context() -> Context:
     return Context(entity_mapping=EntityMapping(mapping={"Event": table}))
 
 
-@pytest.fixture()
+@pytest.fixture
 def person_context() -> Context:
     df = pd.DataFrame(
         {
             ID_COLUMN: [1, 2],
             "name": ["Alice", "Bob"],
-        }
+        },
     )
     table = EntityTable(
         entity_type="Person",
@@ -80,30 +80,32 @@ class TestDateFunction:
         """date('2024-03-15') returns a date-like string or object."""
         star = Star(context=event_context)
         result = star.execute_query(
-            "MATCH (e:Event) WHERE e.name = 'Birthday' RETURN date('2024-03-15') AS d"
+            "MATCH (e:Event) WHERE e.name = 'Birthday' RETURN date('2024-03-15') AS d",
         )
         val = str(result["d"].iloc[0])
         assert "2024-03-15" in val or "2024" in val
 
     def test_date_year_month_day_components(
-        self, event_context: Context
+        self,
+        event_context: Context,
     ) -> None:
         """date({year: 2024, month: 3, day: 15}) returns a date."""
         star = Star(context=event_context)
         # Simplest form: date(string)
         result = star.execute_query(
-            "MATCH (e:Event) WHERE e.name = 'Birthday' RETURN date('2024-03-15') AS d"
+            "MATCH (e:Event) WHERE e.name = 'Birthday' RETURN date('2024-03-15') AS d",
         )
         assert result is not None
         assert len(result) == 1
 
     def test_date_does_not_raise_not_implemented(
-        self, event_context: Context
+        self,
+        event_context: Context,
     ) -> None:
         """Regression: date() must not raise NotImplementedError."""
         star = Star(context=event_context)
         result = star.execute_query(
-            "MATCH (e:Event) RETURN date(e.date_str) AS d"
+            "MATCH (e:Event) RETURN date(e.date_str) AS d",
         )
         assert result is not None
         assert len(result) == 3
@@ -112,7 +114,7 @@ class TestDateFunction:
         """date(null) returns null (not an exception)."""
         star = Star(context=event_context)
         result = star.execute_query(
-            "MATCH (e:Event) WHERE e.name = 'Birthday' RETURN date(null) AS d"
+            "MATCH (e:Event) WHERE e.name = 'Birthday' RETURN date(null) AS d",
         )
         # Should not raise; result should be null/None/NaT
         assert result is not None
@@ -128,25 +130,27 @@ class TestDatetimeFunction:
     """datetime(string) parses an ISO 8601 datetime string."""
 
     def test_datetime_from_string_literal(
-        self, event_context: Context
+        self,
+        event_context: Context,
     ) -> None:
         """datetime('2024-03-15T10:30:00') returns a datetime-like value."""
         star = Star(context=event_context)
         result = star.execute_query(
             "MATCH (e:Event) WHERE e.name = 'Birthday' "
-            "RETURN datetime('2024-03-15T10:30:00') AS dt"
+            "RETURN datetime('2024-03-15T10:30:00') AS dt",
         )
         val = str(result["dt"].iloc[0])
         assert "2024" in val
 
     def test_datetime_does_not_raise_not_implemented(
-        self, event_context: Context
+        self,
+        event_context: Context,
     ) -> None:
         """Regression: datetime() must not raise NotImplementedError."""
         star = Star(context=event_context)
         result = star.execute_query(
             "MATCH (e:Event) WHERE e.name = 'Meeting' "
-            "RETURN datetime('2024-06-01T09:00:00Z') AS dt"
+            "RETURN datetime('2024-06-01T09:00:00Z') AS dt",
         )
         assert result is not None
 
@@ -154,7 +158,7 @@ class TestDatetimeFunction:
         """datetime(null) returns null."""
         star = Star(context=event_context)
         result = star.execute_query(
-            "MATCH (e:Event) WHERE e.name = 'Birthday' RETURN datetime(null) AS dt"
+            "MATCH (e:Event) WHERE e.name = 'Birthday' RETURN datetime(null) AS dt",
         )
         assert result is not None
         assert len(result) == 1
@@ -172,19 +176,20 @@ class TestDurationFunction:
         """duration('P5D') returns a duration-like value."""
         star = Star(context=event_context)
         result = star.execute_query(
-            "MATCH (e:Event) WHERE e.name = 'Birthday' RETURN duration('P5D') AS dur"
+            "MATCH (e:Event) WHERE e.name = 'Birthday' RETURN duration('P5D') AS dur",
         )
         assert result is not None
         assert len(result) == 1
 
     def test_duration_does_not_raise_not_implemented(
-        self, event_context: Context
+        self,
+        event_context: Context,
     ) -> None:
         """Regression: duration() must not raise NotImplementedError."""
         star = Star(context=event_context)
         result = star.execute_query(
             "MATCH (e:Event) WHERE e.name = 'Meeting' "
-            "RETURN duration('P1Y2M3DT4H5M6S') AS dur"
+            "RETURN duration('P1Y2M3DT4H5M6S') AS dur",
         )
         assert result is not None
 
@@ -192,7 +197,7 @@ class TestDurationFunction:
         """duration(null) returns null."""
         star = Star(context=event_context)
         result = star.execute_query(
-            "MATCH (e:Event) WHERE e.name = 'Birthday' RETURN duration(null) AS dur"
+            "MATCH (e:Event) WHERE e.name = 'Birthday' RETURN duration(null) AS dur",
         )
         assert result is not None
         assert len(result) == 1
@@ -211,18 +216,19 @@ class TestLocalDatetimeFunction:
         star = Star(context=event_context)
         result = star.execute_query(
             "MATCH (e:Event) WHERE e.name = 'Birthday' "
-            "RETURN localdatetime('2024-03-15T10:30:00') AS ldt"
+            "RETURN localdatetime('2024-03-15T10:30:00') AS ldt",
         )
         assert result is not None
         assert len(result) == 1
 
     def test_localdatetime_does_not_raise(
-        self, event_context: Context
+        self,
+        event_context: Context,
     ) -> None:
         """Regression: localdatetime() must not raise NotImplementedError."""
         star = Star(context=event_context)
         result = star.execute_query(
             "MATCH (e:Event) WHERE e.name = 'Meeting' "
-            "RETURN localdatetime('2024-06-01T09:00:00') AS ldt"
+            "RETURN localdatetime('2024-06-01T09:00:00') AS ldt",
         )
         assert result is not None

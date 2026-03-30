@@ -46,6 +46,34 @@ Environment Variables
     ``repeat()``/``lpad()``/``rpad()`` output lengths, and ``UNWIND``
     expansion.  Prevents memory exhaustion from adversarial inputs.
     Default: ``1_000_000`` (1 M elements/characters).
+
+``PYCYPHER_AUDIT_LOG``
+    Enable structured query audit logging.  Set to ``1``, ``true``, or
+    ``yes`` to emit one JSON record per query to the ``pycypher.audit``
+    logger.  Off by default.  Records include query ID, timestamp,
+    elapsed time, row count, and parameter names (never values).
+
+Examples
+--------
+
+Set a 30-second query timeout and reduce the cross-join ceiling::
+
+    export PYCYPHER_QUERY_TIMEOUT_S=30
+    export PYCYPHER_MAX_CROSS_JOIN_ROWS=100000
+
+Disable AST caching (useful for grammar development)::
+
+    export PYCYPHER_AST_CACHE_MAX=0
+
+Increase the result cache to 500 MB with a 5-minute TTL::
+
+    export PYCYPHER_RESULT_CACHE_MAX_MB=500
+    export PYCYPHER_RESULT_CACHE_TTL_S=300
+
+Inspect active configuration at runtime::
+
+    nmetl config --show-effective
+
 """
 
 from __future__ import annotations
@@ -56,12 +84,17 @@ from shared.logger import LOGGER
 
 __all__ = [
     "AST_CACHE_MAX_ENTRIES",
+    "COMPLEXITY_WARN_THRESHOLD",
+    "CROSS_JOIN_WARN_THRESHOLDS",
     "MAX_COLLECTION_SIZE",
+    "MAX_COMPLEXITY_SCORE",
     "MAX_CROSS_JOIN_ROWS",
     "MAX_QUERY_NESTING_DEPTH",
     "MAX_QUERY_SIZE_BYTES",
     "MAX_UNBOUNDED_PATH_HOPS",
     "QUERY_TIMEOUT_S",
+    "RATE_LIMIT_BURST",
+    "RATE_LIMIT_QPS",
     "RESULT_CACHE_MAX_MB",
     "RESULT_CACHE_TTL_S",
 ]
@@ -128,9 +161,12 @@ QUERY_TIMEOUT_S: float | None = _read_float("PYCYPHER_QUERY_TIMEOUT_S", None)
 
 MAX_CROSS_JOIN_ROWS: int = _read_int(
     "PYCYPHER_MAX_CROSS_JOIN_ROWS",
-    10_000_000,
+    1_000_000,
 )
 """Hard ceiling on cross-join result size (rows)."""
+
+CROSS_JOIN_WARN_THRESHOLDS: tuple[int, ...] = (100_000, 1_000_000)
+"""Progressive warning thresholds for cross-join cardinality."""
 
 RESULT_CACHE_MAX_MB: int = _read_int("PYCYPHER_RESULT_CACHE_MAX_MB", 100)
 """Maximum result cache size in MB."""
@@ -174,3 +210,26 @@ MAX_COLLECTION_SIZE: int = _read_int(
     1_000_000,
 )
 """Hard ceiling on generated collection/string sizes.  Default: 1M."""
+
+MAX_COMPLEXITY_SCORE: int | None = (
+    _read_int("PYCYPHER_MAX_COMPLEXITY_SCORE", 0) or None
+)
+"""Hard ceiling on query complexity score.  Queries exceeding this are
+rejected before execution.  ``None`` (default, env ``0``) disables the gate.
+Typical production values: 50–200."""
+
+COMPLEXITY_WARN_THRESHOLD: int | None = (
+    _read_int("PYCYPHER_COMPLEXITY_WARN_THRESHOLD", 0) or None
+)
+"""Soft threshold for query complexity warnings.  Queries scoring above this
+emit a warning but still execute.  ``None`` (default, env ``0``) disables
+warnings.  Set lower than ``MAX_COMPLEXITY_SCORE`` to get early alerts."""
+
+RATE_LIMIT_QPS: float = _read_float("PYCYPHER_RATE_LIMIT_QPS", 0.0) or 0.0
+"""Maximum sustained queries per second.  ``0`` (default) disables rate
+limiting entirely.  When enabled, queries exceeding this rate receive a
+:class:`~pycypher.exceptions.RateLimitError`."""
+
+RATE_LIMIT_BURST: int = _read_int("PYCYPHER_RATE_LIMIT_BURST", 10)
+"""Maximum burst size for rate limiting.  Allows short bursts above the
+sustained QPS rate.  Only meaningful when ``RATE_LIMIT_QPS > 0``."""

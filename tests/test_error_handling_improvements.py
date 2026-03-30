@@ -1,5 +1,4 @@
-"""
-TDD tests for Error Handling Loop 269 - Exception chaining and specificity improvements.
+"""TDD tests for Error Handling Loop 269 - Exception chaining and specificity improvements.
 
 This test file validates expected exception handling behavior before making fixes:
 1. Exception chaining preserves original stack traces (B904 fixes)
@@ -27,7 +26,7 @@ class TestExceptionChainingPattern:
             except ValueError as e:
                 msg = f"Wrapper error: {e}"
                 raise SecurityError(
-                    msg
+                    msg,
                 )  # Should be: raise SecurityError(msg) from e
 
         def good_exception_handler():
@@ -68,7 +67,7 @@ class TestSpecificExceptionCatching:
                 # This might raise various specific exceptions
                 pd.Series([1, 2, 3]).map({"a": 1})  # Raises KeyError
             except Exception:  # Too broad - should catch specific types
-                return None
+                return
 
         def good_exception_catcher():
             """Simulates fixed pattern with specific exception catching."""
@@ -76,7 +75,7 @@ class TestSpecificExceptionCatching:
                 # This might raise various specific exceptions
                 pd.Series([1, 2, 3]).map({"a": 1})  # Raises KeyError
             except (KeyError, ValueError, TypeError):  # Specific exceptions only
-                return None
+                return
 
         # Both should handle the error, but good pattern is more specific
         assert bad_exception_catcher() is None
@@ -129,7 +128,7 @@ class TestExceptionMessageQuality:
         def good_error_message():
             """Example of good error message."""
             raise ValueError(
-                "Parameter 'age' must be a positive integer, got -5"
+                "Parameter 'age' must be a positive integer, got -5",
             )
 
         # Test that good messages are specific and actionable

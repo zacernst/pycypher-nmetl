@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import pyarrow as pa
 import pytest
-
 from pycypher.ingestion.arrow_utils import (
     infer_attribute_map,
     normalize_entity_table,
@@ -46,14 +45,19 @@ class TestNormalizeRelationshipTableIdCol:
 
     def test_explicit_id_col(self) -> None:
         """When id_col is provided, it gets renamed to __ID__."""
-        table = pa.table({
-            "src": [1, 2],
-            "tgt": [3, 4],
-            "rel_id": [100, 200],
-            "weight": [0.5, 0.8],
-        })
+        table = pa.table(
+            {
+                "src": [1, 2],
+                "tgt": [3, 4],
+                "rel_id": [100, 200],
+                "weight": [0.5, 0.8],
+            },
+        )
         result = normalize_relationship_table(
-            table, source_col="src", target_col="tgt", id_col="rel_id",
+            table,
+            source_col="src",
+            target_col="tgt",
+            id_col="rel_id",
         )
         assert "__ID__" in result.schema.names
         assert "__SOURCE__" in result.schema.names
@@ -65,7 +69,10 @@ class TestNormalizeRelationshipTableIdCol:
         table = pa.table({"src": [1], "tgt": [2]})
         with pytest.raises(ValueError, match="id_col.*not found"):
             normalize_relationship_table(
-                table, source_col="src", target_col="tgt", id_col="bad",
+                table,
+                source_col="src",
+                target_col="tgt",
+                id_col="bad",
             )
 
     def test_source_col_missing_raises(self) -> None:
@@ -73,7 +80,9 @@ class TestNormalizeRelationshipTableIdCol:
         table = pa.table({"tgt": [1]})
         with pytest.raises(ValueError, match="source_col.*not found"):
             normalize_relationship_table(
-                table, source_col="src", target_col="tgt",
+                table,
+                source_col="src",
+                target_col="tgt",
             )
 
     def test_target_col_missing_raises(self) -> None:
@@ -81,7 +90,9 @@ class TestNormalizeRelationshipTableIdCol:
         table = pa.table({"src": [1]})
         with pytest.raises(ValueError, match="target_col.*not found"):
             normalize_relationship_table(
-                table, source_col="src", target_col="tgt",
+                table,
+                source_col="src",
+                target_col="tgt",
             )
 
 
@@ -90,13 +101,15 @@ class TestInferAttributeMap:
 
     def test_excludes_reserved_columns(self) -> None:
         """Reserved columns (__ID__, __SOURCE__, __TARGET__) are excluded."""
-        table = pa.table({
-            "__ID__": [1],
-            "__SOURCE__": [2],
-            "__TARGET__": [3],
-            "name": ["Alice"],
-            "age": [30],
-        })
+        table = pa.table(
+            {
+                "__ID__": [1],
+                "__SOURCE__": [2],
+                "__TARGET__": [3],
+                "name": ["Alice"],
+                "age": [30],
+            },
+        )
         result = infer_attribute_map(table)
         assert result == {"name": "name", "age": "age"}
 

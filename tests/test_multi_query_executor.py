@@ -108,7 +108,7 @@ class TestValidationOnlyMode:
             [
                 ("q1", "CREATE (n:Person {name: 'Alice'})"),
                 ("q2", "MATCH (n:Person) RETURN n.name"),
-            ]
+            ],
         )
         assert isinstance(result, InputValidationResult)
         assert result.is_valid
@@ -140,7 +140,7 @@ class TestAnalysisOnlyMode:
             [
                 ("q1", "CREATE (n:Person {name: 'Alice'})"),
                 ("q2", "MATCH (n:Person) RETURN n.name"),
-            ]
+            ],
         )
         assert isinstance(graph, DependencyGraph)
         assert len(graph.nodes) == 2
@@ -154,7 +154,7 @@ class TestAnalysisOnlyMode:
             [
                 ("q1", "CREATE (n:Person {name: 'Alice'})"),
                 ("q2", "MATCH (n:Person) RETURN n.name"),
-            ]
+            ],
         )
         q2 = next(n for n in graph.nodes if n.query_id == "q2")
         assert "q1" in q2.dependencies
@@ -177,7 +177,7 @@ class TestCombinationOnlyMode:
             [
                 ("q1", "CREATE (n:Person {name: 'Alice'})"),
                 ("q2", "MATCH (n:Person) RETURN n.name"),
-            ]
+            ],
         )
         assert isinstance(combined, str)
         assert "CREATE" in combined
@@ -192,7 +192,7 @@ class TestCombinationOnlyMode:
             [
                 ("q1", "CREATE (n:Person {name: 'Alice'})"),
                 ("q2", "MATCH (n:Person) RETURN n.name"),
-            ]
+            ],
         )
         assert "WITH *" in combined
 

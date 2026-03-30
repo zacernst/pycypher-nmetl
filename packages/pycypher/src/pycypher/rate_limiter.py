@@ -31,7 +31,6 @@ from __future__ import annotations
 
 import threading
 import time
-from typing import Any
 
 from pycypher.exceptions import RateLimitError
 
@@ -104,6 +103,7 @@ class QueryRateLimiter:
         burst: Maximum burst size (token bucket capacity).
         per_caller: If ``True``, maintain separate buckets per ``caller_id``.
             If ``False`` (default), use a single shared bucket.
+
     """
 
     def __init__(
@@ -127,7 +127,9 @@ class QueryRateLimiter:
 
         # Shared bucket (used when per_caller=False)
         self._shared_bucket: _TokenBucket | None = (
-            _TokenBucket(qps, burst) if self._enabled and not per_caller else None
+            _TokenBucket(qps, burst)
+            if self._enabled and not per_caller
+            else None
         )
 
         # Per-caller buckets (used when per_caller=True)
@@ -158,6 +160,7 @@ class QueryRateLimiter:
 
         Raises:
             RateLimitError: If the rate limit is exceeded.
+
         """
         if not self._enabled:
             return
@@ -175,6 +178,7 @@ class QueryRateLimiter:
 
         Returns:
             ``True`` if the query is allowed, ``False`` if rate-limited.
+
         """
         if not self._enabled:
             return True
@@ -188,6 +192,7 @@ class QueryRateLimiter:
         Args:
             caller_id: If given and per_caller is enabled, reset only that
                 caller's bucket.  Otherwise reset the shared bucket.
+
         """
         if not self._enabled:
             return

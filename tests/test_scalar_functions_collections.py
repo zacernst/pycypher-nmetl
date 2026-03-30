@@ -32,7 +32,7 @@ def person_context() -> Context:
             "name": ["Alice", "Bob", "Carol"],
             "nickname": ["Ali", None, None],
             "tags": [["python", "graph"], ["java"], ["python", "sql"]],
-        }
+        },
     )
     table = EntityTable(
         entity_type="Person",
@@ -63,7 +63,8 @@ def _is_null(v: object) -> bool:
 
 class TestCoalesce:
     def test_coalesce_returns_first_non_null(
-        self, registry: ScalarFunctionRegistry
+        self,
+        registry: ScalarFunctionRegistry,
     ) -> None:
         result = registry.execute(
             "coalesce",
@@ -72,7 +73,8 @@ class TestCoalesce:
         assert result.iloc[0] == "default"
 
     def test_coalesce_returns_first_argument_when_non_null(
-        self, registry: ScalarFunctionRegistry
+        self,
+        registry: ScalarFunctionRegistry,
     ) -> None:
         result = registry.execute(
             "coalesce",
@@ -81,7 +83,8 @@ class TestCoalesce:
         assert result.iloc[0] == "first"
 
     def test_coalesce_returns_null_when_all_null(
-        self, registry: ScalarFunctionRegistry
+        self,
+        registry: ScalarFunctionRegistry,
     ) -> None:
         result = registry.execute(
             "coalesce",
@@ -90,7 +93,8 @@ class TestCoalesce:
         assert _is_null(result.iloc[0])
 
     def test_coalesce_treats_nan_as_null(
-        self, registry: ScalarFunctionRegistry
+        self,
+        registry: ScalarFunctionRegistry,
     ) -> None:
         result = registry.execute(
             "coalesce",
@@ -99,7 +103,8 @@ class TestCoalesce:
         assert result.iloc[0] == "fallback"
 
     def test_coalesce_with_zero_is_not_null(
-        self, registry: ScalarFunctionRegistry
+        self,
+        registry: ScalarFunctionRegistry,
     ) -> None:
         result = registry.execute(
             "coalesce",
@@ -108,7 +113,8 @@ class TestCoalesce:
         assert result.iloc[0] == 0
 
     def test_coalesce_with_empty_string_is_not_null(
-        self, registry: ScalarFunctionRegistry
+        self,
+        registry: ScalarFunctionRegistry,
     ) -> None:
         result = registry.execute(
             "coalesce",
@@ -117,7 +123,8 @@ class TestCoalesce:
         assert result.iloc[0] == ""
 
     def test_coalesce_vectorized_mixed_nulls(
-        self, registry: ScalarFunctionRegistry
+        self,
+        registry: ScalarFunctionRegistry,
     ) -> None:
         """Coalesce works row-by-row: some rows get first arg, others fall through."""
         result = registry.execute(
@@ -135,7 +142,7 @@ class TestCoalesce:
         result = star.execute_query(
             "MATCH (p:Person) "
             "WITH coalesce(p.nickname, p.name) AS display "
-            "RETURN display"
+            "RETURN display",
         )
         assert len(result) == 3
         display_values = set(result["display"].tolist())
@@ -160,19 +167,22 @@ class TestSize:
         assert result.iloc[0] == 5
 
     def test_size_of_empty_list(
-        self, registry: ScalarFunctionRegistry
+        self,
+        registry: ScalarFunctionRegistry,
     ) -> None:
         result = registry.execute("size", [pd.Series([[]])])
         assert result.iloc[0] == 0
 
     def test_size_of_empty_string(
-        self, registry: ScalarFunctionRegistry
+        self,
+        registry: ScalarFunctionRegistry,
     ) -> None:
         result = registry.execute("size", [pd.Series([""])])
         assert result.iloc[0] == 0
 
     def test_size_of_null_returns_null(
-        self, registry: ScalarFunctionRegistry
+        self,
+        registry: ScalarFunctionRegistry,
     ) -> None:
         result = registry.execute("size", [pd.Series([None])])
         assert _is_null(result.iloc[0])
@@ -182,14 +192,15 @@ class TestSize:
         assert result.tolist() == [2, 1, 0]
 
     def test_size_integration_on_list_column(
-        self, person_context: Context
+        self,
+        person_context: Context,
     ) -> None:
         """size(p.tags) returns the number of tags each person has."""
         star = Star(context=person_context)
         result = star.execute_query(
             "MATCH (p:Person) "
             "WITH p.name AS name, size(p.tags) AS tag_count "
-            "RETURN name, tag_count"
+            "RETURN name, tag_count",
         )
         assert len(result) == 3
         row = result[result["name"] == "Alice"]
@@ -207,37 +218,43 @@ class TestSize:
 
 class TestHeadTailLast:
     def test_head_returns_first_element(
-        self, registry: ScalarFunctionRegistry
+        self,
+        registry: ScalarFunctionRegistry,
     ) -> None:
         result = registry.execute("head", [pd.Series([[10, 20, 30]])])
         assert result.iloc[0] == 10
 
     def test_head_of_empty_list_returns_null(
-        self, registry: ScalarFunctionRegistry
+        self,
+        registry: ScalarFunctionRegistry,
     ) -> None:
         result = registry.execute("head", [pd.Series([[]])])
         assert _is_null(result.iloc[0])
 
     def test_tail_returns_all_but_first(
-        self, registry: ScalarFunctionRegistry
+        self,
+        registry: ScalarFunctionRegistry,
     ) -> None:
         result = registry.execute("tail", [pd.Series([[10, 20, 30]])])
         assert result.iloc[0] == [20, 30]
 
     def test_tail_of_singleton_returns_empty(
-        self, registry: ScalarFunctionRegistry
+        self,
+        registry: ScalarFunctionRegistry,
     ) -> None:
         result = registry.execute("tail", [pd.Series([[42]])])
         assert result.iloc[0] == []
 
     def test_last_returns_final_element(
-        self, registry: ScalarFunctionRegistry
+        self,
+        registry: ScalarFunctionRegistry,
     ) -> None:
         result = registry.execute("last", [pd.Series([[10, 20, 30]])])
         assert result.iloc[0] == 30
 
     def test_last_of_empty_list_returns_null(
-        self, registry: ScalarFunctionRegistry
+        self,
+        registry: ScalarFunctionRegistry,
     ) -> None:
         result = registry.execute("last", [pd.Series([[]])])
         assert _is_null(result.iloc[0])
@@ -249,7 +266,7 @@ class TestHeadTailLast:
             "MATCH (p:Person) "
             "WITH p.name AS name, head(p.tags) AS first_tag "
             "WHERE name = 'Alice' "
-            "RETURN name, first_tag"
+            "RETURN name, first_tag",
         )
         assert result["first_tag"].iloc[0] == "python"
 
@@ -260,6 +277,6 @@ class TestHeadTailLast:
             "MATCH (p:Person) "
             "WITH p.name AS name, last(p.tags) AS last_tag "
             "WHERE name = 'Carol' "
-            "RETURN name, last_tag"
+            "RETURN name, last_tag",
         )
         assert result["last_tag"].iloc[0] == "sql"

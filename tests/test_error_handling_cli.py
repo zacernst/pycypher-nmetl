@@ -41,7 +41,9 @@ class TestConfigErrorHandling:
         runner = CliRunner()
 
         with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False
+            mode="w",
+            suffix=".yaml",
+            delete=False,
         ) as f:
             # Write invalid YAML
             f.write("sources:\n  entities:\n    - invalid: yaml: content:")
@@ -52,10 +54,7 @@ class TestConfigErrorHandling:
 
             assert result.exit_code == 2
             # Should mention YAML parsing specifically
-            assert (
-                "yaml" in result.output.lower()
-                or "parsing" in result.output.lower()
-            )
+            assert "yaml" in result.output.lower() or "parsing" in result.output.lower()
             # Should not be a generic exception message
             assert (
                 "invalid config" not in result.output.lower()
@@ -69,7 +68,9 @@ class TestConfigErrorHandling:
         runner = CliRunner()
 
         with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False
+            mode="w",
+            suffix=".yaml",
+            delete=False,
         ) as f:
             # Invalid config with malformed query structure
             f.write("""
@@ -115,8 +116,7 @@ class TestDataSourceErrorHandling:
 
         assert result.exit_code == 1
         assert (
-            "entity source" in result.output.lower()
-            or "file" in result.output.lower()
+            "entity source" in result.output.lower() or "file" in result.output.lower()
         )
         assert "nonexistent-file.csv" in result.output
         # Should provide specific error about loading or file not found
@@ -130,7 +130,9 @@ class TestDataSourceErrorHandling:
         runner = CliRunner()
 
         with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".csv", delete=False
+            mode="w",
+            suffix=".csv",
+            delete=False,
         ) as f:
             # Write malformed CSV with quote issues
             f.write('name,age\nAlice,30\nBob,"invalid"trailing"quotes",25\n')
@@ -160,7 +162,9 @@ class TestDataSourceErrorHandling:
         runner = CliRunner()
 
         with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".csv", delete=False
+            mode="w",
+            suffix=".csv",
+            delete=False,
         ) as f:
             # CSV missing the expected source/target columns
             f.write("from_person,to_person\nAlice,Bob\n")
@@ -197,7 +201,9 @@ class TestQueryExecutionErrorHandling:
 
         # Create minimal valid data source
         with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".csv", delete=False
+            mode="w",
+            suffix=".csv",
+            delete=False,
         ) as f:
             f.write("name\nAlice\n")
             csv_path = f.name
@@ -233,7 +239,9 @@ class TestQueryExecutionErrorHandling:
         runner = CliRunner()
 
         with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".csv", delete=False
+            mode="w",
+            suffix=".csv",
+            delete=False,
         ) as f:
             f.write("name\nAlice\n")
             csv_path = f.name
@@ -264,7 +272,9 @@ class TestQueryExecutionErrorHandling:
         runner = CliRunner()
 
         with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".csv", delete=False
+            mode="w",
+            suffix=".csv",
+            delete=False,
         ) as f:
             f.write("name,age\nAlice,thirty\n")  # 'thirty' is not numeric
             csv_path = f.name
@@ -299,7 +309,9 @@ class TestOutputErrorHandling:
         runner = CliRunner()
 
         with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".csv", delete=False
+            mode="w",
+            suffix=".csv",
+            delete=False,
         ) as f:
             f.write("name\nAlice\n")
             csv_path = f.name
@@ -340,7 +352,9 @@ class TestOutputErrorHandling:
         runner = CliRunner()
 
         with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".csv", delete=False
+            mode="w",
+            suffix=".csv",
+            delete=False,
         ) as f:
             f.write("name\nAlice\n")
             csv_path = f.name
@@ -434,7 +448,9 @@ class TestRegressionPrevention:
 
         # Create a minimal valid config
         with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False
+            mode="w",
+            suffix=".yaml",
+            delete=False,
         ) as f:
             f.write("""
 sources:
@@ -457,7 +473,9 @@ queries: []
         runner = CliRunner()
 
         with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".csv", delete=False
+            mode="w",
+            suffix=".csv",
+            delete=False,
         ) as f:
             f.write("name,age\nAlice,30\nBob,25\n")
             csv_path = f.name

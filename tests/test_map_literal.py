@@ -19,7 +19,7 @@ def star() -> Star:
             "__ID__": [1, 2, 3],
             "name": ["Alice", "Bob", "Carol"],
             "age": [30, 25, 35],
-        }
+        },
     )
     return Star(context=ContextBuilder.from_dict({"Person": df}))
 
@@ -31,7 +31,7 @@ class TestMapLiteral:
         """A map literal with constant values returns a dict."""
         result = star.execute_query(
             "MATCH (p:Person) WHERE p.name = 'Alice' "
-            "RETURN {greeting: 'hello', num: 42} AS m"
+            "RETURN {greeting: 'hello', num: 42} AS m",
         )
         row = result["m"].iloc[0]
         assert row["greeting"] == "hello"
@@ -40,7 +40,7 @@ class TestMapLiteral:
     def test_map_with_property_values(self, star: Star) -> None:
         """A map literal referencing node properties evaluates correctly."""
         result = star.execute_query(
-            "MATCH (p:Person) WHERE p.name = 'Alice' RETURN {n: p.name, a: p.age} AS m"
+            "MATCH (p:Person) WHERE p.name = 'Alice' RETURN {n: p.name, a: p.age} AS m",
         )
         row = result["m"].iloc[0]
         assert row["n"] == "Alice"
@@ -49,7 +49,7 @@ class TestMapLiteral:
     def test_map_with_computed_value(self, star: Star) -> None:
         """A map literal with an arithmetic expression evaluates the expression."""
         result = star.execute_query(
-            "MATCH (p:Person) WHERE p.name = 'Alice' RETURN {double: p.age * 2} AS m"
+            "MATCH (p:Person) WHERE p.name = 'Alice' RETURN {double: p.age * 2} AS m",
         )
         assert result["m"].iloc[0]["double"] == 60
 
@@ -58,14 +58,14 @@ class TestMapLiteral:
         result = star.execute_query(
             "MATCH (p:Person) WHERE p.name = 'Alice' "
             "WITH {name: p.name} AS info "
-            "RETURN info"
+            "RETURN info",
         )
         assert result["info"].iloc[0] == {"name": "Alice"}
 
     def test_map_all_rows(self, star: Star) -> None:
         """Map literal evaluated for all rows produces correct dicts."""
         result = star.execute_query(
-            "MATCH (p:Person) RETURN {name: p.name} AS m ORDER BY p.name ASC"
+            "MATCH (p:Person) RETURN {name: p.name} AS m ORDER BY p.name ASC",
         )
         names = [row["name"] for row in result["m"]]
         assert names == ["Alice", "Bob", "Carol"]
@@ -73,6 +73,6 @@ class TestMapLiteral:
     def test_empty_map(self, star: Star) -> None:
         """An empty map literal {} returns an empty dict."""
         result = star.execute_query(
-            "MATCH (p:Person) WHERE p.name = 'Alice' RETURN {} AS m"
+            "MATCH (p:Person) WHERE p.name = 'Alice' RETURN {} AS m",
         )
         assert result["m"].iloc[0] == {}

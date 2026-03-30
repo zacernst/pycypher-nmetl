@@ -69,7 +69,7 @@ def load_graph() -> Star:
 
     print(f"\n  Loaded {len(people)} people, {len(companies)} companies")
     print(
-        f"  Loaded {len(knows)} KNOWS relationships, {len(works_at)} WORKS_AT relationships"
+        f"  Loaded {len(knows)} KNOWS relationships, {len(works_at)} WORKS_AT relationships",
     )
     print("  Graph ready for querying!")
     return star
@@ -299,7 +299,7 @@ def demo_error_handling(star: Star) -> None:
     try:
         star.execute_query("MATCH (p:Person) RETURN x.name")
     except Exception as exc:
-        print(f"\n  Query: MATCH (p:Person) RETURN x.name")
+        print("\n  Query: MATCH (p:Person) RETURN x.name")
         print(f"  Exception: {type(exc).__name__}")
         print(f"  Message: {exc}")
 
@@ -307,7 +307,7 @@ def demo_error_handling(star: Star) -> None:
     try:
         star.execute_query("MATCH (p:Person) RETURN toUppper(p.name)")
     except Exception as exc:
-        print(f"\n  Query: MATCH (p:Person) RETURN toUppper(p.name)")
+        print("\n  Query: MATCH (p:Person) RETURN toUppper(p.name)")
         print(f"  Exception: {type(exc).__name__}")
         print(f"  Message: {exc}")
 
@@ -325,7 +325,7 @@ def demo_observability(star: Star) -> None:
 
     profiler = QueryProfiler(star=star)
     report = profiler.profile(
-        "MATCH (p:Person)-[:KNOWS]->(f:Person) RETURN p.name AS person, f.name AS friend"
+        "MATCH (p:Person)-[:KNOWS]->(f:Person) RETURN p.name AS person, f.name AS friend",
     )
     print(f"\n  {report}")
 

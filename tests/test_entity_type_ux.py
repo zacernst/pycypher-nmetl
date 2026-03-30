@@ -24,7 +24,7 @@ from pycypher.relational_models import (
 from pycypher.star import Star
 
 
-@pytest.fixture()
+@pytest.fixture
 def person_ctx() -> Context:
     """Single Person entity table."""
     df = pd.DataFrame({ID_COLUMN: [1], "name": ["Alice"]})
@@ -43,7 +43,8 @@ class TestEntityTypeDidYouMean:
     """Close-match hints for misspelled entity type labels in MATCH."""
 
     def test_unknown_entity_type_raises_value_error(
-        self, person_ctx: Context
+        self,
+        person_ctx: Context,
     ) -> None:
         """MATCH on unregistered entity type raises ValueError."""
         star = Star(context=person_ctx)
@@ -51,7 +52,8 @@ class TestEntityTypeDidYouMean:
             star.execute_query("MATCH (p:Persn) RETURN p.name AS name")
 
     def test_unknown_entity_type_error_names_the_type(
-        self, person_ctx: Context
+        self,
+        person_ctx: Context,
     ) -> None:
         """Error message includes the misspelled type name."""
         star = Star(context=person_ctx)
@@ -59,7 +61,8 @@ class TestEntityTypeDidYouMean:
             star.execute_query("MATCH (p:Persn) RETURN p.name AS name")
 
     def test_close_match_triggers_did_you_mean(
-        self, person_ctx: Context
+        self,
+        person_ctx: Context,
     ) -> None:
         """'Persn' is close to 'Person' — error includes 'Did you mean'."""
         star = Star(context=person_ctx)
@@ -67,7 +70,8 @@ class TestEntityTypeDidYouMean:
             star.execute_query("MATCH (p:Persn) RETURN p.name AS name")
 
     def test_close_match_names_the_suggestion(
-        self, person_ctx: Context
+        self,
+        person_ctx: Context,
     ) -> None:
         """The 'Did you mean' hint names 'Person'."""
         star = Star(context=person_ctx)
@@ -75,7 +79,8 @@ class TestEntityTypeDidYouMean:
             star.execute_query("MATCH (p:Persn) RETURN p.name AS name")
 
     def test_completely_wrong_type_no_suggestion(
-        self, person_ctx: Context
+        self,
+        person_ctx: Context,
     ) -> None:
         """'Xyzzy' is not close to 'Person' — no 'Did you mean'."""
         star = Star(context=person_ctx)
@@ -84,7 +89,8 @@ class TestEntityTypeDidYouMean:
         assert "Did you mean" not in str(exc_info.value)
 
     def test_correct_entity_type_executes_normally(
-        self, person_ctx: Context
+        self,
+        person_ctx: Context,
     ) -> None:
         """Correctly spelled entity type runs without error."""
         star = Star(context=person_ctx)
@@ -92,7 +98,7 @@ class TestEntityTypeDidYouMean:
         assert result["name"].iloc[0] == "Alice"
 
 
-@pytest.fixture()
+@pytest.fixture
 def knows_ctx() -> Context:
     """Person nodes + KNOWS relationships for relationship-type hint tests."""
     pdf = pd.DataFrame({ID_COLUMN: [1, 2], "name": ["Alice", "Bob"]})
@@ -114,7 +120,7 @@ def knows_ctx() -> Context:
             ID_COLUMN: [10],
             RELATIONSHIP_SOURCE_COLUMN: [1],
             RELATIONSHIP_TARGET_COLUMN: [2],
-        }
+        },
     )
     rtable = RelationshipTable(
         relationship_type="KNOWS",
@@ -138,42 +144,46 @@ class TestRelationshipTypeDidYouMean:
     """Close-match hints for misspelled relationship type labels in MATCH."""
 
     def test_unknown_rel_type_raises_value_error(
-        self, knows_ctx: Context
+        self,
+        knows_ctx: Context,
     ) -> None:
         """MATCH on unregistered relationship type raises ValueError."""
         star = Star(context=knows_ctx)
         with pytest.raises(ValueError):
             star.execute_query(
-                "MATCH (p:Person)-[r:KNOS]->(q:Person) RETURN p.name AS n"
+                "MATCH (p:Person)-[r:KNOS]->(q:Person) RETURN p.name AS n",
             )
 
     def test_unknown_rel_type_error_names_the_type(
-        self, knows_ctx: Context
+        self,
+        knows_ctx: Context,
     ) -> None:
         """Error message includes the misspelled relationship type."""
         star = Star(context=knows_ctx)
         with pytest.raises(ValueError, match="KNOS"):
             star.execute_query(
-                "MATCH (p:Person)-[r:KNOS]->(q:Person) RETURN p.name AS n"
+                "MATCH (p:Person)-[r:KNOS]->(q:Person) RETURN p.name AS n",
             )
 
     def test_close_rel_type_triggers_did_you_mean(
-        self, knows_ctx: Context
+        self,
+        knows_ctx: Context,
     ) -> None:
         """'KNOS' is close to 'KNOWS' — error includes 'Did you mean'."""
         star = Star(context=knows_ctx)
         with pytest.raises(ValueError, match="Did you mean"):
             star.execute_query(
-                "MATCH (p:Person)-[r:KNOS]->(q:Person) RETURN p.name AS n"
+                "MATCH (p:Person)-[r:KNOS]->(q:Person) RETURN p.name AS n",
             )
 
     def test_completely_wrong_rel_type_no_suggestion(
-        self, knows_ctx: Context
+        self,
+        knows_ctx: Context,
     ) -> None:
         """'XYZZY' has no match — no 'Did you mean'."""
         star = Star(context=knows_ctx)
         with pytest.raises(ValueError) as exc_info:
             star.execute_query(
-                "MATCH (p:Person)-[r:XYZZY]->(q:Person) RETURN p.name AS n"
+                "MATCH (p:Person)-[r:XYZZY]->(q:Person) RETURN p.name AS n",
             )
         assert "Did you mean" not in str(exc_info.value)

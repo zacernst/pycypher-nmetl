@@ -1,5 +1,4 @@
-"""
-Integration tests for PropertyAddition functionality.
+"""Integration tests for PropertyAddition functionality.
 Tests end-to-end SET clause functionality with real-world scenarios.
 """
 
@@ -67,7 +66,7 @@ class TestPropertyAdditionRealWorldScenarios:
                 "base_salary": [85000, 65000, 90000, 70000, 68000],
                 "performance_rating": [4.2, 3.8, 4.5, 3.9, 4.1],
                 "active": [True, True, True, False, True],
-            }
+            },
         )
 
         employee_table = EntityTable(
@@ -136,7 +135,7 @@ class TestPropertyAdditionRealWorldScenarios:
                    e.salary_increase AS increase,
                    e.new_salary AS new_salary,
                    e.promotion_eligible AS eligible
-            """
+            """,
         )
 
         assert len(result) == 5
@@ -178,7 +177,7 @@ class TestPropertyAdditionRealWorldScenarios:
                    e.full_name AS full_name,
                    e.years_service AS years_service,
                    e.email_domain AS email_domain
-            """
+            """,
         )
 
         assert len(result) == 5
@@ -220,7 +219,7 @@ class TestPropertyAdditionRealWorldScenarios:
                    e.performance_rating AS rating,
                    e.status AS status,
                    e.risk_level AS risk_level
-            """
+            """,
         )
 
         assert len(result) == 5
@@ -268,7 +267,7 @@ class TestPropertyAdditionPerformanceScenarios:
                 "base_salary": salaries,
                 "performance_rating": ratings,
                 "active": [True] * n_records,
-            }
+            },
         )
 
         large_table = EntityTable(
@@ -326,7 +325,7 @@ class TestPropertyAdditionPerformanceScenarios:
                     ELSE 'low'
                 END
             RETURN count(*) AS processed_count
-            """
+            """,
         )
 
         execution_time = time.time() - start_time
@@ -360,7 +359,7 @@ class TestPropertyAdditionPerformanceScenarios:
                 computed_field_5: 'processed_' + e.employee_id
             }
             RETURN count(*) AS total
-            """
+            """,
         )
 
         final_memory = process.memory_info().rss
@@ -384,7 +383,7 @@ class TestPropertyAdditionErrorRecovery:
                 "name": ["Alice", "Bob", "Carol"],
                 "value": [100, 200, 300],
                 "nullable_field": [1, None, 3],
-            }
+            },
         )
 
         table = EntityTable(
@@ -422,7 +421,7 @@ class TestPropertyAdditionErrorRecovery:
                    e.nullable_field AS original,
                    e.null_safe_calc AS calculated,
                    e.null_indicator AS is_null
-            """
+            """,
         )
 
         assert len(result) == 3
@@ -448,7 +447,7 @@ class TestPropertyAdditionErrorRecovery:
                 SET e.good_field = 'success',
                     e.bad_field = e.nonexistent_field / 0
                 RETURN e.name
-                """
+                """,
             )
             assert False, "Should have raised an error"
         except Exception:
@@ -473,7 +472,7 @@ class TestPropertyAdditionErrorRecovery:
                    e.string_to_int AS string_to_int,
                    e.int_to_string AS int_to_string,
                    e.mixed_type AS mixed_type
-            """
+            """,
         )
 
         assert len(result) == 3
@@ -498,7 +497,7 @@ class TestPropertyAdditionDataIntegrity:
                 "balance": [1000, 2000, 1500, 3000],
                 "account_type": ["checking", "savings", "checking", "savings"],
                 "last_transaction": [100, -50, 200, -75],
-            }
+            },
         )
 
         table = EntityTable(
@@ -546,7 +545,7 @@ class TestPropertyAdditionDataIntegrity:
                    a.last_transaction AS transaction,
                    a.new_balance AS new_balance,
                    a.balance_check AS balance_check
-            """
+            """,
         )
 
         # Check mathematical integrity
@@ -563,7 +562,7 @@ class TestPropertyAdditionDataIntegrity:
 
         # Get original row count
         original_result = star.execute_query(
-            "MATCH (a:Account) RETURN count(*) AS count"
+            "MATCH (a:Account) RETURN count(*) AS count",
         )
         original_count = original_result["count"].iloc[0]
 
@@ -574,7 +573,7 @@ class TestPropertyAdditionDataIntegrity:
             SET a.audit_timestamp = '2024-01-15',
                 a.processed_by = 'system'
             RETURN count(*) AS final_count
-            """
+            """,
         )
 
         # Check that row count is preserved
@@ -591,7 +590,7 @@ class TestPropertyAdditionDataIntegrity:
             MATCH (a:Account)
             SET a.operation_1 = a.balance * 1.05
             RETURN count(*) AS count1
-            """
+            """,
         )
 
         result2 = star.execute_query(
@@ -599,7 +598,7 @@ class TestPropertyAdditionDataIntegrity:
             MATCH (a:Account)
             SET a.operation_2 = a.balance * 0.95
             RETURN a.name AS name, a.operation_1 AS op1, a.operation_2 AS op2
-            """
+            """,
         )
 
         # Check that both operations can access the base balance
@@ -625,7 +624,7 @@ class TestPropertyAdditionDataIntegrity:
                    a.version AS version,
                    a.legacy_balance AS legacy_balance,
                    a.new_format_balance AS new_format_balance
-            """
+            """,
         )
 
         # Check schema consistency
@@ -633,7 +632,7 @@ class TestPropertyAdditionDataIntegrity:
         for _, row in result.iterrows():
             assert row["version"] == 2
             assert row["legacy_balance"] == int(
-                row["new_format_balance"].split(".")[0]
+                row["new_format_balance"].split(".")[0],
             )
 
 
@@ -648,7 +647,7 @@ class TestPropertyAdditionCompatibility:
                 ID_COLUMN: [1, 2, 3],
                 "name": ["Alice", "Bob", "Carol"],
                 "score": [85, 92, 78],
-            }
+            },
         )
 
         table = EntityTable(
@@ -666,7 +665,8 @@ class TestPropertyAdditionCompatibility:
         )
 
     def test_compatibility_with_existing_aggregations(
-        self, compatibility_context
+        self,
+        compatibility_context,
     ):
         """Test that SET works with existing aggregation functions."""
         star = Star(context=compatibility_context)
@@ -683,7 +683,7 @@ class TestPropertyAdditionCompatibility:
                  avg(s.score) AS avg_score,
                  collect(s.grade) AS all_grades
             RETURN total_students, avg_score, all_grades
-            """
+            """,
         )
 
         assert result["total_students"].iloc[0] == 3
@@ -711,7 +711,7 @@ class TestPropertyAdditionCompatibility:
                    s.name_length AS name_length,
                    s.score_string AS score_string,
                    s.passing AS passing
-            """
+            """,
         )
 
         # Check scalar function integration
@@ -731,7 +731,7 @@ class TestPropertyAdditionCompatibility:
             MATCH (s:Student)
             WITH s.name AS name, s.score AS score
             RETURN name, score
-            """
+            """,
         )
 
         assert len(traditional_result) == 3
@@ -745,7 +745,7 @@ class TestPropertyAdditionCompatibility:
             SET s.enhanced = true
             WITH s.name AS name, s.score AS score, s.enhanced AS enhanced
             RETURN name, score, enhanced
-            """
+            """,
         )
 
         assert len(enhanced_result) == 3
@@ -755,5 +755,5 @@ class TestPropertyAdditionCompatibility:
         # Original columns should still be present
         assert set(enhanced_result["name"]) == set(traditional_result["name"])
         assert set(enhanced_result["score"]) == set(
-            traditional_result["score"]
+            traditional_result["score"],
         )

@@ -26,7 +26,7 @@ def people_df() -> pd.DataFrame:
             "__ID__": [1, 2, 3],
             "name": ["Alice", "Bob", "Carol"],
             "age": [30, 25, 35],
-        }
+        },
     )
 
 
@@ -40,14 +40,14 @@ def knows_df() -> pd.DataFrame:
             "__TARGET__": [2, 3],
             "since": [2020, 2022],
             "strength": [0.8, 0.5],
-        }
+        },
     )
 
 
 @pytest.fixture
 def star(people_df: pd.DataFrame, knows_df: pd.DataFrame) -> Star:
     context = ContextBuilder.from_dict(
-        {"Person": people_df, "KNOWS": knows_df}
+        {"Person": people_df, "KNOWS": knows_df},
     )
     return Star(context=context)
 
@@ -63,7 +63,7 @@ class TestRelationshipPropertyReturn:
     def test_return_single_rel_property(self, star: Star) -> None:
         result = star.execute_query(
             "MATCH (a:Person)-[r:KNOWS]->(b:Person) "
-            "RETURN r.since AS since ORDER BY r.since ASC"
+            "RETURN r.since AS since ORDER BY r.since ASC",
         )
         assert list(result["since"]) == [2020, 2022]
 
@@ -71,7 +71,7 @@ class TestRelationshipPropertyReturn:
         result = star.execute_query(
             "MATCH (a:Person)-[r:KNOWS]->(b:Person) "
             "RETURN r.since AS since, r.strength AS strength "
-            "ORDER BY r.since ASC"
+            "ORDER BY r.since ASC",
         )
         assert list(result["since"]) == [2020, 2022]
         assert list(result["strength"]) == [0.8, 0.5]
@@ -80,7 +80,7 @@ class TestRelationshipPropertyReturn:
         result = star.execute_query(
             "MATCH (a:Person)-[r:KNOWS]->(b:Person) "
             "RETURN a.name AS src, b.name AS tgt, r.since AS since "
-            "ORDER BY since ASC"
+            "ORDER BY since ASC",
         )
         assert list(result["src"]) == ["Alice", "Alice"]
         assert list(result["tgt"]) == ["Bob", "Carol"]
@@ -88,7 +88,7 @@ class TestRelationshipPropertyReturn:
 
     def test_missing_rel_property_returns_null(self, star: Star) -> None:
         result = star.execute_query(
-            "MATCH (a:Person)-[r:KNOWS]->(b:Person) RETURN r.nonexistent AS val"
+            "MATCH (a:Person)-[r:KNOWS]->(b:Person) RETURN r.nonexistent AS val",
         )
         assert len(result) == 2
         assert result["val"].isna().all()
@@ -106,7 +106,7 @@ class TestRelationshipPropertyWhere:
         result = star.execute_query(
             "MATCH (a:Person)-[r:KNOWS]->(b:Person) "
             "WHERE r.since = 2020 "
-            "RETURN b.name AS name"
+            "RETURN b.name AS name",
         )
         assert list(result["name"]) == ["Bob"]
 
@@ -114,7 +114,7 @@ class TestRelationshipPropertyWhere:
         result = star.execute_query(
             "MATCH (a:Person)-[r:KNOWS]->(b:Person) "
             "WHERE r.since > 2020 "
-            "RETURN b.name AS name"
+            "RETURN b.name AS name",
         )
         assert list(result["name"]) == ["Carol"]
 
@@ -122,6 +122,6 @@ class TestRelationshipPropertyWhere:
         result = star.execute_query(
             "MATCH (a:Person)-[r:KNOWS]->(b:Person) "
             "WHERE r.strength > 0.6 AND b.age < 30 "
-            "RETURN b.name AS name"
+            "RETURN b.name AS name",
         )
         assert list(result["name"]) == ["Bob"]

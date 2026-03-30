@@ -252,15 +252,16 @@ Always enable TLS for Neo4j connections in production:
 
 .. code-block:: python
 
+   import os
    from pycypher.sinks.neo4j import Neo4jSink
 
-   # Use bolt+s:// scheme for TLS, or set encrypted=True explicitly
-   sink = Neo4jSink(
+   # Use bolt+s:// scheme for TLS
+   with Neo4jSink(
        "bolt+s://neo4j-host:7687",
-       user="neo4j",
-       password=os.environ["NEO4J_PASSWORD"],
-       encrypted=True,  # Enforce TLS even if scheme doesn't imply it
-   )
+       "neo4j",
+       os.environ["NEO4J_PASSWORD"],
+   ) as sink:
+       sink.write_nodes(result, mapping)
 
 The Neo4j sink validates all identifiers (labels, property names,
 relationship types) against Cypher injection, including:

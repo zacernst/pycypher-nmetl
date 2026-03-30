@@ -120,17 +120,17 @@ class TestSQLAllowlistAcceptsLegitimateQueries:
 
     def test_select_with_join(self) -> None:
         validate_sql_query(
-            "SELECT a.name, b.value FROM source a JOIN other b ON a.id = b.id"
+            "SELECT a.name, b.value FROM source a JOIN other b ON a.id = b.id",
         )
 
     def test_select_with_subquery(self) -> None:
         validate_sql_query(
-            "SELECT * FROM source WHERE id IN (SELECT id FROM other)"
+            "SELECT * FROM source WHERE id IN (SELECT id FROM other)",
         )
 
     def test_select_with_aggregation(self) -> None:
         validate_sql_query(
-            "SELECT department, COUNT(*) FROM employees GROUP BY department HAVING COUNT(*) > 5"
+            "SELECT department, COUNT(*) FROM employees GROUP BY department HAVING COUNT(*) > 5",
         )
 
     def test_select_with_trailing_semicolon(self) -> None:
@@ -140,12 +140,12 @@ class TestSQLAllowlistAcceptsLegitimateQueries:
     def test_with_cte_select(self) -> None:
         """WITH (CTE) followed by SELECT is a legitimate read-only query."""
         validate_sql_query(
-            "WITH cte AS (SELECT id FROM source) SELECT * FROM cte"
+            "WITH cte AS (SELECT id FROM source) SELECT * FROM cte",
         )
 
     def test_select_with_order_limit(self) -> None:
         validate_sql_query(
-            "SELECT * FROM source ORDER BY name LIMIT 100 OFFSET 10"
+            "SELECT * FROM source ORDER BY name LIMIT 100 OFFSET 10",
         )
 
     def test_select_with_quoted_strings(self) -> None:
@@ -242,7 +242,8 @@ class TestCypherIdentifierNewDangerousChars:
         """Square bracket injection for alternate quoting."""
         with pytest.raises(ValueError, match="square bracket"):
             _validate_cypher_identifier(
-                "[Person]; MATCH (n) DETACH DELETE n //", "label"
+                "[Person]; MATCH (n) DETACH DELETE n //",
+                "label",
             )
 
 

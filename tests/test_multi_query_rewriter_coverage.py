@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import pandas as pd
 import pytest
-
 from pycypher import ContextBuilder, Star
 from pycypher.multi_query_rewriter import (
     MultiQueryRewriter,
@@ -15,7 +14,7 @@ from pycypher.multi_query_rewriter import (
 )
 
 
-@pytest.fixture()
+@pytest.fixture
 def star() -> Star:
     """Star with Person entities."""
     people = pd.DataFrame(
@@ -39,9 +38,11 @@ class TestQueryRewriter:
     def test_combine_queries(self) -> None:
         rewriter = QueryRewriter()
         analyzer = MultiQueryRewriter().dependency_analyzer
-        graph = analyzer.analyze([
-            ("q1", "MATCH (n:Person) RETURN n.name"),
-        ])
+        graph = analyzer.analyze(
+            [
+                ("q1", "MATCH (n:Person) RETURN n.name"),
+            ],
+        )
         result = rewriter.combine_queries(graph)
         assert isinstance(result, str)
         assert len(result) > 0
@@ -57,10 +58,12 @@ class TestMultiQueryRewriter:
 
     def test_analyze_dependencies(self) -> None:
         mqr = MultiQueryRewriter()
-        graph = mqr.analyze_dependencies([
-            ("q1", "MATCH (n:Person) RETURN n.name AS name"),
-            ("q2", "MATCH (n:Person) RETURN n.age AS age"),
-        ])
+        graph = mqr.analyze_dependencies(
+            [
+                ("q1", "MATCH (n:Person) RETURN n.name AS name"),
+                ("q2", "MATCH (n:Person) RETURN n.age AS age"),
+            ],
+        )
         assert len(graph.nodes) == 2
 
     def test_execute_combined_single_query(self, star: Star) -> None:

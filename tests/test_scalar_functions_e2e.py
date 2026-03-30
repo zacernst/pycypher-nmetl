@@ -36,7 +36,7 @@ def sample_context() -> Context:
             "age": [30, 40, 25, None, 35],
             "score": ["85.5", "92", "invalid", None, "78.0"],
             "active": ["true", "false", "1", None, "yes"],
-        }
+        },
     )
 
     knows_df = pd.DataFrame(
@@ -45,7 +45,7 @@ def sample_context() -> Context:
             RELATIONSHIP_SOURCE_COLUMN: [1, 2, 3],
             RELATIONSHIP_TARGET_COLUMN: [2, 3, 4],
             "since": ["2020", "2021", "2022"],
-        }
+        },
     )
 
     person_table = EntityTable(
@@ -92,7 +92,7 @@ def sample_context() -> Context:
     return Context(
         entity_mapping=EntityMapping(mapping={"Person": person_table}),
         relationship_mapping=RelationshipMapping(
-            mapping={"KNOWS": knows_table}
+            mapping={"KNOWS": knows_table},
         ),
     )
 
@@ -295,7 +295,8 @@ class TestScalarFunctionsEndToEnd:
         assert result_df["clean_name"].isna().iloc[3]  # Row with None name
 
     def test_multiple_scalar_functions_in_with(
-        self, sample_context: Context
+        self,
+        sample_context: Context,
     ) -> None:
         """Test multiple scalar functions in same WITH clause."""
         cypher = """
@@ -344,7 +345,8 @@ class TestScalarFunctionsEndToEnd:
         assert actual_values == expected_values
 
     def test_scalar_functions_with_where_clause(
-        self, sample_context: Context
+        self,
+        sample_context: Context,
     ) -> None:
         """Test scalar functions combined with WHERE clause filtering."""
         cypher = """
@@ -372,7 +374,8 @@ class TestScalarFunctionsEndToEnd:
         )  # "Dave Smith" -> trim -> "Dave Smith" -> toUpper -> "DAVE SMITH"
 
     def test_scalar_functions_chained_with_clauses(
-        self, sample_context: Context
+        self,
+        sample_context: Context,
     ) -> None:
         """Test scalar functions across multiple WITH clauses."""
         cypher = """
@@ -387,9 +390,7 @@ class TestScalarFunctionsEndToEnd:
 
         # Verify results
         assert len(result_df) == 5
-        assert all(
-            col in result_df.columns for col in ["upper_name", "age_str"]
-        )
+        assert all(col in result_df.columns for col in ["upper_name", "age_str"])
 
         # Check transformations - pandas uses nan for nulls
         expected_upper = ["ALICE", "BOB", "CAROL", "DAVE SMITH"]
@@ -414,16 +415,19 @@ class TestScalarFunctionsErrorHandling:
 
         # Should raise an error during execution when the function is not found
         with pytest.raises(
-            Exception
+            Exception,
         ):  # Could be various exception types depending on where it fails
             star.execute_query(cypher)
 
     def test_scalar_function_with_invalid_arguments(
-        self, sample_context: Context
+        self,
+        sample_context: Context,
     ) -> None:
         """Test scalar function with wrong number of arguments."""
         # substring requires 2-3 arguments, providing only 1
-        cypher = "MATCH (p:Person) WITH substring(p.name) AS result RETURN result AS result"
+        cypher = (
+            "MATCH (p:Person) WITH substring(p.name) AS result RETURN result AS result"
+        )
 
         star = Star(context=sample_context)
 
@@ -436,7 +440,8 @@ class TestScalarFunctionsPipelineValidation:
     """Validate the complete Cypher → RelAlg → Pandas pipeline for scalar functions."""
 
     def test_ast_conversion_includes_function_invocations(
-        self, sample_context: Context
+        self,
+        sample_context: Context,
     ) -> None:
         """Verify AST conversion correctly identifies FunctionInvocation nodes."""
         cypher = "MATCH (p:Person) WITH toUpper(p.name) AS upper_name RETURN upper_name AS upper_name"
@@ -455,7 +460,8 @@ class TestScalarFunctionsPipelineValidation:
         assert function_nodes[0].name == "toUpper"
 
     def test_relational_algebra_preserves_scalar_functions(
-        self, sample_context: Context
+        self,
+        sample_context: Context,
     ) -> None:
         """Verify relational algebra conversion preserves scalar function information."""
         cypher = "MATCH (p:Person) WITH toUpper(p.name) AS upper_name RETURN upper_name AS upper_name"

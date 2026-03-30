@@ -11,22 +11,19 @@ Targets specific uncovered lines/paths:
 from __future__ import annotations
 
 from typing import Any
-from unittest.mock import patch
 
 import pandas as pd
 import pytest
-
 from pycypher import ContextBuilder, Star
 from pycypher.binding_frame import BindingFrame
 from pycypher.collection_evaluator import CollectionExpressionEvaluator
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture()
+@pytest.fixture
 def star_with_people() -> Star:
     """Star instance with Person entities and KNOWS relationships."""
     people = pd.DataFrame(
@@ -49,14 +46,17 @@ def star_with_people() -> Star:
         ContextBuilder()
         .add_entity("Person", people)
         .add_relationship(
-            "KNOWS", rels, source_col="__SOURCE__", target_col="__TARGET__"
+            "KNOWS",
+            rels,
+            source_col="__SOURCE__",
+            target_col="__TARGET__",
         )
         .build()
     )
     return Star(context=ctx)
 
 
-@pytest.fixture()
+@pytest.fixture
 def star_minimal() -> Star:
     """Star instance with minimal Person entity (one row)."""
     people = pd.DataFrame(
@@ -83,7 +83,7 @@ class TestSingleQuantifier:
         result = star_minimal.execute_query(
             "MATCH (p:Person) "
             "WITH [1, 2, 3] AS nums "
-            "RETURN single(x IN nums WHERE x = 2) AS result"
+            "RETURN single(x IN nums WHERE x = 2) AS result",
         )
         assert bool(result["result"].iloc[0]) is True
 
@@ -92,7 +92,7 @@ class TestSingleQuantifier:
         result = star_minimal.execute_query(
             "MATCH (p:Person) "
             "WITH [1, 2, 3] AS nums "
-            "RETURN single(x IN nums WHERE x > 1) AS result"
+            "RETURN single(x IN nums WHERE x > 1) AS result",
         )
         assert bool(result["result"].iloc[0]) is False
 
@@ -101,7 +101,7 @@ class TestSingleQuantifier:
         result = star_minimal.execute_query(
             "MATCH (p:Person) "
             "WITH [] AS nums "
-            "RETURN single(x IN nums WHERE x > 0) AS result"
+            "RETURN single(x IN nums WHERE x > 0) AS result",
         )
         assert bool(result["result"].iloc[0]) is False
 
@@ -211,9 +211,7 @@ class TestMapProjectionAllProperties:
     def test_all_properties_basic(self, star_with_people: Star) -> None:
         """p{.*} exercises the all_properties loop."""
         result = star_with_people.execute_query(
-            "MATCH (p:Person) "
-            "RETURN p{.*} AS proj "
-            "ORDER BY p.name"
+            "MATCH (p:Person) RETURN p{.*} AS proj ORDER BY p.name",
         )
         proj = result["proj"].iloc[0]
         assert isinstance(proj, dict)
@@ -223,7 +221,7 @@ class TestMapProjectionAllProperties:
         result = star_with_people.execute_query(
             "MATCH (p:Person) "
             "RETURN p{.*, double_age: p.age * 2} AS proj "
-            "ORDER BY p.name"
+            "ORDER BY p.name",
         )
         proj = result["proj"].iloc[0]
         assert isinstance(proj, dict)
@@ -233,9 +231,7 @@ class TestMapProjectionAllProperties:
     def test_all_properties_with_property_copy(self, star_with_people: Star) -> None:
         """p{.*, .name} exercises lines 842-855."""
         result = star_with_people.execute_query(
-            "MATCH (p:Person) "
-            "RETURN p{.*, .name} AS proj "
-            "ORDER BY p.name"
+            "MATCH (p:Person) RETURN p{.*, .name} AS proj ORDER BY p.name",
         )
         proj = result["proj"].iloc[0]
         assert isinstance(proj, dict)

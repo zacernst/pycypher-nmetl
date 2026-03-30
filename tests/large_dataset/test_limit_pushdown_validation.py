@@ -52,9 +52,9 @@ def _build_star(
         context=Context(
             entity_mapping=EntityMapping(mapping={"Person": person_table}),
             relationship_mapping=RelationshipMapping(
-                mapping={"KNOWS": knows_table}
+                mapping={"KNOWS": knows_table},
             ),
-        )
+        ),
     )
 
 
@@ -77,7 +77,7 @@ class TestLimitPushdownCorrectness:
         for limit_n in [1, 5, 10, 50]:
             result = small_star.execute_query(
                 f"MATCH (a:Person)-[:KNOWS*1..2]->(b:Person) "
-                f"RETURN a.name AS src, b.name AS tgt LIMIT {limit_n}"
+                f"RETURN a.name AS src, b.name AS tgt LIMIT {limit_n}",
             )
             assert len(result) == limit_n
 
@@ -85,18 +85,16 @@ class TestLimitPushdownCorrectness:
         """LIMIT results should be a subset of full results."""
         full = small_star.execute_query(
             "MATCH (a:Person)-[:KNOWS*1..2]->(b:Person) "
-            "RETURN a.name AS src, b.name AS tgt"
+            "RETURN a.name AS src, b.name AS tgt",
         )
         limited = small_star.execute_query(
             "MATCH (a:Person)-[:KNOWS*1..2]->(b:Person) "
-            "RETURN a.name AS src, b.name AS tgt LIMIT 10"
+            "RETURN a.name AS src, b.name AS tgt LIMIT 10",
         )
 
         # Every row in limited should appear in full
         for _, row in limited.iterrows():
-            match = full[
-                (full["src"] == row["src"]) & (full["tgt"] == row["tgt"])
-            ]
+            match = full[(full["src"] == row["src"]) & (full["tgt"] == row["tgt"])]
             assert len(match) > 0, (
                 f"LIMIT result ({row['src']}, {row['tgt']}) not found in full results"
             )
@@ -105,7 +103,7 @@ class TestLimitPushdownCorrectness:
         """LIMIT 1 should return exactly one row."""
         result = small_star.execute_query(
             "MATCH (a:Person)-[:KNOWS*1..3]->(b:Person) "
-            "RETURN a.name AS src, b.name AS tgt LIMIT 1"
+            "RETURN a.name AS src, b.name AS tgt LIMIT 1",
         )
         assert len(result) == 1
 
@@ -113,9 +111,9 @@ class TestLimitPushdownCorrectness:
         """LIMIT on fixed-hop VLP."""
         result = small_star.execute_query(
             "MATCH (a:Person)-[:KNOWS*2..2]->(b:Person) "
-            "RETURN a.name AS src, b.name AS tgt LIMIT 5"
+            "RETURN a.name AS src, b.name AS tgt LIMIT 5",
         )
-        assert len(result) <= 5  # noqa: PLR2004
+        assert len(result) <= 5
 
 
 # ---------------------------------------------------------------------------
@@ -169,12 +167,11 @@ class TestLimitPushdownPerformance:
         gc.collect()
         growth = _get_process_memory_mb() - baseline
         # LIMIT 20 should use very little additional memory
-        assert growth < 100, (  # noqa: PLR2004
-            f"LIMIT 20 VLP query grew memory by {growth:.1f}MB"
-        )
+        assert growth < 100, f"LIMIT 20 VLP query grew memory by {growth:.1f}MB"
 
     def test_increasing_limit_scales_sublinearly(
-        self, small_star: Star
+        self,
+        small_star: Star,
     ) -> None:
         """Doubling LIMIT should not double execution time."""
         times = []

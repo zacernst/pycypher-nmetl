@@ -30,14 +30,14 @@ from pycypher.star import Star
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture()
+@pytest.fixture
 def empty_star() -> Star:
     """Star with no entities -- for standalone RETURN queries."""
     ctx = Context(entity_mapping=EntityMapping(mapping={}))
     return Star(context=ctx)
 
 
-@pytest.fixture()
+@pytest.fixture
 def scalar_registry() -> ScalarFunctionRegistry:
     """Shared scalar function registry."""
     return ScalarFunctionRegistry.get_instance()
@@ -66,19 +66,20 @@ class TestRoundNullAndInvalid:
     def test_round_with_half_even_mode(self, empty_star: Star) -> None:
         """round(2.5, 0, 'HALF_EVEN') should return 2.0 (banker's rounding)."""
         result = empty_star.execute_query(
-            "RETURN round(2.5, 0, 'HALF_EVEN') AS r"
+            "RETURN round(2.5, 0, 'HALF_EVEN') AS r",
         )
         assert result["r"].iloc[0] == 2.0
 
     def test_round_with_half_up_mode(self, empty_star: Star) -> None:
         """round(2.5, 0, 'HALF_UP') should return 3.0."""
         result = empty_star.execute_query(
-            "RETURN round(2.5, 0, 'HALF_UP') AS r"
+            "RETURN round(2.5, 0, 'HALF_UP') AS r",
         )
         assert result["r"].iloc[0] == 3.0
 
     def test_round_invalid_mode_raises(
-        self, scalar_registry: ScalarFunctionRegistry
+        self,
+        scalar_registry: ScalarFunctionRegistry,
     ) -> None:
         """An unrecognised rounding mode should raise ValueError."""
         s = pd.Series([1.5])
@@ -88,7 +89,8 @@ class TestRoundNullAndInvalid:
             scalar_registry.execute("round", [s, prec, mode])
 
     def test_round_all_nulls(
-        self, scalar_registry: ScalarFunctionRegistry
+        self,
+        scalar_registry: ScalarFunctionRegistry,
     ) -> None:
         """round() on a series of all nulls should return all NaN."""
         s = pd.Series([None, None, None], dtype=object)
@@ -97,7 +99,8 @@ class TestRoundNullAndInvalid:
         assert all(math.isnan(v) for v in result)
 
     def test_round_mixed_null_and_values(
-        self, scalar_registry: ScalarFunctionRegistry
+        self,
+        scalar_registry: ScalarFunctionRegistry,
     ) -> None:
         """round() with a mix of nulls and valid values in the inner loop (line 190)."""
         # Use object dtype so that non-null mask passes but inner loop
@@ -109,7 +112,8 @@ class TestRoundNullAndInvalid:
         assert result.iloc[2] == 3.0
 
     def test_round_invalid_type_in_series(
-        self, scalar_registry: ScalarFunctionRegistry
+        self,
+        scalar_registry: ScalarFunctionRegistry,
     ) -> None:
         """round() with non-numeric string values should return None for those (lines 199-204)."""
         s = pd.Series(["not_a_number", 3.14], dtype=object)
@@ -138,7 +142,8 @@ class TestHypotAndFmod:
         assert abs(result["r"].iloc[0] - 1.0) < 1e-9
 
     def test_hypot_mismatched_lengths(
-        self, scalar_registry: ScalarFunctionRegistry
+        self,
+        scalar_registry: ScalarFunctionRegistry,
     ) -> None:
         """hypot() with mismatched Series lengths should raise ValueError (lines 345-349)."""
         x = pd.Series([3.0, 4.0])
@@ -147,7 +152,8 @@ class TestHypotAndFmod:
             scalar_registry.execute("hypot", [x, y])
 
     def test_fmod_mismatched_lengths(
-        self, scalar_registry: ScalarFunctionRegistry
+        self,
+        scalar_registry: ScalarFunctionRegistry,
     ) -> None:
         """fmod() with mismatched Series lengths should raise ValueError (lines 379-383)."""
         x = pd.Series([10.0, 20.0])
@@ -194,7 +200,8 @@ class TestJoinFunction:
     """Cover join() null-item filtering (line 173)."""
 
     def test_join_filters_null_items(
-        self, scalar_registry: ScalarFunctionRegistry
+        self,
+        scalar_registry: ScalarFunctionRegistry,
     ) -> None:
         """join() should filter out null items from the list (line 188)."""
         lst = pd.Series([["a", None, "b"]])
@@ -203,7 +210,8 @@ class TestJoinFunction:
         assert result.iloc[0] == "a,b"
 
     def test_join_null_delimiter(
-        self, scalar_registry: ScalarFunctionRegistry
+        self,
+        scalar_registry: ScalarFunctionRegistry,
     ) -> None:
         """join() with null delimiter should return null (line 174-175)."""
         lst = pd.Series([["a", "b"]])
@@ -212,7 +220,8 @@ class TestJoinFunction:
         assert result.iloc[0] is None
 
     def test_join_non_list_input(
-        self, scalar_registry: ScalarFunctionRegistry
+        self,
+        scalar_registry: ScalarFunctionRegistry,
     ) -> None:
         """join() with a non-list input should return null (line 184-185)."""
         lst = pd.Series(["not_a_list"])
@@ -232,17 +241,17 @@ class TestIsEmpty:
     def test_is_empty_integer(self, empty_star: Star) -> None:
         """isEmpty(42) should return false (non-collection, non-null)."""
         result = empty_star.execute_query("RETURN isEmpty(42) AS r")
-        assert result["r"].iloc[0] is False or result["r"].iloc[0] == False  # noqa: E712
+        assert result["r"].iloc[0] is False or result["r"].iloc[0] == False
 
     def test_is_empty_null(self, empty_star: Star) -> None:
         """isEmpty(null) should return true."""
         result = empty_star.execute_query("RETURN isEmpty(null) AS r")
-        assert result["r"].iloc[0] is True or result["r"].iloc[0] == True  # noqa: E712
+        assert result["r"].iloc[0] is True or result["r"].iloc[0] == True
 
     def test_is_empty_empty_string(self, empty_star: Star) -> None:
         """isEmpty('') should return true."""
         result = empty_star.execute_query("RETURN isEmpty('') AS r")
-        assert result["r"].iloc[0] is True or result["r"].iloc[0] == True  # noqa: E712
+        assert result["r"].iloc[0] is True or result["r"].iloc[0] == True
 
 
 # ---------------------------------------------------------------------------
@@ -254,7 +263,8 @@ class TestLpadRpadEmptySeries:
     """Cover lpad/rpad empty series early-return (lines 283, 362)."""
 
     def test_lpad_empty_series(
-        self, scalar_registry: ScalarFunctionRegistry
+        self,
+        scalar_registry: ScalarFunctionRegistry,
     ) -> None:
         """lpad() on an empty Series should return an empty Series (line 283)."""
         s = pd.Series([], dtype=object)
@@ -263,7 +273,8 @@ class TestLpadRpadEmptySeries:
         assert len(result) == 0
 
     def test_rpad_empty_series(
-        self, scalar_registry: ScalarFunctionRegistry
+        self,
+        scalar_registry: ScalarFunctionRegistry,
     ) -> None:
         """rpad() on an empty Series should return an empty Series (line 362)."""
         s = pd.Series([], dtype=object)
@@ -296,7 +307,8 @@ class TestCharFunction:
         assert result["r"].iloc[0] == "A"
 
     def test_char_invalid_negative(
-        self, scalar_registry: ScalarFunctionRegistry
+        self,
+        scalar_registry: ScalarFunctionRegistry,
     ) -> None:
         """char() with a negative code point should return null (lines 630-632)."""
         s = pd.Series([-1])
@@ -304,7 +316,8 @@ class TestCharFunction:
         assert result.iloc[0] is None
 
     def test_char_invalid_large(
-        self, scalar_registry: ScalarFunctionRegistry
+        self,
+        scalar_registry: ScalarFunctionRegistry,
     ) -> None:
         """char() with an excessively large code point should return null (lines 630-632)."""
         # 0x110000 is beyond the valid Unicode range
@@ -359,12 +372,13 @@ class TestNormalizeElementWise:
     def test_normalize_explicit_nfc(self, empty_star: Star) -> None:
         """normalize('hello', 'NFC') should return 'hello'."""
         result = empty_star.execute_query(
-            "RETURN normalize('hello', 'NFC') AS r"
+            "RETURN normalize('hello', 'NFC') AS r",
         )
         assert result["r"].iloc[0] == "hello"
 
     def test_normalize_element_wise_form(
-        self, scalar_registry: ScalarFunctionRegistry
+        self,
+        scalar_registry: ScalarFunctionRegistry,
     ) -> None:
         """normalize() with multi-element form Series hits the element-wise path (lines 806-809)."""
         s = pd.Series(["hello", "world"])
@@ -388,7 +402,8 @@ class TestByteSizeStringDtype:
         assert result["r"].iloc[0] == 5
 
     def test_byte_size_string_dtype(
-        self, scalar_registry: ScalarFunctionRegistry
+        self,
+        scalar_registry: ScalarFunctionRegistry,
     ) -> None:
         """byteSize() on a StringDtype Series should use the fast path (lines 944-951)."""
         s = pd.Series(["hello", None, "cafe"], dtype="string")
@@ -398,9 +413,10 @@ class TestByteSizeStringDtype:
         assert result.iloc[2] == 4
 
     def test_byte_size_multibyte(
-        self, scalar_registry: ScalarFunctionRegistry
+        self,
+        scalar_registry: ScalarFunctionRegistry,
     ) -> None:
-        """byteSize on a multibyte character string returns correct UTF-8 byte count."""
+        """ByteSize on a multibyte character string returns correct UTF-8 byte count."""
         # e-acute in UTF-8 is 2 bytes; test via direct registry call to avoid
         # Cypher parser unicode-escape ambiguity.
         s = pd.Series(["caf\u00e9"], dtype=object)
@@ -417,7 +433,8 @@ class TestCoalesceZeroArgs:
     """Cover coalesce() zero-argument error (lines 50-52)."""
 
     def test_coalesce_zero_args_raises(
-        self, scalar_registry: ScalarFunctionRegistry
+        self,
+        scalar_registry: ScalarFunctionRegistry,
     ) -> None:
         """coalesce() with no arguments should raise an error."""
         from pycypher.exceptions import FunctionArgumentError
@@ -428,14 +445,14 @@ class TestCoalesceZeroArgs:
     def test_coalesce_basic(self, empty_star: Star) -> None:
         """coalesce(null, 'fallback') should return 'fallback'."""
         result = empty_star.execute_query(
-            "RETURN coalesce(null, 'fallback') AS r"
+            "RETURN coalesce(null, 'fallback') AS r",
         )
         assert result["r"].iloc[0] == "fallback"
 
     def test_coalesce_first_non_null(self, empty_star: Star) -> None:
         """coalesce('first', 'second') should return 'first'."""
         result = empty_star.execute_query(
-            "RETURN coalesce('first', 'second') AS r"
+            "RETURN coalesce('first', 'second') AS r",
         )
         assert result["r"].iloc[0] == "first"
 
@@ -449,7 +466,8 @@ class TestNullIfNullComparison:
     """Cover nullIf() null comparison path (line 130)."""
 
     def test_nullif_comparing_to_null(
-        self, scalar_registry: ScalarFunctionRegistry
+        self,
+        scalar_registry: ScalarFunctionRegistry,
     ) -> None:
         """nullIf(x, null) should return x unchanged (line 128-130)."""
         v1 = pd.Series([1, 2, None], dtype=object)
@@ -481,7 +499,8 @@ class TestIsNaN:
     """Cover isNaN() NaN detection (line 179)."""
 
     def test_isnan_with_nan_value(
-        self, scalar_registry: ScalarFunctionRegistry
+        self,
+        scalar_registry: ScalarFunctionRegistry,
     ) -> None:
         """isNaN() on a float NaN value should return True (line 178-179)."""
         s = pd.Series([float("nan"), 1.0, None], dtype=object)
@@ -491,21 +510,23 @@ class TestIsNaN:
         assert result.iloc[2] is None
 
     def test_isnan_integer(
-        self, scalar_registry: ScalarFunctionRegistry
+        self,
+        scalar_registry: ScalarFunctionRegistry,
     ) -> None:
         """isNaN() on integer dtype should return all False (line 172)."""
         s = pd.Series([1, 2, 3], dtype="int64")
         result = scalar_registry.execute("isNaN", [s])
-        assert all(v is False or v == False for v in result)  # noqa: E712
+        assert all(v is False or v == False for v in result)
 
     def test_isnan_float_dtype(
-        self, scalar_registry: ScalarFunctionRegistry
+        self,
+        scalar_registry: ScalarFunctionRegistry,
     ) -> None:
         """isNaN() on float64 dtype should use numpy fast path (line 169-170)."""
         s = pd.Series([float("nan"), 1.0, 2.0], dtype="float64")
         result = scalar_registry.execute("isNaN", [s])
-        assert result.iloc[0] is True or result.iloc[0] == True  # noqa: E712
-        assert result.iloc[1] is False or result.iloc[1] == False  # noqa: E712
+        assert result.iloc[0] is True or result.iloc[0] == True
+        assert result.iloc[1] is False or result.iloc[1] == False
 
 
 # ---------------------------------------------------------------------------
@@ -517,23 +538,26 @@ class TestIsInfiniteIsFinite:
     """Cover isInfinite/isFinite integer fast paths (lines 227, 266) and non-numeric (274-277)."""
 
     def test_is_infinite_integer(
-        self, scalar_registry: ScalarFunctionRegistry
+        self,
+        scalar_registry: ScalarFunctionRegistry,
     ) -> None:
         """isInfinite() on integer dtype should return all False (line 227)."""
         s = pd.Series([1, 2, 3], dtype="int64")
         result = scalar_registry.execute("isInfinite", [s])
-        assert all(v is False or v == False for v in result)  # noqa: E712
+        assert all(v is False or v == False for v in result)
 
     def test_is_finite_integer(
-        self, scalar_registry: ScalarFunctionRegistry
+        self,
+        scalar_registry: ScalarFunctionRegistry,
     ) -> None:
         """isFinite() on integer dtype should return all True (line 266)."""
         s = pd.Series([1, 2, 3], dtype="int64")
         result = scalar_registry.execute("isFinite", [s])
-        assert all(v is True or v == True for v in result)  # noqa: E712
+        assert all(v is True or v == True for v in result)
 
     def test_is_finite_non_numeric(
-        self, scalar_registry: ScalarFunctionRegistry
+        self,
+        scalar_registry: ScalarFunctionRegistry,
     ) -> None:
         """isFinite() on non-numeric types returns False (lines 274-277)."""
         s = pd.Series(["hello", True, None], dtype=object)
@@ -546,23 +570,25 @@ class TestIsInfiniteIsFinite:
         assert result.iloc[2] is None
 
     def test_is_infinite_with_infinity(
-        self, scalar_registry: ScalarFunctionRegistry
+        self,
+        scalar_registry: ScalarFunctionRegistry,
     ) -> None:
         """isInfinite() on +inf should return True."""
         s = pd.Series([float("inf")], dtype="float64")
         result = scalar_registry.execute("isInfinite", [s])
-        assert result.iloc[0] is True or result.iloc[0] == True  # noqa: E712
+        assert result.iloc[0] is True or result.iloc[0] == True
 
     def test_is_finite_with_infinity(
-        self, scalar_registry: ScalarFunctionRegistry
+        self,
+        scalar_registry: ScalarFunctionRegistry,
     ) -> None:
         """isFinite() on +inf should return False."""
         s = pd.Series([float("inf")], dtype="float64")
         result = scalar_registry.execute("isFinite", [s])
-        assert result.iloc[0] is False or result.iloc[0] == False  # noqa: E712
+        assert result.iloc[0] is False or result.iloc[0] == False
 
     def test_is_finite_with_integer_via_query(self, empty_star: Star) -> None:
         """isFinite(42) should return true."""
         result = empty_star.execute_query("RETURN isFinite(42) AS r")
         val = result["r"].iloc[0]
-        assert val is True or val == True  # noqa: E712
+        assert val is True or val == True

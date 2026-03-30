@@ -178,7 +178,7 @@ class TestArithmeticExpressionEvaluator:
                 ID_COLUMN: [1, 2, 3, 4],
                 "Person__age": [25, 30, 35, 40],
                 "Person__salary": [50000, 60000, 70000, 80000],
-            }
+            },
         )
 
         person_table = EntityTable.from_dataframe(
@@ -188,21 +188,24 @@ class TestArithmeticExpressionEvaluator:
                     ID_COLUMN: [1, 2, 3, 4],
                     "age": [25, 30, 35, 40],
                     "salary": [50000, 60000, 70000, 80000],
-                }
+                },
             ),
         )
 
         context = Context(
-            entity_mapping=EntityMapping(mapping={"Person": person_table})
+            entity_mapping=EntityMapping(mapping={"Person": person_table}),
         )
         type_registry = {"p": "Person"}  # Add type registry for BindingFrame
         return BindingFrame(
-            bindings=df, context=context, type_registry=type_registry
+            bindings=df,
+            context=context,
+            type_registry=type_registry,
         )
 
     @pytest.fixture
     def arithmetic_evaluator(
-        self, test_frame: BindingFrame
+        self,
+        test_frame: BindingFrame,
     ) -> ArithmeticExpressionEvaluator:
         """Create ArithmeticExpressionEvaluator instance."""
         return ArithmeticExpressionEvaluator(test_frame)
@@ -213,7 +216,8 @@ class TestArithmeticExpressionEvaluator:
         assert evaluator.frame is test_frame
 
     def test_evaluate_arithmetic_addition(
-        self, arithmetic_evaluator: ArithmeticExpressionEvaluator
+        self,
+        arithmetic_evaluator: ArithmeticExpressionEvaluator,
     ) -> None:
         """Test arithmetic addition evaluation."""
 
@@ -223,20 +227,24 @@ class TestArithmeticExpressionEvaluator:
             def evaluate(expr):
                 if expr == "left":
                     return pd.Series([10, 20, 30, 40])
-                elif expr == "right":
+                if expr == "right":
                     return pd.Series([5, 10, 15, 20])
                 return pd.Series([0, 0, 0, 0])
 
         mock_evaluator = MockExpressionEvaluator()
         result = arithmetic_evaluator.evaluate_arithmetic(
-            "+", "left", "right", mock_evaluator
+            "+",
+            "left",
+            "right",
+            mock_evaluator,
         )
 
         expected = pd.Series([15, 30, 45, 60])
         pd.testing.assert_series_equal(result, expected)
 
     def test_evaluate_arithmetic_subtraction(
-        self, arithmetic_evaluator: ArithmeticExpressionEvaluator
+        self,
+        arithmetic_evaluator: ArithmeticExpressionEvaluator,
     ) -> None:
         """Test arithmetic subtraction evaluation."""
 
@@ -245,20 +253,24 @@ class TestArithmeticExpressionEvaluator:
             def evaluate(expr):
                 if expr == "left":
                     return pd.Series([50, 60, 70, 80])
-                elif expr == "right":
+                if expr == "right":
                     return pd.Series([5, 10, 15, 20])
                 return pd.Series([0, 0, 0, 0])
 
         mock_evaluator = MockExpressionEvaluator()
         result = arithmetic_evaluator.evaluate_arithmetic(
-            "-", "left", "right", mock_evaluator
+            "-",
+            "left",
+            "right",
+            mock_evaluator,
         )
 
         expected = pd.Series([45, 50, 55, 60])
         pd.testing.assert_series_equal(result, expected)
 
     def test_evaluate_arithmetic_division(
-        self, arithmetic_evaluator: ArithmeticExpressionEvaluator
+        self,
+        arithmetic_evaluator: ArithmeticExpressionEvaluator,
     ) -> None:
         """Test arithmetic division evaluation with Cypher semantics."""
 
@@ -267,20 +279,24 @@ class TestArithmeticExpressionEvaluator:
             def evaluate(expr):
                 if expr == "left":
                     return pd.Series([20, 40, 60, 80])
-                elif expr == "right":
+                if expr == "right":
                     return pd.Series([2, 4, 0, 8])  # Include division by zero
                 return pd.Series([0, 0, 0, 0])
 
         mock_evaluator = MockExpressionEvaluator()
         result = arithmetic_evaluator.evaluate_arithmetic(
-            "/", "left", "right", mock_evaluator
+            "/",
+            "left",
+            "right",
+            mock_evaluator,
         )
 
         expected = pd.Series([10.0, 10.0, None, 10.0], dtype=object)
         pd.testing.assert_series_equal(result, expected)
 
     def test_evaluate_arithmetic_unsupported_operator(
-        self, arithmetic_evaluator: ArithmeticExpressionEvaluator
+        self,
+        arithmetic_evaluator: ArithmeticExpressionEvaluator,
     ) -> None:
         """Test unsupported arithmetic operator raises ValueError."""
 
@@ -292,14 +308,19 @@ class TestArithmeticExpressionEvaluator:
         mock_evaluator = MockExpressionEvaluator()
 
         with pytest.raises(
-            ValueError, match="Unsupported arithmetic operator"
+            ValueError,
+            match="Unsupported arithmetic operator",
         ):
             arithmetic_evaluator.evaluate_arithmetic(
-                "@", "left", "right", mock_evaluator
+                "@",
+                "left",
+                "right",
+                mock_evaluator,
             )
 
     def test_evaluate_comparison_equality(
-        self, arithmetic_evaluator: ArithmeticExpressionEvaluator
+        self,
+        arithmetic_evaluator: ArithmeticExpressionEvaluator,
     ) -> None:
         """Test comparison equality evaluation."""
 
@@ -308,20 +329,24 @@ class TestArithmeticExpressionEvaluator:
             def evaluate(expr):
                 if expr == "left":
                     return pd.Series([25, 30, 35, 40])
-                elif expr == "right":
+                if expr == "right":
                     return pd.Series([25, 25, 35, 45])
                 return pd.Series([0, 0, 0, 0])
 
         mock_evaluator = MockExpressionEvaluator()
         result = arithmetic_evaluator.evaluate_comparison(
-            "=", "left", "right", mock_evaluator
+            "=",
+            "left",
+            "right",
+            mock_evaluator,
         )
 
         expected = pd.Series([True, False, True, False])
         pd.testing.assert_series_equal(result, expected)
 
     def test_evaluate_comparison_null_handling(
-        self, arithmetic_evaluator: ArithmeticExpressionEvaluator
+        self,
+        arithmetic_evaluator: ArithmeticExpressionEvaluator,
     ) -> None:
         """Test comparison with null values."""
 
@@ -330,20 +355,24 @@ class TestArithmeticExpressionEvaluator:
             def evaluate(expr):
                 if expr == "left":
                     return pd.Series([25, None, 35, 40])
-                elif expr == "right":
+                if expr == "right":
                     return pd.Series([25, 30, None, 40])
                 return pd.Series([0, 0, 0, 0])
 
         mock_evaluator = MockExpressionEvaluator()
         result = arithmetic_evaluator.evaluate_comparison(
-            "=", "left", "right", mock_evaluator
+            "=",
+            "left",
+            "right",
+            mock_evaluator,
         )
 
         expected = pd.Series([True, None, None, True], dtype=object)
         pd.testing.assert_series_equal(result, expected)
 
     def test_evaluate_comparison_unsupported_operator(
-        self, arithmetic_evaluator: ArithmeticExpressionEvaluator
+        self,
+        arithmetic_evaluator: ArithmeticExpressionEvaluator,
     ) -> None:
         """Test unsupported comparison operator raises ValueError."""
 
@@ -355,14 +384,19 @@ class TestArithmeticExpressionEvaluator:
         mock_evaluator = MockExpressionEvaluator()
 
         with pytest.raises(
-            ValueError, match="Unsupported comparison operator"
+            ValueError,
+            match="Unsupported comparison operator",
         ):
             arithmetic_evaluator.evaluate_comparison(
-                "~=", "left", "right", mock_evaluator
+                "~=",
+                "left",
+                "right",
+                mock_evaluator,
             )
 
     def test_evaluate_unary_negation(
-        self, arithmetic_evaluator: ArithmeticExpressionEvaluator
+        self,
+        arithmetic_evaluator: ArithmeticExpressionEvaluator,
     ) -> None:
         """Test unary negation evaluation."""
 
@@ -375,14 +409,17 @@ class TestArithmeticExpressionEvaluator:
 
         mock_evaluator = MockExpressionEvaluator()
         result = arithmetic_evaluator.evaluate_unary(
-            "-", "operand", mock_evaluator
+            "-",
+            "operand",
+            mock_evaluator,
         )
 
         expected = pd.Series([-5, 10, -15, 20])
         pd.testing.assert_series_equal(result, expected)
 
     def test_evaluate_unary_positive(
-        self, arithmetic_evaluator: ArithmeticExpressionEvaluator
+        self,
+        arithmetic_evaluator: ArithmeticExpressionEvaluator,
     ) -> None:
         """Test unary positive (no-op) evaluation."""
 
@@ -395,14 +432,17 @@ class TestArithmeticExpressionEvaluator:
 
         mock_evaluator = MockExpressionEvaluator()
         result = arithmetic_evaluator.evaluate_unary(
-            "+", "operand", mock_evaluator
+            "+",
+            "operand",
+            mock_evaluator,
         )
 
         expected = pd.Series([5, -10, 15, -20])
         pd.testing.assert_series_equal(result, expected)
 
     def test_evaluate_unary_null_handling(
-        self, arithmetic_evaluator: ArithmeticExpressionEvaluator
+        self,
+        arithmetic_evaluator: ArithmeticExpressionEvaluator,
     ) -> None:
         """Test unary operations with null values."""
 
@@ -415,14 +455,17 @@ class TestArithmeticExpressionEvaluator:
 
         mock_evaluator = MockExpressionEvaluator()
         result = arithmetic_evaluator.evaluate_unary(
-            "-", "operand", mock_evaluator
+            "-",
+            "operand",
+            mock_evaluator,
         )
 
         expected = pd.Series([-5, None, -15, None], dtype=object)
         pd.testing.assert_series_equal(result, expected)
 
     def test_evaluate_unary_unsupported_operator(
-        self, arithmetic_evaluator: ArithmeticExpressionEvaluator
+        self,
+        arithmetic_evaluator: ArithmeticExpressionEvaluator,
     ) -> None:
         """Test unsupported unary operator raises ValueError."""
 
@@ -444,17 +487,17 @@ class TestArithmeticEvaluatorIntegration:
         """Test evaluation of complex arithmetic expressions."""
         # This would test the evaluator in more complex scenarios
         # with actual expression objects from the AST
-        pass  # Placeholder for integration tests
+        # Placeholder for integration tests
 
     def test_type_error_handling(self) -> None:
         """Test proper type error handling for incompatible operands."""
         # Test the TypeError handling for incompatible types
-        pass  # Placeholder for type error tests
+        # Placeholder for type error tests
 
     def test_performance_baseline(self) -> None:
         """Test performance baseline for arithmetic operations."""
         # Establish performance characteristics for the extracted evaluator
-        pass  # Placeholder for performance tests
+        # Placeholder for performance tests
 
 
 class TestArithmeticEvaluatorRegression:
@@ -463,9 +506,9 @@ class TestArithmeticEvaluatorRegression:
     def test_maintains_original_semantics(self) -> None:
         """Test that extracted evaluator maintains original BindingExpressionEvaluator semantics."""
         # Comprehensive test comparing behavior with original implementation
-        pass  # Placeholder for regression tests
+        # Placeholder for regression tests
 
     def test_error_message_compatibility(self) -> None:
         """Test that error messages match original implementation."""
         # Test error messages are identical to original
-        pass  # Placeholder for error message tests
+        # Placeholder for error message tests

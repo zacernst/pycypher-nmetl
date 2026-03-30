@@ -7,58 +7,56 @@ single-machine development to multi-node production workloads.
 Backend Selection
 -----------------
 
-PyCypher supports three computation backends, selectable at context creation
-time:
+PyCypher's query engine uses pandas DataFrames as the default execution
+backend.  The ``backend_engine`` module provides an abstraction layer for
+alternative backends:
 
 .. code-block:: python
 
-   from pycypher.ingestion import ContextBuilder
+   from pycypher.backend_engine import select_backend
 
-   # Auto-select best available backend
-   context = ContextBuilder.from_dict(data, backend="auto")
-
-   # Force a specific backend
-   context = ContextBuilder.from_dict(data, backend="pandas")
-   context = ContextBuilder.from_dict(data, backend="duckdb")
-   context = ContextBuilder.from_dict(data, backend="polars")
+   # Select a backend programmatically
+   backend = select_backend("pandas")
 
 .. list-table::
    :widths: 15 30 30 25
    :header-rows: 1
 
    * - Backend
-     - Strengths
+     - Status
      - Best for
-     - Memory profile
+     - Notes
    * - Pandas
-     - Widest compatibility, mature ecosystem
-     - Small-medium datasets, prototyping
-     - High (full materialisation)
+     - **Default, fully integrated**
+     - All workloads, widest compatibility
+     - Used by ``Star.execute_query()``
    * - DuckDB
-     - Columnar engine, SQL pushdown
-     - Analytical queries, large scans
-     - Medium (lazy evaluation)
+     - Integrated for data ingestion
+     - Large CSV/Parquet scans, SQL sources
+     - Used by ``ContextBuilder`` for loading
    * - Polars
-     - Rust-native, multi-threaded
-     - CPU-bound transforms, large datasets
-     - Low (streaming where possible)
+     - Optional (``pip install pycypher[polars]``)
+     - CPU-bound transforms
+     - Backend engine support, not default path
 
-The ``auto`` strategy probes backends in order (Polars, DuckDB, Pandas) and
-selects the first that passes a health check.  The circuit breaker tracks
-failures and automatically bypasses unhealthy backends.
+.. note::
+
+   ``ContextBuilder.from_dict()`` does not accept a ``backend`` parameter.
+   Backend selection is handled by the ``backend_engine`` module, which is
+   used internally by the query planner.
 
 Health Checks and Circuit Breaker
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The backend engine includes a health check probe that validates scan, filter,
-join, and materialise operations before committing to a backend.  Enable
-health checks during selection:
+join, and materialise operations before committing to a backend:
 
 .. code-block:: python
 
-   from pycypher.backend_engine import select_backend
+   from pycypher.backend_engine import check_backend_health, PandasBackend
 
-   backend = select_backend("auto", run_health_check=True)
+   backend = PandasBackend()
+   healthy = check_backend_health(backend)
 
 The circuit breaker uses a three-state model:
 
@@ -68,10 +66,12 @@ The circuit breaker uses a three-state model:
 
 Default thresholds: 3 consecutive failures to open, 60-second recovery timeout.
 
-Spark Cluster Scaling
----------------------
+Spark Cluster (Docker Infrastructure)
+--------------------------------------
 
-For workloads that exceed single-machine capacity, scale the Spark cluster:
+The Docker Compose setup includes an optional Spark cluster for external
+data processing.  This is part of the deployment infrastructure, not the
+PyCypher query engine.  To scale:
 
 .. code-block:: bash
 
@@ -104,8 +104,8 @@ To change worker resources, modify ``docker-compose.yml``:
        - SPARK_WORKER_MEMORY=4G   # increase per-worker memory
        - SPARK_WORKER_CORES=4     # increase per-worker cores
 
-Neo4j Tuning
-~~~~~~~~~~~~~
+Neo4j Tuning (Docker Infrastructure)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Default Neo4j memory settings are conservative:
 
@@ -208,17 +208,17 @@ Resource Planning
      - 2 GB
      - 1
    * - 100K -- 10M rows
-     - DuckDB or Polars
+     - DuckDB for loading, Pandas for execution
      - 4 GB
-     - 1--2
+     - 1
    * - 10M -- 100M rows
-     - Polars + Spark
+     - DuckDB for loading, tune memory budget
      - 8 GB
-     - 2--4
+     - 1
    * - > 100M rows
-     - Spark cluster
-     - 16 GB
-     - 4+
+     - Partition data, batch processing
+     - 16 GB+
+     - 1+
 
 These are guidelines.  Actual requirements depend on query complexity (number
 of joins, variable-length paths, aggregation cardinality).  Use the query
