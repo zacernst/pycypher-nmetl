@@ -25,6 +25,26 @@ from pycypher.star import Star
 # (neo4j asyncio.iscoroutinefunction suppression removed — fixed in neo4j 6.1.0)
 
 
+# ---------------------------------------------------------------------------
+# Per-marker test timeouts (override the global 30s default)
+# ---------------------------------------------------------------------------
+_MARKER_TIMEOUTS = {
+    "integration": 120,
+    "slow": 300,
+}
+
+
+def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
+    """Apply per-marker timeouts so integration/slow tests aren't killed early."""
+    for item in items:
+        if item.get_closest_marker("timeout"):
+            continue  # explicit timeout takes precedence
+        for marker_name, seconds in _MARKER_TIMEOUTS.items():
+            if item.get_closest_marker(marker_name):
+                item.add_marker(pytest.mark.timeout(seconds))
+                break
+
+
 FIXTURES_DATA = Path(__file__).parent / "fixtures" / "data"
 ID_COLUMN = "__ID__"
 

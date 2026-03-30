@@ -1089,8 +1089,8 @@ sources:
         cfg_path = self._write_yaml(tmp_path, yaml_content)
         result = PipelineConfig.load_with_sources(cfg_path)
         assert isinstance(result, tuple)
-        assert len(result) == 2
-        config, sources = result
+        assert len(result) == 3
+        config, sources, skipped = result
         assert isinstance(config, PipelineConfig)
         assert isinstance(sources, dict)
 
@@ -1106,7 +1106,7 @@ sources:
       entity_type: Company
 """
         cfg_path = self._write_yaml(tmp_path, yaml_content)
-        _, sources = PipelineConfig.load_with_sources(cfg_path)
+        _, sources, _ = PipelineConfig.load_with_sources(cfg_path)
         assert "persons" in sources
         assert "companies" in sources
 
@@ -1121,7 +1121,7 @@ sources:
       target_col: id
 """
         cfg_path = self._write_yaml(tmp_path, yaml_content)
-        _, sources = PipelineConfig.load_with_sources(cfg_path)
+        _, sources, _ = PipelineConfig.load_with_sources(cfg_path)
         assert "employment" in sources
 
     def test_sources_are_arrow_tables(self, tmp_path: Path) -> None:
@@ -1133,7 +1133,7 @@ sources:
       entity_type: Person
 """
         cfg_path = self._write_yaml(tmp_path, yaml_content)
-        _, sources = PipelineConfig.load_with_sources(cfg_path)
+        _, sources, _ = PipelineConfig.load_with_sources(cfg_path)
         assert isinstance(sources["persons"], pa.Table)
 
     def test_arrow_table_has_correct_row_count(self, tmp_path: Path) -> None:
@@ -1145,13 +1145,13 @@ sources:
       entity_type: Person
 """
         cfg_path = self._write_yaml(tmp_path, yaml_content)
-        _, sources = PipelineConfig.load_with_sources(cfg_path)
+        _, sources, _ = PipelineConfig.load_with_sources(cfg_path)
         assert sources["persons"].num_rows == 2
 
     def test_empty_sources_returns_empty_dict(self, tmp_path: Path) -> None:
         yaml_content = "sources: {}\n"
         cfg_path = self._write_yaml(tmp_path, yaml_content)
-        config, sources = PipelineConfig.load_with_sources(cfg_path)
+        config, sources, _ = PipelineConfig.load_with_sources(cfg_path)
         assert isinstance(config, PipelineConfig)
         assert sources == {}
 
@@ -1179,7 +1179,7 @@ sources:
             "pycypher.ingestion.data_sources.data_source_from_uri",
             return_value=mock_ds,
         ):
-            _, sources = PipelineConfig.load_with_sources(cfg_path)
+            _, sources, _ = PipelineConfig.load_with_sources(cfg_path)
 
         assert mock_ds.read.call_count == 2
         assert sources["persons"] is preset
@@ -1297,7 +1297,7 @@ sources:
             "pycypher.ingestion.data_sources.data_source_from_uri",
             side_effect=self._make_failing_factory(RuntimeError("oops")),
         ):
-            _, sources = PipelineConfig.load_with_sources(cfg_path)
+            _, sources, _ = PipelineConfig.load_with_sources(cfg_path)
         assert "broken" not in sources
 
     def test_skip_policy_other_sources_still_loaded(
@@ -1334,7 +1334,7 @@ sources:
             "pycypher.ingestion.data_sources.data_source_from_uri",
             side_effect=smart_factory,
         ):
-            _, sources = PipelineConfig.load_with_sources(cfg_path)
+            _, sources, _ = PipelineConfig.load_with_sources(cfg_path)
         assert "broken" not in sources
         assert "good" in sources
 
@@ -1353,7 +1353,7 @@ sources:
             "pycypher.ingestion.data_sources.data_source_from_uri",
             side_effect=self._make_failing_factory(ValueError("bad uri")),
         ):
-            config, sources = PipelineConfig.load_with_sources(
+            config, sources, _ = PipelineConfig.load_with_sources(
                 cfg_path
             )  # must not raise
         assert isinstance(config, PipelineConfig)
@@ -1376,7 +1376,7 @@ sources:
             "pycypher.ingestion.data_sources.data_source_from_uri",
             side_effect=self._make_failing_factory(RuntimeError("warn me")),
         ):
-            _, sources = PipelineConfig.load_with_sources(cfg_path)
+            _, sources, _ = PipelineConfig.load_with_sources(cfg_path)
         assert "broken" not in sources
 
     def test_warn_policy_does_not_raise(self, tmp_path: Path) -> None:
@@ -1394,7 +1394,7 @@ sources:
             "pycypher.ingestion.data_sources.data_source_from_uri",
             side_effect=self._make_failing_factory(RuntimeError("warn me")),
         ):
-            config, sources = PipelineConfig.load_with_sources(cfg_path)
+            config, sources, _ = PipelineConfig.load_with_sources(cfg_path)
         assert isinstance(config, PipelineConfig)
 
     def test_warn_policy_emits_log_warning(self, tmp_path: Path) -> None:
@@ -1452,6 +1452,154 @@ sources:
                     )
 
         return _CM()
+
+    # -- SecurityError always propagates regardless of policy ----------------
+
+    def test_security_error_propagates_despite_skip_policy(
+        self, tmp_path: Path
+    ) -> None:
+        """SecurityError must always propagate, even with on_error: skip."""
+        from pycypher.exceptions import SecurityError
+
+        yaml_content = f"""\
+sources:
+  entities:
+    - id: malicious
+      uri: "{FIXTURES_DATA / "sample.csv"}"
+      entity_type: Person
+      on_error: skip
+"""
+        cfg_path = self._write_yaml(tmp_path, yaml_content)
+        with patch(
+            "pycypher.ingestion.data_sources.data_source_from_uri",
+            side_effect=self._make_failing_factory(
+                SecurityError("path traversal detected")
+            ),
+        ):
+            with pytest.raises(SecurityError, match="path traversal"):
+                PipelineConfig.load_with_sources(cfg_path)
+
+    def test_security_error_propagates_despite_warn_policy(
+        self, tmp_path: Path
+    ) -> None:
+        """SecurityError must always propagate, even with on_error: warn."""
+        from pycypher.exceptions import SecurityError
+
+        yaml_content = f"""\
+sources:
+  entities:
+    - id: malicious
+      uri: "{FIXTURES_DATA / "sample.csv"}"
+      entity_type: Person
+      on_error: warn
+"""
+        cfg_path = self._write_yaml(tmp_path, yaml_content)
+        with patch(
+            "pycypher.ingestion.data_sources.data_source_from_uri",
+            side_effect=self._make_failing_factory(
+                SecurityError("SQL injection attempt")
+            ),
+        ):
+            with pytest.raises(SecurityError, match="SQL injection"):
+                PipelineConfig.load_with_sources(cfg_path)
+
+    # -- Audit trail (skipped list) ------------------------------------------
+
+    def test_skip_policy_populates_skipped_audit_trail(
+        self, tmp_path: Path
+    ) -> None:
+        """on_error: skip — skipped source appears in audit trail."""
+        from pycypher.ingestion.config import SkippedSource
+
+        yaml_content = f"""\
+sources:
+  entities:
+    - id: broken
+      uri: "{FIXTURES_DATA / "sample.csv"}"
+      entity_type: Person
+      on_error: skip
+"""
+        cfg_path = self._write_yaml(tmp_path, yaml_content)
+        with patch(
+            "pycypher.ingestion.data_sources.data_source_from_uri",
+            side_effect=self._make_failing_factory(RuntimeError("disk full")),
+        ):
+            _, sources, skipped = PipelineConfig.load_with_sources(cfg_path)
+        assert "broken" not in sources
+        assert len(skipped) == 1
+        assert isinstance(skipped[0], SkippedSource)
+        assert skipped[0].source_id == "broken"
+        assert isinstance(skipped[0].error, RuntimeError)
+        assert "disk full" in str(skipped[0].error)
+        assert skipped[0].policy == ErrorHandlingPolicy.SKIP
+
+    def test_warn_policy_populates_skipped_audit_trail(
+        self, tmp_path: Path
+    ) -> None:
+        """on_error: warn — warned source appears in audit trail."""
+        yaml_content = f"""\
+sources:
+  entities:
+    - id: flaky
+      uri: "{FIXTURES_DATA / "sample.csv"}"
+      entity_type: Person
+      on_error: warn
+"""
+        cfg_path = self._write_yaml(tmp_path, yaml_content)
+        with patch(
+            "pycypher.ingestion.data_sources.data_source_from_uri",
+            side_effect=self._make_failing_factory(RuntimeError("timeout")),
+        ):
+            _, _, skipped = PipelineConfig.load_with_sources(cfg_path)
+        assert len(skipped) == 1
+        assert skipped[0].source_id == "flaky"
+        assert skipped[0].policy == ErrorHandlingPolicy.WARN
+
+    def test_fail_policy_does_not_populate_skipped_audit_trail(
+        self, tmp_path: Path
+    ) -> None:
+        """on_error: fail — no audit trail entry (exception propagates)."""
+        yaml_content = f"""\
+sources:
+  entities:
+    - id: critical
+      uri: "{FIXTURES_DATA / "sample.csv"}"
+      entity_type: Person
+      on_error: fail
+"""
+        cfg_path = self._write_yaml(tmp_path, yaml_content)
+        with patch(
+            "pycypher.ingestion.data_sources.data_source_from_uri",
+            side_effect=self._make_failing_factory(RuntimeError("fatal")),
+        ):
+            with pytest.raises(RuntimeError, match="fatal"):
+                PipelineConfig.load_with_sources(cfg_path)
+
+    def test_successful_load_returns_empty_skipped_list(
+        self, tmp_path: Path
+    ) -> None:
+        """All sources succeed — skipped list is empty."""
+        good_table = pa.table({"id": [1]})
+
+        def factory(uri: str, **kwargs: object):
+            m = MagicMock()
+            m.read.return_value = good_table
+            return m
+
+        yaml_content = f"""\
+sources:
+  entities:
+    - id: good
+      uri: "{FIXTURES_DATA / "sample.csv"}"
+      entity_type: Person
+"""
+        cfg_path = self._write_yaml(tmp_path, yaml_content)
+        with patch(
+            "pycypher.ingestion.data_sources.data_source_from_uri",
+            side_effect=factory,
+        ):
+            _, _, skipped = PipelineConfig.load_with_sources(cfg_path)
+        assert skipped == []
 
 
 # ---------------------------------------------------------------------------
