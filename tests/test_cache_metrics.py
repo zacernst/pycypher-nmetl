@@ -153,7 +153,9 @@ class TestCacheStatsEndToEnd:
         # The second call hits either the result cache (fast path) or the
         # LRU parse cache — both are valid cache-hit outcomes.
         lru_hit = stats_after["lru_hits"] > lru_hits_before
-        result_hit = stats_after.get("result_cache_hits", 0) > result_hits_before
+        result_hit = (
+            stats_after.get("result_cache_hits", 0) > result_hits_before
+        )
         assert lru_hit or result_hit, (
             f"Expected a cache hit on repeated query. "
             f"LRU hits: {lru_hits_before} -> {stats_after['lru_hits']}, "

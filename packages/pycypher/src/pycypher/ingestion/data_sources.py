@@ -678,8 +678,10 @@ def data_source_from_uri(
 
     if scheme in _SQL_SCHEMES:
         if query is None:
+            from pycypher.ingestion.security import mask_uri_credentials
+
             msg = (
-                f"SQL source {uri!r} requires a 'query' parameter — "
+                f"SQL source {mask_uri_credentials(uri)!r} requires a 'query' parameter — "
                 "there is no meaningful default for database sources."
             )
             raise ValueError(
@@ -697,8 +699,10 @@ def data_source_from_uri(
     if path_lower.endswith(".json"):
         return FileDataSource(uri, JsonFormat(), query=query)
 
+    from pycypher.ingestion.security import mask_uri_credentials
+
     msg = (
-        f"Cannot determine DataSource type for {uri!r}. "
+        f"Cannot determine DataSource type for {mask_uri_credentials(uri)!r}. "
         "Provide a URI with a recognised extension (.csv, .parquet, .json) "
         "or a SQL-scheme connection string "
         "(postgresql://, mysql://, sqlite://, duckdb://)."

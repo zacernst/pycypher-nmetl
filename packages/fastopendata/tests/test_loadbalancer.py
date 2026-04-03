@@ -11,7 +11,11 @@ from fastopendata.loadbalancer.balancer import (
     LoadBalancer,
     RoutingStrategy,
 )
-from fastopendata.loadbalancer.monitor import HealthStatus, NodeHealth, NodeMonitor
+from fastopendata.loadbalancer.monitor import (
+    HealthStatus,
+    NodeHealth,
+    NodeMonitor,
+)
 
 # ── QueryComplexityAnalyzer ──────────────────────────────────────────
 
@@ -126,11 +130,26 @@ class TestQueryComplexityAnalyzer:
 
 class TestComplexityTier:
     def test_score_tiers(self) -> None:
-        assert QueryComplexityAnalyzer._score_to_tier(3.0) == ComplexityTier.TRIVIAL
-        assert QueryComplexityAnalyzer._score_to_tier(10.0) == ComplexityTier.LIGHT
-        assert QueryComplexityAnalyzer._score_to_tier(25.0) == ComplexityTier.MODERATE
-        assert QueryComplexityAnalyzer._score_to_tier(50.0) == ComplexityTier.HEAVY
-        assert QueryComplexityAnalyzer._score_to_tier(100.0) == ComplexityTier.EXTREME
+        assert (
+            QueryComplexityAnalyzer._score_to_tier(3.0)
+            == ComplexityTier.TRIVIAL
+        )
+        assert (
+            QueryComplexityAnalyzer._score_to_tier(10.0)
+            == ComplexityTier.LIGHT
+        )
+        assert (
+            QueryComplexityAnalyzer._score_to_tier(25.0)
+            == ComplexityTier.MODERATE
+        )
+        assert (
+            QueryComplexityAnalyzer._score_to_tier(50.0)
+            == ComplexityTier.HEAVY
+        )
+        assert (
+            QueryComplexityAnalyzer._score_to_tier(100.0)
+            == ComplexityTier.EXTREME
+        )
 
 
 # ── NodeMonitor ──────────────────────────────────────────────────────
@@ -326,7 +345,9 @@ class TestLoadBalancer:
         mon, lb = _setup_cluster(3)
         targets = set()
         for _ in range(6):
-            d = lb.route("MATCH (n) RETURN n", strategy=RoutingStrategy.ROUND_ROBIN)
+            d = lb.route(
+                "MATCH (n) RETURN n", strategy=RoutingStrategy.ROUND_ROBIN
+            )
             targets.add(d.target_node_id)
         # Should have hit all 3 nodes
         assert len(targets) == 3

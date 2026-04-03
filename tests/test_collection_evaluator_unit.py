@@ -20,6 +20,7 @@ Run with:
 import pandas as pd
 import pytest
 from pycypher import Star
+from _perf_helpers import perf_threshold
 from pycypher.relational_models import (
     ID_COLUMN,
     Context,
@@ -652,7 +653,10 @@ class TestCollectionEvaluatorIntegration:
 
         for i, (_, row) in enumerate(result.iterrows()):
             assert row["name"] == expected[i]["name"]
-            assert row["categorized_projects"] == expected[i]["categorized_projects"]
+            assert (
+                row["categorized_projects"]
+                == expected[i]["categorized_projects"]
+            )
 
     def test_performance_large_collection_operations(self) -> None:
         """Test collection operations performance with larger datasets."""
@@ -685,7 +689,7 @@ class TestCollectionEvaluatorIntegration:
 
         # Should complete in reasonable time (< 5 seconds for 100 people × 50 values)
         execution_time = end_time - start_time
-        assert execution_time < 5.0, (
+        assert execution_time < perf_threshold(5.0), (
             f"Large collection operation took {execution_time:.2f}s"
         )
 

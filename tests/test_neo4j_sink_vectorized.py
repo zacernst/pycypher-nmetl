@@ -95,7 +95,8 @@ class TestNoIterrows:
 # ---------------------------------------------------------------------------
 
 _N = 10_000
-_THRESHOLD_MS = 250  # budget per call; iterrows typically 200-500ms at N=10k
+from _perf_helpers import perf_threshold
+_THRESHOLD_MS = perf_threshold(250)  # budget per call; iterrows typically 200-500ms at N=10k
 # Threshold is generous to avoid flaky failures under CPU contention
 # (CI, parallel test runs, multi-agent sessions).  Vectorized path
 # typically completes in 15-40ms on an idle machine.
@@ -265,7 +266,9 @@ class TestNullHandling:
         assert len(rows) == 2
         assert any(
             "null" in m.lower() or "skip" in m.lower() for m in caplog.messages
-        ), f"Expected a warning about skipped null-id rows; got: {caplog.messages}"
+        ), (
+            f"Expected a warning about skipped null-id rows; got: {caplog.messages}"
+        )
 
     def test_build_rel_rows_null_warning_emitted(
         self,

@@ -91,7 +91,10 @@ def _worker(
 def _writer(write_queue: mp.Queue[dict[str, Any] | None]) -> None:
     """Collect results and write them to the output file."""
     finished_workers = 0
-    with OUTPUT_FILE.open("w", encoding="utf-8") as out, Progress() as progress:
+    with (
+        OUTPUT_FILE.open("w", encoding="utf-8") as out,
+        Progress() as progress,
+    ):
         task = progress.add_task(
             "[cyan]Filtering to U.S. points...",
             total=11_514_545,
@@ -117,12 +120,18 @@ if __name__ == "__main__":
     jobs: mp.Queue[bytes | None] = mp.Queue()
     results: mp.Queue[dict[str, Any] | None] = mp.Queue()
 
-    reader_proc = mp.Process(target=_reader, args=(jobs,), name="wikidata-reader")
+    reader_proc = mp.Process(
+        target=_reader, args=(jobs,), name="wikidata-reader"
+    )
     worker_procs = [
-        mp.Process(target=_worker, args=(jobs, results), name=f"wikidata-worker-{i}")
+        mp.Process(
+            target=_worker, args=(jobs, results), name=f"wikidata-worker-{i}"
+        )
         for i in range(_NUM_WORKERS)
     ]
-    writer_proc = mp.Process(target=_writer, args=(results,), name="wikidata-writer")
+    writer_proc = mp.Process(
+        target=_writer, args=(results,), name="wikidata-writer"
+    )
 
     all_procs = [reader_proc, *worker_procs, writer_proc]
 
@@ -144,7 +153,9 @@ if __name__ == "__main__":
 
         reader_proc.join()
         if reader_proc.exitcode != 0:
-            msg = f"Reader process failed with exit code {reader_proc.exitcode}"
+            msg = (
+                f"Reader process failed with exit code {reader_proc.exitcode}"
+            )
             raise RuntimeError(msg)
 
         # Signal each worker to stop.
@@ -158,7 +169,9 @@ if __name__ == "__main__":
 
         writer_proc.join()
         if writer_proc.exitcode != 0:
-            msg = f"Writer process failed with exit code {writer_proc.exitcode}"
+            msg = (
+                f"Writer process failed with exit code {writer_proc.exitcode}"
+            )
             raise RuntimeError(msg)
 
     except Exception:

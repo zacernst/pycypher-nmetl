@@ -292,7 +292,9 @@ class TestDaskBackendSecurityContract:
         security_params = [
             p
             for p in param_names
-            if "security" in p.lower() or "tls" in p.lower() or "encrypt" in p.lower()
+            if "security" in p.lower()
+            or "tls" in p.lower()
+            or "encrypt" in p.lower()
         ]
         assert security_params, (
             "DaskBackend.__init__ must accept a security configuration parameter "

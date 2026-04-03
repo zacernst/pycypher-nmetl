@@ -20,7 +20,11 @@ from pycypher.leapfrog_triejoin import (
 
 def _make_context():
     """Build a minimal Context for BindingFrame construction."""
-    from pycypher.relational_models import Context, EntityMapping, RelationshipMapping
+    from pycypher.relational_models import (
+        Context,
+        EntityMapping,
+        RelationshipMapping,
+    )
 
     return Context(
         entity_mapping=EntityMapping(mapping={}),
@@ -29,7 +33,8 @@ def _make_context():
 
 
 def _bf(
-    data: dict[str, list], type_registry: dict[str, str] | None = None,
+    data: dict[str, list],
+    type_registry: dict[str, str] | None = None,
 ) -> BindingFrame:
     """Shorthand to build a BindingFrame from column data."""
     return BindingFrame(
@@ -134,7 +139,9 @@ class TestLeapfrogIntersect:
 
     def test_empty_iterator_returns_empty(self):
         it1 = LeapfrogIterator(np.array([1, 2, 3]), np.arange(3))
-        it2 = LeapfrogIterator(np.array([], dtype=int), np.array([], dtype=int))
+        it2 = LeapfrogIterator(
+            np.array([], dtype=int), np.array([], dtype=int)
+        )
 
         result = _leapfrog_intersect([it1, it2])
         assert result == []
@@ -150,6 +157,32 @@ class TestLeapfrogIntersect:
     def test_no_iterators(self):
         result = _leapfrog_intersect([])
         assert result == []
+
+    def test_iteration_bound_prevents_infinite_loop(self):
+        """Verify that a stuck iterator raises RuntimeError instead of looping forever."""
+
+        class StuckIterator(LeapfrogIterator):
+            """Iterator whose seek() never advances — simulates a bug."""
+
+            def seek(self, target):
+                pass  # Intentionally broken: never advances position
+
+        it1 = StuckIterator(np.array([1, 2, 3]), np.arange(3))
+        it2 = LeapfrogIterator(np.array([2, 3, 4]), np.arange(3))
+
+        with pytest.raises(RuntimeError, match="iteration bound"):
+            _leapfrog_intersect([it1, it2])
+
+    def test_large_iterators_complete_within_bound(self):
+        """Large iterators with partial overlap complete without hitting bound."""
+        n = 10_000
+        vals1 = np.arange(0, n)
+        vals2 = np.arange(n // 2, n + n // 2)
+        it1 = LeapfrogIterator(vals1, np.arange(len(vals1)))
+        it2 = LeapfrogIterator(vals2, np.arange(len(vals2)))
+
+        result = _leapfrog_intersect([it1, it2])
+        assert len(result) == n // 2  # overlap is [n//2, n)
 
 
 # ---------------------------------------------------------------------------
@@ -279,7 +312,9 @@ class TestLeapfrogTriejoin:
     def test_string_keys(self):
         """Join on string-typed keys."""
         f1 = _bf({"name": ["alice", "bob", "charlie"], "age": [30, 25, 35]})
-        f2 = _bf({"name": ["bob", "charlie", "dave"], "city": ["NY", "LA", "SF"]})
+        f2 = _bf(
+            {"name": ["bob", "charlie", "dave"], "city": ["NY", "LA", "SF"]}
+        )
         f3 = _bf({"name": ["charlie", "eve", "bob"], "score": [90, 85, 70]})
 
         result = leapfrog_triejoin([f1, f2, f3], "name")
@@ -302,7 +337,9 @@ class TestLeapfrogTriejoin:
         """All non-join columns from every frame appear in the result."""
         f1 = _bf({"x": [1, 2], "a1": [10, 20], "a2": [100, 200]})
         f2 = _bf({"x": [1, 2], "b1": [30, 40]})
-        f3 = _bf({"x": [1, 2], "c1": [50, 60], "c2": [500, 600], "c3": [5000, 6000]})
+        f3 = _bf(
+            {"x": [1, 2], "c1": [50, 60], "c2": [500, 600], "c3": [5000, 6000]}
+        )
 
         result = leapfrog_triejoin([f1, f2, f3], "x")
 

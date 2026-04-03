@@ -157,7 +157,7 @@ PyCypher requires Python 3.14+ and uses ``uv`` for dependency management.
 .. code-block:: bash
 
    # Install uv
-   pip install uv
+   curl -LsSf https://astral.sh/uv/install.sh | sh
 
    # Sync all workspace dependencies
    uv sync

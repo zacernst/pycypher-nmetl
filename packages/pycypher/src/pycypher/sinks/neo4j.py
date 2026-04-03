@@ -25,9 +25,9 @@ Quick start::
             ),
         )
 
-Requires the ``neo4j`` extra::
+Requires the ``neo4j`` package::
 
-    pip install 'pycypher[neo4j]'
+    uv pip install neo4j
 """
 
 from __future__ import annotations
@@ -48,7 +48,7 @@ try:
     from neo4j import Driver as _Neo4jDriver
     from neo4j import GraphDatabase
 except ImportError as _import_err:
-    _msg = "Install the neo4j extra to use this sink: pip install 'pycypher[neo4j]'"
+    _msg = "Install the neo4j package to use this sink: uv pip install neo4j"
     raise ImportError(_msg) from _import_err
 
 
@@ -709,7 +709,7 @@ class Neo4jSink:
                 try:
                     session.run(cypher, rows=rows)  # type: ignore[arg-type]  # neo4j stub expects LiteralString
                     total += len(rows)
-                except Exception:
+                except Exception:  # noqa: BLE001 — log batch details before re-raising
                     # SECURITY: Log only the keys of the first row, not the
                     # values, to avoid leaking PII or sensitive data.
                     first_row_keys = list(rows[0].keys()) if rows else []

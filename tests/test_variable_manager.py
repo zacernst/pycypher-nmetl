@@ -74,14 +74,18 @@ def _make_path(
 def _make_return(*names: str) -> Return:
     """Build a RETURN clause returning named variables."""
     return Return(
-        items=[ReturnItem(expression=Variable(name=n), alias=None) for n in names],
+        items=[
+            ReturnItem(expression=Variable(name=n), alias=None) for n in names
+        ],
     )
 
 
 def _make_with(*names: str) -> With:
     """Build a WITH clause projecting named variables."""
     return With(
-        items=[ReturnItem(expression=Variable(name=n), alias=None) for n in names],
+        items=[
+            ReturnItem(expression=Variable(name=n), alias=None) for n in names
+        ],
     )
 
 

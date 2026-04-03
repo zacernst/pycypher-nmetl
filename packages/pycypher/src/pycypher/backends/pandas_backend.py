@@ -16,6 +16,7 @@ import pandas as pd
 
 from pycypher.backends._helpers import _to_pandas
 from pycypher.constants import ID_COLUMN
+from pycypher.cypher_types import ColumnValues, SourceObject
 
 
 class PandasBackend:
@@ -40,7 +41,7 @@ class PandasBackend:
 
     def scan_entity(
         self,
-        source_obj: Any,
+        source_obj: SourceObject,
         entity_type: str,
     ) -> pd.DataFrame:
         """Convert source to pandas and return ID column."""
@@ -51,7 +52,7 @@ class PandasBackend:
     # Transform
     # ------------------------------------------------------------------
 
-    def filter(self, frame: pd.DataFrame, mask: Any) -> pd.DataFrame:
+    def filter(self, frame: pd.DataFrame, mask: pd.Series) -> pd.DataFrame:
         """Boolean mask filter."""
         return frame.loc[mask].reset_index(drop=True)
 
@@ -115,7 +116,7 @@ class PandasBackend:
         self,
         frame: pd.DataFrame,
         name: str,
-        values: Any,
+        values: ColumnValues,
     ) -> pd.DataFrame:
         """Add or replace a column."""
         return frame.assign(**{name: values})
@@ -143,7 +144,7 @@ class PandasBackend:
     ) -> pd.DataFrame:
         """Grouped aggregation via pandas groupby."""
         if not group_cols:
-            result: dict[str, Any] = {}
+            result: dict[str, list[object]] = {}
             for out_col, (src_col, func) in agg_specs.items():
                 result[out_col] = [getattr(frame[src_col], func)()]
             return pd.DataFrame(result)
@@ -187,7 +188,12 @@ class PandasBackend:
     # ------------------------------------------------------------------
 
     def to_pandas(self, frame: pd.DataFrame) -> pd.DataFrame:
-        """Return a lazy copy (O(1) with pandas 3.0+ CoW) for mutation safety."""
+        """Return an independent copy so the caller can mutate freely.
+
+        The copy is O(1) under pandas 3.0+ CoW until the caller actually
+        mutates the data.  Required because ``inplace=True`` operations
+        bypass CoW and mutate the original.
+        """
         return frame.copy()
 
     def row_count(self, frame: pd.DataFrame) -> int:

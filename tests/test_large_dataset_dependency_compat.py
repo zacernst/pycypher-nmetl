@@ -38,7 +38,9 @@ class TestDaskCompatibility:
         assert dask.__version__
 
     def test_distributed_import(self) -> None:
-        distributed = pytest.importorskip("distributed", reason="distributed not installed")
+        distributed = pytest.importorskip(
+            "distributed", reason="distributed not installed"
+        )
 
         assert distributed.__version__
 

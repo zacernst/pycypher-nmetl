@@ -24,8 +24,9 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
 import pandas as pd
-from shared.logger import LOGGER
+from shared.logger import LOGGER, get_query_id
 
+from pycypher.audit import audit_mutation
 from pycypher.constants import (
     ID_COLUMN,
     RELATIONSHIP_SOURCE_COLUMN,
@@ -43,6 +44,7 @@ if TYPE_CHECKING:
         Remove,
         Set,
     )
+    from pycypher.backend_engine import BackendEngine
     from pycypher.binding_frame import BindingFrame
     from pycypher.relational_models import Context
 
@@ -94,6 +96,11 @@ class MutationEngine:
 
         """
         self.context: Context = context
+
+    @property
+    def _backend(self) -> BackendEngine | None:
+        """Return the backend engine if available, else None."""
+        return getattr(self.context, "backend", None)
 
     # ------------------------------------------------------------------
     # SET clause
@@ -148,9 +155,11 @@ class MutationEngine:
 
             if prop in ("*", "*+"):
                 if isinstance(expr, MapLiteral):
+                    # Batch all map literal properties into a single merge pass.
+                    batch: dict[str, pd.Series] = {}
                     for key, val_expr in expr.entries.items():
-                        values = evaluator.evaluate(val_expr)
-                        frame.mutate(item.variable.name, key, values)
+                        batch[key] = evaluator.evaluate(val_expr)
+                    frame.mutate_batch(item.variable.name, batch)
                     LOGGER.debug(
                         "mutation SET: map literal expansion  var=%s  keys=%d",
                         item.variable.name,
@@ -162,15 +171,17 @@ class MutationEngine:
                     for v in map_series:
                         if isinstance(v, dict):
                             all_keys.update(v.keys())
+                    # Batch all extracted properties into a single merge pass.
+                    batch_expr: dict[str, pd.Series] = {}
                     for key in sorted(all_keys):
-                        col_values = pd.Series(
+                        batch_expr[key] = pd.Series(
                             [
                                 v.get(key) if isinstance(v, dict) else None
                                 for v in map_series
                             ],
                             dtype=object,
                         )
-                        frame.mutate(item.variable.name, key, col_values)
+                    frame.mutate_batch(item.variable.name, batch_expr)
                     LOGGER.debug(
                         "mutation SET: map expression expansion  var=%s  keys=%d",
                         item.variable.name,
@@ -185,9 +196,15 @@ class MutationEngine:
                 values = evaluator.evaluate(expr)
             frame.mutate(item.variable.name, prop, values)
 
-        LOGGER.debug(
-            "mutation SET: completed in %.3fms",
-            (time.perf_counter() - t0) * 1000,
+        elapsed = time.perf_counter() - t0
+        LOGGER.debug("mutation SET: completed in %.3fms", elapsed * 1000)
+        audit_mutation(
+            query_id=get_query_id(),
+            operation="SET",
+            entity_type="mixed",
+            affected_count=n_rows,
+            elapsed_s=elapsed,
+            details={"items": n_items},
         )
 
     # ------------------------------------------------------------------
@@ -249,7 +266,9 @@ class MutationEngine:
             A ``pd.Series`` of *n* integer IDs.
 
         """
-        from pycypher.dataframe_utils import source_to_pandas as _source_to_pandas
+        from pycypher.dataframe_utils import (
+            source_to_pandas as _source_to_pandas,
+        )
 
         max_id: int = 0
         if type_label in mapping:
@@ -309,7 +328,9 @@ class MutationEngine:
             A ``pd.DataFrame`` to append new rows to.
 
         """
-        from pycypher.dataframe_utils import source_to_pandas as _source_to_pandas
+        from pycypher.dataframe_utils import (
+            source_to_pandas as _source_to_pandas,
+        )
 
         if type_label in shadow_dict:
             return shadow_dict[type_label]
@@ -346,7 +367,11 @@ class MutationEngine:
         new_row.update(props)
         new_df = pd.DataFrame(new_row)
 
-        combined = pd.concat([base_df, new_df], ignore_index=True)
+        backend = self._backend
+        if backend is not None:
+            combined = backend.concat([base_df, new_df], ignore_index=True)
+        else:
+            combined = pd.concat([base_df, new_df], ignore_index=True)
         self.context._shadow[entity_type] = combined
         LOGGER.debug(
             "shadow_create_entity  type=%s  new_rows=%d  total_rows=%d  props=%s",
@@ -397,10 +422,14 @@ class MutationEngine:
                 RELATIONSHIP_TARGET_COLUMN: tgt_ids,
             },
         )
-        combined = pd.concat(
-            [base_df, new_df],
-            ignore_index=True,
-        )
+        backend = self._backend
+        if backend is not None:
+            combined = backend.concat([base_df, new_df], ignore_index=True)
+        else:
+            combined = pd.concat(
+                [base_df, new_df],
+                ignore_index=True,
+            )
         self.context._shadow_rels[rel_type] = combined
         LOGGER.debug(
             "shadow_create_relationship  type=%s  new_rows=%d  total_rows=%d",
@@ -548,12 +577,22 @@ class MutationEngine:
         )
         combined_type_registry.update(new_type_reg)
 
+        elapsed = time.perf_counter() - t0
         LOGGER.debug(
             "mutation CREATE: completed in %.3fms  new_vars=%d  types=%s",
-            (time.perf_counter() - t0) * 1000,
+            elapsed * 1000,
             len(new_vars),
             list(new_type_reg.values()),
         )
+        for type_label in new_type_reg.values():
+            audit_mutation(
+                query_id=get_query_id(),
+                operation="CREATE",
+                entity_type=type_label,
+                affected_count=n_rows,
+                elapsed_s=elapsed,
+                details={"new_variables": list(new_vars.keys())},
+            )
         return BindingFrame(
             bindings=new_df,
             type_registry=combined_type_registry,
@@ -579,7 +618,9 @@ class MutationEngine:
         t0 = time.perf_counter()
         from pycypher.ast_models import Variable
         from pycypher.binding_evaluator import BindingExpressionEvaluator
-        from pycypher.dataframe_utils import source_to_pandas as _source_to_pandas
+        from pycypher.dataframe_utils import (
+            source_to_pandas as _source_to_pandas,
+        )
 
         detach = getattr(clause, "detach", False)
         LOGGER.debug(
@@ -627,9 +668,12 @@ class MutationEngine:
                 )
                 continue
 
-            filtered_df = base_df[
-                ~base_df[ID_COLUMN].isin(ids_to_delete)
-            ].reset_index(drop=True)
+            keep_mask = ~base_df[ID_COLUMN].isin(ids_to_delete)
+            backend = self._backend
+            if backend is not None:
+                filtered_df = backend.filter(base_df, keep_mask)
+            else:
+                filtered_df = base_df[keep_mask].reset_index(drop=True)
             _deleted_count = len(base_df) - len(filtered_df)
             self.context._shadow[entity_type] = filtered_df
             LOGGER.debug(
@@ -655,9 +699,16 @@ class MutationEngine:
                         ids_to_delete,
                     ) | rel_df[RELATIONSHIP_TARGET_COLUMN].isin(ids_to_delete)
                     detached_count = int(dead_mask.sum())
-                    self.context._shadow_rels[rel_type] = rel_df[
-                        ~dead_mask
-                    ].reset_index(drop=True)
+                    keep_mask = ~dead_mask
+                    backend = self._backend
+                    if backend is not None:
+                        self.context._shadow_rels[rel_type] = backend.filter(
+                            rel_df, keep_mask,
+                        )
+                    else:
+                        self.context._shadow_rels[rel_type] = rel_df[
+                            keep_mask
+                        ].reset_index(drop=True)
                     if detached_count > 0:
                         LOGGER.debug(
                             "mutation DETACH DELETE: rel_type=%s  detached=%d",
@@ -665,9 +716,14 @@ class MutationEngine:
                             detached_count,
                         )
 
-        LOGGER.debug(
-            "mutation DELETE: completed in %.3fms",
-            (time.perf_counter() - t0) * 1000,
+        elapsed = time.perf_counter() - t0
+        LOGGER.debug("mutation DELETE: completed in %.3fms", elapsed * 1000)
+        audit_mutation(
+            query_id=get_query_id(),
+            operation="DETACH_DELETE" if detach else "DELETE",
+            entity_type="mixed",
+            affected_count=len(clause.expressions),
+            elapsed_s=elapsed,
         )
 
     # ------------------------------------------------------------------
@@ -739,6 +795,14 @@ class MutationEngine:
                     SetClause(items=clause.on_match),
                     match_frame,
                 )
+            audit_mutation(
+                query_id=get_query_id(),
+                operation="MERGE",
+                entity_type="mixed",
+                affected_count=len(match_frame.bindings),
+                elapsed_s=time.perf_counter() - t0,
+                details={"action": "match", "on_match_set": bool(clause.on_match)},
+            )
             if current_frame is None:
                 return match_frame
             return merge_frames_for_match(current_frame, match_frame)
@@ -757,9 +821,15 @@ class MutationEngine:
                 SetClause(items=clause.on_create),
                 created_frame,
             )
-        LOGGER.debug(
-            "mutation MERGE: completed in %.3fms",
-            (time.perf_counter() - t0) * 1000,
+        elapsed = time.perf_counter() - t0
+        LOGGER.debug("mutation MERGE: completed in %.3fms", elapsed * 1000)
+        audit_mutation(
+            query_id=get_query_id(),
+            operation="MERGE",
+            entity_type="mixed",
+            affected_count=len(created_frame.bindings) if created_frame else 0,
+            elapsed_s=elapsed,
+            details={"action": "create"},
         )
         return created_frame
 
@@ -836,7 +906,7 @@ class MutationEngine:
                                 loop_frame,
                                 make_seed_frame=make_seed_frame,
                             )
-                except Exception as exc:
+                except Exception as exc:  # noqa: BLE001 — wraps any error with FOREACH context; re-raised
                     clause_type = type(inner).__name__
                     msg = (
                         f"FOREACH failed at iteration {iteration_index} "
@@ -954,9 +1024,15 @@ class MutationEngine:
             if item.property is not None:
                 null_values = _null_series(len(frame))
                 frame.mutate(item.variable.name, item.property, null_values)
-        LOGGER.debug(
-            "mutation REMOVE: completed in %.3fms",
-            (time.perf_counter() - t0) * 1000,
+        elapsed = time.perf_counter() - t0
+        LOGGER.debug("mutation REMOVE: completed in %.3fms", elapsed * 1000)
+        audit_mutation(
+            query_id=get_query_id(),
+            operation="REMOVE",
+            entity_type="mixed",
+            affected_count=len(frame),
+            elapsed_s=elapsed,
+            details={"items": len(remove_clause.items)},
         )
 
     # ------------------------------------------------------------------

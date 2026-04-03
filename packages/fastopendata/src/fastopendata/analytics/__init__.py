@@ -7,7 +7,10 @@ Cypher query execution.
 
 from fastopendata.analytics.collector import MetricsCollector, QueryMetric
 from fastopendata.analytics.engine import AnalyticsEngine, PerformanceSummary
-from fastopendata.analytics.regression import RegressionAlert, RegressionDetector
+from fastopendata.analytics.regression import (
+    RegressionAlert,
+    RegressionDetector,
+)
 
 __all__ = [
     "AnalyticsEngine",

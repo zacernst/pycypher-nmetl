@@ -1613,18 +1613,13 @@ def _collect_referenced_variables(node: ASTNode) -> Set[str]:
         if id(var) not in definition_ids:
             referenced.add(cast("Variable", var).name)
 
-    # Also check property lookups with legacy variable field
+    # Also check property lookups — extract base variable from expression
     for prop in node.find_all(PropertyLookup):
-        if cast("PropertyLookup", prop).variable:
-            # PropertyLookup variable is typically a reference
-            if id(cast("PropertyLookup", prop).variable) not in definition_ids:
-                referenced.add(
-                    getattr(
-                        cast("PropertyLookup", prop).variable,
-                        "name",
-                        None,
-                    ),
-                )
+        pl = cast("PropertyLookup", prop)
+        expr = pl.expression
+        if isinstance(expr, Variable):
+            if id(expr) not in definition_ids:
+                referenced.add(expr.name)
 
     return referenced
 

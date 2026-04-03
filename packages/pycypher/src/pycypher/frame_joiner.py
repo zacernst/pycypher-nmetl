@@ -22,7 +22,9 @@ import pandas as pd
 from shared.logger import LOGGER
 
 if TYPE_CHECKING:
+    from pycypher.ast_models import ASTNode, Match
     from pycypher.binding_frame import BindingFrame
+    from pycypher.query_planner import JoinPlan
     from pycypher.relational_models import Context
 
 
@@ -56,9 +58,9 @@ class FrameJoiner:
         self._context = context
         self._match_fn = match_fn
         self._where_fn = where_fn
-        self._precomputed_join_plans: deque[object] = deque()
+        self._precomputed_join_plans: deque[JoinPlan] = deque()
 
-    def set_join_plans(self, plans: list[object]) -> None:
+    def set_join_plans(self, plans: list[JoinPlan]) -> None:
         """Store pre-computed join plans from QueryPlanAnalyzer.
 
         Plans are consumed in FIFO order by :meth:`coerce_join`.
@@ -141,7 +143,7 @@ class FrameJoiner:
         self,
         current_frame: BindingFrame,
         match_frame: BindingFrame,
-        where_clause: Any = None,
+        where_clause: ASTNode | None = None,
     ) -> BindingFrame:
         """Merge a new MATCH frame into the existing execution frame.
 
@@ -185,7 +187,7 @@ class FrameJoiner:
         return result
 
     def process_optional_match(
-        self, clause: Any, current_frame: BindingFrame
+        self, clause: Match, current_frame: BindingFrame
     ) -> BindingFrame:
         """Execute an OPTIONAL MATCH clause against an existing frame.
 
@@ -217,19 +219,34 @@ class FrameJoiner:
             )
             return self.process_optional_match_failure(clause, current_frame)
 
+        # An empty match frame means the pattern produced no rows — treat
+        # it as an optional-match failure so every row gets NULLs for new
+        # variables (same semantics as a missing entity/relationship type).
+        if len(match_frame.bindings) == 0:
+            return self.process_optional_match_failure(clause, current_frame)
+
         common_vars = set(current_frame.var_names) & set(match_frame.var_names)
         if common_vars:
             var = next(iter(common_vars))
+            # Coerce join-column types to prevent pandas merge failures
+            # when one side has object dtype (e.g. empty frames) and the
+            # other has int64.
+            left_col = current_frame.bindings[var]
+            right_col = match_frame.bindings[var]
+            if left_col.dtype != right_col.dtype:
+                common_dtype = pd.api.types.find_common_type(
+                    [left_col.dtype, right_col.dtype]
+                )
+                current_frame.bindings[var] = left_col.astype(common_dtype)
+                match_frame.bindings[var] = right_col.astype(common_dtype)
             return current_frame.left_join(match_frame, var, var)
 
         # No shared variables — cross-product OPTIONAL MATCH.
-        if len(match_frame.bindings) == 0:
-            return self.process_optional_match_failure(clause, current_frame)
         return current_frame.cross_join(match_frame)
 
     def process_optional_match_failure(
         self,
-        clause: Any,
+        clause: Match,
         current_frame: BindingFrame,
     ) -> BindingFrame:
         """Return a frame with NULL columns for variables the failed OPTIONAL MATCH would have bound.
@@ -260,7 +277,7 @@ class FrameJoiner:
                     and el.variable is not None
                     and el.variable.name not in current_frame.var_names
                 ):
-                    rel_t = el.rel_types[0] if el.rel_types else ""
+                    rel_t = el.labels[0] if el.labels else ""
                     new_var_types[el.variable.name] = rel_t
 
         if not new_var_types:
@@ -303,7 +320,7 @@ class FrameJoiner:
 # ---------------------------------------------------------------------------
 
 
-def _extract_conjuncts(predicate: Any) -> list[Any]:
+def _extract_conjuncts(predicate: ASTNode) -> list[ASTNode]:
     """Split an AND-connected predicate into its conjunct list.
 
     Non-AND predicates are returned as a single-element list.
@@ -311,14 +328,14 @@ def _extract_conjuncts(predicate: Any) -> list[Any]:
     from pycypher.ast_models import And
 
     if isinstance(predicate, And) and predicate.operands:
-        conjuncts: list[Any] = []
+        conjuncts: list[ASTNode] = []
         for op in predicate.operands:
             conjuncts.extend(_extract_conjuncts(op))
         return conjuncts
     return [predicate]
 
 
-def _rebuild_and(conjuncts: list[Any]) -> Any | None:
+def _rebuild_and(conjuncts: list[ASTNode]) -> ASTNode | None:
     """Rebuild an AND node from a list of conjuncts, or return None if empty."""
     if not conjuncts:
         return None
@@ -329,7 +346,7 @@ def _rebuild_and(conjuncts: list[Any]) -> Any | None:
     return And(operands=conjuncts)
 
 
-def _predicate_variables(predicate: Any) -> set[str]:
+def _predicate_variables(predicate: ASTNode) -> set[str]:
     """Extract variable names referenced by a predicate."""
     from pycypher.ast_models import ASTNode, extract_referenced_variables
 
@@ -339,10 +356,10 @@ def _predicate_variables(predicate: Any) -> set[str]:
 
 
 def _split_pushdown_predicates(
-    where_clause: Any,
+    where_clause: ASTNode,
     match_vars: set[str],
     current_vars: set[str],
-) -> tuple[Any | None, Any | None]:
+) -> tuple[ASTNode | None, ASTNode | None]:
     """Split a WHERE clause into pre-join and post-join predicates.
 
     Conjuncts whose variables are all in *match_vars* (and NOT in

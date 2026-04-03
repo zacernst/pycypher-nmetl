@@ -192,7 +192,8 @@ class TestASTTraversal:
         nodes = list(map_literal.traverse())
 
         assert any(
-            isinstance(node, IntegerLiteral) and node.value == 42 for node in nodes
+            isinstance(node, IntegerLiteral) and node.value == 42
+            for node in nodes
         )
 
     def test_traverse_includes_nested_dict_children(self):
@@ -206,7 +207,8 @@ class TestASTTraversal:
         nodes = list(function_call.traverse())
 
         assert any(
-            isinstance(node, Variable) and node.name == "nested" for node in nodes
+            isinstance(node, Variable) and node.name == "nested"
+            for node in nodes
         )
 
 

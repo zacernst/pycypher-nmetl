@@ -88,7 +88,9 @@ class TestStreamBuffer:
         async def _run() -> None:
             buf = StreamBuffer(max_size=100)
             for i in range(5):
-                await buf.put(StreamRecord(key=f"k{i}", value={}, event_time=float(i)))
+                await buf.put(
+                    StreamRecord(key=f"k{i}", value={}, event_time=float(i))
+                )
             batch = await buf.drain(max_batch=3)
             assert len(batch) == 3
             assert buf.size == 2

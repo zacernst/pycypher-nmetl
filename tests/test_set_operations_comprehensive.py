@@ -265,7 +265,9 @@ class TestBasicPropertySetting:
 
         # Verify SET clause was parsed correctly
         set_clauses = [
-            clause for clause in ast.clauses if clause.__class__.__name__ == "Set"
+            clause
+            for clause in ast.clauses
+            if clause.__class__.__name__ == "Set"
         ]
         assert len(set_clauses) == 1
 

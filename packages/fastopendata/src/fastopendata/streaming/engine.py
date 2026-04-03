@@ -110,7 +110,9 @@ class StreamEngine:
         self._joins: list[StreamTableJoin] = []
         self._views: list[IncrementalView] = []
         self._sinks: list[SinkCallback] = []
-        self._transforms: list[Callable[[StreamRecord], StreamRecord | None]] = []
+        self._transforms: list[
+            Callable[[StreamRecord], StreamRecord | None]
+        ] = []
 
         self._metrics = PipelineMetrics()
         self._running = False
@@ -136,7 +138,9 @@ class StreamEngine:
     def add_sink(self, sink: SinkCallback) -> None:
         self._sinks.append(sink)
 
-    def add_transform(self, fn: Callable[[StreamRecord], StreamRecord | None]) -> None:
+    def add_transform(
+        self, fn: Callable[[StreamRecord], StreamRecord | None]
+    ) -> None:
         """Add a stateless map/filter transform to the pipeline."""
         self._transforms.append(fn)
 
@@ -172,7 +176,9 @@ class StreamEngine:
                 try:
                     await self._process_record(record)
                 except Exception:
-                    _logger.exception("Error processing record %s", record.record_id)
+                    _logger.exception(
+                        "Error processing record %s", record.record_id
+                    )
                     self._metrics.errors += 1
 
             # Fire windows after processing the batch

@@ -192,7 +192,9 @@ QUERY_WORKLOAD: list[dict[str, Any]] = [
     },
     {
         "name": "distinct",
-        "query": ("MATCH (a:Person)-[:KNOWS]->(b:Person) RETURN DISTINCT b.name"),
+        "query": (
+            "MATCH (a:Person)-[:KNOWS]->(b:Person) RETURN DISTINCT b.name"
+        ),
         "category": "distinct",
     },
     {

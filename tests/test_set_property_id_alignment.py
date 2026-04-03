@@ -154,7 +154,9 @@ class TestPartialSetAlignment:
 
         # Bob is row with id=2
         assert source.at[2, "name"] == "Bob", "Bob's name was corrupted"
-        assert source.at[2, "department"] == "Sales", "Bob's department was corrupted"
+        assert source.at[2, "department"] == "Sales", (
+            "Bob's department was corrupted"
+        )
         assert source.at[2, "age"] == 30, "Bob's age was corrupted"
 
     def test_alice_properties_not_corrupted_by_partial_set(self) -> None:
@@ -270,11 +272,13 @@ class TestNewPropertyScope:
         assert "team" in entity_table.source_obj.columns, (
             "'team' column must be present in entity table after SET"
         )
-        bob_row = entity_table.source_obj[entity_table.source_obj["name"] == "Bob"]
+        bob_row = entity_table.source_obj[
+            entity_table.source_obj["name"] == "Bob"
+        ]
         assert len(bob_row) == 1
-        assert pd.isna(bob_row["team"].iloc[0]) or bob_row["team"].iloc[0] is None, (
-            "Bob's team must be None/NaN since he was not matched by WHERE"
-        )
+        assert (
+            pd.isna(bob_row["team"].iloc[0]) or bob_row["team"].iloc[0] is None
+        ), "Bob's team must be None/NaN since he was not matched by WHERE"
 
     def test_new_property_registered_in_attribute_map(self) -> None:
         """New property is added to entity_table.attribute_map after SET."""
@@ -303,13 +307,15 @@ class TestNewPropertyScope:
         entity_table = ctx.entity_mapping.mapping["Person"]
         source = entity_table.source_obj.set_index(ID_COLUMN)
 
-        assert source.at[1, "manager"] is True or source.at[1, "manager"] == True
-        assert pd.isna(source.at[2, "manager"]) or source.at[2, "manager"] is None, (
-            "Bob was not matched; his manager property must be None"
+        assert (
+            source.at[1, "manager"] is True or source.at[1, "manager"] == True
         )
-        assert pd.isna(source.at[3, "manager"]) or source.at[3, "manager"] is None, (
-            "Carol was not matched; her manager property must be None"
-        )
+        assert (
+            pd.isna(source.at[2, "manager"]) or source.at[2, "manager"] is None
+        ), "Bob was not matched; his manager property must be None"
+        assert (
+            pd.isna(source.at[3, "manager"]) or source.at[3, "manager"] is None
+        ), "Carol was not matched; her manager property must be None"
 
 
 # ---------------------------------------------------------------------------

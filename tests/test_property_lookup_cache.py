@@ -30,6 +30,7 @@ from pycypher.relational_models import (
     RelationshipMapping,
 )
 from pycypher.star import Star
+from _perf_helpers import perf_threshold
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
@@ -119,7 +120,9 @@ class TestPropertyLookupCachePopulation:
         )
         frame.get_property("p", "age")
 
-        cached_df: pd.DataFrame = people_context._property_lookup_cache["Person"]  # type: ignore[attr-defined]
+        cached_df: pd.DataFrame = people_context._property_lookup_cache[
+            "Person"
+        ]  # type: ignore[attr-defined]
         assert isinstance(cached_df, pd.DataFrame), (
             f"Cache entry must be a DataFrame, got {type(cached_df)}"
         )
@@ -147,7 +150,9 @@ class TestPropertyLookupCachePopulation:
             people_context,
         )
 
-        original_source = people_context.entity_mapping.mapping["Person"].source_obj
+        original_source = people_context.entity_mapping.mapping[
+            "Person"
+        ].source_obj
         set_index_calls = {"n": 0}
         orig_fn = pd.DataFrame.set_index
 
@@ -197,7 +202,9 @@ class TestPropertyLookupCacheInvalidation:
         assert "Person" in people_context._property_lookup_cache  # type: ignore[attr-defined]
 
         # Simulate a mutation by injecting a shadow entry before commit.
-        canonical_df = people_context.entity_mapping.mapping["Person"].source_obj
+        canonical_df = people_context.entity_mapping.mapping[
+            "Person"
+        ].source_obj
         people_context._shadow["Person"] = canonical_df.copy()  # type: ignore[attr-defined]
 
         people_context.commit_query()
@@ -279,7 +286,9 @@ class TestPropertyLookupCacheCorrectness:
             result2.reset_index(drop=True),
             check_names=False,
         )
-        assert result1.iloc[0] == "P1", f"Expected 'P1', got {result1.iloc[0]!r}"
+        assert result1.iloc[0] == "P1", (
+            f"Expected 'P1', got {result1.iloc[0]!r}"
+        )
 
     def test_age_lookup_correct(self, people_context: Context) -> None:
         """get_property('p', 'age') values are in the expected range."""
@@ -357,7 +366,7 @@ class TestPropertyLookupCachePerformance:
     def test_repeated_queries_wall_clock(self, people_star: Star) -> None:
         """100 queries × 3 property accesses must complete under 1.0s total."""
         REPS = 100
-        THRESHOLD = 1.0  # seconds
+        THRESHOLD = perf_threshold(1.0)  # seconds
 
         # Warm up AST cache
         people_star.execute_query(

@@ -52,7 +52,9 @@ def simple_graph_context() -> Context:
     )
     return Context(
         entity_mapping=EntityMapping(
-            mapping={"Person": EntityTable.from_dataframe("Person", person_df)},
+            mapping={
+                "Person": EntityTable.from_dataframe("Person", person_df)
+            },
         ),
         relationship_mapping=RelationshipMapping(
             mapping={"KNOWS": EntityTable.from_dataframe("KNOWS", knows_df)},
@@ -131,7 +133,9 @@ class TestBuildComputationGraph:
         assert len(graph.nodes) > 0
 
         # Should contain at least one SCAN node
-        scan_nodes = [n for n in graph.nodes.values() if n.op_type == OpType.SCAN]
+        scan_nodes = [
+            n for n in graph.nodes.values() if n.op_type == OpType.SCAN
+        ]
         assert len(scan_nodes) >= 1
 
     def test_match_with_where_produces_filter_node(
@@ -146,7 +150,9 @@ class TestBuildComputationGraph:
         )
         graph = build_computation_graph(query)
 
-        filter_nodes = [n for n in graph.nodes.values() if n.op_type == OpType.FILTER]
+        filter_nodes = [
+            n for n in graph.nodes.values() if n.op_type == OpType.FILTER
+        ]
         assert len(filter_nodes) >= 1
 
     def test_match_relationship_produces_join_node(
@@ -161,7 +167,9 @@ class TestBuildComputationGraph:
         )
         graph = build_computation_graph(query)
 
-        join_nodes = [n for n in graph.nodes.values() if n.op_type == OpType.JOIN]
+        join_nodes = [
+            n for n in graph.nodes.values() if n.op_type == OpType.JOIN
+        ]
         assert len(join_nodes) >= 1
 
     def test_return_produces_project_node(
@@ -174,7 +182,9 @@ class TestBuildComputationGraph:
         query = ASTConverter().from_cypher("MATCH (n:Person) RETURN n.name")
         graph = build_computation_graph(query)
 
-        project_nodes = [n for n in graph.nodes.values() if n.op_type == OpType.PROJECT]
+        project_nodes = [
+            n for n in graph.nodes.values() if n.op_type == OpType.PROJECT
+        ]
         assert len(project_nodes) >= 1
 
     def test_graph_has_valid_topological_order(
@@ -204,7 +214,9 @@ class TestBuildComputationGraph:
         )
         graph = build_computation_graph(query)
 
-        project_nodes = [n for n in graph.nodes.values() if n.op_type == OpType.PROJECT]
+        project_nodes = [
+            n for n in graph.nodes.values() if n.op_type == OpType.PROJECT
+        ]
         assert len(project_nodes) >= 1
 
     def test_limit_produces_limit_node(
@@ -219,7 +231,9 @@ class TestBuildComputationGraph:
         )
         graph = build_computation_graph(query)
 
-        limit_nodes = [n for n in graph.nodes.values() if n.op_type == OpType.LIMIT]
+        limit_nodes = [
+            n for n in graph.nodes.values() if n.op_type == OpType.LIMIT
+        ]
         assert len(limit_nodes) >= 1
 
     def test_order_by_produces_sort_node(
@@ -234,7 +248,9 @@ class TestBuildComputationGraph:
         )
         graph = build_computation_graph(query)
 
-        sort_nodes = [n for n in graph.nodes.values() if n.op_type == OpType.SORT]
+        sort_nodes = [
+            n for n in graph.nodes.values() if n.op_type == OpType.SORT
+        ]
         assert len(sort_nodes) >= 1
 
 

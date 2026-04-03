@@ -76,7 +76,9 @@ class TestExecuteQueryStartLog:
         query = "MATCH (p:Person) RETURN p.name AS name"
         with caplog.at_level(logging.DEBUG, logger=_LOGGER_NAME):
             simple_star.execute_query(query)
-        messages = [r.message for r in caplog.records if r.levelno == logging.DEBUG]
+        messages = [
+            r.message for r in caplog.records if r.levelno == logging.DEBUG
+        ]
         # At least one debug message should mention "MATCH" or the query prefix
         assert any("MATCH" in m or "execute_query" in m for m in messages), (
             f"Expected a DEBUG record mentioning the query at start. Got: {messages}"
@@ -125,7 +127,9 @@ class TestExecuteQueryCompletionLog:
         """execute_query emits an INFO record after successful completion."""
         with caplog.at_level(logging.INFO, logger=_LOGGER_NAME):
             simple_star.execute_query("MATCH (p:Person) RETURN p.name AS name")
-        info_messages = [r.message for r in caplog.records if r.levelno == logging.INFO]
+        info_messages = [
+            r.message for r in caplog.records if r.levelno == logging.INFO
+        ]
         assert info_messages, "Expected at least one INFO record. Got none."
 
     def test_completion_log_includes_row_count(
@@ -208,7 +212,8 @@ class TestPerClauseLogging:
             r.message for r in caplog.records if r.levelno == logging.DEBUG
         ]
         assert any(
-            "Match" in m or "MATCH" in m or "match" in m for m in debug_messages
+            "Match" in m or "MATCH" in m or "match" in m
+            for m in debug_messages
         ), f"Expected a DEBUG record for MATCH clause. Got: {debug_messages}"
 
     def test_with_clause_logged(
@@ -224,9 +229,9 @@ class TestPerClauseLogging:
         debug_messages = [
             r.message for r in caplog.records if r.levelno == logging.DEBUG
         ]
-        assert any("With" in m or "WITH" in m or "with" in m for m in debug_messages), (
-            f"Expected a DEBUG record for WITH clause. Got: {debug_messages}"
-        )
+        assert any(
+            "With" in m or "WITH" in m or "with" in m for m in debug_messages
+        ), f"Expected a DEBUG record for WITH clause. Got: {debug_messages}"
 
     def test_clause_log_includes_frame_size(
         self,

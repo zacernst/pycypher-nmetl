@@ -466,8 +466,6 @@ def _extract_variables_from_predicate(predicate: Any) -> set[str]:
         return extract_referenced_variables(predicate)
     return set()
 
-    return refs
-
 
 def build_computation_graph(query: Any) -> ComputationGraph:
     """Translate a parsed Cypher Query AST into a ComputationGraph.

@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import math
 
-import numpy as np
 import pandas as pd
 import pytest
 from pycypher.scalar_functions import ScalarFunctionRegistry
@@ -89,8 +88,12 @@ class TestRound:
         result = registry.execute("round", [pd.Series([2.5])])
         assert result.iloc[0] == 3.0  # HALF_UP: ties away from zero
 
-    def test_round_with_precision(self, registry: ScalarFunctionRegistry) -> None:
-        result = registry.execute("round", [pd.Series([1.567]), pd.Series([2])])
+    def test_round_with_precision(
+        self, registry: ScalarFunctionRegistry
+    ) -> None:
+        result = registry.execute(
+            "round", [pd.Series([1.567]), pd.Series([2])]
+        )
         assert abs(result.iloc[0] - 1.57) < 1e-10
 
     def test_round_half_even(self, registry: ScalarFunctionRegistry) -> None:
@@ -100,7 +103,9 @@ class TestRound:
         )
         assert result.iloc[0] == 2.0  # Banker's rounding: tie to even
 
-    def test_round_invalid_mode(self, registry: ScalarFunctionRegistry) -> None:
+    def test_round_invalid_mode(
+        self, registry: ScalarFunctionRegistry
+    ) -> None:
         with pytest.raises(ValueError, match="Unknown rounding mode"):
             registry.execute(
                 "round",
@@ -111,11 +116,15 @@ class TestRound:
         result = registry.execute("round", [pd.Series([None])])
         assert math.isnan(result.iloc[0]) or result.iloc[0] is None
 
-    def test_round_zero_precision(self, registry: ScalarFunctionRegistry) -> None:
+    def test_round_zero_precision(
+        self, registry: ScalarFunctionRegistry
+    ) -> None:
         result = registry.execute("round", [pd.Series([1.5]), pd.Series([0])])
         assert result.iloc[0] == 2.0  # HALF_UP default
 
-    def test_round_ceiling_mode(self, registry: ScalarFunctionRegistry) -> None:
+    def test_round_ceiling_mode(
+        self, registry: ScalarFunctionRegistry
+    ) -> None:
         result = registry.execute(
             "round",
             [pd.Series([1.1]), pd.Series([0]), pd.Series(["CEILING"])],
@@ -167,7 +176,9 @@ class TestSqrt:
         result = registry.execute("sqrt", [pd.Series([0.0])])
         assert result.iloc[0] == 0.0
 
-    def test_negative_returns_null(self, registry: ScalarFunctionRegistry) -> None:
+    def test_negative_returns_null(
+        self, registry: ScalarFunctionRegistry
+    ) -> None:
         result = registry.execute("sqrt", [pd.Series([-1.0])])
         assert result.iloc[0] is None
 
@@ -209,11 +220,15 @@ class TestLog:
         result = registry.execute("log", [pd.Series([math.e])])
         assert abs(result.iloc[0] - 1.0) < 1e-10
 
-    def test_log_zero_returns_null(self, registry: ScalarFunctionRegistry) -> None:
+    def test_log_zero_returns_null(
+        self, registry: ScalarFunctionRegistry
+    ) -> None:
         result = registry.execute("log", [pd.Series([0.0])])
         assert result.iloc[0] is None
 
-    def test_log_negative_returns_null(self, registry: ScalarFunctionRegistry) -> None:
+    def test_log_negative_returns_null(
+        self, registry: ScalarFunctionRegistry
+    ) -> None:
         result = registry.execute("log", [pd.Series([-1.0])])
         assert result.iloc[0] is None
 
@@ -227,7 +242,9 @@ class TestExp:
         result = registry.execute("exp", [pd.Series([1.0])])
         assert abs(result.iloc[0] - math.e) < 1e-10
 
-    def test_exp_overflow_returns_inf(self, registry: ScalarFunctionRegistry) -> None:
+    def test_exp_overflow_returns_inf(
+        self, registry: ScalarFunctionRegistry
+    ) -> None:
         result = registry.execute("exp", [pd.Series([1000.0])])
         assert result.iloc[0] == float("inf")
 
@@ -246,7 +263,9 @@ class TestCot:
         result = registry.execute("cot", [pd.Series([math.pi / 4])])
         assert abs(result.iloc[0] - 1.0) < 1e-10
 
-    def test_cot_zero_returns_null(self, registry: ScalarFunctionRegistry) -> None:
+    def test_cot_zero_returns_null(
+        self, registry: ScalarFunctionRegistry
+    ) -> None:
         result = registry.execute("cot", [pd.Series([0.0])])
         assert result.iloc[0] is None  # Division by zero
 
@@ -276,21 +295,29 @@ class TestHaversin:
 
 class TestHypot:
     def test_345_triangle(self, registry: ScalarFunctionRegistry) -> None:
-        result = registry.execute("hypot", [pd.Series([3.0]), pd.Series([4.0])])
+        result = registry.execute(
+            "hypot", [pd.Series([3.0]), pd.Series([4.0])]
+        )
         assert abs(result.iloc[0] - 5.0) < 1e-10
 
     def test_null_propagation(self, registry: ScalarFunctionRegistry) -> None:
-        result = registry.execute("hypot", [pd.Series([None]), pd.Series([4.0])])
+        result = registry.execute(
+            "hypot", [pd.Series([None]), pd.Series([4.0])]
+        )
         assert result.iloc[0] is None
 
     def test_length_mismatch(self, registry: ScalarFunctionRegistry) -> None:
         with pytest.raises(ValueError, match="same length"):
-            registry.execute("hypot", [pd.Series([1.0, 2.0]), pd.Series([3.0])])
+            registry.execute(
+                "hypot", [pd.Series([1.0, 2.0]), pd.Series([3.0])]
+            )
 
 
 class TestFmod:
     def test_basic(self, registry: ScalarFunctionRegistry) -> None:
-        result = registry.execute("fmod", [pd.Series([10.0]), pd.Series([3.0])])
+        result = registry.execute(
+            "fmod", [pd.Series([10.0]), pd.Series([3.0])]
+        )
         assert abs(result.iloc[0] - 1.0) < 1e-10
 
     def test_division_by_zero(self, registry: ScalarFunctionRegistry) -> None:
@@ -298,7 +325,9 @@ class TestFmod:
         assert result.iloc[0] is None
 
     def test_null_propagation(self, registry: ScalarFunctionRegistry) -> None:
-        result = registry.execute("fmod", [pd.Series([None]), pd.Series([3.0])])
+        result = registry.execute(
+            "fmod", [pd.Series([None]), pd.Series([3.0])]
+        )
         assert result.iloc[0] is None
 
 
@@ -312,7 +341,9 @@ class TestLog2:
         result = registry.execute("log2", [pd.Series([8.0])])
         assert abs(result.iloc[0] - 3.0) < 1e-10
 
-    def test_log2_zero_returns_null(self, registry: ScalarFunctionRegistry) -> None:
+    def test_log2_zero_returns_null(
+        self, registry: ScalarFunctionRegistry
+    ) -> None:
         result = registry.execute("log2", [pd.Series([0.0])])
         assert result.iloc[0] is None
 
@@ -344,15 +375,21 @@ class TestBitwise:
         assert result.iloc[0] == -1
 
     def test_bit_shift_left(self, registry: ScalarFunctionRegistry) -> None:
-        result = registry.execute("bitShiftLeft", [pd.Series([1]), pd.Series([3])])
+        result = registry.execute(
+            "bitShiftLeft", [pd.Series([1]), pd.Series([3])]
+        )
         assert result.iloc[0] == 8
 
     def test_bit_shift_right(self, registry: ScalarFunctionRegistry) -> None:
-        result = registry.execute("bitShiftRight", [pd.Series([16]), pd.Series([2])])
+        result = registry.execute(
+            "bitShiftRight", [pd.Series([16]), pd.Series([2])]
+        )
         assert result.iloc[0] == 4
 
     def test_null_propagation(self, registry: ScalarFunctionRegistry) -> None:
-        result = registry.execute("bitAnd", [pd.Series([None]), pd.Series([10])])
+        result = registry.execute(
+            "bitAnd", [pd.Series([None]), pd.Series([10])]
+        )
         assert result.iloc[0] is None
 
 
@@ -396,7 +433,9 @@ class TestVectorized:
         assert result.iloc[2] == 3.0
         assert result.iloc[3] is None
 
-    def test_head_multiple_rows(self, registry: ScalarFunctionRegistry) -> None:
+    def test_head_multiple_rows(
+        self, registry: ScalarFunctionRegistry
+    ) -> None:
         result = registry.execute("head", [pd.Series([[1, 2], [3, 4], None])])
         assert result.iloc[0] == 1
         assert result.iloc[1] == 3

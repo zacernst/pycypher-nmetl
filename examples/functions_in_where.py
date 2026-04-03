@@ -10,15 +10,15 @@ original entity variables are available.
 from __future__ import annotations
 
 import pandas as pd
-from pycypher.relational_models import (
+from pycypher import (
     ID_COLUMN,
     Context,
     EntityMapping,
     EntityTable,
     RelationshipMapping,
+    Star,
 )
 from pycypher.scalar_functions import ScalarFunctionRegistry
-from pycypher.star import Star
 
 
 def main() -> None:

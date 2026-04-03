@@ -23,7 +23,6 @@ dependencies = [
     "pycypher",
     "shared",
     "fastopendata",
-    "httpx>=0.28.1",
 ]
 
 [[project.authors]]
@@ -106,6 +105,37 @@ ignore = [
     "D213",    # multi-line-summary-second-line — conflicts with D212
 ]
 
+[tool.ruff.lint.per-file-ignores]
+# Tests: relax docstrings, type annotations, magic values, line length, etc.
+"tests/**/*.py" = [
+    "ANN",      # type annotations not required in tests
+    "D",        # docstrings not required in tests
+    "PLR2004",  # magic value comparisons are normal in tests
+    "SLF001",   # accessing private members is normal in tests
+    "INP001",   # implicit namespace packages (test directories)
+    "PLC0415",  # imports inside functions are common in tests
+    "ARG002",   # unused method arguments (fixtures, parametrize)
+    "E712",     # true-false comparison (pandas idx filtering in tests)
+    "T201",     # print statements ok in tests
+    "ERA001",   # commented-out code ok in tests
+    "B905",     # zip-without-explicit-strict ok in tests
+    "FBT003",   # boolean positional values ok in tests
+    "PT011",    # pytest-raises-too-broad ok in tests
+    "B017",     # assert-raises-exception ok in tests
+    "RUF002",   # ambiguous unicode ok in test docstrings
+    "RUF001",   # ambiguous unicode ok in test strings
+    "E501",     # line length relaxed in tests (long assertions)
+]
+# Standalone scripts, demos, examples: relax annotations and docstrings
+"scripts/**/*.py" = ["ANN", "D", "INP001", "T201"]
+"examples/**/*.py" = ["ANN", "D", "INP001", "T201"]
+"demo_*.py" = ["ANN", "D", "INP001", "T201"]
+# fastopendata tests
+"packages/fastopendata/tests/**/*.py" = [
+    "ANN", "D", "PLR2004", "SLF001", "INP001", "PLC0415",
+    "ARG002", "E712", "T201", "ERA001", "B905", "E501",
+]
+
 [tool.coverage.run]
 source = [
     "packages/pycypher/src/pycypher",
@@ -136,6 +166,7 @@ addopts = [
     "--tb=short",
 ]
 testpaths = ["tests"]
+pythonpath = ["tests"]
 markers = [
     "slow: Marks tests as slow (deselect with '-m \"not slow\"')",
     "integration: Integration tests (deselect with '-m \"not integration\"')",
@@ -149,6 +180,7 @@ markers = [
     "performance_comparison: Performance comparison benchmarks",
     "performance_target: Tests with specific performance targets",
     "security: Security-focused tests",
+    "timeout: Override default test timeout (e.g. @pytest.mark.timeout(60))",
 ]
 timeout = 30
 # Performance optimizations

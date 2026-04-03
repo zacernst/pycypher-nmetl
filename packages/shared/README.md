@@ -8,11 +8,8 @@ The `shared` package provides cross-cutting infrastructure used by `pycypher` an
 
 ## Installation
 
-```bash
-pip install shared
-```
-
-Installed automatically as a dependency of `pycypher`.
+Installed automatically as a workspace dependency when you run ``uv sync``
+from the monorepo root. See the [root README](../../README.md) for setup instructions.
 
 ## Modules
 

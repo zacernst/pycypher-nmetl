@@ -55,7 +55,8 @@ class TestCurrentRandSecurityVulnerability:
         insecure_usage_lines = [
             line
             for line in lines
-            if "random.random()" in line and "secure_random.random()" not in line
+            if "random.random()" in line
+            and "secure_random.random()" not in line
         ]
         assert len(insecure_usage_lines) == 0, (
             f"rand() function should not use insecure random.random(). Found: {insecure_usage_lines}"
@@ -86,8 +87,12 @@ class TestCurrentRandSecurityVulnerability:
         assert values1 != values2, (
             "rand() with cryptographically secure implementation should produce different sequences even with same seed"
         )
-        assert len(set(values1)) > 1, "Should produce different values within sequence"
-        assert len(set(values2)) > 1, "Should produce different values within sequence"
+        assert len(set(values1)) > 1, (
+            "Should produce different values within sequence"
+        )
+        assert len(set(values2)) > 1, (
+            "Should produce different values within sequence"
+        )
 
     def test_current_rand_implementation_is_not_cryptographically_secure(self):
         """Test that current implementation fails cryptographic randomness requirements."""
@@ -133,7 +138,10 @@ class TestCurrentRandSecurityVulnerability:
                 violations_found.append(f"Line {i}: {line.strip()}")
 
             # Check for random.random() that's NOT part of secure_random.random()
-            if "random.random()" in line and "secure_random.random()" not in line:
+            if (
+                "random.random()" in line
+                and "secure_random.random()" not in line
+            ):
                 violations_found.append(f"Line {i}: {line.strip()}")
 
         assert len(violations_found) == 0, (
@@ -229,7 +237,9 @@ class TestFixedRandSecurityImplementation:
         assert 0.4 < mean < 0.6, f"Mean should be ~0.5, got {mean}"
 
         # Should have good spread across the range
-        assert values.std() > 0.2, "Standard deviation should indicate good spread"
+        assert values.std() > 0.2, (
+            "Standard deviation should indicate good spread"
+        )
 
     def test_no_s311_security_violations_after_fix(self):
         """Test that security scanners no longer flag S311 violations in rand()."""
@@ -265,12 +275,18 @@ class TestFixedRandSecurityImplementation:
         registry = ScalarFunctionRegistry.get_instance()
 
         # Should still be registered
-        assert "rand" in registry._functions, "rand() should still be registered"
+        assert "rand" in registry._functions, (
+            "rand() should still be registered"
+        )
 
         # Should have correct metadata
         func_info = registry._functions["rand"]
-        assert func_info.min_args == 0, "rand() should require 0 minimum arguments"
-        assert func_info.max_args == 0, "rand() should require 0 maximum arguments"
+        assert func_info.min_args == 0, (
+            "rand() should require 0 minimum arguments"
+        )
+        assert func_info.max_args == 0, (
+            "rand() should require 0 maximum arguments"
+        )
         assert "random float" in func_info.description.lower(), (
             "Description should mention random float"
         )

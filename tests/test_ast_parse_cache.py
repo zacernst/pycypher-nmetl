@@ -20,6 +20,7 @@ from unittest.mock import patch
 
 import pytest
 from pycypher.ast_models import ASTConverter
+from _perf_helpers import perf_threshold
 
 # ---------------------------------------------------------------------------
 # Category 1 — Cache identity: same string returns the same object
@@ -147,7 +148,7 @@ class TestASTCachePerformance:
         "ORDER BY a.name LIMIT 50"
     )
     REPS = 20
-    THRESHOLD_SECONDS = 0.50
+    THRESHOLD_SECONDS = perf_threshold(0.50)
 
     def test_repeated_parse_is_fast(self) -> None:
         """20 calls with the same query string must finish in under 0.5s."""

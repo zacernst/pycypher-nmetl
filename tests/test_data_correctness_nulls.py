@@ -201,7 +201,9 @@ class TestNullAggregations:
 
         assert len(result) == 1
         assert result["total_rows"].iloc[0] == 5  # count(*) counts all rows
-        assert result["non_null_ages"].iloc[0] == 4  # count(p.age) ignores nulls
+        assert (
+            result["non_null_ages"].iloc[0] == 4
+        )  # count(p.age) ignores nulls
 
     def test_min_max_with_nulls(self, null_test_context):
         """min/max should ignore nulls."""

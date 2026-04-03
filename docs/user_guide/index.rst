@@ -7,12 +7,14 @@ Comprehensive guides for using PyCypher features.
    :maxdepth: 2
    :caption: User Guides:
 
+   data_model
    variables
    ast_nodes
    query_processing
    error_handling
    configuration
    performance_tuning
+   constants_reference
 
 Overview
 --------
@@ -20,6 +22,9 @@ Overview
 The user guide provides in-depth reference material for PyCypher's core
 abstractions:
 
+* :doc:`data_model` — Why PyCypher needs ID columns, how to use your existing
+  column names, real-world data loading patterns, and troubleshooting
+  common data issues.
 * :doc:`variables` — How the ``Variable`` class represents named references
   throughout the AST and execution engine.
 * :doc:`ast_nodes` — Complete catalogue of all AST node types with field
@@ -35,3 +40,5 @@ abstractions:
   execution: timeouts, memory budgets, cross-join limits, result caching,
   parse caching, query structure best practices, and a production deployment
   checklist.
+* :doc:`constants_reference` — Complete reference for all configurable constants
+  and internal magic values, with rationale for each default.

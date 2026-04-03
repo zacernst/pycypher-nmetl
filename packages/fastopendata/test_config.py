@@ -108,7 +108,9 @@ def main():
         test_utility_methods()
 
         print("\n" + "=" * 60)
-        print("✅ All tests passed! Configuration system is working correctly.")
+        print(
+            "✅ All tests passed! Configuration system is working correctly."
+        )
         print("=" * 60)
 
     except Exception as e:

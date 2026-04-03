@@ -118,7 +118,9 @@ class TestToString:
         )
         assert result["s"].iloc[0] == "true"
 
-    def test_boolean_false_to_string(self, conversion_context: Context) -> None:
+    def test_boolean_false_to_string(
+        self, conversion_context: Context
+    ) -> None:
         result = _query(
             conversion_context,
             "MATCH (x:Item) WHERE x.name = 'Bob' RETURN toString(x.bool_val) AS s",
@@ -383,7 +385,9 @@ class TestToBooleanOrNull:
         )
         assert pd.isna(result["b"].iloc[0])
 
-    def test_null_input_returns_null(self, conversion_context: Context) -> None:
+    def test_null_input_returns_null(
+        self, conversion_context: Context
+    ) -> None:
         result = _query(
             conversion_context,
             "MATCH (x:Item) WHERE x.int_val = 100 RETURN toBooleanOrNull(x.str_bool) AS b",
@@ -402,12 +406,16 @@ class TestToStringDirect:
 
     def test_bool_dtype_fast_path(self) -> None:
         """Bool dtype Series uses the map fast path (line 85-86)."""
-        result = _call_fn("toString", pd.Series([True, False, True], dtype=bool))
+        result = _call_fn(
+            "toString", pd.Series([True, False, True], dtype=bool)
+        )
         assert list(result) == ["true", "false", "true"]
 
     def test_null_in_loop_none(self) -> None:
         """None values in the element loop produce None output."""
-        result = _call_fn("toString", pd.Series(["hello", None, "world"], dtype=object))
+        result = _call_fn(
+            "toString", pd.Series(["hello", None, "world"], dtype=object)
+        )
         assert result.iloc[0] == "hello"
         assert result.iloc[1] is None
         assert result.iloc[2] == "world"
@@ -419,13 +427,17 @@ class TestToStringDirect:
 
     def test_null_in_loop_pd_na(self) -> None:
         """pd.NA values produce None output."""
-        result = _call_fn("toString", pd.Series(["a", pd.NA, "b"], dtype=object))
+        result = _call_fn(
+            "toString", pd.Series(["a", pd.NA, "b"], dtype=object)
+        )
         assert result.iloc[1] is None
 
     def test_upcasted_int_float64_path(self) -> None:
         """Float64 series with nulls and integer-valued floats (line 64-69)."""
         # pandas upcasts [42, None, 7] to float64: [42.0, NaN, 7.0]
-        result = _call_fn("toString", pd.Series([42, None, 7], dtype="float64"))
+        result = _call_fn(
+            "toString", pd.Series([42, None, 7], dtype="float64")
+        )
         assert result.iloc[0] == "42"
         assert result.iloc[1] is None
         assert result.iloc[2] == "7"
@@ -433,7 +445,9 @@ class TestToStringDirect:
     def test_upcasted_int_object_dtype_path(self) -> None:
         """Object dtype with Python float values that are integer-valued (line 70-79)."""
         # Simulate post-null-normalisation: object dtype with Python floats
-        result = _call_fn("toString", pd.Series([30.0, 40.0, None, 35.0], dtype=object))
+        result = _call_fn(
+            "toString", pd.Series([30.0, 40.0, None, 35.0], dtype=object)
+        )
         assert result.iloc[0] == "30"
         assert result.iloc[1] == "40"
         assert result.iloc[2] is None
@@ -441,19 +455,25 @@ class TestToStringDirect:
 
     def test_object_dtype_mixed_not_upcasted(self) -> None:
         """Object dtype with mixed non-integer floats is NOT upcasted."""
-        result = _call_fn("toString", pd.Series([3.14, None, 2.5], dtype=object))
+        result = _call_fn(
+            "toString", pd.Series([3.14, None, 2.5], dtype=object)
+        )
         assert result.iloc[0] == "3.14"
         assert result.iloc[2] == "2.5"
 
     def test_no_nulls_no_upcast_detection(self) -> None:
         """Series without nulls skips upcast detection entirely."""
-        result = _call_fn("toString", pd.Series([1.0, 2.0, 3.0], dtype="float64"))
+        result = _call_fn(
+            "toString", pd.Series([1.0, 2.0, 3.0], dtype="float64")
+        )
         # No upcasting detected (no nulls), so floats render as-is
         assert result.iloc[0] == "1.0"
 
     def test_bool_in_object_series(self) -> None:
         """Boolean value in object-dtype series uses openCypher lowercase."""
-        result = _call_fn("toString", pd.Series([True, "hello", False], dtype=object))
+        result = _call_fn(
+            "toString", pd.Series([True, "hello", False], dtype=object)
+        )
         assert result.iloc[0] == "true"
         assert result.iloc[1] == "hello"
         assert result.iloc[2] == "false"
@@ -461,7 +481,8 @@ class TestToStringDirect:
     def test_all_nulls_float64(self) -> None:
         """Series of all NaN values."""
         result = _call_fn(
-            "toString", pd.Series([float("nan"), float("nan")], dtype="float64"),
+            "toString",
+            pd.Series([float("nan"), float("nan")], dtype="float64"),
         )
         assert result.iloc[0] is None
         assert result.iloc[1] is None
@@ -473,7 +494,9 @@ class TestToStringDirect:
 
     def test_object_dtype_non_numeric_not_upcasted(self) -> None:
         """Object dtype with non-numeric strings + None does not trigger upcast."""
-        result = _call_fn("toString", pd.Series(["abc", None, "def"], dtype=object))
+        result = _call_fn(
+            "toString", pd.Series(["abc", None, "def"], dtype=object)
+        )
         assert result.iloc[0] == "abc"
         assert result.iloc[1] is None
         assert result.iloc[2] == "def"
@@ -499,7 +522,9 @@ class TestToIntegerDirect:
         assert all(pd.isna(v) for v in result)
 
     def test_null_propagation(self) -> None:
-        result = _call_fn("toInteger", pd.Series([1.0, None, 3.0], dtype=object))
+        result = _call_fn(
+            "toInteger", pd.Series([1.0, None, 3.0], dtype=object)
+        )
         assert result.iloc[0] == 1
         assert pd.isna(result.iloc[1])
         assert result.iloc[2] == 3
@@ -553,7 +578,9 @@ class TestToBooleanDirect:
         assert result.iloc[1] is False or result.iloc[1] == False
 
     def test_case_insensitive(self) -> None:
-        result = _call_fn("toBoolean", pd.Series(["TRUE", "FALSE", "True", "False"]))
+        result = _call_fn(
+            "toBoolean", pd.Series(["TRUE", "FALSE", "True", "False"])
+        )
         assert result.iloc[0] == True
         assert result.iloc[1] == False
         assert result.iloc[2] == True
@@ -570,7 +597,9 @@ class TestToBooleanDirect:
         assert all(pd.isna(v) for v in result)
 
     def test_null_preserved(self) -> None:
-        result = _call_fn("toBoolean", pd.Series(["true", None, "false"], dtype=object))
+        result = _call_fn(
+            "toBoolean", pd.Series(["true", None, "false"], dtype=object)
+        )
         assert pd.isna(result.iloc[1])
 
 
@@ -586,7 +615,8 @@ class TestToStringOrNullDirect:
 
     def test_none_returns_none(self) -> None:
         result = _call_fn(
-            "toStringOrNull", pd.Series([None, "hello", None], dtype=object),
+            "toStringOrNull",
+            pd.Series([None, "hello", None], dtype=object),
         )
         assert result.iloc[0] is None
         assert result.iloc[1] == "hello"
@@ -598,7 +628,9 @@ class TestToStringOrNullDirect:
         assert result.iloc[1] == "1.0"
 
     def test_pd_na_returns_none(self) -> None:
-        result = _call_fn("toStringOrNull", pd.Series(["x", pd.NA, "y"], dtype=object))
+        result = _call_fn(
+            "toStringOrNull", pd.Series(["x", pd.NA, "y"], dtype=object)
+        )
         assert result.iloc[0] == "x"
         assert result.iloc[1] is None
         assert result.iloc[2] == "y"
@@ -619,7 +651,8 @@ class TestToBooleanOrNullDirect:
     def test_all_null_series(self) -> None:
         """All-null series returns all None (line 294)."""
         result = _call_fn(
-            "toBooleanOrNull", pd.Series([None, None, None], dtype=object),
+            "toBooleanOrNull",
+            pd.Series([None, None, None], dtype=object),
         )
         assert all(v is None or pd.isna(v) for v in result)
 
@@ -641,7 +674,8 @@ class TestToBooleanOrNullDirect:
 
     def test_case_insensitive(self) -> None:
         result = _call_fn(
-            "toBooleanOrNull", pd.Series(["TRUE", "FALSE", "True", "False"]),
+            "toBooleanOrNull",
+            pd.Series(["TRUE", "FALSE", "True", "False"]),
         )
         assert result.iloc[0] == True
         assert result.iloc[1] == False
@@ -650,7 +684,8 @@ class TestToBooleanOrNullDirect:
 
     def test_preserves_index(self) -> None:
         result = _call_fn(
-            "toBooleanOrNull", pd.Series(["true", "false"], index=[10, 20]),
+            "toBooleanOrNull",
+            pd.Series(["true", "false"], index=[10, 20]),
         )
         assert list(result.index) == [10, 20]
 
@@ -669,7 +704,9 @@ class TestToIntegerOrNullDirect:
         assert all(pd.isna(v) for v in result)
 
     def test_null_propagation(self) -> None:
-        result = _call_fn("toIntegerOrNull", pd.Series([None, "5", None], dtype=object))
+        result = _call_fn(
+            "toIntegerOrNull", pd.Series([None, "5", None], dtype=object)
+        )
         assert pd.isna(result.iloc[0])
         assert result.iloc[1] == 5
         assert pd.isna(result.iloc[2])
@@ -689,7 +726,9 @@ class TestToFloatOrNullDirect:
         assert all(pd.isna(v) for v in result)
 
     def test_null_propagation(self) -> None:
-        result = _call_fn("toFloatOrNull", pd.Series([None, "5.0", None], dtype=object))
+        result = _call_fn(
+            "toFloatOrNull", pd.Series([None, "5.0", None], dtype=object)
+        )
         assert pd.isna(result.iloc[0])
         assert result.iloc[1] == pytest.approx(5.0)
         assert pd.isna(result.iloc[2])

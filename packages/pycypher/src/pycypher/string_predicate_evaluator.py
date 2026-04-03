@@ -20,7 +20,7 @@ from shared.helpers import is_null_value
 from shared.logger import LOGGER
 
 from pycypher.exceptions import UnsupportedOperatorError, WrongCypherTypeError
-from pycypher.types import FrameSeries
+from pycypher.cypher_types import FrameSeries
 
 if TYPE_CHECKING:
     from pycypher.ast_models import Expression

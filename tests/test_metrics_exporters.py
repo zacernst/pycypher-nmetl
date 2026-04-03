@@ -280,7 +280,8 @@ class TestStatsDExporter:
         exporter.export(snapshot)
 
         all_data = [
-            call[0][0].decode("utf-8") for call in mock_sock.sendto.call_args_list
+            call[0][0].decode("utf-8")
+            for call in mock_sock.sendto.call_args_list
         ]
         assert "pycypher.health_status:0|g" in all_data
 

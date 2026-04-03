@@ -156,12 +156,15 @@ from pycypher.ingestion import ContextBuilder
 from pycypher.pipeline import Pipeline, PipelineContext, PipelineResult, Stage
 from pycypher.relational_models import (
     ID_COLUMN,
+    RELATIONSHIP_SOURCE_COLUMN,
+    RELATIONSHIP_TARGET_COLUMN,
     Context,
     EntityMapping,
     EntityTable,
     RelationshipMapping,
     RelationshipTable,
 )
+from pycypher.config import apply_preset, show_config
 from pycypher.semantic_validator import SemanticValidator, validate_query
 from pycypher.star import ResultCache, Star, get_cache_stats
 
@@ -195,6 +198,8 @@ __all__ = [
     "SecurityError",
     # Constants
     "ID_COLUMN",
+    "RELATIONSHIP_SOURCE_COLUMN",
+    "RELATIONSHIP_TARGET_COLUMN",
     # Ingestion helpers
     "ArrowIngestion",  # Deprecated v0.0.19 — use DuckDBReader; remove in v0.1.0
     "ContextBuilder",
@@ -217,6 +222,9 @@ __all__ = [
     "PipelineContext",
     "PipelineResult",
     "Stage",
+    # Configuration
+    "apply_preset",
+    "show_config",
 ]
 
 

@@ -150,6 +150,18 @@ parses Cypher queries, and returns results as pandas DataFrames.
    :undoc-members:
    :show-inheritance:
 
+Clause Executor
+~~~~~~~~~~~~~~~
+
+Clause-by-clause execution engine for the BindingFrame IR.  Handles
+clause-type dispatch (MATCH, WITH, RETURN, SET, DELETE, CREATE, etc.),
+UNWIND processing, WHERE filter application, and dead column elimination.
+
+.. automodule:: pycypher.clause_executor
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Pattern Matcher
 ~~~~~~~~~~~~~~~
 
@@ -193,6 +205,18 @@ The core execution abstraction — a BindingFrame is a named, typed DataFrame
 that tracks variable bindings through pattern matching and clause evaluation.
 
 .. automodule:: pycypher.binding_frame
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Evaluator Protocol
+~~~~~~~~~~~~~~~~~~
+
+Protocol interface for expression evaluation that breaks circular imports.
+Defines the minimal contract sub-evaluators need from the top-level
+expression evaluator.
+
+.. automodule:: pycypher.evaluator_protocol
    :members:
    :undoc-members:
    :show-inheritance:
@@ -356,6 +380,41 @@ strategy selection.
    :undoc-members:
    :show-inheritance:
 
+Query Analyzer
+~~~~~~~~~~~~~~
+
+Pre-execution query analysis, planning, and MATCH reordering.  Performs
+lazy computation graph planning, rule-based optimization, cardinality-based
+MATCH clause reordering, LIMIT pushdown, and memory budget enforcement.
+
+.. automodule:: pycypher.query_analyzer
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Cardinality Estimator
+~~~~~~~~~~~~~~~~~~~~~
+
+Column and table statistics for cardinality estimation.  Provides
+per-column NDV, null fraction, histograms, and self-correcting feedback
+via actual-vs-estimated ratios.
+
+.. automodule:: pycypher.cardinality_estimator
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Scan Operators
+~~~~~~~~~~~~~~
+
+Scan and filter operators for the BindingFrame execution path.  Handles
+entity/relationship table scanning, predicate pushdown, and dtype coercion.
+
+.. automodule:: pycypher.scan_operators
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Query Complexity
 ~~~~~~~~~~~~~~~~
 
@@ -433,6 +492,29 @@ merging, and OPTIONAL MATCH left-join semantics.
    :undoc-members:
    :show-inheritance:
 
+LeapfrogTriejoin
+~~~~~~~~~~~~~~~~
+
+Worst-case optimal multi-way join algorithm (Veldhuizen 2014).  Activated
+automatically for 3+ frame joins on a shared variable, achieving O(N^{w/2})
+complexity vs O(N^{w-1}) for iterated binary joins.
+
+.. automodule:: pycypher.leapfrog_triejoin
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Graph Index
+~~~~~~~~~~~
+
+Graph-native index structures for accelerating pattern matching: adjacency
+indexes, property value indexes, and label-partitioned indexes.
+
+.. automodule:: pycypher.graph_index
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Projection Planner
 ~~~~~~~~~~~~~~~~~~
 
@@ -473,6 +555,29 @@ Defers computation until results are needed, enabling efficient processing
 of large datasets and variable-length paths.
 
 .. automodule:: pycypher.lazy_eval
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Result Cache
+~~~~~~~~~~~~
+
+LRU query result cache with size-bounded eviction and TTL support.
+Uses ``OrderedDict`` for O(1) LRU operations, readers-writer lock for
+concurrent access, and generation-based invalidation on mutation commits.
+
+.. automodule:: pycypher.result_cache
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Timeout Handler
+~~~~~~~~~~~~~~~
+
+Timeout management for query execution.  Provides a context manager that
+arms both cooperative and hard (SIGALRM) timeouts with reliable cleanup.
+
+.. automodule:: pycypher.timeout_handler
    :members:
    :undoc-members:
    :show-inheritance:
@@ -599,9 +704,9 @@ Neo4j Sink
 ~~~~~~~~~~
 
 Write pycypher query results to a Neo4j graph database using idempotent
-``MERGE`` semantics.  Requires the ``neo4j`` optional dependency::
+``MERGE`` semantics.  Requires the ``neo4j`` driver (included in ``uv sync --group dev``)::
 
-    pip install 'pycypher[neo4j]'
+    uv pip install neo4j
 
 .. automodule:: pycypher.sinks.neo4j
    :members:
@@ -637,6 +742,33 @@ data pipelines.
    :undoc-members:
    :show-inheritance:
 
+Security & Observability
+------------------------
+
+Audit Logging
+~~~~~~~~~~~~~
+
+Opt-in structured query audit logging.  Emits one JSON record per query
+execution with query_id, timing, status, and row counts.  Activated via
+``PYCYPHER_AUDIT_LOG`` environment variable.
+
+.. automodule:: pycypher.audit
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Rate Limiter
+~~~~~~~~~~~~
+
+Thread-safe token-bucket rate limiter for resource protection in
+multi-tenant deployments.  Configured via ``PYCYPHER_RATE_LIMIT_QPS``
+and ``PYCYPHER_RATE_LIMIT_BURST``.
+
+.. automodule:: pycypher.rate_limiter
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Utilities
 ---------
 
@@ -645,7 +777,18 @@ Types
 
 Type aliases and type definitions used across the codebase.
 
-.. automodule:: pycypher.types
+.. automodule:: pycypher.cypher_types
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Query Learning — ML-Powered Optimization
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Adaptive query optimization using online learning with exponential moving
+averages.  No heavyweight ML dependencies.
+
+.. automodule:: pycypher.query_learning
    :members:
    :undoc-members:
    :show-inheritance:

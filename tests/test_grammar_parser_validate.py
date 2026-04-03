@@ -88,7 +88,10 @@ class TestValidateRegressionGuards:
         parser: GrammarParser,
     ) -> None:
         """A valid query with WHERE clause returns True."""
-        assert parser.validate("MATCH (n:Person) WHERE n.age > 30 RETURN n") is True
+        assert (
+            parser.validate("MATCH (n:Person) WHERE n.age > 30 RETURN n")
+            is True
+        )
 
     def test_invalid_cypher_missing_paren_returns_false(
         self,

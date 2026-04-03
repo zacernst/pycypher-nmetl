@@ -73,7 +73,9 @@ def _match(*paths: PatternPath) -> Match:
 def _return(*names: str) -> Return:
     """Build a RETURN clause."""
     return Return(
-        items=[ReturnItem(expression=Variable(name=n), alias=None) for n in names],
+        items=[
+            ReturnItem(expression=Variable(name=n), alias=None) for n in names
+        ],
     )
 
 
@@ -99,7 +101,8 @@ class TestGenerateUniqueNameExhaustion:
             existing.add(f"__vx_{i}")
 
         with pytest.raises(
-            SecurityError, match="Could not generate a unique variable name",
+            SecurityError,
+            match="Could not generate a unique variable name",
         ):
             manager.generate_unique_name("x", existing=existing)
 
@@ -277,7 +280,7 @@ class TestRenameVariablesCodePaths:
     """Test both branches in rename_variables (empty vs non-empty map)."""
 
     def test_empty_rename_map_takes_fast_path(self) -> None:
-        """Empty rename_map still deep-copies but applies no renames."""
+        """Empty rename_map returns the original node (structural sharing)."""
         manager = VariableManager()
         original = _query(
             _match(_path(_node("n", "Person"))),
@@ -286,8 +289,8 @@ class TestRenameVariablesCodePaths:
         result = manager.rename_variables(original, {})
         result_vars = {v.name for v in result.find_all(Variable)}
         assert "n" in result_vars
-        # Verify it's a copy, not the same object
-        assert result is not original
+        # With structural sharing, empty rename returns the same object
+        assert result is original
 
     def test_non_empty_rename_map_applies_renames(self) -> None:
         """Non-empty rename_map applies all renames."""

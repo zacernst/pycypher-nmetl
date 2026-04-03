@@ -40,6 +40,7 @@ import numpy as np
 import pandas as pd
 import pytest
 from pycypher.scalar_functions import ScalarFunctionRegistry
+from _perf_helpers import perf_threshold
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -337,35 +338,35 @@ class TestMathVectorisationPerformance:
     def test_abs_threshold(self) -> None:
         """With numpy vectorisation 30×abs(10k) must be < 0.03s."""
         elapsed = self._time("abs", _big(lo=-10.0, hi=10.0))
-        assert elapsed < 0.15, (
+        assert elapsed < perf_threshold(0.15), (
             f"30×abs(10k) took {elapsed:.3f}s (threshold 0.03s — .apply() typically 0.05s+)"
         )
 
     def test_sqrt_threshold(self) -> None:
         """With numpy vectorisation 30×sqrt(10k) must be < 0.03s."""
         elapsed = self._time("sqrt", _big())
-        assert elapsed < 0.15, (
+        assert elapsed < perf_threshold(0.15), (
             f"30×sqrt(10k) took {elapsed:.3f}s (threshold 0.03s — .apply() typically 0.06s+)"
         )
 
     def test_log_threshold(self) -> None:
         """With numpy vectorisation 30×log(10k) must be < 0.03s."""
         elapsed = self._time("log", _big())
-        assert elapsed < 0.15, (
+        assert elapsed < perf_threshold(0.15), (
             f"30×log(10k) took {elapsed:.3f}s (threshold 0.03s — .apply() typically 0.065s+)"
         )
 
     def test_exp_threshold(self) -> None:
         """With numpy vectorisation 30×exp(10k) must be < 0.03s."""
         elapsed = self._time("exp", _big(lo=-5.0, hi=5.0))
-        assert elapsed < 0.15, (
+        assert elapsed < perf_threshold(0.15), (
             f"30×exp(10k) took {elapsed:.3f}s (threshold 0.03s — .apply() typically 0.06s+)"
         )
 
     def test_log10_threshold(self) -> None:
         """With numpy vectorisation 30×log10(10k) must be < 0.03s."""
         elapsed = self._time("log10", _big())
-        assert elapsed < 0.15, (
+        assert elapsed < perf_threshold(0.15), (
             f"30×log10(10k) took {elapsed:.3f}s (threshold 0.03s — .apply() typically 0.065s+)"
         )
 
@@ -374,7 +375,7 @@ class TestMathVectorisationPerformance:
         b = _big(lo=1.0, hi=5.0)
         e = _big(lo=1.0, hi=3.0)
         elapsed = self._time("pow", b, e)
-        assert elapsed < 0.25, (
+        assert elapsed < perf_threshold(0.25), (
             f"30×pow(10k) took {elapsed:.3f}s (threshold 0.25s — zip+.apply() typically 0.13s+)"
         )
 

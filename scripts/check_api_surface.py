@@ -41,16 +41,16 @@ def load_baseline() -> set[str]:
 def save_baseline(names: set[str]) -> None:
     """Write the current API surface as the new baseline."""
     header = "# pycypher public API baseline (auto-generated)\n"
-    BASELINE_PATH.write_text(
-        header + "\n".join(sorted(names)) + "\n"
-    )
+    BASELINE_PATH.write_text(header + "\n".join(sorted(names)) + "\n")
 
 
 def main() -> int:
     if "--update-baseline" in sys.argv:
         surface = get_current_surface()
         save_baseline(surface)
-        print(f"Baseline updated: {len(surface)} names written to {BASELINE_PATH}")
+        print(
+            f"Baseline updated: {len(surface)} names written to {BASELINE_PATH}"
+        )
         return 0
 
     current = get_current_surface()
@@ -59,7 +59,9 @@ def main() -> int:
     if not baseline:
         print("No baseline found. Generating initial baseline...")
         save_baseline(current)
-        print(f"Baseline created: {len(current)} names written to {BASELINE_PATH}")
+        print(
+            f"Baseline created: {len(current)} names written to {BASELINE_PATH}"
+        )
         return 0
 
     removed = baseline - current

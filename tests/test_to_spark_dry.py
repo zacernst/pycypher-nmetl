@@ -72,7 +72,12 @@ def _make_entity_table() -> EntityTable:
 
 def _make_relationship_table() -> RelationshipTable:
     df = pd.DataFrame(
-        {"__ID__": [10], "__SOURCE__": [1], "__TARGET__": [2], "since": [2020]},
+        {
+            "__ID__": [10],
+            "__SOURCE__": [1],
+            "__TARGET__": [2],
+            "since": [2020],
+        },
     )
     return RelationshipTable(
         relationship_type="KNOWS",
@@ -221,9 +226,7 @@ class TestHelperNativeSparkPath:
         mock_spark_session = MagicMock()
 
         with patch("pyspark.sql.SparkSession") as mock_spark_class:
-            mock_spark_class.builder.appName.return_value.getOrCreate.return_value = (
-                mock_spark_session
-            )
+            mock_spark_class.builder.appName.return_value.getOrCreate.return_value = mock_spark_session
             result = table._to_spark_with_prefix(ctx, "Person", mock_spark_df)
 
         # withColumnRenamed must have been called for each column
@@ -245,9 +248,7 @@ class TestHelperNativeSparkPath:
             patch.object(EntityTable, "to_pandas") as mock_to_pandas,
             patch("pyspark.sql.SparkSession") as mock_spark_class,
         ):
-            mock_spark_class.builder.appName.return_value.getOrCreate.return_value = (
-                MagicMock()
-            )
+            mock_spark_class.builder.appName.return_value.getOrCreate.return_value = MagicMock()
             table._to_spark_with_prefix(ctx, "Person", mock_spark_df)
 
         mock_to_pandas.assert_not_called()
@@ -282,9 +283,7 @@ class TestHelperPandasFallbackPath:
             ) as mock_to_pandas,
             patch("pyspark.sql.SparkSession") as mock_spark_class,
         ):
-            mock_spark_class.builder.appName.return_value.getOrCreate.return_value = (
-                mock_spark_session
-            )
+            mock_spark_class.builder.appName.return_value.getOrCreate.return_value = mock_spark_session
             result = table._to_spark_with_prefix(ctx, "Person", None)
 
         mock_to_pandas.assert_called_once()
@@ -307,9 +306,7 @@ class TestHelperPandasFallbackPath:
             ),
             patch("pyspark.sql.SparkSession") as mock_spark_class,
         ):
-            mock_spark_class.builder.appName.return_value.getOrCreate.return_value = (
-                mock_spark_session
-            )
+            mock_spark_class.builder.appName.return_value.getOrCreate.return_value = mock_spark_session
             result = table._to_spark_with_prefix(ctx, "Person", None)
 
         assert result is expected
@@ -378,9 +375,7 @@ class TestColumnPrefixCorrectness:
         mock_spark_session.createDataFrame.side_effect = capture_create
 
         with patch("pyspark.sql.SparkSession") as mock_spark_class:
-            mock_spark_class.builder.appName.return_value.getOrCreate.return_value = (
-                mock_spark_session
-            )
+            mock_spark_class.builder.appName.return_value.getOrCreate.return_value = mock_spark_session
             table.to_spark(ctx)
 
         assert len(captured_df) == 1
@@ -408,9 +403,7 @@ class TestColumnPrefixCorrectness:
         mock_spark_session.createDataFrame.side_effect = capture_create
 
         with patch("pyspark.sql.SparkSession") as mock_spark_class:
-            mock_spark_class.builder.appName.return_value.getOrCreate.return_value = (
-                mock_spark_session
-            )
+            mock_spark_class.builder.appName.return_value.getOrCreate.return_value = mock_spark_session
             table.to_spark(ctx)
 
         assert len(captured_df) == 1

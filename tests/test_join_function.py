@@ -30,7 +30,9 @@ class TestJoinFunctionExists:
         registry: ScalarFunctionRegistry,
     ) -> None:
         """Join function must be registered in the scalar function registry."""
-        assert "join" in registry._functions, "join function not found in registry"
+        assert "join" in registry._functions, (
+            "join function not found in registry"
+        )
 
     def test_join_function_callable(
         self,

@@ -296,8 +296,12 @@ class TestMemoryMeasurementFix:
 
         # Copy should be similar size to original (full data)
         # View should be smaller (less data)
-        assert copy_size >= original_size * 0.8  # Copy should be substantial size
-        assert view_size <= original_size  # View should not be larger than original
+        assert (
+            copy_size >= original_size * 0.8
+        )  # Copy should be substantial size
+        assert (
+            view_size <= original_size
+        )  # View should not be larger than original
 
         print(
             f"✓ Object size differences: copy={copy_size / 1024:.1f}KB, view={view_size / 1024:.1f}KB",
@@ -331,7 +335,9 @@ class TestMemoryMeasurementFix:
         for trial in range(3):
             start_time = time.perf_counter()
             for i in range(20):
-                view = large_df[list(large_df.columns[:10])]  # View operation (no copy)
+                view = large_df[
+                    list(large_df.columns[:10])
+                ]  # View operation (no copy)
                 # Do same read work with the view
                 _ = len(view)
             end_time = time.perf_counter()

@@ -37,12 +37,13 @@ class TestComplexStructures:
 
         # Accessing the first statement's return clause item
         stmt = ast_dict["statements"][0][0]  # QueryStatement
-        # Grammar transformer now puts return clause in clauses array, not "return" key
-        return_clause = None
-        for clause in stmt["clauses"]:
-            if clause.get("type") == "ReturnStatement":
-                return_clause = clause
-                break
+        # query_statement separates return from read clauses
+        return_clause = stmt.get("return")
+        if return_clause is None:
+            for clause in stmt.get("clauses", []):
+                if isinstance(clause, dict) and clause.get("type") == "ReturnStatement":
+                    return_clause = clause
+                    break
         ret_item = return_clause["body"]["items"][0]
         expr_dict = ret_item["expression"]
 
@@ -74,9 +75,10 @@ class TestComplexStructures:
         ast_dict = parser.transformer.transform(tree)
 
         stmt = ast_dict["statements"][0][0]
-        # Grammar transformer now puts return clause in clauses array, not "return" key
-        # For simple RETURN query, it's the first (and only) clause
-        return_clause = stmt["clauses"][0]
+        # query_statement separates return from read clauses
+        return_clause = stmt.get("return")
+        if return_clause is None:
+            return_clause = stmt["clauses"][0]
         ret_item = return_clause["body"]["items"][0]
         expr_dict = ret_item["expression"]
 

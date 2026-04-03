@@ -372,11 +372,15 @@ class TestPipelineConfig:
         assert cfg.version == "1.1"
 
     def test_invalid_version_format_rejected(self) -> None:
-        with pytest.raises(ValidationError, match="Invalid config version format"):
+        with pytest.raises(
+            ValidationError, match="Invalid config version format"
+        ):
             PipelineConfig(version="latest")
 
     def test_invalid_version_format_no_dot(self) -> None:
-        with pytest.raises(ValidationError, match="Invalid config version format"):
+        with pytest.raises(
+            ValidationError, match="Invalid config version format"
+        ):
             PipelineConfig(version="1")
 
     def test_version_constants_consistent(self) -> None:
@@ -513,19 +517,25 @@ class TestLoadPipelineConfigFullPipeline:
 
     def test_relationship_cols(self) -> None:
         cfg = _load("full_pipeline.yaml")
-        emp = next(r for r in cfg.sources.relationships if r.id == "employment")
+        emp = next(
+            r for r in cfg.sources.relationships if r.id == "employment"
+        )
         assert emp.source_col == "person_id"
         assert emp.target_col == "company_id"
         assert emp.id_col == "employment_id"
 
     def test_function_module_form(self) -> None:
         cfg = _load("full_pipeline.yaml")
-        f = next(fn for fn in cfg.functions if fn.module == "mypackage.string_utils")
+        f = next(
+            fn for fn in cfg.functions if fn.module == "mypackage.string_utils"
+        )
         assert f.names == ["normalize_name", "parse_phone_number"]
 
     def test_function_wildcard_form(self) -> None:
         cfg = _load("full_pipeline.yaml")
-        f = next(fn for fn in cfg.functions if fn.module == "mypackage.math_utils")
+        f = next(
+            fn for fn in cfg.functions if fn.module == "mypackage.math_utils"
+        )
         assert f.names == "*"
 
     def test_function_callable_form(self) -> None:
@@ -656,7 +666,9 @@ class TestLoadPipelineConfigWithSchemaHints:
 class TestLoadPipelineConfigWithOnError:
     def test_fail_policy(self) -> None:
         cfg = _load("with_on_error.yaml")
-        required = next(e for e in cfg.sources.entities if e.id == "required_persons")
+        required = next(
+            e for e in cfg.sources.entities if e.id == "required_persons"
+        )
         assert required.on_error is ErrorHandlingPolicy.FAIL
 
     def test_skip_policy(self) -> None:
@@ -668,7 +680,9 @@ class TestLoadPipelineConfigWithOnError:
 
     def test_warn_policy(self) -> None:
         cfg = _load("with_on_error.yaml")
-        advisory = next(e for e in cfg.sources.entities if e.id == "advisory_data")
+        advisory = next(
+            e for e in cfg.sources.entities if e.id == "advisory_data"
+        )
         assert advisory.on_error is ErrorHandlingPolicy.WARN
 
     def test_relationship_warn_policy(self) -> None:
@@ -780,7 +794,9 @@ class TestLoadPipelineConfigEdgeCases:
         cfg = load_pipeline_config(f)
         assert cfg.version == "1.0"
 
-    def test_unsupported_version_rejected_from_file(self, tmp_path: Path) -> None:
+    def test_unsupported_version_rejected_from_file(
+        self, tmp_path: Path
+    ) -> None:
         f = tmp_path / "v2.yaml"
         f.write_text('version: "2.0"\n', encoding="utf-8")
         with pytest.raises(ValidationError, match="newer than this version"):
@@ -1479,7 +1495,9 @@ sources:
         with (
             patch(
                 "pycypher.ingestion.data_sources.data_source_from_uri",
-                side_effect=self._make_failing_factory(RuntimeError("warn me")),
+                side_effect=self._make_failing_factory(
+                    RuntimeError("warn me")
+                ),
             ),
             self._assert_log_warning("my_source"),
         ):
@@ -1765,3 +1783,81 @@ class TestGetSourceById:
         """Empty SourcesConfig always returns None."""
         empty = SourcesConfig()
         assert empty.get_source_by_id("anything") is None
+
+
+# ---------------------------------------------------------------------------
+# Runtime configuration presets (pycypher.config)
+# ---------------------------------------------------------------------------
+
+
+class TestConfigPresets:
+    """Tests for apply_preset() and show_config()."""
+
+    def test_apply_production_preset(self) -> None:
+        from pycypher import config
+
+        original_timeout = config.QUERY_TIMEOUT_S
+        try:
+            config.apply_preset("production")
+            assert config.QUERY_TIMEOUT_S == 30.0
+            assert config.MAX_CROSS_JOIN_ROWS == 100_000
+            assert config.MAX_COMPLEXITY_SCORE == 100
+            assert config.RATE_LIMIT_QPS == 50.0
+        finally:
+            config.QUERY_TIMEOUT_S = original_timeout
+
+    def test_apply_development_preset(self) -> None:
+        from pycypher import config
+
+        config.apply_preset("production")  # change from defaults first
+        config.apply_preset("development")
+        assert config.QUERY_TIMEOUT_S is None
+        assert config.MAX_CROSS_JOIN_ROWS == 1_000_000
+        assert config.MAX_COMPLEXITY_SCORE is None
+        assert config.RATE_LIMIT_QPS == 0.0
+
+    def test_apply_high_performance_preset(self) -> None:
+        from pycypher import config
+
+        original_timeout = config.QUERY_TIMEOUT_S
+        try:
+            config.apply_preset("high_performance")
+            assert config.QUERY_TIMEOUT_S == 120.0
+            assert config.MAX_CROSS_JOIN_ROWS == 10_000_000
+            assert config.MAX_COMPLEXITY_SCORE is None
+            assert config.RESULT_CACHE_MAX_MB == 500
+        finally:
+            config.QUERY_TIMEOUT_S = original_timeout
+
+    def test_unknown_preset_raises(self) -> None:
+        from pycypher import config
+
+        with pytest.raises(ValueError, match="Unknown preset"):
+            config.apply_preset("nonexistent")
+
+    def test_show_config_returns_dict(self) -> None:
+        from pycypher import config
+
+        result = config.show_config()
+        assert isinstance(result, dict)
+        assert "QUERY_TIMEOUT_S" in result
+        assert "MAX_CROSS_JOIN_ROWS" in result
+        assert "RESULT_CACHE_MAX_MB" in result
+        assert "RATE_LIMIT_QPS" in result
+
+    def test_show_config_reflects_preset(self) -> None:
+        from pycypher import config
+
+        original_timeout = config.QUERY_TIMEOUT_S
+        try:
+            config.apply_preset("production")
+            result = config.show_config()
+            assert result["QUERY_TIMEOUT_S"] == 30.0
+        finally:
+            config.QUERY_TIMEOUT_S = original_timeout
+
+    def test_top_level_import(self) -> None:
+        from pycypher import apply_preset, show_config
+
+        assert callable(apply_preset)
+        assert callable(show_config)

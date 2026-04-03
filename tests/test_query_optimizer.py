@@ -208,7 +208,9 @@ class TestJoinReorderingRule:
         rule = JoinReorderingRule()
         result = rule.analyze(ast, context=social_star.context)
         # With same-label matches, order is already optimal
-        assert result.applied is False or result.applied is True  # Either is valid
+        assert (
+            result.applied is False or result.applied is True
+        )  # Either is valid
 
     def test_non_query_ast(self) -> None:
         from pycypher.ast_models import Variable
@@ -435,7 +437,9 @@ class TestOptimizerIntegration:
         plan = opt.optimize(ast, context=social_star.context)
 
         # join_reordering should have run with cardinality estimates
-        join_result = next(r for r in plan.results if r.rule_name == "join_reordering")
+        join_result = next(
+            r for r in plan.results if r.rule_name == "join_reordering"
+        )
         assert join_result is not None
 
 
@@ -448,13 +452,13 @@ class TestCardinalityFeedbackStore:
     """Tests for the cardinality feedback loop."""
 
     def test_no_history_returns_unity(self) -> None:
-        from pycypher.query_planner import CardinalityFeedbackStore
+        from pycypher.cardinality_estimator import CardinalityFeedbackStore
 
         store = CardinalityFeedbackStore()
         assert store.correction_factor("Person") == 1.0
 
     def test_record_and_correct(self) -> None:
-        from pycypher.query_planner import CardinalityFeedbackStore
+        from pycypher.cardinality_estimator import CardinalityFeedbackStore
 
         store = CardinalityFeedbackStore()
         # Estimator consistently overestimates by 2x
@@ -464,7 +468,7 @@ class TestCardinalityFeedbackStore:
         assert 0.45 <= factor <= 0.55  # should be ~0.5
 
     def test_underestimate_correction(self) -> None:
-        from pycypher.query_planner import CardinalityFeedbackStore
+        from pycypher.cardinality_estimator import CardinalityFeedbackStore
 
         store = CardinalityFeedbackStore()
         # Estimator consistently underestimates by 3x
@@ -474,7 +478,7 @@ class TestCardinalityFeedbackStore:
         assert 2.5 <= factor <= 3.5  # should be ~3.0
 
     def test_correction_clamped(self) -> None:
-        from pycypher.query_planner import CardinalityFeedbackStore
+        from pycypher.cardinality_estimator import CardinalityFeedbackStore
 
         store = CardinalityFeedbackStore()
         # Extreme underestimate — correction should be clamped to 100
@@ -482,7 +486,7 @@ class TestCardinalityFeedbackStore:
         assert store.correction_factor("Huge") <= 100.0
 
     def test_zero_estimates_skipped(self) -> None:
-        from pycypher.query_planner import CardinalityFeedbackStore
+        from pycypher.cardinality_estimator import CardinalityFeedbackStore
 
         store = CardinalityFeedbackStore()
         store.record("Empty", estimated=0, actual=0)
@@ -490,7 +494,7 @@ class TestCardinalityFeedbackStore:
         assert store.entity_types_tracked == []
 
     def test_clear(self) -> None:
-        from pycypher.query_planner import CardinalityFeedbackStore
+        from pycypher.cardinality_estimator import CardinalityFeedbackStore
 
         store = CardinalityFeedbackStore()
         store.record("Person", estimated=100, actual=50)
@@ -500,7 +504,10 @@ class TestCardinalityFeedbackStore:
         assert store.correction_factor("Person") == 1.0
 
     def test_rolling_window(self) -> None:
-        from pycypher.query_planner import CardinalityFeedbackStore, _MAX_HISTORY
+        from pycypher.cardinality_estimator import (
+            _MAX_HISTORY,
+            CardinalityFeedbackStore,
+        )
 
         store = CardinalityFeedbackStore()
         # Fill beyond window with overestimates

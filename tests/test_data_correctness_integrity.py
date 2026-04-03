@@ -360,7 +360,9 @@ class TestNullPropagationIntegrity:
         )
 
         # coalesce should eliminate nulls in manager_id
-        assert result["scaled_manager"].isna().sum() == 0  # No nulls after coalesce
+        assert (
+            result["scaled_manager"].isna().sum() == 0
+        )  # No nulls after coalesce
 
         # String operations should preserve non-null values
         assert result["upper_name"].isna().sum() == 0  # Names are all non-null

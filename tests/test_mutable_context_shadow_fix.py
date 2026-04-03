@@ -57,7 +57,9 @@ class TestShadowWriteSystemFixed:
 
         # CRITICAL TEST: The original source_obj should be UNCHANGED
         # because mutations should only affect shadow, then be committed
-        current_source = star_with_data.context.entity_mapping["Person"].source_obj
+        current_source = star_with_data.context.entity_mapping[
+            "Person"
+        ].source_obj
 
         # The source_obj reference should be the same object (no direct mutation)
         # Note: After commit_query(), the source_obj content will change, but
@@ -266,7 +268,9 @@ class TestShadowWriteSystemFixed:
             """)
 
         # Source should be unchanged due to rollback
-        current_source = star_with_data.context.entity_mapping["Person"].source_obj
+        current_source = star_with_data.context.entity_mapping[
+            "Person"
+        ].source_obj
 
         # The error should have triggered rollback, leaving source unchanged
         # Note: This test may need adjustment based on actual error handling behavior

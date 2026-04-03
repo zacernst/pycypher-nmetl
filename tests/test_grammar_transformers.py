@@ -1,23 +1,24 @@
 """Unit tests for pycypher.grammar_transformers.
 
-Tests the four specialized AST transformer classes (LiteralTransformer,
-ExpressionTransformer, PatternTransformer, StatementTransformer) and the
-CompositeTransformer delegation mechanism.
+Tests the five specialized AST transformer classes (LiteralTransformer,
+ExpressionTransformer, FunctionTransformer, PatternTransformer,
+StatementTransformer) and the CompositeTransformer delegation mechanism.
 """
 
 from __future__ import annotations
 
 import math
+import threading
 
 import pytest
 from pycypher.grammar_transformers import (
     CompositeTransformer,
     ExpressionTransformer,
+    FunctionTransformer,
     LiteralTransformer,
     PatternTransformer,
     StatementTransformer,
 )
-
 
 # ---------------------------------------------------------------------------
 # LiteralTransformer
@@ -203,16 +204,10 @@ class TestExpressionTransformer:
     def test_unary_op(self) -> None:
         assert self.t.unary_op(["-"]) == "-"
 
-    def test_unary_op_empty(self) -> None:
-        assert self.t.unary_op([]) == "-"
-
     def test_property_lookup(self) -> None:
         result = self.t.property_lookup(["name"])
         assert result == {"type": "PropertyLookup", "property": "name"}
 
-    def test_property_lookup_empty(self) -> None:
-        result = self.t.property_lookup([])
-        assert result == {"type": "PropertyLookup", "property": None}
 
 
 # ---------------------------------------------------------------------------
@@ -259,15 +254,30 @@ class TestPatternTransformer:
         result = self.t.property_key_value(["name"])
         assert result == {"key": "name", "value": None}
 
-    def test_property_key_value_empty(self) -> None:
-        result = self.t.property_key_value([])
-        assert result == {"key": "", "value": None}
-
     def test_property_name(self) -> None:
         assert self.t.property_name(["age"]) == "age"
 
-    def test_property_name_empty(self) -> None:
-        assert self.t.property_name([]) == ""
+
+
+# ---------------------------------------------------------------------------
+# FunctionTransformer
+# ---------------------------------------------------------------------------
+
+
+class TestFunctionTransformer:
+    """Tests for FunctionTransformer methods (inherited from FunctionRulesMixin)."""
+
+    def setup_method(self) -> None:
+        self.t = FunctionTransformer()
+
+    def test_function_invocation(self) -> None:
+        result = self.t.function_invocation(["toUpper", ["arg1"]])
+        assert result["type"] == "FunctionInvocation"
+
+    def test_case_expression_searched(self) -> None:
+        case_body = {"type": "SearchedCase", "whens": [], "else_expr": None}
+        result = self.t.case_expression([case_body])
+        assert isinstance(result, dict)
 
 
 # ---------------------------------------------------------------------------
@@ -347,7 +357,9 @@ class TestStatementTransformer:
     def test_query_statement(self) -> None:
         clauses = [{"type": "MatchClause"}, {"type": "ReturnStatement"}]
         result = self.t.query_statement(clauses)
-        assert result == {"type": "QueryStatement", "clauses": clauses}
+        assert result["type"] == "QueryStatement"
+        assert result["clauses"] == [{"type": "MatchClause"}]
+        assert result["return"] == {"type": "ReturnStatement"}
 
     # -- statement --
 
@@ -366,7 +378,7 @@ class TestStatementTransformer:
         assert result["type"] == "MatchClause"
         assert result["pattern"] == pattern
         assert result["optional"] is False
-        assert "where" not in result
+        assert result["where"] is None
 
     def test_match_clause_with_where(self) -> None:
         pattern = {"type": "Pattern", "nodes": []}
@@ -377,8 +389,7 @@ class TestStatementTransformer:
 
     def test_match_clause_optional(self) -> None:
         pattern = {"type": "Pattern", "nodes": []}
-        optional = {"type": "OptionalKeyword"}
-        result = self.t.match_clause([optional, pattern])
+        result = self.t.match_clause(["OPTIONAL", pattern])
         assert result["optional"] is True
 
     def test_match_clause_no_pattern(self) -> None:
@@ -416,12 +427,6 @@ class TestStatementTransformer:
         assert result["order"] == order
         assert result["skip"] == skip
         assert result["limit"] == limit
-
-    # -- optional_keyword --
-
-    def test_optional_keyword(self) -> None:
-        result = self.t.optional_keyword([])
-        assert result == {"type": "OptionalKeyword"}
 
     # -- where_clause --
 
@@ -494,28 +499,13 @@ class TestCompositeTransformer:
         result = self.t.where_clause(["x > 1"])
         assert result["type"] == "WhereClause"
 
+    def test_delegates_to_function_transformer(self) -> None:
+        result = self.t.function_invocation(["toUpper", ["arg1"]])
+        assert result["type"] == "FunctionInvocation"
+
     def test_raises_attribute_error_for_unknown_method(self) -> None:
         with pytest.raises(AttributeError, match="No transformer handles"):
             self.t.nonexistent_method([])
-
-    def test_fallback_transformer(self) -> None:
-
-        class FakeTransformer:
-            def custom_rule(self, args: list) -> str:
-                return "fallback_result"
-
-        self.t.set_fallback_transformer(FakeTransformer())
-        assert self.t.custom_rule([]) == "fallback_result"
-
-    def test_fallback_not_used_when_specialized_handles(self) -> None:
-
-        class FakeTransformer:
-            def true(self, args: list) -> str:
-                return "wrong"
-
-        self.t.set_fallback_transformer(FakeTransformer())
-        # Specialized LiteralTransformer should take priority
-        assert self.t.true([]) is True
 
     def test_ambig_single_arg(self) -> None:
         assert self.t._ambig(["only"]) == "only"
@@ -523,7 +513,84 @@ class TestCompositeTransformer:
     def test_ambig_multiple_args(self) -> None:
         assert self.t._ambig(["first", "second"]) == "first"
 
-    def test_no_fallback_raises_attribute_error(self) -> None:
-        assert self.t._fallback_transformer is None
+    def test_unknown_method_raises_attribute_error(self) -> None:
         with pytest.raises(AttributeError):
             self.t.totally_unknown_method([])
+
+    def test_method_caching_avoids_repeated_getattr(self) -> None:
+        """Resolved methods should be cached on the instance dict."""
+        # First call goes through __getattr__
+        result1 = self.t.true([])
+        assert result1 is True
+        # Method should now be in __dict__, bypassing __getattr__
+        assert "true" in self.t.__dict__
+        # Second call uses cached version
+        result2 = self.t.true([])
+        assert result2 is True
+
+
+# ---------------------------------------------------------------------------
+# Thread-safety tests
+# ---------------------------------------------------------------------------
+
+
+class TestCompositeTransformerThreadSafety:
+    """Verify CompositeTransformer works correctly under concurrent access.
+
+    These tests reproduce the conditions that caused Rich logging
+    OSError (bad file descriptor) during multi-threaded AST cache warmup.
+    """
+
+    def test_concurrent_method_resolution(self) -> None:
+        """Multiple threads resolving methods concurrently must not raise."""
+        t = CompositeTransformer()
+        errors: list[Exception] = []
+        barrier = threading.Barrier(8)
+
+        def worker() -> None:
+            try:
+                barrier.wait(timeout=5)
+                # Exercise multiple delegate lookups concurrently
+                assert t.true([]) is True
+                assert t.false([]) is False
+                assert t.add_op(["+"]) == "+"
+                assert t.property_name(["x"]) == "x"
+                result = t.where_clause(["cond"])
+                assert result["type"] == "WhereClause"
+            except Exception as exc:
+                errors.append(exc)
+
+        threads = [threading.Thread(target=worker) for _ in range(8)]
+        for th in threads:
+            th.start()
+        for th in threads:
+            th.join(timeout=10)
+
+        assert not errors, f"Thread errors: {errors}"
+
+    def test_no_logging_in_getattr(self) -> None:
+        """__getattr__ must not call LOGGER to avoid Rich OSError in threads."""
+        import logging
+
+        t = CompositeTransformer()
+        log_calls: list[str] = []
+
+        class LogCapture(logging.Handler):
+            def emit(self, record: logging.LogRecord) -> None:
+                if "CompositeTransformer" in record.getMessage():
+                    log_calls.append(record.getMessage())
+
+        from shared.logger import LOGGER
+
+        handler = LogCapture()
+        LOGGER.addHandler(handler)
+        LOGGER.setLevel(logging.DEBUG)
+        try:
+            t.true([])
+            t.property_name(["x"])
+        finally:
+            LOGGER.removeHandler(handler)
+
+        assert len(log_calls) == 0, (
+            f"__getattr__ should not log, but got: {log_calls}"
+        )

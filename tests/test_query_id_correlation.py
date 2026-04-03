@@ -124,7 +124,9 @@ class TestQueryIdConsistency:
         with caplog.at_level(logging.DEBUG, logger=_LOGGER_NAME):
             simple_star.execute_query("MATCH (p:Person) RETURN p.age AS age")
         qid_2 = caplog.records[0].query_id  # type: ignore[attr-defined]
-        assert qid_1 != qid_2, "Two separate queries must have distinct query_ids"
+        assert qid_1 != qid_2, (
+            "Two separate queries must have distinct query_ids"
+        )
 
 
 class TestErrorPathLogging:
@@ -140,7 +142,9 @@ class TestErrorPathLogging:
                 simple_star.execute_query(
                     "MATCH (x:NonExistentLabel) RETURN x.foo",
                 )
-        error_records = [r for r in caplog.records if r.levelno == logging.ERROR]
+        error_records = [
+            r for r in caplog.records if r.levelno == logging.ERROR
+        ]
         assert error_records, "Expected an ERROR record on query failure"
 
     def test_error_log_has_query_id(
@@ -153,7 +157,9 @@ class TestErrorPathLogging:
                 simple_star.execute_query(
                     "MATCH (x:NonExistentLabel) RETURN x.foo",
                 )
-        error_records = [r for r in caplog.records if r.levelno == logging.ERROR]
+        error_records = [
+            r for r in caplog.records if r.levelno == logging.ERROR
+        ]
         assert error_records
         for record in error_records:
             assert hasattr(record, "query_id")
@@ -169,7 +175,9 @@ class TestErrorPathLogging:
                 simple_star.execute_query(
                     "MATCH (x:NonExistentLabel) RETURN x.foo",
                 )
-        error_records = [r for r in caplog.records if r.levelno == logging.ERROR]
+        error_records = [
+            r for r in caplog.records if r.levelno == logging.ERROR
+        ]
         assert error_records
         assert error_records[0].exc_info is not None, (
             "ERROR record should include exc_info for traceback"
@@ -185,7 +193,9 @@ class TestErrorPathLogging:
                 simple_star.execute_query(
                     "MATCH (x:NonExistentLabel) RETURN x.foo",
                 )
-        error_records = [r for r in caplog.records if r.levelno == logging.ERROR]
+        error_records = [
+            r for r in caplog.records if r.levelno == logging.ERROR
+        ]
         assert error_records
         assert "NonExistentLabel" in error_records[0].message
 

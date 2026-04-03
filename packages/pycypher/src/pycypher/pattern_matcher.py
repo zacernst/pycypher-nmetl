@@ -40,6 +40,9 @@ from pycypher.binding_frame import PATH_HOP_COLUMN_PREFIX, BindingFrame
 from pycypher.path_expander import PathExpander
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from pycypher.ast_models import Match
     from pycypher.relational_models import Context
 
 #: Synthetic variable name prefix for anonymous nodes.
@@ -116,9 +119,9 @@ class PatternMatcher:
         self,
         context: Context,
         path_expander: PathExpander,
-        coerce_join_fn: Any,
-        apply_where_fn: Any,
-        multi_way_join_fn: Any = None,
+        coerce_join_fn: Callable[..., BindingFrame],
+        apply_where_fn: Callable[..., BindingFrame],
+        multi_way_join_fn: Callable[..., BindingFrame] | None = None,
     ) -> None:
         """Initialize pattern matcher.
 
@@ -671,7 +674,7 @@ class PatternMatcher:
 
     def match_to_binding_frame(
         self,
-        match_clause: Any,
+        match_clause: Match,
         context_frame: BindingFrame | None = None,
         row_limit: int | None = None,
     ) -> BindingFrame:

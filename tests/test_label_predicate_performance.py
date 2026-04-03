@@ -24,6 +24,7 @@ import pandas as pd
 import pytest
 from pycypher.ingestion.context_builder import ContextBuilder
 from pycypher.star import Star
+from _perf_helpers import perf_threshold
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -197,7 +198,7 @@ class TestLabelPredicatePerformance:
         for _ in range(10):
             s.execute_query("MATCH (n) WHERE n:Person RETURN n.name")
         elapsed = time.perf_counter() - t0
-        assert elapsed < 0.6, (
+        assert elapsed < perf_threshold(0.6), (
             f"10 queries on 5k+5k took {elapsed * 1000:.0f}ms (expected < 600ms after vectorisation)"
         )
 
@@ -232,4 +233,6 @@ class TestLabelPredicatePerformance:
             s.execute_query("MATCH (n) WHERE n:Person RETURN n.name")
             times.append(time.perf_counter() - t0)
         avg = sum(times) / len(times)
-        assert avg < 0.050, f"Expected < 50ms per query; got {avg * 1000:.1f}ms"
+        assert avg < 0.050, (
+            f"Expected < 50ms per query; got {avg * 1000:.1f}ms"
+        )

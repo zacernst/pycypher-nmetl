@@ -130,7 +130,9 @@ class DimensionalMessageBus:
     """
 
     def __init__(self, *, max_log_size: int = 10_000) -> None:
-        self._subscribers: dict[MessageType, list[MessageHandler]] = defaultdict(list)
+        self._subscribers: dict[MessageType, list[MessageHandler]] = (
+            defaultdict(list)
+        )
         self._message_log: list[DimensionalMessage] = []
         self._pending: list[DimensionalMessage] = []
         self._lock = threading.Lock()
@@ -217,7 +219,9 @@ class DimensionalMessageBus:
             self._pending = []
         return messages
 
-    def messages_for_universe(self, universe_id: str) -> list[DimensionalMessage]:
+    def messages_for_universe(
+        self, universe_id: str
+    ) -> list[DimensionalMessage]:
         """Return all logged messages targeted at a specific universe.
 
         Parameters
@@ -298,7 +302,8 @@ class DimensionalMessageBus:
                     "actual_rows": actual_rows,
                     "estimated_rows": estimated_rows,
                     "estimation_error": (
-                        abs(actual_rows - estimated_rows) / max(1, estimated_rows)
+                        abs(actual_rows - estimated_rows)
+                        / max(1, estimated_rows)
                         if estimated_rows > 0
                         else 0.0
                     ),

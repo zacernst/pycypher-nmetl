@@ -24,6 +24,7 @@ import pytest
 from pycypher.ingestion.context_builder import ContextBuilder
 from pycypher.scalar_functions import ScalarFunctionRegistry
 from pycypher.star import Star
+from _perf_helpers import perf_threshold
 
 
 @pytest.fixture(scope="module")
@@ -341,7 +342,9 @@ class TestBitwiseVectorised:
         for _ in range(100):
             ScalarFunctionRegistry.get_instance().execute("bitAnd", [s, mask])
         elapsed = time.perf_counter() - t0
-        assert elapsed < 5.0, f"100 × 10k bitAnd took {elapsed:.2f}s (too slow)"
+        assert elapsed < perf_threshold(5.0), (
+            f"100 × 10k bitAnd took {elapsed:.2f}s (too slow)"
+        )
 
     def test_all_six_return_series(self) -> None:
         """All six functions return a pd.Series (not a scalar or list)."""
@@ -357,5 +360,7 @@ class TestBitwiseVectorised:
             ("bitShiftRight", [x, y]),
         ]:
             result = reg.execute(fname, args)
-            assert isinstance(result, pd.Series), f"{fname} did not return Series"
+            assert isinstance(result, pd.Series), (
+                f"{fname} did not return Series"
+            )
             assert len(result) == 2, f"{fname} wrong length"

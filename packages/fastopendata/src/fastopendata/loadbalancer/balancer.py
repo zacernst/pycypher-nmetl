@@ -18,7 +18,11 @@ from fastopendata.loadbalancer.analyzer import (
     QueryComplexity,
     QueryComplexityAnalyzer,
 )
-from fastopendata.loadbalancer.monitor import HealthStatus, NodeHealth, NodeMonitor
+from fastopendata.loadbalancer.monitor import (
+    HealthStatus,
+    NodeHealth,
+    NodeMonitor,
+)
 
 _logger = logging.getLogger(__name__)
 
@@ -228,7 +232,9 @@ class LoadBalancer:
         for alt_id in decision.alternatives:
             health = self._monitor.get_health(alt_id)
             if health is not None and health.available:
-                remaining_alts = [a for a in decision.alternatives if a != alt_id]
+                remaining_alts = [
+                    a for a in decision.alternatives if a != alt_id
+                ]
                 return RoutingDecision(
                     target_node_id=alt_id,
                     strategy_used=decision.strategy_used,
@@ -253,7 +259,9 @@ class LoadBalancer:
         if strategy == RoutingStrategy.ROUND_ROBIN:
             # Rotate through available nodes
             self._round_robin_idx = (self._round_robin_idx + 1) % len(nodes)
-            rotated = nodes[self._round_robin_idx :] + nodes[: self._round_robin_idx]
+            rotated = (
+                nodes[self._round_robin_idx :] + nodes[: self._round_robin_idx]
+            )
             return rotated
 
         if strategy == RoutingStrategy.LATENCY_AWARE:
@@ -265,7 +273,9 @@ class LoadBalancer:
             key=lambda n: self._node_score(n, complexity),
         )
 
-    def _node_score(self, node: NodeHealth, complexity: QueryComplexity) -> float:
+    def _node_score(
+        self, node: NodeHealth, complexity: QueryComplexity
+    ) -> float:
         """Compute a composite score for a node (lower = better).
 
         Combines load, latency, and error rate with configurable weights.

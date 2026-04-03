@@ -18,6 +18,7 @@ from pycypher.binding_frame import BindingFrame
 from pycypher.collection_evaluator import CollectionExpressionEvaluator
 from pycypher.ingestion import ContextBuilder
 from pycypher.star import Star
+from _perf_helpers import perf_threshold
 
 pytestmark = [pytest.mark.slow, pytest.mark.performance]
 
@@ -176,7 +177,10 @@ class TestQuantifierVectorizationImplementation:
 
         def capture_exploded_evaluate(self, expression):
             # Capture the frame structure during evaluation
-            if hasattr(self.frame, "bindings") and len(self.frame.bindings) > 5:
+            if (
+                hasattr(self.frame, "bindings")
+                and len(self.frame.bindings) > 5
+            ):
                 # This might be the exploded frame (more rows than original)
                 exploded_frames.append(
                     {
@@ -230,7 +234,7 @@ class TestQuantifierVectorizationPerformance:
         elapsed = time.perf_counter() - start
 
         assert isinstance(result, pd.DataFrame)
-        assert elapsed < 0.5, (
+        assert elapsed < perf_threshold(0.5), (
             f"Vectorized 200×50 any() took {elapsed:.3f}s — expected < 0.5s."
         )
 

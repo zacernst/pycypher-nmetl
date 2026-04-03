@@ -47,7 +47,9 @@ SCALE_FACTORS: list[int] = [100, 1_000, 10_000, 50_000]
 QUERIES: dict[str, str] = {
     "simple_scan": "MATCH (n:Person) RETURN n.name",
     "filtered_scan": "MATCH (n:Person) WHERE n.age > 30 RETURN n.name, n.age",
-    "single_hop": ("MATCH (n:Person)-[r:KNOWS]->(m:Person) RETURN n.name, m.name"),
+    "single_hop": (
+        "MATCH (n:Person)-[r:KNOWS]->(m:Person) RETURN n.name, m.name"
+    ),
     "filtered_hop": (
         "MATCH (n:Person)-[r:KNOWS]->(m:Person) "
         "WHERE n.age > 25 RETURN n.name, m.name, r.since"
@@ -57,7 +59,9 @@ QUERIES: dict[str, str] = {
         "RETURN a.name, c.name"
     ),
     "aggregation_count": ("MATCH (n:Person) RETURN n.dept, count(n) AS cnt"),
-    "aggregation_avg": ("MATCH (n:Person) RETURN n.dept, avg(n.salary) AS avg_sal"),
+    "aggregation_avg": (
+        "MATCH (n:Person) RETURN n.dept, avg(n.salary) AS avg_sal"
+    ),
     "varlength_path": (
         "MATCH (a:Person)-[:KNOWS*1..3]->(b:Person) RETURN a.name, b.name"
     ),
@@ -120,7 +124,9 @@ def build_context(n_persons: int, *, rng: np.random.Generator) -> Context:
         entity_type="Person",
         identifier="Person",
         column_names=list(persons_df.columns),
-        source_obj_attribute_map={c: c for c in persons_df.columns if c != "__ID__"},
+        source_obj_attribute_map={
+            c: c for c in persons_df.columns if c != "__ID__"
+        },
         attribute_map={c: c for c in persons_df.columns if c != "__ID__"},
         source_obj=persons_df,
     )
@@ -369,7 +375,11 @@ def compute_scaling_factors(
     query_names = sorted({m.query_name for m in measurements})
     for qname in query_names:
         qm = sorted(
-            [m for m in measurements if m.query_name == qname and m.error is None],
+            [
+                m
+                for m in measurements
+                if m.query_name == qname and m.error is None
+            ],
             key=lambda x: x.scale,
         )
         if len(qm) < 2:

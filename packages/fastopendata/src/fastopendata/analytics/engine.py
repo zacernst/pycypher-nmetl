@@ -11,7 +11,11 @@ import statistics
 from dataclasses import dataclass, field
 from typing import Any
 
-from fastopendata.analytics.collector import MetricsCollector, QueryMetric, QueryStatus
+from fastopendata.analytics.collector import (
+    MetricsCollector,
+    QueryMetric,
+    QueryStatus,
+)
 
 
 @dataclass
@@ -271,7 +275,9 @@ class AnalyticsEngine:
             count=n,
         )
 
-    def _detect_bottlenecks(self, metrics: list[QueryMetric]) -> list[Bottleneck]:
+    def _detect_bottlenecks(
+        self, metrics: list[QueryMetric]
+    ) -> list[Bottleneck]:
         """Identify performance bottlenecks from metric patterns."""
         bottlenecks: list[Bottleneck] = []
 
@@ -283,7 +289,9 @@ class AnalyticsEngine:
         slow = [m for m in successful if m.total_ms > self._slow_threshold_ms]
         if slow:
             pct = len(slow) / len(successful) * 100
-            severity = "critical" if pct > 20 else "high" if pct > 10 else "medium"
+            severity = (
+                "critical" if pct > 20 else "high" if pct > 10 else "medium"
+            )
             bottlenecks.append(
                 Bottleneck(
                     category="slow_queries",
@@ -304,7 +312,9 @@ class AnalyticsEngine:
         parse_heavy = [
             m
             for m in successful
-            if m.parse_ms > 0 and m.total_ms > 0 and m.parse_ms / m.total_ms > 0.3
+            if m.parse_ms > 0
+            and m.total_ms > 0
+            and m.parse_ms / m.total_ms > 0.3
         ]
         if parse_heavy:
             bottlenecks.append(
@@ -326,7 +336,9 @@ class AnalyticsEngine:
         exec_heavy = [
             m
             for m in successful
-            if m.exec_ms > 0 and m.total_ms > 0 and m.exec_ms / m.total_ms > 0.8
+            if m.exec_ms > 0
+            and m.total_ms > 0
+            and m.exec_ms / m.total_ms > 0.8
         ]
         if len(exec_heavy) > len(successful) * 0.5:
             bottlenecks.append(
@@ -349,7 +361,9 @@ class AnalyticsEngine:
         errors = [m for m in metrics if m.status != QueryStatus.SUCCESS]
         if errors and len(errors) / len(metrics) > 0.05:
             pct = len(errors) / len(metrics) * 100
-            severity = "critical" if pct > 20 else "high" if pct > 10 else "medium"
+            severity = (
+                "critical" if pct > 20 else "high" if pct > 10 else "medium"
+            )
             bottlenecks.append(
                 Bottleneck(
                     category="high_error_rate",
@@ -384,7 +398,8 @@ class AnalyticsEngine:
         # Assign metrics to buckets
         for m in metrics:
             bucket_start = (
-                min_ts + int((m.timestamp - min_ts) / bucket_width) * bucket_width
+                min_ts
+                + int((m.timestamp - min_ts) / bucket_width) * bucket_width
             )
             if bucket_start not in buckets:
                 buckets[bucket_start] = []
@@ -421,7 +436,9 @@ class AnalyticsEngine:
         n: int = 10,
     ) -> list[dict[str, Any]]:
         """Return the N slowest query summaries."""
-        sorted_metrics = sorted(metrics, key=lambda m: m.total_ms, reverse=True)
+        sorted_metrics = sorted(
+            metrics, key=lambda m: m.total_ms, reverse=True
+        )
         return [m.to_dict() for m in sorted_metrics[:n]]
 
     def _generate_recommendations(
@@ -456,9 +473,13 @@ class AnalyticsEngine:
             )
 
         # Error-based recommendations
-        error_count = sum(1 for m in metrics if m.status != QueryStatus.SUCCESS)
+        error_count = sum(
+            1 for m in metrics if m.status != QueryStatus.SUCCESS
+        )
         if error_count > 0:
-            timeout_count = sum(1 for m in metrics if m.status == QueryStatus.TIMEOUT)
+            timeout_count = sum(
+                1 for m in metrics if m.status == QueryStatus.TIMEOUT
+            )
             if timeout_count > 0:
                 recommendations.append(
                     f"{timeout_count} query timeouts detected — consider increasing "

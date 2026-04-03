@@ -8,6 +8,7 @@ Information for developers contributing to PyCypher.
    :caption: Developer Topics:
 
    architecture
+   adr/index
    contributing
    testing
    release

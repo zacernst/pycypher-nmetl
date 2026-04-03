@@ -59,7 +59,10 @@ class TestIsString:
         assert _reg().has_function("isstring")
 
     def test_string_returns_true(self) -> None:
-        assert _call("isString", "hello") is True or _call("isString", "hello") == True
+        assert (
+            _call("isString", "hello") is True
+            or _call("isString", "hello") == True
+        )
 
     def test_integer_returns_false(self) -> None:
         assert _call("isString", 42) == False

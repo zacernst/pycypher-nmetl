@@ -18,6 +18,7 @@ import time
 import pandas as pd
 import pytest
 from pycypher import Star
+from _perf_helpers import perf_threshold
 from pycypher.relational_models import (
     ID_COLUMN,
     Context,
@@ -112,7 +113,7 @@ class TestPerformanceBenchmarkValidation:
         print("  Uses optimized assign() instead of copy() at star.py:476")
 
         # Queries should complete in reasonable time with correct results
-        assert total_time < 2.0, "Path queries should be reasonably fast"
+        assert total_time < perf_threshold(2.0), "Path queries should be reasonably fast"
         print("✓ Variable-length path performance validated")
 
     def test_pattern_matching_performance_improvement(
@@ -150,7 +151,7 @@ class TestPerformanceBenchmarkValidation:
         print("  Uses optimized assign() instead of copy() at star.py:937")
 
         # Queries should complete in reasonable time with correct results
-        assert total_time < 1.0, "Matching queries should be fast"
+        assert total_time < perf_threshold(1.0), "Matching queries should be fast"
         print("✓ Pattern matching performance validated")
 
     def test_query_result_assembly_performance_improvement(
@@ -192,7 +193,7 @@ class TestPerformanceBenchmarkValidation:
         )
 
         # Queries should complete in reasonable time with correct results
-        assert total_time < 1.0, "Result assembly should be fast"
+        assert total_time < perf_threshold(1.0), "Result assembly should be fast"
         print("✓ Query result assembly performance validated")
 
     def test_comprehensive_performance_comparison(
@@ -243,8 +244,8 @@ class TestPerformanceBenchmarkValidation:
         print(f"  Throughput: {total_results / total_time:.0f} rows/second")
 
         # Performance should be good with optimizations
-        assert total_time < 2.0, "Total time should be reasonable"
-        assert avg_time < 0.5, "Average query time should be fast"
+        assert total_time < perf_threshold(2.0), "Total time should be reasonable"
+        assert avg_time < perf_threshold(0.5), "Average query time should be fast"
 
         print("✓ Comprehensive performance benchmark successful")
 
@@ -322,7 +323,9 @@ class TestPerformanceBenchmarkValidation:
             assert isinstance(result, pd.DataFrame), (
                 f"Query should return DataFrame: {description}"
             )
-            assert len(result.columns) > 0, f"Query should have columns: {description}"
+            assert len(result.columns) > 0, (
+                f"Query should have columns: {description}"
+            )
 
             # Data integrity checks
             if len(result) > 0:
@@ -396,7 +399,9 @@ class TestPerformanceBenchmarkValidation:
         print(f"{'=' * 70}")
 
         # All optimizations should be implemented
-        assert total_optimizations == 3, "Should have implemented 3 core optimizations"
+        assert total_optimizations == 3, (
+            "Should have implemented 3 core optimizations"
+        )
         print(
             "✓ Performance Loop 274 Phase 1 optimization summary completed successfully",
         )

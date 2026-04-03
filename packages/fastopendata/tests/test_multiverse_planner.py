@@ -51,7 +51,9 @@ class TestPlanVariant:
     def test_fingerprint_deterministic(self) -> None:
         pv1 = PlanVariant(plan_description="a")
         pv2 = PlanVariant(plan_description="b")
-        assert pv1.fingerprint_fragment("scan:X") == pv2.fingerprint_fragment("scan:X")
+        assert pv1.fingerprint_fragment("scan:X") == pv2.fingerprint_fragment(
+            "scan:X"
+        )
 
     def test_default_cost_infinity(self) -> None:
         pv = PlanVariant()

@@ -88,8 +88,12 @@ class TestReturnAliasCollision:
         r = friends_star.execute_query(
             "MATCH (p:Person)-[:KNOWS]->(f:Person) RETURN p.name, f.name",
         )
-        assert "p.name" in r.columns, f"Missing 'p.name' in {r.columns.tolist()}"
-        assert "f.name" in r.columns, f"Missing 'f.name' in {r.columns.tolist()}"
+        assert "p.name" in r.columns, (
+            f"Missing 'p.name' in {r.columns.tolist()}"
+        )
+        assert "f.name" in r.columns, (
+            f"Missing 'f.name' in {r.columns.tolist()}"
+        )
 
     def test_correct_values_in_both_columns(self, friends_star: Star) -> None:
         """Values in both columns must be correct after disambiguation."""

@@ -203,7 +203,9 @@ class TestPredicatePushdown:
         # The filter should now be an input to the join, not after it
         order = optimised.topological_order()
         filter_nodes = [
-            nid for nid in order if optimised.nodes[nid].op_type == OpType.FILTER
+            nid
+            for nid in order
+            if optimised.nodes[nid].op_type == OpType.FILTER
         ]
         join_nodes = [
             nid for nid in order if optimised.nodes[nid].op_type == OpType.JOIN
@@ -246,7 +248,9 @@ class TestPredicatePushdown:
         optimised = push_filters_down(g)
         order = optimised.topological_order()
         filter_nodes = [
-            nid for nid in order if optimised.nodes[nid].op_type == OpType.FILTER
+            nid
+            for nid in order
+            if optimised.nodes[nid].op_type == OpType.FILTER
         ]
         join_nodes = [
             nid for nid in order if optimised.nodes[nid].op_type == OpType.JOIN
@@ -282,7 +286,9 @@ class TestPredicatePushdown:
         optimised = push_filters_down(g)
         order = optimised.topological_order()
         filter_nodes = [
-            nid for nid in order if optimised.nodes[nid].op_type == OpType.FILTER
+            nid
+            for nid in order
+            if optimised.nodes[nid].op_type == OpType.FILTER
         ]
         join_nodes = [
             nid for nid in order if optimised.nodes[nid].op_type == OpType.JOIN

@@ -54,7 +54,9 @@ def event_star() -> Star:
         source_obj=df,
     )
     return Star(
-        context=Context(entity_mapping=EntityMapping(mapping={"Event": table})),
+        context=Context(
+            entity_mapping=EntityMapping(mapping={"Event": table})
+        ),
     )
 
 

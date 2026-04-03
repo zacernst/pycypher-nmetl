@@ -68,7 +68,7 @@ def register(registry: ScalarFunctionRegistry) -> None:
 
         # Vectorized implementation replacing .apply(_parse) anti-pattern
         if len(s) == 0:
-            return s.copy()
+            return s
 
         # Use pandas to_datetime for vectorized date parsing
         try:
@@ -141,7 +141,7 @@ def register(registry: ScalarFunctionRegistry) -> None:
 
         # Vectorized implementation replacing .apply(_parse) anti-pattern
         if len(s) == 0:
-            return s.copy()
+            return s
 
         # Use pandas to_datetime for vectorized datetime parsing
         try:

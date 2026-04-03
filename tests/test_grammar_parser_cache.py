@@ -31,7 +31,9 @@ class TestGetDefaultParser:
         """get_default_parser() returns the exact same object every time."""
         p1 = get_default_parser()
         p2 = get_default_parser()
-        assert p1 is p2, "Expected cached singleton; got two different instances"
+        assert p1 is p2, (
+            "Expected cached singleton; got two different instances"
+        )
 
     def test_no_new_init_on_second_call(self) -> None:
         """Calling get_default_parser() twice does not call __init__ twice."""

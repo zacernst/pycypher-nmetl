@@ -372,7 +372,9 @@ class TestAggregationEdgeCases:
 
         # Alice's bonus: 5000
         assert result["single_sum"].iloc[0] == 5000
-        assert result["single_avg"].iloc[0] == 5000.0  # avg of single value = value
+        assert (
+            result["single_avg"].iloc[0] == 5000.0
+        )  # avg of single value = value
         assert result["single_count"].iloc[0] == 1
 
 
@@ -434,7 +436,8 @@ class TestAggregationConsistency:
 
         # Results should be identical
         assert (
-            abs(result1["avg_score"].iloc[0] - result2["avg_score"].iloc[0]) < 0.000001
+            abs(result1["avg_score"].iloc[0] - result2["avg_score"].iloc[0])
+            < 0.000001
         )
         assert result1["total_bonus"].iloc[0] == result2["total_bonus"].iloc[0]
 

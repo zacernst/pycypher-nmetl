@@ -114,7 +114,9 @@ class TestIntegerFloatArithmetic:
         sums = result["sum_result"].tolist()
         assert abs(sums[0] - 60.0) < 0.001
         assert abs(sums[1] - 80.5) < 0.001
-        assert all(isinstance(val, float) for val in sums)  # All should be floats
+        assert all(
+            isinstance(val, float) for val in sums
+        )  # All should be floats
 
     def test_float_division_precision(self, type_test_context):
         """Integer / integer uses truncating integer division (openCypher spec).
@@ -393,4 +395,6 @@ class TestComplexTypeCoercion:
         converted = result["converted_back"].tolist()
         assert all(isinstance(val, str) for val in converted)
         assert "100000" in converted
-        assert "120000" in converted  # 120000.50 -> 120000.0 -> 120000 -> "120000"
+        assert (
+            "120000" in converted
+        )  # 120000.50 -> 120000.0 -> 120000 -> "120000"

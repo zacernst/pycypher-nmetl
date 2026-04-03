@@ -360,7 +360,7 @@ class LocalWorker:
                 self._total_latency_ms += elapsed_ms
                 self._last_heartbeat = time.monotonic()
             return result
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 — wraps any error with worker context; re-raised as WorkerExecutionError
             elapsed_ms = (time.perf_counter() - t0) * 1000.0
             snippet = query[:80]
             with self._lock:

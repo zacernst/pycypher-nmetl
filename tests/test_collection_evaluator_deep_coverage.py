@@ -16,6 +16,7 @@ import pandas as pd
 import pytest
 from pycypher import ContextBuilder, Star
 from pycypher.binding_frame import BindingFrame
+from pycypher.ast_models import MapLiteral
 from pycypher.collection_evaluator import CollectionExpressionEvaluator
 
 # ---------------------------------------------------------------------------
@@ -152,7 +153,7 @@ class TestMapLiteralEdgePaths:
     """Cover map literal code paths via direct evaluator calls."""
 
     def test_map_literal_empty_entries(self) -> None:
-        """MapLiteral with empty entries list falls through to empty dict."""
+        """MapLiteral with empty entries falls through to empty dict."""
         people = pd.DataFrame({"__ID__": [1], "name": ["Alice"]})
         ctx = ContextBuilder().add_entity("Person", people).build()
         bindings = pd.DataFrame({"p": [1]})
@@ -163,20 +164,18 @@ class TestMapLiteralEdgePaths:
         )
         evaluator = CollectionExpressionEvaluator(frame)
 
-        class FakeMapLiteral:
-            entries: list[Any] = []
-            val: dict[str, Any] = {}
+        ml = MapLiteral(entries={}, value={})
 
         class FakeExprEval:
             def evaluate(self, expr: Any) -> pd.Series:
                 return pd.Series([None], dtype=object)
 
-        result = evaluator.eval_map_literal(FakeMapLiteral(), FakeExprEval())
+        result = evaluator.eval_map_literal(ml, FakeExprEval())
         assert len(result) == 1
         assert result.iloc[0] == {}
 
     def test_map_literal_raw_val(self) -> None:
-        """MapLiteral with no entries but non-empty val dict broadcasts raw val."""
+        """MapLiteral with no entries but non-empty value dict broadcasts raw value."""
         people = pd.DataFrame({"__ID__": [1], "name": ["Alice"]})
         ctx = ContextBuilder().add_entity("Person", people).build()
         bindings = pd.DataFrame({"p": [1]})
@@ -187,15 +186,13 @@ class TestMapLiteralEdgePaths:
         )
         evaluator = CollectionExpressionEvaluator(frame)
 
-        class FakeMapLiteral:
-            entries: list[Any] = []
-            val: dict[str, Any] = {"x": 42, "y": "hello"}
+        ml = MapLiteral(entries={}, value={"x": 42, "y": "hello"})
 
         class FakeExprEval:
             def evaluate(self, expr: Any) -> pd.Series:
                 return pd.Series([None], dtype=object)
 
-        result = evaluator.eval_map_literal(FakeMapLiteral(), FakeExprEval())
+        result = evaluator.eval_map_literal(ml, FakeExprEval())
         assert len(result) == 1
         assert result.iloc[0] == {"x": 42, "y": "hello"}
 
@@ -216,7 +213,9 @@ class TestMapProjectionAllProperties:
         proj = result["proj"].iloc[0]
         assert isinstance(proj, dict)
 
-    def test_all_properties_with_expression(self, star_with_people: Star) -> None:
+    def test_all_properties_with_expression(
+        self, star_with_people: Star
+    ) -> None:
         """p{.*, double_age: p.age * 2} exercises lines 857-878."""
         result = star_with_people.execute_query(
             "MATCH (p:Person) "
@@ -228,7 +227,9 @@ class TestMapProjectionAllProperties:
         if "double_age" in proj:
             assert proj["double_age"] == 60
 
-    def test_all_properties_with_property_copy(self, star_with_people: Star) -> None:
+    def test_all_properties_with_property_copy(
+        self, star_with_people: Star
+    ) -> None:
         """p{.*, .name} exercises lines 842-855."""
         result = star_with_people.execute_query(
             "MATCH (p:Person) RETURN p{.*, .name} AS proj ORDER BY p.name",
@@ -270,6 +271,8 @@ class TestMapProjectionEmpty:
             def evaluate(self, expr: Any) -> pd.Series:
                 return pd.Series([None], dtype=object)
 
-        result = evaluator.eval_map_projection(FakeMapProjection(), FakeExprEval())
+        result = evaluator.eval_map_projection(
+            FakeMapProjection(), FakeExprEval()
+        )
         assert len(result) == 1
         assert result.iloc[0] == {}

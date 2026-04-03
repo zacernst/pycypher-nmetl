@@ -8,17 +8,20 @@ PyCypher parses [Cypher](https://neo4j.com/docs/cypher-manual/) graph queries an
 
 ## Installation
 
-```bash
-pip install pycypher
-```
-
-Optional extras:
+PyCypher requires **Python 3.14+** and uses ``uv`` for dependency management.
+It is not yet published on PyPI — install from source:
 
 ```bash
-pip install pycypher[neo4j]          # Neo4j connectivity
-pip install pycypher[polars]         # Polars backend
-pip install pycypher[large-dataset]  # Dask for large datasets
-pip install pycypher[all]            # Everything
+# Install uv (if not already installed)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Clone and install
+git clone https://github.com/zacernst/pycypher.git
+cd pycypher
+uv sync
+
+# Verify
+uv run python -c "from pycypher import Star; print('OK')"
 ```
 
 ## Quick Start

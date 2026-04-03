@@ -95,7 +95,9 @@ class TestStreamTableJoin:
     def test_invalid_join_type(self) -> None:
         table = TableSnapshot(name="t")
         with pytest.raises(ValueError, match="join_type"):
-            StreamTableJoin(table, key_extractor=lambda r: r.key, join_type="cross")
+            StreamTableJoin(
+                table, key_extractor=lambda r: r.key, join_type="cross"
+            )
 
     def test_process_batch(self) -> None:
         table = TableSnapshot(name="users")
@@ -119,7 +121,9 @@ class TestStreamTableJoin:
     def test_preserves_record_metadata(self) -> None:
         table = TableSnapshot(name="users")
         table.put("u1", {"name": "Alice"})
-        join = StreamTableJoin(table, key_extractor=lambda r: r.value["user_id"])
+        join = StreamTableJoin(
+            table, key_extractor=lambda r: r.value["user_id"]
+        )
         r = StreamRecord(
             key="e1",
             value={"user_id": "u1"},

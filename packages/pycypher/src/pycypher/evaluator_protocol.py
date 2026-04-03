@@ -21,7 +21,7 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 if TYPE_CHECKING:
     from pycypher.ast_models import Expression
     from pycypher.binding_frame import BindingFrame
-    from pycypher.types import FrameSeries
+    from pycypher.cypher_types import FrameSeries
 
 
 @runtime_checkable

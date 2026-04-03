@@ -113,7 +113,9 @@ def verify_data_consistency():
         # Check executive report has expected structure
         exec_report = pd.read_csv("output/executive_report.csv")
         if len(exec_report) != 1:
-            print(f"❌ Executive report should have 1 row, got {len(exec_report)}")
+            print(
+                f"❌ Executive report should have 1 row, got {len(exec_report)}"
+            )
             return False
 
         # Check key metrics are reasonable
@@ -172,7 +174,9 @@ def main():
     print("\n" + "=" * 50)
     if success:
         print("🎉 Tutorial validation PASSED!")
-        print("Both execution methods work correctly and produce consistent results.")
+        print(
+            "Both execution methods work correctly and produce consistent results."
+        )
     else:
         print("❌ Tutorial validation FAILED!")
         print("Check the errors above and fix before using the tutorial.")

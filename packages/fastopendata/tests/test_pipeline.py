@@ -79,7 +79,9 @@ class TestBatchIngestion:
 
     def test_build_star_with_relationship(self) -> None:
         people = pd.DataFrame({"__ID__": [1, 2], "name": ["Alice", "Bob"]})
-        knows = pd.DataFrame({"__ID__": [100], "__SOURCE__": [1], "__TARGET__": [2]})
+        knows = pd.DataFrame(
+            {"__ID__": [100], "__SOURCE__": [1], "__TARGET__": [2]}
+        )
         pipeline = (
             GraphPipeline()
             .add_entity_dataframe("Person", people)
@@ -201,10 +203,16 @@ class TestStreamingViewIngestion:
 class TestStreamRecordIngestion:
     def test_add_entity_from_stream_records(self) -> None:
         records = [
-            StreamRecord(key="r1", value={"__ID__": 1, "val": 22.5}, event_time=1.0),
-            StreamRecord(key="r2", value={"__ID__": 2, "val": 18.3}, event_time=2.0),
+            StreamRecord(
+                key="r1", value={"__ID__": 1, "val": 22.5}, event_time=1.0
+            ),
+            StreamRecord(
+                key="r2", value={"__ID__": 2, "val": 18.3}, event_time=2.0
+            ),
         ]
-        pipeline = GraphPipeline().add_entity_from_stream_records("Reading", records)
+        pipeline = GraphPipeline().add_entity_from_stream_records(
+            "Reading", records
+        )
         assert pipeline.entity_count("Reading") == 2
 
     def test_stream_records_to_query(self) -> None:
@@ -218,7 +226,9 @@ class TestStreamRecordIngestion:
                 [("Alice", 95), ("Bob", 80), ("Carol", 90)],
             )
         ]
-        pipeline = GraphPipeline().add_entity_from_stream_records("Student", records)
+        pipeline = GraphPipeline().add_entity_from_stream_records(
+            "Student", records
+        )
         star = pipeline.build_star()
         result = star.execute_query(
             "MATCH (s:Student) WHERE s.score > 85 RETURN s.name",

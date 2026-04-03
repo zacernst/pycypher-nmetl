@@ -13,13 +13,7 @@ This module provides a comprehensive parser for the openCypher query language ba
 
 ## Installation
 
-This parser requires the `lark` library:
-
-```bash
-pip install lark
-```
-
-Or using uv in the project:
+This parser requires the `lark` library (included automatically by `uv sync`):
 
 ```bash
 uv pip install lark
@@ -213,7 +207,7 @@ This grammar parser (`grammar_parser.py`) differs from the existing `cypher_pars
 
 1. **Import Error**: Make sure `lark` is installed
    ```bash
-   pip install lark
+   uv pip install lark
    ```
 
 2. **Syntax Errors**: Use debug mode to see detailed error messages

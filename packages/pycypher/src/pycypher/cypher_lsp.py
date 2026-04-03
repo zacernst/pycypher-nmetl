@@ -382,7 +382,7 @@ def _publish_diagnostics(uri: str, text: str) -> None:
                 exc_info=True,
             )
 
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — LSP: report any error as diagnostic to editor
         # Parse error — report as error diagnostic
         from pycypher.exceptions import sanitize_error_message
 
@@ -437,7 +437,14 @@ def _publish_diagnostics(uri: str, text: str) -> None:
                         "message": issue.message,
                     },
                 )
-    except (SyntaxError, ValueError, TypeError, KeyError, AttributeError, ImportError):
+    except (
+        SyntaxError,
+        ValueError,
+        TypeError,
+        KeyError,
+        AttributeError,
+        ImportError,
+    ):
         LOGGER.debug("Lint query failed for %s", uri, exc_info=True)
 
     _notify(
@@ -582,7 +589,14 @@ def _format_document(text: str) -> list[dict[str, Any]]:
                 "newText": formatted,
             },
         ]
-    except (SyntaxError, ValueError, TypeError, KeyError, AttributeError, ImportError):
+    except (
+        SyntaxError,
+        ValueError,
+        TypeError,
+        KeyError,
+        AttributeError,
+        ImportError,
+    ):
         LOGGER.debug("Query formatting failed", exc_info=True)
         return []
 
@@ -950,7 +964,7 @@ def main() -> None:
             break
         try:
             _handle_message(msg)
-        except Exception:
+        except Exception:  # noqa: BLE001 — LSP server must not crash on malformed messages
             LOGGER.exception("Error handling LSP message")
 
 

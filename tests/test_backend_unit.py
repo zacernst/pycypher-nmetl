@@ -18,7 +18,6 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 import pytest
-
 from pycypher.backend_engine import BackendEngine
 from pycypher.backends._helpers import (
     _pandas_agg_to_sql,
@@ -66,7 +65,9 @@ def numeric_df() -> pd.DataFrame:
 class TestAggregationFunctions:
     """Test all supported aggregation functions across backends."""
 
-    def test_sum(self, backend: BackendEngine, numeric_df: pd.DataFrame) -> None:
+    def test_sum(
+        self, backend: BackendEngine, numeric_df: pd.DataFrame
+    ) -> None:
         result = backend.to_pandas(
             backend.aggregate(
                 numeric_df,
@@ -78,7 +79,9 @@ class TestAggregationFunctions:
         assert totals["a"] == pytest.approx(60.0)
         assert totals["b"] == pytest.approx(150.0)
 
-    def test_mean(self, backend: BackendEngine, numeric_df: pd.DataFrame) -> None:
+    def test_mean(
+        self, backend: BackendEngine, numeric_df: pd.DataFrame
+    ) -> None:
         result = backend.to_pandas(
             backend.aggregate(
                 numeric_df,
@@ -90,7 +93,9 @@ class TestAggregationFunctions:
         assert avgs["a"] == pytest.approx(20.0)
         assert avgs["b"] == pytest.approx(50.0)
 
-    def test_min(self, backend: BackendEngine, numeric_df: pd.DataFrame) -> None:
+    def test_min(
+        self, backend: BackendEngine, numeric_df: pd.DataFrame
+    ) -> None:
         result = backend.to_pandas(
             backend.aggregate(
                 numeric_df,
@@ -102,7 +107,9 @@ class TestAggregationFunctions:
         assert mins["a"] == pytest.approx(10.0)
         assert mins["b"] == pytest.approx(40.0)
 
-    def test_max(self, backend: BackendEngine, numeric_df: pd.DataFrame) -> None:
+    def test_max(
+        self, backend: BackendEngine, numeric_df: pd.DataFrame
+    ) -> None:
         result = backend.to_pandas(
             backend.aggregate(
                 numeric_df,
@@ -153,7 +160,11 @@ class TestDtypePreservation:
         result = backend.to_pandas(backend.sort(df, by=["name"]))
         assert result["name"].tolist() == ["alice", "bob", "charlie"]
         dtype_str = str(result["name"].dtype).lower()
-        assert result["name"].dtype == object or "string" in dtype_str or dtype_str == "str"
+        assert (
+            result["name"].dtype == object
+            or "string" in dtype_str
+            or dtype_str == "str"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -191,7 +202,9 @@ class TestPandasJoinStrategies:
         # left smaller than right — broadcast should swap for inner join
         left = pd.DataFrame({"k": [1], "v": ["a"]})
         right = pd.DataFrame({"k": [1, 2, 3], "w": ["x", "y", "z"]})
-        result = be.join(left, right, on="k", how="inner", strategy="broadcast")
+        result = be.join(
+            left, right, on="k", how="inner", strategy="broadcast"
+        )
         assert len(result) == 1
         assert result["v"].iloc[0] == "a"
 
@@ -340,7 +353,17 @@ class TestHelpers:
         import polars as pl
 
         col_expr = pl.col("x")
-        for func in ("sum", "count", "mean", "min", "max", "std", "var", "first", "last"):
+        for func in (
+            "sum",
+            "count",
+            "mean",
+            "min",
+            "max",
+            "std",
+            "var",
+            "first",
+            "last",
+        ):
             result = _polars_agg_func(col_expr, func)
             # Should return a Polars expression, not raise
             assert result is not None
@@ -388,7 +411,9 @@ class TestDuckDBSQLInjection:
         be = DuckDBBackend()
         df = pd.DataFrame({"a": [1], "b": [2]})
         with pytest.raises(ValueError, match="Invalid SQL identifier"):
-            be.aggregate(df, group_cols=['a"; --'], agg_specs={"n": ("b", "count")})
+            be.aggregate(
+                df, group_cols=['a"; --'], agg_specs={"n": ("b", "count")}
+            )
 
     def test_sort_rejects_injection_in_column(self) -> None:
         be = DuckDBBackend()

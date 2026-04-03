@@ -101,7 +101,9 @@ def context_with_data():
 
     ctx = Context(
         entity_mapping=EntityMapping(mapping={"Person": person_table}),
-        relationship_mapping=RelationshipMapping(mapping={"KNOWS": knows_table}),
+        relationship_mapping=RelationshipMapping(
+            mapping={"KNOWS": knows_table}
+        ),
     )
     return ctx
 
@@ -188,7 +190,10 @@ class TestVectorizedPropertyStore:
 
     def test_build_empty_df(self):
         empty_df = pd.DataFrame(
-            {ID_COLUMN: pd.Series(dtype=object), "name": pd.Series(dtype=object)},
+            {
+                ID_COLUMN: pd.Series(dtype=object),
+                "name": pd.Series(dtype=object),
+            },
         )
         store = VectorizedPropertyStore.build("Empty", empty_df)
         assert store.size == 0
@@ -363,7 +368,12 @@ class TestShadowBypass:
         shadow_df = pd.DataFrame(
             {
                 ID_COLUMN: [1, 2, 3, 4],
-                "name": ["ShadowAlice", "ShadowBob", "ShadowCharlie", "ShadowDiana"],
+                "name": [
+                    "ShadowAlice",
+                    "ShadowBob",
+                    "ShadowCharlie",
+                    "ShadowDiana",
+                ],
                 "age": [31, 26, 36, 29],
             },
         )
@@ -382,7 +392,9 @@ class TestShadowBypass:
 
 
 class TestEpochInvalidation:
-    def test_vectorized_store_invalidated_on_epoch_change(self, context_with_data):
+    def test_vectorized_store_invalidated_on_epoch_change(
+        self, context_with_data
+    ):
         mgr = context_with_data.index_manager
         store1 = mgr.get_vectorized_store("Person")
         assert store1 is not None
@@ -402,7 +414,10 @@ class TestEpochInvalidation:
     def test_invalidate_clears_vectorized(self, context_with_data):
         mgr = context_with_data.index_manager
         mgr.get_vectorized_store("Person")
-        assert len(mgr._vectorized) == 1
+        # eager_build_vectorized_stores (triggered by index_manager property)
+        # builds stores for all entity and relationship types in the context.
+        assert len(mgr._vectorized) >= 1
+        assert "Person" in mgr._vectorized
 
         mgr.invalidate()
         assert len(mgr._vectorized) == 0

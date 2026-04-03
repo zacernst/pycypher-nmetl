@@ -327,9 +327,7 @@ class TestWithClauseVerification:
 
     def test_with_distinct_and_ordering(self, parse_to_ast):
         """Test WITH DISTINCT with ordering, skip, and limit."""
-        query = (
-            "MATCH (n) WITH DISTINCT n ORDER BY n.name DESC SKIP 5 LIMIT 10 RETURN n"
-        )
+        query = "MATCH (n) WITH DISTINCT n ORDER BY n.name DESC SKIP 5 LIMIT 10 RETURN n"
         ast = parse_to_ast(query)
 
         with_clause = ast.clauses[1]

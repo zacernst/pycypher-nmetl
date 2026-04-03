@@ -28,6 +28,14 @@ and centralised in :mod:`pycypher.config`.
 +---------------------------------------+-----------+------------------------------------------+
 | ``PYCYPHER_MAX_UNBOUNDED_PATH_HOPS``  | 20        | BFS hop cap for unbounded ``[*]`` paths  |
 +---------------------------------------+-----------+------------------------------------------+
+| ``PYCYPHER_RATE_LIMIT_QPS``           | 0 (off)   | Sustained queries per second             |
++---------------------------------------+-----------+------------------------------------------+
+| ``PYCYPHER_RATE_LIMIT_BURST``         | 10        | Maximum burst above sustained rate       |
++---------------------------------------+-----------+------------------------------------------+
+| ``PYCYPHER_AUDIT_LOG``                | *off*     | Enable JSON query audit logging          |
++---------------------------------------+-----------+------------------------------------------+
+| ``PYCYPHER_SLOW_QUERY_MS``            | 500       | Slow-query threshold for alerting        |
++---------------------------------------+-----------+------------------------------------------+
 
 Query Timeouts
 --------------
@@ -184,6 +192,128 @@ all calls after the first.  No configuration is needed — this is automatic.
 
 For an ETL pipeline executing 5 queries across 1 000 batches, this means
 roughly 5 cold parses (~56 ms each) rather than 5 000.
+
+Graph-Native Indexes
+--------------------
+
+PyCypher builds graph-native indexes lazily on first access, accelerating
+pattern matching from O(E) full table scans to O(degree) neighbor lookups.
+Indexes are managed through the ``Context`` and invalidated automatically
+when mutations commit.
+
+**Index types**:
+
+- ``AdjacencyIndex`` — per-relationship-type adjacency lists for fast
+  neighbor lookups
+- ``PropertyValueIndex`` — per-(entity_type, property) hash index for
+  value-to-ID resolution in O(1)
+- ``EntityLabelIndex`` — per-label sorted ID arrays for O(log n) membership
+  tests
+
+**Usage** (indexes are automatic, but you can inspect them):
+
+.. code-block:: python
+
+   ctx = ContextBuilder().add_entity("Person", people).build()
+   manager = ctx.index_manager
+
+   # Neighbor lookup — O(degree) instead of O(E)
+   neighbors = manager.get_neighbors("KNOWS", source_id=42, direction="outgoing")
+
+   # Property index — O(1) instead of O(N)
+   ids = manager.lookup_property("Person", "name", "Alice")
+
+**When indexes help most**: queries with selective relationship traversals
+or property equality filters.  Indexes are rebuilt automatically after
+mutations, so there is no manual maintenance.
+
+LeapfrogTriejoin (Multi-Way Joins)
+-----------------------------------
+
+For queries joining 3+ patterns on a shared variable, PyCypher uses the
+LeapfrogTriejoin algorithm (Veldhuizen 2014) which achieves worst-case
+optimal time complexity O(N^{w/2}) — exponentially better than iterated
+binary joins at O(N^{w-1}).
+
+This is particularly effective for **cyclic query patterns** such as
+triangle queries:
+
+.. code-block:: python
+
+   # Triangle query — LeapfrogTriejoin automatically used
+   star.execute_query("""
+       MATCH (a:Person)-[:KNOWS]->(b:Person),
+             (b)-[:KNOWS]->(c:Person),
+             (c)-[:KNOWS]->(a)
+       RETURN a.name, b.name, c.name
+   """)
+
+The algorithm activates automatically when 3+ frames share a common join
+variable.  For 2-frame joins, standard hash or sort-merge joins are used
+instead.
+
+Cardinality Feedback Loops
+--------------------------
+
+The query planner maintains a ``CardinalityFeedbackStore`` that learns from
+execution history to improve future query plans.  After each query, actual
+vs. estimated cardinalities are recorded.
+
+**How it works**:
+
+- Stores rolling window of (estimated, actual) cardinality pairs per entity
+  type (max 32 observations)
+- Computes geometric mean correction factors, clamped to [0.01, 100]
+- Applies corrections to future cardinality estimates for better join
+  ordering and algorithm selection
+
+This system is automatic — no configuration needed.  Over time, query plans
+improve as the planner accumulates execution statistics.
+
+Rate Limiting
+-------------
+
+Protect shared deployments from query abuse with the built-in rate limiter.
+
+.. code-block:: python
+
+   from pycypher.rate_limiter import QueryRateLimiter, get_global_limiter
+
+   # Global limiter (configured via environment variables)
+   limiter = get_global_limiter()
+   limiter.acquire()  # raises RateLimitError if over limit
+
+   # Custom per-caller limiter
+   limiter = QueryRateLimiter(qps=5.0, burst=20)
+   limiter.acquire(caller_id="user-123")
+
+When the rate limit is exceeded, a :class:`~pycypher.exceptions.RateLimitError`
+is raised immediately (non-blocking fail-fast).
+
+Audit Logging
+-------------
+
+Enable structured query audit logging for compliance and debugging:
+
+.. code-block:: bash
+
+   export PYCYPHER_AUDIT_LOG=1
+
+Each query execution emits a JSON record to the ``pycypher.audit`` logger
+containing: ``query_id``, ``timestamp``, ``query`` (truncated), ``status``,
+``elapsed_ms``, ``rows``, and ``parameter_keys``.
+
+**Security**: parameter *values* and result data are never logged.
+
+.. code-block:: python
+
+   # Programmatic activation
+   from pycypher.audit import enable_audit_log
+   enable_audit_log()
+
+For production, configure the ``pycypher.audit`` logger via
+:mod:`logging.config` to route records to a file, syslog, or log
+aggregator.
 
 Query Structure Best Practices
 ------------------------------
@@ -345,6 +475,13 @@ Production Deployment Checklist
 
    # 6. Set slow-query threshold for alerting
    export PYCYPHER_SLOW_QUERY_MS=500
+
+   # 7. Enable audit logging for compliance
+   export PYCYPHER_AUDIT_LOG=1
+
+   # 8. Rate limit for multi-tenant deployments
+   export PYCYPHER_RATE_LIMIT_QPS=50
+   export PYCYPHER_RATE_LIMIT_BURST=100
 
 For More Information
 --------------------

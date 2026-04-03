@@ -55,7 +55,9 @@ def concatenate_shapefiles(
                 else pyogrio.read_dataframe(path)
             )
         except Exception as exc:
-            LOGGER.warning("Skipping corrupt or unreadable shapefile %s: %s", path, exc)
+            LOGGER.warning(
+                "Skipping corrupt or unreadable shapefile %s: %s", path, exc
+            )
             failed.append((name, str(exc)))
             continue
 

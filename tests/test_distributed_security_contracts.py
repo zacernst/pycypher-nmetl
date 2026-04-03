@@ -378,7 +378,9 @@ class TestLoggingSecurity:
             # Check that the password is not in any log record
             for record in records:
                 msg = record.getMessage()
-                assert "s3cret_pw" not in msg, f"Password leaked in log message: {msg}"
+                assert "s3cret_pw" not in msg, (
+                    f"Password leaked in log message: {msg}"
+                )
         finally:
             LOGGER.setLevel(old_level)
             LOGGER.removeHandler(handler)

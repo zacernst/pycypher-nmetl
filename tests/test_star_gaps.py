@@ -313,3 +313,92 @@ class TestMissingParameterError:
         )
         # Only Bob (30) and Charlie (35) are > 28
         assert set(result["nm"].tolist()) == {"Bob", "Charlie"}
+
+
+# ---------------------------------------------------------------------------
+# Error handling path coverage (Task #1 / Task #11)
+# ---------------------------------------------------------------------------
+
+
+class TestWarmupCacheErrorHandling:
+    """Cover error paths in _warmup_ast_cache."""
+
+    def test_warmup_handles_parse_errors_gracefully(self) -> None:
+        """_warmup_ast_cache should not raise when templates fail to parse."""
+        from pycypher.star import Star
+
+        # Entity types with special characters that produce unparseable queries
+        Star._warmup_ast_cache(
+            entity_types=["Invalid Type!", "123Bad"],
+            rel_types=["BAD REL!"],
+        )
+        # Should complete without raising
+
+    def test_warmup_succeeds_for_valid_types(self) -> None:
+        """_warmup_ast_cache should populate cache for valid type names."""
+        from pycypher.ast_converter import _parse_cypher_cached
+        from pycypher.star import Star
+
+        # Clear cache to measure effect
+        _parse_cypher_cached.cache_clear()
+
+        Star._warmup_ast_cache(
+            entity_types=["Person"],
+            rel_types=["KNOWS"],
+        )
+
+        # Cache should have entries
+        info = _parse_cypher_cached.cache_info()
+        assert info.currsize > 0
+
+    def test_warmup_with_empty_types(self) -> None:
+        """_warmup_ast_cache with no types should be a no-op."""
+        from pycypher.star import Star
+
+        Star._warmup_ast_cache(entity_types=[], rel_types=[])
+        # Should complete without raising
+
+
+class TestComplexityScoringErrorHandling:
+    """Cover error paths in PROFILE complexity analysis."""
+
+    def test_explain_query_with_valid_query(self, star: Star) -> None:
+        """explain_query should include complexity score for valid queries."""
+        plan = star.explain_query("MATCH (p:Person) RETURN p.name AS name")
+        assert "Complexity score" in plan
+
+    def test_explain_query_handles_broken_scoring(self, star: Star) -> None:
+        """explain_query should degrade gracefully if score_query fails."""
+        from unittest.mock import patch
+
+        with patch(
+            "pycypher.query_complexity.score_query",
+            side_effect=AttributeError("mock failure"),
+        ):
+            plan = star.explain_query("MATCH (p:Person) RETURN p.name AS name")
+            # Plan should still be produced, just without complexity score
+            assert "Execution Plan" in plan
+
+
+class TestExecuteQueryMetricsOnError:
+    """Cover the execute_query error instrumentation path."""
+
+    def test_error_metrics_recorded_on_failure(self, star: Star) -> None:
+        """execute_query must record error metrics and re-raise."""
+        from unittest.mock import patch
+
+        sentinel = RuntimeError("deliberate metrics test error")
+        with (
+            patch.object(
+                star,
+                "_execute_query_binding_frame",
+                side_effect=sentinel,
+            ),
+            pytest.raises(RuntimeError, match="deliberate metrics test error"),
+        ):
+            star.execute_query("MATCH (p:Person) RETURN p.name AS name")
+
+    def test_syntax_error_re_raised(self, star: Star) -> None:
+        """Syntax errors should propagate through the metrics wrapper."""
+        with pytest.raises(Exception):  # noqa: B017
+            star.execute_query("THIS IS NOT CYPHER")

@@ -19,8 +19,7 @@ from pathlib import Path
 logging.disable(logging.CRITICAL)
 
 import pandas as pd
-from pycypher.ingestion import ContextBuilder
-from pycypher.star import Star
+from pycypher import ContextBuilder, Star
 
 DATA_DIR = Path(__file__).parent / "data"
 

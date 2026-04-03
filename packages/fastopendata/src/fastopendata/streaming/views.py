@@ -132,7 +132,9 @@ class IncrementalView:
             return None
 
         self._snapshot[key] = new_value
-        change_type = ChangeType.UPDATE if old_value is not None else ChangeType.INSERT
+        change_type = (
+            ChangeType.UPDATE if old_value is not None else ChangeType.INSERT
+        )
         entry = ChangelogEntry(
             change_type=change_type,
             key=key,

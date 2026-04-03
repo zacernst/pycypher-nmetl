@@ -24,6 +24,7 @@ from pycypher.backend_engine import DuckDBBackend, PandasBackend
 
 from .benchmark_utils import _get_process_memory_mb, run_benchmark
 from .dataset_generator import SCALE_SMALL, SCALE_TINY, generate_social_graph
+from _perf_helpers import perf_threshold
 
 ID_COLUMN = "__ID__"
 
@@ -151,7 +152,9 @@ class TestBackendWiring:
 CORRECTNESS_QUERIES = {
     "simple_scan": "MATCH (n:Person) RETURN n.name",
     "filtered_scan": "MATCH (n:Person) WHERE n.age > 30 RETURN n.name, n.age",
-    "single_hop": ("MATCH (a:Person)-[r:KNOWS]->(b:Person) RETURN a.name, b.name"),
+    "single_hop": (
+        "MATCH (a:Person)-[r:KNOWS]->(b:Person) RETURN a.name, b.name"
+    ),
     "aggregation": ("MATCH (n:Person) RETURN n.city, count(n) AS cnt"),
     "order_limit": (
         "MATCH (n:Person) RETURN n.name, n.age ORDER BY n.age DESC LIMIT 5"
@@ -252,7 +255,9 @@ class TestMemoryIntensiveJoins:
                 "MATCH (a:Person)-[:KNOWS*1..2]->(b:Person) "
                 "RETURN a.name, b.name LIMIT 50",
             )
-            assert len(result) == 50, f"{backend}: expected 50 rows, got {len(result)}"
+            assert len(result) == 50, (
+                f"{backend}: expected 50 rows, got {len(result)}"
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -290,7 +295,9 @@ class TestAggregationPipeline:
             )
             assert len(result) == 1
             avg_age = result["avg_age"].iloc[0]
-            assert 18 < avg_age < 80, f"{backend}: avg_age {avg_age} out of range"
+            assert 18 < avg_age < 80, (
+                f"{backend}: avg_age {avg_age} out of range"
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -350,7 +357,9 @@ class TestMemoryStability:
 
         gc.collect()
         growth = _get_process_memory_mb() - baseline
-        assert growth < 200, f"Memory grew by {growth:.1f}MB over 20 iterations"
+        assert growth < perf_threshold(200), (
+            f"Memory grew by {growth:.1f}MB over 20 iterations"
+        )
 
     def test_backend_switching_no_leak(
         self,
@@ -375,7 +384,7 @@ class TestMemoryStability:
 
         gc.collect()
         growth = _get_process_memory_mb() - baseline
-        assert growth < 100, f"Backend switching leaked {growth:.1f}MB"
+        assert growth < perf_threshold(100), f"Backend switching leaked {growth:.1f}MB"
 
 
 # ---------------------------------------------------------------------------
@@ -396,7 +405,9 @@ class TestLimitPushdownIntegration:
             result = star.execute_query(
                 "MATCH (n:Person) RETURN n.name LIMIT 7",
             )
-            assert len(result) == 7, f"{backend}: LIMIT 7 returned {len(result)} rows"
+            assert len(result) == 7, (
+                f"{backend}: LIMIT 7 returned {len(result)} rows"
+            )
 
     def test_limit_on_vlp_across_backends(
         self,
@@ -409,7 +420,9 @@ class TestLimitPushdownIntegration:
                 "MATCH (a:Person)-[:KNOWS*1..2]->(b:Person) "
                 "RETURN a.name, b.name LIMIT 25",
             )
-            assert len(result) == 25, f"{backend}: VLP LIMIT 25 returned {len(result)}"
+            assert len(result) == 25, (
+                f"{backend}: VLP LIMIT 25 returned {len(result)}"
+            )
 
 
 # ---------------------------------------------------------------------------

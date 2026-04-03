@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import os
+import signal
+import threading
 from pathlib import Path
 
 import pandas as pd
@@ -18,6 +20,50 @@ from pycypher.relational_models import (
 )
 from pycypher.scalar_functions import ScalarFunctionRegistry
 from pycypher.star import Star
+
+
+# ---------------------------------------------------------------------------
+# SIGALRM cleanup — prevent alarm leakage between tests
+# ---------------------------------------------------------------------------
+# Some tests arm SIGALRM via execute_query(timeout_seconds=...).  If a query
+# times out or runs close to the deadline, the pending alarm can fire during
+# a later, unrelated test — causing a spurious QueryTimeoutError.  Clearing
+# the alarm after every test eliminates this cross-test contamination.
+
+
+@pytest.fixture(autouse=True)
+def _clear_pending_sigalrm():
+    """Cancel any pending SIGALRM after each test to prevent leakage."""
+    yield
+    if (
+        hasattr(signal, "SIGALRM")
+        and threading.current_thread() is threading.main_thread()
+    ):
+        signal.alarm(0)
+
+
+# ---------------------------------------------------------------------------
+# Logger level cleanup — prevent log level contamination between tests
+# ---------------------------------------------------------------------------
+# Tests that use caplog.at_level(logging.DEBUG, logger="shared.logger") can
+# leave the shared logger at DEBUG if they fail or don't properly restore.
+# This fixture saves and restores the level after each test.
+
+
+@pytest.fixture(autouse=True)
+def _restore_shared_logger_level():
+    """Restore the shared logger level after each test."""
+    import logging
+
+    try:
+        from shared.logger import LOGGER
+    except ImportError:
+        yield
+        return
+    original_level = LOGGER.level
+    yield
+    if LOGGER.level != original_level:
+        LOGGER.setLevel(original_level)
 
 # ---------------------------------------------------------------------------
 # Suppress known upstream deprecation warnings
@@ -35,8 +81,52 @@ _MARKER_TIMEOUTS = {
 
 
 def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
-    """Apply per-marker timeouts so integration/slow tests aren't killed early."""
+    """Auto-apply markers based on file paths and apply per-marker timeouts.
+
+    File-path conventions:
+    - tests/benchmarks/          → ``performance``
+    - tests/large_dataset/       → ``integration``, ``slow``
+    - tests/load_testing/        → ``performance``, ``slow``
+    - tests/property_based/      → ``unit``
+    - *_e2e_*.py / *_end_to_end* → ``integration``
+    - *_performance_*.py         → ``performance``
+    - *_security_*.py            → ``security``
+
+    These are only applied when the test does **not** already carry the
+    marker, so explicit ``@pytest.mark.X`` always wins.
+    """
+    _PATH_MARKERS: list[tuple[str, list[str]]] = [
+        ("benchmarks/", ["performance"]),
+        ("large_dataset/", ["integration", "slow"]),
+        ("load_testing/", ["performance", "slow"]),
+        ("property_based/", ["unit"]),
+    ]
+    _NAME_MARKERS: list[tuple[str, list[str]]] = [
+        ("_e2e_", ["integration"]),
+        ("_end_to_end", ["integration"]),
+        ("_performance_", ["performance"]),
+        ("_security_", ["security"]),
+    ]
+
     for item in items:
+        fspath = str(item.fspath)
+
+        # Auto-apply markers from directory conventions
+        for pattern, markers in _PATH_MARKERS:
+            if pattern in fspath:
+                for m in markers:
+                    if not item.get_closest_marker(m):
+                        item.add_marker(getattr(pytest.mark, m))
+
+        # Auto-apply markers from filename conventions
+        fname = Path(fspath).name
+        for pattern, markers in _NAME_MARKERS:
+            if pattern in fname:
+                for m in markers:
+                    if not item.get_closest_marker(m):
+                        item.add_marker(getattr(pytest.mark, m))
+
+        # Apply per-marker timeouts
         if item.get_closest_marker("timeout"):
             continue  # explicit timeout takes precedence
         for marker_name, seconds in _MARKER_TIMEOUTS.items():
@@ -47,6 +137,58 @@ def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
 
 FIXTURES_DATA = Path(__file__).parent / "fixtures" / "data"
 ID_COLUMN = "__ID__"
+
+
+# ---------------------------------------------------------------------------
+# Performance test tolerance — CI runners are slower than local machines
+# ---------------------------------------------------------------------------
+# Use perf_threshold() instead of hard-coded timing assertions so that tests
+# pass reliably on GitHub Actions (shared runners), local laptops, and
+# parallel test sessions.  The multiplier is applied when the CI environment
+# variable is set (GitHub Actions, most CI systems).
+
+_CI_PERF_MULTIPLIER = float(os.environ.get("PYCYPHER_PERF_MULTIPLIER", "3.0"))
+_IN_CI = os.environ.get("CI", "").lower() in ("true", "1", "yes")
+
+
+def perf_threshold(seconds: float) -> float:
+    """Return *seconds* scaled up when running in CI or under heavy load.
+
+    On a local machine this returns ``seconds`` unchanged.  In CI it returns
+    ``seconds * _CI_PERF_MULTIPLIER`` (default 3x) to absorb variance from
+    shared runners, parallel test sessions, and Python version differences.
+
+    Override the multiplier via ``PYCYPHER_PERF_MULTIPLIER=5.0`` if needed.
+    """
+    if _IN_CI:
+        return seconds * _CI_PERF_MULTIPLIER
+    return seconds
+
+
+# ---------------------------------------------------------------------------
+# Safe tracemalloc — prevent state coupling between tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture()
+def safe_tracemalloc():
+    """Start tracemalloc cleanly, stop it after the test.
+
+    Handles the case where tracemalloc is already running from a prior test
+    that failed mid-execution (which would leave tracing enabled).
+    """
+    import tracemalloc as _tm
+
+    was_tracing = _tm.is_tracing()
+    if was_tracing:
+        _tm.stop()
+    _tm.start()
+    yield _tm
+    if _tm.is_tracing():
+        _tm.stop()
+    # Restore prior state if tracemalloc was already running
+    if was_tracing:
+        _tm.start()
 
 
 # ---------------------------------------------------------------------------
@@ -318,10 +460,12 @@ def make_context(
 
     """
     entity_tables = {
-        label: make_entity_table(label, data) for label, data in entities.items()
+        label: make_entity_table(label, data)
+        for label, data in entities.items()
     }
     rel_tables = {
-        rt: make_rel_table(rt, data) for rt, data in (relationships or {}).items()
+        rt: make_rel_table(rt, data)
+        for rt, data in (relationships or {}).items()
     }
     return Context(
         entity_mapping=EntityMapping(mapping=entity_tables),

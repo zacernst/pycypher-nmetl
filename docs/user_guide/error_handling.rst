@@ -35,6 +35,9 @@ Exception Hierarchy
    MemoryError
    └── QueryMemoryBudgetError      — estimated memory exceeds budget
 
+   RuntimeError
+   └── RateLimitError              — query rate limit exceeded
+
 Every custom exception inherits from a Python built-in, so existing
 ``except ValueError`` or ``except TypeError`` handlers continue to work
 without modification.
@@ -115,6 +118,23 @@ Protect against runaway queries in production:
        print(f"Estimated {e.estimated_bytes / 1e6:.0f}MB exceeds "
              f"budget {e.budget_bytes / 1e6:.0f}MB")
 
+Rate Limit Errors
+-----------------
+
+When rate limiting is enabled via ``PYCYPHER_RATE_LIMIT_QPS``, queries
+that exceed the sustained rate raise
+:class:`~pycypher.exceptions.RateLimitError`:
+
+.. code-block:: python
+
+   from pycypher import RateLimitError
+
+   try:
+       result = star.execute_query(query)
+   except RateLimitError:
+       # Back off and retry, or return a 429 to the caller
+       print("Rate limit exceeded — try again shortly")
+
 Pre-execution Validation
 ------------------------
 
@@ -170,3 +190,84 @@ Best Practices
 
 4. **Set timeouts in production** — either via ``timeout_seconds`` parameter
    or the ``PYCYPHER_QUERY_TIMEOUT_S`` environment variable.
+
+.. _troubleshooting:
+
+Troubleshooting Quick Reference
+--------------------------------
+
+.. list-table:: Common Errors and Fixes
+   :header-rows: 1
+   :widths: 30 30 40
+
+   * - Error
+     - Likely Cause
+     - Fix
+   * - ``CypherSyntaxError``
+     - Typo in Cypher keyword or missing clause
+     - Check the line/column pointer in the error. Look for the "Did you mean ...?" suggestion. Ensure MATCH has a RETURN clause and all quotes/brackets are closed.
+   * - ``GraphTypeNotFoundError``
+     - Entity label or relationship type not loaded
+     - Check ``e.available_types`` for registered types. Verify your ``--entity`` / ``--rel`` flags match the labels in your query.
+   * - ``VariableNotFoundError``
+     - Variable used in RETURN/WHERE not bound in MATCH
+     - Check ``e.available_variables`` for what's in scope. Ensure variables are defined in a MATCH or WITH clause before use. Look for the "Did you mean ...?" hint.
+   * - ``UnsupportedFunctionError``
+     - Function name not recognised
+     - Check ``e.supported_functions`` for available functions. Function names are case-insensitive (``count``, ``COUNT``, ``Count`` all work).
+   * - ``FunctionArgumentError``
+     - Wrong number of arguments to a function
+     - Check ``e.expected_args`` vs ``e.actual_args``. Refer to ``e.argument_description`` for the correct signature.
+   * - ``IncompatibleOperatorError``
+     - Operator applied to incompatible types (e.g. string + integer)
+     - The error message includes a type-specific suggestion. Common fixes: use ``coalesce()`` for NULLs, ``toString()``/``toInteger()`` for type conversion.
+   * - ``QueryTimeoutError``
+     - Query exceeded wall-clock time budget
+     - Add ``LIMIT`` to reduce result set. Add ``WHERE`` filters to reduce scan scope. Increase ``timeout_seconds`` if the query is genuinely large.
+   * - ``QueryMemoryBudgetError``
+     - Estimated memory exceeds configured budget
+     - Add ``LIMIT``/``WHERE`` to reduce working set. Process in batches with ``SKIP``/``LIMIT``. Increase ``memory_budget_bytes`` if resources allow.
+   * - ``QueryComplexityError``
+     - Query complexity score exceeds limit
+     - Check ``e.breakdown`` for top contributors. Reduce MATCH clauses, shorten variable-length paths, add join conditions. Increase ``PYCYPHER_MAX_COMPLEXITY_SCORE`` if needed.
+   * - ``InvalidCastError``
+     - Type cast failed (e.g. ``toInteger("abc")``)
+     - Verify the source value is castable. Use ``CASE WHEN`` to handle non-castable values gracefully.
+   * - ``MissingParameterError``
+     - Parameterised query missing a ``$param`` value
+     - Pass the parameter: ``execute_query(query, parameters={'param': value})``. The error message shows the exact usage.
+   * - ``CyclicDependencyError``
+     - Circular dependency in multi-query pipeline
+     - Check ``e.remaining_nodes`` for the cycle. Break the cycle by splitting a query into separate read/write steps.
+   * - ``SecurityError``
+     - SQL injection, path traversal, or SSRF attempt detected
+     - Review the data source URI or query for suspicious patterns. Use parameterised queries instead of string interpolation.
+   * - ``RateLimitError``
+     - Query rate limit exceeded
+     - Back off and retry. Check ``e.qps`` and ``e.burst`` for current limits. Adjust ``PYCYPHER_RATE_LIMIT_QPS`` if needed.
+
+Debugging Commands
+~~~~~~~~~~~~~~~~~~
+
+When troubleshooting, these patterns help identify the root cause:
+
+.. code-block:: python
+
+   # Check available entity types and relationship types
+   print(context.entity_types())
+   print(context.relationship_types())
+
+   # Inspect DataFrame columns for property errors
+   for name, df in context.entities.items():
+       print(f"{name}: {list(df.columns)}")
+
+   # Validate a query before executing it
+   from pycypher import validate_query
+   errors = validate_query(query_string)
+   for e in errors:
+       print(f"{e.severity.value}: {e.message}")
+
+   # Profile a slow query
+   star = Star(context)
+   result = star.execute_query(query, profile=True)
+   print(star.explain_query(query))

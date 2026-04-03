@@ -211,7 +211,9 @@ class Config:
             raise ValueError(msg)
 
         required_paths = ["data_dir", "scripts_dir", "temp_dir", "static_dir"]
-        missing_paths = [k for k in required_paths if k not in data.get("paths", {})]
+        missing_paths = [
+            k for k in required_paths if k not in data.get("paths", {})
+        ]
         if missing_paths:
             msg = f"Missing required paths keys: {', '.join(missing_paths)}"
             raise ValueError(msg)
@@ -232,8 +234,12 @@ class Config:
 
     def _validate_value_constraints(self, data: dict[str, Any]) -> None:
         """Check numeric bounds, port range, and log level validity."""
-        self._validate_positive_int(data["downloads"], "max_concurrent", "downloads")
-        self._validate_positive_int(data["downloads"], "max_retries", "downloads")
+        self._validate_positive_int(
+            data["downloads"], "max_concurrent", "downloads"
+        )
+        self._validate_positive_int(
+            data["downloads"], "max_retries", "downloads"
+        )
         self._validate_positive_int(data["downloads"], "timeout", "downloads")
 
         if "processing" in data:
@@ -266,7 +272,9 @@ class Config:
             return
         val = section[key]
         if not isinstance(val, int) or val <= 0:
-            msg = f"{section_name}.{key} must be a positive integer, got {val!r}"
+            msg = (
+                f"{section_name}.{key} must be a positive integer, got {val!r}"
+            )
             raise ValueError(msg)
 
     # Path configuration with environment variable overrides

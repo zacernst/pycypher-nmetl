@@ -162,7 +162,9 @@ class TestExtractOperation:
         assert _extract_operation("MATCH (n) RETURN n") == "MATCH"
 
     def test_create_query(self) -> None:
-        assert _extract_operation("CREATE (n:Person {name: 'Alice'})") == "CREATE"
+        assert (
+            _extract_operation("CREATE (n:Person {name: 'Alice'})") == "CREATE"
+        )
 
     def test_merge_query(self) -> None:
         assert _extract_operation("MERGE (n:Person {id: 1})") == "MERGE"

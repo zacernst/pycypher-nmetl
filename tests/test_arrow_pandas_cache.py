@@ -29,6 +29,7 @@ import pytest
 from pycypher.binding_frame import _source_to_pandas
 from pycypher.ingestion.context_builder import ContextBuilder
 from pycypher.star import Star
+from _perf_helpers import perf_threshold
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -187,7 +188,7 @@ class TestArrowPandasCachePerformance:
                 "ORDER BY p.age LIMIT 10",
             )
         elapsed = time.perf_counter() - t0
-        assert elapsed < 2.0, (
+        assert elapsed < perf_threshold(2.0), (
             f"20 warm queries took {elapsed:.2f}s (threshold 2.0s). "
             "Arrow→pandas caching may not be active."
         )

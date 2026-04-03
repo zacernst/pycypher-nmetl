@@ -18,6 +18,7 @@ import pandas as pd
 
 from pycypher.backends._helpers import _polars_agg_func, _to_pandas
 from pycypher.constants import ID_COLUMN
+from pycypher.cypher_types import ColumnValues, SourceObject
 
 
 class PolarsBackend:
@@ -70,7 +71,7 @@ class PolarsBackend:
 
     def scan_entity(
         self,
-        source_obj: Any,
+        source_obj: SourceObject,
         entity_type: str,
     ) -> pd.DataFrame:
         """Extract ID column from source."""
@@ -81,7 +82,7 @@ class PolarsBackend:
     # Transform
     # ------------------------------------------------------------------
 
-    def filter(self, frame: pd.DataFrame, mask: Any) -> pd.DataFrame:
+    def filter(self, frame: pd.DataFrame, mask: pd.Series) -> pd.DataFrame:
         """Boolean mask filter via Polars."""
         pl_frame = self._to_pl(frame)
         pl_mask = self._pl.Series(mask)
@@ -138,7 +139,7 @@ class PolarsBackend:
         self,
         frame: pd.DataFrame,
         name: str,
-        values: Any,
+        values: ColumnValues,
     ) -> pd.DataFrame:
         """Add or replace a column via Polars."""
         pl = self._pl
@@ -221,7 +222,7 @@ class PolarsBackend:
     # ------------------------------------------------------------------
 
     def to_pandas(self, frame: pd.DataFrame) -> pd.DataFrame:
-        """Return a lazy copy (O(1) with pandas 3.0+ CoW) for mutation safety."""
+        """Return an independent copy so the caller can mutate freely."""
         return frame.copy()
 
     def row_count(self, frame: pd.DataFrame) -> int:

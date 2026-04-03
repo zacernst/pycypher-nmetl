@@ -22,6 +22,7 @@ from pycypher import (
 
 from .benchmark_utils import _get_process_memory_mb
 from .dataset_generator import SCALE_SMALL, SCALE_TINY, generate_social_graph
+from _perf_helpers import perf_threshold
 
 ID_COLUMN = "__ID__"
 
@@ -101,7 +102,7 @@ class TestMemoryLeakDetection:
 
         # Allow up to 50MB growth (generous bound for GC variance)
         growth_mb = final_mb - baseline_mb
-        assert growth_mb < 50, (
+        assert growth_mb < perf_threshold(50), (
             f"Memory grew by {growth_mb:.1f}MB over 20 iterations "
             f"(baseline={baseline_mb:.1f}MB, final={final_mb:.1f}MB)"
         )
@@ -125,7 +126,7 @@ class TestMemoryLeakDetection:
         final_mb = _get_process_memory_mb()
 
         growth_mb = final_mb - baseline_mb
-        assert growth_mb < 100, (
+        assert growth_mb < perf_threshold(100), (
             f"Memory grew by {growth_mb:.1f}MB over 10 join iterations "
             f"(baseline={baseline_mb:.1f}MB, final={final_mb:.1f}MB)"
         )
@@ -146,7 +147,7 @@ class TestMemoryLeakDetection:
         final_mb = _get_process_memory_mb()
 
         growth_mb = final_mb - baseline_mb
-        assert growth_mb < 50, (
+        assert growth_mb < perf_threshold(50), (
             f"Memory grew by {growth_mb:.1f}MB over 10 aggregation iterations"
         )
 

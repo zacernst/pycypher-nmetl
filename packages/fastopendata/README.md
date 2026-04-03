@@ -8,9 +8,8 @@ Open data ingestion and processing for the PyCypher ecosystem.
 
 ## Installation
 
-```bash
-pip install fastopendata
-```
+Installed automatically as a workspace dependency when you run ``uv sync``
+from the monorepo root. See the [root README](../../README.md) for setup instructions.
 
 ## Quick Start
 

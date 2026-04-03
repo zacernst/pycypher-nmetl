@@ -125,7 +125,9 @@ class TestUniverse:
     def test_fingerprint_plan_deterministic(self) -> None:
         u1 = Universe()
         u2 = Universe()
-        assert u1.fingerprint_plan("same plan") == u2.fingerprint_plan("same plan")
+        assert u1.fingerprint_plan("same plan") == u2.fingerprint_plan(
+            "same plan"
+        )
 
     def test_fingerprint_plan_differs_for_different_plans(self) -> None:
         u = Universe()
@@ -276,7 +278,9 @@ class TestMultiverseState:
         u1 = ms.spawn_universe(cost_estimate=1.0)
         u2 = ms.spawn_universe(cost_estimate=2.0)
         u3 = ms.spawn_universe(cost_estimate=3.0)
-        ms.register_coherence("f1", {u1.universe_id, u2.universe_id, u3.universe_id})
+        ms.register_coherence(
+            "f1", {u1.universe_id, u2.universe_id, u3.universe_id}
+        )
         savings = ms.coherence_savings()
         # 3 refs, 1 unique => (3-1)/3 = 66.67%
         assert savings == pytest.approx(66.67, abs=0.01)

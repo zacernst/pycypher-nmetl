@@ -43,6 +43,7 @@ from pycypher.relational_models import (
     RelationshipMapping,
 )
 from pycypher.star import Star
+from _perf_helpers import perf_threshold
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
@@ -65,7 +66,9 @@ def bool_star() -> Star:
                 True if i % 3 == 1 else (None if i % 3 == 2 else False)
                 for i in range(1, n + 1)
             ],
-            "age": [20 + (i % 50) if i % 5 != 0 else None for i in range(1, n + 1)],
+            "age": [
+                20 + (i % 50) if i % 5 != 0 else None for i in range(1, n + 1)
+            ],
         },
     )
     table = EntityTable(
@@ -402,7 +405,7 @@ class TestKleenePerformance:
         for _ in range(self.REPS):
             kleene_and(left, right)
         elapsed = time.perf_counter() - start
-        assert elapsed < 0.5, (
+        assert elapsed < perf_threshold(0.5), (
             f"50 × kleene_and(5000-row) took {elapsed:.3f}s (threshold 0.5s). "
             "The implementation is still using Python loops."
         )
@@ -417,7 +420,7 @@ class TestKleenePerformance:
         for _ in range(self.REPS):
             kleene_or(left, right)
         elapsed = time.perf_counter() - start
-        assert elapsed < 0.5, (
+        assert elapsed < perf_threshold(0.5), (
             f"50 × kleene_or(5000-row) took {elapsed:.3f}s (threshold 0.5s). "
             "The implementation is still using Python loops."
         )
@@ -432,7 +435,7 @@ class TestKleenePerformance:
         for _ in range(self.REPS):
             kleene_xor(left, right)
         elapsed = time.perf_counter() - start
-        assert elapsed < 0.5, (
+        assert elapsed < perf_threshold(0.5), (
             f"50 × kleene_xor(5000-row) took {elapsed:.3f}s (threshold 0.5s). "
             "The implementation is still using Python loops."
         )

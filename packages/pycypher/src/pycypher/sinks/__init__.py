@@ -8,5 +8,5 @@ Available sinks
 ---------------
 ``pycypher.sinks.neo4j``
     Write DataFrames to a Neo4j graph database via the official Python
-    driver.  Requires ``pip install 'pycypher[neo4j]'``.
+    driver.  Requires the ``neo4j`` package (``uv pip install neo4j``).
 """

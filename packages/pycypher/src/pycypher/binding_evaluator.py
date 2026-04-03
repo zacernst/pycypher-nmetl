@@ -80,7 +80,7 @@ from pycypher.ast_models import (
 from pycypher.constants import _normalize_func_args as _normalize_func_args
 from pycypher.exceptions import VariableNotFoundError
 from pycypher.scalar_functions import ScalarFunctionRegistry
-from pycypher.types import FrameSeries
+from pycypher.cypher_types import FrameSeries
 
 if TYPE_CHECKING:
     from pycypher.aggregation_evaluator import AggregationExpressionEvaluator
@@ -363,15 +363,21 @@ class BindingExpressionEvaluator:
             ScalarFunctionRegistry.get_instance()
         )
 
-        # Lazy-init backing fields for sub-evaluators (constructed on first access)
-        self._arithmetic_evaluator: Any = None
-        self._boolean_evaluator: Any = None
-        self._aggregation_evaluator: Any = None
-        self._collection_evaluator: Any = None
-        self._comparison_evaluator: Any = None
-        self._scalar_function_evaluator: Any = None
-        self._string_predicate_evaluator: Any = None
-        self._exists_evaluator: Any = None
+        # Lazy-init backing fields for sub-evaluators (constructed on first access).
+        # Typed as Optional[ConcreteType] via TYPE_CHECKING imports to enable
+        # static analysis while keeping runtime imports lazy.
+        self._arithmetic_evaluator: ArithmeticExpressionEvaluator | None = None
+        self._boolean_evaluator: BooleanExpressionEvaluator | None = None
+        self._aggregation_evaluator: AggregationExpressionEvaluator | None = (
+            None
+        )
+        self._collection_evaluator: CollectionExpressionEvaluator | None = None
+        self._comparison_evaluator: ComparisonEvaluator | None = None
+        self._scalar_function_evaluator: ScalarFunctionEvaluator | None = None
+        self._string_predicate_evaluator: StringPredicateEvaluator | None = (
+            None
+        )
+        self._exists_evaluator: ExistsEvaluator | None = None
 
     @property
     def arithmetic_evaluator(self) -> ArithmeticExpressionEvaluator:
@@ -538,8 +544,8 @@ class BindingExpressionEvaluator:
                 lst = val
                 return _broadcast_scalar(lst, len(self.frame))
 
-            case MapLiteral(entries=entries, value=val):
-                return self._eval_map_literal(entries, val)
+            case MapLiteral() as ml:
+                return self._eval_map_literal(ml)
 
             case Arithmetic(operator=op, left=left_expr, right=right_expr):
                 return self._eval_arithmetic(op, left_expr, right_expr)
@@ -813,7 +819,9 @@ class BindingExpressionEvaluator:
             Boolean ``pd.Series`` of length equal to the frame size.
 
         """
-        from pycypher.dataframe_utils import source_to_pandas as _source_to_pandas
+        from pycypher.dataframe_utils import (
+            source_to_pandas as _source_to_pandas,
+        )
         from pycypher.constants import ID_COLUMN
 
         n_rows = len(self.frame.bindings)
@@ -1226,40 +1234,22 @@ class BindingExpressionEvaluator:
 
     def _eval_map_literal(
         self,
-        entries: dict[str, Expression],
-        val: dict[str, Any],
+        map_literal: MapLiteral,
     ) -> FrameSeries:
         """Evaluate a map literal expression (``{key: expr, ...}``).
 
         Delegates to :meth:`CollectionExpressionEvaluator.eval_map_literal`
-        via a lightweight adapter object.  If *entries* contains expression
-        values, each is evaluated per-row to build dynamic maps.  Otherwise
-        the raw *val* dict (primitives only) is broadcast to every row.
+        with the actual :class:`MapLiteral` AST node.
 
         Args:
-            entries: Mapping of property keys to AST expression nodes.
-            val: Pre-evaluated primitive dict (used when entries are empty).
+            map_literal: The :class:`~pycypher.ast_models.MapLiteral` AST node.
 
         Returns:
             A ``pd.Series`` of ``dict`` objects, one per row in the frame.
 
         """
-
-        # Architecture Loop 284 - Phase 5: Delegate to CollectionExpressionEvaluator
-        # Create a mock map literal object for delegation
-        class MockMapLiteral:
-            """Adapter providing the MapLiteral interface for CollectionExpressionEvaluator."""
-
-            def __init__(
-                self,
-                entries: dict[str, Expression],
-                val: dict[str, Any],
-            ) -> None:
-                self.entries = [(key, expr) for key, expr in entries.items()]
-                self.val = val
-
         return self.collection_evaluator.eval_map_literal(
-            MockMapLiteral(entries, val),
+            map_literal,
             self,
         )
 

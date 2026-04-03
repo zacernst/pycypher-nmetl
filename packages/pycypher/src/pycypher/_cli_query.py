@@ -383,9 +383,11 @@ def register(cli_group: click.Group) -> None:
         n_sources = len(parsed_entities) + len(parsed_rels)
         click.echo(f"Loading {n_sources} data source(s) …")
 
+        from pycypher.ingestion.security import mask_uri_credentials
+
         builder = ContextBuilder()
         for i, (label, path, id_col) in enumerate(parsed_entities, 1):
-            click.echo(f"  [{i}/{n_sources}] entity {label} <- {path}")
+            click.echo(f"  [{i}/{n_sources}] entity {label} <- {mask_uri_credentials(path)}")
             effective_id_col = id_col or default_id_col
             _load_data_source(
                 lambda _l=label, _p=path, _i=effective_id_col: (
@@ -402,7 +404,7 @@ def register(cli_group: click.Group) -> None:
         for j, (rel_type, path, src_col, tgt_col) in enumerate(parsed_rels, 1):
             click.echo(
                 f"  [{len(parsed_entities) + j}/{n_sources}]"
-                f" relationship {rel_type} <- {path}",
+                f" relationship {rel_type} <- {mask_uri_credentials(path)}",
             )
             _load_data_source(
                 lambda _r=rel_type, _p=path, _s=src_col, _t=tgt_col: (
@@ -437,8 +439,10 @@ def register(cli_group: click.Group) -> None:
                 timeout_seconds=timeout_seconds,
             )
         except _ADHOC_QUERY_ERRORS as exc:
+            from pycypher.exceptions import sanitize_error_message
+
             label = _get_adhoc_error_label(exc)
-            _cli_error(f"{label}: {exc}")
+            _cli_error(f"{label}: {sanitize_error_message(exc)}")
         elapsed = time.monotonic() - t0
 
         # Build profile report from star's instrumentation data (no re-execution).

@@ -164,7 +164,10 @@ class TestValueCorrectness:
             "MATCH (p:Person) RETURN p.city AS city, count(p) AS cnt ORDER BY city ASC",
         )
         expected = (
-            person_df.groupby("city").size().reset_index(name="cnt").sort_values("city")
+            person_df.groupby("city")
+            .size()
+            .reset_index(name="cnt")
+            .sort_values("city")
         )
         assert list(result["city"]) == list(expected["city"])
         assert list(result["cnt"]) == list(expected["cnt"])
@@ -240,9 +243,7 @@ class TestDeterminism:
         small_data: tuple[pd.DataFrame, pd.DataFrame, Star],
     ) -> None:
         _, _, star = small_data
-        query = (
-            "MATCH (p:Person) RETURN p.city AS city, count(p) AS cnt ORDER BY city ASC"
-        )
+        query = "MATCH (p:Person) RETURN p.city AS city, count(p) AS cnt ORDER BY city ASC"
         r1 = star.execute_query(query)
         r2 = star.execute_query(query)
         pd.testing.assert_frame_equal(r1, r2)

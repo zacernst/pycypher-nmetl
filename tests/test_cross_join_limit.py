@@ -175,7 +175,9 @@ class TestCrossJoinProgressiveWarnings:
             with caplog.at_level(logging.WARNING, logger="pycypher"):
                 bf_left.cross_join(bf_right)  # 25 rows < 100
             warning_msgs = [
-                r.message for r in caplog.records if r.levelno >= logging.WARNING
+                r.message
+                for r in caplog.records
+                if r.levelno >= logging.WARNING
             ]
             assert not any("warning threshold" in m for m in warning_msgs)
 
@@ -205,7 +207,9 @@ class TestCrossJoinProgressiveWarnings:
             with caplog.at_level(logging.WARNING, logger="pycypher"):
                 bf_left.cross_join(bf_right)  # 25 rows > 10
             warning_msgs = [
-                r.message for r in caplog.records if r.levelno >= logging.WARNING
+                r.message
+                for r in caplog.records
+                if r.levelno >= logging.WARNING
             ]
             assert any("warning threshold" in m for m in warning_msgs)
 
@@ -227,7 +231,9 @@ class TestCrossJoinProgressiveWarnings:
         )
         with caplog.at_level(logging.INFO, logger="shared.logger"):
             bf_left.cross_join(bf_right)
-        info_msgs = [r.message for r in caplog.records if r.levelno == logging.INFO]
+        info_msgs = [
+            r.message for r in caplog.records if r.levelno == logging.INFO
+        ]
         assert any("cardinality estimate" in m for m in info_msgs)
 
 

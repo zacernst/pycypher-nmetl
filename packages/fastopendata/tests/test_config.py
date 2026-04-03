@@ -111,7 +111,9 @@ class TestConfigLoading:
         assert cfg.scripts_dir == "src/fastopendata/processing"
 
     def test_missing_file_raises(self, tmp_path: Path) -> None:
-        with pytest.raises(FileNotFoundError, match="Configuration file not found"):
+        with pytest.raises(
+            FileNotFoundError, match="Configuration file not found"
+        ):
             Config(tmp_path / "nonexistent.toml")
 
     def test_malformed_toml_raises(self, tmp_path: Path) -> None:
@@ -132,7 +134,9 @@ static_dir = "x"
 """,
             encoding="utf-8",
         )
-        with pytest.raises(ValueError, match="Missing required config sections"):
+        with pytest.raises(
+            ValueError, match="Missing required config sections"
+        ):
             Config(incomplete)
 
     def test_missing_paths_keys_raises(self, tmp_path: Path) -> None:
@@ -206,7 +210,9 @@ file = ""
 """,
             encoding="utf-8",
         )
-        with pytest.raises(ValueError, match="Missing required downloads keys"):
+        with pytest.raises(
+            ValueError, match="Missing required downloads keys"
+        ):
             Config(bad_dl)
 
 
@@ -624,7 +630,9 @@ class TestValidateDataDir:
             if str(Path(p).resolve()) == p
         ],
     )
-    def test_rejects_forbidden_system_directories(self, forbidden: str) -> None:
+    def test_rejects_forbidden_system_directories(
+        self, forbidden: str
+    ) -> None:
         with pytest.raises(ValueError, match="forbidden system directory"):
             Config._validate_data_dir(forbidden)
 
@@ -638,8 +646,12 @@ class TestValidateDataDir:
             if str(Path(p).parent.resolve()) == str(Path(p).parent)
         ],
     )
-    def test_rejects_direct_children_of_system_dirs(self, direct_child: str) -> None:
-        with pytest.raises(ValueError, match="direct child of system directory"):
+    def test_rejects_direct_children_of_system_dirs(
+        self, direct_child: str
+    ) -> None:
+        with pytest.raises(
+            ValueError, match="direct child of system directory"
+        ):
             Config._validate_data_dir(direct_child)
 
     # -- Deeper subdirectories are allowed --
@@ -658,7 +670,9 @@ class TestValidateDataDir:
     # -- Path resolution --
 
     def test_resolves_relative_paths(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         monkeypatch.chdir(tmp_path)
         result = Config._validate_data_dir("relative/data/dir")

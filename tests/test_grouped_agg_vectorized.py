@@ -19,6 +19,7 @@ from pycypher.relational_models import (
     RelationshipMapping,
 )
 from pycypher.star import Star
+from _perf_helpers import perf_threshold
 
 # ---------------------------------------------------------------------------
 # Shared fixture
@@ -394,7 +395,7 @@ class TestGroupedAggPerformance:
         )
         elapsed = time.perf_counter() - t0
         assert len(result) == 1_000
-        assert elapsed < 5.0, (
+        assert elapsed < perf_threshold(5.0), (
             f"Grouped aggregation took {elapsed:.2f}s — likely regressed to O(N) loop"
         )
 

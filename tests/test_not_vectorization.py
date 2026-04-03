@@ -33,6 +33,7 @@ import time
 
 import pandas as pd
 import pytest
+from _perf_helpers import perf_threshold
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -311,7 +312,7 @@ class TestKleeneNotPerformance:
         for _ in range(self.REPS):
             kleene_not(s)
         elapsed = time.perf_counter() - start
-        assert elapsed < 0.5, (
+        assert elapsed < perf_threshold(0.5), (
             f"50 × kleene_not(5000-row) took {elapsed:.3f}s (threshold 0.5s). "
             "The .apply() implementation must be replaced with numpy operations."
         )

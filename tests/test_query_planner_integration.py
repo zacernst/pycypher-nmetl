@@ -284,7 +284,9 @@ class TestQueryPlannerExecutionIntegration:
                 "MATCH (a:Person)-[r:KNOWS]->(b:Person) RETURN a.name AS source",
             )
         # Check that query planner logging occurred
-        planner_logs = [r for r in caplog.records if "query planner: join" in r.message]
+        planner_logs = [
+            r for r in caplog.records if "query planner: join" in r.message
+        ]
         assert len(planner_logs) > 0
         assert "broadcast" in planner_logs[0].message.lower()
 

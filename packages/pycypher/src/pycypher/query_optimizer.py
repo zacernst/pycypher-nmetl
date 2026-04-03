@@ -487,9 +487,10 @@ class JoinReorderingRule(OptimizationRule):
                     match.where,
                 )
                 cardinality = max(1, int(cardinality * selectivity))
-            except Exception:
+            except (AttributeError, TypeError, ValueError, KeyError) as _sel_exc:
                 LOGGER.debug(
-                    "Failed to estimate WHERE selectivity; falling back to 0.33",
+                    "Failed to estimate WHERE selectivity; falling back to 0.33: %s",
+                    _sel_exc,
                     exc_info=True,
                 )
                 cardinality = max(1, int(cardinality * 0.33))

@@ -283,7 +283,9 @@ class TestQueryCommand:
         )
         assert result.exit_code == 0, result.output
         assert out_file.exists()
-        records = [json.loads(line) for line in out_file.read_text().splitlines()]
+        records = [
+            json.loads(line) for line in out_file.read_text().splitlines()
+        ]
         assert len(records) == 2
 
     def test_output_parquet_creates_file(self, tmp_path: Path) -> None:
@@ -371,7 +373,9 @@ class TestQueryCommand:
         assert result.exit_code == 0, result.output
         # Filter to only lines that look like JSON objects (logging may also appear)
         json_lines = [
-            line for line in result.output.splitlines() if line.strip().startswith("{")
+            line
+            for line in result.output.splitlines()
+            if line.strip().startswith("{")
         ]
         records = [json.loads(line) for line in json_lines]
         assert len(records) == 2

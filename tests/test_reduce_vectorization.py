@@ -45,6 +45,7 @@ import time
 
 import pandas as pd
 import pytest
+from _perf_helpers import perf_threshold
 
 pytestmark = [pytest.mark.slow, pytest.mark.performance]
 
@@ -112,7 +113,9 @@ def _reference_reduce(list_series, initial_series, step_fn):
     results = []
     for raw_list, init_val in zip(list_series, initial_series):
         acc = init_val
-        if raw_list is None or (isinstance(raw_list, float) and pd.isna(raw_list)):
+        if raw_list is None or (
+            isinstance(raw_list, float) and pd.isna(raw_list)
+        ):
             results.append(acc)
             continue
         for item in list(raw_list):
@@ -279,7 +282,9 @@ class TestReducePerformance:
 
     @pytest.fixture
     def large_star(self):
-        rows = [{"items": list(range(self.LIST_LEN))} for _ in range(self.N_ROWS)]
+        rows = [
+            {"items": list(range(self.LIST_LEN))} for _ in range(self.N_ROWS)
+        ]
         return _star_with_rows(rows)
 
     def test_absolute_threshold(self, large_star) -> None:
@@ -290,7 +295,7 @@ class TestReducePerformance:
                 "MATCH (r:Row) RETURN reduce(s = 0, x IN r.items | s + x) AS v",
             )
         elapsed = time.perf_counter() - start
-        assert elapsed < 5.0, (
+        assert elapsed < perf_threshold(5.0), (
             f"20 × 200-row × 50-element REDUCE took {elapsed:.2f}s (threshold 5s). "
             "The per-element BindingFrame allocation loop is still in place."
         )

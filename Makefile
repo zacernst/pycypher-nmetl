@@ -74,6 +74,9 @@ help:
 	@echo "  make lint-changed    Lint only files changed vs main (CI gate)"
 	@echo "  make typecheck       Run ty type checker"
 	@echo "  make audit           Scan dependencies for known vulnerabilities (pip-audit)"
+	@echo "  make quality         Code quality dashboard (complexity, lint, types)"
+	@echo "  make complexity      Show complexity hotspots only"
+	@echo "  make quality-changed Quality check on changed files only"
 	@echo ""
 	@echo "Docker Development:"
 	@echo "  make dev-up          Start dev container + Spark + Neo4j"
@@ -364,6 +367,18 @@ dev-check:
 
 # Run format + lint + typecheck + fast tests (local CI equivalent)
 check: lock-check format lint typecheck test-fast
+
+## Code quality dashboard — complexity hotspots, lint summary, type coverage
+quality:
+	uv run python scripts/code_quality.py
+
+## Complexity analysis only
+complexity:
+	uv run python scripts/code_quality.py --complexity
+
+## Quality check on changed files only
+quality-changed:
+	uv run python scripts/code_quality.py --changed
 
 # Run a single test file: make test-file FILE=tests/test_foo.py
 FILE ?= tests/
@@ -660,6 +675,8 @@ coverage-check:
 docs:
 	@echo "Building documentation..."
 	cd ${DOCS_DIR} && uv run make html
+	@echo "Building PDF documentation..."
+	cd ${DOCS_DIR} && uv run make latexpdf
 
 lsp:
 	@echo "Starting PyCypher LSP server (stdin/stdout)..."

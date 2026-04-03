@@ -141,18 +141,24 @@ class SchemaDiff:
     @property
     def added_fields(self) -> list[str]:
         return [
-            e.field_name for e in self.entries if e.diff_type == DiffType.FIELD_ADDED
+            e.field_name
+            for e in self.entries
+            if e.diff_type == DiffType.FIELD_ADDED
         ]
 
     @property
     def removed_fields(self) -> list[str]:
         return [
-            e.field_name for e in self.entries if e.diff_type == DiffType.FIELD_REMOVED
+            e.field_name
+            for e in self.entries
+            if e.diff_type == DiffType.FIELD_REMOVED
         ]
 
     @property
     def type_changes(self) -> list[DiffEntry]:
-        return [e for e in self.entries if e.diff_type == DiffType.TYPE_CHANGED]
+        return [
+            e for e in self.entries if e.diff_type == DiffType.TYPE_CHANGED
+        ]
 
     @classmethod
     def compute(cls, old: TableSchema, new: TableSchema) -> SchemaDiff:
@@ -165,7 +171,9 @@ class SchemaDiff:
         for name, old_field in old_map.items():
             if name not in new_map:
                 entries.append(
-                    DiffEntry(DiffType.FIELD_REMOVED, name, old_value=old_field),
+                    DiffEntry(
+                        DiffType.FIELD_REMOVED, name, old_value=old_field
+                    ),
                 )
                 continue
             new_field = new_map[name]
@@ -329,7 +337,9 @@ class CompatibilityChecker:
                 if (
                     new_field_schema
                     and old_field_schema
-                    and not new_field_schema.is_compatible_with(old_field_schema)
+                    and not new_field_schema.is_compatible_with(
+                        old_field_schema
+                    )
                 ):
                     violations.append(
                         f"Type change '{entry.old_value}' → '{entry.new_value}' "
@@ -373,7 +383,9 @@ class SchemaMerger:
         """Return a new schema that is the superset of *left* and *right*."""
         left_map = left.field_map()
         right_map = right.field_map()
-        all_names = list(dict.fromkeys([*left.field_names, *right.field_names]))
+        all_names = list(
+            dict.fromkeys([*left.field_names, *right.field_names])
+        )
 
         merged_fields: list[FieldSchema] = []
         for name in all_names:
@@ -416,7 +428,9 @@ class SchemaMerger:
                 name=left.name,
                 field_type=left.field_type,
                 nullable=left.nullable or right.nullable,
-                default=left.default if left.default is not None else right.default,
+                default=left.default
+                if left.default is not None
+                else right.default,
                 metadata={**left.metadata, **right.metadata},
             )
 

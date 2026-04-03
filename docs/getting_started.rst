@@ -4,17 +4,21 @@ Getting Started
 Installation
 ------------
 
-PyCypher uses ``uv`` for package management:
+PyCypher requires **Python 3.14+** and uses ``uv`` for dependency management.
+It is not yet published on PyPI — install from source:
 
 .. code-block:: bash
 
+   # Install uv (if not already installed)
+   curl -LsSf https://astral.sh/uv/install.sh | sh
+
    # Clone and install
-   git clone <repository-url>
-   cd pycypher-nmetl
+   git clone https://github.com/zacernst/pycypher.git
+   cd pycypher
    uv sync
 
-   # Or install from PyPI
-   pip install pycypher
+   # Verify
+   uv run python -c "from pycypher import Star; print('OK')"
 
 Quick Start: Run Your First Query
 ----------------------------------

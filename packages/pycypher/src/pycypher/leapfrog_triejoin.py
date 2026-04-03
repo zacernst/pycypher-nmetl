@@ -140,6 +140,10 @@ def _leapfrog_intersect(iterators: list[LeapfrogIterator]) -> list[Any]:
     Returns:
         List of key values present in the intersection of all iterators.
 
+    Raises:
+        RuntimeError: If the iteration bound is exceeded, indicating a bug
+            in the seek/advance logic.
+
     """
     n = len(iterators)
     if n == 0:
@@ -149,12 +153,20 @@ def _leapfrog_intersect(iterators: list[LeapfrogIterator]) -> list[Any]:
     if any(it.at_end for it in iterators):
         return []
 
+    # Defensive iteration bound: the total number of distinct keys across all
+    # iterators is an upper bound on loop iterations.  Each iteration either
+    # finds an intersection key (advancing all iterators past it) or leapfrogs
+    # the minimum iterator forward.  Both cases strictly advance at least one
+    # cursor, so the loop cannot execute more times than the sum of all
+    # iterator lengths.
+    max_iterations = sum(it._len for it in iterators)
+
     # Sort iterators by their current key to establish round-robin order
     iterators.sort(key=lambda it: it.key)
 
     result_keys: list[Any] = []
 
-    while True:
+    for _step in range(max_iterations):
         # The smallest current key is iterators[0].key
         # The largest current key is iterators[-1].key
         min_key = iterators[0].key
@@ -181,7 +193,18 @@ def _leapfrog_intersect(iterators: list[LeapfrogIterator]) -> list[Any]:
             # Re-sort to maintain order
             iterators.sort(key=lambda it: it.key)
 
-    return result_keys  # pragma: no cover — unreachable
+    # If we exhaust the iteration bound, something is wrong with the
+    # seek/advance logic — report it rather than looping forever.
+    LOGGER.error(
+        "LeapfrogTriejoin: iteration bound (%d) exceeded with %d result keys",
+        max_iterations,
+        len(result_keys),
+    )
+    raise RuntimeError(
+        f"LeapfrogTriejoin iteration bound ({max_iterations}) exceeded. "
+        f"This indicates a bug in the seek/advance logic. "
+        f"Found {len(result_keys)} intersection keys before failure."
+    )
 
 
 # ---------------------------------------------------------------------------

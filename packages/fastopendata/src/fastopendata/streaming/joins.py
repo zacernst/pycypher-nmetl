@@ -187,7 +187,11 @@ class StreamTableJoin:
                 results.append(
                     StreamRecord(
                         key=record.key,
-                        value={**record.value, **table_row, "__table_match__": True},
+                        value={
+                            **record.value,
+                            **table_row,
+                            "__table_match__": True,
+                        },
                         event_time=record.event_time,
                         processing_time=record.processing_time,
                         record_type=record.record_type,

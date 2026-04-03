@@ -220,8 +220,8 @@ class TestVariableTypeMismatchErrorComprehensive:
     def test_without_suggestion(self) -> None:
         exc = VariableTypeMismatchError("n", "Node", "Rel")
         assert exc.suggestion == ""
-        # No trailing space from empty suggestion
-        assert str(exc).endswith("expected.")
+        # Message includes doc hint when no suggestion provided
+        assert "expected." in str(exc)
 
     def test_repr(self) -> None:
         exc = VariableTypeMismatchError("x", "int", "str")
@@ -242,8 +242,10 @@ class TestVariableTypeMismatchErrorComprehensive:
 class TestIncompatibleOperatorErrorComprehensive:
     def test_without_suggestion(self) -> None:
         exc = IncompatibleOperatorError("+", "str", "int")
-        assert exc.suggestion == ""
-        assert str(exc) == "Operator '+' incompatible between 'str' and 'int'"
+        # Auto-generated type-specific suggestion when none provided
+        assert exc.suggestion != ""
+        assert "toString()" in exc.suggestion
+        assert "Operator '+' incompatible between 'str' and 'int'" in str(exc)
 
     def test_with_suggestion(self) -> None:
         exc = IncompatibleOperatorError("+", "str", "int", "Use toString()")

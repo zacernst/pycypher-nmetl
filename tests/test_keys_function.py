@@ -96,7 +96,9 @@ class TestKeysFunction:
             "MATCH (p:Person) RETURN keys(p) AS ks ORDER BY p.name ASC",
         )
         key_sets = [frozenset(ks) for ks in result["ks"]]
-        assert len(set(key_sets)) == 1, "All Person rows should have the same keys"
+        assert len(set(key_sets)) == 1, (
+            "All Person rows should have the same keys"
+        )
 
     def test_keys_matches_properties_keys(self, star: Star) -> None:
         """The keys returned by keys(r) match those in properties(r)."""

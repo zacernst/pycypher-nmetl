@@ -170,7 +170,9 @@ class NodeMonitor:
             if health is None:
                 return
             alpha = self._ema_alpha
-            health.latency_ms = alpha * latency_ms + (1 - alpha) * health.latency_ms
+            health.latency_ms = (
+                alpha * latency_ms + (1 - alpha) * health.latency_ms
+            )
             health.error_rate = (1 - alpha) * health.error_rate
             health.consecutive_failures = 0
             health.last_check = time.time()

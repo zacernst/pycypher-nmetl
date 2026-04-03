@@ -304,6 +304,87 @@ class TestLimit:
 
 
 # ---------------------------------------------------------------------------
+# Sort + limit fusion
+# ---------------------------------------------------------------------------
+
+
+class TestSortLimitFusion:
+    """Test sort followed by limit produces correct fused results."""
+
+    def test_sort_then_limit(
+        self,
+        backend: BackendEngine,
+        sample_df: pd.DataFrame,
+    ) -> None:
+        """Sort + limit returns top N sorted rows."""
+        sorted_frame = backend.sort(
+            sample_df, by=["age"], ascending=[True],
+        )
+        result = backend.to_pandas(backend.limit(sorted_frame, 2))
+        assert len(result) == 2
+        assert result["age"].tolist() == [22, 25]
+
+    def test_sort_desc_then_limit(
+        self,
+        backend: BackendEngine,
+        sample_df: pd.DataFrame,
+    ) -> None:
+        """Sort descending + limit returns top N sorted rows."""
+        sorted_frame = backend.sort(
+            sample_df, by=["age"], ascending=[False],
+        )
+        result = backend.to_pandas(backend.limit(sorted_frame, 3))
+        assert len(result) == 3
+        assert result["age"].tolist() == [35, 30, 28]
+
+
+class TestDuckDBLazyFrame:
+    """Test DuckDBLazyFrame auto-materialisation behaviour."""
+
+    def test_sort_returns_lazy_for_duckdb(self) -> None:
+        """DuckDB sort returns DuckDBLazyFrame for fusion."""
+        from pycypher.backends.duckdb_backend import DuckDBLazyFrame
+
+        db = DuckDBBackend()
+        df = pd.DataFrame({"a": [3, 1, 2]})
+        result = db.sort(df, by=["a"])
+        assert isinstance(result, DuckDBLazyFrame)
+
+    def test_lazy_frame_auto_materialises(self) -> None:
+        """DuckDBLazyFrame auto-materialises for pandas method access."""
+        db = DuckDBBackend()
+        df = pd.DataFrame({"a": [3, 1, 2]})
+        lazy = db.sort(df, by=["a"])
+        # Access pandas method — should auto-materialise
+        values = lazy.reset_index(drop=True)
+        assert list(values["a"]) == [1, 2, 3]
+
+    def test_lazy_frame_columns(self) -> None:
+        """DuckDBLazyFrame provides column names without materialising."""
+        db = DuckDBBackend()
+        df = pd.DataFrame({"x": [1], "y": [2]})
+        lazy = db.sort(df, by=["x"])
+        assert "x" in lazy.columns
+        assert "y" in lazy.columns
+
+    def test_lazy_frame_len(self) -> None:
+        """DuckDBLazyFrame provides len without full materialisation."""
+        db = DuckDBBackend()
+        df = pd.DataFrame({"a": range(100)})
+        lazy = db.sort(df, by=["a"])
+        assert len(lazy) == 100
+
+    def test_lazy_limit_fusion_correctness(self) -> None:
+        """Sort + limit via DuckDBLazyFrame produces correct results."""
+        db = DuckDBBackend()
+        df = pd.DataFrame({"a": [5, 3, 1, 4, 2]})
+        sorted_lazy = db.sort(df, by=["a"], ascending=[True])
+        limited = db.limit(sorted_lazy, 3)
+        assert isinstance(limited, pd.DataFrame)
+        assert list(limited["a"]) == [1, 2, 3]
+
+
+# ---------------------------------------------------------------------------
 # memory_estimate
 # ---------------------------------------------------------------------------
 

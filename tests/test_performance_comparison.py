@@ -34,6 +34,7 @@ from pycypher.relational_models import (
     EntityTable,
 )
 from pycypher.star import Star
+from _perf_helpers import perf_threshold
 
 
 @dataclass
@@ -60,7 +61,9 @@ class PerformanceComparison:
     dataset_size: int
     pandas_measurement: PerformanceMeasurement
     spark_measurement: PerformanceMeasurement
-    speedup_factor: float  # spark_time / pandas_time (< 1.0 means Spark is faster)
+    speedup_factor: (
+        float  # spark_time / pandas_time (< 1.0 means Spark is faster)
+    )
     memory_efficiency: float  # spark_memory / pandas_memory
     recommendation: str  # Which backend to use
 
@@ -222,7 +225,8 @@ class PerformanceMeasurementUtility:
         # Calculate speedup factor (< 1.0 means Spark is faster)
         if pandas_measurement.execution_time > 0:
             speedup_factor = (
-                spark_measurement.execution_time / pandas_measurement.execution_time
+                spark_measurement.execution_time
+                / pandas_measurement.execution_time
             )
         else:
             speedup_factor = float("inf")
@@ -230,16 +234,15 @@ class PerformanceMeasurementUtility:
         # Calculate memory efficiency
         if pandas_measurement.memory_usage > 0:
             memory_efficiency = (
-                spark_measurement.memory_usage / pandas_measurement.memory_usage
+                spark_measurement.memory_usage
+                / pandas_measurement.memory_usage
             )
         else:
             memory_efficiency = 1.0
 
         # Generate recommendation
         if speedup_factor < 0.8 and memory_efficiency < 1.2:
-            recommendation = (
-                "Use PySpark - significantly faster with acceptable memory usage"
-            )
+            recommendation = "Use PySpark - significantly faster with acceptable memory usage"
         elif speedup_factor < 1.0:
             recommendation = "Use PySpark - faster execution"
         elif speedup_factor > 2.0:
@@ -247,7 +250,9 @@ class PerformanceMeasurementUtility:
         elif memory_efficiency < 0.8:
             recommendation = "Use PySpark - much more memory efficient"
         else:
-            recommendation = "Use Pandas - better overall performance for this scale"
+            recommendation = (
+                "Use Pandas - better overall performance for this scale"
+            )
 
         return PerformanceComparison(
             operation=pandas_measurement.operation,
@@ -344,7 +349,9 @@ class TestPerformanceComparisonTDD:
         )
 
         assert comparison.speedup_factor == 0.5  # Spark is 2x faster
-        assert comparison.memory_efficiency == 0.8  # Spark uses 80% of Pandas memory
+        assert (
+            comparison.memory_efficiency == 0.8
+        )  # Spark uses 80% of Pandas memory
         assert "PySpark" in comparison.recommendation
 
 
@@ -382,24 +389,24 @@ class TestBackendPerformanceContractsTDD:
 
         # Performance expectations based on dataset size
         if dataset_size <= 1000:
-            assert measurement.execution_time < 2.0, (
+            assert measurement.execution_time < perf_threshold(2.0), (
                 f"Small dataset should be fast: {measurement.execution_time}s"
             )
-            assert measurement.memory_usage < 50, (
+            assert measurement.memory_usage < perf_threshold(50), (
                 f"Small dataset should use little memory: {measurement.memory_usage}MB"
             )
         elif dataset_size <= 10000:
-            assert measurement.execution_time < 5.0, (
+            assert measurement.execution_time < perf_threshold(5.0), (
                 f"Medium dataset should be reasonable: {measurement.execution_time}s"
             )
-            assert measurement.memory_usage < 200, (
+            assert measurement.memory_usage < perf_threshold(200), (
                 f"Medium dataset memory usage: {measurement.memory_usage}MB"
             )
         else:
-            assert measurement.execution_time < 15.0, (
+            assert measurement.execution_time < perf_threshold(15.0), (
                 f"Large dataset should complete: {measurement.execution_time}s"
             )
-            assert measurement.memory_usage < 500, (
+            assert measurement.memory_usage < perf_threshold(500), (
                 f"Large dataset memory usage: {measurement.memory_usage}MB"
             )
 

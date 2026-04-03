@@ -468,7 +468,9 @@ class TestCaseExpressionConversions:
         result = self.converter.convert(node)
 
         assert isinstance(result, CaseExpression)
-        assert result.expression is None  # Searched case has no test expression
+        assert (
+            result.expression is None
+        )  # Searched case has no test expression
         assert len(result.when_clauses) == 2
         assert all(w.condition is not None for w in result.when_clauses)
         assert isinstance(result.else_expr, StringLiteral)

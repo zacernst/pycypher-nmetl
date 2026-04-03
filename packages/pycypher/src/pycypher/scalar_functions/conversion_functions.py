@@ -281,7 +281,7 @@ def register(registry: ScalarFunctionRegistry) -> None:
         # Vectorized implementation replacing .apply(_cvt) anti-pattern
 
         if len(s) == 0:
-            return s.copy()
+            return s
 
         nr = _init_null_result(s)
         if nr.all_null:

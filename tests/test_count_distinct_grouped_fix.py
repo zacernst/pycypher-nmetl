@@ -124,11 +124,15 @@ class TestCountDistinctGroupedFix:
         eng_unique = grouped_result[grouped_result["dept"] == "eng"][
             "unique_scores"
         ].iloc[0]
-        assert eng_unique == 1, "Eng should have 1 unique score (not global count of 3)"
+        assert eng_unique == 1, (
+            "Eng should have 1 unique score (not global count of 3)"
+        )
 
         # Verify the logic is working correctly
         assert grouped_sum == 3, "Grouped sum should be 1+2=3"
-        assert global_count == 3, "Global count should be 3 unique values (90,80,85)"
+        assert global_count == 3, (
+            "Global count should be 3 unique values (90,80,85)"
+        )
 
     def test_count_distinct_with_no_duplicates_within_groups(self) -> None:
         """COUNT DISTINCT grouped when each group has no internal duplicates."""
@@ -179,7 +183,9 @@ class TestCountDistinctGroupedFix:
 
         assert (
             result_sorted["unique_scores"] == regular_sorted["regular_count"]
-        ).all(), "COUNT DISTINCT should equal COUNT when no duplicates within groups"
+        ).all(), (
+            "COUNT DISTINCT should equal COUNT when no duplicates within groups"
+        )
 
     def test_count_distinct_with_all_duplicates_within_group(self) -> None:
         """COUNT DISTINCT grouped when a group has all duplicate values."""
@@ -282,25 +288,33 @@ class TestCountDistinctGroupedFix:
 
         # Check specific group expectations:
         # eng+junior: [90, 90] -> 1 unique
-        eng_junior = result[(result["dept"] == "eng") & (result["level"] == "junior")]
+        eng_junior = result[
+            (result["dept"] == "eng") & (result["level"] == "junior")
+        ]
         assert eng_junior["unique_scores"].iloc[0] == 1, (
             "Eng+Junior should have 1 unique score"
         )
 
         # hr+senior: [85, 85] -> 1 unique
-        hr_senior = result[(result["dept"] == "hr") & (result["level"] == "senior")]
+        hr_senior = result[
+            (result["dept"] == "hr") & (result["level"] == "senior")
+        ]
         assert hr_senior["unique_scores"].iloc[0] == 1, (
             "HR+Senior should have 1 unique score"
         )
 
         # eng+senior: [95] -> 1 unique
-        eng_senior = result[(result["dept"] == "eng") & (result["level"] == "senior")]
+        eng_senior = result[
+            (result["dept"] == "eng") & (result["level"] == "senior")
+        ]
         assert eng_senior["unique_scores"].iloc[0] == 1, (
             "Eng+Senior should have 1 unique score"
         )
 
         # hr+junior: [80] -> 1 unique
-        hr_junior = result[(result["dept"] == "hr") & (result["level"] == "junior")]
+        hr_junior = result[
+            (result["dept"] == "hr") & (result["level"] == "junior")
+        ]
         assert hr_junior["unique_scores"].iloc[0] == 1, (
             "HR+Junior should have 1 unique score"
         )

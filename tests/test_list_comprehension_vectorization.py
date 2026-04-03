@@ -34,6 +34,7 @@ from pycypher.relational_models import (
     RelationshipMapping,
 )
 from pycypher.star import Star
+from _perf_helpers import perf_threshold
 
 # ---------------------------------------------------------------------------
 # Shared fixture helpers
@@ -52,7 +53,9 @@ def _make_ctx(n_people: int = 5, *, scores_factor: int = 10) -> Context:
             ID_COLUMN: ids,
             "name": [f"P{i}" for i in ids],
             "age": [i * 10 for i in ids],
-            "scores": [[i * scores_factor, i * scores_factor + 5] for i in ids],
+            "scores": [
+                [i * scores_factor, i * scores_factor + 5] for i in ids
+            ],
             "tags": [[f"P{i}", "all"] for i in ids],
         },
     )
@@ -412,7 +415,7 @@ class TestListComprehensionPerformance:
         )
         elapsed = time.perf_counter() - start
         assert len(result) == 200
-        assert elapsed < 0.5, (
+        assert elapsed < perf_threshold(0.5), (
             f"200×50 list comprehension took {elapsed:.3f}s "
             f"— expected < 0.5s with batch execution."
         )
@@ -432,7 +435,9 @@ class TestListComprehensionPerformance:
         )
         elapsed = time.perf_counter() - start
         assert isinstance(result, pd.DataFrame)
-        assert elapsed < 0.5, f"200×50 any() took {elapsed:.3f}s — expected < 0.5s."
+        assert elapsed < perf_threshold(0.5), (
+            f"200×50 any() took {elapsed:.3f}s — expected < 0.5s."
+        )
 
     def test_quantifier_all_200_rows_50_elements_fast(self) -> None:
         """all() over 200×50 elements must complete in < 0.5s."""
@@ -449,4 +454,6 @@ class TestListComprehensionPerformance:
         )
         elapsed = time.perf_counter() - start
         assert len(result) == 200  # all elements > 0
-        assert elapsed < 0.5, f"200×50 all() took {elapsed:.3f}s — expected < 0.5s."
+        assert elapsed < perf_threshold(0.5), (
+            f"200×50 all() took {elapsed:.3f}s — expected < 0.5s."
+        )

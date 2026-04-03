@@ -409,7 +409,9 @@ class TestShortestPath:
             context_frame: BindingFrame | None = None,
         ) -> BindingFrame:
             var_name = (
-                node.variable.name if node.variable else f"_anon_node_{anon_counter[0]}"
+                node.variable.name
+                if node.variable
+                else f"_anon_node_{anon_counter[0]}"
             )
             if node.variable is None:
                 anon_counter[0] += 1

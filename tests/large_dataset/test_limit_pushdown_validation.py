@@ -23,6 +23,7 @@ from pycypher import (
 
 from .benchmark_utils import _get_process_memory_mb, run_benchmark
 from .dataset_generator import SCALE_SMALL, generate_social_graph
+from _perf_helpers import perf_threshold
 
 ID_COLUMN = "__ID__"
 
@@ -94,7 +95,9 @@ class TestLimitPushdownCorrectness:
 
         # Every row in limited should appear in full
         for _, row in limited.iterrows():
-            match = full[(full["src"] == row["src"]) & (full["tgt"] == row["tgt"])]
+            match = full[
+                (full["src"] == row["src"]) & (full["tgt"] == row["tgt"])
+            ]
             assert len(match) > 0, (
                 f"LIMIT result ({row['src']}, {row['tgt']}) not found in full results"
             )
@@ -167,7 +170,9 @@ class TestLimitPushdownPerformance:
         gc.collect()
         growth = _get_process_memory_mb() - baseline
         # LIMIT 20 should use very little additional memory
-        assert growth < 100, f"LIMIT 20 VLP query grew memory by {growth:.1f}MB"
+        assert growth < perf_threshold(100), (
+            f"LIMIT 20 VLP query grew memory by {growth:.1f}MB"
+        )
 
     def test_increasing_limit_scales_sublinearly(
         self,

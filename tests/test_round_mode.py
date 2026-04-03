@@ -546,8 +546,11 @@ class TestVectorised:
             "round",
             [s, pd.Series([2, 2]), pd.Series(["HALF_EVEN", "HALF_EVEN"])],
         )
-        assert result_even.iloc[0] == pytest.approx(
-            1.56,
+        assert (
+            result_even.iloc[0]
+            == pytest.approx(
+                1.56,
+            )
         )  # HALF_EVEN: 1.555 → 1.56 (5 is even? no: 5 rounds to 6 to make it even)
         assert result_even.iloc[1] == pytest.approx(
             2.54,

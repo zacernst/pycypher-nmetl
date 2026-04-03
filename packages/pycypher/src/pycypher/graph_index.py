@@ -328,7 +328,15 @@ class EntityLabelIndex:
         if ID_COLUMN not in source_df.columns:
             return cls(entity_type=entity_type)
 
-        ids = np.sort(np.array(source_df[ID_COLUMN].tolist(), dtype=object))
+        ids = np.array(source_df[ID_COLUMN].tolist(), dtype=object)
+        # Mixed-type IDs (e.g. str + int after CREATE) cause TypeError
+        # in np.sort because '<' is undefined across types.  Fall back
+        # to string-key sorting, mirroring VectorizedPropertyStore.build.
+        try:
+            ids = np.sort(ids)
+        except TypeError:
+            sort_keys = np.array([str(x) for x in ids], dtype=object)
+            ids = ids[np.argsort(sort_keys, kind="mergesort")]
         return cls(entity_type=entity_type, ids=ids)
 
     def contains(self, entity_id: Any) -> bool:
@@ -409,7 +417,14 @@ class VectorizedPropertyStore:
 
         # Convert to numpy for sorting (handles Arrow-backed DFs)
         ids = np.array(source_df[ID_COLUMN].tolist(), dtype=object)
-        sort_order = np.argsort(ids, kind="mergesort")
+        # When IDs have mixed types (e.g. str + int after CREATE into a
+        # string-ID context), np.argsort fails because '<' is undefined
+        # across types.  Coerce to uniform str keys for sorting only.
+        try:
+            sort_order = np.argsort(ids, kind="mergesort")
+        except TypeError:
+            sort_keys = np.array([str(x) for x in ids], dtype=object)
+            sort_order = np.argsort(sort_keys, kind="mergesort")
         sorted_ids = ids[sort_order]
 
         # Build aligned property arrays

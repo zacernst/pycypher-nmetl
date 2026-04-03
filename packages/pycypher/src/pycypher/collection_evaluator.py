@@ -41,7 +41,7 @@ from shared.logger import LOGGER
 
 from pycypher.binding_frame import BindingFrame
 from pycypher.constants import _broadcast_series, _null_series
-from pycypher.types import FrameSeries
+from pycypher.cypher_types import FrameSeries
 
 _DEBUG_ENABLED: bool = LOGGER.isEnabledFor(logging.DEBUG)
 
@@ -366,8 +366,8 @@ class CollectionExpressionEvaluator:
 
         if lc.where is not None:
             keep_series: pd.Series = flat_evaluator.evaluate(lc.where)
-            mask_arr: np.ndarray = (
-                keep_series.fillna(False).to_numpy(dtype=bool, copy=False)
+            mask_arr: np.ndarray = keep_series.fillna(False).to_numpy(
+                dtype=bool, copy=False
             )
             (surviving_elem_pos_arr,) = np.nonzero(mask_arr)
             surviving_elem_pos: list[int] = surviving_elem_pos_arr.tolist()
@@ -747,11 +747,15 @@ class CollectionExpressionEvaluator:
         """Evaluate ``{key: expr, ...}`` map literal.
 
         If the entries (converted expression forms) are populated, each expression
-        is evaluated per-row. Otherwise the raw val dict (primitives only) is
+        is evaluated per-row. Otherwise the raw value dict (primitives only) is
         returned as-is.
 
+        Accepts the actual :class:`~pycypher.ast_models.MapLiteral` AST node
+        directly — ``entries`` is a ``dict[str, Expression]`` and ``value``
+        is a ``dict[str, Any]``.
+
         Args:
-            map_literal: Map literal object with entries and val attributes.
+            map_literal: The :class:`~pycypher.ast_models.MapLiteral` AST node.
             expression_evaluator: Main expression evaluator for recursive evaluation.
 
         Returns:
@@ -762,11 +766,11 @@ class CollectionExpressionEvaluator:
         n = len(self.frame)
 
         # If we have entries (expressions), evaluate them using vectorized approach
-        if hasattr(map_literal, "entries") and map_literal.entries:
+        if map_literal.entries:
             # Performance Loop 285: Vectorized map literal evaluation
             # Step 1: Evaluate all expressions once (O(k) where k = number of keys)
             evaluated_columns = {}
-            for key, value_expr in map_literal.entries:
+            for key, value_expr in map_literal.entries.items():
                 evaluated_columns[key] = expression_evaluator.evaluate(
                     value_expr,
                 )
@@ -797,14 +801,14 @@ class CollectionExpressionEvaluator:
                 )
             return _broadcast_series({}, n)
 
-        # Otherwise use the raw val dict for all rows
-        if hasattr(map_literal, "val") and map_literal.val:
+        # Otherwise use the raw value dict for all rows
+        if map_literal.value:
             if _DEBUG_ENABLED:
                 LOGGER.debug(
                     "collection: map_literal  raw_val  elapsed=%.4fs",
                     time.perf_counter() - _t0,
                 )
-            return _broadcast_series(map_literal.val, n)
+            return _broadcast_series(map_literal.value, n)
 
         # Empty map
         if _DEBUG_ENABLED:

@@ -186,4 +186,6 @@ class TestMergeIdempotency:
             "MERGE (p:Person {name: 'Carol'}) RETURN p.name AS n",
         )
         result = star.execute_query("MATCH (p:Person) RETURN p.name AS name")
-        assert len(result) == 3  # Alice (existing), Bob (existing), Carol (created)
+        assert (
+            len(result) == 3
+        )  # Alice (existing), Bob (existing), Carol (created)

@@ -165,7 +165,9 @@ class MultiQueryExecutor:
                     t_validate = time.perf_counter()
                     validation = self._validator.validate(queries)
                     validate_ms = (time.perf_counter() - t_validate) * 1000.0
-                    vspan.set_attribute("pycypher.validate_time_ms", round(validate_ms, 2))
+                    vspan.set_attribute(
+                        "pycypher.validate_time_ms", round(validate_ms, 2)
+                    )
 
                 if not validation.is_valid:
                     elapsed = time.perf_counter() - t0
@@ -175,7 +177,9 @@ class MultiQueryExecutor:
                         len(validation.errors),
                         elapsed,
                     )
-                    span.set_attribute("pycypher.pipeline_status", "validation_error")
+                    span.set_attribute(
+                        "pycypher.pipeline_status", "validation_error"
+                    )
                     msg = "Input validation failed:\n" + "\n".join(
                         f"  - {e}" for e in validation.errors
                     )
@@ -192,8 +196,12 @@ class MultiQueryExecutor:
                     t_combine = time.perf_counter()
                     combined_cypher = self._combiner.combine(queries)
                     combine_ms = (time.perf_counter() - t_combine) * 1000.0
-                    cspan.set_attribute("pycypher.combine_time_ms", round(combine_ms, 2))
-                    cspan.set_attribute("pycypher.combined_query_length", len(combined_cypher))
+                    cspan.set_attribute(
+                        "pycypher.combine_time_ms", round(combine_ms, 2)
+                    )
+                    cspan.set_attribute(
+                        "pycypher.combined_query_length", len(combined_cypher)
+                    )
 
                 LOGGER.debug(
                     "pipeline: combined  chars=%d  elapsed=%.1fms",
@@ -225,14 +233,22 @@ class MultiQueryExecutor:
 
                 span.set_attribute("pycypher.pipeline_status", "ok")
                 span.set_attribute("result.rows", nrows)
-                span.set_attribute("pycypher.elapsed_ms", round(elapsed * 1000.0, 2))
-                span.set_attribute("pycypher.validate_time_ms", round(validate_ms, 2))
-                span.set_attribute("pycypher.combine_time_ms", round(combine_ms, 2))
-                span.set_attribute("pycypher.execute_time_ms", round(execute_ms, 2))
+                span.set_attribute(
+                    "pycypher.elapsed_ms", round(elapsed * 1000.0, 2)
+                )
+                span.set_attribute(
+                    "pycypher.validate_time_ms", round(validate_ms, 2)
+                )
+                span.set_attribute(
+                    "pycypher.combine_time_ms", round(combine_ms, 2)
+                )
+                span.set_attribute(
+                    "pycypher.execute_time_ms", round(execute_ms, 2)
+                )
 
                 return result
 
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 — broad catch for OTel/metrics; re-raised below
                 elapsed = time.perf_counter() - t0
                 LOGGER.error(
                     "pipeline: failed  pipeline_id=%s  queries=%d  "
@@ -244,7 +260,9 @@ class MultiQueryExecutor:
                 )
                 span.set_attribute("pycypher.pipeline_status", "error")
                 span.set_attribute("pycypher.error_type", type(exc).__name__)
-                span.set_attribute("pycypher.elapsed_ms", round(elapsed * 1000.0, 2))
+                span.set_attribute(
+                    "pycypher.elapsed_ms", round(elapsed * 1000.0, 2)
+                )
                 raise
 
             finally:

@@ -6,18 +6,14 @@ integration (Docker/Kubernetes liveness and readiness probes).
 
 from __future__ import annotations
 
-import io
 import json
+import urllib.request
 from http.server import HTTPServer
 from threading import Thread
-from typing import Any
 from unittest.mock import patch
 
 import pytest
-import urllib.request
-
 from pycypher.health_server import _HealthHandler, run_health_server
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -51,7 +47,7 @@ def _get(port: int, path: str) -> tuple[int, dict[str, str], bytes]:
 _PORT_COUNTER = 18400
 
 
-@pytest.fixture()
+@pytest.fixture
 def health_port():
     """Allocate a unique port for each test."""
     global _PORT_COUNTER
@@ -59,7 +55,7 @@ def health_port():
     return _PORT_COUNTER
 
 
-@pytest.fixture()
+@pytest.fixture
 def server(health_port: int):
     """Start a health server and yield the port; shut down on cleanup."""
     srv, _thread = _start_server(health_port)
@@ -182,6 +178,7 @@ class TestMetricsEndpoint:
 
         # Actually patch the import to fail
         import builtins
+
         original_import = builtins.__import__
 
         def mock_import(name, *args, **kwargs):
@@ -248,9 +245,12 @@ class TestRunHealthServer:
 
     def test_keyboard_interrupt_shuts_down(self) -> None:
         """run_health_server exits cleanly on KeyboardInterrupt."""
-        with patch.object(
-            HTTPServer, "serve_forever", side_effect=KeyboardInterrupt
-        ), patch.object(HTTPServer, "server_close") as mock_close:
+        with (
+            patch.object(
+                HTTPServer, "serve_forever", side_effect=KeyboardInterrupt
+            ),
+            patch.object(HTTPServer, "server_close") as mock_close,
+        ):
             run_health_server(port=18499)
             mock_close.assert_called_once()
 

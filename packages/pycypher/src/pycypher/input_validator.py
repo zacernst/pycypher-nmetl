@@ -121,14 +121,17 @@ class InputValidator:
         errors: list[str],
     ) -> None:
         """Check that each non-empty Cypher string is parseable."""
+        from lark.exceptions import LarkError
+
         from pycypher.ast_models import ASTConverter
+        from pycypher.exceptions import ASTConversionError
 
         for query_id, cypher in queries:
             if not cypher or not cypher.strip():
                 continue  # Already reported by _check_content
             try:
                 ASTConverter.from_cypher(cypher)
-            except Exception as exc:
+            except (ASTConversionError, LarkError) as exc:
                 LOGGER.warning(
                     "query '%s' failed to parse: %s",
                     query_id,

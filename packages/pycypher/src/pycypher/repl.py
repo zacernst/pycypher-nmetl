@@ -28,6 +28,7 @@ Or via CLI::
 from __future__ import annotations
 
 import cmd
+import difflib
 import logging
 import os
 import readline
@@ -94,6 +95,26 @@ class CypherRepl(cmd.Cmd):
     prompt = "cypher> "
     _multiline_prompt = "    .> "
 
+    _DOT_COMMANDS: list[str] = [
+        "help",
+        "load",
+        "schema",
+        "tables",
+        "functions",
+        "metrics",
+        "history",
+        "search",
+        "format",
+        "template",
+        "batch",
+        "examples",
+        "suggest",
+        "hints",
+        "clear",
+        "quit",
+        "exit",
+    ]
+
     def __init__(
         self,
         *,
@@ -111,6 +132,8 @@ class CypherRepl(cmd.Cmd):
         self._query_count = 0
         self._total_time_ms = 0.0
         self._multiline_buffer: list[str] = []
+        self._output_format: str = "table"  # table, csv, json
+        self._templates: dict[str, str] = {}
         if prompt_str:
             self.prompt = prompt_str
 
@@ -155,7 +178,7 @@ class CypherRepl(cmd.Cmd):
                 builder.add_entity(label, path, id_col=effective_id)
                 loaded += 1
                 click.echo(f"  [{i}/{n_sources}] entity {label} <- {path}")
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 — REPL: display error and continue loading
                 from pycypher.exceptions import sanitize_error_message
 
                 click.echo(
@@ -176,7 +199,7 @@ class CypherRepl(cmd.Cmd):
                 click.echo(
                     f"  [{idx}/{n_sources}] relationship {rel_type} <- {path}",
                 )
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 — REPL: display error and continue loading
                 from pycypher.exceptions import sanitize_error_message
 
                 click.echo(
@@ -194,11 +217,28 @@ class CypherRepl(cmd.Cmd):
             click.echo(f"  Error building context: {exc}\n")
 
     def default(self, line: str) -> None:
-        """Handle Cypher queries and multi-line input."""
+        """Handle Cypher queries, multi-line input, and unknown dot-commands."""
         stripped = line.strip()
 
         # Handle empty lines
         if not stripped:
+            return
+
+        # "Did you mean?" for mistyped dot-commands
+        if stripped.startswith("."):
+            cmd_name = stripped[1:].split()[0] if stripped[1:].split() else ""
+            matches = difflib.get_close_matches(
+                cmd_name, self._DOT_COMMANDS, n=3, cutoff=0.5
+            )
+            if matches:
+                suggestion = ", ".join(f".{m}" for m in matches)
+                click.echo(
+                    f"Unknown command '.{cmd_name}'. Did you mean: {suggestion}?"
+                )
+            else:
+                click.echo(
+                    f"Unknown command '.{cmd_name}'. Type .help for available commands."
+                )
             return
 
         # Accumulate multi-line input
@@ -231,7 +271,10 @@ class CypherRepl(cmd.Cmd):
         if self._star is None:
             click.echo(
                 "No data context loaded.  "
-                "Use .load or restart with --entity flags.",
+                "Use .load to add data sources, e.g.:\n"
+                "  .load entity Person=people.csv\n"
+                "  .load rel KNOWS=knows.csv:src:tgt\n"
+                "Or restart with --entity/--rel flags.",
             )
             return
 
@@ -250,7 +293,7 @@ class CypherRepl(cmd.Cmd):
         t0 = time.perf_counter()
         try:
             result = self._star.execute_query(query)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 — REPL: display error to user
             from pycypher.exceptions import sanitize_error_message
 
             click.echo(f"Error: {sanitize_error_message(exc)}")
@@ -260,7 +303,7 @@ class CypherRepl(cmd.Cmd):
         self._query_count += 1
         self._total_time_ms += elapsed_ms
 
-        _display_result(result)
+        _display_result(result, fmt=self._output_format)
         click.echo(
             f"{len(result)} row(s)  ({elapsed_ms:.1f}ms)",
         )
@@ -268,30 +311,40 @@ class CypherRepl(cmd.Cmd):
     def _explain_query(self, query: str) -> None:
         """Show execution plan without running the query."""
         try:
+            from pycypher.ast_converter import ASTConverter
             from pycypher.grammar_parser import GrammarParser
 
             parser = GrammarParser()
+
+            # Phase 1: Parse to Lark tree
             t0 = time.perf_counter()
-            ast = parser.parse(query)
+            parse_tree = parser.parse(query)
             parse_ms = (time.perf_counter() - t0) * 1000.0
 
-            click.echo(f"Parse time: {parse_ms:.1f}ms")
-            click.echo(f"AST type: {type(ast).__name__}")
-            click.echo(f"AST: {ast!r}")
+            # Phase 2: Convert to typed AST
+            t1 = time.perf_counter()
+            raw_ast = parser.transformer.transform(parse_tree)
+            converter = ASTConverter()
+            typed_ast = converter.convert(raw_ast)
+            convert_ms = (time.perf_counter() - t1) * 1000.0
+
+            click.echo(f"\nParse: {parse_ms:.1f}ms  Convert: {convert_ms:.1f}ms")
+            click.echo(f"Root: {type(typed_ast).__name__}")
+            click.echo(f"\n{typed_ast.pretty()}")
 
             # Show semantic validation
             from pycypher.semantic_validator import SemanticValidator
 
             validator = SemanticValidator()
-            errors = validator.validate(ast)
+            errors = validator.validate(typed_ast)
             if errors:
-                click.echo("Validation errors:")
+                click.echo("\nValidation errors:")
                 for err in errors:
                     click.echo(f"  - {err}")
             else:
-                click.echo("Validation: OK")
+                click.echo("\nValidation: OK")
 
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 — REPL: display error to user
             from pycypher.exceptions import sanitize_error_message
 
             click.echo(f"Error: {sanitize_error_message(exc)}")
@@ -318,7 +371,7 @@ class CypherRepl(cmd.Cmd):
             self._query_count += 1
             self._total_time_ms += report.total_time_ms
 
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 — REPL: display error to user
             from pycypher.exceptions import sanitize_error_message
 
             click.echo(f"Error: {sanitize_error_message(exc)}")
@@ -331,15 +384,22 @@ class CypherRepl(cmd.Cmd):
         """Show available commands."""
         click.echo(
             "\nCommands:\n"
-            "  .help          Show this help\n"
-            "  .load          Load entity or relationship data sources\n"
-            "  .schema        Show loaded entity types and relationships\n"
-            "  .tables        Show entity and relationship table details\n"
-            "  .functions     List available Cypher functions\n"
-            "  .metrics       Show session query metrics\n"
-            "  .history       Show recent query history\n"
-            "  .clear         Clear the screen\n"
-            "  .quit / .exit  Exit the REPL\n"
+            "  .help                  Show this help\n"
+            "  .load                  Load entity or relationship data sources\n"
+            "  .schema                Show loaded entity types and relationships\n"
+            "  .tables                Show entity and relationship table details\n"
+            "  .functions             List available Cypher functions\n"
+            "  .examples              Show query examples for loaded schema\n"
+            "  .metrics               Show session query metrics\n"
+            "  .history               Show recent query history\n"
+            "  .search <keyword>      Search history for matching queries\n"
+            "  .format <table|csv|json>  Set output format\n"
+            "  .template save|list|run|delete  Manage query templates\n"
+            "  .batch <file>          Run queries from a file\n"
+            "  .suggest <query>       Show similar query suggestions\n"
+            "  .hints <query>         Show performance hints for a query\n"
+            "  .clear                 Clear the screen\n"
+            "  .quit / .exit          Exit the REPL\n"
             "\n"
             "Query prefixes:\n"
             "  EXPLAIN <query>  Show execution plan without running\n"
@@ -441,6 +501,299 @@ class CypherRepl(cmd.Cmd):
             if item:
                 click.echo(f"  {i}: {item}")
         click.echo()
+
+    def do_search(self, arg: str) -> None:
+        """Search command history for a keyword.
+
+        Usage::
+
+            .search MATCH
+            .search person
+
+        """
+        keyword = arg.strip()
+        if not keyword:
+            click.echo("Usage: .search <keyword>")
+            return
+
+        n = readline.get_current_history_length()
+        matches: list[tuple[int, str]] = []
+        lower_kw = keyword.lower()
+        for i in range(1, n + 1):
+            item = readline.get_history_item(i)
+            if item and lower_kw in item.lower():
+                matches.append((i, item))
+
+        if not matches:
+            click.echo(f"No history entries matching '{keyword}'.")
+            return
+
+        click.echo(f"\n{len(matches)} match(es) for '{keyword}':")
+        for idx, item in matches[-20:]:  # show last 20
+            click.echo(f"  {idx}: {item}")
+        click.echo()
+
+    def do_format(self, arg: str) -> None:
+        """Set output format: table (default), csv, or json.
+
+        Usage::
+
+            .format table
+            .format csv
+            .format json
+
+        """
+        fmt = arg.strip().lower()
+        if fmt in ("table", "csv", "json"):
+            self._output_format = fmt
+            click.echo(f"Output format set to: {fmt}")
+        elif not fmt:
+            click.echo(f"Current format: {self._output_format}")
+            click.echo("Usage: .format <table|csv|json>")
+        else:
+            click.echo(
+                f"Unknown format '{fmt}'. Choose: table, csv, json"
+            )
+
+    def do_template(self, arg: str) -> None:
+        """Save, list, or run query templates with $parameter substitution.
+
+        Usage::
+
+            .template save find_by_name MATCH (p:Person {name: $name}) RETURN p
+            .template list
+            .template run find_by_name name=Alice
+
+        """
+        parts = arg.strip().split(None, 1)
+        if not parts:
+            click.echo(
+                "Usage:\n"
+                "  .template save <name> <query with $params>\n"
+                "  .template list\n"
+                "  .template run <name> param1=val1 param2=val2"
+            )
+            return
+
+        action = parts[0].lower()
+        rest = parts[1] if len(parts) > 1 else ""
+
+        if action == "save":
+            save_parts = rest.split(None, 1)
+            if len(save_parts) < 2:
+                click.echo("Usage: .template save <name> <query>")
+                return
+            name, query = save_parts
+            self._templates[name] = query
+            click.echo(f"Template '{name}' saved.")
+
+        elif action == "list":
+            if not self._templates:
+                click.echo("No templates saved. Use .template save <name> <query>")
+                return
+            click.echo(f"\n{len(self._templates)} template(s):")
+            for name, query in self._templates.items():
+                display = query if len(query) <= 60 else query[:57] + "..."
+                click.echo(f"  {name}: {display}")
+            click.echo()
+
+        elif action == "run":
+            run_parts = rest.split()
+            if not run_parts:
+                click.echo("Usage: .template run <name> param1=val1 ...")
+                return
+            name = run_parts[0]
+            if name not in self._templates:
+                available = ", ".join(self._templates) if self._templates else "(none)"
+                click.echo(
+                    f"No template '{name}'. Available: {available}"
+                )
+                return
+            query = self._templates[name]
+            for param in run_parts[1:]:
+                if "=" in param:
+                    key, val = param.split("=", 1)
+                    query = query.replace(f"${key}", val)
+            # Warn about unsubstituted parameters
+            import re
+
+            remaining = re.findall(r"\$\w+", query)
+            if remaining:
+                click.echo(
+                    f"Warning: unsubstituted parameters: {', '.join(remaining)}"
+                )
+            click.echo(f"Running: {query}")
+            self._execute_query(query)
+
+        elif action == "delete":
+            name = rest.strip()
+            if name in self._templates:
+                del self._templates[name]
+                click.echo(f"Template '{name}' deleted.")
+            else:
+                click.echo(f"No template '{name}'.")
+
+        else:
+            click.echo(
+                f"Unknown template action '{action}'. Use: save, list, run, delete"
+            )
+
+    def do_batch(self, arg: str) -> None:
+        """Run queries from a file, one per line (lines starting with -- are skipped).
+
+        Usage::
+
+            .batch queries.cypher
+
+        """
+        path = arg.strip()
+        if not path:
+            click.echo("Usage: .batch <file.cypher>")
+            return
+
+        filepath = Path(path)
+        if not filepath.exists():
+            click.echo(f"File not found: {path}")
+            return
+
+        lines = filepath.read_text().splitlines()
+        queries = [
+            ln.strip()
+            for ln in lines
+            if ln.strip() and not ln.strip().startswith("--")
+        ]
+
+        if not queries:
+            click.echo("No queries found in file.")
+            return
+
+        click.echo(f"Running {len(queries)} queries from {path}...")
+        for i, q in enumerate(queries, 1):
+            if q.endswith(";"):
+                q = q[:-1].strip()
+            click.echo(f"\n[{i}/{len(queries)}] {q}")
+            self._execute_query(q)
+        click.echo(f"\nBatch complete: {len(queries)} queries.")
+
+    def do_examples(self, arg: str) -> None:
+        """Show contextual query examples based on loaded schema.
+
+        If data is loaded, examples use actual entity/relationship labels.
+        Otherwise, shows generic Cypher patterns.
+        """
+        if self._context is not None:
+            entities = list(self._context.entity_mapping.mapping.keys())
+            rels = list(self._context.relationship_mapping.mapping.keys())
+        else:
+            entities = []
+            rels = []
+
+        click.echo("\nQuery Examples:")
+
+        if entities:
+            e = entities[0]
+            # Get a property name
+            table = self._context.entity_mapping.mapping[e]
+            props = [c for c in table.column_names if c != "__ID__"]
+            p = props[0] if props else "name"
+
+            click.echo(f"\n  -- Find all {e} nodes")
+            click.echo(f"  MATCH (n:{e}) RETURN n.{p}")
+            click.echo(f"\n  -- Count {e} nodes")
+            click.echo(f"  MATCH (n:{e}) RETURN count(n) AS total")
+            click.echo(f"\n  -- Filter by property")
+            click.echo(f"  MATCH (n:{e}) WHERE n.{p} IS NOT NULL RETURN n.{p}")
+            click.echo(f"\n  -- Create a new {e}")
+            click.echo(f"  CREATE (:{e} {{{p}: 'value'}})")
+
+            if len(entities) > 1:
+                e2 = entities[1]
+                click.echo(f"\n  -- Query multiple types")
+                click.echo(
+                    f"  MATCH (a:{e}), (b:{e2}) RETURN a, b LIMIT 10"
+                )
+
+            if rels:
+                r = rels[0]
+                click.echo(f"\n  -- Follow relationships")
+                click.echo(
+                    f"  MATCH (n:{e})-[r:{r}]->(m) RETURN n, r, m LIMIT 10"
+                )
+        else:
+            click.echo("\n  -- Basic node query")
+            click.echo("  MATCH (n:Label) RETURN n.property")
+            click.echo("\n  -- Filter with WHERE")
+            click.echo("  MATCH (n:Label) WHERE n.age > 30 RETURN n.name")
+            click.echo("\n  -- Relationship traversal")
+            click.echo("  MATCH (a)-[r:REL]->(b) RETURN a, r, b")
+            click.echo("\n  -- Aggregation")
+            click.echo("  MATCH (n:Label) RETURN n.type, count(n) AS cnt")
+            click.echo("\n  -- Create nodes")
+            click.echo("  CREATE (:Label {name: 'value', age: 30})")
+
+        click.echo(
+            "\n  Tip: Use EXPLAIN <query> to see the execution plan"
+            " without running."
+        )
+        click.echo()
+
+    def do_suggest(self, arg: str) -> None:
+        """Show similar query suggestions for a given query.
+
+        Usage::
+
+            .suggest MATCH (p:Person) RETURN p.name
+
+        """
+        query = arg.strip()
+        if not query:
+            click.echo("Usage: .suggest <partial-or-full-query>")
+            return
+
+        try:
+            from pycypher.cli_intelligence import (
+                QuerySuggestionEngine,
+                format_suggestions,
+            )
+
+            engine = QuerySuggestionEngine.with_common_patterns()
+            suggestions = engine.suggest(query)
+            output = format_suggestions(suggestions)
+            if output:
+                click.echo(output)
+            else:
+                click.echo("No similar query patterns found.")
+        except Exception as exc:  # noqa: BLE001 — REPL: display error to user
+            click.echo(f"Suggestion error: {exc}")
+
+    def do_hints(self, arg: str) -> None:
+        """Show performance hints for a query.
+
+        Usage::
+
+            .hints MATCH (p:Person) RETURN *
+
+        """
+        query = arg.strip()
+        if not query:
+            click.echo("Usage: .hints <query>")
+            return
+
+        try:
+            from pycypher.cli_intelligence import (
+                PerformanceHintEngine,
+                format_hints,
+            )
+
+            engine = PerformanceHintEngine()
+            hints = engine.analyze(query)
+            output = format_hints(hints)
+            if output:
+                click.echo(output)
+            else:
+                click.echo("No performance issues detected.")
+        except Exception as exc:  # noqa: BLE001 — REPL: display error to user
+            click.echo(f"Hint analysis error: {exc}")
 
     def do_load(self, arg: str) -> None:
         """Load entity or relationship data sources mid-session.
@@ -576,27 +929,43 @@ class CypherRepl(cmd.Cmd):
         text: str,
         *ignored: object,
     ) -> list[str]:
-        """Tab-complete dot-commands and Cypher keywords."""
+        """Tab-complete dot-commands, Cypher keywords, functions, and labels."""
         if text.startswith("."):
             # Complete dot-commands
-            commands = [
-                ".help",
-                ".load",
-                ".schema",
-                ".tables",
-                ".functions",
-                ".metrics",
-                ".history",
-                ".clear",
-                ".quit",
-                ".exit",
-            ]
+            commands = [f".{c}" for c in self._DOT_COMMANDS]
             return [c for c in commands if c.startswith(text)]
+
+        results: list[str] = []
+
         # Complete Cypher keywords (case-insensitive match)
         upper = text.upper()
-        matches = [kw for kw in self._CYPHER_KEYWORDS if kw.startswith(upper)]
-        if matches:
-            return matches
+        results.extend(kw for kw in self._CYPHER_KEYWORDS if kw.startswith(upper))
+
+        # Complete function names
+        try:
+            from pycypher.scalar_functions import ScalarFunctionRegistry
+
+            registry = ScalarFunctionRegistry.get_instance()
+            lower = text.lower()
+            results.extend(
+                f"{fn}("
+                for fn in sorted(registry._functions.keys())
+                if fn.lower().startswith(lower)
+            )
+        except Exception:  # noqa: BLE001 — best-effort tab completion
+            _logger.debug("Tab completion failed for %r", text, exc_info=True)
+
+        # Complete entity/relationship type labels (after : in patterns)
+        if self._context is not None:
+            for label in self._context.entity_mapping.mapping:
+                if label.upper().startswith(upper) or label.startswith(text):
+                    results.append(label)
+            for label in self._context.relationship_mapping.mapping:
+                if label.upper().startswith(upper) or label.startswith(text):
+                    results.append(label)
+
+        if results:
+            return results
         return super().completenames(text, *ignored)
 
     def completedefault(
@@ -688,8 +1057,10 @@ def _looks_incomplete(line: str) -> bool:
     return False
 
 
-def _display_result(result: pd.DataFrame | None) -> None:
-    """Display a query result DataFrame as a table."""
+def _display_result(
+    result: pd.DataFrame | None, *, fmt: str = "table"
+) -> None:
+    """Display a query result DataFrame in the chosen format."""
     if result is None:
         return
 
@@ -703,15 +1074,21 @@ def _display_result(result: pd.DataFrame | None) -> None:
         click.echo("(no rows returned)")
         return
 
-    # Use pandas string representation for compact display
     try:
         max_rows = int(os.environ.get("PYCYPHER_REPL_MAX_ROWS", "50"))
     except (ValueError, TypeError):
         max_rows = 50
+
+    display_df = result.head(max_rows) if len(result) > max_rows else result
+
+    if fmt == "csv":
+        click.echo(display_df.to_csv(index=False))
+    elif fmt == "json":
+        click.echo(display_df.to_json(orient="records", indent=2))
+    else:
+        click.echo(display_df.to_string(index=False))
+
     if len(result) > max_rows:
-        click.echo(result.head(max_rows).to_string(index=False))
         click.echo(
             f"... ({len(result) - max_rows} more rows, set PYCYPHER_REPL_MAX_ROWS to show more)",
         )
-    else:
-        click.echo(result.to_string(index=False))

@@ -219,7 +219,8 @@ def _generate_companies(n: int, *, rng: np.random.Generator) -> pd.DataFrame:
     ]
     suffixes = ["Corp", "Inc", "LLC", "Systems", "Labs", "Solutions", "Group"]
     names = [
-        f"{rng.choice(prefixes)} {rng.choice(suffixes)} {i}" for i in range(1, n + 1)
+        f"{rng.choice(prefixes)} {rng.choice(suffixes)} {i}"
+        for i in range(1, n + 1)
     ]
     return pd.DataFrame(
         {

@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# lint_changed.sh — Lint only files changed relative to a base ref.
+# lint_changed.sh — Lint and format-check only files changed relative to a base ref.
 #
 # Usage:
 #   ./scripts/lint_changed.sh [base_ref]
 #
 # If base_ref is omitted, defaults to origin/main.
-# Exit code is non-zero if any changed .py file has lint violations.
+# Exit code is non-zero if any changed .py file has lint or format violations.
 
 set -euo pipefail
 
@@ -20,8 +20,28 @@ if [ -z "$changed_files" ]; then
 fi
 
 file_count=$(echo "$changed_files" | wc -l | tr -d ' ')
-echo "Linting $file_count changed Python file(s) vs $BASE_REF..."
+echo "Checking $file_count changed Python file(s) vs $BASE_REF..."
 
-# Run ruff on changed files only (blocking — must pass for PRs)
+exit_code=0
+
+# Check formatting (blocking)
+echo "--- Format check ---"
 # shellcheck disable=SC2086
-uv run ruff check $changed_files
+if ! uv run ruff format --check $changed_files; then
+    echo "FAIL: Format violations found. Run 'make format' to fix."
+    exit_code=1
+fi
+
+# Lint check (blocking)
+echo "--- Lint check ---"
+# shellcheck disable=SC2086
+if ! uv run ruff check $changed_files; then
+    echo "FAIL: Lint violations found."
+    exit_code=1
+fi
+
+if [ $exit_code -eq 0 ]; then
+    echo "OK: All $file_count changed file(s) pass lint and format checks."
+fi
+
+exit $exit_code

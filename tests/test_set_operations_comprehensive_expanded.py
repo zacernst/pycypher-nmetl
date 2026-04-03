@@ -14,6 +14,7 @@ from pycypher.relational_models import (
     EntityTable,
 )
 from pycypher.star import Star
+from _perf_helpers import perf_threshold
 
 
 class TestSetOperationsCore:
@@ -302,7 +303,7 @@ class TestSetOperationsPerformanceBaselines:
         print(
             f"Pandas SET operations on 100 rows: {execution_time:.3f} seconds",
         )
-        assert execution_time < 2.0, (
+        assert execution_time < perf_threshold(2.0), (
             f"Small dataset took {execution_time:.3f}s, expected < 2.0s"
         )
 
@@ -360,7 +361,7 @@ class TestSetOperationsPerformanceBaselines:
         print(
             f"Pandas SET operations on 1000 rows: {execution_time:.3f} seconds",
         )
-        assert execution_time < 5.0, (
+        assert execution_time < perf_threshold(5.0), (
             f"Medium dataset took {execution_time:.3f}s, expected < 5.0s"
         )
 
@@ -413,6 +414,6 @@ class TestSetOperationsPerformanceBaselines:
         print(
             f"Multiple property SET (10 props, 500 rows): {execution_time:.3f} seconds",
         )
-        assert execution_time < 3.0, (
+        assert execution_time < perf_threshold(3.0), (
             f"Multi-property SET took {execution_time:.3f}s, expected < 3.0s"
         )

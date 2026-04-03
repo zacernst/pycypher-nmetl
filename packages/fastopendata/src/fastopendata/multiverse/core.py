@@ -372,7 +372,9 @@ class MultiverseState:
         # Update each universe's coherent fragment set
         for uid in universe_ids:
             if uid in self.universes:
-                self.universes[uid].coherent_fragments.add(fragment_fingerprint)
+                self.universes[uid].coherent_fragments.add(
+                    fragment_fingerprint
+                )
 
     def apply_decoherence(self) -> list[str]:
         """Prune universes whose cost exceeds the decoherence threshold.
@@ -420,7 +422,9 @@ class MultiverseState:
         if not self.coherence_map:
             return 0.0
 
-        total_fragment_refs = sum(len(uids) for uids in self.coherence_map.values())
+        total_fragment_refs = sum(
+            len(uids) for uids in self.coherence_map.values()
+        )
         unique_fragments = len(self.coherence_map)
 
         if total_fragment_refs <= unique_fragments:

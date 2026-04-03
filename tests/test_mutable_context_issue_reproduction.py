@@ -68,7 +68,9 @@ class TestMutableContextIssue:
         star_with_modifiable_data: Star,
     ) -> None:
         """Test that the same query produces different results on repeated execution."""
-        query = "MATCH (p:Person) SET p.visited = true RETURN count(p) AS count"
+        query = (
+            "MATCH (p:Person) SET p.visited = true RETURN count(p) AS count"
+        )
 
         # Run the query twice
         result1 = star_with_modifiable_data.execute_query(query)

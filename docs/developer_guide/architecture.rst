@@ -6,27 +6,29 @@ Overview of the PyCypher architecture and design principles.
 Project Structure
 -----------------
 
-This is a **monorepo workspace** containing two interdependent packages:
+This is a **monorepo workspace** containing three interdependent packages:
 
 .. code-block:: text
 
    pycypher-nmetl/
    ├── packages/
-   │   ├── shared/        # Common utilities and logging
-   │   └── pycypher/      # Cypher parser, AST, and BindingFrame execution engine
-   ├── tests/             # Test suite
-   ├── docs/              # Documentation
-   └── pyproject.toml     # Workspace configuration
+   │   ├── shared/         # Common utilities and logging
+   │   ├── pycypher/       # Cypher parser, AST, and BindingFrame execution engine
+   │   └── fastopendata/   # ETL pipeline for open data (Census, TIGER, OSM)
+   ├── tests/              # Test suite
+   ├── docs/               # Documentation
+   └── pyproject.toml      # Workspace configuration
 
 Dependency Order
 ~~~~~~~~~~~~~~~~
 
 Packages depend on each other in this order::
 
-   shared → pycypher
+   shared → pycypher → fastopendata
 
 - **shared** has no dependencies on other packages
 - **pycypher** depends on **shared**
+- **fastopendata** depends on **shared** and **pycypher**
 
 PyCypher Architecture
 ---------------------
@@ -48,6 +50,24 @@ compiled parser is cached as a process-level singleton via
    # Returns the cached singleton — safe to call repeatedly
    parser = get_default_parser()
    raw_ast = parser.parse_to_ast(query)
+
+**Grammar Rule Mixins** (modular transformer architecture)
+
+Grammar transformation rules are organized into five focused mixin modules
+under ``pycypher.grammar_rule_mixins/``:
+
+.. code-block:: text
+
+   grammar_rule_mixins/
+   ├── __init__.py       # Re-exports all 5 mixins
+   ├── literals.py       # LiteralRulesMixin — numbers, strings, booleans, null, lists, maps
+   ├── expressions.py    # ExpressionRulesMixin — boolean, comparison, arithmetic, string ops
+   ├── patterns.py       # PatternRulesMixin — node/relationship patterns, labels, properties
+   ├── functions.py      # FunctionRulesMixin — function calls, CASE, comprehensions, REDUCE
+   └── clauses.py        # ClauseRulesMixin — MATCH, RETURN, WITH, SET, DELETE, CREATE, MERGE
+
+``CompositeTransformer`` (in ``grammar_transformers.py``) orchestrates these
+mixins with method-resolution caching for thread-safe concurrent AST warmup.
 
 **AST Models**
 

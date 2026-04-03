@@ -316,7 +316,9 @@ class TestMemoryEstimationEquivalence:
 
         # Both should be within 10x of each other
         ratio = max(p_est, d_est) / max(min(p_est, d_est), 1)
-        assert ratio < 10, f"Memory estimates diverge: pandas={p_est}, duckdb={d_est}"
+        assert ratio < 10, (
+            f"Memory estimates diverge: pandas={p_est}, duckdb={d_est}"
+        )
 
 
 # ---------------------------------------------------------------------------

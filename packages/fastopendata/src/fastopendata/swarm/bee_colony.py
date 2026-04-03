@@ -244,10 +244,14 @@ class BeeColonyOptimizer:
         candidate = dict(source.allocation)
         part = random.choice(partition_ids)
         old_node = candidate.get(part, "")
-        new_node = random.choice([n for n in node_ids if n != old_node] or node_ids)
+        new_node = random.choice(
+            [n for n in node_ids if n != old_node] or node_ids
+        )
         candidate[part] = new_node
 
-        new_fitness, new_loads = self._evaluate_fitness(candidate, partition_costs)
+        new_fitness, new_loads = self._evaluate_fitness(
+            candidate, partition_costs
+        )
 
         if new_fitness > source.fitness:
             source.allocation = candidate
@@ -463,7 +467,9 @@ class BeeColonyOptimizer:
             iterations_run=max_iter,
             sources_explored=sum(1 for b in self.bees if b.discoveries > 0),
             scouts_deployed=sum(
-                1 for s in self.food_sources if s.trial_count == 0 and s.fitness > 0
+                1
+                for s in self.food_sources
+                if s.trial_count == 0 and s.fitness > 0
             ),
             elapsed_ms=elapsed_ms,
         )

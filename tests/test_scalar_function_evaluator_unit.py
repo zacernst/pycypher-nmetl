@@ -170,7 +170,9 @@ class TestGraphIntrospectionFunctions:
 
         # Verify that start/end nodes correspond to the correct entities
         for _, row in result.iterrows():
-            assert row["start_id"] != row["end_id"]  # Should be different nodes
+            assert (
+                row["start_id"] != row["end_id"]
+            )  # Should be different nodes
 
 
 class TestPathLengthFunction:
@@ -188,7 +190,9 @@ class TestPathLengthFunction:
 
         # Should return integer hop counts
         hop_counts = result["hop_count"].tolist()
-        assert all(isinstance(count, int) and 1 <= count <= 3 for count in hop_counts)
+        assert all(
+            isinstance(count, int) and 1 <= count <= 3 for count in hop_counts
+        )
 
     def test_length_function_creates_correct_column_name(self) -> None:
         """Test that length() looks for correctly prefixed hop count columns."""
@@ -518,10 +522,18 @@ class TestIntegrationWithStar:
         # Should handle multi-row results efficiently
         if len(result) > 0:
             # Verify all rows have consistent data types
-            assert all(isinstance(labels, list) for labels in result["start_labels"])
-            assert all(isinstance(labels, list) for labels in result["end_labels"])
-            assert all(isinstance(count, int) for count in result["start_prop_count"])
-            assert all(isinstance(count, int) for count in result["end_prop_count"])
+            assert all(
+                isinstance(labels, list) for labels in result["start_labels"]
+            )
+            assert all(
+                isinstance(labels, list) for labels in result["end_labels"]
+            )
+            assert all(
+                isinstance(count, int) for count in result["start_prop_count"]
+            )
+            assert all(
+                isinstance(count, int) for count in result["end_prop_count"]
+            )
 
 
 # Test Fixtures

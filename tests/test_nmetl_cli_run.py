@@ -36,7 +36,9 @@ def _make_config(
     """Write a minimal pipeline YAML to ``tmp_path/pipeline.yaml``."""
     if not source_uri:
         source_uri = str(_SAMPLE_CSV)
-    project_block = f"project:\n  name: {project_name}\n" if project_name else ""
+    project_block = (
+        f"project:\n  name: {project_name}\n" if project_name else ""
+    )
     text = f"""\
 version: "1.0"
 {project_block}

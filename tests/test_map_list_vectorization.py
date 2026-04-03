@@ -39,6 +39,7 @@ from __future__ import annotations
 import time
 
 import pandas as pd
+from _perf_helpers import perf_threshold
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -298,7 +299,9 @@ N_KEYS = 10
 
 def _make_wide_star(n_rows: int, n_cols: int) -> Star:
     """Create a Star with n_rows rows and n_cols named properties."""
-    rows = [{f"c{j}": i * n_cols + j for j in range(n_cols)} for i in range(n_rows)]
+    rows = [
+        {f"c{j}": i * n_cols + j for j in range(n_cols)} for i in range(n_rows)
+    ]
     return _star_with_rows(rows)
 
 
@@ -315,7 +318,7 @@ class TestMapLiteralPerformance:
         for _ in range(REPS):
             star.execute_query(query)
         elapsed = time.perf_counter() - start
-        assert elapsed < 2.0, (
+        assert elapsed < perf_threshold(2.0), (
             f"20 × 500-row × {N_KEYS}-key map literal took {elapsed:.2f}s "
             "(threshold 2s). The iloc-loop is still in place."
         )
@@ -367,7 +370,7 @@ class TestMapProjectionPerformance:
         for _ in range(REPS):
             star.execute_query(query)
         elapsed = time.perf_counter() - start
-        assert elapsed < 2.0, (
+        assert elapsed < perf_threshold(2.0), (
             f"20 × 500-row × {N_KEYS}-property map projection took {elapsed:.2f}s "
             "(threshold 2s). The iloc-loop is still in place."
         )
@@ -385,7 +388,7 @@ class TestListLiteralPerformance:
         for _ in range(REPS):
             star.execute_query(query)
         elapsed = time.perf_counter() - start
-        assert elapsed < 2.0, (
+        assert elapsed < perf_threshold(2.0), (
             f"20 × 500-row × {N_KEYS}-element list literal took {elapsed:.2f}s "
             "(threshold 2s). The iloc-loop is still in place."
         )

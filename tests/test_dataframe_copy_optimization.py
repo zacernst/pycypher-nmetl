@@ -46,11 +46,15 @@ class TestDataFrameCopyOptimization:
         knows_df = pd.DataFrame(
             {
                 ID_COLUMN: list(range(1, n_relationships + 1)),
-                "__SOURCE__": [((i % n_people) + 1) for i in range(n_relationships)],
+                "__SOURCE__": [
+                    ((i % n_people) + 1) for i in range(n_relationships)
+                ],
                 "__TARGET__": [
                     ((i + 100) % n_people + 1) for i in range(n_relationships)
                 ],
-                "strength": [0.1 + (i % 10) * 0.1 for i in range(n_relationships)],
+                "strength": [
+                    0.1 + (i % 10) * 0.1 for i in range(n_relationships)
+                ],
             },
         )
 
@@ -78,7 +82,9 @@ class TestDataFrameCopyOptimization:
             text=True,
         )
 
-        copy_lines = result.stdout.strip().split("\n") if result.stdout.strip() else []
+        copy_lines = (
+            result.stdout.strip().split("\n") if result.stdout.strip() else []
+        )
 
         # Document current copy usage
         print(f"Found {len(copy_lines)} .copy() calls in source code:")
@@ -119,9 +125,7 @@ class TestDataFrameCopyOptimization:
     ) -> None:
         """Test edge DataFrame copying in relationship traversal."""
         # This triggers: edge_df = rel_df[[src_col, tgt_col]].copy()
-        query = (
-            "MATCH (p:Person)-[r:KNOWS]->(friend) RETURN count(friend) AS friend_count"
-        )
+        query = "MATCH (p:Person)-[r:KNOWS]->(friend) RETURN count(friend) AS friend_count"
 
         start_time = time.perf_counter()
         result = large_graph_star.execute_query(query)
@@ -141,7 +145,9 @@ class TestDataFrameCopyOptimization:
     ) -> None:
         """Test bindings copying in aggregation operations."""
         # This might trigger: df = frame.bindings.copy()
-        query = "MATCH (p:Person) RETURN avg(p.age) AS avg_age, count(p) AS total"
+        query = (
+            "MATCH (p:Person) RETURN avg(p.age) AS avg_age, count(p) AS total"
+        )
 
         start_time = time.perf_counter()
         result = large_graph_star.execute_query(query)

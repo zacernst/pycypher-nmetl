@@ -21,7 +21,6 @@ Example usage::
 
 from __future__ import annotations
 
-import os
 import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, NoReturn
@@ -45,11 +44,10 @@ from pycypher.exceptions import (
     VariableTypeMismatchError,
     WrongCypherTypeError,
 )
-from pycypher.ingestion.security import mask_uri_credentials
 
 # Import DuckDB exceptions for proper error handling
 try:
-    import duckdb
+    import duckdb  # noqa: F401  # required for _duckdb internal module
     from _duckdb import IOException as DuckDBIOException
 except ImportError:
     # Handle case where DuckDB is not available
@@ -70,70 +68,26 @@ def _cli_error(message: str, *, exit_code: int = 1) -> NoReturn:
     sys.exit(exit_code)
 
 
-def _format_validation_errors(exc: ValidationError) -> str:
+def _format_validation_errors(
+    exc: ValidationError, *, verbose: bool = False
+) -> str:
     """Format a Pydantic ValidationError into concise, actionable lines.
 
-    Instead of dumping the full Pydantic error repr (often 50+ lines),
-    extracts the first few field-level errors and formats each as a
-    one-liner with the field path and a human-readable message.
-
-    Args:
-        exc: The Pydantic validation error.
-
-    Returns:
-        A compact multi-line error summary suitable for CLI output.
-
+    Delegates to :func:`pycypher.cli.common.format_validation_errors`.
     """
-    errors = exc.errors()
-    max_shown = 5
-    lines: list[str] = ["invalid config structure:"]
-    for err in errors[:max_shown]:
-        # Build dotted field path from Pydantic's loc tuple
-        loc_parts = [str(p) for p in err.get("loc", ())]
-        field = ".".join(loc_parts) if loc_parts else "(root)"
-        msg = err.get("msg", "validation error")
-        lines.append(f"  - {field}: {msg}")
-    remaining = len(errors) - max_shown
-    if remaining > 0:
-        lines.append(f"  ... and {remaining} more error(s)")
-    lines.append("  Run 'nmetl validate <config> --verbose' for full details.")
-    return "\n".join(lines)
+    from pycypher.cli.common import format_validation_errors
+
+    return format_validation_errors(exc, verbose=verbose)
 
 
 def _translate_duckdb_error(exc: BaseException, kind: str, path: str) -> str:
     """Translate a DuckDB or generic data-loading exception into a user message.
 
-    Args:
-        exc: The caught exception.
-        kind: Source kind (e.g. ``"entity source"``).
-        path: File path string.
-
-    Returns:
-        A user-friendly error message string.
-
+    Delegates to :func:`pycypher.cli.common.translate_duckdb_error`.
     """
-    exc_str = str(exc)
-    lower = exc_str.lower()
-    if "No files found that match the pattern" in exc_str:
-        return f"{kind} file not found: {path!r}"
-    if "permission" in lower or "denied" in lower:
-        return f"permission denied accessing {kind}: {path!r}"
-    if "encoding" in lower or "codec" in lower or "decode" in lower:
-        return (
-            f"encoding error reading {kind} {path!r}: {exc_str}\n"
-            "  Try saving the file as UTF-8."
-        )
-    if "out of memory" in lower or "memory" in lower:
-        return (
-            f"insufficient memory loading {kind} {path!r}\n"
-            "  Try reducing file size or increasing available memory."
-        )
-    if "empty" in lower and "file" in lower:
-        return f"{kind} file is empty: {path!r}"
-    return (
-        f"could not load {kind} {path!r}: {exc_str}\n"
-        "  Check that the file exists, is readable, and is valid CSV or Parquet."
-    )
+    from pycypher.cli.common import translate_duckdb_error
+
+    return translate_duckdb_error(exc, kind, path)
 
 
 def _load_data_source(
@@ -153,13 +107,16 @@ def _load_data_source(
         path: File path string shown in error messages.
 
     """
-    desc = f"{kind} {path!r}"
+    from pycypher.ingestion.security import mask_uri_credentials
+
+    safe_path = mask_uri_credentials(path)
+    desc = f"{kind} {safe_path!r}"
     try:
         action()
     except FileNotFoundError:
-        _cli_error(f"{kind} file not found: {path!r}")
+        _cli_error(f"{kind} file not found: {safe_path!r}")
     except PermissionError:
-        _cli_error(f"permission denied accessing {kind}: {path!r}")
+        _cli_error(f"permission denied accessing {kind}: {safe_path!r}")
     except KeyError as exc:
         hint = (
             "  Entity sources require an '__ID__' column.\n"
@@ -181,21 +138,22 @@ def _load_data_source(
     except OSError as exc:
         _cli_error(f"could not read {desc}: {exc}")
     except (RuntimeError, ImportError, TypeError, MemoryError) as exc:
-        _cli_error(_translate_duckdb_error(exc, kind, path))
-    except Exception as exc:
+        _cli_error(_translate_duckdb_error(exc, kind, safe_path))
+    except Exception as exc:  # noqa: BLE001 — DuckDB type-dispatch; unknown exceptions re-raised
         if DuckDBIOException and isinstance(exc, DuckDBIOException):
-            _cli_error(_translate_duckdb_error(exc, kind, path))
+            _cli_error(_translate_duckdb_error(exc, kind, safe_path))
         if "No files found that match the pattern" in str(exc):
-            _cli_error(f"{kind} file not found: {path!r}")
+            _cli_error(f"{kind} file not found: {safe_path!r}")
         # Re-raise unexpected exceptions for debugging
         raise
 
 
-def _load_config(config: Path) -> Any:
+def _load_config(config: Path, *, verbose: bool = False) -> Any:
     """Load and validate a pipeline config, translating errors to CLI exits.
 
     Args:
         config: Path to the YAML config file.
+        verbose: If True, show all validation errors instead of truncating.
 
     Returns:
         The parsed ``PipelineConfig`` object.
@@ -210,7 +168,9 @@ def _load_config(config: Path) -> Any:
     except yaml.YAMLError as exc:
         _cli_error(f"invalid YAML syntax in config: {exc}", exit_code=2)
     except ValidationError as exc:
-        _cli_error(_format_validation_errors(exc), exit_code=2)
+        _cli_error(
+            _format_validation_errors(exc, verbose=verbose), exit_code=2
+        )
     except (PermissionError, OSError) as exc:
         _cli_error(f"could not read config file: {exc}", exit_code=1)
 
@@ -624,11 +584,6 @@ def cli(*, verbose: bool, debug: bool) -> None:
         LOGGER.setLevel(logging.INFO)
 
 
-# ---------------------------------------------------------------------------
-# Dry-run pre-flight validation
-# ---------------------------------------------------------------------------
-
-
 def _dry_run_validate(
     cfg: Any,
     queries: list[Any],
@@ -636,187 +591,10 @@ def _dry_run_validate(
     *,
     verbose: bool = False,
 ) -> None:
-    """Comprehensive pre-flight validation without loading data or executing.
+    """Backward-compatible wrapper — delegates to :mod:`pycypher.cli.pipeline`."""
+    from pycypher.cli.pipeline import dry_run_validate
 
-    Checks:
-    1. Source file paths exist and are readable.
-    2. Query source files exist and contain parseable Cypher.
-    3. Output directories are writable.
-    4. Output query_id references point to valid queries.
-    5. Unresolved environment variable placeholders.
-    """
-    from pycypher.ingestion.security import mask_uri_credentials
-
-    config_dir = config_path.parent.resolve()
-    errors: list[str] = []
-    warnings: list[str] = []
-
-    click.echo("Dry run — pre-flight validation:")
-
-    # --- 1. Source file accessibility ---
-    click.echo("\n  Sources:")
-    _SQL_SCHEMES = frozenset(
-        {"postgresql", "postgres", "mysql", "sqlite", "duckdb"}
-    )
-    all_sources = [
-        *((s, "entity", s.entity_type) for s in cfg.sources.entities),
-        *(
-            (s, "relationship", s.relationship_type)
-            for s in cfg.sources.relationships
-        ),
-    ]
-    for src, kind, label in all_sources:
-        uri = src.uri
-        masked = mask_uri_credentials(uri)
-        # Skip SQL and remote URIs — can't validate connectivity without loading.
-        from urllib.parse import urlparse
-
-        parsed = urlparse(uri)
-        scheme = parsed.scheme.lower() if parsed.scheme else ""
-        if scheme in _SQL_SCHEMES or scheme in (
-            "http",
-            "https",
-            "s3",
-            "gs",
-            "abfss",
-        ):
-            click.echo(
-                f"    [{src.id}] {kind} {label} ← {masked}  (remote, skipped)"
-            )
-            continue
-
-        # Resolve local file path.
-        file_path = (
-            Path(uri.replace("file://", "")) if scheme == "file" else Path(uri)
-        )
-        if not file_path.is_absolute():
-            file_path = (config_dir / file_path).resolve()
-
-        if file_path.exists():
-            click.echo(f"    [{src.id}] {kind} {label} ← {masked}  OK")
-        else:
-            msg = f"Source [{src.id}] file not found: {masked}"
-            errors.append(msg)
-            click.echo(f"    [{src.id}] {kind} {label} ← {masked}  MISSING")
-
-    # --- 2. Query parsing ---
-    click.echo("\n  Queries:")
-    query_ids_defined = {q.id for q in cfg.queries}
-    for q in queries:
-        try:
-            if q.inline is not None:
-                query_text = q.inline
-            elif q.source is not None:
-                query_path = (config_dir / q.source).resolve()
-                if not query_path.exists():
-                    msg = f"Query [{q.id}] source file not found: {q.source}"
-                    errors.append(msg)
-                    click.echo(f"    [{q.id}]  FILE MISSING: {q.source}")
-                    continue
-                query_text = query_path.read_text(encoding="utf-8")
-            else:
-                msg = f"Query [{q.id}] has neither 'inline' nor 'source'."
-                errors.append(msg)
-                click.echo(f"    [{q.id}]  NO SOURCE")
-                continue
-
-            # Attempt to parse the Cypher query.
-            from pycypher.grammar_parser import GrammarParser
-
-            parser = GrammarParser()
-            parser.parse(query_text)
-            desc = f"  {q.description}" if q.description else ""
-            src_label = f"file:{q.source}" if q.source else "inline"
-            click.echo(f"    [{q.id}] ({src_label}){desc}  OK")
-
-        except Exception as exc:
-            from pycypher.exceptions import sanitize_error_message
-
-            msg = f"Query [{q.id}] parse error: {sanitize_error_message(exc)}"
-            errors.append(msg)
-            click.echo(
-                f"    [{q.id}]  PARSE ERROR: {sanitize_error_message(exc)}"
-            )
-
-    # --- 3. Output validation ---
-    if cfg.output:
-        click.echo("\n  Outputs:")
-        for out in cfg.output:
-            # Check that query_id references a defined query.
-            if out.query_id not in query_ids_defined:
-                msg = f"Output references unknown query_id: {out.query_id!r}"
-                errors.append(msg)
-                click.echo(
-                    f"    query:{out.query_id} → {out.uri}  INVALID QUERY REF"
-                )
-                continue
-
-            # Check output directory is writable for local paths.
-            out_uri = out.uri
-            parsed_out = urlparse(out_uri)
-            out_scheme = parsed_out.scheme.lower() if parsed_out.scheme else ""
-            if out_scheme in ("s3", "gs", "abfss", "http", "https"):
-                click.echo(
-                    f"    query:{out.query_id} → {out.uri}  (remote, skipped)"
-                )
-                continue
-
-            out_path = (
-                Path(out_uri.replace("file://", ""))
-                if out_scheme == "file"
-                else Path(out_uri)
-            )
-            if not out_path.is_absolute():
-                out_path = (config_dir / out_path).resolve()
-            out_dir = out_path.parent
-            if out_dir.exists() and os.access(out_dir, os.W_OK):
-                click.echo(f"    query:{out.query_id} → {out.uri}  OK")
-            elif not out_dir.exists():
-                msg = f"Output directory does not exist: {out_dir}"
-                warnings.append(msg)
-                click.echo(
-                    f"    query:{out.query_id} → {out.uri}  DIR MISSING (will be created)"
-                )
-            else:
-                msg = f"Output directory not writable: {out_dir}"
-                errors.append(msg)
-                click.echo(
-                    f"    query:{out.query_id} → {out.uri}  NOT WRITABLE"
-                )
-
-    # --- 4. Unresolved env vars ---
-    import re
-
-    _ENV_PATTERN = re.compile(r"\$\{[A-Za-z_][A-Za-z0-9_]*\}")
-    raw_yaml = config_path.read_text(encoding="utf-8")
-    unresolved = sorted(set(_ENV_PATTERN.findall(raw_yaml)))
-    if unresolved:
-        click.echo(
-            f"\n  Unresolved environment variables: {', '.join(unresolved)}"
-        )
-        for var in unresolved:
-            warnings.append(f"Unresolved env var: {var}")
-
-    # --- Summary ---
-    click.echo("")
-    if errors:
-        click.echo(
-            f"FAILED: {len(errors)} error(s), {len(warnings)} warning(s)"
-        )
-        for e in errors:
-            click.echo(f"  ERROR: {e}", err=True)
-        for w in warnings:
-            click.echo(f"  WARN:  {w}", err=True)
-        sys.exit(1)
-
-    if warnings:
-        click.echo(f"PASSED with {len(warnings)} warning(s)")
-        for w in warnings:
-            click.echo(f"  WARN:  {w}", err=True)
-    else:
-        click.echo("PASSED: all pre-flight checks OK")
-
-    click.echo("No data loaded. No queries executed.")
+    dry_run_validate(cfg, queries, config_path, verbose=verbose)
 
 
 # ---------------------------------------------------------------------------
@@ -901,168 +679,9 @@ def run(
       1  One or more queries failed (with --on-error=fail, the default).
       2  Configuration error (invalid YAML or schema violation).
     """
-    if verbose:
-        click.echo(f"Loading config: {config}")
+    from pycypher.cli.pipeline import run_impl
 
-    pipeline_config = _load_config(config)
-
-    if verbose:
-        project_name = (
-            pipeline_config.project.name
-            if pipeline_config.project
-            else "(unnamed)"
-        )
-        click.echo(f"Project: {project_name}")
-        n_entity = len(pipeline_config.sources.entities)
-        n_rel = len(pipeline_config.sources.relationships)
-        click.echo(f"Sources: {n_entity} entity, {n_rel} relationship")
-        click.echo(f"Queries: {len(pipeline_config.queries)}")
-
-    # Filter to requested queries (if --query-id was used)
-    queries = pipeline_config.queries
-    if query_ids:
-        requested = set(query_ids)
-        queries = [q for q in queries if q.id in requested]
-        unknown = requested - {q.id for q in pipeline_config.queries}
-        if unknown:
-            click.echo(
-                f"Warning: unknown query IDs: {', '.join(sorted(unknown))}",
-                err=True,
-            )
-
-    if dry_run:
-        _dry_run_validate(pipeline_config, queries, config, verbose=verbose)
-        return
-
-    # -----------------------------------------------------------------------
-    # Build execution context from config sources
-    # -----------------------------------------------------------------------
-    from pycypher.ingestion.context_builder import ContextBuilder
-    from pycypher.ingestion.output_writer import write_dataframe_to_uri
-    from pycypher.star import Star
-
-    n_entity = len(pipeline_config.sources.entities)
-    n_rel = len(pipeline_config.sources.relationships)
-    n_sources = n_entity + n_rel
-    click.echo(f"Loading {n_sources} data source(s) …")
-
-    try:
-        builder = ContextBuilder()
-        for i, entity_src in enumerate(pipeline_config.sources.entities, 1):
-            click.echo(
-                f"  [{i}/{n_sources}] entity {entity_src.entity_type}"
-                f" <- {mask_uri_credentials(entity_src.uri)}",
-            )
-            builder.add_entity(
-                entity_src.entity_type,
-                entity_src.uri,
-                id_col=entity_src.id_col,
-                query=entity_src.query,
-            )
-        for j, rel_src in enumerate(pipeline_config.sources.relationships, 1):
-            click.echo(
-                f"  [{n_entity + j}/{n_sources}] relationship"
-                f" {rel_src.relationship_type}"
-                f" <- {mask_uri_credentials(rel_src.uri)}",
-            )
-            builder.add_relationship(
-                rel_src.relationship_type,
-                rel_src.uri,
-                source_col=rel_src.source_col,
-                target_col=rel_src.target_col,
-                id_col=rel_src.id_col,
-                query=rel_src.query,
-            )
-        context = builder.build()
-    except FileNotFoundError as exc:
-        _cli_error(f"data source file not found: {exc}")
-    except PermissionError as exc:
-        _cli_error(f"permission denied accessing data source: {exc}")
-    except ValueError as exc:
-        _cli_error(f"invalid data source format or configuration: {exc}")
-    except OSError as exc:
-        _cli_error(f"file system error loading data sources: {exc}")
-
-    star = Star(context=context)
-    config_dir = config.parent
-
-    # -----------------------------------------------------------------------
-    # Execute each query and write results to output sinks
-    # -----------------------------------------------------------------------
-    tracker = _ErrorPolicyTracker((on_error or "fail").lower())
-
-    n_queries = len(queries)
-    click.echo(f"Executing {n_queries} query/queries …")
-
-    for qi, q in enumerate(queries, 1):
-        click.echo(f"  [{qi}/{n_queries}] query [{q.id}] …")
-
-        # Resolve query text (inline string or external .cypher file)
-        try:
-            if q.inline is not None:
-                query_text = q.inline
-            elif q.source is not None:
-                query_path = (config_dir / q.source).resolve()
-                try:
-                    query_path.relative_to(config_dir.resolve())
-                except ValueError:
-                    msg = (
-                        f"Query source {q.source!r} escapes the config directory "
-                        f"{config_dir}. Only paths within the config directory are "
-                        "allowed."
-                    )
-                    raise ValueError(
-                        msg,
-                    ) from None
-                query_text = query_path.read_text(encoding="utf-8")
-            else:
-                msg = f"Query {q.id!r} has neither 'inline' nor 'source'."
-                raise ValueError(
-                    msg,
-                )
-        except (
-            ValueError,
-            FileNotFoundError,
-            PermissionError,
-            UnicodeDecodeError,
-            OSError,
-        ) as exc:
-            if tracker.handle(f"could not load query {q.id!r}: {exc}"):
-                continue
-
-        # Execute the query
-        try:
-            result_df = star.execute_query(query_text)
-        except _QUERY_EXEC_ERRORS as exc:
-            label = _get_error_label(exc)
-            if tracker.handle(f"query [{q.id}] {label}: {exc}"):
-                continue
-
-        # Write to all configured output sinks for this query
-        sinks = [o for o in pipeline_config.output if o.query_id == q.id]
-        for si, sink in enumerate(sinks, 1):
-            try:
-                write_dataframe_to_uri(result_df, sink.uri, sink.format)
-                n_rows = len(result_df) if result_df is not None else 0
-                click.echo(
-                    f"    output [{si}/{len(sinks)}]"
-                    f" {n_rows} row(s)"
-                    f" -> {mask_uri_credentials(sink.uri)}",
-                )
-            except _OUTPUT_ERRORS as exc:
-                label = _OUTPUT_ERROR_LABELS.get(type(exc), "error writing to")
-                tracker.handle(
-                    f"query [{q.id}] {label} {mask_uri_credentials(sink.uri)!r}: {exc}",
-                )
-
-    if tracker.failed and tracker.policy == "warn":
-        click.echo(
-            "Pipeline completed with warnings.  "
-            "One or more queries failed (see above).",
-            err=True,
-        )
-
-    click.echo("Done.")
+    run_impl(config, dry_run, query_ids, output_dir, on_error, verbose)
 
 
 # ---------------------------------------------------------------------------
@@ -1099,57 +718,9 @@ def validate(config: Path, verbose: bool) -> None:
       0  Config is valid.
       1  Config contains schema or validation errors.
     """
-    cfg = _load_config(config)
+    from pycypher.cli.pipeline import validate_impl
 
-    click.echo(f"Config is valid: {config}")
-
-    if verbose:
-        project_name = cfg.project.name if cfg.project else "(unnamed)"
-        click.echo(f"\nProject:  {project_name}")
-        if cfg.project and cfg.project.description:
-            click.echo(f"          {cfg.project.description}")
-
-        click.echo(f"\nVersion:  {cfg.version}")
-
-        if cfg.sources.entities:
-            click.echo(f"\nEntity sources ({len(cfg.sources.entities)}):")
-            for src in cfg.sources.entities:
-                click.echo(
-                    f"  [{src.id}]  {src.entity_type}  ← {mask_uri_credentials(src.uri)}"
-                )
-
-        if cfg.sources.relationships:
-            click.echo(
-                f"\nRelationship sources ({len(cfg.sources.relationships)}):",
-            )
-            for src in cfg.sources.relationships:
-                click.echo(
-                    f"  [{src.id}]  {src.relationship_type}  ← {mask_uri_credentials(src.uri)}",
-                )
-
-        if cfg.queries:
-            click.echo(f"\nQueries ({len(cfg.queries)}):")
-            for q in cfg.queries:
-                desc = f"  {q.description}" if q.description else ""
-                src_label = f"file:{q.source}" if q.source else "inline"
-                click.echo(f"  [{q.id}] ({src_label}){desc}")
-
-        if cfg.output:
-            click.echo(f"\nOutputs ({len(cfg.output)}):")
-            for out in cfg.output:
-                fmt = f" [{out.format}]" if out.format else ""
-                click.echo(
-                    f"  query:{out.query_id} → {out.uri}{fmt}",
-                )
-
-        if cfg.functions:
-            click.echo(f"\nFunctions ({len(cfg.functions)}):")
-            for fn in cfg.functions:
-                if fn.callable:
-                    click.echo(f"  callable: {fn.callable}")
-                else:
-                    names = fn.names if fn.names != "*" else "(all)"
-                    click.echo(f"  module: {fn.module}  names: {names}")
+    validate_impl(config, verbose)
 
 
 # ---------------------------------------------------------------------------
@@ -1177,74 +748,9 @@ def list_queries(config: Path, *, deps: bool) -> None:
 
     CONFIG is the path to a YAML pipeline configuration file.
     """
-    cfg = _load_config(config)
+    from pycypher.cli.pipeline import list_queries_impl
 
-    if not cfg.queries:
-        click.echo("No queries defined in config.")
-        return
-
-    if not deps:
-        for q in cfg.queries:
-            desc = f"  — {q.description}" if q.description else ""
-            src = f"(file: {q.source})" if q.source else "(inline)"
-            click.echo(f"{q.id:30s} {src}{desc}")
-        return
-
-    # Dependency analysis mode
-    from pycypher.multi_query_analyzer import QueryDependencyAnalyzer
-
-    analyzer = QueryDependencyAnalyzer()
-    query_pairs: list[tuple[str, str]] = []
-    for q in cfg.queries:
-        cypher = q.inline or ""
-        if q.source and not cypher:
-            try:
-                cypher = Path(q.source).read_text()
-            except OSError:
-                cypher = ""
-        if cypher:
-            query_pairs.append((q.id, cypher))
-
-    if not query_pairs:
-        click.echo("No parseable queries found.")
-        return
-
-    try:
-        graph = analyzer.analyze(query_pairs)
-        sorted_nodes = graph.topological_sort()
-    except Exception as exc:
-        # CyclicDependencyError, ValueError from analysis, or parse
-        # errors from query re-parsing.  Log at WARNING for visibility
-        # in log output beyond the CLI echo.
-        from shared.logger import LOGGER as _logger
-
-        _logger.warning("Dependency analysis failed: %s", exc, exc_info=True)
-        click.echo(f"Dependency analysis failed: {exc}")
-        return
-
-    click.echo("\nQuery Dependency Analysis\n")
-    for node in sorted_nodes:
-        desc_q = next(
-            (q for q in cfg.queries if q.id == node.query_id),
-            None,
-        )
-        desc = (
-            f"  — {desc_q.description}"
-            if desc_q and desc_q.description
-            else ""
-        )
-        produces = ", ".join(sorted(node.produces)) or "(none)"
-        consumes = ", ".join(sorted(node.consumes)) or "(none)"
-        dep_ids = ", ".join(sorted(node.dependencies)) or "(none)"
-        click.echo(f"  {node.query_id}{desc}")
-        click.echo(f"    produces: {produces}")
-        click.echo(f"    consumes: {consumes}")
-        click.echo(f"    depends on: {dep_ids}")
-        click.echo()
-
-    click.echo(
-        f"Execution order: {' → '.join(n.query_id for n in sorted_nodes)}",
-    )
+    list_queries_impl(config, deps=deps)
 
 
 # ---------------------------------------------------------------------------
@@ -1301,61 +807,14 @@ def functions(
       nmetl functions -v           — include descriptions and examples
       nmetl functions --json       — machine-readable JSON output
     """
-    import json
+    from pycypher.cli.schema import functions_impl
 
-    from pycypher.aggregation_evaluator import KNOWN_AGGREGATIONS
-    from pycypher.scalar_functions import ScalarFunctionRegistry
-
-    # Default: show both when neither flag is set
-    if not show_agg and not show_scalar:
-        show_agg = True
-        show_scalar = True
-
-    registry = ScalarFunctionRegistry.get_instance()
-
-    if as_json:
-        result: dict[str, list[dict[str, str]]] = {}
-        if show_scalar:
-            scalar_list: list[dict[str, str]] = []
-            for name in registry.list_functions():
-                entry: dict[str, str] = {
-                    "name": name,
-                    "category": "scalar",
-                }
-                meta = registry._functions.get(name)
-                if meta and meta.description:
-                    entry["description"] = meta.description
-                if meta and meta.example:
-                    entry["example"] = meta.example
-                scalar_list.append(entry)
-            result["scalar"] = scalar_list
-        if show_agg:
-            result["aggregation"] = [
-                {"name": name, "category": "aggregation"}
-                for name in sorted(KNOWN_AGGREGATIONS)
-            ]
-        click.echo(json.dumps(result, indent=2))
-        return
-
-    if show_scalar:
-        func_names = registry.list_functions()
-        click.echo(f"Scalar functions ({len(func_names)}):")
-        for name in func_names:
-            meta = registry._functions.get(name)
-            if verbose and meta and meta.description:
-                click.echo(f"  {name:30s} {meta.description}")
-                if meta.example:
-                    click.echo(f"  {'':30s} Example: {meta.example}")
-            else:
-                click.echo(f"  {name}")
-
-    if show_agg:
-        if show_scalar:
-            click.echo()
-        agg_names = sorted(KNOWN_AGGREGATIONS)
-        click.echo(f"Aggregation functions ({len(agg_names)}):")
-        for name in agg_names:
-            click.echo(f"  {name}")
+    functions_impl(
+        show_agg=show_agg,
+        show_scalar=show_scalar,
+        verbose=verbose,
+        as_json=as_json,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -1391,38 +850,9 @@ def parse(cypher_query: str, *, as_json: bool, run_validation: bool) -> None:
       nmetl parse --json "MATCH (n) WHERE n.age > 30 RETURN n"
       nmetl parse --validate "MATCH (n:Person) RETURN m"
     """
-    import json as json_mod
+    from pycypher.cli.query import parse_impl
 
-    from pycypher.exceptions import CypherSyntaxError
-    from pycypher.grammar_parser import GrammarParser
-
-    if not cypher_query or not cypher_query.strip():
-        _cli_error("CYPHER_QUERY must not be empty.")
-
-    parser = GrammarParser()
-
-    try:
-        ast_result = parser.parse_to_ast(cypher_query)
-    except CypherSyntaxError as exc:
-        _cli_error(str(exc))
-    except (SyntaxError, LarkError, UnexpectedInput, ParseError) as exc:
-        _cli_error(f"Cypher syntax error: {exc}")
-
-    if as_json:
-        click.echo(json_mod.dumps(ast_result, indent=2, default=str))
-    else:
-        click.echo(ast_result)
-
-    if run_validation:
-        from pycypher.semantic_validator import validate_query as _validate
-
-        errors = _validate(cypher_query)
-        if errors:
-            click.echo("\nValidation issues:")
-            for err in errors:
-                click.echo(f"  [{err.severity.value}] {err.message}")
-        else:
-            click.echo("\nNo validation issues found.")
+    parse_impl(cypher_query, as_json=as_json, run_validation=run_validation)
 
 
 # ---------------------------------------------------------------------------
@@ -1439,40 +869,6 @@ from pycypher._cli_query import (
 )
 
 _register_query_command(cli)
-
-
-def _context_to_schema_dot(
-    entity_types: dict[str, list[str]],
-    rel_types: dict[str, tuple[str, str, list[str]]],
-) -> str:
-    """Render a graph schema as a Graphviz DOT digraph.
-
-    Args:
-        entity_types: Maps entity label → list of property names.
-        rel_types: Maps relationship label → (source_entity, target_entity, properties).
-
-    Returns:
-        DOT source string.
-
-    """
-    lines = [
-        "digraph Schema {",
-        "  rankdir=LR;",
-        '  node [shape=record, style=filled, fillcolor="#d4edda"];',
-        '  edge [fontsize=10, color="#666666"];',
-    ]
-    for label, props in sorted(entity_types.items()):
-        prop_str = "\\l".join(props) + "\\l" if props else ""
-        lines.append(f'  "{label}" [label="{{{label}|{prop_str}}}"];')
-    for rel_label, (src, tgt, props) in sorted(rel_types.items()):
-        label_parts = [rel_label]
-        if props:
-            label_parts.append("\\n" + ", ".join(props))
-        lines.append(
-            f'  "{src}" -> "{tgt}" [label="{" ".join(label_parts)}"];',
-        )
-    lines.append("}")
-    return "\n".join(lines) + "\n"
 
 
 # ---------------------------------------------------------------------------
@@ -1534,123 +930,9 @@ def schema(
       nmetl schema --entity Person=people.csv --format dot | dot -Tpng > schema.png
       nmetl schema --entity Person=people.csv --format json
     """
-    from pycypher.ingestion.context_builder import ContextBuilder
-    from pycypher.relational_models import ID_COLUMN
+    from pycypher.cli.schema import schema_impl
 
-    if not entity_specs and not rel_specs:
-        _cli_error("at least one --entity source is required.")
-
-    # Parse specs (reuse existing parsers)
-    parsed_entities: list[tuple[str, str, str | None]] = []
-    for spec in entity_specs:
-        try:
-            parsed_entities.append(_parse_entity_arg(spec))
-        except ValueError as exc:
-            _cli_error(f"invalid --entity spec: {exc}")
-
-    parsed_rels: list[tuple[str, str, str, str]] = []
-    for spec in rel_specs:
-        try:
-            parsed_rels.append(_parse_rel_arg(spec))
-        except ValueError as exc:
-            _cli_error(f"invalid --rel spec: {exc}")
-
-    # Build context
-    builder = ContextBuilder()
-    for label, path, id_col in parsed_entities:
-        effective_id = id_col or default_id_col
-        _load_data_source(
-            lambda _l=label, _p=path, _i=effective_id: builder.add_entity(
-                _l,
-                _p,
-                id_col=_i,
-            ),
-            "entity source",
-            path,
-        )
-
-    for rel_type, path, src_col, tgt_col in parsed_rels:
-        _load_data_source(
-            lambda _r=rel_type, _p=path, _s=src_col, _t=tgt_col: (
-                builder.add_relationship(
-                    _r,
-                    _p,
-                    source_col=_s,
-                    target_col=_t,
-                )
-            ),
-            "relationship source",
-            path,
-        )
-
-    ctx = builder.build()
-
-    # Extract schema info
-    entity_types: dict[str, list[str]] = {}
-    for label, table in sorted(ctx.entity_mapping.mapping.items()):
-        props = [
-            c for c in table.attribute_map if c not in {ID_COLUMN, "__ID__"}
-        ]
-        entity_types[label] = sorted(props)
-
-    rel_types: dict[str, tuple[str, str, list[str]]] = {}
-    for rel_label, table in sorted(ctx.relationship_mapping.mapping.items()):
-        # Determine source/target entity types from data
-        src_entity = "?"
-        tgt_entity = "?"
-        props = [
-            c
-            for c in table.attribute_map
-            if c not in {ID_COLUMN, "__ID__", "__SOURCE__", "__TARGET__"}
-        ]
-        rel_types[rel_label] = (src_entity, tgt_entity, sorted(props))
-
-    # Output
-    if fmt == "dot":
-        text = _context_to_schema_dot(entity_types, rel_types)
-        if output_path is not None:
-            output_path.write_text(text, encoding="utf-8")
-            click.echo(f"Wrote schema DOT → {output_path}")
-        else:
-            click.echo(text, nl=False)
-    elif fmt == "json":
-        import json
-
-        schema_dict = {
-            "entities": {
-                label: {"properties": props}
-                for label, props in entity_types.items()
-            },
-            "relationships": {
-                label: {"source": src, "target": tgt, "properties": props}
-                for label, (src, tgt, props) in rel_types.items()
-            },
-        }
-        text = json.dumps(schema_dict, indent=2) + "\n"
-        if output_path is not None:
-            output_path.write_text(text, encoding="utf-8")
-            click.echo(f"Wrote schema JSON → {output_path}")
-        else:
-            click.echo(text, nl=False)
-    else:  # table
-        click.echo("Entity Types:")
-        click.echo("-" * 50)
-        for label, props in sorted(entity_types.items()):
-            click.echo(f"  :{label}")
-            for p in props:
-                click.echo(f"    .{p}")
-        if rel_types:
-            click.echo("\nRelationship Types:")
-            click.echo("-" * 50)
-            for rel_label, (src, tgt, props) in sorted(rel_types.items()):
-                arrow = f"(:{src})-[:{rel_label}]->(:{tgt})"
-                click.echo(f"  {arrow}")
-                for p in props:
-                    click.echo(f"    .{p}")
-        click.echo(
-            f"\n{len(entity_types)} entity type(s), "
-            f"{len(rel_types)} relationship type(s)",
-        )
+    schema_impl(entity_specs, rel_specs, default_id_col, fmt, output_path)
 
 
 # ---------------------------------------------------------------------------
@@ -1685,54 +967,14 @@ def metrics(*, as_json: bool, diagnostic: bool) -> None:
       nmetl metrics --diagnostic   — detailed report with recommendations
       nmetl metrics --json         — machine-readable output
     """
-    import json
+    from pycypher.cli.system import metrics_impl
 
-    from shared.metrics import QUERY_METRICS
-
-    snap = QUERY_METRICS.snapshot()
-
-    if as_json:
-        click.echo(json.dumps(snap.to_dict(), indent=2, default=str))
-    elif diagnostic:
-        click.echo(snap.diagnostic_report())
-    else:
-        click.echo(f"Health: {snap.health_status()}")
-        click.echo(snap.summary())
+    metrics_impl(as_json=as_json, diagnostic=diagnostic)
 
 
 # ---------------------------------------------------------------------------
 # config sub-command
 # ---------------------------------------------------------------------------
-
-
-# Registry of config knobs: (env_var, description, default_display)
-_CONFIG_REGISTRY: list[tuple[str, str, str]] = [
-    # --- Query execution ---
-    ("PYCYPHER_QUERY_TIMEOUT_S", "Query timeout (seconds)", "None (no limit)"),
-    ("PYCYPHER_MAX_CROSS_JOIN_ROWS", "Cross-join row ceiling", "1,000,000"),
-    ("PYCYPHER_MAX_UNBOUNDED_PATH_HOPS", "Max BFS hops for [*] paths", "20"),
-    ("PYCYPHER_MAX_COMPLEXITY_SCORE", "Complexity gate (0=disabled)", "0 (disabled)"),
-    ("PYCYPHER_COMPLEXITY_WARN_THRESHOLD", "Complexity warning threshold", "0 (disabled)"),
-    ("PYCYPHER_RATE_LIMIT_QPS", "Max queries/sec (0=disabled)", "0 (disabled)"),
-    ("PYCYPHER_RATE_LIMIT_BURST", "Rate limit burst size", "10"),
-    # --- Caching ---
-    ("PYCYPHER_RESULT_CACHE_MAX_MB", "Result cache size (MB)", "100"),
-    ("PYCYPHER_RESULT_CACHE_TTL_S", "Cache TTL (seconds, 0=no expiry)", "0"),
-    ("PYCYPHER_AST_CACHE_MAX", "Parsed AST cache size (LRU)", "1024"),
-    # --- Security limits ---
-    ("PYCYPHER_MAX_QUERY_SIZE_BYTES", "Max query size (bytes)", "1,048,576"),
-    ("PYCYPHER_MAX_QUERY_NESTING_DEPTH", "Max AST nesting depth", "200"),
-    ("PYCYPHER_MAX_COLLECTION_SIZE", "Max collection/string size", "1,000,000"),
-    # --- Logging and observability ---
-    ("PYCYPHER_LOG_LEVEL", "Log level (DEBUG/INFO/WARNING/ERROR)", "WARNING"),
-    ("PYCYPHER_LOG_FORMAT", "Log format (rich or json)", "rich"),
-    ("PYCYPHER_AUDIT_LOG", "Audit logging (1/true/yes to enable)", "disabled"),
-    ("PYCYPHER_METRICS_ENABLED", "In-process metrics (0/false to disable)", "1 (enabled)"),
-    ("PYCYPHER_SLOW_QUERY_MS", "Slow query threshold (ms)", "1000"),
-    ("PYCYPHER_OTEL_ENABLED", "OpenTelemetry tracing (1/true/yes)", "0 (disabled)"),
-    # --- REPL ---
-    ("PYCYPHER_REPL_MAX_ROWS", "REPL max displayed rows", "50"),
-]
 
 
 @cli.command("config")
@@ -1755,35 +997,9 @@ def config_cmd(*, as_json: bool) -> None:
       nmetl config --json       — machine-readable output
       PYCYPHER_QUERY_TIMEOUT_S=30 nmetl config  — verify override
     """
-    import json
-    import os
+    from pycypher.cli.system import config_impl
 
-    entries = []
-    for env_var, description, default_display in _CONFIG_REGISTRY:
-        raw = os.environ.get(env_var)
-        entries.append(
-            {
-                "variable": env_var,
-                "value": raw if raw is not None else default_display,
-                "source": "env" if raw is not None else "default",
-                "description": description,
-            },
-        )
-
-    if as_json:
-        click.echo(json.dumps(entries, indent=2))
-    else:
-        click.echo("\nPyCypher Configuration\n")
-        for entry in entries:
-            marker = "*" if entry["source"] == "env" else " "
-            click.echo(
-                f"  {marker} {entry['variable']:<38} "
-                f"{entry['value']:<18} {entry['description']}",
-            )
-        click.echo(
-            "\n  * = set via environment variable\n"
-            "  Set variables with: export PYCYPHER_<NAME>=<value>\n",
-        )
+    config_impl(as_json=as_json)
 
 
 # ---------------------------------------------------------------------------
@@ -1820,93 +1036,9 @@ def health(*, as_json: bool, verbose_health: bool) -> None:
       nmetl health --json     — machine-readable health report
       nmetl health -v         — include system resource details
     """
-    import json as json_mod
+    from pycypher.cli.system import health_impl
 
-    from shared.metrics import QUERY_METRICS
-
-    checks: dict[str, dict[str, Any]] = {}
-
-    # 1. Metrics health
-    snap = QUERY_METRICS.snapshot()
-    metrics_status = snap.health_status()
-    checks["metrics"] = {
-        "status": metrics_status,
-        "total_queries": snap.total_queries,
-        "total_errors": snap.total_errors,
-        "error_rate": round(snap.error_rate, 4),
-    }
-
-    # 2. System resources
-    try:
-        import resource as _resource
-
-        rusage = _resource.getrusage(_resource.RUSAGE_SELF)
-        mem_mb = rusage.ru_maxrss / (1024 * 1024)  # macOS returns bytes
-        if sys.platform == "linux":
-            mem_mb = rusage.ru_maxrss / 1024  # Linux returns KB
-
-        # Heuristic: flag if RSS > 2GB
-        mem_status = "healthy" if mem_mb < 2048 else "degraded"
-        checks["memory"] = {
-            "status": mem_status,
-            "rss_mb": round(mem_mb, 1),
-        }
-    except Exception:
-        from shared.logger import LOGGER as _logger
-
-        _logger.debug("Memory health check failed", exc_info=True)
-        checks["memory"] = {"status": "unknown", "rss_mb": None}
-
-    # 3. Process uptime
-    checks["uptime"] = {
-        "status": "healthy",
-        "uptime_s": round(snap.uptime_s, 1),
-    }
-
-    # 4. Cache efficiency (if queries have been run)
-    if snap.total_queries > 0:
-        total_cache_ops = snap.result_cache_hits + snap.result_cache_misses
-        cache_hit_rate = (
-            snap.result_cache_hits / total_cache_ops
-            if total_cache_ops > 0
-            else 0.0
-        )
-        checks["cache"] = {
-            "status": "healthy",
-            "hit_rate": round(cache_hit_rate, 4),
-            "evictions": snap.result_cache_evictions,
-        }
-
-    # Overall status: worst of all checks
-    status_order = {"healthy": 0, "degraded": 1, "unhealthy": 2, "unknown": 1}
-    overall = max(
-        (c.get("status", "unknown") for c in checks.values()),
-        key=lambda s: status_order.get(s, 1),
-    )
-
-    report = {"status": overall, "checks": checks}
-
-    if as_json:
-        click.echo(json_mod.dumps(report, indent=2, default=str))
-    else:
-        status_icon = {"healthy": "+", "degraded": "~", "unhealthy": "!"}
-        click.echo(
-            f"[{status_icon.get(overall, '?')}] Overall: {overall.upper()}",
-        )
-        for name, check in checks.items():
-            icon = status_icon.get(check.get("status", "?"), "?")
-            detail_parts = [
-                f"{k}={v}"
-                for k, v in check.items()
-                if k != "status" and (verbose_health or k not in {"rss_mb"})
-            ]
-            detail = f"  ({', '.join(detail_parts)})" if detail_parts else ""
-            click.echo(
-                f"  [{icon}] {name}: {check.get('status', 'unknown')}{detail}",
-            )
-
-    # Exit code reflects health status
-    sys.exit(status_order.get(overall, 1))
+    health_impl(as_json=as_json, verbose_health=verbose_health)
 
 
 # ---------------------------------------------------------------------------
@@ -1945,13 +1077,9 @@ def health_server(*, port: int, bind: str) -> None:
       nmetl health-server --port 9090    — custom port
       nmetl health-server --bind 0.0.0.0 — listen on all interfaces
     """
-    from pycypher.health_server import run_health_server
+    from pycypher.cli.system import health_server_impl
 
-    click.echo(f"Starting health server on {bind}:{port}...")
-    click.echo(f"  GET http://{bind}:{port}/health")
-    click.echo(f"  GET http://{bind}:{port}/ready")
-    click.echo(f"  GET http://{bind}:{port}/metrics")
-    run_health_server(host=bind, port=port)
+    health_server_impl(port=port, bind=bind)
 
 
 # ---------------------------------------------------------------------------
@@ -1990,32 +1118,9 @@ def format_query_cmd(
       nmetl format-query --check "MATCH (n) RETURN n"
       nmetl format-query --lint "match (n) return n"
     """
-    from pycypher.query_formatter import format_query, lint_query
+    from pycypher.cli.query import format_query_impl
 
-    if lint:
-        issues = lint_query(query_text)
-        if issues:
-            for issue in issues:
-                click.echo(
-                    f"  L{issue.line}:{issue.column} "
-                    f"[{issue.severity}] {issue.message}",
-                )
-            sys.exit(1)
-        else:
-            click.echo("No issues found.")
-        return
-
-    formatted = format_query(query_text)
-
-    if check:
-        if formatted != query_text:
-            click.echo("Query needs formatting.", err=True)
-            click.echo(formatted)
-            sys.exit(1)
-        else:
-            click.echo("Query is well-formatted.")
-    else:
-        click.echo(formatted)
+    format_query_impl(query_text, check=check, lint=lint)
 
 
 # ---------------------------------------------------------------------------
@@ -2075,14 +1180,9 @@ def repl(
       .schema     — show loaded entity types
       .help       — show all commands
     """
-    from pycypher.repl import CypherRepl
+    from pycypher.cli.interactive import repl_impl
 
-    shell = CypherRepl(
-        entity_specs=list(entity_specs),
-        rel_specs=list(rel_specs),
-        default_id_col=default_id_col,
-    )
-    shell.cmdloop()
+    repl_impl(entity_specs, rel_specs, default_id_col)
 
 
 # ---------------------------------------------------------------------------
@@ -2137,67 +1237,68 @@ def compat_check(
       nmetl compat-check --neo4j "LOAD CSV"
       nmetl compat-check --neo4j-all
     """
-    from shared.compat import (
-        NEO4J_COMPAT_NOTES,
-        check_neo4j_compat,
-        diff_surfaces,
-        load_snapshot,
-        save_snapshot,
-        snapshot_api_surface,
+    from pycypher.cli.utility import compat_check_impl
+
+    compat_check_impl(
+        snapshot=snapshot,
+        diff_path=diff_path,
+        neo4j_feature=neo4j_feature,
+        neo4j_all=neo4j_all,
     )
 
-    if snapshot is not None:
-        surface = snapshot_api_surface("pycypher")
-        save_snapshot(surface, snapshot)
+
+# ---------------------------------------------------------------------------
+# TUI subcommand
+# ---------------------------------------------------------------------------
+
+
+@cli.command("tui")
+@click.argument("config", required=False, default=None, type=click.Path())
+@click.option("--new", is_flag=True, help="Create a new pipeline config file.")
+@click.option("--template", default=None, help="Template for --new creation.")
+@click.option(
+    "--list-templates", is_flag=True, help="List available templates and exit."
+)
+def tui_command(
+    config: str | None,
+    new: bool,
+    template: str | None,
+    list_templates: bool,
+) -> None:
+    """Launch the VIM-style TUI for pipeline configuration.
+
+    Open an existing pipeline config for editing, or create a new one
+    using --new. Templates provide pre-built configurations for common
+    use cases.
+
+    \b
+    Examples:
+        nmetl tui pipeline.yaml           # Edit existing config
+        nmetl tui --new my_pipeline.yaml  # Create new config
+        nmetl tui --template csv_analytics --new pipeline.yaml
+        nmetl tui --list-templates        # Show templates
+    """
+    try:
+        from pycypher_tui.cli import run_tui
+    except ImportError:
         click.echo(
-            f"Saved API snapshot: {len(surface.symbols)} symbols "
-            f"(v{surface.version}) → {snapshot}",
+            "Error: pycypher-tui package is not installed.\n"
+            "Install it with: pip install pycypher-tui",
+            err=True,
         )
-        return
+        raise SystemExit(1)
 
-    if diff_path is not None:
-        old = load_snapshot(diff_path)
-        current = snapshot_api_surface("pycypher")
-        report = diff_surfaces(old, current)
-        click.echo(report.summary())
-        if report.has_breaking_changes:
-            raise SystemExit(1)
-        return
+    if template and not new:
+        raise click.UsageError("--template requires --new")
+    if new and not config:
+        raise click.UsageError("--new requires a config file path")
 
-    if neo4j_feature is not None:
-        result = check_neo4j_compat(neo4j_feature)
-        if result is None:
-            click.echo(f"No compatibility notes found for '{neo4j_feature}'.")
-            raise SystemExit(1)
-        status = "SUPPORTED" if result["supported"] else "NOT SUPPORTED"
-        click.echo(f"{result['feature']}: {status}")
-        click.echo(f"  {result['notes']}")
-        if "workaround" in result:
-            click.echo(f"  Workaround: {result['workaround']}")
-        return
-
-    if neo4j_all:
-        for feature, info in NEO4J_COMPAT_NOTES.items():
-            status = "+" if info["supported"] else "-"
-            click.echo(f"  [{status}] {feature}")
-            click.echo(f"      {info['notes']}")
-            if "workaround" in info:
-                click.echo(f"      Workaround: {info['workaround']}")
-        return
-
-    # Default: show current API surface summary
-    surface = snapshot_api_surface("pycypher")
-    click.echo(
-        f"PyCypher v{surface.version} — {len(surface.symbols)} public symbols",
+    run_tui(
+        config_path=config,
+        new=new,
+        template=template,
+        list_templates_flag=list_templates,
     )
-    by_kind: dict[str, list[str]] = {}
-    for sym in surface.symbols.values():
-        by_kind.setdefault(sym.kind, []).append(sym.name)
-    for kind in sorted(by_kind):
-        names = sorted(by_kind[kind])
-        click.echo(f"\n  {kind}s ({len(names)}):")
-        for name in names:
-            click.echo(f"    {name}")
 
 
 # ---------------------------------------------------------------------------

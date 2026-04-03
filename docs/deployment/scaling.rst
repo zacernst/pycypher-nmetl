@@ -35,7 +35,7 @@ alternative backends:
      - Large CSV/Parquet scans, SQL sources
      - Used by ``ContextBuilder`` for loading
    * - Polars
-     - Optional (``pip install pycypher[polars]``)
+     - Optional (included in ``uv sync --group dev``)
      - CPU-bound transforms
      - Backend engine support, not default path
 

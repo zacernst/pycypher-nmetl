@@ -270,3 +270,129 @@ def test_audit_integration_error(audit_capture):
     record = json.loads(audit_capture[0])
     assert record["status"] == "error"
     assert record["error_type"] != ""
+
+
+# ---------------------------------------------------------------------------
+# Mutation audit records
+# ---------------------------------------------------------------------------
+
+
+def test_audit_mutation_record(audit_capture):
+    """audit_mutation() emits a well-formed JSON record."""
+    from pycypher.audit import audit_mutation
+
+    audit_mutation(
+        query_id="mut001",
+        operation="CREATE",
+        entity_type="Person",
+        affected_count=5,
+        elapsed_s=0.015,
+        details={"new_variables": ["p"]},
+    )
+    assert len(audit_capture) == 1
+    record = json.loads(audit_capture[0])
+    assert record["event"] == "mutation"
+    assert record["query_id"] == "mut001"
+    assert record["operation"] == "CREATE"
+    assert record["entity_type"] == "Person"
+    assert record["affected_count"] == 5
+    assert record["elapsed_ms"] == 15.0
+    assert record["details"] == {"new_variables": ["p"]}
+    assert "timestamp" in record
+
+
+def test_audit_mutation_no_details(audit_capture):
+    """audit_mutation() omits details key when not provided."""
+    from pycypher.audit import audit_mutation
+
+    audit_mutation(
+        query_id="mut002",
+        operation="DELETE",
+        entity_type="Node",
+        affected_count=3,
+        elapsed_s=0.002,
+    )
+    record = json.loads(audit_capture[0])
+    assert record["event"] == "mutation"
+    assert record["operation"] == "DELETE"
+    assert "details" not in record
+
+
+def test_audit_mutation_all_operations(audit_capture):
+    """All mutation operations produce valid records."""
+    from pycypher.audit import audit_mutation
+
+    for op in ("CREATE", "SET", "DELETE", "DETACH_DELETE", "MERGE", "REMOVE"):
+        audit_mutation(
+            query_id=f"op-{op}",
+            operation=op,
+            entity_type="TestType",
+            affected_count=1,
+            elapsed_s=0.001,
+        )
+    assert len(audit_capture) == 6
+    operations = {json.loads(r)["operation"] for r in audit_capture}
+    assert operations == {"CREATE", "SET", "DELETE", "DETACH_DELETE", "MERGE", "REMOVE"}
+
+
+def test_audit_mutation_not_emitted_when_disabled():
+    """audit_mutation() is a no-op when audit logging is disabled."""
+    from pycypher.audit import AUDIT_LOGGER, audit_mutation
+
+    original_handlers = AUDIT_LOGGER.handlers[:]
+    AUDIT_LOGGER.handlers.clear()
+    try:
+        # Should not raise, just silently skip
+        audit_mutation(
+            query_id="noop",
+            operation="SET",
+            entity_type="Person",
+            affected_count=1,
+            elapsed_s=0.001,
+        )
+    finally:
+        AUDIT_LOGGER.handlers = original_handlers
+
+
+def test_audit_mutation_integration_with_create(audit_capture):
+    """CREATE queries emit both query and mutation audit records."""
+    import pandas as pd
+    from pycypher.constants import ID_COLUMN
+    from pycypher.relational_models import (
+        Context,
+        EntityMapping,
+        EntityTable,
+        RelationshipMapping,
+    )
+    from pycypher.star import Star
+
+    df = pd.DataFrame({ID_COLUMN: [1], "name": ["Alice"]})
+    table = EntityTable(
+        entity_type="Person",
+        identifier="Person",
+        column_names=[ID_COLUMN, "name"],
+        source_obj_attribute_map={"name": "name"},
+        attribute_map={"name": "name"},
+        source_obj=df,
+    )
+    star = Star(
+        context=Context(
+            entity_mapping=EntityMapping(mapping={"Person": table}),
+            relationship_mapping=RelationshipMapping(mapping={}),
+        ),
+    )
+
+    star.execute_query("CREATE (p:Person {name: 'Bob'})")
+
+    # Should have at least a query audit record and a mutation audit record
+    assert len(audit_capture) >= 2
+    events = [json.loads(r)["event"] for r in audit_capture]
+    assert "query" in events
+    assert "mutation" in events
+
+    # Find the mutation record
+    mutation_records = [json.loads(r) for r in audit_capture if json.loads(r)["event"] == "mutation"]
+    assert len(mutation_records) >= 1
+    mut = mutation_records[0]
+    assert mut["operation"] == "CREATE"
+    assert mut["affected_count"] >= 1

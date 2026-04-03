@@ -54,8 +54,14 @@ class TestClauseTimingRecording:
                 clause_timings_ms={"Match": float(i + 1)},
             )
         snap = QUERY_METRICS.snapshot()
-        assert snap.clause_timing_p50_ms["Match"] <= snap.clause_timing_p90_ms["Match"]
-        assert snap.clause_timing_p90_ms["Match"] <= snap.clause_timing_max_ms["Match"]
+        assert (
+            snap.clause_timing_p50_ms["Match"]
+            <= snap.clause_timing_p90_ms["Match"]
+        )
+        assert (
+            snap.clause_timing_p90_ms["Match"]
+            <= snap.clause_timing_max_ms["Match"]
+        )
 
     def test_multiple_clause_types_tracked_independently(self) -> None:
         QUERY_METRICS.record_query(

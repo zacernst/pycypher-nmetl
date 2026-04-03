@@ -81,9 +81,13 @@ class TestSanitizeFilePath:
 
     def test_invalid_path_raises(self) -> None:
         """Path that causes OSError during resolve."""
-        with patch(
-            "pycypher.ingestion.security.Path.resolve", side_effect=OSError("bad"),
-        ), pytest.raises(SecurityError, match="Invalid path"):
+        with (
+            patch(
+                "pycypher.ingestion.security.Path.resolve",
+                side_effect=OSError("bad"),
+            ),
+            pytest.raises(SecurityError, match="Invalid path"),
+        ):
             sanitize_file_path("some_file.csv")
 
 
@@ -198,7 +202,9 @@ class TestRejectDangerousTableFunctions:
     )
     def test_rejects_dangerous_functions(self, func: str) -> None:
         query = f"select * from {func}('/etc/passwd')"
-        with pytest.raises(SecurityError, match="Dangerous DuckDB table function"):
+        with pytest.raises(
+            SecurityError, match="Dangerous DuckDB table function"
+        ):
             _reject_dangerous_table_functions(query)
 
     @pytest.mark.parametrize(
@@ -215,7 +221,9 @@ class TestRejectDangerousTableFunctions:
 
     def test_function_with_whitespace_before_paren(self) -> None:
         with pytest.raises(SecurityError):
-            _reject_dangerous_table_functions("select * from read_csv  ('/etc/passwd')")
+            _reject_dangerous_table_functions(
+                "select * from read_csv  ('/etc/passwd')"
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -252,7 +260,9 @@ class TestValidateSqlQuery:
             validate_sql_query("SELECT 1; DROP TABLE t;")
 
     def test_semicolon_in_middle_raises(self) -> None:
-        with pytest.raises(SecurityError, match="Semicolon found in the middle"):
+        with pytest.raises(
+            SecurityError, match="Semicolon found in the middle"
+        ):
             validate_sql_query("SELECT 1; SELECT 2")
 
     def test_insert_rejected(self) -> None:
@@ -354,7 +364,10 @@ class TestValidateUriScheme:
         assert validate_uri_scheme("s3://bucket/key") == "s3://bucket/key"
 
     def test_file_allowed(self) -> None:
-        assert validate_uri_scheme("file:///data/file.csv") == "file:///data/file.csv"
+        assert (
+            validate_uri_scheme("file:///data/file.csv")
+            == "file:///data/file.csv"
+        )
 
     def test_bare_path_allowed(self) -> None:
         assert validate_uri_scheme("/data/file.csv") == "/data/file.csv"
@@ -418,7 +431,9 @@ class TestCheckSsrfHostname:
 
         from pycypher.ingestion.security import _check_ssrf_hostname
 
-        with patch("socket.getaddrinfo", side_effect=socket.gaierror("no such host")):
+        with patch(
+            "socket.getaddrinfo", side_effect=socket.gaierror("no such host")
+        ):
             with pytest.raises(SecurityError, match="SSRF"):
                 _check_ssrf_hostname("nonexistent.invalid.test")
 
@@ -427,7 +442,9 @@ class TestCheckSsrfHostname:
 
         from pycypher.ingestion.security import _check_ssrf_hostname
 
-        fake_result = [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("10.0.0.1", 0))]
+        fake_result = [
+            (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("10.0.0.1", 0))
+        ]
         with patch("socket.getaddrinfo", return_value=fake_result):
             with pytest.raises(SecurityError, match="SSRF"):
                 _check_ssrf_hostname("evil.attacker.com")
@@ -443,7 +460,9 @@ class TestCheckSsrfHostname:
 
         from pycypher.ingestion.security import _check_ssrf_hostname
 
-        fake_result = [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("not-an-ip", 0))]
+        fake_result = [
+            (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("not-an-ip", 0))
+        ]
         with patch("socket.getaddrinfo", return_value=fake_result):
             _check_ssrf_hostname("weird-dns.test")  # should not raise
 

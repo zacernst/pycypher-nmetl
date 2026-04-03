@@ -415,6 +415,9 @@ class ValidateStage(Stage):
     """Run semantic validation and complexity scoring.
 
     Checks query complexity against ``ctx.max_complexity_score`` if set.
+    Also runs scoring when ``COMPLEXITY_WARN_THRESHOLD`` is configured,
+    even without a hard limit, so that warnings can be emitted.
+
     Populates ``ctx.metadata["complexity_score"]``,
     ``ctx.metadata["complexity_details"]``, and
     ``ctx.metadata["complexity_warnings"]`` when scoring runs.
@@ -430,7 +433,15 @@ class ValidateStage(Stage):
         if ctx.ast is None:
             return ctx
 
-        if ctx.max_complexity_score is not None:
+        from pycypher.config import COMPLEXITY_WARN_THRESHOLD
+
+        # Score if a hard limit is set OR a warn threshold is configured.
+        should_score = (
+            ctx.max_complexity_score is not None
+            or COMPLEXITY_WARN_THRESHOLD is not None
+        )
+
+        if should_score:
             from pycypher.query_complexity import score_query
 
             score_result = score_query(

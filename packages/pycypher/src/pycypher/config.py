@@ -97,6 +97,8 @@ __all__ = [
     "RATE_LIMIT_QPS",
     "RESULT_CACHE_MAX_MB",
     "RESULT_CACHE_TTL_S",
+    "apply_preset",
+    "show_config",
 ]
 
 
@@ -233,3 +235,102 @@ limiting entirely.  When enabled, queries exceeding this rate receive a
 RATE_LIMIT_BURST: int = _read_int("PYCYPHER_RATE_LIMIT_BURST", 10)
 """Maximum burst size for rate limiting.  Allows short bursts above the
 sustained QPS rate.  Only meaningful when ``RATE_LIMIT_QPS > 0``."""
+
+
+# ---------------------------------------------------------------------------
+# Configuration presets
+# ---------------------------------------------------------------------------
+
+_PRESETS: dict[str, dict[str, int | float | None]] = {
+    "development": {
+        # Safe defaults for learning — no timeouts, generous limits.
+        "QUERY_TIMEOUT_S": None,
+        "MAX_CROSS_JOIN_ROWS": 1_000_000,
+        "MAX_COMPLEXITY_SCORE": None,
+        "RESULT_CACHE_MAX_MB": 100,
+        "RESULT_CACHE_TTL_S": 0.0,
+        "RATE_LIMIT_QPS": 0.0,
+    },
+    "production": {
+        # Defensive limits for user-facing queries.
+        "QUERY_TIMEOUT_S": 30.0,
+        "MAX_CROSS_JOIN_ROWS": 100_000,
+        "MAX_COMPLEXITY_SCORE": 100,
+        "RESULT_CACHE_MAX_MB": 100,
+        "RESULT_CACHE_TTL_S": 300.0,
+        "RATE_LIMIT_QPS": 50.0,
+    },
+    "high_performance": {
+        # Trusted environment — maximize throughput.
+        "QUERY_TIMEOUT_S": 120.0,
+        "MAX_CROSS_JOIN_ROWS": 10_000_000,
+        "MAX_COMPLEXITY_SCORE": None,
+        "RESULT_CACHE_MAX_MB": 500,
+        "RESULT_CACHE_TTL_S": 600.0,
+        "RATE_LIMIT_QPS": 0.0,
+    },
+}
+
+
+def apply_preset(name: str) -> None:
+    """Apply a named configuration preset by updating module globals.
+
+    Available presets:
+
+    ``"development"`` (default)
+        Safe for learning — no timeouts, generous limits, no rate limiting.
+
+    ``"production"``
+        Defensive limits for user-facing queries — 30 s timeout,
+        100 K cross-join ceiling, complexity gate at 100, rate limiting.
+
+    ``"high_performance"``
+        Trusted environment — 2 min timeout, 10 M cross-join ceiling,
+        500 MB cache, no complexity gate, no rate limiting.
+
+    Example::
+
+        from pycypher.config import apply_preset
+        apply_preset("production")
+
+    Raises:
+        ValueError: If *name* is not a recognised preset.
+    """
+    preset = _PRESETS.get(name)
+    if preset is None:
+        available = ", ".join(sorted(_PRESETS))
+        msg = f"Unknown preset {name!r}. Available: {available}"
+        raise ValueError(msg)
+
+    g = globals()
+    for key, value in preset.items():
+        if key not in g:
+            continue
+        g[key] = value
+
+    LOGGER.info("Applied configuration preset %r", name)
+
+
+def show_config() -> dict[str, int | float | None]:
+    """Return a dict of all current configuration values.
+
+    Useful for debugging and logging the active configuration::
+
+        from pycypher.config import show_config
+        print(show_config())
+    """
+    return {
+        "QUERY_TIMEOUT_S": QUERY_TIMEOUT_S,
+        "MAX_CROSS_JOIN_ROWS": MAX_CROSS_JOIN_ROWS,
+        "RESULT_CACHE_MAX_MB": RESULT_CACHE_MAX_MB,
+        "RESULT_CACHE_TTL_S": RESULT_CACHE_TTL_S,
+        "MAX_UNBOUNDED_PATH_HOPS": MAX_UNBOUNDED_PATH_HOPS,
+        "AST_CACHE_MAX_ENTRIES": AST_CACHE_MAX_ENTRIES,
+        "MAX_QUERY_SIZE_BYTES": MAX_QUERY_SIZE_BYTES,
+        "MAX_QUERY_NESTING_DEPTH": MAX_QUERY_NESTING_DEPTH,
+        "MAX_COLLECTION_SIZE": MAX_COLLECTION_SIZE,
+        "MAX_COMPLEXITY_SCORE": MAX_COMPLEXITY_SCORE,
+        "COMPLEXITY_WARN_THRESHOLD": COMPLEXITY_WARN_THRESHOLD,
+        "RATE_LIMIT_QPS": RATE_LIMIT_QPS,
+        "RATE_LIMIT_BURST": RATE_LIMIT_BURST,
+    }

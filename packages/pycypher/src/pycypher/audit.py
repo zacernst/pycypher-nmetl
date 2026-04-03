@@ -47,6 +47,7 @@ __all__ = [
     "AUDIT_LOGGER",
     "audit_query_success",
     "audit_query_error",
+    "audit_mutation",
     "enable_audit_log",
     "is_audit_enabled",
 ]
@@ -136,6 +137,50 @@ def audit_query_success(
             "parameter_keys": parameter_keys or [],
         },
     )
+
+
+def audit_mutation(
+    *,
+    query_id: str,
+    operation: str,
+    entity_type: str,
+    affected_count: int,
+    elapsed_s: float,
+    details: dict[str, Any] | None = None,
+) -> None:
+    """Log a mutation operation (CREATE, SET, DELETE, MERGE, REMOVE).
+
+    Emits a structured JSON record for each mutation clause execution,
+    enabling audit trails for all write operations.
+
+    Args:
+        query_id: Unique correlation ID linking to the parent query.
+        operation: Mutation type (``"CREATE"``, ``"SET"``, ``"DELETE"``,
+            ``"DETACH_DELETE"``, ``"MERGE"``, ``"REMOVE"``).
+        entity_type: The entity or relationship type affected.
+        affected_count: Number of rows/entities affected.
+        elapsed_s: Wall-clock execution time in seconds.
+        details: Optional extra context (e.g. property keys modified,
+            detached relationship count).  Values must be JSON-serializable.
+
+    Security note: entity *data* (property values, IDs) is **never** logged.
+    Only structural metadata (counts, types, property names) is recorded.
+
+    """
+    if not is_audit_enabled():
+        return
+    record: dict[str, Any] = {
+        "event": "mutation",
+        "query_id": query_id,
+        "timestamp": datetime.now(tz=timezone.utc).isoformat(),
+        "operation": operation,
+        "entity_type": entity_type,
+        "affected_count": affected_count,
+        "elapsed_ms": round(elapsed_s * 1000.0, 2),
+    }
+    if details:
+        record["details"] = details
+    _emit(record)
 
 
 def audit_query_error(

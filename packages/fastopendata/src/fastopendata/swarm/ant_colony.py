@@ -363,7 +363,9 @@ class AntColonyOptimizer:
             # Accumulate cost (latency of the next node)
             next_node = self.topology.nodes.get(next_id)
             if next_node:
-                ant.path_cost += max(1.0, next_node.latency_ms) + next_node.load * 10.0
+                ant.path_cost += (
+                    max(1.0, next_node.latency_ms) + next_node.load * 10.0
+                )
 
         return ant
 
@@ -451,7 +453,9 @@ class AntColonyOptimizer:
             self._deposit_pheromones(ants)
 
             # Compute emergent metrics
-            pheromone_levels = [p.intensity for p in self.pheromone_matrix.values()]
+            pheromone_levels = [
+                p.intensity for p in self.pheromone_matrix.values()
+            ]
             self.metrics.compute_route_convergence(pheromone_levels)
             loads = [n.load for n in self.topology.nodes.values()]
             self.metrics.compute_load_entropy(loads)
@@ -475,7 +479,9 @@ class AntColonyOptimizer:
             found_target=best_ant.found_target if best_ant else False,
             iterations_run=self.metrics.iteration + 1,
             successful_ants=sum(
-                1 for p in self.pheromone_matrix.values() if p.deposit_count > 0
+                1
+                for p in self.pheromone_matrix.values()
+                if p.deposit_count > 0
             ),
             route_convergence=self.metrics.route_convergence,
             elapsed_ms=elapsed_ms,

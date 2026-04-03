@@ -95,7 +95,9 @@ class StreamBuffer:
     """
 
     def __init__(self, max_size: int = 10_000) -> None:
-        self._queue: asyncio.Queue[StreamRecord] = asyncio.Queue(maxsize=max_size)
+        self._queue: asyncio.Queue[StreamRecord] = asyncio.Queue(
+            maxsize=max_size
+        )
         self._max_size = max_size
         self._total_ingested: int = 0
         self._total_emitted: int = 0

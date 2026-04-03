@@ -321,7 +321,9 @@ class MultiversePlanner:
         )
 
         # Cap scan combos to avoid exponential blowup
-        max_scan_combos = max(1, self.max_join_permutations // max(1, len(join_perms)))
+        max_scan_combos = max(
+            1, self.max_join_permutations // max(1, len(join_perms))
+        )
         scan_combos = scan_combos[:max_scan_combos]
 
         for join_order in join_perms:

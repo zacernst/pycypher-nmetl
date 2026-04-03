@@ -65,9 +65,9 @@ class TestDocumentationState:
         assert "read_csv_auto" in docstring, (
             "CsvFormat.view_sql docstring should mention read_csv_auto"
         )
-        assert "delimiter" in docstring.lower() or "header" in docstring.lower(), (
-            "CsvFormat.view_sql docstring should mention CSV-specific options"
-        )
+        assert (
+            "delimiter" in docstring.lower() or "header" in docstring.lower()
+        ), "CsvFormat.view_sql docstring should mention CSV-specific options"
 
     def test_fixed_parquetformat_name_has_comprehensive_docstring(self):
         """Test that ParquetFormat.name has a comprehensive docstring after fix."""
@@ -163,10 +163,16 @@ class TestDocumentationState:
                 # Should have proper structure for methods with parameters
                 # At minimum should have Args and Returns sections for view_sql
                 docstring_lower = docstring.lower()
-                assert "args:" in docstring_lower or "parameters:" in docstring_lower, (
+                assert (
+                    "args:" in docstring_lower
+                    or "parameters:" in docstring_lower
+                ), (
                     f"{format_class.__name__}.view_sql should document its parameters"
                 )
-                assert "returns:" in docstring_lower or "return:" in docstring_lower, (
+                assert (
+                    "returns:" in docstring_lower
+                    or "return:" in docstring_lower
+                ), (
                     f"{format_class.__name__}.view_sql should document its return value"
                 )
 
@@ -180,7 +186,9 @@ class TestDocumentationState:
             # Should mention at least one CSV-specific concept
             docstring_lower = csv_docstring.lower()
             csv_concepts = ["delimiter", "header", "null_padding", "csv"]
-            assert any(concept in docstring_lower for concept in csv_concepts), (
+            assert any(
+                concept in docstring_lower for concept in csv_concepts
+            ), (
                 "CsvFormat.view_sql docstring should explain CSV-specific behavior"
             )
 
@@ -190,6 +198,8 @@ class TestDocumentationState:
             # Should mention JSON or records concept
             docstring_lower = json_docstring.lower()
             json_concepts = ["json", "records", "newline_delimited", "ndjson"]
-            assert any(concept in docstring_lower for concept in json_concepts), (
+            assert any(
+                concept in docstring_lower for concept in json_concepts
+            ), (
                 "JsonFormat.view_sql docstring should explain JSON-specific behavior"
             )

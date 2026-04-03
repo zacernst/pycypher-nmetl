@@ -68,15 +68,21 @@ class TestSinh:
         assert reg.has_function("sinh")
 
     def test_zero(self, reg: ScalarFunctionRegistry) -> None:
-        assert reg.execute("sinh", [pd.Series([0.0])]).iloc[0] == pytest.approx(0.0)
+        assert reg.execute("sinh", [pd.Series([0.0])]).iloc[
+            0
+        ] == pytest.approx(0.0)
 
     def test_one(self, reg: ScalarFunctionRegistry) -> None:
-        assert reg.execute("sinh", [pd.Series([1.0])]).iloc[0] == pytest.approx(
+        assert reg.execute("sinh", [pd.Series([1.0])]).iloc[
+            0
+        ] == pytest.approx(
             math.sinh(1.0),
         )
 
     def test_negative(self, reg: ScalarFunctionRegistry) -> None:
-        assert reg.execute("sinh", [pd.Series([-1.0])]).iloc[0] == pytest.approx(
+        assert reg.execute("sinh", [pd.Series([-1.0])]).iloc[
+            0
+        ] == pytest.approx(
             math.sinh(-1.0),
         )
 
@@ -114,10 +120,14 @@ class TestCosh:
         assert reg.has_function("cosh")
 
     def test_zero(self, reg: ScalarFunctionRegistry) -> None:
-        assert reg.execute("cosh", [pd.Series([0.0])]).iloc[0] == pytest.approx(1.0)
+        assert reg.execute("cosh", [pd.Series([0.0])]).iloc[
+            0
+        ] == pytest.approx(1.0)
 
     def test_one(self, reg: ScalarFunctionRegistry) -> None:
-        assert reg.execute("cosh", [pd.Series([1.0])]).iloc[0] == pytest.approx(
+        assert reg.execute("cosh", [pd.Series([1.0])]).iloc[
+            0
+        ] == pytest.approx(
             math.cosh(1.0),
         )
 
@@ -146,10 +156,14 @@ class TestTanh:
         assert reg.has_function("tanh")
 
     def test_zero(self, reg: ScalarFunctionRegistry) -> None:
-        assert reg.execute("tanh", [pd.Series([0.0])]).iloc[0] == pytest.approx(0.0)
+        assert reg.execute("tanh", [pd.Series([0.0])]).iloc[
+            0
+        ] == pytest.approx(0.0)
 
     def test_one(self, reg: ScalarFunctionRegistry) -> None:
-        assert reg.execute("tanh", [pd.Series([1.0])]).iloc[0] == pytest.approx(
+        assert reg.execute("tanh", [pd.Series([1.0])]).iloc[
+            0
+        ] == pytest.approx(
             math.tanh(1.0),
         )
 
@@ -178,13 +192,19 @@ class TestLog2:
         assert reg.has_function("log2")
 
     def test_one(self, reg: ScalarFunctionRegistry) -> None:
-        assert reg.execute("log2", [pd.Series([1.0])]).iloc[0] == pytest.approx(0.0)
+        assert reg.execute("log2", [pd.Series([1.0])]).iloc[
+            0
+        ] == pytest.approx(0.0)
 
     def test_two(self, reg: ScalarFunctionRegistry) -> None:
-        assert reg.execute("log2", [pd.Series([2.0])]).iloc[0] == pytest.approx(1.0)
+        assert reg.execute("log2", [pd.Series([2.0])]).iloc[
+            0
+        ] == pytest.approx(1.0)
 
     def test_eight(self, reg: ScalarFunctionRegistry) -> None:
-        assert reg.execute("log2", [pd.Series([8.0])]).iloc[0] == pytest.approx(3.0)
+        assert reg.execute("log2", [pd.Series([8.0])]).iloc[
+            0
+        ] == pytest.approx(3.0)
 
     def test_non_positive_returns_null(
         self,

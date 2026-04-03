@@ -32,7 +32,6 @@ from pycypher.binding_evaluator import (
     BindingExpressionEvaluator,
     _extract_temporal_field,
 )
-from shared.helpers import is_null_raw_list as _is_null_raw_list
 from pycypher.binding_frame import BindingFrame
 from pycypher.comparison_evaluator import (
     _CMP_OPS,
@@ -45,6 +44,7 @@ from pycypher.relational_models import (
     EntityTable,
     RelationshipMapping,
 )
+from shared.helpers import is_null_raw_list as _is_null_raw_list
 
 ID_COLUMN = "__ID__"
 

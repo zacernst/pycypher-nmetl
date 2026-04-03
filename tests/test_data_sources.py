@@ -123,7 +123,10 @@ class TestFormat:
         assert CsvFormat().view_sql("/f.csv") == "read_csv_auto('/f.csv')"
 
     def test_parquet_view_sql(self) -> None:
-        assert ParquetFormat().view_sql("/f.parquet") == "read_parquet('/f.parquet')"
+        assert (
+            ParquetFormat().view_sql("/f.parquet")
+            == "read_parquet('/f.parquet')"
+        )
 
     def test_json_view_sql_default(self) -> None:
         assert JsonFormat().view_sql("/f.json") == "read_json_auto('/f.json')"

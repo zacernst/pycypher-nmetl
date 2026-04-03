@@ -115,7 +115,9 @@ class SwarmVelocity:
             Scaled velocity.
 
         """
-        kept = [s for s in self.swaps if random.random() < min(1.0, abs(factor))]
+        kept = [
+            s for s in self.swaps if random.random() < min(1.0, abs(factor))
+        ]
         return SwarmVelocity(swaps=kept)
 
     @staticmethod
@@ -468,7 +470,9 @@ class ParticleSwarmOptimizer:
                 self._move_particle(particle)
 
                 # Evaluate new position
-                fitness = self._evaluate_fitness(particle.position, cardinalities)
+                fitness = self._evaluate_fitness(
+                    particle.position, cardinalities
+                )
                 particle.current_fitness = fitness
 
                 # Update personal best
@@ -498,7 +502,9 @@ class ParticleSwarmOptimizer:
                 / max(0.001, self.global_best_fitness)
                 < 0.1
             )
-            self.metrics.swarm_coherence = near_best / max(1, len(self.particles))
+            self.metrics.swarm_coherence = near_best / max(
+                1, len(self.particles)
+            )
             self.metrics.snapshot()
 
             # Convergence check
@@ -524,7 +530,8 @@ class ParticleSwarmOptimizer:
             swarm_coherence=self.metrics.swarm_coherence,
             elapsed_ms=elapsed_ms,
             fitness_history=[
-                snap.get("swarm_coherence", 0.0) for snap in self.metrics.history
+                snap.get("swarm_coherence", 0.0)
+                for snap in self.metrics.history
             ],
         )
 

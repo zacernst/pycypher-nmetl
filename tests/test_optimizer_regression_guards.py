@@ -117,7 +117,9 @@ def diamond_context() -> Context:
     )
     return Context(
         entity_mapping=EntityMapping(mapping={"Person": people_table}),
-        relationship_mapping=RelationshipMapping(mapping={"KNOWS": knows_table}),
+        relationship_mapping=RelationshipMapping(
+            mapping={"KNOWS": knows_table}
+        ),
     )
 
 
@@ -175,7 +177,9 @@ class TestShortestPathReorderingGuard:
             "RETURN length(p) AS hops",
         )
         assert len(result) >= 1
-        assert result["hops"].iloc[0] == 2, "Shortest path Alice->Dave should be 2 hops"
+        assert result["hops"].iloc[0] == 2, (
+            "Shortest path Alice->Dave should be 2 hops"
+        )
 
     def test_non_shortest_path_still_reordered(
         self,
@@ -307,7 +311,9 @@ class TestFilterFusionGuard:
         """A single filter should pass through unchanged."""
         g = ComputationGraph()
         scan_id = g.add_node(
-            OpNode(op_type=OpType.SCAN, params={}, inputs=[], estimated_rows=100),
+            OpNode(
+                op_type=OpType.SCAN, params={}, inputs=[], estimated_rows=100
+            ),
         )
         f_id = g.add_node(
             OpNode(
@@ -357,7 +363,10 @@ class TestFilterPushdownGuard:
         join_id = g.add_node(
             OpNode(
                 op_type=OpType.JOIN,
-                params={"left_columns": left_cols, "right_columns": right_cols},
+                params={
+                    "left_columns": left_cols,
+                    "right_columns": right_cols,
+                },
                 inputs=[left_id, right_id],
                 estimated_rows=200,
             ),

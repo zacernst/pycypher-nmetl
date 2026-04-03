@@ -26,6 +26,7 @@ from pycypher.relational_models import (
     RelationshipMapping,
 )
 from pycypher.star import Star
+from _perf_helpers import perf_threshold
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -95,7 +96,7 @@ class TestMutatePerformance:
         )
         elapsed = time.perf_counter() - start
 
-        assert elapsed < 1.0, (
+        assert elapsed < perf_threshold(1.0), (
             f"mutate() took {elapsed:.2f}s for 10000 entities — "
             "likely O(n²) regression (expected < 1s with O(n) implementation)"
         )
@@ -142,14 +143,18 @@ class TestMutatePerformance:
 
         # Record original salaries for odd-ID (Sales) persons
         source_before = (
-            ctx.entity_mapping.mapping["Person"].source_obj.copy().set_index(ID_COLUMN)
+            ctx.entity_mapping.mapping["Person"]
+            .source_obj.copy()
+            .set_index(ID_COLUMN)
         )
 
         star.execute_query(
             "MATCH (p:Person) WHERE p.dept = 'Engineering' SET p.salary = 999999",
         )
 
-        source_after = ctx.entity_mapping.mapping["Person"].source_obj.set_index(
+        source_after = ctx.entity_mapping.mapping[
+            "Person"
+        ].source_obj.set_index(
             ID_COLUMN,
         )
 
@@ -177,7 +182,7 @@ class TestMutatePerformance:
         )
         elapsed = time.perf_counter() - start
 
-        assert elapsed < 1.0, (
+        assert elapsed < perf_threshold(1.0), (
             f"Full-table mutate() took {elapsed:.2f}s for 10000 entities — "
             "unexpected slowdown (expected < 1s)"
         )

@@ -74,7 +74,9 @@ class TestMissingPropertyReturnsNull:
         val = result["age"].iloc[0]
         # Must be null/NaN, not raise
         assert (
-            val is None or val is pd.NA or (isinstance(val, float) and math.isnan(val))
+            val is None
+            or val is pd.NA
+            or (isinstance(val, float) and math.isnan(val))
         )
 
     def test_all_rows_missing_property_all_null(self, star: Star) -> None:
@@ -146,7 +148,9 @@ class TestMissingPropertyReturnsNull:
         )
         val = result["incremented"].iloc[0]
         assert (
-            val is None or val is pd.NA or (isinstance(val, float) and math.isnan(val))
+            val is None
+            or val is pd.NA
+            or (isinstance(val, float) and math.isnan(val))
         )
 
 

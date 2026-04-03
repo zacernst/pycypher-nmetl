@@ -45,6 +45,7 @@ from pycypher.relational_models import (
     RelationshipTable,
 )
 from pycypher.star import Star
+from _perf_helpers import perf_threshold
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
@@ -364,7 +365,7 @@ class TestExistsQueryPerformance:
         )
         elapsed = time.perf_counter() - start
         assert len(result) == 500  # all persons have edges
-        assert elapsed < 0.5, (
+        assert elapsed < perf_threshold(0.5), (
             f"500-row EXISTS took {elapsed:.3f}s — expected < 0.5s with batch execution "
             f"(old per-row baseline was ~0.94s)."
         )
@@ -384,7 +385,7 @@ class TestExistsQueryPerformance:
         )
         elapsed = time.perf_counter() - start
         assert isinstance(result, pd.DataFrame)
-        assert elapsed < 0.5, (
+        assert elapsed < perf_threshold(0.5), (
             f"500-row WHERE EXISTS took {elapsed:.3f}s — expected < 0.5s."
         )
 
@@ -403,6 +404,6 @@ class TestExistsQueryPerformance:
         )
         elapsed = time.perf_counter() - start
         assert len(result) == 500  # impossible WHERE → all persons qualify
-        assert elapsed < 0.5, (
+        assert elapsed < perf_threshold(0.5), (
             f"500-row NOT EXISTS took {elapsed:.3f}s — expected < 0.5s."
         )

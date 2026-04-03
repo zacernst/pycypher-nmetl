@@ -21,6 +21,7 @@ from pycypher import (
 )
 
 from .benchmark_utils import run_benchmark
+from _perf_helpers import perf_threshold
 from .dataset_generator import (
     SCALE_SMALL,
     generate_company_dataframe,
@@ -157,10 +158,10 @@ class TestQueryComplexityScaling:
 
     def test_multiple_where_conditions(self, small_star: Star) -> None:
         """Multiple WHERE conditions should not cause quadratic slowdown."""
-        simple_query = "MATCH (p:Person) WHERE p.age > 30 RETURN p.name AS name"
-        complex_query = (
-            "MATCH (p:Person) WHERE p.age > 30 AND p.age < 60 RETURN p.name AS name"
+        simple_query = (
+            "MATCH (p:Person) WHERE p.age > 30 RETURN p.name AS name"
         )
+        complex_query = "MATCH (p:Person) WHERE p.age > 30 AND p.age < 60 RETURN p.name AS name"
 
         simple_result = run_benchmark(
             lambda: small_star.execute_query(simple_query),
@@ -255,7 +256,9 @@ class TestSequentialQueryExecution:
             small_star.execute_query(agg_query)
         elapsed = time.perf_counter() - start
 
-        assert elapsed < 30, f"40 alternating queries took {elapsed:.1f}s (max 30s)"
+        assert elapsed < perf_threshold(30), (
+            f"40 alternating queries took {elapsed:.1f}s (max 30s)"
+        )
 
 
 # ---------------------------------------------------------------------------

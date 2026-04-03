@@ -27,6 +27,7 @@ from pycypher.relational_models import (
     RelationshipMapping,
 )
 from pycypher.star import Star
+from _perf_helpers import perf_threshold
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
@@ -222,7 +223,9 @@ class TestNativeAggCorrectness:
             avg = avg_r["mean_val"].iloc[i]
             lo = min_r["min_val"].iloc[i]
             hi = max_r["max_val"].iloc[i]
-            assert lo <= avg <= hi, f"avg {avg} not in [{lo}, {hi}] for row {i}"
+            assert lo <= avg <= hi, (
+                f"avg {avg} not in [{lo}, {hi}] for row {i}"
+            )
 
     def test_min_less_than_or_equal_max(self, person_star: Star) -> None:
         """min(score) <= max(score) for every group."""
@@ -288,7 +291,9 @@ class TestNativeAggPerformance:
     """20 aggregate queries must complete significantly faster than the lambda path."""
 
     REPS = 20
-    THRESHOLD_SECONDS = 1.0  # lambdas took ~41ms each = 820ms for 20; native ~5–10ms
+    THRESHOLD_SECONDS = perf_threshold(
+        1.0  # lambdas took ~41ms each = 820ms for 20; native ~5–10ms
+    )
 
     def test_count_groupby_is_fast(self, person_star: Star) -> None:
         """20 grouped count() queries must finish under 1.0s total."""

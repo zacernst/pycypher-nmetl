@@ -2,38 +2,85 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import click
 
 
-@click.command()
+# ---------------------------------------------------------------------------
+# Implementation
+# ---------------------------------------------------------------------------
+
+
+def repl_impl(
+    entity_specs: tuple[str, ...],
+    rel_specs: tuple[str, ...],
+    default_id_col: str | None,
+) -> None:
+    """Start an interactive Cypher query REPL."""
+    from pycypher.repl import CypherRepl
+
+    shell = CypherRepl(
+        entity_specs=list(entity_specs),
+        rel_specs=list(rel_specs),
+        default_id_col=default_id_col,
+    )
+    shell.cmdloop()
+
+
+# ---------------------------------------------------------------------------
+# Click command wrapper
+# ---------------------------------------------------------------------------
+
+
+@click.command("repl")
 @click.option(
-    "--config",
-    type=click.Path(exists=True, path_type=Path),
-    default=None,
-    help="Load a pipeline config for the REPL session.",
+    "--entity",
+    "entity_specs",
+    multiple=True,
+    metavar="SPEC",
+    help=(
+        "Entity source in the form 'Label=path/to/file.csv' or "
+        "'Label=path/to/file.csv:id_col'.  May be repeated."
+    ),
 )
 @click.option(
-    "--history-file",
-    type=click.Path(path_type=Path),
-    default=None,
-    help="Path to command history file (default: ~/.nmetl_history).",
+    "--rel",
+    "rel_specs",
+    multiple=True,
+    metavar="SPEC",
+    help=(
+        "Relationship source in the form 'REL=path.csv:src_col:tgt_col'.  "
+        "May be repeated."
+    ),
 )
 @click.option(
-    "--startup-commands",
-    type=str,
+    "--id-col",
+    "default_id_col",
     default=None,
-    help="Cypher commands to run on startup (semicolon-separated).",
+    metavar="COL",
+    help="Default ID column name for entity sources.",
 )
 def repl(
-    config: Path | None,
-    history_file: Path | None,
-    startup_commands: str | None,
+    entity_specs: tuple[str, ...],
+    rel_specs: tuple[str, ...],
+    default_id_col: str | None,
 ) -> None:
-    """Start an interactive Cypher REPL session."""
-    # Import the original implementation
-    from pycypher.nmetl_cli import repl as _original_repl
+    r"""Start an interactive Cypher query REPL.
 
-    # Delegate to original implementation
-    _original_repl(config, history_file, startup_commands)
+    Provides a readline-enabled interactive shell for exploring graph
+    data with Cypher queries.  Supports query history, schema inspection,
+    EXPLAIN/PROFILE prefixes, and dot-commands.
+
+    \b
+    Examples:
+      nmetl repl --entity Person=people.csv
+      nmetl repl --entity Person=people.csv --rel KNOWS=knows.csv:from_id:to_id
+      nmetl repl --entity Person=people.csv:id --id-col id
+
+    \b
+    Inside the REPL:
+      MATCH (p:Person) RETURN p.name;
+      EXPLAIN MATCH (p:Person) RETURN p.name
+      .schema     — show loaded entity types
+      .help       — show all commands
+    """
+    repl_impl(entity_specs, rel_specs, default_id_col)

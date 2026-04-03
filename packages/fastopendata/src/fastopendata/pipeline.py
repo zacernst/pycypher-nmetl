@@ -70,7 +70,9 @@ class GraphPipeline:
 
     def __init__(self) -> None:
         self._entity_frames: dict[str, pd.DataFrame] = {}
-        self._relationship_frames: dict[str, tuple[pd.DataFrame, str, str]] = {}
+        self._relationship_frames: dict[
+            str, tuple[pd.DataFrame, str, str]
+        ] = {}
         self._entity_id_cols: dict[str, str | None] = {}
 
     # ── Batch ingestion ──────────────────────────────────────────────
@@ -120,7 +122,11 @@ class GraphPipeline:
             Column holding target node IDs.
 
         """
-        self._relationship_frames[relationship_type] = (df, source_col, target_col)
+        self._relationship_frames[relationship_type] = (
+            df,
+            source_col,
+            target_col,
+        )
         return self
 
     # ── Record-level ingestion ───────────────────────────────────────
@@ -256,7 +262,11 @@ class GraphPipeline:
             id_col = self._entity_id_cols.get(entity_type)
             builder.add_entity(entity_type, df, id_col=id_col)
 
-        for rel_type, (df, source_col, target_col) in self._relationship_frames.items():
+        for rel_type, (
+            df,
+            source_col,
+            target_col,
+        ) in self._relationship_frames.items():
             builder.add_relationship(
                 rel_type,
                 df,

@@ -67,5 +67,5 @@ Prerequisites
 
 * **Docker** (via Docker Desktop or Rancher Desktop)
 * **Python 3.14+** (for local development outside containers)
-* **uv** package manager (``pip install uv``)
+* **uv** package manager (``curl -LsSf https://astral.sh/uv/install.sh | sh``)
 * **make** (standard on macOS/Linux)

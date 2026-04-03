@@ -418,7 +418,9 @@ class TestPatternComprehensionErrors:
             map_expr=None,
         )
         ee = ExistsEvaluator(alice_frame)
-        with pytest.raises(PatternComprehensionError, match="RelationshipPattern"):
+        with pytest.raises(
+            PatternComprehensionError, match="RelationshipPattern"
+        ):
             ee.evaluate_pattern_comprehension(pc, evaluator_mock)
 
 
@@ -600,7 +602,9 @@ class TestExistsViaQueryExecution:
         so the MATCH finds no paths.
         """
         frame = BindingFrame(
-            bindings=pd.DataFrame({"p": [99, 98, 97]}),  # IDs not in any relationship
+            bindings=pd.DataFrame(
+                {"p": [99, 98, 97]}
+            ),  # IDs not in any relationship
             type_registry={"p": "Person"},
             context=simple_context,
         )
@@ -615,7 +619,9 @@ class TestExistsViaQueryExecution:
         pattern = Pattern(paths=[path])
         match = Match(pattern=pattern, where=None)
         ret = Return(
-            items=[ReturnItem(expression=IntegerLiteral(value=1), alias="_flag")],
+            items=[
+                ReturnItem(expression=IntegerLiteral(value=1), alias="_flag")
+            ],
         )
         subquery = Query(clauses=[match, ret])
 

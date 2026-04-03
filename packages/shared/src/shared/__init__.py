@@ -26,6 +26,18 @@ Submodules
 ``shared.exporters``
     Pluggable metrics export adapters (Prometheus, StatsD, JSON).
 
+``shared.regression_detector``
+    Statistical performance regression detection engine using z-score
+    analysis with configurable sensitivity thresholds.
+
+``shared.alerting``
+    Configurable alerting system with threshold rules, cooldown support,
+    and pluggable notification handlers.
+
+``shared.dashboard``
+    Performance monitoring dashboard with web-based visualization,
+    real-time metric updates, and JSON API.
+
 ``shared.deprecation``
     Standardised deprecation warnings with ``deprecated()`` decorator and
     ``emit_deprecation()`` helper for graceful API evolution.
@@ -36,12 +48,15 @@ Submodules
 """
 
 __all__ = [
+    "alerting",
     "compat",
+    "dashboard",
     "deprecation",
     "exporters",
     "helpers",
     "logger",
     "metrics",
     "otel",
+    "regression_detector",
     "telemetry",
 ]

@@ -69,7 +69,9 @@ class TestTableSchema:
         return TableSchema(
             name="users",
             fields=(
-                FieldSchema(name="id", field_type=FieldType.INTEGER, nullable=False),
+                FieldSchema(
+                    name="id", field_type=FieldType.INTEGER, nullable=False
+                ),
                 FieldSchema(name="name", field_type=FieldType.STRING),
             ),
             version=version,
@@ -92,7 +94,9 @@ class TestTableSchema:
 
     def test_add_field(self) -> None:
         s = self._make_schema()
-        new = s.add_field(FieldSchema(name="email", field_type=FieldType.STRING))
+        new = s.add_field(
+            FieldSchema(name="email", field_type=FieldType.STRING)
+        )
         assert len(new.fields) == 3
         assert new.version == 2
         assert "email" in new.field_names
@@ -125,7 +129,9 @@ class TestSchemaDiff:
             name="t",
             fields=(FieldSchema(name="x", field_type=FieldType.STRING),),
         )
-        new = old.add_field(FieldSchema(name="y", field_type=FieldType.INTEGER))
+        new = old.add_field(
+            FieldSchema(name="y", field_type=FieldType.INTEGER)
+        )
         diff = SchemaDiff.compute(old, new)
         assert diff.has_changes
         assert diff.added_fields == ["y"]
@@ -159,17 +165,25 @@ class TestSchemaDiff:
     def test_nullability_changed(self) -> None:
         old = TableSchema(
             name="t",
-            fields=(FieldSchema(name="x", field_type=FieldType.STRING, nullable=True),),
+            fields=(
+                FieldSchema(
+                    name="x", field_type=FieldType.STRING, nullable=True
+                ),
+            ),
         )
         new = TableSchema(
             name="t",
             fields=(
-                FieldSchema(name="x", field_type=FieldType.STRING, nullable=False),
+                FieldSchema(
+                    name="x", field_type=FieldType.STRING, nullable=False
+                ),
             ),
             version=2,
         )
         diff = SchemaDiff.compute(old, new)
-        assert any(e.diff_type == DiffType.NULLABILITY_CHANGED for e in diff.entries)
+        assert any(
+            e.diff_type == DiffType.NULLABILITY_CHANGED for e in diff.entries
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -182,8 +196,12 @@ class TestCompatibilityChecker:
         return TableSchema(
             name="t",
             fields=(
-                FieldSchema(name="id", field_type=FieldType.INTEGER, nullable=False),
-                FieldSchema(name="name", field_type=FieldType.STRING, nullable=True),
+                FieldSchema(
+                    name="id", field_type=FieldType.INTEGER, nullable=False
+                ),
+                FieldSchema(
+                    name="name", field_type=FieldType.STRING, nullable=True
+                ),
             ),
         )
 
@@ -198,7 +216,9 @@ class TestCompatibilityChecker:
         checker = CompatibilityChecker()
         old = self._base()
         new = old.add_field(
-            FieldSchema(name="email", field_type=FieldType.STRING, nullable=True),
+            FieldSchema(
+                name="email", field_type=FieldType.STRING, nullable=True
+            ),
         )
         result = checker.check(old, new, CompatibilityLevel.BACKWARD)
         assert result.compatible
@@ -207,7 +227,9 @@ class TestCompatibilityChecker:
         checker = CompatibilityChecker()
         old = self._base()
         new = old.add_field(
-            FieldSchema(name="email", field_type=FieldType.STRING, nullable=False),
+            FieldSchema(
+                name="email", field_type=FieldType.STRING, nullable=False
+            ),
         )
         result = checker.check(old, new, CompatibilityLevel.BACKWARD)
         assert not result.compatible
@@ -248,8 +270,12 @@ class TestCompatibilityChecker:
         new = TableSchema(
             name="t",
             fields=(
-                FieldSchema(name="id", field_type=FieldType.FLOAT, nullable=False),
-                FieldSchema(name="name", field_type=FieldType.STRING, nullable=True),
+                FieldSchema(
+                    name="id", field_type=FieldType.FLOAT, nullable=False
+                ),
+                FieldSchema(
+                    name="name", field_type=FieldType.STRING, nullable=True
+                ),
             ),
             version=2,
         )
@@ -274,12 +300,18 @@ class TestCompatibilityChecker:
         checker = CompatibilityChecker()
         old = TableSchema(
             name="t",
-            fields=(FieldSchema(name="x", field_type=FieldType.STRING, nullable=True),),
+            fields=(
+                FieldSchema(
+                    name="x", field_type=FieldType.STRING, nullable=True
+                ),
+            ),
         )
         new = TableSchema(
             name="t",
             fields=(
-                FieldSchema(name="x", field_type=FieldType.STRING, nullable=False),
+                FieldSchema(
+                    name="x", field_type=FieldType.STRING, nullable=False
+                ),
             ),
             version=2,
         )
@@ -290,7 +322,9 @@ class TestCompatibilityChecker:
         checker = CompatibilityChecker()
         old = self._base()
         new = old.add_field(
-            FieldSchema(name="email", field_type=FieldType.STRING, nullable=False),
+            FieldSchema(
+                name="email", field_type=FieldType.STRING, nullable=False
+            ),
         )
         result = checker.check(old, new, CompatibilityLevel.FORWARD)
         assert not result.compatible
@@ -300,7 +334,9 @@ class TestCompatibilityChecker:
         old = self._base()
         # Add nullable field — backward OK, forward OK (old readers can ignore it)
         new = old.add_field(
-            FieldSchema(name="email", field_type=FieldType.STRING, nullable=True),
+            FieldSchema(
+                name="email", field_type=FieldType.STRING, nullable=True
+            ),
         )
         result = checker.check(old, new, CompatibilityLevel.FULL)
         assert result.compatible
@@ -331,12 +367,18 @@ class TestSchemaMerger:
         left = TableSchema(
             name="t",
             fields=(
-                FieldSchema(name="x", field_type=FieldType.STRING, nullable=False),
+                FieldSchema(
+                    name="x", field_type=FieldType.STRING, nullable=False
+                ),
             ),
         )
         right = TableSchema(
             name="t",
-            fields=(FieldSchema(name="x", field_type=FieldType.STRING, nullable=True),),
+            fields=(
+                FieldSchema(
+                    name="x", field_type=FieldType.STRING, nullable=True
+                ),
+            ),
         )
         merged = SchemaMerger().merge(left, right)
         assert merged.get_field("x").nullable is True  # type: ignore[union-attr]
@@ -443,7 +485,9 @@ class TestSchemaRegistry:
         return TableSchema(
             name="users",
             fields=(
-                FieldSchema(name="id", field_type=FieldType.INTEGER, nullable=False),
+                FieldSchema(
+                    name="id", field_type=FieldType.INTEGER, nullable=False
+                ),
                 FieldSchema(name="name", field_type=FieldType.STRING),
             ),
             version=1,
@@ -459,7 +503,9 @@ class TestSchemaRegistry:
         reg = SchemaRegistry(CompatibilityLevel.BACKWARD)
         reg.register(self._v1())
         v2 = self._v1().add_field(
-            FieldSchema(name="email", field_type=FieldType.STRING, nullable=True),
+            FieldSchema(
+                name="email", field_type=FieldType.STRING, nullable=True
+            ),
         )
         result = reg.register(v2)
         assert result.compatible
@@ -469,7 +515,9 @@ class TestSchemaRegistry:
         reg = SchemaRegistry(CompatibilityLevel.BACKWARD)
         reg.register(self._v1())
         v2 = self._v1().add_field(
-            FieldSchema(name="email", field_type=FieldType.STRING, nullable=False),
+            FieldSchema(
+                name="email", field_type=FieldType.STRING, nullable=False
+            ),
         )
         result = reg.register(v2)
         assert not result.compatible
@@ -563,16 +611,26 @@ class TestLineageGraph:
         """Build: source_a → transform → sink, source_b → transform."""
         g = LineageGraph()
         g.add_node(
-            LineageNode("src_a", NodeType.SOURCE, "Census Data", schema_name="census"),
+            LineageNode(
+                "src_a", NodeType.SOURCE, "Census Data", schema_name="census"
+            ),
         )
-        g.add_node(LineageNode("src_b", NodeType.SOURCE, "OSM Data", schema_name="osm"))
+        g.add_node(
+            LineageNode(
+                "src_b", NodeType.SOURCE, "OSM Data", schema_name="osm"
+            )
+        )
         g.add_node(LineageNode("xform", NodeType.TRANSFORM, "Join & Filter"))
         g.add_node(
-            LineageNode("sink", NodeType.SINK, "Output Table", schema_name="output"),
+            LineageNode(
+                "sink", NodeType.SINK, "Output Table", schema_name="output"
+            ),
         )
         g.add_edge(LineageEdge("src_a", "xform", transformation="inner join"))
         g.add_edge(LineageEdge("src_b", "xform", transformation="inner join"))
-        g.add_edge(LineageEdge("xform", "sink", transformation="write parquet"))
+        g.add_edge(
+            LineageEdge("xform", "sink", transformation="write parquet")
+        )
         return g
 
     def test_node_count(self) -> None:

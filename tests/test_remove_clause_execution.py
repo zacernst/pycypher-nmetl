@@ -122,8 +122,12 @@ class TestRemoveProperty:
         charlie_row = result[result["nm"] == "Charlie"]
 
         assert alice_row["sc"].isna().all(), "Alice's score should be null"
-        assert not bob_row["sc"].isna().any(), "Bob's score should be unchanged"
-        assert not charlie_row["sc"].isna().any(), "Charlie's score should be unchanged"
+        assert not bob_row["sc"].isna().any(), (
+            "Bob's score should be unchanged"
+        )
+        assert not charlie_row["sc"].isna().any(), (
+            "Charlie's score should be unchanged"
+        )
 
     def test_remove_multiple_properties(self, person_context: Context) -> None:
         """REMOVE p.score REMOVE p.age in separate clauses both nullify."""

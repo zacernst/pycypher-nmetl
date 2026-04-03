@@ -390,7 +390,9 @@ class TestScalarFunctionsEndToEnd:
 
         # Verify results
         assert len(result_df) == 5
-        assert all(col in result_df.columns for col in ["upper_name", "age_str"])
+        assert all(
+            col in result_df.columns for col in ["upper_name", "age_str"]
+        )
 
         # Check transformations - pandas uses nan for nulls
         expected_upper = ["ALICE", "BOB", "CAROL", "DAVE SMITH"]
@@ -425,9 +427,7 @@ class TestScalarFunctionsErrorHandling:
     ) -> None:
         """Test scalar function with wrong number of arguments."""
         # substring requires 2-3 arguments, providing only 1
-        cypher = (
-            "MATCH (p:Person) WITH substring(p.name) AS result RETURN result AS result"
-        )
+        cypher = "MATCH (p:Person) WITH substring(p.name) AS result RETURN result AS result"
 
         star = Star(context=sample_context)
 

@@ -37,7 +37,8 @@ def _make_joiner(
 
 
 def _mock_frame(
-    var_names: list[str], bindings: pd.DataFrame | None = None,
+    var_names: list[str],
+    bindings: pd.DataFrame | None = None,
 ) -> MagicMock:
     """Create a mock BindingFrame with specified var_names."""
     frame = MagicMock()
@@ -141,7 +142,9 @@ class TestMergeFramesForMatch:
         current.cross_join = MagicMock(return_value=joined)
 
         where_expr = MagicMock()
-        result = joiner.merge_frames_for_match(current, match, where_clause=where_expr)
+        result = joiner.merge_frames_for_match(
+            current, match, where_clause=where_expr
+        )
 
         where_fn.assert_called_once_with(where_expr, joined)
         assert result is filtered
@@ -170,7 +173,9 @@ class TestMergeFramesForMatch:
 
         # WHERE y.name = 'Alice' — references only 'y' (match_frame var)
         where_expr = Comparison(
-            left=PropertyLookup(variable=Variable(name="y"), property_name="name"),
+            left=PropertyLookup(
+                variable=Variable(name="y"), property_name="name"
+            ),
             operator="=",
             right=Variable(name="y"),
         )
@@ -195,11 +200,17 @@ class TestMergeFramesForMatch:
 
         # WHERE x.id = y.id — references both 'x' and 'y'
         where_expr = Comparison(
-            left=PropertyLookup(variable=Variable(name="x"), property_name="id"),
+            left=PropertyLookup(
+                variable=Variable(name="x"), property_name="id"
+            ),
             operator="=",
-            right=PropertyLookup(variable=Variable(name="y"), property_name="id"),
+            right=PropertyLookup(
+                variable=Variable(name="y"), property_name="id"
+            ),
         )
-        result = joiner.merge_frames_for_match(current, match, where_clause=where_expr)
+        result = joiner.merge_frames_for_match(
+            current, match, where_clause=where_expr
+        )
 
         # where_fn should be called post-join on the joined frame
         where_fn.assert_called_once_with(where_expr, joined)
@@ -207,7 +218,12 @@ class TestMergeFramesForMatch:
 
     def test_and_predicate_split_pushdown(self) -> None:
         """AND with mixed vars: match-only conjuncts push down, rest stay."""
-        from pycypher.ast_models import And, Comparison, PropertyLookup, Variable
+        from pycypher.ast_models import (
+            And,
+            Comparison,
+            PropertyLookup,
+            Variable,
+        )
 
         call_log: list[tuple[Any, Any]] = []
 
@@ -223,14 +239,20 @@ class TestMergeFramesForMatch:
 
         # y.age > 21 (pushable) AND x.id = y.id (not pushable)
         conj_push = Comparison(
-            left=PropertyLookup(variable=Variable(name="y"), property_name="age"),
+            left=PropertyLookup(
+                variable=Variable(name="y"), property_name="age"
+            ),
             operator=">",
             right=Variable(name="y"),
         )
         conj_stay = Comparison(
-            left=PropertyLookup(variable=Variable(name="x"), property_name="id"),
+            left=PropertyLookup(
+                variable=Variable(name="x"), property_name="id"
+            ),
             operator="=",
-            right=PropertyLookup(variable=Variable(name="y"), property_name="id"),
+            right=PropertyLookup(
+                variable=Variable(name="y"), property_name="id"
+            ),
         )
         where_expr = And(operands=[conj_push, conj_stay])
 
@@ -255,11 +277,17 @@ class TestProcessOptionalMatch:
     """Test OPTIONAL MATCH processing."""
 
     def test_successful_match_with_shared_variable(self) -> None:
-        match_frame = _mock_frame(["p", "f"])
+        match_frame = _mock_frame(
+            ["p", "f"],
+            bindings=pd.DataFrame({"p": [1], "f": [2]}),
+        )
         left_joined = MagicMock()
 
         match_fn = MagicMock(return_value=match_frame)
-        current = _mock_frame(["p"])
+        current = _mock_frame(
+            ["p"],
+            bindings=pd.DataFrame({"p": [1]}),
+        )
         current.left_join = MagicMock(return_value=left_joined)
 
         joiner = _make_joiner(match_fn=match_fn)
@@ -289,7 +317,8 @@ class TestProcessOptionalMatch:
     def test_successful_match_no_shared_variable_empty(self) -> None:
         """Empty match result with no shared vars → failure path."""
         match_frame = _mock_frame(
-            ["q"], bindings=pd.DataFrame({"q": pd.Series([], dtype=object)}),
+            ["q"],
+            bindings=pd.DataFrame({"q": pd.Series([], dtype=object)}),
         )
 
         match_fn = MagicMock(return_value=match_frame)
@@ -400,10 +429,10 @@ class TestProcessOptionalMatchFailure:
         current.context = MagicMock()
 
         # Use a mock that matches what process_optional_match_failure expects:
-        # isinstance check for RelationshipPattern + .variable + .rel_types
+        # isinstance check for RelationshipPattern + .variable + .labels
         rel = MagicMock(spec=RelationshipPattern)
         rel.variable = Variable(name="r")
-        rel.rel_types = ["KNOWS"]
+        rel.labels = ["KNOWS"]
         path = MagicMock()
         path.elements = [rel]
 

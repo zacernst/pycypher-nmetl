@@ -26,6 +26,56 @@ PyCypher is a Python framework for parsing, analyzing, and executing Cypher grap
 - ID-only column preservation strategy for efficiency
 - Support for EntityTable, RelationshipTable, Join, FilterRows, Projection
 - Pandas DataFrame integration for data processing
+- Graph-native indexes (adjacency, property, label) for O(degree) pattern matching
+- LeapfrogTriejoin for worst-case optimal multi-way joins
+- Adaptive cardinality feedback loops for self-improving query plans
+- Pluggable backend engines (Pandas, DuckDB, Polars)
+
+### ML-Powered Query Optimization
+
+PyCypher includes a lightweight online learning system that improves query plans over time
+without heavyweight ML dependencies. The `query_learning` module provides:
+
+- **Query Fingerprinting** — Structural similarity detection that groups queries by clause
+  structure, entity types, and predicate shapes (ignoring literal values). Queries like
+  `WHERE p.age > 30` and `WHERE p.age > 50` share the same fingerprint and reuse cached plans.
+
+- **Predicate Selectivity Learning** — Tracks actual vs. estimated selectivity per
+  `(entity_type, property, operator)` triple using exponential moving averages (EMA).
+  After sufficient observations, learned selectivity overrides heuristic defaults for
+  more accurate cardinality estimates.
+
+- **Join Strategy Learning** — Records join execution performance (elapsed time, output
+  accuracy) per size bucket and strategy. Over time, the planner automatically selects
+  the historically fastest strategy for each input size combination.
+
+- **Adaptive Plan Cache** — LRU cache with TTL that stores and reuses analysis results
+  keyed by query fingerprint. Automatically invalidated on data mutations (CREATE/SET/DELETE).
+
+```python
+from pycypher.query_learning import QueryLearningStore
+
+store = QueryLearningStore()
+
+# Record observed selectivity after query execution
+store.record_selectivity("Person", "age", ">", estimated=0.33, actual=0.12)
+
+# Retrieve learned selectivity for future planning
+learned = store.get_learned_selectivity("Person", "age", ">")
+
+# Record join performance for adaptive strategy selection
+store.record_join_performance(
+    strategy="hash", left_rows=10000, right_rows=500,
+    actual_output_rows=450, elapsed_ms=12.3,
+)
+
+# Get diagnostics snapshot
+print(store.diagnostics())
+# {'plan_cache': {'entries': 0, 'hits': 0, 'misses': 0, 'hit_rate': 0.0, ...}, ...}
+```
+
+All learning components are thread-safe with fine-grained locking and use bounded rolling
+windows (64 observations max) for predictable memory usage.
 
 ## Architecture
 
@@ -48,7 +98,36 @@ uv sync
 uv run python script.py
 ```
 
-## Quick Start
+## Quick Start — Working Query in 60 Seconds
+
+```python
+import pandas as pd
+from pycypher import Star
+from pycypher.ingestion import ContextBuilder
+
+people = pd.DataFrame({
+    "__ID__": [1, 2, 3],
+    "name": ["Alice", "Bob", "Carol"],
+    "age": [30, 25, 35],
+})
+
+context = ContextBuilder.from_dict({"Person": people})
+star = Star(context=context)
+
+result = star.execute_query(
+    "MATCH (p:Person) WHERE p.age > 28 RETURN p.name AS name, p.age AS age"
+)
+print(result)
+#    name  age
+# 0  Alice   30
+# 1  Carol   35
+```
+
+See **[Zero to Hello World](docs/hello_world.rst)** for a 5-level progressive tutorial, or run the example directly:
+
+```bash
+uv run python examples/hello_world.py
+```
 
 ### Parse a Cypher Query
 
@@ -100,36 +179,23 @@ This separates ID tracking from attribute access, improving efficiency.
 
 ## Development
 
-### Environment Setup
-
 ```bash
-# Install uv
-curl -LsSf https://astral.sh/uv/install.sh | sh
+# One-command setup (core deps, no Spark/Dask/Polars)
+make setup
 
-# Sync all dependencies
-uv sync
+# Or full setup (all deps including Spark/Dask/Polars/Neo4j)
+make setup-full
 
 # Run tests
-uv run pytest tests/<specific_test_file>
-uv run pytest tests/test_ast_models.py
+make test-fast
 
-# Run in parallel
-uv run pytest -n 4
+# Pre-commit quality check
+make check
 ```
 
-### Type Checking
-
-All code must have type annotations. Use `ty` (NOT mypy):
-
-```bash
-uv run ty check
-```
-
-### Code Formatting
-
-```bash
-make format  # Runs isort + ruff format
-```
+See **[DEVELOPMENT.md](DEVELOPMENT.md)** for the complete development guide covering:
+dependency groups, optional extras, testing workflows, debugging, Docker setup,
+benchmarks, and environment variables.
 
 ## Documentation
 

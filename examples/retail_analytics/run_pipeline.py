@@ -18,8 +18,7 @@ import logging
 from pathlib import Path
 
 import pandas as pd
-from pycypher.ingestion.context_builder import ContextBuilder
-from pycypher.star import Star
+from pycypher import ContextBuilder, Star
 
 
 def setup_logging() -> None:
@@ -38,9 +37,15 @@ def load_pipeline_context() -> tuple[ContextBuilder, Star]:
 
     context = (
         ContextBuilder()
-        .add_entity("Customer", str(base_path / "customers.csv"), id_col="customer_id")
-        .add_entity("Product", str(base_path / "products.csv"), id_col="product_id")
-        .add_entity("CustomerOrder", str(base_path / "orders.csv"), id_col="order_id")
+        .add_entity(
+            "Customer", str(base_path / "customers.csv"), id_col="customer_id"
+        )
+        .add_entity(
+            "Product", str(base_path / "products.csv"), id_col="product_id"
+        )
+        .add_entity(
+            "CustomerOrder", str(base_path / "orders.csv"), id_col="order_id"
+        )
         .build()
     )
 
@@ -63,7 +68,9 @@ def load_pipeline_context() -> tuple[ContextBuilder, Star]:
 
     # Check what properties are actually available
     customer_props = star.execute_query("MATCH (c:Customer) RETURN c LIMIT 1")
-    order_props = star.execute_query("MATCH (o:CustomerOrder) RETURN o LIMIT 1")
+    order_props = star.execute_query(
+        "MATCH (o:CustomerOrder) RETURN o LIMIT 1"
+    )
 
     print("✅ Data sources loaded successfully")
     print(f"   📊 Customers: {test_customers.iloc[0]['customer_count']}")

@@ -140,7 +140,9 @@ class LineageGraph:
         for edge in self._edges:
             in_degree[edge.target_id] += 1
 
-        queue: deque[str] = deque(nid for nid, deg in in_degree.items() if deg == 0)
+        queue: deque[str] = deque(
+            nid for nid, deg in in_degree.items() if deg == 0
+        )
         result: list[LineageNode] = []
 
         while queue:
@@ -160,11 +162,15 @@ class LineageGraph:
     def sources(self) -> list[LineageNode]:
         """Return all root source nodes (no incoming edges)."""
         return [
-            self._nodes[nid] for nid, parents in self._backward.items() if not parents
+            self._nodes[nid]
+            for nid, parents in self._backward.items()
+            if not parents
         ]
 
     def sinks(self) -> list[LineageNode]:
         """Return all terminal sink nodes (no outgoing edges)."""
         return [
-            self._nodes[nid] for nid, children in self._forward.items() if not children
+            self._nodes[nid]
+            for nid, children in self._forward.items()
+            if not children
         ]

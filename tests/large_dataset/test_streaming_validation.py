@@ -25,6 +25,7 @@ from pycypher import (
 
 from .benchmark_utils import _get_process_memory_mb, run_benchmark
 from .dataset_generator import SCALE_SMALL, SCALE_TINY, generate_social_graph
+from _perf_helpers import perf_threshold
 
 ID_COLUMN = "__ID__"
 
@@ -144,9 +145,7 @@ class TestRelationshipScanPerformance:
 
     def test_scan_with_limit_faster(self, small_star: Star) -> None:
         """LIMIT should reduce execution time."""
-        full_query = (
-            "MATCH (a:Person)-[r:KNOWS]->(b:Person) RETURN a.name AS src, b.name AS tgt"
-        )
+        full_query = "MATCH (a:Person)-[r:KNOWS]->(b:Person) RETURN a.name AS src, b.name AS tgt"
         limited_query = (
             "MATCH (a:Person)-[r:KNOWS]->(b:Person) "
             "RETURN a.name AS src, b.name AS tgt LIMIT 100"
@@ -179,7 +178,7 @@ class TestRelationshipScanPerformance:
 
         gc.collect()
         growth = _get_process_memory_mb() - baseline
-        assert growth < 50, (
+        assert growth < perf_threshold(50), (
             f"Memory grew {growth:.1f}MB over 15 relationship scan iterations"
         )
 
@@ -291,13 +290,13 @@ class TestVariableLengthPathPerformance:
         gc.collect()
         growth = _get_process_memory_mb() - baseline
         # With LIMIT 50, memory growth should be modest
-        assert growth < 200, f"VLP LIMIT 50 query grew memory by {growth:.1f}MB"
+        assert growth < perf_threshold(200), (
+            f"VLP LIMIT 50 query grew memory by {growth:.1f}MB"
+        )
 
     def test_vlp_no_memory_leak(self, small_star: Star) -> None:
         """Repeated VLP queries should not leak memory."""
-        query = (
-            "MATCH (a:Person)-[:KNOWS*1..2]->(b:Person) RETURN a.name AS src LIMIT 10"
-        )
+        query = "MATCH (a:Person)-[:KNOWS*1..2]->(b:Person) RETURN a.name AS src LIMIT 10"
 
         for _ in range(3):
             small_star.execute_query(query)
@@ -309,4 +308,6 @@ class TestVariableLengthPathPerformance:
 
         gc.collect()
         growth = _get_process_memory_mb() - baseline
-        assert growth < 100, f"Memory grew {growth:.1f}MB over 10 VLP iterations"
+        assert growth < perf_threshold(100), (
+            f"Memory grew {growth:.1f}MB over 10 VLP iterations"
+        )

@@ -312,7 +312,9 @@ class TestBeeColonyOptimizer:
         topo = SwarmTopology()
         topo.add_node(SwarmNode(node_id="only"))
         optimizer = BeeColonyOptimizer(topo, config)
-        result = optimizer.optimize(["p1", "p2"], {"p1": 1.0, "p2": 1.0}, iterations=5)
+        result = optimizer.optimize(
+            ["p1", "p2"], {"p1": 1.0, "p2": 1.0}, iterations=5
+        )
         # All partitions must go to the only node
         assert all(v == "only" for v in result.best_allocation.values())
 
@@ -380,7 +382,12 @@ class TestParticleSwarmOptimizer:
     def test_optimize_small(self, config: SwarmConfig) -> None:
         optimizer = ParticleSwarmOptimizer(config=config)
         keys = ["Person", "KNOWS", "Movie", "ACTED_IN"]
-        cards = {"Person": 1000.0, "KNOWS": 5000.0, "Movie": 500.0, "ACTED_IN": 3000.0}
+        cards = {
+            "Person": 1000.0,
+            "KNOWS": 5000.0,
+            "Movie": 500.0,
+            "ACTED_IN": 3000.0,
+        }
         result = optimizer.optimize(keys, cards, iterations=15)
 
         assert isinstance(result, ParticleSwarmResult)

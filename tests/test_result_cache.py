@@ -153,10 +153,13 @@ class TestResultCacheUnit:
         assert stats["result_cache_size_bytes"] == 0
 
     def test_lru_eviction(self) -> None:
-        # Tiny cache: fits ~1 small DataFrame
+        # Tiny cache: fits ~1 small DataFrame.  Use the cache's own
+        # internal estimator (rows * cols * 8 + rows * 8) to compute
+        # entry_bytes so the eviction threshold is consistent.
         small_df = pd.DataFrame({"x": [1]})
-        entry_bytes = int(small_df.memory_usage(deep=True).sum())
-        cache = ResultCache(max_size_bytes=entry_bytes + 10)
+        nrows, ncols = small_df.shape
+        entry_bytes = nrows * ncols * 8 + nrows * 8  # match _estimate_df_bytes
+        cache = ResultCache(max_size_bytes=entry_bytes + 1)
 
         cache.put("q1", None, small_df)
         cache.put("q2", None, small_df)  # Should evict q1

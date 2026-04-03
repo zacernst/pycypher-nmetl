@@ -29,7 +29,10 @@ from pycypher.star import Star
 # ---------------------------------------------------------------------------
 
 _DATA_DIR = (
-    Path(__file__).resolve().parent.parent / "examples" / "social_network" / "data"
+    Path(__file__).resolve().parent.parent
+    / "examples"
+    / "social_network"
+    / "data"
 )
 
 
@@ -376,7 +379,9 @@ class TestScalarFunctions:
             """,
         )
         assert len(df) == 12
-        assert all(isinstance(n, str) and n == n.upper() for n in df["city_upper"])
+        assert all(
+            isinstance(n, str) and n == n.upper() for n in df["city_upper"]
+        )
         assert all(int(nl) > 0 for nl in df["name_length"])
 
     def test_abs_function(self, social_star: Star) -> None:

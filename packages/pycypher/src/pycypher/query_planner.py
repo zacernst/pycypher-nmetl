@@ -38,167 +38,34 @@ Usage::
 from __future__ import annotations
 
 import enum
+import logging
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
-import pandas as pd
 from shared.logger import LOGGER
 
+# Cardinality estimation primitives live in their own module for
+# reduced coupling.  Import what QueryPlanAnalyzer needs at runtime.
+from pycypher.cardinality_estimator import (
+    AVG_BYTES_PER_CELL as _AVG_BYTES_PER_CELL,
+    DEFAULT_FILTER_SELECTIVITY as _DEFAULT_FILTER_SELECTIVITY,
+    CardinalityFeedbackStore,
+    ColumnStatistics,
+    TableStatistics,
+)
+
 if TYPE_CHECKING:
-    from pycypher.ast_models import Query
+    from pycypher.ast_models import ASTNode, Comparison, Match, Query
     from pycypher.relational_models import Context
 
 __all__ = [
     "AggStrategy",
-    "ColumnStatistics",
     "JoinPlan",
     "JoinStrategy",
     "QueryPlan",
     "QueryPlanAnalyzer",
     "QueryPlanner",
-    "TableStatistics",
 ]
-
-
-# ---------------------------------------------------------------------------
-# Column and table statistics for cardinality estimation
-# ---------------------------------------------------------------------------
-
-#: Maximum number of rows to sample when computing column statistics.
-_STATS_SAMPLE_SIZE: int = 10_000
-
-
-@dataclass(frozen=True)
-class ColumnStatistics:
-    """Statistics for a single column, used for selectivity estimation.
-
-    Attributes:
-        ndv: Number of distinct values (excluding nulls).
-        null_fraction: Fraction of rows that are null (0.0–1.0).
-        min_value: Minimum non-null value (numeric columns only).
-        max_value: Maximum non-null value (numeric columns only).
-        row_count: Total rows in the table at time of collection.
-
-    """
-
-    ndv: int
-    null_fraction: float
-    min_value: float | None = None
-    max_value: float | None = None
-    row_count: int = 0
-
-    def equality_selectivity(self) -> float:
-        """Selectivity for ``col = value``: 1/NDV, adjusted for nulls."""
-        if self.ndv <= 0:
-            return _DEFAULT_FILTER_SELECTIVITY
-        return (1.0 - self.null_fraction) / self.ndv
-
-    def range_selectivity(
-        self,
-        low: float | None = None,
-        high: float | None = None,
-    ) -> float:
-        """Selectivity for range predicates (``col > low``, ``col < high``).
-
-        Uses uniform distribution assumption over [min_value, max_value].
-        """
-        if self.min_value is None or self.max_value is None:
-            return _DEFAULT_FILTER_SELECTIVITY
-        span = self.max_value - self.min_value
-        if span <= 0:
-            return _DEFAULT_FILTER_SELECTIVITY
-
-        lo = low if low is not None else self.min_value
-        hi = high if high is not None else self.max_value
-        lo = max(lo, self.min_value)
-        hi = min(hi, self.max_value)
-
-        if lo >= hi:
-            return 1.0 / max(self.row_count, 1)
-
-        sel = (hi - lo) / span * (1.0 - self.null_fraction)
-        return max(sel, 1.0 / max(self.row_count, 1))
-
-
-class TableStatistics:
-    """Collects and caches column-level statistics for an entity or
-    relationship table.
-
-    Statistics are computed lazily on first access and cached.  For large
-    tables, a random sample of ``_STATS_SAMPLE_SIZE`` rows is used.
-    """
-
-    def __init__(self, source_obj: Any) -> None:
-        self._source = source_obj
-        self._columns: dict[str, ColumnStatistics] = {}
-        self._row_count: int | None = None
-
-    @property
-    def row_count(self) -> int:
-        if self._row_count is None:
-            if hasattr(self._source, "__len__"):
-                self._row_count = len(self._source)
-            else:
-                self._row_count = 0
-        return self._row_count
-
-    def column_stats(self, column: str) -> ColumnStatistics | None:
-        """Return cached statistics for *column*, computing on first call."""
-        if column in self._columns:
-            return self._columns[column]
-        stats = self._compute_column_stats(column)
-        if stats is not None:
-            self._columns[column] = stats
-        return stats
-
-    def _compute_column_stats(self, column: str) -> ColumnStatistics | None:
-        """Compute statistics for a single column from the source data."""
-        try:
-            if isinstance(self._source, pd.DataFrame):
-                df = self._source
-            elif hasattr(self._source, "to_pandas"):
-                df = self._source.to_pandas()
-            else:
-                return None
-
-            if column not in df.columns:
-                return None
-
-            # Sample for large tables
-            n = len(df)
-            if n > _STATS_SAMPLE_SIZE:
-                sample = df[column].sample(
-                    n=_STATS_SAMPLE_SIZE,
-                    random_state=42,
-                )
-            else:
-                sample = df[column]
-
-            null_count = int(sample.isna().sum())
-            null_fraction = null_count / max(len(sample), 1)
-            non_null = sample.dropna()
-            ndv = int(non_null.nunique())
-
-            min_val: float | None = None
-            max_val: float | None = None
-            if len(non_null) > 0 and pd.api.types.is_numeric_dtype(non_null):
-                min_val = float(non_null.min())
-                max_val = float(non_null.max())
-
-            return ColumnStatistics(
-                ndv=ndv,
-                null_fraction=null_fraction,
-                min_value=min_val,
-                max_value=max_val,
-                row_count=n,
-            )
-        except Exception:
-            LOGGER.debug(
-                "Failed to compute statistics for column %r",
-                column,
-                exc_info=True,
-            )
-            return None
 
 
 # ---------------------------------------------------------------------------
@@ -343,15 +210,19 @@ class QueryPlanner:
         self,
         *,
         memory_budget_bytes: int = 2 * 1024 * 1024 * 1024,  # 2GB default
+        learning_store: Any | None = None,
     ) -> None:
         """Initialize query planner.
 
         Args:
             memory_budget_bytes: Maximum memory budget for join operations.
                 Defaults to 2 GB.
+            learning_store: Optional :class:`~pycypher.query_learning.QueryLearningStore`
+                for adaptive join strategy selection from historical performance.
 
         """
         self._memory_budget = memory_budget_bytes
+        self._learning = learning_store
 
     def plan_join(
         self,
@@ -384,8 +255,35 @@ class QueryPlanner:
         smaller = min(left_rows, right_rows)
         larger = max(left_rows, right_rows)
 
-        # Strategy selection — like choosing the right needle-cast
-        # infrastructure based on consciousness payload size.
+        # Check learned strategy from ML feedback store
+        if self._learning is not None:
+            learned = self._learning.get_best_join_strategy(
+                left_rows, right_rows,
+            )
+            if learned is not None:
+                try:
+                    strategy = JoinStrategy(learned)
+                    estimated_mem = smaller * avg_row_bytes
+                    LOGGER.debug(
+                        "Using learned join strategy %s for %s ⋈ %s "
+                        "(%d × %d rows)",
+                        learned, left_name, right_name,
+                        left_rows, right_rows,
+                    )
+                    return JoinPlan(
+                        left_name=left_name,
+                        right_name=right_name,
+                        join_key=join_key,
+                        strategy=strategy,
+                        estimated_rows=min(left_rows, right_rows),
+                        estimated_memory_bytes=estimated_mem,
+                        notes=(
+                            f"Learned strategy: {learned} selected from "
+                            f"historical performance data."
+                        ),
+                    )
+                except ValueError:
+                    pass  # Unknown strategy value — fall through to heuristics
 
         if smaller <= _BROADCAST_THRESHOLD:
             # Small-large: replicate the small side.
@@ -589,14 +487,6 @@ def get_default_planner() -> QueryPlanner:
 # AST-aware analysis data models
 # ---------------------------------------------------------------------------
 
-#: Default selectivity factor for WHERE predicates when no statistics are
-#: available.  Assumes an equality filter keeps ~33% of rows; inequality
-#: keeps ~50%.  The geometric mean is ~0.4, rounded down for safety.
-_DEFAULT_FILTER_SELECTIVITY: float = 0.33
-
-#: Average bytes per cell for memory estimation when the actual DataFrame
-#: is not available.  This is a conservative estimate for mixed-type columns.
-_AVG_BYTES_PER_CELL: int = 64
 
 
 @dataclass
@@ -692,6 +582,7 @@ class QueryPlanAnalyzer:
         query: Query,
         context: Context,
         feedback_store: CardinalityFeedbackStore | None = None,
+        learning_store: Any | None = None,
     ) -> None:
         """Initialize query plan analyzer.
 
@@ -701,12 +592,15 @@ class QueryPlanAnalyzer:
                 cardinality estimation.
             feedback_store: Optional feedback store for correcting estimates
                 based on historical execution data.
+            learning_store: Optional :class:`~pycypher.query_learning.QueryLearningStore`
+                for ML-based selectivity corrections and plan caching.
 
         """
         self.query = query
         self.context = context
         self._planner = get_default_planner()
         self._feedback = feedback_store
+        self._learning = learning_store
         self._table_stats: dict[str, TableStatistics] = {}
         self._build_table_stats()
 
@@ -730,7 +624,7 @@ class QueryPlanAnalyzer:
             return None
         return ts.column_stats(column)
 
-    def estimate_predicate_selectivity(self, predicate: Any) -> float:
+    def estimate_predicate_selectivity(self, predicate: ASTNode) -> float:
         """Estimate the selectivity of a WHERE predicate using column
         statistics when available, falling back to heuristic defaults.
 
@@ -786,7 +680,7 @@ class QueryPlanAnalyzer:
         # Unknown predicate type — fall back to default
         return _DEFAULT_FILTER_SELECTIVITY
 
-    def _estimate_comparison_selectivity(self, comp: Any) -> float:
+    def _estimate_comparison_selectivity(self, comp: Comparison) -> float:
         """Estimate selectivity for a single comparison expression."""
         from pycypher.ast_models import (
             FloatLiteral,
@@ -826,13 +720,25 @@ class QueryPlanAnalyzer:
         if entity_type is None or column is None:
             return _DEFAULT_FILTER_SELECTIVITY
 
-        stats = self._get_column_stats(entity_type, column)
-        if stats is None:
-            return _DEFAULT_FILTER_SELECTIVITY
-
         op = operator if isinstance(operator, str) else str(operator)
         # Normalize operator representations
         op = op.strip().upper()
+
+        # Check learned selectivity from ML feedback store first
+        if self._learning is not None:
+            learned = self._learning.get_learned_selectivity(
+                entity_type, column, op,
+            )
+            if learned is not None:
+                LOGGER.debug(
+                    "Using learned selectivity for %s.%s %s: %.4f",
+                    entity_type, column, op, learned,
+                )
+                return learned
+
+        stats = self._get_column_stats(entity_type, column)
+        if stats is None:
+            return _DEFAULT_FILTER_SELECTIVITY
 
         if op in ("=", "==", "EQ"):
             return stats.equality_selectivity()
@@ -904,7 +810,25 @@ class QueryPlanAnalyzer:
         return 0
 
     def analyze(self) -> AnalysisResult:
-        """Walk the AST and produce a full analysis."""
+        """Walk the AST and produce a full analysis.
+
+        When a learning store is configured, checks the adaptive plan cache
+        first.  If a cached plan exists for a structurally similar query,
+        it is returned immediately.  After computing a fresh plan, it is
+        stored in the cache for future reuse.
+        """
+        # Check adaptive plan cache
+        fingerprint = None
+        if self._learning is not None:
+            fingerprint = self._learning.fingerprint(self.query)
+            cached = self._learning.get_cached_plan(fingerprint)
+            if cached is not None:
+                LOGGER.debug(
+                    "Plan cache hit for fingerprint %s",
+                    fingerprint.digest,
+                )
+                return cached
+
         from pycypher.ast_models import Match, Return, With
 
         result = AnalysisResult()
@@ -964,11 +888,15 @@ class QueryPlanAnalyzer:
             len(result.pushdown_opportunities) > 0
         )
 
+        # Store in adaptive plan cache for future reuse
+        if self._learning is not None and fingerprint is not None:
+            self._learning.cache_plan(fingerprint, result)
+
         return result
 
     def _analyze_match(
         self,
-        clause: Any,
+        clause: Match,
     ) -> tuple[int, list[JoinPlan], list[PushdownOpportunity]]:
         """Analyze a MATCH clause for cardinality, joins, and pushdown.
 
@@ -1077,7 +1005,7 @@ class QueryPlanAnalyzer:
 
         return cardinality, joins, pushdowns
 
-    def _extract_variables(self, expr: Any) -> set[str]:
+    def _extract_variables(self, expr: ASTNode) -> set[str]:
         """Extract all variable names referenced in an expression.
 
         Delegates to :func:`~pycypher.ast_models.extract_referenced_variables`,
@@ -1125,9 +1053,9 @@ class QueryPlanAnalyzer:
             if est == 0 and act == 0:
                 continue
             ratio = act / max(est, 1)
-            level = "DEBUG" if 0.5 <= ratio <= 2.0 else "WARNING"
+            log_level = logging.DEBUG if 0.5 <= ratio <= 2.0 else logging.WARNING
             LOGGER.log(
-                getattr(__import__("logging"), level),
+                log_level,
                 "Cardinality feedback clause %d: estimated=%d actual=%d ratio=%.2f",
                 i,
                 est,
@@ -1135,75 +1063,3 @@ class QueryPlanAnalyzer:
                 ratio,
             )
 
-
-# ---------------------------------------------------------------------------
-# CardinalityFeedbackStore — learns from execution history
-# ---------------------------------------------------------------------------
-
-_MAX_HISTORY = 32  # rolling window per entity type
-
-
-class CardinalityFeedbackStore:
-    """Accumulates actual vs estimated cardinality ratios per entity type.
-
-    After each query execution, call :meth:`record` with the entity types
-    involved and the (estimated, actual) row counts.  Before a future
-    estimate, call :meth:`correction_factor` to get a multiplicative
-    adjustment derived from historical accuracy.
-
-    Thread-safe via a simple lock.  History is bounded to the most recent
-    ``_MAX_HISTORY`` observations per entity type.
-    """
-
-    def __init__(self) -> None:
-        import threading
-        from collections import deque
-
-        self._lock = threading.Lock()
-        # entity_type → deque of (estimated, actual) tuples
-        self._history: dict[str, deque[tuple[int, int]]] = {}
-
-    def record(
-        self,
-        entity_type: str,
-        estimated: int,
-        actual: int,
-    ) -> None:
-        """Record an (estimated, actual) observation for *entity_type*."""
-        if estimated <= 0 and actual <= 0:
-            return
-        from collections import deque
-
-        with self._lock:
-            if entity_type not in self._history:
-                self._history[entity_type] = deque(maxlen=_MAX_HISTORY)
-            self._history[entity_type].append((estimated, actual))
-
-    def correction_factor(self, entity_type: str) -> float:
-        """Return a multiplicative correction for *entity_type*.
-
-        If the estimator consistently overestimates by 2x, this returns
-        ~0.5 so the caller can multiply the heuristic estimate by it.
-        Returns 1.0 when no history is available.
-        """
-        with self._lock:
-            history = self._history.get(entity_type)
-            if not history:
-                return 1.0
-
-        # Compute mean(actual / estimated) with clamp to avoid division by zero.
-        ratios = [act / max(est, 1) for est, act in history]
-        avg_ratio = sum(ratios) / len(ratios)
-        # Clamp to [0.01, 100] to prevent runaway corrections.
-        return max(0.01, min(100.0, avg_ratio))
-
-    @property
-    def entity_types_tracked(self) -> list[str]:
-        """Return entity types with recorded history."""
-        with self._lock:
-            return list(self._history.keys())
-
-    def clear(self) -> None:
-        """Drop all recorded history."""
-        with self._lock:
-            self._history.clear()

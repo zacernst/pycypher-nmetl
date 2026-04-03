@@ -50,7 +50,9 @@ class TestAggregationRegistryContract:
 
     def test_no_unknown_entries_in_known_aggregations(self) -> None:
         """KNOWN_AGGREGATIONS must not contain functions absent from dispatch tables."""
-        all_dispatch_names = frozenset(_AGG_OPS.keys()) | _PERCENTILE_AGGREGATIONS
+        all_dispatch_names = (
+            frozenset(_AGG_OPS.keys()) | _PERCENTILE_AGGREGATIONS
+        )
         extra = KNOWN_AGGREGATIONS - all_dispatch_names
         assert not extra, (
             f"KNOWN_AGGREGATIONS contains entries not in any dispatch table: {extra}"

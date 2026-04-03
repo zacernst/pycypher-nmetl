@@ -186,7 +186,8 @@ class TestContextFunctionDecorator:
 
         assert "my_custom_function" in context.cypher_functions
         assert (
-            context.cypher_functions["my_custom_function"].name == "my_custom_function"
+            context.cypher_functions["my_custom_function"].name
+            == "my_custom_function"
         )
 
     def test_function_overwrite(self):
@@ -239,7 +240,8 @@ class TestContextFunctionDecorator:
 
         assert context.cypher_functions["uppercase"]("hello") == "HELLO"
         assert (
-            context.cypher_functions["concat"]("Hello, ", "World!") == "Hello, World!"
+            context.cypher_functions["concat"]("Hello, ", "World!")
+            == "Hello, World!"
         )
 
     def test_arity_enforcement_after_registration(self):

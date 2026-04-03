@@ -22,6 +22,7 @@ from unittest.mock import patch
 import pandas as pd
 import pytest
 from pycypher import Star
+from _perf_helpers import perf_threshold
 from pycypher.relational_models import (
     ID_COLUMN,
     Context,
@@ -195,7 +196,9 @@ class TestDataFrameCopyMockingFixes:
         for trial in range(5):
             start_time = time.perf_counter()
             for i in range(20):
-                view = large_df[list(large_df.columns[:10])]  # View operation (no copy)
+                view = large_df[
+                    list(large_df.columns[:10])
+                ]  # View operation (no copy)
                 # Do same read work with the view
                 len(view)
             end_time = time.perf_counter()
@@ -260,12 +263,18 @@ class TestDataFrameCopyMockingFixes:
         print(f"View DataFrame: {view_size / 1024:.1f} KB")
 
         # Copy should be substantial size (contains data)
-        assert copy_size >= original_size * 0.5  # Copy should be meaningful size
+        assert (
+            copy_size >= original_size * 0.5
+        )  # Copy should be meaningful size
         # View should not be larger than original (shares data)
         assert view_size <= original_size
 
-        copy_overhead_ratio = copy_size / original_size if original_size > 0 else 1.0
-        view_overhead_ratio = view_size / original_size if original_size > 0 else 1.0
+        copy_overhead_ratio = (
+            copy_size / original_size if original_size > 0 else 1.0
+        )
+        view_overhead_ratio = (
+            view_size / original_size if original_size > 0 else 1.0
+        )
 
         print(f"✓ Copy overhead ratio: {copy_overhead_ratio:.2f}x")
         print(f"✓ View overhead ratio: {view_overhead_ratio:.2f}x")
@@ -364,7 +373,7 @@ class TestTDDInfrastructureValidation:
 
         # Basic performance validation
         assert execution_time > 0  # Should take some time
-        assert execution_time < 1.0  # Should be reasonably fast
+        assert execution_time < perf_threshold(1.0)  # Should be reasonably fast
 
         print("✓ Fixed performance measurement methodology validated")
         print("✓ Testing Loop 273 TDD infrastructure fixes complete")

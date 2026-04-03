@@ -25,7 +25,7 @@ from pycypher.aggregation_evaluator import KNOWN_AGGREGATIONS
 from pycypher.ast_models import Variable
 from pycypher.binding_frame import PATH_HOP_COLUMN_PREFIX, BindingFrame
 from pycypher.constants import _broadcast_series
-from pycypher.types import FrameSeries
+from pycypher.cypher_types import FrameSeries
 
 _DEBUG_ENABLED: bool = LOGGER.isEnabledFor(logging.DEBUG)
 
@@ -286,7 +286,9 @@ class ScalarFunctionEvaluator:
             var_name = arg_expressions[0].name
             entity_type = self.frame.type_registry.get(var_name)
             if entity_type is not None:
-                from pycypher.dataframe_utils import source_to_pandas as _source_to_pandas
+                from pycypher.dataframe_utils import (
+                    source_to_pandas as _source_to_pandas,
+                )
 
                 ctx = self.frame.context
                 try:
@@ -345,7 +347,9 @@ class ScalarFunctionEvaluator:
             var_name = arg_expressions[0].name
             entity_type = self.frame.type_registry.get(var_name)
             if entity_type is not None:
-                from pycypher.dataframe_utils import source_to_pandas as _source_to_pandas
+                from pycypher.dataframe_utils import (
+                    source_to_pandas as _source_to_pandas,
+                )
                 from pycypher.constants import ID_COLUMN as _ID_COL
 
                 ctx = self.frame.context
@@ -425,7 +429,9 @@ class ScalarFunctionEvaluator:
             var_name = arg_expressions[0].name
             rel_type = self.frame.type_registry.get(var_name)
             if rel_type is not None:
-                from pycypher.dataframe_utils import source_to_pandas as _source_to_pandas
+                from pycypher.dataframe_utils import (
+                    source_to_pandas as _source_to_pandas,
+                )
                 from pycypher.constants import ID_COLUMN as _ID_COL
                 from pycypher.constants import (
                     RELATIONSHIP_SOURCE_COLUMN as _SRC_COL,
@@ -575,8 +581,14 @@ _SPECIAL_CASE_DISPATCH: dict[str, tuple[str, Any]] = {
     "type": ("type", ScalarFunctionEvaluator._eval_type),
     "keys": ("keys", ScalarFunctionEvaluator._eval_keys),
     "properties": ("properties", ScalarFunctionEvaluator._eval_properties),
-    "startnode": ("start_end_node", ScalarFunctionEvaluator._eval_start_end_node),
-    "endnode": ("start_end_node", ScalarFunctionEvaluator._eval_start_end_node),
+    "startnode": (
+        "start_end_node",
+        ScalarFunctionEvaluator._eval_start_end_node,
+    ),
+    "endnode": (
+        "start_end_node",
+        ScalarFunctionEvaluator._eval_start_end_node,
+    ),
     "min": ("min_max", ScalarFunctionEvaluator._eval_min_max_special_case),
     "max": ("min_max", ScalarFunctionEvaluator._eval_min_max_special_case),
 }

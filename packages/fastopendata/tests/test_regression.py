@@ -154,7 +154,9 @@ class TestRegressionDetector:
             c.record_success("MATCH (n) RETURN n", total_ms=10.0)
         # Errors shouldn't affect regression tracking
         for _ in range(3):
-            c.record_error("MATCH (n) RETURN n", total_ms=100.0, error_message="fail")
+            c.record_error(
+                "MATCH (n) RETURN n", total_ms=100.0, error_message="fail"
+            )
         # Still need 3 recent successes — add them at baseline speed
         for _ in range(3):
             c.record_success("MATCH (n) RETURN n", total_ms=10.0)
@@ -251,7 +253,11 @@ class TestRegressionAPI:
     @pytest.fixture
     def client(self) -> TestClient:
         from fastapi.testclient import TestClient
-        from fastopendata.api import app, get_metrics_collector, get_regression_detector
+        from fastopendata.api import (
+            app,
+            get_metrics_collector,
+            get_regression_detector,
+        )
 
         get_metrics_collector().clear()
         get_regression_detector().clear()

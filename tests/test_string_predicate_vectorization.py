@@ -38,6 +38,7 @@ from pycypher.relational_models import (
 )
 from pycypher.scalar_functions import ScalarFunctionRegistry
 from pycypher.star import Star
+from _perf_helpers import perf_threshold
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -374,7 +375,7 @@ class TestStringPredicatePerformance:
     def test_startswith_threshold(self) -> None:
         """With .str.startswith() 30×startsWith(10k) must be < 0.03s."""
         elapsed = self._time("startsWith", _big_strings(), _s("A"))
-        assert elapsed < 0.15, (
+        assert elapsed < perf_threshold(0.15), (
             f"30×startsWith(10k) took {elapsed:.3f}s "
             f"(threshold 0.03s — .apply() typically 0.05s+)"
         )
@@ -382,7 +383,7 @@ class TestStringPredicatePerformance:
     def test_endswith_threshold(self) -> None:
         """With .str.endswith() 30×endsWith(10k) must be < 0.03s."""
         elapsed = self._time("endsWith", _big_strings(), _s("e"))
-        assert elapsed < 0.15, (
+        assert elapsed < perf_threshold(0.15), (
             f"30×endsWith(10k) took {elapsed:.3f}s "
             f"(threshold 0.03s — .apply() typically 0.05s+)"
         )
@@ -390,7 +391,7 @@ class TestStringPredicatePerformance:
     def test_contains_threshold(self) -> None:
         """With .str.contains(regex=False) 30×contains(10k) must be < 0.03s."""
         elapsed = self._time("contains", _big_strings(), _s("li"))
-        assert elapsed < 0.15, (
+        assert elapsed < perf_threshold(0.15), (
             f"30×contains(10k) took {elapsed:.3f}s "
             f"(threshold 0.03s — .apply() typically 0.05s+)"
         )

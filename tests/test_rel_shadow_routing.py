@@ -120,7 +120,9 @@ class TestRelationshipShadowRouting:
         """After a failed query (rollback), relationship_mapping must be unchanged."""
         original_weights = list(
             pd.DataFrame(
-                social_star.context.relationship_mapping.mapping["KNOWS"].source_obj,
+                social_star.context.relationship_mapping.mapping[
+                    "KNOWS"
+                ].source_obj,
             )["weight"],
         )
         # Force a rollback by making the query fail after the SET via invalid RETURN
@@ -135,7 +137,9 @@ class TestRelationshipShadowRouting:
         # relationship_mapping should not have been updated
         after_weights = list(
             pd.DataFrame(
-                social_star.context.relationship_mapping.mapping["KNOWS"].source_obj,
+                social_star.context.relationship_mapping.mapping[
+                    "KNOWS"
+                ].source_obj,
             )["weight"],
         )
         assert after_weights == original_weights, (
@@ -151,7 +155,9 @@ class TestRelationshipShadowRouting:
             "MATCH (p:Person) WHERE p.name = 'Alice' SET p.age = 42",
         )
         # Entity mapping must be updated
-        person_source = social_star.context.entity_mapping.mapping["Person"].source_obj
+        person_source = social_star.context.entity_mapping.mapping[
+            "Person"
+        ].source_obj
         if isinstance(person_source, pd.DataFrame):
             df = person_source
         else:

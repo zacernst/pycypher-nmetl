@@ -21,6 +21,8 @@ PipelineResult
 QueryComplexityError
 QueryMemoryBudgetError
 QueryTimeoutError
+RELATIONSHIP_SOURCE_COLUMN
+RELATIONSHIP_TARGET_COLUMN
 RelationshipMapping
 RelationshipTable
 ResultCache
@@ -34,5 +36,7 @@ UnsupportedOperatorError
 VariableNotFoundError
 VariableTypeMismatchError
 WrongCypherTypeError
+apply_preset
 get_cache_stats
+show_config
 validate_query

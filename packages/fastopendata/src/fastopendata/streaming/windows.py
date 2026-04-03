@@ -153,7 +153,11 @@ class SessionWindow(WindowAssigner):
 
     def assign(self, record: StreamRecord) -> list[WindowSpec]:
         # Each record initially starts its own micro-session.
-        return [WindowSpec(start=record.event_time, end=record.event_time + self._gap)]
+        return [
+            WindowSpec(
+                start=record.event_time, end=record.event_time + self._gap
+            )
+        ]
 
     def merge(self, windows: list[WindowSpec]) -> list[WindowSpec]:
         if not windows:
@@ -163,7 +167,9 @@ class SessionWindow(WindowAssigner):
         for win in sorted_windows[1:]:
             last = merged[-1]
             if win.start <= last.end:
-                merged[-1] = WindowSpec(start=last.start, end=max(last.end, win.end))
+                merged[-1] = WindowSpec(
+                    start=last.start, end=max(last.end, win.end)
+                )
             else:
                 merged.append(win)
         return merged
@@ -219,7 +225,9 @@ class WindowManager:
         """
         fired: list[tuple[str, WindowState]] = []
         # Binary search for the cutoff point: all entries with end <= watermark.
-        cutoff = bisect.bisect_right(self._end_index, (watermark, "\xff", None))
+        cutoff = bisect.bisect_right(
+            self._end_index, (watermark, "\xff", None)
+        )
         if cutoff == 0:
             return fired
         # Process only the windows up to the cutoff.

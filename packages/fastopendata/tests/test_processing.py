@@ -25,7 +25,15 @@ class TestIsTrivial:
         self.is_trivial = _is_trivial
 
     def test_exact_trivial_keys(self) -> None:
-        for key in ("highway", "name", "barrier", "ref", "source", "tiger", "railway"):
+        for key in (
+            "highway",
+            "name",
+            "barrier",
+            "ref",
+            "source",
+            "tiger",
+            "railway",
+        ):
             assert self.is_trivial(key) is True, f"{key} should be trivial"
 
     def test_prefixed_trivial_keys(self) -> None:
@@ -35,8 +43,17 @@ class TestIsTrivial:
         assert self.is_trivial("old_name:de") is True
 
     def test_non_trivial_keys(self) -> None:
-        for key in ("amenity", "cuisine", "building", "shop", "tourism", "leisure"):
-            assert self.is_trivial(key) is False, f"{key} should NOT be trivial"
+        for key in (
+            "amenity",
+            "cuisine",
+            "building",
+            "shop",
+            "tourism",
+            "leisure",
+        ):
+            assert self.is_trivial(key) is False, (
+                f"{key} should NOT be trivial"
+            )
 
     def test_non_trivial_with_colon(self) -> None:
         assert self.is_trivial("amenity:type") is False
@@ -93,7 +110,9 @@ class TestConcatenateShapefiles:
         )
 
     @patch("fastopendata.processing.concatenate_shape_files.pyogrio")
-    def test_multiple_files_appends_after_first(self, mock_pyogrio: MagicMock) -> None:
+    def test_multiple_files_appends_after_first(
+        self, mock_pyogrio: MagicMock
+    ) -> None:
         from fastopendata.processing.concatenate_shape_files import (
             concatenate_shapefiles,
         )
@@ -113,8 +132,12 @@ class TestConcatenateShapefiles:
         # First write: no append
         assert write_calls[0] == call(frames[0], Path("/out/merged.shp"))
         # Second and third: append=True
-        assert write_calls[1] == call(frames[1], Path("/out/merged.shp"), append=True)
-        assert write_calls[2] == call(frames[2], Path("/out/merged.shp"), append=True)
+        assert write_calls[1] == call(
+            frames[1], Path("/out/merged.shp"), append=True
+        )
+        assert write_calls[2] == call(
+            frames[2], Path("/out/merged.shp"), append=True
+        )
 
     @patch("fastopendata.processing.concatenate_shape_files.pyogrio")
     def test_columns_passed_to_read(self, mock_pyogrio: MagicMock) -> None:

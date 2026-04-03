@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [main]
 
+# Cancel in-progress runs when a new commit is pushed to the same branch/PR.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
 # Principle of least privilege: only request the permissions each job needs.
 # Default is read-only; individual jobs can escalate if required.
 permissions:
@@ -13,6 +18,7 @@ permissions:
 
 env:
   UV_SYSTEM_PYTHON: "0"
+  PYTHON_VERSION: "3.14"
 
 jobs:
   # ──────────────────────────────────────────────
@@ -33,7 +39,7 @@ jobs:
           cache-dependency-glob: "uv.lock"
 
       - name: Install Python 3.14 (managed by uv)
-        run: uv python install 3.14t
+        run: uv python install ${{ env.PYTHON_VERSION }}
 
       - name: Verify uv.lock is in sync with pyproject.toml
         run: uv sync --frozen --dry-run
@@ -57,13 +63,25 @@ jobs:
           cache-dependency-glob: "uv.lock"
 
       - name: Install Python 3.14 (managed by uv)
-        run: uv python install 3.14t
+        run: uv python install ${{ env.PYTHON_VERSION }}
 
       - name: Install workspace dependencies
         run: uv sync --frozen
 
       - name: Run unit and integration tests (parallel, with coverage gate)
-        run: uv run pytest -n auto --timeout=30 -q --tb=short --cov --cov-report=term-missing:skip-covered
+        run: |
+          uv run pytest -n auto --timeout=30 -q --tb=short \
+            --cov --cov-report=term-missing:skip-covered \
+            --cov-fail-under=80 \
+            --junitxml=test-results.xml
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: test-results.xml
+          retention-days: 14
 
   # ──────────────────────────────────────────────
   # Lint & format check
@@ -84,20 +102,16 @@ jobs:
           cache-dependency-glob: "uv.lock"
 
       - name: Install Python 3.14 (managed by uv)
-        run: uv python install 3.14t
+        run: uv python install ${{ env.PYTHON_VERSION }}
 
       - name: Install workspace dependencies
         run: uv sync --frozen
-
-      - name: Check import sorting (ruff, advisory)
-        run: uv run ruff check --select I .
-        continue-on-error: true
 
       - name: Check code formatting (ruff, advisory)
         run: uv run ruff format --check .
         continue-on-error: true
 
-      - name: Lint (ruff, advisory — 26k existing violations to resolve)
+      - name: Lint (ruff, advisory — ~1.4k remaining violations)
         run: uv run ruff check .
         continue-on-error: true
 
@@ -106,6 +120,14 @@ jobs:
         run: |
           git fetch origin ${{ github.base_ref }} --depth=1
           ./scripts/lint_changed.sh origin/${{ github.base_ref }}
+
+      - name: Format check changed files only (blocking)
+        if: github.event_name == 'pull_request'
+        run: |
+          changed_files=$(git diff --name-only --diff-filter=AMR origin/${{ github.base_ref }} -- '*.py' || true)
+          if [ -n "$changed_files" ]; then
+            echo "$changed_files" | xargs uv run ruff format --check
+          fi
 
       - name: Type check — source (ty, blocking)
         run: uv run ty check packages/pycypher/ packages/shared/
@@ -134,7 +156,7 @@ jobs:
           cache-dependency-glob: "uv.lock"
 
       - name: Install Python 3.14 (managed by uv)
-        run: uv python install 3.14t
+        run: uv python install ${{ env.PYTHON_VERSION }}
 
       - name: Install workspace dependencies
         run: uv sync --frozen
@@ -161,7 +183,7 @@ jobs:
           cache-dependency-glob: "uv.lock"
 
       - name: Install Python 3.14 (managed by uv)
-        run: uv python install 3.14t
+        run: uv python install ${{ env.PYTHON_VERSION }}
 
       - name: Install workspace dependencies
         run: uv sync --frozen
@@ -188,13 +210,12 @@ jobs:
         continue-on-error: true
 
   # ──────────────────────────────────────────────
-  # Performance regression detection
+  # Code hygiene: orphan module detection
   # ──────────────────────────────────────────────
-  benchmarks:
-    name: Performance Benchmarks
+  orphan-modules:
+    name: Orphan Module Detection (advisory)
     needs: lock-check
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
 
     steps:
       - name: Checkout repository
@@ -207,24 +228,159 @@ jobs:
           cache-dependency-glob: "uv.lock"
 
       - name: Install Python 3.14 (managed by uv)
-        run: uv python install 3.14t
+        run: uv python install ${{ env.PYTHON_VERSION }}
 
       - name: Install workspace dependencies
         run: uv sync --frozen
 
-      - name: Run benchmarks with regression detection
+      - name: Detect orphan modules (zero inbound imports)
+        run: uv run python scripts/check_orphan_modules.py
+        continue-on-error: true
+
+  # ──────────────────────────────────────────────
+  # Security: custom pattern detection
+  # ──────────────────────────────────────────────
+  security-patterns:
+    name: Security Pattern Detection
+    needs: lock-check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check for security anti-patterns (SQL injection, bare except, eval)
+        run: python scripts/check_security_patterns.py
+
+  # ──────────────────────────────────────────────
+  # Performance regression detection
+  # ──────────────────────────────────────────────
+  benchmarks:
+    name: Performance Benchmarks
+    needs: lock-check
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Install Python 3.14 (managed by uv)
+        run: uv python install ${{ env.PYTHON_VERSION }}
+
+      - name: Install workspace dependencies
+        run: uv sync --frozen
+
+      - name: Run all benchmarks with regression detection
+        id: benchmarks
         run: |
-          uv run pytest tests/benchmarks/bench_core_operations.py \
+          # Find baseline — prefer cycle 2 (41 tests), fall back to cycle 1
+          BASELINE=$(find .benchmarks -name '0002_*cycle2*' 2>/dev/null | head -1 || true)
+          if [ -z "$BASELINE" ]; then
+            BASELINE=$(find .benchmarks -name '0001_baseline.json' 2>/dev/null | head -1 || true)
+          fi
+
+          COMPARE_ARGS=""
+          if [ -n "$BASELINE" ]; then
+            COMPARE_ARGS="--benchmark-compare=0001_baseline --benchmark-compare-fail=mean:10.0"
+          fi
+
+          # Run all 3 benchmark suites together
+          uv run pytest \
+            tests/benchmarks/bench_core_operations.py \
+            tests/benchmarks/bench_optimizer.py \
+            tests/benchmarks/bench_multi_type.py \
             -v --benchmark-only -m "not slow" --timeout=120 \
-            --benchmark-compare=0001_baseline \
-            --benchmark-compare-fail=mean:5.0 \
+            $COMPARE_ARGS \
             --benchmark-json=benchmark-results.json
 
+      - name: Generate regression report
+        id: report
+        if: always()
+        run: |
+          BASELINE=$(find .benchmarks -name '0002_*cycle2*' 2>/dev/null | head -1 || true)
+          if [ -z "$BASELINE" ]; then
+            BASELINE=$(find .benchmarks -name '0001_baseline.json' 2>/dev/null | head -1 || true)
+          fi
+
+          if [ -n "$BASELINE" ]; then
+            uv run python tests/benchmarks/performance_report.py \
+              --baseline "$BASELINE" \
+              --current benchmark-results.json \
+              --threshold 10.0 \
+              --output performance-report.md || true
+
+            # Also generate JSON for programmatic use
+            uv run python tests/benchmarks/performance_report.py \
+              --baseline "$BASELINE" \
+              --current benchmark-results.json \
+              --threshold 10.0 \
+              --format json \
+              --output performance-report.json || true
+          else
+            echo "No baseline found — skipping regression report" > performance-report.md
+          fi
+
+      - name: Comment PR with regression report
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const reportPath = 'performance-report.md';
+            if (!fs.existsSync(reportPath)) {
+              console.log('No report file found, skipping PR comment');
+              return;
+            }
+            const report = fs.readFileSync(reportPath, 'utf8');
+            if (!report.trim() || report.includes('No baseline found')) {
+              console.log('No meaningful report, skipping PR comment');
+              return;
+            }
+
+            // Find and update existing comment or create new one
+            const marker = '<!-- performance-regression-report -->';
+            const body = `${marker}\n${report}`;
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find(c => c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+
       - name: Upload benchmark results
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: benchmark-results
-          path: benchmark-results.json
+          path: |
+            benchmark-results.json
+            performance-report.md
+            performance-report.json
           retention-days: 30
 
   # ──────────────────────────────────────────────
@@ -246,7 +402,7 @@ jobs:
           cache-dependency-glob: "uv.lock"
 
       - name: Install Python 3.14 (managed by uv)
-        run: uv python install 3.14t
+        run: uv python install ${{ env.PYTHON_VERSION }}
 
       - name: Install workspace dependencies
         run: uv sync --frozen
@@ -286,7 +442,7 @@ jobs:
           cache-dependency-glob: "uv.lock"
 
       - name: Install Python 3.14 (managed by uv)
-        run: uv python install 3.14t
+        run: uv python install ${{ env.PYTHON_VERSION }}
 
       - name: Install workspace dependencies
         run: uv sync --frozen

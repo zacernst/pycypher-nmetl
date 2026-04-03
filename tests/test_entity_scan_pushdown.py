@@ -51,7 +51,11 @@ def small_context():
         entity_type="Person",
         identifier="Person",
         column_names=list(person_df.columns),
-        source_obj_attribute_map={"name": "name", "age": "age", "city": "city"},
+        source_obj_attribute_map={
+            "name": "name",
+            "age": "age",
+            "city": "city",
+        },
         attribute_map={"name": "name", "age": "age", "city": "city"},
         source_obj=person_df,
     )
@@ -107,7 +111,9 @@ def graph_context():
 
     return Context(
         entity_mapping=EntityMapping(mapping={"Person": person_table}),
-        relationship_mapping=RelationshipMapping(mapping={"KNOWS": knows_table}),
+        relationship_mapping=RelationshipMapping(
+            mapping={"KNOWS": knows_table}
+        ),
     )
 
 

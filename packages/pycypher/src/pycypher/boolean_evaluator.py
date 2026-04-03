@@ -24,7 +24,7 @@ from shared.logger import LOGGER
 
 from pycypher.binding_frame import BindingFrame
 from pycypher.exceptions import UnsupportedOperatorError
-from pycypher.types import FrameSeries
+from pycypher.cypher_types import FrameSeries
 
 _DEBUG_ENABLED: bool = LOGGER.isEnabledFor(logging.DEBUG)
 

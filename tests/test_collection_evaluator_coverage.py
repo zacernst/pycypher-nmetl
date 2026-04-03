@@ -35,7 +35,10 @@ def star_with_people() -> Star:
         ContextBuilder()
         .add_entity("Person", people)
         .add_relationship(
-            "KNOWS", rels, source_col="__SOURCE__", target_col="__TARGET__",
+            "KNOWS",
+            rels,
+            source_col="__SOURCE__",
+            target_col="__TARGET__",
         )
         .build()
     )
@@ -139,7 +142,9 @@ class TestEvalMapLiteral:
         )
         assert result["empty_map"].iloc[0] == {}
 
-    def test_map_literal_with_expressions(self, star_with_people: Star) -> None:
+    def test_map_literal_with_expressions(
+        self, star_with_people: Star
+    ) -> None:
         result = star_with_people.execute_query(
             "MATCH (p:Person) "
             "RETURN {doubled_age: p.age * 2, upper_name: toUpper(p.name)} AS info "
@@ -213,7 +218,9 @@ class TestEvalListComprehension:
         )
         assert result["doubled"].iloc[0] == [2, 4, 6]
 
-    def test_list_comp_with_filter_and_map(self, star_with_people: Star) -> None:
+    def test_list_comp_with_filter_and_map(
+        self, star_with_people: Star
+    ) -> None:
         result = star_with_people.execute_query(
             "MATCH (p:Person) "
             "WITH [1, 2, 3, 4, 5] AS nums, p.name AS name "
@@ -385,7 +392,9 @@ class TestPropertyLookupOnMaps:
         assert list(result["name"]) == ["X", "Y"]
         assert list(result["val"]) == [1, 2]
 
-    def test_property_on_map_literal_in_with(self, star_with_people: Star) -> None:
+    def test_property_on_map_literal_in_with(
+        self, star_with_people: Star
+    ) -> None:
         result = star_with_people.execute_query(
             "MATCH (p:Person) "
             "WITH {n: p.name, a: p.age} AS info "

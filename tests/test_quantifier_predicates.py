@@ -52,26 +52,38 @@ class TestAny:
         result = star.execute_query(
             "UNWIND [1] AS _ RETURN any(x IN [1, 2, 3] WHERE x > 2) AS result",
         )
-        assert result["result"].iloc[0] is True or result["result"].iloc[0] == True
+        assert (
+            result["result"].iloc[0] is True
+            or result["result"].iloc[0] == True
+        )
 
     def test_any_literal_list_false(self, star: Star) -> None:
         result = star.execute_query(
             "UNWIND [1] AS _ RETURN any(x IN [1, 2, 3] WHERE x > 10) AS result",
         )
-        assert result["result"].iloc[0] is False or result["result"].iloc[0] == False
+        assert (
+            result["result"].iloc[0] is False
+            or result["result"].iloc[0] == False
+        )
 
     def test_any_empty_list(self, star: Star) -> None:
         result = star.execute_query(
             "UNWIND [1] AS _ RETURN any(x IN [] WHERE x > 0) AS result",
         )
-        assert result["result"].iloc[0] is False or result["result"].iloc[0] == False
+        assert (
+            result["result"].iloc[0] is False
+            or result["result"].iloc[0] == False
+        )
 
     def test_any_on_property_list(self, star: Star) -> None:
         result = star.execute_query(
             "MATCH (p:Person) WHERE p.name = 'Alice' "
             "RETURN any(x IN p.scores WHERE x >= 90) AS has_high",
         )
-        assert result["has_high"].iloc[0] is True or result["has_high"].iloc[0] == True
+        assert (
+            result["has_high"].iloc[0] is True
+            or result["has_high"].iloc[0] == True
+        )
 
     def test_any_per_row(self, star: Star) -> None:
         result = star.execute_query(

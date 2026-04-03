@@ -44,16 +44,22 @@ class TestExtractReferencedVariables:
             operands=[
                 Comparison(
                     operator="=",
-                    left=PropertyLookup(expression=Variable(name="p"), property="dept"),
+                    left=PropertyLookup(
+                        expression=Variable(name="p"), property="dept"
+                    ),
                     right=PropertyLookup(
-                        expression=Variable(name="q"), property="dept",
+                        expression=Variable(name="q"),
+                        property="dept",
                     ),
                 ),
                 Comparison(
                     operator="<>",
-                    left=PropertyLookup(expression=Variable(name="p"), property="name"),
+                    left=PropertyLookup(
+                        expression=Variable(name="p"), property="name"
+                    ),
                     right=PropertyLookup(
-                        expression=Variable(name="q"), property="name",
+                        expression=Variable(name="q"),
+                        property="name",
                     ),
                 ),
             ],

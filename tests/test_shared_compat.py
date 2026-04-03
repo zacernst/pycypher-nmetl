@@ -32,7 +32,10 @@ class TestSymbolInfo:
 
     def test_to_dict_with_signature(self) -> None:
         sym = SymbolInfo(
-            name="foo", kind="function", signature="() -> None", module="mod",
+            name="foo",
+            kind="function",
+            signature="() -> None",
+            module="mod",
         )
         d = sym.to_dict()
         assert d == {
@@ -51,7 +54,10 @@ class TestSymbolInfo:
 
     def test_from_dict_roundtrip(self) -> None:
         sym = SymbolInfo(
-            name="Bar", kind="class", signature="(x: int)", module="pkg.bar",
+            name="Bar",
+            kind="class",
+            signature="(x: int)",
+            module="pkg.bar",
         )
         restored = SymbolInfo.from_dict(sym.to_dict())
         assert restored.name == sym.name
@@ -89,7 +95,9 @@ class TestAPISurface:
             module_name="pkg",
             version="2.0",
             symbols={
-                "foo": SymbolInfo(name="foo", kind="function", signature="() -> int"),
+                "foo": SymbolInfo(
+                    name="foo", kind="function", signature="() -> int"
+                ),
                 "Bar": SymbolInfo(name="Bar", kind="class"),
             },
         )
@@ -194,7 +202,9 @@ class TestDiffSurfaces:
         assert not diff.has_breaking_changes
 
     def test_added_symbol(self) -> None:
-        old = self._make_surface("1.0", {"A": SymbolInfo(name="A", kind="class")})
+        old = self._make_surface(
+            "1.0", {"A": SymbolInfo(name="A", kind="class")}
+        )
         new = self._make_surface(
             "1.1",
             {
@@ -215,7 +225,9 @@ class TestDiffSurfaces:
                 "B": SymbolInfo(name="B", kind="function"),
             },
         )
-        new = self._make_surface("1.1", {"A": SymbolInfo(name="A", kind="class")})
+        new = self._make_surface(
+            "1.1", {"A": SymbolInfo(name="A", kind="class")}
+        )
         diff = diff_surfaces(old, new)
         assert len(diff.removed) == 1
         assert diff.removed[0].name == "B"
@@ -225,13 +237,17 @@ class TestDiffSurfaces:
         old = self._make_surface(
             "1.0",
             {
-                "foo": SymbolInfo(name="foo", kind="function", signature="(x: int)"),
+                "foo": SymbolInfo(
+                    name="foo", kind="function", signature="(x: int)"
+                ),
             },
         )
         new = self._make_surface(
             "1.1",
             {
-                "foo": SymbolInfo(name="foo", kind="function", signature="(x: str)"),
+                "foo": SymbolInfo(
+                    name="foo", kind="function", signature="(x: str)"
+                ),
             },
         )
         diff = diff_surfaces(old, new)
@@ -360,4 +376,6 @@ class TestBaselineValidation:
             live = snapshot_api_surface("pycypher")
         baseline = load_snapshot("api_baseline.json")
         diff = diff_surfaces(baseline, live)
-        assert not diff.removed, f"Symbols removed: {[s.name for s in diff.removed]}"
+        assert not diff.removed, (
+            f"Symbols removed: {[s.name for s in diff.removed]}"
+        )

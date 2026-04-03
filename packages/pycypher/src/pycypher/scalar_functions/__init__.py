@@ -82,7 +82,7 @@ import pandas as pd
 from shared.helpers import is_null_value, suggest_close_match
 from shared.logger import LOGGER
 
-from pycypher.constants import _scalar_int, _scalar_int_opt
+from pycypher.constants import _scalar_int
 from pycypher.scalar_functions import (
     conversion_functions,
     extended_string_functions,
@@ -403,7 +403,7 @@ class ScalarFunctionRegistry:
             result = func_meta.callable(*args, **kwargs)
         except (TypeError, ValueError):
             raise
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 — wraps unexpected errors; TypeError/ValueError re-raised above
             msg = f"Error executing function {name}: {e}"
             raise RuntimeError(msg) from e
 

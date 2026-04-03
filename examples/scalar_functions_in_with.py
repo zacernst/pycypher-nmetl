@@ -19,14 +19,7 @@ import logging
 logging.disable(logging.DEBUG)
 
 import pandas as pd
-from pycypher.ast_models import (
-    ASTConverter,
-    FunctionInvocation,
-    Query,
-    ReturnItem,
-    With,
-)
-from pycypher.relational_models import (
+from pycypher import (
     ID_COLUMN,
     RELATIONSHIP_SOURCE_COLUMN,
     RELATIONSHIP_TARGET_COLUMN,
@@ -35,9 +28,18 @@ from pycypher.relational_models import (
     EntityTable,
     RelationshipMapping,
     RelationshipTable,
+    Star,
+)
+
+# Advanced: AST internals for introspection (not part of stable public API)
+from pycypher.ast_models import (
+    ASTConverter,
+    FunctionInvocation,
+    Query,
+    ReturnItem,
+    With,
 )
 from pycypher.scalar_functions import ScalarFunctionRegistry
-from pycypher.star import Star
 
 
 # ---------------------------------------------------------------------------
@@ -199,9 +201,7 @@ def main() -> None:
 
     # --- 3b. Execute: trim + toLower ----------------------------------------
     print("\n--- 3b. trim via WITH ---")
-    query_str = (
-        "MATCH (n:Person) WITH trim(n.name) AS trimmed RETURN trimmed AS trimmed"
-    )
+    query_str = "MATCH (n:Person) WITH trim(n.name) AS trimmed RETURN trimmed AS trimmed"
     print(f"  Query : {query_str}")
     try:
         star = Star(context=context)

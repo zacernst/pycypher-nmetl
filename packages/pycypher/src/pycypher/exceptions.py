@@ -7,6 +7,10 @@ execution.
 
 from __future__ import annotations
 
+import dataclasses
+import os
+import sys
+
 # Base URL for error documentation.  Change this single value when the
 # docs site moves.  Set to ``""`` to suppress all doc links.
 _DOCS_BASE_URL = "https://pycypher.readthedocs.io/en/latest"
@@ -23,18 +27,113 @@ _DOCS_ANCHORS: dict[str, str] = {
     "SecurityError": "/user_guide/error_handling.html#securityerror",
     "RateLimitError": "/user_guide/error_handling.html#ratelimiterror",
     "GraphTypeNotFoundError": "/user_guide/error_handling.html#graphtypenotfounderror",
+    "IncompatibleOperatorError": "/user_guide/error_handling.html#incompatibleoperatorerror",
+    "VariableTypeMismatchError": "/user_guide/error_handling.html#variabletypemismatcherror",
     "FunctionArgumentError": "/user_guide/error_handling.html#unsupportedfunctionerror",
     "MissingParameterError": "/user_guide/error_handling.html#catching-runtime-errors",
     "ASTConversionError": "/user_guide/error_handling.html#catching-parse-errors",
+    "WrongCypherTypeError": "/user_guide/error_handling.html#incompatibleoperatorerror",
+    "InvalidCastError": "/user_guide/error_handling.html#catching-runtime-errors",
+    "PatternComprehensionError": "/user_guide/error_handling.html#catching-runtime-errors",
+    "WorkerExecutionError": "/user_guide/error_handling.html#catching-runtime-errors",
+    "CacheLockTimeoutError": "/user_guide/error_handling.html#querytimeouterror",
+    "GrammarTransformerSyncError": "/user_guide/error_handling.html#catching-parse-errors",
+    "TemporalArithmeticError": "/user_guide/error_handling.html#incompatibleoperatorerror",
+    "UnsupportedOperatorError": "/user_guide/error_handling.html#incompatibleoperatorerror",
 }
+
+
+@dataclasses.dataclass(frozen=True)
+class DocsLink:
+    """Structured documentation link attached to an exception."""
+
+    url: str
+    exception_name: str
+
+    def as_terminal(self) -> str:
+        """Format as a clickable OSC 8 hyperlink for modern terminals."""
+        # OSC 8 hyperlink: \033]8;;URL\033\\LABEL\033]8;;\033\\
+        return f"\nDocs: \033]8;;{self.url}\033\\{self.url}\033]8;;\033\\"
+
+    def as_plain(self) -> str:
+        """Format as a plain-text URL (fallback for basic terminals)."""
+        return f"\nDocs: {self.url}"
+
+    def as_html(self) -> str:
+        """Format as an HTML anchor for Jupyter/IPython display."""
+        from html import escape
+
+        safe_url = escape(self.url, quote=True)
+        return (
+            f'\nDocs: <a href="{safe_url}" target="_blank">'
+            f"{escape(self.url)}</a>"
+        )
+
+
+_CACHED_ENVIRONMENT: str | None = None
+
+
+def _detect_environment() -> str:
+    """Detect the current runtime environment.
+
+    Returns one of ``"jupyter"``, ``"terminal"``, or ``"plain"``.
+    The result is cached after the first call to avoid repeated
+    IPython imports (~270ms on first call).
+    """
+    global _CACHED_ENVIRONMENT  # noqa: PLW0603
+    if _CACHED_ENVIRONMENT is not None:
+        return _CACHED_ENVIRONMENT
+
+    env = "plain"
+
+    # Jupyter / IPython notebook — only attempt if already imported
+    if "IPython" in sys.modules:
+        try:
+            from IPython import get_ipython  # type: ignore[import-untyped]
+
+            ipy = get_ipython()
+            if ipy is not None and "ZMQInteractiveShell" in type(ipy).__name__:
+                env = "jupyter"
+        except (ImportError, NameError):
+            pass
+
+    if env == "plain":
+        # Modern terminal with OSC 8 support heuristic
+        if os.environ.get("TERM_PROGRAM") in (
+            "iTerm2",
+            "WezTerm",
+            "Hyper",
+            "vscode",
+        ) or os.environ.get("WT_SESSION"):
+            # Windows Terminal, iTerm2, WezTerm, VS Code terminal
+            env = "terminal"
+        # COLORTERM is a reasonable proxy for a capable terminal
+        elif os.environ.get("COLORTERM") in ("truecolor", "24bit"):
+            env = "terminal"
+
+    _CACHED_ENVIRONMENT = env
+    return env
+
+
+def _make_docs_link(cls_name: str) -> DocsLink | None:
+    """Build a :class:`DocsLink` for *cls_name*, or ``None`` if unmapped."""
+    anchor = _DOCS_ANCHORS.get(cls_name, "")
+    if anchor and _DOCS_BASE_URL:
+        return DocsLink(url=f"{_DOCS_BASE_URL}{anchor}", exception_name=cls_name)
+    return None
 
 
 def _docs_hint(cls_name: str) -> str:
     """Return a doc-link hint string for the given exception class, or ``""``."""
-    anchor = _DOCS_ANCHORS.get(cls_name, "")
-    if anchor and _DOCS_BASE_URL:
-        return f"\nDocs: {_DOCS_BASE_URL}{anchor}"
-    return ""
+    link = _make_docs_link(cls_name)
+    if link is None:
+        return ""
+    env = _detect_environment()
+    if env == "jupyter":
+        return link.as_html()
+    if env == "terminal":
+        return link.as_terminal()
+    return link.as_plain()
 
 
 class GraphTypeNotFoundError(ValueError):
@@ -77,9 +176,13 @@ class GraphTypeNotFoundError(ValueError):
         if message:
             detail = message
         else:
-            detail = f"Graph type {type_name!r} is not registered in the context."
+            detail = (
+                f"Graph type {type_name!r} is not registered in the context."
+            )
             if available_types:
-                detail += f" Available types: {', '.join(sorted(available_types))}."
+                detail += (
+                    f" Available types: {', '.join(sorted(available_types))}."
+                )
             detail += (
                 " Check that you loaded the correct data source with a "
                 "matching entity_type or relationship_type."
@@ -111,7 +214,18 @@ class WrongCypherTypeError(TypeError):
 
         """
         self.message = message
-        super().__init__(self.message)
+        full = message + _docs_hint("WrongCypherTypeError")
+        super().__init__(full)
+
+    def __str__(self) -> str:
+        """Return the original error message without documentation hints.
+
+        This ensures backward compatibility with existing tests and code
+        that expect str(exception) to return just the core message.
+        The enhanced message with documentation hints is still accessible
+        via the parent TypeError's args[0].
+        """
+        return self.message
 
     def __repr__(self) -> str:
         """Return a repr exposing structured attributes for REPL inspection."""
@@ -137,7 +251,18 @@ class InvalidCastError(ValueError):
 
         """
         self.message = message
-        super().__init__(self.message)
+        full = message + _docs_hint("InvalidCastError")
+        super().__init__(full)
+
+    def __str__(self) -> str:
+        """Return the original error message without documentation hints.
+
+        This ensures backward compatibility with existing tests and code
+        that expect str(exception) to return just the core message.
+        The enhanced message with documentation hints is still accessible
+        via the parent ValueError's args[0].
+        """
+        return self.message
 
     def __repr__(self) -> str:
         """Return a repr exposing structured attributes for REPL inspection."""
@@ -242,6 +367,7 @@ class GrammarTransformerSyncError(ASTConversionError):
             if missing_node_type
             else message
         )
+        sync_message += _docs_hint("GrammarTransformerSyncError")
 
         super().__init__(
             sync_message,
@@ -624,6 +750,8 @@ class VariableTypeMismatchError(ValueError):
         if suggestion:
             message += f" {suggestion}"
 
+        message += _docs_hint("VariableTypeMismatchError")
+
         super().__init__(message)
 
     def __repr__(self) -> str:
@@ -632,6 +760,44 @@ class VariableTypeMismatchError(ValueError):
             f"VariableTypeMismatchError(variable_name={self.variable_name!r}, "
             f"expected_type={self.expected_type!r}, actual_type={self.actual_type!r})"
         )
+
+
+def _type_specific_suggestion(
+    operator: str, left_type: str, right_type: str
+) -> str:
+    """Generate a type-specific suggestion for an incompatible operator error.
+
+    Returns actionable guidance based on the types involved.
+    """
+    types = {left_type.lower(), right_type.lower()}
+
+    if "nonetype" in types or "none" in types:
+        return "Use coalesce() to provide a default value for NULL operands."
+
+    if "bool" in types:
+        return "Use CASE WHEN to convert boolean to numeric before arithmetic."
+
+    if "list" in types:
+        return "Use UNWIND to expand list elements or size() for list length."
+
+    if "str" in types or "string" in types:
+        other = (types - {"str", "string"}).pop() if len(types) > 1 else ""
+        if other in {"int", "integer"}:
+            return (
+                "Use toString() to convert to string, "
+                "or toInteger() to convert to integer."
+            )
+        if other in {"float", "double"}:
+            return (
+                "Use toString() to convert to string, "
+                "or toFloat() to convert to float."
+            )
+        return (
+            "Use toString() to convert to string, "
+            "or toInteger()/toFloat() to convert to numeric."
+        )
+
+    return "Ensure operands are compatible types before applying the operator."
 
 
 class IncompatibleOperatorError(TypeError):
@@ -667,12 +833,18 @@ class IncompatibleOperatorError(TypeError):
         self.operator = operator
         self.left_type = left_type
         self.right_type = right_type
+        if not suggestion:
+            suggestion = _type_specific_suggestion(
+                operator, left_type, right_type
+            )
         self.suggestion = suggestion
 
         message = f"Operator '{operator}' incompatible between '{left_type}' and '{right_type}'"
 
         if suggestion:
             message += f". {suggestion}"
+
+        message += _docs_hint("IncompatibleOperatorError")
 
         super().__init__(message)
 
@@ -721,6 +893,7 @@ class TemporalArithmeticError(IncompatibleOperatorError):
                 example = "Use duration() for time arithmetic"
 
         suggestion = f"Example: {example}"
+        suggestion += _docs_hint("TemporalArithmeticError")
         super().__init__(operator, left_type, right_type, suggestion)
 
     def __repr__(self) -> str:
@@ -1033,6 +1206,7 @@ class UnsupportedOperatorError(ValueError):
             f"Unsupported {category_desc}operator: {operator!r}. "
             f"Supported: {supported_str}"
         )
+        message += _docs_hint("UnsupportedOperatorError")
         super().__init__(message)
 
     def __repr__(self) -> str:
@@ -1063,7 +1237,8 @@ class PatternComprehensionError(ValueError):
 
         """
         self.detail = detail
-        super().__init__(detail)
+        full = detail + _docs_hint("PatternComprehensionError")
+        super().__init__(full)
 
     def __repr__(self) -> str:
         """Return a repr exposing structured attributes for REPL inspection."""
@@ -1137,9 +1312,7 @@ class QueryComplexityError(ValueError):
         )
         if suggestions:
             message += " To reduce complexity: " + "; ".join(suggestions) + "."
-        message += (
-            " Or increase PYCYPHER_MAX_COMPLEXITY_SCORE to allow larger queries."
-        )
+        message += " Or increase PYCYPHER_MAX_COMPLEXITY_SCORE to allow larger queries."
         message += _docs_hint("QueryComplexityError")
         super().__init__(message)
 
@@ -1228,6 +1401,7 @@ class WorkerExecutionError(RuntimeError):
             f"Worker {worker_id!r} failed after {elapsed_ms:.1f}ms "
             f"executing: {query_snippet}"
         )
+        detail += _docs_hint("WorkerExecutionError")
         super().__init__(detail)
 
     def __repr__(self) -> str:
@@ -1245,15 +1419,20 @@ class SecurityError(Exception):
     This includes SQL injection attempts, path traversal attacks,
     dangerous DuckDB table function calls, and SSRF attempts.
 
+    Attributes:
+        violation_type: Category of security violation detected.
+
     """
 
-    def __init__(self, message: str = "") -> None:
+    def __init__(self, message: str = "", *, violation_type: str = "") -> None:
         """Initialize with security violation details.
 
         Args:
             message: Description of the security violation.
+            violation_type: Category (e.g. "sql_injection", "path_traversal").
 
         """
+        self.violation_type = violation_type
         full_message = message + _docs_hint("SecurityError")
         super().__init__(full_message)
 
@@ -1287,6 +1466,35 @@ class RateLimitError(Exception):
         super().__init__(full_message)
 
 
+class CacheLockTimeoutError(TimeoutError):
+    """Raised when a cache lock cannot be acquired within the timeout.
+
+    This prevents deadlocks in the result cache from hanging query execution
+    indefinitely.  When raised, the cache operation is skipped and query
+    execution proceeds without caching.
+
+    Attributes:
+        timeout_seconds: The lock acquisition timeout that was exceeded.
+        operation: The cache operation that timed out (e.g. "get", "put").
+
+    """
+
+    def __init__(
+        self,
+        *,
+        timeout_seconds: float,
+        operation: str,
+    ) -> None:
+        self.timeout_seconds = timeout_seconds
+        self.operation = operation
+        msg = (
+            f"Cache lock acquisition timed out after {timeout_seconds}s "
+            f"during {operation!r} operation"
+        )
+        full_message = msg + _docs_hint("CacheLockTimeoutError")
+        super().__init__(full_message)
+
+
 # ---------------------------------------------------------------------------
 # User-facing error message sanitisation
 # ---------------------------------------------------------------------------
@@ -1300,18 +1508,25 @@ _INTERNAL_PATH_RE = _re.compile(
 _TRACEBACK_RE = _re.compile(
     r"(?:File \".+?\", line \d+|Traceback \(most recent call last\))",
 )
+# Matches URI credentials: scheme://user:PASSWORD@ → scheme://user:***@
+_URI_PASSWORD_RE = _re.compile(
+    r"(\w+://[^:/?#]+):[^@/?#]+@",
+)
 
 
 def sanitize_error_message(exc: BaseException) -> str:
     """Return a user-safe error string from *exc*.
 
     Strips internal file paths and traceback fragments that could leak
-    implementation details.  The exception *type* name is preserved so the
-    user can still identify the category of error.
+    implementation details.  Masks URI credentials (passwords) to prevent
+    credential exposure in error output.  The exception *type* name is
+    preserved so the user can still identify the category of error.
     """
     msg = str(exc)
     msg = _INTERNAL_PATH_RE.sub("<internal>", msg)
     msg = _TRACEBACK_RE.sub("", msg)
+    # Mask credentials in any URIs embedded in the message.
+    msg = _URI_PASSWORD_RE.sub(r"\1:***@", msg)
     # Collapse any resulting double spaces.
     msg = _re.sub(r"  +", " ", msg).strip()
     return f"{type(exc).__name__}: {msg}" if msg else type(exc).__name__

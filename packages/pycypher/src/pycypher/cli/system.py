@@ -2,65 +2,258 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+import os
+import sys
+from typing import Any
 
 import click
 
 
-@click.command()
-@click.option(
-    "--format",
-    "output_format",
-    type=click.Choice(["table", "json"], case_sensitive=False),
-    default="table",
-    help="Output format for metrics display.",
-)
-@click.option(
-    "--query-id",
-    type=str,
-    default=None,
-    help="Show metrics for a specific query ID only.",
-)
-def metrics(output_format: str, query_id: str | None) -> None:
-    """Display performance and execution metrics."""
-    # Import the original implementation
-    from pycypher.nmetl_cli import metrics as _original_metrics
-
-    # Delegate to original implementation
-    _original_metrics(output_format, query_id)
-
-
-@click.command()
-@click.argument("config", type=click.Path(exists=True, path_type=Path))
-@click.option(
-    "--section",
-    type=click.Choice(
-        [
-            "project",
-            "sources",
-            "queries",
-            "outputs",
-            "all",
-        ],
-        case_sensitive=False,
+# Registry of config knobs: (env_var, description, default_display)
+CONFIG_REGISTRY: list[tuple[str, str, str]] = [
+    # --- Query execution ---
+    ("PYCYPHER_QUERY_TIMEOUT_S", "Query timeout (seconds)", "None (no limit)"),
+    ("PYCYPHER_MAX_CROSS_JOIN_ROWS", "Cross-join row ceiling", "1,000,000"),
+    ("PYCYPHER_MAX_UNBOUNDED_PATH_HOPS", "Max BFS hops for [*] paths", "20"),
+    (
+        "PYCYPHER_MAX_COMPLEXITY_SCORE",
+        "Complexity gate (0=disabled)",
+        "0 (disabled)",
     ),
-    default="all",
-    help="Show only a specific configuration section.",
+    (
+        "PYCYPHER_COMPLEXITY_WARN_THRESHOLD",
+        "Complexity warning threshold",
+        "0 (disabled)",
+    ),
+    (
+        "PYCYPHER_RATE_LIMIT_QPS",
+        "Max queries/sec (0=disabled)",
+        "0 (disabled)",
+    ),
+    ("PYCYPHER_RATE_LIMIT_BURST", "Rate limit burst size", "10"),
+    # --- Caching ---
+    ("PYCYPHER_RESULT_CACHE_MAX_MB", "Result cache size (MB)", "100"),
+    ("PYCYPHER_RESULT_CACHE_TTL_S", "Cache TTL (seconds, 0=no expiry)", "0"),
+    ("PYCYPHER_AST_CACHE_MAX", "Parsed AST cache size (LRU)", "1024"),
+    # --- Security limits ---
+    ("PYCYPHER_MAX_QUERY_SIZE_BYTES", "Max query size (bytes)", "1,048,576"),
+    ("PYCYPHER_MAX_QUERY_NESTING_DEPTH", "Max AST nesting depth", "200"),
+    (
+        "PYCYPHER_MAX_COLLECTION_SIZE",
+        "Max collection/string size",
+        "1,000,000",
+    ),
+    # --- Logging and observability ---
+    ("PYCYPHER_LOG_LEVEL", "Log level (DEBUG/INFO/WARNING/ERROR)", "WARNING"),
+    ("PYCYPHER_LOG_FORMAT", "Log format (rich or json)", "rich"),
+    ("PYCYPHER_AUDIT_LOG", "Audit logging (1/true/yes to enable)", "disabled"),
+    (
+        "PYCYPHER_METRICS_ENABLED",
+        "In-process metrics (0/false to disable)",
+        "1 (enabled)",
+    ),
+    ("PYCYPHER_SLOW_QUERY_MS", "Slow query threshold (ms)", "1000"),
+    (
+        "PYCYPHER_OTEL_ENABLED",
+        "OpenTelemetry tracing (1/true/yes)",
+        "0 (disabled)",
+    ),
+    # --- REPL ---
+    ("PYCYPHER_REPL_MAX_ROWS", "REPL max displayed rows", "50"),
+]
+
+
+# ---------------------------------------------------------------------------
+# Implementation functions (called by both cli/ and nmetl_cli.py wrappers)
+# ---------------------------------------------------------------------------
+
+
+def metrics_impl(*, as_json: bool, diagnostic: bool) -> None:
+    """Show current query execution metrics."""
+    import json
+
+    from shared.metrics import QUERY_METRICS
+
+    snap = QUERY_METRICS.snapshot()
+
+    if as_json:
+        click.echo(json.dumps(snap.to_dict(), indent=2, default=str))
+    elif diagnostic:
+        click.echo(snap.diagnostic_report())
+    else:
+        click.echo(f"Health: {snap.health_status()}")
+        click.echo(snap.summary())
+
+
+def config_impl(*, as_json: bool) -> None:
+    """Show all configuration settings and their current values."""
+    import json
+
+    entries = []
+    for env_var, description, default_display in CONFIG_REGISTRY:
+        raw = os.environ.get(env_var)
+        entries.append(
+            {
+                "variable": env_var,
+                "value": raw if raw is not None else default_display,
+                "source": "env" if raw is not None else "default",
+                "description": description,
+            },
+        )
+
+    if as_json:
+        click.echo(json.dumps(entries, indent=2))
+    else:
+        click.echo("\nPyCypher Configuration\n")
+        for entry in entries:
+            marker = "*" if entry["source"] == "env" else " "
+            click.echo(
+                f"  {marker} {entry['variable']:<38} "
+                f"{entry['value']:<18} {entry['description']}",
+            )
+        click.echo(
+            "\n  * = set via environment variable\n"
+            "  Set variables with: export PYCYPHER_<NAME>=<value>\n",
+        )
+
+
+def health_impl(*, as_json: bool, verbose_health: bool) -> None:
+    """Run health checks and report operational status."""
+    import json as json_mod
+
+    from shared.metrics import QUERY_METRICS
+
+    checks: dict[str, dict[str, Any]] = {}
+
+    # 1. Metrics health
+    snap = QUERY_METRICS.snapshot()
+    metrics_status = snap.health_status()
+    checks["metrics"] = {
+        "status": metrics_status,
+        "total_queries": snap.total_queries,
+        "total_errors": snap.total_errors,
+        "error_rate": round(snap.error_rate, 4),
+    }
+
+    # 2. System resources
+    try:
+        import resource as _resource
+
+        rusage = _resource.getrusage(_resource.RUSAGE_SELF)
+        mem_mb = rusage.ru_maxrss / (1024 * 1024)  # macOS returns bytes
+        if sys.platform == "linux":
+            mem_mb = rusage.ru_maxrss / 1024  # Linux returns KB
+
+        # Heuristic: flag if RSS > 2GB
+        mem_status = "healthy" if mem_mb < 2048 else "degraded"
+        checks["memory"] = {
+            "status": mem_status,
+            "rss_mb": round(mem_mb, 1),
+        }
+    except Exception:  # noqa: BLE001 — graceful degradation for health check
+        from shared.logger import LOGGER as _logger
+
+        _logger.debug("Memory health check failed", exc_info=True)
+        checks["memory"] = {"status": "unknown", "rss_mb": None}
+
+    # 3. Process uptime
+    checks["uptime"] = {
+        "status": "healthy",
+        "uptime_s": round(snap.uptime_s, 1),
+    }
+
+    # 4. Cache efficiency (if queries have been run)
+    if snap.total_queries > 0:
+        total_cache_ops = snap.result_cache_hits + snap.result_cache_misses
+        cache_hit_rate = (
+            snap.result_cache_hits / total_cache_ops
+            if total_cache_ops > 0
+            else 0.0
+        )
+        checks["cache"] = {
+            "status": "healthy",
+            "hit_rate": round(cache_hit_rate, 4),
+            "evictions": snap.result_cache_evictions,
+        }
+
+    # Overall status: worst of all checks
+    status_order = {"healthy": 0, "degraded": 1, "unhealthy": 2, "unknown": 1}
+    overall = max(
+        (c.get("status", "unknown") for c in checks.values()),
+        key=lambda s: status_order.get(s, 1),
+    )
+
+    report = {"status": overall, "checks": checks}
+
+    if as_json:
+        click.echo(json_mod.dumps(report, indent=2, default=str))
+    else:
+        status_icon = {"healthy": "+", "degraded": "~", "unhealthy": "!"}
+        click.echo(
+            f"[{status_icon.get(overall, '?')}] Overall: {overall.upper()}",
+        )
+        for name, check in checks.items():
+            icon = status_icon.get(check.get("status", "?"), "?")
+            detail_parts = [
+                f"{k}={v}"
+                for k, v in check.items()
+                if k != "status" and (verbose_health or k not in {"rss_mb"})
+            ]
+            detail = f"  ({', '.join(detail_parts)})" if detail_parts else ""
+            click.echo(
+                f"  [{icon}] {name}: {check.get('status', 'unknown')}{detail}",
+            )
+
+    # Exit code reflects health status
+    sys.exit(status_order.get(overall, 1))
+
+
+def health_server_impl(*, port: int, bind: str) -> None:
+    """Start a lightweight HTTP health check endpoint."""
+    from pycypher.health_server import run_health_server
+
+    click.echo(f"Starting health server on {bind}:{port}...")
+    click.echo(f"  GET http://{bind}:{port}/health")
+    click.echo(f"  GET http://{bind}:{port}/ready")
+    click.echo(f"  GET http://{bind}:{port}/metrics")
+    run_health_server(host=bind, port=port)
+
+
+# ---------------------------------------------------------------------------
+# Click command wrappers
+# ---------------------------------------------------------------------------
+
+
+@click.command("metrics")
+@click.option(
+    "--json",
+    "as_json",
+    is_flag=True,
+    default=False,
+    help="Output metrics as JSON for programmatic consumption.",
 )
 @click.option(
-    "--format",
-    "output_format",
-    type=click.Choice(["yaml", "json", "summary"], case_sensitive=False),
-    default="summary",
-    help="Output format for configuration display.",
+    "--diagnostic",
+    is_flag=True,
+    default=False,
+    help="Show detailed diagnostic report with recommendations.",
 )
-def config(config: Path, section: str, output_format: str) -> None:
-    """Display and validate pipeline configuration."""
-    # Import the original implementation
-    from pycypher.nmetl_cli import config as _original_config
+def metrics(*, as_json: bool, diagnostic: bool) -> None:
+    """Show current query execution metrics."""
+    metrics_impl(as_json=as_json, diagnostic=diagnostic)
 
-    # Delegate to original implementation
-    _original_config(config, section, output_format)
+
+@click.command("config")
+@click.option(
+    "--json",
+    "as_json",
+    is_flag=True,
+    default=False,
+    help="Output configuration as JSON.",
+)
+def config(*, as_json: bool) -> None:
+    """Show all configuration settings and their current values."""
+    config_impl(as_json=as_json)
 
 
 @click.command("show-config")
@@ -78,7 +271,6 @@ def show_config(output_format: str) -> None:
     variables, including which values differ from their defaults.
     """
     import json as json_mod
-    import os
 
     from pycypher import config as cfg
 
@@ -176,60 +368,39 @@ def show_config(output_format: str) -> None:
         click.echo("Example: export PYCYPHER_QUERY_TIMEOUT_S=30")
 
 
-@click.command()
+@click.command("health")
 @click.option(
-    "--check",
-    type=click.Choice(
-        [
-            "dependencies",
-            "memory",
-            "disk",
-            "network",
-            "all",
-        ],
-        case_sensitive=False,
-    ),
-    default="all",
-    help="Run specific health checks (default: all).",
+    "--json",
+    "as_json",
+    is_flag=True,
+    default=False,
+    help="Output health report as JSON.",
 )
 @click.option(
-    "--timeout",
-    type=int,
-    default=30,
-    help="Timeout in seconds for health checks (default: 30).",
+    "--verbose",
+    "-v",
+    "verbose_health",
+    is_flag=True,
+    default=False,
+    help="Include system resource details.",
 )
-def health(check: str, timeout: int) -> None:
-    """Check system health and dependencies."""
-    # Import the original implementation
-    from pycypher.nmetl_cli import health as _original_health
-
-    # Delegate to original implementation
-    _original_health(check, timeout)
+def health(*, as_json: bool, verbose_health: bool) -> None:
+    """Run health checks and report operational status."""
+    health_impl(as_json=as_json, verbose_health=verbose_health)
 
 
 @click.command("health-server")
 @click.option(
-    "--host",
-    type=str,
-    default="localhost",
-    help="Host to bind the health check server to (default: localhost).",
-)
-@click.option(
     "--port",
+    default=8079,
     type=int,
-    default=8080,
-    help="Port to bind the health check server to (default: 8080).",
+    help="Port to listen on (default: 8079).",
 )
 @click.option(
-    "--interval",
-    type=int,
-    default=60,
-    help="Health check interval in seconds (default: 60).",
+    "--bind",
+    default="127.0.0.1",
+    help="Address to bind to (default: 127.0.0.1).",
 )
-def health_server(host: str, port: int, interval: int) -> None:
-    """Start a health check HTTP server."""
-    # Import the original implementation
-    from pycypher.nmetl_cli import health_server as _original_health_server
-
-    # Delegate to original implementation
-    _original_health_server(host, port, interval)
+def health_server(*, port: int, bind: str) -> None:
+    """Start a lightweight HTTP health check endpoint."""
+    health_server_impl(port=port, bind=bind)

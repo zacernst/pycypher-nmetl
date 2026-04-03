@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import difflib
+
 import click
 
 from .interactive import repl
@@ -13,7 +15,28 @@ from .system import config, health, health_server, metrics, show_config
 from .utility import compat_check
 
 
-@click.group()
+class SuggestingGroup(click.Group):
+    """Click group that suggests close matches for mistyped commands."""
+
+    def resolve_command(
+        self, ctx: click.Context, args: list[str]
+    ) -> tuple[str | None, click.Command | None, list[str]]:
+        try:
+            return super().resolve_command(ctx, args)
+        except click.UsageError as exc:
+            cmd_name = args[0] if args else ""
+            matches = difflib.get_close_matches(
+                cmd_name, self.list_commands(ctx), n=3, cutoff=0.6
+            )
+            if matches:
+                suggestion = ", ".join(f"'{m}'" for m in matches)
+                raise click.UsageError(
+                    f"No such command '{cmd_name}'. Did you mean: {suggestion}?"
+                ) from exc
+            raise
+
+
+@click.group(cls=SuggestingGroup)
 @click.option(
     "--verbose",
     "-v",

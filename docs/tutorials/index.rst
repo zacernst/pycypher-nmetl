@@ -8,6 +8,7 @@ first query to production deployment.
    :maxdepth: 2
    :caption: Tutorial Series:
 
+   cypher_for_sql_users
    basic_query_parsing
    graph_modeling
    pattern_matching
@@ -15,6 +16,8 @@ first query to production deployment.
    ast_manipulation
    data_etl_pipeline
    integration_guide
+   production_deployment
+   ml_optimization
    troubleshooting
 
 Learning Pathway
@@ -25,8 +28,11 @@ work forward:
 
 **Beginner** — Your first graph queries
 
+0. :doc:`cypher_for_sql_users` — *Know SQL but not Cypher?*  Side-by-side
+   translation guide covering SELECT→RETURN, JOIN→relationships, GROUP BY,
+   subqueries, and more.  Read in 10 minutes.
 1. :doc:`basic_query_parsing` — Load data, execute MATCH/WHERE/RETURN, sort
-   and aggregate results.  *Start here.*
+   and aggregate results.
 2. :doc:`graph_modeling` — Design your tabular data as entities and
    relationships.  Modeling patterns, ID strategies, common pitfalls.
 
@@ -45,7 +51,11 @@ work forward:
    CLI, data sources, and output sinks.
 7. :doc:`integration_guide` — Embed PyCypher in web APIs, batch jobs, and
    notebooks.  Query parameters, error handling, context refresh patterns.
-8. :doc:`troubleshooting` — Diagnose parse errors, missing results,
+8. :doc:`production_deployment` — Backend selection, rate limiting, audit
+   logging, timeouts, and caching for production workloads.
+9. :doc:`ml_optimization` — ML-powered adaptive query optimization with
+   fingerprinting, selectivity learning, and join strategy selection.
+10. :doc:`troubleshooting` — Diagnose parse errors, missing results,
    performance problems, and unexpected output.
 
 .. tip::
@@ -91,3 +101,7 @@ tutorials.  Run any script with ``uv run python examples/<script>.py``:
   (pairs with :doc:`ast_manipulation`)
 * ``multi_query_composition.py`` — Multi-query ETL pipelines with cross-query
   dependencies (pairs with :doc:`data_etl_pipeline`)
+* ``backend_selection.py`` — Choosing between pandas, DuckDB, and Polars
+  backends (pairs with :doc:`production_deployment`)
+* ``production_patterns.py`` — Rate limiting, audit logging, timeouts, and
+  caching for production workloads (pairs with :doc:`production_deployment`)

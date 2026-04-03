@@ -200,7 +200,9 @@ class QualityCollapseStrategy(CollapseStrategy):
         """Select the universe with lowest actual cost."""
         return min(
             completed,
-            key=lambda u: u.actual_cost if u.actual_cost is not None else float("inf"),
+            key=lambda u: (
+                u.actual_cost if u.actual_cost is not None else float("inf")
+            ),
         )
 
 
@@ -406,7 +408,9 @@ class MultiverseExecutor:
                 universe = future_to_universe[future]
                 elapsed_ms = (time.monotonic() - start_time) * 1000
 
-                self._collect_result(future, universe, elapsed_ms, completed, lock)
+                self._collect_result(
+                    future, universe, elapsed_ms, completed, lock
+                )
 
                 with lock:
                     if self.collapse_strategy.should_collapse(
@@ -465,10 +469,14 @@ class MultiverseExecutor:
                 universe.decohere("not selected during collapse")
 
         universe_costs = {
-            u.universe_id: u.actual_cost for u in completed if u.actual_cost is not None
+            u.universe_id: u.actual_cost
+            for u in completed
+            if u.actual_cost is not None
         }
         decohered_count = sum(
-            1 for u in state.universes.values() if u.status == UniverseStatus.DECOHERED
+            1
+            for u in state.universes.values()
+            if u.status == UniverseStatus.DECOHERED
         )
 
         result = CollapseResult(

@@ -88,7 +88,9 @@ def _build_context(n_persons: int) -> Context:
         entity_type="Person",
         identifier="Person",
         column_names=list(persons_df.columns),
-        source_obj_attribute_map={c: c for c in persons_df.columns if c != ID_COLUMN},
+        source_obj_attribute_map={
+            c: c for c in persons_df.columns if c != ID_COLUMN
+        },
         attribute_map={c: c for c in persons_df.columns if c != ID_COLUMN},
         source_obj=persons_df,
     )
@@ -366,7 +368,9 @@ class TestQueryBenchmarks100K:
         """Single-hop on 100K rows."""
         benchmark.pedantic(
             star_100k.execute_query,
-            args=("MATCH (n:Person)-[r:KNOWS]->(m:Person) RETURN n.name, m.name",),
+            args=(
+                "MATCH (n:Person)-[r:KNOWS]->(m:Person) RETURN n.name, m.name",
+            ),
             iterations=1,
             rounds=3,
         )

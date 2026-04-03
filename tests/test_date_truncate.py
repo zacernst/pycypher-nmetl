@@ -110,17 +110,30 @@ class TestDateTruncate:
         assert _exec_date_truncate(reg, "decade", "2024-07-04") == "2020-01-01"
 
     def test_truncate_to_century(self, reg: ScalarFunctionRegistry) -> None:
-        assert _exec_date_truncate(reg, "century", "2024-07-04") == "2001-01-01"
+        assert (
+            _exec_date_truncate(reg, "century", "2024-07-04") == "2001-01-01"
+        )
 
     def test_truncate_to_millennium(self, reg: ScalarFunctionRegistry) -> None:
-        assert _exec_date_truncate(reg, "millennium", "2024-07-04") == "2001-01-01"
+        assert (
+            _exec_date_truncate(reg, "millennium", "2024-07-04")
+            == "2001-01-01"
+        )
 
     def test_truncate_to_quarter(self, reg: ScalarFunctionRegistry) -> None:
         # Q1: Jan-Mar, Q2: Apr-Jun, Q3: Jul-Sep, Q4: Oct-Dec
-        assert _exec_date_truncate(reg, "quarter", "2024-03-15") == "2024-01-01"
-        assert _exec_date_truncate(reg, "quarter", "2024-05-20") == "2024-04-01"
-        assert _exec_date_truncate(reg, "quarter", "2024-08-10") == "2024-07-01"
-        assert _exec_date_truncate(reg, "quarter", "2024-11-30") == "2024-10-01"
+        assert (
+            _exec_date_truncate(reg, "quarter", "2024-03-15") == "2024-01-01"
+        )
+        assert (
+            _exec_date_truncate(reg, "quarter", "2024-05-20") == "2024-04-01"
+        )
+        assert (
+            _exec_date_truncate(reg, "quarter", "2024-08-10") == "2024-07-01"
+        )
+        assert (
+            _exec_date_truncate(reg, "quarter", "2024-11-30") == "2024-10-01"
+        )
 
     def test_truncate_unit_case_insensitive(
         self,

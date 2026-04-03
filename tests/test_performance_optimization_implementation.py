@@ -76,9 +76,7 @@ class TestPhase1OptimizationTargets:
     ) -> None:
         """Test baseline behavior of variable-length path frontier copy (RED phase)."""
         # Test query that triggers variable-length path with frontier copy
-        test_query = (
-            "MATCH (a:Person)-[*1..2]->(b:Person) RETURN count(b) AS path_count"
-        )
+        test_query = "MATCH (a:Person)-[*1..2]->(b:Person) RETURN count(b) AS path_count"
 
         # Execute and time the baseline query
         start_time = time.perf_counter()
@@ -108,9 +106,7 @@ class TestPhase1OptimizationTargets:
     ) -> None:
         """Test baseline behavior of pattern matching binding copy (RED phase)."""
         # Test query that triggers pattern matching with binding copy
-        test_query = (
-            "MATCH (p:Person) WHERE p.age > 25 RETURN p.name AS name, p.age AS age"
-        )
+        test_query = "MATCH (p:Person) WHERE p.age > 25 RETURN p.name AS name, p.age AS age"
 
         # Execute and time the baseline query
         start_time = time.perf_counter()
@@ -396,7 +392,9 @@ class TestOptimizationImplementationPlan:
 
         # All items should be ready
         ready_count = sum(
-            1 for status in readiness_checklist.values() if status.startswith("✓")
+            1
+            for status in readiness_checklist.values()
+            if status.startswith("✓")
         )
         total_count = len(readiness_checklist)
 

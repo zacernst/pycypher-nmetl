@@ -57,7 +57,9 @@ class TestStreamEngine:
 
             for i in range(5):
                 await buf.put(
-                    StreamRecord(key=f"k{i}", value={"v": i}, event_time=float(i)),
+                    StreamRecord(
+                        key=f"k{i}", value={"v": i}, event_time=float(i)
+                    ),
                 )
 
             await asyncio.sleep(0.15)
@@ -111,9 +113,13 @@ class TestStreamEngine:
             engine.add_view(view)
 
             await engine.start()
-            await buf.put(StreamRecord(key="k1", value={"v": 1}, event_time=100.0))
+            await buf.put(
+                StreamRecord(key="k1", value={"v": 1}, event_time=100.0)
+            )
             await asyncio.sleep(0.05)
-            await buf.put(StreamRecord(key="k2", value={"v": 2}, event_time=50.0))
+            await buf.put(
+                StreamRecord(key="k2", value={"v": 2}, event_time=50.0)
+            )
             await asyncio.sleep(0.1)
             await engine.stop()
 
@@ -140,7 +146,9 @@ class TestStreamEngine:
 
             engine.add_transform(double_value)
             await engine.start()
-            await buf.put(StreamRecord(key="k", value={"v": 5}, event_time=1.0))
+            await buf.put(
+                StreamRecord(key="k", value={"v": 5}, event_time=1.0)
+            )
             await asyncio.sleep(0.1)
             await engine.stop()
 
@@ -164,7 +172,9 @@ class TestStreamEngine:
             await engine.start()
             for i in range(5):
                 await buf.put(
-                    StreamRecord(key=f"k{i}", value={"v": i}, event_time=float(i)),
+                    StreamRecord(
+                        key=f"k{i}", value={"v": i}, event_time=float(i)
+                    ),
                 )
             await asyncio.sleep(0.15)
             await engine.stop()
@@ -228,7 +238,9 @@ class TestStreamEngine:
                     StreamRecord(key="k", value={"v": i}, event_time=float(i)),
                 )
             await asyncio.sleep(0.05)
-            await buf.put(StreamRecord(key="k", value={"v": 99}, event_time=11.0))
+            await buf.put(
+                StreamRecord(key="k", value={"v": 99}, event_time=11.0)
+            )
             await asyncio.sleep(0.15)
             await engine.stop()
 
@@ -244,7 +256,9 @@ class TestStreamEngine:
             engine.add_sink(lambda r: collected.append(r))
 
             await engine.start()
-            await buf.put(StreamRecord(key="k", value={"v": 1}, event_time=1.0))
+            await buf.put(
+                StreamRecord(key="k", value={"v": 1}, event_time=1.0)
+            )
             await asyncio.sleep(0.1)
             await engine.stop()
 

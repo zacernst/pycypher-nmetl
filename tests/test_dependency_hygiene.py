@@ -55,7 +55,9 @@ def _dependency_names(pyproject: dict) -> list[str]:
     names = []
     for dep in deps:
         # Strip version specifier — take the package name before any >=, ==, <, etc.
-        name = dep.split(">")[0].split("=")[0].split("<")[0].split("[")[0].strip()
+        name = (
+            dep.split(">")[0].split("=")[0].split("<")[0].split("[")[0].strip()
+        )
         names.append(name.lower())
     return names
 
@@ -111,12 +113,16 @@ class TestLowerBoundsAccurate:
 
     def test_pandas_lower_bound_is_3(self) -> None:
         """Pandas lower bound must be >=3.0.0 (only 3.x is tested)."""
-        deps: list[str] = _load_pyproject().get("project", {}).get("dependencies", [])
+        deps: list[str] = (
+            _load_pyproject().get("project", {}).get("dependencies", [])
+        )
         pandas_dep = next(
             (d for d in deps if d.lower().startswith("pandas")),
             None,
         )
-        assert pandas_dep is not None, "pandas must still be listed as a dependency"
+        assert pandas_dep is not None, (
+            "pandas must still be listed as a dependency"
+        )
         assert "3" in pandas_dep.split(">=")[-1].split(",")[0].split(".")[0], (
             f"pandas lower bound should be >=3.0.0 (tested on 3.x), "
             f"got: {pandas_dep!r}. Update to 'pandas>=3.0.0'."
@@ -124,12 +130,16 @@ class TestLowerBoundsAccurate:
 
     def test_duckdb_lower_bound_is_1(self) -> None:
         """Duckdb lower bound must be >=1.0.0 (pre-1.0 API is incompatible)."""
-        deps: list[str] = _load_pyproject().get("project", {}).get("dependencies", [])
+        deps: list[str] = (
+            _load_pyproject().get("project", {}).get("dependencies", [])
+        )
         duckdb_dep = next(
             (d for d in deps if d.lower().startswith("duckdb")),
             None,
         )
-        assert duckdb_dep is not None, "duckdb must still be listed as a dependency"
+        assert duckdb_dep is not None, (
+            "duckdb must still be listed as a dependency"
+        )
         lower = duckdb_dep.split(">=")[-1].split(",")[0].strip()
         major = int(lower.split(".")[0])
         assert major >= 1, (

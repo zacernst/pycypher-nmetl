@@ -9,12 +9,14 @@ Pydantic AST, and a BindingFrame execution layer — no graph database required.
    :maxdepth: 2
    :caption: Contents:
 
+   hello_world
    getting_started
    tutorials/index
    api/index
    user_guide/index
    deployment/index
    developer_guide/index
+   adr/index
 
 Overview
 --------

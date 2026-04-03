@@ -113,7 +113,9 @@ class TestDimensionalMessageBus:
         bus = DimensionalMessageBus()
         received: list[DimensionalMessage] = []
         bus.subscribe(MessageType.COST_UPDATE, received.append)
-        bus.publish(DimensionalMessage(message_type=MessageType.CARDINALITY_HINT))
+        bus.publish(
+            DimensionalMessage(message_type=MessageType.CARDINALITY_HINT)
+        )
         assert len(received) == 0
 
     def test_multiple_subscribers(self) -> None:
@@ -168,7 +170,9 @@ class TestDimensionalMessageBus:
 
     def test_publish_cardinality_hint(self) -> None:
         bus = DimensionalMessageBus()
-        bus.publish_cardinality_hint("u1", "scan:Person", 1000, estimated_rows=500)
+        bus.publish_cardinality_hint(
+            "u1", "scan:Person", 1000, estimated_rows=500
+        )
         drained = bus.drain()
         assert len(drained) == 1
         msg = drained[0]
@@ -200,7 +204,9 @@ class TestDimensionalMessageBus:
         received: list[DimensionalMessage] = []
         bus.subscribe(MessageType.COST_UPDATE, received.append)
         bus.publish(DimensionalMessage(message_type=MessageType.COST_UPDATE))
-        bus.publish(DimensionalMessage(message_type=MessageType.CARDINALITY_HINT))
+        bus.publish(
+            DimensionalMessage(message_type=MessageType.CARDINALITY_HINT)
+        )
         stats = bus.stats
         assert stats["total_published"] == 2
         assert stats["total_delivered"] == 1  # only COST_UPDATE has subscriber

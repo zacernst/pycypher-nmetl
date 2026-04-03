@@ -451,7 +451,7 @@ class PathExpander:
                 context=self.context,
             )
 
-        df = bfs_frame.bindings.copy()
+        df = bfs_frame.bindings
 
         # Keep only minimum-hop rows per (start_var, bfs_end_var) pair.
         min_hops_per_pair = df.groupby([start_var, bfs_end_var], sort=False)[

@@ -258,7 +258,9 @@ class TestSingleEntityPatterns:
             assert isinstance(row["age_str"], str)
             assert (
                 int(row["age_str"])
-                == {"Alice": 30, "Bob": 25, "Carol": 35, "Dave": 28}[row["name"]]
+                == {"Alice": 30, "Bob": 25, "Carol": 35, "Dave": 28}[
+                    row["name"]
+                ]
             )
 
     def test_toInteger_in_return(self, star: Star) -> None:

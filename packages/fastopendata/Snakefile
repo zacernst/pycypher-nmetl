@@ -359,7 +359,7 @@ rule extract_ahs:
 
 
 # ===========================================================================
-# Dataset 10: CJARS 2022 — county-level job offers
+# Dataset 10: CJARS 2022 — county-level
 # Source: https://www2.census.gov/programs-surveys/cjars/datasets/2022/
 # ===========================================================================
 
@@ -531,7 +531,7 @@ rule download_tiger_addr:
         "    echo 'Download of {output} failed validation (corrupted or empty), retrying...'; "
         "    rm -f {output}; "
         "  fi; "
-        "  sleep $((BACKOFF * i)); "
+        "  sleep $((120 * i)); "
         "done || "
         "(echo 'All download attempts failed for {output}, creating empty zip as placeholder'; "
         " uv run python -c \"import zipfile; z=zipfile.ZipFile('{output}', 'w'); z.close()\")"

@@ -27,6 +27,8 @@ if TYPE_CHECKING:
     from pycypher.ingestion.duckdb_reader import DuckDBReader as ArrowIngestion
 
 from pycypher.ingestion.context_builder import ContextBuilder
+from pycypher.ingestion.introspector import DataSourceIntrospector
+from pycypher.ingestion.pipeline_builder import PipelineBuilder, PipelineOperation, PipelineSnapshot
 from pycypher.ingestion.data_sources import (
     ArrowDataSource,
     CsvFormat,
@@ -39,8 +41,19 @@ from pycypher.ingestion.data_sources import (
     SqlDataSource,
     data_source_from_uri,
 )
+from pycypher.ingestion.data_preview import (
+    ColumnStats,
+    DataSampler,
+    PreviewCache,
+    QueryResult,
+    QueryTester,
+    SamplingStrategy,
+    SchemaInfo,
+)
 from pycypher.ingestion.duckdb_reader import DuckDBReader
 from pycypher.ingestion.output_writer import write_dataframe_to_uri
+from pycypher.ingestion.config import PipelineConfig, load_pipeline_config
+from pycypher.ingestion.validation import ValidationResult, validate_config, validate_config_dict
 
 
 def __getattr__(name: str) -> type:
@@ -64,6 +77,10 @@ __all__ = [
     "ArrowDataSource",
     "ArrowIngestion",  # Deprecated — use DuckDBReader; runtime via __getattr__
     "ContextBuilder",
+    "DataSourceIntrospector",
+    "PipelineBuilder",
+    "PipelineOperation",
+    "PipelineSnapshot",
     "CsvFormat",
     "DataFrameDataSource",
     "DataSource",
@@ -73,6 +90,18 @@ __all__ = [
     "JsonFormat",
     "ParquetFormat",
     "SqlDataSource",
+    "ColumnStats",
+    "DataSampler",
+    "PreviewCache",
+    "QueryResult",
+    "QueryTester",
+    "SamplingStrategy",
+    "SchemaInfo",
     "data_source_from_uri",
     "write_dataframe_to_uri",
+    "PipelineConfig",
+    "load_pipeline_config",
+    "ValidationResult",
+    "validate_config",
+    "validate_config_dict",
 ]

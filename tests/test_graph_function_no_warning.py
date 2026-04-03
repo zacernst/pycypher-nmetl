@@ -86,7 +86,9 @@ class TestNoSpuriousWarnings:
             social_star,
             "MATCH (p:Person) RETURN labels(p) AS l ORDER BY p.name LIMIT 1",
         )
-        unknown = [m for m in msgs if "Unknown function" in m and "labels" in m]
+        unknown = [
+            m for m in msgs if "Unknown function" in m and "labels" in m
+        ]
         assert unknown == [], f"Unexpected warnings: {unknown}"
 
     def test_type_no_warning(
@@ -100,7 +102,9 @@ class TestNoSpuriousWarnings:
             social_star,
             "MATCH (p:Person)-[r:KNOWS]->(f:Person) RETURN type(r) AS t LIMIT 1",
         )
-        unknown = [m for m in msgs if "Unknown function" in m and "type" in m.lower()]
+        unknown = [
+            m for m in msgs if "Unknown function" in m and "type" in m.lower()
+        ]
         assert unknown == [], f"Unexpected warnings: {unknown}"
 
     def test_startnode_no_warning(
@@ -114,7 +118,9 @@ class TestNoSpuriousWarnings:
             social_star,
             "MATCH (p:Person)-[r:KNOWS]->(f:Person) RETURN startNode(r) AS sn LIMIT 1",
         )
-        unknown = [m for m in msgs if "Unknown function" in m and "startNode" in m]
+        unknown = [
+            m for m in msgs if "Unknown function" in m and "startNode" in m
+        ]
         assert unknown == [], f"Unexpected warnings: {unknown}"
 
     def test_endnode_no_warning(
@@ -128,7 +134,9 @@ class TestNoSpuriousWarnings:
             social_star,
             "MATCH (p:Person)-[r:KNOWS]->(f:Person) RETURN endNode(r) AS en LIMIT 1",
         )
-        unknown = [m for m in msgs if "Unknown function" in m and "endNode" in m]
+        unknown = [
+            m for m in msgs if "Unknown function" in m and "endNode" in m
+        ]
         assert unknown == [], f"Unexpected warnings: {unknown}"
 
     def test_labels_still_returns_correct_value(
@@ -172,7 +180,11 @@ class TestNoSpuriousWarnings:
             )
         except Exception:
             # Execution raises after the warning — that's fine
-            msgs = [r.message for r in caplog.records if r.levelno == logging.WARNING]
+            msgs = [
+                r.message
+                for r in caplog.records
+                if r.levelno == logging.WARNING
+            ]
         # Either a warning was emitted OR an exception was raised; both indicate
         # the function is correctly treated as unknown (not silently suppressed).
         unknown = [m for m in msgs if "Unknown function" in m]

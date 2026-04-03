@@ -59,7 +59,9 @@ class TestHealthCLI:
 
         # Each check has a status field
         for check_name, check_data in data["checks"].items():
-            assert "status" in check_data, f"Check '{check_name}' missing status"
+            assert "status" in check_data, (
+                f"Check '{check_name}' missing status"
+            )
 
 
 # ---------------------------------------------------------------------------

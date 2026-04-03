@@ -287,7 +287,9 @@ class TestSecurityHeaders:
 
     def test_referrer_policy(self, client: TestClient) -> None:
         r = client.get("/health")
-        assert r.headers["Referrer-Policy"] == "strict-origin-when-cross-origin"
+        assert (
+            r.headers["Referrer-Policy"] == "strict-origin-when-cross-origin"
+        )
 
     def test_permissions_policy(self, client: TestClient) -> None:
         r = client.get("/health")

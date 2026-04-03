@@ -36,6 +36,8 @@ import contextvars
 import json
 import logging
 import os
+import sys
+import threading
 from datetime import UTC, datetime
 
 # ---------------------------------------------------------------------------
@@ -143,6 +145,51 @@ _VALID_LOG_LEVELS: dict[str, int] = {
     "ERROR": logging.ERROR,
     "CRITICAL": logging.CRITICAL,
 }
+
+
+# ---------------------------------------------------------------------------
+# Thread-safe Rich handler
+# ---------------------------------------------------------------------------
+
+
+class _ThreadSafeRichHandler(logging.Handler):
+    """A thread-safe wrapper around Rich's ``RichHandler``.
+
+    Rich's ``Console`` is not fully thread-safe and may raise
+    ``OSError [Errno 9] Bad file descriptor`` when background threads
+    (e.g. AST cache warmup) emit log records while the underlying
+    ``sys.stderr`` file descriptor is closed or being recycled.
+
+    This handler serialises ``emit()`` calls with a lock and catches
+    ``OSError`` so that logging from daemon threads never crashes the
+    application.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        from rich.console import Console
+        from rich.logging import RichHandler
+
+        # Create a dedicated Console with an explicit stderr reference so
+        # Rich doesn't re-resolve sys.stderr on every write.
+        self._console = Console(stderr=True)
+        self._inner = RichHandler(console=self._console)
+        self._lock_obj = threading.Lock()
+
+    def emit(self, record: logging.LogRecord) -> None:
+        with self._lock_obj:
+            try:
+                # Guard against closed/invalid stderr (daemon thread at
+                # interpreter shutdown or after fd recycling).
+                if sys.stderr is None or sys.stderr.closed:
+                    return
+                self._inner.emit(record)
+            except OSError:
+                # Silently drop the record — the fd is gone and there is
+                # nothing useful we can do.
+                pass
+
+
 LOGGING_LEVEL = os.environ.get("PYCYPHER_LOG_LEVEL", "WARNING").upper()
 LOGGER = logging.getLogger(__name__)
 LOGGER.setLevel(_VALID_LOG_LEVELS.get(LOGGING_LEVEL, logging.WARNING))
@@ -153,9 +200,7 @@ if _log_format == "json":
     _handler: logging.Handler = logging.StreamHandler()
     _handler.setFormatter(_JSONFormatter())
 else:
-    from rich.logging import RichHandler
-
-    _handler = RichHandler()
+    _handler = _ThreadSafeRichHandler()
 
 LOGGER.addFilter(_QueryIdFilter())
 LOGGER.addHandler(_handler)

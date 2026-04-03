@@ -83,19 +83,54 @@ directory structure — each test file targets a specific module or feature area
 .. code-block:: text
 
    tests/
-   ├── conftest.py                     # Shared fixtures (Context, Star, DataFrames)
+   ├── conftest.py                     # Shared fixtures, auto-markers, isolation
    ├── fixtures/data/                  # Static test data files (Parquet, CSV)
-   ├── benchmarks/                     # Performance benchmark tests
-   ├── large_dataset/                  # Large-dataset integration tests
+   ├── benchmarks/                     # Performance benchmark tests (auto: performance)
+   ├── large_dataset/                  # Large-dataset integration tests (auto: integration+slow)
+   ├── load_testing/                   # Load and stress tests (auto: performance+slow)
+   ├── property_based/                 # Property-based tests (auto: unit)
    ├── test_ast_models.py              # AST node construction and validation
    ├── test_grammar_parser.py          # Lark grammar → raw AST parsing
    ├── test_semantic_validator.py       # Static semantic analysis
-   ├── test_star_gaps.py               # Star execution edge cases
    ├── test_binding_frame.py           # BindingFrame IR operations
-   ├── test_create_clause.py           # CREATE clause execution
-   ├── test_set_clause_execution.py    # SET clause execution
-   ├── test_aggregation_dispatch.py    # Aggregation function routing
    └── ...                             # ~300 test files covering all features
+
+Automatic Test Markers
+~~~~~~~~~~~~~~~~~~~~~~
+
+Tests are **automatically marked** based on their file location and name,
+so you rarely need to add ``@pytest.mark`` decorators manually.
+
+**Directory-based auto-markers:**
+
+- ``tests/benchmarks/`` → ``performance``
+- ``tests/large_dataset/`` → ``integration`` + ``slow``
+- ``tests/load_testing/`` → ``performance`` + ``slow``
+- ``tests/property_based/`` → ``unit``
+
+**Filename-based auto-markers:**
+
+- Files containing ``_e2e_`` or ``_end_to_end`` → ``integration``
+- Files containing ``_performance_`` → ``performance``
+- Files containing ``_security_`` → ``security``
+
+Explicit ``@pytest.mark.X`` decorators always take precedence over auto-markers.
+
+**Per-marker timeouts** are also applied automatically:
+
+- ``integration`` tests: 120 seconds (vs 30s default)
+- ``slow`` tests: 300 seconds (vs 30s default)
+
+Test Isolation
+~~~~~~~~~~~~~~
+
+Two auto-use fixtures in ``conftest.py`` prevent cross-test contamination:
+
+- **SIGALRM cleanup** — Clears pending alarm signals after each test,
+  preventing spurious ``QueryTimeoutError`` in unrelated tests.
+- **Logger level restoration** — Restores ``shared.logger.LOGGER`` level
+  after each test, preventing ``caplog.at_level()`` from leaving loggers
+  in DEBUG mode.
 
 Shared Fixtures
 ~~~~~~~~~~~~~~~

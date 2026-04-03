@@ -268,7 +268,6 @@ class TestInvalidComprehensions:
         with pytest.raises(_PARSE_ERRORS):
             parser.parse("RETURN [IN [1, 2, 3] | x * 2]")
 
-    @pytest.mark.skip(reason="Ambiguous grammar allows this structure")
     def test_pattern_comprehension_invalid(self, parser):
         """Test error for invalid pattern comprehension."""
         with pytest.raises(_PARSE_ERRORS):
@@ -278,7 +277,7 @@ class TestInvalidComprehensions:
 class TestInvalidQuantifiers:
     """Test handling of invalid quantifier expressions."""
 
-    @pytest.mark.skip(reason="ALL can be parsed as function call")
+    @pytest.mark.xfail(reason="ALL is intentionally parseable as a function call")
     def test_quantifier_without_predicate(self, parser):
         """Test error for quantifier without WHERE."""
         with pytest.raises(_PARSE_ERRORS):
@@ -545,7 +544,7 @@ class TestComplexErrorScenarios:
         with pytest.raises(_PARSE_ERRORS):
             parser.parse("RETURN {person: {name: 'Alice', address: {city:")
 
-    @pytest.mark.skip(reason="Backticked identifiers allow newlines in regex")
+    @pytest.mark.xfail(reason="Backticked identifiers intentionally allow newlines in regex")
     def test_invalid_escape_in_property_name(self, parser):
         """Test invalid escape in property name."""
         with pytest.raises(_PARSE_ERRORS):

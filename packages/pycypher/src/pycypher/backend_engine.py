@@ -55,9 +55,11 @@ Integration Status
    Selecting ``backend="duckdb"`` at ``Context`` construction now routes
    these operations through the DuckDB engine.
 
+   - :mod:`~pycypher.mutation_engine` — CREATE (concat), DELETE/DETACH DELETE
+     (filter) route through backend when available
+
    Not yet delegated (future work):
 
-   - :mod:`~pycypher.mutation_engine` — still uses raw pandas for shadow writes
    - Property resolution in :meth:`BindingFrame.get_property`
    - Aggregation operations in ``AggregationEvaluator``
 """
@@ -76,6 +78,7 @@ from pycypher.backends._helpers import (
     IDENTIFIER_RE,
     validate_identifier,
 )
+from pycypher.cypher_types import BackendFrame, BackendMask, ColumnValues, SourceObject
 from pycypher.backends.duckdb_backend import DuckDBBackend
 from pycypher.backends.pandas_backend import PandasBackend
 from pycypher.backends.polars_backend import PolarsBackend
@@ -117,9 +120,9 @@ class BackendEngine(Protocol):
 
     def scan_entity(
         self,
-        source_obj: Any,
+        source_obj: SourceObject,
         entity_type: str,
-    ) -> Any:
+    ) -> BackendFrame:
         """Load all entity IDs from *source_obj* as a single-column frame.
 
         Args:
@@ -136,7 +139,7 @@ class BackendEngine(Protocol):
     # Transform
     # ------------------------------------------------------------------
 
-    def filter(self, frame: Any, mask: Any) -> Any:
+    def filter(self, frame: BackendFrame, mask: BackendMask) -> BackendFrame:
         """Apply a boolean mask to *frame*, returning matching rows.
 
         Args:
@@ -151,12 +154,12 @@ class BackendEngine(Protocol):
 
     def join(
         self,
-        left: Any,
-        right: Any,
+        left: BackendFrame,
+        right: BackendFrame,
         on: str | list[str],
         how: str = "inner",
         strategy: str = "auto",
-    ) -> Any:
+    ) -> BackendFrame:
         """Join two frames on the given column(s).
 
         Args:
@@ -174,7 +177,7 @@ class BackendEngine(Protocol):
         """
         ...
 
-    def rename(self, frame: Any, columns: dict[str, str]) -> Any:
+    def rename(self, frame: BackendFrame, columns: dict[str, str]) -> BackendFrame:
         """Rename columns in *frame*.
 
         Used by ``BindingFrame.rename()`` to promote structural join-key
@@ -190,7 +193,7 @@ class BackendEngine(Protocol):
         """
         ...
 
-    def concat(self, frames: list[Any], *, ignore_index: bool = True) -> Any:
+    def concat(self, frames: list[BackendFrame], *, ignore_index: bool = True) -> BackendFrame:
         """Concatenate multiple frames vertically.
 
         Used by ``MutationEngine.shadow_create_entity()`` and union queries.
@@ -205,7 +208,7 @@ class BackendEngine(Protocol):
         """
         ...
 
-    def distinct(self, frame: Any) -> Any:
+    def distinct(self, frame: BackendFrame) -> BackendFrame:
         """Remove duplicate rows from *frame*.
 
         Used by WITH DISTINCT and RETURN DISTINCT.
@@ -219,7 +222,7 @@ class BackendEngine(Protocol):
         """
         ...
 
-    def assign_column(self, frame: Any, name: str, values: Any) -> Any:
+    def assign_column(self, frame: BackendFrame, name: str, values: ColumnValues) -> BackendFrame:
         """Add or replace a column in *frame*.
 
         Used by ``star.py`` during pattern traversal to add new variable
@@ -236,7 +239,7 @@ class BackendEngine(Protocol):
         """
         ...
 
-    def drop_columns(self, frame: Any, columns: list[str]) -> Any:
+    def drop_columns(self, frame: BackendFrame, columns: list[str]) -> BackendFrame:
         """Remove columns from *frame*.
 
         Used for post-join cleanup (removing ``_right`` suffixed duplicates
@@ -258,10 +261,10 @@ class BackendEngine(Protocol):
 
     def aggregate(
         self,
-        frame: Any,
+        frame: BackendFrame,
         group_cols: list[str],
         agg_specs: dict[str, tuple[str, str]],
-    ) -> Any:
+    ) -> BackendFrame:
         """Grouped aggregation.
 
         Args:
@@ -282,10 +285,10 @@ class BackendEngine(Protocol):
 
     def sort(
         self,
-        frame: Any,
+        frame: BackendFrame,
         by: list[str],
         ascending: list[bool] | None = None,
-    ) -> Any:
+    ) -> BackendFrame:
         """Sort *frame* by the given columns.
 
         Args:
@@ -299,7 +302,7 @@ class BackendEngine(Protocol):
         """
         ...
 
-    def limit(self, frame: Any, n: int) -> Any:
+    def limit(self, frame: BackendFrame, n: int) -> BackendFrame:
         """Return the first *n* rows of *frame*.
 
         Args:
@@ -312,7 +315,7 @@ class BackendEngine(Protocol):
         """
         ...
 
-    def skip(self, frame: Any, n: int) -> Any:
+    def skip(self, frame: BackendFrame, n: int) -> BackendFrame:
         """Skip the first *n* rows of *frame*.
 
         Used by the SKIP clause in WITH/RETURN.
@@ -331,7 +334,7 @@ class BackendEngine(Protocol):
     # Materialise / inspect
     # ------------------------------------------------------------------
 
-    def to_pandas(self, frame: Any) -> pd.DataFrame:
+    def to_pandas(self, frame: BackendFrame) -> pd.DataFrame:
         """Materialise *frame* as a pandas DataFrame.
 
         This is the universal escape hatch — every backend must support this
@@ -346,7 +349,7 @@ class BackendEngine(Protocol):
         """
         ...
 
-    def row_count(self, frame: Any) -> int:
+    def row_count(self, frame: BackendFrame) -> int:
         """Return the number of rows in *frame* without full materialisation.
 
         Args:
@@ -358,7 +361,7 @@ class BackendEngine(Protocol):
         """
         ...
 
-    def is_empty(self, frame: Any) -> bool:
+    def is_empty(self, frame: BackendFrame) -> bool:
         """Return True if *frame* has zero rows.
 
         Equivalent to ``row_count(frame) == 0`` but may be faster for lazy
@@ -373,7 +376,7 @@ class BackendEngine(Protocol):
         """
         ...
 
-    def memory_estimate_bytes(self, frame: Any) -> int:
+    def memory_estimate_bytes(self, frame: BackendFrame) -> int:
         """Estimate memory consumption of *frame* in bytes.
 
         Used by the query planner for join strategy selection and memory
@@ -642,7 +645,7 @@ class InstrumentedBackend:
         """Return the inner backend's name."""
         return self._inner.name
 
-    def _record(self, op: str, elapsed_ms: float, span: Any = None) -> None:
+    def _record(self, op: str, elapsed_ms: float, span: object = None) -> None:
         """Record timing for an operation and annotate the OTel span."""
         self.operation_timings.setdefault(op, []).append(elapsed_ms)
         self.operation_counts[op] = self.operation_counts.get(op, 0) + 1
@@ -675,7 +678,7 @@ class InstrumentedBackend:
 
     # -- Scan --
 
-    def scan_entity(self, source_obj: Any, entity_type: str) -> Any:
+    def scan_entity(self, source_obj: SourceObject, entity_type: str) -> BackendFrame:
         """Instrumented scan_entity with OTel tracing."""
         with trace_phase("backend.scan_entity") as span:
             span.set_attribute("backend.entity_type", entity_type)
@@ -690,7 +693,7 @@ class InstrumentedBackend:
 
     # -- Transform --
 
-    def filter(self, frame: Any, mask: Any) -> Any:
+    def filter(self, frame: BackendFrame, mask: BackendMask) -> BackendFrame:
         """Instrumented filter with OTel tracing."""
         with trace_phase("backend.filter") as span:
             t0 = time.perf_counter()
@@ -700,12 +703,12 @@ class InstrumentedBackend:
 
     def join(
         self,
-        left: Any,
-        right: Any,
+        left: BackendFrame,
+        right: BackendFrame,
         on: str | list[str],
         how: str = "inner",
         strategy: str = "auto",
-    ) -> Any:
+    ) -> BackendFrame:
         """Instrumented join with OTel tracing."""
         with trace_phase("backend.join") as span:
             span.set_attribute("backend.join_how", how)
@@ -721,7 +724,7 @@ class InstrumentedBackend:
             self._record("join", (time.perf_counter() - t0) * 1000.0, span)
             return result
 
-    def rename(self, frame: Any, columns: dict[str, str]) -> Any:
+    def rename(self, frame: BackendFrame, columns: dict[str, str]) -> BackendFrame:
         """Instrumented rename with OTel tracing."""
         with trace_phase("backend.rename") as span:
             t0 = time.perf_counter()
@@ -729,7 +732,7 @@ class InstrumentedBackend:
             self._record("rename", (time.perf_counter() - t0) * 1000.0, span)
             return result
 
-    def concat(self, frames: list[Any], *, ignore_index: bool = True) -> Any:
+    def concat(self, frames: list[BackendFrame], *, ignore_index: bool = True) -> BackendFrame:
         """Instrumented concat with OTel tracing."""
         with trace_phase("backend.concat") as span:
             span.set_attribute("backend.frame_count", len(frames))
@@ -738,7 +741,7 @@ class InstrumentedBackend:
             self._record("concat", (time.perf_counter() - t0) * 1000.0, span)
             return result
 
-    def distinct(self, frame: Any) -> Any:
+    def distinct(self, frame: BackendFrame) -> BackendFrame:
         """Instrumented distinct with OTel tracing."""
         with trace_phase("backend.distinct") as span:
             t0 = time.perf_counter()
@@ -746,7 +749,7 @@ class InstrumentedBackend:
             self._record("distinct", (time.perf_counter() - t0) * 1000.0, span)
             return result
 
-    def assign_column(self, frame: Any, name: str, values: Any) -> Any:
+    def assign_column(self, frame: BackendFrame, name: str, values: ColumnValues) -> BackendFrame:
         """Instrumented assign_column with OTel tracing."""
         with trace_phase("backend.assign_column") as span:
             span.set_attribute("backend.column_name", name)
@@ -759,7 +762,7 @@ class InstrumentedBackend:
             )
             return result
 
-    def drop_columns(self, frame: Any, columns: list[str]) -> Any:
+    def drop_columns(self, frame: BackendFrame, columns: list[str]) -> BackendFrame:
         """Instrumented drop_columns with OTel tracing."""
         with trace_phase("backend.drop_columns") as span:
             span.set_attribute("backend.drop_count", len(columns))
@@ -776,10 +779,10 @@ class InstrumentedBackend:
 
     def aggregate(
         self,
-        frame: Any,
+        frame: BackendFrame,
         group_cols: list[str],
         agg_specs: dict[str, tuple[str, str]],
-    ) -> Any:
+    ) -> BackendFrame:
         """Instrumented aggregate with OTel tracing."""
         with trace_phase("backend.aggregate") as span:
             span.set_attribute("backend.group_col_count", len(group_cols))
@@ -797,10 +800,10 @@ class InstrumentedBackend:
 
     def sort(
         self,
-        frame: Any,
+        frame: BackendFrame,
         by: list[str],
         ascending: list[bool] | None = None,
-    ) -> Any:
+    ) -> BackendFrame:
         """Instrumented sort with OTel tracing."""
         with trace_phase("backend.sort") as span:
             span.set_attribute("backend.sort_col_count", len(by))
@@ -809,7 +812,7 @@ class InstrumentedBackend:
             self._record("sort", (time.perf_counter() - t0) * 1000.0, span)
             return result
 
-    def limit(self, frame: Any, n: int) -> Any:
+    def limit(self, frame: BackendFrame, n: int) -> BackendFrame:
         """Instrumented limit with OTel tracing."""
         with trace_phase("backend.limit") as span:
             span.set_attribute("backend.limit_n", n)
@@ -818,7 +821,7 @@ class InstrumentedBackend:
             self._record("limit", (time.perf_counter() - t0) * 1000.0, span)
             return result
 
-    def skip(self, frame: Any, n: int) -> Any:
+    def skip(self, frame: BackendFrame, n: int) -> BackendFrame:
         """Instrumented skip with OTel tracing."""
         with trace_phase("backend.skip") as span:
             span.set_attribute("backend.skip_n", n)
@@ -829,7 +832,7 @@ class InstrumentedBackend:
 
     # -- Materialise --
 
-    def to_pandas(self, frame: Any) -> pd.DataFrame:
+    def to_pandas(self, frame: BackendFrame) -> pd.DataFrame:
         """Instrumented to_pandas with OTel tracing."""
         with trace_phase("backend.to_pandas") as span:
             t0 = time.perf_counter()
@@ -839,17 +842,102 @@ class InstrumentedBackend:
             self._record("to_pandas", elapsed_ms, span)
             return result
 
-    def row_count(self, frame: Any) -> int:
+    def row_count(self, frame: BackendFrame) -> int:
         """Delegate row_count without instrumentation (trivial op)."""
         return self._inner.row_count(frame)
 
-    def is_empty(self, frame: Any) -> bool:
+    def is_empty(self, frame: BackendFrame) -> bool:
         """Delegate is_empty without instrumentation (trivial op)."""
         return self._inner.is_empty(frame)
 
-    def memory_estimate_bytes(self, frame: Any) -> int:
+    def memory_estimate_bytes(self, frame: BackendFrame) -> int:
         """Delegate memory_estimate_bytes."""
         return self._inner.memory_estimate_bytes(frame)
+
+
+def select_backend_for_query(
+    *,
+    current_backend: BackendEngine,
+    optimization_hints: dict[str, object],
+    estimated_rows: int = 0,
+    instrument: bool = False,
+) -> BackendEngine | None:
+    """Re-evaluate backend selection using post-optimization query hints.
+
+    Called after the query optimizer produces cardinality estimates and
+    join strategy hints.  Returns a replacement backend if the hints
+    suggest the current backend is suboptimal, or ``None`` if no change
+    is needed.
+
+    Args:
+        current_backend: The backend currently in use.
+        optimization_hints: Merged hints from :class:`OptimizationPlan`.
+        estimated_rows: Row estimate from the query planner (overrides
+            the Context-level entity count if available).
+        instrument: Wrap the replacement with :class:`InstrumentedBackend`.
+
+    Returns:
+        A replacement :class:`BackendEngine`, or ``None`` if the current
+        backend is already optimal.
+
+    """
+    cb = _circuit_breaker
+    current_name = current_backend.name
+
+    # Extract cardinality estimates from optimizer hints
+    cardinality_estimates = optimization_hints.get("cardinality_estimates", {})
+    if cardinality_estimates:
+        max_cardinality = max(cardinality_estimates.values(), default=0)
+        estimated_rows = max(estimated_rows, max_cardinality)
+
+    # Heuristic: if estimated rows exceed threshold and we're on pandas,
+    # suggest switching to a more scalable backend
+    threshold = 100_000
+    if estimated_rows >= threshold and current_name == "pandas":
+        for name in _FALLBACK_CHAIN:
+            if name == "pandas":
+                continue
+            if not cb.is_available(name):
+                continue
+            backend = _try_create(name)
+            if backend is not None:
+                LOGGER.info(
+                    "Backend re-evaluation: switching from %s to %s "
+                    "(estimated %s rows exceeds %s threshold)",
+                    current_name,
+                    name,
+                    f"{estimated_rows:,}",
+                    f"{threshold:,}",
+                )
+                if instrument:
+                    return InstrumentedBackend(backend)
+                return backend
+
+    # Heuristic: heavy multi-join queries with many filters benefit from
+    # analytical backends even at lower row counts
+    match_count = optimization_hints.get("match_clause_count", 0)
+    filter_count = optimization_hints.get("filter_pushdown_count", 0)
+    if (
+        match_count > 1
+        and filter_count >= 2
+        and current_name == "pandas"
+        and estimated_rows >= 50_000
+    ):
+        if cb.is_available("duckdb"):
+            backend = _try_create("duckdb")
+            if backend is not None:
+                LOGGER.info(
+                    "Backend re-evaluation: switching to duckdb for "
+                    "complex query (%d joins, %d filters, %s rows)",
+                    match_count,
+                    filter_count,
+                    f"{estimated_rows:,}",
+                )
+                if instrument:
+                    return InstrumentedBackend(backend)
+                return backend
+
+    return None
 
 
 def select_backend(
@@ -985,5 +1073,6 @@ __all__ = [
     "check_backend_health",
     "get_circuit_breaker",
     "select_backend",
+    "select_backend_for_query",
     "validate_identifier",
 ]

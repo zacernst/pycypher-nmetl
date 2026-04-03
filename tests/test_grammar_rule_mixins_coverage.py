@@ -275,7 +275,9 @@ class TestStringPredicateOp:
         from lark import Token
 
         tok = Token("STARTS_KEYWORD", "STARTS")
-        result = self._mixin().string_predicate_op([tok, Token("WITH_KEYWORD", "WITH")])
+        result = self._mixin().string_predicate_op(
+            [tok, Token("WITH_KEYWORD", "WITH")]
+        )
         assert result == "STARTS WITH"
 
     def test_empty_value_uses_type(self) -> None:
@@ -426,7 +428,9 @@ class TestClauseRulesMixinDirect:
         assert result is None
 
     def test_ambig_prefers_dict(self) -> None:
-        result = self._mixin()._ambig(["plain", {"type": "Not"}, {"type": "Other"}])
+        result = self._mixin()._ambig(
+            ["plain", {"type": "Not"}, {"type": "Other"}]
+        )
         assert result == {"type": "Not"}
 
     def test_ambig_dict_no_not(self) -> None:
@@ -498,7 +502,9 @@ class TestClauseRulesMixinDirect:
     def test_merge_action_type_token(self) -> None:
         from lark import Token
 
-        result = self._mixin().merge_action_type([Token("CREATE_KEYWORD", "CREATE")])
+        result = self._mixin().merge_action_type(
+            [Token("CREATE_KEYWORD", "CREATE")]
+        )
         assert result == "CREATE"
 
     # with_clause (lines 3742-3778)
@@ -723,7 +729,9 @@ class TestGrammarParserIntegration:
 
     def test_optional_match(self) -> None:
         """OPTIONAL MATCH triggers match_clause with optional=True."""
-        ast = _parse("MATCH (n:Person) OPTIONAL MATCH (n)-[:KNOWS]->(m) RETURN n, m")
+        ast = _parse(
+            "MATCH (n:Person) OPTIONAL MATCH (n)-[:KNOWS]->(m) RETURN n, m"
+        )
         assert ast is not None
 
     def test_merge_on_create_set(self) -> None:
@@ -749,7 +757,9 @@ class TestGrammarParserIntegration:
 
     def test_with_distinct(self) -> None:
         """WITH DISTINCT triggers with_clause distinct path."""
-        ast = _parse("MATCH (n:Person) WITH DISTINCT n.name AS name RETURN name")
+        ast = _parse(
+            "MATCH (n:Person) WITH DISTINCT n.name AS name RETURN name"
+        )
         assert ast is not None
 
     def test_return_distinct(self) -> None:
@@ -789,7 +799,9 @@ class TestGrammarParserIntegration:
 
     def test_exists_subquery(self) -> None:
         """EXISTS subquery triggers exists_pattern."""
-        ast = _parse("MATCH (n:Person) WHERE EXISTS { (n)-[:KNOWS]->() } RETURN n")
+        ast = _parse(
+            "MATCH (n:Person) WHERE EXISTS { (n)-[:KNOWS]->() } RETURN n"
+        )
         assert ast is not None
 
     def test_arithmetic_operations(self) -> None:

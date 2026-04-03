@@ -160,9 +160,10 @@ class VariableManager:
             rename_map,
         )
         if not rename_map:
-            result = _deep_copy_ast(node, {}, 0)
-        else:
-            result = _deep_copy_ast(node, rename_map, 0)
+            # No renames: return the original AST (structural sharing).
+            # The caller contract is immutability, so sharing is safe.
+            return node
+        result = _deep_copy_ast(node, rename_map, 0)
         LOGGER.debug(
             "rename_variables: elapsed=%.3fms",
             (time.perf_counter() - _t0) * 1000,
@@ -176,6 +177,10 @@ def _deep_copy_ast(
     depth: int,
 ) -> ASTNode:
     """Recursively deep-copy an AST node, applying variable renames.
+
+    Uses structural sharing: subtrees that contain no variables needing
+    renaming are returned as-is (no copy), saving memory and time for
+    large ASTs where only a few variables are renamed.
 
     For each field on the Pydantic model:
     - If it's a Variable, apply the rename map to its name

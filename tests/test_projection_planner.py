@@ -48,11 +48,14 @@ def _make_planner(
 
 
 def _prop(var_name: str, prop_name: str) -> PropertyLookup:
-    return PropertyLookup(expression=Variable(name=var_name), property=prop_name)
+    return PropertyLookup(
+        expression=Variable(name=var_name), property=prop_name
+    )
 
 
 def _make_frame(
-    df: pd.DataFrame, type_registry: dict[str, str] | None = None,
+    df: pd.DataFrame,
+    type_registry: dict[str, str] | None = None,
 ) -> MagicMock:
     """Create a mock BindingFrame."""
     frame = MagicMock()
@@ -91,7 +94,9 @@ class TestInferAlias:
 
     def test_function_invocation_rendered(self) -> None:
         planner = _make_planner(renderer_render=lambda e: "toUpper(name)")
-        expr = FunctionInvocation(name="toUpper", arguments=[_prop("p", "name")])
+        expr = FunctionInvocation(
+            name="toUpper", arguments=[_prop("p", "name")]
+        )
         assert planner.infer_alias(expr) == "toUpper(name)"
 
 
@@ -201,12 +206,16 @@ class TestApplyProjectionModifiers:
 
         frame = _make_frame(df)
 
-        with patch("pycypher.binding_evaluator.BindingExpressionEvaluator") as MockEval:
+        with patch(
+            "pycypher.binding_evaluator.BindingExpressionEvaluator"
+        ) as MockEval:
             eval_inst = MagicMock()
             eval_inst.evaluate = MagicMock(return_value=pd.Series([3, 1, 2]))
             MockEval.return_value = eval_inst
 
-            result = planner.apply_projection_modifiers(df.copy(), clause, frame)
+            result = planner.apply_projection_modifiers(
+                df.copy(), clause, frame
+            )
 
         assert list(result["x"]) == [1, 2, 3]
 
@@ -226,12 +235,16 @@ class TestApplyProjectionModifiers:
 
         frame = _make_frame(df)
 
-        with patch("pycypher.binding_evaluator.BindingExpressionEvaluator") as MockEval:
+        with patch(
+            "pycypher.binding_evaluator.BindingExpressionEvaluator"
+        ) as MockEval:
             eval_inst = MagicMock()
             eval_inst.evaluate = MagicMock(return_value=pd.Series([3, 1, 2]))
             MockEval.return_value = eval_inst
 
-            result = planner.apply_projection_modifiers(df.copy(), clause, frame)
+            result = planner.apply_projection_modifiers(
+                df.copy(), clause, frame
+            )
 
         assert list(result["x"]) == [3, 2, 1]
 
@@ -293,7 +306,9 @@ class TestReturnFromFrame:
         return_clause.limit = None
 
         agg_result = pd.DataFrame({"myVar": [1, 2]})
-        planner._agg_planner.aggregate_items = MagicMock(return_value=agg_result)
+        planner._agg_planner.aggregate_items = MagicMock(
+            return_value=agg_result
+        )
 
         result = planner.return_from_frame(return_clause, frame)
         # Alias should have been inferred to "myVar"
@@ -315,7 +330,9 @@ class TestReturnFromFrame:
         return_clause.limit = None
 
         agg_result = pd.DataFrame({"p.name": ["Alice"], "f.name": ["Bob"]})
-        planner._agg_planner.aggregate_items = MagicMock(return_value=agg_result)
+        planner._agg_planner.aggregate_items = MagicMock(
+            return_value=agg_result
+        )
 
         planner.return_from_frame(return_clause, frame)
 
@@ -370,7 +387,9 @@ class TestWithToBindingFrame:
         with_clause.limit = None
 
         agg_result = pd.DataFrame({"p": [1, 2]})
-        planner._agg_planner.aggregate_items = MagicMock(return_value=agg_result)
+        planner._agg_planner.aggregate_items = MagicMock(
+            return_value=agg_result
+        )
 
         with patch("pycypher.binding_frame.BindingFrame") as MockBF:
             mock_bf_instance = MagicMock()
@@ -407,7 +426,9 @@ class TestWithToBindingFrame:
         with_clause.limit = None
 
         agg_result = pd.DataFrame({"x": [1, 2]})
-        planner._agg_planner.aggregate_items = MagicMock(return_value=agg_result)
+        planner._agg_planner.aggregate_items = MagicMock(
+            return_value=agg_result
+        )
 
         filtered_frame = MagicMock()
         filtered_frame.bindings = pd.DataFrame({"x": [1]})
@@ -438,7 +459,9 @@ class TestWithToBindingFrame:
         with_clause.limit = None
 
         agg_result = pd.DataFrame({"myAlias": [1]})
-        planner._agg_planner.aggregate_items = MagicMock(return_value=agg_result)
+        planner._agg_planner.aggregate_items = MagicMock(
+            return_value=agg_result
+        )
 
         with patch("pycypher.binding_frame.BindingFrame") as MockBF:
             mock_bf_instance = MagicMock()

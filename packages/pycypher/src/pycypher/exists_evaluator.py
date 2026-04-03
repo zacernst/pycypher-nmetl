@@ -26,7 +26,7 @@ from pycypher.relational_models import (
     RELATIONSHIP_SOURCE_COLUMN,
     RELATIONSHIP_TARGET_COLUMN,
 )
-from pycypher.types import FrameSeries
+from pycypher.cypher_types import FrameSeries
 
 if TYPE_CHECKING:
     from pycypher.ast_models import PatternComprehension

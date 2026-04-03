@@ -201,7 +201,9 @@ class SwarmTopology:
 
         """
         self.nodes[node.node_id] = node
-        _logger.debug("Node %s joined swarm (size=%d)", node.node_id, self.size)
+        _logger.debug(
+            "Node %s joined swarm (size=%d)", node.node_id, self.size
+        )
 
     def connect(self, node_a_id: str, node_b_id: str) -> None:
         """Create an undirected edge between two nodes.
@@ -436,7 +438,9 @@ class EmergentMetrics:
         self.load_balance_entropy = entropy
         return entropy
 
-    def compute_route_convergence(self, pheromone_levels: list[float]) -> float:
+    def compute_route_convergence(
+        self, pheromone_levels: list[float]
+    ) -> float:
         """Compute route convergence from pheromone distribution.
 
         Parameters

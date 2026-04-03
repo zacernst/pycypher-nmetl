@@ -231,7 +231,10 @@ class TestThreadSafety:
                     rows=1,
                 )
 
-        threads = [threading.Thread(target=worker, args=(t,)) for t in range(n_threads)]
+        threads = [
+            threading.Thread(target=worker, args=(t,))
+            for t in range(n_threads)
+        ]
         for t in threads:
             t.start()
         for t in threads:

@@ -51,7 +51,9 @@ def _make_entity(label: str, n: int, **extra) -> EntityTable:
     )
 
 
-def _make_rel(rel_type: str, edges: list[tuple[int, int]]) -> RelationshipTable:
+def _make_rel(
+    rel_type: str, edges: list[tuple[int, int]]
+) -> RelationshipTable:
     df = pd.DataFrame(
         {
             ID_COLUMN: list(range(100, 100 + len(edges))),
@@ -362,7 +364,14 @@ class TestOptionalMatchImmunity:
         )
         r = star.execute_query(query)
         # All 6 people appear (some with null product)
-        assert set(r["person"]) == {"Alice", "Bob", "Carol", "Dave", "Eve", "Frank"}
+        assert set(r["person"]) == {
+            "Alice",
+            "Bob",
+            "Carol",
+            "Dave",
+            "Eve",
+            "Frank",
+        }
 
     def test_optional_match_after_multi_match_not_reordered(
         self,
@@ -379,8 +388,20 @@ class TestOptionalMatchImmunity:
         # Cross-join of 6 people x 4 products = 24 base pairs; OPTIONAL
         # MATCH may add rows for left-join expansion.  Key invariant: all
         # 6 people and all 4 products appear.
-        assert set(r["person"]) == {"Alice", "Bob", "Carol", "Dave", "Eve", "Frank"}
-        assert set(r["product"]) == {"Widget", "Gadget", "Doohickey", "Thingamajig"}
+        assert set(r["person"]) == {
+            "Alice",
+            "Bob",
+            "Carol",
+            "Dave",
+            "Eve",
+            "Frank",
+        }
+        assert set(r["product"]) == {
+            "Widget",
+            "Gadget",
+            "Doohickey",
+            "Thingamajig",
+        }
         assert len(r) >= 24
 
 

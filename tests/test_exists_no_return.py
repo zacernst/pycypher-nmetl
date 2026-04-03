@@ -100,7 +100,9 @@ class TestExistsNoReturn:
         )
         names = list(r["name"])
         assert "Bob" not in names, f"Bob should not be in results, got {names}"
-        assert "Carol" not in names, f"Carol should not be in results, got {names}"
+        assert "Carol" not in names, (
+            f"Carol should not be in results, got {names}"
+        )
 
     def test_exists_without_return_correct_count(
         self,
@@ -136,7 +138,9 @@ class TestExistsNoReturn:
         names = list(r["name"])
         assert "Bob" in names, f"Expected Bob in results, got {names}"
         assert "Carol" in names, f"Expected Carol in results, got {names}"
-        assert "Alice" not in names, f"Alice should not be in results, got {names}"
+        assert "Alice" not in names, (
+            f"Alice should not be in results, got {names}"
+        )
 
     def test_exists_with_return_still_works(self, social_star: Star) -> None:
         """Existing behaviour (EXISTS with RETURN) must not regress."""

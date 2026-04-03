@@ -24,6 +24,7 @@ from pycypher.relational_models import (
     EntityTable,
 )
 from pycypher.star import Star
+from _perf_helpers import perf_threshold
 
 pytestmark = [pytest.mark.slow, pytest.mark.performance]
 
@@ -39,7 +40,9 @@ def performance_star() -> Star:
             "name": [f"person_{i}" for i in range(n_rows)],
             "age": [20 + (i % 50) for i in range(n_rows)],
             "score": [80 + (i % 20) for i in range(n_rows)],
-            "city": [["NYC", "SF", "LA", "CHI", "BOS"][i % 5] for i in range(n_rows)],
+            "city": [
+                ["NYC", "SF", "LA", "CHI", "BOS"][i % 5] for i in range(n_rows)
+            ],
             "salary": [50000 + (i * 1000) for i in range(n_rows)],
         },
     )
@@ -178,7 +181,7 @@ class TestMapLiteralPerformanceBaseline:
         print(f"1-key map literal (500 rows): {elapsed:.3f}s")
 
         # Single key should be reasonable even with current implementation
-        assert elapsed < 5.0, f"1-key map took {elapsed:.3f}s (threshold 5s)"
+        assert elapsed < perf_threshold(5.0), f"1-key map took {elapsed:.3f}s (threshold 5s)"
 
     def test_current_performance_5_keys(self, performance_star: Star) -> None:
         """Measure baseline performance with 5 keys."""
@@ -303,7 +306,9 @@ class TestVectorizedMapLiteralTarget:
         print(f"Vectorized 10-key map literal (500 rows): {elapsed:.3f}s")
 
         # This should pass after vectorization
-        assert elapsed < 2.0, f"Vectorized 10-key map took {elapsed:.3f}s (target <2s)"
+        assert elapsed < perf_threshold(2.0), (
+            f"Vectorized 10-key map took {elapsed:.3f}s (target <2s)"
+        )
 
     @pytest.mark.performance_target
     def test_vectorized_scalability_1000_rows(
@@ -358,7 +363,7 @@ class TestVectorizedMapLiteralTarget:
         print(f"Vectorized 5-key map literal (1000 rows): {elapsed:.3f}s")
 
         # Should scale linearly, not quadratically
-        assert elapsed < 5.0, (
+        assert elapsed < perf_threshold(5.0), (
             f"Vectorized 1000-row map took {elapsed:.3f}s (target <5s)"
         )
 
@@ -398,4 +403,6 @@ class TestPerformanceImprovement:
 
         # After vectorization, should be significantly faster
         # Target: At least 2x improvement over baseline
-        assert avg_time < 3.0, f"Average time {avg_time:.3f}s exceeds target 3s"
+        assert avg_time < perf_threshold(3.0), (
+            f"Average time {avg_time:.3f}s exceeds target 3s"
+        )

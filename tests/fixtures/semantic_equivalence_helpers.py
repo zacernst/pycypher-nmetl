@@ -204,8 +204,11 @@ def assert_dataframes_equivalent(
                         f"actual={a.at[idx, col]!r}, expected={e.at[idx, col]!r}",
                     )
 
-        msg = f"{prefix}DataFrame values differ in {diff_count} row(s).\n" + "\n".join(
-            diff_details,
+        msg = (
+            f"{prefix}DataFrame values differ in {diff_count} row(s).\n"
+            + "\n".join(
+                diff_details,
+            )
         )
         if diff_count > 5:
             msg += f"\n  ... and {diff_count - 5} more differences"

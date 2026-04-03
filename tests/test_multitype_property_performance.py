@@ -18,6 +18,7 @@ import pandas as pd
 import pytest
 from pycypher.ingestion.context_builder import ContextBuilder
 from pycypher.star import Star
+from _perf_helpers import perf_threshold
 
 pytestmark = [pytest.mark.slow, pytest.mark.performance]
 
@@ -166,7 +167,7 @@ class TestMultitypePropertyPerformance:
         for _ in range(N):
             s.execute_query("MATCH (n) WHERE n.score > 80 RETURN n.score")
         elapsed = time.perf_counter() - t0
-        assert elapsed < 2.0, (
+        assert elapsed < perf_threshold(2.0), (
             f"20x multi-type property query took {elapsed:.3f}s — "
             f"expected < 2.0s after iterrows fix"
         )
@@ -221,6 +222,6 @@ class TestMultitypePropertyPerformance:
         for _ in range(N):
             dict(zip(df["__ID__"], df["val"]))
         elapsed = time.perf_counter() - t0
-        assert elapsed < 0.5, (
+        assert elapsed < perf_threshold(0.5), (
             f"50x zip dict construction took {elapsed:.3f}s — expected < 0.5s"
         )

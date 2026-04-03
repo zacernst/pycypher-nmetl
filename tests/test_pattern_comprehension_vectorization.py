@@ -42,6 +42,7 @@ from pycypher.relational_models import (
     RelationshipTable,
 )
 from pycypher.star import Star
+from _perf_helpers import perf_threshold
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
@@ -156,7 +157,9 @@ class TestPatternComprehensionCorrectness:
             "MATCH (p:Person) RETURN [(p)-[:KNOWS]->(f:Person) | f.name] AS friends",
         )
         for cell in result["friends"]:
-            assert isinstance(cell, list), f"Expected list, got {type(cell)}: {cell!r}"
+            assert isinstance(cell, list), (
+                f"Expected list, got {type(cell)}: {cell!r}"
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -342,7 +345,9 @@ class TestPatternComprehensionLargeGraph:
         assert len(result) == 200
         for cell in result["friends"]:
             assert isinstance(cell, list)
-            assert len(cell) > 0, "Every person should have at least one friend"
+            assert len(cell) > 0, (
+                "Every person should have at least one friend"
+            )
 
     def test_large_graph_with_where_filter(self) -> None:
         """WHERE applied across 200×10 = 2 000 matches in one vectorised pass."""
@@ -427,7 +432,7 @@ class TestPatternComprehensionPerformance:
         )
         elapsed = time.perf_counter() - start
         assert len(result) == 500
-        assert elapsed < 3.0, (
+        assert elapsed < perf_threshold(3.0), (
             f"500-row pattern comprehension took {elapsed:.3f}s — expected < 3s. "
             "Vectorised implementation should be much faster than per-row loop."
         )
@@ -443,7 +448,7 @@ class TestPatternComprehensionPerformance:
         )
         elapsed = time.perf_counter() - start
         assert len(result) == 500
-        assert elapsed < 3.0, (
+        assert elapsed < perf_threshold(3.0), (
             f"500-row WHERE comprehension took {elapsed:.3f}s — expected < 3s."
         )
 
@@ -457,6 +462,6 @@ class TestPatternComprehensionPerformance:
         )
         elapsed = time.perf_counter() - start
         assert len(result) == 500
-        assert elapsed < 3.0, (
+        assert elapsed < perf_threshold(3.0), (
             f"500-row map_expr comprehension took {elapsed:.3f}s — expected < 3s."
         )

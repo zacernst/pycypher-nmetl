@@ -47,7 +47,9 @@ class TestMissingPropertyError:
         )
         val = result["x"].iloc[0]
         assert (
-            val is None or val is pd.NA or (isinstance(val, float) and math.isnan(val))
+            val is None
+            or val is pd.NA
+            or (isinstance(val, float) and math.isnan(val))
         )
 
     def test_missing_property_is_null_check(

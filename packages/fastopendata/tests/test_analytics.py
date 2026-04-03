@@ -5,7 +5,11 @@ from __future__ import annotations
 import time
 
 import pytest
-from fastopendata.analytics.collector import MetricsCollector, QueryMetric, QueryStatus
+from fastopendata.analytics.collector import (
+    MetricsCollector,
+    QueryMetric,
+    QueryStatus,
+)
 from fastopendata.analytics.engine import AnalyticsEngine, LatencyBreakdown
 
 # ── MetricsCollector ─────────────────────────────────────────────────
@@ -30,7 +34,9 @@ class TestMetricsCollector:
 
     def test_record_error(self) -> None:
         c = MetricsCollector()
-        m = c.record_error("BAD QUERY", total_ms=5.0, error_message="parse failure")
+        m = c.record_error(
+            "BAD QUERY", total_ms=5.0, error_message="parse failure"
+        )
         assert c.total_queries == 1
         assert c.total_errors == 1
         assert c.error_rate == 1.0
@@ -218,7 +224,9 @@ class TestAnalyticsEngine:
             c.record_success(f"Q{i}", total_ms=2000.0 + i)
         engine = AnalyticsEngine(c, slow_threshold_ms=1000.0)
         s = engine.summary()
-        slow_bottleneck = [b for b in s.bottlenecks if b.category == "slow_queries"]
+        slow_bottleneck = [
+            b for b in s.bottlenecks if b.category == "slow_queries"
+        ]
         assert len(slow_bottleneck) == 1
         assert slow_bottleneck[0].affected_queries == 10
 
@@ -243,7 +251,9 @@ class TestAnalyticsEngine:
         self._populate(c, n=20, error_every=2)
         engine = AnalyticsEngine(c)
         s = engine.summary()
-        error_bottleneck = [b for b in s.bottlenecks if b.category == "high_error_rate"]
+        error_bottleneck = [
+            b for b in s.bottlenecks if b.category == "high_error_rate"
+        ]
         assert len(error_bottleneck) == 1
 
     def test_bottleneck_execution_heavy(self) -> None:
@@ -287,7 +297,10 @@ class TestAnalyticsEngine:
         s = engine.summary()
         assert len(s.slowest_queries) == 10  # Default top 10
         # First should be the slowest
-        assert s.slowest_queries[0]["total_ms"] >= s.slowest_queries[1]["total_ms"]
+        assert (
+            s.slowest_queries[0]["total_ms"]
+            >= s.slowest_queries[1]["total_ms"]
+        )
 
     def test_recommendations_generated(self) -> None:
         c = MetricsCollector()

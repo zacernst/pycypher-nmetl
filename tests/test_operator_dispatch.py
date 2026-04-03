@@ -78,7 +78,10 @@ def _eval(frame: BindingFrame, expr) -> object:
 
 class TestArithmeticOperators:
     def test_add(self, frame: BindingFrame) -> None:
-        assert _eval(frame, Arithmetic(operator="+", left=_int(3), right=_int(4))) == 7
+        assert (
+            _eval(frame, Arithmetic(operator="+", left=_int(3), right=_int(4)))
+            == 7
+        )
 
     def test_subtract(self, frame: BindingFrame) -> None:
         assert (
@@ -90,7 +93,10 @@ class TestArithmeticOperators:
         )
 
     def test_multiply(self, frame: BindingFrame) -> None:
-        assert _eval(frame, Arithmetic(operator="*", left=_int(3), right=_int(4))) == 12
+        assert (
+            _eval(frame, Arithmetic(operator="*", left=_int(3), right=_int(4)))
+            == 12
+        )
 
     def test_divide(self, frame: BindingFrame) -> None:
         assert _eval(
@@ -109,7 +115,8 @@ class TestArithmeticOperators:
 
     def test_power(self, frame: BindingFrame) -> None:
         assert (
-            _eval(frame, Arithmetic(operator="^", left=_int(2), right=_int(8))) == 256
+            _eval(frame, Arithmetic(operator="^", left=_int(2), right=_int(8)))
+            == 256
         )
 
     def test_unsupported_operator_raises(self, frame: BindingFrame) -> None:
@@ -131,12 +138,14 @@ class TestArithmeticOperators:
 class TestComparisonOperators:
     def test_equal_true(self, frame: BindingFrame) -> None:
         assert (
-            _eval(frame, Comparison(operator="=", left=_int(5), right=_int(5))) == True
+            _eval(frame, Comparison(operator="=", left=_int(5), right=_int(5)))
+            == True
         )
 
     def test_equal_false(self, frame: BindingFrame) -> None:
         assert (
-            _eval(frame, Comparison(operator="=", left=_int(5), right=_int(6))) == False
+            _eval(frame, Comparison(operator="=", left=_int(5), right=_int(6)))
+            == False
         )
 
     def test_not_equal_true(self, frame: BindingFrame) -> None:
@@ -159,22 +168,26 @@ class TestComparisonOperators:
 
     def test_less_than_true(self, frame: BindingFrame) -> None:
         assert (
-            _eval(frame, Comparison(operator="<", left=_int(3), right=_int(5))) == True
+            _eval(frame, Comparison(operator="<", left=_int(3), right=_int(5)))
+            == True
         )
 
     def test_less_than_false(self, frame: BindingFrame) -> None:
         assert (
-            _eval(frame, Comparison(operator="<", left=_int(5), right=_int(3))) == False
+            _eval(frame, Comparison(operator="<", left=_int(5), right=_int(3)))
+            == False
         )
 
     def test_greater_than_true(self, frame: BindingFrame) -> None:
         assert (
-            _eval(frame, Comparison(operator=">", left=_int(5), right=_int(3))) == True
+            _eval(frame, Comparison(operator=">", left=_int(5), right=_int(3)))
+            == True
         )
 
     def test_greater_than_false(self, frame: BindingFrame) -> None:
         assert (
-            _eval(frame, Comparison(operator=">", left=_int(3), right=_int(5))) == False
+            _eval(frame, Comparison(operator=">", left=_int(3), right=_int(5)))
+            == False
         )
 
     def test_less_than_or_equal_equal(self, frame: BindingFrame) -> None:

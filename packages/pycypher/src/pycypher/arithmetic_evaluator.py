@@ -27,7 +27,7 @@ from pycypher.exceptions import (
     IncompatibleOperatorError,
     UnsupportedOperatorError,
 )
-from pycypher.types import FrameSeries
+from pycypher.cypher_types import FrameSeries
 
 _DEBUG_ENABLED: bool = LOGGER.isEnabledFor(logging.DEBUG)
 
@@ -509,7 +509,6 @@ class ArithmeticExpressionEvaluator:
                 operator=op,
                 left_type=left_type,
                 right_type=right_type,
-                suggestion="Both operands must be of compatible numeric or string types.",
             ) from exc
         if _DEBUG_ENABLED:
             LOGGER.debug(

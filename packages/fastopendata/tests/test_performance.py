@@ -86,7 +86,9 @@ class TestSwarmVelocityDifference:
         assert result == perm_a
 
         # O(n) should complete in well under 100ms for 10k elements
-        assert elapsed_ms < 100, f"Too slow: {elapsed_ms:.1f}ms for {n} elements"
+        assert elapsed_ms < 100, (
+            f"Too slow: {elapsed_ms:.1f}ms for {n} elements"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -114,7 +116,9 @@ class TestContentHash:
         """Measure hashing throughput for batch dedup scenarios."""
         records = [
             StreamRecord(
-                key=f"k{i}", value={"idx": i, "data": "x" * 100}, event_time=float(i),
+                key=f"k{i}",
+                value={"idx": i, "data": "x" * 100},
+                event_time=float(i),
             )
             for i in range(10_000)
         ]
@@ -144,7 +148,9 @@ class TestDeduplicationPerformance:
         elapsed_ms = (time.perf_counter() - start) * 1000
 
         # 100k checks should be fast
-        assert elapsed_ms < 500, f"Too slow: {elapsed_ms:.1f}ms for 100k dedup checks"
+        assert elapsed_ms < 500, (
+            f"Too slow: {elapsed_ms:.1f}ms for 100k dedup checks"
+        )
 
     def test_duplicate_detection_accuracy(self) -> None:
         store = DeduplicationStore(capacity=1000)
@@ -197,7 +203,9 @@ class TestWindowManagerFirePerformance:
 
         # 100 keys * 50 windows = 5000 fired windows
         assert len(fired) == 5000
-        assert elapsed_ms < 200, f"Too slow: {elapsed_ms:.1f}ms for firing 5k windows"
+        assert elapsed_ms < 200, (
+            f"Too slow: {elapsed_ms:.1f}ms for firing 5k windows"
+        )
 
     def test_session_window_merge_correctness(self) -> None:
         mgr = WindowManager(SessionWindow(gap=5.0))
@@ -215,7 +223,9 @@ class TestWindowManagerFirePerformance:
         """Fire only a subset of windows, verify remaining windows survive."""
         mgr = WindowManager(TumblingWindow(size=10.0))
         for i in range(100):
-            mgr.add(StreamRecord(key="k1", value={"i": i}, event_time=float(i)))
+            mgr.add(
+                StreamRecord(key="k1", value={"i": i}, event_time=float(i))
+            )
         # Fire first 3 windows [0,10), [10,20), [20,30)
         fired1 = mgr.fire(30.0)
         assert len(fired1) == 3
@@ -256,7 +266,9 @@ class TestWindowManagerFirePerformance:
 
         # 1000 keys * 25 windows = 25000 fired windows
         assert len(fired) == 25_000
-        assert elapsed_ms < 500, f"Too slow: {elapsed_ms:.1f}ms for firing 25k windows"
+        assert elapsed_ms < 500, (
+            f"Too slow: {elapsed_ms:.1f}ms for firing 25k windows"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -287,7 +299,9 @@ class TestPSOPerformance:
         elapsed_ms = (time.perf_counter() - start) * 1000
 
         assert result.best_fitness > 0
-        assert elapsed_ms < 1000, f"Too slow: {elapsed_ms:.1f}ms for 8-join PSO"
+        assert elapsed_ms < 1000, (
+            f"Too slow: {elapsed_ms:.1f}ms for 8-join PSO"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -301,7 +315,9 @@ class TestAdaptiveInertia:
     def test_inertia_at_boundaries(self) -> None:
         """Inertia should equal max at start, min at end."""
         cfg = SwarmConfig(
-            inertia_weight=0.9, inertia_weight_min=0.3, adaptive_inertia=True,
+            inertia_weight=0.9,
+            inertia_weight_min=0.3,
+            adaptive_inertia=True,
         )
         assert cfg.inertia_at(0, 100) == pytest.approx(0.9)
         assert cfg.inertia_at(99, 100) == pytest.approx(0.3)
@@ -309,7 +325,9 @@ class TestAdaptiveInertia:
     def test_inertia_monotonically_decreasing(self) -> None:
         """Inertia should decrease over iterations."""
         cfg = SwarmConfig(
-            inertia_weight=0.9, inertia_weight_min=0.4, adaptive_inertia=True,
+            inertia_weight=0.9,
+            inertia_weight_min=0.4,
+            adaptive_inertia=True,
         )
         values = [cfg.inertia_at(i, 50) for i in range(50)]
         for i in range(1, len(values)):
@@ -330,7 +348,9 @@ class TestAdaptiveInertia:
     def test_adaptive_pso_finds_optimal(self) -> None:
         """PSO with adaptive inertia should still find good solutions."""
         config = SwarmConfig(
-            adaptive_inertia=True, inertia_weight=0.9, inertia_weight_min=0.3,
+            adaptive_inertia=True,
+            inertia_weight=0.9,
+            inertia_weight_min=0.3,
         )
         optimizer = ParticleSwarmOptimizer(config=config)
         keys = ["small", "medium", "large"]
@@ -353,7 +373,9 @@ class TestAdaptiveInertia:
         # Adaptive inertia
         random.seed(rng_seed)
         adaptive_cfg = SwarmConfig(
-            adaptive_inertia=True, inertia_weight=0.9, inertia_weight_min=0.3,
+            adaptive_inertia=True,
+            inertia_weight=0.9,
+            inertia_weight_min=0.3,
         )
         adaptive_opt = ParticleSwarmOptimizer(config=adaptive_cfg)
         adaptive_result = adaptive_opt.optimize(keys, cards, iterations=80)
@@ -415,7 +437,9 @@ class TestBatchStreamTableJoin:
 
         # Left join: all records preserved
         assert len(batch_results) == 6
-        matched_count = sum(1 for r in batch_results if r.value["__table_match__"])
+        matched_count = sum(
+            1 for r in batch_results if r.value["__table_match__"]
+        )
         unmatched_count = sum(
             1 for r in batch_results if not r.value["__table_match__"]
         )
@@ -429,7 +453,9 @@ class TestBatchStreamTableJoin:
 
         # Individual processing
         join1 = StreamTableJoin(table, lambda r: r.key, join_type="inner")
-        individual = [r for rec in records if (r := join1.process(rec)) is not None]
+        individual = [
+            r for rec in records if (r := join1.process(rec)) is not None
+        ]
 
         # Batch processing
         join2 = StreamTableJoin(table, lambda r: r.key, join_type="inner")
@@ -451,7 +477,9 @@ class TestBatchStreamTableJoin:
         elapsed_ms = (time.perf_counter() - start) * 1000
 
         assert len(results) > 0
-        assert elapsed_ms < 2000, f"Too slow: {elapsed_ms:.1f}ms for 100k batch join"
+        assert elapsed_ms < 2000, (
+            f"Too slow: {elapsed_ms:.1f}ms for 100k batch join"
+        )
 
     def test_batch_empty(self) -> None:
         """Empty batch should return empty results."""

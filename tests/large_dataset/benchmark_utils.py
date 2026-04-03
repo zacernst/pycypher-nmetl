@@ -78,7 +78,9 @@ class BenchmarkResult:
     def median_memory_delta_mb(self) -> float:
         """Median net memory change across iterations."""
         return (
-            statistics.median(self.memory_deltas_mb) if self.memory_deltas_mb else 0.0
+            statistics.median(self.memory_deltas_mb)
+            if self.memory_deltas_mb
+            else 0.0
         )
 
     def assert_time_under(self, threshold_s: float) -> None:

@@ -483,7 +483,9 @@ class TestFunctionErrorHandling:
         # Register a badly behaved function that returns wrong type
         registry.register_function(
             name="badFunction",
-            callable=lambda s: "wrong_type",  # Returns string instead of Series
+            callable=lambda s: (
+                "wrong_type"
+            ),  # Returns string instead of Series
             min_args=1,
             max_args=1,
         )

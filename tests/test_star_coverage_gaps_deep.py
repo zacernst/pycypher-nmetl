@@ -35,7 +35,10 @@ def star() -> Star:
         ContextBuilder()
         .add_entity("Person", people)
         .add_relationship(
-            "KNOWS", rels, source_col="__SOURCE__", target_col="__TARGET__",
+            "KNOWS",
+            rels,
+            source_col="__SOURCE__",
+            target_col="__TARGET__",
         )
         .build()
     )
@@ -189,7 +192,9 @@ class TestQueryHasMutations:
     def test_set_query_has_mutations(self) -> None:
         from pycypher.ast_models import _parse_cypher_cached
 
-        parsed = _parse_cypher_cached("MATCH (n:Person) SET n.age = 30 RETURN n")
+        parsed = _parse_cypher_cached(
+            "MATCH (n:Person) SET n.age = 30 RETURN n"
+        )
         assert Star._query_has_mutations(parsed) is True
 
 

@@ -112,12 +112,18 @@ class TestQualityCollapseStrategy:
     def test_collapse_when_all_complete(self) -> None:
         strategy = QualityCollapseStrategy()
         universes = [Universe() for _ in range(3)]
-        assert strategy.should_collapse(universes, total=3, elapsed_ms=1.0) is True
+        assert (
+            strategy.should_collapse(universes, total=3, elapsed_ms=1.0)
+            is True
+        )
 
     def test_no_collapse_when_incomplete(self) -> None:
         strategy = QualityCollapseStrategy()
         universes = [Universe()]
-        assert strategy.should_collapse(universes, total=3, elapsed_ms=1.0) is False
+        assert (
+            strategy.should_collapse(universes, total=3, elapsed_ms=1.0)
+            is False
+        )
 
     def test_collapse_on_timeout(self) -> None:
         strategy = QualityCollapseStrategy(timeout_ms=50.0)

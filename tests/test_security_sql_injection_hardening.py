@@ -37,7 +37,9 @@ class TestSQLInjectionVulnerabilities:
             try:
                 # Malicious path with SQL injection attempt
                 # This tries to inject SQL that would create a malicious table
-                malicious_path = f"{tmp_path}'; CREATE TABLE hacked (data TEXT); --"
+                malicious_path = (
+                    f"{tmp_path}'; CREATE TABLE hacked (data TEXT); --"
+                )
 
                 # This should NOT execute the injected SQL
                 # If vulnerable, it would create the "hacked" table
@@ -64,7 +66,9 @@ class TestSQLInjectionVulnerabilities:
 
             try:
                 # Malicious query with SQL injection
-                malicious_query = "SELECT * FROM source; DROP TABLE IF EXISTS users; --"
+                malicious_query = (
+                    "SELECT * FROM source; DROP TABLE IF EXISTS users; --"
+                )
 
                 # This should NOT execute the DROP TABLE command
                 with pytest.raises((ValueError, Exception)) as exc_info:
@@ -119,7 +123,9 @@ class TestSQLInjectionVulnerabilities:
 
             try:
                 # Malicious path with SQL injection
-                malicious_path = f"{tmp_path}'; UPDATE source SET name = 'hacked'; --"
+                malicious_path = (
+                    f"{tmp_path}'; UPDATE source SET name = 'hacked'; --"
+                )
 
                 with pytest.raises((ValueError, Exception)) as exc_info:
                     DuckDBReader.from_json(malicious_path)
@@ -170,7 +176,9 @@ class TestDataSourceSecurityIntegration:
         # Should prevent path traversal and SQL injection
         error_msg = str(exc_info.value).lower()
         assert (
-            "security" in error_msg or "traversal" in error_msg or "path" in error_msg
+            "security" in error_msg
+            or "traversal" in error_msg
+            or "path" in error_msg
         )
 
     def test_sql_data_source_query_validation(self) -> None:
@@ -179,7 +187,9 @@ class TestDataSourceSecurityIntegration:
         connection = "sqlite:///:memory:"
 
         # Malicious query with injection attempt
-        malicious_query = "SELECT * FROM users WHERE id = 1; DROP TABLE sessions; --"
+        malicious_query = (
+            "SELECT * FROM users WHERE id = 1; DROP TABLE sessions; --"
+        )
 
         with pytest.raises((ValueError, Exception)) as exc_info:
             source = SqlDataSource(connection, malicious_query)

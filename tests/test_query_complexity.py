@@ -55,7 +55,8 @@ class TestComplexityScoring:
         )
         assert unbounded.total > bounded.total
         assert any(
-            "unbounded" in w.lower() or "Unbounded" in w for w in unbounded.warnings
+            "unbounded" in w.lower() or "Unbounded" in w
+            for w in unbounded.warnings
         )
 
     def test_aggregation_adds_complexity(self) -> None:
@@ -174,7 +175,9 @@ class TestCostGateConfig:
         return Star(context=ContextBuilder().add_entity("Person", df).build())
 
     def test_env_max_complexity_rejects(
-        self, star: Star, monkeypatch: pytest.MonkeyPatch,
+        self,
+        star: Star,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """PYCYPHER_MAX_COMPLEXITY_SCORE env var gates queries."""
         import pycypher.config as cfg
@@ -187,7 +190,9 @@ class TestCostGateConfig:
             star.execute_query("MATCH (p:Person) RETURN p.name")
 
     def test_env_max_complexity_allows(
-        self, star: Star, monkeypatch: pytest.MonkeyPatch,
+        self,
+        star: Star,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """High env threshold allows queries through."""
         import pycypher.config as cfg
@@ -200,7 +205,9 @@ class TestCostGateConfig:
         assert len(result) == 2
 
     def test_explicit_param_overrides_env(
-        self, star: Star, monkeypatch: pytest.MonkeyPatch,
+        self,
+        star: Star,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Per-query max_complexity_score overrides env default."""
         import pycypher.config as cfg
@@ -216,7 +223,6 @@ class TestCostGateConfig:
         )
         assert len(result) == 2
 
-    @pytest.mark.xfail(reason="Pipeline does not yet propagate complexity_score metadata")
     def test_warn_threshold_logs_warning(
         self,
         star: Star,
@@ -226,16 +232,22 @@ class TestCostGateConfig:
         """PYCYPHER_COMPLEXITY_WARN_THRESHOLD emits warning but allows query."""
         import logging
 
+        import pycypher.config as config_mod
         import pycypher.star as star_mod
 
+        # Set warn threshold low so any query triggers a warning.
         monkeypatch.setattr(star_mod, "_COMPLEXITY_WARN", 1)
+        monkeypatch.setattr(config_mod, "COMPLEXITY_WARN_THRESHOLD", 1)
 
         with caplog.at_level(logging.WARNING):
             result = star.execute_query("MATCH (p:Person) RETURN p.name")
 
         assert len(result) == 2
         assert any(
-            ("complexity score" in r.message.lower() and "warning" in r.message.lower())
+            (
+                "complexity score" in r.message.lower()
+                and "warning" in r.message.lower()
+            )
             or "exceeds warning" in r.message.lower()
             for r in caplog.records
         )

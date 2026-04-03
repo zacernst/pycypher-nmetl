@@ -162,7 +162,9 @@ class TestEdgeDataFrameCopyElimination:
         # Structural check: copy allocates new memory, view does not
         # The copy's numpy buffers should NOT share memory with the original
         for col in ["src", "tgt"]:
-            view_shares = view_df[col].values.base is large_df[col].values.base or (
+            view_shares = view_df[col].values.base is large_df[
+                col
+            ].values.base or (
                 view_df[col].values.base is not None
                 and large_df[col].values.base is not None
                 and view_df[col].values.base is large_df[col].values.base
@@ -227,7 +229,9 @@ class TestEdgeDataFrameCopyElimination:
             text=True,
         )
 
-        patterns = result.stdout.strip().split("\n") if result.stdout.strip() else []
+        patterns = (
+            result.stdout.strip().split("\n") if result.stdout.strip() else []
+        )
 
         print("Found column selection + copy patterns:")
         for pattern in patterns:
@@ -312,7 +316,9 @@ class TestEdgeDataFrameCopyElimination:
             # Time the copy pattern (simulating pre-optimization behavior)
             t0 = time.perf_counter()
             for _i in range(n_iters):
-                edge_df_copy = large_rel_df[["__SOURCE__", "__TARGET__"]].copy()
+                edge_df_copy = large_rel_df[
+                    ["__SOURCE__", "__TARGET__"]
+                ].copy()
                 len(edge_df_copy)
             copy_times.append(time.perf_counter() - t0)
 
@@ -325,7 +331,9 @@ class TestEdgeDataFrameCopyElimination:
 
         median_copy = statistics.median(copy_times)
         median_view = statistics.median(view_times)
-        speedup = median_copy / median_view if median_view > 0 else float("inf")
+        speedup = (
+            median_copy / median_view if median_view > 0 else float("inf")
+        )
 
         print("Performance validation for copy elimination:")
         print(f"Copy pattern median: {median_copy:.4f}s")

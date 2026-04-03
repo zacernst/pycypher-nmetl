@@ -222,7 +222,9 @@ class TestNormalizeFuncArgs:
     def test_normalize_single_argument(self) -> None:
         """Test normalization of single argument returns empty list."""
         result = _normalize_func_args("n.age")
-        assert result == []  # Single strings don't match expected dict/list format
+        assert (
+            result == []
+        )  # Single strings don't match expected dict/list format
 
 
 class TestDispatchTables:

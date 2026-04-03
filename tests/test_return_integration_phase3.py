@@ -468,7 +468,9 @@ class TestReturnGroupedAggregationStringParsing:
         assert len(result_df) == 3
         assert set(result_df.columns) == {"city", "names"}
 
-        city_names = {row["city"]: set(row["names"]) for _, row in result_df.iterrows()}
+        city_names = {
+            row["city"]: set(row["names"]) for _, row in result_df.iterrows()
+        }
         assert city_names["NYC"] == {"Alice", "Bob"}
         assert city_names["SF"] == {"Carol", "Dave"}
         assert city_names["LA"] == {"Eve"}

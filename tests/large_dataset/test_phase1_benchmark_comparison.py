@@ -29,19 +29,24 @@ from pycypher import (
     RelationshipTable,
     Star,
 )
+from _perf_helpers import perf_threshold
 
 # ---------------------------------------------------------------------------
 # Configuration (mirrors bench_memory_baseline.py)
 # ---------------------------------------------------------------------------
 
-BASELINE_PATH = Path(__file__).parent.parent / "benchmarks" / "baseline_report.json"
+BASELINE_PATH = (
+    Path(__file__).parent.parent / "benchmarks" / "baseline_report.json"
+)
 
 SCALE_FACTORS: list[int] = [100, 1_000, 10_000]
 
 QUERIES: dict[str, str] = {
     "simple_scan": "MATCH (n:Person) RETURN n.name",
     "filtered_scan": "MATCH (n:Person) WHERE n.age > 30 RETURN n.name, n.age",
-    "single_hop": ("MATCH (n:Person)-[r:KNOWS]->(m:Person) RETURN n.name, m.name"),
+    "single_hop": (
+        "MATCH (n:Person)-[r:KNOWS]->(m:Person) RETURN n.name, m.name"
+    ),
     "filtered_hop": (
         "MATCH (n:Person)-[r:KNOWS]->(m:Person) "
         "WHERE n.age > 25 RETURN n.name, m.name, r.since"
@@ -51,7 +56,9 @@ QUERIES: dict[str, str] = {
         "RETURN a.name, c.name"
     ),
     "aggregation_count": "MATCH (n:Person) RETURN n.dept, count(n) AS cnt",
-    "aggregation_avg": ("MATCH (n:Person) RETURN n.dept, avg(n.salary) AS avg_sal"),
+    "aggregation_avg": (
+        "MATCH (n:Person) RETURN n.dept, avg(n.salary) AS avg_sal"
+    ),
     "varlength_path": (
         "MATCH (a:Person)-[:KNOWS*1..3]->(b:Person) RETURN a.name, b.name"
     ),
@@ -360,7 +367,7 @@ class TestNoRegression:
         current_time = m["elapsed_seconds"]
 
         # Allow 3x tolerance (CI variance, Python version differences)
-        assert current_time < max(baseline_time * 3, 0.5), (
+        assert current_time < max(baseline_time * 3, perf_threshold(0.5)), (
             f"{query_name}@{scale}: {current_time:.4f}s vs "
             f"baseline {baseline_time:.4f}s (>3x regression)"
         )
@@ -524,7 +531,9 @@ class TestDuckDBComparison:
             pandas_m["elapsed_seconds"],
             1e-6,
         )
-        assert ratio < 5, f"DuckDB {ratio:.1f}x slower than pandas at {scale} rows"
+        assert ratio < 5, (
+            f"DuckDB {ratio:.1f}x slower than pandas at {scale} rows"
+        )
 
 
 # ---------------------------------------------------------------------------

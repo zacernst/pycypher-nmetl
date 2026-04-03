@@ -10,18 +10,31 @@ changes may occur in any 0.0.x release.
 ## [Unreleased]
 
 ### Added
+
+#### Performance & Indexing
+- Graph-native index system (`GraphIndexManager`, `AdjacencyIndex`, `PropertyValueIndex`, `EntityLabelIndex`) — transforms pattern matching from O(E) full table scans to O(degree) neighbor lookups
+- LeapfrogTriejoin algorithm for worst-case-optimal multi-way joins — O(N^{w/2}) vs O(N^{w-1}) for iterated binary joins (Veldhuizen 2014)
+- Vectorized property store with O(k log N) bulk resolution — eliminates O(N log N) build cost per type on first property access
+- DataFrame copy elimination via RangeIndex guards — removes 5 redundant copies per query in hot paths
+- Cardinality estimator for query optimization
+- JOIN algorithm selection optimizer (hash join vs. sort-merge vs. leapfrog)
+- Learned join selectivity feedback loops with geometric mean correction factors for self-improving query plans
+
+#### Caching & Resource Management
+- Intelligent query result cache with SLRU hybrid eviction and per-type invalidation
+- Query rate limiting framework (`QueryRateLimiter`) — thread-safe token bucket with per-session and per-caller limiting via `PYCYPHER_RATE_LIMIT_QPS` and `PYCYPHER_RATE_LIMIT_BURST`
+
+#### Security & Observability
+- Enterprise audit logging (`pycypher.audit`) — opt-in JSON-structured query audit log activated via `PYCYPHER_AUDIT_LOG`, records query_id, timing, status, and row counts (never logs parameter values)
+- Unified backend integration protocol (`backend_engine`) for pluggable DataFrame engines with DuckDB, Polars, and Pandas backends
+
+#### Developer Experience
+- Keyword typo detection in `CypherSyntaxError` (50+ Cypher keywords)
+- Improved error messages with contextual guidance and "Did you mean?" suggestions
 - Sphinx documentation builds with zero warnings
 - Diagnostic logging for silent query optimizer fallbacks
 - Per-marker test timeouts for CI reliability
 - `nmetl config --show-effective` CLI command for runtime configuration inspection
-- LeapfrogTriejoin algorithm for worst-case-optimal joins
-- Cardinality estimator for query optimization
-- JOIN algorithm selection optimizer (hash join vs. sort-merge vs. leapfrog)
-- Learned join selectivity feedback loops for self-improving query plans
-- Memory-optimized DataFrame operations (copy elimination)
-- Intelligent query result cache with SLRU hybrid eviction
-- Keyword typo detection in `CypherSyntaxError` (50+ Cypher keywords)
-- Improved error messages with contextual guidance and "Did you mean?" suggestions
 
 ### Fixed
 - SecurityError bypass in error policy configuration

@@ -77,13 +77,17 @@ class SchemaRegistry:
         if name not in self._histories:
             self._histories[name] = SchemaHistory(table_name=name)
             self._histories[name].versions.append(schema)
-            return CompatibilityResult(compatible=True, level=self._compatibility_level)
+            return CompatibilityResult(
+                compatible=True, level=self._compatibility_level
+            )
 
         history = self._histories[name]
         latest = history.latest
         if latest is None:
             history.versions.append(schema)
-            return CompatibilityResult(compatible=True, level=self._compatibility_level)
+            return CompatibilityResult(
+                compatible=True, level=self._compatibility_level
+            )
 
         result = self._checker.check(latest, schema, self._compatibility_level)
         if result.compatible:
@@ -117,7 +121,9 @@ class SchemaRegistry:
             return None
         return SchemaDiff.compute(old, new)
 
-    def rollback(self, table_name: str, target_version: int) -> TableSchema | None:
+    def rollback(
+        self, table_name: str, target_version: int
+    ) -> TableSchema | None:
         """Rollback to a prior version, removing all later versions.
 
         Returns the rolled-back schema, or *None* if the version doesn't exist.
@@ -129,7 +135,9 @@ class SchemaRegistry:
         if target is None:
             return None
         # Trim versions after target
-        history.versions = [v for v in history.versions if v.version <= target_version]
+        history.versions = [
+            v for v in history.versions if v.version <= target_version
+        ]
         return target
 
     def check_compatibility(
@@ -140,7 +148,9 @@ class SchemaRegistry:
         """Dry-run compatibility check without registering."""
         latest = self.get_latest(table_name)
         if latest is None:
-            return CompatibilityResult(compatible=True, level=self._compatibility_level)
+            return CompatibilityResult(
+                compatible=True, level=self._compatibility_level
+            )
         return self._checker.check(latest, proposed, self._compatibility_level)
 
     def set_compatibility_level(self, level: CompatibilityLevel) -> None:

@@ -87,7 +87,9 @@ class TestSecureRandomHashImplementation:
 
         # Should have consistent length
         hash2 = random_hash()
-        assert len(secure_hash) == len(hash2), "Hash length should be consistent"
+        assert len(secure_hash) == len(hash2), (
+            "Hash length should be consistent"
+        )
 
     def test_relation_identifier_uses_secure_hash(self):
         """Test that Relation instances get secure identifiers after fix."""
@@ -95,8 +97,12 @@ class TestSecureRandomHashImplementation:
         relation2 = Relation()
 
         # Should use the secure hash (longer than 32 chars for SHA256)
-        assert len(relation1.identifier) > 32, "Should use secure hash, not MD5"
-        assert len(relation2.identifier) > 32, "Should use secure hash, not MD5"
+        assert len(relation1.identifier) > 32, (
+            "Should use secure hash, not MD5"
+        )
+        assert len(relation2.identifier) > 32, (
+            "Should use secure hash, not MD5"
+        )
 
         # Should still be different for each relation
         assert relation1.identifier != relation2.identifier

@@ -95,7 +95,9 @@ class TestContextualGuidance:
         with pytest.raises(_PARSE_ERRORS) as exc_info:
             parser.parse("RETURN 'unclosed")
         msg = str(exc_info.value)
-        assert "Hint" in msg or "quote" in msg.lower() or "string" in msg.lower()
+        assert (
+            "Hint" in msg or "quote" in msg.lower() or "string" in msg.lower()
+        )
 
     def test_where_without_match_hint(self, parser):
         """WHERE without preceding MATCH should produce guidance."""

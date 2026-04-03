@@ -807,7 +807,9 @@ class TestPathVariableHopCount:
         from pycypher.binding_frame import PATH_HOP_COLUMN_PREFIX
 
         hop_cols = [
-            c for c in frame.bindings.columns if c.startswith(PATH_HOP_COLUMN_PREFIX)
+            c
+            for c in frame.bindings.columns
+            if c.startswith(PATH_HOP_COLUMN_PREFIX)
         ]
         assert len(hop_cols) == 0
 
@@ -874,9 +876,13 @@ class TestPredicatePushdown:
         # WHERE should be called once, pushed down to path with 'a' (4 rows)
         # before the cross-join (which would have 16 rows)
         assert len(pushdown_tracker) == 1
-        assert pushdown_tracker[0] == 4  # Applied to 4-row path, not 16-row join
+        assert (
+            pushdown_tracker[0] == 4
+        )  # Applied to 4-row path, not 16-row join
 
-    def test_no_pushdown_cross_path_vars(self, social_context: Context) -> None:
+    def test_no_pushdown_cross_path_vars(
+        self, social_context: Context
+    ) -> None:
         """WHERE referencing both paths' variables applied after join."""
         where_frame_sizes: list[int] = []
 
@@ -899,7 +905,9 @@ class TestPredicatePushdown:
         where_pred = Comparison(
             operator=">",
             left=PropertyLookup(expression=Variable(name="a"), property="age"),
-            right=PropertyLookup(expression=Variable(name="b"), property="age"),
+            right=PropertyLookup(
+                expression=Variable(name="b"), property="age"
+            ),
         )
         match_clause = Match(
             pattern=Pattern(

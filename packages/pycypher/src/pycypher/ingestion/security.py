@@ -6,8 +6,11 @@ and other security vulnerabilities in data source operations.
 
 from __future__ import annotations
 
+import json
 import logging
+import os
 import re
+from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -15,6 +18,103 @@ _logger = logging.getLogger(__name__)
 
 # Re-export for backward compatibility — canonical definition is in exceptions.py.
 from pycypher.exceptions import SecurityError as SecurityError
+
+# ---------------------------------------------------------------------------
+# Security event logging — dedicated logger for incident response
+# ---------------------------------------------------------------------------
+
+#: Dedicated security event logger — separate from the query audit logger
+#: so that security events can be routed to a SIEM or alerting pipeline
+#: independently.
+SECURITY_LOGGER = logging.getLogger("pycypher.security")
+
+#: Maximum length of the input sample included in security event records.
+_MAX_INPUT_SAMPLE_LENGTH = 256
+
+_TRUE_VALUES = frozenset({"1", "true", "yes"})
+
+
+def is_security_log_enabled() -> bool:
+    """Return whether the security event logger has any active handlers."""
+    return SECURITY_LOGGER.isEnabledFor(logging.WARNING) and bool(
+        SECURITY_LOGGER.handlers
+        or (SECURITY_LOGGER.parent and SECURITY_LOGGER.parent.handlers),
+    )
+
+
+def enable_security_log(*, level: int = logging.WARNING) -> None:
+    """Programmatically enable security event logging to *stderr*.
+
+    Safe to call multiple times — a handler is added only once.
+
+    Args:
+        level: Logging level for the security logger (default ``WARNING``).
+
+    """
+    if any(
+        isinstance(h, logging.StreamHandler) for h in SECURITY_LOGGER.handlers
+    ):
+        return
+    handler = logging.StreamHandler()
+    handler.setFormatter(logging.Formatter("%(message)s"))
+    SECURITY_LOGGER.addHandler(handler)
+    SECURITY_LOGGER.setLevel(level)
+    SECURITY_LOGGER.propagate = False
+
+
+def _truncate_input(value: str) -> str:
+    """Truncate an input sample for safe inclusion in log records."""
+    if len(value) <= _MAX_INPUT_SAMPLE_LENGTH:
+        return value
+    return value[:_MAX_INPUT_SAMPLE_LENGTH] + "..."
+
+
+def security_event_log(
+    *,
+    event_type: str,
+    input_sample: str | None = None,
+    source_function: str | None = None,
+    detail: str | None = None,
+) -> None:
+    """Log a security event for incident response.
+
+    Emits a structured JSON record to the ``pycypher.security`` logger
+    whenever a :class:`SecurityError` is raised.  Records include enough
+    context for incident triage without leaking sensitive data.
+
+    The logger is **off by default** and activated by setting the
+    ``PYCYPHER_SECURITY_LOG`` environment variable to ``1``, ``true``,
+    or ``yes``, or by calling :func:`enable_security_log`.
+
+    Args:
+        event_type: Category of the blocked threat (e.g.
+            ``"sql_injection"``, ``"path_traversal"``, ``"ssrf"``).
+        input_sample: The offending input, truncated for safety.
+            Parameter *values* should never be passed here — use
+            structural descriptions instead.
+        source_function: The validation function that caught the threat.
+        detail: Optional free-text detail (e.g. matched pattern name).
+
+    """
+    if not is_security_log_enabled():
+        return
+    record: dict[str, object] = {
+        "event": "security",
+        "event_type": event_type,
+        "timestamp": datetime.now(tz=timezone.utc).isoformat(),
+    }
+    if input_sample is not None:
+        record["input_sample"] = _truncate_input(input_sample)
+    if source_function is not None:
+        record["source_function"] = source_function
+    if detail is not None:
+        record["detail"] = detail
+    SECURITY_LOGGER.warning(json.dumps(record, separators=(",", ":")))
+
+
+# Auto-enable when the environment variable is set.
+if os.environ.get("PYCYPHER_SECURITY_LOG", "").strip().lower() in _TRUE_VALUES:
+    enable_security_log()
 
 
 def sanitize_file_path(path: str) -> str:
@@ -36,6 +136,12 @@ def sanitize_file_path(path: str) -> str:
 
     # Check for path traversal attempts
     if ".." in path:
+        security_event_log(
+            event_type="path_traversal",
+            input_sample=path,
+            source_function="sanitize_file_path",
+            detail="'..' component in path",
+        )
         msg = "Path traversal detected: .. not allowed in paths"
         raise SecurityError(msg)
 
@@ -52,6 +158,12 @@ def sanitize_file_path(path: str) -> str:
         "/sbin/",
     )
     if path.startswith(_SENSITIVE_PREFIXES):
+        security_event_log(
+            event_type="path_traversal",
+            input_sample=path,
+            source_function="sanitize_file_path",
+            detail="sensitive system path access attempt",
+        )
         msg = f"Access to sensitive system path denied: {path}"
         raise SecurityError(msg)
 
@@ -257,6 +369,12 @@ def _reject_dangerous_table_functions(normalised_query: str) -> None:
         # Match function_name( with optional whitespace before the paren
         pattern = rf"\b{re.escape(func_name)}\s*\("
         if re.search(pattern, normalised_query):
+            security_event_log(
+                event_type="sql_injection",
+                input_sample=normalised_query,
+                source_function="_reject_dangerous_table_functions",
+                detail=f"dangerous table function: {func_name!r}",
+            )
             msg = (
                 f"Dangerous DuckDB table function {func_name!r} detected in query. "
                 "User-supplied queries may only reference the 'source' view. "
@@ -267,6 +385,12 @@ def _reject_dangerous_table_functions(normalised_query: str) -> None:
     for prefix in _DANGEROUS_FUNCTION_PREFIXES:
         pattern = rf"\b{re.escape(prefix)}\w*\s*\("
         if re.search(pattern, normalised_query):
+            security_event_log(
+                event_type="sql_injection",
+                input_sample=normalised_query,
+                source_function="_reject_dangerous_table_functions",
+                detail=f"dangerous function prefix: {prefix!r}",
+            )
             msg = (
                 f"Dangerous DuckDB function with prefix {prefix!r} detected in query. "
                 "User-supplied queries may only reference the 'source' view. "
@@ -317,6 +441,12 @@ def validate_sql_query(query: str) -> None:
     semicolon_count = _count_unquoted_semicolons(cleaned_stripped)
     # Allow at most one trailing semicolon (some tools add it).
     if semicolon_count > 1:
+        security_event_log(
+            event_type="sql_injection",
+            input_sample=query,
+            source_function="validate_sql_query",
+            detail="multiple SQL statements (statement stacking)",
+        )
         msg = "Multiple SQL statements detected - potential injection attack"
         raise SecurityError(msg)
     # If there is exactly one semicolon, it must be the very last non-space char.
@@ -332,6 +462,12 @@ def validate_sql_query(query: str) -> None:
     first_word = normalised.split(" ", maxsplit=1)[0] if normalised else ""
 
     if first_word not in _ALLOWED_SQL_PREFIXES:
+        security_event_log(
+            event_type="sql_injection",
+            input_sample=query,
+            source_function="validate_sql_query",
+            detail=f"disallowed statement prefix: {first_word!r}",
+        )
         msg = (
             f"Only SELECT queries are allowed for data ingestion. "
             f"Got statement starting with: {first_word!r}"
@@ -360,6 +496,18 @@ def sanitize_sql_identifier(identifier: str) -> str:
     """
     if not identifier:
         msg = "Empty identifier not allowed"
+        raise SecurityError(msg)
+
+    # SECURITY: Reject NUL bytes which can truncate strings in some SQL
+    # engines, potentially bypassing validation that checked the full string.
+    if "\x00" in identifier:
+        security_event_log(
+            event_type="sql_injection",
+            input_sample=repr(identifier),
+            source_function="sanitize_sql_identifier",
+            detail="NUL byte in SQL identifier",
+        )
+        msg = "NUL byte (\\x00) not allowed in SQL identifiers"
         raise SecurityError(msg)
 
     # SQL identifiers should only contain alphanumeric characters and underscores
@@ -490,6 +638,12 @@ def _check_ssrf_hostname(hostname: str) -> None:
         },
     )
     if hostname_lower in _INTERNAL_HOSTNAMES:
+        security_event_log(
+            event_type="ssrf",
+            input_sample=hostname,
+            source_function="_check_ssrf_hostname",
+            detail="internal hostname blocked",
+        )
         msg = (
             f"SSRF protection: hostname {hostname!r} resolves to a local address. "
             "Requests to internal services are not allowed."
@@ -530,6 +684,12 @@ def _check_ssrf_hostname(hostname: str) -> None:
         or addr.is_link_local
         or addr.is_reserved
     ):
+        security_event_log(
+            event_type="ssrf",
+            input_sample=hostname,
+            source_function="_check_ssrf_hostname",
+            detail=f"private/internal address {addr} blocked",
+        )
         msg = (
             f"SSRF protection: address {addr} (from hostname {hostname!r}) is in a "
             f"private/internal range. Requests to internal services are not allowed."
@@ -553,6 +713,12 @@ def escape_sql_string_literal(value: str) -> str:
     # SECURITY: Reject NUL bytes which can truncate strings in some SQL
     # engines, potentially bypassing validation that checked the full string.
     if "\x00" in value:
+        security_event_log(
+            event_type="sql_injection",
+            input_sample=repr(value),
+            source_function="escape_sql_string_literal",
+            detail="NUL byte in SQL string literal",
+        )
         msg = "NUL byte (\\x00) not allowed in SQL string literals"
         raise SecurityError(msg)
 
@@ -621,7 +787,7 @@ def mask_uri_credentials(uri: str) -> str:
 
     try:
         parsed = urlparse(uri)
-    except Exception:
+    except Exception:  # noqa: BLE001 — best-effort password masking; never block on parse failure
         _logger.debug(
             "URI parse failed during password masking", exc_info=True
         )

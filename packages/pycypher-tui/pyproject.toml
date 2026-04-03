@@ -1,0 +1,45 @@
+[build-system]
+requires = ["hatchling>=1.24.2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pycypher-tui"
+version = "0.0.1"
+description = "VIM-style TUI for PyCypher ETL pipeline configuration"
+readme = "README.md"
+requires-python = ">=3.12"
+keywords = ["tui", "vim", "etl", "cypher", "pipeline"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.14",
+]
+dependencies = [
+    "pycypher",
+    "textual>=1.0.0,<2.0.0",
+    "pyyaml>=6.0.0,<7.0.0",
+]
+
+[[project.authors]]
+name = "Zachary Ernst"
+email = "zac.ernst@gmail.com"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.24.0",
+    "textual-dev>=1.0.0",
+]
+
+[project.scripts]
+pycypher-tui = "pycypher_tui.cli:cli_main"
+
+[tool.ruff]
+line-length = 79
+indent-width = 4
+target-version = "py314"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"

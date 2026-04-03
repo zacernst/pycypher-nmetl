@@ -191,9 +191,7 @@ class TestQueryEquivalence:
     ) -> None:
         """MATCH WHERE == MATCH WITH WHERE (same filter, different clause)."""
         star = _fixed_star(ages)
-        q_direct = (
-            f"MATCH (n:Person) WHERE n.age > {threshold} RETURN n.name ORDER BY n.name"
-        )
+        q_direct = f"MATCH (n:Person) WHERE n.age > {threshold} RETURN n.name ORDER BY n.name"
         q_with = (
             f"MATCH (n:Person) "
             f"WITH n WHERE n.age > {threshold} "
@@ -223,9 +221,7 @@ class TestQueryEquivalence:
             f"MATCH (n:Person) WHERE NOT n.age > {threshold} "
             f"RETURN n.name ORDER BY n.name"
         )
-        q2 = (
-            f"MATCH (n:Person) WHERE n.age <= {threshold} RETURN n.name ORDER BY n.name"
-        )
+        q2 = f"MATCH (n:Person) WHERE n.age <= {threshold} RETURN n.name ORDER BY n.name"
         r1 = star.execute_query(q1)
         r2 = star.execute_query(q2)
         pd.testing.assert_frame_equal(r1, r2)

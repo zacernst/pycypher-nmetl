@@ -64,7 +64,9 @@ def _build_context(n: int, n_rels: int | None = None) -> Context:
         entity_type="Person",
         identifier="Person",
         column_names=list(entity_df.columns),
-        source_obj_attribute_map={c: c for c in entity_df.columns if c != ID_COLUMN},
+        source_obj_attribute_map={
+            c: c for c in entity_df.columns if c != ID_COLUMN
+        },
         attribute_map={c: c for c in entity_df.columns if c != ID_COLUMN},
         source_obj=entity_df,
     )
@@ -272,9 +274,11 @@ class TestBackendEquivalence:
 
         p_result = pb.sort(df, by=["a", "b"], ascending=[True, False])
         d_result = db.sort(df, by=["a", "b"], ascending=[True, False])
+        # DuckDB sort returns DuckDBLazyFrame for sort+limit fusion;
+        # materialise via to_pandas() for comparison
         pd.testing.assert_frame_equal(
-            p_result,
-            d_result,
+            pb.to_pandas(p_result),
+            db.to_pandas(d_result),
             check_dtype=False,
             check_exact=False,
         )

@@ -319,9 +319,9 @@ class AggregationPlanner:
 
         # Build the unique-group skeleton DataFrame (one row per group, group
         # key columns first, in first-seen order matching groupby sort=False).
-        unique_groups: pd.DataFrame = (
-            _groupby_obj.first().reset_index()
-        )[group_key_aliases]
+        unique_groups: pd.DataFrame = (_groupby_obj.first().reset_index())[
+            group_key_aliases
+        ]
 
         # Attach vectorised agg results — positional alignment is guaranteed
         # because both use sort=False against the same group_df.

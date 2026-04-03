@@ -334,7 +334,9 @@ class TestContextBuilder:
     def test_add_entity_from_dataframe(self) -> None:
         """add_entity with a pandas DataFrame builds the correct EntityMapping."""
         df = pd.DataFrame({"__ID__": [1, 2], "name": ["Alice", "Bob"]})
-        ctx = ContextBuilder().add_entity("Person", df, id_col="__ID__").build()
+        ctx = (
+            ContextBuilder().add_entity("Person", df, id_col="__ID__").build()
+        )
         assert "Person" in ctx.entity_mapping.mapping
         et = ctx.entity_mapping.mapping["Person"]
         assert et.entity_type == "Person"
@@ -342,7 +344,11 @@ class TestContextBuilder:
     def test_add_entity_from_arrow(self) -> None:
         """add_entity with a pa.Table builds the correct EntityMapping."""
         table = pa.table({"person_id": [1, 2], "name": ["Alice", "Bob"]})
-        ctx = ContextBuilder().add_entity("Person", table, id_col="person_id").build()
+        ctx = (
+            ContextBuilder()
+            .add_entity("Person", table, id_col="person_id")
+            .build()
+        )
         assert "Person" in ctx.entity_mapping.mapping
 
     def test_add_entity_from_csv(self) -> None:
@@ -359,7 +365,9 @@ class TestContextBuilder:
             path = f.name
         try:
             ctx = (
-                ContextBuilder().add_entity("Person", path, id_col="person_id").build()
+                ContextBuilder()
+                .add_entity("Person", path, id_col="person_id")
+                .build()
             )
             assert "Person" in ctx.entity_mapping.mapping
         finally:
@@ -421,7 +429,9 @@ class TestEndToEnd:
             path = f.name
         try:
             ctx = (
-                ContextBuilder().add_entity("Person", path, id_col="person_id").build()
+                ContextBuilder()
+                .add_entity("Person", path, id_col="person_id")
+                .build()
             )
             star = Star(context=ctx)
             result = star.execute_query(

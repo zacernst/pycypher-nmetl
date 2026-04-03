@@ -62,7 +62,10 @@ class TestWhereClauseScoring:
         )
         result = score_query(ast)
         assert "exists_subquery" in result.breakdown
-        assert result.breakdown["exists_subquery"] == DEFAULT_WEIGHTS["exists_subquery"]
+        assert (
+            result.breakdown["exists_subquery"]
+            == DEFAULT_WEIGHTS["exists_subquery"]
+        )
 
     def test_where_predicate_path_exercised(self) -> None:
         """A simple WHERE comparison still passes through _score_expression."""
@@ -170,7 +173,10 @@ class TestCaseExpression:
         )
         result = score_query(ast)
         assert "case_expression" in result.breakdown
-        assert result.breakdown["case_expression"] == DEFAULT_WEIGHTS["case_expression"]
+        assert (
+            result.breakdown["case_expression"]
+            == DEFAULT_WEIGHTS["case_expression"]
+        )
 
 
 class TestRecursiveSubExpressionLists:
@@ -187,5 +193,6 @@ class TestRecursiveSubExpressionLists:
         ast = _parse("MATCH (a:Person) RETURN count(a) + count(a)")
         result = score_query(ast)
         assert (
-            result.breakdown.get("aggregation", 0) >= 2 * DEFAULT_WEIGHTS["aggregation"]
+            result.breakdown.get("aggregation", 0)
+            >= 2 * DEFAULT_WEIGHTS["aggregation"]
         )

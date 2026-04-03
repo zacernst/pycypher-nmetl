@@ -52,6 +52,7 @@ import time
 
 import numpy as np
 import pandas as pd
+from _perf_helpers import perf_threshold
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -94,7 +95,9 @@ class TestCotRegistered:
 
     def test_cot_quarter_pi(self) -> None:
         result = _reg().execute("cot", [_s(math.pi / 4)])
-        assert _approx(result, 1.0), f"cot(π/4) should be 1.0, got {result.iloc[0]}"
+        assert _approx(result, 1.0), (
+            f"cot(π/4) should be 1.0, got {result.iloc[0]}"
+        )
 
     def test_cot_pi_over_6(self) -> None:
         result = _reg().execute("cot", [_s(math.pi / 6)])
@@ -146,11 +149,15 @@ class TestHaversinRegistered:
 
     def test_haversin_zero(self) -> None:
         result = _reg().execute("haversin", [_s(0.0)])
-        assert _approx(result, 0.0), f"haversin(0) should be 0.0, got {result.iloc[0]}"
+        assert _approx(result, 0.0), (
+            f"haversin(0) should be 0.0, got {result.iloc[0]}"
+        )
 
     def test_haversin_pi(self) -> None:
         result = _reg().execute("haversin", [_s(math.pi)])
-        assert _approx(result, 1.0), f"haversin(π) should be 1.0, got {result.iloc[0]}"
+        assert _approx(result, 1.0), (
+            f"haversin(π) should be 1.0, got {result.iloc[0]}"
+        )
 
     def test_haversin_half_pi(self) -> None:
         result = _reg().execute("haversin", [_s(math.pi / 2)])
@@ -284,8 +291,8 @@ class TestTrigVectorisationPerformance:
         for _ in range(REPS):
             _reg().execute("sin", [s])
         elapsed = time.perf_counter() - start
-        assert elapsed < 0.5, (
-            f"30 × sin(10k rows) took {elapsed:.2f}s (threshold 0.5s). "
+        assert elapsed < perf_threshold(0.5), (
+            f"30 × sin(10k rows) took {elapsed:.2f}s (threshold {perf_threshold(0.5):.1f}s). "
             "The .apply() loop may still be in place."
         )
 
@@ -296,8 +303,8 @@ class TestTrigVectorisationPerformance:
         for _ in range(REPS):
             _reg().execute("atan2", [s, s])
         elapsed = time.perf_counter() - start
-        assert elapsed < 0.5, (
-            f"30 × atan2(10k rows) took {elapsed:.2f}s (threshold 0.5s). "
+        assert elapsed < perf_threshold(0.5), (
+            f"30 × atan2(10k rows) took {elapsed:.2f}s (threshold {perf_threshold(0.5):.1f}s). "
             "The .apply() loop may still be in place."
         )
 

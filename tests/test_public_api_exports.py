@@ -177,7 +177,9 @@ class TestDeprecationHandling:
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
             _ = pycypher.ArrowIngestion
-            deprecations = [x for x in w if issubclass(x.category, DeprecationWarning)]
+            deprecations = [
+                x for x in w if issubclass(x.category, DeprecationWarning)
+            ]
             assert len(deprecations) >= 1
             assert "DuckDBReader" in str(deprecations[0].message)
 

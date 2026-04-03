@@ -20,6 +20,7 @@ from pycypher.path_expander import (
 from pycypher.star import Star
 
 from .load_generator import SCALE_SMALL, build_graph
+from _perf_helpers import perf_threshold
 
 
 @pytest.fixture(scope="module")
@@ -109,7 +110,7 @@ class TestBFSFrontierLimits:
 
         assert len(result) <= 1000
         # Should complete in reasonable time (under 60s).
-        assert elapsed < 60.0
+        assert elapsed < perf_threshold(60.0)
 
     def test_frontier_limit_constant_is_reasonable(self) -> None:
         """The frontier limit must be set to prevent multi-GB allocations."""
@@ -229,7 +230,7 @@ class TestBFSCyclicGraphs:
         elapsed = time.perf_counter() - t0
 
         assert len(result) <= 500
-        assert elapsed < 30.0
+        assert elapsed < perf_threshold(30.0)
 
 
 class TestBFSRecovery:

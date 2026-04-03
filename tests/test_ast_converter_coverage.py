@@ -182,7 +182,13 @@ class TestConvertStatements:
                 "distinct": False,
                 "body": {
                     "type": "ReturnBody",
-                    "items": [{"type": "ReturnItem", "expression": "n", "alias": None}],
+                    "items": [
+                        {
+                            "type": "ReturnItem",
+                            "expression": "n",
+                            "alias": None,
+                        }
+                    ],
                 },
                 "order": None,
                 "skip": None,
@@ -444,8 +450,12 @@ class TestConvertReturnAndWith:
         node = {
             "type": "Return",
             "distinct": True,
-            "items": [{"type": "ReturnItem", "expression": "n", "alias": None}],
-            "order_by": [{"type": "OrderByItem", "expression": "n", "ascending": True}],
+            "items": [
+                {"type": "ReturnItem", "expression": "n", "alias": None}
+            ],
+            "order_by": [
+                {"type": "OrderByItem", "expression": "n", "ascending": True}
+            ],
         }
         result = _conv(node)
         assert isinstance(result, Return)
@@ -462,7 +472,9 @@ class TestConvertReturnAndWith:
             "type": "With",
             "distinct": False,
             "items": [],
-            "order_by": [{"type": "OrderByItem", "expression": "n", "ascending": True}],
+            "order_by": [
+                {"type": "OrderByItem", "expression": "n", "ascending": True}
+            ],
         }
         result = _conv(node)
         assert isinstance(result, With)
@@ -477,7 +489,9 @@ class TestConvertCRUDNodes:
     """Cover _convert_Merge, _convert_Delete, _convert_Set, _convert_Remove."""
 
     def test_convert_create(self) -> None:
-        result = _conv({"type": "Create", "pattern": {"type": "Pattern", "paths": []}})
+        result = _conv(
+            {"type": "Create", "pattern": {"type": "Pattern", "paths": []}}
+        )
         assert isinstance(result, Create)
 
     def test_convert_merge_with_on_create(self) -> None:
@@ -486,7 +500,12 @@ class TestConvertCRUDNodes:
             "type": "Merge",
             "pattern": {"type": "Pattern", "paths": []},
             "on_create": [
-                {"type": "SetProperty", "variable": "n", "property": "age", "value": 30},
+                {
+                    "type": "SetProperty",
+                    "variable": "n",
+                    "property": "age",
+                    "value": 30,
+                },
             ],
         }
         result = _conv(node)
@@ -498,7 +517,12 @@ class TestConvertCRUDNodes:
             "type": "Merge",
             "pattern": {"type": "Pattern", "paths": []},
             "on_match": [
-                {"type": "SetProperty", "variable": "n", "property": "age", "value": 30},
+                {
+                    "type": "SetProperty",
+                    "variable": "n",
+                    "property": "age",
+                    "value": 30,
+                },
             ],
         }
         result = _conv(node)
@@ -518,13 +542,22 @@ class TestConvertCRUDNodes:
 
     def test_convert_set_item(self) -> None:
         """_convert_SetItem (lines 872-873)."""
-        node = {"type": "SetItem", "variable": "n", "property": "age", "expression": 30}
+        node = {
+            "type": "SetItem",
+            "variable": "n",
+            "property": "age",
+            "expression": 30,
+        }
         result = _conv(node)
         assert isinstance(result, SetItem)
 
     def test_convert_set_labels(self) -> None:
         """_convert_SetLabels (lines 906-907)."""
-        node = {"type": "SetLabels", "variable": "n", "labels": {"name": "Person"}}
+        node = {
+            "type": "SetLabels",
+            "variable": "n",
+            "labels": {"name": "Person"},
+        }
         result = _conv(node)
         assert isinstance(result, SetItem)
 
@@ -553,7 +586,11 @@ class TestConvertCRUDNodes:
 
     def test_convert_remove_labels(self) -> None:
         """_convert_RemoveLabels (lines 975-976)."""
-        node = {"type": "RemoveLabels", "variable": "n", "labels": {"name": "Admin"}}
+        node = {
+            "type": "RemoveLabels",
+            "variable": "n",
+            "labels": {"name": "Admin"},
+        }
         result = _conv(node)
         assert isinstance(result, RemoveItem)
 
@@ -599,7 +636,9 @@ class TestNormalizeProcedureName:
         assert result is None
 
     def test_list_of_parts(self) -> None:
-        result = ASTConverter()._normalize_procedure_name(["db", "schema", "info"])
+        result = ASTConverter()._normalize_procedure_name(
+            ["db", "schema", "info"]
+        )
         assert result == "db.schema.info"
 
     def test_string(self) -> None:
@@ -677,7 +716,11 @@ class TestConvertPatternPaths:
         node = {
             "type": "PathPattern",
             "variable": None,
-            "element": {"type": "NodePattern", "variable": "n", "labels": ["Person"]},
+            "element": {
+                "type": "NodePattern",
+                "variable": "n",
+                "labels": ["Person"],
+            },
         }
         result = _conv(node)
         assert isinstance(result, PatternPath)

@@ -192,7 +192,9 @@ class TestLabelPredicateExecution:
             "MATCH (n:Person) RETURN n:Person AS is_person ORDER BY n.name",
         )
         values = list(result["is_person"])
-        assert all(v is True for v in values), f"Expected all True, got {values}"
+        assert all(v is True for v in values), (
+            f"Expected all True, got {values}"
+        )
 
     def test_label_false_in_return_clause(self, label_star: Star) -> None:
         """RETURN n:Animal AS is_animal must return False for Person nodes."""
@@ -200,7 +202,9 @@ class TestLabelPredicateExecution:
             "MATCH (n:Person) RETURN n:Animal AS is_animal ORDER BY n.name",
         )
         values = list(result["is_animal"])
-        assert all(v is False for v in values), f"Expected all False, got {values}"
+        assert all(v is False for v in values), (
+            f"Expected all False, got {values}"
+        )
 
 
 # ---------------------------------------------------------------------------

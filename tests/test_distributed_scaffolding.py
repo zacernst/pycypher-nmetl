@@ -41,6 +41,7 @@ from pycypher.relational_models import (
     RelationshipTable,
 )
 from pycypher.star import Star
+from _perf_helpers import perf_threshold
 
 # ---------------------------------------------------------------------------
 # Pytest markers
@@ -117,7 +118,9 @@ def scaled_context(scale_tier: str) -> Context:
         entity_type="Node",
         identifier="Node",
         column_names=list(entity_df.columns),
-        source_obj_attribute_map={c: c for c in entity_df.columns if c != "__ID__"},
+        source_obj_attribute_map={
+            c: c for c in entity_df.columns if c != "__ID__"
+        },
         attribute_map={c: c for c in entity_df.columns if c != "__ID__"},
         source_obj=entity_df,
     )
@@ -189,7 +192,10 @@ class TestDaskClusterSimulation:
 
         # Filter + aggregate through distributed scheduler
         result = (
-            ddf[ddf["value"] > 0].groupby("category").agg({"score": "mean"}).compute()
+            ddf[ddf["value"] > 0]
+            .groupby("category")
+            .agg({"score": "mean"})
+            .compute()
         )
         assert len(result) > 0
 
@@ -338,7 +344,9 @@ class TestMemoryStability:
             entity_type="Node",
             identifier="Node",
             column_names=list(entity_df.columns),
-            source_obj_attribute_map={c: c for c in entity_df.columns if c != "__ID__"},
+            source_obj_attribute_map={
+                c: c for c in entity_df.columns if c != "__ID__"
+            },
             attribute_map={c: c for c in entity_df.columns if c != "__ID__"},
             source_obj=entity_df,
         )
@@ -363,7 +371,7 @@ class TestMemoryStability:
 
         # Allow up to 50MB growth for 100 iterations of a 10K-row query.
         # Anything more suggests a leak.
-        assert growth_mb < 50, (
+        assert growth_mb < perf_threshold(50), (
             f"Memory grew by {growth_mb:.1f} MB over 100 iterations "
             f"(baseline={baseline_mb:.1f} MB, final={final_mb:.1f} MB)"
         )

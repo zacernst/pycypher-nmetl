@@ -31,7 +31,9 @@ class TestParseFailureLogging:
             with pytest.raises(CypherSyntaxError):
                 parser.parse("MATCH (n) RETRN n")  # typo in RETURN
         # Must have at least one WARNING record about parse failure
-        warning_records = [r for r in caplog.records if r.levelno >= logging.WARNING]
+        warning_records = [
+            r for r in caplog.records if r.levelno >= logging.WARNING
+        ]
         assert len(warning_records) >= 1
         msg = warning_records[0].message.lower()
         assert "parse" in msg or "syntax" in msg
@@ -45,7 +47,9 @@ class TestParseFailureLogging:
         with caplog.at_level(logging.WARNING, logger="shared.logger"):
             with pytest.raises(CypherSyntaxError):
                 parser.parse(query)
-        warning_records = [r for r in caplog.records if r.levelno >= logging.WARNING]
+        warning_records = [
+            r for r in caplog.records if r.levelno >= logging.WARNING
+        ]
         assert len(warning_records) >= 1
         # Query text (or truncated version) should appear in log
         msg = warning_records[0].message
@@ -59,7 +63,9 @@ class TestParseFailureLogging:
         with caplog.at_level(logging.WARNING, logger="shared.logger"):
             with pytest.raises(CypherSyntaxError):
                 parser.parse("MATCH (n) RETRN n")
-        warning_records = [r for r in caplog.records if r.levelno >= logging.WARNING]
+        warning_records = [
+            r for r in caplog.records if r.levelno >= logging.WARNING
+        ]
         assert len(warning_records) >= 1
         msg = warning_records[0].message
         # Should include line/column info
@@ -79,7 +85,9 @@ class TestParseFailureLogging:
         with caplog.at_level(logging.WARNING, logger="shared.logger"):
             with pytest.raises(CypherSyntaxError):
                 parser.parse(long_query)
-        warning_records = [r for r in caplog.records if r.levelno >= logging.WARNING]
+        warning_records = [
+            r for r in caplog.records if r.levelno >= logging.WARNING
+        ]
         assert len(warning_records) >= 1
         msg = warning_records[0].message
         # Truncated queries should have ellipsis or be capped
@@ -93,7 +101,9 @@ class TestParseFailureLogging:
         """Successful parses must NOT emit warning logs."""
         with caplog.at_level(logging.WARNING, logger="shared.logger"):
             parser.parse("MATCH (n) RETURN n")
-        warning_records = [r for r in caplog.records if r.levelno >= logging.WARNING]
+        warning_records = [
+            r for r in caplog.records if r.levelno >= logging.WARNING
+        ]
         assert len(warning_records) == 0
 
     def test_validate_failure_emits_warning(
@@ -105,5 +115,7 @@ class TestParseFailureLogging:
         with caplog.at_level(logging.WARNING, logger="shared.logger"):
             result = parser.validate("INVALID CYPHER !!!")
         assert result is False
-        warning_records = [r for r in caplog.records if r.levelno >= logging.WARNING]
+        warning_records = [
+            r for r in caplog.records if r.levelno >= logging.WARNING
+        ]
         assert len(warning_records) >= 1

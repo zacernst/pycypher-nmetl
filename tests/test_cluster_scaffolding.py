@@ -180,7 +180,9 @@ class TestRoundRobinRouter:
         w2 = LocalWorker("w2", star=_make_star_with_data())
         workers = [w1, w2]
 
-        selected = [router.select_worker(workers, "q").worker_id for _ in range(6)]
+        selected = [
+            router.select_worker(workers, "q").worker_id for _ in range(6)
+        ]
         assert selected == ["w1", "w2", "w1", "w2", "w1", "w2"]
 
     def test_round_robin_empty_raises(self) -> None:

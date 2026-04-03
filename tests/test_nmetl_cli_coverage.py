@@ -481,7 +481,10 @@ queries:
         result = runner.invoke(cli, ["run", str(cfg), "--on-error", "warn"])
         assert result.exit_code == 0
         full = (result.output or "") + (getattr(result, "stderr", "") or "")
-        assert "completed with warnings" in full.lower() or "warning" in full.lower()
+        assert (
+            "completed with warnings" in full.lower()
+            or "warning" in full.lower()
+        )
 
 
 # ===========================================================================
@@ -766,6 +769,29 @@ class TestFormatValidationErrors:
 
         assert "more error(s)" in result
         assert "nmetl validate" in result
+
+    def test_verbose_shows_all_errors(self) -> None:
+        from pycypher.nmetl_cli import _format_validation_errors
+        from pydantic import BaseModel, ValidationError
+
+        class _Many(BaseModel):
+            a: str
+            b: str
+            c: str
+            d: str
+            e: str
+            f: str
+
+        try:
+            _Many()  # type: ignore[call-arg]
+        except ValidationError as exc:
+            result = _format_validation_errors(exc, verbose=True)
+
+        # In verbose mode, all 6 fields should be shown
+        assert "more error(s)" not in result
+        assert "nmetl validate" not in result
+        for field in ("a:", "b:", "c:", "d:", "e:", "f:"):
+            assert field in result
 
     def test_invalid_config_shows_concise_errors(
         self,

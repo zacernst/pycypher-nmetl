@@ -27,7 +27,9 @@ class TestIncrementalView:
     def test_update_existing_key(self) -> None:
         async def _run() -> None:
             view = IncrementalView(name="test")
-            await view.apply(StreamRecord(key="k1", value={"x": 1}, event_time=1.0))
+            await view.apply(
+                StreamRecord(key="k1", value={"x": 1}, event_time=1.0)
+            )
             entry = await view.apply(
                 StreamRecord(key="k1", value={"x": 2}, event_time=2.0),
             )
@@ -41,7 +43,9 @@ class TestIncrementalView:
     def test_noop_update_returns_none(self) -> None:
         async def _run() -> None:
             view = IncrementalView(name="test")
-            await view.apply(StreamRecord(key="k1", value={"x": 1}, event_time=1.0))
+            await view.apply(
+                StreamRecord(key="k1", value={"x": 1}, event_time=1.0)
+            )
             entry = await view.apply(
                 StreamRecord(key="k1", value={"x": 1}, event_time=2.0),
             )
@@ -52,7 +56,9 @@ class TestIncrementalView:
     def test_delete(self) -> None:
         async def _run() -> None:
             view = IncrementalView(name="test")
-            await view.apply(StreamRecord(key="k1", value={"x": 1}, event_time=1.0))
+            await view.apply(
+                StreamRecord(key="k1", value={"x": 1}, event_time=1.0)
+            )
             entry = await view.apply(
                 StreamRecord(
                     key="k1",
@@ -85,8 +91,12 @@ class TestIncrementalView:
     def test_changelog_accumulates(self) -> None:
         async def _run() -> None:
             view = IncrementalView(name="test")
-            await view.apply(StreamRecord(key="a", value={"v": 1}, event_time=1.0))
-            await view.apply(StreamRecord(key="b", value={"v": 2}, event_time=2.0))
+            await view.apply(
+                StreamRecord(key="a", value={"v": 1}, event_time=1.0)
+            )
+            await view.apply(
+                StreamRecord(key="b", value={"v": 2}, event_time=2.0)
+            )
             assert len(view.changelog) == 2
             assert view.total_changes == 2
 
@@ -96,7 +106,9 @@ class TestIncrementalView:
         async def _run() -> None:
             view = IncrementalView(name="test")
             sub = view.subscribe()
-            await view.apply(StreamRecord(key="k", value={"v": 1}, event_time=1.0))
+            await view.apply(
+                StreamRecord(key="k", value={"v": 1}, event_time=1.0)
+            )
             entry = await asyncio.wait_for(sub.get(), timeout=1.0)
             assert entry.change_type == ChangeType.INSERT
             assert entry.key == "k"
@@ -124,8 +136,12 @@ class TestIncrementalView:
     def test_query_no_predicate(self) -> None:
         async def _run() -> None:
             view = IncrementalView(name="test")
-            await view.apply(StreamRecord(key="a", value={"x": 1}, event_time=1.0))
-            await view.apply(StreamRecord(key="b", value={"x": 2}, event_time=2.0))
+            await view.apply(
+                StreamRecord(key="a", value={"x": 1}, event_time=1.0)
+            )
+            await view.apply(
+                StreamRecord(key="b", value={"x": 2}, event_time=2.0)
+            )
             results = view.query()
             assert len(results) == 2
 
@@ -134,8 +150,12 @@ class TestIncrementalView:
     def test_query_with_predicate(self) -> None:
         async def _run() -> None:
             view = IncrementalView(name="test")
-            await view.apply(StreamRecord(key="a", value={"x": 1}, event_time=1.0))
-            await view.apply(StreamRecord(key="b", value={"x": 2}, event_time=2.0))
+            await view.apply(
+                StreamRecord(key="a", value={"x": 1}, event_time=1.0)
+            )
+            await view.apply(
+                StreamRecord(key="b", value={"x": 2}, event_time=2.0)
+            )
             results = view.query(predicate=lambda k, v: v["x"] > 1)
             assert len(results) == 1
             assert results[0]["x"] == 2

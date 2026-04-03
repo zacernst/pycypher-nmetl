@@ -214,7 +214,7 @@ def _parse_cypher_cached(cypher: str) -> ASTNode:
     parser = get_default_parser()
     try:
         tree: lark.tree.Tree = parser.parse(query=cypher)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — type-dispatch: converts known errors, re-raises unknown
         # Lark raises UnexpectedInput (or subclasses) for syntax errors.
         # We import lark at runtime to avoid circular import issues
         # (lark is only in TYPE_CHECKING at module level).
@@ -361,7 +361,7 @@ class ASTConverter:
                             converted_args[k] = v
 
                     return cls(**converted_args)
-                except Exception as e:
+                except (TypeError, ValueError, AttributeError, KeyError) as e:
                     from pycypher.exceptions import ASTConversionError
 
                     msg = f"AST conversion failed: {e}"
@@ -1360,16 +1360,12 @@ class ASTConverter:
 
     def _convert_PropertyLookup(self, node: dict) -> PropertyLookup:
         """Convert PropertyLookup node."""
-        var_name = node.get("variable")
         return PropertyLookup(
             expression=cast(
                 "Expression | None",
                 self.convert(node.get("expression")),
             ),
             property=node.get("property"),
-            variable=Variable(name=var_name)
-            if var_name
-            else None,  # Legacy support
         )
 
     def _convert_PropertyAccess(self, node: dict) -> PropertyLookup:

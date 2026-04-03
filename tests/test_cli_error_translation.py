@@ -138,7 +138,8 @@ class TestFixedCLIErrorTranslation:
 
         # Should have user-friendly error message
         assert (
-            "entity source" in result.output.lower() or "file" in result.output.lower()
+            "entity source" in result.output.lower()
+            or "file" in result.output.lower()
         ), "Should mention entity source or file in error message"
 
         # Should include the specific filename that was not found
@@ -228,7 +229,9 @@ class TestFixedCLIErrorTranslation:
         for args, error_type, filename in test_cases:
             result = runner.invoke(cli, args)
 
-            assert result.exit_code == 1, f"Should fail with exit code 1 for {args}"
+            assert result.exit_code == 1, (
+                f"Should fail with exit code 1 for {args}"
+            )
 
             # Consistent error message patterns
             assert error_type in result.output.lower(), (
@@ -239,9 +242,9 @@ class TestFixedCLIErrorTranslation:
             )
 
             # Should start with "Error:" for consistency
-            assert result.output.startswith("Error:") or "Error:" in result.output, (
-                f"Should include 'Error:' prefix for {args}"
-            )
+            assert (
+                result.output.startswith("Error:") or "Error:" in result.output
+            ), f"Should include 'Error:' prefix for {args}"
 
     def test_fixed_malformed_data_provides_helpful_guidance(self):
         """Test that malformed data files provide helpful guidance when they do fail."""
@@ -362,7 +365,9 @@ class TestFixedCLIErrorTranslation:
                     "CREATE VIEW",
                     "read_csv_auto",
                 ]
-            ), f"First line should not contain technical details: {user_facing_line}"
+            ), (
+                f"First line should not contain technical details: {user_facing_line}"
+            )
 
 
 class TestCLIErrorTranslationImplementation:
@@ -443,4 +448,68 @@ class TestCLIErrorTranslationImplementation:
 
         # Should handle the first error encountered gracefully
         # (May not process all missing files if first one fails)
-        assert len(result.output.strip()) > 0, "Should provide some error feedback"
+        assert len(result.output.strip()) > 0, (
+            "Should provide some error feedback"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Credential masking in error messages (Task #46)
+# ---------------------------------------------------------------------------
+
+
+class TestCredentialMaskingInErrors:
+    """Verify that database credentials are masked in CLI error messages."""
+
+    def test_translate_duckdb_error_masks_password(self):
+        """translate_duckdb_error must mask credentials in path."""
+        from pycypher.cli.common import translate_duckdb_error
+
+        msg = translate_duckdb_error(
+            FileNotFoundError("No files found that match the pattern"),
+            "entity source",
+            "postgresql://admin:s3cretP@ss@db.example.com:5432/mydb",
+        )
+        assert "s3cretP@ss" not in msg
+        assert "***" in msg
+        assert "admin" in msg  # username is OK to show
+
+    def test_translate_duckdb_error_no_credentials_unchanged(self):
+        """Paths without credentials pass through unchanged."""
+        from pycypher.cli.common import translate_duckdb_error
+
+        msg = translate_duckdb_error(
+            FileNotFoundError("No files found"),
+            "entity source",
+            "/path/to/data.csv",
+        )
+        assert "/path/to/data.csv" in msg
+
+    def test_mask_uri_credentials_in_generic_error(self):
+        """Generic error fallback path also masks credentials."""
+        from pycypher.cli.common import translate_duckdb_error
+
+        msg = translate_duckdb_error(
+            RuntimeError("connection refused"),
+            "entity source",
+            "mysql://root:hunter2@localhost/db",
+        )
+        assert "hunter2" not in msg
+        assert "***" in msg
+
+    def test_nmetl_cli_masks_credentials_in_file_not_found(self):
+        """nmetl_cli._load_data_source masks credentials."""
+        runner = CliRunner()
+        result = runner.invoke(
+            cli,
+            [
+                "query",
+                "--entity",
+                "Person=postgresql://user:secret123@host/db",
+                "MATCH (p:Person) RETURN p",
+            ],
+        )
+        # Error output should not contain the password
+        assert "secret123" not in result.output
+        # But should still show something useful
+        assert result.exit_code == 1

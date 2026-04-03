@@ -168,7 +168,8 @@ class QueryProfiler:
             else None
         )
 
-        # Generate recommendations.
+        # Generate recommendations (including optimizer-aware hints).
+        opt_plan = getattr(self.star, "_last_optimization_plan", None)
         recommendations = _generate_recommendations(
             query=query,
             total_ms=total_ms,
@@ -177,6 +178,7 @@ class QueryProfiler:
             clause_timings=clause_timings,
             row_count=row_count,
             hotspot=hotspot,
+            optimization_plan=opt_plan,
         )
 
         # Collect backend operation timings if an InstrumentedBackend is attached.
@@ -255,23 +257,32 @@ def _generate_recommendations(
     clause_timings: dict[str, float],
     row_count: int,
     hotspot: str | None,
+    optimization_plan: Any = None,
 ) -> list[str]:
     """Generate optimization recommendations from profile data.
 
+    Combines timing-based heuristics, query structure analysis, and
+    optimizer output to produce actionable suggestions.
+
     Args:
-        query: The original query string.
+        query: The original Cypher query string.
         total_ms: Total execution time.
         parse_ms: Parse phase time.
         plan_ms: Planning phase time.
         clause_timings: Per-clause timing breakdown.
         row_count: Result row count.
         hotspot: The slowest clause type.
+        optimization_plan: Optional :class:`OptimizationPlan` from the
+            query optimizer, used for cardinality and rule-based hints.
 
     Returns:
         List of recommendation strings.
 
     """
     recs: list[str] = []
+    query_upper = query.upper()
+
+    # --- Timing-based recommendations ---
 
     if parse_ms > _SLOW_PARSE_MS:
         recs.append(
@@ -306,12 +317,183 @@ def _generate_recommendations(
             "Consider adding LIMIT or more selective WHERE predicates.",
         )
 
-    # Check for multiple MATCH clauses (potential cross-product).
-    match_count = query.upper().count("MATCH")
+    # --- Query structure anti-pattern detection ---
+
+    match_count = query_upper.count("MATCH")
     if match_count > 2:
         recs.append(
             f"Query has {match_count} MATCH clauses. "
             "Multiple MATCH patterns may cause expensive cross-products.",
         )
+
+    # Anti-pattern: MATCH without WHERE on large results
+    has_where = "WHERE" in query_upper
+    has_limit = "LIMIT" in query_upper
+    if not has_where and not has_limit and row_count > 1000:
+        recs.append(
+            "Query has no WHERE or LIMIT clause and returned "
+            f"{row_count:,} rows. Add filters to avoid full scans.",
+        )
+
+    # Anti-pattern: RETURN * (projects all columns, often unnecessary)
+    if "RETURN *" in query_upper.replace("  ", " "):
+        recs.append(
+            "RETURN * projects all properties. "
+            "Specify only needed columns to reduce memory and I/O.",
+        )
+
+    # Anti-pattern: ORDER BY without LIMIT (sorts entire result set)
+    if "ORDER BY" in query_upper and not has_limit:
+        recs.append(
+            "ORDER BY without LIMIT sorts the entire result set. "
+            "Add LIMIT to avoid sorting rows that won't be used.",
+        )
+
+    # Anti-pattern: multiple disconnected MATCH patterns (Cartesian product)
+    if match_count >= 2 and "," not in query_upper.split("RETURN")[0]:
+        # Multiple MATCH without shared variables risk Cartesian products.
+        # This is a heuristic — the optimizer detects this more precisely.
+        pass  # Covered by match_count > 2 check above
+
+    # --- Optimizer-aware recommendations ---
+
+    if optimization_plan is not None:
+        hints = getattr(optimization_plan, "hints", {})
+        applied = getattr(optimization_plan, "applied_rules", [])
+
+        # Cardinality-based backend suggestion
+        cardinality_estimates = hints.get("cardinality_estimates", {})
+        if cardinality_estimates:
+            max_card = max(cardinality_estimates.values(), default=0)
+            if max_card > 100_000:
+                recs.append(
+                    f"High estimated cardinality ({max_card:,.0f} rows). "
+                    "Consider using backend='duckdb' or backend='auto' "
+                    "for analytical workloads.",
+                )
+
+        # Filter pushdown opportunity
+        filter_count = hints.get("filter_pushdown_count", 0)
+        if "FilterPushdown" in applied and filter_count > 0:
+            recs.append(
+                f"Optimizer pushed down {filter_count} filter(s). "
+                "Query benefits from early filtering — keep WHERE "
+                "predicates close to MATCH patterns.",
+            )
+
+        # Limit pushdown
+        limit_value = hints.get("limit_pushdown_value")
+        if limit_value is not None and "LimitPushdown" in applied:
+            recs.append(
+                f"LIMIT {limit_value} was pushed down to reduce "
+                "intermediate result sizes.",
+            )
+
+        # Join reordering applied — inform user
+        if "JoinReordering" in applied:
+            optimal_order = hints.get("optimal_match_order", [])
+            if optimal_order:
+                recs.append(
+                    "Optimizer reordered joins for efficiency. "
+                    f"Optimal order: {' → '.join(optimal_order)}.",
+                )
+
+        # Index scan candidates
+        index_candidates = hints.get("index_scan_candidates", [])
+        if index_candidates:
+            recs.append(
+                f"Index scan candidates detected: "
+                f"{', '.join(str(c) for c in index_candidates[:3])}. "
+                "Ensure graph indexes are built for these properties.",
+            )
+
+        # No rules applied on a slow query — query may not be optimizable
+        if not applied and total_ms > 500:
+            recs.append(
+                "No optimizer rules applied on a slow query. "
+                "Consider restructuring the query to enable "
+                "filter pushdown or join reordering.",
+            )
+
+    return recs
+
+
+def analyze_workload(history: list[ProfileReport]) -> list[str]:
+    """Analyze a collection of profile reports for workload-level patterns.
+
+    Examines aggregate query patterns to suggest system-level tuning
+    rather than per-query fixes.
+
+    Args:
+        history: List of profile reports from a :class:`QueryProfiler`.
+
+    Returns:
+        List of workload-level tuning recommendations.
+
+    """
+    if not history:
+        return []
+
+    recs: list[str] = []
+    n = len(history)
+
+    # Aggregate metrics
+    total_times = [r.total_time_ms for r in history]
+    row_counts = [r.row_count for r in history]
+    parse_times = [r.parse_time_ms for r in history]
+
+    avg_time = sum(total_times) / n
+    max_time = max(total_times)
+    avg_rows = sum(row_counts) / n
+
+    # Repeated slow parse suggests AST caching would help
+    slow_parses = sum(1 for t in parse_times if t > _SLOW_PARSE_MS)
+    if slow_parses > n * 0.3:
+        recs.append(
+            f"{slow_parses}/{n} queries ({slow_parses / n:.0%}) have slow "
+            "parse times. Enable query AST caching for repeated patterns.",
+        )
+
+    # Tail latency: if p99 >> p50, some queries are outliers
+    sorted_times = sorted(total_times)
+    p50 = sorted_times[n // 2]
+    p99_idx = min(int(n * 0.99), n - 1)
+    p99 = sorted_times[p99_idx]
+    if p50 > 0 and p99 / p50 > 10 and n >= 10:
+        recs.append(
+            f"High tail latency: p99={p99:.0f}ms vs p50={p50:.0f}ms "
+            f"({p99 / p50:.0f}x ratio). Investigate outlier queries.",
+        )
+
+    # Consistently large results suggest missing pagination
+    large_results = sum(1 for r in row_counts if r > _LARGE_RESULT_ROWS)
+    if large_results > n * 0.5:
+        recs.append(
+            f"{large_results}/{n} queries return >10K rows. "
+            "Consider implementing pagination with SKIP/LIMIT.",
+        )
+
+    # Backend suggestion based on average workload size
+    if avg_rows > 50_000:
+        recs.append(
+            f"Average result size is {avg_rows:,.0f} rows. "
+            "Consider switching to backend='auto' or backend='duckdb' "
+            "for better large-dataset performance.",
+        )
+
+    # Clause hotspot concentration
+    hotspot_counts: dict[str, int] = {}
+    for r in history:
+        if r.hotspot:
+            hotspot_counts[r.hotspot] = hotspot_counts.get(r.hotspot, 0) + 1
+    if hotspot_counts:
+        dominant = max(hotspot_counts, key=lambda k: hotspot_counts[k])
+        dominant_pct = hotspot_counts[dominant] / n
+        if dominant_pct > 0.7:
+            recs.append(
+                f"{dominant} clause is the bottleneck in {dominant_pct:.0%} "
+                f"of queries. Focus optimization efforts on {dominant} "
+                "performance.",
+            )
 
     return recs

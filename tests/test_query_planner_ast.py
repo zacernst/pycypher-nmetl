@@ -58,7 +58,9 @@ def _make_context(
             ID_COLUMN: range(n_persons),
             "name": [f"person_{i}" for i in range(n_persons)],
             "age": [20 + i % 60 for i in range(n_persons)],
-            "dept": [["eng", "mktg", "sales"][i % 3] for i in range(n_persons)],
+            "dept": [
+                ["eng", "mktg", "sales"][i % 3] for i in range(n_persons)
+            ],
         },
     )
     knows = pd.DataFrame(
@@ -388,7 +390,9 @@ class TestMemoryEstimation:
             _relationship_query(),
             small_ctx,
         ).analyze()
-        assert rel_result.estimated_peak_bytes >= scan_result.estimated_peak_bytes
+        assert (
+            rel_result.estimated_peak_bytes >= scan_result.estimated_peak_bytes
+        )
 
     def test_large_context_higher(self, large_ctx: Context) -> None:
         """Large tables produce large memory estimates."""

@@ -263,7 +263,13 @@ class SemanticValidator:
             self.errors.append(
                 ValidationError(
                     severity=ErrorSeverity.WARNING,
-                    message="Mixing aggregated and non-aggregated expressions in RETURN (implicit grouping)",
+                    message=(
+                        "Mixing aggregated and non-aggregated expressions"
+                        " in RETURN causes implicit grouping by the"
+                        " non-aggregated columns. Use WITH ... for"
+                        " explicit grouping to make intent clear, e.g."
+                        " WITH n, count(*) AS cnt RETURN n, cnt"
+                    ),
                     node_type="return_clause",
                 ),
             )

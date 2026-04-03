@@ -98,7 +98,9 @@ def context_with_data():
 
     ctx = Context(
         entity_mapping=EntityMapping(mapping={"Person": person_table}),
-        relationship_mapping=RelationshipMapping(mapping={"KNOWS": knows_table}),
+        relationship_mapping=RelationshipMapping(
+            mapping={"KNOWS": knows_table}
+        ),
     )
     return ctx
 
@@ -455,7 +457,9 @@ class TestIndexScanRule:
         from pycypher.query_optimizer import IndexScanRule
 
         rule = IndexScanRule()
-        ast = ASTConverter.from_cypher("MATCH (a:Person)-[:KNOWS]->(b:Person) RETURN a")
+        ast = ASTConverter.from_cypher(
+            "MATCH (a:Person)-[:KNOWS]->(b:Person) RETURN a"
+        )
         result = rule.analyze(ast)
         assert result.applied is True
         assert result.hints["index_adjacency_candidates"] >= 1
@@ -465,7 +469,9 @@ class TestIndexScanRule:
         from pycypher.query_optimizer import IndexScanRule
 
         rule = IndexScanRule()
-        ast = ASTConverter.from_cypher("MATCH (a:Person {name: 'Alice'}) RETURN a")
+        ast = ASTConverter.from_cypher(
+            "MATCH (a:Person {name: 'Alice'}) RETURN a"
+        )
         result = rule.analyze(ast)
         assert result.applied is True
         assert result.hints["index_property_candidates"] >= 1

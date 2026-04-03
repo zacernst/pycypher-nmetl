@@ -56,43 +56,57 @@ class TestEvaluateComparisonBasic:
 
     def test_eq_true(self) -> None:
         ev, _ = _make_evaluator()
-        parent = _mock_parent_evaluator(pd.Series([1, 2, 3]), pd.Series([1, 2, 3]))
+        parent = _mock_parent_evaluator(
+            pd.Series([1, 2, 3]), pd.Series([1, 2, 3])
+        )
         result = ev.evaluate_comparison("=", MagicMock(), MagicMock(), parent)
         assert list(result) == [True, True, True]
 
     def test_eq_false(self) -> None:
         ev, _ = _make_evaluator()
-        parent = _mock_parent_evaluator(pd.Series([1, 2, 3]), pd.Series([4, 5, 6]))
+        parent = _mock_parent_evaluator(
+            pd.Series([1, 2, 3]), pd.Series([4, 5, 6])
+        )
         result = ev.evaluate_comparison("=", MagicMock(), MagicMock(), parent)
         assert list(result) == [False, False, False]
 
     def test_neq(self) -> None:
         ev, _ = _make_evaluator()
-        parent = _mock_parent_evaluator(pd.Series([1, 2, 3]), pd.Series([1, 5, 3]))
+        parent = _mock_parent_evaluator(
+            pd.Series([1, 2, 3]), pd.Series([1, 5, 3])
+        )
         result = ev.evaluate_comparison("<>", MagicMock(), MagicMock(), parent)
         assert list(result) == [False, True, False]
 
     def test_lt(self) -> None:
         ev, _ = _make_evaluator()
-        parent = _mock_parent_evaluator(pd.Series([1, 5, 3]), pd.Series([2, 2, 3]))
+        parent = _mock_parent_evaluator(
+            pd.Series([1, 5, 3]), pd.Series([2, 2, 3])
+        )
         result = ev.evaluate_comparison("<", MagicMock(), MagicMock(), parent)
         assert list(result) == [True, False, False]
 
     def test_gt(self) -> None:
         ev, _ = _make_evaluator()
-        parent = _mock_parent_evaluator(pd.Series([1, 5, 3]), pd.Series([2, 2, 3]))
+        parent = _mock_parent_evaluator(
+            pd.Series([1, 5, 3]), pd.Series([2, 2, 3])
+        )
         result = ev.evaluate_comparison(">", MagicMock(), MagicMock(), parent)
         assert list(result) == [False, True, False]
 
     def test_le(self) -> None:
         ev, _ = _make_evaluator()
-        parent = _mock_parent_evaluator(pd.Series([1, 5, 3]), pd.Series([2, 2, 3]))
+        parent = _mock_parent_evaluator(
+            pd.Series([1, 5, 3]), pd.Series([2, 2, 3])
+        )
         result = ev.evaluate_comparison("<=", MagicMock(), MagicMock(), parent)
         assert list(result) == [True, False, True]
 
     def test_ge(self) -> None:
         ev, _ = _make_evaluator()
-        parent = _mock_parent_evaluator(pd.Series([1, 5, 3]), pd.Series([2, 2, 3]))
+        parent = _mock_parent_evaluator(
+            pd.Series([1, 5, 3]), pd.Series([2, 2, 3])
+        )
         result = ev.evaluate_comparison(">=", MagicMock(), MagicMock(), parent)
         assert list(result) == [False, True, True]
 
@@ -143,7 +157,9 @@ class TestEvaluateComparisonNulls:
     def test_no_nulls_no_object_cast(self) -> None:
         """When no nulls, result stays boolean dtype (not object)."""
         ev, _ = _make_evaluator()
-        parent = _mock_parent_evaluator(pd.Series([1, 2, 3]), pd.Series([1, 2, 3]))
+        parent = _mock_parent_evaluator(
+            pd.Series([1, 2, 3]), pd.Series([1, 2, 3])
+        )
         result = ev.evaluate_comparison("=", MagicMock(), MagicMock(), parent)
         assert result.dtype == bool
 

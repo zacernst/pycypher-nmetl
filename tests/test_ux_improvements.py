@@ -9,6 +9,8 @@ Verifies:
 TDD red phase.
 """
 
+from __future__ import annotations
+
 import pandas as pd
 import pytest
 
@@ -143,7 +145,7 @@ class TestEntityTableFromDataframe:
 
 
 @pytest.fixture
-def minimal_context() -> "Context":
+def minimal_context() -> Context:
     from pycypher import Context, EntityTable
     from pycypher.relational_models import EntityMapping, RelationshipMapping
 
@@ -158,7 +160,7 @@ def minimal_context() -> "Context":
 class TestFriendlyErrors:
     def test_unregistered_entity_type_gives_friendly_error(
         self,
-        minimal_context: "Context",
+        minimal_context: Context,
     ) -> None:
         """Querying an unknown entity type should raise ValueError naming the type."""
         from pycypher import Star
@@ -169,7 +171,7 @@ class TestFriendlyErrors:
 
     def test_friendly_error_mentions_available_types(
         self,
-        minimal_context: "Context",
+        minimal_context: Context,
     ) -> None:
         """The error message for unknown entity should list known types."""
         from pycypher import Star

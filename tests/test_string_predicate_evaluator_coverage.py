@@ -356,21 +356,27 @@ class TestUnsupportedOperator:
 class TestStringPredicateEdgeCases:
     """Edge cases for string predicate operators via Cypher queries."""
 
-    def test_starts_with_empty_string_matches_all(self, people_star: Star) -> None:
+    def test_starts_with_empty_string_matches_all(
+        self, people_star: Star
+    ) -> None:
         """Every string starts with the empty string."""
         result = people_star.execute_query(
             "MATCH (p:Person) WHERE p.name STARTS WITH '' RETURN p.name AS name",
         )
         assert len(result) == 4
 
-    def test_ends_with_empty_string_matches_all(self, people_star: Star) -> None:
+    def test_ends_with_empty_string_matches_all(
+        self, people_star: Star
+    ) -> None:
         """Every string ends with the empty string."""
         result = people_star.execute_query(
             "MATCH (p:Person) WHERE p.name ENDS WITH '' RETURN p.name AS name",
         )
         assert len(result) == 4
 
-    def test_contains_empty_string_matches_all(self, people_star: Star) -> None:
+    def test_contains_empty_string_matches_all(
+        self, people_star: Star
+    ) -> None:
         """Every string contains the empty string."""
         result = people_star.execute_query(
             "MATCH (p:Person) WHERE p.name CONTAINS '' RETURN p.name AS name",

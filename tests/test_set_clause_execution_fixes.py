@@ -11,6 +11,7 @@ from pycypher.relational_models import (
     EntityTable,
 )
 from pycypher.star import Star
+from _perf_helpers import perf_threshold
 
 
 class TestSetClauseBasicExecutionFixed:
@@ -85,7 +86,9 @@ class TestSetClauseBasicExecutionFixed:
 
         except Exception as e:
             # If SET + WHERE interaction raises, that is also acceptable for now
-            assert "SET" in str(e) or "WHERE" in str(e) or "not" in str(e).lower()
+            assert (
+                "SET" in str(e) or "WHERE" in str(e) or "not" in str(e).lower()
+            )
 
     def test_set_chain_with_with_clause(self, person_context):
         """Test SET followed by WITH clause — now supported."""
@@ -347,7 +350,7 @@ class TestSetClausePerformanceBaseline:
         print(
             f"Pandas SET operation on 1000 rows: {execution_time:.3f} seconds",
         )
-        assert execution_time < 5.0  # Should complete in under 5 seconds
+        assert execution_time < perf_threshold(5.0)  # Should complete in under 5 seconds
 
     def test_set_multiple_properties_performance(self):
         """Test performance of setting multiple properties simultaneously."""
@@ -397,4 +400,4 @@ class TestSetClausePerformanceBaseline:
         print(
             f"Multiple property SET on 500 rows: {execution_time:.3f} seconds",
         )
-        assert execution_time < 3.0  # Should be reasonably fast
+        assert execution_time < perf_threshold(3.0)  # Should be reasonably fast

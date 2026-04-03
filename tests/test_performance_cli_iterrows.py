@@ -13,6 +13,7 @@ from unittest.mock import patch
 import pandas as pd
 import pytest
 from pycypher._cli_query import _print_table
+from _perf_helpers import perf_threshold
 
 pytestmark = pytest.mark.performance
 
@@ -60,7 +61,9 @@ class TestCurrentPerformanceIssue:
                 "id": range(1000),
                 "name": [f"User_{i}" for i in range(1000)],
                 "value": range(1000, 2000),
-                "description": [f"Description for user {i}" for i in range(1000)],
+                "description": [
+                    f"Description for user {i}" for i in range(1000)
+                ],
             },
         )
 
@@ -172,7 +175,7 @@ class TestVectorizedPerformanceImplementation:
 
         # This assertion will initially fail (current implementation is slow)
         # but should pass after vectorization
-        assert vectorized_time < 0.2, (
+        assert vectorized_time < perf_threshold(0.2), (
             f"Vectorized implementation too slow: {vectorized_time:.4f}s"
         )
 
@@ -201,7 +204,10 @@ class TestVectorizedPerformanceImplementation:
         assert "True" in output
         assert "False" in output
         assert (
-            "NULL" in output or "None" in output or "NaN" in output or "nan" in output
+            "NULL" in output
+            or "None" in output
+            or "NaN" in output
+            or "nan" in output
         )
 
     def test_vectorized_empty_dataframe(self):

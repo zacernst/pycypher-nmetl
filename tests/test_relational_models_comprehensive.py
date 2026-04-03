@@ -348,11 +348,15 @@ class TestContextTransactions:
     def test_commit_increments_data_epoch(self, context: Context) -> None:
         epoch_before = context._data_epoch
         context.begin_query()
-        context._shadow["Person"] = context.entity_mapping["Person"].source_obj.copy()
+        context._shadow["Person"] = context.entity_mapping[
+            "Person"
+        ].source_obj.copy()
         context.commit_query()
         assert context._data_epoch == epoch_before + 1
 
-    def test_commit_no_mutations_preserves_epoch(self, context: Context) -> None:
+    def test_commit_no_mutations_preserves_epoch(
+        self, context: Context
+    ) -> None:
         epoch_before = context._data_epoch
         context.begin_query()
         context.commit_query()  # No shadow writes
@@ -385,7 +389,9 @@ class TestContextTransactions:
 class TestContextSavepoints:
     def test_savepoint_captures_snapshot(self, context: Context) -> None:
         context.begin_query()
-        context._shadow["Person"] = context.entity_mapping["Person"].source_obj.copy()
+        context._shadow["Person"] = context.entity_mapping[
+            "Person"
+        ].source_obj.copy()
         sp = context.savepoint()
         assert "Person" in sp["entities"]
 
@@ -406,7 +412,9 @@ class TestContextSavepoints:
 
     def test_savepoint_is_independent_copy(self, context: Context) -> None:
         context.begin_query()
-        context._shadow["Person"] = context.entity_mapping["Person"].source_obj.copy()
+        context._shadow["Person"] = context.entity_mapping[
+            "Person"
+        ].source_obj.copy()
         sp = context.savepoint()
 
         # Modifying the snapshot should not affect the shadow
@@ -441,7 +449,7 @@ class TestContextTimeout:
         from pycypher.exceptions import QueryTimeoutError
 
         context.set_deadline(0.001)  # 1ms timeout
-        time.sleep(0.01)  # Wait for expiry
+        time.sleep(0.05)  # Wait for expiry (generous for CI)
         with pytest.raises(QueryTimeoutError):
             context.check_timeout()
 

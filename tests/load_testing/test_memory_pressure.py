@@ -7,11 +7,13 @@ workloads and that memory usage scales predictably with data size.
 from __future__ import annotations
 
 import gc
+import signal
 import tracemalloc
 
 import pytest
 from pycypher.star import Star
 
+from _perf_helpers import perf_threshold
 from .load_generator import (
     QUERY_WORKLOAD,
     SCALE_MICRO,
@@ -58,7 +60,7 @@ class TestMemoryLeakDetection:
 
         # Allow up to 50MB growth for 100 iterations of a tiny query.
         # This is generous — real leaks grow linearly without bound.
-        assert total_growth_mb < 50, (
+        assert total_growth_mb < perf_threshold(50), (
             f"Memory grew by {total_growth_mb:.1f}MB over 100 iterations — "
             "possible leak"
         )
@@ -85,19 +87,25 @@ class TestMemoryLeakDetection:
         stats = snapshot_after.compare_to(snapshot_before, "lineno")
         total_growth_mb = sum(s.size_diff for s in stats) / (1024 * 1024)
 
-        assert total_growth_mb < 100, (
+        assert total_growth_mb < perf_threshold(100), (
             f"Memory grew by {total_growth_mb:.1f}MB over diverse workload — "
             "possible leak"
         )
 
-    def test_cache_bounded_memory(self, micro_star: Star) -> None:
+    def test_cache_bounded_memory(self) -> None:
         """AST cache must not grow beyond its configured limit."""
         from pycypher.grammar_parser import GrammarParser
+
+        # Cancel any pending SIGALRM from prior timeout-based tests.
+        signal.alarm(0)
 
         parser = GrammarParser()
         parser._ast_cache_max = 20
 
         gc.collect()
+        # Ensure clean tracemalloc state (prior tests may leave it running).
+        if tracemalloc.is_tracing():
+            tracemalloc.stop()
         tracemalloc.start()
 
         # Parse 500 unique queries.

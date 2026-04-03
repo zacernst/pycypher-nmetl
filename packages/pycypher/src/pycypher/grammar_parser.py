@@ -26,14 +26,13 @@ import collections
 import functools
 import sys
 import threading
-import warnings
 from pathlib import Path
 from typing import Any
 
 from lark import Lark, Transformer, Tree
 from shared.logger import LOGGER
 
-from pycypher.grammar_rule_mixins import (
+from pycypher.grammar_rule_mixins import (  # noqa: F401 — re-exported for backward compat
     ClauseRulesMixin,
     ExpressionRulesMixin,
     FunctionRulesMixin,
@@ -60,7 +59,7 @@ def _eager_compile_parser() -> None:
     try:
         # Trigger class-level cache population for the default (debug=False) mode.
         GrammarParser(debug=False)
-    except Exception:
+    except Exception:  # noqa: BLE001 — best-effort startup warmup; any failure is non-fatal
         LOGGER.debug(
             "Eager parser compilation failed; will retry on first use",
             exc_info=True,
@@ -670,33 +669,17 @@ class CypherASTTransformer(
 ):
     """Transform the parse tree into a comprehensive AST structure.
 
-    Literal, parameter, and variable-name rules are inherited from
-    :class:`~pycypher.grammar_rule_mixins.LiteralRulesMixin`.
-
-    .. deprecated::
-        This monolithic transformer is being replaced by specialized
-        transformers in CompositeTransformer. Use CompositeTransformer instead.
-
-    This transformer converts Lark's parse tree into a clean abstract
-    syntax tree that covers the complete openCypher specification.
-
-    The transformer implements the visitor pattern, with each method corresponding
-    to a grammar rule. Methods are called automatically by Lark during tree traversal,
-    receiving the child nodes as arguments and returning transformed AST nodes.
-
-    The transformation process:
-    1. Parse tree nodes are visited bottom-up (leaves first)
-    2. Each transformer method processes its children (already transformed)
-    3. Methods construct typed AST dictionaries with semantic information
-    4. The final result is a complete AST ready for type checking and analysis
+    .. deprecated:: 0.0.19
+        This monolithic transformer has been fully replaced by
+        :class:`~pycypher.grammar_transformers.CompositeTransformer`.
+        It will be removed in a future release.  All grammar-rule methods
+        are now served by the specialized transformers (LiteralTransformer,
+        ExpressionTransformer, FunctionTransformer, PatternTransformer,
+        StatementTransformer) which inherit from the same mixins.
     """
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
-        """Initialise the deprecated transformer, emitting a deprecation warning.
-
-        .. deprecated:: 0.0.19
-            Use :class:`CompositeTransformer` instead.  Will be removed in 0.1.0.
-        """
+        """Initialise the deprecated transformer, emitting a deprecation warning."""
         from shared.deprecation import emit_deprecation
 
         emit_deprecation(
@@ -706,13 +689,6 @@ class CypherASTTransformer(
             alternative="CompositeTransformer",
         )
         super().__init__(*args, **kwargs)
-
-    # ========================================================================
-    # All clause, statement, and pattern methods are inherited from
-    # ClauseRulesMixin, PatternRulesMixin, FunctionRulesMixin,
-    # ExpressionRulesMixin, and LiteralRulesMixin
-    # (see grammar_rule_mixins.py).
-    # ========================================================================
 
 
 _MAX_QUERY_LOG_LEN = 200
@@ -795,7 +771,7 @@ class GrammarParser:
     """
 
     parser: Lark
-    transformer: CypherASTTransformer | CompositeTransformer
+    transformer: CompositeTransformer
 
     # Class-level Lark instance cache keyed by debug flag.  Building the
     # Earley parser from the grammar string is the most expensive step
@@ -836,10 +812,6 @@ class GrammarParser:
                 )
             self.parser = GrammarParser._lark_cache[debug]
         self.transformer = CompositeTransformer()
-        # Set up fallback to original transformer for unmigrated methods
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", DeprecationWarning)
-            self.transformer.set_fallback_transformer(CypherASTTransformer())
         # LRU cache for parsed ASTs — avoids re-parsing identical queries.
         # Size is capped to prevent unbounded memory growth from unique queries.
         from pycypher.config import AST_CACHE_MAX_ENTRIES
@@ -1145,7 +1117,7 @@ def main() -> None:
     except FileNotFoundError as e:
         print(f"Error: file not found: {e}", file=sys.stderr)
         sys.exit(1)
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 — CLI top-level: format any error for stderr
         if args.debug:
             raise
         from lark.exceptions import UnexpectedInput

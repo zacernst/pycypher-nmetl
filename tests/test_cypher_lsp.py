@@ -273,7 +273,9 @@ class TestFunctionContext:
         assert _get_function_context("toUpper(trim(x))", 0, 14) == "trim"
 
     def test_after_comma(self) -> None:
-        assert _get_function_context("substring(s, 0, 5)", 0, 15) == "substring"
+        assert (
+            _get_function_context("substring(s, 0, 5)", 0, 15) == "substring"
+        )
 
 
 class TestHover:

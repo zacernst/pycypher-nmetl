@@ -138,7 +138,9 @@ class TestScanConfigEnvVars:
 
         cfg = load_pipeline_config(cfg_path)
         report = scan_config(cfg)
-        env_findings = [f for f in report.findings if f.category == "env-var-secret"]
+        env_findings = [
+            f for f in report.findings if f.category == "env-var-secret"
+        ]
         assert len(env_findings) >= 1
         assert env_findings[0].severity == Severity.MEDIUM
 
@@ -230,7 +232,9 @@ class TestScanConfigCleanConfig:
 
         cfg = load_pipeline_config(cfg_path)
         report = scan_config(cfg)
-        high_findings = [f for f in report.findings if f.severity == Severity.HIGH]
+        high_findings = [
+            f for f in report.findings if f.severity == Severity.HIGH
+        ]
         assert len(high_findings) == 0
 
 
@@ -258,7 +262,10 @@ class TestSecurityCheckCLI:
         """)
         result = runner.invoke(cli, ["security-check", str(cfg_path)])
         assert result.exit_code == 0
-        assert "No security findings" in result.output or "finding" in result.output
+        assert (
+            "No security findings" in result.output
+            or "finding" in result.output
+        )
 
     def test_http_url_exits_nonzero(self, runner, tmp_config):
         cfg_path = tmp_config("""\
