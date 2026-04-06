@@ -472,6 +472,16 @@ class Config:
         return self._data["geography"]["state_fips"]
 
     @property
+    def block_group_fips(self) -> list[str]:
+        """List of block group FIPS codes."""
+        return self._data["geography"]["block_group_fips"]
+
+    @property
+    def puma_state_fips(self) -> list[str]:
+        """List of state and territory FIPS codes."""
+        return self._data["geography"]["puma_state_fips"]
+
+    @property
     def zips(self) -> list[str]:
         """List of county-level FIPS codes for TIGER/Line address feature downloads."""
         return self._data["geography"]["zips"]

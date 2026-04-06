@@ -54,7 +54,7 @@ def _in_us(gdf: gpd.GeoDataFrame, longitude: float, latitude: float) -> bool:
     return len(candidates) > 0
 
 
-def _reader(jobs_queue: mp.Queue[bytes | None]) -> None:
+def _reader(jobs_queue: mp.Queue) -> None:
     """Read bz2-compressed entities and push them onto the jobs queue."""
     with bz2.open(INPUT_FILE) as f:
         for counter, raw in enumerate(f):
@@ -62,8 +62,8 @@ def _reader(jobs_queue: mp.Queue[bytes | None]) -> None:
 
 
 def _worker(
-    jobs_queue: mp.Queue[bytes | None],
-    write_queue: mp.Queue[dict[str, Any] | None],
+    jobs_queue: mp.Queue,
+    write_queue: mp.Queue,
 ) -> None:
     """Test each entity's coordinates against U.S. boundaries."""
     gdf = _load_state_gdf()
@@ -88,7 +88,7 @@ def _worker(
             write_queue.put(entity)
 
 
-def _writer(write_queue: mp.Queue[dict[str, Any] | None]) -> None:
+def _writer(write_queue: mp.Queue) -> None:
     """Collect results and write them to the output file."""
     finished_workers = 0
     with (
@@ -117,8 +117,8 @@ if __name__ == "__main__":
             msg = f"{label} not found: {required}"
             raise SystemExit(msg)
 
-    jobs: mp.Queue[bytes | None] = mp.Queue()
-    results: mp.Queue[dict[str, Any] | None] = mp.Queue()
+    jobs: mp.Queue = mp.Queue()
+    results: mp.Queue = mp.Queue()
 
     reader_proc = mp.Process(
         target=_reader, args=(jobs,), name="wikidata-reader"

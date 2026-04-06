@@ -1,7 +1,7 @@
 """Concatenate a set of shapefiles into a single output shapefile.
 
 Used to merge the per-state TIGER/Line block-group shapefiles
-(tl_2024_*_bg.shp) into one national file: $DATA_DIR/combined.shp.
+(tl_2024_*_bg.shp) into one national file: $DATA_DIR/combined_block_groups.shp.
 
 Columns retained: BLKGRPCE, GEOID, geometry.
 
@@ -91,10 +91,11 @@ if __name__ == "__main__":
     from fastopendata.config import config
 
     data_dir = config.data_path
-    shapefiles = [f.name for f in data_dir.iterdir() if f.suffix == ".shp"]
+    shapefiles = [f.name for f in data_dir.iterdir() if f.suffix == ".shp" and
+                  "bg" in f.name]
     concatenate_shapefiles(
         shapefiles,
         data_dir,
-        data_dir / "combined.shp",
+        data_dir / "combined_shape_files.shp",
         columns=["BLKGRPCE", "GEOID", "geometry"],
     )
