@@ -31,6 +31,7 @@ def registry() -> ScalarFunctionRegistry:
     return ScalarFunctionRegistry.get_instance()
 
 
+@pytest.mark.performance
 class TestGcdLcmVectorizationPerformance:
     def test_gcd_10k_rows_is_fast(
         self,

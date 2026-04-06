@@ -59,10 +59,12 @@ help:
 	@echo "  make coverage-check  Run tests with coverage floor (COVERAGE_FLOOR=50)"
 	@echo ""
 	@echo "Benchmarking:"
-	@echo "  make bench           Run performance benchmarks (pytest-benchmark)"
-	@echo "  make bench-save      Run benchmarks and save baseline"
-	@echo "  make bench-compare   Run benchmarks and compare against baseline"
-	@echo "  make bench-memory    Run memory profiling benchmark"
+	@echo "  make bench                Run performance benchmarks (3 suites)"
+	@echo "  make bench-save           Run benchmarks and save baseline"
+	@echo "  make bench-compare        Compare benchmarks against baseline"
+	@echo "  make bench-memory         Run memory profiling benchmark"
+	@echo "  make bench-profile        Profile benchmark with cProfile evidence"
+	@echo "  make bench-characterize   Characterize query workload patterns"
 	@echo ""
 	@echo "Telemetry & Monitoring:"
 	@echo "  make metrics-snapshot     Show current metrics (human-readable)"
@@ -224,27 +226,51 @@ test-backends:
 # ------------------------------------------------------------------------------
 # Benchmarking targets (pytest-benchmark)
 
+# All benchmark suite files (must match CI workflow)
+BENCH_SUITES := tests/benchmarks/bench_core_operations.py \
+                tests/benchmarks/bench_optimizer.py \
+                tests/benchmarks/bench_multi_type.py
+
 # Run all benchmarks (excludes slow/100K scale by default)
 bench:
-	@echo "Running performance benchmarks..."
-	uv run pytest tests/benchmarks/bench_core_operations.py -v --benchmark-only -m "not slow" --timeout=120
+	@echo "Running performance benchmarks (3 suites)..."
+	uv run pytest $(BENCH_SUITES) -v --benchmark-only -m "not slow" --timeout=120
 
 # Run benchmarks and save as named baseline for regression comparison
 BENCH_NAME ?= baseline
 bench-save:
 	@echo "Running benchmarks and saving as '$(BENCH_NAME)'..."
-	uv run pytest tests/benchmarks/bench_core_operations.py -v --benchmark-only -m "not slow" --benchmark-save=$(BENCH_NAME) --timeout=120
+	uv run pytest $(BENCH_SUITES) -v --benchmark-only -m "not slow" --benchmark-save=$(BENCH_NAME) --timeout=120
 	@echo "Saved to .benchmarks/ — compare later with: make bench-compare"
 
 # Run benchmarks and compare against most recent saved baseline
 bench-compare:
 	@echo "Running benchmarks and comparing against saved baseline..."
-	uv run pytest tests/benchmarks/bench_core_operations.py -v --benchmark-only -m "not slow" --benchmark-compare=0001_baseline --benchmark-compare-fail=mean:5.0 --timeout=120
+	uv run pytest $(BENCH_SUITES) -v --benchmark-only -m "not slow" --benchmark-compare=0001_baseline --benchmark-compare-fail=mean:5.0 --timeout=120
 
 # Run memory profiling benchmark (all scales including slow)
 bench-memory:
 	@echo "Running memory profiling benchmark..."
 	uv run python tests/benchmarks/bench_memory_baseline.py
+
+# Profile a specific benchmark or query and save cProfile evidence
+# Usage: make bench-profile PROFILE_TARGET=tests/benchmarks/bench_core_operations.py::TestQueryBenchmarks1K::test_simple_scan
+PROFILE_TARGET ?= tests/benchmarks/bench_core_operations.py
+PROFILE_OUTPUT ?= .profiles
+bench-profile:
+	@mkdir -p $(PROFILE_OUTPUT)
+	@echo "Profiling $(PROFILE_TARGET) → $(PROFILE_OUTPUT)/"
+	uv run python tests/benchmarks/profile_helper.py \
+		--target "$(PROFILE_TARGET)" \
+		--output-dir "$(PROFILE_OUTPUT)"
+	@echo "Profile saved to $(PROFILE_OUTPUT)/ — view with: uv run snakeviz $(PROFILE_OUTPUT)/*.prof"
+
+# Characterize query workloads from benchmark results
+bench-characterize:
+	@echo "Characterizing query workloads..."
+	uv run python tests/benchmarks/workload_characterization.py \
+		--benchmark-dir .benchmarks \
+		--output workload-report.md
 
 # ------------------------------------------------------------------------------
 # Telemetry and monitoring targets
@@ -291,6 +317,18 @@ sast:
 
 # Combined security scan: dependencies + code
 security: audit sast
+
+# Feature completeness tracking (skip/xfail/TODO/NotImplementedError patterns)
+feature-completeness:
+	@uv run python scripts/check_feature_completeness.py
+
+# Import cycle detection (circular dependency analysis)
+import-cycles:
+	@uv run python scripts/check_import_cycles.py
+
+# Orphan module detection (zero inbound imports)
+orphans:
+	@uv run python scripts/check_orphan_modules.py
 
 typecheck:
 	@echo "Running type checker..."

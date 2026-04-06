@@ -48,6 +48,9 @@ BACKOFF = 120
 
 PUMA_STATE_FIPS = fod_config.puma_state_fips
 
+# Georgia FIPS code for development subset
+GEORGIA_FIPS = "13"
+
 # ---------------------------------------------------------------------------
 # all — every terminal artifact in the pipeline
 # ---------------------------------------------------------------------------
@@ -65,6 +68,7 @@ rule all:
         expand(f"{DATA_DIR}/tl_2025_{{fips}}_tract.shp", fips=fod_config.state_fips),
         expand(f"{DATA_DIR}/tl_2024_{{block_group_fips}}_bg.shp", block_group_fips=fod_config.block_group_fips),
         f"{DATA_DIR}/combined_block_groups.shp",  # Add parameter or whatever for block_group_fips
+        f"{DATA_DIR}/FY2025_All_Contracts_Full_20260306.csv",
 
 
 
@@ -73,7 +77,8 @@ rule download_tiger_tract:
         census_download=1
     output: f"{DATA_DIR}/tl_2025_{{fips}}_tract.zip"
     shell:
-        "  wget --wait=3 --random-wait --timeout={SHORT_TIMEOUT_SECONDS} --tries=1"
+        "sleep $((5 + RANDOM % 10)) && "
+        f"  {CENSUS_WGET} --timeout={SHORT_TIMEOUT_SECONDS} --tries=1"
         "    'https://www2.census.gov/geo/tiger/TIGER2025/TRACT/tl_2025_{wildcards.fips}_tract.zip'"
         "    -O {output}"
 
@@ -90,7 +95,8 @@ rule download_tiger_addr:
         census_download=1
     output: f"{DATA_DIR}/tl_2025_{{zip}}_addr.zip"
     shell:
-        "  wget --wait 5 --random-wait --timeout={SHORT_TIMEOUT_SECONDS} --tries=1"
+        "sleep $((5 + RANDOM % 10)) && "
+        f"  {CENSUS_WGET} --timeout={SHORT_TIMEOUT_SECONDS} --tries=1"
         "    'https://www2.census.gov/geo/tiger/TIGER2025/ADDR/tl_2025_{wildcards.zip}_addr.zip'"
         "    -O {output} "
 
@@ -100,7 +106,8 @@ rule download_tiger_block_groups:
         census_download=1
     output: f"{DATA_DIR}/tl_2024_{{block_group_fips}}_bg.zip"
     shell:
-        "  wget --wait 5 --random-wait --timeout={SHORT_TIMEOUT_SECONDS} --tries=1"
+        "sleep $((5 + RANDOM % 10)) && "
+        f"  {CENSUS_WGET} --timeout={SHORT_TIMEOUT_SECONDS} --tries=1"
         "    'https://www2.census.gov/geo/tiger/TIGER2024/BG/tl_2024_{wildcards.block_group_fips}_bg.zip'"
         "    -O {output} "
 
@@ -111,8 +118,8 @@ rule extract_tiger_block_groups:
         "unzip -o {input} -d \"{DATA_DIR}/\""
 
 rule extract_tiger_addr:
-    input: f"{DATA_DIR}/tl_2025_{{zips}}_addr.zip"
-    output: f"{DATA_DIR}/tl_2025_{{zips}}_addr.dbf.iso.xml"
+    input: f"{DATA_DIR}/tl_2025_{{zip}}_addr.zip"
+    output: f"{DATA_DIR}/tl_2025_{{zip}}_addr.dbf.iso.xml"
     shell:
         "unzip -o {input} -d \"{DATA_DIR}/\""
 
@@ -208,12 +215,17 @@ rule download_filter_wikidata:
 
 
 rule download_tiger_puma:
+    resources:
+        census_download=1
     output:
         f"{DATA_DIR}/tl_2024_{{puma_state_fips}}_puma20.zip"
     params:
         url = "https://www2.census.gov/geo/tiger/TIGER2024/PUMA20/tl_2024_{puma_state_fips}_puma20.zip"
     shell:
-        "wget -O {output} {params.url}"
+        "sleep $((5 + RANDOM % 10)) && "
+        f"  {CENSUS_WGET} --timeout={SHORT_TIMEOUT_SECONDS} --tries=1"
+        "    '{params.url}'"
+        "    -O {output}"
 
 rule unzip_tiger_puma:
     input:
@@ -229,11 +241,63 @@ rule concatenate_tiger_puma:
     shell:
         f"DATA_DIR={DATA_DIR} uv run python '{SCRIPTS}/concatenate_puma_shape_files.py'"
 
+# ---------------------------------------------------------------------------
+# State-specific development subsets
+# ---------------------------------------------------------------------------
+# Usage:
+#   snakemake --cores 4 georgia_dev     # Build Georgia development dataset
+#   snakemake --cores 4 state_contracts STATE_FIPS=06  # Build any state
+# ---------------------------------------------------------------------------
+
+rule georgia_dev:
+    """Complete Georgia development dataset: contracts + TIGER geometries."""
+    input:
+        f"{DATA_DIR}/contracts_state_{GEORGIA_FIPS}.csv",
+        f"{DATA_DIR}/tl_2025_{GEORGIA_FIPS}_tract.shp",
+        f"{DATA_DIR}/tl_2024_{GEORGIA_FIPS}_bg.shp",
+        f"{DATA_DIR}/tl_2024_{GEORGIA_FIPS}_puma20.shp",
+        f"{DATA_DIR}/state_county_tract_puma.csv",
+
+rule extract_state_contracts:
+    """Filter national contract CSVs to a single state by FIPS code."""
+    output: f"{DATA_DIR}/contracts_state_{{state_fips}}.csv"
+    params:
+        scripts=SCRIPTS
+    resources:
+        mem_gb=2
+    shell:
+        "STATE_FIPS={wildcards.state_fips} DATA_DIR={DATA_DIR}"
+        f" uv run python '{SCRIPTS}/extract_state_contracts.py'"
+
+
 rule concatenate_tiger_bg:
-    input: f"{DATA_DIR}/tl_2024_{{fod_config.block_group_fips}}_bg.zip"
+    input: expand(f"{DATA_DIR}/tl_2024_{{block_group_fips}}_bg.shp", block_group_fips=fod_config.block_group_fips)
     output: f"{DATA_DIR}/combined_block_groups.shp"
     shell:
         f"DATA_DIR='{DATA_DIR}' uv run python '{SCRIPTS}/concatenate_shape_files.py'"
+
+
+# ===========================================================================
+# USAspending.gov FY2025 All Contracts Full Dataset
+# Source: https://files.usaspending.gov/award_data_archive/
+# ===========================================================================
+
+rule download_fy2025_contracts:
+    resources:
+        census_download=1
+    output: f"{DATA_DIR}/FY2025_All_Contracts_Full_20260306.zip"
+    shell:
+        "sleep $((5 + RANDOM % 10)) && "
+        f"{CENSUS_WGET} --timeout={SHORT_TIMEOUT_SECONDS} --tries=1"
+        "    'https://files.usaspending.gov/award_data_archive/FY2025_All_Contracts_Full_20260306.zip'"
+        "    -O {output}"
+
+
+rule extract_fy2025_contracts:
+    input: f"{DATA_DIR}/FY2025_All_Contracts_Full_20260306.zip"
+    output: f"{DATA_DIR}/FY2025_All_Contracts_Full_20260306.csv"
+    shell:
+        "unzip -o {input} -d \"{DATA_DIR}/\""
 
 # rule all:
 #     input:

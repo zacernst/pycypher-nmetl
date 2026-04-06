@@ -168,20 +168,14 @@ class TestExceptionExports:
 
 
 class TestDeprecationHandling:
-    """Deprecated aliases must work but emit warnings."""
+    """Removed aliases must raise AttributeError."""
 
-    def test_arrow_ingestion_emits_deprecation_warning(self) -> None:
-        """ArrowIngestion triggers DeprecationWarning."""
-        import warnings
+    def test_arrow_ingestion_removed(self) -> None:
+        """ArrowIngestion was removed in v0.1.0; raises AttributeError."""
+        import pytest
 
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter("always")
+        with pytest.raises(AttributeError):
             _ = pycypher.ArrowIngestion
-            deprecations = [
-                x for x in w if issubclass(x.category, DeprecationWarning)
-            ]
-            assert len(deprecations) >= 1
-            assert "DuckDBReader" in str(deprecations[0].message)
 
     def test_typo_suggestion(self) -> None:
         """Accessing a close-but-wrong name raises AttributeError with hint."""

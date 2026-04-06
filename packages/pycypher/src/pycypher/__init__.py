@@ -118,17 +118,9 @@ release.  The following table summarises the stability of each public symbol:
    * - :class:`ResultCache`, :func:`get_cache_stats`
      - Provisional
      - Caching internals; API may change.
-   * - ``ArrowIngestion``
-     - **Deprecated**
-     - Removed in ``0.1.0``.  Use :class:`~pycypher.ingestion.DuckDBReader`.
 """
 
 from __future__ import annotations
-
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from pycypher.ingestion.duckdb_reader import DuckDBReader as ArrowIngestion
 
 from pycypher.exceptions import (
     ASTConversionError,
@@ -201,7 +193,6 @@ __all__ = [
     "RELATIONSHIP_SOURCE_COLUMN",
     "RELATIONSHIP_TARGET_COLUMN",
     # Ingestion helpers
-    "ArrowIngestion",  # Deprecated v0.0.19 — use DuckDBReader; remove in v0.1.0
     "ContextBuilder",
     # Data containers
     "Context",
@@ -229,25 +220,7 @@ __all__ = [
 
 
 def __getattr__(name: str) -> type:
-    """Lazy attribute lookup with deprecation warnings and typo suggestions.
-
-    Handles the deprecated ``ArrowIngestion`` alias and provides "Did you
-    mean?" suggestions for close-match typos against ``__all__``.
-    """
-    if name == "ArrowIngestion":
-        from shared.deprecation import emit_deprecation
-
-        emit_deprecation(
-            "ArrowIngestion",
-            since="0.0.19",
-            removed_in="0.1.0",
-            alternative="DuckDBReader",
-            detail="Import via: from pycypher.ingestion import DuckDBReader",
-        )
-        from pycypher.ingestion.duckdb_reader import DuckDBReader
-
-        return DuckDBReader
-
+    """Lazy attribute lookup with typo suggestions against ``__all__``."""
     import difflib
 
     matches = difflib.get_close_matches(name, __all__, n=1, cutoff=0.6)

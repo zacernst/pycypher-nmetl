@@ -3,28 +3,76 @@
 Provides Arrow (via PyArrow) as the canonical in-memory tabular format and
 DuckDB as the universal ingestion adapter.
 
-Exports:
-    DataSource: Abstract base class for all data sources.
-    Format: Abstract base class for file-format strategies.
-    CsvFormat: CSV format strategy.
-    ParquetFormat: Parquet format strategy.
-    JsonFormat: JSON format strategy.
-    FileDataSource: File-backed data source (format-as-strategy).
-    SqlDataSource: Reads from SQL databases via DuckDB.
-    DataFrameDataSource: Wraps a pandas DataFrame.
-    ArrowDataSource: Wraps an existing Arrow table.
-    data_source_from_uri: Factory that builds the correct DataSource from a URI.
-    ContextBuilder: Fluent builder for assembling a Context from Arrow-loaded data.
-    write_dataframe_to_uri: Write a DataFrame to a URI (CSV, Parquet, or JSON).
-    ArrowIngestion: Deprecated alias for DuckDBReader (via ``__getattr__``).
+Data Sources
+------------
+
+Load data from files, DataFrames, Arrow tables, or SQL databases::
+
+    from pycypher.ingestion import (
+        FileDataSource, CsvFormat, ParquetFormat,
+        DataFrameDataSource, SqlDataSource, data_source_from_uri,
+    )
+
+    # From a CSV file
+    source = FileDataSource("people.csv", format=CsvFormat())
+
+    # From a Parquet file
+    source = FileDataSource("people.parquet", format=ParquetFormat())
+
+    # Auto-detect format from URI
+    source = data_source_from_uri("data/people.csv")
+
+    # From an existing pandas DataFrame
+    source = DataFrameDataSource(df)
+
+    # From a SQL database
+    source = SqlDataSource("sqlite:///mydb.db", query="SELECT * FROM people")
+
+Context Building
+----------------
+
+Use :class:`ContextBuilder` to assemble a query context from data sources::
+
+    from pycypher.ingestion import ContextBuilder
+    from pycypher import Star
+
+    context = (
+        ContextBuilder()
+        .add_entity("Person", FileDataSource("people.csv", format=CsvFormat()))
+        .add_relationship("KNOWS", knows_df,
+                          source_col="__SOURCE__", target_col="__TARGET__")
+        .build()
+    )
+    star = Star(context=context)
+
+Pipeline Configuration
+----------------------
+
+Define and validate YAML-based ETL pipelines::
+
+    from pycypher.ingestion import PipelineConfig, load_pipeline_config, validate_config
+
+    config = load_pipeline_config("pipeline.yaml")
+    result = validate_config(config)
+    if not result.is_valid:
+        for error in result.errors:
+            print(error)
+
+Data Preview & Introspection
+-----------------------------
+
+Inspect data sources before building full contexts::
+
+    from pycypher.ingestion import DataSourceIntrospector, DataSampler
+
+    introspector = DataSourceIntrospector(source)
+    schema = introspector.get_schema()
+
+    sampler = DataSampler(source)
+    preview = sampler.sample(n=10)
 """
 
 from __future__ import annotations
-
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from pycypher.ingestion.duckdb_reader import DuckDBReader as ArrowIngestion
 
 from pycypher.ingestion.context_builder import ContextBuilder
 from pycypher.ingestion.introspector import DataSourceIntrospector
@@ -56,26 +104,8 @@ from pycypher.ingestion.config import PipelineConfig, load_pipeline_config
 from pycypher.ingestion.validation import ValidationResult, validate_config, validate_config_dict
 
 
-def __getattr__(name: str) -> type:
-    """Emit deprecation warning for ``ArrowIngestion`` alias."""
-    if name == "ArrowIngestion":
-        from shared.deprecation import emit_deprecation
-
-        emit_deprecation(
-            "ArrowIngestion",
-            since="0.0.19",
-            removed_in="0.1.0",
-            alternative="DuckDBReader",
-            detail="Import via: from pycypher.ingestion import DuckDBReader",
-        )
-        return DuckDBReader
-    msg = f"module {__name__!r} has no attribute {name!r}"
-    raise AttributeError(msg)
-
-
 __all__ = [
     "ArrowDataSource",
-    "ArrowIngestion",  # Deprecated — use DuckDBReader; runtime via __getattr__
     "ContextBuilder",
     "DataSourceIntrospector",
     "PipelineBuilder",
