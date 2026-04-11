@@ -17,7 +17,6 @@ from dataclasses import replace
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
-
 from pycypher.ingestion.config import (
     EntitySourceConfig,
     PipelineConfig,
@@ -25,6 +24,7 @@ from pycypher.ingestion.config import (
     RelationshipSourceConfig,
     SourcesConfig,
 )
+
 from pycypher_tui.app import PyCypherTUI
 from pycypher_tui.config.pipeline import ConfigManager
 from pycypher_tui.config.templates import get_template
@@ -40,7 +40,6 @@ from pycypher_tui.screens.data_model import (
 )
 from pycypher_tui.screens.data_sources import DataSourcesScreen
 from pycypher_tui.screens.pipeline_overview import PipelineOverviewScreen
-
 
 # ---------------------------------------------------------------------------
 # Factories

@@ -15,7 +15,6 @@ from pathlib import Path
 
 import pytest
 import yaml
-
 from pycypher.ingestion.config import (
     EntitySourceConfig,
     OutputConfig,
@@ -42,7 +41,6 @@ from pycypher_tui.config.validation import CachedValidator
 from pycypher_tui.modes.base import ModeType
 from pycypher_tui.modes.manager import ModeManager
 from pycypher_tui.modes.normal import NormalMode
-
 
 # ===========================================================================
 # ConfigManager edge cases

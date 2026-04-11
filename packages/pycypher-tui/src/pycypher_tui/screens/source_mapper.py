@@ -21,7 +21,11 @@ from textual.widgets import Label, Static
 from pycypher_tui.adapters.data_model import DataModelAdapter
 from pycypher_tui.adapters.view_models import SourceMappingViewModel
 from pycypher_tui.config.pipeline import ConfigManager
-from pycypher_tui.screens.base import BaseDetailPanel, BaseListItem, VimNavigableScreen
+from pycypher_tui.screens.base import (
+    BaseDetailPanel,
+    BaseListItem,
+    VimNavigableScreen,
+)
 from pycypher_tui.widgets.data_preview import DataPreviewDialog
 
 logger = logging.getLogger(__name__)

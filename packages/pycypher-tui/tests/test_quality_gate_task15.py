@@ -19,7 +19,6 @@ import time
 from unittest.mock import Mock
 
 import pytest
-
 from pycypher.ingestion.config import (
     EntitySourceConfig,
     PipelineConfig,
@@ -28,6 +27,7 @@ from pycypher.ingestion.config import (
     RelationshipSourceConfig,
     SourcesConfig,
 )
+
 from pycypher_tui.adapters.data_model import DataModelAdapter
 from pycypher_tui.adapters.view_models import (
     ColumnMappingViewModel,
@@ -43,13 +43,12 @@ from pycypher_tui.adapters.view_models import (
     ValidationIssue,
 )
 from pycypher_tui.config.pipeline import ConfigManager
+from pycypher_tui.screens.base import BaseDetailPanel, BaseListItem
 from pycypher_tui.screens.editable_base import (
     EditableField,
     FieldValidationResult,
     VimEditableScreen,
 )
-from pycypher_tui.screens.base import BaseDetailPanel, BaseListItem
-
 
 # ---------------------------------------------------------------------------
 # Helpers

@@ -17,7 +17,6 @@ from pycypher_tui.screens.template_browser import (
     summarise_template,
 )
 
-
 # ---------------------------------------------------------------------------
 # TemplateSummary dataclass tests
 # ---------------------------------------------------------------------------

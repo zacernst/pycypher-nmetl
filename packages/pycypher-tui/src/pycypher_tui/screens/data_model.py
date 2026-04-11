@@ -12,17 +12,28 @@ import logging
 import re
 from dataclasses import dataclass, field
 
+from pycypher.ingestion.data_sources import data_source_from_uri
+from pycypher.ingestion.introspector import DataSourceIntrospector
 from textual.app import ComposeResult
 from textual.containers import Container, VerticalScroll
 from textual.css.query import NoMatches
 from textual.message import Message
-from textual.widgets import DataTable, Label, LoadingIndicator, Tabs, TabbedContent, TabPane
+from textual.widgets import (
+    DataTable,
+    Label,
+    LoadingIndicator,
+    TabbedContent,
+    TabPane,
+    Tabs,
+)
 from textual.worker import Worker
 
-from pycypher.ingestion.data_sources import data_source_from_uri
-from pycypher.ingestion.introspector import DataSourceIntrospector
 from pycypher_tui.config.pipeline import ConfigManager
-from pycypher_tui.screens.base import BaseDetailPanel, BaseListItem, VimNavigableScreen
+from pycypher_tui.screens.base import (
+    BaseDetailPanel,
+    BaseListItem,
+    VimNavigableScreen,
+)
 from pycypher_tui.widgets.column_mapping import ColumnMappingWidget
 
 logger = logging.getLogger(__name__)
@@ -417,7 +428,7 @@ class ModelDetailPanel(BaseDetailPanel):
                     sample_df = introspector.sample(n=50)
                     sample_data.append({
                         "source_id": source.id,
-                        "data": sample_df.to_dict('records')
+                        "data": sample_df.to_dict("records")
                     })
 
                     # Basic validation
@@ -470,13 +481,13 @@ class ModelDetailPanel(BaseDetailPanel):
 
             else:  # relationship
                 # Check for source/target columns
-                if hasattr(source, 'source_col') and source.source_col not in column_names:
+                if hasattr(source, "source_col") and source.source_col not in column_names:
                     validation["issues"].append({
                         "type": "error",
                         "message": f"Source column '{source.source_col}' not found in data"
                     })
 
-                if hasattr(source, 'target_col') and source.target_col not in column_names:
+                if hasattr(source, "target_col") and source.target_col not in column_names:
                     validation["issues"].append({
                         "type": "error",
                         "message": f"Target column '{source.target_col}' not found in data"
@@ -624,7 +635,7 @@ class ModelDetailPanel(BaseDetailPanel):
     def on_column_mapping_widget_mapping_changed(self, message) -> None:
         """Handle column mapping changes and persist to configuration."""
         try:
-            if not hasattr(self, '_current_relationship_sources'):
+            if not hasattr(self, "_current_relationship_sources"):
                 return
 
             # Find the source to update based on message
@@ -806,7 +817,7 @@ class DataModelScreen(VimNavigableScreen[ModelNode]):
             logger.debug("update_detail_panel: #%s not found", self.detail_panel_id)
 
     def get_item_id(self, item: ModelNode) -> str:
-        return re.sub(r'[^a-zA-Z0-9_-]', '-', item.node_id)
+        return re.sub(r"[^a-zA-Z0-9_-]", "-", item.node_id)
 
     def get_item_search_text(self, item: ModelNode) -> str:
         return f"{item.label} {item.node_type} {' '.join(item.source_ids)}"

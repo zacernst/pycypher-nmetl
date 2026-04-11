@@ -13,7 +13,6 @@ Every test mounts a real app with real config — no __new__() bypass.
 from __future__ import annotations
 
 import pytest
-
 from textual.widgets import Label, Static
 
 from pycypher_tui.app import CommandLine, ModeIndicator, PyCypherTUI, StatusBar
@@ -22,8 +21,10 @@ from pycypher_tui.config.templates import get_template
 from pycypher_tui.modes.base import ModeType
 from pycypher_tui.screens.data_sources import DataSourcesScreen, SourceListItem
 from pycypher_tui.screens.entity_browser import EntityBrowserScreen
-from pycypher_tui.screens.pipeline_overview import PipelineOverviewScreen, SectionWidget
-
+from pycypher_tui.screens.pipeline_overview import (
+    PipelineOverviewScreen,
+    SectionWidget,
+)
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -409,7 +410,9 @@ class TestOverviewStatusDisplay:
             await pilot.pause()
 
             # Get initial detail panel content
-            from pycypher_tui.screens.pipeline_overview import SectionDetailPanel
+            from pycypher_tui.screens.pipeline_overview import (
+                SectionDetailPanel,
+            )
             detail = app.query_one("#detail-panel", SectionDetailPanel)
             initial_labels = [str(l.render()) for l in detail.query(Label)]
 

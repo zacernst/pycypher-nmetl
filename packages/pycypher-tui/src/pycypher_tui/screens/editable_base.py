@@ -26,7 +26,11 @@ from textual.reactive import reactive
 from textual.widgets import Input, Label, Static
 
 from pycypher_tui.config.pipeline import ConfigManager
-from pycypher_tui.screens.base import VimNavigableScreen, BaseListItem, BaseDetailPanel
+from pycypher_tui.screens.base import (
+    BaseDetailPanel,
+    BaseListItem,
+    VimNavigableScreen,
+)
 from pycypher_tui.widgets.dialog import ConfirmDialog, DialogResult
 
 logger = logging.getLogger(__name__)

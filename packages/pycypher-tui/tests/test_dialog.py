@@ -3,11 +3,11 @@
 import pytest
 
 from pycypher_tui.widgets.dialog import (
-    VimDialog,
     ConfirmDialog,
-    InputDialog,
-    DialogResult,
     DialogResponse,
+    DialogResult,
+    InputDialog,
+    VimDialog,
 )
 
 

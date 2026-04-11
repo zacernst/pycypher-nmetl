@@ -1,29 +1,29 @@
 """Reusable VIM-style TUI widgets."""
 
-from pycypher_tui.widgets.dialog import (
-    VimDialog,
-    ConfirmDialog,
-    InputDialog,
-    DialogResult,
-    DialogResponse,
-)
-from pycypher_tui.widgets.data_preview import DataPreviewDialog
 from pycypher_tui.widgets.column_mapping import (
-    ColumnMappingWidget,
     ColumnMapping,
+    ColumnMappingWidget,
     MappingValidationResult,
 )
+from pycypher_tui.widgets.data_preview import DataPreviewDialog
+from pycypher_tui.widgets.dialog import (
+    ConfirmDialog,
+    DialogResponse,
+    DialogResult,
+    InputDialog,
+    VimDialog,
+)
 from pycypher_tui.widgets.query_editor import (
+    CYPHER_FUNCTIONS,
+    CYPHER_KEYWORDS,
+    CursorPosition,
     CypherEditor,
     EditorBuffer,
-    CursorPosition,
     QueryHistory,
     SyntaxToken,
-    tokenize_line,
     find_matching_bracket,
     get_completions,
-    CYPHER_KEYWORDS,
-    CYPHER_FUNCTIONS,
+    tokenize_line,
 )
 
 __all__ = [

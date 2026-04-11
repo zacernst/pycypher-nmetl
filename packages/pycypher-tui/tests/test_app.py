@@ -1,13 +1,12 @@
 """Tests for the main PyCypher TUI application."""
 
 import pytest
-
 from textual.app import App
 
 from pycypher_tui.app import (
-    PyCypherTUI,
-    ModeIndicator,
     CommandLine,
+    ModeIndicator,
+    PyCypherTUI,
     StatusBar,
 )
 from pycypher_tui.modes.base import ModeType

@@ -14,7 +14,6 @@ from pycypher_tui.modes.search_replace import (
     parse_substitute_command,
 )
 
-
 # ═══════════════════════════════════════════════════════════════════════════
 # Register system tests
 # ═══════════════════════════════════════════════════════════════════════════

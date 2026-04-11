@@ -13,7 +13,6 @@ from pathlib import Path
 
 import pytest
 import yaml
-
 from pycypher.ingestion.config import PipelineConfig
 from pycypher.ingestion.validation import ErrorCategory, ValidationResult
 
@@ -24,7 +23,6 @@ from pycypher_tui.config.templates import (
     list_templates,
 )
 from pycypher_tui.config.validation import CachedValidator
-
 
 # ===========================================================================
 # ConfigManager — atomic save, backup, validation integration
@@ -182,8 +180,8 @@ class TestCachedValidator:
     def test_cache_invalidated_on_config_change(self):
         from pycypher.ingestion.config import (
             EntitySourceConfig,
-            QueryConfig,
             OutputConfig,
+            QueryConfig,
             SourcesConfig,
         )
 

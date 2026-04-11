@@ -18,11 +18,23 @@ from textual.app import ComposeResult
 from textual.containers import Container, Horizontal, Vertical, VerticalScroll
 from textual.css.query import NoMatches
 from textual.message import Message
-from textual.widgets import DataTable, Label, LoadingIndicator, Static, Tabs, TabbedContent, TabPane
+from textual.widgets import (
+    DataTable,
+    Label,
+    LoadingIndicator,
+    Static,
+    TabbedContent,
+    TabPane,
+    Tabs,
+)
 from textual.worker import Worker
 
 from pycypher_tui.config.pipeline import ConfigManager
-from pycypher_tui.screens.base import BaseDetailPanel, BaseListItem, VimNavigableScreen
+from pycypher_tui.screens.base import (
+    BaseDetailPanel,
+    BaseListItem,
+    VimNavigableScreen,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +84,7 @@ def _analyze_pipeline_lineage(config) -> LineageAnalysis:
                     "source_type": "entity",
                     "entity_type": entity.entity_type,
                     "uri": entity.uri,
-                    "id_col": getattr(entity, 'id_col', None)
+                    "id_col": getattr(entity, "id_col", None)
                 }
             ))
             dependency_graph[component_id] = []
@@ -864,7 +876,7 @@ class QueryLineageScreen(VimNavigableScreen[PipelineComponent]):
             logger.debug("update_detail_panel: #%s not found", self.detail_panel_id)
 
     def get_item_id(self, item: PipelineComponent) -> str:
-        return re.sub(r'[^a-zA-Z0-9_-]', '-', item.component_id)
+        return re.sub(r"[^a-zA-Z0-9_-]", "-", item.component_id)
 
     def get_item_search_text(self, item: PipelineComponent) -> str:
         return f"{item.display_name} {item.component_type} {item.description or ''}"

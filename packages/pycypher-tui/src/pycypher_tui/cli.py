@@ -65,7 +65,6 @@ def _create_new_config(
         SystemExit: If the file already exists or template not found.
     """
     import yaml
-
     from pycypher.ingestion.config import PipelineConfig
 
     if filepath.exists():

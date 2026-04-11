@@ -3,18 +3,6 @@
 from __future__ import annotations
 
 import pytest
-
-from pycypher_tui.screens.pipeline_testing import (
-    DiagnosticEntry,
-    ExecutionPlan,
-    ExecutionStep,
-    PipelineTestingScreen,
-    StepStatus,
-    build_execution_plan,
-    run_dry_execution,
-)
-from pycypher_tui.config.pipeline import ConfigManager
-
 from pycypher.ingestion.config import (
     EntitySourceConfig,
     OutputConfig,
@@ -25,6 +13,16 @@ from pycypher.ingestion.config import (
     SourcesConfig,
 )
 
+from pycypher_tui.config.pipeline import ConfigManager
+from pycypher_tui.screens.pipeline_testing import (
+    DiagnosticEntry,
+    ExecutionPlan,
+    ExecutionStep,
+    PipelineTestingScreen,
+    StepStatus,
+    build_execution_plan,
+    run_dry_execution,
+)
 
 # ─── ExecutionStep ────────────────────────────────────────────────────────────
 

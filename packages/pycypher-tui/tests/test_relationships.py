@@ -12,7 +12,6 @@ from pycypher_tui.screens.relationships import (
     RelationshipScreen,
 )
 
-
 # ---------------------------------------------------------------------------
 # RelationshipItem dataclass tests
 # ---------------------------------------------------------------------------

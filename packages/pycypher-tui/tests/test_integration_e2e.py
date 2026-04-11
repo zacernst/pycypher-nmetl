@@ -11,7 +11,6 @@ from pathlib import Path
 
 import pytest
 import yaml
-
 from pycypher.ingestion.config import (
     EntitySourceConfig,
     OutputConfig,
@@ -21,6 +20,7 @@ from pycypher.ingestion.config import (
     RelationshipSourceConfig,
     SourcesConfig,
 )
+
 from pycypher_tui.config.pipeline import ConfigManager
 from pycypher_tui.config.templates import (
     PipelineTemplate,
@@ -49,7 +49,6 @@ from pycypher_tui.screens.template_browser import (
     TemplateSummary,
     summarise_template,
 )
-
 
 # ---------------------------------------------------------------------------
 # Workflow: Template → ConfigManager → Screen display

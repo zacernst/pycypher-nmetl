@@ -1,16 +1,24 @@
 """Tests for query lineage and data flow visualization screen."""
 
-import pytest
 from unittest.mock import Mock
 
-from pycypher.ingestion.config import PipelineConfig, SourcesConfig, EntitySourceConfig, RelationshipSourceConfig, QueryConfig, OutputConfig
+import pytest
+from pycypher.ingestion.config import (
+    EntitySourceConfig,
+    OutputConfig,
+    PipelineConfig,
+    QueryConfig,
+    RelationshipSourceConfig,
+    SourcesConfig,
+)
+
 from pycypher_tui.config.pipeline import ConfigManager
 from pycypher_tui.screens.query_lineage import (
+    PipelineComponent,
     QueryLineageScreen,
     _analyze_pipeline_lineage,
-    _generate_flow_diagram,
     _find_critical_path,
-    PipelineComponent
+    _generate_flow_diagram,
 )
 
 

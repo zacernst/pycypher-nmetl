@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pytest
-
 from pycypher.ingestion.config import (
     EntitySourceConfig,
     PipelineConfig,
@@ -11,6 +10,7 @@ from pycypher.ingestion.config import (
     RelationshipSourceConfig,
     SourcesConfig,
 )
+
 from pycypher_tui.adapters.data_model import DataModelAdapter
 from pycypher_tui.config.pipeline import ConfigManager
 from pycypher_tui.screens.entity_browser import (
@@ -22,7 +22,6 @@ from pycypher_tui.screens.entity_editor import (
     EntityEditorScreen,
     EntitySourceListItem,
 )
-
 
 # -- Fixtures ---------------------------------------------------------------
 

@@ -14,6 +14,8 @@ from pycypher.ingestion.config import PipelineConfig
 from pycypher.ingestion.validation import (
     ValidationResult,
     validate_config,
+)
+from pycypher.ingestion.validation import (
     validate_field as _validate_field,
 )
 

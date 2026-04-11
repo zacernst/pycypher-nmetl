@@ -23,7 +23,11 @@ from pycypher_tui.adapters.view_models import (
     RelationshipViewModel,
 )
 from pycypher_tui.config.pipeline import ConfigManager
-from pycypher_tui.screens.base import BaseDetailPanel, BaseListItem, VimNavigableScreen
+from pycypher_tui.screens.base import (
+    BaseDetailPanel,
+    BaseListItem,
+    VimNavigableScreen,
+)
 from pycypher_tui.widgets.data_preview import DataPreviewDialog
 
 logger = logging.getLogger(__name__)

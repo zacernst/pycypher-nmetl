@@ -166,7 +166,9 @@ class TestExtractEntities:
 
     def test_extract_entities(self):
         from pycypher.ingestion.config import (
-            EntitySourceConfig, PipelineConfig, SourcesConfig,
+            EntitySourceConfig,
+            PipelineConfig,
+            SourcesConfig,
         )
         config = PipelineConfig(
             version="1.0",
@@ -192,7 +194,9 @@ class TestExtractEntities:
 
     def test_extract_with_query(self):
         from pycypher.ingestion.config import (
-            EntitySourceConfig, PipelineConfig, SourcesConfig,
+            EntitySourceConfig,
+            PipelineConfig,
+            SourcesConfig,
         )
         config = PipelineConfig(
             version="1.0",
@@ -214,7 +218,9 @@ class TestExtractEntities:
 
     def test_ignores_relationship_sources(self):
         from pycypher.ingestion.config import (
-            PipelineConfig, RelationshipSourceConfig, SourcesConfig,
+            PipelineConfig,
+            RelationshipSourceConfig,
+            SourcesConfig,
         )
         config = PipelineConfig(
             version="1.0",

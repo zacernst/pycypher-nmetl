@@ -10,7 +10,6 @@ from textual.app import ComposeResult
 from textual.screen import Screen
 from textual.widgets import Static
 
-
 _BUILTIN_TOPICS: dict[str, str] = {
     "index": (
         "PyCypher TUI Help\n"

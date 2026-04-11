@@ -33,10 +33,10 @@ class ModeManager:
         ] = []
 
         # Initialize modes - import here to avoid circular imports
-        from pycypher_tui.modes.normal import NormalMode
-        from pycypher_tui.modes.insert import InsertMode
-        from pycypher_tui.modes.visual import VisualMode
         from pycypher_tui.modes.command import CommandMode
+        from pycypher_tui.modes.insert import InsertMode
+        from pycypher_tui.modes.normal import NormalMode
+        from pycypher_tui.modes.visual import VisualMode
 
         self._modes[ModeType.NORMAL] = NormalMode(self)
         self._modes[ModeType.INSERT] = InsertMode(self)

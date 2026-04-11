@@ -14,12 +14,23 @@ import asyncio
 import logging
 from dataclasses import dataclass
 
+from pycypher.ingestion.data_preview import (
+    DataSampler,
+    PreviewCache,
+    SamplingStrategy,
+)
 from textual.app import ComposeResult
 from textual.containers import Container, Horizontal, Vertical, VerticalScroll
-from textual.widgets import DataTable, Label, LoadingIndicator, Static, TabbedContent, TabPane
+from textual.widgets import (
+    DataTable,
+    Label,
+    LoadingIndicator,
+    Static,
+    TabbedContent,
+    TabPane,
+)
 from textual.worker import Worker, get_current_worker
 
-from pycypher.ingestion.data_preview import DataSampler, PreviewCache, SamplingStrategy
 from pycypher_tui.widgets.dialog import DialogResponse, DialogResult, VimDialog
 
 logger = logging.getLogger(__name__)
@@ -167,7 +178,7 @@ class DataPreviewDialog(VimDialog):
             # Sample data (first 100 rows)
             sample_table = sampler.sample(n=100, strategy=SamplingStrategy.HEAD)
             sample_df = sample_table.to_pandas()
-            sample_data = sample_df.to_dict('records')
+            sample_data = sample_df.to_dict("records")
 
             # Column statistics
             column_stats = sampler.all_column_stats()

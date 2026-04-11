@@ -26,11 +26,22 @@ from pycypher_tui.modes.base import ModeType
 from pycypher_tui.screens.base import BaseListItem, VimNavigableScreen
 from pycypher_tui.screens.data_sources import DataSourcesScreen, SourceListItem
 from pycypher_tui.screens.entity_browser import EntityBrowserScreen
-from pycypher_tui.screens.entity_tables import EntityListItem, EntityTablesScreen
-from pycypher_tui.screens.pipeline_overview import PipelineOverviewScreen, SectionWidget
-from pycypher_tui.screens.relationships import RelationshipListItem, RelationshipScreen
-from pycypher_tui.screens.template_browser import TemplateBrowserScreen, TemplateListItem
-
+from pycypher_tui.screens.entity_tables import (
+    EntityListItem,
+    EntityTablesScreen,
+)
+from pycypher_tui.screens.pipeline_overview import (
+    PipelineOverviewScreen,
+    SectionWidget,
+)
+from pycypher_tui.screens.relationships import (
+    RelationshipListItem,
+    RelationshipScreen,
+)
+from pycypher_tui.screens.template_browser import (
+    TemplateBrowserScreen,
+    TemplateListItem,
+)
 
 # ---------------------------------------------------------------------------
 # Helpers

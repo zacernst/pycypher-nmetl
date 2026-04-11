@@ -8,7 +8,6 @@ drill-down to existing entity/relationship screens.
 from __future__ import annotations
 
 import pytest
-
 from textual.widgets import Label
 
 from pycypher_tui.app import PyCypherTUI
@@ -24,8 +23,10 @@ from pycypher_tui.screens.data_model import (
     _build_model,
 )
 from pycypher_tui.screens.data_sources import DataSourcesScreen
-from pycypher_tui.screens.pipeline_overview import PipelineOverviewScreen, SectionWidget
-
+from pycypher_tui.screens.pipeline_overview import (
+    PipelineOverviewScreen,
+    SectionWidget,
+)
 
 # ---------------------------------------------------------------------------
 # Helpers

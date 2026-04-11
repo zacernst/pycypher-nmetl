@@ -1,12 +1,13 @@
 """Tests for visual column mapping validation widget."""
 
-import pytest
-from unittest.mock import AsyncMock, Mock, patch
 from dataclasses import dataclass
+from unittest.mock import AsyncMock, Mock, patch
+
+import pytest
 
 from pycypher_tui.widgets.column_mapping import (
-    ColumnMappingWidget,
     ColumnMapping,
+    ColumnMappingWidget,
     MappingValidationResult,
 )
 
@@ -156,7 +157,7 @@ class TestMappingValidationResult:
 class TestColumnMappingWidget:
     """Test ColumnMappingWidget functionality."""
 
-    @patch('pycypher_tui.widgets.column_mapping.DataSourceIntrospector', MockIntrospector)
+    @patch("pycypher_tui.widgets.column_mapping.DataSourceIntrospector", MockIntrospector)
     async def test_update_relationship_sources_valid(self, column_mapping_widget, sample_relationship_sources):
         """Test updating widget with valid relationship sources."""
         # Use only the first source which has valid columns
@@ -171,7 +172,7 @@ class TestColumnMappingWidget:
         assert result.mappings[0].target_col == "to_id"
         assert result.overall_status == "error"  # Columns don't exist in mock schema
 
-    @patch('pycypher_tui.widgets.column_mapping.DataSourceIntrospector', MockIntrospector)
+    @patch("pycypher_tui.widgets.column_mapping.DataSourceIntrospector", MockIntrospector)
     async def test_update_relationship_sources_invalid(self, column_mapping_widget, sample_relationship_sources):
         """Test updating widget with invalid relationship sources."""
         # Use the second source which has invalid column names

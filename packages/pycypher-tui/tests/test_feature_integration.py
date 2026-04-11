@@ -11,8 +11,11 @@ import pytest
 
 from pycypher_tui.modes.registers import RegisterFile
 from pycypher_tui.modes.search_replace import parse_substitute_command
-from pycypher_tui.widgets.dialog import ConfirmDialog, DialogResult, DialogResponse
-
+from pycypher_tui.widgets.dialog import (
+    ConfirmDialog,
+    DialogResponse,
+    DialogResult,
+)
 
 # ---------------------------------------------------------------------------
 # 1. ConfirmDialog integration
@@ -254,7 +257,10 @@ class TestScreenSearchText:
 
     def test_data_sources_search_text(self):
         """DataSourcesScreen.get_item_search_text includes all fields."""
-        from pycypher_tui.screens.data_sources import DataSourcesScreen, SourceItem
+        from pycypher_tui.screens.data_sources import (
+            DataSourcesScreen,
+            SourceItem,
+        )
 
         item = SourceItem(
             source_id="src1",

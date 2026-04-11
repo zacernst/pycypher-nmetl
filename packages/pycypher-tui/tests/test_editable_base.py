@@ -3,16 +3,6 @@
 from __future__ import annotations
 
 import pytest
-
-from pycypher_tui.screens.editable_base import (
-    EditableField,
-    EditableFieldWidget,
-    FieldValidationResult,
-    ValidationPanel,
-    VimEditableScreen,
-)
-from pycypher_tui.screens.base import BaseDetailPanel, BaseListItem
-from pycypher_tui.config.pipeline import ConfigManager
 from pycypher.ingestion.config import (
     EntitySourceConfig,
     PipelineConfig,
@@ -20,6 +10,15 @@ from pycypher.ingestion.config import (
     SourcesConfig,
 )
 
+from pycypher_tui.config.pipeline import ConfigManager
+from pycypher_tui.screens.base import BaseDetailPanel, BaseListItem
+from pycypher_tui.screens.editable_base import (
+    EditableField,
+    EditableFieldWidget,
+    FieldValidationResult,
+    ValidationPanel,
+    VimEditableScreen,
+)
 
 # -- EditableField Tests ----------------------------------------------------
 

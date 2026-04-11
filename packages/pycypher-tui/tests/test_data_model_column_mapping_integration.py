@@ -1,12 +1,22 @@
 """Integration tests for column mapping in data model screen."""
 
-import pytest
-from unittest.mock import Mock, patch
 from pathlib import Path
+from unittest.mock import Mock, patch
 
-from pycypher_tui.screens.data_model import DataModelScreen, ModelDetailPanel, ModelNode
+import pytest
+from pycypher.ingestion.config import (
+    PipelineConfig,
+    ProjectConfig,
+    RelationshipSourceConfig,
+    SourcesConfig,
+)
+
 from pycypher_tui.config.pipeline import ConfigManager
-from pycypher.ingestion.config import PipelineConfig, ProjectConfig, SourcesConfig, RelationshipSourceConfig
+from pycypher_tui.screens.data_model import (
+    DataModelScreen,
+    ModelDetailPanel,
+    ModelNode,
+)
 
 
 @pytest.fixture
@@ -70,8 +80,8 @@ class TestDataModelColumnMappingIntegration:
         panel = ModelDetailPanel(config_manager=mock_config_manager)
 
         # Mock the tab mounting and widget creation
-        with patch.object(panel, 'query_one') as mock_query, \
-             patch.object(panel, 'run_worker') as mock_worker:
+        with patch.object(panel, "query_one") as mock_query, \
+             patch.object(panel, "run_worker") as mock_worker:
 
             # Mock tab object
             mock_tab = Mock()
@@ -143,7 +153,7 @@ class TestDataModelColumnMappingIntegration:
         assert detail_panel.config_manager == mock_config_manager
 
         # Test updating with a relationship node
-        with patch.object(detail_panel, 'update_node') as mock_update:
+        with patch.object(detail_panel, "update_node") as mock_update:
             screen.update_detail_panel(relationship_node)
             # The actual update_node call happens through query_one, so we test the pattern
 

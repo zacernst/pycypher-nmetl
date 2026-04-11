@@ -9,13 +9,19 @@ Validates:
 
 from __future__ import annotations
 
+from unittest.mock import MagicMock, PropertyMock, patch
+
 import pytest
-from unittest.mock import MagicMock, patch, PropertyMock
 
-from pycypher_tui.screens.entity_tables import EntityTableInfo, EntityTablesScreen
-from pycypher_tui.screens.relationships import RelationshipItem, RelationshipScreen
+from pycypher_tui.screens.entity_tables import (
+    EntityTableInfo,
+    EntityTablesScreen,
+)
+from pycypher_tui.screens.relationships import (
+    RelationshipItem,
+    RelationshipScreen,
+)
 from pycypher_tui.widgets.data_preview import DataPreviewDialog, PreviewData
-
 
 # ---------------------------------------------------------------------------
 # Helpers

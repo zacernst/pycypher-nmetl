@@ -20,7 +20,11 @@ from pycypher_tui.config.templates import (
     PipelineTemplate,
     list_templates,
 )
-from pycypher_tui.screens.base import BaseDetailPanel, BaseListItem, VimNavigableScreen
+from pycypher_tui.screens.base import (
+    BaseDetailPanel,
+    BaseListItem,
+    VimNavigableScreen,
+)
 
 logger = logging.getLogger(__name__)
 

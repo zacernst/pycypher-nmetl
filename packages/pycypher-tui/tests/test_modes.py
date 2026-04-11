@@ -3,11 +3,11 @@
 import pytest
 
 from pycypher_tui.modes.base import BaseMode, KeyResult, ModeType
+from pycypher_tui.modes.command import CommandHistory, CommandMode
+from pycypher_tui.modes.insert import InsertMode
 from pycypher_tui.modes.manager import ModeManager
 from pycypher_tui.modes.normal import NormalMode
-from pycypher_tui.modes.insert import InsertMode
 from pycypher_tui.modes.visual import VisualMode
-from pycypher_tui.modes.command import CommandMode, CommandHistory
 
 
 class TestModeType:

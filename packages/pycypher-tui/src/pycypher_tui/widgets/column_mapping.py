@@ -12,15 +12,14 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any
 
+from pycypher.ingestion.data_sources import data_source_from_uri
+from pycypher.ingestion.introspector import DataSourceIntrospector
 from textual.app import ComposeResult
 from textual.containers import Container, Horizontal, Vertical, VerticalScroll
 from textual.events import Key
 from textual.message import Message
 from textual.reactive import reactive
-from textual.widgets import Label, LoadingIndicator, Static, Input, Select
-
-from pycypher.ingestion.data_sources import data_source_from_uri
-from pycypher.ingestion.introspector import DataSourceIntrospector
+from textual.widgets import Input, Label, LoadingIndicator, Select, Static
 
 logger = logging.getLogger(__name__)
 

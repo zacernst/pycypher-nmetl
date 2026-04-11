@@ -16,7 +16,6 @@ from textual.message import Message
 from textual.reactive import reactive
 from textual.widget import Widget
 
-
 # Cypher keywords for syntax awareness and autocomplete
 CYPHER_KEYWORDS: tuple[str, ...] = (
     "MATCH", "OPTIONAL", "WHERE", "WITH", "RETURN", "ORDER", "BY",

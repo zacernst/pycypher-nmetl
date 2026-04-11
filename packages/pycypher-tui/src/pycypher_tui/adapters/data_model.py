@@ -27,6 +27,7 @@ from pycypher_tui.adapters.view_models import (
 
 if TYPE_CHECKING:
     from pycypher.graph_index import GraphIndexManager
+
     from pycypher_tui.config.pipeline import ConfigManager
 
 logger = logging.getLogger(__name__)

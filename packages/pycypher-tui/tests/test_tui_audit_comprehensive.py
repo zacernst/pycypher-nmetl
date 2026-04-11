@@ -15,9 +15,9 @@ from __future__ import annotations
 
 import asyncio
 import inspect
-import pytest
 from unittest.mock import Mock, patch
 
+import pytest
 from textual.widgets import Label, LoadingIndicator, TabbedContent, TabPane
 
 from pycypher_tui.app import PyCypherTUI
@@ -26,8 +26,10 @@ from pycypher_tui.config.templates import get_template
 from pycypher_tui.screens.base import VimNavigableScreen
 from pycypher_tui.screens.data_model import DataModelScreen, ModelDetailPanel
 from pycypher_tui.screens.data_sources import DataSourcesScreen
-from pycypher_tui.screens.query_lineage import QueryLineageScreen, LineageDetailPanel
-
+from pycypher_tui.screens.query_lineage import (
+    LineageDetailPanel,
+    QueryLineageScreen,
+)
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -554,10 +556,10 @@ class TestQueryLineageCSSIDSanitization:
         """Component IDs with file paths produce valid CSS identifiers after sanitization."""
         import re as re_mod
         component_id = "output:top_products-data/output/top_products.csv"
-        sanitized = re_mod.sub(r'[^a-zA-Z0-9_-]', '-', component_id)
+        sanitized = re_mod.sub(r"[^a-zA-Z0-9_-]", "-", component_id)
         item_id = f"item-{sanitized}"
 
-        css_id_pattern = re_mod.compile(r'^[a-zA-Z_][a-zA-Z0-9_-]*$')
+        css_id_pattern = re_mod.compile(r"^[a-zA-Z_][a-zA-Z0-9_-]*$")
         assert css_id_pattern.match(item_id), (
             f"Sanitized ID should be valid CSS: {item_id}"
         )
@@ -571,9 +573,9 @@ class TestQueryLineageCSSIDSanitization:
             "query:select * from table",
             "rel:user.orders",
         ]
-        css_id_pattern = re_mod.compile(r'^[a-zA-Z0-9_-]+$')
+        css_id_pattern = re_mod.compile(r"^[a-zA-Z0-9_-]+$")
         for component_id in test_ids:
-            sanitized = re_mod.sub(r'[^a-zA-Z0-9_-]', '-', component_id)
+            sanitized = re_mod.sub(r"[^a-zA-Z0-9_-]", "-", component_id)
             assert css_id_pattern.match(sanitized), (
                 f"Sanitized '{component_id}' → '{sanitized}' is not valid CSS"
             )

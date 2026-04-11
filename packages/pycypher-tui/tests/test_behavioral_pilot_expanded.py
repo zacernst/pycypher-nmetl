@@ -9,7 +9,6 @@ DataSourcesScreen, mode transitions, and basic keyboard navigation.
 from __future__ import annotations
 
 import pytest
-
 from textual.widgets import Input, Label, Static
 
 from pycypher_tui.app import (
@@ -21,12 +20,12 @@ from pycypher_tui.app import (
 from pycypher_tui.config.pipeline import ConfigManager
 from pycypher_tui.config.templates import get_template
 from pycypher_tui.modes.base import ModeType
-from pycypher_tui.screens.entity_browser import EntityBrowserScreen
 from pycypher_tui.screens.data_sources import (
     DataSourcesScreen,
     SourceDetailPanel,
     SourceListItem,
 )
+from pycypher_tui.screens.entity_browser import EntityBrowserScreen
 from pycypher_tui.screens.entity_tables import (
     EntityDetailPanel,
     EntityListItem,
@@ -48,11 +47,10 @@ from pycypher_tui.screens.template_browser import (
 )
 from pycypher_tui.widgets.dialog import (
     ConfirmDialog,
-    DialogResult,
     DialogResponse,
+    DialogResult,
     InputDialog,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers

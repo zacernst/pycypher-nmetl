@@ -13,7 +13,6 @@ it as a user would.
 from __future__ import annotations
 
 import pytest
-
 from textual.widgets import Label, Static
 
 from pycypher_tui.app import (
@@ -41,7 +40,6 @@ from pycypher_tui.screens.pipeline_overview import (
     SectionWidget,
 )
 from pycypher_tui.screens.relationship_browser import RelationshipBrowserScreen
-
 
 # ---------------------------------------------------------------------------
 # Helpers

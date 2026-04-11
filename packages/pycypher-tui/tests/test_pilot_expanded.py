@@ -15,19 +15,17 @@ All tests mount a real app and interact via Textual pilot.
 from __future__ import annotations
 
 import pytest
-
 from textual.widgets import Label, Static
 
 from pycypher_tui.app import PyCypherTUI
 from pycypher_tui.config.pipeline import ConfigManager
 from pycypher_tui.config.templates import get_template
 from pycypher_tui.modes.base import ModeType
-from pycypher_tui.screens.entity_browser import EntityBrowserScreen
-from pycypher_tui.screens.relationship_browser import RelationshipBrowserScreen
 from pycypher_tui.screens.data_sources import (
     DataSourcesScreen,
     SourceListItem,
 )
+from pycypher_tui.screens.entity_browser import EntityBrowserScreen
 from pycypher_tui.screens.entity_tables import (
     EntityListItem,
     EntityTablesScreen,
@@ -36,15 +34,15 @@ from pycypher_tui.screens.pipeline_overview import (
     PipelineOverviewScreen,
     SectionWidget,
 )
+from pycypher_tui.screens.relationship_browser import RelationshipBrowserScreen
 from pycypher_tui.screens.relationships import (
     RelationshipListItem,
     RelationshipScreen,
 )
 from pycypher_tui.screens.template_browser import (
-    TemplateListItem,
     TemplateBrowserScreen,
+    TemplateListItem,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -165,9 +163,12 @@ class TestTemplateBrowserMounted:
         """TemplateBrowserScreen shows available templates."""
         app = PyCypherTUI()
         async with app.run_test() as pilot:
-            from pycypher_tui.screens.template_browser import TemplateBrowserScreen
-            from pycypher_tui.config.templates import list_templates
             from textual.containers import Container
+
+            from pycypher_tui.config.templates import list_templates
+            from pycypher_tui.screens.template_browser import (
+                TemplateBrowserScreen,
+            )
 
             browser = TemplateBrowserScreen(config_manager=ConfigManager())
             try:
@@ -667,7 +668,9 @@ class TestDetailPanelBehavior:
             await app._show_overview()
             await pilot.pause()
 
-            from pycypher_tui.screens.pipeline_overview import SectionDetailPanel
+            from pycypher_tui.screens.pipeline_overview import (
+                SectionDetailPanel,
+            )
             detail = app.query_one("#detail-panel", SectionDetailPanel)
             labels = detail.query(Label)
             # Should have title + at least status and items info

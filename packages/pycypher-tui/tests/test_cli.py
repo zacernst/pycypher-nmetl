@@ -16,7 +16,6 @@ from pycypher_tui.cli import (
     run_tui,
 )
 
-
 # ─── _print_templates ───────────────────────────────────────────────────────
 
 

@@ -10,9 +10,9 @@ Tests that the attribute inspector correctly loads and displays:
 
 from __future__ import annotations
 
-import pytest
 from unittest.mock import AsyncMock, Mock, patch
 
+import pytest
 from textual.widgets import DataTable, Label, LoadingIndicator, TabbedContent
 
 from pycypher_tui.app import PyCypherTUI
@@ -24,7 +24,6 @@ from pycypher_tui.screens.data_model import (
     ModelDetailPanel,
     ModelNode,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
