@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
+from pathlib import Path
 
 import pandas as pd
 import pytest
@@ -386,3 +387,113 @@ class TestAuditEndpoints:
     def test_verify_has_security_headers(self, client: TestClient) -> None:
         r = client.get("/audit/verify")
         assert r.headers["X-Content-Type-Options"] == "nosniff"
+
+
+# ── Data loading integration ─────────────────────────────────────────
+
+
+class TestDataLoadingIntegration:
+    """Tests for _load_datasets_into_star() and /admin/reload endpoint."""
+
+    def test_load_datasets_into_star_with_data(self, tmp_path: Path) -> None:
+        """_load_datasets_into_star loads CSV datasets and sets Star."""
+        import csv
+        from unittest.mock import patch
+
+        from fastopendata.api import _load_datasets_into_star, get_star
+
+        csv_path = tmp_path / "items.csv"
+        with csv_path.open("w", newline="") as f:
+            w = csv.DictWriter(f, fieldnames=["__ID__", "name"])
+            w.writeheader()
+            w.writerows([{"__ID__": 1, "name": "A"}, {"__ID__": 2, "name": "B"}])
+
+        class FakeDataset:
+            output_file = "items.csv"
+            format = "CSV"
+
+        class FakeConfig:
+            data_path = tmp_path
+            datasets = {"test_items": FakeDataset()}
+
+        with patch("fastopendata.config.config", FakeConfig()):
+            count = _load_datasets_into_star()
+
+        assert count == 1
+        star = get_star()
+        result = star.execute_query("MATCH (i:TestItems) RETURN i.name")
+        assert len(result) == 2
+        # Clean up
+        set_star(Star())
+
+    def test_load_datasets_into_star_empty(self, tmp_path: Path) -> None:
+        """_load_datasets_into_star returns 0 when no datasets found."""
+        from unittest.mock import patch
+
+        from fastopendata.api import _load_datasets_into_star
+
+        class FakeConfig:
+            data_path = tmp_path
+            datasets = {}
+
+        with patch("fastopendata.config.config", FakeConfig()):
+            count = _load_datasets_into_star()
+
+        assert count == 0
+
+    def test_reload_endpoint_requires_admin(self, client: TestClient) -> None:
+        """POST /admin/reload returns 403 without admin key."""
+        r = client.post("/admin/reload")
+        assert r.status_code == 403
+
+    def test_reload_endpoint_with_admin_key(self, tmp_path: Path) -> None:
+        """POST /admin/reload with valid admin key reloads datasets."""
+        import csv
+        from unittest.mock import patch
+
+        from fastopendata.api import _ADMIN_API_KEY
+
+        csv_path = tmp_path / "things.csv"
+        with csv_path.open("w", newline="") as f:
+            w = csv.DictWriter(f, fieldnames=["__ID__", "val"])
+            w.writeheader()
+            w.writerows([{"__ID__": 1, "val": 42}])
+
+        class FakeDataset:
+            output_file = "things.csv"
+            format = "CSV"
+
+        class FakeConfig:
+            data_path = tmp_path
+            datasets = {"test_things": FakeDataset()}
+
+        # Need admin key to be set for this test
+        with (
+            patch("fastopendata.api._ADMIN_API_KEY", "test-admin-key"),
+            patch("fastopendata.config.config", FakeConfig()),
+        ):
+            client = TestClient(app)
+            r = client.post(
+                "/admin/reload",
+                headers={"authorization": "Bearer test-admin-key"},
+            )
+
+        assert r.status_code == 200
+        body = r.json()
+        assert body["loaded_entity_types"] == 1
+        assert "Reloaded" in body["message"]
+        # Clean up
+        set_star(Star())
+
+    def test_reload_endpoint_wrong_admin_key(self) -> None:
+        """POST /admin/reload with wrong admin key returns 403."""
+        from unittest.mock import patch
+
+        with patch("fastopendata.api._ADMIN_API_KEY", "real-key"):
+            client = TestClient(app)
+            r = client.post(
+                "/admin/reload",
+                headers={"authorization": "Bearer wrong-key"},
+            )
+
+        assert r.status_code == 403

@@ -25,7 +25,6 @@ from fastopendata.api import (
 from pycypher.ingestion.context_builder import ContextBuilder
 from pycypher.star import Star
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
