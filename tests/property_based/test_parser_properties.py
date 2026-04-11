@@ -12,9 +12,8 @@ from __future__ import annotations
 import re
 import string
 
-from hypothesis import given, settings, assume
+from hypothesis import assume, given, settings
 from hypothesis import strategies as st
-
 from pycypher.grammar_parser import GrammarParser
 
 SETTINGS = settings(max_examples=50, deadline=10000)

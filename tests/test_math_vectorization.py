@@ -39,8 +39,8 @@ import time
 import numpy as np
 import pandas as pd
 import pytest
-from pycypher.scalar_functions import ScalarFunctionRegistry
 from _perf_helpers import perf_threshold
+from pycypher.scalar_functions import ScalarFunctionRegistry
 
 # ---------------------------------------------------------------------------
 # Helpers

@@ -27,6 +27,7 @@ except ImportError:
 from contextlib import contextmanager
 from dataclasses import dataclass
 
+from _perf_helpers import perf_threshold
 from pycypher.relational_models import (
     ID_COLUMN,
     Context,
@@ -34,7 +35,6 @@ from pycypher.relational_models import (
     EntityTable,
 )
 from pycypher.star import Star
-from _perf_helpers import perf_threshold
 
 
 @dataclass

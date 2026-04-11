@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import pandas as pd
 import pytest
-
 from pycypher.evaluator_protocol import (
     ExpressionEvaluatorFactory,
     ExpressionEvaluatorProtocol,

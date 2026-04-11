@@ -405,4 +405,6 @@ class PathLength(ASTNode):
 
 
 # We need RelationshipDirection available here for type annotations
-from pycypher.ast_models.core import RelationshipDirection as RelationshipDirection  # noqa: E402
+from pycypher.ast_models.core import (
+    RelationshipDirection as RelationshipDirection,  # noqa: E402
+)

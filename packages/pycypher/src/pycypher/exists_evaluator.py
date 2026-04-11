@@ -21,12 +21,12 @@ import pandas as pd
 from shared.logger import LOGGER
 
 from pycypher.constants import _broadcast_series
+from pycypher.cypher_types import FrameSeries
 from pycypher.exceptions import PatternComprehensionError
 from pycypher.relational_models import (
     RELATIONSHIP_SOURCE_COLUMN,
     RELATIONSHIP_TARGET_COLUMN,
 )
-from pycypher.cypher_types import FrameSeries
 
 if TYPE_CHECKING:
     from pycypher.ast_models import PatternComprehension

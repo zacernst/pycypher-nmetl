@@ -22,7 +22,6 @@ from typing import Any
 import pandas as pd
 import pytest
 from pycypher.star import Star
-
 from tdd_helpers import (
     QueryTestCase,
     assert_no_api_breakage,
@@ -31,7 +30,6 @@ from tdd_helpers import (
     build_multi_entity_star,
     build_scaled_star,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixture: standard social graph for integration tests

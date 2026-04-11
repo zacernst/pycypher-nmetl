@@ -16,7 +16,6 @@ from pycypher.backend_engine import (
     select_backend_for_query,
 )
 
-
 # ---------------------------------------------------------------------------
 # Unit tests for select_backend_for_query()
 # ---------------------------------------------------------------------------

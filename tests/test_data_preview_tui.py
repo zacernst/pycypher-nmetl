@@ -10,12 +10,11 @@ from pathlib import Path
 
 import pandas as pd
 import pytest
-from textual.app import App
-from textual.widgets import DataTable, Label
-
 from pycypher_tui.config.pipeline import ConfigManager
 from pycypher_tui.screens.data_sources import DataSourcesScreen, SourceItem
 from pycypher_tui.widgets.data_preview import DataPreviewDialog, PreviewData
+from textual.app import App
+from textual.widgets import DataTable, Label
 
 
 class TestDataPreviewDialog:
@@ -24,7 +23,7 @@ class TestDataPreviewDialog:
     @pytest.fixture
     def sample_csv_file(self):
         """Create a temporary CSV file for testing."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
             f.write("id,name,age,city\n")
             f.write("1,Alice,25,New York\n")
             f.write("2,Bob,30,London\n")
@@ -91,7 +90,7 @@ class TestDataSourcesScreenIntegration:
     @pytest.fixture
     def sample_csv_file(self):
         """Create a temporary CSV file for testing."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
             f.write("customer_id,name,email,city\n")
             f.write("1,Alice Smith,alice@example.com,New York\n")
             f.write("2,Bob Johnson,bob@example.com,London\n")
@@ -138,7 +137,7 @@ class TestDataSourcesScreenIntegration:
         assert source.source_id == "customers"
         assert source.source_type == "entity"
         assert source.label == "Customer"
-        assert source.uri.endswith('.csv')
+        assert source.uri.endswith(".csv")
 
     def test_handle_extra_key_preview(self, config_manager_with_sources, monkeypatch):
         """Test that 'p' key is handled for preview."""
@@ -153,7 +152,7 @@ class TestDataSourcesScreenIntegration:
         def mock_preview():
             nonlocal preview_called
             preview_called = True
-        monkeypatch.setattr(screen, '_preview_current_source', mock_preview)
+        monkeypatch.setattr(screen, "_preview_current_source", mock_preview)
 
         # Should handle 'p' key
         handled = screen.handle_extra_key("p")
@@ -174,15 +173,15 @@ class TestDataPreviewIntegration:
         files = {}
 
         # CSV file
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
             f.write("product_id,name,price,category\n")
             f.write("1,Widget A,19.99,Electronics\n")
             f.write("2,Widget B,29.99,Electronics\n")
             f.write("3,Book X,14.99,Books\n")
-            files['csv'] = Path(f.name)
+            files["csv"] = Path(f.name)
 
         # JSON file
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             import json
             data = [
                 {"order_id": 1, "customer_id": 1, "total": 45.98},
@@ -190,13 +189,13 @@ class TestDataPreviewIntegration:
                 {"order_id": 3, "customer_id": 1, "total": 14.99},
             ]
             json.dump(data, f)
-            files['json'] = Path(f.name)
+            files["json"] = Path(f.name)
 
         return files
 
     def test_preview_csv_file(self, sample_data_files):
         """Test previewing a CSV file."""
-        csv_file = sample_data_files['csv']
+        csv_file = sample_data_files["csv"]
 
         dialog = DataPreviewDialog(
             source_uri=str(csv_file),
@@ -209,7 +208,7 @@ class TestDataPreviewIntegration:
 
     def test_preview_json_file(self, sample_data_files):
         """Test previewing a JSON file."""
-        json_file = sample_data_files['json']
+        json_file = sample_data_files["json"]
 
         dialog = DataPreviewDialog(
             source_uri=str(json_file),

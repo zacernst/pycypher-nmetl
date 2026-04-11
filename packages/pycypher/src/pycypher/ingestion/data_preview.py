@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import time
 from collections import OrderedDict
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from typing import Any
 from urllib.parse import urlparse
@@ -26,14 +26,11 @@ import pandas as pd
 import pyarrow as pa
 
 from pycypher.ingestion.data_sources import (
-    _SQL_SCHEMES,
     _SUPPORTED_EXTENSIONS,
     _uri_to_duckdb_path,
     _validate_sql_string_literal,
-    data_source_from_uri,
 )
 from pycypher.ingestion.security import escape_sql_string_literal
-
 
 # ---------------------------------------------------------------------------
 # Enums and data classes

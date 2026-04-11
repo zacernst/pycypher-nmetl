@@ -10,8 +10,6 @@ current codebase.  It serves as:
 
 from __future__ import annotations
 
-from typing import Any
-
 import pandas as pd
 
 from pycypher.backends._helpers import _to_pandas

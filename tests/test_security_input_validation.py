@@ -18,7 +18,6 @@ import re
 
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # 1. Error Message Sanitization
 # ---------------------------------------------------------------------------
@@ -137,28 +136,40 @@ class TestFilePathTraversal:
 
     def test_reject_dotdot_traversal(self) -> None:
         """Paths with '..' are rejected."""
-        from pycypher.ingestion.security import SecurityError, sanitize_file_path
+        from pycypher.ingestion.security import (
+            SecurityError,
+            sanitize_file_path,
+        )
 
         with pytest.raises((SecurityError, ValueError)):
             sanitize_file_path("/data/../../../etc/passwd")
 
     def test_reject_etc_access(self) -> None:
         """Access to /etc/ is blocked."""
-        from pycypher.ingestion.security import SecurityError, sanitize_file_path
+        from pycypher.ingestion.security import (
+            SecurityError,
+            sanitize_file_path,
+        )
 
         with pytest.raises((SecurityError, ValueError)):
             sanitize_file_path("/etc/shadow")
 
     def test_reject_proc_access(self) -> None:
         """Access to /proc/ is blocked."""
-        from pycypher.ingestion.security import SecurityError, sanitize_file_path
+        from pycypher.ingestion.security import (
+            SecurityError,
+            sanitize_file_path,
+        )
 
         with pytest.raises((SecurityError, ValueError)):
             sanitize_file_path("/proc/self/environ")
 
     def test_reject_dev_access(self) -> None:
         """Access to /dev/ is blocked."""
-        from pycypher.ingestion.security import SecurityError, sanitize_file_path
+        from pycypher.ingestion.security import (
+            SecurityError,
+            sanitize_file_path,
+        )
 
         with pytest.raises((SecurityError, ValueError)):
             sanitize_file_path("/dev/random")
@@ -342,28 +353,40 @@ class TestSQLQueryAllowlist:
 
     def test_drop_rejected(self) -> None:
         """DROP TABLE is rejected."""
-        from pycypher.ingestion.security import SecurityError, validate_sql_query
+        from pycypher.ingestion.security import (
+            SecurityError,
+            validate_sql_query,
+        )
 
         with pytest.raises(SecurityError):
             validate_sql_query("DROP TABLE users")
 
     def test_insert_rejected(self) -> None:
         """INSERT is rejected."""
-        from pycypher.ingestion.security import SecurityError, validate_sql_query
+        from pycypher.ingestion.security import (
+            SecurityError,
+            validate_sql_query,
+        )
 
         with pytest.raises(SecurityError):
             validate_sql_query("INSERT INTO users VALUES (1, 'admin')")
 
     def test_multi_statement_rejected(self) -> None:
         """Multiple statements separated by semicolons are rejected."""
-        from pycypher.ingestion.security import SecurityError, validate_sql_query
+        from pycypher.ingestion.security import (
+            SecurityError,
+            validate_sql_query,
+        )
 
         with pytest.raises(SecurityError):
             validate_sql_query("SELECT 1; DROP TABLE users")
 
     def test_comment_injection_rejected(self) -> None:
         """SQL comment-based injection attempts are handled."""
-        from pycypher.ingestion.security import SecurityError, validate_sql_query
+        from pycypher.ingestion.security import (
+            SecurityError,
+            validate_sql_query,
+        )
 
         # This should either be allowed as a valid SELECT or rejected
         # as suspicious — either way, no injection should succeed
@@ -383,21 +406,30 @@ class TestSSRFPrevention:
 
     def test_reject_localhost(self) -> None:
         """Localhost URIs are blocked."""
-        from pycypher.ingestion.security import SecurityError, validate_uri_scheme
+        from pycypher.ingestion.security import (
+            SecurityError,
+            validate_uri_scheme,
+        )
 
         with pytest.raises(SecurityError):
             validate_uri_scheme("http://localhost/admin")
 
     def test_reject_private_ip(self) -> None:
         """Private RFC 1918 IPs are blocked."""
-        from pycypher.ingestion.security import SecurityError, validate_uri_scheme
+        from pycypher.ingestion.security import (
+            SecurityError,
+            validate_uri_scheme,
+        )
 
         with pytest.raises(SecurityError):
             validate_uri_scheme("http://192.168.1.1/internal")
 
     def test_reject_loopback(self) -> None:
         """127.x.x.x addresses are blocked."""
-        from pycypher.ingestion.security import SecurityError, validate_uri_scheme
+        from pycypher.ingestion.security import (
+            SecurityError,
+            validate_uri_scheme,
+        )
 
         with pytest.raises(SecurityError):
             validate_uri_scheme("http://127.0.0.1:8080/api")

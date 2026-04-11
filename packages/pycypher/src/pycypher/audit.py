@@ -40,7 +40,7 @@ from __future__ import annotations
 import json
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from typing import Any
 
 __all__ = [
@@ -128,7 +128,7 @@ def audit_query_success(
         {
             "event": "query",
             "query_id": query_id,
-            "timestamp": datetime.now(tz=timezone.utc).isoformat(),
+            "timestamp": datetime.now(tz=UTC).isoformat(),
             "status": "ok",
             "query": _truncate(query),
             "elapsed_ms": round(elapsed_s * 1000.0, 2),
@@ -172,7 +172,7 @@ def audit_mutation(
     record: dict[str, Any] = {
         "event": "mutation",
         "query_id": query_id,
-        "timestamp": datetime.now(tz=timezone.utc).isoformat(),
+        "timestamp": datetime.now(tz=UTC).isoformat(),
         "operation": operation,
         "entity_type": entity_type,
         "affected_count": affected_count,
@@ -207,7 +207,7 @@ def audit_query_error(
         {
             "event": "query",
             "query_id": query_id,
-            "timestamp": datetime.now(tz=timezone.utc).isoformat(),
+            "timestamp": datetime.now(tz=UTC).isoformat(),
             "status": "error",
             "query": _truncate(query),
             "elapsed_ms": round(elapsed_s * 1000.0, 2),

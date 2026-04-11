@@ -13,9 +13,9 @@ The module is split into three submodules for maintainability:
 
 # Base infrastructure
 from pycypher.exceptions.base import (
-    DocsLink,
     _DOCS_ANCHORS,
     _DOCS_BASE_URL,
+    DocsLink,
     _detect_environment,
     _docs_hint,
     _make_docs_link,

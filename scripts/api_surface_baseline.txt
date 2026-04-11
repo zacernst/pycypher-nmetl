@@ -1,6 +1,5 @@
 # pycypher public API baseline (auto-generated)
 ASTConversionError
-ArrowIngestion
 Context
 ContextBuilder
 CyclicDependencyError

@@ -46,8 +46,6 @@ from pycypher.config import (
 from pycypher.config import MAX_CROSS_JOIN_ROWS as MAX_CROSS_JOIN_ROWS
 from pycypher.constants import (
     ID_COLUMN,
-    RELATIONSHIP_SOURCE_COLUMN,
-    RELATIONSHIP_TARGET_COLUMN,
 )
 from pycypher.cypher_types import FrameDataFrame, FrameSeries
 
@@ -61,7 +59,7 @@ from pycypher.cypher_types import FrameDataFrame, FrameSeries
 _DEBUG_ENABLED: bool = LOGGER.isEnabledFor(logging.DEBUG)
 
 if TYPE_CHECKING:
-    from pycypher.ast_models import Expression
+    pass
 
 # ---------------------------------------------------------------------------
 # Column-name constants used across the BindingFrame execution path
@@ -180,10 +178,11 @@ def _normalize_mapped_result(result: pd.Series) -> pd.Series:
 # New code should import directly from pycypher.dataframe_utils.
 from pycypher.dataframe_utils import source_to_pandas as _source_to_pandas
 
-
 # Backward-compatible re-exports from scan_operators (extracted for SRP).
 # New code should import directly from pycypher.scan_operators.
-from pycypher.scan_operators import _coerce_pushdown_ids as _coerce_pushdown_ids
+from pycypher.scan_operators import (
+    _coerce_pushdown_ids as _coerce_pushdown_ids,
+)
 from pycypher.scan_operators import (
     _coerce_pushdown_series as _coerce_pushdown_series,
 )

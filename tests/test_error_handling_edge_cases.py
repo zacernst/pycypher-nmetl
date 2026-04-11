@@ -26,7 +26,6 @@ from pycypher.exceptions import (
 from pycypher.ingestion import ContextBuilder
 from pycypher.star import Star
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------

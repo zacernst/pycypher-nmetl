@@ -15,8 +15,8 @@ from typing import Any
 import pandas as pd
 import pytest
 from pycypher import ContextBuilder, Star
-from pycypher.binding_frame import BindingFrame
 from pycypher.ast_models import MapLiteral
+from pycypher.binding_frame import BindingFrame
 from pycypher.collection_evaluator import CollectionExpressionEvaluator
 
 # ---------------------------------------------------------------------------

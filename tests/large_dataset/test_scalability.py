@@ -11,6 +11,7 @@ import time
 
 import pandas as pd
 import pytest
+from _perf_helpers import perf_threshold
 from pycypher import (
     Context,
     EntityMapping,
@@ -21,7 +22,6 @@ from pycypher import (
 )
 
 from .benchmark_utils import run_benchmark
-from _perf_helpers import perf_threshold
 from .dataset_generator import (
     SCALE_SMALL,
     generate_company_dataframe,

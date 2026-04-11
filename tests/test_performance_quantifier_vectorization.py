@@ -14,11 +14,11 @@ from unittest.mock import Mock, patch
 
 import pandas as pd
 import pytest
+from _perf_helpers import perf_threshold
 from pycypher.binding_frame import BindingFrame
 from pycypher.collection_evaluator import CollectionExpressionEvaluator
 from pycypher.ingestion import ContextBuilder
 from pycypher.star import Star
-from _perf_helpers import perf_threshold
 
 pytestmark = [pytest.mark.slow, pytest.mark.performance]
 

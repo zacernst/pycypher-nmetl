@@ -5,6 +5,7 @@ Tests end-to-end SET clause functionality with real-world scenarios.
 import numpy as np
 import pandas as pd
 import pytest
+from _perf_helpers import perf_threshold
 from pycypher.relational_models import (
     ID_COLUMN,
     Context,
@@ -13,7 +14,6 @@ from pycypher.relational_models import (
     RelationshipMapping,
 )
 from pycypher.star import Star
-from _perf_helpers import perf_threshold
 
 pytestmark = pytest.mark.integration
 

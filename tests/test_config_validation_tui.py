@@ -13,7 +13,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-
 from pycypher.ingestion.config import (
     EntitySourceConfig,
     OutputConfig,
@@ -25,13 +24,15 @@ from pycypher.ingestion.config import (
 from pycypher.ingestion.validation import (
     ErrorCategory,
     ErrorSeverity,
-    ValidationError as ConfigValidationError,
     ValidationResult,
+    detect_legacy_format,
+    suggest_migration,
     validate_config,
     validate_config_dict,
     validate_field,
-    detect_legacy_format,
-    suggest_migration,
+)
+from pycypher.ingestion.validation import (
+    ValidationError as ConfigValidationError,
 )
 
 FIXTURES = Path(__file__).parent / "fixtures" / "configs"

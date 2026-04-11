@@ -23,11 +23,11 @@ from shared.helpers import is_null_value
 from shared.logger import LOGGER
 
 from pycypher.binding_frame import BindingFrame
+from pycypher.cypher_types import FrameSeries
 from pycypher.exceptions import (
     IncompatibleOperatorError,
     UnsupportedOperatorError,
 )
-from pycypher.cypher_types import FrameSeries
 
 _DEBUG_ENABLED: bool = LOGGER.isEnabledFor(logging.DEBUG)
 

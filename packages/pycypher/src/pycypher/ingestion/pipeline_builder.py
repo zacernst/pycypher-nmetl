@@ -29,10 +29,8 @@ from pycypher.ingestion.config import (
     PipelineConfig,
     QueryConfig,
     RelationshipSourceConfig,
-    SourcesConfig,
     load_pipeline_config,
 )
-
 
 # ---------------------------------------------------------------------------
 # Data classes for operation history and snapshots

@@ -19,8 +19,8 @@ import time
 from unittest.mock import patch
 
 import pytest
-from pycypher.ast_models import ASTConverter
 from _perf_helpers import perf_threshold
+from pycypher.ast_models import ASTConverter
 
 # ---------------------------------------------------------------------------
 # Category 1 — Cache identity: same string returns the same object

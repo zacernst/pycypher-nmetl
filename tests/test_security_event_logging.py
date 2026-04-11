@@ -6,7 +6,6 @@ import json
 import logging
 
 import pytest
-
 from pycypher.ingestion.security import (
     SECURITY_LOGGER,
     SecurityError,
@@ -18,7 +17,6 @@ from pycypher.ingestion.security import (
     validate_sql_query,
     validate_uri_scheme,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers

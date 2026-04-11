@@ -34,6 +34,7 @@ import time
 
 import pandas as pd
 import pytest
+from _perf_helpers import perf_threshold
 from pycypher.boolean_evaluator import kleene_and, kleene_or, kleene_xor
 from pycypher.relational_models import (
     ID_COLUMN,
@@ -43,7 +44,6 @@ from pycypher.relational_models import (
     RelationshipMapping,
 )
 from pycypher.star import Star
-from _perf_helpers import perf_threshold
 
 # ---------------------------------------------------------------------------
 # Shared fixtures

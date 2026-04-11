@@ -15,7 +15,6 @@ import click.testing
 import pandas as pd
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # Query Suggestion Engine tests
 # ---------------------------------------------------------------------------
@@ -452,9 +451,10 @@ class TestReplIntelligenceIntegration:
 
     def test_suggest_dot_command(self) -> None:
         """REPL .suggest command should show suggestions."""
-        from pycypher.repl import CypherRepl
         import io
         from unittest.mock import patch
+
+        from pycypher.repl import CypherRepl
 
         repl = CypherRepl()
         output = io.StringIO()
@@ -467,9 +467,10 @@ class TestReplIntelligenceIntegration:
 
     def test_suggest_no_arg_shows_usage(self) -> None:
         """REPL .suggest with no argument shows usage."""
-        from pycypher.repl import CypherRepl
         import io
         from unittest.mock import patch
+
+        from pycypher.repl import CypherRepl
 
         repl = CypherRepl()
         output = io.StringIO()
@@ -481,9 +482,10 @@ class TestReplIntelligenceIntegration:
 
     def test_hints_dot_command(self) -> None:
         """REPL .hints command should show performance hints."""
-        from pycypher.repl import CypherRepl
         import io
         from unittest.mock import patch
+
+        from pycypher.repl import CypherRepl
 
         repl = CypherRepl()
         output = io.StringIO()
@@ -496,9 +498,10 @@ class TestReplIntelligenceIntegration:
 
     def test_hints_no_arg_shows_usage(self) -> None:
         """REPL .hints with no argument shows usage."""
-        from pycypher.repl import CypherRepl
         import io
         from unittest.mock import patch
+
+        from pycypher.repl import CypherRepl
 
         repl = CypherRepl()
         output = io.StringIO()
@@ -510,9 +513,10 @@ class TestReplIntelligenceIntegration:
 
     def test_hints_well_formed_query_no_issues(self) -> None:
         """REPL .hints for well-formed query shows no issues."""
-        from pycypher.repl import CypherRepl
         import io
         from unittest.mock import patch
+
+        from pycypher.repl import CypherRepl
 
         repl = CypherRepl()
         output = io.StringIO()
@@ -538,9 +542,10 @@ class TestReplIntelligenceIntegration:
 
     def test_help_mentions_suggest_and_hints(self) -> None:
         """REPL .help should mention .suggest and .hints commands."""
-        from pycypher.repl import CypherRepl
         import io
         from unittest.mock import patch
+
+        from pycypher.repl import CypherRepl
 
         repl = CypherRepl()
         output = io.StringIO()

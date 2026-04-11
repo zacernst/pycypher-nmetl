@@ -96,6 +96,7 @@ class TestNoIterrows:
 
 _N = 10_000
 from _perf_helpers import perf_threshold
+
 _THRESHOLD_MS = perf_threshold(250)  # budget per call; iterrows typically 200-500ms at N=10k
 # Threshold is generous to avoid flaky failures under CPU contention
 # (CI, parallel test runs, multi-agent sessions).  Vectorized path

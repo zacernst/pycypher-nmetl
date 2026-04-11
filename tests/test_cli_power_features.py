@@ -14,7 +14,6 @@ from unittest.mock import patch
 import click
 import pandas as pd
 import pytest
-
 from pycypher.repl import CypherRepl, _display_result
 
 

@@ -68,7 +68,7 @@ from __future__ import annotations
 
 import enum
 import time
-from typing import Any, Protocol, runtime_checkable
+from typing import Protocol, runtime_checkable
 
 import pandas as pd
 from shared.logger import LOGGER
@@ -78,11 +78,16 @@ from pycypher.backends._helpers import (
     IDENTIFIER_RE,
     validate_identifier,
 )
-from pycypher.cypher_types import BackendFrame, BackendMask, ColumnValues, SourceObject
 from pycypher.backends.duckdb_backend import DuckDBBackend
 from pycypher.backends.pandas_backend import PandasBackend
 from pycypher.backends.polars_backend import PolarsBackend
 from pycypher.constants import ID_COLUMN
+from pycypher.cypher_types import (
+    BackendFrame,
+    BackendMask,
+    ColumnValues,
+    SourceObject,
+)
 
 # ---------------------------------------------------------------------------
 # BackendEngine protocol

@@ -28,6 +28,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 import pytest
+from _perf_helpers import perf_threshold
 from pycypher.backend_engine import (
     DuckDBBackend,
     PandasBackend,
@@ -41,7 +42,6 @@ from pycypher.relational_models import (
     RelationshipTable,
 )
 from pycypher.star import Star
-from _perf_helpers import perf_threshold
 
 # ---------------------------------------------------------------------------
 # Pytest markers

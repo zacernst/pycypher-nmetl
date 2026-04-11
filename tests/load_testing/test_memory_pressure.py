@@ -11,9 +11,9 @@ import signal
 import tracemalloc
 
 import pytest
+from _perf_helpers import perf_threshold
 from pycypher.star import Star
 
-from _perf_helpers import perf_threshold
 from .load_generator import (
     QUERY_WORKLOAD,
     SCALE_MICRO,

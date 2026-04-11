@@ -6,7 +6,6 @@ import time
 from unittest.mock import MagicMock
 
 import pytest
-
 from pycypher.timeout_handler import TimeoutHandler
 
 

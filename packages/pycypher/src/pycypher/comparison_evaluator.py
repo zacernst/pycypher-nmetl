@@ -22,8 +22,8 @@ import pandas as pd
 from shared.logger import LOGGER
 
 from pycypher.constants import _null_series
-from pycypher.exceptions import UnsupportedOperatorError
 from pycypher.cypher_types import FrameSeries
+from pycypher.exceptions import UnsupportedOperatorError
 
 _DEBUG_ENABLED: bool = LOGGER.isEnabledFor(logging.DEBUG)
 

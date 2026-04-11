@@ -701,21 +701,21 @@ class CypherRepl(cmd.Cmd):
             click.echo(f"  MATCH (n:{e}) RETURN n.{p}")
             click.echo(f"\n  -- Count {e} nodes")
             click.echo(f"  MATCH (n:{e}) RETURN count(n) AS total")
-            click.echo(f"\n  -- Filter by property")
+            click.echo("\n  -- Filter by property")
             click.echo(f"  MATCH (n:{e}) WHERE n.{p} IS NOT NULL RETURN n.{p}")
             click.echo(f"\n  -- Create a new {e}")
             click.echo(f"  CREATE (:{e} {{{p}: 'value'}})")
 
             if len(entities) > 1:
                 e2 = entities[1]
-                click.echo(f"\n  -- Query multiple types")
+                click.echo("\n  -- Query multiple types")
                 click.echo(
                     f"  MATCH (a:{e}), (b:{e2}) RETURN a, b LIMIT 10"
                 )
 
             if rels:
                 r = rels[0]
-                click.echo(f"\n  -- Follow relationships")
+                click.echo("\n  -- Follow relationships")
                 click.echo(
                     f"  MATCH (n:{e})-[r:{r}]->(m) RETURN n, r, m LIMIT 10"
                 )

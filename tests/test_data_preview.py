@@ -19,7 +19,6 @@ from pathlib import Path
 import pandas as pd
 import pyarrow as pa
 import pytest
-
 from pycypher.ingestion.data_preview import (
     ColumnStats,
     DataSampler,
@@ -28,7 +27,6 @@ from pycypher.ingestion.data_preview import (
     SamplingStrategy,
     SchemaInfo,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

@@ -10,13 +10,11 @@ from pathlib import Path
 import pandas as pd
 import pyarrow as pa
 import pytest
-
 from pycypher.ingestion.introspector import (
     ColumnStats,
     DataSourceIntrospector,
     SchemaInfo,
 )
-
 
 # ===========================================================================
 # Fixtures — create temporary CSV/Parquet files for testing

@@ -38,7 +38,7 @@ import subprocess
 import sys
 import time
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from io import StringIO
 from pathlib import Path
 
@@ -103,7 +103,7 @@ def profile_pytest_target(
     """
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    ts = datetime.now(tz=timezone.utc).strftime("%Y%m%d_%H%M%S")
+    ts = datetime.now(tz=UTC).strftime("%Y%m%d_%H%M%S")
     safe_name = _sanitize_target_name(target)
     prof_path = output_dir / f"{ts}_{safe_name}.prof"
     txt_path = output_dir / f"{ts}_{safe_name}.txt"

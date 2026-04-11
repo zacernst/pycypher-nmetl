@@ -15,13 +15,11 @@ import threading
 import time
 
 import pytest
-
 from pycypher.query_learning import (
     AdaptivePlanCache,
     PredicateSelectivityTracker,
     QueryLearningStore,
 )
-
 
 # ---------------------------------------------------------------------------
 # 1. Complex Predicate Selectivity Recognition
@@ -213,7 +211,10 @@ class TestQueryPlanVersioning:
 
     def test_plan_version_increments(self):
         """Each new plan for same fingerprint increments version."""
-        from pycypher.query_learning import PlanVersionTracker, QueryFingerprint
+        from pycypher.query_learning import (
+            PlanVersionTracker,
+            QueryFingerprint,
+        )
         from pycypher.query_planner import AnalysisResult
 
         tracker = PlanVersionTracker()
@@ -234,7 +235,10 @@ class TestQueryPlanVersioning:
 
     def test_plan_effectiveness_tracking(self):
         """Track execution metrics per plan version."""
-        from pycypher.query_learning import PlanVersionTracker, QueryFingerprint
+        from pycypher.query_learning import (
+            PlanVersionTracker,
+            QueryFingerprint,
+        )
         from pycypher.query_planner import AnalysisResult
 
         tracker = PlanVersionTracker()
@@ -260,7 +264,10 @@ class TestQueryPlanVersioning:
 
     def test_plan_version_comparison(self):
         """Compare effectiveness across plan versions."""
-        from pycypher.query_learning import PlanVersionTracker, QueryFingerprint
+        from pycypher.query_learning import (
+            PlanVersionTracker,
+            QueryFingerprint,
+        )
         from pycypher.query_planner import AnalysisResult
 
         tracker = PlanVersionTracker()
@@ -288,7 +295,10 @@ class TestQueryPlanVersioning:
 
     def test_plan_history(self):
         """Get full version history for a fingerprint."""
-        from pycypher.query_learning import PlanVersionTracker, QueryFingerprint
+        from pycypher.query_learning import (
+            PlanVersionTracker,
+            QueryFingerprint,
+        )
         from pycypher.query_planner import AnalysisResult
 
         tracker = PlanVersionTracker()
@@ -309,7 +319,10 @@ class TestQueryPlanVersioning:
 
     def test_no_history_returns_empty(self):
         """Unknown fingerprint returns empty history."""
-        from pycypher.query_learning import PlanVersionTracker, QueryFingerprint
+        from pycypher.query_learning import (
+            PlanVersionTracker,
+            QueryFingerprint,
+        )
 
         tracker = PlanVersionTracker()
         fp = QueryFingerprint(
@@ -323,7 +336,10 @@ class TestQueryPlanVersioning:
 
     def test_plan_regression_detection(self):
         """Detect when a new plan version regresses performance."""
-        from pycypher.query_learning import PlanVersionTracker, QueryFingerprint
+        from pycypher.query_learning import (
+            PlanVersionTracker,
+            QueryFingerprint,
+        )
         from pycypher.query_planner import AnalysisResult
 
         tracker = PlanVersionTracker()
@@ -358,7 +374,10 @@ class TestMLDrivenCacheEviction:
 
     def test_frequency_score_increases_with_access(self):
         """More frequently accessed entries have higher eviction resistance."""
-        from pycypher.query_learning import AdaptiveEvictionPolicy, QueryFingerprint
+        from pycypher.query_learning import (
+            AdaptiveEvictionPolicy,
+            QueryFingerprint,
+        )
         from pycypher.query_planner import AnalysisResult
 
         policy = AdaptiveEvictionPolicy()

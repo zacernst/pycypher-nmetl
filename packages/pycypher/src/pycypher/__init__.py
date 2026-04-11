@@ -122,6 +122,7 @@ release.  The following table summarises the stability of each public symbol:
 
 from __future__ import annotations
 
+from pycypher.config import apply_preset, show_config
 from pycypher.exceptions import (
     ASTConversionError,
     CyclicDependencyError,
@@ -156,7 +157,6 @@ from pycypher.relational_models import (
     RelationshipMapping,
     RelationshipTable,
 )
-from pycypher.config import apply_preset, show_config
 from pycypher.semantic_validator import SemanticValidator, validate_query
 from pycypher.star import ResultCache, Star, get_cache_stats
 

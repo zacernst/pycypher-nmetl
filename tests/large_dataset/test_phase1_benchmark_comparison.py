@@ -21,6 +21,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 import pytest
+from _perf_helpers import perf_threshold
 from pycypher import (
     Context,
     EntityMapping,
@@ -29,7 +30,6 @@ from pycypher import (
     RelationshipTable,
     Star,
 )
-from _perf_helpers import perf_threshold
 
 # ---------------------------------------------------------------------------
 # Configuration (mirrors bench_memory_baseline.py)

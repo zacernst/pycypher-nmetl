@@ -24,8 +24,6 @@ import time
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
-from shared.logger import LOGGER
-
 from pycypher.feedback_collector import QueryFingerprint
 
 if TYPE_CHECKING:

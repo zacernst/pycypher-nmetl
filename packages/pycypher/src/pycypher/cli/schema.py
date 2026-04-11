@@ -133,7 +133,11 @@ def schema_impl(
 ) -> None:
     """Inspect the graph schema from data sources."""
     from pycypher.ingestion.context_builder import ContextBuilder
-    from pycypher.nmetl_cli import _load_data_source, _parse_entity_arg, _parse_rel_arg
+    from pycypher.nmetl_cli import (
+        _load_data_source,
+        _parse_entity_arg,
+        _parse_rel_arg,
+    )
     from pycypher.relational_models import ID_COLUMN
 
     if not entity_specs and not rel_specs:

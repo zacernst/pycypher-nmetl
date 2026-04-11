@@ -3,7 +3,6 @@
 import time
 
 import pytest
-
 from pycypher.query_learning import (
     AdaptivePlanCache,
     JoinPerformanceTracker,
@@ -13,7 +12,6 @@ from pycypher.query_learning import (
     _size_bucket,
     get_learning_store,
 )
-
 
 # ---------------------------------------------------------------------------
 # QueryFingerprinter tests

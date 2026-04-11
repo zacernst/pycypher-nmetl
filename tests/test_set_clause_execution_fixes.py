@@ -4,6 +4,7 @@ These tests validate SET functionality while properly handling unimplemented fea
 
 import pandas as pd
 import pytest
+from _perf_helpers import perf_threshold
 from pycypher.relational_models import (
     ID_COLUMN,
     Context,
@@ -11,7 +12,6 @@ from pycypher.relational_models import (
     EntityTable,
 )
 from pycypher.star import Star
-from _perf_helpers import perf_threshold
 
 
 class TestSetClauseBasicExecutionFixed:

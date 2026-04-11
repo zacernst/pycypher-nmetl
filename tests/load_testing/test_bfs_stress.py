@@ -12,6 +12,7 @@ import time
 import numpy as np
 import pandas as pd
 import pytest
+from _perf_helpers import perf_threshold
 from pycypher.ingestion import ContextBuilder
 from pycypher.path_expander import (
     _MAX_FRONTIER_ROWS,
@@ -20,7 +21,6 @@ from pycypher.path_expander import (
 from pycypher.star import Star
 
 from .load_generator import SCALE_SMALL, build_graph
-from _perf_helpers import perf_threshold
 
 
 @pytest.fixture(scope="module")

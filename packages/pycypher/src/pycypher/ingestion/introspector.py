@@ -24,7 +24,6 @@ LOGGER = logging.getLogger(__name__)
 
 from pycypher.ingestion.data_sources import data_source_from_uri
 
-
 # ---------------------------------------------------------------------------
 # Data classes
 # ---------------------------------------------------------------------------

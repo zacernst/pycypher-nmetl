@@ -17,7 +17,6 @@ from __future__ import annotations
 import threading
 
 import pytest
-
 from pycypher.grammar_rule_mixins import (
     ClauseRulesMixin,
     ExpressionRulesMixin,
@@ -33,7 +32,6 @@ from pycypher.grammar_transformers import (
     PatternTransformer,
     StatementTransformer,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers

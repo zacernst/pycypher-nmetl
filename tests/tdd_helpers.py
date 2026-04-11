@@ -35,7 +35,6 @@ from pycypher.relational_models import (
 )
 from pycypher.star import Star
 
-
 # ---------------------------------------------------------------------------
 # Query test case builder (TDD-friendly)
 # ---------------------------------------------------------------------------

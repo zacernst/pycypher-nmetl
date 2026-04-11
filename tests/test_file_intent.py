@@ -6,8 +6,12 @@ import threading
 from pathlib import Path
 
 import pytest
-from shared.file_intent import Intent, IntentRegistry, RegistrationResult, RiskLevel
-
+from shared.file_intent import (
+    Intent,
+    IntentRegistry,
+    RegistrationResult,
+    RiskLevel,
+)
 
 # ---------------------------------------------------------------------------
 # Risk assessment

@@ -157,7 +157,6 @@ class TestEntityLabelIndexMixedTypes:
     def test_label_index_build_mixed_str_int_ids(self) -> None:
         """EntityLabelIndex.build should not raise TypeError with mixed str+int IDs."""
         import numpy as np
-
         from pycypher.graph_index import EntityLabelIndex
 
         df = pd.DataFrame({"__ID__": ["p1", 2, "p3", 4]})

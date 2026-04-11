@@ -48,18 +48,6 @@ from __future__ import annotations
 
 from typing import Any
 
-# Core: base classes, enums, validation framework
-from pycypher.ast_models.core import (
-    Algebraizable,
-    ASTNode,
-    JoinType,
-    random_hash,
-    RelationshipDirection,
-    ValidationIssue,
-    ValidationResult,
-    ValidationSeverity,
-)
-
 # Clauses: query structure, clauses, and patterns
 from pycypher.ast_models.clauses import (
     AddAllPropertiesItem,
@@ -92,6 +80,18 @@ from pycypher.ast_models.clauses import (
     Unwind,
     With,
     YieldItem,
+)
+
+# Core: base classes, enums, validation framework
+from pycypher.ast_models.core import (
+    Algebraizable,
+    ASTNode,
+    JoinType,
+    RelationshipDirection,
+    ValidationIssue,
+    ValidationResult,
+    ValidationSeverity,
+    random_hash,
 )
 
 # Expressions: all expression types

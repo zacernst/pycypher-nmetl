@@ -347,10 +347,10 @@ class ScalarFunctionEvaluator:
             var_name = arg_expressions[0].name
             entity_type = self.frame.type_registry.get(var_name)
             if entity_type is not None:
+                from pycypher.constants import ID_COLUMN as _ID_COL
                 from pycypher.dataframe_utils import (
                     source_to_pandas as _source_to_pandas,
                 )
-                from pycypher.constants import ID_COLUMN as _ID_COL
 
                 ctx = self.frame.context
                 shadow = getattr(ctx, "_shadow", {})
@@ -429,12 +429,12 @@ class ScalarFunctionEvaluator:
             var_name = arg_expressions[0].name
             rel_type = self.frame.type_registry.get(var_name)
             if rel_type is not None:
-                from pycypher.dataframe_utils import (
-                    source_to_pandas as _source_to_pandas,
-                )
                 from pycypher.constants import ID_COLUMN as _ID_COL
                 from pycypher.constants import (
                     RELATIONSHIP_SOURCE_COLUMN as _SRC_COL,
+                )
+                from pycypher.dataframe_utils import (
+                    source_to_pandas as _source_to_pandas,
                 )
                 from pycypher.relational_models import (
                     RELATIONSHIP_TARGET_COLUMN as _TGT_COL,

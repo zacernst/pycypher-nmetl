@@ -34,7 +34,7 @@ import uuid
 from typing import TYPE_CHECKING
 
 import pandas as pd
-from shared.logger import LOGGER, set_query_id, reset_query_id
+from shared.logger import LOGGER, reset_query_id, set_query_id
 from shared.otel import trace_phase, trace_query
 
 from pycypher.input_validator import InputValidationResult, InputValidator

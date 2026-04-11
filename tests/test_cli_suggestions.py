@@ -8,7 +8,6 @@ from __future__ import annotations
 import click
 import click.testing
 import pytest
-
 from pycypher.cli.main import SuggestingGroup, cli
 
 
@@ -170,7 +169,6 @@ class TestReplEnhancedCompletion:
     def test_completenames_entity_labels_with_context(self) -> None:
         """Tab completion includes entity labels when context is loaded."""
         import pandas as pd
-
         from pycypher.ingestion import ContextBuilder
         from pycypher.repl import CypherRepl
         from pycypher.star import Star

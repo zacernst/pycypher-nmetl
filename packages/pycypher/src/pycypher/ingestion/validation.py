@@ -23,16 +23,14 @@ import re
 from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any
-from urllib.parse import urlparse
 
 from pycypher.ingestion.config import (
     CURRENT_CONFIG_VERSION,
-    SUPPORTED_CONFIG_VERSIONS,
     PipelineConfig,
     _check_output_uri,
     _check_source_uri,
 )
-from pycypher.ingestion.data_sources import _SQL_SCHEMES, _SUPPORTED_EXTENSIONS
+from pycypher.ingestion.data_sources import _SUPPORTED_EXTENSIONS
 
 __all__ = [
     "ErrorCategory",
@@ -473,6 +471,6 @@ def suggest_migration(config_dict: dict[str, Any]) -> str | None:
         "5. Add 'queries' section with Cypher queries (inline or file references).",
         "6. Add 'output' section to define output sinks.",
         "",
-        f"See the canonical schema in 'pycypher.ingestion.config.PipelineConfig'.",
+        "See the canonical schema in 'pycypher.ingestion.config.PipelineConfig'.",
     ]
     return "\n".join(lines)

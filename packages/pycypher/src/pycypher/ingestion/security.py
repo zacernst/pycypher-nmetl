@@ -10,7 +10,7 @@ import json
 import logging
 import os
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -101,7 +101,7 @@ def security_event_log(
     record: dict[str, object] = {
         "event": "security",
         "event_type": event_type,
-        "timestamp": datetime.now(tz=timezone.utc).isoformat(),
+        "timestamp": datetime.now(tz=UTC).isoformat(),
     }
     if input_sample is not None:
         record["input_sample"] = _truncate_input(input_sample)

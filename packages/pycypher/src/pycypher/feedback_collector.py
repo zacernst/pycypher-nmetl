@@ -177,8 +177,6 @@ class QueryFingerprinter:
             Comparison,
             Not,
             Or,
-            PropertyLookup,
-            Variable,
         )
 
         if isinstance(expr, And):

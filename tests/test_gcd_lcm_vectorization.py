@@ -17,8 +17,8 @@ import time
 import numpy as np
 import pandas as pd
 import pytest
-from pycypher.scalar_functions import ScalarFunctionRegistry
 from _perf_helpers import perf_threshold
+from pycypher.scalar_functions import ScalarFunctionRegistry
 
 ARRAY_SIZE = 100_000
 THRESHOLD_MS = perf_threshold(100)  # numpy path is ~12 ms; apply() path is ~300-500 ms

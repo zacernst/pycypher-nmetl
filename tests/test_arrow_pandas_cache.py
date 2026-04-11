@@ -26,10 +26,10 @@ import numpy as np
 import pandas as pd
 import pycypher.binding_frame as bf_module
 import pytest
+from _perf_helpers import perf_threshold
 from pycypher.binding_frame import _source_to_pandas
 from pycypher.ingestion.context_builder import ContextBuilder
 from pycypher.star import Star
-from _perf_helpers import perf_threshold
 
 # ---------------------------------------------------------------------------
 # Fixtures

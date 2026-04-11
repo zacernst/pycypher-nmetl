@@ -8,7 +8,6 @@ from typing import Any
 
 import click
 
-
 # Registry of config knobs: (env_var, description, default_display)
 CONFIG_REGISTRY: list[tuple[str, str, str]] = [
     # --- Query execution ---

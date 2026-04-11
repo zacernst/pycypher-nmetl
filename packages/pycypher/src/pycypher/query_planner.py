@@ -48,7 +48,11 @@ from shared.logger import LOGGER
 # reduced coupling.  Import what QueryPlanAnalyzer needs at runtime.
 from pycypher.cardinality_estimator import (
     AVG_BYTES_PER_CELL as _AVG_BYTES_PER_CELL,
+)
+from pycypher.cardinality_estimator import (
     DEFAULT_FILTER_SELECTIVITY as _DEFAULT_FILTER_SELECTIVITY,
+)
+from pycypher.cardinality_estimator import (
     CardinalityFeedbackStore,
     ColumnStatistics,
     TableStatistics,
@@ -971,8 +975,8 @@ class QueryPlanAnalyzer:
             ]
             if corrections:
                 # Geometric mean of correction factors for all involved types.
-                from functools import reduce
                 import operator
+                from functools import reduce
 
                 product = reduce(operator.mul, corrections, 1.0)
                 geo_mean = product ** (1.0 / len(corrections))

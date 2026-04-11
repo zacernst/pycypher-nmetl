@@ -74,9 +74,17 @@ Inspect data sources before building full contexts::
 
 from __future__ import annotations
 
+from pycypher.ingestion.config import PipelineConfig, load_pipeline_config
 from pycypher.ingestion.context_builder import ContextBuilder
-from pycypher.ingestion.introspector import DataSourceIntrospector
-from pycypher.ingestion.pipeline_builder import PipelineBuilder, PipelineOperation, PipelineSnapshot
+from pycypher.ingestion.data_preview import (
+    ColumnStats,
+    DataSampler,
+    PreviewCache,
+    QueryResult,
+    QueryTester,
+    SamplingStrategy,
+    SchemaInfo,
+)
 from pycypher.ingestion.data_sources import (
     ArrowDataSource,
     CsvFormat,
@@ -89,20 +97,19 @@ from pycypher.ingestion.data_sources import (
     SqlDataSource,
     data_source_from_uri,
 )
-from pycypher.ingestion.data_preview import (
-    ColumnStats,
-    DataSampler,
-    PreviewCache,
-    QueryResult,
-    QueryTester,
-    SamplingStrategy,
-    SchemaInfo,
-)
 from pycypher.ingestion.duckdb_reader import DuckDBReader
+from pycypher.ingestion.introspector import DataSourceIntrospector
 from pycypher.ingestion.output_writer import write_dataframe_to_uri
-from pycypher.ingestion.config import PipelineConfig, load_pipeline_config
-from pycypher.ingestion.validation import ValidationResult, validate_config, validate_config_dict
-
+from pycypher.ingestion.pipeline_builder import (
+    PipelineBuilder,
+    PipelineOperation,
+    PipelineSnapshot,
+)
+from pycypher.ingestion.validation import (
+    ValidationResult,
+    validate_config,
+    validate_config_dict,
+)
 
 __all__ = [
     "ArrowDataSource",

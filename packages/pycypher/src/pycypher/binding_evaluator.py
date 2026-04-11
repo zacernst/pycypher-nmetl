@@ -78,9 +78,9 @@ from pycypher.ast_models import (
     Xor,
 )
 from pycypher.constants import _normalize_func_args as _normalize_func_args
+from pycypher.cypher_types import FrameSeries
 from pycypher.exceptions import VariableNotFoundError
 from pycypher.scalar_functions import ScalarFunctionRegistry
-from pycypher.cypher_types import FrameSeries
 
 if TYPE_CHECKING:
     from pycypher.aggregation_evaluator import AggregationExpressionEvaluator
@@ -819,10 +819,10 @@ class BindingExpressionEvaluator:
             Boolean ``pd.Series`` of length equal to the frame size.
 
         """
+        from pycypher.constants import ID_COLUMN
         from pycypher.dataframe_utils import (
             source_to_pandas as _source_to_pandas,
         )
-        from pycypher.constants import ID_COLUMN
 
         n_rows = len(self.frame.bindings)
         if not isinstance(operand_expr, Variable):

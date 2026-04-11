@@ -20,7 +20,6 @@ import click
 from pycypher.cli.common import (
     ErrorPolicyTracker,
     cli_error,
-    format_validation_errors,
     get_pipeline_error_label,
     load_config,
 )

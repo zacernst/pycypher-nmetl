@@ -15,7 +15,6 @@ from pathlib import Path
 
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # Profile helper tests
 # ---------------------------------------------------------------------------
@@ -42,7 +41,10 @@ class TestProfileHelper:
         assert result == "tests_benchmarks_bench_core_operations"
 
     def test_profile_summary_dataclass(self) -> None:
-        from tests.benchmarks.profile_helper import ProfileEntry, ProfileSummary
+        from tests.benchmarks.profile_helper import (
+            ProfileEntry,
+            ProfileSummary,
+        )
 
         entry = ProfileEntry(
             function="execute_query",
@@ -75,54 +77,72 @@ class TestWorkloadClassification:
     """Tests for workload category classification."""
 
     def test_classify_parser(self) -> None:
-        from tests.benchmarks.workload_characterization import classify_benchmark
+        from tests.benchmarks.workload_characterization import (
+            classify_benchmark,
+        )
 
         assert classify_benchmark("test_parse_simple_match") == "parser"
         assert classify_benchmark("TestParserMicrobenchmarks::test_parse_complex") == "parser"
 
     def test_classify_scan(self) -> None:
-        from tests.benchmarks.workload_characterization import classify_benchmark
+        from tests.benchmarks.workload_characterization import (
+            classify_benchmark,
+        )
 
         assert classify_benchmark("test_simple_scan") == "scan"
 
     def test_classify_filter(self) -> None:
-        from tests.benchmarks.workload_characterization import classify_benchmark
+        from tests.benchmarks.workload_characterization import (
+            classify_benchmark,
+        )
 
         assert classify_benchmark("test_filtered_scan") == "filter"
         assert classify_benchmark("test_where_clause") == "filter"
 
     def test_classify_traversal(self) -> None:
-        from tests.benchmarks.workload_characterization import classify_benchmark
+        from tests.benchmarks.workload_characterization import (
+            classify_benchmark,
+        )
 
         assert classify_benchmark("test_single_hop") == "traversal"
         assert classify_benchmark("test_relationship_join") == "traversal"
 
     def test_classify_aggregation(self) -> None:
-        from tests.benchmarks.workload_characterization import classify_benchmark
+        from tests.benchmarks.workload_characterization import (
+            classify_benchmark,
+        )
 
         assert classify_benchmark("test_aggregation_count") == "aggregation"
         assert classify_benchmark("test_avg_salary") == "aggregation"
 
     def test_classify_optimizer(self) -> None:
-        from tests.benchmarks.workload_characterization import classify_benchmark
+        from tests.benchmarks.workload_characterization import (
+            classify_benchmark,
+        )
 
         assert classify_benchmark("test_optimizer_pushdown") == "optimizer"
         assert classify_benchmark("test_pushdown_rule") == "optimizer"
 
     def test_classify_scalar(self) -> None:
-        from tests.benchmarks.workload_characterization import classify_benchmark
+        from tests.benchmarks.workload_characterization import (
+            classify_benchmark,
+        )
 
         assert classify_benchmark("test_toupper_execution") == "scalar"
         assert classify_benchmark("test_scalar_registry") == "scalar"
 
     def test_classify_multi_type(self) -> None:
-        from tests.benchmarks.workload_characterization import classify_benchmark
+        from tests.benchmarks.workload_characterization import (
+            classify_benchmark,
+        )
 
         assert classify_benchmark("test_multi_type_join") == "multi_type"
         assert classify_benchmark("test_company_location_join") == "multi_type"
 
     def test_classify_unknown(self) -> None:
-        from tests.benchmarks.workload_characterization import classify_benchmark
+        from tests.benchmarks.workload_characterization import (
+            classify_benchmark,
+        )
 
         assert classify_benchmark("test_something_unique") == "other"
 
@@ -230,7 +250,9 @@ class TestWorkloadReport:
         return path
 
     def test_characterize_workload(self, synthetic_benchmark_file: Path) -> None:
-        from tests.benchmarks.workload_characterization import characterize_workload
+        from tests.benchmarks.workload_characterization import (
+            characterize_workload,
+        )
 
         report = characterize_workload(synthetic_benchmark_file)
         assert report.total_benchmarks == 6
@@ -242,7 +264,9 @@ class TestWorkloadReport:
         assert "scan" in cat_names
 
     def test_scaling_analysis(self, synthetic_benchmark_file: Path) -> None:
-        from tests.benchmarks.workload_characterization import characterize_workload
+        from tests.benchmarks.workload_characterization import (
+            characterize_workload,
+        )
 
         report = characterize_workload(synthetic_benchmark_file)
         # scan category has both 1K and 10K entries, so scaling should be detected
@@ -279,7 +303,9 @@ class TestWorkloadReport:
         assert "entries" in parsed
 
     def test_empty_benchmark_file(self, tmp_path: Path) -> None:
-        from tests.benchmarks.workload_characterization import characterize_workload
+        from tests.benchmarks.workload_characterization import (
+            characterize_workload,
+        )
 
         path = tmp_path / "empty.json"
         path.write_text(json.dumps({"benchmarks": []}))
@@ -399,6 +425,7 @@ class TestPerfHelpers:
 
         # Re-import to pick up env changes
         import importlib
+
         import _perf_helpers
         importlib.reload(_perf_helpers)
 
@@ -412,6 +439,7 @@ class TestPerfHelpers:
         monkeypatch.delenv("PYTEST_XDIST_WORKER", raising=False)
 
         import importlib
+
         import _perf_helpers
         importlib.reload(_perf_helpers)
 
@@ -425,6 +453,7 @@ class TestPerfHelpers:
         monkeypatch.setenv("PYCYPHER_XDIST_PERF_MULTIPLIER", "2.0")
 
         import importlib
+
         import _perf_helpers
         importlib.reload(_perf_helpers)
 

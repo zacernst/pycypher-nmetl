@@ -8,9 +8,8 @@ Validates that:
 
 from __future__ import annotations
 
-import pytest
-
 import pycypher.ingestion as ingestion_pkg
+import pytest
 
 
 class TestIngestionAllExports:

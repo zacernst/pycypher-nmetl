@@ -21,8 +21,8 @@ from unittest.mock import patch
 
 import pandas as pd
 import pytest
-from pycypher import Star
 from _perf_helpers import perf_threshold
+from pycypher import Star
 from pycypher.relational_models import (
     ID_COLUMN,
     Context,

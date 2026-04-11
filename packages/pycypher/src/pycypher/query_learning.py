@@ -43,7 +43,7 @@ from pycypher.feedback_collector import (
     PredicateSelectivityTracker,
     QueryFingerprint,
     QueryFingerprinter,
-    _size_bucket,
+    _size_bucket,  # noqa: F401 — re-exported for tests
 )
 from pycypher.learning_algorithm import (
     AdaptiveEvictionPolicy,
@@ -53,7 +53,7 @@ from pycypher.learning_algorithm import (
 )
 
 if TYPE_CHECKING:
-    from pycypher.query_planner import AnalysisResult, JoinStrategy
+    from pycypher.query_planner import AnalysisResult
 
 __all__ = [
     "AdaptiveEvictionPolicy",

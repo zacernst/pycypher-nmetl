@@ -11,6 +11,7 @@ import gc
 
 import pandas as pd
 import pytest
+from _perf_helpers import perf_threshold
 from pycypher import (
     Context,
     EntityMapping,
@@ -22,7 +23,6 @@ from pycypher import (
 
 from .benchmark_utils import _get_process_memory_mb
 from .dataset_generator import SCALE_SMALL, SCALE_TINY, generate_social_graph
-from _perf_helpers import perf_threshold
 
 ID_COLUMN = "__ID__"
 

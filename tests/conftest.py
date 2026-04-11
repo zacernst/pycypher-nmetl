@@ -21,7 +21,6 @@ from pycypher.relational_models import (
 from pycypher.scalar_functions import ScalarFunctionRegistry
 from pycypher.star import Star
 
-
 # ---------------------------------------------------------------------------
 # SIGALRM cleanup — prevent alarm leakage between tests
 # ---------------------------------------------------------------------------

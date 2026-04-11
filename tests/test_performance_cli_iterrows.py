@@ -12,8 +12,8 @@ from unittest.mock import patch
 
 import pandas as pd
 import pytest
-from pycypher._cli_query import _print_table
 from _perf_helpers import perf_threshold
+from pycypher._cli_query import _print_table
 
 pytestmark = pytest.mark.performance
 

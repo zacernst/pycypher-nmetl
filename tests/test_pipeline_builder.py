@@ -11,7 +11,6 @@ from typing import Any
 
 import pandas as pd
 import pytest
-
 from pycypher.ingestion.config import (
     EntitySourceConfig,
     OutputConfig,
@@ -21,18 +20,15 @@ from pycypher.ingestion.config import (
     SourcesConfig,
 )
 
-
 # ---------------------------------------------------------------------------
 # Import the module under test (will be created)
 # ---------------------------------------------------------------------------
-
 from pycypher.ingestion.pipeline_builder import (
     PipelineBuilder,
     PipelineOperation,
     PipelineSnapshot,
     SchemaInfo,
 )
-
 
 # ===========================================================================
 # Fixtures

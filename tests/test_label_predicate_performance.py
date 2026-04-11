@@ -22,9 +22,9 @@ import time
 
 import pandas as pd
 import pytest
+from _perf_helpers import perf_threshold
 from pycypher.ingestion.context_builder import ContextBuilder
 from pycypher.star import Star
-from _perf_helpers import perf_threshold
 
 # ---------------------------------------------------------------------------
 # Fixtures

@@ -18,6 +18,7 @@ import time
 
 import pandas as pd
 import pytest
+from _perf_helpers import perf_threshold
 from pycypher.relational_models import (
     ID_COLUMN,
     Context,
@@ -26,7 +27,6 @@ from pycypher.relational_models import (
     RelationshipMapping,
 )
 from pycypher.star import Star
-from _perf_helpers import perf_threshold
 
 # ---------------------------------------------------------------------------
 # Helpers
