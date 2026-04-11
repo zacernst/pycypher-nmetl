@@ -46,7 +46,6 @@ import base64
 import csv
 import json
 import os
-import sys
 import time
 from pathlib import Path
 
@@ -112,6 +111,10 @@ def _is_trivial(key: str) -> bool:
     return key.split(":", 1)[0] in _TRIVIAL_ROOTS
 
 
+class MaxNodesReached(Exception):
+    """Raised when the configured MAX_NODES limit is hit."""
+
+
 class NodeHandler(osmium.SimpleHandler):  # type: ignore[misc]
     """osmium handler that filters and writes point nodes to CSV."""
 
@@ -149,7 +152,9 @@ class NodeHandler(osmium.SimpleHandler):  # type: ignore[misc]
         self.filtered_node_count += 1
         if MAX_NODES != -1 and self.filtered_node_count >= MAX_NODES:
             self._file.close()
-            sys.exit(0)
+            raise MaxNodesReached(
+                f"Reached limit of {MAX_NODES} filtered nodes"
+            )
 
         encoded = base64.b64encode(
             json.dumps(all_tags).encode("utf-8"),
@@ -177,6 +182,8 @@ if __name__ == "__main__":
         # locations=False (the default): node coordinates are always stored
         # inline in the PBF; the location store is only needed for ways/relations.
         handler.apply_file(PBF_FILE, locations=False)
+    except MaxNodesReached:
+        LOGGER.info("Stopped early: reached MAX_NODES limit of %s", MAX_NODES)
     except Exception as exc:
         handler.close()
         LOGGER.error("Failed to process PBF file %s: %s", PBF_FILE, exc)

@@ -14,6 +14,7 @@ Or via Docker:
 from __future__ import annotations
 
 import collections
+import contextlib
 import datetime
 import hashlib
 import logging
@@ -21,10 +22,12 @@ import math
 import os
 import secrets
 import time
+from collections.abc import AsyncIterator
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
+import numpy as np
 import pandas as pd
 import pycypher
 from fastapi import FastAPI, HTTPException, Request, Response
@@ -267,10 +270,39 @@ def is_api_auth_enabled() -> bool:
     return _API_AUTH_ENABLED
 
 
+def _load_datasets_into_star() -> int:
+    """Load available datasets from disk into the query engine.
+
+    Returns the number of entity types loaded.
+    """
+    from fastopendata.pipeline import load_available_datasets
+
+    pipeline = load_available_datasets()
+    entity_count = len(pipeline.entity_types)
+    if entity_count > 0:
+        set_star(pipeline.build_star())
+        _logger.info(
+            "Loaded %d entity types into query engine: %s",
+            entity_count,
+            pipeline.entity_types,
+        )
+    else:
+        _logger.info("No datasets found on disk — query engine starts empty")
+    return entity_count
+
+
+@contextlib.asynccontextmanager
+async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
+    """Application lifespan: auto-load datasets on startup."""
+    _load_datasets_into_star()
+    yield
+
+
 app = FastAPI(
     title=config.api_title,
     description=config.api_description,
     version=config.api_version,
+    lifespan=_lifespan,
 )
 
 
@@ -585,6 +617,49 @@ def _sanitize_value(val: Any) -> str | int | float | bool | None:
     return str(val)
 
 
+def _sanitize_dataframe(df: pd.DataFrame) -> list[dict[str, str | int | float | bool | None]]:
+    """Convert a DataFrame to a list of JSON-safe dicts using vectorized ops.
+
+    Replaces the per-cell _sanitize_value() + iterrows() pattern with
+    column-level dtype-based sanitization for significantly better performance.
+    """
+    if df.empty:
+        return []
+
+    # Work on a copy to avoid mutating the original
+    out = df.copy()
+
+    for col in out.columns:
+        dtype = out[col].dtype
+
+        if pd.api.types.is_bool_dtype(dtype):
+            # Bool columns are JSON-safe as-is (after NaN→None below)
+            continue
+        elif pd.api.types.is_integer_dtype(dtype):
+            # Integer columns are JSON-safe; convert nullable Int64→object for None
+            if out[col].isna().any():
+                out[col] = out[col].where(out[col].notna(), other=None)
+            continue
+        elif pd.api.types.is_float_dtype(dtype):
+            # Replace NaN with None; finite floats are JSON-safe
+            out[col] = out[col].where(out[col].notna(), other=None)
+            continue
+        elif pd.api.types.is_datetime64_any_dtype(dtype):
+            # Convert datetimes to ISO strings
+            mask = out[col].notna()
+            out[col] = out[col].where(~mask, other=None)
+            out.loc[mask, col] = out.loc[mask, col].apply(
+                lambda v: v.isoformat() if v is not None else None
+            )
+            continue
+
+        # Object columns: apply per-cell sanitization (Decimal, UUID, etc.)
+        out[col] = out[col].map(_sanitize_value)
+
+    # Convert to records using to_dict — much faster than iterrows
+    return out.where(out.notna(), other=None).to_dict(orient="records")
+
+
 def _record_error_and_raise(
     query: str,
     t_start: float,
@@ -709,10 +784,7 @@ async def run_cypher_query(
 
     exec_ms = (time.monotonic() - t_exec_start) * 1000
 
-    rows: list[dict[str, str | int | float | bool | None]] = [
-        {col: _sanitize_value(row[col]) for col in result.columns}
-        for _, row in result.iterrows()
-    ]
+    rows = _sanitize_dataframe(result)
 
     total_ms = (time.monotonic() - t_start) * 1000
     _metrics_collector.record_success(
@@ -945,4 +1017,29 @@ async def list_api_keys(request: Request) -> ListKeysResponse:
         keys=_api_key_store.list_keys(),
         active_count=_api_key_store.active_count,
         auth_enabled=_API_AUTH_ENABLED,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Dataset reload endpoint
+# ---------------------------------------------------------------------------
+
+
+class ReloadResponse(BaseModel):
+    loaded_entity_types: int
+    message: str
+
+
+@app.post("/admin/reload", response_model=ReloadResponse)
+async def reload_datasets(request: Request) -> ReloadResponse:
+    """Reload datasets from disk into the query engine.
+
+    Scans the data directory for available CSV files and loads them
+    into the Star query engine. Requires admin authorization.
+    """
+    _require_admin(request)
+    count = _load_datasets_into_star()
+    return ReloadResponse(
+        loaded_entity_types=count,
+        message=f"Reloaded {count} entity types into query engine.",
     )

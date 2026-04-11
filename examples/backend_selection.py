@@ -9,7 +9,6 @@ Run with: uv run python examples/backend_selection.py
 from __future__ import annotations
 
 import pandas as pd
-
 from pycypher import ContextBuilder, Star
 
 

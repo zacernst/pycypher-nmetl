@@ -34,6 +34,11 @@ Submodules
     Configurable alerting system with threshold rules, cooldown support,
     and pluggable notification handlers.
 
+``shared.continuous_monitor``
+    Continuous metrics monitoring orchestration that ties together the
+    metrics collector, dashboard, alerting, regression detection, and
+    exporters into a single periodic monitoring loop.
+
 ``shared.dashboard``
     Performance monitoring dashboard with web-based visualization,
     real-time metric updates, and JSON API.
@@ -45,13 +50,20 @@ Submodules
 ``shared.compat``
     API surface snapshot/diff tools and Neo4j Cypher compatibility notes
     for detecting breaking changes and guiding migrations.
+
+``shared.file_intent``
+    File Intent Registration System for multi-agent coordination.
+    Agents register intent before editing shared files; the system
+    classifies risk levels and warns on conflicts.
 """
 
 __all__ = [
     "alerting",
     "compat",
+    "continuous_monitor",
     "dashboard",
     "deprecation",
+    "file_intent",
     "exporters",
     "helpers",
     "logger",
