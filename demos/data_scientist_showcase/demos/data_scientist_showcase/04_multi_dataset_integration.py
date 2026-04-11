@@ -31,9 +31,8 @@ from pathlib import Path
 # Allow running from repo root
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from _common import done, section, setup_demo, show_result, timed
-
 import pandas as pd
+from _common import done, section, setup_demo, show_result, timed
 from pycypher import ContextBuilder, Star
 
 

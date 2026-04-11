@@ -22,9 +22,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 from _common import done, section, setup_demo, show_count, show_result, timed
 from data.generators import analytics_network
-
 from pycypher import ContextBuilder, Star
-
 
 # =========================================================================
 # Data setup — a rich network with clusters, influence, and typed edges

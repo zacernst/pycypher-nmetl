@@ -31,9 +31,8 @@ from pathlib import Path
 # Allow running from repo root
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from _common import done, section, setup_demo, show_result, timed
-
 import pandas as pd
+from _common import done, section, setup_demo, show_result, timed
 from pycypher import ContextBuilder, Star
 
 
@@ -175,6 +174,17 @@ def main() -> None:
     section("3. Cross-Source: Employee → Project Assignments")
 
     print("Query across HR data and PMO data in one Cypher statement.\n")
+    print("""
+            MATCH (e:Employee)-[a:ASSIGNED_TO]->(p:Project)
+            WHERE p.status = 'Active'
+            RETURN e.name AS employee,
+                   e.level AS level,
+                   p.name AS project,
+                   a.role AS project_role,
+                   a.hours_per_week AS hours
+            ORDER BY p.name, e.name
+        """
+    )
 
     with timed("Employee-project traversal"):
         result = star.execute_query("""

@@ -22,7 +22,6 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 from _common import done, section, setup_demo, show_count, show_result, timed
 from data.generators import scalable_entities, scalable_relationships
-
 from pycypher import (
     ContextBuilder,
     QueryTimeoutError,
@@ -30,7 +29,6 @@ from pycypher import (
     apply_preset,
     validate_query,
 )
-
 
 # =========================================================================
 # Data setup
@@ -154,7 +152,7 @@ def demo_timeout_protection(star: Star) -> None:
     print("        result = star.execute_query(query, timeout_seconds=10.0)")
     print("    except QueryTimeoutError as e:")
     print(f'        log.warning("Query timed out after %.1fs", e.elapsed_seconds)')
-    print('        return fallback_result()')
+    print("        return fallback_result()")
     print()
 
 
@@ -216,8 +214,8 @@ def demo_error_handling(star: Star) -> None:
 
     from pycypher import (
         CypherSyntaxError,
-        VariableNotFoundError,
         UnsupportedFunctionError,
+        VariableNotFoundError,
     )
 
     test_cases = [
@@ -436,7 +434,7 @@ def demo_pipeline_api(star: Star) -> None:
     print("    class AuditStage(Stage):")
     print('        name = "audit"')
     print("        def execute(self, ctx):")
-    print('            log_query(ctx.query, ctx.star)')
+    print("            log_query(ctx.query, ctx.star)")
     print("            return ctx")
     print()
     print('    pipeline.insert_after("validate", AuditStage())')
@@ -519,7 +517,7 @@ def main() -> None:
         ("Result caching", "Star(ctx, result_cache_max_mb=500)"),
         ("Error handling", "except CypherSyntaxError / QueryTimeoutError"),
         ("Query profiling", "QueryProfiler(star).profile(query)"),
-        ("Audit logging", 'PYCYPHER_AUDIT_LOG=1'),
+        ("Audit logging", "PYCYPHER_AUDIT_LOG=1"),
         ("Rate limiting", "QueryRateLimiter(qps=50, burst=100)"),
         ("Pipeline API", "Pipeline.default().run(query=q, star=s)"),
         ("Horizontal scaling", "Same API from 1K to 1M+ rows"),
