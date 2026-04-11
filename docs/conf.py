@@ -146,7 +146,7 @@ tls_verify = False
 # -- Options for LaTeX output ------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-latex-output
 
-latex_engine = 'xelatex'
+latex_engine = "xelatex"
 
 # LaTeX preamble for Unicode character support
 latex_preamble = r'''
@@ -156,11 +156,11 @@ latex_preamble = r'''
 '''
 
 latex_elements = {
-    'preamble': latex_preamble,
-    'fncychap': '\\usepackage[Bjornstrup]{fncychap}',
-    'fontpkg': '\\usepackage{times}',
-    'geometry': '\\usepackage[margin=1in]{geometry}',
-    'extraclassoptions': 'openany,oneside',
+    "preamble": latex_preamble,
+    "fncychap": "\\usepackage[Bjornstrup]{fncychap}",
+    "fontpkg": "\\usepackage{times}",
+    "geometry": "\\usepackage[margin=1in]{geometry}",
+    "extraclassoptions": "openany,oneside",
 }
 
 # -- Options for todo extension ----------------------------------------------

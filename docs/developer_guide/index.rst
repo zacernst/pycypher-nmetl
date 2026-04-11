@@ -13,6 +13,7 @@ Information for developers contributing to PyCypher.
    testing
    release
    security
+   threat_model
 
 New Contributors
 -----------------

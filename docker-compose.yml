@@ -203,9 +203,6 @@ services:
     image: mediagis/nominatim:4.4
     environment:
       # Point at the PBF already downloaded by the fastopendata container.
-                                                                                                                                    │   1091 root        20   0  529M 10064     0 S   0.0  0.0  0:00.00 /usr/libexec/upowerd
-                                                                                                                                    │   1091 root        20   0  529M 10064     0 S   0.0  0.0  0:00.00 /usr/libexec/upowerd
-                                                                                                                                    │   1091 root        20   0  529M 10064     0 S   0.0  0.0  0:00.00 /usr/libexec/upowerd
       # On first start the image runs a full import (can take several hours
       # for the US extract — see packages/fastopendata/DATASETS.md #16).
       # Set PBF_URL instead if you want Nominatim to download its own copy.

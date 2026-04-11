@@ -1,0 +1,43 @@
+# Workspace Configuration for pycypher-nmetl
+# This file defines workspace-wide paths for data processing
+
+[workspace]
+# Base directory for all data processing
+base_dir = "/Users/zernst/git/pycypher-nmetl"
+
+# Data storage and processing directories
+data_root = "/Users/zernst/git/pycypher-nmetl/data"
+
+[fastopendata]
+# fastopendata-specific directories (relative to data_root)
+raw_data_dir = "fastopendata/raw"        # Downloaded files
+processed_data_dir = "fastopendata/output"  # Snakefile outputs
+cache_dir = "fastopendata/cache"         # Intermediate files
+logs_dir = "fastopendata/logs"           # Processing logs
+
+[pycypher]
+# pycypher pipeline directories
+pipeline_configs = "pipelines"          # pipeline.yaml files
+graph_data = "graphs"                    # Processed graph databases
+query_cache = "query_cache"              # Query result caching
+performance_logs = "performance"         # Performance benchmarks
+
+[nmetl]
+# nmetl CLI directories
+project_configs = "projects"             # Project-specific configs
+output_exports = "exports"               # Data export outputs
+validation_reports = "reports"           # Data quality reports
+
+# Environment-specific overrides
+[development]
+# Smaller datasets for development
+max_download_size = "1GB"
+sample_data = true
+debug_logging = true
+
+[production]
+# Full datasets for production
+max_download_size = "unlimited"
+sample_data = false
+debug_logging = false
+parallel_workers = 8

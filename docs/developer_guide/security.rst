@@ -11,6 +11,11 @@ strategies, and best practices for secure deployment.
 Threat Model
 ------------
 
+.. seealso::
+
+   :doc:`threat_model` for the comprehensive trust boundary mapping,
+   data flow analysis, and coordination requirements.
+
 PyCypher processes user-supplied Cypher queries against in-process data.
 The primary threat vectors are:
 

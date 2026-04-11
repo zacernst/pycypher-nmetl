@@ -115,12 +115,13 @@ help:
 	@echo "  make test-backends   Run backend equivalence tests (timeout=60s)"
 	@echo ""
 	@echo "Data Downloads (Snakemake):"
-	@echo "  make fod-data          Download all 17 fastopendata datasets"
+	@echo "  make fod-data          Download all fastopendata datasets"
 	@echo "  make fod-data-plan     Dry-run: show what would be downloaded"
-	@echo "  make fod-data-census   Download Census surveys (ACS, SIPP, AHS, CJARS)"
-	@echo "  make fod-data-tiger    Download TIGER/Line shapefiles"
+	@echo "  make fod-data-census   Download Census datasets (CJARS, crosswalk, contracts)"
+	@echo "  make fod-data-tiger    Download TIGER/Line shapefiles (PUMA, block groups)"
 	@echo "  make fod-data-osm      Download OpenStreetMap U.S. extract (~10 GB)"
 	@echo "  make fod-data-wikidata Download Wikidata geopoints (~100 GB raw)"
+	@echo "  make fod-data-georgia  Download Georgia development subset"
 	@echo "  make fod-data-status   Show pipeline status"
 	@echo "  make fod-data-clean    Delete all downloaded raw data"
 	@echo ""
@@ -750,22 +751,25 @@ fod-data-plan:
 	@echo "Snakemake dry-run (no downloads)..."
 	$(FOD_SNAKEMAKE) --dry-run
 
-## Download only Census survey datasets (ACS PUMS, SIPP, AHS, CJARS)
+## Download Census-sourced datasets (CJARS, crosswalk, contracts)
 fod-data-census:
 	@echo "Downloading Census survey datasets..."
 	$(FOD_SNAKEMAKE) \
-		raw_data/psam_pus.csv raw_data/psam_p.csv \
-		raw_data/psam_hus.csv raw_data/psam_h.csv \
-		raw_data/pu2023.csv raw_data/rw2023.csv raw_data/pu2023_schema.json \
-		raw_data/.ahs_2023_extracted raw_data/cjars_joe_2022_co.csv \
-		raw_data/state_county_tract_puma.csv
+		raw_data/output/cjars_joe_2022_co.csv \
+		raw_data/state_county_tract_puma.csv \
+		raw_data/FY2025_All_Contracts_Full_20260306.csv
 
 ## Download only TIGER/Line geographic shapefiles
 fod-data-tiger:
 	@echo "Downloading TIGER/Line shapefiles..."
 	$(FOD_SNAKEMAKE) \
-		raw_data/puma_combined.shp raw_data/tl_2024_us_state.shp \
-		raw_data/combined.shp
+		raw_data/puma_combined.shp \
+		raw_data/combined_block_groups.shp
+
+## Download Georgia development subset (contracts + TIGER geometries)
+fod-data-georgia:
+	@echo "Downloading Georgia development dataset..."
+	$(FOD_SNAKEMAKE) georgia_dev
 
 ## Download and process OpenStreetMap U.S. extract (~10 GB)
 fod-data-osm:
