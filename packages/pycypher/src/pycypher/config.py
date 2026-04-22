@@ -92,6 +92,7 @@ __all__ = [
     "MAX_QUERY_NESTING_DEPTH",
     "MAX_QUERY_SIZE_BYTES",
     "MAX_UNBOUNDED_PATH_HOPS",
+    "QUERIES",
     "QUERY_TIMEOUT_S",
     "RATE_LIMIT_BURST",
     "RATE_LIMIT_QPS",
@@ -99,6 +100,23 @@ __all__ = [
     "RESULT_CACHE_TTL_S",
     "apply_preset",
     "show_config",
+]
+
+
+QUERIES = [
+    "SELECT percentile(duration, 99) * 1000 AS 'Response time (p99 ms)' FROM Transaction FACET appName AS 'entityName'",
+    "SELECT count(apm.service.transaction.duration) AS 'Throughput' FROM Metric WHERE appName LIKE '%' FACET appName AS 'entityName'",
+    "SELECT (count(apm.service.error.count) / count(apm.service.transaction.duration)) * 100 AS 'Error rate (%)' FROM Metric WHERE appName LIKE '%' FACET appName AS 'entityName'",
+    "SELECT percentile(duration, 99) * 1000 AS 'HTTP response time (ms)' FROM MobileRequest FACET appName AS 'entityName'",
+    "SELECT count(apm.mobile.status.error.rate) AS 'HTTP error rate' FROM Metric WHERE appName LIKE '%' FACET appName AS 'entityName'",
+    "SELECT count(apm.mobile.failed.call.rate) AS 'Network failures' FROM Metric WHERE appName LIKE '%' FACET appName AS 'entityName'",
+    "SELECT percentile(interactionToNextPaint, 99) * 1000 AS 'INP (ms)' FROM PageViewTiming FACET appName AS 'entityName'",
+    "SELECT percentile(largestContentfulPaint, 99) * 1000 AS 'LCP (ms)' FROM PageViewTiming FACET appName AS 'entityName'",
+    "SELECT percentile(duration, 99) * 1000 AS 'Page load (ms)' FROM PageView FACET appName AS 'entityName'",
+    "SELECT rate(count(*), 1 minute) AS 'JavaScript error rate' FROM JavaScriptError FACET appName AS 'entityName'",
+    "SELECT percentile(duration, 99) AS 'p99 duration (ms)' FROM SyntheticCheck FACET monitorName AS 'entityName'",
+    "SELECT filter(count(*), WHERE result = 'FAILED') AS 'Failures' FROM SyntheticCheck WHERE NOT isMuted FACET location, monitorName AS 'entityName'",
+    "SELECT count(apm.mobile.application.launch.count) AS 'App launches' FROM Metric WHERE appName LIKE '%' FACET appName AS 'entityName'",
 ]
 
 
@@ -330,6 +348,7 @@ def show_config() -> dict[str, int | float | None]:
         "MAX_QUERY_NESTING_DEPTH": MAX_QUERY_NESTING_DEPTH,
         "MAX_COLLECTION_SIZE": MAX_COLLECTION_SIZE,
         "MAX_COMPLEXITY_SCORE": MAX_COMPLEXITY_SCORE,
+        "QUERIES": QUERIES,
         "COMPLEXITY_WARN_THRESHOLD": COMPLEXITY_WARN_THRESHOLD,
         "RATE_LIMIT_QPS": RATE_LIMIT_QPS,
         "RATE_LIMIT_BURST": RATE_LIMIT_BURST,
