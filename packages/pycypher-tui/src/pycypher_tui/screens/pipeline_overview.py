@@ -187,7 +187,10 @@ class PipelineOverviewScreen(VimNavigableScreen[SectionInfo]):
         "queries",
         "query_lineage",
         "outputs",
+        "settings",
     ]
+
+    _BACKEND_CYCLE = ["auto", "pandas", "duckdb", "polars"]
 
     def __init__(
         self,
@@ -212,7 +215,10 @@ class PipelineOverviewScreen(VimNavigableScreen[SectionInfo]):
 
     @property
     def footer_hints(self) -> str:
-        return " j/k:navigate  Enter:open  i:edit  :w:save  :q:quit  ?:help"
+        return (
+            " j/k:navigate  Enter:open  i:edit  b:backend  s:state  "
+            ":w:save  :q:quit  ?:help"
+        )
 
     @property
     def empty_list_message(self) -> str:
@@ -256,7 +262,7 @@ class PipelineOverviewScreen(VimNavigableScreen[SectionInfo]):
 
     @property
     def _screen_override_keys(self) -> frozenset[str]:
-        return frozenset({"i", "u", "ctrl+r", "1", "2", "3", "4", "5"})
+        return frozenset({"i", "u", "ctrl+r", "1", "2", "3", "4", "5", "6", "b", "s"})
 
     def handle_extra_key(self, key: str) -> bool:
         match key:
@@ -269,7 +275,7 @@ class PipelineOverviewScreen(VimNavigableScreen[SectionInfo]):
             case "ctrl+r":
                 self.run_worker(self._redo(), exclusive=True)
                 return True
-            case "1" | "2" | "3" | "4" | "5":
+            case "1" | "2" | "3" | "4" | "5" | "6":
                 idx = int(key) - 1
                 if idx < self.item_count:
                     self._jump_to(idx)
@@ -277,8 +283,40 @@ class PipelineOverviewScreen(VimNavigableScreen[SectionInfo]):
                     if section:
                         self.post_message(self.SectionSelected(section.key))
                 return True
+            case "b":
+                self._cycle_backend()
+                return True
+            case "s":
+                opener = getattr(self.app, "open_state_selector", None)
+                if callable(opener):
+                    opener()
+                return True
             case _:
                 return False
+
+    @staticmethod
+    def _lookup_state_name(state_fips: str) -> str:
+        """Resolve a 2-digit FIPS to its state name, with a safe fallback.
+
+        Tries to import ``_STATE_INFO`` from ``fastopendata.etl.state_pipeline``;
+        falls back to a generic placeholder when the optional ``fod`` extra
+        isn't installed or the FIPS is unknown.
+        """
+        try:
+            from fastopendata.etl.state_pipeline import _STATE_INFO  # type: ignore
+        except ImportError:
+            return f"FIPS {state_fips}"
+        info = _STATE_INFO.get(state_fips)
+        return info[1] if info else f"FIPS {state_fips}"
+
+    def _cycle_backend(self) -> None:
+        """Cycle through backend engines: auto → pandas → duckdb → polars → auto."""
+        current = self._config_manager.get_backend()
+        idx = self._BACKEND_CYCLE.index(current) if current in self._BACKEND_CYCLE else 0
+        next_backend = self._BACKEND_CYCLE[(idx + 1) % len(self._BACKEND_CYCLE)]
+        self._config_manager.set_backend(next_backend)
+        self.refresh_from_config()
+        self._update_validation()
 
     # --- Layout override: add validation summary ---
 
@@ -425,6 +463,26 @@ class PipelineOverviewScreen(VimNavigableScreen[SectionInfo]):
                 item_count=len(outputs),
                 status="configured" if outputs else "empty",
                 details=output_details,
+            )
+        )
+
+        # Settings (backend engine selection + state)
+        backend = config.backend_engine
+        state_fips = getattr(config, "state_fips", "13")
+        state_name = self._lookup_state_name(state_fips)
+        backend_status = "configured" if backend != "auto" else "empty"
+        sections.append(
+            SectionInfo(
+                key="settings",
+                label="Settings",
+                icon="[S]",
+                item_count=2,
+                status=backend_status,
+                details=[
+                    f"Backend engine: {backend}",
+                    f"State: {state_name} ({state_fips})",
+                    "Press 'b' to cycle backend; 's' to pick state",
+                ],
             )
         )
 

@@ -93,11 +93,13 @@ class TestLoadAvailableDatasets:
         _write_csv(tmp_path / "out.csv", [{"x": 1}])
         fake = _FakeConfig(
             data_path=tmp_path,
-            datasets={"acs_pums_1yr_persons": _FakeDataset(output_file="out.csv")},
+            # NB: ACS PUMS datasets are special-cased and skipped by the
+            # generic loop, so use an unrelated multi-word name here.
+            datasets={"federal_award_records": _FakeDataset(output_file="out.csv")},
         )
         with _patch_config(fake):
             pipeline = load_available_datasets(data_dir=tmp_path)
-        assert "AcsPums1YrPersons" in pipeline.entity_types
+        assert "FederalAwardRecords" in pipeline.entity_types
 
     def test_skips_missing_file(self, tmp_path: Path) -> None:
         fake = _FakeConfig(

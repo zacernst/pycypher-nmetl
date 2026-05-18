@@ -186,8 +186,12 @@ class ContextBuilder:
                 builder.add_entity(label, df, id_col=id_column)
         return builder.build()
 
-    def build(self) -> Context:
+    def build(self, backend: str = "auto") -> Context:
         """Assemble and return the :class:`~pycypher.relational_models.Context`.
+
+        Args:
+            backend: Backend engine hint — ``"auto"`` (default), ``"pandas"``,
+                ``"duckdb"``, or ``"polars"``.
 
         Returns:
             A fully populated :class:`~pycypher.relational_models.Context`.
@@ -204,4 +208,5 @@ class ContextBuilder:
         return Context(
             entity_mapping=entity_mapping,
             relationship_mapping=relationship_mapping,
+            backend=backend,
         )

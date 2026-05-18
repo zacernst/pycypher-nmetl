@@ -96,7 +96,8 @@ class TestTemplateToConfigWorkflow:
         overview._pending_keys = []
 
         sections = overview._build_section_list(config)
-        assert len(sections) == 6  # data_model + 5 pipeline sections (including query_lineage)
+        # data_model + 5 pipeline sections (incl. query_lineage) + settings
+        assert len(sections) == 7
 
         entity_sec = sections[1]
         assert entity_sec.key == "entity_sources"

@@ -386,6 +386,28 @@ class TestPipelineConfig:
     def test_version_constants_consistent(self) -> None:
         assert CURRENT_CONFIG_VERSION in SUPPORTED_CONFIG_VERSIONS
 
+    def test_state_fips_default_is_georgia(self) -> None:
+        """Default ``state_fips`` is ``"13"`` (Georgia) for backward compat.
+
+        Existing pipelines that were authored before the ``state_fips``
+        field existed must continue to behave as Georgia pipelines.
+        """
+        cfg = PipelineConfig()
+        assert cfg.state_fips == "13"
+
+    def test_state_fips_settable(self) -> None:
+        """The ``state_fips`` field accepts any 2-digit string."""
+        cfg = PipelineConfig(state_fips="06")
+        assert cfg.state_fips == "06"
+
+    def test_state_fips_round_trips_through_dict(self) -> None:
+        """``state_fips`` is serialized and deserialized correctly."""
+        cfg = PipelineConfig(state_fips="48")
+        data = cfg.model_dump()
+        assert data["state_fips"] == "48"
+        cfg2 = PipelineConfig.model_validate(data)
+        assert cfg2.state_fips == "48"
+
 
 # ===========================================================================
 # TestEnvVarSubstitution

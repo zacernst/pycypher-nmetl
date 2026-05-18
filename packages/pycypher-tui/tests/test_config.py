@@ -150,6 +150,40 @@ class TestConfigManager:
         diff = mgr.diff(snap)
         assert "p" in diff["added_entities"]
 
+    # -- state_fips management ----------------------------------------------
+
+    def test_get_state_fips_default(self):
+        """A fresh ConfigManager reports the Georgia FIPS by default."""
+        mgr = ConfigManager()
+        assert mgr.get_state_fips() == "13"
+
+    def test_set_state_fips_persists_to_config(self):
+        """``set_state_fips`` writes the value into ``PipelineConfig``."""
+        mgr = ConfigManager()
+        mgr.set_state_fips("06")
+        assert mgr.get_state_fips() == "06"
+        # Round-trip through the underlying config model too.
+        assert mgr.get_config().state_fips == "06"
+
+    def test_set_state_fips_rejects_non_two_digit(self):
+        """Anything that isn't exactly two digits raises ValueError."""
+        mgr = ConfigManager()
+        for bad in ("1", "131", "AB", "", "  ", "1A"):
+            with pytest.raises(ValueError, match="2-digit"):
+                mgr.set_state_fips(bad)
+        # And confirm we didn't mutate state on failure.
+        assert mgr.get_state_fips() == "13"
+
+    def test_set_state_fips_accepts_arbitrary_two_digit(self):
+        """We don't enforce a known FIPS — any 2-digit string is allowed.
+
+        Useful so tests / dev environments can use FIPS codes that aren't
+        in ``_STATE_INFO`` (e.g., territories, synthetic codes).
+        """
+        mgr = ConfigManager()
+        mgr.set_state_fips("99")
+        assert mgr.get_state_fips() == "99"
+
 
 # ===========================================================================
 # CachedValidator — validation caching for TUI real-time feedback

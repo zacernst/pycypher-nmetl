@@ -31,6 +31,9 @@ dev = [
     "pytest-asyncio>=0.24.0",
     "textual-dev>=1.0.0",
 ]
+fod = [
+    "fastopendata",
+]
 
 [project.scripts]
 pycypher-tui = "pycypher_tui.cli:cli_main"

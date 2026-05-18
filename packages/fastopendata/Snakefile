@@ -68,7 +68,7 @@ rule all:
         expand(f"{DATA_DIR}/tl_2025_{{fips}}_tract.shp", fips=fod_config.state_fips),
         expand(f"{DATA_DIR}/tl_2024_{{block_group_fips}}_bg.shp", block_group_fips=fod_config.block_group_fips),
         f"{DATA_DIR}/combined_block_groups.shp",  # Add parameter or whatever for block_group_fips
-        f"{DATA_DIR}/FY2025_All_Contracts_Full_20260306.csv",
+        f"{DATA_DIR}/FY2025_All_Contracts_Full_20260506.csv",
 
 
 
@@ -287,17 +287,17 @@ rule concatenate_tiger_bg:
 rule download_fy2025_contracts:
     resources:
         census_download=1
-    output: f"{DATA_DIR}/FY2025_All_Contracts_Full_20260306.zip"
+    output: f"{DATA_DIR}/FY2025_All_Contracts_Full_20260506.zip"
     shell:
         "sleep $((5 + RANDOM % 10)) && "
         f"{CENSUS_WGET} --timeout={SHORT_TIMEOUT_SECONDS} --tries=1"
-        "    'https://files.usaspending.gov/award_data_archive/FY2025_All_Contracts_Full_20260306.zip'"
+        "    'https://files.usaspending.gov/award_data_archive/FY2025_All_Contracts_Full_20260506.zip'"
         "    -O {output}"
 
 
 rule extract_fy2025_contracts:
-    input: f"{DATA_DIR}/FY2025_All_Contracts_Full_20260306.zip"
-    output: f"{DATA_DIR}/FY2025_All_Contracts_Full_20260306.csv"
+    input: f"{DATA_DIR}/FY2025_All_Contracts_Full_20260506.zip"
+    output: f"{DATA_DIR}/FY2025_All_Contracts_Full_20260506.csv"
     shell:
         "unzip -o {input} -d \"{DATA_DIR}/\""
 # NOTE: Legacy commented-out rules for ACS PUMS, SIPP, AHS, and earlier

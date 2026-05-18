@@ -36,7 +36,7 @@ import re
 import warnings
 from enum import StrEnum
 from pathlib import Path
-from typing import Any, NamedTuple
+from typing import Any, Literal, NamedTuple
 from urllib.parse import urlparse
 
 import yaml
@@ -610,6 +610,8 @@ class PipelineConfig(BaseModel):
     functions: list[FunctionConfig] = Field(default_factory=list)
     queries: list[QueryConfig] = Field(default_factory=list)
     output: list[OutputConfig] = Field(default_factory=list)
+    backend_engine: Literal["auto", "pandas", "duckdb", "polars"] = "auto"
+    state_fips: str = "13"
 
     @field_validator("version")
     @classmethod

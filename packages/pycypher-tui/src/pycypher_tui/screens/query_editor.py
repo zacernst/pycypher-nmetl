@@ -325,12 +325,65 @@ class QueryEditorScreen(Screen):
         self.post_message(self.QueryExecuted(result))
 
     def _run_query(self, query: str) -> QueryResult:
-        """Run a query and return the result."""
+        """Run a query against the current pipeline context and return results.
+
+        Executes the query using pycypher's Star engine built from the
+        configured data sources.  Falls back to syntax-only validation when
+        no sources are configured or no config manager is available.
+        """
         import time
 
         start = time.monotonic()
+
+        # Attempt real execution if we have a config with sources
+        if self._config_manager is not None:
+            cfg = self._config_manager.get_config()
+            has_sources = (
+                len(cfg.sources.entities) > 0
+                or len(cfg.sources.relationships) > 0
+            )
+            if has_sources:
+                try:
+                    from pycypher import Star
+                    from pycypher.ingestion.context_builder import ContextBuilder
+
+                    builder = ContextBuilder()
+                    for src in cfg.sources.entities:
+                        builder.add_entity(
+                            src.entity_type,
+                            src.uri,
+                            id_col=src.id_col,
+                        )
+                    for src in cfg.sources.relationships:
+                        builder.add_relationship(
+                            src.relationship_type,
+                            src.uri,
+                            source_col=src.source_col,
+                            target_col=src.target_col,
+                            id_col=src.id_col,
+                        )
+                    context = builder.build(backend=cfg.backend_engine)
+                    star = Star(context)
+                    df = star.execute_query(query)
+                    elapsed = (time.monotonic() - start) * 1000
+                    return QueryResult(
+                        query=query,
+                        columns=list(df.columns),
+                        rows=df.to_dict("records"),
+                        execution_time_ms=elapsed,
+                    )
+                except Exception as e:
+                    elapsed = (time.monotonic() - start) * 1000
+                    return QueryResult(
+                        query=query,
+                        columns=[],
+                        rows=[],
+                        error=str(e),
+                        execution_time_ms=elapsed,
+                    )
+
+        # No sources configured — fall back to syntax validation only
         try:
-            # Validate the query syntax using pycypher
             from pycypher import validate_query
 
             errors = validate_query(query)

@@ -164,6 +164,42 @@ class ConfigManager:
         """Remove an output sink."""
         self._builder.remove_output(query_id, uri)
 
+    def set_backend(
+        self,
+        backend: str,
+    ) -> None:
+        """Set the backend engine for query execution.
+
+        Args:
+            backend: One of ``"auto"``, ``"pandas"``, ``"duckdb"``,
+                ``"polars"``.
+        """
+        valid = ("auto", "pandas", "duckdb", "polars")
+        if backend not in valid:
+            msg = f"Invalid backend {backend!r}. Choose from {valid}."
+            raise ValueError(msg)
+        self._builder.get_config().backend_engine = backend  # type: ignore[assignment]
+
+    def get_backend(self) -> str:
+        """Return the currently configured backend engine."""
+        return self._builder.get_config().backend_engine
+
+    def set_state_fips(self, state_fips: str) -> None:
+        """Set the active state FIPS code.
+
+        Args:
+            state_fips: Two-digit FIPS code (e.g. ``"13"`` for Georgia).
+        """
+        if not state_fips.isdigit() or len(state_fips) != 2:
+            raise ValueError(
+                f"state_fips must be a 2-digit string, got {state_fips!r}"
+            )
+        self._builder.get_config().state_fips = state_fips
+
+    def get_state_fips(self) -> str:
+        """Return the currently configured state FIPS."""
+        return self._builder.get_config().state_fips
+
     # -- Undo / redo --------------------------------------------------------
 
     def can_undo(self) -> bool:

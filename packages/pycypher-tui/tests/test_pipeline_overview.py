@@ -57,13 +57,14 @@ class TestPipelineOverviewScreen:
     """Tests for PipelineOverviewScreen logic (non-widget tests)."""
 
     def test_section_keys_defined(self):
-        assert len(PipelineOverviewScreen.SECTION_KEYS) == 6
+        assert len(PipelineOverviewScreen.SECTION_KEYS) == 7
         assert "data_model" in PipelineOverviewScreen.SECTION_KEYS
         assert "entity_sources" in PipelineOverviewScreen.SECTION_KEYS
         assert "relationship_sources" in PipelineOverviewScreen.SECTION_KEYS
         assert "queries" in PipelineOverviewScreen.SECTION_KEYS
         assert "query_lineage" in PipelineOverviewScreen.SECTION_KEYS
         assert "outputs" in PipelineOverviewScreen.SECTION_KEYS
+        assert "settings" in PipelineOverviewScreen.SECTION_KEYS
 
     def test_default_cursor_position(self):
         screen = PipelineOverviewScreen.__new__(PipelineOverviewScreen)
@@ -255,15 +256,21 @@ class TestBuildSectionList:
         return screen
 
     def test_build_from_empty_config(self):
-        """Empty config produces 5 sections all with empty status."""
+        """Empty config produces all sections with empty status.
+
+        Note: ``settings`` always reports ``item_count == 1`` because it
+        represents a single configurable value (the backend engine), so
+        we exclude it from the zero-count assertion.
+        """
         from pycypher.ingestion.config import PipelineConfig
 
         screen = self._make_screen()
         config = PipelineConfig(version="1.0")
         sections = screen._build_section_list(config)
-        assert len(sections) == 6
+        assert len(sections) == 7
         assert all(s.status == "empty" for s in sections)
-        assert all(s.item_count == 0 for s in sections)
+        non_settings = [s for s in sections if s.key != "settings"]
+        assert all(s.item_count == 0 for s in non_settings)
 
     def test_build_with_entities(self):
         """Config with entity sources shows correct count."""
@@ -408,3 +415,132 @@ class TestBuildSectionList:
         # 3 detail lines + 1 "... and 2 more" line
         assert len(entity_section.details) == 4
         assert "2 more" in entity_section.details[-1]
+
+
+class TestSettingsSectionStateIntegration:
+    """Tests for the state selector hooks added to the Settings section.
+
+    Covers ``state_fips`` rendering inside ``_build_section_list``, the
+    ``_lookup_state_name`` helper, and the keys/footer hints that drive
+    the ``s`` shortcut.
+    """
+
+    def _make_screen(self):
+        screen = PipelineOverviewScreen.__new__(PipelineOverviewScreen)
+        screen._cursor = 0
+        screen._items = []
+        screen._pending_keys = []
+        screen._search_pattern = ""
+        screen._search_matches = []
+        screen._search_match_idx = -1
+        return screen
+
+    def test_settings_section_shows_default_state(self):
+        """A fresh config renders ``State: Georgia (13)`` in Settings."""
+        from pycypher.ingestion.config import PipelineConfig
+
+        screen = self._make_screen()
+        sections = screen._build_section_list(PipelineConfig())
+        settings = next(s for s in sections if s.key == "settings")
+        # The Settings section now exposes two configurables (backend + state).
+        assert settings.item_count == 2
+        # And the state line is human-readable: "State: <name> (<fips>)".
+        state_lines = [d for d in settings.details if d.startswith("State:")]
+        assert len(state_lines) == 1
+        assert "Georgia" in state_lines[0]
+        assert "(13)" in state_lines[0]
+
+    def test_settings_section_reflects_changed_state(self):
+        """Changing ``state_fips`` updates the Settings detail line."""
+        from pycypher.ingestion.config import PipelineConfig
+
+        screen = self._make_screen()
+        sections = screen._build_section_list(PipelineConfig(state_fips="06"))
+        settings = next(s for s in sections if s.key == "settings")
+        state_lines = [d for d in settings.details if d.startswith("State:")]
+        assert len(state_lines) == 1
+        # The lookup might be the canonical "California" (when fastopendata
+        # is installed) or the "FIPS 06" fallback (when it isn't); either
+        # is acceptable, but the FIPS itself must be present.
+        assert "(06)" in state_lines[0]
+
+    def test_settings_section_includes_help_hint(self):
+        """The Settings section advertises both ``b`` and ``s`` shortcuts."""
+        from pycypher.ingestion.config import PipelineConfig
+
+        screen = self._make_screen()
+        sections = screen._build_section_list(PipelineConfig())
+        settings = next(s for s in sections if s.key == "settings")
+        joined = " ".join(settings.details)
+        assert "'b'" in joined
+        assert "'s'" in joined
+
+    def test_lookup_state_name_known_fips(self):
+        """Known FIPS codes resolve to their state names when available."""
+        # The helper's behavior depends on whether ``fastopendata`` is
+        # importable. In either case, FIPS 13 must round-trip to either
+        # the canonical "Georgia" or the "FIPS 13" fallback — both
+        # acceptable at the unit level.
+        result = PipelineOverviewScreen._lookup_state_name("13")
+        assert result in ("Georgia", "FIPS 13")
+
+    def test_lookup_state_name_unknown_fips_falls_back(self):
+        """Unknown FIPS yields the synthetic ``FIPS XX`` placeholder."""
+        # ``99`` isn't in ``_STATE_INFO`` and won't be added in the
+        # foreseeable future, so it always exercises the fallback path.
+        assert PipelineOverviewScreen._lookup_state_name("99") == "FIPS 99"
+
+    def test_s_key_in_screen_override_keys(self):
+        """The ``s`` key is reserved by the screen for state selection."""
+        screen = self._make_screen()
+        assert "s" in screen._screen_override_keys
+        # Ensure it doesn't accidentally collide with the existing ``b``
+        # backend cycle key — both must be present and distinct.
+        assert "b" in screen._screen_override_keys
+
+    def test_footer_hints_advertise_state_shortcut(self):
+        """Footer help string surfaces ``s:state`` so users can find it."""
+        screen = self._make_screen()
+        hints = screen.footer_hints
+        assert "s:state" in hints
+        assert "b:backend" in hints
+
+    def test_handle_extra_key_s_dispatches_via_app(self):
+        """Pressing ``s`` calls ``app.open_state_selector`` when available.
+
+        Textual's ``self.app`` property walks the widget tree, so we patch
+        it to a stub for this unit test rather than spinning up a full
+        Pilot. The point of the test is to confirm the ``case "s":`` clause
+        dispatches correctly, not to exercise Textual's screen mounting.
+        """
+        from unittest.mock import PropertyMock, patch
+
+        screen = self._make_screen()
+
+        called: dict[str, int] = {"count": 0}
+
+        class FakeApp:
+            def open_state_selector(self_inner) -> None:
+                called["count"] += 1
+
+        with patch.object(
+            type(screen), "app", new_callable=PropertyMock,
+            return_value=FakeApp(),
+        ):
+            result = screen.handle_extra_key("s")
+
+        assert result is True
+        assert called["count"] == 1
+
+    def test_handle_extra_key_s_safe_when_app_lacks_method(self):
+        """If the app has no ``open_state_selector``, ``s`` is still consumed."""
+        from unittest.mock import PropertyMock, patch
+
+        screen = self._make_screen()
+        with patch.object(
+            type(screen), "app", new_callable=PropertyMock,
+            return_value=object(),  # bare object, no method
+        ):
+            # Must not raise; must claim the key as handled so it doesn't
+            # bubble up to a number-jump or other handler.
+            assert screen.handle_extra_key("s") is True

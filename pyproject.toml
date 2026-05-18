@@ -5,6 +5,7 @@ members = ["packages/*"]
 pycypher = { workspace = true }
 shared = { workspace = true }
 fastopendata = { workspace = true }
+pycypher-tui = { workspace = true }
 
 [project]
 name = "pycypher-workspace"
@@ -14,16 +15,12 @@ readme = "README.md"
 requires-python = ">=3.12"
 keywords = ["neo4j", "cypher", "parser", "relational algebra"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
-    "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
-    "Programming Language :: Python :: 3.14",
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3.14",
 ]
-dependencies = [
-    "pycypher",
-    "shared",
-    "fastopendata",
-]
+dependencies = ["pycypher", "shared", "fastopendata", "pycypher-tui"]
 
 [[project.authors]]
 name = "Zachary Ernst"
@@ -47,84 +44,81 @@ disable = ["line-too-long", "trailing-whitespace", "missing-docstring"]
 python-version = "3.14"
 
 [tool.ty.src]
-exclude = [
-    "packages/fastopendata/**",
-    ".claude/worktrees/**",
-]
+exclude = ["packages/fastopendata/**", ".claude/worktrees/**"]
 
 [tool.ty.rules]
 # Temporarily ignored — mostly test-signature drift from API refactors.
 # Remove these as type errors are fixed (tracked by Andy's type-fix tasks).
-unknown-argument = "ignore"           # 67 hits: tests passing removed kwargs
-too-many-positional-arguments = "ignore"  # 34 hits: paired with above
-unresolved-import = "warn"            # pyroscope etc. are optional deps
+unknown-argument = "ignore"              # 67 hits: tests passing removed kwargs
+too-many-positional-arguments = "ignore" # 34 hits: paired with above
+unresolved-import = "warn"               # pyroscope etc. are optional deps
 
 [tool.ruff]
 line-length = 79
 indent-width = 4
-target-version = "py314"
+target-version = "314"
 exclude = [
-    ".bzr",
-    ".direnv",
-    ".eggs",
-    ".git",
-    ".git-rewrite",
-    ".hg",
-    ".ipynb_checkpoints",
-    ".mypy_cache",
-    ".nox",
-    ".pants.d",
-    ".pyenv",
-    ".pytest_cache",
-    ".pytype",
-    ".ruff_cache",
-    ".svn",
-    ".tox",
-    ".venv",
-    ".vscode",
-    "__pypackages__",
-    "_build",
-    "buck-out",
-    "build",
-    "dist",
-    "node_modules",
-    "site-packages",
-    "venv",
-    "raw_data",
+  ".bzr",
+  ".direnv",
+  ".eggs",
+  ".git",
+  ".git-rewrite",
+  ".hg",
+  ".ipynb_checkpoints",
+  ".mypy_cache",
+  ".nox",
+  ".pants.d",
+  ".pyenv",
+  ".pytest_cache",
+  ".pytype",
+  ".ruff_cache",
+  ".svn",
+  ".tox",
+  ".venv",
+  ".vscode",
+  "__pypackages__",
+  "_build",
+  "buck-out",
+  "build",
+  "dist",
+  "node_modules",
+  "site-packages",
+  "venv",
+  "raw_data",
 ]
 
 [tool.ruff.lint]
 select = ["ALL"]
 ignore = [
-    # Formatter-incompatible rules (ruff docs recommend disabling when using ruff format)
-    "COM812",  # missing-trailing-comma — handled by formatter
-    # Test-suite noise — assert is idiomatic in pytest
-    "S101",    # assert — 13K+ hits, all in tests
-    # Docstring rules that conflict with each other
-    "D203",    # incorrect-blank-line-before-class — conflicts with D211
-    "D213",    # multi-line-summary-second-line — conflicts with D212
+  # Formatter-incompatible rules (ruff docs recommend disabling when using ruff format)
+  "COM812", # missing-trailing-comma — handled by formatter
+  # Test-suite noise — assert is idiomatic in pytest
+  "S101", # assert — 13K+ hits, all in tests
+  # Docstring rules that conflict with each other
+  "D203", # incorrect-blank-line-before-class — conflicts with D211
+  "D213", # multi-line-summary-second-line — conflicts with D212
 ]
 
 [tool.ruff.lint.per-file-ignores]
 # Tests: relax docstrings, type annotations, magic values, line length, etc.
 "tests/**/*.py" = [
-    "ANN",      # type annotations not required in tests
-    "D",        # docstrings not required in tests
-    "PLR2004",  # magic value comparisons are normal in tests
-    "SLF001",   # accessing private members is normal in tests
-    "INP001",   # implicit namespace packages (test directories)
-    "PLC0415",  # imports inside functions are common in tests
-    "ARG002",   # unused method arguments (fixtures, parametrize)
-    "E712",     # true-false comparison (pandas idx filtering in tests)
-    "T201",     # print statements ok in tests
-    "ERA001",   # commented-out code ok in tests
-    "B905",     # zip-without-explicit-strict ok in tests
-    "FBT003",   # boolean positional values ok in tests
-    "PT011",    # pytest-raises-too-broad ok in tests
-    "B017",     # assert-raises-exception ok in tests
-    "RUF002",   # ambiguous unicode ok in test docstrings
-    "RUF001",   # ambiguous unicode ok in test strings
-    "E501",     # line length relaxed in tests (long assertions)
+  "ANN",     # type annotations not required in tests
+  "D",       # docstrings not required in tests
+  "PLR2004", # magic value comparisons are normal in tests
+  "SLF001",  # accessing private members is normal in tests
+  "INP001",  # implicit namespace packages (test directories)
+  "PLC0415", # imports inside functions are common in tests
+  "ARG002",  # unused method arguments (fixtures, parametrize)
+  "E712",    # true-false comparison (pandas idx filtering in tests)
+  "T201",    # print statements ok in tests
+  "ERA001",  # commented-out code ok in tests
+  "B905",    # zip-without-explicit-strict ok in tests
+  "FBT003",  # boolean positional values ok in tests
+  "PT011",   # pytest-raises-too-broad ok in tests
+  "B017",    # assert-raises-exception ok in tests
+  "RUF002",  # ambiguous unicode ok in test docstrings
+  "RUF001",  # ambiguous unicode ok in test strings
+  "E501",    # line length relaxed in tests (long assertions)
 ]
 # Standalone scripts, demos, examples: relax annotations and docstrings
 "scripts/**/*.py" = ["ANN", "D", "INP001", "T201"]
@@ -132,55 +126,58 @@ ignore = [
 "demo_*.py" = ["ANN", "D", "INP001", "T201"]
 # fastopendata tests
 "packages/fastopendata/tests/**/*.py" = [
-    "ANN", "D", "PLR2004", "SLF001", "INP001", "PLC0415",
-    "ARG002", "E712", "T201", "ERA001", "B905", "E501",
+  "ANN",
+  "D",
+  "PLR2004",
+  "SLF001",
+  "INP001",
+  "PLC0415",
+  "ARG002",
+  "E712",
+  "T201",
+  "ERA001",
+  "B905",
+  "E501",
 ]
 
 [tool.coverage.run]
-source = [
-    "packages/pycypher/src/pycypher",
-    "packages/shared/src/shared",
-]
+source = ["packages/pycypher/src/pycypher", "packages/shared/src/shared"]
 
 [tool.coverage.report]
 fail_under = 80
 exclude_also = [
-    "def tree",
-    "def print_tree",
-    "def __repr__",
-    "if self.debug:",
-    "if settings.DEBUG",
-    "raise AssertionError",
-    "raise NotImplementedError",
-    "if 0:",
-    "if __name__ == .__main__.:",
-    "if TYPE_CHECKING:",
-    "class .*\\bProtocol\\):",
-    "@(abc\\.)?abstractmethod",
+  "def tree",
+  "def print_tree",
+  "def __repr__",
+  "if self.debug:",
+  "if settings.DEBUG",
+  "raise AssertionError",
+  "raise NotImplementedError",
+  "if 0:",
+  "if __name__ == .__main__.:",
+  "if TYPE_CHECKING:",
+  "class .*\\bProtocol\\):",
+  "@(abc\\.)?abstractmethod",
 ]
 
 [tool.pytest.ini_options]
-addopts = [
-    "--strict-markers",
-    "--strict-config",
-    "--tb=short",
-]
+addopts = ["--strict-markers", "--strict-config", "--tb=short"]
 testpaths = ["tests"]
 pythonpath = ["tests"]
 markers = [
-    "slow: Marks tests as slow (deselect with '-m \"not slow\"')",
-    "integration: Integration tests (deselect with '-m \"not integration\"')",
-    "spark: Tests that require PySpark installation (deselect with '-m \"not spark\"')",
-    "performance: Performance benchmarking tests (deselect with '-m \"not performance\"')",
-    "cluster: Tests that require Spark cluster (deselect with '-m \"not cluster\"')",
-    "unit: Unit tests (select with '-m unit')",
-    "pandas_only: Tests that only use Pandas backend (select with '-m pandas_only')",
-    "dual_backend: Tests that compare Pandas and Spark backends (deselect with '-m \"not dual_backend\"')",
-    "neo4j: Tests that require a live Neo4j instance (deselect with '-m \"not neo4j\"')",
-    "performance_comparison: Performance comparison benchmarks",
-    "performance_target: Tests with specific performance targets",
-    "security: Security-focused tests",
-    "timeout: Override default test timeout (e.g. @pytest.mark.timeout(60))",
+  "slow: Marks tests as slow (deselect with '-m \"not slow\"')",
+  "integration: Integration tests (deselect with '-m \"not integration\"')",
+  "spark: Tests that require PySpark installation (deselect with '-m \"not spark\"')",
+  "performance: Performance benchmarking tests (deselect with '-m \"not performance\"')",
+  "cluster: Tests that require Spark cluster (deselect with '-m \"not cluster\"')",
+  "unit: Unit tests (select with '-m unit')",
+  "pandas_only: Tests that only use Pandas backend (select with '-m pandas_only')",
+  "dual_backend: Tests that compare Pandas and Spark backends (deselect with '-m \"not dual_backend\"')",
+  "neo4j: Tests that require a live Neo4j instance (deselect with '-m \"not neo4j\"')",
+  "performance_comparison: Performance comparison benchmarks",
+  "performance_target: Tests with specific performance targets",
+  "security: Security-focused tests",
+  "timeout: Override default test timeout (e.g. @pytest.mark.timeout(60))",
 ]
 timeout = 30
 # Performance optimizations
@@ -193,9 +190,9 @@ minversion = "8.0"
 # Bandit SAST configuration — tuned for this project's patterns.
 # Suppress false positives for patterns we've manually audited as safe.
 skips = [
-    "B101",  # assert used in tests and validation (not security-relevant)
-    "B311",  # random module — our rand() function uses it intentionally for Cypher semantics
-    "B404",  # subprocess import — not used in packages/, only flagged in tests
+  "B101", # assert used in tests and validation (not security-relevant)
+  "B311", # random module — our rand() function uses it intentionally for Cypher semantics
+  "B404", # subprocess import — not used in packages/, only flagged in tests
 ]
 targets = ["packages/pycypher/src", "packages/shared/src"]
 
@@ -203,66 +200,66 @@ targets = ["packages/pycypher/src", "packages/shared/src"]
 # Lightweight dev environment for core pycypher work (no Spark/Dask/Polars).
 # Install with: uv sync --group dev-core
 dev-core = [
-    # Testing frameworks
-    "pytest>=8.3.2,<9.0.0",
-    "pytest-cov>=6.0.0,<7.0.0",
-    "pytest-xdist>=3.6.1,<4.0.0",
-    "pytest-mock>=3.14.0,<4.0.0",
-    "pytest-timeout>=2.3.1,<3.0.0",
-    "pytest-benchmark>=4.0.0,<5.0.0",  # Performance benchmarking
-    "pytest-watch>=4.2.0,<5.0.0",      # File-watching test runner for TDD
-    "hypothesis>=6.100.0,<7.0.0",     # Property-based testing (tests/property_based/)
+  # Testing frameworks
+  "pytest>=8.3.2,<9.0.0",
+  "pytest-cov>=6.0.0,<7.0.0",
+  "pytest-xdist>=3.6.1,<4.0.0",
+  "pytest-mock>=3.14.0,<4.0.0",
+  "pytest-timeout>=2.3.1,<3.0.0",
+  "pytest-benchmark>=4.0.0,<5.0.0", # Performance benchmarking
+  "pytest-watch>=4.2.0,<5.0.0",     # File-watching test runner for TDD
+  "hypothesis>=6.100.0,<7.0.0",     # Property-based testing (tests/property_based/)
 
-    # Code quality
-    "ruff>=0.6.3,<1.0.0",
-    "ty>=0.0.17,<0.1.0",
-    "pip-audit>=2.7.0,<3.0.0",         # Dependency vulnerability scanning
-    "bandit>=1.8.0,<2.0.0",            # Static application security testing (SAST)
-    "pre-commit>=4.0.0,<5.0.0",        # Git pre-commit hook framework
+  # Code quality
+  "ruff>=0.6.3,<1.0.0",
+  "ty>=0.0.17,<0.1.0",
+  "pip-audit>=2.7.0,<3.0.0",  # Dependency vulnerability scanning
+  "bandit>=1.8.0,<2.0.0",     # Static application security testing (SAST)
+  "pre-commit>=4.0.0,<5.0.0", # Git pre-commit hook framework
 
-    # Documentation
-    "myst-parser>=4.0.1,<5.0.0",
-    "sphinx>=7.4.7,<9.0.0",
-    "sphinx-rtd-theme>=3.0.0,<4.0.0",  # Sphinx Read the Docs theme
+  # Documentation
+  "myst-parser>=4.0.1,<5.0.0",
+  "sphinx>=7.4.7,<9.0.0",
+  "sphinx-rtd-theme>=3.0.0,<4.0.0", # Sphinx Read the Docs theme
 
-    # Runtime utilities used in tests
-    "psutil>=5.9.0,<8.0.0",           # System and process utilities for performance monitoring
+  # Runtime utilities used in tests
+  "psutil>=5.9.0,<8.0.0", # System and process utilities for performance monitoring
+  "httpx>=0.27.0,<1.0.0", # HTTP client required by FastAPI TestClient (fastopendata API tests)
 ]
 
 # Full dev environment: includes dev-core + distributed computing + Neo4j.
 # Install with: uv sync --group dev
 dev = [
-    { include-group = "dev-core" },
+  { include-group = "dev-core" },
 
-    # PySpark and distributed computing dependencies
-    "pyspark[sql]>=3.5.0,<5.0.0",     # Main PySpark library with SQL functionality
-    "delta-spark>=3.0.0,<5.0.0",      # Delta Lake for advanced data management
+  # PySpark and distributed computing dependencies
+  "pyspark[sql]>=3.5.0,<5.0.0", # Main PySpark library with SQL functionality
+  "delta-spark>=3.0.0,<5.0.0",  # Delta Lake for advanced data management
 
-    # Large dataset backend dependencies
-    "dask[dataframe]>=2025.1.0,<2027.0.0",  # Primary large-dataset backend (pandas-compatible)
-    "distributed>=2025.1.0,<2027.0.0",      # Dask distributed scheduler
-    "polars>=1.0.0,<2.0.0",                 # Alternative high-performance backend
-    "deltalake>=0.18.0,<2.0.0",             # Delta Lake Python bindings (storage layer)
+  # Large dataset backend dependencies
+  "dask[dataframe]>=2025.1.0,<2027.0.0", # Primary large-dataset backend (pandas-compatible)
+  "distributed>=2025.1.0,<2027.0.0",     # Dask distributed scheduler
+  "polars>=1.0.0,<2.0.0",                # Alternative high-performance backend
+  "deltalake>=0.18.0,<2.0.0",            # Delta Lake Python bindings (storage layer)
 
-    # Neo4j driver
-    "neo4j>=5.0.0,<7.0.0",    # Official Neo4j Python driver (ceiling matches pycypher optional)
+  # Neo4j driver
+  "neo4j>=5.0.0,<7.0.0", # Official Neo4j Python driver (ceiling matches pycypher optional)
 ]
 
 # Full development environment: includes dev + interactive tools, profiling, visualization.
 # Install with: uv sync --group dev-full
 dev-full = [
-    { include-group = "dev" },
+  { include-group = "dev" },
 
-    # Interactive development
-    "jupyter>=1.0.0,<2.0.0",          # Interactive notebooks for development
-    "jupyterlab>=4.0.0,<5.0.0",       # Advanced Jupyter interface
+  # Interactive development
+  "jupyter>=1.0.0,<2.0.0",    # Interactive notebooks for development
+  "jupyterlab>=4.0.0,<5.0.0", # Advanced Jupyter interface
 
-    # Visualization and analysis
-    "matplotlib>=3.7.0,<4.0.0",       # Plotting for performance analysis
-    "seaborn>=0.12.0,<1.0.0",         # Statistical visualizations
+  # Visualization and analysis
+  "matplotlib>=3.7.0,<4.0.0", # Plotting for performance analysis
+  "seaborn>=0.12.0,<1.0.0",   # Statistical visualizations
 
-    # Profiling utilities
-    "memory-profiler>=0.61.0,<1.0.0", # Memory usage profiling
-    "py-spy>=0.3.14,<1.0.0",          # Python profiler for performance analysis
+  # Profiling utilities
+  "memory-profiler>=0.61.0,<1.0.0", # Memory usage profiling
+  "py-spy>=0.3.14,<1.0.0",          # Python profiler for performance analysis
 ]
-

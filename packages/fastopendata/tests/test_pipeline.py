@@ -486,3 +486,156 @@ class TestLineageAutoPopulation:
         node = pipeline.lineage.get_node("entity:Sensor")
         assert node is not None
         assert node.metadata["rows"] == "2"
+
+
+# ---------------------------------------------------------------------------
+# Backend auto-selection (Task #13)
+# ---------------------------------------------------------------------------
+
+
+class TestBackendAutoPromotion:
+    """``backend="auto"`` is promoted to ``"duckdb"`` for large pipelines.
+
+    The promotion threshold is :attr:`GraphPipeline.DUCKDB_AUTO_THRESHOLD`
+    (500 000 by default). These tests override it on the instance to keep
+    the test data small while still exercising both branches.
+    """
+
+    @staticmethod
+    def _df(n_rows: int) -> pd.DataFrame:
+        return pd.DataFrame({"__ID__": list(range(n_rows)), "v": [0] * n_rows})
+
+    def test_total_entity_rows_sums_across_entities(self) -> None:
+        pipeline = GraphPipeline()
+        pipeline.add_entity_dataframe("A", self._df(3))
+        pipeline.add_entity_dataframe("B", self._df(7))
+        assert pipeline._total_entity_rows() == 10  # noqa: SLF001
+
+    def test_resolve_keeps_explicit_backend_unchanged(self) -> None:
+        """Caller-supplied non-auto backend always wins, regardless of size."""
+        pipeline = GraphPipeline()
+        pipeline.add_entity_dataframe("Big", self._df(1_000_000))
+        for backend in ("pandas", "duckdb", "polars"):
+            assert pipeline._resolve_backend(backend) == backend  # noqa: SLF001
+
+    def test_resolve_auto_below_threshold_stays_auto(self) -> None:
+        pipeline = GraphPipeline()
+        pipeline.add_entity_dataframe("Small", self._df(5))
+        # Default threshold is 500K; 5 rows is well below.
+        assert pipeline._resolve_backend("auto") == "auto"  # noqa: SLF001
+
+    def test_resolve_auto_above_threshold_promotes_to_duckdb(self) -> None:
+        pipeline = GraphPipeline()
+        pipeline.DUCKDB_AUTO_THRESHOLD = 100  # tighten for testability
+        pipeline.add_entity_dataframe("Medium", self._df(150))
+        assert pipeline._resolve_backend("auto") == "duckdb"  # noqa: SLF001
+
+    def test_resolve_auto_at_exact_threshold_does_not_promote(self) -> None:
+        """The promotion is strictly greater than, not greater-or-equal."""
+        pipeline = GraphPipeline()
+        pipeline.DUCKDB_AUTO_THRESHOLD = 100
+        pipeline.add_entity_dataframe("Exact", self._df(100))
+        assert pipeline._resolve_backend("auto") == "auto"  # noqa: SLF001
+
+    def test_promotion_emits_log_line(self, caplog) -> None:
+        """The promotion writes an informational log line so users can see it."""
+        import logging
+
+        pipeline = GraphPipeline()
+        pipeline.DUCKDB_AUTO_THRESHOLD = 50
+        pipeline.add_entity_dataframe("Loud", self._df(75))
+
+        with caplog.at_level(logging.INFO, logger="fastopendata.pipeline"):
+            pipeline._resolve_backend("auto")  # noqa: SLF001
+
+        promoted_lines = [
+            r.message for r in caplog.records
+            if "Auto-selecting DuckDB" in r.message
+        ]
+        assert any("75" in line and "50" in line for line in promoted_lines), (
+            f"expected 75 rows + 50 threshold in log, got: {promoted_lines}"
+        )
+
+    def test_no_log_line_when_below_threshold(self, caplog) -> None:
+        """No noise when there's nothing to promote."""
+        import logging
+
+        pipeline = GraphPipeline()
+        pipeline.DUCKDB_AUTO_THRESHOLD = 100_000
+        pipeline.add_entity_dataframe("Quiet", self._df(50))
+
+        with caplog.at_level(logging.INFO, logger="fastopendata.pipeline"):
+            pipeline._resolve_backend("auto")  # noqa: SLF001
+
+        promoted_lines = [
+            r.message for r in caplog.records
+            if "Auto-selecting DuckDB" in r.message
+        ]
+        assert promoted_lines == []
+
+    def test_build_context_passes_resolved_backend_to_builder(
+        self, monkeypatch
+    ) -> None:
+        """End-to-end: build_context must hand the *resolved* backend to ContextBuilder."""
+        from pycypher.ingestion.context_builder import ContextBuilder
+
+        pipeline = GraphPipeline()
+        pipeline.DUCKDB_AUTO_THRESHOLD = 10
+        pipeline.add_entity_dataframe(
+            "Person", self._df(20), id_col="__ID__",
+        )
+
+        captured: list[str] = []
+        original_build = ContextBuilder.build
+
+        def _spy(self, backend="auto"):
+            captured.append(backend)
+            return original_build(self, backend=backend)
+
+        monkeypatch.setattr(ContextBuilder, "build", _spy)
+        pipeline.build_context()  # default backend="auto"
+        assert captured == ["duckdb"]
+
+    def test_build_context_explicit_pandas_not_promoted(
+        self, monkeypatch
+    ) -> None:
+        """When the caller hands in ``"pandas"``, it reaches the builder verbatim."""
+        from pycypher.ingestion.context_builder import ContextBuilder
+
+        pipeline = GraphPipeline()
+        pipeline.DUCKDB_AUTO_THRESHOLD = 10
+        pipeline.add_entity_dataframe(
+            "Person", self._df(20), id_col="__ID__",
+        )
+
+        captured: list[str] = []
+        original_build = ContextBuilder.build
+
+        def _spy(self, backend="auto"):
+            captured.append(backend)
+            return original_build(self, backend=backend)
+
+        monkeypatch.setattr(ContextBuilder, "build", _spy)
+        pipeline.build_context(backend="pandas")
+        assert captured == ["pandas"]
+
+    def test_build_star_inherits_promotion(self, monkeypatch) -> None:
+        """``build_star`` delegates to ``build_context`` so promotion still applies."""
+        from pycypher.ingestion.context_builder import ContextBuilder
+
+        pipeline = GraphPipeline()
+        pipeline.DUCKDB_AUTO_THRESHOLD = 10
+        pipeline.add_entity_dataframe(
+            "Person", self._df(20), id_col="__ID__",
+        )
+
+        captured: list[str] = []
+        original_build = ContextBuilder.build
+
+        def _spy(self, backend="auto"):
+            captured.append(backend)
+            return original_build(self, backend=backend)
+
+        monkeypatch.setattr(ContextBuilder, "build", _spy)
+        pipeline.build_star()
+        assert captured == ["duckdb"]

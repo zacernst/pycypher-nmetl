@@ -273,11 +273,60 @@ def is_api_auth_enabled() -> bool:
 def _load_datasets_into_star() -> int:
     """Load available datasets from disk into the query engine.
 
+    Selects the state to load via the ``STATE_FIPS`` environment variable
+    (defaults to ``"13"`` / Georgia). When the configured state has its
+    contracts CSV + crosswalk on disk, the fully-wired single-state ETL
+    pipeline (entities + relationships) is built. Otherwise, the loader
+    falls back to generic CSV discovery via
+    :func:`fastopendata.pipeline.load_available_datasets`.
+
+    Examples
+    --------
+    Run the API for California::
+
+        STATE_FIPS=06 uvicorn fastopendata.api:app
+
+    Run the API for Texas::
+
+        STATE_FIPS=48 uvicorn fastopendata.api:app
+
     Returns the number of entity types loaded.
     """
+    from fastopendata.etl.state_pipeline import (
+        build_state_pipeline,
+        state_label,
+    )
     from fastopendata.pipeline import load_available_datasets
 
-    pipeline = load_available_datasets()
+    # Normalize so callers can write STATE_FIPS=6 / " 06 " / "6\n" and still
+    # land on the canonical zero-padded 2-digit form ("06").
+    state_fips = os.environ.get("STATE_FIPS", "13").strip().zfill(2)
+    _abbrev, state_name = state_label(state_fips)
+    _logger.info(
+        "Configured to load state %s (FIPS %s) — set STATE_FIPS=<fips> to override",
+        state_name,
+        state_fips,
+    )
+
+    data_dir = config.data_path
+    state_contracts = data_dir / f"contracts_state_{state_fips}.csv"
+    crosswalk = data_dir / "state_county_tract_puma.csv"
+
+    if state_contracts.exists() and crosswalk.exists():
+        _logger.info(
+            "%s data detected — building pipeline with relationship "
+            "derivation (contracts + geography)",
+            state_name,
+        )
+        pipeline = build_state_pipeline(data_dir, state_fips=state_fips)
+    else:
+        _logger.info(
+            "%s data not found at %s — using generic CSV discovery",
+            state_name,
+            data_dir,
+        )
+        pipeline = load_available_datasets(data_dir)
+
     entity_count = len(pipeline.entity_types)
     if entity_count > 0:
         set_star(pipeline.build_star())

@@ -180,8 +180,8 @@ class DataSourcesScreen(VimNavigableScreen[SourceItem]):
 
     @property
     def _screen_override_keys(self) -> frozenset[str]:
-        """Add 'p' for preview and 'tab' for filter toggle."""
-        return frozenset({"tab", "p"})
+        """Add 'p' for preview, 'tab' for filter toggle, 'f' for FOD catalog."""
+        return frozenset({"tab", "p", "f"})
 
     # --- VimNavigableScreen configuration ---
 
@@ -195,7 +195,10 @@ class DataSourcesScreen(VimNavigableScreen[SourceItem]):
 
     @property
     def footer_hints(self) -> str:
-        return " j/k:navigate  a:add  p:preview  Enter:edit  dd:delete  Tab:filter  h:back"
+        return (
+            " j/k:navigate  a:add  f:FOD catalog  p:preview  "
+            "Enter:edit  dd:delete  Tab:filter  h:back"
+        )
 
     @property
     def empty_list_message(self) -> str:
@@ -349,14 +352,28 @@ class DataSourcesScreen(VimNavigableScreen[SourceItem]):
         self.post_message(self.DeleteSource(item.source_id, item.source_type))
 
     def handle_extra_key(self, key: str) -> bool:
-        """Handle filter toggle via Tab and preview via 'p'."""
+        """Handle filter toggle (Tab), preview ('p'), and FOD catalog ('f')."""
         if key == "tab":
             self.run_worker(self._cycle_filter(), exclusive=True)
             return True
         elif key == "p":
             self._preview_current_source()
             return True
+        elif key == "f":
+            self._open_fod_catalog()
+            return True
         return False
+
+    def _open_fod_catalog(self) -> None:
+        """Ask the app to push the FastOpenData catalog screen.
+
+        Routed through the app rather than imported here so that the
+        optional ``fastopendata`` dependency only matters at the app
+        level (see ``PyCypherTUI.open_fod_catalog``).
+        """
+        opener = getattr(self.app, "open_fod_catalog", None)
+        if callable(opener):
+            opener()
 
     # --- Custom compose to add filter indicator ---
 

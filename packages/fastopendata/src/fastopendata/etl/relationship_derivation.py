@@ -136,3 +136,140 @@ def derive_contract_state_relationships(
         }
     )
     return edges[["__SOURCE__", "__TARGET__"]].reset_index(drop=True)
+
+
+def derive_person_puma_relationships(
+    persons_df: pd.DataFrame,
+    pumas_df: pd.DataFrame,
+) -> pd.DataFrame:
+    """Create LIVES_IN_PUMA edges: Person → Puma via PUMA+STATE match.
+
+    Each ACS PUMS person record carries a ``PUMA`` code (numeric, up to 5
+    digits) and a ``STATE`` FIPS code (numeric, up to 2 digits). PUMAs from
+    TIGER shapefiles use ``STATEFP`` (zero-padded 2-char string) and
+    ``PUMACE20`` (zero-padded 5-char string). This function normalizes the
+    types on both sides so the join succeeds regardless of how each frame
+    was loaded.
+
+    Parameters
+    ----------
+    persons_df:
+        ACS person DataFrame with ``PUMA``, ``STATE``, and ``SERIALNO``
+        columns. ``SERIALNO`` is used as the source identifier.
+    pumas_df:
+        PUMA DataFrame with ``PUMACE20`` and ``STATEFP`` columns. If a
+        ``GEOID`` (or ``GEOID20``) column is present, it is used as the
+        target identifier; otherwise ``PUMACE20`` is used.
+
+    Returns
+    -------
+    DataFrame with ``__SOURCE__`` (person ``SERIALNO``) and ``__TARGET__``
+    (PUMA ``GEOID``/``PUMACE20``). If any of the required columns are
+    missing on either input frame, an empty edge DataFrame is returned.
+    """
+    required_person_cols = {"SERIALNO", "PUMA", "STATE"}
+    required_puma_cols = {"PUMACE20", "STATEFP"}
+    if not required_person_cols.issubset(persons_df.columns):
+        return pd.DataFrame(columns=["__SOURCE__", "__TARGET__"])
+    if not required_puma_cols.issubset(pumas_df.columns):
+        return pd.DataFrame(columns=["__SOURCE__", "__TARGET__"])
+
+    if persons_df.empty or pumas_df.empty:
+        return pd.DataFrame(columns=["__SOURCE__", "__TARGET__"])
+
+    # Normalize PUMA/STATE on persons: pad PUMA to 5 chars, STATE to 2 chars.
+    persons = persons_df[["SERIALNO", "PUMA", "STATE"]].copy()
+    persons = persons.dropna(subset=["PUMA", "STATE", "SERIALNO"])
+    persons["_puma_key"] = (
+        persons["PUMA"]
+        .astype(str)
+        .str.replace(r"\.0$", "", regex=True)
+        .str.zfill(5)
+    )
+    persons["_state_key"] = (
+        persons["STATE"]
+        .astype(str)
+        .str.replace(r"\.0$", "", regex=True)
+        .str.zfill(2)
+    )
+
+    # Normalize on PUMA frame: pick the best target id column.
+    target_col = "GEOID" if "GEOID" in pumas_df.columns else (
+        "GEOID20" if "GEOID20" in pumas_df.columns else "PUMACE20"
+    )
+    if target_col == "PUMACE20":
+        pumas = pumas_df[["PUMACE20", "STATEFP"]].copy()
+        pumas["__TARGET__"] = pumas["PUMACE20"].astype(str)
+    else:
+        pumas = pumas_df[["PUMACE20", "STATEFP", target_col]].copy()
+        pumas = pumas.rename(columns={target_col: "__TARGET__"})
+    pumas["_puma_key"] = pumas["PUMACE20"].astype(str).str.zfill(5)
+    pumas["_state_key"] = pumas["STATEFP"].astype(str).str.zfill(2)
+
+    edges = persons.merge(
+        pumas[["_puma_key", "_state_key", "__TARGET__"]],
+        on=["_puma_key", "_state_key"],
+        how="inner",
+    )
+    edges = edges.rename(columns={"SERIALNO": "__SOURCE__"})
+    return edges[["__SOURCE__", "__TARGET__"]].reset_index(drop=True)
+
+
+def derive_county_state_relationships(
+    county_df: pd.DataFrame,
+    states_df: pd.DataFrame,
+    *,
+    county_fips_col: str = "county_fips",
+) -> pd.DataFrame:
+    """Create COUNTY_IN_STATE edges: county → State via FIPS prefix match.
+
+    A county FIPS is a 5-digit code whose first 2 digits ARE the state FIPS
+    (e.g. ``"13089"`` is DeKalb County, GA — state ``"13"``). This function
+    extracts the prefix from each county row, joins to the State entity,
+    and drops counties whose state isn't represented in ``states_df``.
+
+    Type normalization: county FIPS may be an int from pandas auto-inference
+    (which loses leading zeros) or a zero-padded string. Inputs are coerced
+    to zero-padded 5-char strings before slicing.
+
+    Parameters
+    ----------
+    county_df:
+        DataFrame containing one row per county. Must have ``county_fips_col``
+        as the source identifier (also used for slicing).
+    states_df:
+        State DataFrame with a ``STATEFP`` column.
+    county_fips_col:
+        Name of the county-FIPS column on ``county_df``. Defaults to
+        ``"county_fips"`` (CJARS convention).
+
+    Returns
+    -------
+    DataFrame with ``__SOURCE__`` (county FIPS, zero-padded 5-char) and
+    ``__TARGET__`` (state STATEFP). If the required columns are missing on
+    either input, an empty edge DataFrame is returned.
+    """
+    if county_fips_col not in county_df.columns:
+        return pd.DataFrame(columns=["__SOURCE__", "__TARGET__"])
+    if "STATEFP" not in states_df.columns:
+        return pd.DataFrame(columns=["__SOURCE__", "__TARGET__"])
+    if county_df.empty or states_df.empty:
+        return pd.DataFrame(columns=["__SOURCE__", "__TARGET__"])
+
+    # Normalize county FIPS to zero-padded 5-char string. Strips a trailing
+    # ``.0`` if pandas read the column as float.
+    county_keys = (
+        county_df[county_fips_col]
+        .astype(str)
+        .str.replace(r"\.0$", "", regex=True)
+        .str.zfill(5)
+    )
+    state_prefix = county_keys.str[:2]
+    valid_states = set(states_df["STATEFP"].astype(str).str.zfill(2))
+
+    edges = pd.DataFrame({
+        "__SOURCE__": county_keys,
+        "__TARGET__": state_prefix,
+    })
+    edges = edges[edges["__TARGET__"].isin(valid_states)]
+    return edges.reset_index(drop=True)

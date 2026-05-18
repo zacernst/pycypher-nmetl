@@ -210,6 +210,92 @@ class TestStatePipeline:
         with pytest.raises(ValueError, match="Invalid state FIPS"):
             build_state_pipeline(tmp_path, state_fips="abc")
 
-    def test_other_state_not_implemented(self, tmp_path: Path) -> None:
-        with pytest.raises(NotImplementedError, match="California"):
+    def test_missing_data_for_other_state_raises_file_not_found(
+        self, tmp_path: Path,
+    ) -> None:
+        """California now works — but only when its data files exist.
+
+        Without contracts/crosswalk on disk we get a clear FileNotFoundError
+        naming the state and the snakemake command to fetch the data.
+        """
+        with pytest.raises(FileNotFoundError) as excinfo:
             build_state_pipeline(tmp_path, state_fips="06")
+        msg = str(excinfo.value)
+        assert "California" in msg
+        assert "STATE_FIPS=06" in msg
+
+    def test_unknown_fips_uses_fallback_label(self, tmp_path: Path) -> None:
+        """A FIPS not in _STATE_INFO still works — error names the FIPS."""
+        with pytest.raises(FileNotFoundError) as excinfo:
+            build_state_pipeline(tmp_path, state_fips="99")
+        assert "FIPS 99" in str(excinfo.value)
+
+    def test_california_pipeline_with_synthetic_data(self, tmp_path: Path) -> None:
+        """End-to-end: synthetic CA data produces a full graph."""
+        data_dir = tmp_path / "ca_raw"
+        data_dir.mkdir()
+
+        # CA contracts (FIPS 06)
+        ca_contracts = [
+            {
+                "contract_transaction_unique_key": "CA-001",
+                "federal_action_obligation": "1000000",
+                "prime_award_transaction_recipient_state_fips_code": "06",
+                "recipient_state_code": "CA",
+                "prime_award_transaction_place_of_performance_state_fips_code": "06",
+                "primary_place_of_performance_state_code": "CA",
+                "recipient_name": "BigCo",
+                "naics_code": "541512",
+                "award_type": "D",
+                "action_date": "2025-04-01",
+            },
+            {
+                "contract_transaction_unique_key": "CA-002",
+                "federal_action_obligation": "500000",
+                "prime_award_transaction_recipient_state_fips_code": "13",  # GA recipient
+                "recipient_state_code": "GA",
+                "prime_award_transaction_place_of_performance_state_fips_code": "06",
+                "primary_place_of_performance_state_code": "CA",
+                "recipient_name": "OutOfStateCo",
+                "naics_code": "541330",
+                "award_type": "D",
+                "action_date": "2025-05-15",
+            },
+        ]
+        _write_contracts_csv(data_dir / "contracts_state_06.csv", ca_contracts)
+
+        # Crosswalk with both GA and CA rows (CA rows must filter through)
+        _write_crosswalk_csv(data_dir / "state_county_tract_puma.csv")
+
+        pipeline = build_state_pipeline(data_dir, state_fips="06")
+
+        # Entities: Contract + State (no shapefiles in this test)
+        assert "Contract" in pipeline.entity_types
+        assert "State" in pipeline.entity_types
+        assert pipeline.entity_count("Contract") == 2
+        assert pipeline.entity_count("State") == 1
+
+        # Relationships:
+        # PERFORMED_IN_STATE: both CA contracts (POP = CA)
+        assert pipeline.relationship_count("PERFORMED_IN_STATE") == 2
+        # AWARDED_IN_STATE: only CA-001 has recipient in CA; CA-002 → GA
+        # (and GA isn't in this State entity), so 1.
+        assert pipeline.relationship_count("AWARDED_IN_STATE") == 1
+        # MAPS_TO_PUMA: only the 1 CA crosswalk row
+        # (sample crosswalk has 3 GA rows + 1 CA row).
+        assert pipeline.relationship_count("MAPS_TO_PUMA") == 1
+
+    def test_state_entity_uses_correct_label(self, tmp_path: Path) -> None:
+        """Synthetic State entity uses the right (abbrev, name) for the FIPS."""
+        data_dir = tmp_path / "tx_raw"
+        data_dir.mkdir()
+        _write_contracts_csv(data_dir / "contracts_state_48.csv", [])
+        _write_crosswalk_csv(data_dir / "state_county_tract_puma.csv")
+
+        pipeline = build_state_pipeline(data_dir, state_fips="48")
+        star = pipeline.build_star()
+        result = star.execute_query(
+            "MATCH (s:State) RETURN s.NAME AS name, s.STUSPS AS abbrev"
+        )
+        assert result.iloc[0]["name"] == "Texas"
+        assert result.iloc[0]["abbrev"] == "TX"
