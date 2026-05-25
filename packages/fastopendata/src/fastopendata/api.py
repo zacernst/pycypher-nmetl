@@ -20,6 +20,7 @@ import hashlib
 import logging
 import math
 import os
+import pathlib
 import secrets
 import time
 from collections.abc import AsyncIterator
@@ -31,6 +32,7 @@ import numpy as np
 import pandas as pd
 import pycypher
 from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi.staticfiles import StaticFiles
 from pycypher.exceptions import (
     GraphTypeNotFoundError,
     MissingParameterError,
@@ -354,6 +356,14 @@ app = FastAPI(
     lifespan=_lifespan,
 )
 
+# ---------------------------------------------------------------------------
+# Static site — marketing / documentation pages
+# ---------------------------------------------------------------------------
+
+_SITE_DIR = pathlib.Path(__file__).parent.parent.parent / "site"
+if _SITE_DIR.exists():
+    app.mount("/site", StaticFiles(directory=_SITE_DIR, html=True), name="site")
+
 
 # ---------------------------------------------------------------------------
 # Rate limiting middleware
@@ -430,6 +440,17 @@ async def body_size_limit_middleware(
 # ---------------------------------------------------------------------------
 
 
+_SITE_CSP = (
+    "default-src 'self'; "
+    "font-src 'self' https://fonts.gstatic.com; "
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+    "script-src 'self' 'unsafe-inline'; "
+    "connect-src 'self'; "
+    "img-src 'self' data:;"
+)
+_API_CSP = "default-src 'none'"
+
+
 @app.middleware("http")
 async def security_headers_middleware(
     request: Request,
@@ -439,12 +460,13 @@ async def security_headers_middleware(
     response: Response = await call_next(request)
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
-    response.headers["Content-Security-Policy"] = "default-src 'none'"
     response.headers["X-XSS-Protection"] = "1; mode=block"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["Permissions-Policy"] = (
         "camera=(), microphone=(), geolocation=()"
     )
+    csp = _SITE_CSP if request.url.path.startswith("/site") else _API_CSP
+    response.headers["Content-Security-Policy"] = csp
     return response
 
 

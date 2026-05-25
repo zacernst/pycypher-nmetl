@@ -27,7 +27,7 @@ export TESTS_DIR := ${PROJECT_ROOT}/tests
 export COVERAGE_DIR := ${PROJECT_ROOT}/coverage_report
 
 # Main targets
-.PHONY: help pycypher shared test docs lsp clean veryclean venv uv start format lint lint-changed audit typecheck coverage coverage-check check setup test-file test-find test-k test-mark watch reset lock-check dev-check bench bench-save bench-compare bench-memory metrics-snapshot metrics-prometheus test-telemetry dev-up dev-up-minimal dev-down dev-shell dev-rebuild dev-logs dev-test dev-typecheck dev-format spark-up spark-down spark-logs spark-ui spark-shell spark-scale neo4j-up neo4j-down neo4j-logs neo4j-browser neo4j-shell neo4j-reset infra-up infra-down test-spark test-neo4j test-integration fod-up fod-down fod-shell fod-logs fod-rebuild fod-api-up fod-api-down fod-api-shell fod-api-logs fod-api-rebuild nominatim-up nominatim-down nominatim-logs nominatim-search nominatim-status fod-data fod-data-plan fod-data-census fod-data-tiger fod-data-osm fod-data-wikidata fod-data-status fod-data-clean
+.PHONY: help pycypher shared test docs lsp clean veryclean venv uv start format lint lint-changed audit typecheck coverage coverage-check check setup test-file test-find test-k test-mark watch reset lock-check dev-check bench bench-save bench-compare bench-memory metrics-snapshot metrics-prometheus test-telemetry dev-up dev-up-minimal dev-down dev-shell dev-rebuild dev-logs dev-test dev-typecheck dev-format spark-up spark-down spark-logs spark-ui spark-shell spark-scale neo4j-up neo4j-down neo4j-logs neo4j-browser neo4j-shell neo4j-reset infra-up infra-down test-spark test-neo4j test-integration fod-up fod-down fod-shell fod-logs fod-rebuild fod-api-up fod-api-down fod-api-shell fod-api-logs fod-api-rebuild fod-site nominatim-up nominatim-down nominatim-logs nominatim-search nominatim-status fod-data fod-data-plan fod-data-census fod-data-tiger fod-data-osm fod-data-wikidata fod-data-status fod-data-clean
 
 # Default target - run the complete build process
 all: clean venv format pycypher docs
@@ -79,6 +79,10 @@ help:
 	@echo "  make quality         Code quality dashboard (complexity, lint, types)"
 	@echo "  make complexity      Show complexity hotspots only"
 	@echo "  make quality-changed Quality check on changed files only"
+	@echo ""
+	@echo "FastOpenData site (local):"
+	@echo "  make fod-site        Run API + site locally at http://localhost:8000/site/"
+	@echo "                       Override port: make fod-site FOD_SITE_PORT=9000"
 	@echo ""
 	@echo "Docker Development:"
 	@echo "  make dev-up          Start dev container + Spark + Neo4j"
@@ -589,6 +593,16 @@ fod-api-shell:
 
 fod-api-logs:
 	docker compose logs -f fastopendata-api
+
+# Run the FastAPI server locally (no Docker) with live-reload.
+# Opens the marketing site at http://localhost:8000/site/
+FOD_SITE_PORT ?= 8000
+fod-site:
+	@echo "Starting FastOpenData API + site (local, port $(FOD_SITE_PORT))..."
+	@echo "  Site:      http://localhost:$(FOD_SITE_PORT)/site/"
+	@echo "  API:       http://localhost:$(FOD_SITE_PORT)"
+	@echo "  Swagger:   http://localhost:$(FOD_SITE_PORT)/docs"
+	uv run uvicorn fastopendata.api:app --reload --port $(FOD_SITE_PORT)
 
 # ------------------------------------------------------------------------------
 # Spark targets
