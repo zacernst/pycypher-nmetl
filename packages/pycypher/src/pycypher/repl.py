@@ -328,7 +328,9 @@ class CypherRepl(cmd.Cmd):
             typed_ast = converter.convert(raw_ast)
             convert_ms = (time.perf_counter() - t1) * 1000.0
 
-            click.echo(f"\nParse: {parse_ms:.1f}ms  Convert: {convert_ms:.1f}ms")
+            click.echo(
+                f"\nParse: {parse_ms:.1f}ms  Convert: {convert_ms:.1f}ms"
+            )
             click.echo(f"Root: {type(typed_ast).__name__}")
             click.echo(f"\n{typed_ast.pretty()}")
 
@@ -551,9 +553,7 @@ class CypherRepl(cmd.Cmd):
             click.echo(f"Current format: {self._output_format}")
             click.echo("Usage: .format <table|csv|json>")
         else:
-            click.echo(
-                f"Unknown format '{fmt}'. Choose: table, csv, json"
-            )
+            click.echo(f"Unknown format '{fmt}'. Choose: table, csv, json")
 
     def do_template(self, arg: str) -> None:
         """Save, list, or run query templates with $parameter substitution.
@@ -589,7 +589,9 @@ class CypherRepl(cmd.Cmd):
 
         elif action == "list":
             if not self._templates:
-                click.echo("No templates saved. Use .template save <name> <query>")
+                click.echo(
+                    "No templates saved. Use .template save <name> <query>"
+                )
                 return
             click.echo(f"\n{len(self._templates)} template(s):")
             for name, query in self._templates.items():
@@ -604,10 +606,10 @@ class CypherRepl(cmd.Cmd):
                 return
             name = run_parts[0]
             if name not in self._templates:
-                available = ", ".join(self._templates) if self._templates else "(none)"
-                click.echo(
-                    f"No template '{name}'. Available: {available}"
+                available = (
+                    ", ".join(self._templates) if self._templates else "(none)"
                 )
+                click.echo(f"No template '{name}'. Available: {available}")
                 return
             query = self._templates[name]
             for param in run_parts[1:]:
@@ -709,9 +711,7 @@ class CypherRepl(cmd.Cmd):
             if len(entities) > 1:
                 e2 = entities[1]
                 click.echo("\n  -- Query multiple types")
-                click.echo(
-                    f"  MATCH (a:{e}), (b:{e2}) RETURN a, b LIMIT 10"
-                )
+                click.echo(f"  MATCH (a:{e}), (b:{e2}) RETURN a, b LIMIT 10")
 
             if rels:
                 r = rels[0]
@@ -939,7 +939,9 @@ class CypherRepl(cmd.Cmd):
 
         # Complete Cypher keywords (case-insensitive match)
         upper = text.upper()
-        results.extend(kw for kw in self._CYPHER_KEYWORDS if kw.startswith(upper))
+        results.extend(
+            kw for kw in self._CYPHER_KEYWORDS if kw.startswith(upper)
+        )
 
         # Complete function names
         try:
@@ -968,14 +970,16 @@ class CypherRepl(cmd.Cmd):
             return results
         return super().completenames(text, *ignored)
 
-    def completedefault(
-        self,
-        text: str,
-        line: str,
-        begidx: int,
-        endidx: int,
-    ) -> list[str]:
-        """Tab-complete property names after a dot (e.g., ``p.`` → ``p.name``)."""
+    def completedefault(self, *ignored: Any) -> list[str]:
+        """Tab-complete property names after a dot (e.g., ``p.`` → ``p.name``).
+
+        Matches the stdlib ``Cmd.completedefault(self, *ignored)`` signature
+        for LSP compatibility. ``cmd`` always passes
+        ``(text, line, begidx, endidx)`` positionally; we only consult ``text``.
+        """
+        if not ignored or not isinstance(ignored[0], str):
+            return []
+        text: str = ignored[0]
         if self._context is None or "." not in text:
             return []
 

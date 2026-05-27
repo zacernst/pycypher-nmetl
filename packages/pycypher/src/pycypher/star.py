@@ -693,7 +693,12 @@ class Star:
                 memory_budget_bytes=memory_budget_bytes,
             )
 
+            # PipelineResult.result is `pd.DataFrame | None`; mutations may
+            # legitimately produce None. The public contract returns a
+            # DataFrame, so coerce None → empty frame here.
             result = _pipeline_result.result
+            if result is None:
+                result = pd.DataFrame()
             parsed_query = _pipeline_result.metadata.get("parsed_ast", query)
             _is_mutation = _pipeline_result.metadata.get("is_mutation", False)
 

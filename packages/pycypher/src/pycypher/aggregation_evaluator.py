@@ -481,7 +481,7 @@ class AggregationExpressionEvaluator:
                 return None
             pct_val = float(expression_evaluator.evaluate(args[1]).iloc[0])
 
-            def agg_fn(s: pd.Series, p: float = pct_val) -> float:
+            def agg_fn(s: pd.Series, p: float = pct_val) -> float | None:
                 if func_name_lower == "percentilecont":
                     return _agg_percentile_cont(s, p)
                 return _agg_percentile_disc(s, p)

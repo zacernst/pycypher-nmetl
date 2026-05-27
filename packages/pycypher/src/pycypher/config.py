@@ -329,7 +329,7 @@ def apply_preset(name: str) -> None:
     LOGGER.info("Applied configuration preset %r", name)
 
 
-def show_config() -> dict[str, int | float | None]:
+def show_config() -> dict[str, int | float | None | list[str]]:
     """Return a dict of all current configuration values.
 
     Useful for debugging and logging the active configuration::
