@@ -3597,9 +3597,13 @@ dev = [
     { name = "pytest-asyncio" },
     { name = "textual-dev" },
 ]
+fod = [
+    { name = "fastopendata" },
+]
 
 [package.metadata]
 requires-dist = [
+    { name = "fastopendata", marker = "extra == 'fod'", editable = "packages/fastopendata" },
     { name = "pycypher", editable = "packages/pycypher" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.24.0" },
@@ -3607,7 +3611,7 @@ requires-dist = [
     { name = "textual", specifier = ">=1.0.0,<2.0.0" },
     { name = "textual-dev", marker = "extra == 'dev'", specifier = ">=1.0.0" },
 ]
-provides-extras = ["dev"]
+provides-extras = ["dev", "fod"]
 
 [[package]]
 name = "pycypher-workspace"
@@ -3616,6 +3620,7 @@ source = { virtual = "." }
 dependencies = [
     { name = "fastopendata" },
     { name = "pycypher" },
+    { name = "pycypher-tui" },
     { name = "shared" },
 ]
 
@@ -3626,6 +3631,7 @@ dev = [
     { name = "delta-spark" },
     { name = "deltalake" },
     { name = "distributed" },
+    { name = "httpx" },
     { name = "hypothesis" },
     { name = "myst-parser" },
     { name = "neo4j" },
@@ -3635,6 +3641,7 @@ dev = [
     { name = "psutil" },
     { name = "pyspark", extra = ["sql"] },
     { name = "pytest" },
+    { name = "pytest-asyncio" },
     { name = "pytest-benchmark" },
     { name = "pytest-cov" },
     { name = "pytest-mock" },
@@ -3648,12 +3655,14 @@ dev = [
 ]
 dev-core = [
     { name = "bandit" },
+    { name = "httpx" },
     { name = "hypothesis" },
     { name = "myst-parser" },
     { name = "pip-audit" },
     { name = "pre-commit" },
     { name = "psutil" },
     { name = "pytest" },
+    { name = "pytest-asyncio" },
     { name = "pytest-benchmark" },
     { name = "pytest-cov" },
     { name = "pytest-mock" },
@@ -3671,6 +3680,7 @@ dev-full = [
     { name = "delta-spark" },
     { name = "deltalake" },
     { name = "distributed" },
+    { name = "httpx" },
     { name = "hypothesis" },
     { name = "jupyter" },
     { name = "jupyterlab" },
@@ -3685,6 +3695,7 @@ dev-full = [
     { name = "py-spy" },
     { name = "pyspark", extra = ["sql"] },
     { name = "pytest" },
+    { name = "pytest-asyncio" },
     { name = "pytest-benchmark" },
     { name = "pytest-cov" },
     { name = "pytest-mock" },
@@ -3702,6 +3713,7 @@ dev-full = [
 requires-dist = [
     { name = "fastopendata", editable = "packages/fastopendata" },
     { name = "pycypher", editable = "packages/pycypher" },
+    { name = "pycypher-tui", editable = "packages/pycypher-tui" },
     { name = "shared", editable = "packages/shared" },
 ]
 
@@ -3712,6 +3724,7 @@ dev = [
     { name = "delta-spark", specifier = ">=3.0.0,<5.0.0" },
     { name = "deltalake", specifier = ">=0.18.0,<2.0.0" },
     { name = "distributed", specifier = ">=2025.1.0,<2027.0.0" },
+    { name = "httpx", specifier = ">=0.27.0,<1.0.0" },
     { name = "hypothesis", specifier = ">=6.100.0,<7.0.0" },
     { name = "myst-parser", specifier = ">=4.0.1,<5.0.0" },
     { name = "neo4j", specifier = ">=5.0.0,<7.0.0" },
@@ -3721,6 +3734,7 @@ dev = [
     { name = "psutil", specifier = ">=5.9.0,<8.0.0" },
     { name = "pyspark", extras = ["sql"], specifier = ">=3.5.0,<5.0.0" },
     { name = "pytest", specifier = ">=8.3.2,<9.0.0" },
+    { name = "pytest-asyncio", specifier = ">=1.3.0,<2.0.0" },
     { name = "pytest-benchmark", specifier = ">=4.0.0,<5.0.0" },
     { name = "pytest-cov", specifier = ">=6.0.0,<7.0.0" },
     { name = "pytest-mock", specifier = ">=3.14.0,<4.0.0" },
@@ -3734,12 +3748,14 @@ dev = [
 ]
 dev-core = [
     { name = "bandit", specifier = ">=1.8.0,<2.0.0" },
+    { name = "httpx", specifier = ">=0.27.0,<1.0.0" },
     { name = "hypothesis", specifier = ">=6.100.0,<7.0.0" },
     { name = "myst-parser", specifier = ">=4.0.1,<5.0.0" },
     { name = "pip-audit", specifier = ">=2.7.0,<3.0.0" },
     { name = "pre-commit", specifier = ">=4.0.0,<5.0.0" },
     { name = "psutil", specifier = ">=5.9.0,<8.0.0" },
     { name = "pytest", specifier = ">=8.3.2,<9.0.0" },
+    { name = "pytest-asyncio", specifier = ">=1.3.0,<2.0.0" },
     { name = "pytest-benchmark", specifier = ">=4.0.0,<5.0.0" },
     { name = "pytest-cov", specifier = ">=6.0.0,<7.0.0" },
     { name = "pytest-mock", specifier = ">=3.14.0,<4.0.0" },
@@ -3757,6 +3773,7 @@ dev-full = [
     { name = "delta-spark", specifier = ">=3.0.0,<5.0.0" },
     { name = "deltalake", specifier = ">=0.18.0,<2.0.0" },
     { name = "distributed", specifier = ">=2025.1.0,<2027.0.0" },
+    { name = "httpx", specifier = ">=0.27.0,<1.0.0" },
     { name = "hypothesis", specifier = ">=6.100.0,<7.0.0" },
     { name = "jupyter", specifier = ">=1.0.0,<2.0.0" },
     { name = "jupyterlab", specifier = ">=4.0.0,<5.0.0" },
@@ -3771,6 +3788,7 @@ dev-full = [
     { name = "py-spy", specifier = ">=0.3.14,<1.0.0" },
     { name = "pyspark", extras = ["sql"], specifier = ">=3.5.0,<5.0.0" },
     { name = "pytest", specifier = ">=8.3.2,<9.0.0" },
+    { name = "pytest-asyncio", specifier = ">=1.3.0,<2.0.0" },
     { name = "pytest-benchmark", specifier = ">=4.0.0,<5.0.0" },
     { name = "pytest-cov", specifier = ">=6.0.0,<7.0.0" },
     { name = "pytest-mock", specifier = ">=3.14.0,<4.0.0" },

@@ -22,6 +22,7 @@ from pycypher_tui.screens.pipeline_testing import (
     StepStatus,
     build_execution_plan,
     run_dry_execution,
+    run_real_execution,
 )
 
 # ─── ExecutionStep ────────────────────────────────────────────────────────────
@@ -433,3 +434,170 @@ class TestPipelineTestingScreen:
     def test_item_count_no_plan(self):
         screen = self._make_screen()
         assert screen.item_count == 0
+
+
+# ─── run_real_execution ───────────────────────────────────────────────────────
+
+
+def _build_csv_pipeline(tmp_path):
+    """Create a tiny working pipeline (1 entity CSV, 1 inline query, 1 CSV out)."""
+    src = tmp_path / "people.csv"
+    src.write_text("id,name,age\n1,Alice,30\n2,Bob,25\n")
+    out = tmp_path / "out.csv"
+    config_path = tmp_path / "pipeline.yaml"
+
+    cfg = PipelineConfig(
+        version="1.0",
+        sources=SourcesConfig(
+            entities=[
+                EntitySourceConfig(
+                    id="people",
+                    uri=str(src),
+                    entity_type="Person",
+                    id_col="id",
+                ),
+            ],
+            relationships=[],
+        ),
+        queries=[
+            QueryConfig(
+                id="all_people",
+                inline="MATCH (p:Person) RETURN p.name AS name, p.age AS age",
+            ),
+        ],
+        output=[
+            OutputConfig(query_id="all_people", uri=str(out)),
+        ],
+    )
+    cm = ConfigManager.from_config(cfg)
+    return cm, config_path, out
+
+
+class TestRunRealExecutionHappyPath:
+    def test_all_steps_succeed(self, tmp_path):
+        cm, cfg_path, out = _build_csv_pipeline(tmp_path)
+        plan = run_real_execution(cm, config_path=cfg_path)
+        assert not plan.has_errors, [
+            (s.name, s.error_message) for s in plan.steps if s.error_message
+        ]
+        assert all(
+            s.status in (StepStatus.SUCCESS, StepStatus.SKIPPED)
+            for s in plan.steps
+        )
+        # We expect at least: validate, load people, execute query, write output
+        types = {s.step_type for s in plan.steps}
+        assert {"validate", "load", "query", "output"} <= types
+
+    def test_output_file_written(self, tmp_path):
+        cm, cfg_path, out = _build_csv_pipeline(tmp_path)
+        run_real_execution(cm, config_path=cfg_path)
+        assert out.exists(), "output CSV was not written"
+        rows = out.read_text().strip().splitlines()
+        # header + 2 data rows (Alice, Bob)
+        assert len(rows) == 3
+        # Names should appear in the body
+        body = "\n".join(rows[1:])
+        assert "Alice" in body and "Bob" in body
+
+    def test_query_step_records_row_count(self, tmp_path):
+        cm, cfg_path, _ = _build_csv_pipeline(tmp_path)
+        plan = run_real_execution(cm, config_path=cfg_path)
+        query_steps = [s for s in plan.steps if s.step_type == "query"]
+        assert query_steps and query_steps[0].row_count == 2
+
+
+class TestRunRealExecutionErrors:
+    def test_query_syntax_error_marks_step_error(self, tmp_path):
+        cm, cfg_path, _ = _build_csv_pipeline(tmp_path)
+        # Replace the query with garbage Cypher
+        cfg = cm.get_config()
+        cfg.queries[0].inline = "MATCH (p:Person THIS IS NOT VALID"
+        cm2 = ConfigManager.from_config(cfg)
+
+        plan = run_real_execution(cm2, config_path=cfg_path)
+        query_steps = [s for s in plan.steps if s.step_type == "query"]
+        assert query_steps
+        assert query_steps[0].status == StepStatus.ERROR
+        assert query_steps[0].error_message
+        # Output for the failed query should be skipped, not silently succeeding
+        output_steps = [s for s in plan.steps if s.step_type == "output"]
+        assert all(s.status == StepStatus.SKIPPED for s in output_steps)
+        assert plan.has_errors
+
+    def test_missing_source_file_marks_load_error(self, tmp_path):
+        # Reference a CSV that doesn't exist
+        out = tmp_path / "out.csv"
+        cfg = PipelineConfig(
+            version="1.0",
+            sources=SourcesConfig(
+                entities=[
+                    EntitySourceConfig(
+                        id="ghost",
+                        uri=str(tmp_path / "nope.csv"),
+                        entity_type="Ghost",
+                        id_col="id",
+                    ),
+                ],
+                relationships=[],
+            ),
+            queries=[
+                QueryConfig(id="q", inline="MATCH (g:Ghost) RETURN g"),
+            ],
+            output=[OutputConfig(query_id="q", uri=str(out))],
+        )
+        cm = ConfigManager.from_config(cfg)
+        plan = run_real_execution(cm, config_path=tmp_path / "pipeline.yaml")
+        load_steps = [s for s in plan.steps if s.step_type == "load"]
+        assert load_steps and load_steps[0].status == StepStatus.ERROR
+        # Subsequent steps should have been marked SKIPPED
+        downstream = [
+            s for s in plan.steps if s.step_type in {"query", "output"}
+        ]
+        assert all(s.status == StepStatus.SKIPPED for s in downstream)
+
+
+class TestRunRealExecutionCancellation:
+    def test_cancellation_skips_remaining_steps(self, tmp_path):
+        cm, cfg_path, _ = _build_csv_pipeline(tmp_path)
+        # Cancel after the first step transitions to RUNNING
+        # so the run aborts before completing.
+        plan = run_real_execution(
+            cm, config_path=cfg_path, cancel_check=lambda: True
+        )
+        # At least one of the load/query/output steps should be SKIPPED
+        assert any(s.status == StepStatus.SKIPPED for s in plan.steps)
+
+
+class TestRunRealExecutionCallback:
+    def test_callback_invoked_per_step(self, tmp_path):
+        cm, cfg_path, _ = _build_csv_pipeline(tmp_path)
+        seen: list[tuple[str, StepStatus]] = []
+
+        def cb(step, _plan):
+            seen.append((step.name, step.status))
+
+        run_real_execution(cm, config_path=cfg_path, on_step_change=cb)
+
+        # Each step should have been observed at least twice (RUNNING + terminal)
+        # so the count of callbacks is at least 2 * number of non-skipped steps.
+        # In the happy path nothing is skipped.
+        plan = build_execution_plan(cm)
+        assert len(seen) >= 2 * len(plan.steps) - 2  # tolerance for validate
+
+    def test_callback_observes_running_then_terminal(self, tmp_path):
+        cm, cfg_path, _ = _build_csv_pipeline(tmp_path)
+        per_step: dict[str, list[StepStatus]] = {}
+
+        def cb(step, _plan):
+            per_step.setdefault(step.name, []).append(step.status)
+
+        run_real_execution(cm, config_path=cfg_path, on_step_change=cb)
+        for name, transitions in per_step.items():
+            # First observation should be RUNNING; last should be terminal
+            assert transitions[0] == StepStatus.RUNNING, (name, transitions)
+            assert transitions[-1] in (
+                StepStatus.SUCCESS,
+                StepStatus.WARNING,
+                StepStatus.ERROR,
+                StepStatus.SKIPPED,
+            ), (name, transitions)

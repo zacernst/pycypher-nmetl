@@ -266,7 +266,7 @@ class Star:
             ttl_seconds=_cache_ttl or 0.0,
         )
 
-        # Last optimization plan — populated by _analyze_and_plan().
+        # Last optimization plan — populated by QueryAnalyzer.analyze_and_plan.
         self._last_optimization_plan: Any = None
         self._last_analysis: Any = None
 
@@ -496,10 +496,6 @@ class Star:
     def _apply_match_reordering(self, query: Any) -> None:
         """Reorder consecutive MATCH clauses — delegates to :class:`QueryAnalyzer`."""
         return self._query_analyzer.apply_match_reordering(query)
-
-    def _analyze_and_plan(self, query: Any) -> int | None:
-        """Run query planning — delegates to :class:`QueryAnalyzer`."""
-        return self._query_analyzer.analyze_and_plan(query)
 
     @staticmethod
     def _require_bound_frame(current_frame: Any, clause_name: str) -> None:

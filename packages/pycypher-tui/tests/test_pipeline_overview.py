@@ -57,13 +57,14 @@ class TestPipelineOverviewScreen:
     """Tests for PipelineOverviewScreen logic (non-widget tests)."""
 
     def test_section_keys_defined(self):
-        assert len(PipelineOverviewScreen.SECTION_KEYS) == 7
+        assert len(PipelineOverviewScreen.SECTION_KEYS) == 8
         assert "data_model" in PipelineOverviewScreen.SECTION_KEYS
         assert "entity_sources" in PipelineOverviewScreen.SECTION_KEYS
         assert "relationship_sources" in PipelineOverviewScreen.SECTION_KEYS
         assert "queries" in PipelineOverviewScreen.SECTION_KEYS
         assert "query_lineage" in PipelineOverviewScreen.SECTION_KEYS
         assert "outputs" in PipelineOverviewScreen.SECTION_KEYS
+        assert "pipeline_run" in PipelineOverviewScreen.SECTION_KEYS
         assert "settings" in PipelineOverviewScreen.SECTION_KEYS
 
     def test_default_cursor_position(self):
@@ -267,7 +268,7 @@ class TestBuildSectionList:
         screen = self._make_screen()
         config = PipelineConfig(version="1.0")
         sections = screen._build_section_list(config)
-        assert len(sections) == 7
+        assert len(sections) == 8
         assert all(s.status == "empty" for s in sections)
         non_settings = [s for s in sections if s.key != "settings"]
         assert all(s.item_count == 0 for s in non_settings)

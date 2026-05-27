@@ -187,6 +187,7 @@ class PipelineOverviewScreen(VimNavigableScreen[SectionInfo]):
         "queries",
         "query_lineage",
         "outputs",
+        "pipeline_run",
         "settings",
     ]
 
@@ -463,6 +464,30 @@ class PipelineOverviewScreen(VimNavigableScreen[SectionInfo]):
                 item_count=len(outputs),
                 status="configured" if outputs else "empty",
                 details=output_details,
+            )
+        )
+
+        # Run Pipeline (dry run + real execution screen)
+        n_entities = (
+            len(config.sources.entities) if config.sources else 0
+        )
+        n_rels = (
+            len(config.sources.relationships) if config.sources else 0
+        )
+        run_status = "configured" if config.queries else "empty"
+        sections.append(
+            SectionInfo(
+                key="pipeline_run",
+                label="Run Pipeline",
+                icon="[>]",
+                item_count=0,
+                status=run_status,
+                details=[
+                    f"{n_entities + n_rels} sources, "
+                    f"{len(config.queries)} queries, "
+                    f"{len(outputs)} outputs",
+                    "Enter to open; r=dry run, R=execute",
+                ],
             )
         )
 
