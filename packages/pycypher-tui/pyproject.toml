@@ -29,7 +29,7 @@ email = "zac.ernst@gmail.com"
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=8.0.0",
+    "pytest>=9.0.3",  # 9.0.3 fixes CVE-2025-71176 (insecure tmp dir)
     "pytest-asyncio>=0.24.0",
     "textual-dev>=1.0.0",
 ]
