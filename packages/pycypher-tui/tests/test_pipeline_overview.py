@@ -6,9 +6,7 @@ import pytest
 
 from pycypher_tui.screens.pipeline_overview import (
     PipelineOverviewScreen,
-    SectionDetailPanel,
     SectionInfo,
-    SectionWidget,
 )
 
 
@@ -382,7 +380,9 @@ class TestBuildSectionList:
         screen = self._make_screen()
         sections = screen._build_section_list(config)
 
-        output_section = sections[5]  # outputs is now at index 5 (query_lineage at 4)
+        output_section = sections[
+            5
+        ]  # outputs is now at index 5 (query_lineage at 4)
         assert output_section.key == "outputs"
         assert output_section.item_count == 1
         assert output_section.status == "configured"
@@ -525,7 +525,9 @@ class TestSettingsSectionStateIntegration:
                 called["count"] += 1
 
         with patch.object(
-            type(screen), "app", new_callable=PropertyMock,
+            type(screen),
+            "app",
+            new_callable=PropertyMock,
             return_value=FakeApp(),
         ):
             result = screen.handle_extra_key("s")
@@ -539,7 +541,9 @@ class TestSettingsSectionStateIntegration:
 
         screen = self._make_screen()
         with patch.object(
-            type(screen), "app", new_callable=PropertyMock,
+            type(screen),
+            "app",
+            new_callable=PropertyMock,
             return_value=object(),  # bare object, no method
         ):
             # Must not raise; must claim the key as handled so it doesn't

@@ -50,8 +50,7 @@ def _build_csv_pipeline(tmp_path):
             QueryConfig(
                 id="all_people",
                 inline=(
-                    "MATCH (p:Person) "
-                    "RETURN p.name AS name, p.age AS age"
+                    "MATCH (p:Person) RETURN p.name AS name, p.age AS age"
                 ),
             ),
         ],

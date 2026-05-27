@@ -58,7 +58,11 @@ unresolved-import = "warn"               # pyroscope etc. are optional deps
 [tool.ruff]
 line-length = 79
 indent-width = 4
-target-version = "314"
+# Matches requires-python = ">=3.12" (ruff's target-version means "minimum
+# supported Python"). Note: py314 has a known formatter bug for
+# `except (A, B):` clauses (strips the parens, producing invalid Python 3);
+# do not bump without verifying that's fixed upstream.
+target-version = "py312"
 exclude = [
   ".bzr",
   ".direnv",

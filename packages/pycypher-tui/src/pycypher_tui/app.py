@@ -11,9 +11,7 @@ from textual.containers import Container, Horizontal
 from textual.css.query import NoMatches
 from textual.events import Key
 from textual.reactive import reactive
-from textual.widgets import Footer, Header, Label, Static
-
-logger = logging.getLogger(__name__)
+from textual.widgets import Header, Label, Static
 
 from pycypher_tui.config.pipeline import ConfigManager
 from pycypher_tui.widgets.dialog import ConfirmDialog, DialogResult
@@ -21,7 +19,7 @@ from pycypher_tui.config.validation import CachedValidator
 from pycypher_tui.modes.base import ModeType
 from pycypher_tui.modes.manager import ModeManager
 from pycypher_tui.modes.registers import RegisterFile
-from pycypher_tui.modes.search_replace import parse_substitute_command, execute_substitute
+from pycypher_tui.modes.search_replace import parse_substitute_command
 from pycypher_tui.screens.base import VimNavigableScreen
 from pycypher_tui.screens.data_model import DataModelScreen
 from pycypher_tui.screens.data_sources import DataSourcesScreen
@@ -33,6 +31,7 @@ from pycypher_tui.screens.query_lineage import QueryLineageScreen
 from pycypher_tui.screens.relationship_browser import RelationshipBrowserScreen
 from pycypher_tui.screens.relationship_editor import RelationshipEditorScreen
 from pycypher_tui.screens.source_mapper import DataSourceMapperScreen
+
 try:
     from pycypher_tui.screens.fod_catalog import FodCatalogScreen
 except ImportError:
@@ -47,6 +46,8 @@ except ImportError:
     # help_system module may have been removed/relocated
     HelpRegistry = None  # type: ignore[assignment,misc]
     HelpScreen = None  # type: ignore[assignment,misc]
+
+logger = logging.getLogger(__name__)
 
 
 class ModeIndicator(Static):
@@ -199,11 +200,11 @@ class PyCypherTUI(App):
         self.mode_manager = ModeManager()
         self.register_file = RegisterFile()
         self.validator = CachedValidator()
-        self.config_path = (
-            Path(config_path) if config_path else None
-        )
+        self.config_path = Path(config_path) if config_path else None
         self._config_manager: ConfigManager | None = None
-        self._help_registry = HelpRegistry() if HelpRegistry is not None else None
+        self._help_registry = (
+            HelpRegistry() if HelpRegistry is not None else None
+        )
         self.mode_manager.add_listener(self._on_mode_change)
 
     def compose(self) -> ComposeResult:
@@ -278,9 +279,7 @@ class PyCypherTUI(App):
 
         self._update_command_line()
 
-    def _on_mode_change(
-        self, old_mode: ModeType, new_mode: ModeType
-    ) -> None:
+    def _on_mode_change(self, old_mode: ModeType, new_mode: ModeType) -> None:
         """Callback for mode transitions."""
         self._update_mode_display()
         self._update_command_line()
@@ -289,35 +288,22 @@ class PyCypherTUI(App):
     def _update_mode_display(self) -> None:
         """Update the mode indicator in the status bar."""
         try:
-            indicator = self.query_one(
-                "#mode-indicator", ModeIndicator
-            )
-            indicator.mode_name = (
-                self.mode_manager.display_name
-            )
-            indicator.mode_color = (
-                self.mode_manager.style_color
-            )
+            indicator = self.query_one("#mode-indicator", ModeIndicator)
+            indicator.mode_name = self.mode_manager.display_name
+            indicator.mode_color = self.mode_manager.style_color
         except NoMatches:
             logger.debug("_update_mode_display: #mode-indicator not found")
 
     def _update_command_line(self) -> None:
         """Show/hide command line based on current mode."""
         try:
-            cmd_line = self.query_one(
-                "#command-line", CommandLine
-            )
-            if (
-                self.mode_manager.current_type
-                == ModeType.COMMAND
-            ):
+            cmd_line = self.query_one("#command-line", CommandLine)
+            if self.mode_manager.current_type == ModeType.COMMAND:
                 from pycypher_tui.modes.command import (
                     CommandMode,
                 )
 
-                cmd_mode = self.mode_manager.get_mode(
-                    ModeType.COMMAND
-                )
+                cmd_mode = self.mode_manager.get_mode(ModeType.COMMAND)
                 assert isinstance(cmd_mode, CommandMode)
                 cmd_line.text = cmd_mode.display_text
                 cmd_line.add_class("visible")
@@ -399,7 +385,9 @@ class PyCypherTUI(App):
         try:
             return self.query_one(PipelineOverviewScreen)
         except NoMatches:
-            logger.debug("_find_active_overview: no PipelineOverviewScreen mounted")
+            logger.debug(
+                "_find_active_overview: no PipelineOverviewScreen mounted"
+            )
             return None
 
     async def _execute_ex_command(self, command: str) -> None:
@@ -483,12 +471,16 @@ class PyCypherTUI(App):
             import re as _re
 
             try:
-                regex = _re.compile(parsed.pattern, _re.IGNORECASE if parsed.case_insensitive else 0)
+                regex = _re.compile(
+                    parsed.pattern,
+                    _re.IGNORECASE if parsed.case_insensitive else 0,
+                )
             except _re.error as e:
                 self._show_status(f"Regex error: {e}")
                 return
             count = sum(
-                1 for item in screen.items
+                1
+                for item in screen.items
                 if regex.search(screen.get_item_search_text(item))
             )
             self._show_status(f"/{parsed.pattern}/ matched {count} item(s)")
@@ -500,7 +492,9 @@ class PyCypherTUI(App):
         try:
             return self.query_one(VimNavigableScreen)
         except NoMatches:
-            logger.debug("_find_active_vim_screen: no VimNavigableScreen mounted")
+            logger.debug(
+                "_find_active_vim_screen: no VimNavigableScreen mounted"
+            )
             return None
 
     def _show_status(self, text: str) -> None:
@@ -588,9 +582,7 @@ class PyCypherTUI(App):
 
         # Update status bar
         try:
-            status_bar = self.query_one(
-                "#status-bar", StatusBar
-            )
+            status_bar = self.query_one("#status-bar", StatusBar)
             status_bar.update_file_path(str(self.config_path))
         except NoMatches:
             logger.debug("_open_config: #status-bar not found for path update")
@@ -604,9 +596,7 @@ class PyCypherTUI(App):
             return
 
         try:
-            main_content = self.query_one(
-                "#main-content", Container
-            )
+            main_content = self.query_one("#main-content", Container)
             await main_content.remove_children()
             overview = PipelineOverviewScreen(
                 config_manager=self._config_manager,
@@ -640,9 +630,7 @@ class PyCypherTUI(App):
             case _:
                 try:
                     status_bar = self.query_one("#status-bar", StatusBar)
-                    status_bar.update_hints(
-                        f"Selected: {event.section_key}"
-                    )
+                    status_bar.update_hints(f"Selected: {event.section_key}")
                 except NoMatches:
                     logger.debug("section_selected: #status-bar not found")
 
@@ -658,7 +646,9 @@ class PyCypherTUI(App):
             )
             await main_content.mount(screen)
         except NoMatches:
-            logger.debug("_show_data_sources: #main-content container not found")
+            logger.debug(
+                "_show_data_sources: #main-content container not found"
+            )
 
     async def _show_data_model(self) -> None:
         """Show the data model overview screen."""
@@ -686,7 +676,9 @@ class PyCypherTUI(App):
             )
             await main_content.mount(screen)
         except NoMatches:
-            logger.debug("_show_query_lineage: #main-content container not found")
+            logger.debug(
+                "_show_query_lineage: #main-content container not found"
+            )
 
     async def _show_pipeline_run(self) -> None:
         """Show the pipeline run/testing screen (dry run + real execution)."""
@@ -701,7 +693,9 @@ class PyCypherTUI(App):
             )
             await main_content.mount(screen)
         except NoMatches:
-            logger.debug("_show_pipeline_run: #main-content container not found")
+            logger.debug(
+                "_show_pipeline_run: #main-content container not found"
+            )
 
     async def _show_entity_browser(self) -> None:
         """Show the entity browser screen."""
@@ -715,7 +709,9 @@ class PyCypherTUI(App):
             )
             await main_content.mount(screen)
         except NoMatches:
-            logger.debug("_show_entity_browser: #main-content container not found")
+            logger.debug(
+                "_show_entity_browser: #main-content container not found"
+            )
 
     async def _show_entity_editor(self, entity_type: str) -> None:
         """Show the entity editor screen for a specific entity type."""
@@ -730,7 +726,9 @@ class PyCypherTUI(App):
             )
             await main_content.mount(screen)
         except NoMatches:
-            logger.debug("_show_entity_editor: #main-content container not found")
+            logger.debug(
+                "_show_entity_editor: #main-content container not found"
+            )
 
     async def _show_relationship_browser(self) -> None:
         """Show the relationship browser screen."""
@@ -744,7 +742,9 @@ class PyCypherTUI(App):
             )
             await main_content.mount(screen)
         except NoMatches:
-            logger.debug("_show_relationship_browser: #main-content container not found")
+            logger.debug(
+                "_show_relationship_browser: #main-content container not found"
+            )
 
     async def _show_relationship_editor(self, relationship_type: str) -> None:
         """Show the relationship editor screen for a specific relationship type."""
@@ -759,7 +759,9 @@ class PyCypherTUI(App):
             )
             await main_content.mount(screen)
         except NoMatches:
-            logger.debug("_show_relationship_editor: #main-content container not found")
+            logger.debug(
+                "_show_relationship_editor: #main-content container not found"
+            )
 
     async def _show_source_mapper(self) -> None:
         """Show the data source mapper screen."""
@@ -773,7 +775,9 @@ class PyCypherTUI(App):
             )
             await main_content.mount(screen)
         except NoMatches:
-            logger.debug("_show_source_mapper: #main-content container not found")
+            logger.debug(
+                "_show_source_mapper: #main-content container not found"
+            )
 
     async def on_data_source_mapper_screen_drill_down(
         self, event: DataSourceMapperScreen.DrillDown
@@ -860,7 +864,9 @@ class PyCypherTUI(App):
         source_id = event.dataset_name.strip().lower().replace(" ", "_")
         try:
             self._config_manager.add_entity_source(
-                source_id, event.uri, event.entity_type,
+                source_id,
+                event.uri,
+                event.entity_type,
             )
         except (ValueError, KeyError) as exc:
             self.notify(
@@ -946,15 +952,21 @@ class PyCypherTUI(App):
             try:
                 if source_id in existing_ids:
                     self._config_manager.update_entity_source(
-                        source_id, uri=uri, entity_type=entity_type,
+                        source_id,
+                        uri=uri,
+                        entity_type=entity_type,
                     )
                 else:
                     self._config_manager.add_entity_source(
-                        source_id, uri, entity_type,
+                        source_id,
+                        uri,
+                        entity_type,
                     )
             except (ValueError, KeyError) as exc:
                 logger.debug(
-                    "auto-populate %s failed: %s", source_id, exc,
+                    "auto-populate %s failed: %s",
+                    source_id,
+                    exc,
                 )
 
         self.notify(
@@ -971,9 +983,7 @@ class PyCypherTUI(App):
         """Show the help screen for the given topic."""
         if HelpScreen is None or self._help_registry is None:
             return
-        self.push_screen(
-            HelpScreen(registry=self._help_registry, topic=topic)
-        )
+        self.push_screen(HelpScreen(registry=self._help_registry, topic=topic))
 
 
 def main() -> None:

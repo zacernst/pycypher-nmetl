@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-import pytest
 from pycypher.ingestion.config import (
     EntitySourceConfig,
     OutputConfig,
     PipelineConfig,
-    ProjectConfig,
     QueryConfig,
     RelationshipSourceConfig,
     SourcesConfig,
@@ -56,8 +54,11 @@ class TestExecutionStep:
 
     def test_error_message(self):
         step = ExecutionStep(
-            name="t", description="d", step_type="query",
-            status=StepStatus.ERROR, error_message="Syntax error"
+            name="t",
+            description="d",
+            step_type="query",
+            status=StepStatus.ERROR,
+            error_message="Syntax error",
         )
         assert step.error_message == "Syntax error"
 
@@ -120,11 +121,13 @@ class TestExecutionPlan:
         assert plan.summary == "No steps"
 
     def test_plan_with_steps(self):
-        plan = ExecutionPlan(steps=[
-            ExecutionStep("s1", "d1", "load", status=StepStatus.SUCCESS),
-            ExecutionStep("s2", "d2", "query", status=StepStatus.SUCCESS),
-            ExecutionStep("s3", "d3", "output", status=StepStatus.WARNING),
-        ])
+        plan = ExecutionPlan(
+            steps=[
+                ExecutionStep("s1", "d1", "load", status=StepStatus.SUCCESS),
+                ExecutionStep("s2", "d2", "query", status=StepStatus.SUCCESS),
+                ExecutionStep("s3", "d3", "output", status=StepStatus.WARNING),
+            ]
+        )
         assert plan.step_count == 3
         assert plan.success_count == 2
         assert plan.warning_count == 1
@@ -133,26 +136,32 @@ class TestExecutionPlan:
         assert not plan.has_errors
 
     def test_plan_with_errors(self):
-        plan = ExecutionPlan(steps=[
-            ExecutionStep("s1", "d1", "load", status=StepStatus.SUCCESS),
-            ExecutionStep("s2", "d2", "query", status=StepStatus.ERROR),
-        ])
+        plan = ExecutionPlan(
+            steps=[
+                ExecutionStep("s1", "d1", "load", status=StepStatus.SUCCESS),
+                ExecutionStep("s2", "d2", "query", status=StepStatus.ERROR),
+            ]
+        )
         assert plan.has_errors
         assert plan.error_count == 1
 
     def test_plan_not_complete(self):
-        plan = ExecutionPlan(steps=[
-            ExecutionStep("s1", "d1", "load", status=StepStatus.SUCCESS),
-            ExecutionStep("s2", "d2", "query", status=StepStatus.PENDING),
-        ])
+        plan = ExecutionPlan(
+            steps=[
+                ExecutionStep("s1", "d1", "load", status=StepStatus.SUCCESS),
+                ExecutionStep("s2", "d2", "query", status=StepStatus.PENDING),
+            ]
+        )
         assert not plan.is_complete
 
     def test_summary_format(self):
-        plan = ExecutionPlan(steps=[
-            ExecutionStep("s1", "d1", "load", status=StepStatus.SUCCESS),
-            ExecutionStep("s2", "d2", "query", status=StepStatus.ERROR),
-            ExecutionStep("s3", "d3", "output", status=StepStatus.WARNING),
-        ])
+        plan = ExecutionPlan(
+            steps=[
+                ExecutionStep("s1", "d1", "load", status=StepStatus.SUCCESS),
+                ExecutionStep("s2", "d2", "query", status=StepStatus.ERROR),
+                ExecutionStep("s3", "d3", "output", status=StepStatus.WARNING),
+            ]
+        )
         summary = plan.summary
         assert "1 passed" in summary
         assert "1 errors" in summary
@@ -165,6 +174,7 @@ class TestExecutionPlan:
 class TestBuildExecutionPlan:
     def _make_config_manager(self, config: PipelineConfig) -> ConfigManager:
         from pycypher.ingestion.pipeline_builder import PipelineBuilder
+
         builder = PipelineBuilder.from_config(config)
         return ConfigManager(builder=builder)
 
@@ -181,12 +191,16 @@ class TestBuildExecutionPlan:
             sources=SourcesConfig(
                 entities=[
                     EntitySourceConfig(
-                        id="customers", uri="data/c.csv",
-                        entity_type="Customer", id_col="id",
+                        id="customers",
+                        uri="data/c.csv",
+                        entity_type="Customer",
+                        id_col="id",
                     ),
                     EntitySourceConfig(
-                        id="products", uri="data/p.csv",
-                        entity_type="Product", id_col="id",
+                        id="products",
+                        uri="data/p.csv",
+                        entity_type="Product",
+                        id_col="id",
                     ),
                 ]
             ),
@@ -203,9 +217,11 @@ class TestBuildExecutionPlan:
             sources=SourcesConfig(
                 relationships=[
                     RelationshipSourceConfig(
-                        id="follows", uri="data/f.csv",
+                        id="follows",
+                        uri="data/f.csv",
                         relationship_type="FOLLOWS",
-                        source_col="a", target_col="b",
+                        source_col="a",
+                        target_col="b",
                     ),
                 ]
             ),
@@ -245,7 +261,10 @@ class TestBuildExecutionPlan:
             sources=SourcesConfig(
                 entities=[
                     EntitySourceConfig(
-                        id="c", uri="d.csv", entity_type="C", id_col="id",
+                        id="c",
+                        uri="d.csv",
+                        entity_type="C",
+                        id_col="id",
                     ),
                 ],
             ),
@@ -268,6 +287,7 @@ class TestBuildExecutionPlan:
 class TestRunDryExecution:
     def _make_config_manager(self, config: PipelineConfig) -> ConfigManager:
         from pycypher.ingestion.pipeline_builder import PipelineBuilder
+
         builder = PipelineBuilder.from_config(config)
         return ConfigManager(builder=builder)
 
@@ -283,7 +303,10 @@ class TestRunDryExecution:
             sources=SourcesConfig(
                 entities=[
                     EntitySourceConfig(
-                        id="c", uri="d.csv", entity_type="C", id_col="id",
+                        id="c",
+                        uri="d.csv",
+                        entity_type="C",
+                        id_col="id",
                     ),
                 ],
             ),
@@ -327,7 +350,10 @@ class TestRunDryExecution:
             sources=SourcesConfig(
                 entities=[
                     EntitySourceConfig(
-                        id="c", uri="d.csv", entity_type="C", id_col="id",
+                        id="c",
+                        uri="d.csv",
+                        entity_type="C",
+                        id_col="id",
                     ),
                 ],
             ),
@@ -357,9 +383,11 @@ class TestPipelineTestingScreen:
         return screen
 
     def test_test_completed_message(self):
-        plan = ExecutionPlan(steps=[
-            ExecutionStep("s1", "d1", "load", status=StepStatus.SUCCESS),
-        ])
+        plan = ExecutionPlan(
+            steps=[
+                ExecutionStep("s1", "d1", "load", status=StepStatus.SUCCESS),
+            ]
+        )
         msg = PipelineTestingScreen.TestCompleted(plan)
         assert msg.plan.step_count == 1
 
@@ -369,11 +397,13 @@ class TestPipelineTestingScreen:
         assert screen.cursor == 0
 
     def test_cursor_movement(self):
-        plan = ExecutionPlan(steps=[
-            ExecutionStep("s1", "d1", "load", status=StepStatus.SUCCESS),
-            ExecutionStep("s2", "d2", "query", status=StepStatus.SUCCESS),
-            ExecutionStep("s3", "d3", "output", status=StepStatus.SUCCESS),
-        ])
+        plan = ExecutionPlan(
+            steps=[
+                ExecutionStep("s1", "d1", "load", status=StepStatus.SUCCESS),
+                ExecutionStep("s2", "d2", "query", status=StepStatus.SUCCESS),
+                ExecutionStep("s3", "d3", "output", status=StepStatus.SUCCESS),
+            ]
+        )
         screen = self._make_screen(plan)
         screen._move_cursor(1)
         assert screen._cursor == 1
@@ -385,19 +415,23 @@ class TestPipelineTestingScreen:
         assert screen._cursor == 1
 
     def test_cursor_clamps_at_bounds(self):
-        plan = ExecutionPlan(steps=[
-            ExecutionStep("s1", "d1", "load"),
-        ])
+        plan = ExecutionPlan(
+            steps=[
+                ExecutionStep("s1", "d1", "load"),
+            ]
+        )
         screen = self._make_screen(plan)
         screen._move_cursor(-1)
         assert screen._cursor == 0
 
     def test_jump_to_start_and_end(self):
-        plan = ExecutionPlan(steps=[
-            ExecutionStep("s1", "d1", "load", status=StepStatus.SUCCESS),
-            ExecutionStep("s2", "d2", "query", status=StepStatus.SUCCESS),
-            ExecutionStep("s3", "d3", "output", status=StepStatus.SUCCESS),
-        ])
+        plan = ExecutionPlan(
+            steps=[
+                ExecutionStep("s1", "d1", "load", status=StepStatus.SUCCESS),
+                ExecutionStep("s2", "d2", "query", status=StepStatus.SUCCESS),
+                ExecutionStep("s3", "d3", "output", status=StepStatus.SUCCESS),
+            ]
+        )
         screen = self._make_screen(plan)
         screen._jump_to(2)
         assert screen._cursor == 2
@@ -405,11 +439,13 @@ class TestPipelineTestingScreen:
         assert screen._cursor == 0
 
     def test_gg_pending_sequence(self):
-        plan = ExecutionPlan(steps=[
-            ExecutionStep("s1", "d1", "load"),
-            ExecutionStep("s2", "d2", "query"),
-            ExecutionStep("s3", "d3", "output"),
-        ])
+        plan = ExecutionPlan(
+            steps=[
+                ExecutionStep("s1", "d1", "load"),
+                ExecutionStep("s2", "d2", "query"),
+                ExecutionStep("s3", "d3", "output"),
+            ]
+        )
         screen = self._make_screen(plan)
         screen._cursor = 2
         screen._pending_keys = ["g"]
@@ -424,10 +460,12 @@ class TestPipelineTestingScreen:
         assert screen._pending_keys == []
 
     def test_item_count_with_plan(self):
-        plan = ExecutionPlan(steps=[
-            ExecutionStep("s1", "d1", "load"),
-            ExecutionStep("s2", "d2", "query"),
-        ])
+        plan = ExecutionPlan(
+            steps=[
+                ExecutionStep("s1", "d1", "load"),
+                ExecutionStep("s2", "d2", "query"),
+            ]
+        )
         screen = self._make_screen(plan)
         assert screen.item_count == 2
 

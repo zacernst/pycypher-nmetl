@@ -14,13 +14,11 @@ import time
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from pathlib import Path
-from typing import Any, Callable
+from typing import Callable
 
 from textual.app import ComposeResult
-from textual.containers import Container, Horizontal, Vertical, VerticalScroll
 from textual.css.query import NoMatches
 from textual.message import Message
-from textual.reactive import reactive
 from textual.widgets import Label, Static
 
 from pycypher_tui.config.pipeline import ConfigManager
@@ -169,45 +167,55 @@ def build_execution_plan(config_manager: ConfigManager) -> ExecutionPlan:
     cfg = config_manager.get_config()
 
     # Validation step
-    plan.steps.append(ExecutionStep(
-        name="Validate Configuration",
-        description="Check pipeline configuration validity",
-        step_type="validate",
-    ))
+    plan.steps.append(
+        ExecutionStep(
+            name="Validate Configuration",
+            description="Check pipeline configuration validity",
+            step_type="validate",
+        )
+    )
 
     # Entity source loading steps
     if cfg.sources:
         for entity in cfg.sources.entities:
-            plan.steps.append(ExecutionStep(
-                name=f"Load {entity.id}",
-                description=f"Load {entity.entity_type} from {entity.uri}",
-                step_type="load",
-            ))
+            plan.steps.append(
+                ExecutionStep(
+                    name=f"Load {entity.id}",
+                    description=f"Load {entity.entity_type} from {entity.uri}",
+                    step_type="load",
+                )
+            )
 
         # Relationship source loading steps
         for rel in cfg.sources.relationships:
-            plan.steps.append(ExecutionStep(
-                name=f"Load {rel.id}",
-                description=f"Load {rel.relationship_type} from {rel.uri}",
-                step_type="load",
-            ))
+            plan.steps.append(
+                ExecutionStep(
+                    name=f"Load {rel.id}",
+                    description=f"Load {rel.relationship_type} from {rel.uri}",
+                    step_type="load",
+                )
+            )
 
     # Query execution steps
     for query in cfg.queries:
         desc = query.description or query.id
-        plan.steps.append(ExecutionStep(
-            name=f"Execute {query.id}",
-            description=f"Run query: {desc}",
-            step_type="query",
-        ))
+        plan.steps.append(
+            ExecutionStep(
+                name=f"Execute {query.id}",
+                description=f"Run query: {desc}",
+                step_type="query",
+            )
+        )
 
     # Output steps
     for output in cfg.output:
-        plan.steps.append(ExecutionStep(
-            name=f"Write {output.query_id}",
-            description=f"Output to {output.uri}",
-            step_type="output",
-        ))
+        plan.steps.append(
+            ExecutionStep(
+                name=f"Write {output.query_id}",
+                description=f"Output to {output.uri}",
+                step_type="output",
+            )
+        )
 
     return plan
 
@@ -238,21 +246,25 @@ def run_dry_execution(config_manager: ConfigManager) -> ExecutionPlan:
                             str(e) for e in result.errors[:3]
                         )
                         for err in result.errors:
-                            plan.diagnostics.append(DiagnosticEntry(
-                                severity="error",
-                                category="config",
-                                message=str(err),
-                                suggestion="Check pipeline configuration",
-                            ))
+                            plan.diagnostics.append(
+                                DiagnosticEntry(
+                                    severity="error",
+                                    category="config",
+                                    message=str(err),
+                                    suggestion="Check pipeline configuration",
+                                )
+                            )
                     else:
                         step.status = StepStatus.WARNING
                     for warn in result.warnings:
                         step.warnings.append(str(warn))
-                        plan.diagnostics.append(DiagnosticEntry(
-                            severity="warning",
-                            category="config",
-                            message=str(warn),
-                        ))
+                        plan.diagnostics.append(
+                            DiagnosticEntry(
+                                severity="warning",
+                                category="config",
+                                message=str(warn),
+                            )
+                        )
 
             case "load":
                 # Validate source exists in config
@@ -266,6 +278,7 @@ def run_dry_execution(config_manager: ConfigManager) -> ExecutionPlan:
                 )
                 if query_cfg and query_cfg.inline:
                     from pycypher import validate_query
+
                     errors = validate_query(query_cfg.inline)
                     if not errors:
                         step.status = StepStatus.SUCCESS
@@ -273,26 +286,34 @@ def run_dry_execution(config_manager: ConfigManager) -> ExecutionPlan:
                         step.status = StepStatus.ERROR
                         step.error_message = errors[0].message
                         for err in errors:
-                            plan.diagnostics.append(DiagnosticEntry(
-                                severity="error",
-                                category="syntax",
-                                message=f"Query '{query_id}': {err.message}",
-                                suggestion="Check Cypher syntax",
-                                location=f"query.{query_id}",
-                            ))
+                            plan.diagnostics.append(
+                                DiagnosticEntry(
+                                    severity="error",
+                                    category="syntax",
+                                    message=f"Query '{query_id}': {err.message}",
+                                    suggestion="Check Cypher syntax",
+                                    location=f"query.{query_id}",
+                                )
+                            )
                 elif query_cfg and query_cfg.source:
                     step.status = StepStatus.SUCCESS
-                    step.warnings.append("External query file not validated in dry run")
+                    step.warnings.append(
+                        "External query file not validated in dry run"
+                    )
                 else:
                     step.status = StepStatus.ERROR
-                    step.error_message = f"Query '{query_id}' has no inline or source"
-                    plan.diagnostics.append(DiagnosticEntry(
-                        severity="error",
-                        category="config",
-                        message=f"Query '{query_id}' missing content",
-                        suggestion="Add inline query or source file path",
-                        location=f"query.{query_id}",
-                    ))
+                    step.error_message = (
+                        f"Query '{query_id}' has no inline or source"
+                    )
+                    plan.diagnostics.append(
+                        DiagnosticEntry(
+                            severity="error",
+                            category="config",
+                            message=f"Query '{query_id}' missing content",
+                            suggestion="Add inline query or source file path",
+                            location=f"query.{query_id}",
+                        )
+                    )
 
             case "output":
                 step.status = StepStatus.SUCCESS
@@ -306,7 +327,8 @@ def run_dry_execution(config_manager: ConfigManager) -> ExecutionPlan:
 def run_real_execution(
     config_manager: ConfigManager,
     config_path: Path | None = None,
-    on_step_change: Callable[[ExecutionStep, ExecutionPlan], None] | None = None,
+    on_step_change: Callable[[ExecutionStep, ExecutionPlan], None]
+    | None = None,
     cancel_check: Callable[[], bool] | None = None,
 ) -> ExecutionPlan:
     """Execute the pipeline against the live runtime, updating per-step status.
@@ -624,7 +646,9 @@ def run_real_execution(
             os_start = time.monotonic()
             try:
                 write_dataframe_to_uri(
-                    result_df, _resolve_uri(sink.uri), sink.format,
+                    result_df,
+                    _resolve_uri(sink.uri),
+                    sink.format,
                 )
                 o_step.row_count = n_rows
                 o_step.status = StepStatus.SUCCESS
@@ -688,7 +712,11 @@ class StepListItem(BaseListItem[ExecutionStep]):
         self.step = step
 
     def compose(self) -> ComposeResult:
-        timing = f" ({self.step.duration_ms:.1f}ms)" if self.step.duration_ms > 0 else ""
+        timing = (
+            f" ({self.step.duration_ms:.1f}ms)"
+            if self.step.duration_ms > 0
+            else ""
+        )
         text = f" {self.step.status_icon} {self.step.name:<30} {self.step.status_label:<8}{timing}"
         yield Label(text)
 
@@ -706,27 +734,48 @@ class StepDetailPanel(BaseDetailPanel):
     """Right-side detail panel showing selected step details and diagnostics."""
 
     def __init__(self, **kwargs) -> None:
-        super().__init__(empty_message="Press 'r' to run dry execution", **kwargs)
+        super().__init__(
+            empty_message="Press 'r' to run dry execution", **kwargs
+        )
 
-    def update_step(self, step: ExecutionStep | None, diagnostics: list[DiagnosticEntry] | None = None) -> None:
+    def update_step(
+        self,
+        step: ExecutionStep | None,
+        diagnostics: list[DiagnosticEntry] | None = None,
+    ) -> None:
         """Update the detail panel with step information and related diagnostics."""
         self.remove_children()
 
         if step is None:
-            self.mount(Label("Press 'r' to run dry execution", classes="detail-title"))
+            self.mount(
+                Label("Press 'r' to run dry execution", classes="detail-title")
+            )
             return
 
-        self.mount(Label(f"{step.status_icon}  {step.name}", classes="detail-title"))
+        self.mount(
+            Label(f"{step.status_icon}  {step.name}", classes="detail-title")
+        )
         self.mount(Label(f"  Type: {step.step_type}", classes="detail-row"))
-        self.mount(Label(f"  Status: {step.status_label}", classes="detail-row"))
-        self.mount(Label(f"  Description: {step.description}", classes="detail-row"))
+        self.mount(
+            Label(f"  Status: {step.status_label}", classes="detail-row")
+        )
+        self.mount(
+            Label(f"  Description: {step.description}", classes="detail-row")
+        )
 
         if step.duration_ms > 0:
-            self.mount(Label(f"  Duration: {step.duration_ms:.1f}ms", classes="detail-row"))
+            self.mount(
+                Label(
+                    f"  Duration: {step.duration_ms:.1f}ms",
+                    classes="detail-row",
+                )
+            )
 
         if step.error_message:
             self.mount(Label("  Error", classes="detail-section"))
-            self.mount(Label(f"    {step.error_message}", classes="detail-row"))
+            self.mount(
+                Label(f"    {step.error_message}", classes="detail-row")
+            )
 
         if step.warnings:
             self.mount(Label("  Warnings", classes="detail-section"))
@@ -738,9 +787,19 @@ class StepDetailPanel(BaseDetailPanel):
             self.mount(Label("  Diagnostics", classes="detail-section"))
             for diag in diagnostics:
                 location = f" [{diag.location}]" if diag.location else ""
-                self.mount(Label(f"    {diag.severity_icon} {diag.message}{location}", classes="detail-row"))
+                self.mount(
+                    Label(
+                        f"    {diag.severity_icon} {diag.message}{location}",
+                        classes="detail-row",
+                    )
+                )
                 if diag.suggestion:
-                    self.mount(Label(f"      Suggestion: {diag.suggestion}", classes="detail-row"))
+                    self.mount(
+                        Label(
+                            f"      Suggestion: {diag.suggestion}",
+                            classes="detail-row",
+                        )
+                    )
 
 
 # ─── Screen ───────────────────────────────────────────────────────────────────
@@ -827,7 +886,9 @@ class PipelineTestingScreen(VimNavigableScreen[ExecutionStep]):
             return list(self._plan.steps)
         return []
 
-    def create_list_item(self, item: ExecutionStep, item_id: str) -> BaseListItem:
+    def create_list_item(
+        self, item: ExecutionStep, item_id: str
+    ) -> BaseListItem:
         return StepListItem(item, id=item_id)
 
     def create_detail_panel(self) -> BaseDetailPanel:
@@ -835,18 +896,25 @@ class PipelineTestingScreen(VimNavigableScreen[ExecutionStep]):
 
     def update_detail_panel(self, item: ExecutionStep | None) -> None:
         try:
-            detail = self.query_one(f"#{self.detail_panel_id}", StepDetailPanel)
+            detail = self.query_one(
+                f"#{self.detail_panel_id}", StepDetailPanel
+            )
             # Find diagnostics related to this step
             diagnostics = None
             if item and self._plan and self._plan.diagnostics:
-                step_name = item.name.replace("Execute ", "").replace("Load ", "")
+                step_name = item.name.replace("Execute ", "").replace(
+                    "Load ", ""
+                )
                 diagnostics = [
-                    d for d in self._plan.diagnostics
+                    d
+                    for d in self._plan.diagnostics
                     if step_name in d.message or step_name in d.location
                 ]
             detail.update_step(item, diagnostics)
         except (NoMatches, AttributeError):
-            logger.debug("update_detail_panel: #%s not found", self.detail_panel_id)
+            logger.debug(
+                "update_detail_panel: #%s not found", self.detail_panel_id
+            )
 
     def get_item_id(self, item: ExecutionStep) -> str:
         return item.name.replace(" ", "-").lower()
@@ -915,7 +983,8 @@ class PipelineTestingScreen(VimNavigableScreen[ExecutionStep]):
                 parent = footer.parent
                 if parent is not None:
                     parent.mount(
-                        Static("", id="summary-bar"), before=footer,
+                        Static("", id="summary-bar"),
+                        before=footer,
                     )
             except NoMatches:
                 logger.debug("_mount_summary_bar: #screen-footer not found")

@@ -297,11 +297,13 @@ class Star:
             converter = ASTConverter()
             for etype in entity_types[:5]:
                 try:
-                    converter.from_cypher(
-                        f"MATCH (n:{etype}) RETURN n"
-                    )
+                    converter.from_cypher(f"MATCH (n:{etype}) RETURN n")
                 except Exception:  # noqa: BLE001 — best-effort warmup
-                    LOGGER.debug("Warmup parse failed for entity %r", etype, exc_info=True)
+                    LOGGER.debug(
+                        "Warmup parse failed for entity %r",
+                        etype,
+                        exc_info=True,
+                    )
             for rtype in rel_types[:3]:
                 for etype in entity_types[:2]:
                     try:
@@ -309,7 +311,12 @@ class Star:
                             f"MATCH (a:{etype})-[r:{rtype}]->(b) RETURN a, r, b"
                         )
                     except Exception:  # noqa: BLE001 — best-effort warmup
-                        LOGGER.debug("Warmup parse failed for rel %r/%r", rtype, etype, exc_info=True)
+                        LOGGER.debug(
+                            "Warmup parse failed for rel %r/%r",
+                            rtype,
+                            etype,
+                            exc_info=True,
+                        )
         except Exception:  # noqa: BLE001 — best-effort warmup
             LOGGER.debug("AST cache warmup failed", exc_info=True)
 
@@ -383,7 +390,9 @@ class Star:
     ) -> BindingFrame:
         """Apply a WHERE predicate — delegates to :class:`ClauseExecutor`."""
         return ClauseExecutor.apply_where_filter(
-            where_expr, result_frame, fallback_frame,
+            where_expr,
+            result_frame,
+            fallback_frame,
         )
 
     def _apply_projection_modifiers(
@@ -394,7 +403,9 @@ class Star:
     ) -> pd.DataFrame:
         """Apply DISTINCT/ORDER BY/SKIP/LIMIT — delegates to :class:`ProjectionPlanner`."""
         return self._projection_planner.apply_projection_modifiers(
-            df, clause, frame,
+            df,
+            clause,
+            frame,
         )
 
     def _return_from_frame(
@@ -424,7 +435,8 @@ class Star:
     ) -> BindingFrame:
         """Translate a WITH clause — delegates to :class:`ProjectionPlanner`."""
         return self._projection_planner.with_to_binding_frame(
-            with_clause, frame,
+            with_clause,
+            frame,
         )
 
     def _process_optional_match(self, clause: Any, current_frame: Any) -> Any:
@@ -439,7 +451,9 @@ class Star:
     ) -> Any:
         """Merge a new MATCH frame — delegates to :class:`FrameJoiner`."""
         return self._frame_joiner.merge_frames_for_match(
-            current_frame, match_frame, where_clause,
+            current_frame,
+            match_frame,
+            where_clause,
         )
 
     def _coerce_join(self, frame_a: Any, frame_b: Any) -> Any:
@@ -457,20 +471,28 @@ class Star:
         return result
 
     def _execute_query_binding_frame_inner(
-        self, query: Any, initial_frame: Any = None,
+        self,
+        query: Any,
+        initial_frame: Any = None,
     ) -> pd.DataFrame:
         """Execute a Cypher query using the BindingFrame IR."""
-        result = self._clause_executor.execute_query_inner(query, initial_frame)
+        result = self._clause_executor.execute_query_inner(
+            query, initial_frame
+        )
         self._sync_executor_state()
         return result
 
     def _sync_executor_state(self) -> None:
         """Copy execution metrics back from ClauseExecutor/QueryAnalyzer."""
         self._last_clause_timings = getattr(
-            self._clause_executor, "last_clause_timings", {},
+            self._clause_executor,
+            "last_clause_timings",
+            {},
         )
         self._last_clause_memory = getattr(
-            self._clause_executor, "last_clause_memory", {},
+            self._clause_executor,
+            "last_clause_memory",
+            {},
         )
         self._last_estimated_memory_bytes = (
             self._query_analyzer.last_estimated_memory_bytes
