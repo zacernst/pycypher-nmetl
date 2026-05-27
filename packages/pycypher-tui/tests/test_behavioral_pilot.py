@@ -120,7 +120,7 @@ class TestPipelineOverviewMounted:
             await pilot.pause()
 
             sections = app.query(SectionWidget)
-            assert len(sections) == 6
+            assert len(sections) == 8
 
     @pytest.mark.asyncio
     async def test_overview_section_keys_present(self):
@@ -589,7 +589,7 @@ class TestScreenNavigationWorkflow:
             await pilot.pause()
 
             # Verify we're on overview
-            assert len(app.query(SectionWidget)) == 6
+            assert len(app.query(SectionWidget)) == 8
 
             # Navigate past data_model to entity_sources, then Enter
             await pilot.press("j")
@@ -606,7 +606,7 @@ class TestScreenNavigationWorkflow:
             await pilot.pause()  # Extra pause for remove_children + mount cycle
 
             # Should be back on overview
-            assert len(app.query(SectionWidget)) == 6
+            assert len(app.query(SectionWidget)) == 8
 
     @pytest.mark.asyncio
     async def test_navigate_to_relationship_sources_section(self):
@@ -646,7 +646,7 @@ class TestScreenNavigationWorkflow:
             await pilot.press("escape")
             await pilot.pause()
 
-            assert len(app.query(SectionWidget)) == 6
+            assert len(app.query(SectionWidget)) == 8
 
 
 # ---------------------------------------------------------------------------
@@ -719,7 +719,7 @@ class TestEmptyStateBehavior:
             await pilot.pause()
 
             sections = app.query(SectionWidget)
-            assert len(sections) == 6
+            assert len(sections) == 8
             # All sections should exist even with empty config
 
     @pytest.mark.asyncio
@@ -777,7 +777,7 @@ class TestMultiTemplateRendering:
             await pilot.pause()
 
             sections = app.query(SectionWidget)
-            assert len(sections) == 6
+            assert len(sections) == 8
 
             # Entity sources should show "configured" (has 2 entities)
             entity = app.query_one("#item-entity_sources", SectionWidget)
@@ -1195,7 +1195,7 @@ class TestDataModelScreenMounted:
             await pilot.pause()
 
             # Should be back on overview
-            assert len(app.query(SectionWidget)) == 6
+            assert len(app.query(SectionWidget)) == 8
 
     @pytest.mark.asyncio
     async def test_data_model_drill_down_to_sources(self):

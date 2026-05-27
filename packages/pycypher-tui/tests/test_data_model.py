@@ -149,7 +149,7 @@ class TestDataModelScreenNavigation:
 
             # data_model is the first section key
             sections = app.query(SectionWidget)
-            assert len(sections) == 6  # data_model + 5 pipeline sections (including query_lineage)
+            assert len(sections) == 8  # data_model + 7 pipeline sections (including query_lineage, pipeline_run, settings)
             assert sections[0].info.key == "data_model"
 
     @pytest.mark.asyncio

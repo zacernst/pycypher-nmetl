@@ -280,7 +280,7 @@ class TestUndoRedoBehavior:
             await pilot.pause()
 
             assert app.is_running
-            assert len(app.query(SectionWidget)) == 6
+            assert len(app.query(SectionWidget)) == 8
 
     @pytest.mark.asyncio
     async def test_redo_with_no_history_doesnt_crash(self):
@@ -294,7 +294,7 @@ class TestUndoRedoBehavior:
             await pilot.pause()
 
             assert app.is_running
-            assert len(app.query(SectionWidget)) == 6
+            assert len(app.query(SectionWidget)) == 8
 
 
 # ---------------------------------------------------------------------------
@@ -768,7 +768,7 @@ class TestMultiTemplateBehaviorExpanded:
                 await pilot.pause()
 
                 sections = app.query(SectionWidget)
-                assert len(sections) == 6  # data_model + 5 pipeline sections (including query_lineage)
+                assert len(sections) == 8  # data_model + 7 pipeline sections (including query_lineage, pipeline_run, settings)
 
     @pytest.mark.asyncio
     async def test_empty_template_shows_six_empty_sections(self):
@@ -779,7 +779,7 @@ class TestMultiTemplateBehaviorExpanded:
             await pilot.pause()
 
             sections = app.query(SectionWidget)
-            assert len(sections) == 6  # data_model + 5 pipeline sections (including query_lineage)
+            assert len(sections) == 8  # data_model + 7 pipeline sections (including query_lineage, pipeline_run, settings)
             for section in sections:
                 assert section.info.status == "empty"
 
@@ -966,4 +966,4 @@ class TestStabilityUnderStress:
                 await pilot.pause()
 
             assert app.is_running
-            assert len(app.query(SectionWidget)) == 6
+            assert len(app.query(SectionWidget)) == 8

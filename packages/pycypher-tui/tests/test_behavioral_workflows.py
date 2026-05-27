@@ -262,7 +262,7 @@ class TestDeepNavigationWorkflow:
                 await pilot.pause()
 
             assert app.is_running
-            assert len(app.query(SectionWidget)) == 6
+            assert len(app.query(SectionWidget)) == 8
 
     @pytest.mark.asyncio
     async def test_navigate_then_mode_change_then_back(self):
@@ -292,7 +292,7 @@ class TestDeepNavigationWorkflow:
             await pilot.pause()
             await pilot.pause()
 
-            assert len(app.query(SectionWidget)) == 6
+            assert len(app.query(SectionWidget)) == 8
 
 
 # ---------------------------------------------------------------------------

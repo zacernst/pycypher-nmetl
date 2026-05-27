@@ -1000,7 +1000,7 @@ class TestCrossScreenNavigationWorkflows:
             await pilot.press("h")
             await pilot.pause()
             await pilot.pause()
-            assert len(app.query(SectionWidget)) == 6
+            assert len(app.query(SectionWidget)) == 8
 
     @pytest.mark.asyncio
     async def test_rapid_navigation_doesnt_crash(self):
@@ -1082,7 +1082,7 @@ class TestOverviewUndoRedo:
             await pilot.pause()
             assert app.is_running
             sections = app.query(SectionWidget)
-            assert len(sections) == 6
+            assert len(sections) == 8
 
     @pytest.mark.asyncio
     async def test_overview_ctrl_r_redo_doesnt_crash(self):
