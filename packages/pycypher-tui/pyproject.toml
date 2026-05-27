@@ -41,7 +41,7 @@ pycypher-tui = "pycypher_tui.cli:cli_main"
 [tool.ruff]
 line-length = 79
 indent-width = 4
-target-version = "py314"
+target-version = "py312"  # Matches workspace requires-python; py314 has known ruff format bug
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
