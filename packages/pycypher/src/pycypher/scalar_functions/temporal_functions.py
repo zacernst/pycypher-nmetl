@@ -304,6 +304,8 @@ def register(registry: ScalarFunctionRegistry) -> None:
         nr = _init_null_result(s)
         if nr.all_null:
             return nr.result
+        # all_null=False guarantees non_null_vals is populated; narrow for ty.
+        assert nr.non_null_vals is not None  # noqa: S101
 
         parsed_values = []
         for val in nr.non_null_vals:
