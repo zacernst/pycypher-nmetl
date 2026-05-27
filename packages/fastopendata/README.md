@@ -13,17 +13,28 @@ from the monorepo root. See the [root README](../../README.md) for setup instruc
 
 ## Quick Start
 
+`GraphPipeline` collects entities and relationships from multiple sources
+and produces a `pycypher.Context` (or fully-built `Star`) ready for queries:
+
 ```python
-from fastopendata import GraphPipeline, config
+import pandas as pd
+from fastopendata import GraphPipeline
 
-# Configure data paths
-config.raw_data_dir = "raw_data/"
-config.output_dir = "output/"
+people = pd.DataFrame({"id": [1, 2], "name": ["Alice", "Bob"]})
+knows = pd.DataFrame({"src": [1], "dst": [2]})
 
-# Build a processing pipeline
 pipeline = GraphPipeline()
-pipeline.run()
+pipeline.add_entity_dataframe("Person", people, id_col="id")
+pipeline.add_relationship_dataframe(
+    "KNOWS", knows, source_col="src", target_col="dst"
+)
+star = pipeline.build_star()  # or .build_context() for a raw Context
+result = star.execute_query("MATCH (p:Person) RETURN p.name")
 ```
+
+Path configuration (data dir, scripts dir, etc.) is read from the
+`Config` singleton and the `DATA_DIR` environment variable; see
+`fastopendata.config` for the full surface.
 
 ## Features
 
@@ -36,15 +47,21 @@ pipeline.run()
 
 ## Processing Scripts
 
-The `processing/` directory contains standalone scripts for each data source:
+`src/fastopendata/processing/` contains standalone scripts for each data
+source. See `src/fastopendata/processing/PROCESSING_SCRIPTS.md` for the
+authoritative list; the most-used entries:
 
 | Script | Purpose |
 |--------|---------|
 | `download_block_shape_files.sh` | Fetch Census block shapefiles |
 | `concatenate_shape_files.py` | Merge shapefiles into unified datasets |
+| `concatenate_puma_shape_files.py` | Merge PUMA shapefiles |
 | `extract_osm_nodes.py` | Extract nodes from OSM PBF files |
 | `filter_us_nodes.py` | Filter to US geographic bounds |
 | `compress_wikidata.py` | Compress Wikidata JSON dumps |
+| `wikidata_to_csv.py` | Convert Wikidata dumps to CSV format |
+| `extract_pums_5year.sh` | Pull Census PUMS 5-year microdata |
+| `extract_state_contracts.py` | Extract state-level contract records |
 
 ## Dependencies
 

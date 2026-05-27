@@ -8,7 +8,7 @@ PyCypher parses [Cypher](https://neo4j.com/docs/cypher-manual/) graph queries an
 
 ## Installation
 
-PyCypher requires **Python 3.14+** and uses `uv` for dependency management.
+PyCypher requires **Python 3.12+** and uses `uv` for dependency management.
 It is not yet published on PyPI — install from source:
 
 ```bash
@@ -130,7 +130,8 @@ nmetl metrics --diagnostic
 
 ## Examples
 
-See the [`examples/`](examples/) directory for runnable scripts:
+Runnable example scripts live at the **monorepo root** in
+[`../../examples/`](../../examples/):
 
 - `hello_world.py` — 5-level progression from basic MATCH to aggregation
 - `quickstart.py` — 30-line intro with error handling
