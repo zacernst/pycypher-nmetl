@@ -10,6 +10,7 @@ Run with:
     uv run pytest tests/test_edge_dataframe_copy_elimination_tdd.py -v
 """
 
+from pathlib import Path
 from unittest.mock import patch
 
 import pandas as pd
@@ -22,6 +23,10 @@ from pycypher.relational_models import (
     EntityTable,
     RelationshipMapping,
 )
+
+# Repo root resolved relative to this test file (`tests/`), so source-file
+# inspection works regardless of which workstation/CI runner executes.
+_REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
 class TestEdgeDataFrameCopyElimination:
@@ -64,7 +69,7 @@ class TestEdgeDataFrameCopyElimination:
         """Test that confirms edge_df copy optimization is implemented."""
         # The BFS expansion code now lives in path_expander.py (extracted from star.py).
         with open(
-            "/Users/zernst/git/pycypher-nmetl/packages/pycypher/src/pycypher/path_expander.py",
+            _REPO_ROOT / "packages/pycypher/src/pycypher/path_expander.py",
         ) as f:
             source_code = f.read()
 
@@ -223,7 +228,7 @@ class TestEdgeDataFrameCopyElimination:
                 "grep",
                 "-n",
                 r"\]\.\copy()",
-                "/Users/zernst/git/pycypher-nmetl/packages/pycypher/src/pycypher/star.py",
+                str(_REPO_ROOT / "packages/pycypher/src/pycypher/star.py"),
             ],
             capture_output=True,
             text=True,

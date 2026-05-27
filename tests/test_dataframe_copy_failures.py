@@ -10,11 +10,17 @@ Test Failure Analysis:
 Both represent test infrastructure issues rather than functional regressions.
 """
 
+from pathlib import Path
+
 import pandas as pd
 import pytest
 from pycypher.ast_models import ASTConverter
 from pycypher.ingestion import ContextBuilder
 from pycypher.star import Star
+
+# Repo root resolved relative to this test file (`tests/`), so subprocess.run
+# can locate `packages/` regardless of which workstation/CI runner executes.
+_REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
 class TestGrammarParserWildcardSupport:
@@ -94,7 +100,7 @@ def _count_copy_patterns() -> int:
         ["grep", "-r", "--include=*.py", r"\.copy()", "packages/"],
         capture_output=True,
         text=True,
-        cwd="/Users/zernst/git/pycypher-nmetl",
+        cwd=str(_REPO_ROOT),
     )
     copy_lines = (
         result.stdout.strip().split("\n") if result.stdout.strip() else []
@@ -125,7 +131,7 @@ class TestDataFrameCopyPatternCounting:
             ["grep", "-rn", "--include=*.py", r"\.copy()", "packages/"],
             capture_output=True,
             text=True,
-            cwd="/Users/zernst/git/pycypher-nmetl",
+            cwd=str(_REPO_ROOT),
         )
 
         copy_lines = (
