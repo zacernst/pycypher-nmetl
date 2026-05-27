@@ -9,7 +9,7 @@ description = "Shared modules and utilities"
 readme = "README.md"
 requires-python = ">=3.12"
 keywords = []
-classifiers = [ "Development Status :: 3 - Alpha", "Intended Audience :: Developers", "License :: OSI Approved :: MIT License", "Programming Language :: Python :: 3.14",]
+classifiers = [ "Development Status :: 3 - Alpha", "Intended Audience :: Developers", "License :: OSI Approved :: MIT License", "Programming Language :: Python :: 3.12", "Programming Language :: Python :: 3.13", "Programming Language :: Python :: 3.14",]
 dependencies = [
     "rich>=14.0.0,<15.0.0",
 ]

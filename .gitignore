@@ -170,10 +170,9 @@ cython_debug/
 
 # All ipython notebooks
 *.ipynb
-*.html
 *.rst.txt
-*.js
 objects.inv
+# Note: *.html and *.js patterns removed; docs/_build/ and /site already cover docs build outputs.
 
 # PyCharm
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
@@ -207,7 +206,7 @@ environment.pickle
 test.py
 packages/fastopendata/src/fastopendata/acs_pums_2023_data_dictionary.json
 packages/nmetl/src/nmetl/queue_processor.py.bak
-app.py
+# Note: bare `app.py` removed — was silently gitignoring pycypher-tui's tracked app.py.
 test_script.sh
 user-agent
 out
