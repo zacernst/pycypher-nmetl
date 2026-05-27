@@ -385,9 +385,23 @@ class TestOverviewStatusDisplay:
             assert entity_section.info.status == "configured"
             assert entity_section.info.item_count == 3
 
+    # User-data section keys: those whose status/item_count derive from the
+    # user's pipeline config (entities, relationships, queries, outputs, plus
+    # the data_model summary). Excludes meta sections — `pipeline_run` (a
+    # static action card) and `settings` (backend engine + state metadata,
+    # always reports item_count=2).
+    _USER_DATA_SECTION_KEYS = (
+        "data_model",
+        "entity_sources",
+        "relationship_sources",
+        "queries",
+        "query_lineage",
+        "outputs",
+    )
+
     @pytest.mark.asyncio
     async def test_empty_config_shows_empty_status(self):
-        """All sections show 'empty' status with empty config."""
+        """User-data sections show 'empty' status / 0 items with empty config."""
         app = PyCypherTUI()
         app._config_manager = ConfigManager()
         async with app.run_test() as pilot:
@@ -395,7 +409,7 @@ class TestOverviewStatusDisplay:
             await pilot.pause()
             await pilot.pause()
 
-            for key in PipelineOverviewScreen.SECTION_KEYS:
+            for key in self._USER_DATA_SECTION_KEYS:
                 section = app.query_one(f"#item-{key}", SectionWidget)
                 assert section.info.status == "empty"
                 assert section.info.item_count == 0
