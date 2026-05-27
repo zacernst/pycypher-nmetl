@@ -101,6 +101,7 @@ wired (or deleted).
   cycle-counter spam files (`improvement_loop_*`,
   `methodology_framework_autonomous_operation_*x_*`, etc.). MEMORY.md should
   stay under 24.4KB; one line per substantive entry, no superlatives.
+- **Loop-skill hardened (2026-05-27)**: the embiggen skill at `~/.claude/skills/embiggen.md` was rewritten 2026-05-27 to prevent the cycle-counter spam pattern (234 spam memory files removed across two cleanup sessions; root cause was open-ended "never idle" + memory-write-on-amendment directives in `UNIFIED_MULTI_AGENT_FRAMEWORK.md`). Future loop runs respect the four constraints in that skill.
 
 ## Conventions
 

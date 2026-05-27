@@ -975,14 +975,16 @@ class TestCrossScreenNavigationWorkflows:
 
     @pytest.mark.asyncio
     async def test_overview_outputs_section_focused(self):
+        # Test name is historical: G jumps to the LAST section, which is
+        # settings now (added after outputs + pipeline_run).
         app = _make_app_with_ecommerce()
         async with app.run_test() as pilot:
             await app._show_overview()
             await pilot.pause()
             await pilot.press("G")
             await pilot.pause()
-            outputs = app.query_one("#item-outputs", SectionWidget)
-            assert outputs.has_class("item-focused")
+            last = app.query_one("#item-settings", SectionWidget)
+            assert last.has_class("item-focused")
 
     @pytest.mark.asyncio
     async def test_data_sources_h_returns_to_overview(self):

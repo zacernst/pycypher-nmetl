@@ -236,7 +236,7 @@ class TestJumpNavigationConsistency:
             await pilot.press("G")
             await pilot.pause()
 
-            last = app.query_one(f"#{_SECTION_ID_PREFIX}outputs", SectionWidget)
+            last = app.query_one(f"#{_SECTION_ID_PREFIX}settings", SectionWidget)
             assert last.has_class(_FOCUS_CLASS)
 
     @pytest.mark.asyncio
@@ -336,7 +336,7 @@ class TestBoundaryBehaviorConsistency:
                 await pilot.press("j")
             await pilot.pause()
 
-            last = app.query_one(f"#{_SECTION_ID_PREFIX}outputs", SectionWidget)
+            last = app.query_one(f"#{_SECTION_ID_PREFIX}settings", SectionWidget)
             assert last.has_class(_FOCUS_CLASS)
 
     @pytest.mark.asyncio

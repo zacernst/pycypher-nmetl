@@ -575,8 +575,9 @@ class TestScreenTransitionsExpanded:
             await pilot.press("G")
             await pilot.pause()
 
-            outputs = app.query_one("#item-outputs", SectionWidget)
-            assert outputs.has_class("item-focused")
+            # G jumps to last; settings is now the last section.
+            last = app.query_one("#item-settings", SectionWidget)
+            assert last.has_class("item-focused")
 
     @pytest.mark.asyncio
     async def test_enter_then_h_then_enter_preserves_state(self):

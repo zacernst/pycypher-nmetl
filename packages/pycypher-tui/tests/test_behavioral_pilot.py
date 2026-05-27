@@ -188,7 +188,9 @@ class TestPipelineOverviewMounted:
             await pilot.press("G")
             await pilot.pause()
 
-            last = app.query_one("#item-outputs", SectionWidget)
+            # Last section is settings (after pipeline_run was added between
+            # outputs and settings).
+            last = app.query_one("#item-settings", SectionWidget)
             assert last.has_class("item-focused")
 
     @pytest.mark.asyncio
