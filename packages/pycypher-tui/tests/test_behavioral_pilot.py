@@ -30,7 +30,6 @@ from pycypher_tui.screens.data_model import (
     ModelNodeWidget,
 )
 from pycypher_tui.screens.data_sources import (
-    DataSourcesScreen,
     SourceDetailPanel,
     SourceListItem,
 )
@@ -71,36 +70,6 @@ def _make_app_with_social_network() -> PyCypherTUI:
     app = PyCypherTUI()
     app._config_manager = ConfigManager.from_config(config)
     return app
-
-
-async def _mount_entity_tables(app: PyCypherTUI) -> None:
-    """Mount EntityTablesScreen into the app's main content area."""
-    from textual.containers import Container
-
-    main_content = app.query_one("#main-content", Container)
-    await main_content.remove_children()
-    screen = EntityTablesScreen(config_manager=app._config_manager)
-    await main_content.mount(screen)
-
-
-async def _mount_relationship_screen(app: PyCypherTUI) -> None:
-    """Mount RelationshipScreen into the app's main content area."""
-    from textual.containers import Container
-
-    main_content = app.query_one("#main-content", Container)
-    await main_content.remove_children()
-    screen = RelationshipScreen(config_manager=app._config_manager)
-    await main_content.mount(screen)
-
-
-async def _mount_template_browser(app: PyCypherTUI) -> None:
-    """Mount TemplateBrowserScreen into the app's main content area."""
-    from textual.containers import Container
-
-    main_content = app.query_one("#main-content", Container)
-    await main_content.remove_children()
-    screen = TemplateBrowserScreen(config_manager=app._config_manager)
-    await main_content.mount(screen)
 
 
 # ---------------------------------------------------------------------------
@@ -605,7 +574,9 @@ class TestScreenNavigationWorkflow:
             # Press h to go back
             await pilot.press("h")
             await pilot.pause()
-            await pilot.pause()  # Extra pause for remove_children + mount cycle
+            await (
+                pilot.pause()
+            )  # Extra pause for remove_children + mount cycle
 
             # Should be back on overview
             assert len(app.query(SectionWidget)) == 8
@@ -794,7 +765,9 @@ class TestMultiTemplateRendering:
             await app._show_overview()
             await pilot.pause()
 
-            rel_section = app.query_one("#item-relationship_sources", SectionWidget)
+            rel_section = app.query_one(
+                "#item-relationship_sources", SectionWidget
+            )
             assert rel_section.info.item_count >= 2
             assert rel_section.info.status == "configured"
 
@@ -824,7 +797,7 @@ class TestWelcomeScreenBehavior:
     async def test_welcome_shown_without_config(self):
         """Welcome message is shown when no config is loaded."""
         app = PyCypherTUI()
-        async with app.run_test() as pilot:
+        async with app.run_test():
             welcome = app.query_one("#welcome-message")
             assert welcome is not None
             rendered = str(welcome.render())
@@ -834,7 +807,7 @@ class TestWelcomeScreenBehavior:
     async def test_welcome_contains_key_hints(self):
         """Welcome message includes helpful key hints."""
         app = PyCypherTUI()
-        async with app.run_test() as pilot:
+        async with app.run_test():
             welcome = app.query_one("#welcome-message")
             rendered = str(welcome.render())
             assert ":q" in rendered
@@ -844,8 +817,9 @@ class TestWelcomeScreenBehavior:
     async def test_header_present(self):
         """Textual Header widget is mounted."""
         app = PyCypherTUI()
-        async with app.run_test() as pilot:
+        async with app.run_test():
             from textual.widgets import Header
+
             headers = app.query(Header)
             assert len(headers) == 1
 
@@ -853,7 +827,7 @@ class TestWelcomeScreenBehavior:
     async def test_status_bar_has_mode_indicator(self):
         """Status bar contains a mode indicator showing NORMAL."""
         app = PyCypherTUI()
-        async with app.run_test() as pilot:
+        async with app.run_test():
             indicator = app.query_one("#mode-indicator", ModeIndicator)
             assert indicator.mode_name == "NORMAL"
 
@@ -907,7 +881,7 @@ class TestMultiKeySequencesMounted:
             await pilot.pause()
 
             # Focus should still be on second item (not jumped to first)
-            items = app.query(SourceListItem)
+            app.query(SourceListItem)
             # After escape from DataSourcesScreen, it may navigate back
             # or the pending key is just cancelled
             # The key behavior: escape in VimNavigableScreen posts NavigateBack
@@ -1100,7 +1074,9 @@ class TestDataModelScreenMounted:
             await pilot.pause()
 
             nodes = app.query(ModelNodeWidget)
-            rel_nodes = [n for n in nodes if n.node.node_type == "relationship"]
+            rel_nodes = [
+                n for n in nodes if n.node.node_type == "relationship"
+            ]
             assert len(rel_nodes) > 0
 
     @pytest.mark.asyncio
@@ -1212,5 +1188,6 @@ class TestDataModelScreenMounted:
 
             # Entity nodes now drill down to EntityEditorScreen
             from pycypher_tui.screens.entity_editor import EntityEditorScreen
+
             editors = app.query(EntityEditorScreen)
             assert len(editors) > 0

@@ -22,23 +22,13 @@ from pycypher_tui.config.pipeline import ConfigManager
 from pycypher_tui.config.templates import get_template
 from pycypher_tui.modes.base import ModeType
 from pycypher_tui.screens.data_sources import (
-    DataSourcesScreen,
     SourceListItem,
 )
 from pycypher_tui.screens.entity_browser import EntityBrowserScreen
-from pycypher_tui.screens.entity_tables import (
-    EntityListItem,
-    EntityTablesScreen,
-)
 from pycypher_tui.screens.pipeline_overview import (
-    PipelineOverviewScreen,
     SectionWidget,
 )
 from pycypher_tui.screens.relationship_browser import RelationshipBrowserScreen
-from pycypher_tui.screens.relationships import (
-    RelationshipListItem,
-    RelationshipScreen,
-)
 from pycypher_tui.screens.template_browser import (
     TemplateBrowserScreen,
     TemplateListItem,
@@ -120,7 +110,9 @@ class TestEntityTablesNavigation:
             await _mount_data_sources(app, pilot)
 
             items = app.query(SourceListItem)
-            entity_items = [i for i in items if i.source.source_type == "entity"]
+            entity_items = [
+                i for i in items if i.source.source_type == "entity"
+            ]
             assert len(entity_items) == 3
 
     @pytest.mark.asyncio
@@ -131,7 +123,9 @@ class TestEntityTablesNavigation:
             await _mount_data_sources(app, pilot)
 
             items = app.query(SourceListItem)
-            rel_items = [i for i in items if i.source.source_type == "relationship"]
+            rel_items = [
+                i for i in items if i.source.source_type == "relationship"
+            ]
             assert len(rel_items) == 1
 
     @pytest.mark.asyncio
@@ -142,7 +136,9 @@ class TestEntityTablesNavigation:
             await _mount_data_sources(app, pilot)
 
             items = app.query(SourceListItem)
-            rel_items = [i for i in items if i.source.source_type == "relationship"]
+            rel_items = [
+                i for i in items if i.source.source_type == "relationship"
+            ]
             assert len(rel_items) >= 1
 
 
@@ -480,7 +476,11 @@ class TestNavigationEdgeCasesExpanded:
             await _mount_data_sources(app, pilot)
 
             # i → escape → v → escape → : → escape
-            for key_in, key_out in [("i", "escape"), ("v", "escape"), ("colon", "escape")]:
+            for key_in, key_out in [
+                ("i", "escape"),
+                ("v", "escape"),
+                ("colon", "escape"),
+            ]:
                 await pilot.press(key_in)
                 await pilot.pause()
                 await pilot.press(key_out)
@@ -640,6 +640,7 @@ class TestDetailPanelBehavior:
             await _mount_data_sources(app, pilot)
 
             from pycypher_tui.screens.data_sources import SourceDetailPanel
+
             detail = app.query_one("#detail-panel", SourceDetailPanel)
             labels = detail.query(Label)
             assert len(labels) > 0
@@ -652,13 +653,18 @@ class TestDetailPanelBehavior:
             await _mount_data_sources(app, pilot)
 
             from pycypher_tui.screens.data_sources import SourceDetailPanel
+
             detail = app.query_one("#detail-panel", SourceDetailPanel)
-            initial_text = [str(l.render()) for l in detail.query(Label)]
+            initial_text = [
+                str(label.render()) for label in detail.query(Label)
+            ]
 
             await pilot.press("j")
             await pilot.pause()
 
-            updated_text = [str(l.render()) for l in detail.query(Label)]
+            updated_text = [
+                str(label.render()) for label in detail.query(Label)
+            ]
             assert updated_text != initial_text
 
     @pytest.mark.asyncio
@@ -672,6 +678,7 @@ class TestDetailPanelBehavior:
             from pycypher_tui.screens.pipeline_overview import (
                 SectionDetailPanel,
             )
+
             detail = app.query_one("#detail-panel", SectionDetailPanel)
             labels = detail.query(Label)
             # Should have title + at least status and items info
@@ -762,14 +769,20 @@ class TestMultiTemplateBehaviorExpanded:
     @pytest.mark.asyncio
     async def test_all_templates_show_six_overview_sections(self):
         """Every template shows exactly 5 overview sections (incl. data model)."""
-        for make_app in [_make_ecommerce_app, _make_social_app, _make_csv_analytics_app]:
+        for make_app in [
+            _make_ecommerce_app,
+            _make_social_app,
+            _make_csv_analytics_app,
+        ]:
             app = make_app()
             async with app.run_test() as pilot:
                 await app._show_overview()
                 await pilot.pause()
 
                 sections = app.query(SectionWidget)
-                assert len(sections) == 8  # data_model + 7 pipeline sections (including query_lineage, pipeline_run, settings)
+                assert (
+                    len(sections) == 8
+                )  # data_model + 7 pipeline sections (including query_lineage, pipeline_run, settings)
 
     @pytest.mark.asyncio
     async def test_empty_template_shows_six_empty_sections(self):
@@ -780,7 +793,9 @@ class TestMultiTemplateBehaviorExpanded:
             await pilot.pause()
 
             sections = app.query(SectionWidget)
-            assert len(sections) == 8  # data_model + 7 pipeline sections (including query_lineage, pipeline_run, settings)
+            assert (
+                len(sections) == 8
+            )  # data_model + 7 pipeline sections (including query_lineage, pipeline_run, settings)
             for section in sections:
                 assert section.info.status == "empty"
 
@@ -821,14 +836,14 @@ class TestWelcomeScreenExpanded:
     async def test_app_starts_without_config(self):
         """App starts cleanly without a config file."""
         app = PyCypherTUI()
-        async with app.run_test() as pilot:
+        async with app.run_test():
             assert app.is_running
 
     @pytest.mark.asyncio
     async def test_mode_manager_available_on_start(self):
         """Mode manager is initialized and in NORMAL mode on start."""
         app = PyCypherTUI()
-        async with app.run_test() as pilot:
+        async with app.run_test():
             assert app.mode_manager.current_type == ModeType.NORMAL
 
     @pytest.mark.asyncio
@@ -859,6 +874,7 @@ class TestFocusAndLayout:
 
             # The list panel should be focused for key events to route
             from textual.containers import VerticalScroll
+
             try:
                 list_panel = app.query_one("#list-panel", VerticalScroll)
                 assert list_panel.has_focus or list_panel.has_focus_within

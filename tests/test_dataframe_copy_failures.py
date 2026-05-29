@@ -34,7 +34,7 @@ class TestGrammarParserWildcardSupport:
         query_with_wildcard = "MATCH (p:Person) RETURN p.*"
 
         with pytest.raises(Exception) as exc_info:
-            ast = converter.from_cypher(query_with_wildcard)
+            converter.from_cypher(query_with_wildcard)
 
         # Verify it's a parsing error related to wildcard position
         error_msg = str(exc_info.value)
@@ -97,10 +97,11 @@ def _count_copy_patterns() -> int:
     import subprocess
 
     result = subprocess.run(
-        ["grep", "-r", "--include=*.py", r"\.copy()", "packages/"],
+        ["grep", "-r", "--include=*.py", r"\.copy()", "packages/"],  # noqa: S607
         capture_output=True,
         text=True,
         cwd=str(_REPO_ROOT),
+        check=False,
     )
     copy_lines = (
         result.stdout.strip().split("\n") if result.stdout.strip() else []
@@ -128,10 +129,11 @@ class TestDataFrameCopyPatternCounting:
         import subprocess
 
         result = subprocess.run(
-            ["grep", "-rn", "--include=*.py", r"\.copy()", "packages/"],
+            ["grep", "-rn", "--include=*.py", r"\.copy()", "packages/"],  # noqa: S607
             capture_output=True,
             text=True,
             cwd=str(_REPO_ROOT),
+            check=False,
         )
 
         copy_lines = (

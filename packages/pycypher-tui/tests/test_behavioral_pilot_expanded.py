@@ -15,14 +15,11 @@ from pycypher_tui.app import (
     CommandLine,
     ModeIndicator,
     PyCypherTUI,
-    StatusBar,
 )
 from pycypher_tui.config.pipeline import ConfigManager
 from pycypher_tui.config.templates import get_template
 from pycypher_tui.modes.base import ModeType
 from pycypher_tui.screens.data_sources import (
-    DataSourcesScreen,
-    SourceDetailPanel,
     SourceListItem,
 )
 from pycypher_tui.screens.entity_browser import EntityBrowserScreen
@@ -32,7 +29,6 @@ from pycypher_tui.screens.entity_tables import (
     EntityTablesScreen,
 )
 from pycypher_tui.screens.pipeline_overview import (
-    PipelineOverviewScreen,
     SectionWidget,
 )
 from pycypher_tui.screens.relationships import (
@@ -571,7 +567,9 @@ class TestDialogInteractions:
         app = PyCypherTUI()
         async with app.run_test() as pilot:
             app.push_screen(
-                InputDialog(title="Edit", body="URI:", default_value="data/test.csv"),
+                InputDialog(
+                    title="Edit", body="URI:", default_value="data/test.csv"
+                ),
             )
             await pilot.pause()
             input_widget = app.query_one("#dialog-input", Input)

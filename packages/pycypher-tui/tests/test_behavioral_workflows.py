@@ -13,9 +13,9 @@ Every test mounts a real app with real config — no __new__() bypass.
 from __future__ import annotations
 
 import pytest
-from textual.widgets import Label, Static
+from textual.widgets import Label
 
-from pycypher_tui.app import CommandLine, ModeIndicator, PyCypherTUI, StatusBar
+from pycypher_tui.app import CommandLine, ModeIndicator, PyCypherTUI
 from pycypher_tui.config.pipeline import ConfigManager
 from pycypher_tui.config.templates import get_template
 from pycypher_tui.modes.base import ModeType
@@ -159,7 +159,9 @@ class TestDeleteWorkflow:
     """Test dd delete sequence on DataSourcesScreen."""
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="dd handler removes all items instead of one — delete implementation bug, not test issue")
+    @pytest.mark.skip(
+        reason="dd handler removes all items instead of one — delete implementation bug, not test issue"
+    )
     async def test_dd_removes_source(self):
         """Pressing dd on DataSourcesScreen deletes the focused source."""
         app = _make_ecommerce_app()
@@ -381,7 +383,9 @@ class TestOverviewStatusDisplay:
             await pilot.pause()
             await pilot.pause()
 
-            entity_section = app.query_one("#item-entity_sources", SectionWidget)
+            entity_section = app.query_one(
+                "#item-entity_sources", SectionWidget
+            )
             assert entity_section.info.status == "configured"
             assert entity_section.info.item_count == 3
 
@@ -427,15 +431,20 @@ class TestOverviewStatusDisplay:
             from pycypher_tui.screens.pipeline_overview import (
                 SectionDetailPanel,
             )
+
             detail = app.query_one("#detail-panel", SectionDetailPanel)
-            initial_labels = [str(l.render()) for l in detail.query(Label)]
+            initial_labels = [
+                str(label.render()) for label in detail.query(Label)
+            ]
 
             # Navigate to a different section
             await pilot.press("j")
             await pilot.press("j")
             await pilot.pause()
 
-            updated_labels = [str(l.render()) for l in detail.query(Label)]
+            updated_labels = [
+                str(label.render()) for label in detail.query(Label)
+            ]
             assert updated_labels != initial_labels
 
 

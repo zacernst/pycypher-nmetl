@@ -68,9 +68,9 @@ class TestEdgeDataFrameCopyElimination:
     def test_edge_df_copy_optimization_implemented(self) -> None:
         """Test that confirms edge_df copy optimization is implemented."""
         # The BFS expansion code now lives in path_expander.py (extracted from star.py).
-        with open(
-            _REPO_ROOT / "packages/pycypher/src/pycypher/path_expander.py",
-        ) as f:
+        with (
+            _REPO_ROOT / "packages/pycypher/src/pycypher/path_expander.py"
+        ).open() as f:
             source_code = f.read()
 
         # Confirm the optimization is in place
@@ -165,16 +165,20 @@ class TestEdgeDataFrameCopyElimination:
         copy_df = large_df[["src", "tgt"]].copy()
 
         # Structural check: copy allocates new memory, view does not
-        # The copy's numpy buffers should NOT share memory with the original
+        # The copy's numpy buffers should NOT share memory with the original.
+        # NOTE: `.values` is intentional here — we are inspecting the underlying
+        # numpy buffer identity (`.base`), not converting to an array.
+        # `.to_numpy()` would obscure the buffer relationship we're testing.
         for col in ["src", "tgt"]:
-            view_shares = view_df[col].values.base is large_df[
-                col
-            ].values.base or (
-                view_df[col].values.base is not None
-                and large_df[col].values.base is not None
-                and view_df[col].values.base is large_df[col].values.base
+            view_base = view_df[col].values.base  # noqa: PD011
+            large_base = large_df[col].values.base  # noqa: PD011
+            copy_base = copy_df[col].values.base  # noqa: PD011
+            view_shares = view_base is large_base or (
+                view_base is not None
+                and large_base is not None
+                and view_base is large_base
             )
-            copy_shares = copy_df[col].values.base is large_df[col].values.base
+            copy_shares = copy_base is large_base
             # Copy should NOT share memory (it allocated its own buffer)
             assert not copy_shares, (
                 f"copy() for column '{col}' unexpectedly shares memory"
@@ -223,8 +227,8 @@ class TestEdgeDataFrameCopyElimination:
         import subprocess
 
         # Find all column selection + copy patterns
-        result = subprocess.run(
-            [
+        result = subprocess.run(  # noqa: S603
+            [  # noqa: S607
                 "grep",
                 "-n",
                 r"\]\.\copy()",
@@ -232,6 +236,7 @@ class TestEdgeDataFrameCopyElimination:
             ],
             capture_output=True,
             text=True,
+            check=False,
         )
 
         patterns = (
@@ -257,11 +262,11 @@ class TestEdgeDataFrameCopyElimination:
 
         copy_calls = 0
 
-        def track_copy_calls(self, deep=True):
+        def track_copy_calls(self, *, deep: bool = True):
             nonlocal copy_calls
             copy_calls += 1
             # FIXED: Call original method directly to avoid recursion
-            return original_copy(self, deep)
+            return original_copy(self, deep=deep)
 
         getitem_calls = 0
 

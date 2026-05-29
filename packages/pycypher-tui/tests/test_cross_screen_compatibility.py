@@ -23,24 +23,19 @@ from pycypher_tui.app import ModeIndicator, PyCypherTUI
 from pycypher_tui.config.pipeline import ConfigManager
 from pycypher_tui.config.templates import get_template
 from pycypher_tui.modes.base import ModeType
-from pycypher_tui.screens.base import BaseListItem, VimNavigableScreen
 from pycypher_tui.screens.data_sources import DataSourcesScreen, SourceListItem
 from pycypher_tui.screens.entity_browser import EntityBrowserScreen
 from pycypher_tui.screens.entity_tables import (
-    EntityListItem,
     EntityTablesScreen,
 )
 from pycypher_tui.screens.pipeline_overview import (
-    PipelineOverviewScreen,
     SectionWidget,
 )
 from pycypher_tui.screens.relationships import (
-    RelationshipListItem,
     RelationshipScreen,
 )
 from pycypher_tui.screens.template_browser import (
     TemplateBrowserScreen,
-    TemplateListItem,
 )
 
 # ---------------------------------------------------------------------------
@@ -89,10 +84,16 @@ class TestVimNavigableScreenInterfaceCompat:
             TemplateBrowserScreen(config_manager=mgr),
         ]
         for screen in screens:
-            assert isinstance(screen.screen_title, str), f"{type(screen).__name__} missing screen_title"
+            assert isinstance(screen.screen_title, str), (
+                f"{type(screen).__name__} missing screen_title"
+            )
             assert len(screen.screen_title) > 0
-            assert isinstance(screen.breadcrumb_text, str), f"{type(screen).__name__} missing breadcrumb_text"
-            assert isinstance(screen.footer_hints, str), f"{type(screen).__name__} missing footer_hints"
+            assert isinstance(screen.breadcrumb_text, str), (
+                f"{type(screen).__name__} missing breadcrumb_text"
+            )
+            assert isinstance(screen.footer_hints, str), (
+                f"{type(screen).__name__} missing footer_hints"
+            )
 
     def test_all_subclasses_have_backward_compat_aliases(self):
         """Refactored screens provide backward-compatible property aliases."""
@@ -139,8 +140,12 @@ class TestVimNavigableScreenInterfaceCompat:
             TemplateBrowserScreen(config_manager=mgr),
         ]
         for screen in screens:
-            assert screen.list_panel_id == "list-panel", f"{type(screen).__name__} divergent list_panel_id"
-            assert screen.detail_panel_id == "detail-panel", f"{type(screen).__name__} divergent detail_panel_id"
+            assert screen.list_panel_id == "list-panel", (
+                f"{type(screen).__name__} divergent list_panel_id"
+            )
+            assert screen.detail_panel_id == "detail-panel", (
+                f"{type(screen).__name__} divergent detail_panel_id"
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -158,14 +163,18 @@ class TestJKNavigationConsistency:
         async with app.run_test() as pilot:
             await _show_overview_and_wait(app, pilot)
 
-            first = app.query_one(f"#{_SECTION_ID_PREFIX}data_model", SectionWidget)
+            first = app.query_one(
+                f"#{_SECTION_ID_PREFIX}data_model", SectionWidget
+            )
             assert first.has_class(_FOCUS_CLASS)
 
             await pilot.press("j")
             await pilot.pause()
 
             assert not first.has_class(_FOCUS_CLASS)
-            second = app.query_one(f"#{_SECTION_ID_PREFIX}entity_sources", SectionWidget)
+            second = app.query_one(
+                f"#{_SECTION_ID_PREFIX}entity_sources", SectionWidget
+            )
             assert second.has_class(_FOCUS_CLASS)
 
     @pytest.mark.asyncio
@@ -198,7 +207,9 @@ class TestJKNavigationConsistency:
             await pilot.press("k")
             await pilot.pause()
 
-            first = app.query_one(f"#{_SECTION_ID_PREFIX}data_model", SectionWidget)
+            first = app.query_one(
+                f"#{_SECTION_ID_PREFIX}data_model", SectionWidget
+            )
             assert first.has_class(_FOCUS_CLASS)
 
     @pytest.mark.asyncio
@@ -236,7 +247,9 @@ class TestJumpNavigationConsistency:
             await pilot.press("G")
             await pilot.pause()
 
-            last = app.query_one(f"#{_SECTION_ID_PREFIX}settings", SectionWidget)
+            last = app.query_one(
+                f"#{_SECTION_ID_PREFIX}settings", SectionWidget
+            )
             assert last.has_class(_FOCUS_CLASS)
 
     @pytest.mark.asyncio
@@ -268,7 +281,9 @@ class TestJumpNavigationConsistency:
             await pilot.press("g")
             await pilot.pause()
 
-            first = app.query_one(f"#{_SECTION_ID_PREFIX}data_model", SectionWidget)
+            first = app.query_one(
+                f"#{_SECTION_ID_PREFIX}data_model", SectionWidget
+            )
             assert first.has_class(_FOCUS_CLASS)
 
     @pytest.mark.asyncio
@@ -307,7 +322,9 @@ class TestBoundaryBehaviorConsistency:
             await pilot.press("k")
             await pilot.pause()
 
-            first = app.query_one(f"#{_SECTION_ID_PREFIX}data_model", SectionWidget)
+            first = app.query_one(
+                f"#{_SECTION_ID_PREFIX}data_model", SectionWidget
+            )
             assert first.has_class(_FOCUS_CLASS)
 
     @pytest.mark.asyncio
@@ -336,7 +353,9 @@ class TestBoundaryBehaviorConsistency:
                 await pilot.press("j")
             await pilot.pause()
 
-            last = app.query_one(f"#{_SECTION_ID_PREFIX}settings", SectionWidget)
+            last = app.query_one(
+                f"#{_SECTION_ID_PREFIX}settings", SectionWidget
+            )
             assert last.has_class(_FOCUS_CLASS)
 
     @pytest.mark.asyncio
@@ -555,7 +574,9 @@ class TestArrowKeyParity:
             await pilot.press("down")
             await pilot.pause()
 
-            second = app.query_one(f"#{_SECTION_ID_PREFIX}entity_sources", SectionWidget)
+            second = app.query_one(
+                f"#{_SECTION_ID_PREFIX}entity_sources", SectionWidget
+            )
             assert second.has_class(_FOCUS_CLASS)
 
     @pytest.mark.asyncio
@@ -646,7 +667,9 @@ class TestPageNavigationConsistency:
             await pilot.pause()
 
             # With 4 sections, ctrl+f (page 5) from 0 should reach last (clamped)
-            last = app.query_one(f"#{_SECTION_ID_PREFIX}outputs", SectionWidget)
+            last = app.query_one(
+                f"#{_SECTION_ID_PREFIX}outputs", SectionWidget
+            )
             assert last.has_class(_FOCUS_CLASS)
 
     @pytest.mark.asyncio
