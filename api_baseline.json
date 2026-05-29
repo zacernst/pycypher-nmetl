@@ -1,0 +1,220 @@
+{
+  "module_name": "pycypher",
+  "version": "0.0.19",
+  "symbols": {
+    "ASTConversionError": {
+      "name": "ASTConversionError",
+      "kind": "exception",
+      "module": "pycypher.exceptions"
+    },
+    "Context": {
+      "name": "Context",
+      "kind": "class",
+      "signature": "(*, backend: Any = None, entity_mapping: pycypher.relational_models.EntityMapping = EntityMapping(mapping={}), relationship_mapping: pycypher.relational_models.RelationshipMapping = RelationshipMapping(mapping={}), cypher_functions: dict[str, pycypher.relational_models.RegisteredFunction] = <factory>) -> None",
+      "module": "pycypher.relational_models"
+    },
+    "ContextBuilder": {
+      "name": "ContextBuilder",
+      "kind": "class",
+      "signature": "() -> 'None'",
+      "module": "pycypher.ingestion.context_builder"
+    },
+    "CyclicDependencyError": {
+      "name": "CyclicDependencyError",
+      "kind": "exception",
+      "module": "pycypher.exceptions"
+    },
+    "CypherSyntaxError": {
+      "name": "CypherSyntaxError",
+      "kind": "exception",
+      "module": "pycypher.exceptions"
+    },
+    "EntityMapping": {
+      "name": "EntityMapping",
+      "kind": "class",
+      "signature": "(*, mapping: dict[typing.Annotated[str, Ellipsis], typing.Any] = {}) -> None",
+      "module": "pycypher.relational_models"
+    },
+    "EntityTable": {
+      "name": "EntityTable",
+      "kind": "class",
+      "signature": "(*args: Any, source_algebraizable: pycypher.ast_models.Algebraizable | None = None, variable_map: Annotated[dict[pycypher.ast_models.Variable, Annotated[str, Ellipsis]], Ellipsis] = {}, variable_type_map: Annotated[dict[pycypher.ast_models.Variable, Annotated[str, Ellipsis]], Ellipsis] = <factory>, column_names: list[typing.Annotated[str, Ellipsis]] = [], identifier: str = <factory>, entity_type: Annotated[str, Ellipsis], source_obj: Any = None, attribute_map: dict[typing.Annotated[str, Ellipsis], typing.Annotated[str, Ellipsis]] = <factory>, source_obj_attribute_map: dict[typing.Annotated[str, Ellipsis], str] = <factory>) -> None",
+      "module": "pycypher.relational_models"
+    },
+    "FunctionArgumentError": {
+      "name": "FunctionArgumentError",
+      "kind": "exception",
+      "module": "pycypher.exceptions"
+    },
+    "GrammarTransformerSyncError": {
+      "name": "GrammarTransformerSyncError",
+      "kind": "exception",
+      "module": "pycypher.exceptions"
+    },
+    "GraphTypeNotFoundError": {
+      "name": "GraphTypeNotFoundError",
+      "kind": "exception",
+      "module": "pycypher.exceptions"
+    },
+    "ID_COLUMN": {
+      "name": "ID_COLUMN",
+      "kind": "constant"
+    },
+    "IncompatibleOperatorError": {
+      "name": "IncompatibleOperatorError",
+      "kind": "exception",
+      "module": "pycypher.exceptions"
+    },
+    "InvalidCastError": {
+      "name": "InvalidCastError",
+      "kind": "exception",
+      "module": "pycypher.exceptions"
+    },
+    "MissingParameterError": {
+      "name": "MissingParameterError",
+      "kind": "exception",
+      "module": "pycypher.exceptions"
+    },
+    "PatternComprehensionError": {
+      "name": "PatternComprehensionError",
+      "kind": "exception",
+      "module": "pycypher.exceptions"
+    },
+    "Pipeline": {
+      "name": "Pipeline",
+      "kind": "class",
+      "signature": "(stages: 'list[Stage] | None' = None) -> 'None'",
+      "module": "pycypher.pipeline"
+    },
+    "PipelineContext": {
+      "name": "PipelineContext",
+      "kind": "class",
+      "signature": "(query_string: 'str | None' = None, query_input: 'str | Any' = None, parameters: 'dict[str, Any]' = <factory>, timeout_seconds: 'float | None' = None, memory_budget_bytes: 'int | None' = None, max_complexity_score: 'int | None' = None, ast: 'ASTNode | None' = None, plan_analysis: 'Any | None' = None, result: 'pd.DataFrame | None' = None, metadata: 'dict[str, Any]' = <factory>, stage_timings: 'dict[str, float]' = <factory>, short_circuited: 'bool' = False, short_circuit_reason: 'str' = '', star: 'Any' = None) -> None",
+      "module": "pycypher.pipeline"
+    },
+    "PipelineResult": {
+      "name": "PipelineResult",
+      "kind": "class",
+      "signature": "(result: 'pd.DataFrame | None', stage_timings: 'dict[str, float]', metadata: 'dict[str, Any]') -> None",
+      "module": "pycypher.pipeline"
+    },
+    "QueryComplexityError": {
+      "name": "QueryComplexityError",
+      "kind": "exception",
+      "module": "pycypher.exceptions"
+    },
+    "QueryMemoryBudgetError": {
+      "name": "QueryMemoryBudgetError",
+      "kind": "exception",
+      "module": "pycypher.exceptions"
+    },
+    "QueryTimeoutError": {
+      "name": "QueryTimeoutError",
+      "kind": "exception",
+      "module": "pycypher.exceptions"
+    },
+    "RELATIONSHIP_SOURCE_COLUMN": {
+      "name": "RELATIONSHIP_SOURCE_COLUMN",
+      "kind": "constant"
+    },
+    "RELATIONSHIP_TARGET_COLUMN": {
+      "name": "RELATIONSHIP_TARGET_COLUMN",
+      "kind": "constant"
+    },
+    "RelationshipMapping": {
+      "name": "RelationshipMapping",
+      "kind": "class",
+      "signature": "(*, mapping: dict[typing.Annotated[str, Ellipsis], typing.Any] = {}) -> None",
+      "module": "pycypher.relational_models"
+    },
+    "RelationshipTable": {
+      "name": "RelationshipTable",
+      "kind": "class",
+      "signature": "(*args: Any, source_algebraizable: pycypher.ast_models.Algebraizable | None = None, variable_map: Annotated[dict[pycypher.ast_models.Variable, Annotated[str, Ellipsis]], Ellipsis] = {}, variable_type_map: Annotated[dict[pycypher.ast_models.Variable, Annotated[str, Ellipsis]], Ellipsis] = <factory>, column_names: list[typing.Annotated[str, Ellipsis]] = [], identifier: str = <factory>, relationship_type: Annotated[str, Ellipsis], source_obj: Any = None, attribute_map: dict[typing.Annotated[str, Ellipsis], typing.Annotated[str, Ellipsis]] = <factory>, source_obj_attribute_map: dict[typing.Annotated[str, Ellipsis], str] = <factory>) -> None",
+      "module": "pycypher.relational_models"
+    },
+    "ResultCache": {
+      "name": "ResultCache",
+      "kind": "class",
+      "signature": "(max_size_bytes: 'int' = 104857600, ttl_seconds: 'float' = 0.0, lock_timeout_seconds: 'float | None' = None) -> 'None'",
+      "module": "pycypher.result_cache"
+    },
+    "SecurityError": {
+      "name": "SecurityError",
+      "kind": "exception",
+      "module": "pycypher.exceptions"
+    },
+    "SemanticValidator": {
+      "name": "SemanticValidator",
+      "kind": "class",
+      "signature": "() -> 'None'",
+      "module": "pycypher.semantic_validator"
+    },
+    "Stage": {
+      "name": "Stage",
+      "kind": "class",
+      "signature": "()",
+      "module": "pycypher.pipeline"
+    },
+    "Star": {
+      "name": "Star",
+      "kind": "class",
+      "signature": "(context: 'Context | ContextBuilder | None' = None, *, result_cache_max_mb: 'int | None' = None, result_cache_ttl_seconds: 'float | None' = None) -> 'None'",
+      "module": "pycypher.star"
+    },
+    "TemporalArithmeticError": {
+      "name": "TemporalArithmeticError",
+      "kind": "exception",
+      "module": "pycypher.exceptions"
+    },
+    "UnsupportedFunctionError": {
+      "name": "UnsupportedFunctionError",
+      "kind": "exception",
+      "module": "pycypher.exceptions"
+    },
+    "UnsupportedOperatorError": {
+      "name": "UnsupportedOperatorError",
+      "kind": "exception",
+      "module": "pycypher.exceptions"
+    },
+    "VariableNotFoundError": {
+      "name": "VariableNotFoundError",
+      "kind": "exception",
+      "module": "pycypher.exceptions"
+    },
+    "VariableTypeMismatchError": {
+      "name": "VariableTypeMismatchError",
+      "kind": "exception",
+      "module": "pycypher.exceptions"
+    },
+    "WrongCypherTypeError": {
+      "name": "WrongCypherTypeError",
+      "kind": "exception",
+      "module": "pycypher.exceptions"
+    },
+    "apply_preset": {
+      "name": "apply_preset",
+      "kind": "function",
+      "signature": "(name: 'str') -> 'None'",
+      "module": "pycypher.config"
+    },
+    "get_cache_stats": {
+      "name": "get_cache_stats",
+      "kind": "function",
+      "signature": "(star: 'Star | None' = None) -> 'dict[str, Any]'",
+      "module": "pycypher.star"
+    },
+    "show_config": {
+      "name": "show_config",
+      "kind": "function",
+      "signature": "() -> 'dict[str, int | float | None]'",
+      "module": "pycypher.config"
+    },
+    "validate_query": {
+      "name": "validate_query",
+      "kind": "function",
+      "signature": "(query_string: 'str') -> 'list[ValidationError]'",
+      "module": "pycypher.semantic_validator"
+    }
+  }
+}

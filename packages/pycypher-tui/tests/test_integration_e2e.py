@@ -6,42 +6,32 @@ validation → screen display, verifying cross-component integration.
 
 from __future__ import annotations
 
-import tempfile
-from pathlib import Path
 
-import pytest
-import yaml
 from pycypher.ingestion.config import (
     EntitySourceConfig,
     OutputConfig,
     PipelineConfig,
-    ProjectConfig,
     QueryConfig,
     RelationshipSourceConfig,
-    SourcesConfig,
 )
 
 from pycypher_tui.config.pipeline import ConfigManager
 from pycypher_tui.config.templates import (
-    PipelineTemplate,
     get_template,
     list_templates,
 )
 from pycypher_tui.config.validation import CachedValidator
-from pycypher_tui.screens.data_sources import DataSourcesScreen, SourceItem
+from pycypher_tui.screens.data_sources import DataSourcesScreen
 from pycypher_tui.screens.pipeline_overview import (
     PipelineOverviewScreen,
-    SectionInfo,
 )
 from pycypher_tui.screens.pipeline_testing import (
     ExecutionPlan,
-    ExecutionStep,
     StepStatus,
     build_execution_plan,
     run_dry_execution,
 )
 from pycypher_tui.screens.relationships import (
-    RelationshipItem,
     RelationshipScreen,
 )
 from pycypher_tui.screens.template_browser import (
@@ -96,8 +86,8 @@ class TestTemplateToConfigWorkflow:
         overview._pending_keys = []
 
         sections = overview._build_section_list(config)
-        # data_model + 5 pipeline sections (incl. query_lineage) + settings
-        assert len(sections) == 7
+        # data_model + 7 pipeline sections (incl. query_lineage, pipeline_run, settings)
+        assert len(sections) == 8
 
         entity_sec = sections[1]
         assert entity_sec.key == "entity_sources"
@@ -123,7 +113,9 @@ class TestTemplateToConfigWorkflow:
             config = template.instantiate()
             sections = overview._build_section_list(config)
             configured = [s for s in sections if s.status == "configured"]
-            assert len(configured) >= 1, f"Template {template.name} has no configured sections"
+            assert len(configured) >= 1, (
+                f"Template {template.name} has no configured sections"
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -137,7 +129,9 @@ class TestConfigManagerCRUDWorkflow:
     def test_add_entity_reflected_in_overview(self):
         """Adding an entity source increases overview entity section count."""
         mgr = ConfigManager()
-        mgr.add_entity_source("people", "data/people.csv", "Person", id_col="id")
+        mgr.add_entity_source(
+            "people", "data/people.csv", "Person", id_col="id"
+        )
 
         overview = PipelineOverviewScreen.__new__(PipelineOverviewScreen)
         overview._cursor = 0
@@ -152,9 +146,17 @@ class TestConfigManagerCRUDWorkflow:
     def test_add_multiple_entities_and_query(self):
         """Building a config incrementally produces valid overview."""
         mgr = ConfigManager()
-        mgr.add_entity_source("customers", "data/customers.csv", "Customer", id_col="cid")
-        mgr.add_entity_source("products", "data/products.csv", "Product", id_col="pid")
-        mgr.add_query("q1", inline="MATCH (c:Customer) RETURN c", description="All customers")
+        mgr.add_entity_source(
+            "customers", "data/customers.csv", "Customer", id_col="cid"
+        )
+        mgr.add_entity_source(
+            "products", "data/products.csv", "Product", id_col="pid"
+        )
+        mgr.add_query(
+            "q1",
+            inline="MATCH (c:Customer) RETURN c",
+            description="All customers",
+        )
 
         config = mgr.get_config()
         assert len(config.sources.entities) == 2
@@ -166,13 +168,19 @@ class TestConfigManagerCRUDWorkflow:
         overview._pending_keys = []
 
         sections = overview._build_section_list(config)
-        assert sections[1].item_count == 2  # entities (index 1, after data_model)
-        assert sections[3].item_count == 1  # queries (index 3, after data_model, entities, relationships)
+        assert (
+            sections[1].item_count == 2
+        )  # entities (index 1, after data_model)
+        assert (
+            sections[3].item_count == 1
+        )  # queries (index 3, after data_model, entities, relationships)
 
     def test_add_relationship_reflected_in_relationship_screen(self):
         """Adding a relationship source is visible through RelationshipScreen._build_relationship_list."""
         mgr = ConfigManager()
-        mgr.add_entity_source("people", "data/people.csv", "Person", id_col="person_id")
+        mgr.add_entity_source(
+            "people", "data/people.csv", "Person", id_col="person_id"
+        )
         mgr.add_relationship_source(
             "follows",
             "data/follows.csv",
@@ -196,7 +204,9 @@ class TestConfigManagerCRUDWorkflow:
     def test_data_sources_screen_shows_both_types(self):
         """DataSourcesScreen._extract_sources returns both entity and relationship sources."""
         mgr = ConfigManager()
-        mgr.add_entity_source("people", "data/people.csv", "Person", id_col="id")
+        mgr.add_entity_source(
+            "people", "data/people.csv", "Person", id_col="id"
+        )
         mgr.add_relationship_source(
             "follows",
             "data/follows.csv",
@@ -227,8 +237,11 @@ class TestConfigManagerCRUDWorkflow:
         mgr.add_entity_source("e1", "data/e1.csv", "Type1", id_col="id")
         mgr.add_entity_source("e2", "data/e2.csv", "Type2", id_col="id")
         mgr.add_relationship_source(
-            "r1", "data/r1.csv", "REL1",
-            source_col="a", target_col="b",
+            "r1",
+            "data/r1.csv",
+            "REL1",
+            source_col="a",
+            target_col="b",
         )
 
         ds_screen = DataSourcesScreen.__new__(DataSourcesScreen)
@@ -263,7 +276,9 @@ class TestConfigPersistenceWorkflow:
     def test_save_and_reload(self, tmp_path):
         """Config survives save/load round-trip."""
         mgr = ConfigManager()
-        mgr.add_entity_source("people", "data/people.csv", "Person", id_col="id")
+        mgr.add_entity_source(
+            "people", "data/people.csv", "Person", id_col="id"
+        )
         mgr.add_query("q1", inline="MATCH (n:Person) RETURN n")
 
         filepath = tmp_path / "pipeline.yaml"
@@ -288,7 +303,9 @@ class TestConfigPersistenceWorkflow:
         lconfig = loaded.get_config()
         assert lconfig.project.name == "shop"
         assert len(lconfig.sources.entities) == len(config.sources.entities)
-        assert len(lconfig.sources.relationships) == len(config.sources.relationships)
+        assert len(lconfig.sources.relationships) == len(
+            config.sources.relationships
+        )
         assert len(lconfig.queries) == len(config.queries)
 
     def test_undo_redo_workflow(self):
@@ -366,13 +383,19 @@ class TestValidationWorkflow:
         items = rel_screen._build_relationship_list(mgr.get_config())
         assert len(items) == 1
         assert items[0].status == "warning"
-        assert any("No entity sources" in m for m in items[0].validation_messages)
+        assert any(
+            "No entity sources" in m for m in items[0].validation_messages
+        )
 
     def test_relationship_validation_with_entities(self):
         """Relationship screen shows valid when entities match."""
         mgr = ConfigManager()
-        mgr.add_entity_source("people", "data/people.csv", "Person", id_col="person_id")
-        mgr.add_entity_source("companies", "data/co.csv", "Company", id_col="company_id")
+        mgr.add_entity_source(
+            "people", "data/people.csv", "Person", id_col="person_id"
+        )
+        mgr.add_entity_source(
+            "companies", "data/co.csv", "Company", id_col="company_id"
+        )
         mgr.add_relationship_source(
             "works_at",
             "data/works_at.csv",
@@ -472,7 +495,7 @@ class TestPipelineExecutionWorkflow:
         config = t.instantiate()
         mgr = ConfigManager.from_config(config)
 
-        plan = build_execution_plan(mgr)
+        build_execution_plan(mgr)
         result = run_dry_execution(mgr)
         assert isinstance(result, ExecutionPlan)
         # All steps should have been processed (success or error)
@@ -506,7 +529,9 @@ class TestCrossScreenConsistency:
         overview._pending_keys = []
         sections = overview._build_section_list(config)
         entity_count = sections[1].item_count  # index 1 after data_model
-        rel_count = sections[2].item_count  # index 2 after data_model, entities
+        rel_count = sections[
+            2
+        ].item_count  # index 2 after data_model, entities
 
         # Data sources extraction
         ds_screen = DataSourcesScreen.__new__(DataSourcesScreen)
@@ -534,7 +559,9 @@ class TestCrossScreenConsistency:
         overview._sections = []
         overview._pending_keys = []
         sections = overview._build_section_list(config)
-        rel_count = sections[2].item_count  # index 2 after data_model, entities
+        rel_count = sections[
+            2
+        ].item_count  # index 2 after data_model, entities
 
         # Relationship screen
         rel_screen = RelationshipScreen.__new__(RelationshipScreen)
@@ -553,7 +580,9 @@ class TestCrossScreenConsistency:
             config = template.instantiate()
 
             assert summary.entity_count == len(config.sources.entities)
-            assert summary.relationship_count == len(config.sources.relationships)
+            assert summary.relationship_count == len(
+                config.sources.relationships
+            )
             assert summary.query_count == len(config.queries)
             assert summary.output_count == len(config.output)
 
@@ -628,8 +657,11 @@ class TestPyCypherConfigIntegration:
         mgr = ConfigManager()
         mgr.add_entity_source("e1", "data/e1.csv", "Type1", id_col="id")
         mgr.add_relationship_source(
-            "r1", "data/r1.csv", "REL1",
-            source_col="a", target_col="b",
+            "r1",
+            "data/r1.csv",
+            "REL1",
+            source_col="a",
+            target_col="b",
         )
         mgr.add_query("q1", inline="MATCH (n) RETURN n")
         mgr.add_output("q1", "out.csv")

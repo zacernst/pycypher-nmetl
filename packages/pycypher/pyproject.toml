@@ -9,7 +9,7 @@ description = "Cypher parser and query executor for Python"
 readme = "README.md"
 requires-python = ">=3.12"
 keywords = [ "neo4j", "cypher",]
-classifiers = [ "Development Status :: 3 - Alpha", "Intended Audience :: Developers", "License :: OSI Approved :: MIT License", "Programming Language :: Python :: 3.14",]
+classifiers = [ "Development Status :: 3 - Alpha", "Intended Audience :: Developers", "License :: OSI Approved :: MIT License", "Programming Language :: Python :: 3.12", "Programming Language :: Python :: 3.13", "Programming Language :: Python :: 3.14",]
 dependencies = [
     "shared",
     "pydantic>=2.9.2,<3.0.0",
@@ -63,7 +63,7 @@ nmetl = "pycypher.nmetl_cli:main"
 exclude = [ ".bzr", ".direnv", ".eggs", ".git", ".git-rewrite", ".hg", ".ipynb_checkpoints", ".mypy_cache", ".nox", ".pants.d", ".pyenv", ".pytest_cache", ".pytype", ".ruff_cache", ".svn", ".tox", ".venv", ".vscode", "__pypackages__", "_build", "buck-out", "build", "dist", "node_modules", "site-packages", "venv",]
 line-length = 79
 indent-width = 4
-target-version = "py314"
+target-version = "py312"  # Matches workspace requires-python; py314 has known ruff format bug
 
 
 [tool.coverage.report]

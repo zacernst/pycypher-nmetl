@@ -15,14 +15,10 @@ from pycypher_tui.config.pipeline import ConfigManager
 from pycypher_tui.config.templates import get_template
 from pycypher_tui.modes.base import ModeType
 from pycypher_tui.screens.data_model import (
-    DataModelScreen,
     ModelDetailPanel,
-    ModelEdge,
-    ModelNode,
     ModelNodeWidget,
     _build_model,
 )
-from pycypher_tui.screens.data_sources import DataSourcesScreen
 from pycypher_tui.screens.pipeline_overview import (
     PipelineOverviewScreen,
     SectionWidget,
@@ -149,7 +145,9 @@ class TestDataModelScreenNavigation:
 
             # data_model is the first section key
             sections = app.query(SectionWidget)
-            assert len(sections) == 6  # data_model + 5 pipeline sections (including query_lineage)
+            assert (
+                len(sections) == 8
+            )  # data_model + 7 pipeline sections (including query_lineage, pipeline_run, settings)
             assert sections[0].info.key == "data_model"
 
     @pytest.mark.asyncio
@@ -173,7 +171,9 @@ class TestDataModelScreenNavigation:
             await pilot.pause()
 
             nodes = app.query(ModelNodeWidget)
-            rel_nodes = [n for n in nodes if n.node.node_type == "relationship"]
+            rel_nodes = [
+                n for n in nodes if n.node.node_type == "relationship"
+            ]
             assert len(rel_nodes) >= 1
             assert any(n.node.label == "PURCHASED" for n in rel_nodes)
 
@@ -227,13 +227,17 @@ class TestDataModelScreenNavigation:
             await app._show_data_model()
             await pilot.pause()
 
-            detail = app.query_one(f"#detail-panel", ModelDetailPanel)
-            labels_first = [str(l.render()) for l in detail.query(Label)]
+            detail = app.query_one("#detail-panel", ModelDetailPanel)
+            labels_first = [
+                str(label.render()) for label in detail.query(Label)
+            ]
 
             await pilot.press("j")
             await pilot.pause()
 
-            labels_second = [str(l.render()) for l in detail.query(Label)]
+            labels_second = [
+                str(label.render()) for label in detail.query(Label)
+            ]
             assert labels_second != labels_first
 
     @pytest.mark.asyncio
@@ -301,6 +305,7 @@ class TestDataModelDrillDown:
 
             # Entity nodes now drill down to EntityEditorScreen
             from pycypher_tui.screens.entity_editor import EntityEditorScreen
+
             assert len(app.query(EntityEditorScreen)) > 0
 
     @pytest.mark.asyncio
@@ -330,7 +335,9 @@ class TestDataModelMultiTemplate:
             await pilot.pause()
 
             nodes = app.query(ModelNodeWidget)
-            rel_nodes = [n for n in nodes if n.node.node_type == "relationship"]
+            rel_nodes = [
+                n for n in nodes if n.node.node_type == "relationship"
+            ]
             assert len(rel_nodes) >= 2
 
     @pytest.mark.asyncio

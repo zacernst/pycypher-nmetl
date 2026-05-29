@@ -10,11 +10,17 @@ Test Failure Analysis:
 Both represent test infrastructure issues rather than functional regressions.
 """
 
+from pathlib import Path
+
 import pandas as pd
 import pytest
 from pycypher.ast_models import ASTConverter
 from pycypher.ingestion import ContextBuilder
 from pycypher.star import Star
+
+# Repo root resolved relative to this test file (`tests/`), so subprocess.run
+# can locate `packages/` regardless of which workstation/CI runner executes.
+_REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
 class TestGrammarParserWildcardSupport:
@@ -28,7 +34,7 @@ class TestGrammarParserWildcardSupport:
         query_with_wildcard = "MATCH (p:Person) RETURN p.*"
 
         with pytest.raises(Exception) as exc_info:
-            ast = converter.from_cypher(query_with_wildcard)
+            converter.from_cypher(query_with_wildcard)
 
         # Verify it's a parsing error related to wildcard position
         error_msg = str(exc_info.value)
@@ -90,11 +96,13 @@ def _count_copy_patterns() -> int:
     """Count .copy() patterns in the packages directory."""
     import subprocess
 
+    # Trusted `grep` invocation against repo-local fixture; not user input.
     result = subprocess.run(
-        ["grep", "-r", "--include=*.py", r"\.copy()", "packages/"],
+        ["grep", "-r", "--include=*.py", r"\.copy()", "packages/"],  # noqa: S607
         capture_output=True,
         text=True,
-        cwd="/Users/zernst/git/pycypher-nmetl",
+        cwd=str(_REPO_ROOT),
+        check=False,
     )
     copy_lines = (
         result.stdout.strip().split("\n") if result.stdout.strip() else []
@@ -121,11 +129,13 @@ class TestDataFrameCopyPatternCounting:
         """Analyze where .copy() patterns are located."""
         import subprocess
 
+        # Trusted `grep` invocation against repo-local fixture; not user input.
         result = subprocess.run(
-            ["grep", "-rn", "--include=*.py", r"\.copy()", "packages/"],
+            ["grep", "-rn", "--include=*.py", r"\.copy()", "packages/"],  # noqa: S607
             capture_output=True,
             text=True,
-            cwd="/Users/zernst/git/pycypher-nmetl",
+            cwd=str(_REPO_ROOT),
+            check=False,
         )
 
         copy_lines = (

@@ -15,14 +15,11 @@ from pycypher_tui.app import (
     CommandLine,
     ModeIndicator,
     PyCypherTUI,
-    StatusBar,
 )
 from pycypher_tui.config.pipeline import ConfigManager
 from pycypher_tui.config.templates import get_template
 from pycypher_tui.modes.base import ModeType
 from pycypher_tui.screens.data_sources import (
-    DataSourcesScreen,
-    SourceDetailPanel,
     SourceListItem,
 )
 from pycypher_tui.screens.entity_browser import EntityBrowserScreen
@@ -32,7 +29,6 @@ from pycypher_tui.screens.entity_tables import (
     EntityTablesScreen,
 )
 from pycypher_tui.screens.pipeline_overview import (
-    PipelineOverviewScreen,
     SectionWidget,
 )
 from pycypher_tui.screens.relationships import (
@@ -571,7 +567,9 @@ class TestDialogInteractions:
         app = PyCypherTUI()
         async with app.run_test() as pilot:
             app.push_screen(
-                InputDialog(title="Edit", body="URI:", default_value="data/test.csv"),
+                InputDialog(
+                    title="Edit", body="URI:", default_value="data/test.csv"
+                ),
             )
             await pilot.pause()
             input_widget = app.query_one("#dialog-input", Input)
@@ -975,14 +973,16 @@ class TestCrossScreenNavigationWorkflows:
 
     @pytest.mark.asyncio
     async def test_overview_outputs_section_focused(self):
+        # Test name is historical: G jumps to the LAST section, which is
+        # settings now (added after outputs + pipeline_run).
         app = _make_app_with_ecommerce()
         async with app.run_test() as pilot:
             await app._show_overview()
             await pilot.pause()
             await pilot.press("G")
             await pilot.pause()
-            outputs = app.query_one("#item-outputs", SectionWidget)
-            assert outputs.has_class("item-focused")
+            last = app.query_one("#item-settings", SectionWidget)
+            assert last.has_class("item-focused")
 
     @pytest.mark.asyncio
     async def test_data_sources_h_returns_to_overview(self):
@@ -1000,7 +1000,7 @@ class TestCrossScreenNavigationWorkflows:
             await pilot.press("h")
             await pilot.pause()
             await pilot.pause()
-            assert len(app.query(SectionWidget)) == 6
+            assert len(app.query(SectionWidget)) == 8
 
     @pytest.mark.asyncio
     async def test_rapid_navigation_doesnt_crash(self):
@@ -1082,7 +1082,7 @@ class TestOverviewUndoRedo:
             await pilot.pause()
             assert app.is_running
             sections = app.query(SectionWidget)
-            assert len(sections) == 6
+            assert len(sections) == 8
 
     @pytest.mark.asyncio
     async def test_overview_ctrl_r_redo_doesnt_crash(self):

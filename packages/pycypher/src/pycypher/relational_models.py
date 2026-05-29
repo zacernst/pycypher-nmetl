@@ -353,8 +353,10 @@ class Context(BaseModel):
             **data: Pydantic field values — typically ``entity_mapping``,
                 ``relationship_mapping``, and ``functions``.
 
-        .. note:: The backend is stored but **not yet used** by the execution
-           path.  See :mod:`pycypher.backend_engine` for integration status.
+        .. note:: The backend is dispatched to during query execution via the
+           :class:`~pycypher.binding_frame.BindingFrame` and
+           :class:`~pycypher.mutation_engine.MutationEngine` paths.  See
+           :mod:`pycypher.backend_engine` for the engine implementations.
 
         """
         super().__init__(**data)

@@ -68,7 +68,7 @@ from __future__ import annotations
 
 import enum
 import time
-from typing import Protocol, runtime_checkable
+from typing import Protocol, cast, runtime_checkable
 
 import pandas as pd
 from shared.logger import LOGGER
@@ -182,7 +182,9 @@ class BackendEngine(Protocol):
         """
         ...
 
-    def rename(self, frame: BackendFrame, columns: dict[str, str]) -> BackendFrame:
+    def rename(
+        self, frame: BackendFrame, columns: dict[str, str]
+    ) -> BackendFrame:
         """Rename columns in *frame*.
 
         Used by ``BindingFrame.rename()`` to promote structural join-key
@@ -198,7 +200,9 @@ class BackendEngine(Protocol):
         """
         ...
 
-    def concat(self, frames: list[BackendFrame], *, ignore_index: bool = True) -> BackendFrame:
+    def concat(
+        self, frames: list[BackendFrame], *, ignore_index: bool = True
+    ) -> BackendFrame:
         """Concatenate multiple frames vertically.
 
         Used by ``MutationEngine.shadow_create_entity()`` and union queries.
@@ -227,7 +231,9 @@ class BackendEngine(Protocol):
         """
         ...
 
-    def assign_column(self, frame: BackendFrame, name: str, values: ColumnValues) -> BackendFrame:
+    def assign_column(
+        self, frame: BackendFrame, name: str, values: ColumnValues
+    ) -> BackendFrame:
         """Add or replace a column in *frame*.
 
         Used by ``star.py`` during pattern traversal to add new variable
@@ -244,7 +250,9 @@ class BackendEngine(Protocol):
         """
         ...
 
-    def drop_columns(self, frame: BackendFrame, columns: list[str]) -> BackendFrame:
+    def drop_columns(
+        self, frame: BackendFrame, columns: list[str]
+    ) -> BackendFrame:
         """Remove columns from *frame*.
 
         Used for post-join cleanup (removing ``_right`` suffixed duplicates
@@ -683,7 +691,9 @@ class InstrumentedBackend:
 
     # -- Scan --
 
-    def scan_entity(self, source_obj: SourceObject, entity_type: str) -> BackendFrame:
+    def scan_entity(
+        self, source_obj: SourceObject, entity_type: str
+    ) -> BackendFrame:
         """Instrumented scan_entity with OTel tracing."""
         with trace_phase("backend.scan_entity") as span:
             span.set_attribute("backend.entity_type", entity_type)
@@ -729,7 +739,9 @@ class InstrumentedBackend:
             self._record("join", (time.perf_counter() - t0) * 1000.0, span)
             return result
 
-    def rename(self, frame: BackendFrame, columns: dict[str, str]) -> BackendFrame:
+    def rename(
+        self, frame: BackendFrame, columns: dict[str, str]
+    ) -> BackendFrame:
         """Instrumented rename with OTel tracing."""
         with trace_phase("backend.rename") as span:
             t0 = time.perf_counter()
@@ -737,7 +749,9 @@ class InstrumentedBackend:
             self._record("rename", (time.perf_counter() - t0) * 1000.0, span)
             return result
 
-    def concat(self, frames: list[BackendFrame], *, ignore_index: bool = True) -> BackendFrame:
+    def concat(
+        self, frames: list[BackendFrame], *, ignore_index: bool = True
+    ) -> BackendFrame:
         """Instrumented concat with OTel tracing."""
         with trace_phase("backend.concat") as span:
             span.set_attribute("backend.frame_count", len(frames))
@@ -754,7 +768,9 @@ class InstrumentedBackend:
             self._record("distinct", (time.perf_counter() - t0) * 1000.0, span)
             return result
 
-    def assign_column(self, frame: BackendFrame, name: str, values: ColumnValues) -> BackendFrame:
+    def assign_column(
+        self, frame: BackendFrame, name: str, values: ColumnValues
+    ) -> BackendFrame:
         """Instrumented assign_column with OTel tracing."""
         with trace_phase("backend.assign_column") as span:
             span.set_attribute("backend.column_name", name)
@@ -767,7 +783,9 @@ class InstrumentedBackend:
             )
             return result
 
-    def drop_columns(self, frame: BackendFrame, columns: list[str]) -> BackendFrame:
+    def drop_columns(
+        self, frame: BackendFrame, columns: list[str]
+    ) -> BackendFrame:
         """Instrumented drop_columns with OTel tracing."""
         with trace_phase("backend.drop_columns") as span:
             span.set_attribute("backend.drop_count", len(columns))
@@ -889,8 +907,13 @@ def select_backend_for_query(
     cb = _circuit_breaker
     current_name = current_backend.name
 
-    # Extract cardinality estimates from optimizer hints
-    cardinality_estimates = optimization_hints.get("cardinality_estimates", {})
+    # Extract cardinality estimates from optimizer hints. The hints dict
+    # is typed `dict[str, object]` for flexibility; cast at use sites where
+    # we know the concrete shape the optimizer produces.
+    cardinality_estimates = cast(
+        "dict[str, int | float]",
+        optimization_hints.get("cardinality_estimates", {}),
+    )
     if cardinality_estimates:
         max_cardinality = max(cardinality_estimates.values(), default=0)
         estimated_rows = max(estimated_rows, max_cardinality)
@@ -920,8 +943,10 @@ def select_backend_for_query(
 
     # Heuristic: heavy multi-join queries with many filters benefit from
     # analytical backends even at lower row counts
-    match_count = optimization_hints.get("match_clause_count", 0)
-    filter_count = optimization_hints.get("filter_pushdown_count", 0)
+    match_count = cast("int", optimization_hints.get("match_clause_count", 0))
+    filter_count = cast(
+        "int", optimization_hints.get("filter_pushdown_count", 0)
+    )
     if (
         match_count > 1
         and filter_count >= 2

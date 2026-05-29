@@ -6,9 +6,7 @@ import pytest
 
 from pycypher_tui.screens.pipeline_overview import (
     PipelineOverviewScreen,
-    SectionDetailPanel,
     SectionInfo,
-    SectionWidget,
 )
 
 
@@ -57,13 +55,14 @@ class TestPipelineOverviewScreen:
     """Tests for PipelineOverviewScreen logic (non-widget tests)."""
 
     def test_section_keys_defined(self):
-        assert len(PipelineOverviewScreen.SECTION_KEYS) == 7
+        assert len(PipelineOverviewScreen.SECTION_KEYS) == 8
         assert "data_model" in PipelineOverviewScreen.SECTION_KEYS
         assert "entity_sources" in PipelineOverviewScreen.SECTION_KEYS
         assert "relationship_sources" in PipelineOverviewScreen.SECTION_KEYS
         assert "queries" in PipelineOverviewScreen.SECTION_KEYS
         assert "query_lineage" in PipelineOverviewScreen.SECTION_KEYS
         assert "outputs" in PipelineOverviewScreen.SECTION_KEYS
+        assert "pipeline_run" in PipelineOverviewScreen.SECTION_KEYS
         assert "settings" in PipelineOverviewScreen.SECTION_KEYS
 
     def test_default_cursor_position(self):
@@ -267,7 +266,7 @@ class TestBuildSectionList:
         screen = self._make_screen()
         config = PipelineConfig(version="1.0")
         sections = screen._build_section_list(config)
-        assert len(sections) == 7
+        assert len(sections) == 8
         assert all(s.status == "empty" for s in sections)
         non_settings = [s for s in sections if s.key != "settings"]
         assert all(s.item_count == 0 for s in non_settings)
@@ -381,7 +380,9 @@ class TestBuildSectionList:
         screen = self._make_screen()
         sections = screen._build_section_list(config)
 
-        output_section = sections[5]  # outputs is now at index 5 (query_lineage at 4)
+        output_section = sections[
+            5
+        ]  # outputs is now at index 5 (query_lineage at 4)
         assert output_section.key == "outputs"
         assert output_section.item_count == 1
         assert output_section.status == "configured"
@@ -524,7 +525,9 @@ class TestSettingsSectionStateIntegration:
                 called["count"] += 1
 
         with patch.object(
-            type(screen), "app", new_callable=PropertyMock,
+            type(screen),
+            "app",
+            new_callable=PropertyMock,
             return_value=FakeApp(),
         ):
             result = screen.handle_extra_key("s")
@@ -538,7 +541,9 @@ class TestSettingsSectionStateIntegration:
 
         screen = self._make_screen()
         with patch.object(
-            type(screen), "app", new_callable=PropertyMock,
+            type(screen),
+            "app",
+            new_callable=PropertyMock,
             return_value=object(),  # bare object, no method
         ):
             # Must not raise; must claim the key as handled so it doesn't

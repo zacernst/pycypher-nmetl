@@ -11,13 +11,10 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Any
 
 from textual.app import ComposeResult
-from textual.containers import Container, Horizontal, Vertical, VerticalScroll
 from textual.css.query import NoMatches
 from textual.message import Message
-from textual.reactive import reactive
 from textual.widgets import Label, Static
 
 from pycypher_tui.config.pipeline import ConfigManager
@@ -74,12 +71,6 @@ class SectionWidget(BaseListItem[SectionInfo]):
         self.info = info
 
     def compose(self) -> ComposeResult:
-        status_color = {
-            "empty": "#565f89",
-            "configured": "#9ece6a",
-            "error": "#f7768e",
-        }.get(self.info.status, "#565f89")
-
         count_text = (
             f"{self.info.item_count} item{'s' if self.info.item_count != 1 else ''}"
             if self.info.item_count > 0
@@ -108,7 +99,9 @@ class SectionDetailPanel(BaseDetailPanel):
             self.mount(Label("(no section selected)", classes="detail-title"))
             return
 
-        self.mount(Label(f"{section.icon}  {section.label}", classes="detail-title"))
+        self.mount(
+            Label(f"{section.icon}  {section.label}", classes="detail-title")
+        )
         self.mount(Label(f"  Status: {section.status}", classes="detail-row"))
 
         count_text = (
@@ -187,6 +180,7 @@ class PipelineOverviewScreen(VimNavigableScreen[SectionInfo]):
         "queries",
         "query_lineage",
         "outputs",
+        "pipeline_run",
         "settings",
     ]
 
@@ -230,7 +224,9 @@ class PipelineOverviewScreen(VimNavigableScreen[SectionInfo]):
         config = self._config_manager.get_config()
         return self._build_section_list(config)
 
-    def create_list_item(self, item: SectionInfo, item_id: str) -> BaseListItem:
+    def create_list_item(
+        self, item: SectionInfo, item_id: str
+    ) -> BaseListItem:
         return SectionWidget(item, id=item_id)
 
     def create_detail_panel(self) -> BaseDetailPanel:
@@ -238,10 +234,14 @@ class PipelineOverviewScreen(VimNavigableScreen[SectionInfo]):
 
     def update_detail_panel(self, item: SectionInfo | None) -> None:
         try:
-            detail = self.query_one(f"#{self.detail_panel_id}", SectionDetailPanel)
+            detail = self.query_one(
+                f"#{self.detail_panel_id}", SectionDetailPanel
+            )
             detail.update_section(item)
         except (NoMatches, AttributeError):
-            logger.debug("update_detail_panel: #%s not found", self.detail_panel_id)
+            logger.debug(
+                "update_detail_panel: #%s not found", self.detail_panel_id
+            )
 
     def get_item_id(self, item: SectionInfo) -> str:
         return item.key
@@ -262,7 +262,9 @@ class PipelineOverviewScreen(VimNavigableScreen[SectionInfo]):
 
     @property
     def _screen_override_keys(self) -> frozenset[str]:
-        return frozenset({"i", "u", "ctrl+r", "1", "2", "3", "4", "5", "6", "b", "s"})
+        return frozenset(
+            {"i", "u", "ctrl+r", "1", "2", "3", "4", "5", "6", "b", "s"}
+        )
 
     def handle_extra_key(self, key: str) -> bool:
         match key:
@@ -312,8 +314,14 @@ class PipelineOverviewScreen(VimNavigableScreen[SectionInfo]):
     def _cycle_backend(self) -> None:
         """Cycle through backend engines: auto → pandas → duckdb → polars → auto."""
         current = self._config_manager.get_backend()
-        idx = self._BACKEND_CYCLE.index(current) if current in self._BACKEND_CYCLE else 0
-        next_backend = self._BACKEND_CYCLE[(idx + 1) % len(self._BACKEND_CYCLE)]
+        idx = (
+            self._BACKEND_CYCLE.index(current)
+            if current in self._BACKEND_CYCLE
+            else 0
+        )
+        next_backend = self._BACKEND_CYCLE[
+            (idx + 1) % len(self._BACKEND_CYCLE)
+        ]
         self._config_manager.set_backend(next_backend)
         self.refresh_from_config()
         self._update_validation()
@@ -336,7 +344,9 @@ class PipelineOverviewScreen(VimNavigableScreen[SectionInfo]):
                     before=footer,
                 )
             except (NoMatches, AttributeError):
-                logger.debug("_mount_validation_summary: #screen-footer not found")
+                logger.debug(
+                    "_mount_validation_summary: #screen-footer not found"
+                )
 
     def on_mount(self) -> None:
         # NOTE: Do NOT call super().on_mount() here.  Textual 1.0 dispatches
@@ -356,9 +366,13 @@ class PipelineOverviewScreen(VimNavigableScreen[SectionInfo]):
         type_count = len(entity_types) + len(rel_types)
         model_details = []
         if entity_types:
-            model_details.append(f"Entities: {', '.join(sorted(entity_types)[:3])}")
+            model_details.append(
+                f"Entities: {', '.join(sorted(entity_types)[:3])}"
+            )
         if rel_types:
-            model_details.append(f"Relationships: {', '.join(sorted(rel_types)[:3])}")
+            model_details.append(
+                f"Relationships: {', '.join(sorted(rel_types)[:3])}"
+            )
         sections.append(
             SectionInfo(
                 key="data_model",
@@ -430,14 +444,20 @@ class PipelineOverviewScreen(VimNavigableScreen[SectionInfo]):
         outputs = config.output
 
         # Query lineage & data flow
-        total_components = len(entities) + len(rels) + len(queries) + len(outputs)
+        total_components = (
+            len(entities) + len(rels) + len(queries) + len(outputs)
+        )
         lineage_details = []
         if total_components > 0:
             lineage_details.append(f"Pipeline components: {total_components}")
             if entities and queries:
-                lineage_details.append(f"Data flow: {len(entities)} sources → {len(queries)} queries")
+                lineage_details.append(
+                    f"Data flow: {len(entities)} sources → {len(queries)} queries"
+                )
             if queries and outputs:
-                lineage_details.append(f"Output flow: {len(queries)} queries → {len(outputs)} sinks")
+                lineage_details.append(
+                    f"Output flow: {len(queries)} queries → {len(outputs)} sinks"
+                )
         sections.append(
             SectionInfo(
                 key="query_lineage",
@@ -450,9 +470,7 @@ class PipelineOverviewScreen(VimNavigableScreen[SectionInfo]):
         )
 
         # Outputs
-        output_details = [
-            f"{o.query_id} -> {o.uri}" for o in outputs[:3]
-        ]
+        output_details = [f"{o.query_id} -> {o.uri}" for o in outputs[:3]]
         if len(outputs) > 3:
             output_details.append(f"  ... and {len(outputs) - 3} more")
         sections.append(
@@ -463,6 +481,26 @@ class PipelineOverviewScreen(VimNavigableScreen[SectionInfo]):
                 item_count=len(outputs),
                 status="configured" if outputs else "empty",
                 details=output_details,
+            )
+        )
+
+        # Run Pipeline (dry run + real execution screen)
+        n_entities = len(config.sources.entities) if config.sources else 0
+        n_rels = len(config.sources.relationships) if config.sources else 0
+        run_status = "configured" if config.queries else "empty"
+        sections.append(
+            SectionInfo(
+                key="pipeline_run",
+                label="Run Pipeline",
+                icon="[>]",
+                item_count=0,
+                status=run_status,
+                details=[
+                    f"{n_entities + n_rels} sources, "
+                    f"{len(config.queries)} queries, "
+                    f"{len(outputs)} outputs",
+                    "Enter to open; r=dry run, R=execute",
+                ],
             )
         )
 
@@ -508,15 +546,21 @@ class PipelineOverviewScreen(VimNavigableScreen[SectionInfo]):
             warning_count = len(result.warnings)
             parts = []
             if error_count:
-                parts.append(f"{error_count} error{'s' if error_count != 1 else ''}")
+                parts.append(
+                    f"{error_count} error{'s' if error_count != 1 else ''}"
+                )
             if warning_count:
-                parts.append(f"{warning_count} warning{'s' if warning_count != 1 else ''}")
+                parts.append(
+                    f"{warning_count} warning{'s' if warning_count != 1 else ''}"
+                )
             summary_widget.update(f" Validation: {', '.join(parts)}")
             if error_count:
                 summary_widget.remove_class("validation-ok", "validation-warn")
                 summary_widget.add_class("validation-error")
             else:
-                summary_widget.remove_class("validation-ok", "validation-error")
+                summary_widget.remove_class(
+                    "validation-ok", "validation-error"
+                )
                 summary_widget.add_class("validation-warn")
 
     # --- Actions ---
