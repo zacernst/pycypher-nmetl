@@ -226,7 +226,7 @@ class TestEdgeDataFrameCopyElimination:
         """Identify other similar unnecessary copy patterns in the codebase."""
         import subprocess
 
-        # Find all column selection + copy patterns
+        # Trusted `grep` invocation against repo-local fixture; not user input.
         result = subprocess.run(  # noqa: S603
             [  # noqa: S607
                 "grep",

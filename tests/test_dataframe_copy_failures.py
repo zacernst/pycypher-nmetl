@@ -96,6 +96,7 @@ def _count_copy_patterns() -> int:
     """Count .copy() patterns in the packages directory."""
     import subprocess
 
+    # Trusted `grep` invocation against repo-local fixture; not user input.
     result = subprocess.run(
         ["grep", "-r", "--include=*.py", r"\.copy()", "packages/"],  # noqa: S607
         capture_output=True,
@@ -128,6 +129,7 @@ class TestDataFrameCopyPatternCounting:
         """Analyze where .copy() patterns are located."""
         import subprocess
 
+        # Trusted `grep` invocation against repo-local fixture; not user input.
         result = subprocess.run(
             ["grep", "-rn", "--include=*.py", r"\.copy()", "packages/"],  # noqa: S607
             capture_output=True,
