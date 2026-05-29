@@ -241,7 +241,7 @@ dev-core = [
 
   # Documentation
   "myst-parser>=4.0.1,<5.0.0",
-  "sphinx>=7.4.7,<9.0.0",
+  "sphinx>=7.4.7,<10.0.0",
   "sphinx-rtd-theme>=3.0.0,<4.0.0", # Sphinx Read the Docs theme
 
   # Runtime utilities used in tests
