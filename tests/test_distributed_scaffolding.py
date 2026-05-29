@@ -187,7 +187,7 @@ class TestDaskClusterSimulation:
         """Run a Dask DataFrame operation through the cluster."""
         import dask.dataframe as dd
 
-        client, _cluster = dask_cluster
+        _client, _cluster = dask_cluster
         pdf = _generate_entity_df(10_000)
         ddf = dd.from_pandas(pdf, npartitions=4)
 
@@ -214,7 +214,7 @@ class TestDaskClusterSimulation:
         """Run a merge (join equivalent) through the cluster."""
         import dask.dataframe as dd
 
-        client, _cluster = dask_cluster
+        _client, _cluster = dask_cluster
         left = dd.from_pandas(
             _generate_entity_df(5_000, seed=1),
             npartitions=2,
