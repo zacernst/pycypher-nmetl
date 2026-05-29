@@ -68,7 +68,7 @@ from __future__ import annotations
 
 import enum
 import time
-from typing import Protocol, cast, runtime_checkable
+from typing import Any, Protocol, cast, runtime_checkable
 
 import pandas as pd
 from shared.logger import LOGGER
@@ -658,7 +658,7 @@ class InstrumentedBackend:
         """Return the inner backend's name."""
         return self._inner.name
 
-    def _record(self, op: str, elapsed_ms: float, span: object = None) -> None:
+    def _record(self, op: str, elapsed_ms: float, span: Any = None) -> None:
         """Record timing for an operation and annotate the OTel span."""
         self.operation_timings.setdefault(op, []).append(elapsed_ms)
         self.operation_counts[op] = self.operation_counts.get(op, 0) + 1
@@ -916,7 +916,7 @@ def select_backend_for_query(
     )
     if cardinality_estimates:
         max_cardinality = max(cardinality_estimates.values(), default=0)
-        estimated_rows = max(estimated_rows, max_cardinality)
+        estimated_rows = max(estimated_rows, int(max_cardinality))
 
     # Heuristic: if estimated rows exceed threshold and we're on pandas,
     # suggest switching to a more scalable backend

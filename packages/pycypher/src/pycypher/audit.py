@@ -40,7 +40,7 @@ from __future__ import annotations
 import json
 import logging
 import os
-from datetime import UTC, datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 __all__ = [
@@ -104,7 +104,7 @@ def _emit(record: dict[str, Any]) -> None:
 
 def audit_query_success(
     *,
-    query_id: str,
+    query_id: str | None,
     query: str,
     elapsed_s: float,
     rows: int,
@@ -141,7 +141,7 @@ def audit_query_success(
 
 def audit_mutation(
     *,
-    query_id: str,
+    query_id: str | None,
     operation: str,
     entity_type: str,
     affected_count: int,
@@ -185,7 +185,7 @@ def audit_mutation(
 
 def audit_query_error(
     *,
-    query_id: str,
+    query_id: str | None,
     query: str,
     elapsed_s: float,
     error_type: str,

@@ -296,7 +296,7 @@ def register(registry: ScalarFunctionRegistry) -> None:
             return s
 
         nr = _init_null_result(s)
-        if nr.all_null:
+        if nr.non_null_vals is None:
             return nr.result
 
         # Convert non-null values to string (vectorized)
@@ -375,7 +375,7 @@ def register(registry: ScalarFunctionRegistry) -> None:
 
         # Handle nulls first
         nr = _init_null_result(s)
-        if nr.all_null:
+        if nr.non_null_vals is None:
             return nr.result
 
         s_str = nr.non_null_vals.astype(str)
@@ -590,7 +590,7 @@ def register(registry: ScalarFunctionRegistry) -> None:
                 return None
             sv = str(val)
             try:
-                pos = int(i)  # type: ignore[arg-type]
+                pos = int(i)  # ty: ignore[invalid-argument-type]  # i is numeric at runtime, guarded above
             except (TypeError, ValueError):
                 return None
             if pos < 0 or pos >= len(sv):
@@ -673,7 +673,7 @@ def register(registry: ScalarFunctionRegistry) -> None:
             if _is_null(v) or _is_null(i):
                 return None
             s_str = str(v)
-            i_int = int(i)  # type: ignore[arg-type]  # guarded by _is_null above
+            i_int = int(i)  # ty: ignore[invalid-argument-type]  # guarded by _is_null above
             if i_int < 0 or i_int >= len(s_str):
                 return None
             return ord(s_str[i_int])
@@ -700,7 +700,7 @@ def register(registry: ScalarFunctionRegistry) -> None:
                     str_lengths = s_str.str.len()
                     valid_bounds_mask = (i_int >= 0) & (i_int < str_lengths)
 
-                    if valid_bounds_mask.any():  # type: ignore[union-attr]  # pandas Series, not bool
+                    if valid_bounds_mask.any():  # ty: ignore[unresolved-attribute]  # pandas Series, not bool
                         # Extract characters at the specified index
                         valid_strings = s_str[valid_bounds_mask]
 
@@ -795,7 +795,7 @@ def register(registry: ScalarFunctionRegistry) -> None:
             s_str = str(v)
             if f == "NFKCCaseFold":
                 return unicodedata.normalize("NFKC", s_str).casefold()
-            return unicodedata.normalize(f, s_str)  # type: ignore[arg-type]  # validated by _VALID_FORMS
+            return unicodedata.normalize(f, s_str)  # ty: ignore[invalid-argument-type]  # validated by _VALID_FORMS
 
         if form is None:
             # No form argument — use NFC default (VECTORIZED)

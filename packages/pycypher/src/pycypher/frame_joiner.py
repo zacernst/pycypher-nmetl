@@ -22,7 +22,7 @@ import pandas as pd
 from shared.logger import LOGGER
 
 if TYPE_CHECKING:
-    from pycypher.ast_models import ASTNode, Match
+    from pycypher.ast_models import ASTNode, Expression, Match
     from pycypher.binding_frame import BindingFrame
     from pycypher.query_planner import JoinPlan
     from pycypher.relational_models import Context
@@ -72,7 +72,7 @@ class FrameJoiner:
         frame_a: BindingFrame,
         frame_b: BindingFrame,
         *,
-        join_plan: object | None = None,
+        join_plan: JoinPlan | None = None,
     ) -> BindingFrame:
         """Join two BindingFrame objects.
 
@@ -143,7 +143,7 @@ class FrameJoiner:
         self,
         current_frame: BindingFrame,
         match_frame: BindingFrame,
-        where_clause: ASTNode | None = None,
+        where_clause: Expression | None = None,
     ) -> BindingFrame:
         """Merge a new MATCH frame into the existing execution frame.
 
@@ -234,9 +234,20 @@ class FrameJoiner:
             left_col = current_frame.bindings[var]
             right_col = match_frame.bindings[var]
             if left_col.dtype != right_col.dtype:
-                common_dtype = pd.api.types.find_common_type(
-                    [left_col.dtype, right_col.dtype]
-                )
+                # pd.api.types.find_common_type was removed; use numpy directly.
+                # Object dtype is the safe lowest common denominator when
+                # one side is object — coerce both to object.
+                import numpy as np
+
+                if (
+                    left_col.dtype == object  # noqa: E721
+                    or right_col.dtype == object  # noqa: E721
+                ):
+                    common_dtype = np.dtype("object")
+                else:
+                    common_dtype = np.promote_types(
+                        left_col.dtype, right_col.dtype
+                    )
                 current_frame.bindings[var] = left_col.astype(common_dtype)
                 match_frame.bindings[var] = right_col.astype(common_dtype)
             return current_frame.left_join(match_frame, var, var)
@@ -263,6 +274,7 @@ class FrameJoiner:
         from pycypher.binding_frame import BindingFrame
 
         new_var_types: dict[str, str] = {}
+        assert clause.pattern is not None, "OPTIONAL MATCH must have a pattern"
         for path in clause.pattern.paths:
             for el in path.elements:
                 if (
@@ -320,7 +332,7 @@ class FrameJoiner:
 # ---------------------------------------------------------------------------
 
 
-def _extract_conjuncts(predicate: ASTNode) -> list[ASTNode]:
+def _extract_conjuncts(predicate: Expression) -> list[Expression]:
     """Split an AND-connected predicate into its conjunct list.
 
     Non-AND predicates are returned as a single-element list.
@@ -328,14 +340,14 @@ def _extract_conjuncts(predicate: ASTNode) -> list[ASTNode]:
     from pycypher.ast_models import And
 
     if isinstance(predicate, And) and predicate.operands:
-        conjuncts: list[ASTNode] = []
+        conjuncts: list[Expression] = []
         for op in predicate.operands:
             conjuncts.extend(_extract_conjuncts(op))
         return conjuncts
     return [predicate]
 
 
-def _rebuild_and(conjuncts: list[ASTNode]) -> ASTNode | None:
+def _rebuild_and(conjuncts: list[Expression]) -> Expression | None:
     """Rebuild an AND node from a list of conjuncts, or return None if empty."""
     if not conjuncts:
         return None
@@ -356,10 +368,10 @@ def _predicate_variables(predicate: ASTNode) -> set[str]:
 
 
 def _split_pushdown_predicates(
-    where_clause: ASTNode,
+    where_clause: Expression,
     match_vars: set[str],
     current_vars: set[str],
-) -> tuple[ASTNode | None, ASTNode | None]:
+) -> tuple[Expression | None, Expression | None]:
     """Split a WHERE clause into pre-join and post-join predicates.
 
     Conjuncts whose variables are all in *match_vars* (and NOT in

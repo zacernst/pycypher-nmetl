@@ -742,7 +742,7 @@ def _extract_clause_variables(clause: Any) -> set[str]:
     return refs
 
 
-def compute_live_columns(clauses: list[Any]) -> list[set[str] | None]:
+def compute_live_columns(clauses: list[Any]) -> list[frozenset[str] | None]:
     """Compute the set of live (needed) columns after each clause.
 
     For each clause index ``i``, returns the set of variable names that are
@@ -773,7 +773,7 @@ def compute_live_columns(clauses: list[Any]) -> list[set[str] | None]:
     )
 
     n = len(clauses)
-    result: list[set[str] | None] = [None] * n
+    result: list[frozenset[str] | None] = [None] * n
 
     if n == 0:
         return result

@@ -117,12 +117,17 @@ def _explain_query(cypher_query: str) -> None:
 
     click.echo(f"\nParse: {parse_ms:.1f}ms  Convert: {convert_ms:.1f}ms")
     click.echo(f"Root: {type(typed_ast).__name__}")
+    if typed_ast is None:
+        click.echo("\n(empty AST)")
+        return
     click.echo(f"\n{typed_ast.pretty()}")
 
     from pycypher.semantic_validator import SemanticValidator
 
     validator = SemanticValidator()
-    errors = validator.validate(typed_ast)
+    # SemanticValidator.validate accepts a Tree at the type level but
+    # historically operates on any ASTNode root (parse_tree → typed_ast).
+    errors = validator.validate(typed_ast)  # ty: ignore[invalid-argument-type]
     if errors:
         click.echo("\nValidation errors:")
         for err in errors:
@@ -153,7 +158,9 @@ def _profile_query(
         builder.add_entity(label, path, id_col=id_col)
     for spec in relationship:
         rel_type, path, src_col, tgt_col = _parse_rel_arg(spec)
-        builder.add_relationship(rel_type, path, source_col=src_col, target_col=tgt_col)
+        builder.add_relationship(
+            rel_type, path, source_col=src_col, target_col=tgt_col
+        )
 
     ctx = builder.build()
     star = Star(context=ctx)
@@ -294,8 +301,12 @@ def query(
     if profile:
         _profile_query(cypher_query, entity, relationship, parameter)
     else:
-        # Import the original implementation
-        from pycypher.nmetl_cli import query as _original_query
+        # Import the original implementation. The `query` subcommand is
+        # registered dynamically on the `cli` Click group via
+        # _register_query_command(cli), so it appears as a callable click
+        # Command attribute at runtime even though the module has no static
+        # `query` binding.
+        from pycypher.nmetl_cli import query as _original_query  # ty: ignore[unresolved-import]
 
         # Delegate to original implementation
         _original_query(

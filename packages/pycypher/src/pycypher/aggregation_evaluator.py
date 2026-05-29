@@ -258,10 +258,13 @@ class AggregationExpressionEvaluator:
         # scalar and apply the operator.  Null-safe guards for division and
         # modulo are kept explicit; standard ops reuse _ARITH_OPS.
         if isinstance(agg_expression, Arithmetic):
-            left_val = expression_evaluator._eval_as_scalar(
+            # _eval_as_scalar is a BindingExpressionEvaluator-specific helper
+            # not exposed on the protocol; the runtime caller is always the
+            # concrete evaluator.
+            left_val = expression_evaluator._eval_as_scalar(  # ty: ignore[unresolved-attribute]
                 agg_expression.left,
             )
-            right_val = expression_evaluator._eval_as_scalar(
+            right_val = expression_evaluator._eval_as_scalar(  # ty: ignore[unresolved-attribute]
                 agg_expression.right,
             )
             op = agg_expression.operator

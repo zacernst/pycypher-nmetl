@@ -65,7 +65,7 @@ def is_null_raw_list(value: object) -> bool:
     # pandas arrays/Series: check emptiness before boolean context
     # (avoids "ambiguous truth value of array" ValueError).
     if hasattr(value, "dtype") and hasattr(value, "__len__"):
-        return len(value) == 0
+        return len(value) == 0  # ty: ignore[invalid-argument-type]  # hasattr narrows to a __len__-bearing object; ty's intersection still rejects len()
 
     # Standard Python sequences
     if isinstance(value, (list, tuple)):

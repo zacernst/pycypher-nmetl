@@ -129,7 +129,7 @@ def extract_referenced_variables(node: ASTNode) -> set[str]:
     """
     refs: set[str] = set()
     for var in node.find_all(Variable):
-        refs.add(var.name)
+        refs.add(var.name)  # ty: ignore[unresolved-attribute]  # find_all(Variable) returns Variable instances; ASTNode return type is too loose
     return refs
 
 

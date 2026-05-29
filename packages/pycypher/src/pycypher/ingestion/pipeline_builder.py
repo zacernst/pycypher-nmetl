@@ -307,7 +307,9 @@ class PipelineBuilder:
         msg = f"Relationship source {source_id!r} not found."
         raise KeyError(msg)
 
-    def update_relationship_source(self, source_id: str, **kwargs: Any) -> None:
+    def update_relationship_source(
+        self, source_id: str, **kwargs: Any
+    ) -> None:
         """Update fields of an existing relationship source.
 
         Raises:
@@ -413,8 +415,10 @@ class PipelineBuilder:
                 details={"query_id": query_id, "uri": uri},
             )
         )
+        # Pydantic validates raw str → OutputFormat enum at runtime; the
+        # public API takes a plain str for ergonomic CLI/YAML use.
         self._config.output.append(
-            OutputConfig(query_id=query_id, uri=uri, format=format)
+            OutputConfig(query_id=query_id, uri=uri, format=format)  # ty: ignore[invalid-argument-type]  # str → OutputFormat coerced by pydantic
         )
 
     def remove_output(self, query_id: str, uri: str) -> None:
@@ -500,18 +504,10 @@ class PipelineBuilder:
             added_relationships, removed_relationships,
             added_queries, removed_queries.
         """
-        prev_entity_ids = {
-            s.id for s in previous.config.sources.entities
-        }
-        curr_entity_ids = {
-            s.id for s in self._config.sources.entities
-        }
-        prev_rel_ids = {
-            s.id for s in previous.config.sources.relationships
-        }
-        curr_rel_ids = {
-            s.id for s in self._config.sources.relationships
-        }
+        prev_entity_ids = {s.id for s in previous.config.sources.entities}
+        curr_entity_ids = {s.id for s in self._config.sources.entities}
+        prev_rel_ids = {s.id for s in previous.config.sources.relationships}
+        curr_rel_ids = {s.id for s in self._config.sources.relationships}
         prev_query_ids = {q.id for q in previous.config.queries}
         curr_query_ids = {q.id for q in self._config.queries}
 
@@ -572,7 +568,9 @@ class PipelineBuilder:
 
     def to_yaml(self) -> str:
         """Serialize the current config to a YAML string."""
-        data = self._config.model_dump(exclude_none=True, exclude_defaults=False)
+        data = self._config.model_dump(
+            exclude_none=True, exclude_defaults=False
+        )
         return yaml.dump(data, default_flow_style=False, sort_keys=False)
 
     def save(self, path: str | Path) -> None:

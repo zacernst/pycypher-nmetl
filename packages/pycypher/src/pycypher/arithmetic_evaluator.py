@@ -12,7 +12,7 @@ from __future__ import annotations
 import logging
 import operator as _op
 import time
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, TypeGuard, cast
 
 import numpy as np
 
@@ -207,17 +207,17 @@ def _first_non_null_val(series: FrameSeries) -> Any:
 _is_null_val = is_null_value  # Canonical null-check from shared.helpers
 
 
-def _is_date_str(v: object) -> bool:
+def _is_date_str(v: object) -> TypeGuard[str]:
     """Return True when *v* is a ``'YYYY-MM-DD'`` ISO date string."""
     return isinstance(v, str) and len(v) == 10 and v[4] == "-" and v[7] == "-"
 
 
-def _is_datetime_str(v: object) -> bool:
+def _is_datetime_str(v: object) -> TypeGuard[str]:
     """Return True when *v* is an ISO datetime string (contains ``'T'``)."""
     return isinstance(v, str) and "T" in v and len(v) >= 16 and v[4] == "-"
 
 
-def _is_duration_dict(v: object) -> bool:
+def _is_duration_dict(v: object) -> TypeGuard[dict[str, int]]:
     """Return True when *v* is a duration component dict (has ``'days'`` key)."""
     return isinstance(v, dict) and "days" in v
 
@@ -334,7 +334,7 @@ def _temporal_arith_pair(op: str, left: object, right: object) -> object:
 
     # date + duration  /  date - duration
     if _is_date_str(left) and _is_duration_dict(right):
-        d = _date_cls.fromisoformat(cast(str, left))
+        d = _date_cls.fromisoformat(left)
         return _apply_duration_to_date(
             d,
             right,
@@ -343,19 +343,17 @@ def _temporal_arith_pair(op: str, left: object, right: object) -> object:
 
     # duration + date  (commutative addition only)
     if _is_duration_dict(left) and _is_date_str(right) and op == "+":
-        d = _date_cls.fromisoformat(cast(str, right))
+        d = _date_cls.fromisoformat(right)
         return _apply_duration_to_date(d, left, sign=1).isoformat()
 
     # date - date  → duration
     if _is_date_str(left) and _is_date_str(right) and op == "-":
-        delta = _date_cls.fromisoformat(
-            cast(str, left),
-        ) - _date_cls.fromisoformat(cast(str, right))
+        delta = _date_cls.fromisoformat(left) - _date_cls.fromisoformat(right)
         return _delta_to_duration(delta)
 
     # datetime + duration  /  datetime - duration
     if _is_datetime_str(left) and _is_duration_dict(right):
-        dt = _datetime_cls.fromisoformat(cast(str, left))
+        dt = _datetime_cls.fromisoformat(left)
         result = _apply_duration_to_datetime(
             dt,
             right,
@@ -366,14 +364,14 @@ def _temporal_arith_pair(op: str, left: object, right: object) -> object:
 
     # duration + datetime  (commutative addition only)
     if _is_duration_dict(left) and _is_datetime_str(right) and op == "+":
-        dt = _datetime_cls.fromisoformat(cast(str, right))
+        dt = _datetime_cls.fromisoformat(right)
         return _apply_duration_to_datetime(dt, left, sign=1).isoformat()
 
     # datetime - datetime  → duration
     if _is_datetime_str(left) and _is_datetime_str(right) and op == "-":
         delta = _datetime_cls.fromisoformat(
-            cast(str, left),
-        ) - _datetime_cls.fromisoformat(cast(str, right))
+            left,
+        ) - _datetime_cls.fromisoformat(right)
         return _delta_to_duration(delta)
 
     # duration + duration  /  duration - duration

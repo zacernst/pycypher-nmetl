@@ -602,11 +602,11 @@ class BindingExpressionEvaluator:
                     if row is None or i is None:
                         return None
                     if isinstance(row, dict):
-                        # Map key access: map['key']
-                        return row.get(i)  # type: ignore[arg-type]  # runtime key is Any
-                    # List integer index access: list[0]
+                        # Map key access: map['key']; runtime row dict accepts Any key
+                        return row.get(i)  # ty: ignore[invalid-argument-type]
+                    # List integer index access: list[0]; row may be list/tuple/ndarray
                     try:
-                        return row[int(i)]  # type: ignore[call-overload,index]  # runtime i is numeric
+                        return row[int(i)]  # ty: ignore[not-subscriptable, invalid-argument-type]
                     except (IndexError, TypeError):
                         if _DEBUG_ENABLED:
                             LOGGER.debug(
@@ -1292,9 +1292,11 @@ class BindingExpressionEvaluator:
             ValueError: For unsupported aggregation functions or missing arguments.
 
         """
-        # Architecture Loop 280 - Phase 3: Delegate to specialized aggregation evaluator
+        # Architecture Loop 280 - Phase 3: Delegate to specialized aggregation evaluator.
+        # The façade widens the parameter to Expression; callers are
+        # responsible for passing aggregation-shaped nodes.
         return self.aggregation_evaluator.evaluate_aggregation(
-            agg_expression,
+            agg_expression,  # ty: ignore[invalid-argument-type]
             self,
         )
 
@@ -1332,9 +1334,10 @@ class BindingExpressionEvaluator:
             evaluation in that case.
 
         """
-        # Architecture Loop 280 - Phase 3: Delegate to specialized aggregation evaluator
+        # Architecture Loop 280 - Phase 3: Delegate to specialized aggregation evaluator.
+        # See evaluate_aggregation re: façade-vs-implementation parameter widening.
         return self.aggregation_evaluator.evaluate_aggregation_grouped(
-            agg_expression,
+            agg_expression,  # ty: ignore[invalid-argument-type]
             group_df,
             group_key_aliases,
             self,

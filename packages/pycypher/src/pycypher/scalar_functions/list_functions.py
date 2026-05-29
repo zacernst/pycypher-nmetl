@@ -44,7 +44,7 @@ def register(registry: ScalarFunctionRegistry) -> None:
         """Wrap scalar in a list, or return list unchanged; null → null."""
         # Further vectorized implementation eliminating remaining .apply() anti-patterns
         nr = _init_null_result(s)
-        if nr.all_null:
+        if nr.non_null_vals is None:
             return nr.result
 
         # Create mask for list types using vectorized operations
@@ -89,7 +89,7 @@ def register(registry: ScalarFunctionRegistry) -> None:
         """
         # Vectorized implementation replacing .apply(_get_head) anti-pattern
         nr = _init_null_result(s)
-        if nr.all_null:
+        if nr.non_null_vals is None:
             return nr.result
 
         list_indices = []
@@ -127,7 +127,7 @@ def register(registry: ScalarFunctionRegistry) -> None:
         """
         # Vectorized implementation replacing .apply(_get_last) anti-pattern
         nr = _init_null_result(s)
-        if nr.all_null:
+        if nr.non_null_vals is None:
             return nr.result
 
         list_indices = []
@@ -165,7 +165,7 @@ def register(registry: ScalarFunctionRegistry) -> None:
         """
         # Vectorized implementation replacing .apply(_get_tail) anti-pattern
         nr = _init_null_result(s)
-        if nr.all_null:
+        if nr.non_null_vals is None:
             return nr.result
 
         list_indices = []
@@ -492,7 +492,7 @@ def register(registry: ScalarFunctionRegistry) -> None:
         """
         # Vectorized implementation replacing .apply(_sort_one) anti-pattern
         nr = _init_null_result(s)
-        if nr.all_null:
+        if nr.non_null_vals is None:
             return nr.result
 
         list_indices = []
@@ -536,7 +536,7 @@ def register(registry: ScalarFunctionRegistry) -> None:
         """
         # Vectorized implementation replacing .apply(_flatten_one) anti-pattern
         nr = _init_null_result(s)
-        if nr.all_null:
+        if nr.non_null_vals is None:
             return nr.result
 
         list_indices = []
@@ -573,7 +573,7 @@ def register(registry: ScalarFunctionRegistry) -> None:
         """Apply toString to each element of a list (null-safe)."""
         # Vectorized implementation eliminating .apply() anti-pattern
         nr = _init_null_result(s)
-        if nr.all_null:
+        if nr.non_null_vals is None:
             return nr.result
 
         list_indices = []
@@ -612,7 +612,7 @@ def register(registry: ScalarFunctionRegistry) -> None:
     def _to_integer_list(s: pd.Series) -> pd.Series:
         """Apply toInteger to each element of a list (null-safe)."""
         nr = _init_null_result(s)
-        if nr.all_null:
+        if nr.non_null_vals is None:
             return nr.result
 
         def _cvt(v: object) -> object:
@@ -652,7 +652,7 @@ def register(registry: ScalarFunctionRegistry) -> None:
     def _to_float_list(s: pd.Series) -> pd.Series:
         """Apply toFloat to each element of a list (null-safe)."""
         nr = _init_null_result(s)
-        if nr.all_null:
+        if nr.non_null_vals is None:
             return nr.result
 
         def _cvt(v: object) -> object:
@@ -695,7 +695,7 @@ def register(registry: ScalarFunctionRegistry) -> None:
     def _to_boolean_list(s: pd.Series) -> pd.Series:
         """Apply toBoolean to each element of a list (null-safe)."""
         nr = _init_null_result(s)
-        if nr.all_null:
+        if nr.non_null_vals is None:
             return nr.result
 
         def _cvt(v: object) -> object:

@@ -153,6 +153,12 @@ class MutationEngine:
                 # SET p:Label — label assignment; no DataFrame property to update
                 continue
 
+            # Property-targeted SET items always carry a variable target;
+            # only label-only SetItem (filtered above) leaves item.variable None.
+            assert item.variable is not None, (
+                "SET item with property must have variable"
+            )
+
             if prop in ("*", "*+"):
                 if isinstance(expr, MapLiteral):
                     # Batch all map literal properties into a single merge pass.
@@ -703,7 +709,8 @@ class MutationEngine:
                     backend = self._backend
                     if backend is not None:
                         self.context._shadow_rels[rel_type] = backend.filter(
-                            rel_df, keep_mask,
+                            rel_df,
+                            keep_mask,
                         )
                     else:
                         self.context._shadow_rels[rel_type] = rel_df[
@@ -801,7 +808,10 @@ class MutationEngine:
                 entity_type="mixed",
                 affected_count=len(match_frame.bindings),
                 elapsed_s=time.perf_counter() - t0,
-                details={"action": "match", "on_match_set": bool(clause.on_match)},
+                details={
+                    "action": "match",
+                    "on_match_set": bool(clause.on_match),
+                },
             )
             if current_frame is None:
                 return match_frame
@@ -1022,6 +1032,10 @@ class MutationEngine:
         )
         for item in remove_clause.items:
             if item.property is not None:
+                # Property-targeted REMOVE always has a variable target.
+                assert item.variable is not None, (
+                    "REMOVE item with property must have variable"
+                )
                 null_values = _null_series(len(frame))
                 frame.mutate(item.variable.name, item.property, null_values)
         elapsed = time.perf_counter() - t0
@@ -1110,7 +1124,12 @@ class MutationEngine:
                 alias = item.alias or source_key
                 if alias is None:
                     continue
-                columns[alias] = [row.get(source_key, None) for row in rows]
+                if source_key is None:
+                    # alias was specified explicitly but variable target is
+                    # absent — column is null for every row.
+                    columns[alias] = [None for _ in rows]
+                else:
+                    columns[alias] = [row.get(source_key) for row in rows]
             proc_df = pd.DataFrame(columns)
 
         return BindingFrame(

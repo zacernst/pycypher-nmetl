@@ -60,8 +60,8 @@ _StatusCode: Any = None
 
 if OTEL_ENABLED:
     try:
-        from opentelemetry import trace as _trace_mod
-        from opentelemetry.trace import (
+        from opentelemetry import trace as _trace_mod  # ty: ignore[unresolved-import]  # optional dependency, guarded by OTEL_ENABLED + ImportError catch
+        from opentelemetry.trace import (  # ty: ignore[unresolved-import]  # optional dependency, guarded by OTEL_ENABLED + ImportError catch
             StatusCode as _StatusCode,
         )
 

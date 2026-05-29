@@ -59,7 +59,7 @@ from pycypher.cypher_types import FrameDataFrame, FrameSeries
 _DEBUG_ENABLED: bool = LOGGER.isEnabledFor(logging.DEBUG)
 
 if TYPE_CHECKING:
-    pass
+    from pycypher.query_planner import JoinPlan
 
 # ---------------------------------------------------------------------------
 # Column-name constants used across the BindingFrame execution path
@@ -176,14 +176,14 @@ def _normalize_mapped_result(result: pd.Series) -> pd.Series:
 
 # Re-export from dataframe_utils for backward compatibility.
 # New code should import directly from pycypher.dataframe_utils.
-from pycypher.dataframe_utils import source_to_pandas as _source_to_pandas
+from pycypher.dataframe_utils import source_to_pandas as _source_to_pandas  # noqa: E402  # backward-compat re-export
 
 # Backward-compatible re-exports from scan_operators (extracted for SRP).
 # New code should import directly from pycypher.scan_operators.
-from pycypher.scan_operators import (
+from pycypher.scan_operators import (  # noqa: E402  # backward-compat re-export
     _coerce_pushdown_ids as _coerce_pushdown_ids,
 )
-from pycypher.scan_operators import (
+from pycypher.scan_operators import (  # noqa: E402  # backward-compat re-export
     _coerce_pushdown_series as _coerce_pushdown_series,
 )
 
@@ -530,7 +530,13 @@ class BindingFrame:
                     result = _normalize_mapped_result(result)
                     result.index = self.bindings.index
                     _used_vectorized = True
-            except (KeyError, ValueError, TypeError, IndexError, AttributeError):
+            except (
+                KeyError,
+                ValueError,
+                TypeError,
+                IndexError,
+                AttributeError,
+            ):
                 LOGGER.debug(
                     "Vectorized fetch failed for %s.%s, falling back",
                     entity_type,
@@ -563,7 +569,10 @@ class BindingFrame:
                         entity_subset[ID_COLUMN].dtype, errors="ignore"
                     )
                 joined = backend.join(
-                    id_frame, entity_subset, on=ID_COLUMN, how="left",
+                    id_frame,
+                    entity_subset,
+                    on=ID_COLUMN,
+                    how="left",
                 )
                 result = _normalize_mapped_result(joined[prop_name])
                 result.index = self.bindings.index
@@ -670,7 +679,13 @@ class BindingFrame:
                         self._property_cache[(var_name, prop)] = series
                     results.update(results_from_cache)
                     return results
-            except (KeyError, ValueError, TypeError, IndexError, AttributeError):
+            except (
+                KeyError,
+                ValueError,
+                TypeError,
+                IndexError,
+                AttributeError,
+            ):
                 LOGGER.debug(
                     "Vectorized batch fetch failed for %s, falling back",
                     entity_type,
@@ -724,7 +739,10 @@ class BindingFrame:
                         entity_subset[ID_COLUMN].dtype, errors="ignore"
                     )
                 joined = backend.join(
-                    id_frame, entity_subset, on=ID_COLUMN, how="left",
+                    id_frame,
+                    entity_subset,
+                    on=ID_COLUMN,
+                    how="left",
                 )
                 for prop in available:
                     series = joined[prop]
@@ -1045,7 +1063,7 @@ class BindingFrame:
         left_col: str,
         right_col: str,
         *,
-        join_plan: object | None = None,
+        join_plan: JoinPlan | None = None,
     ) -> BindingFrame:
         """Inner-join two BindingFrames on a pair of columns.
 
@@ -1564,9 +1582,9 @@ class BindingFrame:
             # (e.g. from REMOVE operations) which .map().notna() would miss.
             matched_mask: pd.Series = source_df[ID_COLUMN].isin(update_map)
             if matched_mask.any():
-                mapped_vals = source_df.loc[
-                    matched_mask, ID_COLUMN
-                ].map(update_map)
+                mapped_vals = source_df.loc[matched_mask, ID_COLUMN].map(
+                    update_map
+                )
                 try:
                     source_df.loc[matched_mask, prop_name] = mapped_vals
                 except (TypeError, ValueError):
@@ -1688,20 +1706,21 @@ class BindingFrame:
         for prop_name, values in properties.items():
             updates_data[prop_name] = values.values
         updates_df = pd.DataFrame(updates_data).drop_duplicates(
-            subset=[ID_COLUMN], keep="last",
+            subset=[ID_COLUMN],
+            keep="last",
         )
 
         # Single merge: left join source IDs against the updates.
         # This produces _prop_new columns for each property that has a match.
-        suffixed_cols = {
-            prop: f"_batch_{prop}" for prop in properties
-        }
+        suffixed_cols = {prop: f"_batch_{prop}" for prop in properties}
         updates_renamed = updates_df.rename(
             columns={p: s for p, s in suffixed_cols.items()},
         )
 
         merged = source_df[[ID_COLUMN]].merge(
-            updates_renamed, on=ID_COLUMN, how="left",
+            updates_renamed,
+            on=ID_COLUMN,
+            how="left",
         )
 
         # Apply each property from the merged result.
@@ -1727,7 +1746,9 @@ class BindingFrame:
                         source_df[prop_name].values,
                     )
                     source_df[prop_name] = pd.Series(
-                        combined, index=source_df.index, dtype=object,
+                        combined,
+                        index=source_df.index,
+                        dtype=object,
                     )
 
             # Register new property in attribute maps.
@@ -1757,6 +1778,6 @@ class BindingFrame:
 # Scan and filter operators — re-exported for backward compatibility.
 # New code should import directly from pycypher.scan_operators.
 # ---------------------------------------------------------------------------
-from pycypher.scan_operators import BindingFilter as BindingFilter
-from pycypher.scan_operators import EntityScan as EntityScan
-from pycypher.scan_operators import RelationshipScan as RelationshipScan
+from pycypher.scan_operators import BindingFilter as BindingFilter  # noqa: E402  # backward-compat re-export
+from pycypher.scan_operators import EntityScan as EntityScan  # noqa: E402  # backward-compat re-export
+from pycypher.scan_operators import RelationshipScan as RelationshipScan  # noqa: E402  # backward-compat re-export

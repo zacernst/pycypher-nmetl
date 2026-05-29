@@ -11,11 +11,15 @@ import re
 from dataclasses import dataclass, field
 from enum import StrEnum
 from pathlib import Path
+from typing import TYPE_CHECKING
 from urllib.parse import urlparse
 
 import click
 
 from .common import load_config
+
+if TYPE_CHECKING:
+    from pycypher.ingestion.config import PipelineConfig
 
 
 class Severity(StrEnum):
@@ -194,7 +198,7 @@ def _check_query_injection(
         )
 
 
-def scan_config(config: object) -> SecurityReport:
+def scan_config(config: PipelineConfig) -> SecurityReport:
     """Run all security checks against a loaded PipelineConfig.
 
     Args:

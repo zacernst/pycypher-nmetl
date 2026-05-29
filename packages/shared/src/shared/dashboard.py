@@ -74,11 +74,7 @@ class DashboardData:
     def trend(self, metric: str) -> list[float]:
         """Return time-series values for *metric* across all snapshots."""
         with self._lock:
-            return [
-                snap[metric]
-                for snap in self._history
-                if metric in snap
-            ]
+            return [snap[metric] for snap in self._history if metric in snap]
 
     def to_json(self) -> str:
         """Serialize history and timestamps to JSON."""
@@ -108,9 +104,7 @@ def render_dashboard_html(data: DashboardData) -> str:
         for key, value in sorted(latest.items()):
             esc_key = html.escape(str(key))
             esc_val = html.escape(f"{value}")
-            metric_rows += (
-                f"<tr><td>{esc_key}</td><td>{esc_val}</td></tr>\n"
-            )
+            metric_rows += f"<tr><td>{esc_key}</td><td>{esc_val}</td></tr>\n"
 
     # Build trend data for charting.
     trend_keys = []
@@ -153,28 +147,36 @@ def render_dashboard_html(data: DashboardData) -> str:
 <h1>PyCypher Performance Dashboard</h1>
 <p class="subtitle">Real-time query performance monitoring</p>
 <p class="refresh">Snapshots: {len(history)} | Last update: {
-    time.strftime('%H:%M:%S', time.localtime(timestamps[-1]))
-    if timestamps else 'N/A'
-}</p>
+        time.strftime("%H:%M:%S", time.localtime(timestamps[-1]))
+        if timestamps
+        else "N/A"
+    }</p>
 
 <div class="grid">
   <div class="card">
     <h3>Latency p50</h3>
-    <div class="value">{latest.get('timing_p50_ms', 'N/A') if latest else 'N/A'} ms</div>
+    <div class="value">{
+        latest.get("timing_p50_ms", "N/A") if latest else "N/A"
+    } ms</div>
   </div>
   <div class="card">
     <h3>Latency p90</h3>
-    <div class="value">{latest.get('timing_p90_ms', 'N/A') if latest else 'N/A'} ms</div>
+    <div class="value">{
+        latest.get("timing_p90_ms", "N/A") if latest else "N/A"
+    } ms</div>
   </div>
   <div class="card">
     <h3>Total Queries</h3>
-    <div class="value">{latest.get('total_queries', 'N/A') if latest else 'N/A'}</div>
+    <div class="value">{
+        latest.get("total_queries", "N/A") if latest else "N/A"
+    }</div>
   </div>
   <div class="card">
     <h3>Error Rate</h3>
     <div class="value">{
         f"{latest.get('error_rate', 0) * 100:.1f}%"
-        if latest and 'error_rate' in latest else 'N/A'
+        if latest and "error_rate" in latest
+        else "N/A"
     }</div>
   </div>
 </div>
@@ -183,20 +185,27 @@ def render_dashboard_html(data: DashboardData) -> str:
   <h3>Current Metrics</h3>
   <table>
     <thead><tr><th>Metric</th><th>Value</th></tr></thead>
-    <tbody>{metric_rows if metric_rows else '<tr><td colspan="2">No data</td></tr>'}
+    <tbody>{
+        metric_rows if metric_rows else '<tr><td colspan="2">No data</td></tr>'
+    }
     </tbody>
   </table>
 </div>
 
 <div class="grid">
-{"".join(f'''
+{
+        "".join(
+            f'''
   <div class="card">
     <h3>{html.escape(key)}</h3>
     <div class="chart-container">
       <canvas id="chart-{html.escape(key)}" width="300" height="120"></canvas>
     </div>
   </div>
-''' for key in trend_json)}
+'''
+            for key in trend_json
+        )
+    }
 </div>
 
 <script>
@@ -237,8 +246,11 @@ class _DashboardHandler(http.server.BaseHTTPRequestHandler):
     dashboard_data: DashboardData
 
     def do_GET(self) -> None:  # noqa: N802
+        # _dashboard_data is attached to the BaseServer instance by
+        # DashboardServer at construction time; ty doesn't see this dynamic
+        # attribute on http.server.BaseServer.
         if self.path == "/api/metrics":
-            body = self.server._dashboard_data.to_json().encode()  # type: ignore[attr-defined]
+            body = self.server._dashboard_data.to_json().encode()  # ty: ignore[unresolved-attribute]
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.send_header("Content-Length", str(len(body)))
@@ -246,7 +258,7 @@ class _DashboardHandler(http.server.BaseHTTPRequestHandler):
             self.wfile.write(body)
         else:
             body = render_dashboard_html(
-                self.server._dashboard_data  # type: ignore[attr-defined]
+                self.server._dashboard_data  # ty: ignore[unresolved-attribute]
             ).encode()
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
@@ -272,7 +284,7 @@ class DashboardServer:
         self._httpd = http.server.HTTPServer(
             ("127.0.0.1", port), _DashboardHandler
         )
-        self._httpd._dashboard_data = data  # type: ignore[attr-defined]
+        self._httpd._dashboard_data = data  # ty: ignore[unresolved-attribute]  # dynamic attribute used by _DashboardHandler to read data on the server instance
         self._thread: threading.Thread | None = None
 
     @property

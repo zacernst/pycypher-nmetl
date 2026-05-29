@@ -637,7 +637,7 @@ class ExpressionRulesMixin:
                 first_alt = arg.children[0]
                 if isinstance(first_alt, Tree):
                     resolved.append(
-                        self.node_pattern(list(first_alt.children)),  # type: ignore[attr-defined]  # mixin; method from composing class
+                        self.node_pattern(list(first_alt.children)),  # ty: ignore[unresolved-attribute]  # mixin; node_pattern is provided by the composing class
                     )
                 else:
                     resolved.append(self.node_pattern([]))

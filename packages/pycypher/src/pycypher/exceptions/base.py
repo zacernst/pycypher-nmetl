@@ -90,7 +90,7 @@ def _detect_environment() -> str:
     # Jupyter / IPython notebook -- only attempt if already imported
     if "IPython" in sys.modules:
         try:
-            from IPython import get_ipython  # type: ignore[import-untyped]
+            from IPython import get_ipython  # ty: ignore[unresolved-import]  # optional dependency, guarded by sys.modules check + ImportError catch
 
             ipy = get_ipython()
             if ipy is not None and "ZMQInteractiveShell" in type(ipy).__name__:
@@ -120,7 +120,9 @@ def _make_docs_link(cls_name: str) -> DocsLink | None:
     """Build a :class:`DocsLink` for *cls_name*, or ``None`` if unmapped."""
     anchor = _DOCS_ANCHORS.get(cls_name, "")
     if anchor and _DOCS_BASE_URL:
-        return DocsLink(url=f"{_DOCS_BASE_URL}{anchor}", exception_name=cls_name)
+        return DocsLink(
+            url=f"{_DOCS_BASE_URL}{anchor}", exception_name=cls_name
+        )
     return None
 
 
