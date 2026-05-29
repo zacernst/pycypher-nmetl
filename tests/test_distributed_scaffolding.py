@@ -199,8 +199,16 @@ class TestDaskClusterSimulation:
         )
         assert len(result) > 0
 
+    @pytest.mark.timeout(300)
     def test_dask_merge_distributed(self, dask_cluster: Any) -> None:
-        """Run a merge (join equivalent) through the cluster."""
+        """Run a merge (join equivalent) through the cluster.
+
+        Carries an explicit 300s timeout (instead of the 120s integration
+        default) because the Dask hash-shuffle backing this merge is slow on
+        CI runners — LocalCluster startup + 2-worker shuffle of 10k rows
+        regularly clears 60-90s on GitHub-hosted Linux. Locally completes in
+        ~2s. See task P8-T5.
+        """
         import dask.dataframe as dd
 
         client, _cluster = dask_cluster
