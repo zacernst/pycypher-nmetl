@@ -32,7 +32,7 @@ try:
     from _duckdb import IOException as DuckDBIOException
 except ImportError:
     # Handle case where DuckDB is not available
-    DuckDBIOException = None  # type: ignore[assignment]  # fallback when duckdb unavailable
+    DuckDBIOException = None  # ty: ignore[invalid-assignment]  # fallback when duckdb unavailable
 
 if TYPE_CHECKING:
     pass
@@ -151,7 +151,9 @@ def load_data_source(
         if DuckDBIOException is not None and isinstance(
             exc, DuckDBIOException
         ):
-            cli_error(translate_duckdb_error(exc, kind, safe_path), exit_code=1)
+            cli_error(
+                translate_duckdb_error(exc, kind, safe_path), exit_code=1
+            )
         # Generic fallback for unexpected errors
         exc_name = type(exc).__name__
         cli_error(

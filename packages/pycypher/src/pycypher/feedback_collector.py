@@ -410,7 +410,9 @@ class PredicateSelectivityTracker:
             for i in range(len(predicates)):
                 for j in range(i + 1, len(predicates)):
                     corr = self.get_correlation_factor(
-                        entity_type, predicates[i], predicates[j],
+                        entity_type,
+                        predicates[i],
+                        predicates[j],
                     )
                     if corr is not None:
                         result *= corr
@@ -462,7 +464,9 @@ class PredicateSelectivityTracker:
             for i in range(len(predicates)):
                 for j in range(i + 1, len(predicates)):
                     key = self._correlation_key(
-                        entity_type, predicates[i], predicates[j],
+                        entity_type,
+                        predicates[i],
+                        predicates[j],
                     )
                     with self._lock:
                         if key not in self._correlation_history:
@@ -477,8 +481,7 @@ class PredicateSelectivityTracker:
 
                         prev = self._correlation_ema[key]
                         self._correlation_ema[key] = (
-                            _EMA_ALPHA * corr_factor
-                            + (1 - _EMA_ALPHA) * prev
+                            _EMA_ALPHA * corr_factor + (1 - _EMA_ALPHA) * prev
                         )
 
     def get_correlation_factor(
@@ -625,7 +628,7 @@ class JoinPerformanceTracker:
         if not candidates:
             return None
 
-        best = min(candidates, key=candidates.get)  # type: ignore[arg-type]
+        best = min(candidates, key=candidates.get)  # ty: ignore[no-matching-overload]  # dict.get matches min's key signature at runtime; stubs are too strict
         LOGGER.debug(
             "Join performance tracker: best strategy for %s is %s (avg %.1fms)",
             bucket_key,
@@ -798,7 +801,8 @@ class PlanVersionTracker:
             return best
 
     def get_history(
-        self, fingerprint: QueryFingerprint,
+        self,
+        fingerprint: QueryFingerprint,
     ) -> list[dict[str, Any]]:
         """Get full version history for a fingerprint."""
         with self._lock:
@@ -818,7 +822,9 @@ class PlanVersionTracker:
             ]
 
     def detect_regression(
-        self, fingerprint: QueryFingerprint, version: int,
+        self,
+        fingerprint: QueryFingerprint,
+        version: int,
     ) -> bool:
         """Detect if a plan version is a regression vs the previous best.
 
@@ -839,7 +845,9 @@ class PlanVersionTracker:
             if target is None or not target.execution_times:
                 return False
 
-            target_avg = sum(target.execution_times) / len(target.execution_times)
+            target_avg = sum(target.execution_times) / len(
+                target.execution_times
+            )
 
             # Find best average among other versions
             best_other_avg: float = float("inf")

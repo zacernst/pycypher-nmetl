@@ -700,6 +700,13 @@ class PatternMatcher:
         """
         anon_counter: list[int] = [0]
         pattern = match_clause.pattern
+        if pattern is None:
+            from pycypher.exceptions import PatternComprehensionError
+
+            raise PatternComprehensionError(
+                "MATCH clause has no pattern. "
+                "Provide at least one pattern, e.g. MATCH (n:Person).",
+            )
 
         frames = [
             self.pattern_path_to_binding_frame(

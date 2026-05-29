@@ -173,7 +173,9 @@ class DataSampler:
         raise ValueError(msg)
 
     def _cache_key(self, n: int, strategy: SamplingStrategy) -> str:
-        source_id = self._source if isinstance(self._source, str) else id(self._source)
+        source_id = (
+            self._source if isinstance(self._source, str) else id(self._source)
+        )
         return f"{source_id}:{n}:{strategy.value}"
 
     # -- public API ---------------------------------------------------------
@@ -244,7 +246,9 @@ class DataSampler:
 
         with duckdb.connect() as con:
             con.execute(f"CREATE VIEW source AS SELECT * FROM {read_fn}")  # nosec B608
-            total = con.execute("SELECT COUNT(*) FROM source").fetchone()[0]
+            count_row = con.execute("SELECT COUNT(*) FROM source").fetchone()
+            assert count_row is not None  # COUNT(*) always returns a row
+            total = count_row[0]
 
             if n >= total:
                 return con.execute("SELECT * FROM source").to_arrow_table()
@@ -293,7 +297,9 @@ class DataSampler:
             col_names = [row[0] for row in desc]
             col_types = [row[1] for row in desc]
             # Get row count
-            row_count = con.execute("SELECT COUNT(*) FROM source").fetchone()[0]
+            count_row = con.execute("SELECT COUNT(*) FROM source").fetchone()
+            assert count_row is not None  # COUNT(*) always returns a row
+            row_count = count_row[0]
             return SchemaInfo(
                 column_names=col_names,
                 column_types=col_types,
@@ -333,6 +339,7 @@ class DataSampler:
                 f'MAX("{column}") AS max_val '
                 f"FROM source"
             ).fetchone()
+            assert row is not None  # aggregation always returns a row
             col_idx = table.schema.get_field_index(column)
             dtype = str(table.schema.types[col_idx])
             return ColumnStats(
@@ -368,6 +375,7 @@ class DataSampler:
                 f'MAX("{column}") AS max_val '
                 f"FROM source"
             ).fetchone()
+            assert row is not None  # aggregation always returns a row
             return ColumnStats(
                 name=column,
                 dtype=dtype,
@@ -402,7 +410,9 @@ class QueryTester:
 
     def __init__(self, sample_size: int | None = None) -> None:
         self._sample_size = sample_size
-        self._entities: list[tuple[str, str | pd.DataFrame | pa.Table, str | None]] = []
+        self._entities: list[
+            tuple[str, str | pd.DataFrame | pa.Table, str | None]
+        ] = []
         self._relationships: list[
             tuple[str, str | pd.DataFrame | pa.Table, str, str, str | None]
         ] = []
@@ -448,7 +458,9 @@ class QueryTester:
         Returns:
             ``self`` for chaining.
         """
-        self._relationships.append((rel_type, source, source_col, target_col, id_col))
+        self._relationships.append(
+            (rel_type, source, source_col, target_col, id_col)
+        )
         return self
 
     def run(self, cypher: str) -> QueryResult:
@@ -475,7 +487,13 @@ class QueryTester:
                 else:
                     builder.add_entity(entity_type, source, id_col=id_col)
 
-            for rel_type, source, source_col, target_col, id_col in self._relationships:
+            for (
+                rel_type,
+                source,
+                source_col,
+                target_col,
+                id_col,
+            ) in self._relationships:
                 if self._sample_size is not None:
                     sampler = DataSampler(source)
                     sampled = sampler.sample(

@@ -494,7 +494,7 @@ class ScalarFunctionEvaluator:
             _is_null_literal = len(_non_null) == 0 and _probe.dtype == object
             if _is_list_arg or _is_null_literal:
                 func_meta = (
-                    expression_evaluator.scalar_registry._functions.get(
+                    expression_evaluator.scalar_registry._functions.get(  # ty: ignore[unresolved-attribute]  # scalar_registry attached on concrete BindingExpressionEvaluator, not on the protocol
                         name_lower,
                     )
                 )
@@ -557,7 +557,7 @@ class ScalarFunctionEvaluator:
         if not arg_series:
             n = len(self.frame)
             dummy = pd.Series(range(n), dtype=int)
-            func_meta = expression_evaluator.scalar_registry._functions.get(
+            func_meta = expression_evaluator.scalar_registry._functions.get(  # ty: ignore[unresolved-attribute]  # scalar_registry attached on concrete BindingExpressionEvaluator, not on the protocol
                 name.lower(),
             )
             if func_meta is not None and func_meta.max_args == 0:
@@ -570,7 +570,7 @@ class ScalarFunctionEvaluator:
             LOGGER.debug(
                 msg=f"ScalarFunctionEvaluator: calling scalar '{name}' with {len(arg_series)} args",
             )
-        return expression_evaluator.scalar_registry.execute(name, arg_series)
+        return expression_evaluator.scalar_registry.execute(name, arg_series)  # ty: ignore[unresolved-attribute]  # scalar_registry attached on concrete BindingExpressionEvaluator, not on the protocol
 
 
 # Module-level O(1) dispatch table for special-case scalar functions.

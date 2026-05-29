@@ -707,7 +707,7 @@ class Neo4jSink:
                 if not rows:
                     continue
                 try:
-                    session.run(cypher, rows=rows)  # type: ignore[arg-type]  # neo4j stub expects LiteralString
+                    session.run(cypher, rows=rows)  # ty: ignore[invalid-argument-type]  # neo4j stub expects LiteralString; cypher is constructed at runtime
                     total += len(rows)
                 except Exception:  # noqa: BLE001 — log batch details before re-raising
                     # SECURITY: Log only the keys of the first row, not the

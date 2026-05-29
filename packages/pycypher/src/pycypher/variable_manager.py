@@ -55,7 +55,7 @@ class VariableManager:
 
         """
         _t0 = time.perf_counter()
-        variables = {v.name for v in node.find_all(Variable)}  # type: ignore[union-attr]  # find_all(Variable) returns Variable instances
+        variables = {v.name for v in node.find_all(Variable)}  # ty: ignore[unresolved-attribute]  # find_all(Variable) returns Variable instances; ASTNode return type is too loose
         LOGGER.debug(
             "collect_variables: found=%d  elapsed=%.3fms",
             len(variables),

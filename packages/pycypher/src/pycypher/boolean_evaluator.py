@@ -51,7 +51,7 @@ def kleene_and(left: FrameSeries, right: FrameSeries) -> FrameSeries:
         np.where(
             l_false | r_false,
             False,
-            np.where(l_null | r_null, None, True),  # type: ignore[call-overload]  # numpy stub limitation
+            np.where(l_null | r_null, None, True),  # ty: ignore[no-matching-overload]  # numpy stubs reject None as broadcast scalar
         ),
         dtype=object,
         index=left.index,
@@ -72,7 +72,7 @@ def kleene_or(left: FrameSeries, right: FrameSeries) -> FrameSeries:
         np.where(
             l_true | r_true,
             True,
-            np.where(l_null | r_null, None, False),  # type: ignore[call-overload]  # numpy stub limitation
+            np.where(l_null | r_null, None, False),  # ty: ignore[no-matching-overload]  # numpy stubs reject None as broadcast scalar
         ),
         dtype=object,
         index=left.index,

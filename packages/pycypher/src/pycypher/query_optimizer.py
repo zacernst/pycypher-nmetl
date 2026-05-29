@@ -476,7 +476,8 @@ class JoinReorderingRule(OptimizationRule):
                     cardinality *= 100  # Unknown relationship default
 
         # Apply WHERE selectivity using column statistics if available
-        if getattr(match, "where", None) is not None:
+        match_where = getattr(match, "where", None)
+        if match_where is not None:
             try:
                 # Build a minimal Query wrapper to use QueryPlanAnalyzer
                 from pycypher.query_planner import QueryPlanAnalyzer
@@ -484,10 +485,15 @@ class JoinReorderingRule(OptimizationRule):
                 dummy_query = Query(clauses=[match])
                 analyzer = QueryPlanAnalyzer(dummy_query, context)
                 selectivity = analyzer.estimate_predicate_selectivity(
-                    match.where,
+                    match_where,
                 )
                 cardinality = max(1, int(cardinality * selectivity))
-            except (AttributeError, TypeError, ValueError, KeyError) as _sel_exc:
+            except (
+                AttributeError,
+                TypeError,
+                ValueError,
+                KeyError,
+            ) as _sel_exc:
                 LOGGER.debug(
                     "Failed to estimate WHERE selectivity; falling back to 0.33: %s",
                     _sel_exc,

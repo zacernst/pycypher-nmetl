@@ -24,7 +24,7 @@ _enabled = os.environ.get("PYROSCOPE_ENABLED", "1").lower() not in (
 
 if _enabled:
     try:
-        import pyroscope
+        import pyroscope  # ty: ignore[unresolved-import]  # optional dependency, guarded by _enabled + ImportError catch
 
         pyroscope.configure(
             application_name=os.environ.get("PYROSCOPE_APP_NAME", "nmetl"),

@@ -281,6 +281,12 @@ class ComparisonEvaluator:
             )
         # Apply WHEN clauses in reverse so the first clause takes priority
         for clause in reversed(when_clauses):
+            assert clause.result is not None, (
+                "WHEN clause must have a result expression"
+            )
+            assert clause.condition is not None, (
+                "WHEN clause must have a condition expression"
+            )
             then = evaluator.evaluate(clause.result)
 
             if discriminant is not None:

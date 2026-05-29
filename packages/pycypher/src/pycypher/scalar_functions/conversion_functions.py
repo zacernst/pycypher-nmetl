@@ -284,7 +284,7 @@ def register(registry: ScalarFunctionRegistry) -> None:
             return s
 
         nr = _init_null_result(s)
-        if nr.all_null:
+        if nr.non_null_vals is None:
             return nr.result
 
         # Convert all non-null values to string and normalize (vectorized)

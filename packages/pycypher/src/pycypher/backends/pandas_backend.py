@@ -85,9 +85,9 @@ class PandasBackend:
             # pandas merge uses a hash-based join internally, so pre-sorting
             # both sides is redundant O(n log n) work.  Just pass through to
             # the default merge path which is already O(n).
-            return left.merge(right, on=on, how=how)  # type: ignore[arg-type]  # pandas Literal stub
+            return left.merge(right, on=on, how=how)  # ty: ignore[invalid-argument-type]  # how is a runtime str narrowed by callers
 
-        return left.merge(right, on=on, how=how)  # type: ignore[arg-type]  # pandas Literal stub
+        return left.merge(right, on=on, how=how)  # ty: ignore[invalid-argument-type]  # pandas Literal stub: how is a runtime str narrowed by callers
 
     def rename(
         self,

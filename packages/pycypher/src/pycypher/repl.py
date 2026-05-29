@@ -332,13 +332,18 @@ class CypherRepl(cmd.Cmd):
                 f"\nParse: {parse_ms:.1f}ms  Convert: {convert_ms:.1f}ms"
             )
             click.echo(f"Root: {type(typed_ast).__name__}")
+            if typed_ast is None:
+                click.echo("\n(empty AST)")
+                return
             click.echo(f"\n{typed_ast.pretty()}")
 
             # Show semantic validation
             from pycypher.semantic_validator import SemanticValidator
 
             validator = SemanticValidator()
-            errors = validator.validate(typed_ast)
+            # SemanticValidator.validate accepts a Tree at the type level but
+            # historically operates on any ASTNode root.
+            errors = validator.validate(typed_ast)  # ty: ignore[invalid-argument-type]
             if errors:
                 click.echo("\nValidation errors:")
                 for err in errors:

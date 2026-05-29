@@ -279,12 +279,15 @@ class CollectionExpressionEvaluator:
             """
             if c is None:
                 return None
-            s_idx: int | None = int(s) if s is not None else None  # type: ignore[arg-type]  # s is narrowed to non-None
-            e_idx: int | None = int(e) if e is not None else None  # type: ignore[arg-type]  # e is narrowed to non-None
+            # `s`/`e` are typed `object` for the broad input contract; runtime
+            # values are int|float|str (Cypher slice expressions) — int() handles all.
+            s_idx: int | None = int(s) if s is not None else None  # ty: ignore[invalid-argument-type]
+            e_idx: int | None = int(e) if e is not None else None  # ty: ignore[invalid-argument-type]
             if isinstance(c, str):
                 return c[s_idx:e_idx]
             try:
-                sliced = list(c)[s_idx:e_idx]  # type: ignore[arg-type]  # c is not None (guarded above)
+                # `c` is `object` per signature; runtime is iterable (str | list | tuple).
+                sliced = list(c)[s_idx:e_idx]  # ty: ignore[invalid-argument-type]
             except TypeError:
                 if _DEBUG_ENABLED:
                     LOGGER.debug(
@@ -335,6 +338,10 @@ class CollectionExpressionEvaluator:
         from pycypher.binding_frame import BindingFrame
 
         var_name: str = lc.variable.name if lc.variable else "_lc_var"
+        # ListComprehension is constructed with list_expr set to a real
+        # Expression by the parser; the AST's `Expression | None` typing is
+        # for incremental construction.
+        assert lc.list_expr is not None, "list_comprehension missing list_expr"
         list_series: pd.Series = expression_evaluator.evaluate(lc.list_expr)
         n_rows: int = len(list_series)
 
@@ -477,6 +484,11 @@ class CollectionExpressionEvaluator:
         import numpy as np
 
         from pycypher.binding_frame import BindingFrame
+
+        # Quantifier nodes always carry list_expr/where/variable at parse time.
+        assert q.list_expr is not None, "quantifier missing list_expr"
+        assert q.where is not None, "quantifier missing where"
+        assert q.variable is not None, "quantifier missing variable"
 
         # Get the list values to iterate over
         list_values = expression_evaluator.evaluate(q.list_expr)
@@ -622,6 +634,15 @@ class CollectionExpressionEvaluator:
         if _DEBUG_ENABLED:
             LOGGER.debug("collection: reduce  rows=%d", len(self.frame))
         from pycypher.binding_frame import BindingFrame
+
+        # Reduce nodes always carry list_expr/initial/map_expr/accumulator/variable
+        # at parse time; the AST's `... | None` typings are for incremental
+        # construction.
+        assert r.list_expr is not None, "reduce missing list_expr"
+        assert r.initial is not None, "reduce missing initial"
+        assert r.map_expr is not None, "reduce missing map_expr"
+        assert r.accumulator is not None, "reduce missing accumulator"
+        assert r.variable is not None, "reduce missing variable"
 
         # Step 1: Evaluate list_values and initial_value once over the full frame
         list_values = expression_evaluator.evaluate(r.list_expr)
@@ -915,7 +936,9 @@ class CollectionExpressionEvaluator:
                             if entity_id is not None and not pd.isna(
                                 entity_id,
                             ):
-                                props = self.frame.get_all_properties(  # type: ignore[union-attr]  # frame is BindingFrame at runtime
+                                # frame is the BindingFrame implementation at runtime;
+                                # get_all_properties is not on the protocol declaration.
+                                props = self.frame.get_all_properties(  # ty: ignore[unresolved-attribute]
                                     var_name,
                                     entity_id,
                                 )

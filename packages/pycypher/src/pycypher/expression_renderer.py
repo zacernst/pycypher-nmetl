@@ -33,7 +33,34 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from pycypher.ast_models import Expression
+    from pycypher.ast_models import (
+        And,
+        Arithmetic,
+        BooleanLiteral,
+        CaseExpression,
+        Comparison,
+        CountStar,
+        Expression,
+        FloatLiteral,
+        FunctionInvocation,
+        IndexLookup,
+        IntegerLiteral,
+        LabelPredicate,
+        ListComprehension,
+        Not,
+        NullCheck,
+        NullLiteral,
+        Or,
+        Parameter,
+        PropertyLookup,
+        Reduce,
+        Slicing,
+        StringLiteral,
+        StringPredicate,
+        Unary,
+        Variable,
+        Xor,
+    )
 
 
 class ExpressionRenderer:
@@ -56,9 +83,17 @@ class ExpressionRenderer:
         :meth:`render` call to avoid import-time dependency on
         :mod:`pycypher.ast_models`.
         """
-        self._dispatch: dict[type, Callable[[Expression], str | None]] | None = None
+        # Dispatch values use Callable[..., str | None] (rather than
+        # Callable[[Expression], ...]) because each handler narrows its
+        # parameter type to the specific AST subclass it expects (e.g.
+        # `_render_variable(self, expr: Variable)`). Function-arg types are
+        # contravariant, so a handler taking `Variable` is not assignable to
+        # `Callable[[Expression], ...]`. The runtime dispatch on
+        # `type(expression)` guarantees the actual arg matches the handler's
+        # narrower parameter type.
+        self._dispatch: dict[type, Callable[..., str | None]] | None = None
 
-    def _build_dispatch(self) -> dict[type, Callable[[Expression], str | None]]:
+    def _build_dispatch(self) -> dict[type, Callable[..., str | None]]:
         """Build the type → handler dispatch table.
 
         Returns:
@@ -121,20 +156,22 @@ class ExpressionRenderer:
             Reduce: self._render_reduce,
         }
 
-    def render(self, expression: Expression) -> str | None:
+    def render(self, expression: Expression | None) -> str | None:
         """Return a short human-readable text for *expression*, or ``None``.
 
         Follows the unqualified-property convention:
         ``PropertyLookup(p, 'name')`` → ``"name"``.
 
         Args:
-            expression: Any Cypher AST expression node.
+            expression: Any Cypher AST expression node, or ``None``.
 
         Returns:
-            A string display name, or ``None`` if no representation is
-            available for the expression type.
+            A string display name, or ``None`` if *expression* is ``None`` or
+            no representation is available for the expression type.
 
         """
+        if expression is None:
+            return None
         if self._dispatch is None:
             self._dispatch = self._build_dispatch()
 
@@ -147,35 +184,35 @@ class ExpressionRenderer:
     # Individual renderers (CC ~2–3 each)
     # ------------------------------------------------------------------
 
-    def _render_variable(self, expr: Expression) -> str:
+    def _render_variable(self, expr: Variable) -> str:
         """Render a :class:`Variable` node as its bare name (e.g. ``"n"``)."""
         return expr.name
 
-    def _render_property_lookup(self, expr: Expression) -> str:
+    def _render_property_lookup(self, expr: PropertyLookup) -> str:
         """Render a :class:`PropertyLookup` as the unqualified property name (e.g. ``"name"``)."""
-        return expr.property
+        return expr.property or ""
 
-    def _render_integer(self, expr: Expression) -> str:
+    def _render_integer(self, expr: IntegerLiteral) -> str:
         """Render an :class:`IntegerLiteral` as its decimal string (e.g. ``"42"``)."""
         return str(expr.value)
 
-    def _render_float(self, expr: Expression) -> str:
+    def _render_float(self, expr: FloatLiteral) -> str:
         """Render a :class:`FloatLiteral` as its decimal string (e.g. ``"3.14"``)."""
         return str(expr.value)
 
-    def _render_string(self, expr: Expression) -> str:
+    def _render_string(self, expr: StringLiteral) -> str:
         """Render a :class:`StringLiteral` as its raw value (e.g. ``"hello"``)."""
         return str(expr.value)
 
-    def _render_boolean(self, expr: Expression) -> str:
+    def _render_boolean(self, expr: BooleanLiteral) -> str:
         """Render a :class:`BooleanLiteral` as Cypher ``"true"`` or ``"false"``."""
         return "true" if expr.value else "false"
 
-    def _render_null(self, expr: Expression) -> str:
+    def _render_null(self, expr: NullLiteral) -> str:
         """Render a :class:`NullLiteral` as the string ``"null"``."""
         return "null"
 
-    def _render_function(self, expr: Expression) -> str:
+    def _render_function(self, expr: FunctionInvocation) -> str:
         """Render a :class:`FunctionInvocation` as ``name(arg1, arg2, ...)``.
 
         Handles both list and dict argument representations. Unrenderable
@@ -189,10 +226,18 @@ class ExpressionRenderer:
             arg_list = raw_args.get("arguments") or raw_args.get("args") or []
         else:
             arg_list = []
-        arg_texts = [self.render(a) or "?" for a in arg_list]
+        # Each `a` is an Expression at runtime (ASTNode is the parent
+        # class in declared types but the call sites only pass Expressions);
+        # render() also accepts None and unhandled types safely.
+        arg_texts = [
+            self.render(a) or "?"  # ty: ignore[invalid-argument-type]
+            for a in arg_list
+        ]
         return f"{fname}({', '.join(arg_texts)})"
 
-    def _render_binary_op(self, expr: Expression) -> str:
+    def _render_binary_op(
+        self, expr: Arithmetic | Comparison | StringPredicate
+    ) -> str:
         """Render a binary operation (``Arithmetic``, ``Comparison``, or ``StringPredicate``).
 
         Produces ``"left op right"`` (e.g. ``"n.age > 18"``).  Shared handler
@@ -202,28 +247,28 @@ class ExpressionRenderer:
         right_text = self.render(expr.right) or "?"
         return f"{left_text} {expr.operator} {right_text}"
 
-    def _render_null_check(self, expr: Expression) -> str:
+    def _render_null_check(self, expr: NullCheck) -> str:
         """Render a :class:`NullCheck` as ``"expr IS NULL"`` or ``"expr IS NOT NULL"``."""
         operand_text = self.render(expr.operand) or "?"
         return f"{operand_text} {expr.operator}"
 
-    def _render_not(self, expr: Expression) -> str:
+    def _render_not(self, expr: Not) -> str:
         """Render a :class:`Not` node as ``"NOT expr"``."""
         operand_text = self.render(expr.operand) or "?"
         return f"NOT {operand_text}"
 
-    def _render_connective(self, expr: Expression) -> str:
+    def _render_connective(self, expr: And | Or | Xor) -> str:
         """Render an :class:`And`, :class:`Or`, or :class:`Xor` as ``"a OP b OP c"``."""
         sep = f" {expr.operator} "
         parts = [self.render(op) or "?" for op in expr.operands]
         return sep.join(parts)
 
-    def _render_label_predicate(self, expr: Expression) -> str:
+    def _render_label_predicate(self, expr: LabelPredicate) -> str:
         """Render a :class:`LabelPredicate` as ``"expr:Label1:Label2"``."""
         operand_text = self.render(expr.operand) or "?"
         return f"{operand_text}:{':'.join(expr.labels)}"
 
-    def _render_unary(self, expr: Expression) -> str | None:
+    def _render_unary(self, expr: Unary) -> str | None:
         """Render a :class:`Unary` node as ``"op expr"`` (e.g. ``"-x"``).
 
         Returns ``None`` if the operand is absent.
@@ -233,28 +278,28 @@ class ExpressionRenderer:
         operand_text = self.render(expr.operand) or "?"
         return f"{expr.operator}{operand_text}"
 
-    def _render_parameter(self, expr: Expression) -> str:
+    def _render_parameter(self, expr: Parameter) -> str:
         """Render a :class:`Parameter` as ``"$name"``."""
         return f"${expr.name}"
 
-    def _render_count_star(self, expr: Expression) -> str:
+    def _render_count_star(self, expr: CountStar) -> str:
         """Render a :class:`CountStar` as the string ``"count(*)"``."""
         return "count(*)"
 
-    def _render_index_lookup(self, expr: Expression) -> str:
+    def _render_index_lookup(self, expr: IndexLookup) -> str:
         """Render an :class:`IndexLookup` as ``"expr[index]"``."""
         expr_text = self.render(expr.expression) or "?"
         idx_text = self.render(expr.index) or "?"
         return f"{expr_text}[{idx_text}]"
 
-    def _render_slicing(self, expr: Expression) -> str:
+    def _render_slicing(self, expr: Slicing) -> str:
         """Render a :class:`Slicing` as ``"expr[start..end]"`` with optional bounds."""
         expr_text = self.render(expr.expression) or "?"
         start_text = self.render(expr.start) if expr.start is not None else ""
         end_text = self.render(expr.end) if expr.end is not None else ""
         return f"{expr_text}[{start_text}..{end_text}]"
 
-    def _render_list_comprehension(self, expr: Expression) -> str:
+    def _render_list_comprehension(self, expr: ListComprehension) -> str:
         """Render a :class:`ListComprehension` as ``"[var IN list | map_expr]"``.
 
         Omits the ``| map_expr`` portion when no mapping expression is present.
@@ -268,11 +313,11 @@ class ExpressionRenderer:
             return f"[{var_text} IN {list_text} | {map_text}]"
         return f"[{var_text} IN {list_text}]"
 
-    def _render_case(self, expr: Expression) -> str:
+    def _render_case(self, expr: CaseExpression) -> str:
         """Render a :class:`CaseExpression` as the short label ``"case"``."""
         return "case"
 
-    def _render_reduce(self, expr: Expression) -> str:
+    def _render_reduce(self, expr: Reduce) -> str:
         """Render a :class:`Reduce` expression as ``"reduce(acc, list)"``."""
         acc_text = expr.accumulator.name if expr.accumulator else "?"
         list_text = self.render(expr.list_expr) or "?"

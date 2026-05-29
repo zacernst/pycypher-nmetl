@@ -51,7 +51,7 @@ try:
     from _duckdb import IOException as DuckDBIOException
 except ImportError:
     # Handle case where DuckDB is not available
-    DuckDBIOException = None  # type: ignore[assignment]  # fallback when duckdb unavailable
+    DuckDBIOException = None  # ty: ignore[invalid-assignment]  # fallback when duckdb unavailable
 
 if TYPE_CHECKING:
     pass
@@ -864,7 +864,7 @@ def parse(cypher_query: str, *, as_json: bool, run_validation: bool) -> None:
 # Query sub-command (extracted to _cli_query.py for maintainability)
 # ---------------------------------------------------------------------------
 
-from pycypher._cli_query import (
+from pycypher._cli_query import (  # noqa: E402  # avoiding circular import via _cli_query
     register as _register_query_command,
 )
 

@@ -20,9 +20,9 @@ from typing import Any
 import pandas as pd
 import pyarrow as pa
 
-LOGGER = logging.getLogger(__name__)
-
 from pycypher.ingestion.data_sources import data_source_from_uri
+
+LOGGER = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Data classes
@@ -105,10 +105,7 @@ class DataSourceIntrospector:
             A :class:`SchemaInfo` with column names, types, and row count.
         """
         table = self._load()
-        columns = [
-            {"name": f.name, "type": str(f.type)}
-            for f in table.schema
-        ]
+        columns = [{"name": f.name, "type": str(f.type)} for f in table.schema]
         return SchemaInfo(columns=columns, row_count=len(table))
 
     # -- Sampling -----------------------------------------------------------
@@ -147,7 +144,8 @@ class DataSourceIntrospector:
                 unique_count = len(unique_values)
             except Exception:  # noqa: BLE001 — best-effort stats
                 LOGGER.debug(
-                    "Failed to compute unique count for column %r", f.name,
+                    "Failed to compute unique count for column %r",
+                    f.name,
                     exc_info=True,
                 )
                 unique_count = 0
@@ -160,11 +158,12 @@ class DataSourceIntrospector:
 
                 non_null = col.drop_null()
                 if len(non_null) > 0 and _is_ordered_type(f.type):
-                    min_val = pc.min(non_null).as_py()
-                    max_val = pc.max(non_null).as_py()
+                    min_val = pc.min(non_null).as_py()  # ty: ignore[unresolved-attribute]  # pc.min exists at runtime; pyarrow stubs miss it
+                    max_val = pc.max(non_null).as_py()  # ty: ignore[unresolved-attribute]  # pc.max exists at runtime; pyarrow stubs miss it
             except Exception:  # noqa: BLE001 — best-effort stats
                 LOGGER.debug(
-                    "Failed to compute min/max for column %r", f.name,
+                    "Failed to compute min/max for column %r",
+                    f.name,
                     exc_info=True,
                 )
 

@@ -90,7 +90,7 @@ def register(registry: ScalarFunctionRegistry) -> None:
         except (ValueError, TypeError):
             # Fallback for complex cases
             nr = _init_null_result(s)
-            if nr.all_null:
+            if nr.non_null_vals is None:
                 return nr.result
 
             parsed_values = []
@@ -174,7 +174,7 @@ def register(registry: ScalarFunctionRegistry) -> None:
         except (ValueError, TypeError):
             # Fallback for complex cases
             nr = _init_null_result(s)
-            if nr.all_null:
+            if nr.non_null_vals is None:
                 return nr.result
 
             parsed_values = []
@@ -277,7 +277,7 @@ def register(registry: ScalarFunctionRegistry) -> None:
                 return None
             # Map form: {"years": 1, "days": 3, ...}
             if isinstance(val, dict):
-                return {k: int(val.get(k, 0)) for k in _COMPONENT_KEYS}  # type: ignore[arg-type]  # narrowed by isinstance
+                return {k: int(val.get(k, 0)) for k in _COMPONENT_KEYS}  # ty: ignore[no-matching-overload]  # dict keys are runtime-checked
             # ISO 8601 string form
             sv = str(val)
             m = _DURATION_RE.match(sv)
