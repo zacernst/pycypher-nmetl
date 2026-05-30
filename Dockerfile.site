@@ -46,9 +46,10 @@ WORKDIR /app
 # Copy workspace manifests before source so dependency installation is cached
 # independently of source-only changes.
 COPY pyproject.toml workspace.toml uv.lock ./
-COPY packages/shared/pyproject.toml   packages/shared/
-COPY packages/pycypher/pyproject.toml packages/pycypher/
+COPY packages/shared/pyproject.toml      packages/shared/
+COPY packages/pycypher/pyproject.toml    packages/pycypher/
 COPY packages/fastopendata/pyproject.toml packages/fastopendata/
+COPY packages/pycypher-tui/pyproject.toml packages/pycypher-tui/
 
 # Install all workspace dependencies (skip dev extras).
 RUN uv sync --frozen --no-dev
