@@ -1,0 +1,72 @@
+# Dockerfile.site — production image for the FastOpenData marketing site + API.
+# Intended for GCP Cloud Run deployment.
+#
+# Cloud Run injects $PORT (default 8080); the server binds 0.0.0.0:$PORT.
+# The site is served at /site/ and the API at the root.
+#
+# Build:
+#   docker build -f Dockerfile.site -t fastopendata-site .
+#
+# Run locally:
+#   docker run -p 8080:8080 fastopendata-site
+#
+# Deploy to Cloud Run:
+#   gcloud builds submit --tag gcr.io/PROJECT_ID/fastopendata-site \
+#     --dockerfile Dockerfile.site
+#   gcloud run deploy fastopendata-site \
+#     --image gcr.io/PROJECT_ID/fastopendata-site \
+#     --platform managed --region us-central1 --allow-unauthenticated
+
+FROM python:3.14-slim
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONUNBUFFERED=1
+ENV LC_ALL=C.UTF-8
+ENV LANG=C.UTF-8
+# Cloud Run sets PORT automatically; default matches Cloud Run convention.
+ENV PORT=8080
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    curl \
+    git \
+    python3-dev \
+    osmium-tool \
+    libosmium-dev \
+    libgdal-dev \
+    gdal-bin \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN pip install --no-cache-dir uv
+
+RUN useradd --create-home --shell /bin/bash --uid 1000 app
+
+WORKDIR /app
+
+# Copy workspace manifests before source so dependency installation is cached
+# independently of source-only changes.
+COPY pyproject.toml workspace.toml uv.lock ./
+COPY packages/shared/pyproject.toml   packages/shared/
+COPY packages/pycypher/pyproject.toml packages/pycypher/
+COPY packages/fastopendata/pyproject.toml packages/fastopendata/
+
+# Install all workspace dependencies (skip dev extras).
+RUN uv sync --frozen --no-dev
+
+# Copy application source, config, and site assets.
+COPY packages/shared/src                  packages/shared/src
+COPY packages/pycypher/src                packages/pycypher/src
+COPY packages/fastopendata/src            packages/fastopendata/src
+COPY packages/fastopendata/site           packages/fastopendata/site
+COPY packages/fastopendata/config.toml    packages/fastopendata/config.toml
+
+RUN chown -R app:app /app
+
+USER app
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+    CMD .venv/bin/python -c \
+        "import urllib.request; urllib.request.urlopen('http://localhost:${PORT}/health')" \
+        || exit 1
+
+CMD ["/bin/sh", "-c", "exec .venv/bin/uvicorn fastopendata.api:app --host 0.0.0.0 --port $PORT"]

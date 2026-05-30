@@ -1,0 +1,628 @@
+<html>
+  <body>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+      <div class="mermaid">
+    
+        classDiagram
+          class Addition {
+            children : Generator[Evaluable, None, None]
+            left_side
+            right_side
+            tree() Tree
+          }
+          class Aggregation {
+          }
+          class Alias {
+            alias : str
+            children
+            reference
+            disaggregate() Alias
+            tree() Tree
+          }
+          class AliasedName {
+            children : Generator[str]
+            name : str
+            tree() Tree
+          }
+          class And {
+            tree() Tree
+          }
+          class Appended {
+            lineage : NoneType
+          }
+          class Assignment {
+            assignment : str
+            children : List[Assignment]
+            parent : Optional[Assignment]
+            variable : str
+            assignments() Dict[str, str]
+            leaf_assignments() List[Dict[str, str]]
+            leaves() Generator[Assignment]
+            parents() List[Assignment]
+            set_child(assignment: Assignment) None
+            walk() Generator[Assignment]
+          }
+          class AtomicFact {
+            lineage : Optional[Lineage | None]
+          }
+          class BakProjection {
+            children : Generator[AliasedName | Alias, None, None]
+            lookups : List[AliasedName | Alias]
+            tree() Tree
+          }
+          class BinaryBoolean {
+            left_side
+            right_side
+            tree() Tree
+          }
+          class Collect {
+            children
+            object_attribute_lookup
+            disaggregate()
+            tree()
+          }
+          class Collection {
+            children : Generator[Evaluable, Any, Any]
+            value : List[Evaluable]
+            values : List[Evaluable]
+            pythonify() List[Any]
+            tree() Tree
+          }
+          class Cypher {
+            attribute_names : List[str]
+            children : Generator[TreeMixin]
+            cypher
+            get_return_clause() Return
+            pythonify() Any
+            tree() Tree
+          }
+          class CypherParser {
+            cypher_query : str
+            parse_tree : NoneType
+            evaluate() Any
+            parse() Any
+          }
+          class Distinct {
+            children
+            collection
+            tree()
+          }
+          class Division {
+            left_side
+            right_side
+            tree() Tree
+          }
+          class Equals {
+            tree() Tree
+          }
+          class Etcd3FactCollection {
+            LAST_KEY : str
+            bloom
+            bloom_filter_diversions : int
+            cache_hits : int
+            client
+            put_counter : int
+            secondary_cache : list
+            secondary_cache_max_size : int
+            transaction
+            append(fact: AtomicFact) None
+            close()
+            delete_fact(fact)
+            insert(_, value)
+            keys() Generator[str]
+            query_node_label(query: QueryNodeLabel)
+            query_value_of_node_attribute(query: QueryValueOfNodeAttribute)
+            query_value_of_node_attribute_bak(query: QueryValueOfNodeAttribute)
+            values() Generator[AtomicFact]
+          }
+          class Evaluable {
+            is_aggregation : bool
+          }
+          class EvaluationError {
+          }
+          class FactCollection {
+            daemon_queue : Queue
+            diversion_miss_counter : int
+            diverted_counter : int
+            put_counter : int
+            session : Optional[Session]
+            start_daemon_process : bool
+            yielded_counter : int
+            append(fact: AtomicFact)* None
+            attributes_for_specific_node(node_id: str) Dict[str, Any]
+            attributes_of_label()
+            attributes_of_node_with_label(label: str) Generator[str]
+            close()*
+            is_empty() bool
+            keys()* Generator[str]
+            node_has_attribute_with_specific_value_facts(attribute: str, value: Any)
+            node_has_attribute_with_value_facts()
+            node_has_label_facts()
+            node_label_attribute_inventory()
+            node_with_id_exists(node_id: str) bool
+            nodes_with_label(label: str) Generator[str]
+            query(query: Query) Any
+            query_node_label(query: QueryNodeLabel) str | NullResult
+            query_relationship_source(query: QuerySourceNodeOfRelationship) str | NullResult
+            query_relationship_target(query: QueryTargetNodeOfRelationship) str | NullResult
+            query_source_node_of_relationship(query: QuerySourceNodeOfRelationship) str
+            query_target_node_of_relationship(query: QueryTargetNodeOfRelationship) str
+            query_value_of_node_attribute(query: QueryValueOfNodeAttribute)
+            relationship_has_attribute_with_value_facts()
+            relationship_has_label_facts()
+            relationship_has_source_node_facts()
+            relationship_has_target_node_facts()
+            relationships_with_label(label: str) Generator[str]
+            relationships_with_specific_source_node_facts(source_node_id: str) Generator[FactRelationshipHasSourceNode]
+            relationships_with_specific_target_node_facts(target_node_id: str) Generator[FactRelationshipHasTargetNode]
+            rows_by_node_label(label: str) Generator[Dict[str, Any]]
+            start_daemon()
+          }
+          class FactNodeHasAttributeWithValue {
+            attribute : str
+            node_id : str
+            value : Any
+          }
+          class FactNodeHasLabel {
+            label : str
+            node_id : str
+          }
+          class FactNodeRelatedToNode {
+            node1_id : str
+            node2_id : str
+            relationship_label : str
+          }
+          class FactRelationshipHasAttributeWithValue {
+            attribute : str
+            relationship_id : str
+            value : Any
+          }
+          class FactRelationshipHasLabel {
+            relationship_id : str
+            relationship_label : str
+          }
+          class FactRelationshipHasSourceNode {
+            relationship_id : str
+            source_node_id : str
+          }
+          class FactRelationshipHasTargetNode {
+            relationship_id : str
+            target_node_id : str
+          }
+          class FoundationDBFactCollection {
+            db
+            pending_facts : list
+            put_counter
+            sync_writes : bool
+            thread_pool : ThreadPoolExecutor
+            write_queue_worker : Thread
+            yielded_counter
+            append(fact: AtomicFact) None
+            approx_len(max_keys: Optional[int], increment: int)
+            attributes_for_specific_node(node_id: str) Dict[str, Any]
+            close() None
+            dump_facts_to_file(filename: str)
+            enumerate_in_batches(begin: Optional[bytes], end: Optional[bytes], batch_size: Optional[int])
+            first_key_after(key: bytes, offset: Optional[int])
+            keys() Generator[str]
+            make_index_for_fact(fact: AtomicFact) bytes
+            make_secondary_index_for_fact(fact: AtomicFact) bytes
+            node_has_attribute_with_specific_value_facts(attribute: str, value: Any)
+            node_has_attribute_with_value_facts()
+            node_has_label_facts()
+            node_has_specific_label_facts(label: str)
+            nodes_with_label(label: str) Generator[str]
+            nodes_with_label_facts(label: str) Generator[str]
+            parallel_read(max_keys: Optional[int], num_threads: Optional[int], increment: Optional[int])
+            query_node_label(query: QueryNodeLabel)
+            query_relationship_source(query: QuerySourceNodeOfRelationship) str | NullResult
+            query_relationship_target(query: QueryTargetNodeOfRelationship) str | NullResult
+            query_value_of_node_attribute(query: QueryValueOfNodeAttribute)
+            relationship_has_source_node_facts()
+            relationships_with_label(label: str) Generator[str]
+            relationships_with_specific_source_node_facts(source_node_id: str) Generator[str, None, None]
+            relationships_with_specific_target_node_facts(target_node_id: str) Generator[str, None, None]
+            serialize() None
+            skip_keys(offset: Optional[int], max_keys: Optional[int])
+            values() Generator[AtomicFact]
+          }
+          class FromMapping {
+            mapping : NoneType
+            row : NoneType
+          }
+          class FromRawData {
+            data_source_name
+          }
+          class GreaterThan {
+            left_side_types
+            right_side_types
+            tree() Tree
+          }
+          class InvalidCastError {
+            message
+          }
+          class KeyValue {
+            keys()* Generator[str]
+            make_index_for_fact(fact: AtomicFact) str | bytes
+            make_item_lookup(fact: AtomicFact) str
+            make_secondary_index_for_fact(fact: AtomicFact) str | bytes
+            values()* Generator[AtomicFact]
+          }
+          class LessThan {
+            tree() Tree
+          }
+          class Lineage {
+            time : datetime
+          }
+          class List_ {
+            children
+            items : List[Any]
+            tree() Tree
+          }
+          class Literal {
+            value : Any
+            pythonify() Any
+            tree()
+          }
+          class Mapping {
+            children
+            key : str
+            value
+            tree() Tree
+          }
+          class MappingSet {
+            children : Generator[Mapping]
+            mappings : List[Mapping]
+            tree() Tree
+          }
+          class Match {
+            children
+            pattern
+            where_clause
+            with_clause
+            get_instance_disjunctions(fact_collection: FactCollection, variable_substitution_dict)
+            get_mutual_exclusions(fact_collection: FactCollection, instance_disjunctions)
+            get_relationship_assertions(fact_collection, variable_substitution_dict)
+            get_variable_substitution_dict(fact_collection: FactCollection)
+            tree() Tree
+          }
+          class MatchList {
+            match_list
+            tree() Tree
+          }
+          class Multiplication {
+            left_side
+            right_side
+            tree() Tree
+          }
+          class NetworkX {
+            graph : DiGraph
+            make_fact_collection() FactCollection
+          }
+          class Node {
+            children : Generator[NodeNameLabel | Mapping]
+            mapping_set
+            name_label
+            tree() Tree
+          }
+          class NodeNameLabel {
+            children : Generator[str]
+            label : str
+            name : str
+            tree()
+          }
+          class Not {
+            argument
+            argument_types : bool
+            tree() Tree
+          }
+          class NullResult {
+            query
+          }
+          class ObjectAsSeries {
+            children : Generator[Projection | Alias]
+            lookups : List[Alias]
+            tree() Tree
+          }
+          class ObjectAttributeLookup {
+            attribute : str
+            children : Generator[str]
+            object : str
+            tree() Tree
+          }
+          class Or {
+            tree() Tree
+          }
+          class Predicate {
+            children : Generator[TreeMixin]
+            left_side
+            right_side
+          }
+          class Projection {
+            projection : Dict[str, Any]
+            conflicts_with(projection: Projection) bool
+            find_variable(variable: str) Any
+            is_empty() bool
+            items() Generator[tuple[str, Any], None, None]
+            keys() Generator[str, None, None]
+            pythonify() dict[str, Any]
+            subset(aliases: list[str]) Projection
+            tree() Tree
+            update(other: Projection) None
+            values() Generator[Any, None, None]
+          }
+          class ProjectionList {
+            projection_list : List[Projection], list
+            append(projection: Projection) None
+            find_variable(variable: str) Any
+            is_empty() bool
+            pythonify() list[dict[str, Any]]
+            tree() Tree
+            unique() None
+            zip(other_list: ProjectionList) ProjectionList
+          }
+          class ProjectionTree {
+            children : List[ProjectionTree]
+            parent : Optional[Projection | ProjectionList]
+            root : Projection | ProjectionList
+          }
+          class Query {
+          }
+          class Query {
+            children : Generator[Match | Return]
+            match_clause
+            return_clause
+            tree() Tree
+          }
+          class QueryNodeLabel {
+            node_id : str
+          }
+          class QueryRelationshipLabel {
+            relationship_id : str
+          }
+          class QueryRelationshipsWithSourceNode {
+            node_id : str
+          }
+          class QueryRelationshipsWithTargetNode {
+            node_id : str
+          }
+          class QuerySourceNodeOfRelationship {
+            relationship_id : str
+          }
+          class QueryTargetNodeOfRelationship {
+            relationship_id : str
+          }
+          class QueryValueOfNodeAttribute {
+            attribute : str
+            node_id : str
+          }
+          class QueryValueOfRelationshipAttribute {
+            attribute : str
+            relationship_id : str
+          }
+          class Relationship {
+            children
+            name : NoneType
+            name_label
+            tree() Tree
+          }
+          class RelationshipChain {
+            children : Generator[TreeMixin]
+            relationship : RelationshipLeftRight | RelationshipRightLeft
+            source_node
+            target_node
+            tree() Tree
+          }
+          class RelationshipChainList {
+            children : Generator[RelationshipChain]
+            relationships : List[RelationshipChain]
+            free_variables(projection: Projection) Dict[str, List[TreeMixin]]
+            get_instance_disjunctions(fact_collection: FactCollection, variable_substitution_dict) list[tuple[Any, ...]]
+            get_mutual_exclusions(fact_collection: FactCollection, instance_disjunctions) list[tuple[int, int]]
+            get_relationship_assertions(fact_collection, variable_substitution_dict)
+            get_variable_substitution_dict(fact_collection: FactCollection)
+            tree() Tree
+            variables() Dict[str, List[TreeMixin]]
+          }
+          class RelationshipLeftRight {
+            children : Generator[Relationship]
+            relationship
+            tree() Tree
+          }
+          class RelationshipRightLeft {
+            children
+            relationship
+            tree()
+          }
+          class Return {
+            children
+            projection
+            variables : List[str]
+            tree() Tree
+          }
+          class ReturnProjection {
+            children : Generator[Projection | Alias]
+            lookups : List[Alias]
+            tree() Tree
+          }
+          class RocksDBFactCollection {
+            LAST_KEY : str
+            db
+            db_path : str
+            diversion_miss_counter : int
+            diverted_counter : int
+            iter
+            options
+            put_counter
+            write_options
+            yielded_counter
+            append(fact: AtomicFact) None
+            attributes_for_specific_node(node_id: str) Dict[str, Any]
+            close()
+            keys() Generator[str]
+            node_has_attribute_with_specific_value_facts(attribute: str, value: Any)
+            nodes_with_label(label: str) Generator[str]
+            nodes_with_label_facts(label: str) Generator[str]
+            query_node_label(query: QueryNodeLabel)
+            query_value_of_node_attribute(query: QueryValueOfNodeAttribute)
+            range_read(start_key, end_key) Generator[Any, Any]
+            relationship_has_source_node_facts()
+            relationship_has_target_node_facts()
+            values() Generator[AtomicFact]
+          }
+          class Shim {
+            make_fact_collection()*
+          }
+          class SimpleFactCollection {
+            facts : List[AtomicFact]
+            append(fact: AtomicFact)
+            close()*
+            insert(index: int, value: AtomicFact) FactCollection
+            is_empty() bool
+            keys() Generator[AtomicFact]
+            make_index_for_fact(fact: AtomicFact) bytes
+          }
+          class Size {
+            children
+            collect
+            disaggregate()
+            tree()
+          }
+          class Subtraction {
+            left_side_types
+            right_side_types
+            tree() Tree
+          }
+          class TreeMixin {
+            children : Generator[TreeMixin | str | None]
+            parent : NoneType
+            parse_obj
+            root
+            enclosing_class(cls: Type[TreeMixin]) TreeMixin
+            get_node_variables() Generator[Tuple[str, TreeMixin], None, None]
+            get_vertex_variables() Generator[Tuple[str, TreeMixin], None, None]
+            print_tree()
+            tree()* Tree
+            walk() Generator[TreeMixin]
+          }
+          class Where {
+            children
+            predicate
+            tree() Tree
+          }
+          class WithClause {
+            children : Generator[ObjectAsSeries]
+            empty : bool
+            incoming_projection_list : ProjectionList
+            lookups
+            aggregated_aliases() List[Alias]
+            disaggregated_with_clause() WithClause
+            non_aggregated_aliases() List[Alias]
+            tree() Tree
+          }
+          class WrongCypherTypeError {
+            message
+          }
+          FactNodeHasAttributeWithValue --|> AtomicFact
+          FactNodeHasLabel --|> AtomicFact
+          FactNodeRelatedToNode --|> AtomicFact
+          FactRelationshipHasAttributeWithValue --|> AtomicFact
+          FactRelationshipHasLabel --|> AtomicFact
+          FactRelationshipHasSourceNode --|> AtomicFact
+          FactRelationshipHasTargetNode --|> AtomicFact
+          Appended --|> Lineage
+          FromMapping --|> Lineage
+          FromRawData --|> Lineage
+          Addition --|> Evaluable
+          Addition --|> Predicate
+          Alias --|> Evaluable
+          AliasedName --|> Evaluable
+          And --|> BinaryBoolean
+          And --|> Evaluable
+          BinaryBoolean --|> Predicate
+          Collect --|> Aggregation
+          Collect --|> Evaluable
+          Collection --|> Evaluable
+          Distinct --|> Evaluable
+          Division --|> Evaluable
+          Division --|> Predicate
+          Equals --|> BinaryBoolean
+          Equals --|> Evaluable
+          GreaterThan --|> Evaluable
+          GreaterThan --|> Predicate
+          LessThan --|> Evaluable
+          LessThan --|> Predicate
+          Literal --|> Evaluable
+          Match --|> Evaluable
+          Multiplication --|> Evaluable
+          Multiplication --|> Predicate
+          Not --|> Evaluable
+          Not --|> Predicate
+          ObjectAsSeries --|> Evaluable
+          ObjectAttributeLookup --|> Evaluable
+          Or --|> BinaryBoolean
+          Or --|> Evaluable
+          Query --|> Evaluable
+          ReturnProjection --|> Evaluable
+          Size --|> Aggregation
+          Size --|> Evaluable
+          Subtraction --|> Evaluable
+          Subtraction --|> Predicate
+          Where --|> Evaluable
+          WithClause --|> Evaluable
+          QueryNodeLabel --|> Query
+          QueryRelationshipLabel --|> Query
+          QueryRelationshipsWithSourceNode --|> Query
+          QueryRelationshipsWithTargetNode --|> Query
+          QuerySourceNodeOfRelationship --|> Query
+          QueryTargetNodeOfRelationship --|> Query
+          QueryValueOfNodeAttribute --|> Query
+          QueryValueOfRelationshipAttribute --|> Query
+          Projection --|> ProjectionTree
+          ProjectionList --|> ProjectionTree
+          Assignment --> Assignment : children
+          Assignment --> Assignment : parent
+          Node --> MappingSet : mapping_set
+          Node --> NodeNameLabel : name_label
+          ProjectionTree --> ProjectionTree : children
+          Alias --o ObjectAsSeries : lookups
+          Alias --o ReturnProjection : lookups
+          Collect --o Size : collect
+          Collection --o Distinct : collection
+          Evaluable --o Addition : left_side
+          Evaluable --o Addition : right_side
+          Evaluable --o Alias : reference
+          Evaluable --o BinaryBoolean : left_side
+          Evaluable --o BinaryBoolean : right_side
+          Evaluable --o Collection : values
+          Evaluable --o Collection : value
+          Evaluable --o Division : left_side
+          Evaluable --o Division : right_side
+          Evaluable --o Multiplication : left_side
+          Evaluable --o Multiplication : right_side
+          Evaluable --o Not : argument
+          Evaluable --o Predicate : left_side
+          Evaluable --o Predicate : right_side
+          Evaluable --o Where : predicate
+          Literal --o Mapping : value
+          Mapping --o MappingSet : mappings
+          Match --o Query : match_clause
+          Node --o RelationshipChain : source_node
+          Node --o RelationshipChain : target_node
+          NodeNameLabel --o Relationship : name_label
+          ObjectAsSeries --o Return : projection
+          ObjectAsSeries --o WithClause : lookups
+          ObjectAttributeLookup --o Collect : object_attribute_lookup
+          Query --o Cypher : cypher
+          Relationship --o RelationshipLeftRight : relationship
+          Relationship --o RelationshipRightLeft : relationship
+          RelationshipChain --o RelationshipChainList : relationships
+          RelationshipChainList --o Match : pattern
+          Return --o Query : return_clause
+          Where --o Match : where_clause
+          WithClause --o Match : with_clause
+          Projection --o ProjectionList : projection_list
+  
+       </div>
+  </body>
+</html>

@@ -1,0 +1,81 @@
+name: Deploy to Cloud Run
+
+# Runs only after the CI workflow succeeds on main — never on PRs or failed CI.
+on:
+  workflow_run:
+    workflows: [CI]
+    branches: [main]
+    types: [completed]
+
+# Workload Identity Federation requires id-token write permission.
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  PROJECT_ID: fastopendata-392817
+  REGION: us-central1
+  SERVICE: fastopendata-site
+  # Artifact Registry repo must exist before first push:
+  #   gcloud artifacts repositories create fastopendata-site \
+  #     --repository-format=docker --location=us-central1 \
+  #     --project=fastopendata-392817
+  REGISTRY: us-central1-docker.pkg.dev
+  AR_REPO: fastopendata-site
+
+jobs:
+  deploy:
+    name: Build & Deploy
+    runs-on: ubuntu-latest
+    # Only proceed when CI actually passed — skip on failure/cancellation.
+    if: github.event.workflow_run.conclusion == 'success'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # Check out the commit that triggered CI, not the default HEAD.
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      # Required GitHub secrets:
+      #   GCP_WORKLOAD_IDENTITY_PROVIDER — full provider resource name, e.g.:
+      #     projects/123456789/locations/global/workloadIdentityPools/github/providers/github
+      #   GCP_SERVICE_ACCOUNT — service account email, e.g.:
+      #     github-actions@fastopendata.iam.gserviceaccount.com
+      #
+      # The service account needs these IAM roles:
+      #   roles/run.admin
+      #   roles/artifactregistry.writer
+      #   roles/iam.serviceAccountUser
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.REGISTRY }} --quiet
+
+      - name: Build Docker image
+        run: |
+          IMAGE="${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.AR_REPO }}/${{ env.SERVICE }}"
+          SHA_TAG="${IMAGE}:${{ github.event.workflow_run.head_sha }}"
+          docker build -f Dockerfile.site -t "$SHA_TAG" -t "${IMAGE}:latest" .
+          echo "SHA_TAG=$SHA_TAG" >> "$GITHUB_ENV"
+          echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
+
+      - name: Push to Artifact Registry
+        run: |
+          docker push "$SHA_TAG"
+          docker push "$IMAGE:latest"
+
+      - name: Deploy to Cloud Run
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ${{ env.SERVICE }}
+          region: ${{ env.REGION }}
+          image: ${{ env.SHA_TAG }}
+          flags: --allow-unauthenticated
+
+      - name: Print service URL
+        run: echo "Deployed to ${{ steps.deploy.outputs.url }}"

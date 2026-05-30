@@ -1,0 +1,528 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Dashboard — FastOpenData</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css" />
+<style>
+  .dash-layout {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    gap: 40px;
+    padding: 40px 0 80px;
+    align-items: start;
+  }
+  @media (max-width: 900px) { .dash-layout { grid-template-columns: 1fr; } .dash-side { display: none; } }
+
+  .dash-side {
+    position: sticky; top: calc(var(--header-h) + 32px);
+    display: flex; flex-direction: column;
+    gap: 6px;
+  }
+  .dash-side .user {
+    border: 1px solid var(--rule);
+    border-radius: var(--r);
+    padding: 14px;
+    background: var(--surface);
+    margin-bottom: 16px;
+    display: flex; gap: 11px; align-items: center;
+  }
+  .dash-side .avatar {
+    width: 36px; height: 36px;
+    border-radius: 999px;
+    background: var(--ink);
+    color: var(--paper);
+    display: grid; place-items: center;
+    font-family: var(--font-mono);
+    font-weight: 600;
+    font-size: 14px;
+  }
+  .dash-side .user .name { font-size: 14px; font-weight: 600; }
+  .dash-side .user .plan { font-family: var(--font-mono); font-size: 11px; color: var(--accent); text-transform: uppercase; letter-spacing: 0.08em; }
+  .dash-side a.item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 12px;
+    border-radius: 6px;
+    font-size: 14px;
+    color: var(--ink-2);
+  }
+  .dash-side a.item:hover { background: var(--paper-2); color: var(--ink); }
+  .dash-side a.item.active {
+    background: var(--ink);
+    color: var(--paper);
+  }
+  .dash-side a.item.active svg { color: var(--paper); }
+  .dash-side a.item svg { color: var(--ink-3); }
+
+  .dash-main { min-width: 0; }
+  .dash-head {
+    display: flex; justify-content: space-between; align-items: flex-end;
+    gap: 24px;
+    margin-bottom: 32px;
+    flex-wrap: wrap;
+  }
+  .dash-head h1 { font-size: 32px; letter-spacing: -0.02em; }
+  .dash-head p { margin: 4px 0 0; color: var(--ink-3); font-size: 14px; }
+
+  /* Usage cards */
+  .usage-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+  @media (max-width: 800px) { .usage-grid { grid-template-columns: repeat(2, 1fr); } }
+  .ucard {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: var(--r);
+    padding: 18px;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .ucard .lbl {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink-3);
+  }
+  .ucard .val {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    font-feature-settings: "tnum" on;
+    color: var(--ink);
+  }
+  .ucard .delta {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--accent);
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+  .ucard .delta.down { color: var(--danger); }
+  .ucard .bar {
+    margin-top: 6px;
+    height: 4px;
+    background: var(--paper-2);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  .ucard .bar > span {
+    display: block; height: 100%;
+    background: var(--ink);
+    border-radius: 999px;
+  }
+
+  /* Chart */
+  .chart-card {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: var(--r);
+    padding: 22px;
+    margin-bottom: 28px;
+  }
+  .chart-head {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .chart-head h3 { font-size: 16px; font-weight: 600; }
+  .chart-toolbar {
+    display: flex; gap: 4px;
+    background: var(--paper-2);
+    border-radius: 6px;
+    padding: 3px;
+  }
+  .chart-toolbar button {
+    padding: 5px 10px;
+    background: transparent;
+    border: 0;
+    font: 500 12px var(--font-mono);
+    color: var(--ink-2);
+    border-radius: 4px;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .chart-toolbar button.on { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+  .chart-svg-wrap {
+    height: 200px;
+    position: relative;
+  }
+  .chart-svg-wrap svg { width: 100%; height: 100%; }
+
+  /* Section heading */
+  .dash-section-head {
+    display: flex; justify-content: space-between; align-items: center;
+    margin: 40px 0 16px;
+  }
+  .dash-section-head h2 { font-size: 18px; font-weight: 600; }
+
+  /* Keys */
+  .key-list {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: var(--r);
+    overflow: hidden;
+  }
+  .key-row {
+    display: grid;
+    grid-template-columns: 200px 1fr 110px 130px 90px;
+    gap: 18px;
+    align-items: center;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--rule);
+    font-size: 14px;
+  }
+  .key-row:last-child { border-bottom: 0; }
+  .key-row.head {
+    background: var(--paper-2);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink-3);
+    font-weight: 500;
+  }
+  .key-row .kname { font-weight: 600; }
+  .key-row .kval { font-family: var(--font-mono); color: var(--ink-2); font-size: 13px; }
+  .key-row .kmeta { font-family: var(--font-mono); color: var(--ink-3); font-size: 12px; }
+  .key-row .status {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: var(--font-mono); font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.08em;
+  }
+  .key-row .status .dot { width: 6px; height: 6px; border-radius: 999px; background: var(--accent); }
+  .key-row .status.live { color: var(--accent); }
+  .key-row .status.test .dot { background: var(--warn); }
+  .key-row .status.test { color: var(--warn); }
+  .key-row .actions { text-align: right; }
+  .key-row .actions button {
+    background: transparent;
+    border: 0;
+    color: var(--ink-3);
+    cursor: pointer;
+    padding: 4px 6px;
+  }
+  .key-row .actions button:hover { color: var(--ink); }
+  @media (max-width: 900px) {
+    .key-row { grid-template-columns: 1fr 1fr; }
+    .key-row > .kmeta { display: none; }
+    .key-row > .status { grid-column: 1; }
+    .key-row > .actions { grid-column: 2; }
+    .key-row.head { display: none; }
+  }
+
+  /* Requests log */
+  .log {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: var(--r);
+    overflow: hidden;
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+  }
+  .log-row {
+    display: grid;
+    grid-template-columns: 80px 90px 1fr 70px 90px;
+    gap: 18px;
+    align-items: center;
+    padding: 9px 18px;
+    border-bottom: 1px solid var(--rule);
+    color: var(--ink-2);
+  }
+  .log-row:last-child { border-bottom: 0; }
+  .log-row.head {
+    background: var(--paper-2);
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink-3);
+    padding: 11px 18px;
+  }
+  .log-row .status-200 { color: var(--accent); }
+  .log-row .status-4xx { color: var(--warn); }
+  .log-row .status-5xx { color: var(--danger); }
+  .log-row .ms { text-align: right; color: var(--ink); font-feature-settings: "tnum" on; }
+  .log-row .ts { color: var(--ink-3); font-size: 11.5px; }
+
+  /* Pseudo modal for creating key */
+  .new-key {
+    background: var(--ink);
+    color: var(--paper);
+    border-radius: var(--r);
+    padding: 18px 22px;
+    margin-top: 16px;
+    display: flex; align-items: center; gap: 16px;
+    font-family: var(--font-mono);
+    font-size: 13px;
+  }
+  .new-key code {
+    flex: 1;
+    background: rgba(255,255,255,0.06);
+    padding: 8px 12px;
+    border-radius: 6px;
+    color: var(--paper);
+  }
+  .new-key .label { color: var(--accent); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; }
+  .new-key button.copy {
+    background: var(--paper); color: var(--ink); border: 0;
+    padding: 7px 14px; border-radius: 6px;
+    font-family: var(--font-mono); font-size: 12px; font-weight: 600;
+    cursor: pointer;
+    text-transform: uppercase; letter-spacing: 0.06em;
+  }
+</style>
+</head>
+<body>
+<header class="site-header" data-screen-label="Dashboard">
+  <div class="wrap">
+    <a href="index.html" class="brand"><span class="brand-mark">{}</span> FastOpenData<span class="dot">.</span></a>
+    <nav class="nav">
+      <a href="index.html">Home</a>
+      <a href="demo.html">Demo</a>
+      <a href="docs.html">Docs</a>
+      <a href="catalog.html">Data catalog</a>
+      <a href="pricing.html">Pricing</a>
+    </nav>
+    <div class="nav-cta">
+      <a href="dashboard.html" class="btn btn-ghost btn-sm">Account</a>
+      <a href="index.html" class="btn btn-sm">Sign out</a>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="dash-layout">
+    <!-- Sidebar -->
+    <aside class="dash-side">
+      <div class="user">
+        <div class="avatar">SR</div>
+        <div>
+          <div class="name">sara@frontline.dev</div>
+          <div class="plan">Pro plan</div>
+        </div>
+      </div>
+      <a href="#" class="item active">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 12l2-2 4 4 8-8 2 2"/><path d="M3 20h18"/></svg>
+        Overview
+      </a>
+      <a href="#" class="item">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z"/></svg>
+        API keys
+      </a>
+      <a href="#" class="item">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 4h16v16H4z"/><path d="M4 10h16M10 4v16"/></svg>
+        Usage &amp; logs
+      </a>
+      <a href="#" class="item">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+        Billing
+      </a>
+      <a href="#" class="item">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg>
+        Settings
+      </a>
+      <a href="#" class="item">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="9" cy="7" r="3"/><path d="M3 21v-1a5 5 0 0 1 8-4M14 11a4 4 0 0 0 0-8"/><path d="M21 21v-1a5 5 0 0 0-4-4.9"/></svg>
+        Team
+      </a>
+    </aside>
+
+    <!-- Main -->
+    <main class="dash-main">
+      <div class="dash-head">
+        <div>
+          <span class="eyebrow">Welcome back, Sara</span>
+          <h1 style="margin-top: 6px;">Overview</h1>
+          <p>You've used 38% of your monthly quota. Next refresh in 11 days.</p>
+        </div>
+        <div style="display: flex; gap: 10px;">
+          <button class="btn btn-ghost btn-sm">View invoices</button>
+          <button class="btn btn-sm" id="create-key">+ New API key</button>
+        </div>
+      </div>
+
+      <!-- Usage stats -->
+      <div class="usage-grid">
+        <div class="ucard">
+          <span class="lbl">Requests this month</span>
+          <span class="val">189,442</span>
+          <span class="delta">↑ 12.4% vs. last mo.</span>
+          <div class="bar"><span style="width: 38%"></span></div>
+        </div>
+        <div class="ucard">
+          <span class="lbl">Quota remaining</span>
+          <span class="val">310,558</span>
+          <span class="delta">of 500,000</span>
+          <div class="bar"><span style="width: 62%; background: var(--accent)"></span></div>
+        </div>
+        <div class="ucard">
+          <span class="lbl">p50 latency</span>
+          <span class="val">42<span style="font-size: .6em; color: var(--ink-3)">ms</span></span>
+          <span class="delta">↓ 8 ms vs. last week</span>
+        </div>
+        <div class="ucard">
+          <span class="lbl">Error rate</span>
+          <span class="val">0.04%</span>
+          <span class="delta down">↑ 0.01% vs. last week</span>
+        </div>
+      </div>
+
+      <!-- Chart -->
+      <div class="chart-card">
+        <div class="chart-head">
+          <h3>Requests · last 30 days</h3>
+          <div class="chart-toolbar">
+            <button>24h</button>
+            <button>7d</button>
+            <button class="on">30d</button>
+            <button>90d</button>
+          </div>
+        </div>
+        <div class="chart-svg-wrap">
+          <svg viewBox="0 0 600 200" preserveAspectRatio="none">
+            <!-- gridlines -->
+            <g stroke="#E5E2D8" stroke-width="0.5">
+              <line x1="0" y1="40" x2="600" y2="40"/>
+              <line x1="0" y1="80" x2="600" y2="80"/>
+              <line x1="0" y1="120" x2="600" y2="120"/>
+              <line x1="0" y1="160" x2="600" y2="160"/>
+            </g>
+            <!-- bars -->
+            <g>
+              <!-- 30 bars -->
+              <g id="bars"></g>
+            </g>
+          </svg>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 11px; color: var(--ink-3); margin-top: 8px; text-transform: uppercase; letter-spacing: 0.08em;">
+          <span>Apr 24</span><span>May 4</span><span>May 14</span><span>May 24</span>
+        </div>
+      </div>
+
+      <!-- API keys -->
+      <div class="dash-section-head">
+        <h2>API keys</h2>
+        <span style="font-family: var(--font-mono); font-size: 12px; color: var(--ink-3);">3 of 5 used</span>
+      </div>
+
+      <div class="new-key" id="new-key" style="display: none;">
+        <div>
+          <div class="label">New key</div>
+          <div style="margin-top: 4px; font-size: 11px; color: rgba(230,225,220,0.7); text-transform: uppercase; letter-spacing: 0.06em;">Copy now — won't be shown again</div>
+        </div>
+        <code id="key-value">fod_live_a3f9b7c2e8d1f4b9a8c6e2d7f1b3a9c5b4e8a1d2</code>
+        <button class="copy" id="copy-new-key">Copy</button>
+      </div>
+
+      <div class="key-list">
+        <div class="key-row head">
+          <span>Name</span><span>Key</span><span>Status</span><span>Last used</span><span></span>
+        </div>
+        <div class="key-row">
+          <span class="kname">production-api</span>
+          <span class="kval">fod_live_a3f9…b3a9c5</span>
+          <span class="status live"><span class="dot"></span> Live</span>
+          <span class="kmeta">2 min ago</span>
+          <span class="actions">
+            <button title="Settings">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+            </button>
+          </span>
+        </div>
+        <div class="key-row">
+          <span class="kname">staging-api</span>
+          <span class="kval">fod_test_8d4c…2f7e1b</span>
+          <span class="status test"><span class="dot"></span> Test</span>
+          <span class="kmeta">3 hours ago</span>
+          <span class="actions">
+            <button><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg></button>
+          </span>
+        </div>
+        <div class="key-row">
+          <span class="kname">data-pipeline-batch</span>
+          <span class="kval">fod_live_71b4…6a0c8e</span>
+          <span class="status live"><span class="dot"></span> Live</span>
+          <span class="kmeta">17 hours ago</span>
+          <span class="actions">
+            <button><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg></button>
+          </span>
+        </div>
+      </div>
+
+      <!-- Recent requests -->
+      <div class="dash-section-head">
+        <h2>Recent requests</h2>
+        <a href="#" style="font-family: var(--font-mono); font-size: 12px; color: var(--accent); text-transform: uppercase; letter-spacing: 0.08em;">View all →</a>
+      </div>
+
+      <div class="log">
+        <div class="log-row head">
+          <span>Status</span><span>Method</span><span>Path</span><span>Latency</span><span>Time</span>
+        </div>
+        <div class="log-row"><span class="status-200">200</span><span>GET</span><span>/v1/lookup?address=350+5th+Ave...</span><span class="ms">41ms</span><span class="ts">14:02:11</span></div>
+        <div class="log-row"><span class="status-200">200</span><span>GET</span><span>/v1/lookup?address=1600+Pennsylvania+Ave...</span><span class="ms">47ms</span><span class="ts">14:02:08</span></div>
+        <div class="log-row"><span class="status-200">200</span><span>POST</span><span>/v1/batch · 248 addresses</span><span class="ms">1218ms</span><span class="ts">14:01:55</span></div>
+        <div class="log-row"><span class="status-200">200</span><span>GET</span><span>/v1/lookup?address=One+Apple+Park+Way...</span><span class="ms">39ms</span><span class="ts">14:01:42</span></div>
+        <div class="log-row"><span class="status-4xx">429</span><span>GET</span><span>/v1/lookup?address=...</span><span class="ms">2ms</span><span class="ts">14:01:38</span></div>
+        <div class="log-row"><span class="status-200">200</span><span>GET</span><span>/v1/fields</span><span class="ms">11ms</span><span class="ts">14:01:30</span></div>
+        <div class="log-row"><span class="status-200">200</span><span>GET</span><span>/v1/lookup?address=500+Terry+A.+Francois...</span><span class="ms">43ms</span><span class="ts">14:01:18</span></div>
+        <div class="log-row"><span class="status-4xx">400</span><span>GET</span><span>/v1/lookup?address=foo</span><span class="ms">8ms</span><span class="ts">14:01:04</span></div>
+        <div class="log-row"><span class="status-200">200</span><span>GET</span><span>/v1/lookup?address=221+NW+2nd+Ave...</span><span class="ms">44ms</span><span class="ts">14:00:51</span></div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="grid-cols">
+      <div><a href="index.html" class="brand"><span class="brand-mark">{}</span> FastOpenData<span class="dot">.</span></a><p style="margin-top: 14px; font-size: 13px; color: var(--ink-3); max-width: 32ch;">Clean public data, ready to query.</p></div>
+      <div><h4>Product</h4><ul><li><a href="demo.html">Live demo</a></li><li><a href="docs.html">Documentation</a></li><li><a href="catalog.html">Data catalog</a></li><li><a href="pricing.html">Pricing</a></li></ul></div>
+      <div><h4>Data</h4><ul><li><a href="catalog.html">All fields</a></li><li><a href="docs.html">Source attribution</a></li><li><a href="docs.html">Refresh schedule</a></li><li><a href="docs.html">Methodology</a></li></ul></div>
+      <div><h4>Company</h4><ul><li><a href="about.html">About</a></li><li><a href="about.html">Blog</a></li><li><a href="about.html">Careers</a></li><li><a href="about.html">Contact</a></li></ul></div>
+      <div><h4>Legal</h4><ul><li><a href="#">Terms</a></li><li><a href="#">Privacy</a></li><li><a href="#">DPA</a></li><li><a href="#">Status</a></li></ul></div>
+    </div>
+    <div class="legal"><span>© 2026 FastOpenData, Inc.</span><span style="font-family: var(--font-mono);">v1.0.4 · catalog refreshed 2 days ago</span></div>
+  </div>
+</footer>
+
+<script>
+// Generate fake usage bars
+const bars = document.getElementById("bars");
+const W = 600, H = 200, N = 30;
+const data = [4, 6, 5, 7, 8, 6, 4, 9, 11, 10, 7, 5, 6, 8, 9, 11, 13, 12, 10, 8, 7, 14, 16, 15, 12, 11, 14, 17, 19, 18];
+const max = Math.max(...data);
+const bw = (W - 30) / N - 2;
+let html = "";
+data.forEach((v, i) => {
+  const h = (v / max) * (H - 30);
+  const x = 15 + i * ((W - 30) / N);
+  const y = H - 10 - h;
+  const isLast = i === data.length - 1;
+  html += `<rect x="${x}" y="${y}" width="${bw}" height="${h}" fill="${isLast ? '#0E7C3A' : '#0A0A0A'}" opacity="${isLast ? 1 : 0.85}" rx="1.5"></rect>`;
+});
+bars.innerHTML = html;
+
+// Create-key reveal
+document.getElementById("create-key").addEventListener("click", () => {
+  const nk = document.getElementById("new-key");
+  nk.style.display = nk.style.display === "none" ? "flex" : "none";
+});
+document.getElementById("copy-new-key").addEventListener("click", e => {
+  const txt = document.getElementById("key-value").textContent;
+  navigator.clipboard?.writeText(txt).catch(() => {});
+  e.target.textContent = "Copied";
+  setTimeout(() => e.target.textContent = "Copy", 1200);
+});
+</script>
+
+<script src="tweaks.js"></script>
+</body>
+</html>

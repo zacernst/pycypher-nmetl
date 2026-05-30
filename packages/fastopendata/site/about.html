@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>About — FastOpenData</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css" />
+<style>
+  .about-hero {
+    padding: 80px 0 56px;
+  }
+  .about-hero h1 {
+    font-size: clamp(40px, 6vw, 72px);
+    letter-spacing: -0.03em;
+    line-height: 1.05;
+    max-width: 18ch;
+    margin-bottom: 28px;
+  }
+  .about-hero p {
+    font-size: 19px;
+    line-height: 1.55;
+    max-width: 60ch;
+    color: var(--ink-2);
+    margin: 0 0 14px;
+  }
+
+  .principles {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: var(--r);
+    overflow: hidden;
+    margin-top: 8px;
+  }
+  @media (max-width: 800px) { .principles { grid-template-columns: 1fr; } }
+  .principle {
+    padding: 32px;
+    border-right: 1px solid var(--rule);
+  }
+  .principle:last-child { border-right: 0; }
+  @media (max-width: 800px) {
+    .principle { border-right: 0; border-bottom: 1px solid var(--rule); }
+    .principle:last-child { border-bottom: 0; }
+  }
+  .principle .num {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--accent);
+    letter-spacing: 0.1em;
+    margin-bottom: 14px;
+    text-transform: uppercase;
+  }
+  .principle h3 { font-size: 19px; letter-spacing: -0.015em; margin-bottom: 10px; }
+  .principle p { font-size: 14px; line-height: 1.55; color: var(--ink-2); margin: 0; }
+
+  /* Story */
+  .story {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: 56px;
+    padding: 64px 0;
+    border-top: 1px solid var(--rule);
+  }
+  @media (max-width: 900px) { .story { grid-template-columns: 1fr; gap: 24px; } }
+  .story aside {
+    position: sticky; top: calc(var(--header-h) + 40px);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ink-3);
+  }
+  .story aside b { color: var(--accent); font-weight: 600; }
+  .story-body p {
+    font-size: 17px;
+    line-height: 1.7;
+    color: var(--ink-2);
+    margin: 0 0 1.2em;
+    max-width: 62ch;
+  }
+  .story-body p:first-child::first-letter {
+    float: left;
+    font-size: 64px;
+    line-height: 1;
+    font-weight: 700;
+    color: var(--ink);
+    margin: 4px 12px 0 0;
+    font-family: var(--font-sans);
+  }
+  .story-body blockquote {
+    margin: 28px 0;
+    padding: 18px 28px;
+    border-left: 3px solid var(--accent);
+    font-size: 22px;
+    line-height: 1.4;
+    color: var(--ink);
+    font-weight: 500;
+    letter-spacing: -0.01em;
+  }
+
+  /* Team */
+  .team-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 24px;
+  }
+  @media (max-width: 900px) { .team-grid { grid-template-columns: repeat(2, 1fr); } }
+  .person {
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .person .photo {
+    width: 100%;
+    aspect-ratio: 1;
+    background: var(--paper-2);
+    border-radius: var(--r);
+    border: 1px solid var(--rule);
+    display: grid; place-items: center;
+    font-family: var(--font-mono);
+    font-size: 36px;
+    font-weight: 600;
+    color: var(--ink-3);
+    margin-bottom: 12px;
+  }
+  .person .name { font-size: 15px; font-weight: 600; }
+  .person .role { font-family: var(--font-mono); font-size: 11px; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.08em; }
+  .person .bio { font-size: 13px; color: var(--ink-2); line-height: 1.5; margin-top: 8px; }
+
+  /* Contact */
+  .contact {
+    background: var(--ink);
+    color: var(--paper);
+    padding: 56px;
+    border-radius: var(--r);
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+  }
+  @media (max-width: 800px) { .contact { grid-template-columns: 1fr; padding: 32px; } }
+  .contact h2 { color: var(--paper); font-size: 32px; letter-spacing: -0.025em; margin-bottom: 14px; }
+  .contact p { color: rgba(255,255,255,0.7); margin: 0 0 16px; max-width: 44ch; }
+  .contact .item {
+    border-top: 1px solid rgba(255,255,255,0.12);
+    padding: 16px 0;
+    display: flex; justify-content: space-between; gap: 16px;
+    font-size: 14px;
+  }
+  .contact .item .lbl { font-family: var(--font-mono); color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 0.08em; font-size: 11px; }
+  .contact .item .val { color: var(--paper); font-family: var(--font-mono); }
+</style>
+</head>
+<body>
+<header class="site-header" data-screen-label="About">
+  <div class="wrap">
+    <a href="index.html" class="brand"><span class="brand-mark">{}</span> FastOpenData<span class="dot">.</span></a>
+    <nav class="nav">
+      <a href="index.html">Home</a>
+      <a href="demo.html">Demo</a>
+      <a href="docs.html">Docs</a>
+      <a href="catalog.html">Data catalog</a>
+      <a href="pricing.html">Pricing</a>
+    </nav>
+    <div class="nav-cta">
+      <a href="dashboard.html" class="btn btn-ghost btn-sm">Sign in</a>
+      <a href="dashboard.html" class="btn btn-sm">Get an API key</a>
+    </div>
+  </div>
+</header>
+
+<section class="about-hero">
+  <div class="wrap">
+    <span class="eyebrow" style="color: var(--accent);">About</span>
+    <h1 style="margin-top: 16px;">The open-data API the&nbsp;government should have built.</h1>
+    <p>FastOpenData turns a swamp of CSVs, shape files, and outdated FTP servers into a single, clean, fast API. We do the boring parts once so every developer doesn't have to do them again.</p>
+  </div>
+</section>
+
+<div class="wrap">
+  <div class="principles">
+    <div class="principle">
+      <div class="num">01</div>
+      <h3>Time to value beats everything.</h3>
+      <p>If a developer can't get a useful response inside thirty seconds, we've failed. No SDKs to wrap, no schemas to learn, no auth flows to debug.</p>
+    </div>
+    <div class="principle">
+      <div class="num">02</div>
+      <h3>Public data should stay public.</h3>
+      <p>We don't relicense it, we don't lock it behind enterprise tiers, and we don't enrich it with proprietary signals. The dataset is the dataset.</p>
+    </div>
+    <div class="principle">
+      <div class="num">03</div>
+      <h3>Boring is a feature.</h3>
+      <p>Predictable response shapes, stable field names, semantic versioning, dependable refresh schedules. The fewer surprises, the better the integration.</p>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="story">
+    <aside>
+      <div>Founded</div>
+      <b>2024 · Brooklyn, NY</b>
+      <div style="margin-top: 22px;">Team</div>
+      <b>6 humans</b>
+      <div style="margin-top: 22px;">Backed by</div>
+      <b>Civic-tech grants · seed</b>
+    </aside>
+    <div class="story-body">
+      <p>We started FastOpenData after the third weekend in a row spent re-downloading TIGER shapefiles, untangling ACS column names, and re-implementing the same address-to-tract join for the same address-based product feature, on three different teams, at three different companies.</p>
+      <p>Every team thought they were the first to do it. Every team wrote their own crooked little ETL pipeline. Every team's pipeline broke when the Census Bureau renamed a directory. The data is public — has been for decades. The problem isn't the data. The problem is the work between you and the data.</p>
+      <blockquote>"Hundreds of fields for any U.S. address. One API call. Stop reinventing the wheel."</blockquote>
+      <p>So we built the join once, properly: weekly Planet OSM extracts piped through a Snakemake DAG, ACS tables fetched directly from Census APIs, USAspending contracts joined on tract centroids, all the way down to lead-paint exposure percentiles. Every field gets a stable name, a type signature, and a source attribution.</p>
+      <p>We charge for the API because servers cost money. The data itself is, and will always remain, public domain. If you ever want to leave, every field has a clear citation back to its original public source.</p>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">Team</span>
+      <h2>Six humans, opinionated about ETL.</h2>
+    </div>
+    <div class="team-grid">
+      <div class="person">
+        <div class="photo">ZE</div>
+        <div class="name">Zac Ernst</div>
+        <div class="role">Founder · CEO</div>
+        <p class="bio">Previously data infra at a healthtech startup. Graph databases and Cypher are his love language.</p>
+      </div>
+      <div class="person">
+        <div class="photo">SR</div>
+        <div class="name">Sara Reyes</div>
+        <div class="role">Founding engineer</div>
+        <p class="bio">Built large-scale geospatial pipelines at two GIS companies. Knows TIGER better than the Census Bureau.</p>
+      </div>
+      <div class="person">
+        <div class="photo">DP</div>
+        <div class="name">Devon Park</div>
+        <div class="role">Data infra</div>
+        <p class="bio">Ex-civic-tech fellow. Believes infrastructure should be boring and observable.</p>
+      </div>
+      <div class="person">
+        <div class="photo">MN</div>
+        <div class="name">Mara Nakagawa</div>
+        <div class="role">Frontend &amp; DX</div>
+        <p class="bio">Designs and ships the dashboard, docs, and the developer-facing CLI.</p>
+      </div>
+      <div class="person">
+        <div class="photo">AO</div>
+        <div class="name">Aki Okonkwo</div>
+        <div class="role">Source-data steward</div>
+        <p class="bio">Tracks every upstream source. The first to know when Census renames a directory.</p>
+      </div>
+      <div class="person">
+        <div class="photo">RI</div>
+        <div class="name">Rae Iverson</div>
+        <div class="role">Operations</div>
+        <p class="bio">Customer success, contracts, and the person who actually makes sure invoices go out on time.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="contact">
+      <div>
+        <span class="eyebrow" style="color: rgba(255,255,255,0.55);">Contact</span>
+        <h2 style="margin-top: 14px;">Talk to us.</h2>
+        <p>We answer every email. Engineering questions go to the engineer who wrote that part of the code.</p>
+        <a href="#" class="btn" style="background: var(--paper); color: var(--ink); border-color: var(--paper); margin-top: 8px;">
+          hello@fastopendata.io
+          <svg class="arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </a>
+      </div>
+      <div>
+        <div class="item"><span class="lbl">General</span><span class="val">hello@fastopendata.io</span></div>
+        <div class="item"><span class="lbl">Engineering</span><span class="val">eng@fastopendata.io</span></div>
+        <div class="item"><span class="lbl">Press</span><span class="val">press@fastopendata.io</span></div>
+        <div class="item"><span class="lbl">Academic discount</span><span class="val">academic@fastopendata.io</span></div>
+        <div class="item"><span class="lbl">Status</span><span class="val" style="display: inline-flex; gap: 8px; align-items: center;"><span style="width: 6px; height: 6px; border-radius: 999px; background: var(--accent);"></span> All systems normal</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="grid-cols">
+      <div><a href="index.html" class="brand"><span class="brand-mark">{}</span> FastOpenData<span class="dot">.</span></a><p style="margin-top: 14px; font-size: 13px; color: var(--ink-3); max-width: 32ch;">Clean public data, ready to query.</p></div>
+      <div><h4>Product</h4><ul><li><a href="demo.html">Live demo</a></li><li><a href="docs.html">Documentation</a></li><li><a href="catalog.html">Data catalog</a></li><li><a href="pricing.html">Pricing</a></li></ul></div>
+      <div><h4>Data</h4><ul><li><a href="catalog.html">All fields</a></li><li><a href="docs.html">Source attribution</a></li><li><a href="docs.html">Refresh schedule</a></li><li><a href="docs.html">Methodology</a></li></ul></div>
+      <div><h4>Company</h4><ul><li><a href="about.html">About</a></li><li><a href="about.html">Blog</a></li><li><a href="about.html">Careers</a></li><li><a href="about.html">Contact</a></li></ul></div>
+      <div><h4>Legal</h4><ul><li><a href="#">Terms</a></li><li><a href="#">Privacy</a></li><li><a href="#">DPA</a></li><li><a href="#">Status</a></li></ul></div>
+    </div>
+    <div class="legal"><span>© 2026 FastOpenData, Inc.</span><span style="font-family: var(--font-mono);">v1.0.4 · catalog refreshed 2 days ago</span></div>
+  </div>
+</footer>
+
+<script src="tweaks.js"></script>
+</body>
+</html>

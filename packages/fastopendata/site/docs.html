@@ -1,0 +1,583 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Docs — FastOpenData</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css" />
+<style>
+  .docs-layout {
+    display: grid;
+    grid-template-columns: 240px 1fr 220px;
+    gap: 48px;
+    padding: 48px 0 80px;
+    align-items: start;
+  }
+  @media (max-width: 1100px) {
+    .docs-layout { grid-template-columns: 200px 1fr; }
+    .toc { display: none; }
+  }
+  @media (max-width: 800px) {
+    .docs-layout { grid-template-columns: 1fr; }
+    .sidebar { display: none; }
+  }
+
+  .sidebar {
+    position: sticky; top: calc(var(--header-h) + 32px);
+    display: flex; flex-direction: column; gap: 28px;
+    font-size: 14px;
+  }
+  .sidebar-group h5 {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink-3);
+    margin: 0 0 10px;
+    font-weight: 500;
+  }
+  .sidebar-group ul { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 2px; }
+  .sidebar-group li a {
+    display: block;
+    padding: 5px 10px;
+    margin-left: -10px;
+    border-radius: 5px;
+    font-size: 13.5px;
+    color: var(--ink-2);
+    border-left: 2px solid transparent;
+  }
+  .sidebar-group li a:hover { color: var(--ink); background: var(--paper-2); }
+  .sidebar-group li a.active {
+    color: var(--ink);
+    font-weight: 600;
+    border-left-color: var(--accent);
+    background: var(--paper-2);
+  }
+
+  .docs-main { min-width: 0; }
+  .docs-main h1 {
+    font-size: 42px; letter-spacing: -0.025em;
+    margin-bottom: 12px;
+  }
+  .docs-main h2 {
+    font-size: 26px;
+    margin: 48px 0 14px;
+    scroll-margin-top: 80px;
+  }
+  .docs-main h3 {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 28px 0 8px;
+    scroll-margin-top: 80px;
+  }
+  .docs-main p, .docs-main li {
+    color: var(--ink-2);
+    font-size: 15.5px;
+    line-height: 1.65;
+  }
+  .docs-main ul { padding-left: 22px; }
+  .docs-main li { margin: 6px 0; }
+  .docs-main .lead { font-size: 18px; color: var(--ink-2); margin-bottom: 36px; }
+
+  .endpoint {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: var(--r);
+    overflow: hidden;
+    margin: 18px 0 28px;
+  }
+  .endpoint-head {
+    padding: 14px 18px;
+    background: var(--paper-2);
+    border-bottom: 1px solid var(--rule);
+    display: flex; align-items: center; gap: 10px;
+    font-family: var(--font-mono);
+    font-size: 13px;
+  }
+  .endpoint-head .method {
+    background: var(--accent);
+    color: #fff;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    letter-spacing: 0.05em;
+  }
+  .endpoint-head .method.post { background: var(--ink); }
+  .endpoint-head .path { color: var(--ink); font-weight: 500; }
+  .endpoint-body { padding: 20px; }
+  .params {
+    width: 100%; border-collapse: collapse; font-size: 14px;
+    border: 1px solid var(--rule);
+    border-radius: var(--r);
+    overflow: hidden;
+    margin: 8px 0 0;
+  }
+  .params th, .params td {
+    text-align: left;
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+  }
+  .params th {
+    background: var(--paper-2);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink-3);
+    font-weight: 500;
+  }
+  .params tr:last-child td { border-bottom: 0; }
+  .params .pname { font-family: var(--font-mono); color: var(--ink); }
+  .params .ptype { font-family: var(--font-mono); font-size: 12px; color: var(--accent); }
+  .params .preq {
+    display: inline-block;
+    font-family: var(--font-mono); font-size: 10px;
+    background: var(--paper-2);
+    color: var(--ink-3);
+    padding: 2px 6px; border-radius: 3px;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    margin-left: 6px;
+  }
+  .params .preq.req { color: var(--accent-2); background: var(--accent-tint); }
+
+  /* Right TOC */
+  .toc {
+    position: sticky; top: calc(var(--header-h) + 32px);
+    font-size: 13px;
+  }
+  .toc h5 {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink-3);
+    margin: 0 0 10px;
+    font-weight: 500;
+  }
+  .toc ul { list-style: none; padding: 0; margin: 0; }
+  .toc li { padding: 4px 0; }
+  .toc a { color: var(--ink-3); font-size: 13px; }
+  .toc a:hover { color: var(--ink); }
+
+  /* Inline call-out */
+  .callout {
+    border: 1px solid var(--accent-line);
+    background: var(--accent-tint);
+    border-radius: var(--r);
+    padding: 14px 16px;
+    margin: 20px 0;
+    display: flex; gap: 12px;
+    align-items: flex-start;
+    font-size: 14px;
+    color: var(--accent-2);
+  }
+  .callout svg { flex-shrink: 0; margin-top: 1px; }
+
+  .field-list {
+    border: 1px solid var(--rule);
+    border-radius: var(--r);
+    overflow: hidden;
+    font-size: 13.5px;
+  }
+  .field-list .row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 80px;
+    gap: 16px;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .field-list .row:last-child { border-bottom: 0; }
+  .field-list .row.head {
+    background: var(--paper-2);
+    font-family: var(--font-mono); font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--ink-3); font-weight: 500;
+  }
+  .field-list .name { font-family: var(--font-mono); color: var(--ink); }
+  .field-list .desc { color: var(--ink-2); }
+  .field-list .src { font-family: var(--font-mono); font-size: 11px; color: var(--ink-3); text-align: right; text-transform: uppercase; letter-spacing: 0.06em; }
+
+  .docs-meta {
+    display: flex; gap: 16px;
+    color: var(--ink-3); font-size: 13px;
+    margin-bottom: 24px;
+    font-family: var(--font-mono);
+  }
+  .docs-meta span { display: inline-flex; align-items: center; gap: 6px; }
+</style>
+</head>
+<body>
+<header class="site-header" data-screen-label="Docs">
+  <div class="wrap">
+    <a href="index.html" class="brand"><span class="brand-mark">{}</span> FastOpenData<span class="dot">.</span></a>
+    <nav class="nav">
+      <a href="index.html">Home</a>
+      <a href="demo.html">Demo</a>
+      <a href="docs.html" class="active">Docs</a>
+      <a href="catalog.html">Data catalog</a>
+      <a href="pricing.html">Pricing</a>
+    </nav>
+    <div class="nav-cta">
+      <a href="dashboard.html" class="btn btn-ghost btn-sm">Sign in</a>
+      <a href="dashboard.html" class="btn btn-sm">Get an API key</a>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="docs-layout">
+    <!-- LEFT SIDEBAR -->
+    <aside class="sidebar">
+      <div class="sidebar-group">
+        <h5>Getting started</h5>
+        <ul>
+          <li><a href="#quickstart" class="active">Quickstart</a></li>
+          <li><a href="#authentication">Authentication</a></li>
+          <li><a href="#first-call">Your first call</a></li>
+          <li><a href="#sdk-vs-rest">SDK vs. raw REST</a></li>
+        </ul>
+      </div>
+      <div class="sidebar-group">
+        <h5>Endpoints</h5>
+        <ul>
+          <li><a href="#ep-lookup">GET /v1/lookup</a></li>
+          <li><a href="#ep-batch">POST /v1/batch</a></li>
+          <li><a href="#ep-fields">GET /v1/fields</a></li>
+          <li><a href="#ep-sources">GET /v1/sources</a></li>
+        </ul>
+      </div>
+      <div class="sidebar-group">
+        <h5>Concepts</h5>
+        <ul>
+          <li><a href="#response">Response shape</a></li>
+          <li><a href="#rate-limits">Rate limits</a></li>
+          <li><a href="#caching">Caching &amp; freshness</a></li>
+          <li><a href="#errors">Error codes</a></li>
+        </ul>
+      </div>
+      <div class="sidebar-group">
+        <h5>Data</h5>
+        <ul>
+          <li><a href="#methodology">Methodology</a></li>
+          <li><a href="#refresh">Refresh schedule</a></li>
+          <li><a href="#attribution">Source attribution</a></li>
+        </ul>
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="docs-main">
+      <span class="eyebrow">Documentation</span>
+      <h1 style="margin-top: 8px;">Quickstart</h1>
+      <p class="lead">From an empty terminal to a useful response in under thirty seconds.</p>
+
+      <div class="docs-meta">
+        <span>v1.0.4</span>
+        <span>· OpenAPI 3.1</span>
+        <span>· Updated 2 days ago</span>
+      </div>
+
+      <h2 id="quickstart">1. Install the client</h2>
+      <p>Choose your stack. Both clients are thin wrappers around the REST API with full type hints.</p>
+
+      <div class="code">
+        <div class="code-tabs">
+          <button class="code-tab active" data-doc-tab="install" data-lang="py">Python</button>
+          <button class="code-tab" data-doc-tab="install" data-lang="js">JavaScript</button>
+          <button class="code-tab" data-doc-tab="install" data-lang="rb">Ruby</button>
+          <button class="code-tab" data-doc-tab="install" data-lang="go">Go</button>
+          <div class="code-toolbar"><button class="code-copy">Copy</button></div>
+        </div>
+        <pre data-doc-pre="install"><span class="f">pip</span> install fastopendata</pre>
+      </div>
+
+      <h2 id="authentication">2. Authenticate</h2>
+      <p>All requests are authenticated with a bearer token. Grab a key from your dashboard — the free tier requires no card.</p>
+
+      <div class="callout">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+        <div>Never put a key in client-side code. Use a server proxy or restrict the key to specific IPs &amp; domains from the dashboard.</div>
+      </div>
+
+      <div class="code">
+        <div class="code-tabs">
+          <button class="code-tab active">.env</button>
+          <div class="code-toolbar"><button class="code-copy">Copy</button></div>
+        </div>
+        <pre><span class="c"># Get this at fastopendata.io/dashboard</span>
+<span class="v">FOD_KEY</span>=<span class="s">"fod_live_a3f9b7c2e8d1f4b9a8c6e2d7f1b3a9c5"</span></pre>
+      </div>
+
+      <h2 id="first-call">3. Make your first call</h2>
+      <p>Pass an address string. We resolve, geocode, and join all sources before returning.</p>
+
+      <div class="code">
+        <div class="code-tabs">
+          <button class="code-tab active" data-doc-tab="first" data-lang="py">Python</button>
+          <button class="code-tab" data-doc-tab="first" data-lang="js">JavaScript</button>
+          <button class="code-tab" data-doc-tab="first" data-lang="curl">curl</button>
+          <div class="code-toolbar"><button class="code-copy">Copy</button></div>
+        </div>
+        <pre data-doc-pre="first"><span class="k">from</span> fastopendata <span class="k">import</span> Client
+
+fod = Client()  <span class="c"># reads FOD_KEY from env</span>
+data = fod.<span class="f">lookup</span>(<span class="s">"350 5th Ave, New York, NY"</span>)
+
+<span class="f">print</span>(data.census_tract.population)
+<span class="c"># → 17842</span>
+
+<span class="f">print</span>(data.housing.median_home_value)
+<span class="c"># → 1420000</span>
+
+<span class="f">print</span>(data.osm.nearby_subway_stops)
+<span class="c"># → 11</span></pre>
+      </div>
+
+      <h2 id="ep-lookup">GET /v1/lookup</h2>
+      <p>Look up a single address. The workhorse endpoint — most users only ever call this one.</p>
+
+      <div class="endpoint">
+        <div class="endpoint-head">
+          <span class="method">GET</span>
+          <span class="path">https://api.fastopendata.io/v1/lookup</span>
+        </div>
+        <div class="endpoint-body">
+          <h3 style="margin-top: 0;">Query parameters</h3>
+          <table class="params">
+            <thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr>
+                <td class="pname">address<span class="preq req">required</span></td>
+                <td class="ptype">string</td>
+                <td>Any U.S. address. We handle ZIP-only, "City, State", and PO boxes.</td>
+              </tr>
+              <tr>
+                <td class="pname">fields</td>
+                <td class="ptype">string[]</td>
+                <td>Comma-separated whitelist of fields to return. Default: all.</td>
+              </tr>
+              <tr>
+                <td class="pname">radius_m</td>
+                <td class="ptype">integer</td>
+                <td>OSM lookup radius in meters. Default: <code class="inline">1000</code>. Max: <code class="inline">5000</code>.</td>
+              </tr>
+              <tr>
+                <td class="pname">vintage</td>
+                <td class="ptype">string</td>
+                <td>Data vintage. Default: <code class="inline">latest</code>. Example: <code class="inline">2023</code>.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <h2 id="ep-batch">POST /v1/batch</h2>
+      <p>Up to 10,000 addresses per request. We pipeline them through our edge cache — most return in under five seconds for the full batch.</p>
+
+      <div class="endpoint">
+        <div class="endpoint-head">
+          <span class="method post">POST</span>
+          <span class="path">https://api.fastopendata.io/v1/batch</span>
+        </div>
+        <div class="endpoint-body">
+          <div class="code">
+            <div class="code-tabs"><button class="code-tab active">Python</button><div class="code-toolbar"><button class="code-copy">Copy</button></div></div>
+            <pre><span class="k">import</span> pandas <span class="k">as</span> pd
+<span class="k">from</span> fastopendata <span class="k">import</span> Client
+
+addrs = pd.read_csv(<span class="s">"customers.csv"</span>)
+result = Client().<span class="f">batch</span>(addrs[<span class="s">"address"</span>].tolist(), fields=[<span class="s">"median_household_income"</span>, <span class="s">"median_home_value"</span>])
+
+<span class="c"># Returns a DataFrame keyed by the input order.</span>
+addrs.join(result.to_frame()).to_csv(<span class="s">"enriched.csv"</span>)</pre>
+          </div>
+        </div>
+      </div>
+
+      <h2 id="ep-fields">GET /v1/fields</h2>
+      <p>Returns the full catalog with field names, types, units, and source attribution. Useful for code-gen and schema validation.</p>
+
+      <div class="field-list">
+        <div class="row head"><span>Field</span><span>Description</span><span>Source</span></div>
+        <div class="row"><span class="name">population</span><span class="desc">Total tract population (5-year estimate)</span><span class="src">ACS B01001</span></div>
+        <div class="row"><span class="name">median_household_income</span><span class="desc">USD, tract-level</span><span class="src">ACS B19013</span></div>
+        <div class="row"><span class="name">median_home_value</span><span class="desc">Owner-occupied units, USD</span><span class="src">ACS B25077</span></div>
+        <div class="row"><span class="name">median_gross_rent</span><span class="desc">All renter-occupied units, USD</span><span class="src">ACS B25064</span></div>
+        <div class="row"><span class="name">cong_district</span><span class="desc">Congressional district (118th)</span><span class="src">TIGER/Line</span></div>
+        <div class="row"><span class="name">fed_contracts_2024</span><span class="desc">Sum of obligations in tract</span><span class="src">USASpending</span></div>
+        <div class="row"><span class="name">osm.nearby_schools</span><span class="desc">Count within radius_m</span><span class="src">OSM</span></div>
+      </div>
+      <p style="margin-top: 14px;"><a href="catalog.html" style="color: var(--accent); font-weight: 600;">Browse the full catalog →</a></p>
+
+      <h2 id="response">Response shape</h2>
+      <p>Every endpoint returns the same nested shape. Top-level groups: <code class="inline">geo</code>, <code class="inline">demographics</code>, <code class="inline">housing</code>, <code class="inline">contracts</code>, <code class="inline">osm</code>, plus a <code class="inline">_meta</code> envelope.</p>
+
+      <div class="code">
+        <div class="code-tabs"><button class="code-tab active">200 OK</button><div class="code-toolbar"><button class="code-copy">Copy</button></div></div>
+        <pre>{
+  <span class="k">"address"</span>: <span class="s">"350 5th Ave, New York, NY 10118"</span>,
+  <span class="k">"geo"</span>: { <span class="k">"geoid"</span>: <span class="s">"36061008600"</span>, ... },
+  <span class="k">"demographics"</span>: { <span class="k">"population"</span>: <span class="n">17842</span>, ... },
+  <span class="k">"housing"</span>: { <span class="k">"median_home_value"</span>: <span class="n">1420000</span>, ... },
+  <span class="k">"contracts"</span>: { ... },
+  <span class="k">"osm"</span>: { ... },
+  <span class="k">"_meta"</span>: {
+    <span class="k">"fields_returned"</span>: <span class="n">218</span>,
+    <span class="k">"latency_ms"</span>: <span class="n">41</span>,
+    <span class="k">"cached"</span>: <span class="v">true</span>,
+    <span class="k">"vintage"</span>: <span class="s">"latest"</span>
+  }
+}</pre>
+      </div>
+
+      <h2 id="rate-limits">Rate limits</h2>
+      <p>Limits are per-key, not per-IP. Headers <code class="inline">X-RateLimit-Remaining</code> and <code class="inline">X-RateLimit-Reset</code> are returned on every response.</p>
+
+      <table class="params" style="margin-top: 8px;">
+        <thead><tr><th>Plan</th><th>Per second</th><th>Per month</th></tr></thead>
+        <tbody>
+          <tr><td class="pname">Free</td><td class="pname">10</td><td class="pname">10,000</td></tr>
+          <tr><td class="pname">Pro</td><td class="pname">100</td><td class="pname">500,000</td></tr>
+          <tr><td class="pname">Scale</td><td class="pname">Custom</td><td class="pname">Custom</td></tr>
+        </tbody>
+      </table>
+
+      <h2 id="errors">Error codes</h2>
+      <table class="params">
+        <thead><tr><th>Status</th><th>Code</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td class="pname">400</td><td class="ptype">invalid_address</td><td>We couldn't parse the address. Pass a clearer string.</td></tr>
+          <tr><td class="pname">401</td><td class="ptype">missing_key</td><td>No bearer token, or token revoked.</td></tr>
+          <tr><td class="pname">404</td><td class="ptype">no_match</td><td>Address valid but outside the U.S.</td></tr>
+          <tr><td class="pname">429</td><td class="ptype">rate_limited</td><td>Slow down. Check <code class="inline">Retry-After</code>.</td></tr>
+          <tr><td class="pname">503</td><td class="ptype">source_unavailable</td><td>One upstream source is down. Response still returns partial data.</td></tr>
+        </tbody>
+      </table>
+
+      <h2 id="methodology">Methodology</h2>
+      <p>We re-run the full pipeline weekly. Each address is geocoded with the Census Bureau Geocoder (no Google, no proprietary services), spatial-joined against TIGER/Line shapefiles for tract / block-group / district assignment, then enriched with ACS, USASpending, OSM, HUD, EPA, and NCES data.</p>
+      <ul>
+        <li>Geocoding source: U.S. Census Bureau Geocoder, Locations and Geographies endpoint.</li>
+        <li>Boundary source: TIGER/Line 2025 shapefiles, 1:500k resolution.</li>
+        <li>OSM extract: full Planet dump, refreshed weekly via Geofabrik.</li>
+        <li>ACS tables: 5-year estimates, 2018–2023.</li>
+      </ul>
+
+      <h2 id="attribution">Source attribution</h2>
+      <p>All data is in the public domain. You don't owe us attribution, but if you publish derived work, please cite the original sources — many of them are funded by your tax dollars and live or die on usage statistics.</p>
+    </main>
+
+    <!-- RIGHT TOC -->
+    <aside class="toc">
+      <h5>On this page</h5>
+      <ul>
+        <li><a href="#quickstart">Install</a></li>
+        <li><a href="#authentication">Authentication</a></li>
+        <li><a href="#first-call">First call</a></li>
+        <li><a href="#ep-lookup">GET /v1/lookup</a></li>
+        <li><a href="#ep-batch">POST /v1/batch</a></li>
+        <li><a href="#ep-fields">GET /v1/fields</a></li>
+        <li><a href="#response">Response shape</a></li>
+        <li><a href="#rate-limits">Rate limits</a></li>
+        <li><a href="#errors">Error codes</a></li>
+        <li><a href="#methodology">Methodology</a></li>
+      </ul>
+    </aside>
+  </div>
+</div>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="grid-cols">
+      <div><a href="index.html" class="brand"><span class="brand-mark">{}</span> FastOpenData<span class="dot">.</span></a><p style="margin-top: 14px; font-size: 13px; color: var(--ink-3); max-width: 32ch;">Clean public data, ready to query.</p></div>
+      <div><h4>Product</h4><ul><li><a href="demo.html">Live demo</a></li><li><a href="docs.html">Documentation</a></li><li><a href="catalog.html">Data catalog</a></li><li><a href="pricing.html">Pricing</a></li></ul></div>
+      <div><h4>Data</h4><ul><li><a href="catalog.html">All fields</a></li><li><a href="docs.html">Source attribution</a></li><li><a href="docs.html">Refresh schedule</a></li><li><a href="docs.html">Methodology</a></li></ul></div>
+      <div><h4>Company</h4><ul><li><a href="about.html">About</a></li><li><a href="about.html">Blog</a></li><li><a href="about.html">Careers</a></li><li><a href="about.html">Contact</a></li></ul></div>
+      <div><h4>Legal</h4><ul><li><a href="#">Terms</a></li><li><a href="#">Privacy</a></li><li><a href="#">DPA</a></li><li><a href="#">Status</a></li></ul></div>
+    </div>
+    <div class="legal"><span>© 2026 FastOpenData, Inc.</span><span style="font-family: var(--font-mono);">v1.0.4 · catalog refreshed 2 days ago</span></div>
+  </div>
+</footer>
+
+<script>
+const docsSamples = {
+  install: {
+    py: `<span class="f">pip</span> install fastopendata`,
+    js: `<span class="f">npm</span> install @fastopendata/client
+<span class="c"># or</span>
+<span class="f">yarn</span> add @fastopendata/client`,
+    rb: `<span class="f">gem</span> install fastopendata`,
+    go: `<span class="f">go</span> get github.com/fastopendata/fod-go`
+  },
+  first: {
+    py: `<span class="k">from</span> fastopendata <span class="k">import</span> Client
+
+fod = Client()  <span class="c"># reads FOD_KEY from env</span>
+data = fod.<span class="f">lookup</span>(<span class="s">"350 5th Ave, New York, NY"</span>)
+
+<span class="f">print</span>(data.census_tract.population)
+<span class="c"># → 17842</span>
+
+<span class="f">print</span>(data.housing.median_home_value)
+<span class="c"># → 1420000</span>
+
+<span class="f">print</span>(data.osm.nearby_subway_stops)
+<span class="c"># → 11</span>`,
+    js: `<span class="k">import</span> { FastOpenData } <span class="k">from</span> <span class="s">"@fastopendata/client"</span>;
+
+<span class="k">const</span> fod = <span class="k">new</span> <span class="f">FastOpenData</span>();
+
+<span class="k">const</span> data = <span class="k">await</span> fod.<span class="f">lookup</span>(<span class="s">"350 5th Ave, New York, NY"</span>);
+
+<span class="f">console</span>.<span class="f">log</span>(data.censusTract.population);
+<span class="c">// → 17842</span>`,
+    curl: `<span class="f">curl</span> https://api.fastopendata.io/v1/lookup \\
+  -H <span class="s">"Authorization: Bearer $FOD_KEY"</span> \\
+  -G --data-urlencode <span class="s">"address=350 5th Ave, New York, NY"</span>`
+  }
+};
+
+document.querySelectorAll('[data-doc-tab]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const group = btn.dataset.docTab;
+    const lang = btn.dataset.lang;
+    document.querySelectorAll(`[data-doc-tab="${group}"]`).forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelector(`pre[data-doc-pre="${group}"]`).innerHTML = docsSamples[group][lang];
+  });
+});
+
+// Copy
+document.querySelectorAll('.code-copy').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const pre = btn.closest('.code').querySelector('pre');
+    navigator.clipboard?.writeText(pre.innerText).catch(() => {});
+    const old = btn.textContent;
+    btn.textContent = 'Copied';
+    setTimeout(() => { btn.textContent = old; }, 1200);
+  });
+});
+
+// Scroll-spy sidebar
+const headings = [...document.querySelectorAll('h2[id], h3[id]')];
+const navLinks = [...document.querySelectorAll('.sidebar a[href^="#"]')];
+function syncNav() {
+  const y = window.scrollY + 100;
+  let active = headings[0];
+  for (const h of headings) {
+    if (h.offsetTop <= y) active = h;
+  }
+  navLinks.forEach(a => a.classList.toggle('active', a.getAttribute('href') === '#' + active.id));
+}
+window.addEventListener('scroll', syncNav, { passive: true });
+syncNav();
+</script>
+
+<script src="tweaks.js"></script>
+</body>
+</html>

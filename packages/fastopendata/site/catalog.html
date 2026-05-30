@@ -1,0 +1,419 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Data catalog — FastOpenData</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css" />
+<style>
+  .cat-hero { padding: 48px 0 32px; }
+  .cat-hero h1 { font-size: 44px; letter-spacing: -0.025em; margin-bottom: 12px; }
+  .cat-hero p { color: var(--ink-2); max-width: 60ch; font-size: 17px; margin: 0; }
+
+  .cat-meta {
+    display: flex; gap: 24px;
+    margin-top: 22px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--ink-3);
+  }
+  .cat-meta span { display: inline-flex; align-items: center; gap: 6px; }
+  .cat-meta b { color: var(--ink); font-weight: 600; }
+
+  .cat-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 18px 0;
+    border-top: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+    margin: 32px 0 0;
+    flex-wrap: wrap;
+  }
+  .cat-search {
+    flex: 1;
+    min-width: 240px;
+    display: flex;
+    align-items: center;
+    background: var(--surface);
+    border: 1px solid var(--rule-strong);
+    border-radius: var(--r);
+    padding: 0 12px;
+    transition: border-color 120ms, box-shadow 120ms;
+  }
+  .cat-search:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 4px var(--accent-tint);
+  }
+  .cat-search input {
+    flex: 1; background: transparent; border: 0; outline: 0;
+    font: 14px var(--font-mono);
+    color: var(--ink);
+    padding: 11px 8px;
+  }
+  .cat-search svg { color: var(--ink-3); }
+
+  .filter-chip {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    padding: 7px 13px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--ink-2);
+    cursor: pointer;
+    transition: all 120ms;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .filter-chip:hover { border-color: var(--ink); color: var(--ink); }
+  .filter-chip.on {
+    background: var(--ink); color: var(--paper); border-color: var(--ink);
+  }
+
+  .cat-results {
+    margin-top: 24px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: var(--r);
+    overflow: hidden;
+  }
+  .cat-row {
+    display: grid;
+    grid-template-columns: 280px 1fr 110px 90px 90px;
+    gap: 24px;
+    padding: 12px 22px;
+    border-bottom: 1px solid var(--rule);
+    align-items: center;
+    font-size: 14px;
+    transition: background 120ms;
+  }
+  .cat-row:hover { background: var(--paper); }
+  .cat-row:last-child { border-bottom: 0; }
+  .cat-row.head {
+    background: var(--paper-2);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink-3);
+    font-weight: 500;
+    padding: 12px 22px;
+  }
+  .cat-row .name {
+    font-family: var(--font-mono);
+    color: var(--ink);
+    font-size: 13px;
+  }
+  .cat-row .desc { color: var(--ink-2); line-height: 1.45; }
+  .cat-row .group {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--accent);
+  }
+  .cat-row .src {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--ink-3);
+  }
+  .cat-row .type {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--ink-3);
+  }
+  @media (max-width: 1000px) {
+    .cat-row { grid-template-columns: 1fr 100px; gap: 8px 16px; }
+    .cat-row > .desc { grid-column: 1 / -1; font-size: 13px; }
+    .cat-row > .src, .cat-row > .type { display: none; }
+    .cat-row.head > .src, .cat-row.head > .type { display: none; }
+  }
+
+  .cat-empty {
+    padding: 56px;
+    text-align: center;
+    color: var(--ink-3);
+    font-family: var(--font-mono);
+    font-size: 13px;
+  }
+
+  /* Source breakout */
+  .src-band {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+    margin-top: 40px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: var(--r);
+    overflow: hidden;
+  }
+  .src-cell {
+    padding: 20px 22px;
+    border-right: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+  }
+  .src-cell:nth-child(4n) { border-right: 0; }
+  .src-cell:nth-last-child(-n+4) { border-bottom: 0; }
+  .src-cell .name { font-weight: 600; font-size: 14px; }
+  .src-cell .meta { font-family: var(--font-mono); font-size: 11px; color: var(--ink-3); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .src-cell .fields { color: var(--accent); }
+  @media (max-width: 800px) {
+    .src-band { grid-template-columns: 1fr 1fr; }
+    .src-cell:nth-child(2n) { border-right: 0; }
+    .src-cell:nth-child(4n) { border-right: 1px solid var(--rule); }
+  }
+</style>
+</head>
+<body>
+<header class="site-header" data-screen-label="Catalog">
+  <div class="wrap">
+    <a href="index.html" class="brand"><span class="brand-mark">{}</span> FastOpenData<span class="dot">.</span></a>
+    <nav class="nav">
+      <a href="index.html">Home</a>
+      <a href="demo.html">Demo</a>
+      <a href="docs.html">Docs</a>
+      <a href="catalog.html" class="active">Data catalog</a>
+      <a href="pricing.html">Pricing</a>
+    </nav>
+    <div class="nav-cta">
+      <a href="dashboard.html" class="btn btn-ghost btn-sm">Sign in</a>
+      <a href="dashboard.html" class="btn btn-sm">Get an API key</a>
+    </div>
+  </div>
+</header>
+
+<section class="cat-hero">
+  <div class="wrap">
+    <span class="eyebrow" style="color: var(--accent);">Data catalog</span>
+    <h1 style="margin-top: 10px;">Every field, every source.</h1>
+    <p>Searchable index of the 218 fields returned per address — what it is, what type, where it came from. Public domain, cleaned, and joined on the address.</p>
+    <div class="cat-meta">
+      <span><b>218</b> fields</span>
+      <span><b>8</b> sources</span>
+      <span><b>158,420,915</b> addresses</span>
+      <span>Last refresh: <b>2 days ago</b></span>
+    </div>
+  </div>
+</section>
+
+<div class="wrap">
+  <!-- Sources band -->
+  <div class="src-band">
+    <div class="src-cell">
+      <div class="name">Census ACS 2023</div>
+      <div class="meta"><span class="fields">94 fields</span> · 5-year estimates · tract-level</div>
+    </div>
+    <div class="src-cell">
+      <div class="name">TIGER/Line 2025</div>
+      <div class="meta"><span class="fields">22 fields</span> · boundaries · monthly</div>
+    </div>
+    <div class="src-cell">
+      <div class="name">USAspending.gov</div>
+      <div class="meta"><span class="fields">18 fields</span> · contracts · weekly</div>
+    </div>
+    <div class="src-cell">
+      <div class="name">OpenStreetMap</div>
+      <div class="meta"><span class="fields">38 fields</span> · planet · weekly</div>
+    </div>
+    <div class="src-cell">
+      <div class="name">HUD CHAS</div>
+      <div class="meta"><span class="fields">14 fields</span> · housing affordability · annual</div>
+    </div>
+    <div class="src-cell">
+      <div class="name">EPA EJScreen</div>
+      <div class="meta"><span class="fields">12 fields</span> · environmental · annual</div>
+    </div>
+    <div class="src-cell">
+      <div class="name">NCES EDGE</div>
+      <div class="meta"><span class="fields">12 fields</span> · school districts · annual</div>
+    </div>
+    <div class="src-cell">
+      <div class="name">FCC Form 477</div>
+      <div class="meta"><span class="fields">8 fields</span> · broadband · biannual</div>
+    </div>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="cat-toolbar">
+    <div class="cat-search">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+      <input id="cat-input" type="text" placeholder="Search fields, e.g. 'income', 'tract', 'osm'…" />
+    </div>
+    <button class="filter-chip on" data-filter="all">All</button>
+    <button class="filter-chip" data-filter="demographics">Demographics</button>
+    <button class="filter-chip" data-filter="geography">Geography</button>
+    <button class="filter-chip" data-filter="housing">Housing</button>
+    <button class="filter-chip" data-filter="contracts">Contracts</button>
+    <button class="filter-chip" data-filter="osm">OSM</button>
+    <button class="filter-chip" data-filter="environment">Environment</button>
+  </div>
+
+  <!-- Results -->
+  <div class="cat-results" id="cat-results"></div>
+
+  <p style="margin: 32px 0 80px; color: var(--ink-3); font-size: 13px; font-family: var(--font-mono);">
+    Showing <b id="cat-count" style="color: var(--ink);">42</b> of 218 fields. Programmatic access via <code class="inline">GET /v1/fields</code>.
+  </p>
+</div>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="grid-cols">
+      <div><a href="index.html" class="brand"><span class="brand-mark">{}</span> FastOpenData<span class="dot">.</span></a><p style="margin-top: 14px; font-size: 13px; color: var(--ink-3); max-width: 32ch;">Clean public data, ready to query.</p></div>
+      <div><h4>Product</h4><ul><li><a href="demo.html">Live demo</a></li><li><a href="docs.html">Documentation</a></li><li><a href="catalog.html">Data catalog</a></li><li><a href="pricing.html">Pricing</a></li></ul></div>
+      <div><h4>Data</h4><ul><li><a href="catalog.html">All fields</a></li><li><a href="docs.html">Source attribution</a></li><li><a href="docs.html">Refresh schedule</a></li><li><a href="docs.html">Methodology</a></li></ul></div>
+      <div><h4>Company</h4><ul><li><a href="about.html">About</a></li><li><a href="about.html">Blog</a></li><li><a href="about.html">Careers</a></li><li><a href="about.html">Contact</a></li></ul></div>
+      <div><h4>Legal</h4><ul><li><a href="#">Terms</a></li><li><a href="#">Privacy</a></li><li><a href="#">DPA</a></li><li><a href="#">Status</a></li></ul></div>
+    </div>
+    <div class="legal"><span>© 2026 FastOpenData, Inc.</span><span style="font-family: var(--font-mono);">v1.0.4 · catalog refreshed 2 days ago</span></div>
+  </div>
+</footer>
+
+<script>
+const FIELDS = [
+  // Demographics — ACS
+  ["population", "Total population in the census tract.", "demographics", "int", "ACS B01001"],
+  ["population_density_per_km2", "Population per square kilometer of land area.", "demographics", "float", "ACS / TIGER"],
+  ["median_age", "Median age in years.", "demographics", "float", "ACS B01002"],
+  ["pct_under_18", "Percent of population under age 18.", "demographics", "float", "ACS B01001"],
+  ["pct_over_65", "Percent of population age 65 or older.", "demographics", "float", "ACS B01001"],
+  ["median_household_income", "Median household income, USD, inflation-adjusted to 2023.", "demographics", "int", "ACS B19013"],
+  ["mean_household_income", "Mean household income, USD.", "demographics", "int", "ACS B19025"],
+  ["pct_below_poverty", "Percent of population below federal poverty line.", "demographics", "float", "ACS B17001"],
+  ["pct_bachelors_or_higher", "Percent of adults 25+ with a bachelor's degree or higher.", "demographics", "float", "ACS B15003"],
+  ["pct_high_school_or_higher", "Percent of adults 25+ with at least a high school diploma.", "demographics", "float", "ACS B15003"],
+  ["pct_foreign_born", "Percent of population born outside the United States.", "demographics", "float", "ACS B05002"],
+  ["unemployment_rate", "Civilian labor force unemployment rate.", "demographics", "float", "ACS B23025"],
+  ["labor_force_participation", "Percent of population 16+ in the labor force.", "demographics", "float", "ACS B23025"],
+  ["pct_white", "Percent identifying as White alone.", "demographics", "float", "ACS B02001"],
+  ["pct_black", "Percent identifying as Black or African American alone.", "demographics", "float", "ACS B02001"],
+  ["pct_asian", "Percent identifying as Asian alone.", "demographics", "float", "ACS B02001"],
+  ["pct_hispanic", "Percent of Hispanic or Latino origin (any race).", "demographics", "float", "ACS B03003"],
+  ["pct_speak_non_english", "Percent of population 5+ who speak a language other than English at home.", "demographics", "float", "ACS B16001"],
+  ["pct_veteran", "Percent of population 18+ who are veterans.", "demographics", "float", "ACS B21001"],
+  ["pct_disabled", "Percent of population with a disability.", "demographics", "float", "ACS B18101"],
+
+  // Geography — TIGER
+  ["geoid", "Census GEOID for the address tract (11 digits).", "geography", "string", "TIGER/Line"],
+  ["census_tract", "Census tract name and number.", "geography", "string", "TIGER/Line"],
+  ["block_group", "Block-group GEOID (12 digits).", "geography", "string", "TIGER/Line"],
+  ["puma", "Public Use Microdata Area code.", "geography", "string", "TIGER/Line"],
+  ["county", "County name.", "geography", "string", "TIGER/Line"],
+  ["county_fips", "County FIPS code.", "geography", "string", "TIGER/Line"],
+  ["state", "State name.", "geography", "string", "TIGER/Line"],
+  ["state_fips", "State FIPS code.", "geography", "string", "TIGER/Line"],
+  ["zip", "USPS ZIP code.", "geography", "string", "Census ZCTA"],
+  ["cong_district", "Congressional district code (e.g. CA-12).", "geography", "string", "TIGER/Line"],
+  ["state_legislative_upper", "Upper-chamber state legislative district.", "geography", "string", "TIGER/Line"],
+  ["state_legislative_lower", "Lower-chamber state legislative district.", "geography", "string", "TIGER/Line"],
+  ["school_district", "School district name.", "geography", "string", "NCES EDGE"],
+  ["urban_rural", "Census urban / rural classification.", "geography", "string", "TIGER/Line"],
+  ["tract_area_km2", "Tract land area in square kilometers.", "geography", "float", "TIGER/Line"],
+
+  // Housing
+  ["median_home_value", "Median value of owner-occupied units, USD.", "housing", "int", "ACS B25077"],
+  ["median_gross_rent", "Median gross rent, USD / month.", "housing", "int", "ACS B25064"],
+  ["median_year_built", "Median year housing units were built.", "housing", "int", "ACS B25035"],
+  ["pct_owner_occupied", "Percent of occupied units that are owner-occupied.", "housing", "float", "ACS B25003"],
+  ["pct_renter_occupied", "Percent of occupied units that are renter-occupied.", "housing", "float", "ACS B25003"],
+  ["vacancy_rate", "Percent of housing units that are vacant.", "housing", "float", "ACS B25002"],
+  ["pct_cost_burdened_renters", "Percent of renters paying >30% of income on rent.", "housing", "float", "HUD CHAS"],
+  ["pct_overcrowded_units", "Percent of units with >1 occupant per room.", "housing", "float", "ACS B25014"],
+  ["units_in_structure_1", "Percent of units in 1-unit structures.", "housing", "float", "ACS B25024"],
+  ["units_in_structure_50plus", "Percent of units in structures of 50+ units.", "housing", "float", "ACS B25024"],
+
+  // Contracts
+  ["fed_contracts_count_2024", "Count of federal contract transactions in tract during 2024.", "contracts", "int", "USAspending"],
+  ["fed_contracts_total_usd_2024", "Sum of federal contract obligations in tract during 2024.", "contracts", "int", "USAspending"],
+  ["fed_contracts_top_naics_2024", "Most common NAICS code among contracts.", "contracts", "string", "USAspending"],
+  ["fed_contracts_top_agency_2024", "Most active awarding agency in tract.", "contracts", "string", "USAspending"],
+  ["fed_grants_total_usd_2024", "Sum of federal grant obligations in tract during 2024.", "contracts", "int", "USAspending"],
+
+  // OSM
+  ["osm.nearby_schools", "Count of OSM schools within radius_m.", "osm", "int", "OSM"],
+  ["osm.nearby_hospitals", "Count of OSM hospitals within radius_m.", "osm", "int", "OSM"],
+  ["osm.nearby_parks", "Count of OSM parks within radius_m.", "osm", "int", "OSM"],
+  ["osm.nearby_libraries", "Count of OSM libraries within radius_m.", "osm", "int", "OSM"],
+  ["osm.nearby_subway_stops", "Count of subway / rail-transit stops within radius_m.", "osm", "int", "OSM"],
+  ["osm.nearby_bus_stops", "Count of bus stops within radius_m.", "osm", "int", "OSM"],
+  ["osm.nearby_restaurants", "Count of restaurants within radius_m.", "osm", "int", "OSM"],
+  ["osm.nearby_pharmacies", "Count of pharmacies within radius_m.", "osm", "int", "OSM"],
+  ["osm.nearby_grocery", "Count of supermarkets &amp; grocery stores within radius_m.", "osm", "int", "OSM"],
+  ["osm.distance_to_nearest_school_m", "Distance in meters to nearest OSM school.", "osm", "int", "OSM"],
+  ["osm.distance_to_nearest_hospital_m", "Distance in meters to nearest OSM hospital.", "osm", "int", "OSM"],
+
+  // Environment
+  ["epa_ozone_percentile", "Ozone exposure percentile (national).", "environment", "float", "EPA EJScreen"],
+  ["epa_pm25_percentile", "PM2.5 exposure percentile (national).", "environment", "float", "EPA EJScreen"],
+  ["epa_traffic_proximity", "Traffic proximity and volume index.", "environment", "float", "EPA EJScreen"],
+  ["epa_lead_paint_pct", "Percent of housing units built pre-1960.", "environment", "float", "EPA EJScreen"],
+  ["epa_superfund_proximity", "Proximity to NPL Superfund sites.", "environment", "float", "EPA EJScreen"],
+  ["fcc_broadband_25_3", "Number of providers offering 25/3 Mbps service.", "environment", "int", "FCC Form 477"],
+  ["fcc_broadband_100_20", "Number of providers offering 100/20 Mbps service.", "environment", "int", "FCC Form 477"],
+];
+
+let filter = "all";
+let query = "";
+const results = document.getElementById("cat-results");
+const countEl = document.getElementById("cat-count");
+
+function render() {
+  const filtered = FIELDS.filter(([name, desc, group]) => {
+    if (filter !== "all" && group !== filter) return false;
+    if (!query) return true;
+    const q = query.toLowerCase();
+    return name.toLowerCase().includes(q) || desc.toLowerCase().includes(q);
+  });
+
+  if (filtered.length === 0) {
+    results.innerHTML = `
+      <div class="cat-row head">
+        <span>Field</span><span>Description</span><span>Group</span><span>Type</span><span>Source</span>
+      </div>
+      <div class="cat-empty">No fields match. Try a broader search.</div>
+    `;
+  } else {
+    results.innerHTML = `
+      <div class="cat-row head">
+        <span>Field</span><span>Description</span><span>Group</span><span>Type</span><span>Source</span>
+      </div>
+      ${filtered.map(([name, desc, group, type, src]) => `
+        <div class="cat-row">
+          <span class="name">${name}</span>
+          <span class="desc">${desc}</span>
+          <span class="group">${group}</span>
+          <span class="type">${type}</span>
+          <span class="src">${src}</span>
+        </div>
+      `).join("")}
+    `;
+  }
+  countEl.textContent = filtered.length;
+}
+
+document.getElementById("cat-input").addEventListener("input", e => {
+  query = e.target.value;
+  render();
+});
+document.querySelectorAll(".filter-chip").forEach(b => {
+  b.addEventListener("click", () => {
+    document.querySelectorAll(".filter-chip").forEach(c => c.classList.remove("on"));
+    b.classList.add("on");
+    filter = b.dataset.filter;
+    render();
+  });
+});
+
+render();
+</script>
+
+<script src="tweaks.js"></script>
+</body>
+</html>

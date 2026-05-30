@@ -1,0 +1,547 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Pricing — FastOpenData</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css" />
+<style>
+  .pricing-hero { padding: 64px 0 24px; text-align: center; }
+  .pricing-hero h1 { font-size: clamp(40px, 5.5vw, 64px); letter-spacing: -0.03em; line-height: 1.05; }
+  .pricing-hero p { max-width: 56ch; margin: 18px auto 32px; color: var(--ink-2); font-size: 18px; }
+
+  .toggle {
+    display: inline-flex;
+    background: var(--paper-2);
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    padding: 4px;
+    margin: 0 auto;
+    font-family: var(--font-mono);
+    font-size: 12px;
+  }
+  .toggle button {
+    background: transparent;
+    border: 0;
+    padding: 9px 18px;
+    border-radius: 999px;
+    color: var(--ink-3);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: inherit;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 500;
+  }
+  .toggle button.on {
+    background: var(--ink);
+    color: var(--paper);
+  }
+  .toggle .save {
+    margin-left: 6px;
+    background: var(--accent);
+    color: #fff;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+  }
+
+  .plan-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+    margin-top: 48px;
+    border: 1px solid var(--rule);
+    border-radius: var(--r);
+    background: var(--surface);
+    overflow: hidden;
+  }
+  .plan {
+    padding: 32px 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    border-right: 1px solid var(--rule);
+    position: relative;
+  }
+  .plan:last-child { border-right: 0; }
+  .plan.featured {
+    background: var(--paper-2);
+  }
+  .plan.featured::before {
+    content: 'Most popular';
+    position: absolute;
+    top: 16px; right: 24px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    background: var(--accent);
+    color: #fff;
+    padding: 3px 8px;
+    border-radius: 3px;
+  }
+  .plan-name {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ink-3);
+  }
+  .plan-price {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+  }
+  .plan-price .amt {
+    font-size: 44px;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    font-feature-settings: "tnum" on;
+  }
+  .plan-price .unit { color: var(--ink-3); font-size: 14px; }
+  .plan-desc { color: var(--ink-2); font-size: 14px; min-height: 60px; line-height: 1.5; }
+  .plan-cta { width: 100%; }
+  .plan-features {
+    list-style: none;
+    padding: 18px 0 0;
+    margin: 0;
+    border-top: 1px solid var(--rule);
+    display: flex;
+    flex-direction: column;
+    gap: 11px;
+    font-size: 13.5px;
+    color: var(--ink-2);
+  }
+  .plan-features li { display: flex; gap: 9px; align-items: flex-start; }
+  .plan-features li::before {
+    content: '';
+    flex-shrink: 0;
+    width: 14px; height: 14px;
+    margin-top: 3px;
+    background: var(--accent-tint);
+    border-radius: 999px;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230E7C3A' stroke-width='3'><polyline points='20 6 9 17 4 12'/></svg>");
+    background-size: 9px;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+
+  @media (max-width: 1100px) {
+    .plan-grid { grid-template-columns: 1fr 1fr; }
+    .plan { border-right: 0; border-bottom: 1px solid var(--rule); }
+    .plan:nth-child(odd) { border-right: 1px solid var(--rule); }
+  }
+  @media (max-width: 700px) {
+    .plan-grid { grid-template-columns: 1fr; }
+    .plan { border-right: 0; }
+  }
+
+  /* Compare table */
+  .compare-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 32px;
+    font-size: 14px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: var(--r);
+    overflow: hidden;
+  }
+  .compare-table th, .compare-table td {
+    text-align: left;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .compare-table th {
+    background: var(--paper-2);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink-3);
+    font-weight: 500;
+  }
+  .compare-table tr:last-child td { border-bottom: 0; }
+  .compare-table td.feature { color: var(--ink); font-weight: 500; }
+  .compare-table td.center { text-align: center; }
+  .compare-table .group-header td {
+    background: var(--paper-2);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink-3);
+    font-weight: 500;
+    padding: 9px 18px;
+  }
+  .compare-table .yes { color: var(--accent); }
+  .compare-table .no { color: var(--ink-3); }
+
+  /* FAQ */
+  .faq-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 28px;
+  }
+  @media (max-width: 800px) { .faq-grid { grid-template-columns: 1fr; } }
+  .faq-item {
+    border-top: 1px solid var(--rule);
+    padding: 22px 0;
+  }
+  .faq-item h4 { font-size: 16px; margin-bottom: 8px; font-weight: 600; }
+  .faq-item p { font-size: 14px; color: var(--ink-2); margin: 0; }
+
+  /* Calculator */
+  .calc {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: var(--r);
+    padding: 32px;
+    margin-top: 32px;
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: 40px;
+    align-items: center;
+  }
+  @media (max-width: 800px) { .calc { grid-template-columns: 1fr; } }
+  .calc-left h3 { font-size: 22px; margin-bottom: 8px; }
+  .calc-left p { color: var(--ink-2); font-size: 14px; margin-bottom: 22px; }
+  .calc-slider {
+    width: 100%;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 4px;
+    background: var(--paper-2);
+    border-radius: 999px;
+    outline: 0;
+    margin: 18px 0;
+  }
+  .calc-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px; height: 18px;
+    border-radius: 999px;
+    background: var(--ink);
+    cursor: pointer;
+    border: 3px solid var(--surface);
+    box-shadow: 0 0 0 1px var(--ink);
+  }
+  .calc-slider::-moz-range-thumb {
+    width: 18px; height: 18px;
+    border-radius: 999px;
+    background: var(--ink);
+    cursor: pointer;
+    border: 3px solid var(--surface);
+    box-shadow: 0 0 0 1px var(--ink);
+  }
+  .calc-out {
+    background: var(--paper-2);
+    border-radius: var(--r);
+    padding: 22px;
+    text-align: center;
+  }
+  .calc-out .num {
+    font-size: 56px;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    font-feature-settings: "tnum" on;
+    line-height: 1;
+  }
+  .calc-out .lbl {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink-3);
+    margin-top: 8px;
+  }
+  .calc-out .plan {
+    margin-top: 12px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--accent);
+  }
+  .calc-label {
+    display: flex; justify-content: space-between;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--ink-3);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .calc-volume {
+    font-family: var(--font-mono);
+    font-size: 18px;
+    color: var(--ink);
+    font-weight: 600;
+  }
+</style>
+</head>
+<body>
+<header class="site-header" data-screen-label="Pricing">
+  <div class="wrap">
+    <a href="index.html" class="brand"><span class="brand-mark">{}</span> FastOpenData<span class="dot">.</span></a>
+    <nav class="nav">
+      <a href="index.html">Home</a>
+      <a href="demo.html">Demo</a>
+      <a href="docs.html">Docs</a>
+      <a href="catalog.html">Data catalog</a>
+      <a href="pricing.html" class="active">Pricing</a>
+    </nav>
+    <div class="nav-cta">
+      <a href="dashboard.html" class="btn btn-ghost btn-sm">Sign in</a>
+      <a href="dashboard.html" class="btn btn-sm">Get an API key</a>
+    </div>
+  </div>
+</header>
+
+<section class="pricing-hero">
+  <div class="wrap">
+    <span class="eyebrow" style="color: var(--accent);">Pricing</span>
+    <h1 style="margin-top: 10px;">One product, one dataset.<br />Pay only for volume.</h1>
+    <p>Every plan ships every field, every source, every endpoint. The only thing you're choosing is how much traffic you'll send.</p>
+    <div class="toggle" id="billing-toggle">
+      <button class="on" data-billing="monthly">Monthly</button>
+      <button data-billing="annual">Annual <span class="save">−20%</span></button>
+    </div>
+  </div>
+</section>
+
+<section class="section first compact">
+  <div class="wrap">
+    <div class="plan-grid">
+      <div class="plan">
+        <div class="plan-name">Free</div>
+        <div class="plan-price"><span class="amt" data-monthly="$0" data-annual="$0">$0</span><span class="unit">/ forever</span></div>
+        <p class="plan-desc">For prototyping, side projects, and weekend benchmarking.</p>
+        <a href="dashboard.html" class="btn btn-ghost plan-cta">Start free</a>
+        <ul class="plan-features">
+          <li>10,000 requests / month</li>
+          <li>All 218 fields, all sources</li>
+          <li>Single API key</li>
+          <li>Community Discord</li>
+        </ul>
+      </div>
+
+      <div class="plan featured">
+        <div class="plan-name">Pro</div>
+        <div class="plan-price"><span class="amt" data-monthly="$99" data-annual="$79">$99</span><span class="unit">/ month</span></div>
+        <p class="plan-desc">For production apps with steady, mid-volume traffic.</p>
+        <a href="dashboard.html" class="btn btn-accent plan-cta">Get Pro</a>
+        <ul class="plan-features">
+          <li>500,000 requests / month</li>
+          <li>50 ms p50 SLA</li>
+          <li>Global edge cache</li>
+          <li>Batch endpoint (10k addresses/req)</li>
+          <li>5 keys, IP &amp; domain restrictions</li>
+          <li>Email support · &lt; 24h response</li>
+        </ul>
+      </div>
+
+      <div class="plan">
+        <div class="plan-name">Business</div>
+        <div class="plan-price"><span class="amt" data-monthly="$499" data-annual="$399">$499</span><span class="unit">/ month</span></div>
+        <p class="plan-desc">Teams shipping data products and serving end-users at scale.</p>
+        <a href="dashboard.html" class="btn btn-ghost plan-cta">Get Business</a>
+        <ul class="plan-features">
+          <li>5,000,000 requests / month</li>
+          <li>30 ms p50 SLA</li>
+          <li>Webhook on dataset refresh</li>
+          <li>Unlimited keys + team seats</li>
+          <li>Custom field whitelisting</li>
+          <li>Slack support · &lt; 4h response</li>
+        </ul>
+      </div>
+
+      <div class="plan">
+        <div class="plan-name">Scale</div>
+        <div class="plan-price"><span class="amt">Custom</span></div>
+        <p class="plan-desc">Bulk pipelines, on-prem deployments, or unusual data needs.</p>
+        <a href="#" class="btn btn-ghost plan-cta">Talk to us</a>
+        <ul class="plan-features">
+          <li>Unmetered requests</li>
+          <li>Self-hosted (Docker / k8s)</li>
+          <li>Source-data SLAs &amp; MSAs</li>
+          <li>Custom data ingestion</li>
+          <li>Dedicated Slack channel</li>
+          <li>SOC 2 / HIPAA paperwork</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Calculator -->
+<section class="section compact">
+  <div class="wrap">
+    <div class="calc">
+      <div class="calc-left">
+        <h3>Estimate your cost</h3>
+        <p>Slide to your expected monthly request volume. Overages on Pro and Business are billed at $0.0002 / request — no surprise invoices.</p>
+        <div class="calc-label">
+          <span>Requests / month</span>
+          <span class="calc-volume" id="calc-volume">250,000</span>
+        </div>
+        <input type="range" class="calc-slider" id="calc-slider" min="0" max="100" value="40" step="1" />
+        <div class="calc-label">
+          <span>10k</span>
+          <span>50M</span>
+        </div>
+      </div>
+      <div class="calc-out">
+        <div class="num" id="calc-cost">$99</div>
+        <div class="lbl">Estimated monthly bill</div>
+        <div class="plan" id="calc-plan">Pro plan · 500k included</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Compare -->
+<section class="section">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">Compare</span>
+      <h2>What's included in every plan.</h2>
+    </div>
+
+    <table class="compare-table">
+      <thead>
+        <tr>
+          <th style="width: 36%;">Feature</th>
+          <th class="center">Free</th>
+          <th class="center">Pro</th>
+          <th class="center">Business</th>
+          <th class="center">Scale</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="group-header"><td colspan="5">Data access</td></tr>
+        <tr><td class="feature">Fields per address</td><td class="center">218</td><td class="center">218</td><td class="center">218</td><td class="center">218 + custom</td></tr>
+        <tr><td class="feature">U.S. addresses indexed</td><td class="center">158M</td><td class="center">158M</td><td class="center">158M</td><td class="center">158M</td></tr>
+        <tr><td class="feature">Open data sources</td><td class="center">8</td><td class="center">8</td><td class="center">8</td><td class="center">Custom</td></tr>
+        <tr><td class="feature">Vintage selection</td><td class="center yes">●</td><td class="center yes">●</td><td class="center yes">●</td><td class="center yes">●</td></tr>
+
+        <tr class="group-header"><td colspan="5">Performance</td></tr>
+        <tr><td class="feature">p50 latency SLA</td><td class="center no">—</td><td class="center">50 ms</td><td class="center">30 ms</td><td class="center">Custom</td></tr>
+        <tr><td class="feature">Global edge cache</td><td class="center yes">●</td><td class="center yes">●</td><td class="center yes">●</td><td class="center yes">●</td></tr>
+        <tr><td class="feature">Batch endpoint</td><td class="center no">—</td><td class="center yes">●</td><td class="center yes">●</td><td class="center yes">●</td></tr>
+        <tr><td class="feature">Webhook on refresh</td><td class="center no">—</td><td class="center no">—</td><td class="center yes">●</td><td class="center yes">●</td></tr>
+
+        <tr class="group-header"><td colspan="5">Team &amp; security</td></tr>
+        <tr><td class="feature">API keys</td><td class="center">1</td><td class="center">5</td><td class="center">Unlimited</td><td class="center">Unlimited</td></tr>
+        <tr><td class="feature">Team seats</td><td class="center">1</td><td class="center">3</td><td class="center">Unlimited</td><td class="center">Unlimited</td></tr>
+        <tr><td class="feature">IP / domain restrictions</td><td class="center no">—</td><td class="center yes">●</td><td class="center yes">●</td><td class="center yes">●</td></tr>
+        <tr><td class="feature">SOC 2 / HIPAA</td><td class="center no">—</td><td class="center no">—</td><td class="center no">—</td><td class="center yes">●</td></tr>
+
+        <tr class="group-header"><td colspan="5">Support</td></tr>
+        <tr><td class="feature">Channel</td><td class="center">Discord</td><td class="center">Email</td><td class="center">Slack</td><td class="center">Dedicated</td></tr>
+        <tr><td class="feature">Response time</td><td class="center">Best-effort</td><td class="center">&lt; 24 h</td><td class="center">&lt; 4 h</td><td class="center">Custom</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="section recessed">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">Frequently asked</span>
+      <h2>Pricing FAQ</h2>
+    </div>
+    <div class="faq-grid">
+      <div>
+        <div class="faq-item">
+          <h4>What counts as a request?</h4>
+          <p>One billable request = one call to <code class="inline">/v1/lookup</code> with one address. The batch endpoint counts addresses, not HTTP calls — 1,000 addresses in one batch = 1,000 requests.</p>
+        </div>
+        <div class="faq-item">
+          <h4>Do you cache?</h4>
+          <p>Yes. Identical requests within 24 hours are served from our edge cache and don't count against your quota.</p>
+        </div>
+        <div class="faq-item">
+          <h4>Can I switch plans mid-month?</h4>
+          <p>Up or down, anytime. Upgrades are prorated, downgrades take effect the next billing cycle.</p>
+        </div>
+      </div>
+      <div>
+        <div class="faq-item">
+          <h4>Do you offer a free trial of Pro?</h4>
+          <p>No trial — the free plan gives you the full dataset. If 10k requests aren't enough to evaluate, email us and we'll bump it.</p>
+        </div>
+        <div class="faq-item">
+          <h4>What about overages?</h4>
+          <p>Free overflows return <code class="inline">429</code>. Pro &amp; Business overflows are billed at $0.0002 / request with no cap until your next billing cycle (you can also set a hard limit).</p>
+        </div>
+        <div class="faq-item">
+          <h4>Is there a non-profit / academic discount?</h4>
+          <p>Yes — 50% off any plan for accredited universities, registered 501(c)(3)s, and civic-tech projects. Just email <code class="inline">academic@fastopendata.io</code>.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="grid-cols">
+      <div><a href="index.html" class="brand"><span class="brand-mark">{}</span> FastOpenData<span class="dot">.</span></a><p style="margin-top: 14px; font-size: 13px; color: var(--ink-3); max-width: 32ch;">Clean public data, ready to query.</p></div>
+      <div><h4>Product</h4><ul><li><a href="demo.html">Live demo</a></li><li><a href="docs.html">Documentation</a></li><li><a href="catalog.html">Data catalog</a></li><li><a href="pricing.html">Pricing</a></li></ul></div>
+      <div><h4>Data</h4><ul><li><a href="catalog.html">All fields</a></li><li><a href="docs.html">Source attribution</a></li><li><a href="docs.html">Refresh schedule</a></li><li><a href="docs.html">Methodology</a></li></ul></div>
+      <div><h4>Company</h4><ul><li><a href="about.html">About</a></li><li><a href="about.html">Blog</a></li><li><a href="about.html">Careers</a></li><li><a href="about.html">Contact</a></li></ul></div>
+      <div><h4>Legal</h4><ul><li><a href="#">Terms</a></li><li><a href="#">Privacy</a></li><li><a href="#">DPA</a></li><li><a href="#">Status</a></li></ul></div>
+    </div>
+    <div class="legal"><span>© 2026 FastOpenData, Inc.</span><span style="font-family: var(--font-mono);">v1.0.4 · catalog refreshed 2 days ago</span></div>
+  </div>
+</footer>
+
+<script>
+// Monthly / annual toggle
+document.querySelectorAll('#billing-toggle button').forEach(b => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('#billing-toggle button').forEach(x => x.classList.remove('on'));
+    b.classList.add('on');
+    const mode = b.dataset.billing;
+    document.querySelectorAll('.amt').forEach(a => {
+      const v = a.getAttribute(`data-${mode}`);
+      if (v) a.textContent = v;
+    });
+    document.querySelectorAll('.plan-price .unit').forEach(u => {
+      if (u.textContent.includes('forever')) return;
+      u.textContent = mode === 'annual' ? '/ month, billed annually' : '/ month';
+    });
+  });
+});
+
+// Calculator
+const slider = document.getElementById('calc-slider');
+const vol = document.getElementById('calc-volume');
+const cost = document.getElementById('calc-cost');
+const plan = document.getElementById('calc-plan');
+
+function calc() {
+  const t = slider.value / 100;
+  // Log-ish scale from 10k to 50M
+  const min = Math.log(10000);
+  const max = Math.log(50000000);
+  const requests = Math.round(Math.exp(min + (max - min) * t) / 1000) * 1000;
+  vol.textContent = requests.toLocaleString();
+  let bill, planName;
+  if (requests <= 10000) { bill = 0; planName = 'Free plan · 10k included'; }
+  else if (requests <= 500000) { bill = 99; planName = 'Pro plan · 500k included'; }
+  else if (requests <= 5000000) { bill = 499; planName = 'Business plan · 5M included'; }
+  else { bill = Math.round(499 + (requests - 5000000) * 0.0002); planName = 'Business + overage · or Scale'; }
+  cost.textContent = bill === 0 ? '$0' : '$' + bill.toLocaleString();
+  plan.textContent = planName;
+}
+slider.addEventListener('input', calc);
+calc();
+</script>
+
+<script src="tweaks.js"></script>
+</body>
+</html>
