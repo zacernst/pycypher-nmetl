@@ -58,6 +58,11 @@ jobs:
         with:
           version: ">= 363.0.0"
 
+      # Debug: surfaces the identity the key actually authenticates as, so we
+      # can confirm it matches the SA granted artifactregistry.writer.
+      - name: Debug — show active account
+        run: gcloud auth list --filter=status:ACTIVE --format="value(account)"
+
       # Uses the credentials file exported by the auth action above.
       - name: Configure Artifact Registry auth
         run: gcloud auth configure-docker ${{ env.REGISTRY }} --quiet
