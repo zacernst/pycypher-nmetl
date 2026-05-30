@@ -49,12 +49,15 @@ COPY pyproject.toml workspace.toml uv.lock ./
 COPY packages/shared/pyproject.toml      packages/shared/
 COPY packages/shared/LICENSE.txt         packages/shared/
 COPY packages/shared/README.md           packages/shared/
+COPY packages/shared/src                 packages/shared/src
 COPY packages/pycypher/pyproject.toml    packages/pycypher/
 COPY packages/pycypher/LICENSE.txt       packages/pycypher/
 COPY packages/pycypher/README.md         packages/pycypher/
+COPY packages/pycypher/src               packages/pycypher/src
 COPY packages/fastopendata/pyproject.toml packages/fastopendata/
 COPY packages/fastopendata/LICENSE.txt   packages/fastopendata/
 COPY packages/fastopendata/README.md     packages/fastopendata/
+COPY packages/fastopendata/src           packages/fastopendata/src
 COPY packages/pycypher-tui/pyproject.toml packages/pycypher-tui/
 COPY packages/pycypher-tui/README.md      packages/pycypher-tui/
 COPY packages/pycypher-tui/src            packages/pycypher-tui/src
