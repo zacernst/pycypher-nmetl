@@ -1,3 +1,4 @@
 **/raw_data
 **/venv
 **/.venv
+gha-creds-*.json
