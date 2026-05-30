@@ -191,7 +191,7 @@ objects.inv
 *.woff
 DS_Store
 *.ttf
-*.svg
+docs/_build/**/*.svg
 parsetab.py
 parser.out
 *.pyc
