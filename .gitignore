@@ -199,7 +199,7 @@ parser.out
 *.pyi
 *.bat
 *.png
-*.css
+docs/_build/**/*.css
 *.DS_Store
 fontawesome-*.*
 environment.pickle

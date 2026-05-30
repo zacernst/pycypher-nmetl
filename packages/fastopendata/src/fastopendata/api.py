@@ -32,6 +32,7 @@ import numpy as np
 import pandas as pd
 import pycypher
 from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pycypher.exceptions import (
     GraphTypeNotFoundError,
@@ -611,14 +612,9 @@ class CypherQueryResponse(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-@app.get("/", response_model=HealthResponse)
-async def root() -> HealthResponse:
-    """Root endpoint — confirms the service is alive."""
-    return HealthResponse(
-        status="ok",
-        api_version=app.version,
-        pycypher_version=pycypher.__version__,
-    )
+@app.get("/")
+async def root() -> RedirectResponse:
+    return RedirectResponse(url="/site/", status_code=301)
 
 
 @app.get("/health", response_model=HealthResponse)
