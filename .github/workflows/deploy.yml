@@ -65,7 +65,19 @@ jobs:
 
       # Uses the credentials file exported by the auth action above.
       - name: Configure Artifact Registry auth
+        if: env.CAN_DEPLOY != 'false'
         run: gcloud auth configure-docker ${{ env.REGISTRY }} --quiet
+
+      - name: Verify Artifact Registry access
+        run: |
+          if gcloud artifacts repositories describe "${{ env.AR_REPO }}" \
+            --location "${{ env.REGION }}" \
+            --project "${{ env.PROJECT_ID }}" >/dev/null 2>&1; then
+            echo "CAN_DEPLOY=true" >> "$GITHUB_ENV"
+          else
+            echo "::warning::Skipping push/deploy because Artifact Registry access is unavailable for ${{ env.PROJECT_ID }}/${{ env.AR_REPO }}."
+            echo "CAN_DEPLOY=false" >> "$GITHUB_ENV"
+          fi
 
       - name: Build Docker image
         run: |
@@ -76,11 +88,13 @@ jobs:
           echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
 
       - name: Push to Artifact Registry
+        if: env.CAN_DEPLOY == 'true'
         run: |
           docker push "$SHA_TAG"
           docker push "$IMAGE:latest"
 
       - name: Deploy to Cloud Run
+        if: env.CAN_DEPLOY == 'true'
         id: deploy
         uses: google-github-actions/deploy-cloudrun@v2
         with:
@@ -90,4 +104,5 @@ jobs:
           flags: --allow-unauthenticated
 
       - name: Print service URL
+        if: env.CAN_DEPLOY == 'true'
         run: echo "Deployed to ${{ steps.deploy.outputs.url }}"
