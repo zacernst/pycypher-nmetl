@@ -187,6 +187,16 @@ class InputDialog(VimDialog):
                 event.prevent_default()
                 event.stop()
 
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "btn-ok":
+            try:
+                value = self.query_one("#dialog-input", Input).value
+            except NoMatches:
+                value = ""
+            self.dismiss(DialogResponse(DialogResult.CONFIRMED, value=value))
+        elif event.button.id == "btn-cancel":
+            self.dismiss(DialogResponse(DialogResult.CANCELLED))
+
     def on_input_submitted(self, event: Input.Submitted) -> None:
         self.dismiss(
             DialogResponse(
