@@ -50,6 +50,7 @@ COPY packages/shared/pyproject.toml      packages/shared/
 COPY packages/pycypher/pyproject.toml    packages/pycypher/
 COPY packages/fastopendata/pyproject.toml packages/fastopendata/
 COPY packages/pycypher-tui/pyproject.toml packages/pycypher-tui/
+COPY packages/pycypher-tui/README.md      packages/pycypher-tui/
 
 # Install all workspace dependencies (skip dev extras).
 RUN uv sync --frozen --no-dev
