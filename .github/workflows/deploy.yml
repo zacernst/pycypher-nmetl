@@ -7,10 +7,8 @@ on:
     branches: [main]
     types: [completed]
 
-# Workload Identity Federation requires id-token write permission.
 permissions:
   contents: read
-  id-token: write
 
 env:
   PROJECT_ID: fastopendata-392817
@@ -37,11 +35,13 @@ jobs:
           # Check out the commit that triggered CI, not the default HEAD.
           ref: ${{ github.event.workflow_run.head_sha }}
 
-      # Required GitHub secrets:
-      #   GCP_WORKLOAD_IDENTITY_PROVIDER — full provider resource name, e.g.:
-      #     projects/123456789/locations/global/workloadIdentityPools/github/providers/github
-      #   GCP_SERVICE_ACCOUNT — service account email, e.g.:
-      #     github-actions@fastopendata.iam.gserviceaccount.com
+      # Required GitHub secret:
+      #   GCP_SA_KEY — JSON key for the deploy service account
+      #     (github-actions@fastopendata-392817.iam.gserviceaccount.com)
+      #
+      # Authenticating directly with a key authenticates *as* the service
+      # account, so it never calls iam.serviceAccounts.getAccessToken — which
+      # is what the previous Workload Identity impersonation flow failed on.
       #
       # The service account needs these IAM roles:
       #   roles/run.admin
@@ -51,17 +51,14 @@ jobs:
         id: auth
         uses: google-github-actions/auth@v2
         with:
-          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
 
       - name: Set up Google Cloud SDK
         uses: google-github-actions/setup-gcloud@v3
         with:
           version: ">= 363.0.0"
 
-      # Use the credentials file exported by the auth action instead of
-      # explicitly minting an OAuth access token, which requires additional
-      # iam.serviceAccounts.getAccessToken permission.
+      # Uses the credentials file exported by the auth action above.
       - name: Configure Artifact Registry auth
         run: gcloud auth configure-docker ${{ env.REGISTRY }} --quiet
 
