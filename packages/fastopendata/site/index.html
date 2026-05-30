@@ -1,36 +1,492 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>FastOpenData</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>FastOpenData — Open-data API for U.S. geographic &amp; demographic data</title>
+<meta name="description" content="Hundreds of fields for any U.S. address. One API call. Geographic, demographic, and reference data over a single clean HTTP interface." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css" />
+<style>
+  /* ── Hero ─────────────────────────────────────────────────────────── */
+  .hero {
+    padding: 96px 0 80px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .hero-inner {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 80px;
+    align-items: start;
+  }
+  @media (max-width: 900px) {
+    .hero-inner { grid-template-columns: 1fr; gap: 48px; }
+  }
+  .hero-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--accent);
+    margin-bottom: 24px;
+  }
+  .hero-eyebrow::before {
+    content: '';
+    display: block;
+    width: 20px;
+    height: 2px;
+    background: var(--accent);
+    border-radius: 2px;
+  }
+  .hero h1 {
+    font-size: clamp(40px, 5vw, 68px);
+    letter-spacing: -0.035em;
+    line-height: 1.04;
+    margin-bottom: 28px;
+  }
+  .hero h1 em {
+    font-style: normal;
+    color: var(--accent);
+  }
+  .hero-sub {
+    font-size: 18px;
+    line-height: 1.6;
+    color: var(--ink-2);
+    max-width: 52ch;
+    margin-bottom: 36px;
+  }
+  .hero-actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  /* ── Code card ────────────────────────────────────────────────────── */
+  .hero-code {
+    background: var(--code-bg);
+    border-radius: var(--r);
+    overflow: hidden;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    line-height: 1.6;
+    position: sticky;
+    top: calc(var(--header-h) + 24px);
+  }
+  .code-chrome {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .code-chrome .dot-r { width: 10px; height: 10px; border-radius: 999px; background: #FF5F57; }
+  .code-chrome .dot-y { width: 10px; height: 10px; border-radius: 999px; background: #FFBD2E; }
+  .code-chrome .dot-g { width: 10px; height: 10px; border-radius: 999px; background: #28C840; }
+  .code-chrome .label {
+    margin-left: 8px;
+    font-size: 11px;
+    color: rgba(255,255,255,0.3);
+    letter-spacing: 0.05em;
+  }
+  .code-block {
+    padding: 24px 28px;
+    color: var(--code-ink);
+    overflow-x: auto;
+  }
+  .code-block .cm { color: var(--code-comment); }
+  .code-block .kw { color: var(--code-key); }
+  .code-block .st { color: var(--code-string); }
+  .code-block .nm { color: var(--code-num); }
+  .code-block .hl { color: #FFFFFF; font-weight: 600; }
+  .code-sep {
+    border: 0;
+    border-top: 1px solid rgba(255,255,255,0.06);
+    margin: 4px 0;
+  }
+  .response-label {
+    padding: 10px 28px 0;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: rgba(255,255,255,0.25);
+  }
+
+  /* ── Stats bar ────────────────────────────────────────────────────── */
+  .stats-bar {
+    border-bottom: 1px solid var(--rule);
+    background: var(--paper-2);
+  }
+  .stats-inner {
+    display: flex;
+    divide-x: 1px solid var(--rule);
+  }
+  .stat {
+    flex: 1;
+    padding: 28px 32px;
+    border-right: 1px solid var(--rule);
+  }
+  .stat:last-child { border-right: 0; }
+  @media (max-width: 700px) {
+    .stats-inner { flex-direction: column; }
+    .stat { border-right: 0; border-bottom: 1px solid var(--rule); }
+    .stat:last-child { border-bottom: 0; }
+  }
+  .stat-num {
+    font-size: 36px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    color: var(--ink);
+    line-height: 1;
+  }
+  .stat-num span { color: var(--accent); }
+  .stat-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ink-3);
+    margin-top: 6px;
+  }
+
+  /* ── How it works ─────────────────────────────────────────────────── */
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0;
+    border: 1px solid var(--rule);
+    border-radius: var(--r);
+    overflow: hidden;
+    margin-top: 8px;
+  }
+  @media (max-width: 800px) { .steps { grid-template-columns: 1fr; } }
+  .step {
+    padding: 36px 32px;
+    border-right: 1px solid var(--rule);
+  }
+  .step:last-child { border-right: 0; }
+  @media (max-width: 800px) {
+    .step { border-right: 0; border-bottom: 1px solid var(--rule); }
+    .step:last-child { border-bottom: 0; }
+  }
+  .step-num {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+  .step h3 {
+    font-size: 18px;
+    letter-spacing: -0.015em;
+    margin-bottom: 10px;
+  }
+  .step p {
+    font-size: 14px;
+    line-height: 1.55;
+    color: var(--ink-2);
+    margin: 0;
+  }
+  .step code {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    background: var(--accent-tint);
+    color: var(--accent-2);
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+
+  /* ── Dataset grid ─────────────────────────────────────────────────── */
+  .dataset-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-top: 8px;
+  }
+  @media (max-width: 900px) { .dataset-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 600px) { .dataset-grid { grid-template-columns: 1fr; } }
+  .ds-card {
+    border: 1px solid var(--rule);
+    border-radius: var(--r);
+    padding: 24px;
+    background: var(--surface);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    transition: border-color 120ms, box-shadow 120ms;
+    text-decoration: none;
+    color: inherit;
+  }
+  .ds-card:hover {
+    border-color: var(--accent-line);
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  }
+  .ds-icon {
+    width: 36px; height: 36px;
+    border-radius: 8px;
+    background: var(--accent-tint);
+    display: grid; place-items: center;
+    margin-bottom: 4px;
+    font-size: 18px;
+  }
+  .ds-card h3 {
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin: 0;
+  }
+  .ds-card p {
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--ink-2);
+    margin: 0;
+  }
+  .ds-card .ds-meta {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--ink-3);
+    margin-top: 4px;
+  }
+
+  /* ── CTA band ─────────────────────────────────────────────────────── */
+  .cta-band {
+    background: var(--ink);
+    color: var(--paper);
+    padding: 80px 0;
+    text-align: center;
+  }
+  .cta-band h2 {
+    font-size: clamp(28px, 4vw, 48px);
+    letter-spacing: -0.03em;
+    color: var(--paper);
+    margin-bottom: 18px;
+  }
+  .cta-band p {
+    font-size: 17px;
+    color: rgba(255,255,255,0.6);
+    max-width: 56ch;
+    margin: 0 auto 36px;
+    line-height: 1.6;
+  }
+  .cta-band .btn {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+    font-size: 15px;
+    padding: 14px 32px;
+  }
+  .cta-band .btn:hover { background: var(--accent-2); border-color: var(--accent-2); }
+  .cta-band .btn-ghost {
+    background: transparent;
+    border-color: rgba(255,255,255,0.2);
+    color: rgba(255,255,255,0.8);
+  }
+  .cta-band .btn-ghost:hover { border-color: rgba(255,255,255,0.5); color: #fff; }
+  .cta-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+</style>
 </head>
 <body>
-  <header>
-    <h1>FastOpenData</h1>
-  </header>
+<header class="site-header" data-screen-label="Home">
+  <div class="wrap">
+    <a href="index.html" class="brand"><span class="brand-mark">{}</span> FastOpenData<span class="dot">.</span></a>
+    <nav class="nav">
+      <a href="demo.html">Demo</a>
+      <a href="docs.html">Docs</a>
+      <a href="catalog.html">Data catalog</a>
+      <a href="pricing.html">Pricing</a>
+    </nav>
+    <div class="nav-cta">
+      <a href="dashboard.html" class="btn btn-ghost btn-sm">Sign in</a>
+      <a href="dashboard.html" class="btn btn-sm">Get an API key</a>
+    </div>
+  </div>
+</header>
 
-  <main>
-    <p>
-      FastOpenData is an open-data API that exposes curated public datasets
-      (geographic, demographic, and reference data) over a uniform HTTP
-      interface backed by the PyCypher query engine.
-    </p>
+<!-- ── Hero ──────────────────────────────────────────────────────────── -->
+<section class="hero">
+  <div class="wrap">
+    <div class="hero-inner">
+      <div>
+        <div class="hero-eyebrow">Open-data API</div>
+        <h1>Hundreds of fields for any U.S.&nbsp;address.<br><em>One API call.</em></h1>
+        <p class="hero-sub">FastOpenData turns a swamp of Census CSVs, TIGER shapefiles, and outdated FTP servers into a single, clean, fast HTTP interface. Stop reinventing the wheel.</p>
+        <div class="hero-actions">
+          <a href="demo.html" class="btn">
+            Try the live demo
+            <svg class="arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </a>
+          <a href="docs.html" class="btn btn-ghost">Read the docs</a>
+        </div>
+      </div>
 
-    <h2>Endpoints</h2>
-    <ul>
-      <li><a href="/docs">Interactive API documentation (Swagger UI)</a></li>
-      <li><a href="/health">Service health check</a></li>
-    </ul>
+      <div class="hero-code">
+        <div class="code-chrome">
+          <span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span>
+          <span class="label">GET /v1/lookup</span>
+        </div>
+        <pre class="code-block"><span class="cm"># Any U.S. address</span>
+<span class="kw">curl</span> https://api.fastopendata.io/v1/lookup \
+  -H <span class="st">"Authorization: Bearer $API_KEY"</span> \
+  -d <span class="st">'{"address": "350 5th Ave, New York, NY"}'</span></pre>
+        <hr class="code-sep">
+        <div class="response-label">Response · 43 ms</div>
+        <pre class="code-block">{
+  <span class="st">"address"</span>: <span class="st">"350 5th Ave, New York, NY 10118"</span>,
+  <span class="st">"tract"</span>:   <span class="st">"36061010900"</span>,
+  <span class="st">"county"</span>:  <span class="st">"New York County, NY"</span>,
+  <span class="st">"acs"</span>: {
+    <span class="st">"median_household_income"</span>: <span class="nm">94800</span>,
+    <span class="st">"pct_college_educated"</span>:    <span class="nm">0.71</span>,
+    <span class="st">"population_density_sqmi"</span>: <span class="nm">72140</span>
+  },
+  <span class="st">"geo"</span>: {
+    <span class="st">"lat"</span>: <span class="nm">40.7484</span>, <span class="st">"lon"</span>: <span class="nm">-73.9967</span>,
+    <span class="st">"timezone"</span>: <span class="st">"America/New_York"</span>
+  },
+  <span class="cm">// + 200 more fields …</span>
+}</pre>
+      </div>
+    </div>
+  </div>
+</section>
 
-    <p>
-      This page is a placeholder; richer content (dataset catalog, usage
-      examples, changelog) will land in a later release.
-    </p>
-  </main>
+<!-- ── Stats bar ─────────────────────────────────────────────────────── -->
+<div class="stats-bar">
+  <div class="wrap">
+    <div class="stats-inner">
+      <div class="stat">
+        <div class="stat-num">200<span>+</span></div>
+        <div class="stat-label">Fields per address</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num">140<span>M</span></div>
+        <div class="stat-label">U.S. addresses covered</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num">&lt;50<span>ms</span></div>
+        <div class="stat-label">Median response time</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num">7</div>
+        <div class="stat-label">Source datasets</div>
+      </div>
+    </div>
+  </div>
+</div>
 
-  <footer>
-    <p>FastOpenData &mdash; open-data API.</p>
-  </footer>
+<!-- ── How it works ──────────────────────────────────────────────────── -->
+<section class="section">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">How it works</span>
+      <h2>From address to insights in one round-trip.</h2>
+      <p class="section-sub">No SDK. No schema to learn. No data pipeline to maintain.</p>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">01 — Request</div>
+        <h3>Send any U.S. address.</h3>
+        <p>POST a freeform address string or a lat/lon pair. The API geocodes, resolves to a Census tract, and enriches — all in one call.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">02 — Enrich</div>
+        <h3>We join 7 source datasets.</h3>
+        <p>ACS demographics, TIGER geography, OSM points of interest, USAspending contracts, and more — prejoined, normalized, typed, and refreshed weekly.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">03 — Build</div>
+        <h3>Use the fields you need.</h3>
+        <p>Filter by <code>?fields=</code> to return only what your app uses. Every field has a stable name, a type signature, and a source citation.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Dataset catalog preview ───────────────────────────────────────── -->
+<section class="section" style="background: var(--paper-2); border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule);">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">Data catalog</span>
+      <h2>Seven curated sources. One interface.</h2>
+      <p class="section-sub">Every dataset is kept up to date automatically — no cronjobs on your end.</p>
+    </div>
+    <div class="dataset-grid">
+      <a href="catalog.html" class="ds-card">
+        <div class="ds-icon">🏛</div>
+        <h3>ACS Demographics</h3>
+        <p>Income, education, housing, commute, and 80+ demographic variables at the tract level from the American Community Survey.</p>
+        <div class="ds-meta">Census Bureau · refreshed annually</div>
+      </a>
+      <a href="catalog.html" class="ds-card">
+        <div class="ds-icon">🗺</div>
+        <h3>TIGER Geography</h3>
+        <p>Census tract and county boundaries, congressional districts, ZIP code tabulation areas, and urban/rural classifications.</p>
+        <div class="ds-meta">Census Bureau · refreshed annually</div>
+      </a>
+      <a href="catalog.html" class="ds-card">
+        <div class="ds-icon">📍</div>
+        <h3>OpenStreetMap POI</h3>
+        <p>Points of interest counts within configurable radii — transit stops, hospitals, schools, parks, and grocery stores.</p>
+        <div class="ds-meta">OSM Planet · refreshed weekly</div>
+      </a>
+      <a href="catalog.html" class="ds-card">
+        <div class="ds-icon">💰</div>
+        <h3>USAspending Contracts</h3>
+        <p>Federal contract and grant awards aggregated by tract — total awards, agency breakdown, and per-capita figures.</p>
+        <div class="ds-meta">USAspending.gov · refreshed weekly</div>
+      </a>
+      <a href="catalog.html" class="ds-card">
+        <div class="ds-icon">🌿</div>
+        <h3>EPA Environmental</h3>
+        <p>Air quality index history, Superfund site proximity, and lead-paint exposure risk percentiles by Census tract.</p>
+        <div class="ds-meta">EPA · refreshed quarterly</div>
+      </a>
+      <a href="catalog.html" class="ds-card">
+        <div class="ds-icon">🏥</div>
+        <h3>Health Outcomes</h3>
+        <p>CDC PLACES chronic disease prevalence, mental health indicators, and healthcare access metrics at the tract level.</p>
+        <div class="ds-meta">CDC PLACES · refreshed annually</div>
+      </a>
+    </div>
+    <div style="margin-top: 28px; text-align: center;">
+      <a href="catalog.html" class="btn btn-ghost">
+        Browse all 200+ fields
+        <svg class="arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ── CTA band ───────────────────────────────────────────────────────── -->
+<section class="cta-band">
+  <div class="wrap">
+    <h2>Stop reinventing the wheel.</h2>
+    <p>The data is public. The joins are our problem. Get a free API key and query your first address in under five minutes.</p>
+    <div class="cta-actions">
+      <a href="dashboard.html" class="btn">Get a free API key</a>
+      <a href="demo.html" class="btn btn-ghost">Try the demo first</a>
+    </div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="grid-cols">
+      <div><a href="index.html" class="brand"><span class="brand-mark">{}</span> FastOpenData<span class="dot">.</span></a><p style="margin-top: 14px; font-size: 13px; color: var(--ink-3); max-width: 32ch;">Clean public data, ready to query.</p></div>
+      <div><h4>Product</h4><ul><li><a href="demo.html">Live demo</a></li><li><a href="docs.html">Documentation</a></li><li><a href="catalog.html">Data catalog</a></li><li><a href="pricing.html">Pricing</a></li></ul></div>
+      <div><h4>Data</h4><ul><li><a href="catalog.html">All fields</a></li><li><a href="docs.html">Source attribution</a></li><li><a href="docs.html">Refresh schedule</a></li><li><a href="docs.html">Methodology</a></li></ul></div>
+      <div><h4>Company</h4><ul><li><a href="about.html">About</a></li><li><a href="about.html">Blog</a></li><li><a href="about.html">Careers</a></li><li><a href="about.html">Contact</a></li></ul></div>
+      <div><h4>Legal</h4><ul><li><a href="#">Terms</a></li><li><a href="#">Privacy</a></li><li><a href="#">DPA</a></li><li><a href="#">Status</a></li></ul></div>
+    </div>
+    <div class="legal"><span>© 2026 FastOpenData, Inc.</span><span style="font-family: var(--font-mono);">v1.0.4 · catalog refreshed 2 days ago</span></div>
+  </div>
+</footer>
+
+<script src="tweaks.js"></script>
 </body>
 </html>
