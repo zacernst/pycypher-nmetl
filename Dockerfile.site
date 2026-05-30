@@ -65,10 +65,7 @@ COPY packages/pycypher-tui/src            packages/pycypher-tui/src
 # Install all workspace dependencies (skip dev extras).
 RUN uv sync --frozen --no-dev
 
-# Copy application source, config, and site assets.
-COPY packages/shared/src                  packages/shared/src
-COPY packages/pycypher/src                packages/pycypher/src
-COPY packages/fastopendata/src            packages/fastopendata/src
+# Copy runtime assets not needed during dependency installation.
 COPY packages/fastopendata/site           packages/fastopendata/site
 COPY packages/fastopendata/config.toml    packages/fastopendata/config.toml
 
