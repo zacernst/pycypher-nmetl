@@ -53,14 +53,17 @@ jobs:
         with:
           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
-          token_format: access_token
 
-      - name: Log in to Artifact Registry
-        uses: docker/login-action@v3
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v3
         with:
-          registry: ${{ env.REGISTRY }}
-          username: oauth2accesstoken
-          password: ${{ steps.auth.outputs.access_token }}
+          version: ">= 363.0.0"
+
+      # Use the credentials file exported by the auth action instead of
+      # explicitly minting an OAuth access token, which requires additional
+      # iam.serviceAccounts.getAccessToken permission.
+      - name: Configure Artifact Registry auth
+        run: gcloud auth configure-docker ${{ env.REGISTRY }} --quiet
 
       - name: Build Docker image
         run: |

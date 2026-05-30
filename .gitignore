@@ -138,6 +138,7 @@ celerybeat.pid
 # Environments
 .env
 .venv
+gha-creds-*.json
 env/
 venv/
 ENV/
@@ -238,4 +239,3 @@ node_exporter-1.9.1.darwin-arm64/NOTICE
 
 DELEGATION_METHODOLOGY_FRAMEWORK.md
 MULTI_AGENT_CONTINUOUS_SYSTEM.md
-
