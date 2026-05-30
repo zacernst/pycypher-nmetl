@@ -40,30 +40,30 @@ jobs:
       # Required GitHub secrets:
       #   GCP_WORKLOAD_IDENTITY_PROVIDER — full provider resource name, e.g.:
       #     projects/123456789/locations/global/workloadIdentityPools/github/providers/github
-      #   GCP_SERVICE_ACCOUNT — service account email, e.g.:
-      #     github-actions@fastopendata.iam.gserviceaccount.com
       #
-      # The service account needs these IAM roles:
-      #   roles/run.admin
-      #   roles/artifactregistry.writer
-      #   roles/iam.serviceAccountUser
+      # The WIF identity (GitHub Actions principal) needs the following IAM
+      # roles granted directly (no service account impersonation):
+      #   roles/run.admin               — on the GCP project
+      #   roles/artifactregistry.writer — on the Artifact Registry repository
+      #   roles/iam.serviceAccountUser  — on the Cloud Run runtime service
+      #                                   account (so Cloud Run can act as it)
       - name: Authenticate to Google Cloud
         id: auth
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+          token_format: access_token
 
-      - name: Set up Google Cloud SDK
-        uses: google-github-actions/setup-gcloud@v3
+      # Use docker/login-action with the WIF access token to avoid relying on
+      # the gcloud credential helper, which requires service account
+      # impersonation (iam.serviceAccounts.getAccessToken) that is not needed
+      # for direct WIF authentication.
+      - name: Log in to Artifact Registry
+        uses: docker/login-action@v3
         with:
-          version: ">= 363.0.0"
-
-      # Use the credentials file exported by the auth action instead of
-      # explicitly minting an OAuth access token, which requires additional
-      # iam.serviceAccounts.getAccessToken permission.
-      - name: Configure Artifact Registry auth
-        run: gcloud auth configure-docker ${{ env.REGISTRY }} --quiet
+          registry: ${{ env.REGISTRY }}
+          username: oauth2accesstoken
+          password: ${{ steps.auth.outputs.access_token }}
 
       - name: Build Docker image
         run: |
