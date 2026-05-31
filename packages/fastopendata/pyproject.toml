@@ -48,6 +48,9 @@ file = "LICENSE.txt"
 [project.urls]
 Homepage = "https://github.com/zacernst/pycypher"
 
+[project.optional-dependencies]
+tui = ["textual>=1.0.0,<2.0.0"]
+
 [project.scripts]
 
 [tool.hatchling.build.targets.wheel]

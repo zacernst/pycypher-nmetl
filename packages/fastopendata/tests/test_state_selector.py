@@ -15,7 +15,7 @@ from unittest.mock import patch
 
 import pytest
 
-from pycypher_tui.screens.state_selector import (
+from fastopendata.tui.state_selector import (
     StateSelector,
     _FALLBACK_STATE_INFO,
     _load_state_info,

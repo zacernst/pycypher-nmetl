@@ -7,6 +7,13 @@ shared = { workspace = true }
 fastopendata = { workspace = true }
 pycypher-tui = { workspace = true }
 
+[tool.uv]
+environments = [
+    "sys_platform == 'darwin'",
+    "sys_platform == 'linux'",
+]
+
+
 [project]
 name = "pycypher-workspace"
 version = "0.0.1"

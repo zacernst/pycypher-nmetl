@@ -21,6 +21,7 @@ from pycypher_tui.modes.manager import ModeManager
 from pycypher_tui.modes.registers import RegisterFile
 from pycypher_tui.modes.search_replace import parse_substitute_command
 from pycypher_tui.screens.base import VimNavigableScreen
+from pycypher_tui.screens.editable_base import VimEditableScreen
 from pycypher_tui.screens.data_model import DataModelScreen
 from pycypher_tui.screens.data_sources import DataSourcesScreen
 from pycypher_tui.screens.entity_browser import EntityBrowserScreen
@@ -33,13 +34,9 @@ from pycypher_tui.screens.relationship_editor import RelationshipEditorScreen
 from pycypher_tui.screens.source_mapper import DataSourceMapperScreen
 
 try:
-    from pycypher_tui.screens.fod_catalog import FodCatalogScreen
+    from fastopendata.tui.fod_catalog import FodCatalogScreen
 except ImportError:
     FodCatalogScreen = None  # type: ignore[assignment,misc]
-try:
-    from pycypher_tui.screens.state_selector import StateSelector
-except ImportError:
-    StateSelector = None  # type: ignore[assignment,misc]
 try:
     from pycypher_tui.widgets.help_system import HelpRegistry, HelpScreen
 except ImportError:
@@ -188,8 +185,6 @@ class PyCypherTUI(App):
     SCREENS = {}  # type: dict[str, type]
     if FodCatalogScreen is not None:
         SCREENS["fod_catalog"] = FodCatalogScreen
-    if StateSelector is not None:
-        SCREENS["state_selector"] = StateSelector
 
     def __init__(
         self,
@@ -898,92 +893,29 @@ class PyCypherTUI(App):
                 "DataSourcesScreen not mounted; skipping refresh"
             )
 
-    def open_state_selector(self) -> None:
-        """Push the state selector screen if available.
-
-        Called from PipelineOverviewScreen when the user presses ``s`` on
-        the Settings section.
-        """
-        if StateSelector is None:
-            self.notify(
-                "State selector unavailable (state_selector module failed to import).",
-                severity="warning",
-            )
-            return
-        self.push_screen(StateSelector())
-
-    async def on_state_selector_state_selected(
-        self, event: "StateSelector.StateSelected"
+    async def on_vim_editable_screen_form_cancelled(
+        self, event: VimEditableScreen.FormCancelled
     ) -> None:
-        """Persist the picked state and auto-populate per-state source URIs.
+        """Navigate back to the appropriate parent screen when a form is cancelled."""
+        active = self._find_active_vim_screen()
+        if isinstance(active, EntityEditorScreen):
+            await self._show_entity_browser()
+        elif isinstance(active, RelationshipEditorScreen):
+            await self._show_relationship_browser()
+        else:
+            await self._show_overview()
 
-        On selection we:
-        1. Update ``PipelineConfig.state_fips`` via the config manager.
-        2. Add (or update) the standard per-state entity sources so the
-           user doesn't have to wire them up by hand.
-        3. Refresh the overview screen so the new state shows in Settings.
-        """
-        if self._config_manager is None:
-            self.notify(
-                "Open a config file first (:e <file>) before picking a state.",
-                severity="warning",
-            )
-            return
-
-        try:
-            self._config_manager.set_state_fips(event.state_fips)
-        except ValueError as exc:
-            self.notify(f"Invalid state FIPS: {exc}", severity="error")
-            return
-
-        # Auto-populate the standard per-state entity source URIs.  We use
-        # update_entity_source when the source already exists to avoid
-        # duplicate-id errors after the user changes states multiple times.
-        fips = event.state_fips
-        standard_sources: list[tuple[str, str, str]] = [
-            (
-                f"contracts_state_{fips}",
-                f"contracts_state_{fips}.csv",
-                "Contract",
-            ),
-            (
-                "state_county_tract_puma",
-                "state_county_tract_puma.csv",
-                "GeoCrosswalk",
-            ),
-        ]
-        cfg = self._config_manager.get_config()
-        existing_ids = {e.id for e in cfg.sources.entities}
-        for source_id, uri, entity_type in standard_sources:
-            try:
-                if source_id in existing_ids:
-                    self._config_manager.update_entity_source(
-                        source_id,
-                        uri=uri,
-                        entity_type=entity_type,
-                    )
-                else:
-                    self._config_manager.add_entity_source(
-                        source_id,
-                        uri,
-                        entity_type,
-                    )
-            except (ValueError, KeyError) as exc:
-                logger.debug(
-                    "auto-populate %s failed: %s",
-                    source_id,
-                    exc,
-                )
-
-        self.notify(
-            f"State set to {event.state_name} ({event.state_fips})",
-            severity="information",
-        )
-
-        # Refresh the overview so the Settings section shows the new state.
-        overview = self._find_active_overview()
-        if overview is not None:
-            await overview.refresh_from_config()
+    async def on_vim_editable_screen_form_submitted(
+        self, event: VimEditableScreen.FormSubmitted
+    ) -> None:
+        """Navigate back to the appropriate parent screen after a form is submitted."""
+        active = self._find_active_vim_screen()
+        if isinstance(active, EntityEditorScreen):
+            await self._show_entity_browser()
+        elif isinstance(active, RelationshipEditorScreen):
+            await self._show_relationship_browser()
+        else:
+            await self._show_overview()
 
     def _show_help(self, topic: str = "index") -> None:
         """Show the help screen for the given topic."""

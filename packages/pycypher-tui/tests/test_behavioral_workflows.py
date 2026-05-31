@@ -321,8 +321,13 @@ class TestCommandModeWorkflow:
             assert app.mode_manager.current_type == ModeType.COMMAND
 
     @pytest.mark.asyncio
-    async def test_command_escape_returns_to_data_sources(self):
-        """Escaping command mode returns to NORMAL with data sources visible."""
+    async def test_command_escape_returns_to_normal_and_overview(self):
+        """Escaping command mode exits to NORMAL mode and navigates back to overview.
+
+        Pressing Escape from any non-NORMAL mode intentionally both cancels the
+        mode and triggers navigate-back (see app.py on_key comment), so the
+        data-sources screen is replaced by the overview.
+        """
         app = _make_ecommerce_app()
         async with app.run_test() as pilot:
             await app._show_data_sources()
@@ -334,7 +339,7 @@ class TestCommandModeWorkflow:
             await pilot.pause()
 
             assert app.mode_manager.current_type == ModeType.NORMAL
-            assert len(app.query(DataSourcesScreen)) > 0
+            assert len(app.query(PipelineOverviewScreen)) > 0
 
     @pytest.mark.asyncio
     async def test_save_and_reopen_roundtrip(self, tmp_path):

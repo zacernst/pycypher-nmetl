@@ -58,10 +58,10 @@ from pycypher_tui.screens.template_browser import (
     summarise_template,
 )
 
-# FodCatalogScreen depends on the optional `fastopendata` extra; import
-# it defensively so the package is usable without that dependency.
+# FodCatalogScreen lives in the fastopendata package; import defensively
+# so pycypher-tui works without the optional fastopendata dependency.
 try:
-    from pycypher_tui.screens.fod_catalog import FodCatalogScreen
+    from fastopendata.tui.fod_catalog import FodCatalogScreen
 except ImportError:  # pragma: no cover - optional dep
     FodCatalogScreen = None  # type: ignore[assignment, misc]
 
