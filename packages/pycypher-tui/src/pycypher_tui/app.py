@@ -277,6 +277,12 @@ class PyCypherTUI(App):
         if result.command:
             await self._execute_command(result.command)
 
+        # Escape in any mode navigates back once the mode transitions to
+        # NORMAL.  Without this, the user has to press Escape twice: once
+        # to leave INSERT/COMMAND, then again to navigate back.
+        if event.key == "escape" and self.mode_manager.current_type == ModeType.NORMAL:
+            self._dispatch_to_content("navigate:left")
+
         self._update_command_line()
 
     def _on_mode_change(self, old_mode: ModeType, new_mode: ModeType) -> None:
