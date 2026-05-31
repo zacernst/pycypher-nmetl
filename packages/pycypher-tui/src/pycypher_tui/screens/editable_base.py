@@ -456,7 +456,10 @@ class VimEditableScreen(VimNavigableScreen[T], Generic[T]):
 
         match command:
             case "action:confirm":
-                self.submit_form()
+                if self._field_widgets:
+                    self.submit_form()
+                else:
+                    super()._dispatch_command(command)
             case "edit:undo":
                 self.undo()
             case "edit:redo":
