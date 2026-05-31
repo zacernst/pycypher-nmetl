@@ -507,8 +507,16 @@ class QueryConfig(BaseModel):
     Attributes:
         id: Unique identifier for this query within the pipeline.
         description: Optional human-readable description.
-        source: Path to a ``.cypher`` file containing the query.  Relative
-            paths are resolved from the directory containing the config file.
+        source: URI or path to a ``.cypher`` file containing the query.
+            Supported forms:
+
+            * ``file:///abs/path/query.cypher`` — absolute local path
+            * ``s3://bucket/key.cypher`` — Amazon S3 (requires s3fs)
+            * ``gs://bucket/key.cypher`` — Google Cloud Storage (requires gcsfs)
+            * ``https://host/path.cypher`` — HTTP/HTTPS
+            * ``queries/my_query.cypher`` — relative path, resolved from the
+              directory containing the pipeline config file
+
         inline: Literal Cypher query text.  Intended as a convenience escape
             hatch for short, stable queries; prefer ``source`` for anything
             non-trivial.
@@ -532,8 +540,8 @@ class QueryConfig(BaseModel):
             )
         if not has_source and not has_inline:
             msg = (
-                f"Query {self.id!r}: specify either 'source' (path to .cypher "
-                "file) or 'inline' (Cypher text)."
+                f"Query {self.id!r}: specify either 'source' (URI or path to "
+                ".cypher file) or 'inline' (Cypher text)."
             )
             raise ValueError(
                 msg,

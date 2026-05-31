@@ -1,0 +1,37 @@
+version: "1.0"
+
+project:
+  name: example_social_network_test
+  description: "Just an example to test the pipeline flow"
+
+sources:
+  entities:
+    - id: people
+      uri: file:///home/zac/git/pycypher-nmetl/examples/social_network/data/people.csv
+      entity_type: Person
+      id_col: __ID__
+      schema_hints:
+        __ID__: VARCHAR
+        name: VARCHAR
+        age: INTEGER
+        email: VARCHAR
+        join_data: DATE
+
+    - id: companies
+      uri: file:///home/zac/git/pycypher-nmetl/examples/social_network/data/companies.csv
+      entity_type: Company
+      id_col: __ID__
+      schema_hints:
+        __ID__: VARCHAR
+        name: VARCHAR
+        industry: VARCHAR
+        founded_year: VARCHAR
+
+queries:
+  - id: age_plus_one
+    description: "Add one to the persons age"
+    source: queries/age_plus_one.cypher
+
+output:
+  - query_id: age_plus_one
+    uri: file:///home/zac/git/pycypher-nmetl/examples/social_network/output.csv

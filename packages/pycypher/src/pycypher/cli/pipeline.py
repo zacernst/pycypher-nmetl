@@ -25,6 +25,66 @@ from pycypher.cli.common import (
 )
 from pycypher.ingestion.security import mask_uri_credentials
 
+# URI schemes that are fetched via fsspec rather than the local filesystem.
+_REMOTE_SCHEMES: frozenset[str] = frozenset(
+    {"s3", "gs", "gcs", "abfss", "az", "http", "https", "ftp", "sftp"}
+)
+
+
+def _load_query_text(source: str, config_dir: Path) -> str:
+    """Load Cypher query text from a URI or relative path.
+
+    Dispatch rules:
+    * Remote URI (s3://, gs://, https://, ftp://, …) — read via fsspec.
+    * ``file://`` URI — strip scheme, treat remainder as a local absolute path.
+    * Bare relative path — resolve relative to *config_dir*.
+
+    The path-traversal security check is applied only to local paths; remote
+    URIs are governed by the credentials / IAM policy of the runtime environment.
+
+    Args:
+        source: The ``source`` field value from ``QueryConfig``.
+        config_dir: Absolute path to the directory containing the pipeline
+            config file; used to resolve relative *source* paths.
+
+    Returns:
+        The UTF-8 decoded contents of the ``.cypher`` file.
+
+    Raises:
+        FileNotFoundError: Local path does not exist.
+        ValueError: Local path escapes *config_dir* (path-traversal guard).
+        OSError: Permission denied or other I/O error.
+    """
+    parsed = urlparse(source)
+    scheme = parsed.scheme.lower()
+
+    if scheme in _REMOTE_SCHEMES:
+        import fsspec  # noqa: PLC0415 — optional dep, imported lazily
+
+        with fsspec.open(source, "r", encoding="utf-8") as fh:
+            return fh.read()
+
+    # Local path: strip file:// if present, then resolve.
+    if scheme == "file":
+        local_path = Path(parsed.path)
+    else:
+        local_path = Path(source)
+
+    if not local_path.is_absolute():
+        local_path = (config_dir / local_path).resolve()
+
+    try:
+        local_path.relative_to(config_dir.resolve())
+    except ValueError:
+        msg = (
+            f"Query source {source!r} escapes the config directory "
+            f"{config_dir}. Use an absolute URI (e.g. file:///abs/path) or "
+            "keep the path within the config directory."
+        )
+        raise ValueError(msg) from None
+
+    return local_path.read_text(encoding="utf-8")
+
 # Exception types caught during query execution
 _QUERY_EXEC_ERRORS: tuple[type[BaseException], ...] = (
     ValueError,
@@ -142,13 +202,13 @@ def dry_run_validate(
             if q.inline is not None:
                 query_text = q.inline
             elif q.source is not None:
-                query_path = (config_dir / q.source).resolve()
-                if not query_path.exists():
+                try:
+                    query_text = _load_query_text(q.source, config_dir)
+                except FileNotFoundError:
                     msg = f"Query [{q.id}] source file not found: {q.source}"
                     errors.append(msg)
                     click.echo(f"    [{q.id}]  FILE MISSING: {q.source}")
                     continue
-                query_text = query_path.read_text(encoding="utf-8")
             else:
                 msg = f"Query [{q.id}] has neither 'inline' nor 'source'."
                 errors.append(msg)
@@ -160,7 +220,7 @@ def dry_run_validate(
             parser = GrammarParser()
             parser.parse(query_text)
             desc = f"  {q.description}" if q.description else ""
-            src_label = f"file:{q.source}" if q.source else "inline"
+            src_label = q.source if q.source else "inline"
             click.echo(f"    [{q.id}] ({src_label}){desc}  OK")
 
         except Exception as exc:  # noqa: BLE001 — CLI: display parse error to user
@@ -374,17 +434,7 @@ def run_impl(
             if q.inline is not None:
                 query_text = q.inline
             elif q.source is not None:
-                query_path = (config_dir / q.source).resolve()
-                try:
-                    query_path.relative_to(config_dir.resolve())
-                except ValueError:
-                    msg = (
-                        f"Query source {q.source!r} escapes the config directory "
-                        f"{config_dir}. Only paths within the config directory are "
-                        "allowed."
-                    )
-                    raise ValueError(msg) from None
-                query_text = query_path.read_text(encoding="utf-8")
+                query_text = _load_query_text(q.source, config_dir)
             else:
                 msg = f"Query {q.id!r} has neither 'inline' nor 'source'."
                 raise ValueError(msg)
@@ -523,7 +573,7 @@ def validate_impl(config: Path, verbose: bool) -> None:
             click.echo(f"\nQueries ({len(cfg.queries)}):")
             for q in cfg.queries:
                 desc = f"  {q.description}" if q.description else ""
-                src_label = f"file:{q.source}" if q.source else "inline"
+                src_label = q.source if q.source else "inline"
                 click.echo(f"  [{q.id}] ({src_label}){desc}")
 
         if cfg.output:
@@ -552,6 +602,7 @@ def validate_impl(config: Path, verbose: bool) -> None:
 def list_queries_impl(config: Path, *, deps: bool) -> None:
     """Implementation of the ``list-queries`` command."""
     cfg = load_config(config)
+    config_dir = config.parent.resolve()
 
     if not cfg.queries:
         click.echo("No queries defined in config.")
@@ -560,7 +611,7 @@ def list_queries_impl(config: Path, *, deps: bool) -> None:
     if not deps:
         for q in cfg.queries:
             desc = f"  — {q.description}" if q.description else ""
-            src = f"(file: {q.source})" if q.source else "(inline)"
+            src = f"({q.source})" if q.source else "(inline)"
             click.echo(f"{q.id:30s} {src}{desc}")
         return
 
@@ -573,7 +624,7 @@ def list_queries_impl(config: Path, *, deps: bool) -> None:
         cypher = q.inline or ""
         if q.source and not cypher:
             try:
-                cypher = Path(q.source).read_text()
+                cypher = _load_query_text(q.source, config_dir)
             except OSError:
                 cypher = ""
         if cypher:
