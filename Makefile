@@ -790,6 +790,11 @@ fod-data-osm:
 	@echo "Downloading OpenStreetMap U.S. extract..."
 	$(FOD_SNAKEMAKE) raw_data/united_states_nodes.csv
 
+fod-data-acs:
+	@echo "American Community Survey"
+	$(FOD_SNAKEMAKE) raw_data/sas_hus.zip
+	$(FOD_SNAKEMAKE) raw_data/sas_pus.zip
+
 ## Download and filter Wikidata geopoint entities (~100 GB raw)
 fod-data-wikidata:
 	@echo "Downloading and filtering Wikidata dump..."

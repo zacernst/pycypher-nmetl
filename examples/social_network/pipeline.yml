@@ -17,6 +17,14 @@ sources:
         email: VARCHAR
         join_data: DATE
 
+    - id: city
+      uri: file:///home/zac/git/pycypher-nmetl/examples/social_network/data/people.csv
+      entity_type: City
+      id_col: city
+      query: "SELECT DISTINCT city, city AS city_name FROM source"
+      schema_hints:
+        city: VARCHAR
+
     - id: companies
       uri: file:///home/zac/git/pycypher-nmetl/examples/social_network/data/companies.csv
       entity_type: Company
@@ -27,11 +35,29 @@ sources:
         industry: VARCHAR
         founded_year: VARCHAR
 
+  relationships:
+    - id: works_at
+      uri: file:///home/zac/git/pycypher-nmetl/examples/social_network/data/works_at.csv
+      relationship_type: WORKS_AT
+      source_col: __SOURCE__
+      target_col: __TARGET__
+
+    - id: lives_in
+      uri: file:///home/zac/git/pycypher-nmetl/examples/social_network/data/people.csv
+      relationship_type: LIVES_IN
+      source_col: __ID__
+      target_col: city
+
 queries:
   - id: age_plus_one
     description: "Add one to the persons age"
-    source: queries/age_plus_one.cypher
+    source: file:///home/zac/git/pycypher-nmetl/examples/social_network/queries/age_plus_one.cypher
+  - id: people_per_city
+    description: "Count how many people are in each city"
+    source: file:///home/zac/git/pycypher-nmetl/examples/social_network/queries/people_per_city.cypher
 
 output:
   - query_id: age_plus_one
     uri: file:///home/zac/git/pycypher-nmetl/examples/social_network/output.csv
+  - query_id: people_per_city
+    uri: file:///home/zac/git/pycypher-nmetl/examples/social_network/city_aggregate.csv
