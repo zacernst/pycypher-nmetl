@@ -123,7 +123,7 @@ rule download_tiger_addr:
     # resources:
     #     census_download=1
     output: f"{fod_config.data_dir}/tl_2025_{{zip}}_addr.zip"
-    threads: 8
+    threads: 4
     shell:
         "sleep $((5 + RANDOM % 10)) && "
         f"  {CENSUS_WGET} --timeout={SHORT_TIMEOUT_SECONDS} --tries=1"
@@ -135,7 +135,7 @@ rule download_tiger_block_groups:
     # resources:
     #     census_download=1
     output: f"{fod_config.data_dir}/tl_2024_{{block_group_fips}}_bg.zip"
-    threads: 8
+    threads: 4
     shell:
         "sleep $((5 + RANDOM % 10)) && "
         f"  {CENSUS_WGET} --timeout={SHORT_TIMEOUT_SECONDS} --tries=1"
@@ -265,7 +265,7 @@ rule download_tiger_puma:
     #     "    {params.url}"
     #     "    -O {output}"
     output: f"{fod_config.data_dir}/tl_2024_{{fips}}_puma20.zip"
-    threads: 8
+    threads: 4
     shell:
         "sleep $((5 + RANDOM % 10)) && "
         f"  {CENSUS_WGET} --timeout={SHORT_TIMEOUT_SECONDS} --tries=1"
@@ -316,7 +316,7 @@ rule extract_fy2025_contracts:
     input: f"{fod_config.data_dir}/FY2025_All_Contracts_Full_20260506.zip"
     output: f"{fod_config.data_dir}/FY2025_All_Contracts_Full_20260506.csv"
     shell:
-        "unzip -o {input} -d \"{fod_config.data_dir}/\""
+        "unzip -o {input} -d \"{fod_config.data_dir}/\" && head -1 {fod_config.data_dir}/FY2025_All_Contracts_Full_20260506_1.csv > tmp && cat FY2025_All_Contracts*csv | grep -v last_modified_date >> tmp && mv tmp FY2025_All_Contracts_Full_20260506.csv"
 # NOTE: Legacy commented-out rules for ACS PUMS, SIPP, AHS, and earlier
 # TIGER/CJARS/OSM/Wikidata rule versions were removed in this cleanup.
 # See git history for the archived rule definitions if needed.
