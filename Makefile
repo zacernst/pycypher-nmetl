@@ -753,7 +753,7 @@ publish: build
 # Override data directory: make fod-data DATA_DIR=/mnt/data/fastopendata
 
 SNAKEMAKE_CORES ?= 50
-FOD_SNAKEMAKE = cd ${FASTOPENDATA_DIR} && uv run snakemake --resources census_download=5 --cores $(SNAKEMAKE_CORES) --rerun-incomplete
+FOD_SNAKEMAKE = cd ${FASTOPENDATA_DIR} && uv run snakemake --resources census_download=1 --cores $(SNAKEMAKE_CORES) --rerun-incomplete
 
 ## Download and process all 17 fastopendata datasets via Snakemake
 fod-data:

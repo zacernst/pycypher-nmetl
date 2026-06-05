@@ -90,6 +90,7 @@ class ContextBuilder:
         target_col: str,
         id_col: str | None = None,
         query: str | None = None,
+        allow_multi_edges: bool = False,
     ) -> ContextBuilder:
         """Register a relationship type loaded from *source*.
 
@@ -101,6 +102,10 @@ class ContextBuilder:
             id_col: Column to use as ``__ID__``.  Defaults to auto-generated
                 sequential integers.
             query: Optional SQL query applied after loading (file paths only).
+            allow_multi_edges: When ``False`` (default), rows with the same
+                ``(source, target)`` pair are collapsed into a single edge.
+                Set to ``True`` to preserve parallel edges (e.g. one row per
+                transaction).
 
         Returns:
             ``self`` for chaining.
@@ -112,6 +117,7 @@ class ContextBuilder:
             source_col=source_col,
             target_col=target_col,
             id_col=id_col,
+            allow_multi_edges=allow_multi_edges,
         )
         rel_table = RelationshipTable.from_arrow(relationship_type, table)
         self._relationship_tables.append(rel_table)

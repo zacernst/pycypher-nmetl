@@ -26,8 +26,11 @@ from pycypher.ast_models import (
     NodePattern,
     Pattern,
     PatternPath,
+    PropertyLookup,
     Query,
     RelationshipPattern,
+    Set,
+    Variable,
 )
 from pycypher.exceptions import CyclicDependencyError
 
@@ -164,8 +167,15 @@ class QueryDependencyAnalyzer:
                 )
                 raise ValueError(msg)
             ast = ASTConverter.from_cypher(cypher)
+            var_to_labels = self._build_var_label_map(ast)
             produces = self._extract_produced_types(ast)
+            produces.update(
+                self._extract_produced_properties(ast, var_to_labels),
+            )
             consumes = self._extract_consumed_types(ast)
+            consumes.update(
+                self._extract_consumed_properties(ast, var_to_labels),
+            )
 
             node = QueryNode(
                 query_id=query_id,
@@ -247,3 +257,124 @@ class QueryDependencyAnalyzer:
                         types.update(element.labels)
 
         return types
+
+    def _build_var_label_map(self, ast: Query) -> dict[str, set[str]]:
+        """Map each pattern variable to the set of labels it carries.
+
+        Walks every MATCH/MERGE/CREATE pattern and records the labels declared
+        on each node variable.  When a variable is re-bound across clauses
+        (e.g. `MATCH (n:A) ... MATCH (n:B)` — atypical but legal), the union
+        of labels is recorded.
+
+        Variables introduced by WITH/UNWIND that don't carry a label cannot
+        be resolved and are simply absent from the map; downstream property
+        tracking skips them.
+        """
+        var_to_labels: dict[str, set[str]] = {}
+        pattern_clauses: list[Pattern] = []
+        for clause in ast.clauses:
+            if (
+                isinstance(clause, (Match, Merge, Create))
+                and clause.pattern is not None
+            ):
+                pattern_clauses.append(clause.pattern)
+
+        for pattern in pattern_clauses:
+            for path in pattern.paths:
+                if not isinstance(path, PatternPath):
+                    continue
+                for element in path.elements:
+                    if not isinstance(element, NodePattern):
+                        continue
+                    name = self._node_pattern_var_name(element)
+                    if name is None or not element.labels:
+                        continue
+                    var_to_labels.setdefault(name, set()).update(
+                        element.labels,
+                    )
+        return var_to_labels
+
+    @staticmethod
+    def _node_pattern_var_name(node: NodePattern) -> str | None:
+        """Return the variable name on *node*, or None for anonymous patterns.
+
+        ``NodePattern.variable`` may be a :class:`Variable`, a bare string, or
+        ``None`` depending on how the AST was built.  Normalize to ``str | None``.
+        """
+        var = getattr(node, "variable", None)
+        if var is None:
+            return None
+        if isinstance(var, Variable):
+            return var.name
+        if isinstance(var, str):
+            return var
+        return None
+
+    def _extract_produced_properties(
+        self,
+        ast: Query,
+        var_to_labels: dict[str, set[str]],
+    ) -> set[str]:
+        """Return ``{Label.prop}`` entries for every ``SET v.prop = ...`` write.
+
+        Only ``SetPropertyItem`` writes are tracked; ``SET v = {map}`` and
+        ``SET v += {map}`` cannot be resolved statically and are silently
+        skipped (a conservative choice — under-reporting beats false edges).
+
+        Variables that don't appear in *var_to_labels* (e.g. WITH-introduced
+        names without a known label) skip property tracking.
+        """
+        produced: set[str] = set()
+        for set_node in ast.find_all(Set):
+            for item in set_node.items:
+                # The AST converter emits plain SetItem nodes:
+                #   SET v.prop = expr  → property="prop"
+                #   SET v:Label        → property=None  (label-set)
+                #   SET v = {map}      → property="*"   (full-replace)
+                #   SET v += {map}     → property="*"   (merge)
+                # We track only the explicit-property form.
+                if item.property is None or item.property == "*":
+                    continue
+                var_name = (
+                    item.variable.name
+                    if isinstance(item.variable, Variable)
+                    else None
+                )
+                if var_name is None:
+                    continue
+                labels = var_to_labels.get(var_name)
+                if not labels:
+                    continue
+                for label in labels:
+                    produced.add(f"{label}.{item.property}")
+        return produced
+
+    def _extract_consumed_properties(
+        self,
+        ast: Query,
+        var_to_labels: dict[str, set[str]],
+    ) -> set[str]:
+        """Return ``{Label.prop}`` entries for every property *read* in the query.
+
+        Walks every :class:`PropertyLookup` reachable from the AST — covers
+        WHERE, RETURN, WITH projections, ORDER BY, and SET right-hand-sides.
+        A lookup whose receiver is something other than a :class:`Variable`
+        (e.g. the result of a function call or map indexing) is skipped, as
+        is a variable with no resolvable label.
+        """
+        consumed: set[str] = set()
+        for lookup in ast.find_all(PropertyLookup):
+            receiver = lookup.expression
+            # Tolerate the legacy ``variable`` field on PropertyLookup.
+            if receiver is None:
+                receiver = lookup.variable
+            if not isinstance(receiver, Variable):
+                continue
+            if lookup.property is None:
+                continue
+            labels = var_to_labels.get(receiver.name)
+            if not labels:
+                continue
+            for label in labels:
+                consumed.add(f"{label}.{lookup.property}")
+        return consumed

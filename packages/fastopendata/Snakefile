@@ -49,10 +49,10 @@ rule all:
         f"{fod_config.data_dir}/psam_pus.csv",
         f"{fod_config.data_dir}/psam_hus.csv",
         f"{fod_config.data_dir}/puma_combined.shp",
-        f"{fod_config.data_dir}/wikidata_us_points.json",
+        # f"{fod_config.data_dir}/wikidata_us_points.json",
         f"{fod_config.data_dir}/output/cjars_joe_2022_co.csv",
         f"{fod_config.data_dir}/united_states_nodes.csv",
-        f"{fod_config.data_dir}/state_county_tract_puma.csv",
+        f"{fod_config.data_dir}/state_county_tract_puma_crosswalk.csv",
         expand(f"{fod_config.data_dir}/tl_2025_{{zip}}_addr.dbf.iso.xml", zip=fod_config.zips),
         expand(f"{fod_config.data_dir}/tl_2025_{{fips}}_tract.shp", fips=fod_config.state_fips),
         expand(f"{fod_config.data_dir}/tl_2024_{{block_group_fips}}_bg.shp", block_group_fips=fod_config.block_group_fips),
@@ -85,7 +85,7 @@ rule download_american_community_survey_household_one_year_2024:
     output: f"{fod_config.data_dir}/csv_hus.zip"
     shell:
         "sleep $((5 + RANDOM % 10)) && "
-        f"  {CENSUS_WGET} --timeout={SHORT_TIMEOUT_SECONDS} --tries=1"
+        f"  {CENSUS_WGET} --timeout={SHORT_TIMEOUT_SECONDS} --tries=100"
         "    'https://www2.census.gov/programs-surveys/acs/data/pums/2024/1-Year/csv_hus.zip'"
         "    -O {output} "
 
@@ -96,7 +96,7 @@ rule download_american_community_survey_person_one_year_2024:
     output: f"{fod_config.data_dir}/csv_pus.zip"
     shell:
         "sleep $((5 + RANDOM % 10)) && "
-        f"  {CENSUS_WGET} --timeout={SHORT_TIMEOUT_SECONDS} --tries=1"
+        f"  {CENSUS_WGET} --timeout={SHORT_TIMEOUT_SECONDS} --tries=100"
         "    'https://www2.census.gov/programs-surveys/acs/data/pums/2024/1-Year/csv_pus.zip'"
         "    -O {output} "
 
@@ -107,7 +107,7 @@ rule download_tiger_tract:
     output: f"{fod_config.data_dir}/tl_2025_{{fips}}_tract.zip"
     shell:
         "sleep $((5 + RANDOM % 10)) && "
-        f"  {CENSUS_WGET} --timeout={SHORT_TIMEOUT_SECONDS} --tries=1"
+        f"  {CENSUS_WGET} --timeout={SHORT_TIMEOUT_SECONDS} --tries=100"
         "    https://www2.census.gov/geo/tiger/TIGER2025/TRACT/tl_2025_{wildcards.fips}_tract.zip"
         "    -O {output}"
 
@@ -123,10 +123,10 @@ rule download_tiger_addr:
     # resources:
     #     census_download=1
     output: f"{fod_config.data_dir}/tl_2025_{{zip}}_addr.zip"
-    threads: 4
+    threads: 1
     shell:
         "sleep $((5 + RANDOM % 10)) && "
-        f"  {CENSUS_WGET} --timeout={SHORT_TIMEOUT_SECONDS} --tries=1"
+        f"  {CENSUS_WGET} --timeout={SHORT_TIMEOUT_SECONDS} --tries=100"
         "    'https://www2.census.gov/geo/tiger/TIGER2025/ADDR/tl_2025_{wildcards.zip}_addr.zip'"
         f"    -O {{output}} || touch {fod_config.data_dir}/tl_2025_{{wildcards.zip}}_addr.zip"
 
@@ -135,10 +135,10 @@ rule download_tiger_block_groups:
     # resources:
     #     census_download=1
     output: f"{fod_config.data_dir}/tl_2024_{{block_group_fips}}_bg.zip"
-    threads: 4
+    threads: 1
     shell:
         "sleep $((5 + RANDOM % 10)) && "
-        f"  {CENSUS_WGET} --timeout={SHORT_TIMEOUT_SECONDS} --tries=1"
+        f"  {CENSUS_WGET} --timeout={SHORT_TIMEOUT_SECONDS} --tries=100"
         "    'https://www2.census.gov/geo/tiger/TIGER2024/BG/tl_2024_{wildcards.block_group_fips}_bg.zip'"
         "    -O {output} "
 
@@ -162,7 +162,7 @@ rule download_tract_puma_crosswalk:
     #     census_download=1
     output: f"{fod_config.data_dir}/state_county_unedited.txt"
     shell:
-        f"  {CENSUS_WGET} --timeout={SHORT_TIMEOUT_SECONDS} --tries=1"
+        f"  {CENSUS_WGET} --timeout={SHORT_TIMEOUT_SECONDS} --tries=100"
         "    'https://www2.census.gov/geo/docs/maps-data/data/rel2020/2020_Census_Tract_to_2020_PUMA.txt'"
         "    -O {output}"
 
@@ -175,11 +175,19 @@ rule process_tract_puma_crosswalk:
         r"sed 's/^\xEF\xBB\xBF//' {input} | dos2unix > {output}"
 
 
+rule combine_ids_to_fips:
+    """Combine digits to full fips codes"""
+    input: f"{fod_config.data_dir}/state_county_tract_puma.csv"
+    output: f"{fod_config.data_dir}/state_county_tract_puma_crosswalk.csv"
+    shell:
+        f"uv run python {SCRIPTS}/combine_digits_to_fips.py {fod_config.data_dir}/state_county_tract_puma.csv {fod_config.data_dir}/state_county_tract_puma_crosswalk.csv"
+
+
 rule download_osm:
     output: f"{fod_config.data_dir}/us-latest.osm.pbf"
     shell:
         "sleep $((5 + RANDOM % 10)) && "
-        "wget --timeout=3600 --tries=3 --waitretry=60"
+        "{CENSUS_WGET} --timeout=3600 --tries=3 --waitretry=60"
         " 'https://download.geofabrik.de/north-america/us-latest.osm.pbf'"
         " -O {output}"
 
@@ -210,7 +218,7 @@ rule download_cjars:
     output: f"{fod_config.data_dir}/cjars_joe_2022_co.csv.zip"
     shell:
         "sleep $((5 + RANDOM % 10)) && "
-        f"  {CENSUS_WGET} --timeout={SHORT_TIMEOUT_SECONDS} --tries=1"
+        f"  {CENSUS_WGET} --timeout={SHORT_TIMEOUT_SECONDS} --tries=100"
         "    'https://www2.census.gov/programs-surveys/cjars/datasets/2022/cjars_joe_2022_co.csv.zip'"
         "    -O {output} "
 
@@ -228,7 +236,7 @@ rule download_tiger_state:
     output: temp(f"{fod_config.data_dir}/us_state_boundaries.zip")
     shell:
         "sleep $((5 + RANDOM % 10)) && "
-        f"  {CENSUS_WGET} --timeout={SHORT_TIMEOUT_SECONDS} --tries=1"
+        f"  {CENSUS_WGET} --timeout={SHORT_TIMEOUT_SECONDS} --tries=100"
         "    'https://www2.census.gov/geo/tiger/TIGER2024/STATE/tl_2024_us_state.zip'"
         "    -O {output} "
 
@@ -261,14 +269,14 @@ rule download_tiger_puma:
     #     url = expand("https://www2.census.gov/geo/tiger/TIGER2024/PUMA20/tl_2024_{puma_state_fips}_puma20.zip", puma_state_fips=fod_config.puma_state_fips)
     # shell:
     #     "sleep $((5 + RANDOM % 10)) && "
-    #     f"  {CENSUS_WGET} --timeout={SHORT_TIMEOUT_SECONDS} --tries=1"
+    #     f"  {CENSUS_WGET} --timeout={SHORT_TIMEOUT_SECONDS} --tries=3"
     #     "    {params.url}"
     #     "    -O {output}"
     output: f"{fod_config.data_dir}/tl_2024_{{fips}}_puma20.zip"
-    threads: 4
+    threads: 1
     shell:
         "sleep $((5 + RANDOM % 10)) && "
-        f"  {CENSUS_WGET} --timeout={SHORT_TIMEOUT_SECONDS} --tries=1"
+        f"  wget --timeout={SHORT_TIMEOUT_SECONDS} --tries=20"
         "    'https://www2.census.gov/geo/tiger/TIGER2024/PUMA20/tl_2024_{wildcards.fips}_puma20.zip'"
         "    -O {output}"
 
@@ -307,7 +315,7 @@ rule download_fy2025_contracts:
     output: f"{fod_config.data_dir}/FY2025_All_Contracts_Full_20260506.zip"
     shell:
         "sleep $((5 + RANDOM % 10)) && "
-        f"{CENSUS_WGET} --timeout={SHORT_TIMEOUT_SECONDS} --tries=1"
+        f"{CENSUS_WGET} --timeout={SHORT_TIMEOUT_SECONDS} --tries=100"
         "    'https://files.usaspending.gov/award_data_archive/FY2025_All_Contracts_Full_20260506.zip'"
         "    -O {output}"
 
@@ -316,7 +324,7 @@ rule extract_fy2025_contracts:
     input: f"{fod_config.data_dir}/FY2025_All_Contracts_Full_20260506.zip"
     output: f"{fod_config.data_dir}/FY2025_All_Contracts_Full_20260506.csv"
     shell:
-        "unzip -o {input} -d \"{fod_config.data_dir}/\" && head -1 {fod_config.data_dir}/FY2025_All_Contracts_Full_20260506_1.csv > tmp && cat FY2025_All_Contracts*csv | grep -v last_modified_date >> tmp && mv tmp FY2025_All_Contracts_Full_20260506.csv"
+        "unzip -o {input} -d \"{fod_config.data_dir}/\" && head -1 {fod_config.data_dir}/FY2025_All_Contracts_Full_20260506_1.csv > {fod_config.data_dir}/tmp && cat {fod_config.data_dir}/FY2025_All_Contracts*csv | grep -v last_modified_date >> {fod_config.data_dir}/tmp && mv {fod_config.data_dir}/tmp {fod_config.data_dir}/FY2025_All_Contracts_Full_20260506.csv"
 # NOTE: Legacy commented-out rules for ACS PUMS, SIPP, AHS, and earlier
 # TIGER/CJARS/OSM/Wikidata rule versions were removed in this cleanup.
 # See git history for the archived rule definitions if needed.

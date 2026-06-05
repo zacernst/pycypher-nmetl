@@ -96,6 +96,6 @@ if __name__ == "__main__":
     concatenate_shapefiles(
         shapefiles,
         data_dir,
-        data_dir / "combined_shape_files.shp",
+        data_dir / "combined_block_groups.shp",
         columns=["BLKGRPCE", "GEOID", "geometry"],
     )

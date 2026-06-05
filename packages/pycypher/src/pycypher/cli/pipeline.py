@@ -126,6 +126,157 @@ _OUTPUT_ERROR_LABELS: dict[type[BaseException], str] = {
 
 
 # ---------------------------------------------------------------------------
+# User-function loading (resolves PipelineConfig.functions)
+# ---------------------------------------------------------------------------
+
+
+def _register_user_functions(function_configs: list[Any]) -> None:
+    """Import and register every callable declared under ``functions:``.
+
+    Two YAML forms are supported (see :class:`FunctionConfig`):
+
+    * ``callable: "pkg.mod.fn"`` — register one function.
+    * ``module: "pkg.mod"`` with ``names: [...]`` or ``names: "*"`` — register
+      a list of functions, or every public ``def``-defined callable in that
+      module.
+
+    Each callable is wrapped row-wise via
+    :func:`pycypher.scalar_functions.user_functions.register_user_function`,
+    so users can write plain scalar Python (one value in, one value out).
+    Failures (bad import path, missing attribute) raise :class:`ImportError`
+    or :class:`AttributeError` and are surfaced via :func:`cli_error`.
+    """
+    if not function_configs:
+        return
+
+    import importlib
+    import inspect
+
+    from pycypher.scalar_functions.user_functions import (
+        register_user_function,
+    )
+
+    n = len(function_configs)
+    click.echo(f"Registering user-defined functions from {n} entry/entries …")
+
+    for cfg in function_configs:
+        if cfg.callable:
+            mod_path, _, attr = cfg.callable.rpartition(".")
+            if not mod_path:
+                cli_error(
+                    f"functions.callable {cfg.callable!r} is not a dotted path",
+                )
+            try:
+                module = importlib.import_module(mod_path)
+            except ImportError as exc:
+                cli_error(
+                    f"failed to import module {mod_path!r} for "
+                    f"functions.callable={cfg.callable!r}: {exc}",
+                )
+            if not hasattr(module, attr):
+                cli_error(
+                    f"module {mod_path!r} has no attribute {attr!r} "
+                    f"(functions.callable={cfg.callable!r})",
+                )
+            func = getattr(module, attr)
+            if not callable(func):
+                cli_error(
+                    f"functions.callable={cfg.callable!r} resolved to a "
+                    f"non-callable object of type {type(func).__name__}",
+                )
+            register_user_function(func)
+            click.echo(f"  registered {cfg.callable}")
+            continue
+
+        # Module + names form.
+        try:
+            module = importlib.import_module(cfg.module)
+        except ImportError as exc:
+            cli_error(
+                f"failed to import module {cfg.module!r}: {exc}",
+            )
+
+        if cfg.names == "*":
+            # Every public, non-underscore function *defined in* this module
+            # (skip re-exports from other modules).
+            names_to_register = [
+                name
+                for name, obj in inspect.getmembers(module, inspect.isfunction)
+                if not name.startswith("_")
+                and getattr(obj, "__module__", None) == module.__name__
+            ]
+        else:
+            assert isinstance(cfg.names, list)  # check_exclusive_forms guards
+            names_to_register = list(cfg.names)
+
+        for name in names_to_register:
+            if not hasattr(module, name):
+                cli_error(
+                    f"module {cfg.module!r} has no attribute {name!r}",
+                )
+            func = getattr(module, name)
+            if not callable(func):
+                cli_error(
+                    f"{cfg.module}.{name} is not callable "
+                    f"(got {type(func).__name__})",
+                )
+            register_user_function(func)
+            click.echo(f"  registered {cfg.module}.{name}")
+
+
+def _reorder_queries_by_dependency(
+    queries: list[Any],
+    config_dir: Path,
+) -> list[Any]:
+    """Return *queries* sorted to respect inferred query-to-query dependencies.
+
+    Builds a :class:`~pycypher.multi_query_analyzer.QueryDependencyAnalyzer`
+    over the queries' Cypher text (loaded from ``inline:`` or ``source:``)
+    and returns the topological-sort order.
+
+    If a query has no usable Cypher text (e.g. a remote ``source:`` we
+    cannot fetch here) it is appended in original position.  If dependency
+    analysis raises for any reason — parse error, cycle, etc. — we fall
+    back to the original YAML order so this helper never makes things
+    worse than they were before the call.
+    """
+    if len(queries) <= 1:
+        return queries
+
+    pairs: list[tuple[str, str]] = []
+    unparseable: list[Any] = []
+    for q in queries:
+        cypher = q.inline or ""
+        if not cypher and q.source:
+            try:
+                cypher = _load_query_text(q.source, config_dir)
+            except (
+                OSError,
+                ValueError,
+                UnicodeDecodeError,
+            ):
+                cypher = ""
+        if cypher:
+            pairs.append((q.id, cypher))
+        else:
+            unparseable.append(q)
+
+    if not pairs:
+        return queries
+
+    try:
+        from pycypher.multi_query_analyzer import QueryDependencyAnalyzer
+
+        graph = QueryDependencyAnalyzer().analyze(pairs)
+        sorted_ids = [n.query_id for n in graph.topological_sort()]
+    except Exception:  # noqa: BLE001 — fall back to YAML order on any failure
+        return queries
+
+    by_id = {q.id: q for q in queries}
+    return [by_id[qid] for qid in sorted_ids if qid in by_id] + unparseable
+
+
+# ---------------------------------------------------------------------------
 # Dry-run pre-flight validation
 # ---------------------------------------------------------------------------
 
@@ -358,6 +509,12 @@ def run_impl(
                 err=True,
             )
 
+    # Reorder queries to respect inferred dependencies (entity-type and
+    # property-level produces/consumes overlap).  Falls back to YAML order
+    # if any query fails to parse, so a single broken query doesn't take
+    # the whole pipeline down before we reach its own error handler.
+    queries = _reorder_queries_by_dependency(queries, config.parent.resolve())
+
     if dry_run:
         dry_run_validate(pipeline_config, queries, config, verbose=verbose)
         return
@@ -402,6 +559,7 @@ def run_impl(
                 target_col=rel_src.target_col,
                 id_col=rel_src.id_col,
                 query=rel_src.query,
+                allow_multi_edges=rel_src.allow_multi_edges,
             )
         context = builder.build()
     except FileNotFoundError as exc:
@@ -412,6 +570,9 @@ def run_impl(
         cli_error(f"invalid data source format or configuration: {exc}")
     except OSError as exc:
         cli_error(f"file system error loading data sources: {exc}")
+
+    # Register user-defined Cypher functions before any query runs.
+    _register_user_functions(pipeline_config.functions)
 
     star = Star(context=context)
     config_dir = config.parent

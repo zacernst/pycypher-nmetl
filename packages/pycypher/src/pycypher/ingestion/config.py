@@ -280,6 +280,10 @@ class RelationshipSourceConfig(BaseModel):
         query: Optional DuckDB SQL applied after loading.
         schema_hints: Optional column-type overrides.
         on_error: What to do if this source cannot be loaded.
+        allow_multi_edges: When ``False`` (default), rows with the same
+            ``(source_col, target_col)`` pair are collapsed into a single
+            edge.  Set to ``True`` for sources where parallel edges carry
+            distinct meaning (e.g. one row per transaction).
 
     """
 
@@ -292,6 +296,7 @@ class RelationshipSourceConfig(BaseModel):
     query: str | None = None
     schema_hints: dict[str, str] | None = None
     on_error: ErrorHandlingPolicy | None = None
+    allow_multi_edges: bool = False
 
     @model_validator(mode="after")
     def check_uri(self) -> RelationshipSourceConfig:

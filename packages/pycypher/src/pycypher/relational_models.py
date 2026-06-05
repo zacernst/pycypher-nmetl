@@ -844,6 +844,21 @@ class EntityTable(Relation):
         default_factory=dict,
     )  # Assume all table objects (e.g. DataFrames) have string column names.
 
+    def model_post_init(self, __context: Any) -> None:
+        super().model_post_init(__context)
+        try:
+            n_rows = (
+                len(self.source_obj) if self.source_obj is not None else 0
+            )
+        except TypeError:
+            n_rows = "?"
+        LOGGER.debug(
+            "EntityTable created: type=%r, rows=%s, attributes=%s",
+            self.entity_type,
+            n_rows,
+            list(self.attribute_map.keys()),
+        )
+
     @classmethod
     def from_dataframe(
         cls,

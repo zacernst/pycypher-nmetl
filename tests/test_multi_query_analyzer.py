@@ -451,3 +451,190 @@ class TestEdgeCases:
             ],
         )
         assert isinstance(graph.nodes[0].ast, Query)
+
+
+# ---------------------------------------------------------------------------
+# Property-level dependency tracking
+# ---------------------------------------------------------------------------
+
+
+class TestPropertyLevelDependencies:
+    """SET writes and PropertyLookup reads must form dependency edges.
+
+    The analyzer namespaces property entries as ``Label.prop`` and unions them
+    into the existing ``produces`` / ``consumes`` sets. This makes the dependency
+    graph aware of property-level data flow without changing the intersection
+    rule.
+    """
+
+    def test_set_property_appears_in_produces(self) -> None:
+        from pycypher.multi_query_analyzer import QueryDependencyAnalyzer
+
+        analyzer = QueryDependencyAnalyzer()
+        graph = analyzer.analyze(
+            [
+                (
+                    "writer",
+                    "MATCH (s:State) SET s.num_counties = 5",
+                ),
+            ],
+        )
+        node = graph.nodes[0]
+        assert "State.num_counties" in node.produces
+        # Bare label still consumed by the MATCH.
+        assert "State" in node.consumes
+
+    def test_property_read_appears_in_consumes(self) -> None:
+        from pycypher.multi_query_analyzer import QueryDependencyAnalyzer
+
+        analyzer = QueryDependencyAnalyzer()
+        graph = analyzer.analyze(
+            [
+                (
+                    "reader",
+                    "MATCH (s:State) RETURN s.num_counties",
+                ),
+            ],
+        )
+        node = graph.nodes[0]
+        assert "State.num_counties" in node.consumes
+        assert "State.num_counties" not in node.produces
+
+    def test_writer_then_reader_dependency_edge(self) -> None:
+        # The classic case: writer SETs s.num_counties, reader RETURNs it.
+        # Reader must depend on writer.
+        from pycypher.multi_query_analyzer import QueryDependencyAnalyzer
+
+        analyzer = QueryDependencyAnalyzer()
+        graph = analyzer.analyze(
+            [
+                (
+                    "reader",
+                    "MATCH (s:State) RETURN s.num_counties",
+                ),
+                (
+                    "writer",
+                    "MATCH (s:State) SET s.num_counties = 5",
+                ),
+            ],
+        )
+        nodes = {n.query_id: n for n in graph.nodes}
+        assert "writer" in nodes["reader"].dependencies
+        assert "reader" not in nodes["writer"].dependencies
+        # Topological sort puts writer before reader.
+        order = [n.query_id for n in graph.topological_sort()]
+        assert order.index("writer") < order.index("reader")
+
+    def test_no_self_dependency_for_read_then_write(self) -> None:
+        # A query that reads x and writes x in the same query must not
+        # depend on itself (analyzer skips the self-edge).
+        from pycypher.multi_query_analyzer import QueryDependencyAnalyzer
+
+        analyzer = QueryDependencyAnalyzer()
+        graph = analyzer.analyze(
+            [
+                (
+                    "rw",
+                    "MATCH (s:State) WITH s, s.x AS x SET s.x = x + 1",
+                ),
+            ],
+        )
+        node = graph.nodes[0]
+        assert "rw" not in node.dependencies
+        assert "State.x" in node.produces
+        assert "State.x" in node.consumes
+
+    def test_unrelated_properties_create_no_edge(self) -> None:
+        # writer SETs s.a, reader RETURNs s.b — different properties, no edge.
+        from pycypher.multi_query_analyzer import QueryDependencyAnalyzer
+
+        analyzer = QueryDependencyAnalyzer()
+        graph = analyzer.analyze(
+            [
+                (
+                    "writer",
+                    "MATCH (s:State) SET s.a = 1",
+                ),
+                (
+                    "reader",
+                    "MATCH (s:State) RETURN s.b",
+                ),
+            ],
+        )
+        nodes = {n.query_id: n for n in graph.nodes}
+        # Both touch :State (via MATCH), but no producer for s.b and no
+        # consumer for s.a, so neither query depends on the other.
+        assert nodes["reader"].dependencies == set()
+        assert nodes["writer"].dependencies == set()
+
+    def test_multi_label_node_records_under_each_label(self) -> None:
+        from pycypher.multi_query_analyzer import QueryDependencyAnalyzer
+
+        analyzer = QueryDependencyAnalyzer()
+        graph = analyzer.analyze(
+            [
+                (
+                    "q",
+                    "MATCH (n:A:B) SET n.x = 1 RETURN n.y",
+                ),
+            ],
+        )
+        node = graph.nodes[0]
+        assert "A.x" in node.produces
+        assert "B.x" in node.produces
+        assert "A.y" in node.consumes
+        assert "B.y" in node.consumes
+
+    def test_unresolved_variable_skipped(self) -> None:
+        # `x` is a WITH-introduced variable with no label binding;
+        # property tracking on it must not raise and must not add entries.
+        from pycypher.multi_query_analyzer import QueryDependencyAnalyzer
+
+        analyzer = QueryDependencyAnalyzer()
+        graph = analyzer.analyze(
+            [
+                (
+                    "q",
+                    "MATCH (s:State) WITH s.num AS x RETURN x",
+                ),
+            ],
+        )
+        node = graph.nodes[0]
+        # We do see s.num via the WITH-RHS PropertyLookup.
+        assert "State.num" in node.consumes
+        # But there's no spurious "x.<anything>" entry.
+        assert not any(
+            entry.startswith("x.") for entry in node.consumes | node.produces
+        )
+
+    def test_set_map_form_not_tracked(self) -> None:
+        # SET v = {map} is intentionally not tracked — known limitation.
+        # We verify it doesn't crash and doesn't produce a spurious entry.
+        from pycypher.multi_query_analyzer import QueryDependencyAnalyzer
+
+        analyzer = QueryDependencyAnalyzer()
+        graph = analyzer.analyze(
+            [
+                (
+                    "q",
+                    "MATCH (s:State) SET s = {a: 1, b: 2}",
+                ),
+            ],
+        )
+        node = graph.nodes[0]
+        # No property-level produces (only the bare label may appear).
+        assert all("." not in entry for entry in node.produces)
+
+    def test_type_level_dependencies_still_work(self) -> None:
+        # Pre-existing behavior: CREATE→MATCH still creates an edge.
+        from pycypher.multi_query_analyzer import QueryDependencyAnalyzer
+
+        analyzer = QueryDependencyAnalyzer()
+        graph = analyzer.analyze(
+            [
+                ("reader", "MATCH (n:Foo) RETURN n"),
+                ("writer", "CREATE (n:Foo {x: 1})"),
+            ],
+        )
+        nodes = {n.query_id: n for n in graph.nodes}
+        assert "writer" in nodes["reader"].dependencies

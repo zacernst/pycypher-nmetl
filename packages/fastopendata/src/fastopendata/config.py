@@ -563,7 +563,7 @@ class Config:
         """Get wget flags for Census Bureau downloads."""
         return (
             f"wget"
-            f" --wait=10"
+            f" --retry-on-http-error=429 --waitretry=60 --timeout=15"
             f" --user-agent='{self.census_user_agent}'"
             f" --no-cache"
             f" --header='referer: {self.census_referer}'"
