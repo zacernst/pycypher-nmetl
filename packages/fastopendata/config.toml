@@ -149,14 +149,25 @@ description = "Criminal Justice Administrative Records System, county-level job 
 
 [datasets.tiger_puma]
 id = 11
-name = "TIGER/Line 2024 PUMA boundaries"
+name = "tiger/line 2024 puma boundaries"
 output_file = "puma_combined.shp"
-url = "https://www2.census.gov/geo/tiger/TIGER2024/PUMA20/"
-format = "Shapefile"
-source = "U.S. Census Bureau"
+url = "https://www2.census.gov/geo/tiger/tiger2024/puma20/"
+format = "shapefile"
+source = "u.s. census bureau"
 year = 2024
-approx_size = "125 MB"
-description = "Public Use Microdata Area boundaries (merged from all states)"
+approx_size = "125 mb"
+description = "public use microdata area boundaries (merged from all states)"
+
+[datasets.combined_tiger_tracts]
+id = 18
+name = "tiger/line 2024 puma boundaries"
+output_file = "tract_combined.shp"
+url = "https://www2.census.gov/geo/tiger/tiger2024/puma20/"
+format = "shapefile"
+source = "u.s. census bureau"
+year = 2024
+approx_size = "125 mb"
+description = "public use microdata area boundaries (merged from all states)"
 
 [datasets.tiger_state]
 id = 12

@@ -91,8 +91,11 @@ if __name__ == "__main__":
     from fastopendata.config import config
 
     data_dir = config.data_path
-    shapefiles = [f.name for f in data_dir.iterdir() if f.suffix == ".shp" and
-                  "bg" in f.name]
+    shapefiles = [
+        f.name
+        for f in data_dir.iterdir()
+        if f.suffix == ".shp" and "_tract" in f.name
+    ]
     concatenate_shapefiles(
         shapefiles,
         data_dir,

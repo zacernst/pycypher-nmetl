@@ -52,8 +52,10 @@ rule all:
         # f"{fod_config.data_dir}/wikidata_us_points.json",
         f"{fod_config.data_dir}/output/cjars_joe_2022_co.csv",
         f"{fod_config.data_dir}/united_states_nodes.csv",
+        f"{fod_config.data_dir}/tract_combined.shp",
         f"{fod_config.data_dir}/state_county_tract_puma_crosswalk.csv",
-        expand(f"{fod_config.data_dir}/tl_2025_{{zip}}_addr.dbf.iso.xml", zip=fod_config.zips),
+        ####expand(f"{fod_config.data_dir}/tl_2025_{{zip}}_addr.dbf.iso.xml", zip=fod_config.zips),
+        expand(f"{fod_config.data_dir}/tl_2025_{{zipcode}}_addr.dbf", zipcode=fod_config.zips),
         expand(f"{fod_config.data_dir}/tl_2025_{{fips}}_tract.shp", fips=fod_config.state_fips),
         expand(f"{fod_config.data_dir}/tl_2024_{{block_group_fips}}_bg.shp", block_group_fips=fod_config.block_group_fips),
         f"{fod_config.data_dir}/combined_block_groups.shp",  # Add parameter or whatever for block_group_fips
@@ -151,10 +153,10 @@ rule extract_tiger_block_groups:
 
 
 rule extract_tiger_addr:
-    input: expand(f"{fod_config.data_dir}/tl_2025_{{zips}}_addr.zip", zips=fod_config.zips)
-    output: expand(f"{fod_config.data_dir}/tl_2025_{{zips}}_addr.dbf.iso.xml", zips=fod_config.zips)
+    input: f"{fod_config.data_dir}/tl_2025_{{zipcode}}_addr.zip"
+    output: f"{fod_config.data_dir}/tl_2025_{{zipcode}}_addr.dbf"
     shell:
-        f"unzip -o {{input}} -d \"{fod_config.data_dir}/\" || touch {fod_config.data_dir}/tl_2025_{{fod_config.zips}}_addr.dbf.iso.xml"
+        f"unzip -o {{input}} -d \"{fod_config.data_dir}/\" || touch {{output}}"
 
 
 rule download_tract_puma_crosswalk:
@@ -260,32 +262,12 @@ rule download_filter_wikidata:
         " > {output}"
 
 
-rule download_tiger_puma:
-    # resources:
-    #     census_download=1
-    # output:
-    #     expand(f"{fod_config.data_dir}/tl_2024_{{puma_state_fips}}_puma20.zip", puma_state_fips=fod_config.puma_state_fips)
-    # params:
-    #     url = expand("https://www2.census.gov/geo/tiger/TIGER2024/PUMA20/tl_2024_{puma_state_fips}_puma20.zip", puma_state_fips=fod_config.puma_state_fips)
-    # shell:
-    #     "sleep $((5 + RANDOM % 10)) && "
-    #     f"  {CENSUS_WGET} --timeout={SHORT_TIMEOUT_SECONDS} --tries=3"
-    #     "    {params.url}"
-    #     "    -O {output}"
-    output: f"{fod_config.data_dir}/tl_2024_{{fips}}_puma20.zip"
-    threads: 1
-    shell:
-        "sleep $((5 + RANDOM % 10)) && "
-        f"  wget --timeout={SHORT_TIMEOUT_SECONDS} --tries=20"
-        "    'https://www2.census.gov/geo/tiger/TIGER2024/PUMA20/tl_2024_{wildcards.fips}_puma20.zip'"
-        "    -O {output}"
+
 
 
 rule unzip_tiger_puma:
-    input:
-        expand(f"{fod_config.data_dir}/tl_2024_{{puma_state_fips}}_puma20.zip", puma_state_fips=fod_config.puma_state_fips)
-    output:
-        expand(f"{fod_config.data_dir}/tl_2024_{{puma_state_fips}}_puma20.shp", puma_state_fips=fod_config.puma_state_fips)
+    input: f"{fod_config.data_dir}/tl_2024_{{fips}}_puma20.zip"
+    output: f"{fod_config.data_dir}/tl_2024_{{fips}}_puma20.shp"
     shell:
         "unzip -o {input} -d \"{fod_config.data_dir}/\""
 
@@ -296,6 +278,21 @@ rule concatenate_tiger_puma:
     shell:
         f"DATA_DIR={fod_config.data_dir} uv run python '{SCRIPTS}/concatenate_puma_shape_files.py'"
 
+
+rule concatenate_tiger_tract:
+    input: expand(f"{fod_config.data_dir}/tl_2025_{{PUMA_STATE_FIPS}}_tract.shp", PUMA_STATE_FIPS=fod_config.puma_state_fips)
+    output: f"{fod_config.data_dir}/tract_combined.shp"
+    shell:
+        f"DATA_DIR={fod_config.data_dir} uv run python '{SCRIPTS}/concatenate_tract_shape_files.py'"
+
+
+rule download_tiger_puma:
+    output: f"{fod_config.data_dir}/tl_2024_{{fips}}_puma20.zip"
+    shell:
+        "sleep $((5 + RANDOM % 10)) && "
+        f"  wget --timeout={SHORT_TIMEOUT_SECONDS} --tries=20"
+        "    'https://www2.census.gov/geo/tiger/TIGER2024/PUMA20/tl_2024_{wildcards.fips}_puma20.zip'"
+        "    -O {output}"
 
 rule concatenate_tiger_bg:
     input: expand(f"{fod_config.data_dir}/tl_2024_{{block_group_fips}}_bg.shp", block_group_fips=fod_config.block_group_fips)
