@@ -14,16 +14,15 @@ from textual.reactive import reactive
 from textual.widgets import Header, Label, Static
 
 from pycypher_tui.config.pipeline import ConfigManager
-from pycypher_tui.widgets.dialog import ConfirmDialog, DialogResult
 from pycypher_tui.config.validation import CachedValidator
 from pycypher_tui.modes.base import ModeType
 from pycypher_tui.modes.manager import ModeManager
 from pycypher_tui.modes.registers import RegisterFile
 from pycypher_tui.modes.search_replace import parse_substitute_command
 from pycypher_tui.screens.base import VimNavigableScreen
-from pycypher_tui.screens.editable_base import VimEditableScreen
 from pycypher_tui.screens.data_model import DataModelScreen
 from pycypher_tui.screens.data_sources import DataSourcesScreen
+from pycypher_tui.screens.editable_base import VimEditableScreen
 from pycypher_tui.screens.entity_browser import EntityBrowserScreen
 from pycypher_tui.screens.entity_editor import EntityEditorScreen
 from pycypher_tui.screens.pipeline_overview import PipelineOverviewScreen
@@ -32,6 +31,7 @@ from pycypher_tui.screens.query_lineage import QueryLineageScreen
 from pycypher_tui.screens.relationship_browser import RelationshipBrowserScreen
 from pycypher_tui.screens.relationship_editor import RelationshipEditorScreen
 from pycypher_tui.screens.source_mapper import DataSourceMapperScreen
+from pycypher_tui.widgets.dialog import ConfirmDialog, DialogResult
 
 try:
     from fastopendata.tui.fod_catalog import FodCatalogScreen

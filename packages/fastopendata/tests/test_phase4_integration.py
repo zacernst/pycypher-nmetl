@@ -27,13 +27,11 @@ from unittest.mock import patch
 
 import pandas as pd
 import pytest
-
 from fastopendata.pipeline import (
     GraphPipeline,
     _derive_relationships,
     load_available_datasets,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fakes for `fastopendata.config.config` (patched into the loader so our

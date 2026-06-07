@@ -17,7 +17,6 @@ from pathlib import Path
 
 import pandas as pd
 import pytest
-
 from fastopendata.etl.georgia_pipeline import build_georgia_pipeline
 from fastopendata.etl.relationship_derivation import (
     derive_contract_state_relationships,
@@ -27,7 +26,6 @@ from fastopendata.etl.relationship_derivation import (
 )
 from fastopendata.pipeline import GraphPipeline
 from fastopendata.schema_evolution.registry import SchemaRegistry
-
 
 # ---------------------------------------------------------------------------
 # Fixtures — synthetic data at various scales

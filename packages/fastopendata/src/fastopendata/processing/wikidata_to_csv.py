@@ -8,12 +8,12 @@ Produces two CSV files:
 """
 
 import bz2
-import json
 import csv
+import json
 import sys
+from collections import defaultdict
 from pathlib import Path
 from typing import Any, Optional
-from collections import defaultdict
 
 
 def extract_label(labels: Any) -> Optional[str]:

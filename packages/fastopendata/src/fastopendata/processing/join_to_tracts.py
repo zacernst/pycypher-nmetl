@@ -1,6 +1,7 @@
+import sys
+
 import geopandas as gpd
 import pandas as pd
-import sys
 from shared.logger import LOGGER
 
 LOGGER.setLevel('INFO')

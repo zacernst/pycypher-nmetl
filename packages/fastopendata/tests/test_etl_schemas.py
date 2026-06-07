@@ -4,7 +4,12 @@ from __future__ import annotations
 
 import pandas as pd
 import pytest
-
+from fastopendata.etl.relationship_derivation import (
+    derive_contract_state_relationships,
+    derive_tract_block_group_relationships,
+    derive_tract_puma_relationships,
+    derive_tract_state_relationships,
+)
 from fastopendata.etl.schemas import (
     ALL_ENTITY_SCHEMAS,
     ALL_RELATIONSHIP_SCHEMAS,
@@ -13,13 +18,6 @@ from fastopendata.etl.schemas import (
     EntitySchema,
     RelationshipSchema,
 )
-from fastopendata.etl.relationship_derivation import (
-    derive_contract_state_relationships,
-    derive_tract_block_group_relationships,
-    derive_tract_puma_relationships,
-    derive_tract_state_relationships,
-)
-
 
 # ---------------------------------------------------------------------------
 # Schema definition tests

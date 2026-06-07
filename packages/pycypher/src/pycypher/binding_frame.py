@@ -176,7 +176,9 @@ def _normalize_mapped_result(result: pd.Series) -> pd.Series:
 
 # Re-export from dataframe_utils for backward compatibility.
 # New code should import directly from pycypher.dataframe_utils.
-from pycypher.dataframe_utils import source_to_pandas as _source_to_pandas  # noqa: E402  # backward-compat re-export
+from pycypher.dataframe_utils import (
+    source_to_pandas as _source_to_pandas,  # noqa: E402  # backward-compat re-export
+)
 
 # Backward-compatible re-exports from scan_operators (extracted for SRP).
 # New code should import directly from pycypher.scan_operators.
@@ -1778,6 +1780,12 @@ class BindingFrame:
 # Scan and filter operators — re-exported for backward compatibility.
 # New code should import directly from pycypher.scan_operators.
 # ---------------------------------------------------------------------------
-from pycypher.scan_operators import BindingFilter as BindingFilter  # noqa: E402  # backward-compat re-export
-from pycypher.scan_operators import EntityScan as EntityScan  # noqa: E402  # backward-compat re-export
-from pycypher.scan_operators import RelationshipScan as RelationshipScan  # noqa: E402  # backward-compat re-export
+from pycypher.scan_operators import (
+    BindingFilter as BindingFilter,  # noqa: E402  # backward-compat re-export
+)
+from pycypher.scan_operators import (
+    EntityScan as EntityScan,  # noqa: E402  # backward-compat re-export
+)
+from pycypher.scan_operators import (
+    RelationshipScan as RelationshipScan,  # noqa: E402  # backward-compat re-export
+)

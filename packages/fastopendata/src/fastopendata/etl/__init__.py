@@ -26,11 +26,11 @@ from fastopendata.etl.schemas import (
     BLOCK_GROUP_COLUMNS,
     CENSUS_TRACT_COLUMNS,
     CONTRACT_COLUMNS,
-    EntitySchema,
     OSM_NODE_COLUMNS,
     PUMA_COLUMNS,
-    RelationshipSchema,
     STATE_COLUMNS,
+    EntitySchema,
+    RelationshipSchema,
 )
 
 __all__ = [

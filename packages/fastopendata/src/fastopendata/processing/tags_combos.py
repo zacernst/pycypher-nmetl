@@ -1,6 +1,7 @@
-import json
 import base64
 import collections
+import json
+
 import pandas as pd
 
 df = pd.read_parquet(

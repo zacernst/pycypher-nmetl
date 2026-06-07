@@ -306,7 +306,9 @@ def query(
         # _register_query_command(cli), so it appears as a callable click
         # Command attribute at runtime even though the module has no static
         # `query` binding.
-        from pycypher.nmetl_cli import query as _original_query  # ty: ignore[unresolved-import]
+        from pycypher.nmetl_cli import (
+            query as _original_query,  # ty: ignore[unresolved-import]
+        )
 
         # Delegate to original implementation
         _original_query(

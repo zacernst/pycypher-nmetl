@@ -28,7 +28,6 @@ import statistics
 import time
 
 import pandas as pd
-
 from fastopendata.pipeline import GraphPipeline
 
 

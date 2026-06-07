@@ -49,9 +49,18 @@ from pycypher.ingestion.context_builder import ContextBuilder
 from pycypher.relational_models import Context
 from pycypher.star import Star
 
-from fastopendata.schema_evolution.lineage import LineageEdge, LineageGraph, LineageNode, NodeType
+from fastopendata.schema_evolution.lineage import (
+    LineageEdge,
+    LineageGraph,
+    LineageNode,
+    NodeType,
+)
 from fastopendata.schema_evolution.registry import SchemaRegistry
-from fastopendata.schema_evolution.schema import FieldSchema, FieldType, TableSchema
+from fastopendata.schema_evolution.schema import (
+    FieldSchema,
+    FieldType,
+    TableSchema,
+)
 from fastopendata.streaming.core import StreamRecord
 from fastopendata.streaming.views import IncrementalView
 

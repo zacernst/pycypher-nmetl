@@ -14,10 +14,9 @@ import sys
 from unittest.mock import patch
 
 import pytest
-
 from fastopendata.tui.state_selector import (
-    StateSelector,
     _FALLBACK_STATE_INFO,
+    StateSelector,
     _load_state_info,
 )
 

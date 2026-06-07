@@ -345,7 +345,9 @@ class QueryEditorScreen(Screen):
             if has_sources:
                 try:
                     from pycypher import Star
-                    from pycypher.ingestion.context_builder import ContextBuilder
+                    from pycypher.ingestion.context_builder import (
+                        ContextBuilder,
+                    )
 
                     builder = ContextBuilder()
                     for src in cfg.sources.entities:

@@ -210,7 +210,7 @@ class Config:
             msg = f"Missing required config sections: {', '.join(missing)}"
             raise ValueError(msg)
 
-        required_paths = ["data_dir", "scripts_dir", "temp_dir", "static_dir"]
+        required_paths = ["scripts_dir", "temp_dir", "static_dir"]
         missing_paths = [
             k for k in required_paths if k not in data.get("paths", {})
         ]
@@ -354,7 +354,7 @@ class Config:
         The path is resolved and validated to prevent path traversal into
         system-critical directories.
         """
-        raw = os.environ.get("DATA_DIR", self._data["paths"]["data_dir"])
+        raw = os.environ.get("DATA_DIR")# , self._data["paths"]["data_dir"])
         return self._validate_data_dir(raw)
 
     @property

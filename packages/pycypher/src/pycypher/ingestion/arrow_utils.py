@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import numpy as np
 import pyarrow as pa
-
 from shared.logger import LOGGER
 
 _RESERVED_COLS = {"__ID__", "__SOURCE__", "__TARGET__"}

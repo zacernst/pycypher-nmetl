@@ -20,17 +20,15 @@ from unittest.mock import patch
 
 import pandas as pd
 import pytest
-
 from fastopendata.pipeline import (
-    GraphPipeline,
     _ACS_PUMS_COLS,
     _CJARS_FIPS_COLS,
     _OSM_COLS,
     _OSM_DEFAULT_MAX_ROWS,
+    GraphPipeline,
     _derive_relationships,
     load_available_datasets,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers — copied/adapted from test_load_datasets.py to keep this file

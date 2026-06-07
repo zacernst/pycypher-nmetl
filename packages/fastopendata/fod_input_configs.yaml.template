@@ -7,7 +7,7 @@ functions:
 sources:
   entities:
     - id: osm_nodes
-      uri: "file:///run/media/zac/2tb/fastopendata/data/united_states_nodes_tract_crosswalk.parquet"
+      uri: "file://${DATA_DIR}/united_states_nodes_tract_crosswalk.parquet"
       entity_type: OSMNode
       id_col: id
       schema_hints:
@@ -16,7 +16,7 @@ sources:
         encoded_tags: STRING
         id: INTEGER
     - id: state_crosswalk
-      uri: "file:///run/media/zac/2tb/fastopendata/data/state_county_tract_puma_crosswalk.csv"
+      uri: "file://${DATA_DIR}/state_county_tract_puma_crosswalk.csv"
       entity_type: State
       id_col: STATE_FIPS
       schema_hints:
@@ -29,7 +29,7 @@ sources:
         TRACT_FIPS: STRING
         PUMA_FIPS: STRING
     - id: county_crosswalk
-      uri: "file:///run/media/zac/2tb/fastopendata/data/state_county_tract_puma_crosswalk.csv"
+      uri: "file://${DATA_DIR}/state_county_tract_puma_crosswalk.csv"
       entity_type: County
       id_col: COUNTY_FIPS
       schema_hints:
@@ -42,7 +42,7 @@ sources:
         TRACT_FIPS: STRING
         PUMA_FIPS: STRING
     - id: tract_crosswalk
-      uri: "file:///run/media/zac/2tb/fastopendata/data/state_county_tract_puma_crosswalk.csv"
+      uri: "file://${DATA_DIR}/state_county_tract_puma_crosswalk.csv"
       entity_type: Tract
       id_col: TRACT_FIPS
       schema_hints:
@@ -55,7 +55,7 @@ sources:
         TRACT_FIPS: STRING
         PUMA_FIPS: STRING
     - id: puma_crosswalk
-      uri: "file:///run/media/zac/2tb/fastopendata/data/state_county_tract_puma_crosswalk.csv"
+      uri: "file://${DATA_DIR}/state_county_tract_puma_crosswalk.csv"
       entity_type: PUMA
       id_col: PUMA_FIPS
       schema_hints:
@@ -68,7 +68,7 @@ sources:
         TRACT_FIPS: STRING
         PUMA_FIPS: STRING
     - id: tract_osm
-      uri: "file:///run/media/zac/2tb/fastopendata/data/united_states_nodes_tract_crosswalk.csv"
+      uri: "file://${DATA_DIR}/united_states_nodes_tract_crosswalk.csv"
       entity_type: Tract
       id_col: GEOID
       schema_hints:
@@ -76,7 +76,7 @@ sources:
         longitude: float
         latitude: float
     - id: psam_housing_survey
-      uri: "file:///run/media/zac/2tb/fastopendata/data/psam_hus.csv"
+      uri: "file://${DATA_DIR}/psam_hus.csv"
       entity_type: HousingSurvey
       id_col: SERIALNO
       schema_hints:
@@ -322,7 +322,7 @@ sources:
         WGTP79: STRING
         WGTP80: STRING
     - id: psam_person_survey
-      uri: "file:///run/media/zac/2tb/fastopendata/data/psam_pus.parquet"
+      uri: "file://${DATA_DIR}/psam_pus.parquet"
       entity_type: PersonSurvey
       id_col: SERIALNO
       schema_hints:
@@ -614,7 +614,7 @@ sources:
         PWGTP80: STRING
   relationships:
     - id: county_in_state
-      uri: "file:///run/media/zac/2tb/fastopendata/data/state_county_tract_puma_crosswalk.csv"
+      uri: "file://${DATA_DIR}/state_county_tract_puma_crosswalk.csv"
       relationship_type: IN
       source_col: COUNTY_FIPS
       target_col: STATE_FIPS
@@ -628,7 +628,7 @@ sources:
         TRACT_FIPS: STRING
         PUMA_FIPS: STRING
     - id: tract_in_county
-      uri: "file:///run/media/zac/2tb/fastopendata/data/state_county_tract_puma_crosswalk.csv"
+      uri: "file://${DATA_DIR}/state_county_tract_puma_crosswalk.csv"
       relationship_type: IN
       source_col: TRACT_FIPS
       target_col: COUNTY_FIPS
@@ -642,7 +642,7 @@ sources:
         TRACT_FIPS: STRING
         PUMA_FIPS: STRING
     - id: tract_in_puma
-      uri: "file:///run/media/zac/2tb/fastopendata/data/state_county_tract_puma_crosswalk.csv"
+      uri: "file://${DATA_DIR}/state_county_tract_puma_crosswalk.csv"
       relationship_type: IN
       source_col: TRACT_FIPS
       target_col: PUMA_FIPS
@@ -656,7 +656,7 @@ sources:
         TRACT_FIPS: STRING
         PUMA_FIPS: STRING
     - id: osm_node_in_tract
-      uri: "file:///run/media/zac/2tb/fastopendata/data/united_states_nodes_tract_crosswalk.csv"
+      uri: "file://${DATA_DIR}/united_states_nodes_tract_crosswalk.csv"
       relationship_type: IN
       source_col: id
       target_col: GEOID
@@ -664,7 +664,7 @@ sources:
         GEOID: STRING
         id:: STRING
     - id: puma_in_state
-      uri: "file:///run/media/zac/2tb/fastopendata/data/state_county_tract_puma_crosswalk.csv"
+      uri: "file://${DATA_DIR}/state_county_tract_puma_crosswalk.csv"
       relationship_type: IN
       source_col: PUMA_FIPS
       target_col: STATE_FIPS
@@ -706,13 +706,13 @@ queries:
 
 output:
   - query_id: inside
-    uri: file:///home/zac/git/pycypher-nmetl/packages/fastopendata/src/fastopendata/output/inside.csv
+    uri: file://${PROJECT_ROOT}/packages/fastopendata/src/fastopendata/output/inside.csv
   - query_id: num_counties
-    uri: file:///home/zac/git/pycypher-nmetl/packages/fastopendata/src/fastopendata/output/num_counties.csv
+    uri: file://${PROJECT_ROOT}/packages/fastopendata/src/fastopendata/output/num_counties.csv
   - query_id: county_counter
-    uri: file:///home/zac/git/pycypher-nmetl/packages/fastopendata/src/fastopendata/output/county_counter.csv
+    uri: file://${PROJECT_ROOT}/packages/fastopendata/src/fastopendata/output/county_counter.csv
   - query_id: osm_longitude
-    uri: file:///home/zac/git/pycypher-nmetl/packages/fastopendata/src/fastopendata/output/osm.csv
+    uri: file://${PROJECT_ROOT}/packages/fastopendata/src/fastopendata/output/osm.csv
 
 
 

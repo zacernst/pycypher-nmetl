@@ -24,7 +24,6 @@ import math
 from typing import TYPE_CHECKING, Any
 
 import pandas as pd
-
 from shared.logger import LOGGER
 
 from pycypher.scalar_functions import ScalarFunctionRegistry

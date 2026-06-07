@@ -29,7 +29,13 @@ classifiers = [
   "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
 ]
-dependencies = ["pycypher", "shared", "fastopendata", "pycypher-tui"]
+dependencies = [
+    "pycypher",
+    "shared",
+    "fastopendata",
+    "pycypher-tui",
+    "duckdb>=1.5.2",
+]
 
 [[project.authors]]
 name = "Zachary Ernst"

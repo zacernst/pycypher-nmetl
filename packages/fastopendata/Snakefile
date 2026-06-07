@@ -18,11 +18,14 @@
 
 from pathlib import Path
 import sys
+import os
 
 # Add package to path for config import
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 from fastopendata.config import config as fod_config
+
+DATA_DIR = os.environ['DATA_DIR']
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -46,46 +49,69 @@ BACKOFF = 120
 
 rule all:
     input:
-        f"{fod_config.data_dir}/psam_pus.csv",
-        f"{fod_config.data_dir}/psam_hus.csv",
-        f"{fod_config.data_dir}/puma_combined.shp",
-        # f"{fod_config.data_dir}/wikidata_us_points.json",
-        f"{fod_config.data_dir}/output/cjars_joe_2022_co.csv",
-        # f"{fod_config.data_dir}/united_states_nodes.csv",
-        f"{fod_config.data_dir}/united_states_nodes_tract_crosswalk.parquet",
-        f"{fod_config.data_dir}/tract_combined.shp",
-        f"{fod_config.data_dir}/state_county_tract_puma_crosswalk.csv",
-        ####expand(f"{fod_config.data_dir}/tl_2025_{{zip}}_addr.dbf.iso.xml", zip=fod_config.zips),
-        expand(f"{fod_config.data_dir}/tl_2025_{{zipcode}}_addr.dbf", zipcode=fod_config.zips),
-        expand(f"{fod_config.data_dir}/tl_2025_{{fips}}_tract.shp", fips=fod_config.state_fips),
-        expand(f"{fod_config.data_dir}/tl_2024_{{block_group_fips}}_bg.shp", block_group_fips=fod_config.block_group_fips),
-        f"{fod_config.data_dir}/combined_block_groups.shp",  # Add parameter or whatever for block_group_fips
-        f"{fod_config.data_dir}/FY2025_All_Contracts_Full_20260506.csv",
+        f"{DATA_DIR}/psam_pus.parquet",
+        f"{DATA_DIR}/psam_hus.parquet",
+        f"{DATA_DIR}/puma_combined.shp",
+        f"{DATA_DIR}/wikidata_us_points.json",
+        f"{DATA_DIR}/output/cjars_joe_2022_co.parquet",
+        f"{DATA_DIR}/united_states_nodes_tract_crosswalk.parquet",
+        f"{DATA_DIR}/tract_combined.shp",
+        f"{DATA_DIR}/state_county_tract_puma_crosswalk.parquet",
+        expand(f"{DATA_DIR}/tl_2025_{{zipcode}}_addr.dbf", zipcode=fod_config.zips),
+        expand(f"{DATA_DIR}/tl_2025_{{fips}}_tract.shp", fips=fod_config.state_fips),
+        expand(f"{DATA_DIR}/tl_2024_{{block_group_fips}}_bg.shp", block_group_fips=fod_config.block_group_fips),
+        f"{DATA_DIR}/combined_block_groups.shp",  # Add parameter or whatever for block_group_fips
+        f"{DATA_DIR}/FY2025_All_Contracts_Full_20260506.csv",
 
 rule unzip_combine_american_community_survey_household_one_year_2024:
     # resources:
     #     census_download=1
-    input: f"{fod_config.data_dir}/csv_hus.zip"
-    output: f"{fod_config.data_dir}/psam_hus.csv"
+    input: f"{DATA_DIR}/csv_hus.zip"
+    output: f"{DATA_DIR}/psam_hus.csv"
     shell:
-        f"unzip -o {fod_config.data_dir}/csv_hus.zip -d \"{fod_config.data_dir}/\" && "
-        f"cat {fod_config.data_dir}/psam_husa.csv > {fod_config.data_dir}/psam_hus.csv && "
-        f"tail -n +2 {fod_config.data_dir}/psam_husb.csv >> {fod_config.data_dir}/psam_hus.csv"
+        f"unzip -o {DATA_DIR}/csv_hus.zip -d \"{DATA_DIR}/\" && "
+        f"cat {DATA_DIR}/psam_husa.csv > {DATA_DIR}/psam_hus.csv && "
+        f"tail -n +2 {DATA_DIR}/psam_husb.csv >> {DATA_DIR}/psam_hus.csv"
+
+rule convert_psam_pus_to_parquet:
+    """Spatial join"""
+    input: f"{DATA_DIR}/psam_pus.csv"
+    output: f"{DATA_DIR}/psam_pus.parquet"
+    shell:
+        f"uv run duckdb -c \"COPY '{DATA_DIR}/psam_pus.csv' TO '{DATA_DIR}/psam_pus.parquet' (FORMAT PARQUET, COMPRESSION 'ZSTD');\""
+
+rule convert_psam_hus_to_parquet:
+    """Spatial join"""
+    input: f"{DATA_DIR}/psam_hus.csv"
+    output: f"{DATA_DIR}/psam_hus.parquet"
+    shell:
+        f"uv run duckdb -c \"COPY '{DATA_DIR}/psam_hus.csv' TO '{DATA_DIR}/psam_hus.parquet' (FORMAT PARQUET, COMPRESSION 'ZSTD');\""
+
+
+
+rule convert_united_states_nodes_to_parquet:
+    """Spatial join"""
+    input: f"{DATA_DIR}/united_states_nodes.csv"
+    output: f"{DATA_DIR}/united_states_nodes.parquet"
+    shell:
+        f"uv run duckdb -c \"COPY '{DATA_DIR}/united_states_nodes.csv' TO '{DATA_DIR}/united_states_nodes.parquet' (FORMAT PARQUET, COMPRESSION 'ZSTD');\""
+
+
 
 rule unzip_combine_american_community_survey_person_one_year_2024:
     # resources:
     #     census_download=1
-    input: f"{fod_config.data_dir}/csv_pus.zip"
-    output: f"{fod_config.data_dir}/psam_pus.csv"
+    input: f"{DATA_DIR}/csv_pus.zip"
+    output: f"{DATA_DIR}/psam_pus.csv"
     shell:
-        f"unzip -o {fod_config.data_dir}/csv_pus.zip -d \"{fod_config.data_dir}/\" && "
-        f"cat {fod_config.data_dir}/psam_pusa.csv > {fod_config.data_dir}/psam_pus.csv && "
-        f"tail -n +2 {fod_config.data_dir}/psam_pusb.csv >> {fod_config.data_dir}/psam_pus.csv"
+        f"unzip -o {DATA_DIR}/csv_pus.zip -d \"{DATA_DIR}/\" && "
+        f"cat {DATA_DIR}/psam_pusa.csv > {DATA_DIR}/psam_pus.csv && "
+        f"tail -n +2 {DATA_DIR}/psam_pusb.csv >> {DATA_DIR}/psam_pus.csv"
 
 rule download_american_community_survey_household_one_year_2024:
     # resources:
     #     census_download=1
-    output: f"{fod_config.data_dir}/csv_hus.zip"
+    output: f"{DATA_DIR}/csv_hus.zip"
     shell:
         "sleep $((5 + RANDOM % 10)) && "
         f"  {CENSUS_WGET} --timeout={SHORT_TIMEOUT_SECONDS} --tries=100"
@@ -96,7 +122,7 @@ rule download_american_community_survey_household_one_year_2024:
 rule download_american_community_survey_person_one_year_2024:
     # resources:
     #     census_download=1
-    output: f"{fod_config.data_dir}/csv_pus.zip"
+    output: f"{DATA_DIR}/csv_pus.zip"
     shell:
         "sleep $((5 + RANDOM % 10)) && "
         f"  {CENSUS_WGET} --timeout={SHORT_TIMEOUT_SECONDS} --tries=100"
@@ -107,7 +133,7 @@ rule download_american_community_survey_person_one_year_2024:
 rule download_tiger_tract:
     # resources:
     #     census_download=1
-    output: f"{fod_config.data_dir}/tl_2025_{{fips}}_tract.zip"
+    output: f"{DATA_DIR}/tl_2025_{{fips}}_tract.zip"
     shell:
         "sleep $((5 + RANDOM % 10)) && "
         f"  {CENSUS_WGET} --timeout={SHORT_TIMEOUT_SECONDS} --tries=100"
@@ -116,28 +142,28 @@ rule download_tiger_tract:
 
 
 rule extract_tiger_tract:
-    input: f"{fod_config.data_dir}/tl_2025_{{fips}}_tract.zip"
-    output: f"{fod_config.data_dir}/tl_2025_{{fips}}_tract.shp"
+    input: f"{DATA_DIR}/tl_2025_{{fips}}_tract.zip"
+    output: f"{DATA_DIR}/tl_2025_{{fips}}_tract.shp"
     shell:
-        f"unzip -o {{input}} -d \"{fod_config.data_dir}/\""
+        f"unzip -o {{input}} -d \"{DATA_DIR}/\""
 
 
 rule download_tiger_addr:
     # resources:
     #     census_download=1
-    output: f"{fod_config.data_dir}/tl_2025_{{zip}}_addr.zip"
+    output: f"{DATA_DIR}/tl_2025_{{zip}}_addr.zip"
     threads: 1
     shell:
         "sleep $((5 + RANDOM % 10)) && "
         f"  {CENSUS_WGET} --timeout={SHORT_TIMEOUT_SECONDS} --tries=100"
         "    'https://www2.census.gov/geo/tiger/TIGER2025/ADDR/tl_2025_{wildcards.zip}_addr.zip'"
-        f"    -O {{output}} || touch {fod_config.data_dir}/tl_2025_{{wildcards.zip}}_addr.zip"
+        f"    -O {{output}} || touch {DATA_DIR}/tl_2025_{{wildcards.zip}}_addr.zip"
 
 
 rule download_tiger_block_groups:
     # resources:
     #     census_download=1
-    output: f"{fod_config.data_dir}/tl_2024_{{block_group_fips}}_bg.zip"
+    output: f"{DATA_DIR}/tl_2024_{{block_group_fips}}_bg.zip"
     threads: 1
     shell:
         "sleep $((5 + RANDOM % 10)) && "
@@ -147,23 +173,23 @@ rule download_tiger_block_groups:
 
 
 rule extract_tiger_block_groups:
-    input: f"{fod_config.data_dir}/tl_2024_{{block_group_fips}}_bg.zip"
-    output: f"{fod_config.data_dir}/tl_2024_{{block_group_fips}}_bg.shp"
+    input: f"{DATA_DIR}/tl_2024_{{block_group_fips}}_bg.zip"
+    output: f"{DATA_DIR}/tl_2024_{{block_group_fips}}_bg.shp"
     shell:
-        "unzip -o {input} -d \"{fod_config.data_dir}/\""
+        "unzip -o {input} -d \"{DATA_DIR}/\""
 
 
 rule extract_tiger_addr:
-    input: f"{fod_config.data_dir}/tl_2025_{{zipcode}}_addr.zip"
-    output: f"{fod_config.data_dir}/tl_2025_{{zipcode}}_addr.dbf"
+    input: f"{DATA_DIR}/tl_2025_{{zipcode}}_addr.zip"
+    output: f"{DATA_DIR}/tl_2025_{{zipcode}}_addr.dbf"
     shell:
-        f"unzip -o {{input}} -d \"{fod_config.data_dir}/\" || touch {{output}}"
+        f"unzip -o {{input}} -d \"{DATA_DIR}/\" || touch {{output}}"
 
 
 rule download_tract_puma_crosswalk:
     # resources:
     #     census_download=1
-    output: f"{fod_config.data_dir}/state_county_unedited.txt"
+    output: f"{DATA_DIR}/state_county_unedited.txt"
     shell:
         f"  {CENSUS_WGET} --timeout={SHORT_TIMEOUT_SECONDS} --tries=100"
         "    'https://www2.census.gov/geo/docs/maps-data/data/rel2020/2020_Census_Tract_to_2020_PUMA.txt'"
@@ -172,22 +198,28 @@ rule download_tract_puma_crosswalk:
 
 rule process_tract_puma_crosswalk:
     """Strip UTF-8 BOM and normalise Windows line endings."""
-    input: f"{fod_config.data_dir}/state_county_unedited.txt"
-    output: f"{fod_config.data_dir}/state_county_tract_puma.csv"
+    input: f"{DATA_DIR}/state_county_unedited.txt"
+    output: f"{DATA_DIR}/state_county_tract_puma.csv"
     shell:
         r"sed 's/^\xEF\xBB\xBF//' {input} | dos2unix > {output}"
 
+rule convert_state_county_tract_puma_crosswalk_to_parquet:
+    """Spatial join"""
+    input: f"{DATA_DIR}/state_county_tract_puma_crosswalk.csv"
+    output: f"{DATA_DIR}/state_county_tract_puma_crosswalk.parquet"
+    shell:
+        f"uv run duckdb -c \"COPY '{DATA_DIR}/state_county_tract_puma_crosswalk.csv' TO '{DATA_DIR}/state_county_tract_puma_crosswalk.parquet' (FORMAT PARQUET, COMPRESSION 'ZSTD');\""
 
 rule combine_ids_to_fips:
     """Combine digits to full fips codes"""
-    input: f"{fod_config.data_dir}/state_county_tract_puma.csv"
-    output: f"{fod_config.data_dir}/state_county_tract_puma_crosswalk.csv"
+    input: f"{DATA_DIR}/state_county_tract_puma.csv"
+    output: f"{DATA_DIR}/state_county_tract_puma_crosswalk.csv"
     shell:
-        f"uv run python {SCRIPTS}/combine_digits_to_fips.py {fod_config.data_dir}/state_county_tract_puma.csv {fod_config.data_dir}/state_county_tract_puma_crosswalk.csv"
+        f"uv run python {SCRIPTS}/combine_digits_to_fips.py {DATA_DIR}/state_county_tract_puma.csv {DATA_DIR}/state_county_tract_puma_crosswalk.csv"
 
 
 rule download_osm:
-    output: f"{fod_config.data_dir}/us-latest.osm.pbf"
+    output: f"{DATA_DIR}/us-latest.osm.pbf"
     shell:
         "sleep $((5 + RANDOM % 10)) && "
         "{CENSUS_WGET} --timeout=3600 --tries=3 --waitretry=60"
@@ -197,41 +229,44 @@ rule download_osm:
 
 rule extract_osm_nodes:
     """Parse PBF with osmium and write longitude/latitude/encoded_tags/id CSV."""
-    input: f"{fod_config.data_dir}/us-latest.osm.pbf"
-    output: f"{fod_config.data_dir}/united_states_nodes.csv"
+    input: f"{DATA_DIR}/us-latest.osm.pbf"
+    output: f"{DATA_DIR}/united_states_nodes.csv"
     resources:
         mem_gb=8
     shell:
-        f"DATA_DIR={fod_config.data_dir} uv run python {SCRIPTS}/extract_osm_nodes.py"
+        f"DATA_DIR={DATA_DIR} uv run python {SCRIPTS}/extract_osm_nodes.py"
 
 rule create_osm_node_tract_crosswalk:
     """Spatial join"""
-    input: f"{fod_config.data_dir}/united_states_nodes.csv"
-    output: f"{fod_config.data_dir}/united_states_nodes_tract_crosswalk.csv"
+    input: f"{DATA_DIR}/united_states_nodes.csv"
+    output: f"{DATA_DIR}/united_states_nodes_tract_crosswalk.csv"
     shell:
-        f"uv run python {SCRIPTS}/join_to_tracts.py {fod_config.data_dir}"
+        f"uv run python {SCRIPTS}/join_to_tracts.py {DATA_DIR}"
 
 rule convert_osm_node_tract_crosswalk_to_parquet:
     """Spatial join"""
-    input: f"{fod_config.data_dir}/united_states_nodes_tract_crosswalk.csv"
-    output: f"{fod_config.data_dir}/united_states_nodes_tract_crosswalk.parquet"
+    input: f"{DATA_DIR}/united_states_nodes_tract_crosswalk.csv"
+    output: f"{DATA_DIR}/united_states_nodes_tract_crosswalk.parquet"
     shell:
-        f"uv run duckdb -c \"COPY '{fod_config.data_dir}/united_states_nodes_tract_crosswalk.csv' TO '{fod_config.data_dir}/united_states_nodes_tract_crosswalk.parquet' (FORMAT PARQUET, COMPRESSION 'ZSTD');\""
+        f"uv run duckdb -c \"COPY '{DATA_DIR}/united_states_nodes_tract_crosswalk.csv' TO '{DATA_DIR}/united_states_nodes_tract_crosswalk.parquet' (FORMAT PARQUET, COMPRESSION 'ZSTD');\""
+
+
+
 
 rule filter_wikidata_us_points:
     """Keep only entities whose coordinates fall within U.S. state boundaries."""
     input:
-        f"{fod_config.data_dir}/wikidata_compressed.json.bz2",
-        f"{fod_config.data_dir}/tl_2024_us_state.shp",
-    output: f"{fod_config.data_dir}/wikidata_us_points.json"
+        f"{DATA_DIR}/wikidata_compressed.json.bz2",
+        f"{DATA_DIR}/tl_2024_us_state.shp",
+    output: f"{DATA_DIR}/wikidata_us_points.json"
     shell:
-        f"DATA_DIR={fod_config.data_dir} uv run python '{SCRIPTS}/filter_us_nodes.py'"
+        f"DATA_DIR={DATA_DIR} uv run python '{SCRIPTS}/filter_us_nodes.py'"
 
 
 rule download_cjars:
     # resources:
     #     census_download=1
-    output: f"{fod_config.data_dir}/cjars_joe_2022_co.csv.zip"
+    output: f"{DATA_DIR}/cjars_joe_2022_co.csv.zip"
     shell:
         "sleep $((5 + RANDOM % 10)) && "
         f"  {CENSUS_WGET} --timeout={SHORT_TIMEOUT_SECONDS} --tries=100"
@@ -240,16 +275,21 @@ rule download_cjars:
 
 
 rule extract_cjars:
-    input: f"{fod_config.data_dir}/cjars_joe_2022_co.csv.zip"
-    output: f"{fod_config.data_dir}/output/cjars_joe_2022_co.csv"
+    input: f"{DATA_DIR}/cjars_joe_2022_co.csv.zip"
+    output: f"{DATA_DIR}/output/cjars_joe_2022_co.csv"
     shell:
-        "unzip -o {input} -d \"{fod_config.data_dir}/\""
+        "unzip -o {input} -d \"{DATA_DIR}/\""
 
+rule convert_cjars_to_parquet:
+    input: f"{DATA_DIR}/output/cjars_joe_2022_co.csv"
+    output: f"{DATA_DIR}/output/cjars_joe_2022_co.parquet"
+    shell:
+        f"uv run duckdb -c \"COPY '{DATA_DIR}/output/cjars_joe_2022_co.csv' TO '{DATA_DIR}/output/cjars_joe_2022_co.parquet' (FORMAT PARQUET, COMPRESSION 'ZSTD');\""
 
 rule download_tiger_state:
     # resources:
     #     census_download=1
-    output: temp(f"{fod_config.data_dir}/us_state_boundaries.zip")
+    output: temp(f"{DATA_DIR}/us_state_boundaries.zip")
     shell:
         "sleep $((5 + RANDOM % 10)) && "
         f"  {CENSUS_WGET} --timeout={SHORT_TIMEOUT_SECONDS} --tries=100"
@@ -258,15 +298,15 @@ rule download_tiger_state:
 
 
 rule extract_tiger_state_boundaries:
-    input: f"{fod_config.data_dir}/us_state_boundaries.zip"
-    output: f"{fod_config.data_dir}/tl_2024_us_state.shp"
+    input: f"{DATA_DIR}/us_state_boundaries.zip"
+    output: f"{DATA_DIR}/tl_2024_us_state.shp"
     shell:
-        "unzip -o {input} -d \"{fod_config.data_dir}/\""
+        "unzip -o {input} -d \"{DATA_DIR}/\""
 
 
 rule download_filter_wikidata:
     """Stream-download the full dump, filter to geopoint entities, recompress."""
-    output: f"{fod_config.data_dir}/wikidata_compressed.json.bz2"
+    output: f"{DATA_DIR}/wikidata_compressed.json.bz2"
     shell:
         "wget 'https://dumps.wikimedia.org/wikidatawiki/entities/latest-all.json.bz2'"
         " -O -"
@@ -280,28 +320,28 @@ rule download_filter_wikidata:
 
 
 rule unzip_tiger_puma:
-    input: f"{fod_config.data_dir}/tl_2024_{{fips}}_puma20.zip"
-    output: f"{fod_config.data_dir}/tl_2024_{{fips}}_puma20.shp"
+    input: f"{DATA_DIR}/tl_2024_{{fips}}_puma20.zip"
+    output: f"{DATA_DIR}/tl_2024_{{fips}}_puma20.shp"
     shell:
-        "unzip -o {input} -d \"{fod_config.data_dir}/\""
+        "unzip -o {input} -d \"{DATA_DIR}/\""
 
 
 rule concatenate_tiger_puma:
-    input: expand(f"{fod_config.data_dir}/tl_2024_{{PUMA_STATE_FIPS}}_puma20.shp", PUMA_STATE_FIPS=fod_config.puma_state_fips)
-    output: f"{fod_config.data_dir}/puma_combined.shp"
+    input: expand(f"{DATA_DIR}/tl_2024_{{PUMA_STATE_FIPS}}_puma20.shp", PUMA_STATE_FIPS=fod_config.puma_state_fips)
+    output: f"{DATA_DIR}/puma_combined.shp"
     shell:
-        f"DATA_DIR={fod_config.data_dir} uv run python '{SCRIPTS}/concatenate_puma_shape_files.py'"
+        f"DATA_DIR={DATA_DIR} uv run python '{SCRIPTS}/concatenate_puma_shape_files.py'"
 
 
 rule concatenate_tiger_tract:
-    input: expand(f"{fod_config.data_dir}/tl_2025_{{PUMA_STATE_FIPS}}_tract.shp", PUMA_STATE_FIPS=fod_config.puma_state_fips)
-    output: f"{fod_config.data_dir}/tract_combined.shp"
+    input: expand(f"{DATA_DIR}/tl_2025_{{PUMA_STATE_FIPS}}_tract.shp", PUMA_STATE_FIPS=fod_config.puma_state_fips)
+    output: f"{DATA_DIR}/tract_combined.shp"
     shell:
-        f"DATA_DIR={fod_config.data_dir} uv run python '{SCRIPTS}/concatenate_tract_shape_files.py'"
+        f"DATA_DIR={DATA_DIR} uv run python '{SCRIPTS}/concatenate_tract_shape_files.py'"
 
 
 rule download_tiger_puma:
-    output: f"{fod_config.data_dir}/tl_2024_{{fips}}_puma20.zip"
+    output: f"{DATA_DIR}/tl_2024_{{fips}}_puma20.zip"
     shell:
         "sleep $((5 + RANDOM % 10)) && "
         f"  wget --timeout={SHORT_TIMEOUT_SECONDS} --tries=20"
@@ -309,10 +349,10 @@ rule download_tiger_puma:
         "    -O {output}"
 
 rule concatenate_tiger_bg:
-    input: expand(f"{fod_config.data_dir}/tl_2024_{{block_group_fips}}_bg.shp", block_group_fips=fod_config.block_group_fips)
-    output: f"{fod_config.data_dir}/combined_block_groups.shp"
+    input: expand(f"{DATA_DIR}/tl_2024_{{block_group_fips}}_bg.shp", block_group_fips=fod_config.block_group_fips)
+    output: f"{DATA_DIR}/combined_block_groups.shp"
     shell:
-        f"DATA_DIR='{fod_config.data_dir}' uv run python '{SCRIPTS}/concatenate_shape_files.py'"
+        f"DATA_DIR='{DATA_DIR}' uv run python '{SCRIPTS}/concatenate_shape_files.py'"
 
 
 # ===========================================================================
@@ -323,7 +363,7 @@ rule concatenate_tiger_bg:
 rule download_fy2025_contracts:
     # resources:
     #     census_download=1
-    output: f"{fod_config.data_dir}/FY2025_All_Contracts_Full_20260506.zip"
+    output: f"{DATA_DIR}/FY2025_All_Contracts_Full_20260506.zip"
     shell:
         "sleep $((5 + RANDOM % 10)) && "
         f"{CENSUS_WGET} --timeout={SHORT_TIMEOUT_SECONDS} --tries=100"
@@ -332,10 +372,10 @@ rule download_fy2025_contracts:
 
 
 rule extract_fy2025_contracts:
-    input: f"{fod_config.data_dir}/FY2025_All_Contracts_Full_20260506.zip"
-    output: f"{fod_config.data_dir}/FY2025_All_Contracts_Full_20260506.csv"
+    input: f"{DATA_DIR}/FY2025_All_Contracts_Full_20260506.zip"
+    output: f"{DATA_DIR}/FY2025_All_Contracts_Full_20260506.csv"
     shell:
-        "unzip -o {input} -d \"{fod_config.data_dir}/\" && head -1 {fod_config.data_dir}/FY2025_All_Contracts_Full_20260506_1.csv > {fod_config.data_dir}/tmp && cat {fod_config.data_dir}/FY2025_All_Contracts*csv | grep -v last_modified_date >> {fod_config.data_dir}/tmp && mv {fod_config.data_dir}/tmp {fod_config.data_dir}/FY2025_All_Contracts_Full_20260506.csv"
+        "unzip -o {input} -d \"{DATA_DIR}/\" && head -1 {DATA_DIR}/FY2025_All_Contracts_Full_20260506_1.csv > {DATA_DIR}/tmp && cat {DATA_DIR}/FY2025_All_Contracts*csv | grep -v last_modified_date >> {DATA_DIR}/tmp && mv {DATA_DIR}/tmp {DATA_DIR}/FY2025_All_Contracts_Full_20260506.csv"
 # NOTE: Legacy commented-out rules for ACS PUMS, SIPP, AHS, and earlier
 # TIGER/CJARS/OSM/Wikidata rule versions were removed in this cleanup.
 # See git history for the archived rule definitions if needed.

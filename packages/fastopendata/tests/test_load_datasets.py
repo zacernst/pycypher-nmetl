@@ -16,7 +16,6 @@ import pandas as pd
 from fastopendata.pipeline import GraphPipeline, load_available_datasets
 from fastopendata.schema_evolution.lineage import LineageNode, NodeType
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

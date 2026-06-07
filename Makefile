@@ -11,13 +11,14 @@ BROWSER := $(shell command -v xdg-open 2>/dev/null || command -v wslview 2>/dev/
 
 
 # Project paths
-export PROJECT_ROOT := .
+export PROJECT_ROOT := ${PWD}
 export PACKAGES_DIR := ${PROJECT_ROOT}/packages
 # Package-specific paths
 export PYCYPHER_DIR := ${PACKAGES_DIR}/pycypher
 export SHARED_DIR := ${PACKAGES_DIR}/shared
 export FASTOPENDATA_DIR := ${PACKAGES_DIR}/fastopendata
 export LC_ALL := C
+export DATA_DIR := /run/media/zac/2tb/fastopendata/data
 
 # Documentation paths
 export DOCS_DIR := ${PROJECT_ROOT}/docs
@@ -120,14 +121,6 @@ help:
 	@echo ""
 	@echo "Data Downloads (Snakemake):"
 	@echo "  make fod-data          Download all fastopendata datasets"
-	@echo "  make fod-data-plan     Dry-run: show what would be downloaded"
-	@echo "  make fod-data-census   Download Census datasets (CJARS, crosswalk, contracts)"
-	@echo "  make fod-data-tiger    Download TIGER/Line shapefiles (PUMA, block groups)"
-	@echo "  make fod-data-osm      Download OpenStreetMap U.S. extract (~10 GB)"
-	@echo "  make fod-data-wikidata Download Wikidata geopoints (~100 GB raw)"
-	@echo "  make fod-data-georgia  Download Georgia development subset"
-	@echo "  make fod-data-status   Show pipeline status"
-	@echo "  make fod-data-clean    Delete all downloaded raw data"
 	@echo ""
 	@echo "Documentation:"
 	@echo "  make docs            Build Sphinx documentation"
@@ -295,6 +288,16 @@ test-telemetry:
 
 # ------------------------------------------------------------------------------
 # Code quality targets (local equivalents of CI checks)
+
+fod_config:
+	@echo "Building configuration file from template..."
+	envsubst < ${FASTOPENDATA_DIR}/fod_input_configs.yaml.template > ${FASTOPENDATA_DIR}/fod_input_configs.yaml
+
+
+nmetl-go: fod_config fod-data
+	@echo "Running the NMETL pipeline..."
+	uv run nmetl run ${FASTOPENDATA_DIR}/fod_input_configs.yaml
+
 
 lint:
 	@echo "Running linters..."
@@ -852,183 +855,5 @@ fastopendata: pycypher
 	cd ${FASTOPENDATA_DIR} && uv run hatch build -t wheel
 	uv pip install --upgrade ${FASTOPENDATA_DIR}
 
-#####################################
-# vars:
-#   - paths:
-#       monorepo_path: /Users/zernst/git/pycypher-nmetl/
-#       raw_data: /Users/zernst/git/pycypher-nmetl/packages/fastopendata/raw_data/
-#       source_dir: /Users/zernst/git/pycypher-nmetl/packages/fastopendata/src/fastopendata/
-#
-${DATA_DIR}/state_county_tract_puma.csv:
-	wget --no-check-certificate https://www2.census.gov/geo/docs/maps-data/data/rel2020/2020_Census_Tract_to_2020_PUMA.txt -O ${DATA_DIR}/state_county_unedited.txt
-	cat ${DATA_DIR}/state_county_unedited.txt | sed 's/^\uFEFF//' > ${DATA_DIR}/state_county_tract_puma.csv
-	dos2unix ${DATA_DIR}/state_county_tract_puma.csv
-
-${DATA_DIR}/csv_pus_1_year.zip:
-	wget --no-check-certificate --user-agent='Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1)' --no-cache --header='referer: https://www2.census.gov/programs-surveys/acs/data/pums/2027/' https://www2.census.gov/programs-surveys/acs/data/pums/2023/1-Year/csv_pus.zip -O ${DATA_DIR}/csv_pus_1_year.zip
-
-${DATA_DIR}/csv_pus_5_year.zip:
-	wget --no-check-certificate --user-agent='Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1)' --no-cache --header='referer: https://www2.census.gov/programs-surveys/acs/data/pums/2027/' https://www2.census.gov/programs-surveys/acs/data/pums/2023/5-Year/csv_pus.zip -O ${DATA_DIR}/csv_pus_5_year.zip
-
-${DATA_DIR}/csv_hus_5_year.zip:
-	wget --no-check-certificate --user-agent='Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1)' --no-cache --header='referer: https://www2.census.gov/programs-surveys/acs/data/pums/2027/' https://www2.census.gov/programs-surveys/acs/data/pums/2023/5-Year/csv_hus.zip -O ${DATA_DIR}/csv_hus_5_year.zip
-
-${DATA_DIR}/csv_hus_1_year.zip:
-	wget --no-check-certificate --user-agent='Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1)' --no-cache --header='referer: https://www2.census.gov/programs-surveys/acs/data/pums/2027/' https://www2.census.gov/programs-surveys/acs/data/pums/2023/1-Year/csv_hus.zip -O ${DATA_DIR}/csv_hus_1_year.zip
-
-${DATA_DIR}/pus_1/psam_pusb.csv: ${DATA_DIR}/csv_pus_1_year.zip
-	mkdir ${DATA_DIR}/pus_1 || echo "Directory exists"
-	unzip -o ${DATA_DIR}/csv_pus_1_year.zip -d ${DATA_DIR}/pus_1
-
-${DATA_DIR}/hus_1/psam_husb.csv: ${DATA_DIR}/csv_hus_1_year.zip
-	mkdir ${DATA_DIR}/hus_1 || echo "Directory exists"
-	unzip -o ${DATA_DIR}/csv_hus_1_year.zip -d ${DATA_DIR}/hus_1
-
-${DATA_DIR}/pus_5/psam_pusd.csv: ${DATA_DIR}/csv_pus_5_year.zip
-	mkdir ${DATA_DIR}/pus_5 || echo "Directory exists"
-	unzip -o ${DATA_DIR}/csv_pus_5_year.zip -d ${DATA_DIR}/pus_5
-
-${DATA_DIR}/hus_5/psam_husd.csv: ${DATA_DIR}/csv_hus_5_year.zip
-	mkdir ${DATA_DIR}/hus_5 || echo "Directory exists"
-	unzip -o ${DATA_DIR}/csv_hus_5_year.zip -d ${DATA_DIR}/hus_5
-
-${DATA_DIR}/pus_1/psam_pus.csv: ${DATA_DIR}/pus_1/psam_pusb.csv
-	cat ${DATA_DIR}/pus_1/psam_pusa.csv > ${DATA_DIR}/pus_1/psam_pus.csv
-	cat ${DATA_DIR}/pus_1/psam_pusb.csv | tail -n +2 >> ${DATA_DIR}/pus_1/psam_pus.csv
-
-${DATA_DIR}/hus_1/psam_hus.csv: ${DATA_DIR}/hus_1/psam_husb.csv
-	cat ${DATA_DIR}/hus_1/psam_husa.csv > ${DATA_DIR}/hus_1/psam_hus.csv
-	cat ${DATA_DIR}/hus_1/psam_husb.csv | tail -n +2 >> ${DATA_DIR}/hus_1/psam_hus.csv
-
-${DATA_DIR}/pus_5/psam_pus.csv: ${DATA_DIR}/pus_5/psam_pusd.csv
-	cat ${DATA_DIR}/pus_5/psam_pusa.csv > ${DATA_DIR}/pus_5/psam_pus.csv
-	cat ${DATA_DIR}/pus_5/psam_pusb.csv | tail -n +2 >> ${DATA_DIR}/pus_5/psam_pus.csv
-	cat ${DATA_DIR}/pus_5/psam_pusc.csv | tail -n +2 >> ${DATA_DIR}/pus_5/psam_pus.csv
-	cat ${DATA_DIR}/pus_5/psam_pusd.csv | tail -n +2 >> ${DATA_DIR}/pus_5/psam_pus.csv
-
-data: ${DATA_DIR}/hus_5/psam_hus.csv ${DATA_DIR}/pus_1/psam_pus.csv ${DATA_DIR}/hus_1/psam_hus.csv ${DATA_DIR}/pus_5/psam_pus.csv ${DATA_DIR}/wikidata_compressed.json.bz2 ${DATA_DIR}/united_states_nodes.csv ${DATA_DIR}/tl_2024_us_state.shp ${DATA_DIR}/ahs_2023_csv.zip ${DATA_DIR}/rw2023_csv.zip ${DATA_DIR}/pu2023_schema.json ${DATA_DIR}/united_states_nodes.csv ${DATA_DIR}/cjars_joe_2022_co.csv ${TRACT_FILES} ${ADDR_FILES} ${DATA_DIR}/state_county_tract_puma.csv
-	echo "done"
-
-${DATA_DIR}/hus_5/psam_hus.csv: ${DATA_DIR}/hus_5/psam_husd.csv
-	cat ${DATA_DIR}/hus_5/psam_husa.csv > ${DATA_DIR}/hus_5/psam_hus.csv
-	cat ${DATA_DIR}/hus_5/psam_husb.csv | tail -n +2 >> ${DATA_DIR}/hus_5/psam_hus.csv
-	cat ${DATA_DIR}/hus_5/psam_husc.csv | tail -n +2 >> ${DATA_DIR}/hus_5/psam_hus.csv
-	cat ${DATA_DIR}/hus_5/psam_husd.csv | tail -n +2 >> ${DATA_DIR}/hus_5/psam_hus.csv
-
-${DATA_DIR}/psam_2023_individual.csv: ${DATA_DIR}/psam_pus.csv
-	head -1 ${DATA_DIR}/psam_pus.csv > ${DATA_DIR}/psam_2023_individual.csv
-	grep 2023GQ ${DATA_DIR}/psam_pus.csv >> ${DATA_DIR}/psam_2023_individual.csv
-
-${DATA_DIR}/psam_2023_housing.csv: ${DATA_DIR}/psam_pus.csv
-	head -1 ${DATA_DIR}/psam_pus.csv > ${DATA_DIR}/psam_2023_housing.csv
-	grep 2023HU ${DATA_DIR}/psam_pus.csv >> ${DATA_DIR}/psam_2023_housing.csv
-#
-#census_pus_5_year:
-#     cmd: "wget --no-check-certificate --user-agent='Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1)' --no-cache --header='referer: https://www2.census.gov/programs-surveys/acs/data/pums/2027/' https://www2.census.gov/programs-surveys/acs/data/pums/2023/5-Year/csv_pus.zip -O ${paths.raw_data}/csv_pus_5_year.zip"
-#     outs:
-#     - ${paths.raw_data}/csv_pus_5_year.zip
-#   census_hus_5_year:
-#     cmd: "wget --no-check-certificate --user-agent='Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1)' --no-cache --header='referer: https://www2.census.gov/programs-surveys/acs/data/pums/2027/' https://www2.census.gov/programs-surveys/acs/data/pums/2023/5-Year/csv_hus.zip -O ${paths.raw_data}/csv_hus_5_year.zip"
-#     outs:
-#     - ${paths.raw_data}/csv_hus_5_year.zip
-
-${DATA_DIR}/us-latest.osm.pbf:
-	wget https://download.geofabrik.de/north-america/us-latest.osm.pbf -O ${DATA_DIR}/us-latest.osm.pbf
-
-${DATA_DIR}/united_states_nodes.csv: ${DATA_DIR}/us-latest.osm.pbf
-	DATA_DIR=${DATA_DIR} uv run python ${SOURCE_DIR}/extract_osm_nodes.py
-
-census_block_shape_files:
-	${SOURCE_DIR}/block_shape_files.sh
-
-${DATA_DIR}/wikidata_compressed.json.bz2:
-	wget https://dumps.wikimedia.org/wikidatawiki/entities/latest-all.json.bz2 -O - | bunzip2 -c | uv run python ${SOURCE_DIR}/compress_wikidata.py | bzip2 -c > ${DATA_DIR}/wikidata_compressed.json.bz2
-
-# ${DATA_DIR}/wikidata_compressed.json.bz2: ${DATA_DIR}/latest-all.json.bz2
-# 	cat ${DATA_DIR}/latest-all.json.bz2 | bunzip2 -c | uv run python ${SOURCE_DIR}/compress_wikidata.py | bzip2 -c > ${DATA_DIR}/wikidata_compressed.json.bz2
-#
-#   download_pums_5_year:
-#     cmd: wget -P '${paths.raw_data}' -nH --recursive -np https://www2.census.gov/programs-surveys/acs/data/pums/2023/5-Year/ && /bin/bash -c ${paths.source_dir}/pums_5_year.sh
-#     outs:
-#     - ${paths.raw_data}/psam_h.csv
-#     - ${paths.raw_data}/psam_p.csv
-#   compress_pums_5_year_h:
-#     cmd: lbzip2 -k ${paths.raw_data}/psam_h.csv
-#     deps:
-#     - ${paths.raw_data}/psam_h.csv
-#     outs:
-#     - ${paths.raw_data}/psam_h.csv.bz2
-#   compress_pums_5_year_p:
-#     cmd: lbzip2 -k ${paths.raw_data}/psam_p.csv
-#     deps:
-#     - ${paths.raw_data}/psam_p.csv
-#     outs:
-#     - ${paths.raw_data}/psam_p.csv.bz2
-
-${DATA_DIR}/combined.shp:
-	wget --no-check-certificate -e robots=off -w 3 --user-agent='Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1)' --no-cache --header='referer: https://www2.census.gov/programs-surveys/acs/data/pums/2027/' -P ${DATA_DIR} -nH --recursive -np https://www2.census.gov/geo/tiger/TIGER2024/PUMA20/
-	${SOURCE_DIR}/puma_shape_files.sh
-	uv run python ${SOURCE_DIR}/concatenate_puma_shape_files.py
-
-${DATA_DIR}/us_state_boundaries.zip:
-	wget --no-check-certificate -e robots=off --user-agent='Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1)' --no-cache --header='referer: https://www2.census.gov/programs-surveys/acs/data/pums/2027/' https://www2.census.gov/geo/tiger/TIGER2024/STATE/tl_2024_us_state.zip -O ${DATA_DIR}/us_state_boundaries.zip
-
-${DATA_DIR}/tl_2024_us_state.shp: ${DATA_DIR}/us_state_boundaries.zip
-	unzip ${DATA_DIR}/us_state_boundaries.zip -d ${DATA_DIR}/
-
-# This one might be broken
-${DATA_DIR}/pu2023_csv.zip:
-	wget --no-check-certificate --user-agent='Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1)' --no-cache --header='referer: https://www2.census.gov/programs-surveys/acs/data/pums/2027/' https://www2.census.gov/programs-surveys/sipp/data/datasets/2023/pu2023_csv.zip -O ${paths.raw_data}/pu2023_csv.zip
-# && unzip -o ${paths.raw_data}/pu2023_csv.zip -d ${paths.raw_data}/
-
-#     outs:
-#     - ${paths.raw_data}/tl_2024_us_state.shp
-#   filter_us_wikidata:
-#     cmd: python ${paths.source_dir}/filter_us_nodes.py
-#     deps:
-#     - ${paths.raw_data}/location_entities.json.bz2
-#     - ${paths.raw_data}/tl_2024_us_state.shp
-#     outs:
-#     - ${paths.raw_data}/wikidata_us_points.json
-#   download_sipp_pu_data:
-#     cmd: "wget --no-check-certificate --user-agent='Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1)' --no-cache --header='referer: https://www2.census.gov/programs-surveys/acs/data/pums/2027/' https://www2.census.gov/programs-surveys/sipp/data/datasets/2023/pu2023_csv.zip -O ${paths.raw_data}/pu2023_csv.zip && unzip -o ${paths.raw_data}/pu2023_csv.zip -d ${paths.raw_data}/"
-#     outs:
-#     - ${paths.raw_data}/pu2023.csv
-
-${DATA_DIR}/pu2023_schema.json:
-	wget --no-check-certificate https://www2.census.gov/programs-surveys/sipp/data/datasets/2023/pu2023_schema.json -O ${DATA_DIR}/pu2023_schema.json
-
-# This one should be broken into two steps
-${DATA_DIR}/rw2023_csv.zip:
-	wget --no-check-certificate https://www2.census.gov/programs-surveys/sipp/data/datasets/2023/rw2023_csv.zip -O ${DATA_DIR}/rw2023_csv.zip
-	unzip -o ${DATA_DIR}/rw2023_csv.zip -d ${DATA_DIR}/
-
-# So should this
-${DATA_DIR}/ahs_2023_csv.zip:
-	wget --no-check-certificate https://www2.census.gov/programs-surveys/ahs/2023/AHS%202023%20Value%20Labels%20Package.zip -O ${DATA_DIR}/ahs_2023.zip
-	unzip -o ${DATA_DIR}/ahs_2023.zip -d ${DATA_DIR}/ahs_2023
-	wget --no-check-certificate https://www2.census.gov/programs-surveys/ahs/2023/AHS%202023%20National%20PUF%20v1.1%20Flat%20CSV.zip -O ${DATA_DIR}/ahs_2023_csv.zip
-	unzip -o ${DATA_DIR}/ahs_2023_csv.zip -d ${DATA_DIR}/ahs_2023
-
-${DATA_DIR}/cjars_joe_2022_co.csv.zip:
-	wget --no-check-certificate https://www2.census.gov/programs-surveys/cjars/datasets/2022/cjars_joe_2022_co.csv.zip -O ${DATA_DIR}/cjars_joe_2022_co.csv.zip
-
-${DATA_DIR}/cjars_joe_2022_co.csv: ${DATA_DIR}/cjars_joe_2022_co.csv.zip
-	unzip -o ${DATA_DIR}/cjars_joe_2022_co.csv.zip -d ${DATA_DIR}
-	mv ${DATA_DIR}/output/cjars_joe_2022_co.csv ${DATA_DIR}/cjars_joe_2022_co.csv
-
-# https://www2.census.gov/geo/tiger/TIGER2025/TRACT/
-
-
-${TRACT_FILES}:
-	wget https://www2.census.gov/geo/tiger/TIGER2025/TRACT/$@ -O ${DATA_DIR}/$@tmp.zip
-	unzip -o ${DATA_DIR}/$@tmp.zip -d ${DATA_DIR}
-	rm ${DATA_DIR}/$@tmp.zip
-
-
-${ADDR_FILES}:
-	wget https://www2.census.gov/geo/tiger/TIGER2025/ADDR/$@ -O ${DATA_DIR}/$@tmp.zip
-	unzip -o ${DATA_DIR}/$@tmp.zip -d ${DATA_DIR}
-	rm ${DATA_DIR}/$@tmp.zip
-
-#####################################################
+subst:
+	cat ${FASTOPENDATA_DIR}/fod_input_configs.yaml | envsubst

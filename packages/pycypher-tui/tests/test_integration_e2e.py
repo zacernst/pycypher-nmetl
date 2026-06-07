@@ -6,7 +6,6 @@ validation → screen display, verifying cross-component integration.
 
 from __future__ import annotations
 
-
 from pycypher.ingestion.config import (
     EntitySourceConfig,
     OutputConfig,

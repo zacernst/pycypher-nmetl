@@ -3,9 +3,7 @@
 from __future__ import annotations
 
 import pytest
-
 from shared.audit_chain import AuditRecord, ChainedAuditLog, RotationRecord
-
 
 # ---------------------------------------------------------------------------
 # Basic rotation behaviour

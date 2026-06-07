@@ -28,7 +28,6 @@ from unittest.mock import MagicMock
 
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # Synthetic-data helpers (small CSV fixtures written to tmp_path)
 # ---------------------------------------------------------------------------

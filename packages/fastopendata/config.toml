@@ -4,7 +4,7 @@
 
 [paths]
 # Default data directory (can be overridden by environment variable DATA_DIR)
-data_dir = "/Users/zernst/scratch/"
+# data_dir = "/Users/zernst/scratch/"
 
 # Processing scripts directory (relative to package root)
 scripts_dir = "src/fastopendata/processing"

@@ -11,7 +11,6 @@ from pathlib import Path
 
 import pandas as pd
 import pytest
-
 from fastopendata.etl.georgia_pipeline import build_georgia_pipeline
 from fastopendata.etl.state_pipeline import build_state_pipeline
 

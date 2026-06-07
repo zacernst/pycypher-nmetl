@@ -63,16 +63,16 @@ class TestConcatenatePumaMainBlock:
     def test_main_passes_correct_columns(self) -> None:
         """The __main__ block passes PUMA20, GEOID, geometry columns."""
         # Read the source to verify column specification
-        from fastopendata.processing import concatenate_puma_shape_files
-
         import inspect
+
+        from fastopendata.processing import concatenate_puma_shape_files
         source = inspect.getsource(concatenate_puma_shape_files)
         assert 'columns=["PUMA20", "GEOID", "geometry"]' in source
 
     def test_main_uses_tiger_puma_dataset_path(self) -> None:
         """The __main__ block uses config.get_dataset_path('tiger_puma')."""
-        from fastopendata.processing import concatenate_puma_shape_files
-
         import inspect
+
+        from fastopendata.processing import concatenate_puma_shape_files
         source = inspect.getsource(concatenate_puma_shape_files)
         assert 'get_dataset_path("tiger_puma")' in source
