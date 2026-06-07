@@ -236,7 +236,7 @@ targets = ["packages/pycypher/src", "packages/shared/src"]
 dev-core = [
   # Testing frameworks
   "pytest>=9.0.3,<10.0.0",  # 9.0.3 fixes CVE-2025-71176 (insecure tmp dir)
-  "pytest-cov>=6.0.0,<7.0.0",
+  "pytest-cov>=6.0.0,<8.0.0",
   "pytest-xdist>=3.6.1,<4.0.0",
   "pytest-mock>=3.14.0,<4.0.0",
   "pytest-timeout>=2.3.1,<3.0.0",
