@@ -51,7 +51,8 @@ rule all:
         f"{fod_config.data_dir}/puma_combined.shp",
         # f"{fod_config.data_dir}/wikidata_us_points.json",
         f"{fod_config.data_dir}/output/cjars_joe_2022_co.csv",
-        f"{fod_config.data_dir}/united_states_nodes.csv",
+        # f"{fod_config.data_dir}/united_states_nodes.csv",
+        f"{fod_config.data_dir}/united_states_nodes_tract_crosswalk.parquet",
         f"{fod_config.data_dir}/tract_combined.shp",
         f"{fod_config.data_dir}/state_county_tract_puma_crosswalk.csv",
         ####expand(f"{fod_config.data_dir}/tl_2025_{{zip}}_addr.dbf.iso.xml", zip=fod_config.zips),
@@ -203,6 +204,19 @@ rule extract_osm_nodes:
     shell:
         f"DATA_DIR={fod_config.data_dir} uv run python {SCRIPTS}/extract_osm_nodes.py"
 
+rule create_osm_node_tract_crosswalk:
+    """Spatial join"""
+    input: f"{fod_config.data_dir}/united_states_nodes.csv"
+    output: f"{fod_config.data_dir}/united_states_nodes_tract_crosswalk.csv"
+    shell:
+        f"uv run python {SCRIPTS}/join_to_tracts.py {fod_config.data_dir}"
+
+rule convert_osm_node_tract_crosswalk_to_parquet:
+    """Spatial join"""
+    input: f"{fod_config.data_dir}/united_states_nodes_tract_crosswalk.csv"
+    output: f"{fod_config.data_dir}/united_states_nodes_tract_crosswalk.parquet"
+    shell:
+        f"uv run duckdb -c \"COPY '{fod_config.data_dir}/united_states_nodes_tract_crosswalk.csv' TO '{fod_config.data_dir}/united_states_nodes_tract_crosswalk.parquet' (FORMAT PARQUET, COMPRESSION 'ZSTD');\""
 
 rule filter_wikidata_us_points:
     """Keep only entities whose coordinates fall within U.S. state boundaries."""

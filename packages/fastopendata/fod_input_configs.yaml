@@ -7,7 +7,7 @@ functions:
 sources:
   entities:
     - id: osm_nodes
-      uri: "file:///Users/zernst/scratch/united_states_nodes.csv"
+      uri: "file:///Users/zernst/scratch/united_states_nodes_tract_crosswalk.csv"
       entity_type: OSMNode
       id_col: id
       schema_hints:
@@ -67,6 +67,14 @@ sources:
         COUNTY_FIPS: STRING
         TRACT_FIPS: STRING
         PUMA_FIPS: STRING
+    - id: tract_osm
+      uri: "file:///Users/zernst/scratch/united_states_nodes_tract_crosswalk.csv"
+      entity_type: Tract
+      id_col: GEOID
+      schema_hints:
+        GEOID: STRING
+        longitude: float
+        latitude: float
   relationships:
     - id: county_in_state
       uri: "file:///Users/zernst/scratch/state_county_tract_puma_crosswalk.csv"
@@ -110,6 +118,14 @@ sources:
         COUNTY_FIPS: STRING
         TRACT_FIPS: STRING
         PUMA_FIPS: STRING
+    - id: osm_node_in_tract
+      uri: "file:///Users/zernst/scratch/united_states_nodes_tract_crosswalk.csv"
+      relationship_type: IN
+      source_col: id
+      target_col: GEOID
+      schema_hints:
+        GEOID: STRING
+        id:: STRING
     - id: puma_in_state
       uri: "file:///Users/zernst/scratch/state_county_tract_puma_crosswalk.csv"
       relationship_type: IN
