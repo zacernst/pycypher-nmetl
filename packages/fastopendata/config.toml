@@ -2,6 +2,8 @@
 # FastOpenData Configuration
 # =============================================================================
 
+
+
 [paths]
 # Default data directory (can be overridden by environment variable DATA_DIR)
 # data_dir = "/Users/zernst/scratch/"
@@ -35,6 +37,8 @@ census_referer = "https://www2.census.gov/programs-surveys/acs/data/pums/2027/"
 
 [datasets]
 # Dataset metadata and configuration
+#
+
 
 [datasets.tract_puma_crosswalk]
 id = 1
@@ -240,6 +244,63 @@ description = "Geolocated entities filtered to U.S. coordinates"
 [geography]
 # State and territory FIPS codes with TIGER/Line coverage
 # Gaps in sequence (03, 07) are unassigned by Census Bureau
+
+state_abbrev = [
+  "ak",
+  "al",
+  "ar",
+  "az",
+  "ca",
+  "co",
+  "ct",
+  "dc",
+  "de",
+  "fl",
+  "ga",
+  "hi",
+  "ia",
+  "id",
+  "il",
+  "in",
+  "ks",
+  "ky",
+  "la",
+  "ma",
+  "md",
+  "me",
+  "mi",
+  "mn",
+  "mo",
+  "ms",
+  "mt",
+  "nc",
+  "nd",
+  "ne",
+  "nh",
+  "nj",
+  "nm",
+  "nv",
+  "ny",
+  "oh",
+  "ok",
+  "or",
+  "pa",
+  "pr",
+  "ri",
+  "sc",
+  "sd",
+  "tn",
+  "tx",
+  "us",
+  "ut",
+  "va",
+  "vt",
+  "wa",
+  "wi",
+  "wv",
+  "wy",
+]
+
 state_fips = [
   "01",
   "02",
@@ -257,7 +318,7 @@ state_fips = [
   "17",
   "18",
   "19",
-  "20",
+  # "20",
   "21",
   "22",
   "23",
@@ -375,7 +436,7 @@ puma_state_fips = [
   "17",
   "18",
   "19",
-  "20",
+  # "20",
   "21",
   "22",
   "23",

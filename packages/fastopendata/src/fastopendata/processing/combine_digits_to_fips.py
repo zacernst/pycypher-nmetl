@@ -2,7 +2,6 @@ import sys
 
 import pandas as pd
 
-raise Exception('Not implemented')
 input_file = sys.argv[1]
 output_file = sys.argv[2]
 

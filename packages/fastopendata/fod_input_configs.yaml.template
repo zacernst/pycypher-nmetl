@@ -15,6 +15,7 @@ sources:
         latitude: FLOAT
         encoded_tags: STRING
         id: INTEGER
+
     - id: state_crosswalk
       uri: "file://${DATA_DIR}/state_county_tract_puma_crosswalk.csv"
       entity_type: State
@@ -28,6 +29,7 @@ sources:
         COUNTY_FIPS: STRING
         TRACT_FIPS: STRING
         PUMA_FIPS: STRING
+
     - id: county_crosswalk
       uri: "file://${DATA_DIR}/state_county_tract_puma_crosswalk.csv"
       entity_type: County
@@ -41,6 +43,7 @@ sources:
         COUNTY_FIPS: STRING
         TRACT_FIPS: STRING
         PUMA_FIPS: STRING
+
     - id: tract_crosswalk
       uri: "file://${DATA_DIR}/state_county_tract_puma_crosswalk.csv"
       entity_type: Tract
@@ -54,6 +57,7 @@ sources:
         COUNTY_FIPS: STRING
         TRACT_FIPS: STRING
         PUMA_FIPS: STRING
+
     - id: puma_crosswalk
       uri: "file://${DATA_DIR}/state_county_tract_puma_crosswalk.csv"
       entity_type: PUMA
@@ -67,6 +71,7 @@ sources:
         COUNTY_FIPS: STRING
         TRACT_FIPS: STRING
         PUMA_FIPS: STRING
+
     - id: tract_osm
       uri: "file://${DATA_DIR}/united_states_nodes_tract_crosswalk.csv"
       entity_type: Tract
@@ -75,10 +80,19 @@ sources:
         GEOID: STRING
         longitude: float
         latitude: float
+
     - id: psam_housing_survey
-      uri: "file://${DATA_DIR}/psam_hus.csv"
+      uri: "file://${DATA_DIR}/psam_hus.parquet"
       entity_type: HousingSurvey
       id_col: SERIALNO
+      query: >-
+        SELECT *,
+        STATE || PUMA AS PUMA_FIPS,
+        CASE TEN WHEN 1 THEN 'owned_free' WHEN 2 THEN 'owned_mortgage' WHEN 3 THEN 'rented' ELSE 'other' END AS tenure_type,
+        CASE WHEN GRPIP > 30 OR OCPIP > 30 THEN 1 ELSE 0 END AS cost_burdened,
+        CASE WHEN BROADBND = 1 OR HISPEED = 1 THEN 'broadband' WHEN ACCESSINET = 1 THEN 'internet_no_broadband' WHEN ACCESSINET = 2 THEN 'no_internet' ELSE 'unknown' END AS internet_tier,
+        CASE WHEN NP > RMSP THEN 1 ELSE 0 END AS overcrowded
+        FROM source
       schema_hints:
         RT: STRING
         SERIALNO: STRING
@@ -321,10 +335,36 @@ sources:
         WGTP78: STRING
         WGTP79: STRING
         WGTP80: STRING
+        PUMA_FIPS: STRING
+        tenure_type: STRING
+        cost_burdened: STRING
+        internet_tier: STRING
+        overcrowded: STRING
+
     - id: psam_person_survey
       uri: "file://${DATA_DIR}/psam_pus.parquet"
       entity_type: PersonSurvey
-      id_col: SERIALNO
+      id_col: PERSON_ID
+      query: >-
+        SELECT *,
+        SERIALNO || '_' || CAST(SPORDER AS VARCHAR) AS PERSON_ID,
+        CASE WHEN ESR IN (1, 2) THEN 'employed' WHEN ESR = 3 THEN 'unemployed' WHEN ESR IN (4, 5) THEN 'armed_forces' WHEN ESR = 6 THEN 'nilf' ELSE 'not_applicable' END AS employment_status,
+        CASE WHEN SCHL < 16 THEN 'less_than_hs' WHEN SCHL IN (16, 17) THEN 'hs_or_ged' WHEN SCHL BETWEEN 18 AND 20 THEN 'some_college' WHEN SCHL = 21 THEN 'bachelors' WHEN SCHL > 21 THEN 'graduate' ELSE 'not_applicable' END AS edu_level,
+        CASE WHEN AGEP < 18 THEN 'child' WHEN AGEP < 65 THEN 'working_age' ELSE 'senior' END AS age_cohort,
+        CASE WHEN JWTRNS IN (1, 2, 3) THEN 'car' WHEN JWTRNS IN (4, 5, 6, 7, 8) THEN 'transit' WHEN JWTRNS = 11 THEN 'bike' WHEN JWTRNS = 12 THEN 'walk' WHEN JWTRNS = 13 THEN 'wfh' ELSE 'other_or_na' END AS commute_mode,
+        CASE WHEN HINS1 = 1 OR HINS2 = 1 OR HINS3 = 1 OR HINS4 = 1 OR HINS5 = 1 OR HINS6 = 1 OR HINS7 = 1 THEN 1 ELSE 0 END AS has_insurance,
+        CASE WHEN MIL IN (1, 2, 3) THEN 1 ELSE 0 END AS is_veteran,
+        (CASE WHEN DDRS = 1 THEN 1 ELSE 0 END
+        + CASE WHEN DEAR = 1 THEN 1 ELSE 0 END
+        + CASE WHEN DEYE = 1 THEN 1 ELSE 0 END
+        + CASE WHEN DOUT = 1 THEN 1 ELSE 0 END
+        + CASE WHEN DPHY = 1 THEN 1 ELSE 0 END
+        + CASE WHEN DREM = 1 THEN 1 ELSE 0 END) AS disability_count,
+        CASE WHEN TRY_CAST(LEFT(SOCP, 4) AS INTEGER) BETWEEN 10 AND 3550 THEN 'mgmt_business_science_arts' WHEN TRY_CAST(LEFT(SOCP, 4) AS INTEGER) BETWEEN 3601 AND 4655 THEN 'service' WHEN TRY_CAST(LEFT(SOCP, 4) AS INTEGER) BETWEEN 4700 AND 5940 THEN 'sales_office' WHEN TRY_CAST(LEFT(SOCP, 4) AS INTEGER) BETWEEN 6005 AND 7640 THEN 'natural_resources_construction' WHEN TRY_CAST(LEFT(SOCP, 4) AS INTEGER) BETWEEN 7700 AND 9760 THEN 'production_transportation' ELSE 'not_applicable' END AS occ_group,
+        CASE WHEN TRY_CAST(LEFT(SOCP, 4) AS INTEGER) BETWEEN 10 AND 440 THEN 'management' WHEN TRY_CAST(LEFT(SOCP, 4) AS INTEGER) BETWEEN 500 AND 960 THEN 'business_financial' WHEN TRY_CAST(LEFT(SOCP, 4) AS INTEGER) BETWEEN 1005 AND 1240 THEN 'computer_math' WHEN TRY_CAST(LEFT(SOCP, 4) AS INTEGER) BETWEEN 1305 AND 1560 THEN 'architecture_engineering' WHEN TRY_CAST(LEFT(SOCP, 4) AS INTEGER) BETWEEN 1600 AND 1980 THEN 'life_physical_social_science' WHEN TRY_CAST(LEFT(SOCP, 4) AS INTEGER) BETWEEN 2001 AND 2060 THEN 'community_social_service' WHEN TRY_CAST(LEFT(SOCP, 4) AS INTEGER) BETWEEN 2100 AND 2180 THEN 'legal' WHEN TRY_CAST(LEFT(SOCP, 4) AS INTEGER) BETWEEN 2205 AND 2555 THEN 'education_library' WHEN TRY_CAST(LEFT(SOCP, 4) AS INTEGER) BETWEEN 2600 AND 2920 THEN 'arts_design_entertainment' WHEN TRY_CAST(LEFT(SOCP, 4) AS INTEGER) BETWEEN 3000 AND 3550 THEN 'healthcare_practitioners' WHEN TRY_CAST(LEFT(SOCP, 4) AS INTEGER) BETWEEN 3601 AND 3655 THEN 'healthcare_support' WHEN TRY_CAST(LEFT(SOCP, 4) AS INTEGER) BETWEEN 3700 AND 3960 THEN 'protective_service' WHEN TRY_CAST(LEFT(SOCP, 4) AS INTEGER) BETWEEN 4000 AND 4160 THEN 'food_preparation_serving' WHEN TRY_CAST(LEFT(SOCP, 4) AS INTEGER) BETWEEN 4200 AND 4255 THEN 'building_grounds' WHEN TRY_CAST(LEFT(SOCP, 4) AS INTEGER) BETWEEN 4330 AND 4655 THEN 'personal_care_service' WHEN TRY_CAST(LEFT(SOCP, 4) AS INTEGER) BETWEEN 4700 AND 4965 THEN 'sales' WHEN TRY_CAST(LEFT(SOCP, 4) AS INTEGER) BETWEEN 5000 AND 5940 THEN 'office_admin_support' WHEN TRY_CAST(LEFT(SOCP, 4) AS INTEGER) BETWEEN 6005 AND 6130 THEN 'farming_fishing_forestry' WHEN TRY_CAST(LEFT(SOCP, 4) AS INTEGER) BETWEEN 6200 AND 6950 THEN 'construction_extraction' WHEN TRY_CAST(LEFT(SOCP, 4) AS INTEGER) BETWEEN 7000 AND 7640 THEN 'installation_maintenance_repair' WHEN TRY_CAST(LEFT(SOCP, 4) AS INTEGER) BETWEEN 7700 AND 8990 THEN 'production' WHEN TRY_CAST(LEFT(SOCP, 4) AS INTEGER) BETWEEN 9005 AND 9430 THEN 'transportation' WHEN TRY_CAST(LEFT(SOCP, 4) AS INTEGER) BETWEEN 9510 AND 9760 THEN 'material_moving' WHEN TRY_CAST(LEFT(SOCP, 4) AS INTEGER) BETWEEN 9800 AND 9830 THEN 'military' ELSE 'not_applicable' END AS occ_subgroup,
+        CASE WHEN TRY_CAST(INDP AS INTEGER) BETWEEN 170 AND 490 THEN 'agriculture_mining' WHEN TRY_CAST(INDP AS INTEGER) = 770 THEN 'construction' WHEN TRY_CAST(INDP AS INTEGER) BETWEEN 1070 AND 3990 THEN 'manufacturing' WHEN TRY_CAST(INDP AS INTEGER) BETWEEN 4070 AND 4590 THEN 'wholesale_trade' WHEN TRY_CAST(INDP AS INTEGER) BETWEEN 4670 AND 5791 THEN 'retail_trade' WHEN (TRY_CAST(INDP AS INTEGER) BETWEEN 570 AND 690 OR TRY_CAST(INDP AS INTEGER) BETWEEN 6070 AND 6390) THEN 'transportation_utilities' WHEN TRY_CAST(INDP AS INTEGER) BETWEEN 6471 AND 6781 THEN 'information' WHEN TRY_CAST(INDP AS INTEGER) BETWEEN 6871 AND 7190 THEN 'finance_real_estate' WHEN TRY_CAST(INDP AS INTEGER) BETWEEN 7270 AND 7790 THEN 'professional_management' WHEN TRY_CAST(INDP AS INTEGER) BETWEEN 7860 AND 8470 THEN 'education_healthcare' WHEN TRY_CAST(INDP AS INTEGER) BETWEEN 8561 AND 8690 THEN 'arts_entertainment_food' WHEN TRY_CAST(INDP AS INTEGER) BETWEEN 8770 AND 9290 THEN 'other_services' WHEN TRY_CAST(INDP AS INTEGER) BETWEEN 9370 AND 9590 THEN 'public_administration' WHEN TRY_CAST(INDP AS INTEGER) BETWEEN 9670 AND 9870 THEN 'military_industry' ELSE 'not_applicable' END AS industry_group,
+        CASE WHEN LANP IS NULL THEN 'english_only' WHEN TRY_CAST(LANP AS INTEGER) = 1200 THEN 'spanish' WHEN TRY_CAST(LANP AS INTEGER) BETWEEN 1000 AND 1287 THEN 'european' WHEN TRY_CAST(LANP AS INTEGER) BETWEEN 1288 AND 1899 THEN 'south_central_asian' WHEN TRY_CAST(LANP AS INTEGER) BETWEEN 1900 AND 3600 THEN 'east_southeast_asian_pacific' WHEN TRY_CAST(LANP AS INTEGER) BETWEEN 4500 AND 9998 THEN 'middle_eastern_african' ELSE 'other_unspecified' END AS language_group
+        FROM source
       schema_hints:
         RT: STRING
         SERIALNO: STRING
@@ -612,6 +652,999 @@ sources:
         PWGTP78: STRING
         PWGTP79: STRING
         PWGTP80: STRING
+        PUMA_FIPS: STRING
+        PERSON_ID: STRING
+        employment_status: STRING
+        edu_level: STRING
+        age_cohort: STRING
+        commute_mode: STRING
+        has_insurance: STRING
+        is_veteran: STRING
+        disability_count: STRING
+        occ_group: STRING
+        occ_subgroup: STRING
+        industry_group: STRING
+        language_group: STRING
+
+    - id: occupation_groups
+      uri: "file://${DATA_DIR}/occupation_groups.csv"
+      entity_type: OccupationGroup
+      id_col: occ_group_code
+      schema_hints:
+        occ_group_code: STRING
+        occ_group_name: STRING
+        socp_min: STRING
+        socp_max: STRING
+
+    - id: occupation_subgroups
+      uri: "file://${DATA_DIR}/occupation_subgroups.csv"
+      entity_type: OccupationSubgroup
+      id_col: occ_subgroup_code
+      schema_hints:
+        occ_subgroup_code: STRING
+        occ_subgroup_name: STRING
+        socp_min: STRING
+        socp_max: STRING
+
+    - id: industry_groups
+      uri: "file://${DATA_DIR}/industry_groups.csv"
+      entity_type: IndustryGroup
+      id_col: ind_group_code
+      schema_hints:
+        ind_group_code: STRING
+        ind_group_name: STRING
+        indp_ranges: STRING
+
+    - id: language_groups
+      uri: "file://${DATA_DIR}/language_groups.csv"
+      entity_type: LanguageGroup
+      id_col: lang_group_code
+      schema_hints:
+        lang_group_code: STRING
+        lang_group_name: STRING
+        lanp_range: STRING
+
+    - id: fema_risk_index
+      uri: file://${DATA_DIR}/NRI_Table_CensusTracts.csv
+      entity_type: Tract
+      id_col: TRACTFIPS
+      schema_hints:
+        OBJECTID: STRING
+        Shape: STRING
+        Shape_Length: STRING
+        Shape_Area: STRING
+        STATE: STRING
+        STATEABBRV: STRING
+        STATEFIPS: STRING
+        COUNTY: STRING
+        COUNTYTYPE: STRING
+        COUNTYFIPS: STRING
+        STCOFIPS: STRING
+        TRACT: STRING
+        TRACTFIPS: STRING
+        NRI_ID: STRING
+        POPULATION: STRING
+        BUILDVALUE: STRING
+        AGRIVALUE: STRING
+        AREA: STRING
+        RISK_VALUE: STRING
+        RISK_SCORE: STRING
+        RISK_RATNG: STRING
+        RISK_SPCTL: STRING
+        EAL_SCORE: STRING
+        EAL_RATNG: STRING
+        EAL_SPCTL: STRING
+        EAL_VALT: STRING
+        EAL_VALB: STRING
+        EAL_VALP: STRING
+        EAL_VALPE: STRING
+        EAL_VALA: STRING
+        ALR_VALB: STRING
+        ALR_VALP: STRING
+        ALR_VALA: STRING
+        ALR_NPCTL: STRING
+        ALR_VRA_NPCTL: STRING
+        SOVI_SCORE: STRING
+        SOVI_RATNG: STRING
+        SOVI_SPCTL: STRING
+        RESL_SCORE: STRING
+        RESL_RATNG: STRING
+        RESL_SPCTL: STRING
+        RESL_VALUE: STRING
+        CRF_VALUE: STRING
+        AVLN_EVNTS: STRING
+        AVLN_AFREQ: STRING
+        AVLN_EXPB: STRING
+        AVLN_EXPP: STRING
+        AVLN_EXPPE: STRING
+        AVLN_EXPT: STRING
+        AVLN_EXP_AREA: STRING
+        AVLN_HLRB: STRING
+        AVLN_HLRP: STRING
+        AVLN_HLRR: STRING
+        AVLN_EALB: STRING
+        AVLN_EALP: STRING
+        AVLN_EALPE: STRING
+        AVLN_EALT: STRING
+        AVLN_EALS: STRING
+        AVLN_EALR: STRING
+        AVLN_ALRB: STRING
+        AVLN_ALRP: STRING
+        AVLN_ALR_NPCTL: STRING
+        AVLN_RISKV: STRING
+        AVLN_RISKS: STRING
+        AVLN_RISKR: STRING
+        CFLD_EVNTS: STRING
+        CFLD_AFREQ: STRING
+        CFLD_EXPB: STRING
+        CFLD_EXPP: STRING
+        CFLD_EXPPE: STRING
+        CFLD_EXPT: STRING
+        CFLD_EXP_AREA: STRING
+        CFLD_HLRB: STRING
+        CFLD_HLRP: STRING
+        CFLD_HLRR: STRING
+        CFLD_EALB: STRING
+        CFLD_EALP: STRING
+        CFLD_EALPE: STRING
+        CFLD_EALT: STRING
+        CFLD_EALS: STRING
+        CFLD_EALR: STRING
+        CFLD_ALRB: STRING
+        CFLD_ALRP: STRING
+        CFLD_ALR_NPCTL: STRING
+        CFLD_RISKV: STRING
+        CFLD_RISKS: STRING
+        CFLD_RISKR: STRING
+        CWAV_EVNTS: STRING
+        CWAV_AFREQ: STRING
+        CWAV_EXPB: STRING
+        CWAV_EXPP: STRING
+        CWAV_EXPPE: STRING
+        CWAV_EXPA: STRING
+        CWAV_EXPT: STRING
+        CWAV_EXP_AREA: STRING
+        CWAV_HLRB: STRING
+        CWAV_HLRP: STRING
+        CWAV_HLRA: STRING
+        CWAV_HLRR: STRING
+        CWAV_EALB: STRING
+        CWAV_EALP: STRING
+        CWAV_EALPE: STRING
+        CWAV_EALA: STRING
+        CWAV_EALT: STRING
+        CWAV_EALS: STRING
+        CWAV_EALR: STRING
+        CWAV_ALRB: STRING
+        CWAV_ALRP: STRING
+        CWAV_ALRA: STRING
+        CWAV_ALR_NPCTL: STRING
+        CWAV_RISKV: STRING
+        CWAV_RISKS: STRING
+        CWAV_RISKR: STRING
+        DRGT_EVNTS: STRING
+        DRGT_AFREQ: STRING
+        DRGT_EXPA: STRING
+        DRGT_EXPT: STRING
+        DRGT_EXP_AREA: STRING
+        DRGT_HLRA: STRING
+        DRGT_HLRR: STRING
+        DRGT_EALA: STRING
+        DRGT_EALT: STRING
+        DRGT_EALS: STRING
+        DRGT_EALR: STRING
+        DRGT_ALRA: STRING
+        DRGT_ALR_NPCTL: STRING
+        DRGT_RISKV: STRING
+        DRGT_RISKS: STRING
+        DRGT_RISKR: STRING
+        ERQK_EVNTS: STRING
+        ERQK_AFREQ: STRING
+        ERQK_EXPB: STRING
+        ERQK_EXPP: STRING
+        ERQK_EXPPE: STRING
+        ERQK_EXPT: STRING
+        ERQK_EXP_AREA: STRING
+        ERQK_HLRB: STRING
+        ERQK_HLRP: STRING
+        ERQK_HLRR: STRING
+        ERQK_EALB: STRING
+        ERQK_EALP: STRING
+        ERQK_EALPE: STRING
+        ERQK_EALT: STRING
+        ERQK_EALS: STRING
+        ERQK_EALR: STRING
+        ERQK_ALRB: STRING
+        ERQK_ALRP: STRING
+        ERQK_ALR_NPCTL: STRING
+        ERQK_RISKV: STRING
+        ERQK_RISKS: STRING
+        ERQK_RISKR: STRING
+        HAIL_EVNTS: STRING
+        HAIL_AFREQ: STRING
+        HAIL_EXPB: STRING
+        HAIL_EXPP: STRING
+        HAIL_EXPPE: STRING
+        HAIL_EXPA: STRING
+        HAIL_EXPT: STRING
+        HAIL_EXP_AREA: STRING
+        HAIL_HLRB: STRING
+        HAIL_HLRP: STRING
+        HAIL_HLRA: STRING
+        HAIL_HLRR: STRING
+        HAIL_EALB: STRING
+        HAIL_EALP: STRING
+        HAIL_EALPE: STRING
+        HAIL_EALA: STRING
+        HAIL_EALT: STRING
+        HAIL_EALS: STRING
+        HAIL_EALR: STRING
+        HAIL_ALRB: STRING
+        HAIL_ALRP: STRING
+        HAIL_ALRA: STRING
+        HAIL_ALR_NPCTL: STRING
+        HAIL_RISKV: STRING
+        HAIL_RISKS: STRING
+        HAIL_RISKR: STRING
+        HWAV_EVNTS: STRING
+        HWAV_AFREQ: STRING
+        HWAV_EXPB: STRING
+        HWAV_EXPP: STRING
+        HWAV_EXPPE: STRING
+        HWAV_EXPA: STRING
+        HWAV_EXPT: STRING
+        HWAV_EXP_AREA: STRING
+        HWAV_HLRB: STRING
+        HWAV_HLRP: STRING
+        HWAV_HLRA: STRING
+        HWAV_HLRR: STRING
+        HWAV_EALB: STRING
+        HWAV_EALP: STRING
+        HWAV_EALPE: STRING
+        HWAV_EALA: STRING
+        HWAV_EALT: STRING
+        HWAV_EALS: STRING
+        HWAV_EALR: STRING
+        HWAV_ALRB: STRING
+        HWAV_ALRP: STRING
+        HWAV_ALRA: STRING
+        HWAV_ALR_NPCTL: STRING
+        HWAV_RISKV: STRING
+        HWAV_RISKS: STRING
+        HWAV_RISKR: STRING
+        HRCN_EVNTS: STRING
+        HRCN_AFREQ: STRING
+        HRCN_EXPB: STRING
+        HRCN_EXPP: STRING
+        HRCN_EXPPE: STRING
+        HRCN_EXPA: STRING
+        HRCN_EXPT: STRING
+        HRCN_EXP_AREA: STRING
+        HRCN_HLRB: STRING
+        HRCN_HLRP: STRING
+        HRCN_HLRA: STRING
+        HRCN_HLRR: STRING
+        HRCN_EALB: STRING
+        HRCN_EALP: STRING
+        HRCN_EALPE: STRING
+        HRCN_EALA: STRING
+        HRCN_EALT: STRING
+        HRCN_EALS: STRING
+        HRCN_EALR: STRING
+        HRCN_ALRB: STRING
+        HRCN_ALRP: STRING
+        HRCN_ALRA: STRING
+        HRCN_ALR_NPCTL: STRING
+        HRCN_RISKV: STRING
+        HRCN_RISKS: STRING
+        HRCN_RISKR: STRING
+        ISTM_EVNTS: STRING
+        ISTM_AFREQ: STRING
+        ISTM_EXPB: STRING
+        ISTM_EXPP: STRING
+        ISTM_EXPPE: STRING
+        ISTM_EXPT: STRING
+        ISTM_EXP_AREA: STRING
+        ISTM_HLRB: STRING
+        ISTM_HLRP: STRING
+        ISTM_HLRR: STRING
+        ISTM_EALB: STRING
+        ISTM_EALP: STRING
+        ISTM_EALPE: STRING
+        ISTM_EALT: STRING
+        ISTM_EALS: STRING
+        ISTM_EALR: STRING
+        ISTM_ALRB: STRING
+        ISTM_ALRP: STRING
+        ISTM_ALR_NPCTL: STRING
+        ISTM_RISKV: STRING
+        ISTM_RISKS: STRING
+        ISTM_RISKR: STRING
+        LNDS_EVNTS: STRING
+        LNDS_AFREQ: STRING
+        LNDS_EXPB: STRING
+        LNDS_EXPP: STRING
+        LNDS_EXPPE: STRING
+        LNDS_EXPT: STRING
+        LNDS_EXP_AREA: STRING
+        LNDS_HLRB: STRING
+        LNDS_HLRP: STRING
+        LNDS_HLRR: STRING
+        LNDS_EALB: STRING
+        LNDS_EALP: STRING
+        LNDS_EALPE: STRING
+        LNDS_EALT: STRING
+        LNDS_EALS: STRING
+        LNDS_EALR: STRING
+        LNDS_ALRB: STRING
+        LNDS_ALRP: STRING
+        LNDS_ALR_NPCTL: STRING
+        LNDS_RISKV: STRING
+        LNDS_RISKS: STRING
+        LNDS_RISKR: STRING
+        LTNG_EVNTS: STRING
+        LTNG_AFREQ: STRING
+        LTNG_EXPB: STRING
+        LTNG_EXPP: STRING
+        LTNG_EXPPE: STRING
+        LTNG_EXPT: STRING
+        LTNG_EXP_AREA: STRING
+        LTNG_HLRB: STRING
+        LTNG_HLRP: STRING
+        LTNG_HLRR: STRING
+        LTNG_EALB: STRING
+        LTNG_EALP: STRING
+        LTNG_EALPE: STRING
+        LTNG_EALT: STRING
+        LTNG_EALS: STRING
+        LTNG_EALR: STRING
+        LTNG_ALRB: STRING
+        LTNG_ALRP: STRING
+        LTNG_ALR_NPCTL: STRING
+        LTNG_RISKV: STRING
+        LTNG_RISKS: STRING
+        LTNG_RISKR: STRING
+        IFLD_EVNTS: STRING
+        IFLD_AFREQ: STRING
+        IFLD_EXPB: STRING
+        IFLD_EXPP: STRING
+        IFLD_EXPPE: STRING
+        IFLD_EXPA: STRING
+        IFLD_EXPT: STRING
+        IFLD_EXP_AREA: STRING
+        IFLD_HLRB: STRING
+        IFLD_HLRP: STRING
+        IFLD_HLRA: STRING
+        IFLD_HLRR: STRING
+        IFLD_EALB: STRING
+        IFLD_EALP: STRING
+        IFLD_EALPE: STRING
+        IFLD_EALA: STRING
+        IFLD_EALT: STRING
+        IFLD_EALS: STRING
+        IFLD_EALR: STRING
+        IFLD_ALRB: STRING
+        IFLD_ALRP: STRING
+        IFLD_ALRA: STRING
+        IFLD_ALR_NPCTL: STRING
+        IFLD_RISKV: STRING
+        IFLD_RISKS: STRING
+        IFLD_RISKR: STRING
+        SWND_EVNTS: STRING
+        SWND_AFREQ: STRING
+        SWND_EXPB: STRING
+        SWND_EXPP: STRING
+        SWND_EXPPE: STRING
+        SWND_EXPA: STRING
+        SWND_EXPT: STRING
+        SWND_EXP_AREA: STRING
+        SWND_HLRB: STRING
+        SWND_HLRP: STRING
+        SWND_HLRA: STRING
+        SWND_HLRR: STRING
+        SWND_EALB: STRING
+        SWND_EALP: STRING
+        SWND_EALPE: STRING
+        SWND_EALA: STRING
+        SWND_EALT: STRING
+        SWND_EALS: STRING
+        SWND_EALR: STRING
+        SWND_ALRB: STRING
+        SWND_ALRP: STRING
+        SWND_ALRA: STRING
+        SWND_ALR_NPCTL: STRING
+        SWND_RISKV: STRING
+        SWND_RISKS: STRING
+        SWND_RISKR: STRING
+        TRND_EVNTS: STRING
+        TRND_AFREQ: STRING
+        TRND_EXPB: STRING
+        TRND_EXPP: STRING
+        TRND_EXPPE: STRING
+        TRND_EXPA: STRING
+        TRND_EXPT: STRING
+        TRND_EXP_AREA: STRING
+        TRND_HLRB: STRING
+        TRND_HLRP: STRING
+        TRND_HLRA: STRING
+        TRND_HLRR: STRING
+        TRND_EALB: STRING
+        TRND_EALP: STRING
+        TRND_EALPE: STRING
+        TRND_EALA: STRING
+        TRND_EALT: STRING
+        TRND_EALS: STRING
+        TRND_EALR: STRING
+        TRND_ALRB: STRING
+        TRND_ALRP: STRING
+        TRND_ALRA: STRING
+        TRND_ALR_NPCTL: STRING
+        TRND_RISKV: STRING
+        TRND_RISKS: STRING
+        TRND_RISKR: STRING
+        TSUN_EVNTS: STRING
+        TSUN_AFREQ: STRING
+        TSUN_EXPB: STRING
+        TSUN_EXPP: STRING
+        TSUN_EXPPE: STRING
+        TSUN_EXPT: STRING
+        TSUN_EXP_AREA: STRING
+        TSUN_HLRB: STRING
+        TSUN_HLRP: STRING
+        TSUN_HLRR: STRING
+        TSUN_EALB: STRING
+        TSUN_EALP: STRING
+        TSUN_EALPE: STRING
+        TSUN_EALT: STRING
+        TSUN_EALS: STRING
+        TSUN_EALR: STRING
+        TSUN_ALRB: STRING
+        TSUN_ALRP: STRING
+        TSUN_ALR_NPCTL: STRING
+        TSUN_RISKV: STRING
+        TSUN_RISKS: STRING
+        TSUN_RISKR: STRING
+        VLCN_EVNTS: STRING
+        VLCN_AFREQ: STRING
+        VLCN_EXPB: STRING
+        VLCN_EXPP: STRING
+        VLCN_EXPPE: STRING
+        VLCN_EXPT: STRING
+        VLCN_EXP_AREA: STRING
+        VLCN_HLRB: STRING
+        VLCN_HLRP: STRING
+        VLCN_HLRR: STRING
+        VLCN_EALB: STRING
+        VLCN_EALP: STRING
+        VLCN_EALPE: STRING
+        VLCN_EALT: STRING
+        VLCN_EALS: STRING
+        VLCN_EALR: STRING
+        VLCN_ALRB: STRING
+        VLCN_ALRP: STRING
+        VLCN_ALR_NPCTL: STRING
+        VLCN_RISKV: STRING
+        VLCN_RISKS: STRING
+        VLCN_RISKR: STRING
+        WFIR_EVNTS: STRING
+        WFIR_AFREQ: STRING
+        WFIR_EXPB: STRING
+        WFIR_EXPP: STRING
+        WFIR_EXPPE: STRING
+        WFIR_EXPA: STRING
+        WFIR_EXPT: STRING
+        WFIR_EXP_AREA: STRING
+        WFIR_HLRB: STRING
+        WFIR_HLRP: STRING
+        WFIR_HLRA: STRING
+        WFIR_HLRR: STRING
+        WFIR_EALB: STRING
+        WFIR_EALP: STRING
+        WFIR_EALPE: STRING
+        WFIR_EALA: STRING
+        WFIR_EALT: STRING
+        WFIR_EALS: STRING
+        WFIR_EALR: STRING
+        WFIR_ALRB: STRING
+        WFIR_ALRP: STRING
+        WFIR_ALRA: STRING
+        WFIR_ALR_NPCTL: STRING
+        WFIR_RISKV: STRING
+        WFIR_RISKS: STRING
+        WFIR_RISKR: STRING
+        WNTW_EVNTS: STRING
+        WNTW_AFREQ: STRING
+        WNTW_EXPB: STRING
+        WNTW_EXPP: STRING
+        WNTW_EXPPE: STRING
+        WNTW_EXPA: STRING
+        WNTW_EXPT: STRING
+        WNTW_EXP_AREA: STRING
+        WNTW_HLRB: STRING
+        WNTW_HLRP: STRING
+        WNTW_HLRA: STRING
+        WNTW_HLRR: STRING
+        WNTW_EALB: STRING
+        WNTW_EALP: STRING
+        WNTW_EALPE: STRING
+        WNTW_EALA: STRING
+        WNTW_EALT: STRING
+        WNTW_EALS: STRING
+        WNTW_EALR: STRING
+        WNTW_ALRB: STRING
+        WNTW_ALRP: STRING
+        WNTW_ALRA: STRING
+        WNTW_ALR_NPCTL: STRING
+        WNTW_RISKV: STRING
+        WNTW_RISKS: STRING
+        WNTW_RISKR: STRING
+        NRI_VER: STRING
+        AIANNHCE: STRING
+        FEDREG2020: STRING
+        FEDERAL_ID: STRING
+        JURS_NAME: STRING
+        JURS_AREA: STRING
+        JURS_TYPE: STRING
+        HIFLD_NAME: STRING
+        HIFLD_AREA: STRING
+        HIFLD_TYPE: STRING
+
+    - id: food_access
+      uri: "file://${DATA_DIR}/Food Access Research Atlas.csv"
+      entity_type: Tract
+      id_col: CensusTract
+      schema_hints:
+        CensusTract: STRING
+        State: STRING
+        County: STRING
+        Urban: STRING
+        POP2010: STRING
+        OHU2010: STRING
+        GroupQuartersFlag: STRING
+        NUMGQTRS: STRING
+        PCTGQTRS: STRING
+        LILATracts_1And10: STRING
+        LILATracts_halfAnd10: STRING
+        LILATracts_1And20: STRING
+        LILATracts_Vehicle: STRING
+        HUNVFlag: STRING
+        LowIncomeTracts: STRING
+        PovertyRate: STRING
+        MedianFamilyIncome: STRING
+        LA1and10: STRING
+        LAhalfand10: STRING
+        LA1and20: STRING
+        LATracts_half: STRING
+        LATracts1: STRING
+        LATracts10: STRING
+        LATracts20: STRING
+        LATractsVehicle_20: STRING
+        LAPOP1_10: STRING
+        LAPOP05_10: STRING
+        LAPOP1_20: STRING
+        LALOWI1_10: STRING
+        LALOWI05_10: STRING
+        LALOWI1_20: STRING
+        lapophalf: STRING
+        lapophalfshare: STRING
+        lalowihalf: STRING
+        lalowihalfshare: STRING
+        lakidshalf: STRING
+        lakidshalfshare: STRING
+        laseniorshalf: STRING
+        laseniorshalfshare: STRING
+        lawhitehalf: STRING
+        lawhitehalfshare: STRING
+        lablackhalf: STRING
+        lablackhalfshare: STRING
+        laasianhalf: STRING
+        laasianhalfshare: STRING
+        lanhopihalf: STRING
+        lanhopihalfshare: STRING
+        laaianhalf: STRING
+        laaianhalfshare: STRING
+        laomultirhalf: STRING
+        laomultirhalfshare: STRING
+        lahisphalf: STRING
+        lahisphalfshare: STRING
+        lahunvhalf: STRING
+        lahunvhalfshare: STRING
+        lasnaphalf: STRING
+        lasnaphalfshare: STRING
+        lapop1: STRING
+        lapop1share: STRING
+        lalowi1: STRING
+        lalowi1share: STRING
+        lakids1: STRING
+        lakids1share: STRING
+        laseniors1: STRING
+        laseniors1share: STRING
+        lawhite1: STRING
+        lawhite1share: STRING
+        lablack1: STRING
+        lablack1share: STRING
+        laasian1: STRING
+        laasian1share: STRING
+        lanhopi1: STRING
+        lanhopi1share: STRING
+        laaian1: STRING
+        laaian1share: STRING
+        laomultir1: STRING
+        laomultir1share: STRING
+        lahisp1: STRING
+        lahisp1share: STRING
+        lahunv1: STRING
+        lahunv1share: STRING
+        lasnap1: STRING
+        lasnap1share: STRING
+        lapop10: STRING
+        lapop10share: STRING
+        lalowi10: STRING
+        lalowi10share: STRING
+        lakids10: STRING
+        lakids10share: STRING
+        laseniors10: STRING
+        laseniors10share: STRING
+        lawhite10: STRING
+        lawhite10share: STRING
+        lablack10: STRING
+        lablack10share: STRING
+        laasian10: STRING
+        laasian10share: STRING
+        lanhopi10: STRING
+        lanhopi10share: STRING
+        laaian10: STRING
+        laaian10share: STRING
+        laomultir10: STRING
+        laomultir10share: STRING
+        lahisp10: STRING
+        lahisp10share: STRING
+        lahunv10: STRING
+        lahunv10share: STRING
+        lasnap10: STRING
+        lasnap10share: STRING
+        lapop20: STRING
+        lapop20share: STRING
+        lalowi20: STRING
+        lalowi20share: STRING
+        lakids20: STRING
+        lakids20share: STRING
+        laseniors20: STRING
+        laseniors20share: STRING
+        lawhite20: STRING
+        lawhite20share: STRING
+        lablack20: STRING
+        lablack20share: STRING
+        laasian20: STRING
+        laasian20share: STRING
+        lanhopi20: STRING
+        lanhopi20share: STRING
+        laaian20: STRING
+        laaian20share: STRING
+        laomultir20: STRING
+        laomultir20share: STRING
+        lahisp20: STRING
+        lahisp20share: STRING
+        lahunv20: STRING
+        lahunv20share: STRING
+        lasnap20: STRING
+        lasnap20share: STRING
+        TractLOWI: STRING
+        TractKids: STRING
+        TractSeniors: STRING
+        TractWhite: STRING
+        TractBlack: STRING
+        TractAsian: STRING
+        TractNHOPI: STRING
+        TractAIAN: STRING
+        TractOMultir: STRING
+        TractHispanic: STRING
+        TractHUNV: STRING
+        TractSNAP: STRING
+
+    - id: usa_spending
+      uri: "file://${DATA_DIR}/FY2025_All_Contracts_Full_20260506.csv"
+      entity_type: FederalAward
+      id_col: contract_transaction_unique_key
+      schema_hints:
+        contract_transaction_unique_key: STRING
+        contract_award_unique_key: STRING
+        award_id_piid: STRING
+        modification_number: STRING
+        transaction_number: STRING
+        parent_award_agency_id: STRING
+        parent_award_agency_name: STRING
+        parent_award_id_piid: STRING
+        parent_award_modification_number: STRING
+        federal_action_obligation: STRING
+        total_dollars_obligated: STRING
+        total_outlayed_amount_for_overall_award: STRING
+        base_and_exercised_options_value: STRING
+        current_total_value_of_award: STRING
+        base_and_all_options_value: STRING
+        potential_total_value_of_award: STRING
+        disaster_emergency_fund_codes_for_overall_award: STRING
+        outlayed_amount_from_COVID-19_supplementals_for_overall_award: STRING
+        obligated_amount_from_COVID-19_supplementals_for_overall_award: STRING
+        outlayed_amount_from_IIJA_supplemental_for_overall_award: STRING
+        obligated_amount_from_IIJA_supplemental_for_overall_award: STRING
+        action_date: STRING
+        action_date_fiscal_year: STRING
+        period_of_performance_start_date: STRING
+        period_of_performance_current_end_date: STRING
+        period_of_performance_potential_end_date: STRING
+        ordering_period_end_date: STRING
+        solicitation_date: STRING
+        awarding_agency_code: STRING
+        awarding_agency_name: STRING
+        awarding_sub_agency_code: STRING
+        awarding_sub_agency_name: STRING
+        awarding_office_code: STRING
+        awarding_office_name: STRING
+        funding_agency_code: STRING
+        funding_agency_name: STRING
+        funding_sub_agency_code: STRING
+        funding_sub_agency_name: STRING
+        funding_office_code: STRING
+        funding_office_name: STRING
+        treasury_accounts_funding_this_award: STRING
+        federal_accounts_funding_this_award: STRING
+        object_classes_funding_this_award: STRING
+        program_activities_funding_this_award: STRING
+        foreign_funding: STRING
+        foreign_funding_description: STRING
+        sam_exception: STRING
+        sam_exception_description: STRING
+        recipient_uei: STRING
+        recipient_duns: STRING
+        recipient_name: STRING
+        recipient_name_raw: STRING
+        recipient_doing_business_as_name: STRING
+        cage_code: STRING
+        recipient_parent_uei: STRING
+        recipient_parent_duns: STRING
+        recipient_parent_name: STRING
+        recipient_parent_name_raw: STRING
+        recipient_country_code: STRING
+        recipient_country_name: STRING
+        recipient_address_line_1: STRING
+        recipient_address_line_2: STRING
+        recipient_city_name: STRING
+        prime_award_transaction_recipient_county_fips_code: STRING
+        recipient_county_name: STRING
+        prime_award_transaction_recipient_state_fips_code: STRING
+        recipient_state_code: STRING
+        recipient_state_name: STRING
+        recipient_zip_4_code: STRING
+        prime_award_transaction_recipient_cd_original: STRING
+        prime_award_transaction_recipient_cd_current: STRING
+        recipient_phone_number: STRING
+        recipient_fax_number: STRING
+        primary_place_of_performance_country_code: STRING
+        primary_place_of_performance_country_name: STRING
+        primary_place_of_performance_city_name: STRING
+        prime_award_transaction_place_of_performance_county_fips_code: STRING
+        primary_place_of_performance_county_name: STRING
+        prime_award_transaction_place_of_performance_state_fips_code: STRING
+        primary_place_of_performance_state_code: STRING
+        primary_place_of_performance_state_name: STRING
+        primary_place_of_performance_zip_4: STRING
+        prime_award_transaction_place_of_performance_cd_original: STRING
+        prime_award_transaction_place_of_performance_cd_current: STRING
+        award_or_idv_flag: STRING
+        award_type_code: STRING
+        award_type: STRING
+        idv_type_code: STRING
+        idv_type: STRING
+        multiple_or_single_award_idv_code: STRING
+        multiple_or_single_award_idv: STRING
+        type_of_idc_code: STRING
+        type_of_idc: STRING
+        type_of_contract_pricing_code: STRING
+        type_of_contract_pricing: STRING
+        transaction_description: STRING
+        prime_award_base_transaction_description: STRING
+        action_type_code: STRING
+        action_type: STRING
+        solicitation_identifier: STRING
+        number_of_actions: STRING
+        inherently_governmental_functions: STRING
+        inherently_governmental_functions_description: STRING
+        product_or_service_code: STRING
+        product_or_service_code_description: STRING
+        contract_bundling_code: STRING
+        contract_bundling: STRING
+        dod_claimant_program_code: STRING
+        dod_claimant_program_description: STRING
+        naics_code: STRING
+        naics_description: STRING
+        recovered_materials_sustainability_code: STRING
+        recovered_materials_sustainability: STRING
+        domestic_or_foreign_entity_code: STRING
+        domestic_or_foreign_entity: STRING
+        dod_acquisition_program_code: STRING
+        dod_acquisition_program_description: STRING
+        information_technology_commercial_item_category_code: STRING
+        information_technology_commercial_item_category: STRING
+        epa_designated_product_code: STRING
+        epa_designated_product: STRING
+        country_of_product_or_service_origin_code: STRING
+        country_of_product_or_service_origin: STRING
+        place_of_manufacture_code: STRING
+        place_of_manufacture: STRING
+        subcontracting_plan_code: STRING
+        subcontracting_plan: STRING
+        extent_competed_code: STRING
+        extent_competed: STRING
+        solicitation_procedures_code: STRING
+        solicitation_procedures: STRING
+        type_of_set_aside_code: STRING
+        type_of_set_aside: STRING
+        evaluated_preference_code: STRING
+        evaluated_preference: STRING
+        research_code: STRING
+        research: STRING
+        fair_opportunity_limited_sources_code: STRING
+        fair_opportunity_limited_sources: STRING
+        other_than_full_and_open_competition_code: STRING
+        other_than_full_and_open_competition: STRING
+        number_of_offers_received: STRING
+        commercial_item_acquisition_procedures_code: STRING
+        commercial_item_acquisition_procedures: STRING
+        small_business_competitiveness_demonstration_program: STRING
+        simplified_procedures_for_certain_commercial_items_code: STRING
+        simplified_procedures_for_certain_commercial_items: STRING
+        a76_fair_act_action_code: STRING
+        a76_fair_act_action: STRING
+        fed_biz_opps_code: STRING
+        fed_biz_opps: STRING
+        local_area_set_aside_code: STRING
+        local_area_set_aside: STRING
+        price_evaluation_adjustment_preference_percent_difference: STRING
+        clinger_cohen_act_planning_code: STRING
+        clinger_cohen_act_planning: STRING
+        materials_supplies_articles_equipment_code: STRING
+        materials_supplies_articles_equipment: STRING
+        labor_standards_code: STRING
+        labor_standards: STRING
+        construction_wage_rate_requirements_code: STRING
+        construction_wage_rate_requirements: STRING
+        interagency_contracting_authority_code: STRING
+        interagency_contracting_authority: STRING
+        other_statutory_authority: STRING
+        program_acronym: STRING
+        parent_award_type_code: STRING
+        parent_award_type: STRING
+        parent_award_single_or_multiple_code: STRING
+        parent_award_single_or_multiple: STRING
+        major_program: STRING
+        national_interest_action_code: STRING
+        national_interest_action: STRING
+        cost_or_pricing_data_code: STRING
+        cost_or_pricing_data: STRING
+        cost_accounting_standards_clause_code: STRING
+        cost_accounting_standards_clause: STRING
+        government_furnished_property_code: STRING
+        government_furnished_property: STRING
+        sea_transportation_code: STRING
+        sea_transportation: STRING
+        undefinitized_action_code: STRING
+        undefinitized_action: STRING
+        consolidated_contract_code: STRING
+        consolidated_contract: STRING
+        performance_based_service_acquisition_code: STRING
+        performance_based_service_acquisition: STRING
+        multi_year_contract_code: STRING
+        multi_year_contract: STRING
+        contract_financing_code: STRING
+        contract_financing: STRING
+        purchase_card_as_payment_method_code: STRING
+        purchase_card_as_payment_method: STRING
+        contingency_humanitarian_or_peacekeeping_operation_code: STRING
+        contingency_humanitarian_or_peacekeeping_operation: STRING
+        alaskan_native_corporation_owned_firm: STRING
+        american_indian_owned_business: STRING
+        indian_tribe_federally_recognized: STRING
+        native_hawaiian_organization_owned_firm: STRING
+        tribally_owned_firm: STRING
+        veteran_owned_business: STRING
+        service_disabled_veteran_owned_business: STRING
+        woman_owned_business: STRING
+        women_owned_small_business: STRING
+        economically_disadvantaged_women_owned_small_business: STRING
+        joint_venture_women_owned_small_business: STRING
+        joint_venture_economic_disadvantaged_women_owned_small_bus: STRING
+        minority_owned_business: STRING
+        subcontinent_asian_asian_indian_american_owned_business: STRING
+        asian_pacific_american_owned_business: STRING
+        black_american_owned_business: STRING
+        hispanic_american_owned_business: STRING
+        native_american_owned_business: STRING
+        other_minority_owned_business: STRING
+        contracting_officers_determination_of_business_size: STRING
+        contracting_officers_determination_of_business_size_code: STRING
+        emerging_small_business: STRING
+        community_developed_corporation_owned_firm: STRING
+        labor_surplus_area_firm: STRING
+        us_federal_government: STRING
+        federally_funded_research_and_development_corp: STRING
+        federal_agency: STRING
+        us_state_government: STRING
+        us_local_government: STRING
+        city_local_government: STRING
+        county_local_government: STRING
+        inter_municipal_local_government: STRING
+        local_government_owned: STRING
+        municipality_local_government: STRING
+        school_district_local_government: STRING
+        township_local_government: STRING
+        us_tribal_government: STRING
+        foreign_government: STRING
+        organizational_type: STRING
+        corporate_entity_not_tax_exempt: STRING
+        corporate_entity_tax_exempt: STRING
+        partnership_or_limited_liability_partnership: STRING
+        sole_proprietorship: STRING
+        small_agricultural_cooperative: STRING
+        international_organization: STRING
+        us_government_entity: STRING
+        community_development_corporation: STRING
+        domestic_shelter: STRING
+        educational_institution: STRING
+        foundation: STRING
+        hospital_flag: STRING
+        manufacturer_of_goods: STRING
+        veterinary_hospital: STRING
+        hispanic_servicing_institution: STRING
+        receives_contracts: STRING
+        receives_financial_assistance: STRING
+        receives_contracts_and_financial_assistance: STRING
+        airport_authority: STRING
+        council_of_governments: STRING
+        housing_authorities_public_tribal: STRING
+        interstate_entity: STRING
+        planning_commission: STRING
+        port_authority: STRING
+        transit_authority: STRING
+        subchapter_scorporation: STRING
+        limited_liability_corporation: STRING
+        foreign_owned: STRING
+        for_profit_organization: STRING
+        nonprofit_organization: STRING
+        other_not_for_profit_organization: STRING
+        the_ability_one_program: STRING
+        private_university_or_college: STRING
+        state_controlled_institution_of_higher_learning: STRING
+        1862_land_grant_college: STRING
+        1890_land_grant_college: STRING
+        1994_land_grant_college: STRING
+        minority_institution: STRING
+        historically_black_college: STRING
+        tribal_college: STRING
+        alaskan_native_servicing_institution: STRING
+        native_hawaiian_servicing_institution: STRING
+        school_of_forestry: STRING
+        veterinary_college: STRING
+        dot_certified_disadvantage: STRING
+        self_certified_small_disadvantaged_business: STRING
+        small_disadvantaged_business: STRING
+        c8a_program_participant: STRING
+        historically_underutilized_business_zone_hubzone_firm: STRING
+        sba_certified_8a_joint_venture: STRING
+        highly_compensated_officer_1_name: STRING
+        highly_compensated_officer_1_amount: STRING
+        highly_compensated_officer_2_name: STRING
+        highly_compensated_officer_2_amount: STRING
+        highly_compensated_officer_3_name: STRING
+        highly_compensated_officer_3_amount: STRING
+        highly_compensated_officer_4_name: STRING
+        highly_compensated_officer_4_amount: STRING
+        highly_compensated_officer_5_name: STRING
+        highly_compensated_officer_5_amount: STRING
+        usaspending_permalink: STRING
+        initial_report_date: STRING
+        last_modified_date: STRING
+
   relationships:
     - id: county_in_state
       uri: "file://${DATA_DIR}/state_county_tract_puma_crosswalk.csv"
@@ -627,6 +1660,7 @@ sources:
         COUNTY_FIPS: STRING
         TRACT_FIPS: STRING
         PUMA_FIPS: STRING
+
     - id: tract_in_county
       uri: "file://${DATA_DIR}/state_county_tract_puma_crosswalk.csv"
       relationship_type: IN
@@ -641,6 +1675,7 @@ sources:
         COUNTY_FIPS: STRING
         TRACT_FIPS: STRING
         PUMA_FIPS: STRING
+
     - id: tract_in_puma
       uri: "file://${DATA_DIR}/state_county_tract_puma_crosswalk.csv"
       relationship_type: IN
@@ -655,6 +1690,7 @@ sources:
         COUNTY_FIPS: STRING
         TRACT_FIPS: STRING
         PUMA_FIPS: STRING
+
     - id: osm_node_in_tract
       uri: "file://${DATA_DIR}/united_states_nodes_tract_crosswalk.csv"
       relationship_type: IN
@@ -663,6 +1699,7 @@ sources:
       schema_hints:
         GEOID: STRING
         id:: STRING
+
     - id: puma_in_state
       uri: "file://${DATA_DIR}/state_county_tract_puma_crosswalk.csv"
       relationship_type: IN
@@ -678,11 +1715,131 @@ sources:
         TRACT_FIPS: STRING
         PUMA_FIPS: STRING
 
+    - id: person_lives_in_puma
+      uri: "file://${DATA_DIR}/psam_pus.parquet"
+      relationship_type: LIVES_IN
+      source_col: PERSON_ID
+      target_col: PUMA_FIPS
+      query: "SELECT SERIALNO || '_' || CAST(SPORDER AS VARCHAR) AS PERSON_ID, STATE || PUMA AS PUMA_FIPS FROM source"
+
+    - id: housing_located_in_puma
+      uri: "file://${DATA_DIR}/psam_hus.parquet"
+      relationship_type: LOCATED_IN
+      source_col: SERIALNO
+      target_col: PUMA_FIPS
+      query: "SELECT SERIALNO, STATE || PUMA AS PUMA_FIPS FROM source"
+
+    - id: person_resides_in_unit
+      uri: "file://${DATA_DIR}/psam_pus.parquet"
+      relationship_type: RESIDES_IN
+      source_col: PERSON_ID
+      target_col: SERIALNO
+      query: "SELECT SERIALNO || '_' || CAST(SPORDER AS VARCHAR) AS PERSON_ID, SERIALNO FROM source"
+
+    - id: person_works_in_occ_group
+      uri: "file://${DATA_DIR}/psam_pus.parquet"
+      relationship_type: WORKS_IN
+      source_col: PERSON_ID
+      target_col: occ_group
+      query: >-
+        SELECT PERSON_ID, occ_group FROM (
+        SELECT SERIALNO || '_' || CAST(SPORDER AS VARCHAR) AS PERSON_ID,
+        CASE WHEN TRY_CAST(LEFT(SOCP, 4) AS INTEGER) BETWEEN 10 AND 3550 THEN 'mgmt_business_science_arts'
+        WHEN TRY_CAST(LEFT(SOCP, 4) AS INTEGER) BETWEEN 3601 AND 4655 THEN 'service'
+        WHEN TRY_CAST(LEFT(SOCP, 4) AS INTEGER) BETWEEN 4700 AND 5940 THEN 'sales_office'
+        WHEN TRY_CAST(LEFT(SOCP, 4) AS INTEGER) BETWEEN 6005 AND 7640 THEN 'natural_resources_construction'
+        WHEN TRY_CAST(LEFT(SOCP, 4) AS INTEGER) BETWEEN 7700 AND 9760 THEN 'production_transportation'
+        ELSE NULL END AS occ_group
+        FROM source) sub WHERE occ_group IS NOT NULL
+
+    - id: person_works_in_occ_subgroup
+      uri: "file://${DATA_DIR}/psam_pus.parquet"
+      relationship_type: WORKS_IN
+      source_col: PERSON_ID
+      target_col: occ_subgroup
+      query: >-
+        SELECT PERSON_ID, occ_subgroup FROM (
+        SELECT SERIALNO || '_' || CAST(SPORDER AS VARCHAR) AS PERSON_ID,
+        CASE WHEN TRY_CAST(LEFT(SOCP, 4) AS INTEGER) BETWEEN 10 AND 440 THEN 'management'
+        WHEN TRY_CAST(LEFT(SOCP, 4) AS INTEGER) BETWEEN 500 AND 960 THEN 'business_financial'
+        WHEN TRY_CAST(LEFT(SOCP, 4) AS INTEGER) BETWEEN 1005 AND 1240 THEN 'computer_math'
+        WHEN TRY_CAST(LEFT(SOCP, 4) AS INTEGER) BETWEEN 1305 AND 1560 THEN 'architecture_engineering'
+        WHEN TRY_CAST(LEFT(SOCP, 4) AS INTEGER) BETWEEN 1600 AND 1980 THEN 'life_physical_social_science'
+        WHEN TRY_CAST(LEFT(SOCP, 4) AS INTEGER) BETWEEN 2001 AND 2060 THEN 'community_social_service'
+        WHEN TRY_CAST(LEFT(SOCP, 4) AS INTEGER) BETWEEN 2100 AND 2180 THEN 'legal'
+        WHEN TRY_CAST(LEFT(SOCP, 4) AS INTEGER) BETWEEN 2205 AND 2555 THEN 'education_library'
+        WHEN TRY_CAST(LEFT(SOCP, 4) AS INTEGER) BETWEEN 2600 AND 2920 THEN 'arts_design_entertainment'
+        WHEN TRY_CAST(LEFT(SOCP, 4) AS INTEGER) BETWEEN 3000 AND 3550 THEN 'healthcare_practitioners'
+        WHEN TRY_CAST(LEFT(SOCP, 4) AS INTEGER) BETWEEN 3601 AND 3655 THEN 'healthcare_support'
+        WHEN TRY_CAST(LEFT(SOCP, 4) AS INTEGER) BETWEEN 3700 AND 3960 THEN 'protective_service'
+        WHEN TRY_CAST(LEFT(SOCP, 4) AS INTEGER) BETWEEN 4000 AND 4160 THEN 'food_preparation_serving'
+        WHEN TRY_CAST(LEFT(SOCP, 4) AS INTEGER) BETWEEN 4200 AND 4255 THEN 'building_grounds'
+        WHEN TRY_CAST(LEFT(SOCP, 4) AS INTEGER) BETWEEN 4330 AND 4655 THEN 'personal_care_service'
+        WHEN TRY_CAST(LEFT(SOCP, 4) AS INTEGER) BETWEEN 4700 AND 4965 THEN 'sales'
+        WHEN TRY_CAST(LEFT(SOCP, 4) AS INTEGER) BETWEEN 5000 AND 5940 THEN 'office_admin_support'
+        WHEN TRY_CAST(LEFT(SOCP, 4) AS INTEGER) BETWEEN 6005 AND 6130 THEN 'farming_fishing_forestry'
+        WHEN TRY_CAST(LEFT(SOCP, 4) AS INTEGER) BETWEEN 6200 AND 6950 THEN 'construction_extraction'
+        WHEN TRY_CAST(LEFT(SOCP, 4) AS INTEGER) BETWEEN 7000 AND 7640 THEN 'installation_maintenance_repair'
+        WHEN TRY_CAST(LEFT(SOCP, 4) AS INTEGER) BETWEEN 7700 AND 8990 THEN 'production'
+        WHEN TRY_CAST(LEFT(SOCP, 4) AS INTEGER) BETWEEN 9005 AND 9430 THEN 'transportation'
+        WHEN TRY_CAST(LEFT(SOCP, 4) AS INTEGER) BETWEEN 9510 AND 9760 THEN 'material_moving'
+        WHEN TRY_CAST(LEFT(SOCP, 4) AS INTEGER) BETWEEN 9800 AND 9830 THEN 'military'
+        ELSE NULL END AS occ_subgroup
+        FROM source) sub WHERE occ_subgroup IS NOT NULL
+
+    - id: person_works_in_industry
+      uri: "file://${DATA_DIR}/psam_pus.parquet"
+      relationship_type: EMPLOYED_IN
+      source_col: PERSON_ID
+      target_col: industry_group
+      query: >-
+        SELECT PERSON_ID, industry_group FROM (
+        SELECT SERIALNO || '_' || CAST(SPORDER AS VARCHAR) AS PERSON_ID,
+        CASE WHEN TRY_CAST(INDP AS INTEGER) BETWEEN 170 AND 490 THEN 'agriculture_mining'
+        WHEN TRY_CAST(INDP AS INTEGER) = 770 THEN 'construction'
+        WHEN TRY_CAST(INDP AS INTEGER) BETWEEN 1070 AND 3990 THEN 'manufacturing'
+        WHEN TRY_CAST(INDP AS INTEGER) BETWEEN 4070 AND 4590 THEN 'wholesale_trade'
+        WHEN TRY_CAST(INDP AS INTEGER) BETWEEN 4670 AND 5791 THEN 'retail_trade'
+        WHEN (TRY_CAST(INDP AS INTEGER) BETWEEN 570 AND 690 OR TRY_CAST(INDP AS INTEGER) BETWEEN 6070 AND 6390) THEN 'transportation_utilities'
+        WHEN TRY_CAST(INDP AS INTEGER) BETWEEN 6471 AND 6781 THEN 'information'
+        WHEN TRY_CAST(INDP AS INTEGER) BETWEEN 6871 AND 7190 THEN 'finance_real_estate'
+        WHEN TRY_CAST(INDP AS INTEGER) BETWEEN 7270 AND 7790 THEN 'professional_management'
+        WHEN TRY_CAST(INDP AS INTEGER) BETWEEN 7860 AND 8470 THEN 'education_healthcare'
+        WHEN TRY_CAST(INDP AS INTEGER) BETWEEN 8561 AND 8690 THEN 'arts_entertainment_food'
+        WHEN TRY_CAST(INDP AS INTEGER) BETWEEN 8770 AND 9290 THEN 'other_services'
+        WHEN TRY_CAST(INDP AS INTEGER) BETWEEN 9370 AND 9590 THEN 'public_administration'
+        WHEN TRY_CAST(INDP AS INTEGER) BETWEEN 9670 AND 9870 THEN 'military_industry'
+        ELSE NULL END AS industry_group
+        FROM source) sub WHERE industry_group IS NOT NULL
+
+    - id: person_speaks_language_group
+      uri: "file://${DATA_DIR}/psam_pus.parquet"
+      relationship_type: SPEAKS
+      source_col: PERSON_ID
+      target_col: language_group
+      query: >-
+        SELECT SERIALNO || '_' || CAST(SPORDER AS VARCHAR) AS PERSON_ID,
+        CASE WHEN LANP IS NULL THEN 'english_only'
+        WHEN TRY_CAST(LANP AS INTEGER) = 1200 THEN 'spanish'
+        WHEN TRY_CAST(LANP AS INTEGER) BETWEEN 1000 AND 1287 THEN 'european'
+        WHEN TRY_CAST(LANP AS INTEGER) BETWEEN 1288 AND 1899 THEN 'south_central_asian'
+        WHEN TRY_CAST(LANP AS INTEGER) BETWEEN 1900 AND 3600 THEN 'east_southeast_asian_pacific'
+        WHEN TRY_CAST(LANP AS INTEGER) BETWEEN 4500 AND 9998 THEN 'middle_eastern_african'
+        ELSE 'other_unspecified' END AS language_group
+        FROM source
+
+    - id: award_performed_in_state
+      uri: "file://${DATA_DIR}/FY2025_All_Contracts_Full_20260506.csv"
+      relationship_type: PERFORMED_IN
+      source_col: contract_transaction_unique_key
+      target_col: prime_award_transaction_place_of_performance_state_fips_code
+      query: "SELECT contract_transaction_unique_key, prime_award_transaction_place_of_performance_state_fips_code FROM source WHERE prime_award_transaction_place_of_performance_state_fips_code IS NOT NULL"
+
 
 queries:
   - id: counties_in_state
     description: "Get all the relationships -- test"
-    inline: MATCH (s:State)<-[:IN]-(c:County) WITH DISTINCT id(s) AS state_name, id(c) AS county_name RETURN state_name, county_name
+    inline: "MATCH (s:State)<-[:IN]-(c:County) WITH DISTINCT id(s) AS state_name, id(c) AS county_name RETURN state_name, county_name"
 
   - id: tracts_in_county
     description: "Get all the relationships -- test"
@@ -704,6 +1861,422 @@ queries:
     description: "Testing whether we can call a function to decode serialized data"
     inline: MATCH (o:OSMNode) WITH o.encoded_tags AS encoded_tags, o SET o.decoded_tags = decode_serialized(encoded_tags)
 
+  - id: puma_population
+    description: "Count ACS PUMS person records per PUMA as population estimate"
+    inline: "MATCH (pu:PUMA)<-[:LIVES_IN]-(p:PersonSurvey) WITH pu, COUNT(p) AS pop_estimate SET pu.pop_estimate = pop_estimate"
+
+  - id: puma_housing_units
+    description: "Count ACS PUMS housing units per PUMA"
+    inline: "MATCH (pu:PUMA)<-[:LOCATED_IN]-(h:HousingSurvey) WITH pu, COUNT(h) AS housing_unit_count SET pu.housing_unit_count = housing_unit_count"
+
+  - id: puma_veteran_count
+    description: "Count veteran person records per PUMA"
+    inline: "MATCH (pu:PUMA)<-[:LIVES_IN]-(p:PersonSurvey) WHERE p.is_veteran = 1 WITH pu, COUNT(p) AS veteran_count SET pu.veteran_count = veteran_count"
+
+  - id: state_award_count
+    description: "Count federal contract award transactions per state by place of performance"
+    inline: "MATCH (s:State)<-[:PERFORMED_IN]-(a:FederalAward) WITH s, COUNT(a) AS award_count SET s.award_count = award_count"
+
+  - id: puma_mgmt_count
+    description: "Count Management/Business/Science/Arts workers per PUMA"
+    inline: "MATCH (pu:PUMA)<-[:LIVES_IN]-(p:PersonSurvey) WHERE p.occ_group = 'mgmt_business_science_arts' WITH pu, COUNT(p) AS cnt SET pu.mgmt_business_science_arts_count = cnt"
+
+  - id: puma_service_count
+    description: "Count Service workers per PUMA"
+    inline: "MATCH (pu:PUMA)<-[:LIVES_IN]-(p:PersonSurvey) WHERE p.occ_group = 'service' WITH pu, COUNT(p) AS cnt SET pu.service_count = cnt"
+
+  - id: puma_sales_count
+    description: "Count Sales and Office workers per PUMA"
+    inline: "MATCH (pu:PUMA)<-[:LIVES_IN]-(p:PersonSurvey) WHERE p.occ_group = 'sales_office' WITH pu, COUNT(p) AS cnt SET pu.sales_office_count = cnt"
+
+  - id: puma_natres_count
+    description: "Count Natural Resources/Construction/Maintenance workers per PUMA"
+    inline: "MATCH (pu:PUMA)<-[:LIVES_IN]-(p:PersonSurvey) WHERE p.occ_group = 'natural_resources_construction' WITH pu, COUNT(p) AS cnt SET pu.natural_resources_construction_count = cnt"
+
+  - id: puma_prodtn_count
+    description: "Count Production/Transportation/Material Moving workers per PUMA"
+    inline: "MATCH (pu:PUMA)<-[:LIVES_IN]-(p:PersonSurvey) WHERE p.occ_group = 'production_transportation' WITH pu, COUNT(p) AS cnt SET pu.production_transportation_count = cnt"
+
+  - id: state_mgmt_count
+    description: "Roll up Management/Business/Science/Arts worker counts from PUMA to State"
+    inline: "MATCH (s:State)<-[:IN]-(pu:PUMA) WITH s, SUM(pu.mgmt_business_science_arts_count) AS cnt SET s.mgmt_business_science_arts_count = cnt"
+
+  - id: state_service_count
+    description: "Roll up Service worker counts from PUMA to State"
+    inline: "MATCH (s:State)<-[:IN]-(pu:PUMA) WITH s, SUM(pu.service_count) AS cnt SET s.service_count = cnt"
+
+  - id: state_sales_count
+    description: "Roll up Sales and Office worker counts from PUMA to State"
+    inline: "MATCH (s:State)<-[:IN]-(pu:PUMA) WITH s, SUM(pu.sales_office_count) AS cnt SET s.sales_office_count = cnt"
+
+  - id: state_natres_count
+    description: "Roll up Natural Resources/Construction/Maintenance worker counts from PUMA to State"
+    inline: "MATCH (s:State)<-[:IN]-(pu:PUMA) WITH s, SUM(pu.natural_resources_construction_count) AS cnt SET s.natural_resources_construction_count = cnt"
+
+  - id: state_prodtn_count
+    description: "Roll up Production/Transportation/Material Moving worker counts from PUMA to State"
+    inline: "MATCH (s:State)<-[:IN]-(pu:PUMA) WITH s, SUM(pu.production_transportation_count) AS cnt SET s.production_transportation_count = cnt"
+
+  - id: puma_management_count
+    description: "Count Management Occupations workers per PUMA"
+    inline: "MATCH (pu:PUMA)<-[:LIVES_IN]-(p:PersonSurvey) WHERE p.occ_subgroup = 'management' WITH pu, COUNT(p) AS cnt SET pu.management_count = cnt"
+
+  - id: puma_business_financial_count
+    description: "Count Business and Financial Operations Occupations workers per PUMA"
+    inline: "MATCH (pu:PUMA)<-[:LIVES_IN]-(p:PersonSurvey) WHERE p.occ_subgroup = 'business_financial' WITH pu, COUNT(p) AS cnt SET pu.business_financial_count = cnt"
+
+  - id: puma_computer_math_count
+    description: "Count Computer and Mathematical Occupations workers per PUMA"
+    inline: "MATCH (pu:PUMA)<-[:LIVES_IN]-(p:PersonSurvey) WHERE p.occ_subgroup = 'computer_math' WITH pu, COUNT(p) AS cnt SET pu.computer_math_count = cnt"
+
+  - id: puma_architecture_engineering_count
+    description: "Count Architecture and Engineering Occupations workers per PUMA"
+    inline: "MATCH (pu:PUMA)<-[:LIVES_IN]-(p:PersonSurvey) WHERE p.occ_subgroup = 'architecture_engineering' WITH pu, COUNT(p) AS cnt SET pu.architecture_engineering_count = cnt"
+
+  - id: puma_life_physical_social_science_count
+    description: "Count Life, Physical, and Social Science Occupations workers per PUMA"
+    inline: "MATCH (pu:PUMA)<-[:LIVES_IN]-(p:PersonSurvey) WHERE p.occ_subgroup = 'life_physical_social_science' WITH pu, COUNT(p) AS cnt SET pu.life_physical_social_science_count = cnt"
+
+  - id: puma_community_social_service_count
+    description: "Count Community and Social Service Occupations workers per PUMA"
+    inline: "MATCH (pu:PUMA)<-[:LIVES_IN]-(p:PersonSurvey) WHERE p.occ_subgroup = 'community_social_service' WITH pu, COUNT(p) AS cnt SET pu.community_social_service_count = cnt"
+
+  - id: puma_legal_count
+    description: "Count Legal Occupations workers per PUMA"
+    inline: "MATCH (pu:PUMA)<-[:LIVES_IN]-(p:PersonSurvey) WHERE p.occ_subgroup = 'legal' WITH pu, COUNT(p) AS cnt SET pu.legal_count = cnt"
+
+  - id: puma_education_library_count
+    description: "Count Educational Instruction and Library Occupations workers per PUMA"
+    inline: "MATCH (pu:PUMA)<-[:LIVES_IN]-(p:PersonSurvey) WHERE p.occ_subgroup = 'education_library' WITH pu, COUNT(p) AS cnt SET pu.education_library_count = cnt"
+
+  - id: puma_arts_design_entertainment_count
+    description: "Count Arts, Design, Entertainment, Sports, and Media Occupations workers per PUMA"
+    inline: "MATCH (pu:PUMA)<-[:LIVES_IN]-(p:PersonSurvey) WHERE p.occ_subgroup = 'arts_design_entertainment' WITH pu, COUNT(p) AS cnt SET pu.arts_design_entertainment_count = cnt"
+
+  - id: puma_healthcare_practitioners_count
+    description: "Count Healthcare Practitioners and Technical Occupations workers per PUMA"
+    inline: "MATCH (pu:PUMA)<-[:LIVES_IN]-(p:PersonSurvey) WHERE p.occ_subgroup = 'healthcare_practitioners' WITH pu, COUNT(p) AS cnt SET pu.healthcare_practitioners_count = cnt"
+
+  - id: puma_healthcare_support_count
+    description: "Count Healthcare Support Occupations workers per PUMA"
+    inline: "MATCH (pu:PUMA)<-[:LIVES_IN]-(p:PersonSurvey) WHERE p.occ_subgroup = 'healthcare_support' WITH pu, COUNT(p) AS cnt SET pu.healthcare_support_count = cnt"
+
+  - id: puma_protective_service_count
+    description: "Count Protective Service Occupations workers per PUMA"
+    inline: "MATCH (pu:PUMA)<-[:LIVES_IN]-(p:PersonSurvey) WHERE p.occ_subgroup = 'protective_service' WITH pu, COUNT(p) AS cnt SET pu.protective_service_count = cnt"
+
+  - id: puma_food_preparation_serving_count
+    description: "Count Food Preparation and Serving Related Occupations workers per PUMA"
+    inline: "MATCH (pu:PUMA)<-[:LIVES_IN]-(p:PersonSurvey) WHERE p.occ_subgroup = 'food_preparation_serving' WITH pu, COUNT(p) AS cnt SET pu.food_preparation_serving_count = cnt"
+
+  - id: puma_building_grounds_count
+    description: "Count Building and Grounds Cleaning and Maintenance Occupations workers per PUMA"
+    inline: "MATCH (pu:PUMA)<-[:LIVES_IN]-(p:PersonSurvey) WHERE p.occ_subgroup = 'building_grounds' WITH pu, COUNT(p) AS cnt SET pu.building_grounds_count = cnt"
+
+  - id: puma_personal_care_service_count
+    description: "Count Personal Care and Service Occupations workers per PUMA"
+    inline: "MATCH (pu:PUMA)<-[:LIVES_IN]-(p:PersonSurvey) WHERE p.occ_subgroup = 'personal_care_service' WITH pu, COUNT(p) AS cnt SET pu.personal_care_service_count = cnt"
+
+  - id: puma_sales_count
+    description: "Count Sales and Related Occupations workers per PUMA"
+    inline: "MATCH (pu:PUMA)<-[:LIVES_IN]-(p:PersonSurvey) WHERE p.occ_subgroup = 'sales' WITH pu, COUNT(p) AS cnt SET pu.sales_count = cnt"
+
+  - id: puma_office_admin_support_count
+    description: "Count Office and Administrative Support Occupations workers per PUMA"
+    inline: "MATCH (pu:PUMA)<-[:LIVES_IN]-(p:PersonSurvey) WHERE p.occ_subgroup = 'office_admin_support' WITH pu, COUNT(p) AS cnt SET pu.office_admin_support_count = cnt"
+
+  - id: puma_farming_fishing_forestry_count
+    description: "Count Farming, Fishing, and Forestry Occupations workers per PUMA"
+    inline: "MATCH (pu:PUMA)<-[:LIVES_IN]-(p:PersonSurvey) WHERE p.occ_subgroup = 'farming_fishing_forestry' WITH pu, COUNT(p) AS cnt SET pu.farming_fishing_forestry_count = cnt"
+
+  - id: puma_construction_extraction_count
+    description: "Count Construction and Extraction Occupations workers per PUMA"
+    inline: "MATCH (pu:PUMA)<-[:LIVES_IN]-(p:PersonSurvey) WHERE p.occ_subgroup = 'construction_extraction' WITH pu, COUNT(p) AS cnt SET pu.construction_extraction_count = cnt"
+
+  - id: puma_installation_maintenance_repair_count
+    description: "Count Installation, Maintenance, and Repair Occupations workers per PUMA"
+    inline: "MATCH (pu:PUMA)<-[:LIVES_IN]-(p:PersonSurvey) WHERE p.occ_subgroup = 'installation_maintenance_repair' WITH pu, COUNT(p) AS cnt SET pu.installation_maintenance_repair_count = cnt"
+
+  - id: puma_production_count
+    description: "Count Production Occupations workers per PUMA"
+    inline: "MATCH (pu:PUMA)<-[:LIVES_IN]-(p:PersonSurvey) WHERE p.occ_subgroup = 'production' WITH pu, COUNT(p) AS cnt SET pu.production_count = cnt"
+
+  - id: puma_transportation_count
+    description: "Count Transportation Occupations workers per PUMA"
+    inline: "MATCH (pu:PUMA)<-[:LIVES_IN]-(p:PersonSurvey) WHERE p.occ_subgroup = 'transportation' WITH pu, COUNT(p) AS cnt SET pu.transportation_count = cnt"
+
+  - id: puma_material_moving_count
+    description: "Count Material Moving Occupations workers per PUMA"
+    inline: "MATCH (pu:PUMA)<-[:LIVES_IN]-(p:PersonSurvey) WHERE p.occ_subgroup = 'material_moving' WITH pu, COUNT(p) AS cnt SET pu.material_moving_count = cnt"
+
+  - id: puma_military_count
+    description: "Count Military Specific Occupations workers per PUMA"
+    inline: "MATCH (pu:PUMA)<-[:LIVES_IN]-(p:PersonSurvey) WHERE p.occ_subgroup = 'military' WITH pu, COUNT(p) AS cnt SET pu.military_count = cnt"
+
+  - id: state_management_count
+    description: "Roll up Management Occupations worker counts from PUMA to State"
+    inline: "MATCH (s:State)<-[:IN]-(pu:PUMA) WITH s, SUM(pu.management_count) AS cnt SET s.management_count = cnt"
+
+  - id: state_business_financial_count
+    description: "Roll up Business and Financial Operations Occupations worker counts from PUMA to State"
+    inline: "MATCH (s:State)<-[:IN]-(pu:PUMA) WITH s, SUM(pu.business_financial_count) AS cnt SET s.business_financial_count = cnt"
+
+  - id: state_computer_math_count
+    description: "Roll up Computer and Mathematical Occupations worker counts from PUMA to State"
+    inline: "MATCH (s:State)<-[:IN]-(pu:PUMA) WITH s, SUM(pu.computer_math_count) AS cnt SET s.computer_math_count = cnt"
+
+  - id: state_architecture_engineering_count
+    description: "Roll up Architecture and Engineering Occupations worker counts from PUMA to State"
+    inline: "MATCH (s:State)<-[:IN]-(pu:PUMA) WITH s, SUM(pu.architecture_engineering_count) AS cnt SET s.architecture_engineering_count = cnt"
+
+  - id: state_life_physical_social_science_count
+    description: "Roll up Life, Physical, and Social Science Occupations worker counts from PUMA to State"
+    inline: "MATCH (s:State)<-[:IN]-(pu:PUMA) WITH s, SUM(pu.life_physical_social_science_count) AS cnt SET s.life_physical_social_science_count = cnt"
+
+  - id: state_community_social_service_count
+    description: "Roll up Community and Social Service Occupations worker counts from PUMA to State"
+    inline: "MATCH (s:State)<-[:IN]-(pu:PUMA) WITH s, SUM(pu.community_social_service_count) AS cnt SET s.community_social_service_count = cnt"
+
+  - id: state_legal_count
+    description: "Roll up Legal Occupations worker counts from PUMA to State"
+    inline: "MATCH (s:State)<-[:IN]-(pu:PUMA) WITH s, SUM(pu.legal_count) AS cnt SET s.legal_count = cnt"
+
+  - id: state_education_library_count
+    description: "Roll up Educational Instruction and Library Occupations worker counts from PUMA to State"
+    inline: "MATCH (s:State)<-[:IN]-(pu:PUMA) WITH s, SUM(pu.education_library_count) AS cnt SET s.education_library_count = cnt"
+
+  - id: state_arts_design_entertainment_count
+    description: "Roll up Arts, Design, Entertainment, Sports, and Media Occupations worker counts from PUMA to State"
+    inline: "MATCH (s:State)<-[:IN]-(pu:PUMA) WITH s, SUM(pu.arts_design_entertainment_count) AS cnt SET s.arts_design_entertainment_count = cnt"
+
+  - id: state_healthcare_practitioners_count
+    description: "Roll up Healthcare Practitioners and Technical Occupations worker counts from PUMA to State"
+    inline: "MATCH (s:State)<-[:IN]-(pu:PUMA) WITH s, SUM(pu.healthcare_practitioners_count) AS cnt SET s.healthcare_practitioners_count = cnt"
+
+  - id: state_healthcare_support_count
+    description: "Roll up Healthcare Support Occupations worker counts from PUMA to State"
+    inline: "MATCH (s:State)<-[:IN]-(pu:PUMA) WITH s, SUM(pu.healthcare_support_count) AS cnt SET s.healthcare_support_count = cnt"
+
+  - id: state_protective_service_count
+    description: "Roll up Protective Service Occupations worker counts from PUMA to State"
+    inline: "MATCH (s:State)<-[:IN]-(pu:PUMA) WITH s, SUM(pu.protective_service_count) AS cnt SET s.protective_service_count = cnt"
+
+  - id: state_food_preparation_serving_count
+    description: "Roll up Food Preparation and Serving Related Occupations worker counts from PUMA to State"
+    inline: "MATCH (s:State)<-[:IN]-(pu:PUMA) WITH s, SUM(pu.food_preparation_serving_count) AS cnt SET s.food_preparation_serving_count = cnt"
+
+  - id: state_building_grounds_count
+    description: "Roll up Building and Grounds Cleaning and Maintenance Occupations worker counts from PUMA to State"
+    inline: "MATCH (s:State)<-[:IN]-(pu:PUMA) WITH s, SUM(pu.building_grounds_count) AS cnt SET s.building_grounds_count = cnt"
+
+  - id: state_personal_care_service_count
+    description: "Roll up Personal Care and Service Occupations worker counts from PUMA to State"
+    inline: "MATCH (s:State)<-[:IN]-(pu:PUMA) WITH s, SUM(pu.personal_care_service_count) AS cnt SET s.personal_care_service_count = cnt"
+
+  - id: state_sales_count
+    description: "Roll up Sales and Related Occupations worker counts from PUMA to State"
+    inline: "MATCH (s:State)<-[:IN]-(pu:PUMA) WITH s, SUM(pu.sales_count) AS cnt SET s.sales_count = cnt"
+
+  - id: state_office_admin_support_count
+    description: "Roll up Office and Administrative Support Occupations worker counts from PUMA to State"
+    inline: "MATCH (s:State)<-[:IN]-(pu:PUMA) WITH s, SUM(pu.office_admin_support_count) AS cnt SET s.office_admin_support_count = cnt"
+
+  - id: state_farming_fishing_forestry_count
+    description: "Roll up Farming, Fishing, and Forestry Occupations worker counts from PUMA to State"
+    inline: "MATCH (s:State)<-[:IN]-(pu:PUMA) WITH s, SUM(pu.farming_fishing_forestry_count) AS cnt SET s.farming_fishing_forestry_count = cnt"
+
+  - id: state_construction_extraction_count
+    description: "Roll up Construction and Extraction Occupations worker counts from PUMA to State"
+    inline: "MATCH (s:State)<-[:IN]-(pu:PUMA) WITH s, SUM(pu.construction_extraction_count) AS cnt SET s.construction_extraction_count = cnt"
+
+  - id: state_installation_maintenance_repair_count
+    description: "Roll up Installation, Maintenance, and Repair Occupations worker counts from PUMA to State"
+    inline: "MATCH (s:State)<-[:IN]-(pu:PUMA) WITH s, SUM(pu.installation_maintenance_repair_count) AS cnt SET s.installation_maintenance_repair_count = cnt"
+
+  - id: state_production_count
+    description: "Roll up Production Occupations worker counts from PUMA to State"
+    inline: "MATCH (s:State)<-[:IN]-(pu:PUMA) WITH s, SUM(pu.production_count) AS cnt SET s.production_count = cnt"
+
+  - id: state_transportation_count
+    description: "Roll up Transportation Occupations worker counts from PUMA to State"
+    inline: "MATCH (s:State)<-[:IN]-(pu:PUMA) WITH s, SUM(pu.transportation_count) AS cnt SET s.transportation_count = cnt"
+
+  - id: state_material_moving_count
+    description: "Roll up Material Moving Occupations worker counts from PUMA to State"
+    inline: "MATCH (s:State)<-[:IN]-(pu:PUMA) WITH s, SUM(pu.material_moving_count) AS cnt SET s.material_moving_count = cnt"
+
+  - id: state_military_count
+    description: "Roll up Military Specific Occupations worker counts from PUMA to State"
+    inline: "MATCH (s:State)<-[:IN]-(pu:PUMA) WITH s, SUM(pu.military_count) AS cnt SET s.military_count = cnt"
+
+  - id: puma_agriculture_mining_count
+    description: "Count Agriculture, Forestry, Fishing, Hunting, and Mining industry workers per PUMA"
+    inline: "MATCH (pu:PUMA)<-[:LIVES_IN]-(p:PersonSurvey) WHERE p.industry_group = 'agriculture_mining' WITH pu, COUNT(p) AS cnt SET pu.agriculture_mining_ind_count = cnt"
+
+  - id: puma_construction_ind_count
+    description: "Count Construction industry workers per PUMA"
+    inline: "MATCH (pu:PUMA)<-[:LIVES_IN]-(p:PersonSurvey) WHERE p.industry_group = 'construction' WITH pu, COUNT(p) AS cnt SET pu.construction_ind_count = cnt"
+
+  - id: puma_manufacturing_count
+    description: "Count Manufacturing industry workers per PUMA"
+    inline: "MATCH (pu:PUMA)<-[:LIVES_IN]-(p:PersonSurvey) WHERE p.industry_group = 'manufacturing' WITH pu, COUNT(p) AS cnt SET pu.manufacturing_count = cnt"
+
+  - id: puma_wholesale_trade_count
+    description: "Count Wholesale Trade industry workers per PUMA"
+    inline: "MATCH (pu:PUMA)<-[:LIVES_IN]-(p:PersonSurvey) WHERE p.industry_group = 'wholesale_trade' WITH pu, COUNT(p) AS cnt SET pu.wholesale_trade_count = cnt"
+
+  - id: puma_retail_trade_count
+    description: "Count Retail Trade industry workers per PUMA"
+    inline: "MATCH (pu:PUMA)<-[:LIVES_IN]-(p:PersonSurvey) WHERE p.industry_group = 'retail_trade' WITH pu, COUNT(p) AS cnt SET pu.retail_trade_count = cnt"
+
+  - id: puma_transportation_utilities_count
+    description: "Count Transportation, Warehousing, and Utilities industry workers per PUMA"
+    inline: "MATCH (pu:PUMA)<-[:LIVES_IN]-(p:PersonSurvey) WHERE p.industry_group = 'transportation_utilities' WITH pu, COUNT(p) AS cnt SET pu.transportation_utilities_count = cnt"
+
+  - id: puma_information_count
+    description: "Count Information industry workers per PUMA"
+    inline: "MATCH (pu:PUMA)<-[:LIVES_IN]-(p:PersonSurvey) WHERE p.industry_group = 'information' WITH pu, COUNT(p) AS cnt SET pu.information_count = cnt"
+
+  - id: puma_finance_real_estate_count
+    description: "Count Finance, Insurance, and Real Estate industry workers per PUMA"
+    inline: "MATCH (pu:PUMA)<-[:LIVES_IN]-(p:PersonSurvey) WHERE p.industry_group = 'finance_real_estate' WITH pu, COUNT(p) AS cnt SET pu.finance_real_estate_count = cnt"
+
+  - id: puma_professional_management_ind_count
+    description: "Count Professional, Scientific, Management, and Administrative industry workers per PUMA"
+    inline: "MATCH (pu:PUMA)<-[:LIVES_IN]-(p:PersonSurvey) WHERE p.industry_group = 'professional_management' WITH pu, COUNT(p) AS cnt SET pu.professional_management_ind_count = cnt"
+
+  - id: puma_education_healthcare_count
+    description: "Count Educational Services and Health Care industry workers per PUMA"
+    inline: "MATCH (pu:PUMA)<-[:LIVES_IN]-(p:PersonSurvey) WHERE p.industry_group = 'education_healthcare' WITH pu, COUNT(p) AS cnt SET pu.education_healthcare_count = cnt"
+
+  - id: puma_arts_entertainment_food_count
+    description: "Count Arts, Entertainment, Recreation, and Food Services industry workers per PUMA"
+    inline: "MATCH (pu:PUMA)<-[:LIVES_IN]-(p:PersonSurvey) WHERE p.industry_group = 'arts_entertainment_food' WITH pu, COUNT(p) AS cnt SET pu.arts_entertainment_food_count = cnt"
+
+  - id: puma_other_services_ind_count
+    description: "Count Other Services industry workers per PUMA"
+    inline: "MATCH (pu:PUMA)<-[:LIVES_IN]-(p:PersonSurvey) WHERE p.industry_group = 'other_services' WITH pu, COUNT(p) AS cnt SET pu.other_services_ind_count = cnt"
+
+  - id: puma_public_administration_count
+    description: "Count Public Administration industry workers per PUMA"
+    inline: "MATCH (pu:PUMA)<-[:LIVES_IN]-(p:PersonSurvey) WHERE p.industry_group = 'public_administration' WITH pu, COUNT(p) AS cnt SET pu.public_administration_count = cnt"
+
+  - id: puma_military_industry_count
+    description: "Count Military industry workers per PUMA"
+    inline: "MATCH (pu:PUMA)<-[:LIVES_IN]-(p:PersonSurvey) WHERE p.industry_group = 'military_industry' WITH pu, COUNT(p) AS cnt SET pu.military_industry_count = cnt"
+
+  - id: state_agriculture_mining_count
+    description: "Roll up Agriculture, Forestry, Fishing, Hunting, and Mining industry worker counts from PUMA to State"
+    inline: "MATCH (s:State)<-[:IN]-(pu:PUMA) WITH s, SUM(pu.agriculture_mining_ind_count) AS cnt SET s.agriculture_mining_ind_count = cnt"
+
+  - id: state_construction_ind_count
+    description: "Roll up Construction industry worker counts from PUMA to State"
+    inline: "MATCH (s:State)<-[:IN]-(pu:PUMA) WITH s, SUM(pu.construction_ind_count) AS cnt SET s.construction_ind_count = cnt"
+
+  - id: state_manufacturing_count
+    description: "Roll up Manufacturing industry worker counts from PUMA to State"
+    inline: "MATCH (s:State)<-[:IN]-(pu:PUMA) WITH s, SUM(pu.manufacturing_count) AS cnt SET s.manufacturing_count = cnt"
+
+  - id: state_wholesale_trade_count
+    description: "Roll up Wholesale Trade industry worker counts from PUMA to State"
+    inline: "MATCH (s:State)<-[:IN]-(pu:PUMA) WITH s, SUM(pu.wholesale_trade_count) AS cnt SET s.wholesale_trade_count = cnt"
+
+  - id: state_retail_trade_count
+    description: "Roll up Retail Trade industry worker counts from PUMA to State"
+    inline: "MATCH (s:State)<-[:IN]-(pu:PUMA) WITH s, SUM(pu.retail_trade_count) AS cnt SET s.retail_trade_count = cnt"
+
+  - id: state_transportation_utilities_count
+    description: "Roll up Transportation, Warehousing, and Utilities industry worker counts from PUMA to State"
+    inline: "MATCH (s:State)<-[:IN]-(pu:PUMA) WITH s, SUM(pu.transportation_utilities_count) AS cnt SET s.transportation_utilities_count = cnt"
+
+  - id: state_information_count
+    description: "Roll up Information industry worker counts from PUMA to State"
+    inline: "MATCH (s:State)<-[:IN]-(pu:PUMA) WITH s, SUM(pu.information_count) AS cnt SET s.information_count = cnt"
+
+  - id: state_finance_real_estate_count
+    description: "Roll up Finance, Insurance, and Real Estate industry worker counts from PUMA to State"
+    inline: "MATCH (s:State)<-[:IN]-(pu:PUMA) WITH s, SUM(pu.finance_real_estate_count) AS cnt SET s.finance_real_estate_count = cnt"
+
+  - id: state_professional_management_ind_count
+    description: "Roll up Professional, Scientific, Management, and Administrative industry worker counts from PUMA to State"
+    inline: "MATCH (s:State)<-[:IN]-(pu:PUMA) WITH s, SUM(pu.professional_management_ind_count) AS cnt SET s.professional_management_ind_count = cnt"
+
+  - id: state_education_healthcare_count
+    description: "Roll up Educational Services and Health Care industry worker counts from PUMA to State"
+    inline: "MATCH (s:State)<-[:IN]-(pu:PUMA) WITH s, SUM(pu.education_healthcare_count) AS cnt SET s.education_healthcare_count = cnt"
+
+  - id: state_arts_entertainment_food_count
+    description: "Roll up Arts, Entertainment, Recreation, and Food Services industry worker counts from PUMA to State"
+    inline: "MATCH (s:State)<-[:IN]-(pu:PUMA) WITH s, SUM(pu.arts_entertainment_food_count) AS cnt SET s.arts_entertainment_food_count = cnt"
+
+  - id: state_other_services_ind_count
+    description: "Roll up Other Services industry worker counts from PUMA to State"
+    inline: "MATCH (s:State)<-[:IN]-(pu:PUMA) WITH s, SUM(pu.other_services_ind_count) AS cnt SET s.other_services_ind_count = cnt"
+
+  - id: state_public_administration_count
+    description: "Roll up Public Administration industry worker counts from PUMA to State"
+    inline: "MATCH (s:State)<-[:IN]-(pu:PUMA) WITH s, SUM(pu.public_administration_count) AS cnt SET s.public_administration_count = cnt"
+
+  - id: state_military_industry_count
+    description: "Roll up Military industry worker counts from PUMA to State"
+    inline: "MATCH (s:State)<-[:IN]-(pu:PUMA) WITH s, SUM(pu.military_industry_count) AS cnt SET s.military_industry_count = cnt"
+
+  - id: puma_english_only_count
+    description: "Count English-only speakers per PUMA"
+    inline: "MATCH (pu:PUMA)<-[:LIVES_IN]-(p:PersonSurvey) WHERE p.language_group = 'english_only' WITH pu, COUNT(p) AS cnt SET pu.english_only_count = cnt"
+
+  - id: puma_spanish_count
+    description: "Count Spanish speakers per PUMA"
+    inline: "MATCH (pu:PUMA)<-[:LIVES_IN]-(p:PersonSurvey) WHERE p.language_group = 'spanish' WITH pu, COUNT(p) AS cnt SET pu.spanish_count = cnt"
+
+  - id: puma_european_lang_count
+    description: "Count European language speakers per PUMA"
+    inline: "MATCH (pu:PUMA)<-[:LIVES_IN]-(p:PersonSurvey) WHERE p.language_group = 'european' WITH pu, COUNT(p) AS cnt SET pu.european_lang_count = cnt"
+
+  - id: puma_south_central_asian_lang_count
+    description: "Count South and Central Asian language speakers per PUMA"
+    inline: "MATCH (pu:PUMA)<-[:LIVES_IN]-(p:PersonSurvey) WHERE p.language_group = 'south_central_asian' WITH pu, COUNT(p) AS cnt SET pu.south_central_asian_lang_count = cnt"
+
+  - id: puma_east_southeast_asian_pacific_lang_count
+    description: "Count East/Southeast Asian and Pacific Island language speakers per PUMA"
+    inline: "MATCH (pu:PUMA)<-[:LIVES_IN]-(p:PersonSurvey) WHERE p.language_group = 'east_southeast_asian_pacific' WITH pu, COUNT(p) AS cnt SET pu.east_southeast_asian_pacific_lang_count = cnt"
+
+  - id: puma_middle_eastern_african_lang_count
+    description: "Count Middle Eastern, African, and other language speakers per PUMA"
+    inline: "MATCH (pu:PUMA)<-[:LIVES_IN]-(p:PersonSurvey) WHERE p.language_group = 'middle_eastern_african' WITH pu, COUNT(p) AS cnt SET pu.middle_eastern_african_lang_count = cnt"
+
+  - id: puma_other_unspecified_lang_count
+    description: "Count other and unspecified language speakers per PUMA"
+    inline: "MATCH (pu:PUMA)<-[:LIVES_IN]-(p:PersonSurvey) WHERE p.language_group = 'other_unspecified' WITH pu, COUNT(p) AS cnt SET pu.other_unspecified_lang_count = cnt"
+
+  - id: state_english_only_count
+    description: "Roll up English-only speaker counts from PUMA to State"
+    inline: "MATCH (s:State)<-[:IN]-(pu:PUMA) WITH s, SUM(pu.english_only_count) AS cnt SET s.english_only_count = cnt"
+
+  - id: state_spanish_count
+    description: "Roll up Spanish speaker counts from PUMA to State"
+    inline: "MATCH (s:State)<-[:IN]-(pu:PUMA) WITH s, SUM(pu.spanish_count) AS cnt SET s.spanish_count = cnt"
+
+  - id: state_european_lang_count
+    description: "Roll up European language speaker counts from PUMA to State"
+    inline: "MATCH (s:State)<-[:IN]-(pu:PUMA) WITH s, SUM(pu.european_lang_count) AS cnt SET s.european_lang_count = cnt"
+
+  - id: state_south_central_asian_lang_count
+    description: "Roll up South and Central Asian language speaker counts from PUMA to State"
+    inline: "MATCH (s:State)<-[:IN]-(pu:PUMA) WITH s, SUM(pu.south_central_asian_lang_count) AS cnt SET s.south_central_asian_lang_count = cnt"
+
+  - id: state_east_southeast_asian_pacific_lang_count
+    description: "Roll up East/Southeast Asian and Pacific Island language speaker counts from PUMA to State"
+    inline: "MATCH (s:State)<-[:IN]-(pu:PUMA) WITH s, SUM(pu.east_southeast_asian_pacific_lang_count) AS cnt SET s.east_southeast_asian_pacific_lang_count = cnt"
+
+  - id: state_middle_eastern_african_lang_count
+    description: "Roll up Middle Eastern and African language speaker counts from PUMA to State"
+    inline: "MATCH (s:State)<-[:IN]-(pu:PUMA) WITH s, SUM(pu.middle_eastern_african_lang_count) AS cnt SET s.middle_eastern_african_lang_count = cnt"
+
+  - id: state_other_unspecified_lang_count
+    description: "Roll up other and unspecified language speaker counts from PUMA to State"
+    inline: "MATCH (s:State)<-[:IN]-(pu:PUMA) WITH s, SUM(pu.other_unspecified_lang_count) AS cnt SET s.other_unspecified_lang_count = cnt"
+
 output:
   - query_id: inside
     uri: file://${PROJECT_ROOT}/packages/fastopendata/src/fastopendata/output/inside.csv
@@ -713,7 +2286,4 @@ output:
     uri: file://${PROJECT_ROOT}/packages/fastopendata/src/fastopendata/output/county_counter.csv
   - query_id: osm_longitude
     uri: file://${PROJECT_ROOT}/packages/fastopendata/src/fastopendata/output/osm.csv
-
-
-
 

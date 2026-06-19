@@ -25,7 +25,16 @@ sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 from fastopendata.config import config as fod_config
 
-DATA_DIR = os.environ['DATA_DIR']
+_DATA_DIR_RAW = os.environ.get('DATA_DIR')
+if not _DATA_DIR_RAW:
+    sys.exit(
+        "ERROR: DATA_DIR environment variable is not set.\n"
+        "Set it before running snakemake, e.g.:\n"
+        "  DATA_DIR=/mnt/data/fastopendata snakemake --cores 4\n"
+        "or via the Makefile:\n"
+        "  make fod-data DATA_DIR=/mnt/data/fastopendata"
+    )
+DATA_DIR = _DATA_DIR_RAW.rstrip('/')
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -55,13 +64,20 @@ rule all:
         f"{DATA_DIR}/wikidata_us_points.json",
         f"{DATA_DIR}/output/cjars_joe_2022_co.parquet",
         f"{DATA_DIR}/united_states_nodes_tract_crosswalk.parquet",
-        f"{DATA_DIR}/tract_combined.shp",
         f"{DATA_DIR}/state_county_tract_puma_crosswalk.parquet",
         expand(f"{DATA_DIR}/tl_2025_{{zipcode}}_addr.dbf", zipcode=fod_config.zips),
         expand(f"{DATA_DIR}/tl_2025_{{fips}}_tract.shp", fips=fod_config.state_fips),
-        expand(f"{DATA_DIR}/tl_2024_{{block_group_fips}}_bg.shp", block_group_fips=fod_config.block_group_fips),
-        f"{DATA_DIR}/combined_block_groups.shp",  # Add parameter or whatever for block_group_fips
+        expand(f"{DATA_DIR}/tl_2024_{{state_fips}}_bg.shp", state_fips=fod_config.state_fips),
+        f"{DATA_DIR}/combined_block_groups.shp",  # Add parameter or whatever for state_fips
         f"{DATA_DIR}/FY2025_All_Contracts_Full_20260506.csv",
+        f"{DATA_DIR}/Food Access Research Atlas.csv",
+        f"{DATA_DIR}/NRI_Table_CensusTracts.csv",
+        f"{DATA_DIR}/rural_urban_county_codes.csv",
+        f"{DATA_DIR}/occupation_groups.csv",
+        f"{DATA_DIR}/occupation_subgroups.csv",
+        f"{DATA_DIR}/industry_groups.csv",
+        f"{DATA_DIR}/language_groups.csv",
+        # expand(f"{DATA_DIR}/tl_2024_{{acs_zip_files}}_bg.shp", acs_zip_files=fod_config.datasets.acs_zip_files),
 
 rule unzip_combine_american_community_survey_household_one_year_2024:
     # resources:
@@ -76,16 +92,148 @@ rule unzip_combine_american_community_survey_household_one_year_2024:
 rule convert_psam_pus_to_parquet:
     """Spatial join"""
     input: f"{DATA_DIR}/psam_pus.csv"
+    output: f"{DATA_DIR}/psam_pus_tmp.parquet"
+    shell:
+        f"uv run duckdb -c \"SET preserve_insertion_order = false; SET threads = 1; SET memory_limit = '6GB'; SET temp_directory = '/tmp'; COPY '{DATA_DIR}/psam_pus.csv' TO '{DATA_DIR}/psam_pus_tmp.parquet' (FORMAT PARQUET, ROW_GROUP_SIZE 1024, COMPRESSION 'ZSTD');\""
+
+rule add_puma_fips_to_psam_pus:
+    """concatenate for fips number"""
+    # f"uv run python {SCRIPTS}/add_puma_fips_to_psam_pus.py {DATA_DIR}"
+    input: f"{DATA_DIR}/psam_pus_tmp.parquet"
     output: f"{DATA_DIR}/psam_pus.parquet"
     shell:
-        f"uv run duckdb -c \"COPY '{DATA_DIR}/psam_pus.csv' TO '{DATA_DIR}/psam_pus.parquet' (FORMAT PARQUET, COMPRESSION 'ZSTD');\""
+        f"uv run duckdb -c \"SET preserve_insertion_order = false; SET threads = 1; SET memory_limit = '6GB'; SET temp_directory = '/tmp'; COPY (SELECT *, STATE || PUMA AS PUMA_FIPS FROM '{DATA_DIR}/psam_pus_tmp.parquet') TO '{DATA_DIR}/psam_pus.parquet' (FORMAT PARQUET, COMPRESSION 'ZSTD');\""
+
+
+rule generate_occupation_groups:
+    """Write the 5-row ACS major occupation group reference CSV.
+
+    Codes are the 4-digit ACS PUMS occupation code range boundaries (from
+    ACSPUMS2024CodeLists.xls). The occ_group_code values match the occ_group
+    derived column added to psam_pus.parquet in the ETL query.
+    """
+    output: f"{DATA_DIR}/occupation_groups.csv"
+    run:
+        import csv
+        rows = [
+            ("occ_group_code", "occ_group_name", "socp_min", "socp_max"),
+            ("mgmt_business_science_arts", "Management, Business, Science, and Arts", 10, 3550),
+            ("service", "Service", 3601, 4655),
+            ("sales_office", "Sales and Office", 4700, 5940),
+            ("natural_resources_construction", "Natural Resources, Construction, and Maintenance", 6005, 7640),
+            ("production_transportation", "Production, Transportation, and Material Moving", 7700, 9760),
+        ]
+        with open(output[0], "w", newline="") as f:
+            csv.writer(f).writerows(rows)
+
+
+rule generate_occupation_subgroups:
+    """Write the 24-row ACS Level 2 occupation subgroup reference CSV.
+
+    Ranges are the 4-digit ACS PUMS occupation code boundaries from the
+    ACSPUMS2024CodeLists.xls Occupation sheet (intermediate sub-sector level).
+    The occ_subgroup_code values match the occ_subgroup derived column added
+    to psam_pus.parquet in the ETL query.
+    """
+    output: f"{DATA_DIR}/occupation_subgroups.csv"
+    run:
+        import csv
+        rows = [
+            ("occ_subgroup_code", "occ_subgroup_name", "socp_min", "socp_max"),
+            ("management", "Management Occupations", 10, 440),
+            ("business_financial", "Business and Financial Operations Occupations", 500, 960),
+            ("computer_math", "Computer and Mathematical Occupations", 1005, 1240),
+            ("architecture_engineering", "Architecture and Engineering Occupations", 1305, 1560),
+            ("life_physical_social_science", "Life, Physical, and Social Science Occupations", 1600, 1980),
+            ("community_social_service", "Community and Social Service Occupations", 2001, 2060),
+            ("legal", "Legal Occupations", 2100, 2180),
+            ("education_library", "Educational Instruction and Library Occupations", 2205, 2555),
+            ("arts_design_entertainment", "Arts, Design, Entertainment, Sports, and Media Occupations", 2600, 2920),
+            ("healthcare_practitioners", "Healthcare Practitioners and Technical Occupations", 3000, 3550),
+            ("healthcare_support", "Healthcare Support Occupations", 3601, 3655),
+            ("protective_service", "Protective Service Occupations", 3700, 3960),
+            ("food_preparation_serving", "Food Preparation and Serving Related Occupations", 4000, 4160),
+            ("building_grounds", "Building and Grounds Cleaning and Maintenance Occupations", 4200, 4255),
+            ("personal_care_service", "Personal Care and Service Occupations", 4330, 4655),
+            ("sales", "Sales and Related Occupations", 4700, 4965),
+            ("office_admin_support", "Office and Administrative Support Occupations", 5000, 5940),
+            ("farming_fishing_forestry", "Farming, Fishing, and Forestry Occupations", 6005, 6130),
+            ("construction_extraction", "Construction and Extraction Occupations", 6200, 6950),
+            ("installation_maintenance_repair", "Installation, Maintenance, and Repair Occupations", 7000, 7640),
+            ("production", "Production Occupations", 7700, 8990),
+            ("transportation", "Transportation Occupations", 9005, 9430),
+            ("material_moving", "Material Moving Occupations", 9510, 9760),
+            ("military", "Military Specific Occupations", 9800, 9830),
+        ]
+        with open(output[0], "w", newline="") as f:
+            csv.writer(f).writerows(rows)
+
+
+rule generate_industry_groups:
+    """Write the 14-row ACS major industry sector reference CSV.
+
+    Codes are the 4-digit ACS PUMS INDP code range boundaries (from
+    ACSPUMS2024CodeLists.xls Industry sheet). The ind_group_code values match
+    the industry_group derived column added to psam_pus in the ETL query.
+    Note: Transportation/Utilities uses two non-contiguous INDP ranges
+    (570-690 for Utilities, 6070-6390 for Transportation/Warehousing).
+    """
+    output: f"{DATA_DIR}/industry_groups.csv"
+    run:
+        import csv
+        rows = [
+            ("ind_group_code", "ind_group_name", "indp_ranges"),
+            ("agriculture_mining", "Agriculture, Forestry, Fishing and Hunting, and Mining", "170-490"),
+            ("construction", "Construction", "770"),
+            ("manufacturing", "Manufacturing", "1070-3990"),
+            ("wholesale_trade", "Wholesale Trade", "4070-4590"),
+            ("retail_trade", "Retail Trade", "4670-5791"),
+            ("transportation_utilities", "Transportation and Warehousing, and Utilities", "570-690,6070-6390"),
+            ("information", "Information", "6471-6781"),
+            ("finance_real_estate", "Finance and Insurance, and Real Estate and Rental and Leasing", "6871-7190"),
+            ("professional_management", "Professional, Scientific, and Management, and Administrative and Waste Management Services", "7270-7790"),
+            ("education_healthcare", "Educational Services, and Health Care and Social Assistance", "7860-8470"),
+            ("arts_entertainment_food", "Arts, Entertainment, and Recreation, and Accommodation and Food Services", "8561-8690"),
+            ("other_services", "Other Services (except Public Administration)", "8770-9290"),
+            ("public_administration", "Public Administration", "9370-9590"),
+            ("military_industry", "Military", "9670-9870"),
+        ]
+        with open(output[0], "w", newline="") as f:
+            csv.writer(f).writerows(rows)
+
+
+rule generate_language_groups:
+    """Write the 7-row ACS language family group reference CSV.
+
+    Groups map the 2024 ACS PUMS LANP codes to broad language families
+    (from ACSPUMS2024CodeLists.xls Language sheet). The lang_group_code
+    values match the language_group derived column added to psam_pus
+    in the ETL query. english_only covers persons with NULL LANP
+    (English-only speakers are not assigned a LANP code in ACS PUMS).
+    """
+    output: f"{DATA_DIR}/language_groups.csv"
+    run:
+        import csv
+        rows = [
+            ("lang_group_code", "lang_group_name", "lanp_range"),
+            ("english_only", "English Only", "NULL"),
+            ("spanish", "Spanish", "1200"),
+            ("european", "European Languages (Germanic, Romance, Slavic, Baltic)", "1000-1287 excl. 1200"),
+            ("south_central_asian", "South and Central Asian Languages (Indo-Iranian, Dravidian, Turkic)", "1288-1899"),
+            ("east_southeast_asian_pacific", "East and Southeast Asian and Pacific Island Languages", "1900-3600"),
+            ("middle_eastern_african", "Middle Eastern, North African, and Sub-Saharan African Languages", "4500-9998"),
+            ("other_unspecified", "Other and Unspecified Languages", "9999"),
+        ]
+        with open(output[0], "w", newline="") as f:
+            csv.writer(f).writerows(rows)
+
 
 rule convert_psam_hus_to_parquet:
     """Spatial join"""
     input: f"{DATA_DIR}/psam_hus.csv"
     output: f"{DATA_DIR}/psam_hus.parquet"
     shell:
-        f"uv run duckdb -c \"COPY '{DATA_DIR}/psam_hus.csv' TO '{DATA_DIR}/psam_hus.parquet' (FORMAT PARQUET, COMPRESSION 'ZSTD');\""
+        f"uv run duckdb -c \"SET preserve_insertion_order = false; SET threads = 1; SET memory_limit = '6GB'; SET temp_directory = '/tmp';COPY '{DATA_DIR}/psam_hus.csv' TO '{DATA_DIR}/psam_hus.parquet' (FORMAT PARQUET, ROW_GROUP_SIZE 1024, COMPRESSION 'ZSTD');\""
 
 
 
@@ -108,6 +256,29 @@ rule unzip_combine_american_community_survey_person_one_year_2024:
         f"cat {DATA_DIR}/psam_pusa.csv > {DATA_DIR}/psam_pus.csv && "
         f"tail -n +2 {DATA_DIR}/psam_pusb.csv >> {DATA_DIR}/psam_pus.csv"
 
+rule download_food_access:
+    output: f"{DATA_DIR}/food_access.zip"
+    shell:
+        f"wget https://www.ers.usda.gov/media/5627/food-access-research-atlas-data-download-2019.zip?v=21058 -O {DATA_DIR}/food_access.zip"
+
+
+rule extract_food_access:
+    input: f"{DATA_DIR}/food_access.zip"
+    output: f"{DATA_DIR}/Food Access Research Atlas.csv"
+    shell:
+        "unzip -o {input} -d \"{DATA_DIR}/\""
+
+rule download_fema_risk_data:
+    output: f"{DATA_DIR}/fema_risk_data.zip"
+    shell:
+        f"wget https://www.fema.gov/about/reports-and-data/openfema/nri/v120/NRI_Table_CensusTracts.zip -O {DATA_DIR}/fema_risk_data.zip"
+
+rule extract_fema_risk_tracts:
+    input: f"{DATA_DIR}/fema_risk_data.zip"
+    output: f"{DATA_DIR}/NRI_Table_CensusTracts.csv"
+    shell:
+        "unzip -o {input} -d \"{DATA_DIR}/\""
+
 rule download_american_community_survey_household_one_year_2024:
     # resources:
     #     census_download=1
@@ -117,7 +288,6 @@ rule download_american_community_survey_household_one_year_2024:
         f"  {CENSUS_WGET} --timeout={SHORT_TIMEOUT_SECONDS} --tries=100"
         "    'https://www2.census.gov/programs-surveys/acs/data/pums/2024/1-Year/csv_hus.zip'"
         "    -O {output} "
-
 
 rule download_american_community_survey_person_one_year_2024:
     # resources:
@@ -163,18 +333,18 @@ rule download_tiger_addr:
 rule download_tiger_block_groups:
     # resources:
     #     census_download=1
-    output: f"{DATA_DIR}/tl_2024_{{block_group_fips}}_bg.zip"
+    output: f"{DATA_DIR}/tl_2024_{{state_fips}}_bg.zip"
     threads: 1
     shell:
         "sleep $((5 + RANDOM % 10)) && "
         f"  {CENSUS_WGET} --timeout={SHORT_TIMEOUT_SECONDS} --tries=100"
-        "    'https://www2.census.gov/geo/tiger/TIGER2024/BG/tl_2024_{wildcards.block_group_fips}_bg.zip'"
+        "    'https://www2.census.gov/geo/tiger/TIGER2024/BG/tl_2024_{wildcards.state_fips}_bg.zip'"
         "    -O {output} "
 
 
 rule extract_tiger_block_groups:
-    input: f"{DATA_DIR}/tl_2024_{{block_group_fips}}_bg.zip"
-    output: f"{DATA_DIR}/tl_2024_{{block_group_fips}}_bg.shp"
+    input: f"{DATA_DIR}/tl_2024_{{state_fips}}_bg.zip"
+    output: f"{DATA_DIR}/tl_2024_{{state_fips}}_bg.shp"
     shell:
         "unzip -o {input} -d \"{DATA_DIR}/\""
 
@@ -238,7 +408,8 @@ rule extract_osm_nodes:
 
 rule create_osm_node_tract_crosswalk:
     """Spatial join"""
-    input: f"{DATA_DIR}/united_states_nodes.csv"
+    input: f"{DATA_DIR}/united_states_nodes.csv",
+           f"{DATA_DIR}/tract_combined.shp"
     output: f"{DATA_DIR}/united_states_nodes_tract_crosswalk.csv"
     shell:
         f"uv run python {SCRIPTS}/join_to_tracts.py {DATA_DIR}"
@@ -249,8 +420,6 @@ rule convert_osm_node_tract_crosswalk_to_parquet:
     output: f"{DATA_DIR}/united_states_nodes_tract_crosswalk.parquet"
     shell:
         f"uv run duckdb -c \"COPY '{DATA_DIR}/united_states_nodes_tract_crosswalk.csv' TO '{DATA_DIR}/united_states_nodes_tract_crosswalk.parquet' (FORMAT PARQUET, COMPRESSION 'ZSTD');\""
-
-
 
 
 rule filter_wikidata_us_points:
@@ -273,6 +442,14 @@ rule download_cjars:
         "    'https://www2.census.gov/programs-surveys/cjars/datasets/2022/cjars_joe_2022_co.csv.zip'"
         "    -O {output} "
 
+rule download_rural_urban_codes:
+    output: f"{DATA_DIR}/rural_urban_county_codes.csv"
+    shell:
+        "sleep $((5 + RANDOM % 10)) && "
+        f"  {CENSUS_WGET} --timeout={SHORT_TIMEOUT_SECONDS} --tries=100"
+        "   'https://www.ers.usda.gov/media/5768/2023-rural-urban-continuum-codes.csv?v=31038'"
+        "    -O {output} "
+
 
 rule extract_cjars:
     input: f"{DATA_DIR}/cjars_joe_2022_co.csv.zip"
@@ -284,7 +461,7 @@ rule convert_cjars_to_parquet:
     input: f"{DATA_DIR}/output/cjars_joe_2022_co.csv"
     output: f"{DATA_DIR}/output/cjars_joe_2022_co.parquet"
     shell:
-        f"uv run duckdb -c \"COPY '{DATA_DIR}/output/cjars_joe_2022_co.csv' TO '{DATA_DIR}/output/cjars_joe_2022_co.parquet' (FORMAT PARQUET, COMPRESSION 'ZSTD');\""
+        f"uv run duckdb -c \"SET preserve_insertion_order = false; SET threads = 1; SET memory_limit = '6GB'; SET temp_directory = '/tmp'; COPY '{DATA_DIR}/output/cjars_joe_2022_co.csv' TO '{DATA_DIR}/output/cjars_joe_2022_co.parquet' (FORMAT PARQUET, ROW_GROUP_SIZE 1024, COMPRESSION 'ZSTD');\""
 
 rule download_tiger_state:
     # resources:
@@ -304,19 +481,23 @@ rule extract_tiger_state_boundaries:
         "unzip -o {input} -d \"{DATA_DIR}/\""
 
 
-rule download_filter_wikidata:
+rule download_wikidata:
     """Stream-download the full dump, filter to geopoint entities, recompress."""
+    output: f"{DATA_DIR}/latest-all.json.bz2"
+    shell:
+        # f"[ -f {DATA_DIR}/latest-all.json.bz2 ] || wget --continue -nc 'https://dumps.wikimedia.org/wikidatawiki/entities/latest-all.json.bz2' -O {output} "
+        f"touch {DATA_DIR}/latest-all.json.bz2"
+
+
+rule filter_wikidata:
+    """Stream-download the full dump, filter to geopoint entities, recompress."""
+    input: f"{DATA_DIR}/latest-all.json.bz2"
     output: f"{DATA_DIR}/wikidata_compressed.json.bz2"
     shell:
-        "wget 'https://dumps.wikimedia.org/wikidatawiki/entities/latest-all.json.bz2'"
-        " -O -"
-        " | bunzip2 -c"
+        "cat {input} | bunzip2 -c"
         f" | uv run python '{SCRIPTS}/compress_wikidata.py'"
         " | bzip2 -c"
         " > {output}"
-
-
-
 
 
 rule unzip_tiger_puma:
@@ -327,14 +508,14 @@ rule unzip_tiger_puma:
 
 
 rule concatenate_tiger_puma:
-    input: expand(f"{DATA_DIR}/tl_2024_{{PUMA_STATE_FIPS}}_puma20.shp", PUMA_STATE_FIPS=fod_config.puma_state_fips)
+    input: expand(f"{DATA_DIR}/tl_2024_{{puma_state_fips}}_puma20.shp", puma_state_fips=fod_config.puma_state_fips)
     output: f"{DATA_DIR}/puma_combined.shp"
     shell:
         f"DATA_DIR={DATA_DIR} uv run python '{SCRIPTS}/concatenate_puma_shape_files.py'"
 
 
 rule concatenate_tiger_tract:
-    input: expand(f"{DATA_DIR}/tl_2025_{{PUMA_STATE_FIPS}}_tract.shp", PUMA_STATE_FIPS=fod_config.puma_state_fips)
+    input: expand(f"{DATA_DIR}/tl_2025_{{state_fips}}_tract.shp", state_fips=fod_config.state_fips)
     output: f"{DATA_DIR}/tract_combined.shp"
     shell:
         f"DATA_DIR={DATA_DIR} uv run python '{SCRIPTS}/concatenate_tract_shape_files.py'"
@@ -349,7 +530,7 @@ rule download_tiger_puma:
         "    -O {output}"
 
 rule concatenate_tiger_bg:
-    input: expand(f"{DATA_DIR}/tl_2024_{{block_group_fips}}_bg.shp", block_group_fips=fod_config.block_group_fips)
+    input: expand(f"{DATA_DIR}/tl_2024_{{state_fips}}_bg.shp", state_fips=fod_config.state_fips)
     output: f"{DATA_DIR}/combined_block_groups.shp"
     shell:
         f"DATA_DIR='{DATA_DIR}' uv run python '{SCRIPTS}/concatenate_shape_files.py'"
@@ -366,7 +547,7 @@ rule download_fy2025_contracts:
     output: f"{DATA_DIR}/FY2025_All_Contracts_Full_20260506.zip"
     shell:
         "sleep $((5 + RANDOM % 10)) && "
-        f"{CENSUS_WGET} --timeout={SHORT_TIMEOUT_SECONDS} --tries=100"
+        f"{CENSUS_WGET} --timeout={SHORT_TIMEOUT_SECONDS} --continue --tries=100"
         "    'https://files.usaspending.gov/award_data_archive/FY2025_All_Contracts_Full_20260506.zip'"
         "    -O {output}"
 
@@ -376,6 +557,22 @@ rule extract_fy2025_contracts:
     output: f"{DATA_DIR}/FY2025_All_Contracts_Full_20260506.csv"
     shell:
         "unzip -o {input} -d \"{DATA_DIR}/\" && head -1 {DATA_DIR}/FY2025_All_Contracts_Full_20260506_1.csv > {DATA_DIR}/tmp && cat {DATA_DIR}/FY2025_All_Contracts*csv | grep -v last_modified_date >> {DATA_DIR}/tmp && mv {DATA_DIR}/tmp {DATA_DIR}/FY2025_All_Contracts_Full_20260506.csv"
+
+
+rule split_contracts_by_state:
+    """Extract rows for a single state from the combined FY2025 contracts CSV.
+
+    Output used by build_state_pipeline() in fastopendata.etl.state_pipeline.
+    Run per-state:
+        DATA_DIR=... snakemake --cores 4 "$DATA_DIR/contracts_state_13.csv"
+    """
+    input: f"{DATA_DIR}/FY2025_All_Contracts_Full_20260506.csv"
+    output: f"{DATA_DIR}/contracts_state_{{fips}}.csv"
+    shell:
+        f"STATE_FIPS={{wildcards.fips}} DATA_DIR={DATA_DIR} "
+        f"uv run python {SCRIPTS}/extract_state_contracts.py"
+
+
 # NOTE: Legacy commented-out rules for ACS PUMS, SIPP, AHS, and earlier
 # TIGER/CJARS/OSM/Wikidata rule versions were removed in this cleanup.
 # See git history for the archived rule definitions if needed.
