@@ -25,6 +25,8 @@ sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 from fastopendata.config import config as fod_config
 
+DOCS_DIR = str(Path(workflow.basedir).parent.parent / "docs")
+
 _DATA_DIR_RAW = os.environ.get('DATA_DIR')
 if not _DATA_DIR_RAW:
     sys.exit(
@@ -70,14 +72,29 @@ rule all:
         expand(f"{DATA_DIR}/tl_2024_{{state_fips}}_bg.shp", state_fips=fod_config.state_fips),
         f"{DATA_DIR}/combined_block_groups.shp",  # Add parameter or whatever for state_fips
         f"{DATA_DIR}/FY2025_All_Contracts_Full_20260506.csv",
-        f"{DATA_DIR}/Food Access Research Atlas.csv",
+        f"{DATA_DIR}/food_access.parquet",
         f"{DATA_DIR}/NRI_Table_CensusTracts.csv",
-        f"{DATA_DIR}/rural_urban_county_codes.csv",
+        f"{DATA_DIR}/rural_urban_county_codes.parquet",
         f"{DATA_DIR}/occupation_groups.csv",
         f"{DATA_DIR}/occupation_subgroups.csv",
         f"{DATA_DIR}/industry_groups.csv",
         f"{DATA_DIR}/language_groups.csv",
+        f"{DATA_DIR}/psam_pus_5yr.parquet",
+        f"{DATA_DIR}/psam_hus_5yr.parquet",
+        f"{DATA_DIR}/slfs23_1a.txt",
+        f"{DOCS_DIR}/ACS2020_2024_PUMS_README.pdf",
         # expand(f"{DATA_DIR}/tl_2024_{{acs_zip_files}}_bg.shp", acs_zip_files=fod_config.datasets.acs_zip_files),
+
+rule unzip_common_core_fiscal_data_2022:
+    input: f"{DATA_DIR}/common_core_fiscal_2022.zip"
+    output: f"{DATA_DIR}/slfs23_1a.txt"
+    shell:
+        f"unzip -o {input} -d \"{DATA_DIR}/\""
+
+rule download_common_core_fiscal_data_2022:
+    output: f"{DATA_DIR}/common_core_fiscal_2022.zip"
+    shell:
+        "wget https://nces.ed.gov/ccd/data/zip/slfs23_1a_txt.zip -o {output}"
 
 rule unzip_combine_american_community_survey_household_one_year_2024:
     # resources:
@@ -256,6 +273,104 @@ rule unzip_combine_american_community_survey_person_one_year_2024:
         f"cat {DATA_DIR}/psam_pusa.csv > {DATA_DIR}/psam_pus.csv && "
         f"tail -n +2 {DATA_DIR}/psam_pusb.csv >> {DATA_DIR}/psam_pus.csv"
 
+rule download_american_community_survey_household_5yr_2024:
+    # resources:
+    #     census_download=1
+    output: f"{data_dir}/csv_hus_5yr.zip"
+    shell:
+        "sleep $((5 + random % 10)) && "
+        f"  {census_wget} --timeout={long_timeout_seconds} --tries=100"
+        "    'https://www2.census.gov/programs-surveys/acs/data/pums/2024/5-year/csv_hus.zip'"
+        "    -o {output} "
+
+rule download_american_community_survey_person_5yr_2024:
+    # resources:
+    #     census_download=1
+    output: f"{DATA_DIR}/csv_pus_5yr.zip"
+    shell:
+        "sleep $((5 + RANDOM % 10)) && "
+        f"  {CENSUS_WGET} --timeout={LONG_TIMEOUT_SECONDS} --tries=100"
+        "    'https://www2.census.gov/programs-surveys/acs/data/pums/2024/5-Year/csv_pus.zip'"
+        "    -O {output} "
+
+rule unzip_combine_american_community_survey_household_5yr_2024:
+    """Unzip and concatenate 5-year ACS PUMS housing file parts.
+
+    Extracts to 5yr_hus_tmp/ to avoid collision with 1-year psam_hus*.csv
+    files. Concatenates all psam_hus*.csv parts found after extraction.
+    """
+    input: f"{DATA_DIR}/csv_hus_5yr.zip"
+    output: f"{DATA_DIR}/psam_hus_5yr.csv"
+    run:
+        import subprocess, os, glob
+        tmp = f"{DATA_DIR}/5yr_hus_tmp"
+        os.makedirs(tmp, exist_ok=True)
+        subprocess.run(["unzip", "-o", input[0], "-d", tmp], check=True)
+        parts = sorted(glob.glob(f"{tmp}/psam_hus*.csv"))
+        with open(output[0], "wb") as out:
+            for i, part in enumerate(parts):
+                with open(part, "rb") as f:
+                    if i == 0:
+                        out.write(f.read())
+                    else:
+                        f.readline()  # skip repeated header
+                        out.write(f.read())
+
+rule unzip_combine_american_community_survey_person_5yr_2024:
+    """Unzip and concatenate 5-year ACS PUMS person file parts.
+
+    The 5-year person file is split into multiple parts (typically 2–4)
+    due to the larger sample size (~15M rows). Extracts to 5yr_pus_tmp/
+    to avoid collision with 1-year psam_pus*.csv files. Concatenates all
+    psam_pus*.csv parts found after extraction regardless of part count.
+    """
+    input: f"{DATA_DIR}/csv_pus_5yr.zip"
+    output: f"{DATA_DIR}/psam_pus_5yr.csv"
+    run:
+        import subprocess, os, glob
+        tmp = f"{DATA_DIR}/5yr_pus_tmp"
+        os.makedirs(tmp, exist_ok=True)
+        subprocess.run(["unzip", "-o", input[0], "-d", tmp], check=True)
+        parts = sorted(glob.glob(f"{tmp}/psam_pus*.csv"))
+        with open(output[0], "wb") as out:
+            for i, part in enumerate(parts):
+                with open(part, "rb") as f:
+                    if i == 0:
+                        out.write(f.read())
+                    else:
+                        f.readline()  # skip repeated header
+                        out.write(f.read())
+
+rule convert_psam_hus_5yr_to_parquet:
+    input: f"{DATA_DIR}/psam_hus_5yr.csv"
+    output: f"{DATA_DIR}/psam_hus_5yr.parquet"
+    shell:
+        f"uv run duckdb -c \"SET preserve_insertion_order = false; SET threads = 1; SET memory_limit = '6GB'; SET temp_directory = '/tmp'; COPY '{DATA_DIR}/psam_hus_5yr.csv' TO '{DATA_DIR}/psam_hus_5yr.parquet' (FORMAT PARQUET, ROW_GROUP_SIZE 1024, COMPRESSION 'ZSTD');\""
+
+rule convert_psam_pus_5yr_to_parquet:
+    input: f"{DATA_DIR}/psam_pus_5yr.csv"
+    output: f"{DATA_DIR}/psam_pus_5yr_tmp.parquet"
+    shell:
+        f"uv run duckdb -c \"SET preserve_insertion_order = false; SET threads = 1; SET memory_limit = '6GB'; SET temp_directory = '/tmp'; COPY '{DATA_DIR}/psam_pus_5yr.csv' TO '{DATA_DIR}/psam_pus_5yr_tmp.parquet' (FORMAT PARQUET, ROW_GROUP_SIZE 1024, COMPRESSION 'ZSTD');\""
+
+rule extract_pums_5yr_readme:
+    """Extract the ACS 2020-2024 PUMS README PDF from the housing zip into docs/.
+
+    The PDF is present in both the housing and person 5-year zips; we pull it
+    from the housing zip since it is the smaller of the two downloads.
+    """
+    input: f"{DATA_DIR}/csv_hus_5yr.zip"
+    output: f"{DOCS_DIR}/ACS2020_2024_PUMS_README.pdf"
+    shell:
+        "unzip -p {input} ACS2020_2024_PUMS_README.pdf > {output}"
+
+rule add_puma_fips_to_psam_pus_5yr:
+    input: f"{DATA_DIR}/psam_pus_5yr_tmp.parquet"
+    output: f"{DATA_DIR}/psam_pus_5yr.parquet"
+    shell:
+        f"uv run duckdb -c \"SET preserve_insertion_order = false; SET threads = 1; SET memory_limit = '6GB'; SET temp_directory = '/tmp'; COPY (SELECT *, STATE || PUMA AS PUMA_FIPS FROM '{DATA_DIR}/psam_pus_5yr_tmp.parquet') TO '{DATA_DIR}/psam_pus_5yr.parquet' (FORMAT PARQUET, COMPRESSION 'ZSTD');\""
+
+
 rule download_food_access:
     output: f"{DATA_DIR}/food_access.zip"
     shell:
@@ -267,6 +382,24 @@ rule extract_food_access:
     output: f"{DATA_DIR}/Food Access Research Atlas.csv"
     shell:
         "unzip -o {input} -d \"{DATA_DIR}/\""
+
+
+rule convert_food_access_to_parquet:
+    input: f"{DATA_DIR}/Food Access Research Atlas.csv"
+    output: f"{DATA_DIR}/food_access.parquet"
+    run:
+        import pandas as pd
+        df = pd.read_csv(input[0], encoding="latin-1", dtype=str)
+        df["TRACT_FIPS"] = (
+            df["CensusTract"]
+            .astype(str)
+            .str.split(".")
+            .str[0]
+            .str.zfill(11)
+        )
+        df = df.drop(columns=["CensusTract"])
+        df.to_parquet(output[0], index=False)
+
 
 rule download_fema_risk_data:
     output: f"{DATA_DIR}/fema_risk_data.zip"
@@ -451,17 +584,54 @@ rule download_rural_urban_codes:
         "    -O {output} "
 
 
+rule pivot_rural_urban_county_codes:
+    input: f"{DATA_DIR}/rural_urban_county_codes.csv"
+    output: f"{DATA_DIR}/rural_urban_county_codes.parquet"
+    run:
+        import pandas as pd
+        df = pd.read_csv(input[0], encoding="latin-1", dtype={"FIPS": str})
+        wide = df.pivot_table(
+            index=["FIPS", "State", "County_Name"],
+            columns="Attribute",
+            values="Value",
+            aggfunc="first",
+        ).reset_index()
+        wide.columns.name = None
+        wide = wide.rename(columns={
+            "Population_2020": "population_2020",
+            "RUCC_2023": "rucc_2023",
+            "Description": "rucc_description",
+        })
+        wide["rucc_2023"] = pd.to_numeric(wide["rucc_2023"], errors="coerce").astype("Int64")
+        wide["population_2020"] = pd.to_numeric(wide["population_2020"], errors="coerce").astype("Int64")
+        wide.to_parquet(output[0], index=False)
+
+
 rule extract_cjars:
     input: f"{DATA_DIR}/cjars_joe_2022_co.csv.zip"
     output: f"{DATA_DIR}/output/cjars_joe_2022_co.csv"
     shell:
-        "unzip -o {input} -d \"{DATA_DIR}/\""
+        f"unzip -o {{input}} -d \"{DATA_DIR}/\""
 
 rule convert_cjars_to_parquet:
     input: f"{DATA_DIR}/output/cjars_joe_2022_co.csv"
     output: f"{DATA_DIR}/output/cjars_joe_2022_co.parquet"
     shell:
         f"uv run duckdb -c \"SET preserve_insertion_order = false; SET threads = 1; SET memory_limit = '6GB'; SET temp_directory = '/tmp'; COPY '{DATA_DIR}/output/cjars_joe_2022_co.csv' TO '{DATA_DIR}/output/cjars_joe_2022_co.parquet' (FORMAT PARQUET, ROW_GROUP_SIZE 1024, COMPRESSION 'ZSTD');\""
+
+rule download_election_data_repository:
+    output: f"{DATA_DIR}/elections_repository.zip"
+    shell:
+        f"wget -o https://github.com/MEDSL/2024-elections-official/archive/refs/heads/main.zip -O {DATA_DIR}/elections_repository.zip"
+
+
+# START HERE: Unzip and name all the state zip files...
+# rule unzip_election_data_repository:
+#     input: f"{DATA_DIR}/elections_repository.zip"
+#     input: expand(f"{DATA_DIR}/tl_2024_{{puma_state_fips}}_puma20.shp", puma_state_fips=fod_config.puma_state_fips)
+#     output: thingy
+#     shell:
+#         f"wget -o https://github.com/MEDSL/2024-elections-official/archive/refs/heads/main.zip -O {DATA_DIR}/elections_repository.zip"
 
 rule download_tiger_state:
     # resources:
