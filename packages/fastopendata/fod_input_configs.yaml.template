@@ -1782,6 +1782,8 @@ sources:
     - id: person_resides_in_unit
       uri: "file://${DATA_DIR}/psam_pus.parquet"
       relationship_type: RESIDES_IN
+      source_entity_type: PersonSurvey
+      target_entity_type: HousingSurvey
       source_col: PERSON_ID
       target_col: SERIALNO
       query: "SELECT SERIALNO || '_' || CAST(SPORDER AS VARCHAR) AS PERSON_ID, SERIALNO FROM source"
@@ -1789,6 +1791,8 @@ sources:
     - id: person_works_in_occ_group
       uri: "file://${DATA_DIR}/psam_pus.parquet"
       relationship_type: WORKS_IN
+      source_entity_type: PersonSurvey
+      target_entity_type: OccupationGroup
       source_col: PERSON_ID
       target_col: occ_group
       query: >-
@@ -1805,6 +1809,8 @@ sources:
     - id: person_works_in_occ_subgroup
       uri: "file://${DATA_DIR}/psam_pus.parquet"
       relationship_type: WORKS_IN
+      source_entity_type: PersonSurvey
+      target_entity_type: OccupationSubgroup
       source_col: PERSON_ID
       target_col: occ_subgroup
       query: >-
@@ -1840,6 +1846,8 @@ sources:
     - id: person_works_in_industry
       uri: "file://${DATA_DIR}/psam_pus.parquet"
       relationship_type: EMPLOYED_IN
+      source_entity_type: PersonSurvey
+      target_entity_type: IndustryGroup
       source_col: PERSON_ID
       target_col: industry_group
       query: >-
@@ -1865,6 +1873,8 @@ sources:
     - id: person_speaks_language_group
       uri: "file://${DATA_DIR}/psam_pus.parquet"
       relationship_type: SPEAKS
+      source_entity_type: PersonSurvey
+      target_entity_type: LanguageGroup
       source_col: PERSON_ID
       target_col: language_group
       query: >-
@@ -1895,6 +1905,8 @@ sources:
     - id: person_5yr_resides_in_unit
       uri: "file://${DATA_DIR}/psam_pus_5yr.parquet"
       relationship_type: RESIDES_IN
+      source_entity_type: PersonSurvey5yr
+      target_entity_type: HousingSurvey5yr
       source_col: PERSON_ID
       target_col: SERIALNO
       query: "SELECT SERIALNO || '_' || CAST(SPORDER AS VARCHAR) AS PERSON_ID, SERIALNO FROM source"
@@ -1902,6 +1914,8 @@ sources:
     - id: person_5yr_works_in_occ_group
       uri: "file://${DATA_DIR}/psam_pus_5yr.parquet"
       relationship_type: WORKS_IN
+      source_entity_type: PersonSurvey5yr
+      target_entity_type: OccupationGroup
       source_col: PERSON_ID
       target_col: occ_group
       query: >-
@@ -1918,6 +1932,8 @@ sources:
     - id: person_5yr_works_in_occ_subgroup
       uri: "file://${DATA_DIR}/psam_pus_5yr.parquet"
       relationship_type: WORKS_IN
+      source_entity_type: PersonSurvey5yr
+      target_entity_type: OccupationSubgroup
       source_col: PERSON_ID
       target_col: occ_subgroup
       query: >-
@@ -1953,6 +1969,8 @@ sources:
     - id: person_5yr_works_in_industry
       uri: "file://${DATA_DIR}/psam_pus_5yr.parquet"
       relationship_type: EMPLOYED_IN
+      source_entity_type: PersonSurvey5yr
+      target_entity_type: IndustryGroup
       source_col: PERSON_ID
       target_col: industry_group
       query: >-
@@ -1978,6 +1996,8 @@ sources:
     - id: person_5yr_speaks_language_group
       uri: "file://${DATA_DIR}/psam_pus_5yr.parquet"
       relationship_type: SPEAKS
+      source_entity_type: PersonSurvey5yr
+      target_entity_type: LanguageGroup
       source_col: PERSON_ID
       target_col: language_group
       query: >-
@@ -2023,10 +2043,14 @@ queries:
   - id: decode_tags
     description: "Testing whether we can call a function to decode serialized data"
     inline: MATCH (o:OSMNode) WITH o.encoded_tags AS encoded_tags, o SET o.decoded_tags = decode_serialized(encoded_tags)
+    property_types:
+      decoded_tags: str
 
   - id: tract_rucc_code
     description: "Propagate county RUCC code and description down to each tract"
     inline: "MATCH (t:Tract)-[:IN]->(c:County) SET t.rucc_2023 = c.rucc_2023, t.rucc_description = c.rucc_description"
+    property_types:
+      rucc_2023: int
 
   - id: puma_rucc_stats
     description: "Compute average RUCC score and rural/metro tract fractions for each PUMA"

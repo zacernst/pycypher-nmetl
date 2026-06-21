@@ -1,0 +1,131 @@
+"""
+Generate Pydantic BaseModel classes from fod_input_configs.yaml.template.
+
+Reads the template via schema_inference.infer_schema(), then emits a
+graph_models.py file with one Optional-field BaseModel per node label and
+string-enum classes for node/relationship labels.
+
+Usage
+-----
+As a module (called by ``make generate-models``)::
+
+    uv run python -m fastopendata.generate_models \\
+        packages/fastopendata/fod_input_configs.yaml.template \\
+        packages/fastopendata/src/fastopendata/graph_models.py
+
+Positional arguments
+--------------------
+template_path  Path to fod_input_configs.yaml.template  [default: auto-detected]
+output_path    Destination for generated graph_models.py [default: graph_models.py
+               beside this script]
+"""
+
+from __future__ import annotations
+
+import sys
+import textwrap
+from pathlib import Path
+
+from fastopendata.schema_inference import infer_schema
+
+# Maps the type strings returned by schema_inference to Python annotations.
+_TYPE_MAP: dict[str, str] = {
+    "int": "int",
+    "float": "float",
+    "str": "str",
+    "bool": "bool",
+}
+
+_OUTPUT_DEFAULT = Path(__file__).parent / "graph_models.py"
+
+
+def _class_name(label: str) -> str:
+    return label
+
+
+def _to_enum_member(name: str) -> str:
+    return name.upper().replace(" ", "_").replace("-", "_")
+
+
+def generate(template_path: Path | None = None, output_path: Path | None = None) -> None:
+    if output_path is None:
+        output_path = _OUTPUT_DEFAULT
+
+    schema = infer_schema(template_path)
+    node_types: dict[str, dict[str, str]] = schema["node_types"]
+    relationship_types: dict[str, list[dict]] = schema["relationship_types"]
+
+    lines: list[str] = []
+
+    lines += [
+        '"""',
+        "Graph node models auto-generated from fod_input_configs.yaml.template.",
+        "DO NOT EDIT — regenerate with: make generate-models",
+        '"""',
+        "",
+        "from __future__ import annotations",
+        "",
+        "from enum import Enum",
+        "from typing import Optional",
+        "",
+        "from pydantic import BaseModel",
+        "",
+        "",
+    ]
+
+    # NodeLabel enum
+    lines += ["class NodeLabel(str, Enum):"]
+    for label in sorted(node_types):
+        lines.append(f'    {label} = "{label}"')
+    lines += ["", ""]
+
+    # RelationshipType enum
+    lines += ["class RelationshipType(str, Enum):"]
+    for rel_type in sorted(relationship_types):
+        lines.append(f'    {_to_enum_member(rel_type)} = "{rel_type}"')
+    lines += ["", ""]
+
+    # One BaseModel per node label
+    for label, props in sorted(node_types.items()):
+        cls = _class_name(label)
+        lines.append(f"class {cls}(BaseModel):")
+        if not props:
+            lines.append("    pass")
+        else:
+            for prop, ptype in sorted(props.items()):
+                annotation = _TYPE_MAP.get(ptype, "float")
+                lines.append(f"    {prop}: Optional[{annotation}] = None")
+        lines += ["", ""]
+
+    # Relationship pair documentation as a plain dict (not a Pydantic model
+    # since cardinality is many-to-many and the pairs are metadata, not data).
+    lines += [
+        "# Relationship endpoint pairs extracted from the pipeline config.",
+        "# Format: {RelationshipType: [(source_label, target_label), ...]}",
+        "RELATIONSHIP_ENDPOINTS: dict[str, list[tuple[str, str]]] = {",
+    ]
+    for rel_type, pairs in sorted(relationship_types.items()):
+        lines.append(f'    "{rel_type}": [')
+        for pair in pairs:
+            lines.append(f'        ("{pair["from"]}", "{pair["to"]}"),')
+        lines.append("    ],")
+    lines += ["}", ""]
+
+    output_path.write_text("\n".join(lines))
+    node_count = len(node_types)
+    prop_count = sum(len(p) for p in node_types.values())
+    rel_count = len(relationship_types)
+    print(
+        f"Generated {output_path} — "
+        f"{node_count} node models, {prop_count} properties, {rel_count} relationship types"
+    )
+
+
+def main() -> None:
+    template_path = Path(sys.argv[1]) if len(sys.argv) > 1 else None
+    output_path = Path(sys.argv[2]) if len(sys.argv) > 2 else None
+    generate(template_path, output_path)
+
+
+if __name__ == "__main__":
+    main()

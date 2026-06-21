@@ -18,7 +18,7 @@ export PYCYPHER_DIR := ${PACKAGES_DIR}/pycypher
 export SHARED_DIR := ${PACKAGES_DIR}/shared
 export FASTOPENDATA_DIR := ${PACKAGES_DIR}/fastopendata
 export LC_ALL := C
-export DATA_DIR := /run/media/zac/2tb/fastopendata/data
+export DATA_DIR := /home/zac/scratch# /run/media/zac/2tb/fastopendata/data
 
 # Documentation paths
 export DOCS_DIR := ${PROJECT_ROOT}/docs
@@ -292,6 +292,13 @@ test-telemetry:
 fod_config:
 	@echo "Building configuration file from template..."
 	envsubst < ${FASTOPENDATA_DIR}/fod_input_configs.yaml.template > ${FASTOPENDATA_DIR}/fod_input_configs.yaml
+
+
+generate-models:
+	@echo "Generating Pydantic graph models from config template..."
+	uv run python -m fastopendata.generate_models \
+		${FASTOPENDATA_DIR}/fod_input_configs.yaml.template \
+		${FASTOPENDATA_DIR}/src/fastopendata/graph_models.py
 
 
 nmetl-go: fod_config fod-data

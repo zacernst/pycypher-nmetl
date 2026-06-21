@@ -477,6 +477,11 @@ class Config:
         return self._data["geography"]["block_group_fips"]
 
     @property
+    def state_abbrev(self) -> list[str]:
+        """List of two-letter state abbreviations"""
+        return self._data["geography"]["state_abbrev"]
+
+    @property
     def puma_state_fips(self) -> list[str]:
         """List of state and territory FIPS codes."""
         return self._data["geography"]["puma_state_fips"]
