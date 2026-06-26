@@ -773,31 +773,31 @@ sources:
         TRACT: STRING
         TRACTFIPS: STRING
         NRI_ID: STRING
-        POPULATION: STRING
-        BUILDVALUE: STRING
-        AGRIVALUE: STRING
-        AREA: STRING
-        RISK_VALUE: STRING
-        RISK_SCORE: STRING
+        POPULATION: FLOAT
+        BUILDVALUE: FLOAT
+        AGRIVALUE: FLOAT
+        AREA: FLOAT
+        RISK_VALUE: FLOAT
+        RISK_SCORE: FLOAT
         RISK_RATNG: STRING
-        RISK_SPCTL: STRING
-        EAL_SCORE: STRING
+        RISK_SPCTL: FLOAT
+        EAL_SCORE: FLOAT
         EAL_RATNG: STRING
-        EAL_SPCTL: STRING
-        EAL_VALT: STRING
-        EAL_VALB: STRING
-        EAL_VALP: STRING
-        EAL_VALPE: STRING
-        EAL_VALA: STRING
-        ALR_VALB: STRING
-        ALR_VALP: STRING
-        ALR_VALA: STRING
-        ALR_NPCTL: STRING
-        ALR_VRA_NPCTL: STRING
-        SOVI_SCORE: STRING
+        EAL_SPCTL: FLOAT
+        EAL_VALT: FLOAT
+        EAL_VALB: FLOAT
+        EAL_VALP: FLOAT
+        EAL_VALPE: FLOAT
+        EAL_VALA: FLOAT
+        ALR_VALB: FLOAT
+        ALR_VALP: FLOAT
+        ALR_VALA: FLOAT
+        ALR_NPCTL: FLOAT
+        ALR_VRA_NPCTL: FLOAT
+        SOVI_SCORE: FLOAT
         SOVI_RATNG: STRING
-        SOVI_SPCTL: STRING
-        RESL_SCORE: STRING
+        SOVI_SPCTL: FLOAT
+        RESL_SCORE: FLOAT
         RESL_RATNG: STRING
         RESL_SPCTL: STRING
         RESL_VALUE: STRING
@@ -888,53 +888,53 @@ sources:
         DRGT_RISKV: STRING
         DRGT_RISKS: STRING
         DRGT_RISKR: STRING
-        ERQK_EVNTS: STRING
-        ERQK_AFREQ: STRING
-        ERQK_EXPB: STRING
-        ERQK_EXPP: STRING
-        ERQK_EXPPE: STRING
-        ERQK_EXPT: STRING
-        ERQK_EXP_AREA: STRING
-        ERQK_HLRB: STRING
-        ERQK_HLRP: STRING
-        ERQK_HLRR: STRING
-        ERQK_EALB: STRING
-        ERQK_EALP: STRING
-        ERQK_EALPE: STRING
-        ERQK_EALT: STRING
-        ERQK_EALS: STRING
-        ERQK_EALR: STRING
-        ERQK_ALRB: STRING
-        ERQK_ALRP: STRING
-        ERQK_ALR_NPCTL: STRING
-        ERQK_RISKV: STRING
-        ERQK_RISKS: STRING
+        ERQK_EVNTS: FLOAT
+        ERQK_AFREQ: FLOAT
+        ERQK_EXPB: FLOAT
+        ERQK_EXPP: FLOAT
+        ERQK_EXPPE: FLOAT
+        ERQK_EXPT: FLOAT
+        ERQK_EXP_AREA: FLOAT
+        ERQK_HLRB: FLOAT
+        ERQK_HLRP: FLOAT
+        ERQK_HLRR: FLOAT
+        ERQK_EALB: FLOAT
+        ERQK_EALP: FLOAT
+        ERQK_EALPE: FLOAT
+        ERQK_EALT: FLOAT
+        ERQK_EALS: FLOAT
+        ERQK_EALR: FLOAT
+        ERQK_ALRB: FLOAT
+        ERQK_ALRP: FLOAT
+        ERQK_ALR_NPCTL: FLOAT
+        ERQK_RISKV: FLOAT
+        ERQK_RISKS: FLOAT
         ERQK_RISKR: STRING
-        HAIL_EVNTS: STRING
-        HAIL_AFREQ: STRING
-        HAIL_EXPB: STRING
-        HAIL_EXPP: STRING
-        HAIL_EXPPE: STRING
-        HAIL_EXPA: STRING
-        HAIL_EXPT: STRING
-        HAIL_EXP_AREA: STRING
-        HAIL_HLRB: STRING
-        HAIL_HLRP: STRING
-        HAIL_HLRA: STRING
-        HAIL_HLRR: STRING
-        HAIL_EALB: STRING
-        HAIL_EALP: STRING
-        HAIL_EALPE: STRING
-        HAIL_EALA: STRING
-        HAIL_EALT: STRING
-        HAIL_EALS: STRING
-        HAIL_EALR: STRING
-        HAIL_ALRB: STRING
-        HAIL_ALRP: STRING
-        HAIL_ALRA: STRING
-        HAIL_ALR_NPCTL: STRING
-        HAIL_RISKV: STRING
-        HAIL_RISKS: STRING
+        HAIL_EVNTS: FLOAT
+        HAIL_AFREQ: FLOAT
+        HAIL_EXPB: FLOAT
+        HAIL_EXPP: FLOAT
+        HAIL_EXPPE: FLOAT
+        HAIL_EXPA: FLOAT
+        HAIL_EXPT: FLOAT
+        HAIL_EXP_AREA: FLOAT
+        HAIL_HLRB: FLOAT
+        HAIL_HLRP: FLOAT
+        HAIL_HLRA: FLOAT
+        HAIL_HLRR: FLOAT
+        HAIL_EALB: FLOAT
+        HAIL_EALP: FLOAT
+        HAIL_EALPE: FLOAT
+        HAIL_EALA: FLOAT
+        HAIL_EALT: FLOAT
+        HAIL_EALS: FLOAT
+        HAIL_EALR: FLOAT
+        HAIL_ALRB: FLOAT
+        HAIL_ALRP: FLOAT
+        HAIL_ALRA: FLOAT
+        HAIL_ALR_NPCTL: FLOAT
+        HAIL_RISKV: FLOAT
+        HAIL_RISKS: FLOAT
         HAIL_RISKR: STRING
         HWAV_EVNTS: STRING
         HWAV_AFREQ: STRING
@@ -962,31 +962,31 @@ sources:
         HWAV_RISKV: STRING
         HWAV_RISKS: STRING
         HWAV_RISKR: STRING
-        HRCN_EVNTS: STRING
-        HRCN_AFREQ: STRING
-        HRCN_EXPB: STRING
-        HRCN_EXPP: STRING
-        HRCN_EXPPE: STRING
-        HRCN_EXPA: STRING
-        HRCN_EXPT: STRING
-        HRCN_EXP_AREA: STRING
-        HRCN_HLRB: STRING
-        HRCN_HLRP: STRING
-        HRCN_HLRA: STRING
-        HRCN_HLRR: STRING
-        HRCN_EALB: STRING
-        HRCN_EALP: STRING
-        HRCN_EALPE: STRING
-        HRCN_EALA: STRING
-        HRCN_EALT: STRING
-        HRCN_EALS: STRING
-        HRCN_EALR: STRING
-        HRCN_ALRB: STRING
-        HRCN_ALRP: STRING
-        HRCN_ALRA: STRING
-        HRCN_ALR_NPCTL: STRING
-        HRCN_RISKV: STRING
-        HRCN_RISKS: STRING
+        HRCN_EVNTS: FLOAT
+        HRCN_AFREQ: FLOAT
+        HRCN_EXPB: FLOAT
+        HRCN_EXPP: FLOAT
+        HRCN_EXPPE: FLOAT
+        HRCN_EXPA: FLOAT
+        HRCN_EXPT: FLOAT
+        HRCN_EXP_AREA: FLOAT
+        HRCN_HLRB: FLOAT
+        HRCN_HLRP: FLOAT
+        HRCN_HLRA: FLOAT
+        HRCN_HLRR: FLOAT
+        HRCN_EALB: FLOAT
+        HRCN_EALP: FLOAT
+        HRCN_EALPE: FLOAT
+        HRCN_EALA: FLOAT
+        HRCN_EALT: FLOAT
+        HRCN_EALS: FLOAT
+        HRCN_EALR: FLOAT
+        HRCN_ALRB: FLOAT
+        HRCN_ALRP: FLOAT
+        HRCN_ALRA: FLOAT
+        HRCN_ALR_NPCTL: FLOAT
+        HRCN_RISKV: FLOAT
+        HRCN_RISKS: FLOAT
         HRCN_RISKR: STRING
         ISTM_EVNTS: STRING
         ISTM_AFREQ: STRING
@@ -1080,57 +1080,57 @@ sources:
         IFLD_RISKV: STRING
         IFLD_RISKS: STRING
         IFLD_RISKR: STRING
-        SWND_EVNTS: STRING
-        SWND_AFREQ: STRING
-        SWND_EXPB: STRING
-        SWND_EXPP: STRING
-        SWND_EXPPE: STRING
-        SWND_EXPA: STRING
-        SWND_EXPT: STRING
-        SWND_EXP_AREA: STRING
-        SWND_HLRB: STRING
-        SWND_HLRP: STRING
-        SWND_HLRA: STRING
-        SWND_HLRR: STRING
-        SWND_EALB: STRING
-        SWND_EALP: STRING
-        SWND_EALPE: STRING
-        SWND_EALA: STRING
-        SWND_EALT: STRING
-        SWND_EALS: STRING
-        SWND_EALR: STRING
-        SWND_ALRB: STRING
-        SWND_ALRP: STRING
-        SWND_ALRA: STRING
-        SWND_ALR_NPCTL: STRING
-        SWND_RISKV: STRING
-        SWND_RISKS: STRING
+        SWND_EVNTS: FLOAT
+        SWND_AFREQ: FLOAT
+        SWND_EXPB: FLOAT
+        SWND_EXPP: FLOAT
+        SWND_EXPPE: FLOAT
+        SWND_EXPA: FLOAT
+        SWND_EXPT: FLOAT
+        SWND_EXP_AREA: FLOAT
+        SWND_HLRB: FLOAT
+        SWND_HLRP: FLOAT
+        SWND_HLRA: FLOAT
+        SWND_HLRR: FLOAT
+        SWND_EALB: FLOAT
+        SWND_EALP: FLOAT
+        SWND_EALPE: FLOAT
+        SWND_EALA: FLOAT
+        SWND_EALT: FLOAT
+        SWND_EALS: FLOAT
+        SWND_EALR: FLOAT
+        SWND_ALRB: FLOAT
+        SWND_ALRP: FLOAT
+        SWND_ALRA: FLOAT
+        SWND_ALR_NPCTL: FLOAT
+        SWND_RISKV: FLOAT
+        SWND_RISKS: FLOAT
         SWND_RISKR: STRING
-        TRND_EVNTS: STRING
-        TRND_AFREQ: STRING
-        TRND_EXPB: STRING
-        TRND_EXPP: STRING
-        TRND_EXPPE: STRING
-        TRND_EXPA: STRING
-        TRND_EXPT: STRING
-        TRND_EXP_AREA: STRING
-        TRND_HLRB: STRING
-        TRND_HLRP: STRING
-        TRND_HLRA: STRING
-        TRND_HLRR: STRING
-        TRND_EALB: STRING
-        TRND_EALP: STRING
-        TRND_EALPE: STRING
-        TRND_EALA: STRING
-        TRND_EALT: STRING
-        TRND_EALS: STRING
-        TRND_EALR: STRING
-        TRND_ALRB: STRING
-        TRND_ALRP: STRING
-        TRND_ALRA: STRING
-        TRND_ALR_NPCTL: STRING
-        TRND_RISKV: STRING
-        TRND_RISKS: STRING
+        TRND_EVNTS: FLOAT
+        TRND_AFREQ: FLOAT
+        TRND_EXPB: FLOAT
+        TRND_EXPP: FLOAT
+        TRND_EXPPE: FLOAT
+        TRND_EXPA: FLOAT
+        TRND_EXPT: FLOAT
+        TRND_EXP_AREA: FLOAT
+        TRND_HLRB: FLOAT
+        TRND_HLRP: FLOAT
+        TRND_HLRA: FLOAT
+        TRND_HLRR: FLOAT
+        TRND_EALB: FLOAT
+        TRND_EALP: FLOAT
+        TRND_EALPE: FLOAT
+        TRND_EALA: FLOAT
+        TRND_EALT: FLOAT
+        TRND_EALS: FLOAT
+        TRND_EALR: FLOAT
+        TRND_ALRB: FLOAT
+        TRND_ALRP: FLOAT
+        TRND_ALRA: FLOAT
+        TRND_ALR_NPCTL: FLOAT
+        TRND_RISKV: FLOAT
+        TRND_RISKS: FLOAT
         TRND_RISKR: STRING
         TSUN_EVNTS: STRING
         TSUN_AFREQ: STRING
@@ -1176,31 +1176,31 @@ sources:
         VLCN_RISKV: STRING
         VLCN_RISKS: STRING
         VLCN_RISKR: STRING
-        WFIR_EVNTS: STRING
-        WFIR_AFREQ: STRING
-        WFIR_EXPB: STRING
-        WFIR_EXPP: STRING
-        WFIR_EXPPE: STRING
-        WFIR_EXPA: STRING
-        WFIR_EXPT: STRING
-        WFIR_EXP_AREA: STRING
-        WFIR_HLRB: STRING
-        WFIR_HLRP: STRING
-        WFIR_HLRA: STRING
-        WFIR_HLRR: STRING
-        WFIR_EALB: STRING
-        WFIR_EALP: STRING
-        WFIR_EALPE: STRING
-        WFIR_EALA: STRING
-        WFIR_EALT: STRING
-        WFIR_EALS: STRING
-        WFIR_EALR: STRING
-        WFIR_ALRB: STRING
-        WFIR_ALRP: STRING
-        WFIR_ALRA: STRING
-        WFIR_ALR_NPCTL: STRING
-        WFIR_RISKV: STRING
-        WFIR_RISKS: STRING
+        WFIR_EVNTS: FLOAT
+        WFIR_AFREQ: FLOAT
+        WFIR_EXPB: FLOAT
+        WFIR_EXPP: FLOAT
+        WFIR_EXPPE: FLOAT
+        WFIR_EXPA: FLOAT
+        WFIR_EXPT: FLOAT
+        WFIR_EXP_AREA: FLOAT
+        WFIR_HLRB: FLOAT
+        WFIR_HLRP: FLOAT
+        WFIR_HLRA: FLOAT
+        WFIR_HLRR: FLOAT
+        WFIR_EALB: FLOAT
+        WFIR_EALP: FLOAT
+        WFIR_EALPE: FLOAT
+        WFIR_EALA: FLOAT
+        WFIR_EALT: FLOAT
+        WFIR_EALS: FLOAT
+        WFIR_EALR: FLOAT
+        WFIR_ALRB: FLOAT
+        WFIR_ALRP: FLOAT
+        WFIR_ALRA: FLOAT
+        WFIR_ALR_NPCTL: FLOAT
+        WFIR_RISKV: FLOAT
+        WFIR_RISKS: FLOAT
         WFIR_RISKR: STRING
         WNTW_EVNTS: STRING
         WNTW_AFREQ: STRING
@@ -1695,6 +1695,30 @@ sources:
         initial_report_date: STRING
         last_modified_date: STRING
 
+    - id: school_fiscal
+      uri: "file://${DATA_DIR}/slfs23_1a.parquet"
+      entity_type: School
+      id_col: NCESSCH
+      schema_hints:
+        NCESSCH: STRING
+        FIPST: STRING
+        CNTY: STRING
+        LEAID: STRING
+        LEA_NAME: STRING
+        SCH_NAME: STRING
+        SCH_TYPE: STRING
+        LEVEL: STRING
+        CHARTER_TEXT: STRING
+        MEMBER: FLOAT
+        Z33S: FLOAT
+        V10S: FLOAT
+        E13S: FLOAT
+        V11S: FLOAT
+        E17S: FLOAT
+        V13S: FLOAT
+        CE4S: FLOAT
+        CE5S: FLOAT
+
   relationships:
     - id: county_in_state
       uri: "file://${DATA_DIR}/state_county_tract_puma_crosswalk.csv"
@@ -2018,6 +2042,15 @@ sources:
       target_col: prime_award_transaction_place_of_performance_state_fips_code
       query: "SELECT contract_transaction_unique_key, prime_award_transaction_place_of_performance_state_fips_code FROM source WHERE prime_award_transaction_place_of_performance_state_fips_code IS NOT NULL"
 
+    - id: school_in_county
+      uri: "file://${DATA_DIR}/slfs23_1a.parquet"
+      relationship_type: LOCATED_IN
+      source_col: NCESSCH
+      target_col: CNTY
+      schema_hints:
+        NCESSCH: STRING
+        CNTY: STRING
+
 
 queries:
   - id: counties_in_state
@@ -2045,6 +2078,24 @@ queries:
     inline: MATCH (o:OSMNode) WITH o.encoded_tags AS encoded_tags, o SET o.decoded_tags = decode_serialized(encoded_tags)
     property_types:
       decoded_tags: str
+
+  - id: county_rucc_is_metro
+    description: "Flag County nodes in metro areas (RUCC codes 1-3)"
+    inline: "MATCH (c:County) WHERE c.rucc_2023 IS NOT NULL WITH c, c.rucc_2023 <= 3 AS is_metro SET c.is_metro = is_metro"
+    property_types:
+      is_metro: bool
+
+  - id: county_rucc_is_rural
+    description: "Flag County nodes that are completely rural (RUCC codes 8-9)"
+    inline: "MATCH (c:County) WHERE c.rucc_2023 IS NOT NULL WITH c, c.rucc_2023 >= 8 AS is_rural SET c.is_rural = is_rural"
+    property_types:
+      is_rural: bool
+
+  - id: county_rucc_classification
+    description: "Set a three-way metro/nonmetro_urban/rural classification string on each County node"
+    inline: "MATCH (c:County) WHERE c.rucc_2023 IS NOT NULL WITH c, CASE WHEN c.rucc_2023 <= 3 THEN 'metro' WHEN c.rucc_2023 <= 7 THEN 'nonmetro_urban' ELSE 'rural' END AS rucc_class SET c.rucc_class = rucc_class"
+    property_types:
+      rucc_class: str
 
   - id: tract_rucc_code
     description: "Propagate county RUCC code and description down to each tract"
@@ -2887,6 +2938,156 @@ queries:
   - id: state_other_unspecified_lang_count_5yr
     description: "Roll up other and unspecified language speaker counts from PUMA to State (5-year)"
     inline: "MATCH (s:State)<-[:IN]-(pu:PUMA) WITH s, SUM(pu.other_unspecified_lang_count_5yr) AS cnt SET s.other_unspecified_lang_count_5yr = cnt"
+
+  - id: school_is_charter
+    description: "Flag School nodes that are charter schools"
+    inline: "MATCH (s:School) WITH s, s.CHARTER_TEXT = 'Yes' AS is_charter SET s.is_charter = is_charter"
+    property_types:
+      is_charter: bool
+
+  - id: school_federal_revenue_share
+    description: "Compute the share of total revenue derived from federal sources for each School node"
+    inline: "MATCH (s:School) WHERE s.Z33S IS NOT NULL AND s.Z33S > 0 WITH s, s.V11S / s.Z33S AS federal_revenue_share SET s.federal_revenue_share = federal_revenue_share"
+    property_types:
+      federal_revenue_share: float
+
+  - id: school_high_federal_dependency_flag
+    description: "Flag schools where federal revenue exceeds 25% of total revenue, indicating elevated dependency on federal funding"
+    inline: "MATCH (s:School) WHERE s.federal_revenue_share IS NOT NULL WITH s, s.federal_revenue_share > 0.25 AS high_federal_dependency SET s.high_federal_dependency = high_federal_dependency"
+    property_types:
+      high_federal_dependency: bool
+
+  - id: county_avg_per_pupil_spend
+    description: "Aggregate average per-pupil total expenditure across all schools in each County"
+    inline: "MATCH (s:School)-[:LOCATED_IN]->(c:County) WHERE s.CE4S IS NOT NULL WITH c, AVG(s.CE4S) AS avg_per_pupil_spend SET c.avg_per_pupil_spend = avg_per_pupil_spend"
+    property_types:
+      avg_per_pupil_spend: float
+
+  - id: county_school_count
+    description: "Count the number of schools located in each County"
+    inline: "MATCH (s:School)-[:LOCATED_IN]->(c:County) WITH c, COUNT(s) AS school_count SET c.school_count = school_count"
+    property_types:
+      school_count: int
+
+  - id: county_charter_school_share
+    description: "Compute the share of schools in each County that are charter schools"
+    inline: "MATCH (s:School)-[:LOCATED_IN]->(c:County) WITH c, AVG(CASE WHEN s.is_charter THEN 1.0 ELSE 0.0 END) AS charter_school_share SET c.charter_school_share = charter_school_share"
+    property_types:
+      charter_school_share: float
+
+  - id: county_avg_federal_revenue_share
+    description: "Average federal revenue share across schools in each County; high values indicate elevated exposure to federal funding cuts"
+    inline: "MATCH (s:School)-[:LOCATED_IN]->(c:County) WHERE s.Z33S IS NOT NULL AND s.Z33S > 0 WITH c, AVG(s.V11S / s.Z33S) AS avg_federal_revenue_share SET c.avg_federal_revenue_share = avg_federal_revenue_share"
+    property_types:
+      avg_federal_revenue_share: float
+
+  - id: county_avg_local_revenue_share
+    description: "Average local revenue share across schools in each County; high values correlate with property-tax-rich counties"
+    inline: "MATCH (s:School)-[:LOCATED_IN]->(c:County) WHERE s.Z33S IS NOT NULL AND s.Z33S > 0 WITH c, AVG(s.V10S / s.Z33S) AS avg_local_revenue_share SET c.avg_local_revenue_share = avg_local_revenue_share"
+    property_types:
+      avg_local_revenue_share: float
+
+  - id: county_total_enrollment
+    description: "Total student enrollment across all schools in each County"
+    inline: "MATCH (s:School)-[:LOCATED_IN]->(c:County) WHERE s.MEMBER IS NOT NULL WITH c, SUM(s.MEMBER) AS total_enrollment SET c.total_enrollment = total_enrollment"
+    property_types:
+      total_enrollment: float
+
+  - id: county_avg_instruction_spend_share
+    description: "Average share of expenditures directed to instruction across schools in each County; a proxy for how much spending reaches students vs. administration"
+    inline: "MATCH (s:School)-[:LOCATED_IN]->(c:County) WHERE s.E17S IS NOT NULL AND s.E17S > 0 WITH c, AVG(s.V13S / s.E17S) AS avg_instruction_spend_share SET c.avg_instruction_spend_share = avg_instruction_spend_share"
+    property_types:
+      avg_instruction_spend_share: float
+
+  - id: county_elementary_school_count
+    description: "Count of elementary schools in each County"
+    inline: "MATCH (s:School)-[:LOCATED_IN]->(c:County) WHERE s.LEVEL = 'Elementary' WITH c, COUNT(s) AS elementary_school_count SET c.elementary_school_count = elementary_school_count"
+    property_types:
+      elementary_school_count: int
+
+  - id: county_middle_school_count
+    description: "Count of middle schools in each County"
+    inline: "MATCH (s:School)-[:LOCATED_IN]->(c:County) WHERE s.LEVEL = 'Middle' WITH c, COUNT(s) AS middle_school_count SET c.middle_school_count = middle_school_count"
+    property_types:
+      middle_school_count: int
+
+  - id: county_high_school_count
+    description: "Count of high schools in each County"
+    inline: "MATCH (s:School)-[:LOCATED_IN]->(c:County) WHERE s.LEVEL = 'High' WITH c, COUNT(s) AS high_school_count SET c.high_school_count = high_school_count"
+    property_types:
+      high_school_count: int
+
+  - id: county_special_ed_school_share
+    description: "Share of schools in each County classified as special education (SCH_TYPE = 2)"
+    inline: "MATCH (s:School)-[:LOCATED_IN]->(c:County) WITH c, AVG(CASE WHEN s.SCH_TYPE = '2' THEN 1.0 ELSE 0.0 END) AS special_ed_school_share SET c.special_ed_school_share = special_ed_school_share"
+    property_types:
+      special_ed_school_share: float
+
+  - id: county_high_federal_dependency_school_share
+    description: "Share of schools in each County where federal revenue exceeds 25% of total revenue; a county-level policy risk signal"
+    inline: "MATCH (s:School)-[:LOCATED_IN]->(c:County) WHERE s.high_federal_dependency IS NOT NULL WITH c, AVG(CASE WHEN s.high_federal_dependency THEN 1.0 ELSE 0.0 END) AS high_federal_dependency_school_share SET c.high_federal_dependency_school_share = high_federal_dependency_school_share"
+    property_types:
+      high_federal_dependency_school_share: float
+
+  - id: state_avg_per_pupil_spend
+    description: "Average per-pupil expenditure across all schools in each State; prerequisite for county deviation calculation"
+    inline: "MATCH (s:School)-[:LOCATED_IN]->(c:County)-[:IN]->(st:State) WHERE s.CE4S IS NOT NULL WITH st, AVG(s.CE4S) AS avg_per_pupil_spend SET st.avg_per_pupil_spend = avg_per_pupil_spend"
+    property_types:
+      avg_per_pupil_spend: float
+
+  - id: county_per_pupil_spend_vs_state_avg
+    description: "Difference between a County's average per-pupil spend and its State's average; positive values indicate above-average local investment"
+    inline: "MATCH (c:County)-[:IN]->(st:State) WHERE c.avg_per_pupil_spend IS NOT NULL AND st.avg_per_pupil_spend IS NOT NULL WITH c, c.avg_per_pupil_spend - st.avg_per_pupil_spend AS per_pupil_spend_vs_state_avg SET c.per_pupil_spend_vs_state_avg = per_pupil_spend_vs_state_avg"
+    property_types:
+      per_pupil_spend_vs_state_avg: float
+
+  - id: nri_composite_risk
+    description: "Copy NRI composite risk, EAL, social vulnerability, and resilience scores onto each Tract node"
+    inline: "MATCH (t:Tract) WITH t, t.RISK_SCORE AS risk_score, t.RISK_RATNG AS risk_rating, t.EAL_VALT AS eal_total, t.EAL_SCORE AS eal_score, t.SOVI_SCORE AS social_vulnerability_score, t.RESL_SCORE AS resilience_score SET t.nri_risk_score = risk_score, t.nri_risk_rating = risk_rating, t.nri_eal_total = eal_total, t.nri_eal_score = eal_score, t.nri_social_vulnerability = social_vulnerability_score, t.nri_resilience = resilience_score"
+
+  - id: nri_flood_risk
+    description: "Set riverine flood risk score, rating, and annualized building loss on each Tract node"
+    inline: "MATCH (t:Tract) WITH t, t.RFLD_RISKS AS flood_risk_score, t.RFLD_RISKR AS flood_risk_rating, t.RFLD_EALB AS flood_building_eal SET t.flood_risk_score = flood_risk_score, t.flood_risk_rating = flood_risk_rating, t.flood_building_eal = flood_building_eal"
+
+  - id: nri_high_flood_risk_flag
+    description: "Flag tracts where riverine flood risk score exceeds the 75th-percentile threshold (score > 75)"
+    inline: "MATCH (t:Tract) WITH t, t.flood_risk_score > 75 AS high_flood_risk SET t.high_flood_risk = high_flood_risk"
+
+  - id: nri_wildfire_risk
+    description: "Set wildfire risk score, rating, and annualized building loss on each Tract node"
+    inline: "MATCH (t:Tract) WITH t, t.WFIR_RISKS AS wildfire_risk_score, t.WFIR_RISKR AS wildfire_risk_rating, t.WFIR_EALB AS wildfire_building_eal SET t.wildfire_risk_score = wildfire_risk_score, t.wildfire_risk_rating = wildfire_risk_rating, t.wildfire_building_eal = wildfire_building_eal"
+
+  - id: nri_high_wildfire_risk_flag
+    description: "Flag tracts where wildfire risk score exceeds the 75th-percentile threshold (score > 75)"
+    inline: "MATCH (t:Tract) WITH t, t.wildfire_risk_score > 75 AS high_wildfire_risk SET t.high_wildfire_risk = high_wildfire_risk"
+
+  - id: nri_hurricane_risk
+    description: "Set hurricane risk score, rating, and annualized building loss on each Tract node"
+    inline: "MATCH (t:Tract) WITH t, t.HRCN_RISKS AS hurricane_risk_score, t.HRCN_RISKR AS hurricane_risk_rating, t.HRCN_EALB AS hurricane_building_eal SET t.hurricane_risk_score = hurricane_risk_score, t.hurricane_risk_rating = hurricane_risk_rating, t.hurricane_building_eal = hurricane_building_eal"
+
+  - id: nri_high_hurricane_risk_flag
+    description: "Flag tracts where hurricane risk score exceeds the 75th-percentile threshold (score > 75)"
+    inline: "MATCH (t:Tract) WITH t, t.hurricane_risk_score > 75 AS high_hurricane_risk SET t.high_hurricane_risk = high_hurricane_risk"
+
+  - id: nri_earthquake_risk
+    description: "Set earthquake risk score, rating, and annualized building loss on each Tract node"
+    inline: "MATCH (t:Tract) WITH t, t.ERQK_RISKS AS earthquake_risk_score, t.ERQK_RISKR AS earthquake_risk_rating, t.ERQK_EALB AS earthquake_building_eal SET t.earthquake_risk_score = earthquake_risk_score, t.earthquake_risk_rating = earthquake_risk_rating, t.earthquake_building_eal = earthquake_building_eal"
+
+  - id: nri_high_earthquake_risk_flag
+    description: "Flag tracts where earthquake risk score exceeds the 75th-percentile threshold (score > 75)"
+    inline: "MATCH (t:Tract) WITH t, t.earthquake_risk_score > 75 AS high_earthquake_risk SET t.high_earthquake_risk = high_earthquake_risk"
+
+  - id: nri_wind_hail_tornado_risk
+    description: "Set tornado, strong wind, and hail risk scores and annualized building losses on each Tract node"
+    inline: "MATCH (t:Tract) WITH t, t.TRND_RISKS AS tornado_risk_score, t.TRND_EALB AS tornado_building_eal, t.SWND_RISKS AS wind_risk_score, t.SWND_EALB AS wind_building_eal, t.HAIL_RISKS AS hail_risk_score, t.HAIL_EALB AS hail_building_eal SET t.tornado_risk_score = tornado_risk_score, t.tornado_building_eal = tornado_building_eal, t.wind_risk_score = wind_risk_score, t.wind_building_eal = wind_building_eal, t.hail_risk_score = hail_risk_score, t.hail_building_eal = hail_building_eal"
+
+  - id: nri_combined_building_eal
+    description: "Sum annualized building losses across all six key hazards to produce a single per-tract property-risk estimate"
+    inline: "MATCH (t:Tract) WITH t, t.flood_building_eal + t.wildfire_building_eal + t.hurricane_building_eal + t.earthquake_building_eal + t.tornado_building_eal + t.wind_building_eal + t.hail_building_eal AS combined_building_eal SET t.combined_building_eal = combined_building_eal"
+
+  - id: nri_elevated_property_risk_flag
+    description: "Flag tracts whose combined annualized building loss across all six hazards exceeds $100,000 per year"
+    inline: "MATCH (t:Tract) WITH t, t.combined_building_eal > 100000 AS elevated_property_risk SET t.elevated_property_risk = elevated_property_risk"
 
 output:
   - query_id: inside

@@ -81,7 +81,7 @@ rule all:
         f"{DATA_DIR}/language_groups.csv",
         f"{DATA_DIR}/psam_pus_5yr.parquet",
         f"{DATA_DIR}/psam_hus_5yr.parquet",
-        f"{DATA_DIR}/slfs23_1a.txt",
+        f"{DATA_DIR}/slfs23_1a.parquet",
         # f"{DOCS_DIR}/ACS2020_2024_PUMS_README.pdf",
         f"{DATA_DIR}/2024_election_returns.csv",
         # tl_2024_{{state_fips}}_bg.shp", state_fips=fod_config.state_fips),
@@ -91,6 +91,26 @@ rule unzip_common_core_fiscal_data_2022:
     output: f"{DATA_DIR}/slfs23_1a.txt"
     shell:
         f"unzip {{input}} -d \"{DATA_DIR}/\""
+
+rule convert_school_fiscal_to_parquet:
+    input: f"{DATA_DIR}/slfs23_1a.txt"
+    output: f"{DATA_DIR}/slfs23_1a.parquet"
+    shell:
+        f"uv run duckdb -c \""
+        f"COPY ("
+        f"  SELECT"
+        f"    NCESSCH, FIPST, CNTY, LEAID, LEA_NAME, SCH_NAME, SCH_TYPE, LEVEL, CHARTER_TEXT,"
+        f"    TRY_CAST(NULLIF(MEMBER, '-1') AS DOUBLE) AS MEMBER,"
+        f"    TRY_CAST(NULLIF(Z33S,  '-1') AS DOUBLE) AS Z33S,"
+        f"    TRY_CAST(NULLIF(V10S,  '-1') AS DOUBLE) AS V10S,"
+        f"    TRY_CAST(NULLIF(E13S,  '-1') AS DOUBLE) AS E13S,"
+        f"    TRY_CAST(NULLIF(V11S,  '-1') AS DOUBLE) AS V11S,"
+        f"    TRY_CAST(NULLIF(E17S,  '-1') AS DOUBLE) AS E17S,"
+        f"    TRY_CAST(NULLIF(V13S,  '-1') AS DOUBLE) AS V13S,"
+        f"    TRY_CAST(NULLIF(CE4S,  '-1') AS DOUBLE) AS CE4S,"
+        f"    TRY_CAST(NULLIF(CE5S,  '-1') AS DOUBLE) AS CE5S"
+        f"  FROM read_csv('{DATA_DIR}/slfs23_1a.txt', delim=chr(9), header=true, nullstr=['-1', '-2'])"
+        f") TO '{DATA_DIR}/slfs23_1a.parquet' (FORMAT PARQUET, COMPRESSION 'ZSTD');\""
 
 rule download_common_core_fiscal_data_2022:
     output: f"{DATA_DIR}/common_core_fiscal_2022.zip"

@@ -121,7 +121,7 @@ def generate(template_path: Path | None = None, output_path: Path | None = None)
         "from enum import Enum",
         "from typing import Optional",
         "",
-        "from pydantic import BaseModel",
+        "from pydantic import BaseModel, Field",
         "",
         "",
     ]
@@ -145,9 +145,12 @@ def generate(template_path: Path | None = None, output_path: Path | None = None)
         if not props:
             lines.append("    pass")
         else:
-            for prop, ptype in sorted(props.items()):
-                annotation = _TYPE_MAP.get(ptype, "float")
-                lines.append(f"    {prop}: Optional[{annotation}] = None")
+            for prop, info in sorted(props.items()):
+                annotation = _TYPE_MAP.get(info["type"], "float")
+                desc = info["description"].replace('"', '\\"')
+                lines.append(
+                    f'    {prop}: Optional[{annotation}] = Field(default=None, description="{desc}")'
+                )
         lines += ["", ""]
 
     # Relationship pair documentation as a plain dict (not a Pydantic model

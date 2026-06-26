@@ -83,6 +83,49 @@ sources:
       uri: "file:///run/media/zac/2tb/fastopendata/data/psam_pus.parquet"
       entity_type: PersonSurvey
       id_col: SERIALNO
+    - id: fema_nri_tracts
+      uri: "file:///run/media/zac/2tb/fastopendata/data/NRI_Table_CensusTracts.csv"
+      entity_type: Tract
+      id_col: TRACTFIPS
+      schema_hints:
+        TRACTFIPS: STRING
+        STATEFIPS: STRING
+        COUNTYFIPS: STRING
+        STATE: STRING
+        COUNTY: STRING
+        POPULATION: FLOAT
+        BUILDVALUE: FLOAT
+        AGRIVALUE: FLOAT
+        RISK_SCORE: FLOAT
+        RISK_RATNG: STRING
+        EAL_SCORE: FLOAT
+        EAL_RATNG: STRING
+        EAL_VALT: FLOAT
+        SOVI_SCORE: FLOAT
+        SOVI_RATNG: STRING
+        RESL_SCORE: FLOAT
+        RESL_RATNG: STRING
+        RFLD_RISKS: FLOAT
+        RFLD_RISKR: STRING
+        RFLD_EALB: FLOAT
+        HRCN_RISKS: FLOAT
+        HRCN_RISKR: STRING
+        HRCN_EALB: FLOAT
+        WFIR_RISKS: FLOAT
+        WFIR_RISKR: STRING
+        WFIR_EALB: FLOAT
+        TRND_RISKS: FLOAT
+        TRND_RISKR: STRING
+        TRND_EALB: FLOAT
+        ERQK_RISKS: FLOAT
+        ERQK_RISKR: STRING
+        ERQK_EALB: FLOAT
+        HAIL_RISKS: FLOAT
+        HAIL_RISKR: STRING
+        HAIL_EALB: FLOAT
+        SWND_RISKS: FLOAT
+        SWND_RISKR: STRING
+        SWND_EALB: FLOAT
   relationships:
     - id: county_in_state
       uri: "file:///run/media/zac/2tb/fastopendata/data/state_county_tract_puma_crosswalk.csv"
@@ -174,6 +217,54 @@ queries:
   - id: decode_tags
     description: "Testing whether we can call a function to decode serialized data"
     inline: MATCH (o:OSMNode) WITH o.encoded_tags AS encoded_tags, o SET o.decoded_tags = decode_serialized(encoded_tags)
+
+  - id: nri_composite_risk
+    description: "Copy NRI composite risk, EAL, social vulnerability, and resilience scores onto each Tract node"
+    inline: MATCH (t:Tract) WITH t, t.RISK_SCORE AS risk_score, t.RISK_RATNG AS risk_rating, t.EAL_VALT AS eal_total, t.EAL_SCORE AS eal_score, t.SOVI_SCORE AS social_vulnerability_score, t.RESL_SCORE AS resilience_score SET t.nri_risk_score = risk_score, t.nri_risk_rating = risk_rating, t.nri_eal_total = eal_total, t.nri_eal_score = eal_score, t.nri_social_vulnerability = social_vulnerability_score, t.nri_resilience = resilience_score
+
+  - id: nri_flood_risk
+    description: "Set riverine flood risk score and annualized building loss on each Tract node"
+    inline: MATCH (t:Tract) WITH t, t.RFLD_RISKS AS flood_risk_score, t.RFLD_RISKR AS flood_risk_rating, t.RFLD_EALB AS flood_building_eal SET t.flood_risk_score = flood_risk_score, t.flood_risk_rating = flood_risk_rating, t.flood_building_eal = flood_building_eal
+
+  - id: nri_high_flood_risk_flag
+    description: "Flag tracts where riverine flood risk score exceeds the 75th-percentile threshold (score > 75)"
+    inline: MATCH (t:Tract) WITH t, t.flood_risk_score > 75 AS high_flood_risk SET t.high_flood_risk = high_flood_risk
+
+  - id: nri_wildfire_risk
+    description: "Set wildfire risk score and annualized building loss on each Tract node"
+    inline: MATCH (t:Tract) WITH t, t.WFIR_RISKS AS wildfire_risk_score, t.WFIR_RISKR AS wildfire_risk_rating, t.WFIR_EALB AS wildfire_building_eal SET t.wildfire_risk_score = wildfire_risk_score, t.wildfire_risk_rating = wildfire_risk_rating, t.wildfire_building_eal = wildfire_building_eal
+
+  - id: nri_high_wildfire_risk_flag
+    description: "Flag tracts where wildfire risk score exceeds the 75th-percentile threshold (score > 75)"
+    inline: MATCH (t:Tract) WITH t, t.wildfire_risk_score > 75 AS high_wildfire_risk SET t.high_wildfire_risk = high_wildfire_risk
+
+  - id: nri_hurricane_risk
+    description: "Set hurricane risk score and annualized building loss on each Tract node"
+    inline: MATCH (t:Tract) WITH t, t.HRCN_RISKS AS hurricane_risk_score, t.HRCN_RISKR AS hurricane_risk_rating, t.HRCN_EALB AS hurricane_building_eal SET t.hurricane_risk_score = hurricane_risk_score, t.hurricane_risk_rating = hurricane_risk_rating, t.hurricane_building_eal = hurricane_building_eal
+
+  - id: nri_high_hurricane_risk_flag
+    description: "Flag tracts where hurricane risk score exceeds the 75th-percentile threshold (score > 75)"
+    inline: MATCH (t:Tract) WITH t, t.hurricane_risk_score > 75 AS high_hurricane_risk SET t.high_hurricane_risk = high_hurricane_risk
+
+  - id: nri_earthquake_risk
+    description: "Set earthquake risk score and annualized building loss on each Tract node"
+    inline: MATCH (t:Tract) WITH t, t.ERQK_RISKS AS earthquake_risk_score, t.ERQK_RISKR AS earthquake_risk_rating, t.ERQK_EALB AS earthquake_building_eal SET t.earthquake_risk_score = earthquake_risk_score, t.earthquake_risk_rating = earthquake_risk_rating, t.earthquake_building_eal = earthquake_building_eal
+
+  - id: nri_high_earthquake_risk_flag
+    description: "Flag tracts where earthquake risk score exceeds the 75th-percentile threshold (score > 75)"
+    inline: MATCH (t:Tract) WITH t, t.earthquake_risk_score > 75 AS high_earthquake_risk SET t.high_earthquake_risk = high_earthquake_risk
+
+  - id: nri_wind_hail_tornado_risk
+    description: "Set tornado, strong wind, and hail risk scores and annualized building losses on each Tract node"
+    inline: MATCH (t:Tract) WITH t, t.TRND_RISKS AS tornado_risk_score, t.TRND_EALB AS tornado_building_eal, t.SWND_RISKS AS wind_risk_score, t.SWND_EALB AS wind_building_eal, t.HAIL_RISKS AS hail_risk_score, t.HAIL_EALB AS hail_building_eal SET t.tornado_risk_score = tornado_risk_score, t.tornado_building_eal = tornado_building_eal, t.wind_risk_score = wind_risk_score, t.wind_building_eal = wind_building_eal, t.hail_risk_score = hail_risk_score, t.hail_building_eal = hail_building_eal
+
+  - id: nri_combined_building_eal
+    description: "Sum annualized building losses across all six key hazards to produce a single per-tract property-risk estimate"
+    inline: MATCH (t:Tract) WITH t, t.flood_building_eal + t.wildfire_building_eal + t.hurricane_building_eal + t.earthquake_building_eal + t.tornado_building_eal + t.wind_building_eal + t.hail_building_eal AS combined_building_eal SET t.combined_building_eal = combined_building_eal
+
+  - id: nri_elevated_property_risk_flag
+    description: "Flag tracts whose combined annualized building loss across all six hazards exceeds $100,000 per year"
+    inline: MATCH (t:Tract) WITH t, t.combined_building_eal > 100000 AS elevated_property_risk SET t.elevated_property_risk = elevated_property_risk
 
 output:
   - query_id: inside

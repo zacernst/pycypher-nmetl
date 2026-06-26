@@ -171,10 +171,11 @@ def _extract_set_props(
     var_map: dict[str, str],
     alias_map: dict[str, str],
     type_overrides: dict[str, str],
-) -> list[tuple[str, str, str]]:
+    description: str = "",
+) -> list[tuple[str, str, str, str]]:
     """
-    Return [(node_label, property_name, type_str), ...] for every left-hand
-    side assignment in SET clauses.
+    Return [(node_label, property_name, type_str, description), ...] for every
+    left-hand side assignment in SET clauses.
     """
     results = []
     for m in re.finditer(
@@ -193,7 +194,7 @@ def _extract_set_props(
                 ptype = type_overrides[prop]
             else:
                 ptype = _infer_type(prop, rhs, alias_map)
-            results.append((label, prop, ptype))
+            results.append((label, prop, ptype, description))
     return results
 
 
@@ -222,7 +223,7 @@ def infer_schema(template_path: Path | None = None) -> dict:
     queries: list[dict] = data.get("queries", [])
 
     # node labels — ensure every entity_type exists as a key
-    node_props: dict[str, dict[str, str]] = defaultdict(dict)
+    node_props: dict[str, dict[str, dict]] = defaultdict(dict)
     for e in entities:
         node_props[e["entity_type"]]
 
@@ -250,16 +251,17 @@ def infer_schema(template_path: Path | None = None) -> dict:
         if not inline:
             continue
         type_overrides: dict[str, str] = q.get("property_types", {})
+        description: str = q.get("description", "")
         var_map = _var_label_map(inline)
         alias_map = _alias_expr_map(inline)
 
         for src, rel, tgt in _extract_rel_triples(inline, var_map):
             rel_pairs[rel].add((src, tgt))
 
-        for label, prop, ptype in _extract_set_props(
-            inline, var_map, alias_map, type_overrides
+        for label, prop, ptype, desc in _extract_set_props(
+            inline, var_map, alias_map, type_overrides, description
         ):
-            node_props[label][prop] = ptype
+            node_props[label][prop] = {"type": ptype, "description": desc}
 
     return {
         "node_types": {
