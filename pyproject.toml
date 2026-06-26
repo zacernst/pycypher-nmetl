@@ -12,6 +12,15 @@ environments = [
     "sys_platform == 'darwin'",
     "sys_platform == 'linux'",
 ]
+# Security: enforce minimum patched versions for known vulnerabilities.
+# These override transitive-dependency resolutions without changing the
+# packages that directly depend on them.
+constraint-dependencies = [
+    "msgpack>=1.2.1",    # GHSA-6v7p-g79w-8964 (DoS / SEGV via repeated unpack after error)
+    "starlette>=1.3.1",  # CVE-2026-54282 (URL path injection), CVE-2026-54283 (form limit bypass)
+    "tornado>=6.5.7",    # CVE-2026-49853/54/55 (websocket mask OOB, redirect credential leak, gzip DoS), GHSA-pw6j-qg29-8w7f
+    "pip>=26.1.2",       # PYSEC-2026-196 (console_scripts path traversal)
+]
 
 
 [project]
