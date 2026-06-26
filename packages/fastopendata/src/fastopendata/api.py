@@ -32,6 +32,11 @@ import numpy as np
 import pandas as pd
 import pycypher
 from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi.openapi.docs import (
+    get_redoc_html,
+    get_swagger_ui_html,
+    get_swagger_ui_oauth2_redirect_html,
+)
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pycypher.exceptions import (
@@ -46,10 +51,11 @@ from pycypher.star import Star
 from pydantic import BaseModel, Field
 from shared.audit_chain import ChainedAuditLog
 
-from .analytics.collector import MetricsCollector, QueryStatus
-from .analytics.engine import AnalyticsEngine
-from .analytics.regression import RegressionDetector
-from .config import config
+from fastopendata.analytics.collector import MetricsCollector, QueryStatus
+from fastopendata.analytics.engine import AnalyticsEngine
+from fastopendata.analytics.regression import RegressionDetector
+from fastopendata.config import config
+from fastopendata.api_models import FastOpenDataRequest, FastOpenDataResponse
 
 _logger = logging.getLogger(__name__)
 
@@ -355,6 +361,8 @@ app = FastAPI(
     description=config.api_description,
     version=config.api_version,
     lifespan=_lifespan,
+    docs_url=None,
+    redoc_url=None,
 )
 
 # ---------------------------------------------------------------------------
@@ -364,6 +372,34 @@ app = FastAPI(
 _SITE_DIR = pathlib.Path(__file__).parent.parent.parent / "site"
 if _SITE_DIR.exists():
     app.mount("/site", StaticFiles(directory=_SITE_DIR, html=True), name="site")
+
+##### Get the static redocs/docs stuff working
+app.mount("/static", StaticFiles(directory="./packages/fastopendata/src/fastopendata/static"), name="static")
+
+
+@app.get("/docs", include_in_schema=False)
+async def custom_swagger_ui_html():
+    return get_swagger_ui_html(
+        openapi_url=app.openapi_url,
+        title=app.title + " - Swagger UI",
+        oauth2_redirect_url=app.swagger_ui_oauth2_redirect_url,
+        swagger_js_url="/static/swagger-ui-bundle.js",
+        swagger_css_url="/static/swagger-ui.css",
+    )
+
+
+@app.get(app.swagger_ui_oauth2_redirect_url, include_in_schema=False)
+async def swagger_ui_redirect():
+    return get_swagger_ui_oauth2_redirect_html()
+
+
+@app.get("/redoc", include_in_schema=False)
+async def redoc_html():
+    return get_redoc_html(
+        openapi_url=app.openapi_url,
+        title=app.title + " - ReDoc",
+        redoc_js_url="/static/redoc.standalone.js",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -449,7 +485,21 @@ _SITE_CSP = (
     "connect-src 'self'; "
     "img-src 'self' data:;"
 )
+# Docs pages serve JS/CSS from /static but their HTML templates reference
+# Google Fonts and the FastAPI favicon externally; ReDoc also needs blob:
+# for its web worker and 'unsafe-inline' for dynamic inline styles.
+_DOCS_CSP = (
+    "default-src 'self'; "
+    "script-src 'self' 'unsafe-inline'; "
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+    "font-src 'self' https://fonts.gstatic.com; "
+    "img-src 'self' data: https://fastapi.tiangolo.com; "
+    "connect-src 'self'; "
+    "worker-src blob:;"
+)
 _API_CSP = "default-src 'none'"
+
+_DOCS_PATHS: frozenset[str] = frozenset({"/docs", "/redoc", "/openapi.json"})
 
 
 @app.middleware("http")
@@ -466,7 +516,13 @@ async def security_headers_middleware(
     response.headers["Permissions-Policy"] = (
         "camera=(), microphone=(), geolocation=()"
     )
-    csp = _SITE_CSP if request.url.path.startswith("/site") else _API_CSP
+    path = request.url.path
+    if path.startswith("/site"):
+        csp = _SITE_CSP
+    elif path in _DOCS_PATHS or path.startswith("/static"):
+        csp = _DOCS_CSP
+    else:
+        csp = _API_CSP
     response.headers["Content-Security-Policy"] = csp
     return response
 
@@ -615,6 +671,12 @@ class CypherQueryResponse(BaseModel):
 @app.get("/")
 async def root() -> RedirectResponse:
     return RedirectResponse(url="/site/", status_code=301)
+
+
+@app.get("/single_request")
+async def fake(request: FastOpenDataRequest) -> FastOpenDataResponse:
+    return FastOpenDataResponse()
+    # return RedirectResponse(url="/site/", status_code=301)
 
 
 @app.get("/health", response_model=HealthResponse)
