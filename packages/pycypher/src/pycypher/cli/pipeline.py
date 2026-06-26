@@ -772,7 +772,7 @@ def list_queries_impl(config: Path, *, deps: bool) -> None:
     if not deps:
         for q in cfg.queries:
             desc = f"  — {q.description}" if q.description else ""
-            src = f"({q.source})" if q.source else "(inline)"
+            src = f"(file: {q.source})" if q.source else "(inline)"
             click.echo(f"{q.id:30s} {src}{desc}")
         return
 
