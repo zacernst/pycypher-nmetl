@@ -320,6 +320,11 @@ class Config:
                 contains dangerous shell metacharacters.
 
         """
+        if path_str is None:
+            raise ValueError(
+                "DATA_DIR is not set and no default is configured. "
+                "Set the DATA_DIR environment variable."
+            )
         bad_chars = Config._SHELL_METACHARACTERS.intersection(path_str)
         if bad_chars:
             msg = (

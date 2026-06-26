@@ -317,7 +317,12 @@ def _load_datasets_into_star() -> int:
         state_fips,
     )
 
-    data_dir = config.data_path
+    try:
+        data_dir = config.data_path
+    except (ValueError, TypeError):
+        _logger.info("DATA_DIR not configured — query engine starts empty")
+        return 0
+
     state_contracts = data_dir / f"contracts_state_{state_fips}.csv"
     crosswalk = data_dir / "state_county_tract_puma.csv"
 

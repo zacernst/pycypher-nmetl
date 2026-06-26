@@ -606,7 +606,7 @@ fod-api-logs:
 
 # Run the FastAPI server locally (no Docker) with live-reload.
 # Opens the marketing site at http://localhost:8000/site/
-FOD_SITE_PORT ?= 8000
+FOD_SITE_PORT ?= 8080
 fod-site:
 	@echo "Starting FastOpenData API + site (local, port $(FOD_SITE_PORT))..."
 	@echo "  Site:      http://localhost:$(FOD_SITE_PORT)/site/"
