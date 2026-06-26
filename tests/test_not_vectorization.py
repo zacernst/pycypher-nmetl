@@ -257,7 +257,7 @@ class TestKleeneNotPerformance:
     """kleene_not must be measurably faster than the .apply(lambda) baseline."""
 
     REPS = 50
-    N = 5_000
+    N = 20_000
 
     @pytest.fixture
     def large_bool_series(self) -> pd.Series:
@@ -271,7 +271,7 @@ class TestKleeneNotPerformance:
         self,
         large_bool_series: pd.Series,
     ) -> None:
-        """kleene_not(5 000 rows × 50 reps) must be faster than apply.
+        """kleene_not(20 000 rows × 50 reps) must be faster than apply.
 
         Threshold is 1.05× to avoid flaky failures under CPU contention
         (e.g. parallel test runs, CI, multi-agent sessions).  Typical
@@ -280,6 +280,8 @@ class TestKleeneNotPerformance:
         from pycypher.boolean_evaluator import kleene_not
 
         s = large_bool_series
+        _reference_kleene_not(s)
+        kleene_not(s)
 
         # Baseline: reference Python-loop / apply implementation
         start = time.perf_counter()
@@ -304,7 +306,7 @@ class TestKleeneNotPerformance:
         self,
         large_bool_series: pd.Series,
     ) -> None:
-        """50 × kleene_not on 5 000 rows must complete in under 0.5s."""
+        """50 × kleene_not on 20 000 rows must complete in under 0.5s."""
         from pycypher.boolean_evaluator import kleene_not
 
         s = large_bool_series
@@ -313,7 +315,7 @@ class TestKleeneNotPerformance:
             kleene_not(s)
         elapsed = time.perf_counter() - start
         assert elapsed < perf_threshold(0.5), (
-            f"50 × kleene_not(5000-row) took {elapsed:.3f}s (threshold 0.5s). "
+            f"50 × kleene_not(20000-row) took {elapsed:.3f}s (threshold 0.5s). "
             "The .apply() implementation must be replaced with numpy operations."
         )
 
