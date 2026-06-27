@@ -695,6 +695,49 @@ rule combine_state_election_returns:
     shell:
         f"""head -1 {DATA_DIR}/2024-elections-official-main/individual_states/ak24.csv > {DATA_DIR}/2024_election_returns.csv && cat {DATA_DIR}/2024-elections-official-main/individual_states/*csv | grep -v "^precinct" >> {DATA_DIR}/2024_election_returns.csv"""
 
+rule aggregate_election_returns_to_county:
+    input: f"{DATA_DIR}/2024_election_returns.csv"
+    output: f"{DATA_DIR}/2024_election_returns_county.parquet"
+    shell:
+        f"uv run duckdb -c \""
+        f"COPY ("
+        f"  WITH pres AS ("
+        f"    SELECT"
+        f"      lpad(CAST(county_fips AS VARCHAR), 5, '0') AS county_fips_str,"
+        f"      party_simplified,"
+        f"      SUM(CAST(votes AS BIGINT)) AS party_votes"
+        f"    FROM read_csv('{DATA_DIR}/2024_election_returns.csv', header=true, nullstr=['', 'NA'])"
+        f"    WHERE office = 'US PRESIDENT'"
+        f"      AND writein = 'FALSE'"
+        f"      AND party_simplified IN ('REPUBLICAN', 'DEMOCRAT')"
+        f"      AND county_fips IS NOT NULL"
+        f"    GROUP BY county_fips_str, party_simplified"
+        f"  ),"
+        f"  pivoted AS ("
+        f"    SELECT"
+        f"      county_fips_str,"
+        f"      SUM(CASE WHEN party_simplified = 'REPUBLICAN' THEN party_votes ELSE 0 END) AS rep_votes,"
+        f"      SUM(CASE WHEN party_simplified = 'DEMOCRAT'   THEN party_votes ELSE 0 END) AS dem_votes"
+        f"    FROM pres"
+        f"    GROUP BY county_fips_str"
+        f"  )"
+        f"  SELECT"
+        f"    county_fips_str,"
+        f"    rep_votes,"
+        f"    dem_votes,"
+        f"    rep_votes + dem_votes AS two_party_votes,"
+        f"    ROUND(rep_votes::DOUBLE / NULLIF(rep_votes + dem_votes, 0), 4) AS rep_two_party_share,"
+        f"    ROUND(dem_votes::DOUBLE / NULLIF(rep_votes + dem_votes, 0), 4) AS dem_two_party_share,"
+        f"    ROUND((rep_votes - dem_votes)::DOUBLE / NULLIF(rep_votes + dem_votes, 0), 4) AS rep_margin,"
+        f"    CASE"
+        f"      WHEN rep_votes > dem_votes THEN 'REPUBLICAN'"
+        f"      WHEN dem_votes > rep_votes THEN 'DEMOCRAT'"
+        f"      ELSE 'TIE'"
+        f"    END AS pres_winner_2024"
+        f"  FROM pivoted"
+        f") TO '{DATA_DIR}/2024_election_returns_county.parquet' (FORMAT PARQUET, COMPRESSION 'ZSTD');\""
+
+
 rule download_tiger_state:
     # resources:
     #     census_download=1

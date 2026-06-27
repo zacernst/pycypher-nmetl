@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 class NodeLabel(str, Enum):
     CJARSRecord = "CJARSRecord"
     County = "County"
+    CountyElectionResult = "CountyElectionResult"
     FederalAward = "FederalAward"
     HousingSurvey = "HousingSurvey"
     HousingSurvey5yr = "HousingSurvey5yr"
@@ -69,10 +70,21 @@ class County(BaseModel):
     misdemeanor_medicaid_rate: Optional[float] = Field(default=None, description="Share enrolled in Medicaid among individuals charged with a misdemeanor in each County")
     misdemeanor_ssi_rate: Optional[float] = Field(default=None, description="Share receiving Supplemental Security Income among individuals charged with a misdemeanor in each County")
     per_pupil_spend_vs_state_avg: Optional[float] = Field(default=None, description="Difference between a County's average per-pupil spend and its State's average; positive values indicate above-average local investment")
+    pres_dem_share_2024: Optional[float] = Field(default=None, description="Democrat share of the two-party presidential vote (2024) in each County (0.0–1.0)")
+    pres_dem_votes_2024: Optional[float] = Field(default=None, description="Total Democrat two-party votes cast for US President (2024) in each County")
+    pres_rep_margin_2024: Optional[float] = Field(default=None, description="Republican two-party margin in the 2024 presidential election for each County (positive = R advantage, range -1.0 to 1.0)")
+    pres_rep_share_2024: Optional[float] = Field(default=None, description="Republican share of the two-party presidential vote (2024) in each County (0.0–1.0)")
+    pres_rep_votes_2024: Optional[float] = Field(default=None, description="Total Republican two-party votes cast for US President (2024) in each County")
+    pres_two_party_votes_2024: Optional[float] = Field(default=None, description="Total two-party (Republican + Democrat) votes for US President (2024) in each County")
+    pres_winner_2024: Optional[float] = Field(default=None, description="Winning party in the 2024 US Presidential election for each County ('REPUBLICAN', 'DEMOCRAT', or 'TIE')")
     rucc_class: Optional[str] = Field(default=None, description="Set a three-way metro/nonmetro_urban/rural classification string on each County node")
     school_count: Optional[int] = Field(default=None, description="Count the number of schools located in each County")
     special_ed_school_share: Optional[float] = Field(default=None, description="Share of schools in each County classified as special education (SCH_TYPE = 2)")
     total_enrollment: Optional[float] = Field(default=None, description="Total student enrollment across all schools in each County")
+
+
+class CountyElectionResult(BaseModel):
+    pass
 
 
 class FederalAward(BaseModel):
@@ -400,6 +412,7 @@ RELATIONSHIP_ENDPOINTS: dict[str, list[tuple[str, str]]] = {
         ("PersonSurvey5yr", "PUMA"),
     ],
     "LOCATED_IN": [
+        ("CountyElectionResult", "County"),
         ("HousingSurvey", "PUMA"),
         ("HousingSurvey5yr", "PUMA"),
     ],

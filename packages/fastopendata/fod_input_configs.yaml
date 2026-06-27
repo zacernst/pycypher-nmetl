@@ -1695,6 +1695,20 @@ sources:
         initial_report_date: STRING
         last_modified_date: STRING
 
+    - id: presidential_results_2024
+      uri: "file:///home/zac/scratch/2024_election_returns_county.parquet"
+      entity_type: CountyElectionResult
+      id_col: county_fips_str
+      schema_hints:
+        county_fips_str: STRING
+        rep_votes: INTEGER
+        dem_votes: INTEGER
+        two_party_votes: INTEGER
+        rep_two_party_share: FLOAT
+        dem_two_party_share: FLOAT
+        rep_margin: FLOAT
+        pres_winner_2024: STRING
+
     - id: cjars_records
       uri: "file:///home/zac/scratch/output/cjars_joe_2022_co.parquet"
       entity_type: CJARSRecord
@@ -2066,6 +2080,13 @@ sources:
       source_col: contract_transaction_unique_key
       target_col: prime_award_transaction_place_of_performance_state_fips_code
       query: "SELECT contract_transaction_unique_key, prime_award_transaction_place_of_performance_state_fips_code FROM source WHERE prime_award_transaction_place_of_performance_state_fips_code IS NOT NULL"
+
+    - id: election_result_in_county
+      relationship_type: LOCATED_IN
+      source_entity_type: CountyElectionResult
+      target_entity_type: County
+      source_col: county_fips_str
+      target_col: FIPS
 
     - id: cjars_record_in_county
       uri: "file:///home/zac/scratch/output/cjars_joe_2022_co.parquet"
@@ -2972,6 +2993,48 @@ queries:
   - id: state_other_unspecified_lang_count_5yr
     description: "Roll up other and unspecified language speaker counts from PUMA to State (5-year)"
     inline: "MATCH (s:State)<-[:IN]-(pu:PUMA) WITH s, SUM(pu.other_unspecified_lang_count_5yr) AS cnt SET s.other_unspecified_lang_count_5yr = cnt"
+
+  - id: county_pres_rep_votes_2024
+    description: "Total Republican two-party votes cast for US President (2024) in each County"
+    inline: "MATCH (e:CountyElectionResult)-[:LOCATED_IN]->(c:County) WITH c, e.rep_votes AS rep_votes SET c.pres_rep_votes_2024 = rep_votes"
+    property_types:
+      pres_rep_votes_2024: integer
+
+  - id: county_pres_dem_votes_2024
+    description: "Total Democrat two-party votes cast for US President (2024) in each County"
+    inline: "MATCH (e:CountyElectionResult)-[:LOCATED_IN]->(c:County) WITH c, e.dem_votes AS dem_votes SET c.pres_dem_votes_2024 = dem_votes"
+    property_types:
+      pres_dem_votes_2024: integer
+
+  - id: county_pres_two_party_votes_2024
+    description: "Total two-party (Republican + Democrat) votes for US President (2024) in each County"
+    inline: "MATCH (e:CountyElectionResult)-[:LOCATED_IN]->(c:County) WITH c, e.two_party_votes AS two_party_votes SET c.pres_two_party_votes_2024 = two_party_votes"
+    property_types:
+      pres_two_party_votes_2024: integer
+
+  - id: county_pres_rep_share_2024
+    description: "Republican share of the two-party presidential vote (2024) in each County (0.0–1.0)"
+    inline: "MATCH (e:CountyElectionResult)-[:LOCATED_IN]->(c:County) WITH c, e.rep_two_party_share AS rep_two_party_share SET c.pres_rep_share_2024 = rep_two_party_share"
+    property_types:
+      pres_rep_share_2024: float
+
+  - id: county_pres_dem_share_2024
+    description: "Democrat share of the two-party presidential vote (2024) in each County (0.0–1.0)"
+    inline: "MATCH (e:CountyElectionResult)-[:LOCATED_IN]->(c:County) WITH c, e.dem_two_party_share AS dem_two_party_share SET c.pres_dem_share_2024 = dem_two_party_share"
+    property_types:
+      pres_dem_share_2024: float
+
+  - id: county_pres_rep_margin_2024
+    description: "Republican two-party margin in the 2024 presidential election for each County (positive = R advantage, range -1.0 to 1.0)"
+    inline: "MATCH (e:CountyElectionResult)-[:LOCATED_IN]->(c:County) WITH c, e.rep_margin AS rep_margin SET c.pres_rep_margin_2024 = rep_margin"
+    property_types:
+      pres_rep_margin_2024: float
+
+  - id: county_pres_winner_2024
+    description: "Winning party in the 2024 US Presidential election for each County ('REPUBLICAN', 'DEMOCRAT', or 'TIE')"
+    inline: "MATCH (e:CountyElectionResult)-[:LOCATED_IN]->(c:County) WITH c, e.pres_winner_2024 AS pres_winner_2024 SET c.pres_winner_2024 = pres_winner_2024"
+    property_types:
+      pres_winner_2024: string
 
   - id: county_felony_employment_rate
     description: "Share employed in the year of a felony charge, across all offense types, ages, sexes, and races in each County"
