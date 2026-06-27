@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 
 
 class NodeLabel(str, Enum):
+    CJARSRecord = "CJARSRecord"
     County = "County"
     FederalAward = "FederalAward"
     HousingSurvey = "HousingSurvey"
@@ -39,6 +40,10 @@ class RelationshipType(str, Enum):
     WORKS_IN = "WORKS_IN"
 
 
+class CJARSRecord(BaseModel):
+    pass
+
+
 class County(BaseModel):
     avg_federal_revenue_share: Optional[float] = Field(default=None, description="Average federal revenue share across schools in each County; high values indicate elevated exposure to federal funding cuts")
     avg_instruction_spend_share: Optional[float] = Field(default=None, description="Average share of expenditures directed to instruction across schools in each County; a proxy for how much spending reaches students vs. administration")
@@ -46,11 +51,23 @@ class County(BaseModel):
     avg_per_pupil_spend: Optional[float] = Field(default=None, description="Aggregate average per-pupil total expenditure across all schools in each County")
     charter_school_share: Optional[float] = Field(default=None, description="Compute the share of schools in each County that are charter schools")
     elementary_school_count: Optional[int] = Field(default=None, description="Count of elementary schools in each County")
+    felony_death_rate: Optional[float] = Field(default=None, description="Share who have died following a felony charge in each County")
+    felony_earnings: Optional[float] = Field(default=None, description="Average annual employment earnings for individuals charged with a felony, across all offense types, ages, sexes, and races in each County")
+    felony_employment_rate: Optional[float] = Field(default=None, description="Share employed in the year of a felony charge, across all offense types, ages, sexes, and races in each County")
+    felony_hud_rate: Optional[float] = Field(default=None, description="Share receiving HUD rental housing assistance among individuals charged with a felony in each County")
+    felony_medicaid_rate: Optional[float] = Field(default=None, description="Share enrolled in Medicaid among individuals charged with a felony in each County")
+    felony_ssi_rate: Optional[float] = Field(default=None, description="Share receiving Supplemental Security Income among individuals charged with a felony in each County")
     high_federal_dependency_school_share: Optional[float] = Field(default=None, description="Share of schools in each County where federal revenue exceeds 25% of total revenue; a county-level policy risk signal")
     high_school_count: Optional[int] = Field(default=None, description="Count of high schools in each County")
     is_metro: Optional[bool] = Field(default=None, description="Flag County nodes in metro areas (RUCC codes 1-3)")
     is_rural: Optional[bool] = Field(default=None, description="Flag County nodes that are completely rural (RUCC codes 8-9)")
     middle_school_count: Optional[int] = Field(default=None, description="Count of middle schools in each County")
+    misdemeanor_death_rate: Optional[float] = Field(default=None, description="Share who have died following a misdemeanor charge in each County")
+    misdemeanor_earnings: Optional[float] = Field(default=None, description="Average annual employment earnings for individuals charged with a misdemeanor in each County")
+    misdemeanor_employment_rate: Optional[float] = Field(default=None, description="Share employed in the year of a misdemeanor charge, across all offense types, ages, sexes, and races in each County")
+    misdemeanor_hud_rate: Optional[float] = Field(default=None, description="Share receiving HUD rental housing assistance among individuals charged with a misdemeanor in each County")
+    misdemeanor_medicaid_rate: Optional[float] = Field(default=None, description="Share enrolled in Medicaid among individuals charged with a misdemeanor in each County")
+    misdemeanor_ssi_rate: Optional[float] = Field(default=None, description="Share receiving Supplemental Security Income among individuals charged with a misdemeanor in each County")
     per_pupil_spend_vs_state_avg: Optional[float] = Field(default=None, description="Difference between a County's average per-pupil spend and its State's average; positive values indicate above-average local investment")
     rucc_class: Optional[str] = Field(default=None, description="Set a three-way metro/nonmetro_urban/rural classification string on each County node")
     school_count: Optional[int] = Field(default=None, description="Count the number of schools located in each County")
