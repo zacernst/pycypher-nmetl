@@ -204,9 +204,10 @@ exclude_also = [
 ]
 
 [tool.pytest.ini_options]
-addopts = ["--strict-markers", "--strict-config", "--tb=short"]
+addopts = ["--strict-markers", "--strict-config", "--tb=short", "--import-mode=importlib"]
 testpaths = ["tests"]
 pythonpath = ["tests"]
+norecursedirs = ["google-cloud-sdk", ".venv", ".git", "node_modules", ".claude", "build"]
 markers = [
   "slow: Marks tests as slow (deselect with '-m \"not slow\"')",
   "integration: Integration tests (deselect with '-m \"not integration\"')",
