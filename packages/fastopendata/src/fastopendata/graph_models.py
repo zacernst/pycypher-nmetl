@@ -16,7 +16,7 @@ class NodeLabel(str, Enum):
     County = "County"
     CountyElectionResult = "CountyElectionResult"
     FederalAward = "FederalAward"
-    HousingSurvey = "HousingSurvey"
+    HousingSurvey1yr = "HousingSurvey1yr"
     HousingSurvey5yr = "HousingSurvey5yr"
     IndustryGroup = "IndustryGroup"
     LanguageGroup = "LanguageGroup"
@@ -24,7 +24,7 @@ class NodeLabel(str, Enum):
     OccupationGroup = "OccupationGroup"
     OccupationSubgroup = "OccupationSubgroup"
     PUMA = "PUMA"
-    PersonSurvey = "PersonSurvey"
+    PersonSurvey1yr = "PersonSurvey1yr"
     PersonSurvey5yr = "PersonSurvey5yr"
     School = "School"
     State = "State"
@@ -33,8 +33,6 @@ class NodeLabel(str, Enum):
 
 class RelationshipType(str, Enum):
     EMPLOYED_IN = "EMPLOYED_IN"
-    IN = "IN"
-    LIVES_IN = "LIVES_IN"
     LOCATED_IN = "LOCATED_IN"
     RESIDES_IN = "RESIDES_IN"
     SPEAKS = "SPEAKS"
@@ -46,30 +44,20 @@ class CJARSRecord(BaseModel):
 
 
 class County(BaseModel):
-    avg_federal_revenue_share: Optional[float] = Field(default=None, description="Average federal revenue share across schools in each County; high values indicate elevated exposure to federal funding cuts")
-    avg_instruction_spend_share: Optional[float] = Field(default=None, description="Average share of expenditures directed to instruction across schools in each County; a proxy for how much spending reaches students vs. administration")
-    avg_local_revenue_share: Optional[float] = Field(default=None, description="Average local revenue share across schools in each County; high values correlate with property-tax-rich counties")
-    avg_per_pupil_spend: Optional[float] = Field(default=None, description="Aggregate average per-pupil total expenditure across all schools in each County")
-    charter_school_share: Optional[float] = Field(default=None, description="Compute the share of schools in each County that are charter schools")
-    elementary_school_count: Optional[int] = Field(default=None, description="Count of elementary schools in each County")
-    felony_death_rate: Optional[float] = Field(default=None, description="Share who have died following a felony charge in each County")
-    felony_earnings: Optional[float] = Field(default=None, description="Average annual employment earnings for individuals charged with a felony, across all offense types, ages, sexes, and races in each County")
-    felony_employment_rate: Optional[float] = Field(default=None, description="Share employed in the year of a felony charge, across all offense types, ages, sexes, and races in each County")
-    felony_hud_rate: Optional[float] = Field(default=None, description="Share receiving HUD rental housing assistance among individuals charged with a felony in each County")
-    felony_medicaid_rate: Optional[float] = Field(default=None, description="Share enrolled in Medicaid among individuals charged with a felony in each County")
-    felony_ssi_rate: Optional[float] = Field(default=None, description="Share receiving Supplemental Security Income among individuals charged with a felony in each County")
-    high_federal_dependency_school_share: Optional[float] = Field(default=None, description="Share of schools in each County where federal revenue exceeds 25% of total revenue; a county-level policy risk signal")
-    high_school_count: Optional[int] = Field(default=None, description="Count of high schools in each County")
+    cjars_felony_death_rate: Optional[float] = Field(default=None, description="Share who have died following a felony charge in each County")
+    cjars_felony_earnings: Optional[float] = Field(default=None, description="Average annual employment earnings for individuals charged with a felony, across all offense types, ages, sexes, and races in each County")
+    cjars_felony_employment_rate: Optional[float] = Field(default=None, description="Share employed in the year of a felony charge, across all offense types, ages, sexes, and races in each County")
+    cjars_felony_hud_rate: Optional[float] = Field(default=None, description="Share receiving HUD rental housing assistance among individuals charged with a felony in each County")
+    cjars_felony_medicaid_rate: Optional[float] = Field(default=None, description="Share enrolled in Medicaid among individuals charged with a felony in each County")
+    cjars_felony_ssi_rate: Optional[float] = Field(default=None, description="Share receiving Supplemental Security Income among individuals charged with a felony in each County")
+    cjars_misdemeanor_death_rate: Optional[float] = Field(default=None, description="Share who have died following a misdemeanor charge in each County")
+    cjars_misdemeanor_earnings: Optional[float] = Field(default=None, description="Average annual employment earnings for individuals charged with a misdemeanor in each County")
+    cjars_misdemeanor_employment_rate: Optional[float] = Field(default=None, description="Share employed in the year of a misdemeanor charge, across all offense types, ages, sexes, and races in each County")
+    cjars_misdemeanor_hud_rate: Optional[float] = Field(default=None, description="Share receiving HUD rental housing assistance among individuals charged with a misdemeanor in each County")
+    cjars_misdemeanor_medicaid_rate: Optional[float] = Field(default=None, description="Share enrolled in Medicaid among individuals charged with a misdemeanor in each County")
+    cjars_misdemeanor_ssi_rate: Optional[float] = Field(default=None, description="Share receiving Supplemental Security Income among individuals charged with a misdemeanor in each County")
     is_metro: Optional[bool] = Field(default=None, description="Flag County nodes in metro areas (RUCC codes 1-3)")
     is_rural: Optional[bool] = Field(default=None, description="Flag County nodes that are completely rural (RUCC codes 8-9)")
-    middle_school_count: Optional[int] = Field(default=None, description="Count of middle schools in each County")
-    misdemeanor_death_rate: Optional[float] = Field(default=None, description="Share who have died following a misdemeanor charge in each County")
-    misdemeanor_earnings: Optional[float] = Field(default=None, description="Average annual employment earnings for individuals charged with a misdemeanor in each County")
-    misdemeanor_employment_rate: Optional[float] = Field(default=None, description="Share employed in the year of a misdemeanor charge, across all offense types, ages, sexes, and races in each County")
-    misdemeanor_hud_rate: Optional[float] = Field(default=None, description="Share receiving HUD rental housing assistance among individuals charged with a misdemeanor in each County")
-    misdemeanor_medicaid_rate: Optional[float] = Field(default=None, description="Share enrolled in Medicaid among individuals charged with a misdemeanor in each County")
-    misdemeanor_ssi_rate: Optional[float] = Field(default=None, description="Share receiving Supplemental Security Income among individuals charged with a misdemeanor in each County")
-    per_pupil_spend_vs_state_avg: Optional[float] = Field(default=None, description="Difference between a County's average per-pupil spend and its State's average; positive values indicate above-average local investment")
     pres_dem_share_2024: Optional[float] = Field(default=None, description="Democrat share of the two-party presidential vote (2024) in each County (0.0–1.0)")
     pres_dem_votes_2024: Optional[float] = Field(default=None, description="Total Democrat two-party votes cast for US President (2024) in each County")
     pres_rep_margin_2024: Optional[float] = Field(default=None, description="Republican two-party margin in the 2024 presidential election for each County (positive = R advantage, range -1.0 to 1.0)")
@@ -78,9 +66,19 @@ class County(BaseModel):
     pres_two_party_votes_2024: Optional[float] = Field(default=None, description="Total two-party (Republican + Democrat) votes for US President (2024) in each County")
     pres_winner_2024: Optional[float] = Field(default=None, description="Winning party in the 2024 US Presidential election for each County ('REPUBLICAN', 'DEMOCRAT', or 'TIE')")
     rucc_class: Optional[str] = Field(default=None, description="Set a three-way metro/nonmetro_urban/rural classification string on each County node")
+    school_avg_federal_revenue_share: Optional[float] = Field(default=None, description="Average federal revenue share across schools in each County; high values indicate elevated exposure to federal funding cuts")
+    school_avg_instruction_spend_share: Optional[float] = Field(default=None, description="Average share of expenditures directed to instruction across schools in each County; a proxy for how much spending reaches students vs. administration")
+    school_avg_local_revenue_share: Optional[float] = Field(default=None, description="Average local revenue share across schools in each County; high values correlate with property-tax-rich counties")
+    school_avg_per_pupil_spend: Optional[float] = Field(default=None, description="Aggregate average per-pupil total expenditure across all schools in each County")
+    school_charter_share: Optional[float] = Field(default=None, description="Compute the share of schools in each County that are charter schools")
     school_count: Optional[int] = Field(default=None, description="Count the number of schools located in each County")
-    special_ed_school_share: Optional[float] = Field(default=None, description="Share of schools in each County classified as special education (SCH_TYPE = 2)")
-    total_enrollment: Optional[float] = Field(default=None, description="Total student enrollment across all schools in each County")
+    school_elementary_count: Optional[int] = Field(default=None, description="Count of elementary schools in each County")
+    school_high_count: Optional[int] = Field(default=None, description="Count of high schools in each County")
+    school_high_federal_dependency_share: Optional[float] = Field(default=None, description="Share of schools in each County where federal revenue exceeds 25% of total revenue; a county-level policy risk signal")
+    school_middle_count: Optional[int] = Field(default=None, description="Count of middle schools in each County")
+    school_per_pupil_spend_vs_state_avg: Optional[float] = Field(default=None, description="Difference between a County's average per-pupil spend and its State's average; positive values indicate above-average local investment")
+    school_special_ed_share: Optional[float] = Field(default=None, description="Share of schools in each County classified as special education (SCH_TYPE = 2)")
+    school_total_enrollment: Optional[float] = Field(default=None, description="Total student enrollment across all schools in each County")
 
 
 class CountyElectionResult(BaseModel):
@@ -91,7 +89,7 @@ class FederalAward(BaseModel):
     pass
 
 
-class HousingSurvey(BaseModel):
+class HousingSurvey1yr(BaseModel):
     pass
 
 
@@ -129,6 +127,7 @@ class PUMA(BaseModel):
     arts_design_entertainment_count_5yr: Optional[int] = Field(default=None, description="Count Arts, Design, Entertainment, Sports, and Media Occupations workers per PUMA (5-year)")
     arts_entertainment_food_count_1yr: Optional[int] = Field(default=None, description="Count Arts, Entertainment, Recreation, and Food Services industry workers per PUMA")
     arts_entertainment_food_count_5yr: Optional[int] = Field(default=None, description="Count Arts, Entertainment, Recreation, and Food Services industry workers per PUMA (5-year)")
+    avg_rucc_score: Optional[float] = Field(default=None, description="Compute average RUCC score and rural/metro tract fractions for each PUMA")
     building_grounds_count_1yr: Optional[int] = Field(default=None, description="Count Building and Grounds Cleaning and Maintenance Occupations workers per PUMA")
     building_grounds_count_5yr: Optional[int] = Field(default=None, description="Count Building and Grounds Cleaning and Maintenance Occupations workers per PUMA (5-year)")
     business_financial_count_1yr: Optional[int] = Field(default=None, description="Count Business and Financial Operations Occupations workers per PUMA")
@@ -211,7 +210,6 @@ class PUMA(BaseModel):
     public_administration_count_5yr: Optional[int] = Field(default=None, description="Count Public Administration industry workers per PUMA (5-year)")
     retail_trade_count_1yr: Optional[int] = Field(default=None, description="Count Retail Trade industry workers per PUMA")
     retail_trade_count_5yr: Optional[int] = Field(default=None, description="Count Retail Trade industry workers per PUMA (5-year)")
-    rucc_avg: Optional[float] = Field(default=None, description="Compute average RUCC score and rural/metro tract fractions for each PUMA")
     sales_count_1yr: Optional[int] = Field(default=None, description="Count Sales and Related Occupations workers per PUMA")
     sales_count_5yr: Optional[int] = Field(default=None, description="Count Sales and Related Occupations workers per PUMA (5-year)")
     sales_office_count_1yr: Optional[int] = Field(default=None, description="Count Sales and Office workers per PUMA")
@@ -232,7 +230,7 @@ class PUMA(BaseModel):
     wholesale_trade_count_5yr: Optional[int] = Field(default=None, description="Count Wholesale Trade industry workers per PUMA (5-year)")
 
 
-class PersonSurvey(BaseModel):
+class PersonSurvey1yr(BaseModel):
     pass
 
 
@@ -242,8 +240,8 @@ class PersonSurvey5yr(BaseModel):
 
 class School(BaseModel):
     federal_revenue_share: Optional[float] = Field(default=None, description="Compute the share of total revenue derived from federal sources for each School node")
-    high_federal_dependency: Optional[bool] = Field(default=None, description="Flag schools where federal revenue exceeds 25% of total revenue, indicating elevated dependency on federal funding")
     is_charter: Optional[bool] = Field(default=None, description="Flag School nodes that are charter schools")
+    is_high_federal_dependency: Optional[bool] = Field(default=None, description="Flag schools where federal revenue exceeds 25% of total revenue, indicating elevated dependency on federal funding")
 
 
 class State(BaseModel):
@@ -255,8 +253,7 @@ class State(BaseModel):
     arts_design_entertainment_count_5yr: Optional[int] = Field(default=None, description="Roll up Arts, Design, Entertainment, Sports, and Media Occupations worker counts from PUMA to State (5-year)")
     arts_entertainment_food_count_1yr: Optional[int] = Field(default=None, description="Roll up Arts, Entertainment, Recreation, and Food Services industry worker counts from PUMA to State")
     arts_entertainment_food_count_5yr: Optional[int] = Field(default=None, description="Roll up Arts, Entertainment, Recreation, and Food Services industry worker counts from PUMA to State (5-year)")
-    avg_per_pupil_spend: Optional[float] = Field(default=None, description="Average per-pupil expenditure across all schools in each State; prerequisite for county deviation calculation")
-    award_count: Optional[int] = Field(default=None, description="Count federal contract award transactions per state by place of performance")
+    avg_rucc_score: Optional[float] = Field(default=None, description="Roll up RUCC stats from PUMA to State and count rural and metro counties directly")
     building_grounds_count_1yr: Optional[int] = Field(default=None, description="Roll up Building and Grounds Cleaning and Maintenance Occupations worker counts from PUMA to State")
     building_grounds_count_5yr: Optional[int] = Field(default=None, description="Roll up Building and Grounds Cleaning and Maintenance Occupations worker counts from PUMA to State (5-year)")
     business_financial_count_1yr: Optional[int] = Field(default=None, description="Roll up Business and Financial Operations Occupations worker counts from PUMA to State")
@@ -281,6 +278,7 @@ class State(BaseModel):
     european_lang_count_5yr: Optional[int] = Field(default=None, description="Roll up European language speaker counts from PUMA to State (5-year)")
     farming_fishing_forestry_count_1yr: Optional[int] = Field(default=None, description="Roll up Farming, Fishing, and Forestry Occupations worker counts from PUMA to State")
     farming_fishing_forestry_count_5yr: Optional[int] = Field(default=None, description="Roll up Farming, Fishing, and Forestry Occupations worker counts from PUMA to State (5-year)")
+    federal_award_count: Optional[int] = Field(default=None, description="Count federal contract award transactions per state by place of performance")
     finance_real_estate_count_1yr: Optional[int] = Field(default=None, description="Roll up Finance, Insurance, and Real Estate industry worker counts from PUMA to State")
     finance_real_estate_count_5yr: Optional[int] = Field(default=None, description="Roll up Finance, Insurance, and Real Estate industry worker counts from PUMA to State (5-year)")
     food_preparation_serving_count_1yr: Optional[int] = Field(default=None, description="Roll up Food Preparation and Serving Related Occupations worker counts from PUMA to State")
@@ -293,6 +291,7 @@ class State(BaseModel):
     information_count_5yr: Optional[int] = Field(default=None, description="Roll up Information industry worker counts from PUMA to State (5-year)")
     installation_maintenance_repair_count_1yr: Optional[int] = Field(default=None, description="Roll up Installation, Maintenance, and Repair Occupations worker counts from PUMA to State")
     installation_maintenance_repair_count_5yr: Optional[int] = Field(default=None, description="Roll up Installation, Maintenance, and Repair Occupations worker counts from PUMA to State (5-year)")
+    is_large_state: Optional[float] = Field(default=None, description="Do a simple test aggregation")
     legal_count_1yr: Optional[int] = Field(default=None, description="Roll up Legal Occupations worker counts from PUMA to State")
     legal_count_5yr: Optional[int] = Field(default=None, description="Roll up Legal Occupations worker counts from PUMA to State (5-year)")
     life_physical_social_science_count_1yr: Optional[int] = Field(default=None, description="Roll up Life, Physical, and Social Science Occupations worker counts from PUMA to State")
@@ -321,9 +320,8 @@ class State(BaseModel):
     other_services_ind_count_5yr: Optional[int] = Field(default=None, description="Roll up Other Services industry worker counts from PUMA to State (5-year)")
     other_unspecified_lang_count_1yr: Optional[int] = Field(default=None, description="Roll up other and unspecified language speaker counts from PUMA to State")
     other_unspecified_lang_count_5yr: Optional[int] = Field(default=None, description="Roll up other and unspecified language speaker counts from PUMA to State (5-year)")
-    over_hundred_counties: Optional[bool] = Field(default=None, description="Do a simple test aggregation")
-    pct_metro_tracts: Optional[float] = Field(default=None, description="Roll up RUCC stats from PUMA to State and count rural and metro counties directly")
-    pct_rural_tracts: Optional[float] = Field(default=None, description="Roll up RUCC stats from PUMA to State and count rural and metro counties directly")
+    pct_metro_counties: Optional[float] = Field(default=None, description="Roll up RUCC stats from PUMA to State and count rural and metro counties directly")
+    pct_rural_counties: Optional[float] = Field(default=None, description="Roll up RUCC stats from PUMA to State and count rural and metro counties directly")
     personal_care_service_count_1yr: Optional[int] = Field(default=None, description="Roll up Personal Care and Service Occupations worker counts from PUMA to State")
     personal_care_service_count_5yr: Optional[int] = Field(default=None, description="Roll up Personal Care and Service Occupations worker counts from PUMA to State (5-year)")
     production_count_1yr: Optional[int] = Field(default=None, description="Roll up Production Occupations worker counts from PUMA to State")
@@ -338,12 +336,12 @@ class State(BaseModel):
     public_administration_count_5yr: Optional[int] = Field(default=None, description="Roll up Public Administration industry worker counts from PUMA to State (5-year)")
     retail_trade_count_1yr: Optional[int] = Field(default=None, description="Roll up Retail Trade industry worker counts from PUMA to State")
     retail_trade_count_5yr: Optional[int] = Field(default=None, description="Roll up Retail Trade industry worker counts from PUMA to State (5-year)")
-    rucc_avg: Optional[float] = Field(default=None, description="Roll up RUCC stats from PUMA to State and count rural and metro counties directly")
     rural_county_count: Optional[int] = Field(default=None, description="Roll up RUCC stats from PUMA to State and count rural and metro counties directly")
     sales_count_1yr: Optional[int] = Field(default=None, description="Roll up Sales and Related Occupations worker counts from PUMA to State")
     sales_count_5yr: Optional[int] = Field(default=None, description="Roll up Sales and Related Occupations worker counts from PUMA to State (5-year)")
     sales_office_count_1yr: Optional[int] = Field(default=None, description="Roll up Sales and Office worker counts from PUMA to State")
     sales_office_count_5yr: Optional[int] = Field(default=None, description="Roll up Sales and Office worker counts from PUMA to State (5-year)")
+    school_avg_per_pupil_spend: Optional[float] = Field(default=None, description="Average per-pupil expenditure across all schools in each State; prerequisite for county deviation calculation")
     service_count_1yr: Optional[int] = Field(default=None, description="Roll up Service worker counts from PUMA to State")
     service_count_5yr: Optional[int] = Field(default=None, description="Roll up Service occupation worker counts from PUMA to State (5-year)")
     south_central_asian_lang_count_1yr: Optional[int] = Field(default=None, description="Roll up South and Central Asian language speaker counts from PUMA to State")
@@ -359,36 +357,36 @@ class State(BaseModel):
 
 
 class Tract(BaseModel):
-    combined_building_eal: Optional[float] = Field(default=None, description="Sum annualized building losses across all six key hazards to produce a single per-tract property-risk estimate")
     earthquake_building_eal: Optional[float] = Field(default=None, description="Set earthquake risk score, rating, and annualized building loss on each Tract node")
     earthquake_risk_rating: Optional[float] = Field(default=None, description="Set earthquake risk score, rating, and annualized building loss on each Tract node")
-    earthquake_risk_score: Optional[float] = Field(default=None, description="Set earthquake risk score, rating, and annualized building loss on each Tract node")
-    elevated_property_risk: Optional[float] = Field(default=None, description="Flag tracts whose combined annualized building loss across all six hazards exceeds $100,000 per year")
     flood_building_eal: Optional[float] = Field(default=None, description="Set riverine flood risk score, rating, and annualized building loss on each Tract node")
     flood_risk_rating: Optional[float] = Field(default=None, description="Set riverine flood risk score, rating, and annualized building loss on each Tract node")
-    flood_risk_score: Optional[float] = Field(default=None, description="Set riverine flood risk score, rating, and annualized building loss on each Tract node")
     hail_building_eal: Optional[float] = Field(default=None, description="Set tornado, strong wind, and hail risk scores and annualized building losses on each Tract node")
     hail_risk_score: Optional[float] = Field(default=None, description="Set tornado, strong wind, and hail risk scores and annualized building losses on each Tract node")
-    high_earthquake_risk: Optional[float] = Field(default=None, description="Flag tracts where earthquake risk score exceeds the 75th-percentile threshold (score > 75)")
-    high_flood_risk: Optional[float] = Field(default=None, description="Flag tracts where riverine flood risk score exceeds the 75th-percentile threshold (score > 75)")
-    high_hurricane_risk: Optional[float] = Field(default=None, description="Flag tracts where hurricane risk score exceeds the 75th-percentile threshold (score > 75)")
-    high_wildfire_risk: Optional[float] = Field(default=None, description="Flag tracts where wildfire risk score exceeds the 75th-percentile threshold (score > 75)")
     hurricane_building_eal: Optional[float] = Field(default=None, description="Set hurricane risk score, rating, and annualized building loss on each Tract node")
     hurricane_risk_rating: Optional[float] = Field(default=None, description="Set hurricane risk score, rating, and annualized building loss on each Tract node")
-    hurricane_risk_score: Optional[float] = Field(default=None, description="Set hurricane risk score, rating, and annualized building loss on each Tract node")
+    is_elevated_property_risk: Optional[float] = Field(default=None, description="Flag tracts whose combined annualized building loss across all six hazards exceeds $100,000 per year")
+    is_high_earthquake_risk: Optional[float] = Field(default=None, description="Flag tracts where earthquake risk score exceeds the 75th-percentile threshold (score > 75)")
+    is_high_flood_risk: Optional[float] = Field(default=None, description="Flag tracts where riverine flood risk score exceeds the 75th-percentile threshold (score > 75)")
+    is_high_hurricane_risk: Optional[float] = Field(default=None, description="Flag tracts where hurricane risk score exceeds the 75th-percentile threshold (score > 75)")
+    is_high_wildfire_risk: Optional[float] = Field(default=None, description="Flag tracts where wildfire risk score exceeds the 75th-percentile threshold (score > 75)")
+    nri_combined_building_eal: Optional[float] = Field(default=None, description="Sum annualized building losses across all six key hazards to produce a single per-tract property-risk estimate")
     nri_eal_score: Optional[float] = Field(default=None, description="Copy NRI composite risk, EAL, social vulnerability, and resilience scores onto each Tract node")
     nri_eal_total: Optional[float] = Field(default=None, description="Copy NRI composite risk, EAL, social vulnerability, and resilience scores onto each Tract node")
+    nri_earthquake_risk_score: Optional[float] = Field(default=None, description="Set earthquake risk score, rating, and annualized building loss on each Tract node")
+    nri_flood_risk_score: Optional[float] = Field(default=None, description="Set riverine flood risk score, rating, and annualized building loss on each Tract node")
+    nri_hurricane_risk_score: Optional[float] = Field(default=None, description="Set hurricane risk score, rating, and annualized building loss on each Tract node")
     nri_resilience: Optional[float] = Field(default=None, description="Copy NRI composite risk, EAL, social vulnerability, and resilience scores onto each Tract node")
     nri_risk_rating: Optional[float] = Field(default=None, description="Copy NRI composite risk, EAL, social vulnerability, and resilience scores onto each Tract node")
     nri_risk_score: Optional[float] = Field(default=None, description="Copy NRI composite risk, EAL, social vulnerability, and resilience scores onto each Tract node")
     nri_social_vulnerability: Optional[float] = Field(default=None, description="Copy NRI composite risk, EAL, social vulnerability, and resilience scores onto each Tract node")
+    nri_tornado_risk_score: Optional[float] = Field(default=None, description="Set tornado, strong wind, and hail risk scores and annualized building losses on each Tract node")
+    nri_wildfire_risk_score: Optional[float] = Field(default=None, description="Set wildfire risk score, rating, and annualized building loss on each Tract node")
     rucc_2023: Optional[int] = Field(default=None, description="Propagate county RUCC code and description down to each tract")
     rucc_description: Optional[str] = Field(default=None, description="Propagate county RUCC code and description down to each tract")
     tornado_building_eal: Optional[float] = Field(default=None, description="Set tornado, strong wind, and hail risk scores and annualized building losses on each Tract node")
-    tornado_risk_score: Optional[float] = Field(default=None, description="Set tornado, strong wind, and hail risk scores and annualized building losses on each Tract node")
     wildfire_building_eal: Optional[float] = Field(default=None, description="Set wildfire risk score, rating, and annualized building loss on each Tract node")
     wildfire_risk_rating: Optional[float] = Field(default=None, description="Set wildfire risk score, rating, and annualized building loss on each Tract node")
-    wildfire_risk_score: Optional[float] = Field(default=None, description="Set wildfire risk score, rating, and annualized building loss on each Tract node")
     wind_building_eal: Optional[float] = Field(default=None, description="Set tornado, strong wind, and hail risk scores and annualized building losses on each Tract node")
     wind_risk_score: Optional[float] = Field(default=None, description="Set tornado, strong wind, and hail risk scores and annualized building losses on each Tract node")
 
@@ -397,36 +395,32 @@ class Tract(BaseModel):
 # Format: {RelationshipType: [(source_label, target_label), ...]}
 RELATIONSHIP_ENDPOINTS: dict[str, list[tuple[str, str]]] = {
     "EMPLOYED_IN": [
-        ("PersonSurvey", "IndustryGroup"),
+        ("PersonSurvey1yr", "IndustryGroup"),
         ("PersonSurvey5yr", "IndustryGroup"),
     ],
-    "IN": [
+    "LOCATED_IN": [
         ("County", "State"),
+        ("CountyElectionResult", "County"),
+        ("HousingSurvey1yr", "PUMA"),
+        ("HousingSurvey5yr", "PUMA"),
         ("OSMNode", "Tract"),
         ("PUMA", "State"),
+        ("PersonSurvey1yr", "PUMA"),
+        ("PersonSurvey5yr", "PUMA"),
         ("Tract", "County"),
         ("Tract", "PUMA"),
     ],
-    "LIVES_IN": [
-        ("PersonSurvey", "PUMA"),
-        ("PersonSurvey5yr", "PUMA"),
-    ],
-    "LOCATED_IN": [
-        ("CountyElectionResult", "County"),
-        ("HousingSurvey", "PUMA"),
-        ("HousingSurvey5yr", "PUMA"),
-    ],
     "RESIDES_IN": [
-        ("PersonSurvey", "HousingSurvey"),
+        ("PersonSurvey1yr", "HousingSurvey1yr"),
         ("PersonSurvey5yr", "HousingSurvey5yr"),
     ],
     "SPEAKS": [
-        ("PersonSurvey", "LanguageGroup"),
+        ("PersonSurvey1yr", "LanguageGroup"),
         ("PersonSurvey5yr", "LanguageGroup"),
     ],
     "WORKS_IN": [
-        ("PersonSurvey", "OccupationGroup"),
-        ("PersonSurvey", "OccupationSubgroup"),
+        ("PersonSurvey1yr", "OccupationGroup"),
+        ("PersonSurvey1yr", "OccupationSubgroup"),
         ("PersonSurvey5yr", "OccupationGroup"),
         ("PersonSurvey5yr", "OccupationSubgroup"),
     ],
