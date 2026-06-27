@@ -1695,6 +1695,31 @@ sources:
         initial_report_date: STRING
         last_modified_date: STRING
 
+    - id: cjars_records
+      uri: "file:///home/zac/scratch/output/cjars_joe_2022_co.parquet"
+      entity_type: CJARSRecord
+      id_col: record_id
+      schema_hints:
+        record_id: STRING
+        county_fips_5: STRING
+        geo_name: STRING
+        state_fips: STRING
+        cj_event_type: STRING
+        cj_event_type_label: STRING
+        offense_type: STRING
+        offense_type_label: STRING
+        age_group: STRING
+        age_group_label: STRING
+        sex: STRING
+        sex_label: STRING
+        race_ethnicity: STRING
+        race_ethnicity_label: STRING
+        outcome_type: STRING
+        outcome_type_label: STRING
+        estimation_type: STRING
+        estimation_type_label: STRING
+        statistic: FLOAT
+
     - id: school_fiscal
       uri: "file:///home/zac/scratch/slfs23_1a.parquet"
       entity_type: School
@@ -2041,6 +2066,15 @@ sources:
       source_col: contract_transaction_unique_key
       target_col: prime_award_transaction_place_of_performance_state_fips_code
       query: "SELECT contract_transaction_unique_key, prime_award_transaction_place_of_performance_state_fips_code FROM source WHERE prime_award_transaction_place_of_performance_state_fips_code IS NOT NULL"
+
+    - id: cjars_record_in_county
+      uri: "file:///home/zac/scratch/output/cjars_joe_2022_co.parquet"
+      relationship_type: LOCATED_IN
+      source_col: record_id
+      target_col: county_fips_5
+      schema_hints:
+        record_id: STRING
+        county_fips_5: STRING
 
     - id: school_in_county
       uri: "file:///home/zac/scratch/slfs23_1a.parquet"
@@ -2938,6 +2972,78 @@ queries:
   - id: state_other_unspecified_lang_count_5yr
     description: "Roll up other and unspecified language speaker counts from PUMA to State (5-year)"
     inline: "MATCH (s:State)<-[:IN]-(pu:PUMA) WITH s, SUM(pu.other_unspecified_lang_count_5yr) AS cnt SET s.other_unspecified_lang_count_5yr = cnt"
+
+  - id: county_felony_employment_rate
+    description: "Share employed in the year of a felony charge, across all offense types, ages, sexes, and races in each County"
+    inline: "MATCH (r:CJARSRecord)-[:LOCATED_IN]->(c:County) WHERE r.cj_event_type_label = 'Felony charge' AND r.offense_type_label = 'All offenses' AND r.age_group_label = 'All ages (18+)' AND r.sex_label = 'All sexes' AND r.race_ethnicity_label = 'All races/ethnicities' AND r.outcome_type_label = '% employed in a year' WITH c, AVG(r.statistic) AS felony_employment_rate SET c.felony_employment_rate = felony_employment_rate"
+    property_types:
+      felony_employment_rate: float
+
+  - id: county_felony_earnings
+    description: "Average annual employment earnings for individuals charged with a felony, across all offense types, ages, sexes, and races in each County"
+    inline: "MATCH (r:CJARSRecord)-[:LOCATED_IN]->(c:County) WHERE r.cj_event_type_label = 'Felony charge' AND r.offense_type_label = 'All offenses' AND r.age_group_label = 'All ages (18+)' AND r.sex_label = 'All sexes' AND r.race_ethnicity_label = 'All races/ethnicities' AND r.outcome_type_label = 'Average annual employment earnings' WITH c, AVG(r.statistic) AS felony_earnings SET c.felony_earnings = felony_earnings"
+    property_types:
+      felony_earnings: float
+
+  - id: county_felony_medicaid_rate
+    description: "Share enrolled in Medicaid among individuals charged with a felony in each County"
+    inline: "MATCH (r:CJARSRecord)-[:LOCATED_IN]->(c:County) WHERE r.cj_event_type_label = 'Felony charge' AND r.offense_type_label = 'All offenses' AND r.age_group_label = 'All ages (18+)' AND r.sex_label = 'All sexes' AND r.race_ethnicity_label = 'All races/ethnicities' AND r.outcome_type_label = '% enrolled in Medicaid' WITH c, AVG(r.statistic) AS felony_medicaid_rate SET c.felony_medicaid_rate = felony_medicaid_rate"
+    property_types:
+      felony_medicaid_rate: float
+
+  - id: county_felony_ssi_rate
+    description: "Share receiving Supplemental Security Income among individuals charged with a felony in each County"
+    inline: "MATCH (r:CJARSRecord)-[:LOCATED_IN]->(c:County) WHERE r.cj_event_type_label = 'Felony charge' AND r.offense_type_label = 'All offenses' AND r.age_group_label = 'All ages (18+)' AND r.sex_label = 'All sexes' AND r.race_ethnicity_label = 'All races/ethnicities' AND r.outcome_type_label = '% receiving Supplemental Security Income' WITH c, AVG(r.statistic) AS felony_ssi_rate SET c.felony_ssi_rate = felony_ssi_rate"
+    property_types:
+      felony_ssi_rate: float
+
+  - id: county_felony_hud_rate
+    description: "Share receiving HUD rental housing assistance among individuals charged with a felony in each County"
+    inline: "MATCH (r:CJARSRecord)-[:LOCATED_IN]->(c:County) WHERE r.cj_event_type_label = 'Felony charge' AND r.offense_type_label = 'All offenses' AND r.age_group_label = 'All ages (18+)' AND r.sex_label = 'All sexes' AND r.race_ethnicity_label = 'All races/ethnicities' AND r.outcome_type_label = '% receiving HUD rental housing assistance' WITH c, AVG(r.statistic) AS felony_hud_rate SET c.felony_hud_rate = felony_hud_rate"
+    property_types:
+      felony_hud_rate: float
+
+  - id: county_felony_death_rate
+    description: "Share who have died following a felony charge in each County"
+    inline: "MATCH (r:CJARSRecord)-[:LOCATED_IN]->(c:County) WHERE r.cj_event_type_label = 'Felony charge' AND r.offense_type_label = 'All offenses' AND r.age_group_label = 'All ages (18+)' AND r.sex_label = 'All sexes' AND r.race_ethnicity_label = 'All races/ethnicities' AND r.outcome_type_label = '% who have died since the event' WITH c, AVG(r.statistic) AS felony_death_rate SET c.felony_death_rate = felony_death_rate"
+    property_types:
+      felony_death_rate: float
+
+  - id: county_misdemeanor_employment_rate
+    description: "Share employed in the year of a misdemeanor charge, across all offense types, ages, sexes, and races in each County"
+    inline: "MATCH (r:CJARSRecord)-[:LOCATED_IN]->(c:County) WHERE r.cj_event_type_label = 'Misdemeanor charge' AND r.offense_type_label = 'All offenses' AND r.age_group_label = 'All ages (18+)' AND r.sex_label = 'All sexes' AND r.race_ethnicity_label = 'All races/ethnicities' AND r.outcome_type_label = '% employed in a year' WITH c, AVG(r.statistic) AS misdemeanor_employment_rate SET c.misdemeanor_employment_rate = misdemeanor_employment_rate"
+    property_types:
+      misdemeanor_employment_rate: float
+
+  - id: county_misdemeanor_earnings
+    description: "Average annual employment earnings for individuals charged with a misdemeanor in each County"
+    inline: "MATCH (r:CJARSRecord)-[:LOCATED_IN]->(c:County) WHERE r.cj_event_type_label = 'Misdemeanor charge' AND r.offense_type_label = 'All offenses' AND r.age_group_label = 'All ages (18+)' AND r.sex_label = 'All sexes' AND r.race_ethnicity_label = 'All races/ethnicities' AND r.outcome_type_label = 'Average annual employment earnings' WITH c, AVG(r.statistic) AS misdemeanor_earnings SET c.misdemeanor_earnings = misdemeanor_earnings"
+    property_types:
+      misdemeanor_earnings: float
+
+  - id: county_misdemeanor_medicaid_rate
+    description: "Share enrolled in Medicaid among individuals charged with a misdemeanor in each County"
+    inline: "MATCH (r:CJARSRecord)-[:LOCATED_IN]->(c:County) WHERE r.cj_event_type_label = 'Misdemeanor charge' AND r.offense_type_label = 'All offenses' AND r.age_group_label = 'All ages (18+)' AND r.sex_label = 'All sexes' AND r.race_ethnicity_label = 'All races/ethnicities' AND r.outcome_type_label = '% enrolled in Medicaid' WITH c, AVG(r.statistic) AS misdemeanor_medicaid_rate SET c.misdemeanor_medicaid_rate = misdemeanor_medicaid_rate"
+    property_types:
+      misdemeanor_medicaid_rate: float
+
+  - id: county_misdemeanor_ssi_rate
+    description: "Share receiving Supplemental Security Income among individuals charged with a misdemeanor in each County"
+    inline: "MATCH (r:CJARSRecord)-[:LOCATED_IN]->(c:County) WHERE r.cj_event_type_label = 'Misdemeanor charge' AND r.offense_type_label = 'All offenses' AND r.age_group_label = 'All ages (18+)' AND r.sex_label = 'All sexes' AND r.race_ethnicity_label = 'All races/ethnicities' AND r.outcome_type_label = '% receiving Supplemental Security Income' WITH c, AVG(r.statistic) AS misdemeanor_ssi_rate SET c.misdemeanor_ssi_rate = misdemeanor_ssi_rate"
+    property_types:
+      misdemeanor_ssi_rate: float
+
+  - id: county_misdemeanor_hud_rate
+    description: "Share receiving HUD rental housing assistance among individuals charged with a misdemeanor in each County"
+    inline: "MATCH (r:CJARSRecord)-[:LOCATED_IN]->(c:County) WHERE r.cj_event_type_label = 'Misdemeanor charge' AND r.offense_type_label = 'All offenses' AND r.age_group_label = 'All ages (18+)' AND r.sex_label = 'All sexes' AND r.race_ethnicity_label = 'All races/ethnicities' AND r.outcome_type_label = '% receiving HUD rental housing assistance' WITH c, AVG(r.statistic) AS misdemeanor_hud_rate SET c.misdemeanor_hud_rate = misdemeanor_hud_rate"
+    property_types:
+      misdemeanor_hud_rate: float
+
+  - id: county_misdemeanor_death_rate
+    description: "Share who have died following a misdemeanor charge in each County"
+    inline: "MATCH (r:CJARSRecord)-[:LOCATED_IN]->(c:County) WHERE r.cj_event_type_label = 'Misdemeanor charge' AND r.offense_type_label = 'All offenses' AND r.age_group_label = 'All ages (18+)' AND r.sex_label = 'All sexes' AND r.race_ethnicity_label = 'All races/ethnicities' AND r.outcome_type_label = '% who have died since the event' WITH c, AVG(r.statistic) AS misdemeanor_death_rate SET c.misdemeanor_death_rate = misdemeanor_death_rate"
+    property_types:
+      misdemeanor_death_rate: float
 
   - id: school_is_charter
     description: "Flag School nodes that are charter schools"
