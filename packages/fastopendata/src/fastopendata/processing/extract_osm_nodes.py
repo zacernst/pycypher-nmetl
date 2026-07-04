@@ -61,7 +61,7 @@ PBF_FILE: str = str(DATA_DIR / "us-latest.osm.pbf")
 OUTPUT_FILE: Path = DATA_DIR / "united_states_nodes.csv"
 
 # Stop early when this many filtered nodes have been written (-1 = no limit).
-MAX_NODES: int = 10_000
+MAX_NODES: int = 10_000_000_000
 
 # Root words of OSM tag keys that carry no useful semantic content.
 # A key is trivial when its root (the part before the first ':') is in this

@@ -11,7 +11,7 @@
 #   # OR set environment variable: DATA_DIR=/mnt/data/fastopendata snakemake --cores 4
 #
 # Download only a subset of targets by naming them explicitly:
-#   snakemake --cores 4 raw_data/psam_pus.csv raw_data/pu2023.csv
+#   snakemake --cores 4 raw_data/psam_pus.csv raw_data/pu2023.csvhttps://www2.census.gov/geo/tiger/TIGER2024/TABBLOCK20/
 #
 # Requirements: wget, unzip, dos2unix, bunzip2, bzip2, uv
 # =============================================================================
@@ -65,10 +65,11 @@ rule all:
         f"{DATA_DIR}/puma_combined.shp",
         # f"{DATA_DIR}/wikidata_us_points.json",
         f"{DATA_DIR}/output/cjars_joe_2022_co.parquet",
-        # f"{DATA_DIR}/united_states_nodes_tract_crosswalk.parquet",
+        f"{DATA_DIR}/united_states_nodes_tract_crosswalk.parquet",
         # f"{DATA_DIR}/state_county_tract_puma_crosswalk.parquet",
         # expand(f"{DATA_DIR}/tl_2025_{{zipcode}}_addr.dbf", zipcode=fod_config.zips),
         # expand(f"{DATA_DIR}/tl_2025_{{fips}}_tract.shp", fips=fod_config.state_fips),
+        expand(f"{DATA_DIR}/tl_2024_{{fips}}_tabblock20.zip", fips=fod_config.state_fips),
         # expand(f"{DATA_DIR}/tl_2024_{{state_fips}}_bg.shp", state_fips=fod_config.state_fips),
         # f"{DATA_DIR}/combined_block_groups.shp",  # Add parameter or whatever for state_fips
         # f"{DATA_DIR}/FY2025_All_Contracts_Full_20260506.csv",
@@ -82,6 +83,7 @@ rule all:
         f"{DATA_DIR}/psam_pus_5yr.parquet",
         f"{DATA_DIR}/psam_hus_5yr.parquet",
         f"{DATA_DIR}/slfs23_1a.parquet",
+        f"{DATA_DIR}/united_states_nodes.parquet",
         # f"{DOCS_DIR}/ACS2020_2024_PUMS_README.pdf",
         f"{DATA_DIR}/2024_election_returns.csv",
         # tl_2024_{{state_fips}}_bg.shp", state_fips=fod_config.state_fips),
@@ -109,7 +111,7 @@ rule convert_school_fiscal_to_parquet:
         f"    TRY_CAST(NULLIF(V13S,  '-1') AS DOUBLE) AS V13S,"
         f"    TRY_CAST(NULLIF(CE4S,  '-1') AS DOUBLE) AS CE4S,"
         f"    TRY_CAST(NULLIF(CE5S,  '-1') AS DOUBLE) AS CE5S"
-        f"  FROM read_csv('{DATA_DIR}/slfs23_1a.txt', delim=chr(9), header=true, nullstr=['-1', '-2'])"
+        f"  FROM read_csv('{DATA_DIR}/slfs23_1a.txt', delim=chr(9), header=true, nullstr=['-1', '-2'], encoding='latin-1')"
         f") TO '{DATA_DIR}/slfs23_1a.parquet' (FORMAT PARQUET, COMPRESSION 'ZSTD');\""
 
 rule download_common_core_fiscal_data_2022:
@@ -560,18 +562,18 @@ rule extract_osm_nodes:
 
 rule create_osm_node_tract_crosswalk:
     """Spatial join"""
-    input: f"{DATA_DIR}/united_states_nodes.csv",
+    input: f"{DATA_DIR}/united_states_nodes.parquet",
            f"{DATA_DIR}/tract_combined.shp"
-    output: f"{DATA_DIR}/united_states_nodes_tract_crosswalk.csv"
+    output: f"{DATA_DIR}/united_states_nodes_tract_crosswalk.parquet"
     shell:
         f"uv run python {SCRIPTS}/join_to_tracts.py {DATA_DIR}"
 
-rule convert_osm_node_tract_crosswalk_to_parquet:
-    """Spatial join"""
-    input: f"{DATA_DIR}/united_states_nodes_tract_crosswalk.csv"
-    output: f"{DATA_DIR}/united_states_nodes_tract_crosswalk.parquet"
-    shell:
-        f"uv run duckdb -c \"COPY '{DATA_DIR}/united_states_nodes_tract_crosswalk.csv' TO '{DATA_DIR}/united_states_nodes_tract_crosswalk.parquet' (FORMAT PARQUET, COMPRESSION 'ZSTD');\""
+# rule convert_osm_node_tract_crosswalk_to_parquet:
+#     """Spatial join"""
+#     input: f"{DATA_DIR}/united_states_nodes_tract_crosswalk.csv"
+#     output: f"{DATA_DIR}/united_states_nodes_tract_crosswalk.parquet"
+#     shell:
+#         f"uv run duckdb -c \"COPY '{DATA_DIR}/united_states_nodes_tract_crosswalk.csv' TO '{DATA_DIR}/united_states_nodes_tract_crosswalk.parquet' (FORMAT PARQUET, COMPRESSION 'ZSTD');\""
 
 
 rule filter_wikidata_us_points:
@@ -803,6 +805,15 @@ rule download_tiger_puma:
         f"  wget --timeout={SHORT_TIMEOUT_SECONDS} --tries=20"
         "    'https://www2.census.gov/geo/tiger/TIGER2024/PUMA20/tl_2024_{wildcards.fips}_puma20.zip'"
         "    -O {output}"
+
+rule download_tiger_blocks:
+    output: f"{DATA_DIR}/tl_2024_{{fips}}_tabblock20.zip"
+    shell:
+        "sleep $((5 + RANDOM % 10)) && "
+        f"  wget --timeout={SHORT_TIMEOUT_SECONDS} --tries=20"
+        "    'https://www2.census.gov/geo/tiger/TIGER2024/TABBLOCK20/tl_2024_{wildcards.fips}_tabblock20.zip' "
+        "    -O {output}"
+
 
 rule concatenate_tiger_bg:
     input: expand(f"{DATA_DIR}/tl_2024_{{state_fips}}_bg.shp", state_fips=fod_config.state_fips)

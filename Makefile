@@ -18,7 +18,7 @@ export PYCYPHER_DIR := ${PACKAGES_DIR}/pycypher
 export SHARED_DIR := ${PACKAGES_DIR}/shared
 export FASTOPENDATA_DIR := ${PACKAGES_DIR}/fastopendata
 export LC_ALL := C
-export DATA_DIR := /home/zac/scratch# /run/media/zac/2tb/fastopendata/data
+export DATA_DIR := /run/media/zac/2tb/fastopendata/data
 
 # Documentation paths
 export DOCS_DIR := ${PROJECT_ROOT}/docs
