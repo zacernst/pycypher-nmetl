@@ -16,8 +16,9 @@ Usage::
     pipeline = build_state_pipeline(Path("raw_data"), state_fips="13")
 
 Prerequisites:
-    Run ``snakemake --cores 4 georgia_dev`` from ``packages/fastopendata/``
-    to download and process the Georgia development dataset.
+    Run ``make fod-data-sample`` (or ``snakemake --cores 4 sample_data``
+    from ``packages/fastopendata/``) to download and process the sample
+    dataset, which includes Georgia by default.
 
 .. versionadded:: 0.0.20
 .. versionchanged:: 0.0.21
@@ -65,7 +66,7 @@ def build_georgia_pipeline(
     Raises
     ------
     FileNotFoundError
-        If required data files are missing. Run ``snakemake georgia_dev``
+        If required data files are missing. Run ``make fod-data-sample``
         to download them.
     """
     return build_state_pipeline(

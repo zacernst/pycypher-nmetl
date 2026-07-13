@@ -14,7 +14,7 @@ sources:
         longitude: FLOAT
         latitude: FLOAT
         encoded_tags: STRING
-        id: INTEGER
+        id: BIGINT
 
     - id: state_crosswalk
       uri: "file://${DATA_DIR}/state_county_tract_puma_crosswalk.csv"
@@ -85,7 +85,7 @@ sources:
         PUMA_FIPS: STRING
 
     - id: tract_osm
-      uri: "file://${DATA_DIR}/united_states_nodes_tract_crosswalk.csv"
+      uri: "file://${DATA_DIR}/united_states_nodes_tract_crosswalk.parquet"
       entity_type: Tract
       id_col: GEOID
       schema_hints:
@@ -108,245 +108,245 @@ sources:
       schema_hints:
         RT: STRING
         SERIALNO: STRING
-        DIVISION: STRING
+        DIVISION: BIGINT
         PUMA: STRING
-        REGION: STRING
+        REGION: BIGINT
         STATE: STRING
-        ADJHSG: STRING
-        ADJINC: STRING
-        WGTP: STRING
-        NP: STRING
-        TYPEHUGQ: STRING
-        ACCESSINET: STRING
-        ACR: STRING
-        AGS: STRING
-        BATH: STRING
-        BDSP: STRING
+        ADJHSG: BIGINT
+        ADJINC: BIGINT
+        WGTP: BIGINT
+        NP: BIGINT
+        TYPEHUGQ: BIGINT
+        ACCESSINET: BIGINT
+        ACR: BIGINT
+        AGS: BIGINT
+        BATH: BIGINT
+        BDSP: BIGINT
         BLD: STRING
-        BROADBND: STRING
-        COMPOTHX: STRING
-        CONP: STRING
-        DIALUP: STRING
-        ELEFP: STRING
-        ELEP: STRING
-        FS: STRING
-        FULFP: STRING
-        FULP: STRING
-        GASFP: STRING
-        GASP: STRING
-        HFL: STRING
-        HISPEED: STRING
-        HOTWAT: STRING
-        INSP: STRING
-        LAPTOP: STRING
-        MHP: STRING
-        MRGI: STRING
-        MRGP: STRING
-        MRGT: STRING
-        MRGX: STRING
-        OTHSVCEX: STRING
-        REFR: STRING
-        RMSP: STRING
-        RNTM: STRING
-        RNTP: STRING
-        RWAT: STRING
-        RWATPR: STRING
-        SATELLITE: STRING
-        SINK: STRING
-        SMARTPHONE: STRING
-        SMP: STRING
-        STOV: STRING
-        TABLET: STRING
-        TEL: STRING
-        TEN: STRING
-        VACDUR: STRING
+        BROADBND: BIGINT
+        COMPOTHX: BIGINT
+        CONP: BIGINT
+        DIALUP: BIGINT
+        ELEFP: BIGINT
+        ELEP: BIGINT
+        FS: BIGINT
+        FULFP: BIGINT
+        FULP: BIGINT
+        GASFP: BIGINT
+        GASP: BIGINT
+        HFL: BIGINT
+        HISPEED: BIGINT
+        HOTWAT: BIGINT
+        INSP: BIGINT
+        LAPTOP: BIGINT
+        MHP: BIGINT
+        MRGI: BIGINT
+        MRGP: BIGINT
+        MRGT: BIGINT
+        MRGX: BIGINT
+        OTHSVCEX: BIGINT
+        REFR: BIGINT
+        RMSP: BIGINT
+        RNTM: BIGINT
+        RNTP: BIGINT
+        RWAT: BIGINT
+        RWATPR: BIGINT
+        SATELLITE: BIGINT
+        SINK: BIGINT
+        SMARTPHONE: BIGINT
+        SMP: BIGINT
+        STOV: BIGINT
+        TABLET: BIGINT
+        TEL: BIGINT
+        TEN: BIGINT
+        VACDUR: BIGINT
         VACOTH: STRING
-        VACS: STRING
-        VALP: STRING
-        VEH: STRING
-        WATFP: STRING
-        WATP: STRING
-        YRBLT: STRING
-        CPLT: STRING
-        FINCP: STRING
-        FPARC: STRING
-        GRNTP: STRING
-        GRPIP: STRING
-        HHL: STRING
-        HHLANP: STRING
-        HHLDRAGEP: STRING
+        VACS: BIGINT
+        VALP: BIGINT
+        VEH: BIGINT
+        WATFP: BIGINT
+        WATP: BIGINT
+        YRBLT: BIGINT
+        CPLT: BIGINT
+        FINCP: BIGINT
+        FPARC: BIGINT
+        GRNTP: BIGINT
+        GRPIP: BIGINT
+        HHL: BIGINT
+        HHLANP: BIGINT
+        HHLDRAGEP: BIGINT
         HHLDRHISP: STRING
-        HHLDRRAC1P: STRING
-        HHT: STRING
+        HHLDRRAC1P: BIGINT
+        HHT: BIGINT
         HHT2: STRING
-        HINCP: STRING
-        HUGCL: STRING
-        HUPAC: STRING
-        HUPAOC: STRING
-        HUPARC: STRING
-        KIT: STRING
-        LNGI: STRING
-        MULTG: STRING
-        MV: STRING
-        NOC: STRING
-        NPF: STRING
-        NPP: STRING
-        NR: STRING
-        NRC: STRING
-        OCPIP: STRING
-        PARTNER: STRING
-        PLM: STRING
-        PLMPRP: STRING
-        PSF: STRING
-        R18: STRING
-        R60: STRING
-        R65: STRING
-        RESMODE: STRING
-        SMOCP: STRING
-        SMX: STRING
-        SRNT: STRING
-        SVAL: STRING
-        TAXAMT: STRING
-        WIF: STRING
+        HINCP: BIGINT
+        HUGCL: BIGINT
+        HUPAC: BIGINT
+        HUPAOC: BIGINT
+        HUPARC: BIGINT
+        KIT: BIGINT
+        LNGI: BIGINT
+        MULTG: BIGINT
+        MV: BIGINT
+        NOC: BIGINT
+        NPF: BIGINT
+        NPP: BIGINT
+        NR: BIGINT
+        NRC: BIGINT
+        OCPIP: BIGINT
+        PARTNER: BIGINT
+        PLM: BIGINT
+        PLMPRP: BIGINT
+        PSF: BIGINT
+        R18: BIGINT
+        R60: BIGINT
+        R65: BIGINT
+        RESMODE: BIGINT
+        SMOCP: BIGINT
+        SMX: BIGINT
+        SRNT: BIGINT
+        SVAL: BIGINT
+        TAXAMT: BIGINT
+        WIF: BIGINT
         WKEXREL: STRING
         WORKSTAT: STRING
-        FACCESSP: STRING
-        FACRP: STRING
-        FAGSP: STRING
-        FBATHP: STRING
-        FBDSP: STRING
-        FBLDP: STRING
-        FBROADBNDP: STRING
-        FCOMPOTHXP: STRING
-        FCONP: STRING
-        FDIALUPP: STRING
-        FELEP: STRING
-        FFINCP: STRING
-        FFSP: STRING
-        FFULP: STRING
-        FGASP: STRING
-        FGRNTP: STRING
-        FHFLP: STRING
-        FHINCP: STRING
-        FHISPEEDP: STRING
-        FHOTWATP: STRING
-        FINSP: STRING
-        FKITP: STRING
-        FLAPTOPP: STRING
-        FMHP: STRING
-        FMRGIP: STRING
-        FMRGP: STRING
-        FMRGTP: STRING
-        FMRGXP: STRING
-        FMVP: STRING
-        FOTHSVCEXP: STRING
-        FPLMP: STRING
-        FPLMPRP: STRING
-        FREFRP: STRING
-        FRMSP: STRING
-        FRNTMP: STRING
-        FRNTP: STRING
-        FRWATP: STRING
-        FRWATPRP: STRING
-        FSATELLITEP: STRING
-        FSINKP: STRING
-        FSMARTPHONP: STRING
-        FSMOCP: STRING
-        FSMP: STRING
-        FSMXHP: STRING
-        FSMXSP: STRING
-        FSTOVP: STRING
-        FTABLETP: STRING
-        FTAXP: STRING
-        FTELP: STRING
-        FTENP: STRING
-        FVACDURP: STRING
-        FVACOTHP: STRING
-        FVACSP: STRING
-        FVALP: STRING
-        FVEHP: STRING
-        FWATP: STRING
-        FYRBLTP: STRING
-        WGTP1: STRING
-        WGTP2: STRING
-        WGTP3: STRING
-        WGTP4: STRING
-        WGTP5: STRING
-        WGTP6: STRING
-        WGTP7: STRING
-        WGTP8: STRING
-        WGTP9: STRING
-        WGTP10: STRING
-        WGTP11: STRING
-        WGTP12: STRING
-        WGTP13: STRING
-        WGTP14: STRING
-        WGTP15: STRING
-        WGTP16: STRING
-        WGTP17: STRING
-        WGTP18: STRING
-        WGTP19: STRING
-        WGTP20: STRING
-        WGTP21: STRING
-        WGTP22: STRING
-        WGTP23: STRING
-        WGTP24: STRING
-        WGTP25: STRING
-        WGTP26: STRING
-        WGTP27: STRING
-        WGTP28: STRING
-        WGTP29: STRING
-        WGTP30: STRING
-        WGTP31: STRING
-        WGTP32: STRING
-        WGTP33: STRING
-        WGTP34: STRING
-        WGTP35: STRING
-        WGTP36: STRING
-        WGTP37: STRING
-        WGTP38: STRING
-        WGTP39: STRING
-        WGTP40: STRING
-        WGTP41: STRING
-        WGTP42: STRING
-        WGTP43: STRING
-        WGTP44: STRING
-        WGTP45: STRING
-        WGTP46: STRING
-        WGTP47: STRING
-        WGTP48: STRING
-        WGTP49: STRING
-        WGTP50: STRING
-        WGTP51: STRING
-        WGTP52: STRING
-        WGTP53: STRING
-        WGTP54: STRING
-        WGTP55: STRING
-        WGTP56: STRING
-        WGTP57: STRING
-        WGTP58: STRING
-        WGTP59: STRING
-        WGTP60: STRING
-        WGTP61: STRING
-        WGTP62: STRING
-        WGTP63: STRING
-        WGTP64: STRING
-        WGTP65: STRING
-        WGTP66: STRING
-        WGTP67: STRING
-        WGTP68: STRING
-        WGTP69: STRING
-        WGTP70: STRING
-        WGTP71: STRING
-        WGTP72: STRING
-        WGTP73: STRING
-        WGTP74: STRING
-        WGTP75: STRING
-        WGTP76: STRING
-        WGTP77: STRING
-        WGTP78: STRING
-        WGTP79: STRING
-        WGTP80: STRING
+        FACCESSP: BIGINT
+        FACRP: BIGINT
+        FAGSP: BIGINT
+        FBATHP: BIGINT
+        FBDSP: BIGINT
+        FBLDP: BIGINT
+        FBROADBNDP: BIGINT
+        FCOMPOTHXP: BIGINT
+        FCONP: BIGINT
+        FDIALUPP: BIGINT
+        FELEP: BIGINT
+        FFINCP: BIGINT
+        FFSP: BIGINT
+        FFULP: BIGINT
+        FGASP: BIGINT
+        FGRNTP: BIGINT
+        FHFLP: BIGINT
+        FHINCP: BIGINT
+        FHISPEEDP: BIGINT
+        FHOTWATP: BIGINT
+        FINSP: BIGINT
+        FKITP: BIGINT
+        FLAPTOPP: BIGINT
+        FMHP: BIGINT
+        FMRGIP: BIGINT
+        FMRGP: BIGINT
+        FMRGTP: BIGINT
+        FMRGXP: BIGINT
+        FMVP: BIGINT
+        FOTHSVCEXP: BIGINT
+        FPLMP: BIGINT
+        FPLMPRP: BIGINT
+        FREFRP: BIGINT
+        FRMSP: BIGINT
+        FRNTMP: BIGINT
+        FRNTP: BIGINT
+        FRWATP: BIGINT
+        FRWATPRP: BIGINT
+        FSATELLITEP: BIGINT
+        FSINKP: BIGINT
+        FSMARTPHONP: BIGINT
+        FSMOCP: BIGINT
+        FSMP: BIGINT
+        FSMXHP: BIGINT
+        FSMXSP: BIGINT
+        FSTOVP: BIGINT
+        FTABLETP: BIGINT
+        FTAXP: BIGINT
+        FTELP: BIGINT
+        FTENP: BIGINT
+        FVACDURP: BIGINT
+        FVACOTHP: BIGINT
+        FVACSP: BIGINT
+        FVALP: BIGINT
+        FVEHP: BIGINT
+        FWATP: BIGINT
+        FYRBLTP: BIGINT
+        WGTP1: BIGINT
+        WGTP2: BIGINT
+        WGTP3: BIGINT
+        WGTP4: BIGINT
+        WGTP5: BIGINT
+        WGTP6: BIGINT
+        WGTP7: BIGINT
+        WGTP8: BIGINT
+        WGTP9: BIGINT
+        WGTP10: BIGINT
+        WGTP11: BIGINT
+        WGTP12: BIGINT
+        WGTP13: BIGINT
+        WGTP14: BIGINT
+        WGTP15: BIGINT
+        WGTP16: BIGINT
+        WGTP17: BIGINT
+        WGTP18: BIGINT
+        WGTP19: BIGINT
+        WGTP20: BIGINT
+        WGTP21: BIGINT
+        WGTP22: BIGINT
+        WGTP23: BIGINT
+        WGTP24: BIGINT
+        WGTP25: BIGINT
+        WGTP26: BIGINT
+        WGTP27: BIGINT
+        WGTP28: BIGINT
+        WGTP29: BIGINT
+        WGTP30: BIGINT
+        WGTP31: BIGINT
+        WGTP32: BIGINT
+        WGTP33: BIGINT
+        WGTP34: BIGINT
+        WGTP35: BIGINT
+        WGTP36: BIGINT
+        WGTP37: BIGINT
+        WGTP38: BIGINT
+        WGTP39: BIGINT
+        WGTP40: BIGINT
+        WGTP41: BIGINT
+        WGTP42: BIGINT
+        WGTP43: BIGINT
+        WGTP44: BIGINT
+        WGTP45: BIGINT
+        WGTP46: BIGINT
+        WGTP47: BIGINT
+        WGTP48: BIGINT
+        WGTP49: BIGINT
+        WGTP50: BIGINT
+        WGTP51: BIGINT
+        WGTP52: BIGINT
+        WGTP53: BIGINT
+        WGTP54: BIGINT
+        WGTP55: BIGINT
+        WGTP56: BIGINT
+        WGTP57: BIGINT
+        WGTP58: BIGINT
+        WGTP59: BIGINT
+        WGTP60: BIGINT
+        WGTP61: BIGINT
+        WGTP62: BIGINT
+        WGTP63: BIGINT
+        WGTP64: BIGINT
+        WGTP65: BIGINT
+        WGTP66: BIGINT
+        WGTP67: BIGINT
+        WGTP68: BIGINT
+        WGTP69: BIGINT
+        WGTP70: BIGINT
+        WGTP71: BIGINT
+        WGTP72: BIGINT
+        WGTP73: BIGINT
+        WGTP74: BIGINT
+        WGTP75: BIGINT
+        WGTP76: BIGINT
+        WGTP77: BIGINT
+        WGTP78: BIGINT
+        WGTP79: BIGINT
+        WGTP80: BIGINT
         PUMA_FIPS: STRING
         tenure_type: STRING
         cost_burdened: STRING
@@ -380,290 +380,290 @@ sources:
       schema_hints:
         RT: STRING
         SERIALNO: STRING
-        DIVISION: STRING
+        DIVISION: BIGINT
         SPORDER: STRING
         PUMA: STRING
-        REGION: STRING
+        REGION: BIGINT
         STATE: STRING
-        ADJINC: STRING
-        PWGTP: STRING
-        AGEP: STRING
-        CIT: STRING
-        CITWP: STRING
-        COW: STRING
-        DDRS: STRING
-        DEAR: STRING
-        DEYE: STRING
-        DOUT: STRING
-        DPHY: STRING
-        DRAT: STRING
-        DRATX: STRING
-        DREM: STRING
-        ENG: STRING
-        FER: STRING
-        GCL: STRING
-        GCM: STRING
-        GCR: STRING
-        HIMRKS: STRING
-        HINS1: STRING
-        HINS2: STRING
-        HINS3: STRING
-        HINS4: STRING
-        HINS5: STRING
-        HINS6: STRING
-        HINS7: STRING
-        INTP: STRING
-        JWMNP: STRING
-        JWRIP: STRING
+        ADJINC: BIGINT
+        PWGTP: BIGINT
+        AGEP: BIGINT
+        CIT: BIGINT
+        CITWP: BIGINT
+        COW: BIGINT
+        DDRS: BIGINT
+        DEAR: BIGINT
+        DEYE: BIGINT
+        DOUT: BIGINT
+        DPHY: BIGINT
+        DRAT: BIGINT
+        DRATX: BIGINT
+        DREM: BIGINT
+        ENG: BIGINT
+        FER: BIGINT
+        GCL: BIGINT
+        GCM: BIGINT
+        GCR: BIGINT
+        HIMRKS: BIGINT
+        HINS1: BIGINT
+        HINS2: BIGINT
+        HINS3: BIGINT
+        HINS4: BIGINT
+        HINS5: BIGINT
+        HINS6: BIGINT
+        HINS7: BIGINT
+        INTP: BIGINT
+        JWMNP: BIGINT
+        JWRIP: BIGINT
         JWTRNS: STRING
-        LANX: STRING
-        MAR: STRING
-        MARHD: STRING
-        MARHM: STRING
-        MARHT: STRING
-        MARHW: STRING
-        MARHYP: STRING
-        MIG: STRING
-        MIL: STRING
-        MLPA: STRING
-        MLPB: STRING
-        MLPCD: STRING
-        MLPE: STRING
-        MLPFG: STRING
-        MLPIK: STRING
-        MLPHJ: STRING
-        NWAB: STRING
-        NWAV: STRING
-        NWLA: STRING
-        NWLK: STRING
-        NWRE: STRING
-        OIP: STRING
-        PAP: STRING
-        RELSHIPP: STRING
-        RETP: STRING
-        SCH: STRING
+        LANX: BIGINT
+        MAR: BIGINT
+        MARHD: BIGINT
+        MARHM: BIGINT
+        MARHT: BIGINT
+        MARHW: BIGINT
+        MARHYP: BIGINT
+        MIG: BIGINT
+        MIL: BIGINT
+        MLPA: BIGINT
+        MLPB: BIGINT
+        MLPCD: BIGINT
+        MLPE: BIGINT
+        MLPFG: BIGINT
+        MLPIK: BIGINT
+        MLPHJ: BIGINT
+        NWAB: BIGINT
+        NWAV: BIGINT
+        NWLA: BIGINT
+        NWLK: BIGINT
+        NWRE: BIGINT
+        OIP: BIGINT
+        PAP: BIGINT
+        RELSHIPP: BIGINT
+        RETP: BIGINT
+        SCH: BIGINT
         SCHG: STRING
-        SCHL: STRING
-        SEMP: STRING
-        SEX: STRING
-        SSIP: STRING
-        SSP: STRING
-        WAGP: STRING
-        WKHP: STRING
-        WKL: STRING
-        WKWN: STRING
-        WRK: STRING
-        YOEP: STRING
-        ANC: STRING
+        SCHL: INTEGER
+        SEMP: BIGINT
+        SEX: BIGINT
+        SSIP: BIGINT
+        SSP: BIGINT
+        WAGP: BIGINT
+        WKHP: BIGINT
+        WKL: BIGINT
+        WKWN: BIGINT
+        WRK: BIGINT
+        YOEP: BIGINT
+        ANC: BIGINT
         ANC1P: STRING
         ANC2P: STRING
-        DECADE: STRING
-        DIS: STRING
-        DRIVESP: STRING
-        ESP: STRING
-        ESR: STRING
-        FOD1P: STRING
-        FOD2P: STRING
-        HICOV: STRING
+        DECADE: BIGINT
+        DIS: BIGINT
+        DRIVESP: BIGINT
+        ESP: BIGINT
+        ESR: BIGINT
+        FOD1P: BIGINT
+        FOD2P: BIGINT
+        HICOV: BIGINT
         HISP: STRING
         INDP: STRING
         JWAP: STRING
         JWDP: STRING
-        LANP: STRING
+        LANP: BIGINT
         MIGPUMA: STRING
         MIGSP: STRING
-        MSP: STRING
+        MSP: BIGINT
         NAICSP: STRING
-        NATIVITY: STRING
-        NOP: STRING
-        OC: STRING
+        NATIVITY: BIGINT
+        NOP: BIGINT
+        OC: BIGINT
         OCCP: STRING
-        PAOC: STRING
-        PERNP: STRING
-        PINCP: STRING
+        PAOC: BIGINT
+        PERNP: BIGINT
+        PINCP: BIGINT
         POBP: STRING
-        POVPIP: STRING
+        POVPIP: BIGINT
         POWPUMA: STRING
         POWSP: STRING
-        PRIVCOV: STRING
-        PUBCOV: STRING
-        QTRBIR: STRING
-        RAC1P: STRING
-        RAC2P: STRING
+        PRIVCOV: BIGINT
+        PUBCOV: BIGINT
+        QTRBIR: BIGINT
+        RAC1P: BIGINT
+        RAC2P: BIGINT
         RAC3P: STRING
-        RACAIAN: STRING
-        RACASN: STRING
-        RACBLK: STRING
-        RACNH: STRING
-        RACNUM: STRING
-        RACPI: STRING
-        RACSOR: STRING
-        RACWHT: STRING
-        RC: STRING
-        SCIENGP: STRING
-        SCIENGRLP: STRING
-        SFN: STRING
-        SFR: STRING
+        RACAIAN: BIGINT
+        RACASN: BIGINT
+        RACBLK: BIGINT
+        RACNH: BIGINT
+        RACNUM: BIGINT
+        RACPI: BIGINT
+        RACSOR: BIGINT
+        RACWHT: BIGINT
+        RC: BIGINT
+        SCIENGP: BIGINT
+        SCIENGRLP: BIGINT
+        SFN: BIGINT
+        SFR: BIGINT
         SOCP: STRING
         VPSP: STRING
-        WAOB: STRING
-        FAGEP: STRING
-        FANCP: STRING
-        FCITP: STRING
-        FCITWP: STRING
-        FCOWP: STRING
-        FDDRSP: STRING
-        FDEARP: STRING
-        FDEYEP: STRING
-        FDISP: STRING
-        FDOUTP: STRING
-        FDPHYP: STRING
-        FDRATP: STRING
-        FDRATXP: STRING
-        FDREMP: STRING
-        FENGP: STRING
-        FESRP: STRING
-        FFERP: STRING
-        FFODP: STRING
-        FGCLP: STRING
-        FGCMP: STRING
-        FGCRP: STRING
-        FHICOVP: STRING
-        FHIMRKSP: STRING
-        FHINS1P: STRING
-        FHINS2P: STRING
-        FHINS3C: STRING
-        FHINS3P: STRING
-        FHINS4C: STRING
-        FHINS4P: STRING
-        FHINS5C: STRING
-        FHINS5P: STRING
-        FHINS6P: STRING
-        FHINS7P: STRING
-        FHISP: STRING
-        FINDP: STRING
-        FINTP: STRING
-        FJWDP: STRING
-        FJWMNP: STRING
-        FJWRIP: STRING
-        FJWTRNSP: STRING
-        FLANP: STRING
-        FLANXP: STRING
-        FMARP: STRING
-        FMARHDP: STRING
-        FMARHMP: STRING
-        FMARHTP: STRING
-        FMARHWP: STRING
-        FMARHYP: STRING
-        FMIGP: STRING
-        FMIGSP: STRING
-        FMILPP: STRING
-        FMILSP: STRING
-        FOCCP: STRING
-        FOIP: STRING
-        FPAP: STRING
-        FPERNP: STRING
-        FPINCP: STRING
-        FPOBP: STRING
-        FPOWSP: STRING
-        FPRIVCOVP: STRING
-        FPUBCOVP: STRING
-        FRACP: STRING
-        FRELSHIPP: STRING
-        FRETP: STRING
-        FSCHGP: STRING
-        FSCHLP: STRING
-        FSCHP: STRING
-        FSEMP: STRING
-        FSEXP: STRING
-        FSSIP: STRING
-        FSSP: STRING
-        FWAGP: STRING
-        FWKHP: STRING
-        FWKLP: STRING
-        FWKWNP: STRING
-        FWRKP: STRING
-        FYOEP: STRING
-        PWGTP1: STRING
-        PWGTP2: STRING
-        PWGTP3: STRING
-        PWGTP4: STRING
-        PWGTP5: STRING
-        PWGTP6: STRING
-        PWGTP7: STRING
-        PWGTP8: STRING
-        PWGTP9: STRING
-        PWGTP10: STRING
-        PWGTP11: STRING
-        PWGTP12: STRING
-        PWGTP13: STRING
-        PWGTP14: STRING
-        PWGTP15: STRING
-        PWGTP16: STRING
-        PWGTP17: STRING
-        PWGTP18: STRING
-        PWGTP19: STRING
-        PWGTP20: STRING
-        PWGTP21: STRING
-        PWGTP22: STRING
-        PWGTP23: STRING
-        PWGTP24: STRING
-        PWGTP25: STRING
-        PWGTP26: STRING
-        PWGTP27: STRING
-        PWGTP28: STRING
-        PWGTP29: STRING
-        PWGTP30: STRING
-        PWGTP31: STRING
-        PWGTP32: STRING
-        PWGTP33: STRING
-        PWGTP34: STRING
-        PWGTP35: STRING
-        PWGTP36: STRING
-        PWGTP37: STRING
-        PWGTP38: STRING
-        PWGTP39: STRING
-        PWGTP40: STRING
-        PWGTP41: STRING
-        PWGTP42: STRING
-        PWGTP43: STRING
-        PWGTP44: STRING
-        PWGTP45: STRING
-        PWGTP46: STRING
-        PWGTP47: STRING
-        PWGTP48: STRING
-        PWGTP49: STRING
-        PWGTP50: STRING
-        PWGTP51: STRING
-        PWGTP52: STRING
-        PWGTP53: STRING
-        PWGTP54: STRING
-        PWGTP55: STRING
-        PWGTP56: STRING
-        PWGTP57: STRING
-        PWGTP58: STRING
-        PWGTP59: STRING
-        PWGTP60: STRING
-        PWGTP61: STRING
-        PWGTP62: STRING
-        PWGTP63: STRING
-        PWGTP64: STRING
-        PWGTP65: STRING
-        PWGTP66: STRING
-        PWGTP67: STRING
-        PWGTP68: STRING
-        PWGTP69: STRING
-        PWGTP70: STRING
-        PWGTP71: STRING
-        PWGTP72: STRING
-        PWGTP73: STRING
-        PWGTP74: STRING
-        PWGTP75: STRING
-        PWGTP76: STRING
-        PWGTP77: STRING
-        PWGTP78: STRING
-        PWGTP79: STRING
-        PWGTP80: STRING
+        WAOB: BIGINT
+        FAGEP: BIGINT
+        FANCP: BIGINT
+        FCITP: BIGINT
+        FCITWP: BIGINT
+        FCOWP: BIGINT
+        FDDRSP: BIGINT
+        FDEARP: BIGINT
+        FDEYEP: BIGINT
+        FDISP: BIGINT
+        FDOUTP: BIGINT
+        FDPHYP: BIGINT
+        FDRATP: BIGINT
+        FDRATXP: BIGINT
+        FDREMP: BIGINT
+        FENGP: BIGINT
+        FESRP: BIGINT
+        FFERP: BIGINT
+        FFODP: BIGINT
+        FGCLP: BIGINT
+        FGCMP: BIGINT
+        FGCRP: BIGINT
+        FHICOVP: BIGINT
+        FHIMRKSP: BIGINT
+        FHINS1P: BIGINT
+        FHINS2P: BIGINT
+        FHINS3C: BIGINT
+        FHINS3P: BIGINT
+        FHINS4C: BIGINT
+        FHINS4P: BIGINT
+        FHINS5C: BIGINT
+        FHINS5P: BIGINT
+        FHINS6P: BIGINT
+        FHINS7P: BIGINT
+        FHISP: BIGINT
+        FINDP: BIGINT
+        FINTP: BIGINT
+        FJWDP: BIGINT
+        FJWMNP: BIGINT
+        FJWRIP: BIGINT
+        FJWTRNSP: BIGINT
+        FLANP: BIGINT
+        FLANXP: BIGINT
+        FMARP: BIGINT
+        FMARHDP: BIGINT
+        FMARHMP: BIGINT
+        FMARHTP: BIGINT
+        FMARHWP: BIGINT
+        FMARHYP: BIGINT
+        FMIGP: BIGINT
+        FMIGSP: BIGINT
+        FMILPP: BIGINT
+        FMILSP: BIGINT
+        FOCCP: BIGINT
+        FOIP: BIGINT
+        FPAP: BIGINT
+        FPERNP: BIGINT
+        FPINCP: BIGINT
+        FPOBP: BIGINT
+        FPOWSP: BIGINT
+        FPRIVCOVP: BIGINT
+        FPUBCOVP: BIGINT
+        FRACP: BIGINT
+        FRELSHIPP: BIGINT
+        FRETP: BIGINT
+        FSCHGP: BIGINT
+        FSCHLP: BIGINT
+        FSCHP: BIGINT
+        FSEMP: BIGINT
+        FSEXP: BIGINT
+        FSSIP: BIGINT
+        FSSP: BIGINT
+        FWAGP: BIGINT
+        FWKHP: BIGINT
+        FWKLP: BIGINT
+        FWKWNP: BIGINT
+        FWRKP: BIGINT
+        FYOEP: BIGINT
+        PWGTP1: BIGINT
+        PWGTP2: BIGINT
+        PWGTP3: BIGINT
+        PWGTP4: BIGINT
+        PWGTP5: BIGINT
+        PWGTP6: BIGINT
+        PWGTP7: BIGINT
+        PWGTP8: BIGINT
+        PWGTP9: BIGINT
+        PWGTP10: BIGINT
+        PWGTP11: BIGINT
+        PWGTP12: BIGINT
+        PWGTP13: BIGINT
+        PWGTP14: BIGINT
+        PWGTP15: BIGINT
+        PWGTP16: BIGINT
+        PWGTP17: BIGINT
+        PWGTP18: BIGINT
+        PWGTP19: BIGINT
+        PWGTP20: BIGINT
+        PWGTP21: BIGINT
+        PWGTP22: BIGINT
+        PWGTP23: BIGINT
+        PWGTP24: BIGINT
+        PWGTP25: BIGINT
+        PWGTP26: BIGINT
+        PWGTP27: BIGINT
+        PWGTP28: BIGINT
+        PWGTP29: BIGINT
+        PWGTP30: BIGINT
+        PWGTP31: BIGINT
+        PWGTP32: BIGINT
+        PWGTP33: BIGINT
+        PWGTP34: BIGINT
+        PWGTP35: BIGINT
+        PWGTP36: BIGINT
+        PWGTP37: BIGINT
+        PWGTP38: BIGINT
+        PWGTP39: BIGINT
+        PWGTP40: BIGINT
+        PWGTP41: BIGINT
+        PWGTP42: BIGINT
+        PWGTP43: BIGINT
+        PWGTP44: BIGINT
+        PWGTP45: BIGINT
+        PWGTP46: BIGINT
+        PWGTP47: BIGINT
+        PWGTP48: BIGINT
+        PWGTP49: BIGINT
+        PWGTP50: BIGINT
+        PWGTP51: BIGINT
+        PWGTP52: BIGINT
+        PWGTP53: BIGINT
+        PWGTP54: BIGINT
+        PWGTP55: BIGINT
+        PWGTP56: BIGINT
+        PWGTP57: BIGINT
+        PWGTP58: BIGINT
+        PWGTP59: BIGINT
+        PWGTP60: BIGINT
+        PWGTP61: BIGINT
+        PWGTP62: BIGINT
+        PWGTP63: BIGINT
+        PWGTP64: BIGINT
+        PWGTP65: BIGINT
+        PWGTP66: BIGINT
+        PWGTP67: BIGINT
+        PWGTP68: BIGINT
+        PWGTP69: BIGINT
+        PWGTP70: BIGINT
+        PWGTP71: BIGINT
+        PWGTP72: BIGINT
+        PWGTP73: BIGINT
+        PWGTP74: BIGINT
+        PWGTP75: BIGINT
+        PWGTP76: BIGINT
+        PWGTP77: BIGINT
+        PWGTP78: BIGINT
+        PWGTP79: BIGINT
+        PWGTP80: BIGINT
         PUMA_FIPS: STRING
         PERSON_ID: STRING
         employment_status: STRING
@@ -685,8 +685,8 @@ sources:
       schema_hints:
         occ_group_code: STRING
         occ_group_name: STRING
-        socp_min: STRING
-        socp_max: STRING
+        socp_min: BIGINT
+        socp_max: BIGINT
 
     - id: occupation_subgroups
       uri: "file://${DATA_DIR}/occupation_subgroups.csv"
@@ -695,8 +695,8 @@ sources:
       schema_hints:
         occ_subgroup_code: STRING
         occ_subgroup_name: STRING
-        socp_min: STRING
-        socp_max: STRING
+        socp_min: BIGINT
+        socp_max: BIGINT
 
     - id: industry_groups
       uri: "file://${DATA_DIR}/industry_groups.csv"
@@ -728,6 +728,253 @@ sources:
         CASE WHEN BROADBND = 1 OR HISPEED = 1 THEN 'broadband' WHEN ACCESSINET = 1 THEN 'internet_no_broadband' WHEN ACCESSINET = 2 THEN 'no_internet' ELSE 'unknown' END AS internet_tier,
         CASE WHEN NP > RMSP THEN 1 ELSE 0 END AS overcrowded
         FROM source
+      schema_hints:
+        RT: STRING
+        SERIALNO: STRING
+        DIVISION: BIGINT
+        PUMA: STRING
+        REGION: BIGINT
+        STATE: STRING
+        ADJHSG: BIGINT
+        ADJINC: BIGINT
+        WGTP: BIGINT
+        NP: BIGINT
+        TYPEHUGQ: BIGINT
+        ACCESSINET: BIGINT
+        ACR: BIGINT
+        AGS: BIGINT
+        BATH: BIGINT
+        BDSP: BIGINT
+        BLD: STRING
+        BROADBND: BIGINT
+        COMPOTHX: BIGINT
+        CONP: BIGINT
+        DIALUP: BIGINT
+        ELEFP: BIGINT
+        ELEP: BIGINT
+        FS: BIGINT
+        FULFP: BIGINT
+        FULP: BIGINT
+        GASFP: BIGINT
+        GASP: BIGINT
+        HFL: BIGINT
+        HISPEED: BIGINT
+        HOTWAT: BIGINT
+        INSP: BIGINT
+        LAPTOP: BIGINT
+        MHP: BIGINT
+        MRGI: BIGINT
+        MRGP: BIGINT
+        MRGT: BIGINT
+        MRGX: BIGINT
+        OTHSVCEX: BIGINT
+        REFR: BIGINT
+        RMSP: BIGINT
+        RNTM: BIGINT
+        RNTP: BIGINT
+        RWAT: BIGINT
+        RWATPR: BIGINT
+        SATELLITE: BIGINT
+        SINK: BIGINT
+        SMARTPHONE: BIGINT
+        SMP: BIGINT
+        STOV: BIGINT
+        TABLET: BIGINT
+        TEL: BIGINT
+        TEN: BIGINT
+        VACDUR: BIGINT
+        VACOTH: STRING
+        VACS: BIGINT
+        VALP: BIGINT
+        VEH: BIGINT
+        WATFP: BIGINT
+        WATP: BIGINT
+        YRBLT: BIGINT
+        CPLT: BIGINT
+        FINCP: BIGINT
+        FPARC: BIGINT
+        GRNTP: BIGINT
+        GRPIP: BIGINT
+        HHL: BIGINT
+        HHLANP: BIGINT
+        HHLDRAGEP: BIGINT
+        HHLDRHISP: STRING
+        HHLDRRAC1P: BIGINT
+        HHT: BIGINT
+        HHT2: STRING
+        HINCP: BIGINT
+        HUGCL: BIGINT
+        HUPAC: BIGINT
+        HUPAOC: BIGINT
+        HUPARC: BIGINT
+        KIT: BIGINT
+        LNGI: BIGINT
+        MULTG: BIGINT
+        MV: BIGINT
+        NOC: BIGINT
+        NPF: BIGINT
+        NPP: BIGINT
+        NR: BIGINT
+        NRC: BIGINT
+        OCPIP: BIGINT
+        PARTNER: BIGINT
+        PLM: BIGINT
+        PLMPRP: BIGINT
+        PSF: BIGINT
+        R18: BIGINT
+        R60: BIGINT
+        R65: BIGINT
+        RESMODE: BIGINT
+        SMOCP: BIGINT
+        SMX: BIGINT
+        SRNT: BIGINT
+        SVAL: BIGINT
+        TAXAMT: BIGINT
+        WIF: BIGINT
+        WKEXREL: STRING
+        WORKSTAT: STRING
+        FACCESSP: BIGINT
+        FACRP: BIGINT
+        FAGSP: BIGINT
+        FBATHP: BIGINT
+        FBDSP: BIGINT
+        FBLDP: BIGINT
+        FBROADBNDP: BIGINT
+        FCOMPOTHXP: BIGINT
+        FCONP: BIGINT
+        FDIALUPP: BIGINT
+        FELEP: BIGINT
+        FFINCP: BIGINT
+        FFSP: BIGINT
+        FFULP: BIGINT
+        FGASP: BIGINT
+        FGRNTP: BIGINT
+        FHFLP: BIGINT
+        FHINCP: BIGINT
+        FHISPEEDP: BIGINT
+        FHOTWATP: BIGINT
+        FINSP: BIGINT
+        FKITP: BIGINT
+        FLAPTOPP: BIGINT
+        FMHP: BIGINT
+        FMRGIP: BIGINT
+        FMRGP: BIGINT
+        FMRGTP: BIGINT
+        FMRGXP: BIGINT
+        FMVP: BIGINT
+        FOTHSVCEXP: BIGINT
+        FPLMP: BIGINT
+        FPLMPRP: BIGINT
+        FREFRP: BIGINT
+        FRMSP: BIGINT
+        FRNTMP: BIGINT
+        FRNTP: BIGINT
+        FRWATP: BIGINT
+        FRWATPRP: BIGINT
+        FSATELLITEP: BIGINT
+        FSINKP: BIGINT
+        FSMARTPHONP: BIGINT
+        FSMOCP: BIGINT
+        FSMP: BIGINT
+        FSMXHP: BIGINT
+        FSMXSP: BIGINT
+        FSTOVP: BIGINT
+        FTABLETP: BIGINT
+        FTAXP: BIGINT
+        FTELP: BIGINT
+        FTENP: BIGINT
+        FVACDURP: BIGINT
+        FVACOTHP: BIGINT
+        FVACSP: BIGINT
+        FVALP: BIGINT
+        FVEHP: BIGINT
+        FWATP: BIGINT
+        FYRBLTP: BIGINT
+        WGTP1: BIGINT
+        WGTP2: BIGINT
+        WGTP3: BIGINT
+        WGTP4: BIGINT
+        WGTP5: BIGINT
+        WGTP6: BIGINT
+        WGTP7: BIGINT
+        WGTP8: BIGINT
+        WGTP9: BIGINT
+        WGTP10: BIGINT
+        WGTP11: BIGINT
+        WGTP12: BIGINT
+        WGTP13: BIGINT
+        WGTP14: BIGINT
+        WGTP15: BIGINT
+        WGTP16: BIGINT
+        WGTP17: BIGINT
+        WGTP18: BIGINT
+        WGTP19: BIGINT
+        WGTP20: BIGINT
+        WGTP21: BIGINT
+        WGTP22: BIGINT
+        WGTP23: BIGINT
+        WGTP24: BIGINT
+        WGTP25: BIGINT
+        WGTP26: BIGINT
+        WGTP27: BIGINT
+        WGTP28: BIGINT
+        WGTP29: BIGINT
+        WGTP30: BIGINT
+        WGTP31: BIGINT
+        WGTP32: BIGINT
+        WGTP33: BIGINT
+        WGTP34: BIGINT
+        WGTP35: BIGINT
+        WGTP36: BIGINT
+        WGTP37: BIGINT
+        WGTP38: BIGINT
+        WGTP39: BIGINT
+        WGTP40: BIGINT
+        WGTP41: BIGINT
+        WGTP42: BIGINT
+        WGTP43: BIGINT
+        WGTP44: BIGINT
+        WGTP45: BIGINT
+        WGTP46: BIGINT
+        WGTP47: BIGINT
+        WGTP48: BIGINT
+        WGTP49: BIGINT
+        WGTP50: BIGINT
+        WGTP51: BIGINT
+        WGTP52: BIGINT
+        WGTP53: BIGINT
+        WGTP54: BIGINT
+        WGTP55: BIGINT
+        WGTP56: BIGINT
+        WGTP57: BIGINT
+        WGTP58: BIGINT
+        WGTP59: BIGINT
+        WGTP60: BIGINT
+        WGTP61: BIGINT
+        WGTP62: BIGINT
+        WGTP63: BIGINT
+        WGTP64: BIGINT
+        WGTP65: BIGINT
+        WGTP66: BIGINT
+        WGTP67: BIGINT
+        WGTP68: BIGINT
+        WGTP69: BIGINT
+        WGTP70: BIGINT
+        WGTP71: BIGINT
+        WGTP72: BIGINT
+        WGTP73: BIGINT
+        WGTP74: BIGINT
+        WGTP75: BIGINT
+        WGTP76: BIGINT
+        WGTP77: BIGINT
+        WGTP78: BIGINT
+        WGTP79: BIGINT
+        WGTP80: BIGINT
+        PUMA_FIPS: STRING
+        tenure_type: STRING
+        cost_burdened: STRING
+        internet_tier: STRING
+        overcrowded: STRING
 
     - id: psam_person_survey_5yr
       uri: "file://${DATA_DIR}/psam_pus_5yr.parquet"
@@ -753,6 +1000,306 @@ sources:
         CASE WHEN TRY_CAST(INDP AS INTEGER) BETWEEN 170 AND 490 THEN 'agriculture_mining' WHEN TRY_CAST(INDP AS INTEGER) = 770 THEN 'construction' WHEN TRY_CAST(INDP AS INTEGER) BETWEEN 1070 AND 3990 THEN 'manufacturing' WHEN TRY_CAST(INDP AS INTEGER) BETWEEN 4070 AND 4590 THEN 'wholesale_trade' WHEN TRY_CAST(INDP AS INTEGER) BETWEEN 4670 AND 5791 THEN 'retail_trade' WHEN (TRY_CAST(INDP AS INTEGER) BETWEEN 570 AND 690 OR TRY_CAST(INDP AS INTEGER) BETWEEN 6070 AND 6390) THEN 'transportation_utilities' WHEN TRY_CAST(INDP AS INTEGER) BETWEEN 6471 AND 6781 THEN 'information' WHEN TRY_CAST(INDP AS INTEGER) BETWEEN 6871 AND 7190 THEN 'finance_real_estate' WHEN TRY_CAST(INDP AS INTEGER) BETWEEN 7270 AND 7790 THEN 'professional_management' WHEN TRY_CAST(INDP AS INTEGER) BETWEEN 7860 AND 8470 THEN 'education_healthcare' WHEN TRY_CAST(INDP AS INTEGER) BETWEEN 8561 AND 8690 THEN 'arts_entertainment_food' WHEN TRY_CAST(INDP AS INTEGER) BETWEEN 8770 AND 9290 THEN 'other_services' WHEN TRY_CAST(INDP AS INTEGER) BETWEEN 9370 AND 9590 THEN 'public_administration' WHEN TRY_CAST(INDP AS INTEGER) BETWEEN 9670 AND 9870 THEN 'military_industry' ELSE 'not_applicable' END AS industry_group,
         CASE WHEN LANP IS NULL THEN 'english_only' WHEN TRY_CAST(LANP AS INTEGER) = 1200 THEN 'spanish' WHEN TRY_CAST(LANP AS INTEGER) BETWEEN 1000 AND 1287 THEN 'european' WHEN TRY_CAST(LANP AS INTEGER) BETWEEN 1288 AND 1899 THEN 'south_central_asian' WHEN TRY_CAST(LANP AS INTEGER) BETWEEN 1900 AND 3600 THEN 'east_southeast_asian_pacific' WHEN TRY_CAST(LANP AS INTEGER) BETWEEN 4500 AND 9998 THEN 'middle_eastern_african' ELSE 'other_unspecified' END AS language_group
         FROM source
+      schema_hints:
+        RT: STRING
+        SERIALNO: STRING
+        DIVISION: BIGINT
+        SPORDER: STRING
+        PUMA: STRING
+        REGION: BIGINT
+        STATE: STRING
+        ADJINC: BIGINT
+        PWGTP: BIGINT
+        AGEP: BIGINT
+        CIT: BIGINT
+        CITWP: BIGINT
+        COW: BIGINT
+        DDRS: BIGINT
+        DEAR: BIGINT
+        DEYE: BIGINT
+        DOUT: BIGINT
+        DPHY: BIGINT
+        DRAT: BIGINT
+        DRATX: BIGINT
+        DREM: BIGINT
+        ENG: BIGINT
+        FER: BIGINT
+        GCL: BIGINT
+        GCM: BIGINT
+        GCR: BIGINT
+        HIMRKS: BIGINT
+        HINS1: BIGINT
+        HINS2: BIGINT
+        HINS3: BIGINT
+        HINS4: BIGINT
+        HINS5: BIGINT
+        HINS6: BIGINT
+        HINS7: BIGINT
+        INTP: BIGINT
+        JWMNP: BIGINT
+        JWRIP: BIGINT
+        JWTRNS: STRING
+        LANX: BIGINT
+        MAR: BIGINT
+        MARHD: BIGINT
+        MARHM: BIGINT
+        MARHT: BIGINT
+        MARHW: BIGINT
+        MARHYP: BIGINT
+        MIG: BIGINT
+        MIL: BIGINT
+        MLPA: BIGINT
+        MLPB: BIGINT
+        MLPCD: BIGINT
+        MLPE: BIGINT
+        MLPFG: BIGINT
+        MLPIK: BIGINT
+        MLPHJ: BIGINT
+        NWAB: BIGINT
+        NWAV: BIGINT
+        NWLA: BIGINT
+        NWLK: BIGINT
+        NWRE: BIGINT
+        OIP: BIGINT
+        PAP: BIGINT
+        RELSHIPP: BIGINT
+        RETP: BIGINT
+        SCH: BIGINT
+        SCHG: STRING
+        SCHL: INTEGER
+        SEMP: BIGINT
+        SEX: BIGINT
+        SSIP: BIGINT
+        SSP: BIGINT
+        WAGP: BIGINT
+        WKHP: BIGINT
+        WKL: BIGINT
+        WKWN: BIGINT
+        WRK: BIGINT
+        YOEP: BIGINT
+        ANC: BIGINT
+        ANC1P: STRING
+        ANC2P: STRING
+        DECADE: BIGINT
+        DIS: BIGINT
+        DRIVESP: BIGINT
+        ESP: BIGINT
+        ESR: BIGINT
+        FOD1P: BIGINT
+        FOD2P: BIGINT
+        HICOV: BIGINT
+        HISP: STRING
+        INDP: STRING
+        JWAP: STRING
+        JWDP: STRING
+        LANP: BIGINT
+        MIGPUMA: STRING
+        MIGSP: STRING
+        MSP: BIGINT
+        NAICSP: STRING
+        NATIVITY: BIGINT
+        NOP: BIGINT
+        OC: BIGINT
+        OCCP: STRING
+        PAOC: BIGINT
+        PERNP: BIGINT
+        PINCP: BIGINT
+        POBP: STRING
+        POVPIP: BIGINT
+        POWPUMA: STRING
+        POWSP: STRING
+        PRIVCOV: BIGINT
+        PUBCOV: BIGINT
+        QTRBIR: BIGINT
+        RAC1P: BIGINT
+        RAC2P: BIGINT
+        RAC3P: STRING
+        RACAIAN: BIGINT
+        RACASN: BIGINT
+        RACBLK: BIGINT
+        RACNH: BIGINT
+        RACNUM: BIGINT
+        RACPI: BIGINT
+        RACSOR: BIGINT
+        RACWHT: BIGINT
+        RC: BIGINT
+        SCIENGP: BIGINT
+        SCIENGRLP: BIGINT
+        SFN: BIGINT
+        SFR: BIGINT
+        SOCP: STRING
+        VPSP: STRING
+        WAOB: BIGINT
+        FAGEP: BIGINT
+        FANCP: BIGINT
+        FCITP: BIGINT
+        FCITWP: BIGINT
+        FCOWP: BIGINT
+        FDDRSP: BIGINT
+        FDEARP: BIGINT
+        FDEYEP: BIGINT
+        FDISP: BIGINT
+        FDOUTP: BIGINT
+        FDPHYP: BIGINT
+        FDRATP: BIGINT
+        FDRATXP: BIGINT
+        FDREMP: BIGINT
+        FENGP: BIGINT
+        FESRP: BIGINT
+        FFERP: BIGINT
+        FFODP: BIGINT
+        FGCLP: BIGINT
+        FGCMP: BIGINT
+        FGCRP: BIGINT
+        FHICOVP: BIGINT
+        FHIMRKSP: BIGINT
+        FHINS1P: BIGINT
+        FHINS2P: BIGINT
+        FHINS3C: BIGINT
+        FHINS3P: BIGINT
+        FHINS4C: BIGINT
+        FHINS4P: BIGINT
+        FHINS5C: BIGINT
+        FHINS5P: BIGINT
+        FHINS6P: BIGINT
+        FHINS7P: BIGINT
+        FHISP: BIGINT
+        FINDP: BIGINT
+        FINTP: BIGINT
+        FJWDP: BIGINT
+        FJWMNP: BIGINT
+        FJWRIP: BIGINT
+        FJWTRNSP: BIGINT
+        FLANP: BIGINT
+        FLANXP: BIGINT
+        FMARP: BIGINT
+        FMARHDP: BIGINT
+        FMARHMP: BIGINT
+        FMARHTP: BIGINT
+        FMARHWP: BIGINT
+        FMARHYP: BIGINT
+        FMIGP: BIGINT
+        FMIGSP: BIGINT
+        FMILPP: BIGINT
+        FMILSP: BIGINT
+        FOCCP: BIGINT
+        FOIP: BIGINT
+        FPAP: BIGINT
+        FPERNP: BIGINT
+        FPINCP: BIGINT
+        FPOBP: BIGINT
+        FPOWSP: BIGINT
+        FPRIVCOVP: BIGINT
+        FPUBCOVP: BIGINT
+        FRACP: BIGINT
+        FRELSHIPP: BIGINT
+        FRETP: BIGINT
+        FSCHGP: BIGINT
+        FSCHLP: BIGINT
+        FSCHP: BIGINT
+        FSEMP: BIGINT
+        FSEXP: BIGINT
+        FSSIP: BIGINT
+        FSSP: BIGINT
+        FWAGP: BIGINT
+        FWKHP: BIGINT
+        FWKLP: BIGINT
+        FWKWNP: BIGINT
+        FWRKP: BIGINT
+        FYOEP: BIGINT
+        PWGTP1: BIGINT
+        PWGTP2: BIGINT
+        PWGTP3: BIGINT
+        PWGTP4: BIGINT
+        PWGTP5: BIGINT
+        PWGTP6: BIGINT
+        PWGTP7: BIGINT
+        PWGTP8: BIGINT
+        PWGTP9: BIGINT
+        PWGTP10: BIGINT
+        PWGTP11: BIGINT
+        PWGTP12: BIGINT
+        PWGTP13: BIGINT
+        PWGTP14: BIGINT
+        PWGTP15: BIGINT
+        PWGTP16: BIGINT
+        PWGTP17: BIGINT
+        PWGTP18: BIGINT
+        PWGTP19: BIGINT
+        PWGTP20: BIGINT
+        PWGTP21: BIGINT
+        PWGTP22: BIGINT
+        PWGTP23: BIGINT
+        PWGTP24: BIGINT
+        PWGTP25: BIGINT
+        PWGTP26: BIGINT
+        PWGTP27: BIGINT
+        PWGTP28: BIGINT
+        PWGTP29: BIGINT
+        PWGTP30: BIGINT
+        PWGTP31: BIGINT
+        PWGTP32: BIGINT
+        PWGTP33: BIGINT
+        PWGTP34: BIGINT
+        PWGTP35: BIGINT
+        PWGTP36: BIGINT
+        PWGTP37: BIGINT
+        PWGTP38: BIGINT
+        PWGTP39: BIGINT
+        PWGTP40: BIGINT
+        PWGTP41: BIGINT
+        PWGTP42: BIGINT
+        PWGTP43: BIGINT
+        PWGTP44: BIGINT
+        PWGTP45: BIGINT
+        PWGTP46: BIGINT
+        PWGTP47: BIGINT
+        PWGTP48: BIGINT
+        PWGTP49: BIGINT
+        PWGTP50: BIGINT
+        PWGTP51: BIGINT
+        PWGTP52: BIGINT
+        PWGTP53: BIGINT
+        PWGTP54: BIGINT
+        PWGTP55: BIGINT
+        PWGTP56: BIGINT
+        PWGTP57: BIGINT
+        PWGTP58: BIGINT
+        PWGTP59: BIGINT
+        PWGTP60: BIGINT
+        PWGTP61: BIGINT
+        PWGTP62: BIGINT
+        PWGTP63: BIGINT
+        PWGTP64: BIGINT
+        PWGTP65: BIGINT
+        PWGTP66: BIGINT
+        PWGTP67: BIGINT
+        PWGTP68: BIGINT
+        PWGTP69: BIGINT
+        PWGTP70: BIGINT
+        PWGTP71: BIGINT
+        PWGTP72: BIGINT
+        PWGTP73: BIGINT
+        PWGTP74: BIGINT
+        PWGTP75: BIGINT
+        PWGTP76: BIGINT
+        PWGTP77: BIGINT
+        PWGTP78: BIGINT
+        PWGTP79: BIGINT
+        PWGTP80: BIGINT
+        PUMA_FIPS: STRING
+        PERSON_ID: STRING
+        employment_status: STRING
+        edu_level: STRING
+        age_cohort: STRING
+        commute_mode: STRING
+        has_insurance: STRING
+        is_veteran: STRING
+        disability_count: STRING
+        occ_group: STRING
+        occ_subgroup: STRING
+        industry_group: STRING
+        language_group: STRING
 
     - id: fema_risk_index
       uri: file://${DATA_DIR}/NRI_Table_CensusTracts.csv
@@ -799,94 +1346,94 @@ sources:
         SOVI_SPCTL: FLOAT
         RESL_SCORE: FLOAT
         RESL_RATNG: STRING
-        RESL_SPCTL: STRING
-        RESL_VALUE: STRING
-        CRF_VALUE: STRING
-        AVLN_EVNTS: STRING
-        AVLN_AFREQ: STRING
-        AVLN_EXPB: STRING
-        AVLN_EXPP: STRING
-        AVLN_EXPPE: STRING
-        AVLN_EXPT: STRING
-        AVLN_EXP_AREA: STRING
-        AVLN_HLRB: STRING
-        AVLN_HLRP: STRING
+        RESL_SPCTL: DOUBLE
+        RESL_VALUE: DOUBLE
+        CRF_VALUE: DOUBLE
+        AVLN_EVNTS: DOUBLE
+        AVLN_AFREQ: DOUBLE
+        AVLN_EXPB: DOUBLE
+        AVLN_EXPP: DOUBLE
+        AVLN_EXPPE: DOUBLE
+        AVLN_EXPT: DOUBLE
+        AVLN_EXP_AREA: DOUBLE
+        AVLN_HLRB: DOUBLE
+        AVLN_HLRP: DOUBLE
         AVLN_HLRR: STRING
-        AVLN_EALB: STRING
-        AVLN_EALP: STRING
-        AVLN_EALPE: STRING
-        AVLN_EALT: STRING
-        AVLN_EALS: STRING
+        AVLN_EALB: DOUBLE
+        AVLN_EALP: DOUBLE
+        AVLN_EALPE: DOUBLE
+        AVLN_EALT: DOUBLE
+        AVLN_EALS: DOUBLE
         AVLN_EALR: STRING
-        AVLN_ALRB: STRING
-        AVLN_ALRP: STRING
-        AVLN_ALR_NPCTL: STRING
-        AVLN_RISKV: STRING
-        AVLN_RISKS: STRING
+        AVLN_ALRB: DOUBLE
+        AVLN_ALRP: DOUBLE
+        AVLN_ALR_NPCTL: DOUBLE
+        AVLN_RISKV: DOUBLE
+        AVLN_RISKS: DOUBLE
         AVLN_RISKR: STRING
         CFLD_EVNTS: STRING
-        CFLD_AFREQ: STRING
-        CFLD_EXPB: STRING
-        CFLD_EXPP: STRING
-        CFLD_EXPPE: STRING
-        CFLD_EXPT: STRING
-        CFLD_EXP_AREA: STRING
-        CFLD_HLRB: STRING
-        CFLD_HLRP: STRING
+        CFLD_AFREQ: DOUBLE
+        CFLD_EXPB: DOUBLE
+        CFLD_EXPP: DOUBLE
+        CFLD_EXPPE: DOUBLE
+        CFLD_EXPT: DOUBLE
+        CFLD_EXP_AREA: DOUBLE
+        CFLD_HLRB: DOUBLE
+        CFLD_HLRP: DOUBLE
         CFLD_HLRR: STRING
-        CFLD_EALB: STRING
-        CFLD_EALP: STRING
-        CFLD_EALPE: STRING
-        CFLD_EALT: STRING
-        CFLD_EALS: STRING
+        CFLD_EALB: DOUBLE
+        CFLD_EALP: DOUBLE
+        CFLD_EALPE: DOUBLE
+        CFLD_EALT: DOUBLE
+        CFLD_EALS: DOUBLE
         CFLD_EALR: STRING
-        CFLD_ALRB: STRING
-        CFLD_ALRP: STRING
-        CFLD_ALR_NPCTL: STRING
-        CFLD_RISKV: STRING
-        CFLD_RISKS: STRING
+        CFLD_ALRB: DOUBLE
+        CFLD_ALRP: DOUBLE
+        CFLD_ALR_NPCTL: DOUBLE
+        CFLD_RISKV: DOUBLE
+        CFLD_RISKS: DOUBLE
         CFLD_RISKR: STRING
-        CWAV_EVNTS: STRING
-        CWAV_AFREQ: STRING
-        CWAV_EXPB: STRING
-        CWAV_EXPP: STRING
-        CWAV_EXPPE: STRING
-        CWAV_EXPA: STRING
-        CWAV_EXPT: STRING
-        CWAV_EXP_AREA: STRING
-        CWAV_HLRB: STRING
-        CWAV_HLRP: STRING
-        CWAV_HLRA: STRING
+        CWAV_EVNTS: DOUBLE
+        CWAV_AFREQ: DOUBLE
+        CWAV_EXPB: DOUBLE
+        CWAV_EXPP: DOUBLE
+        CWAV_EXPPE: DOUBLE
+        CWAV_EXPA: DOUBLE
+        CWAV_EXPT: DOUBLE
+        CWAV_EXP_AREA: DOUBLE
+        CWAV_HLRB: DOUBLE
+        CWAV_HLRP: DOUBLE
+        CWAV_HLRA: DOUBLE
         CWAV_HLRR: STRING
-        CWAV_EALB: STRING
-        CWAV_EALP: STRING
-        CWAV_EALPE: STRING
-        CWAV_EALA: STRING
-        CWAV_EALT: STRING
-        CWAV_EALS: STRING
+        CWAV_EALB: DOUBLE
+        CWAV_EALP: DOUBLE
+        CWAV_EALPE: DOUBLE
+        CWAV_EALA: DOUBLE
+        CWAV_EALT: DOUBLE
+        CWAV_EALS: DOUBLE
         CWAV_EALR: STRING
-        CWAV_ALRB: STRING
-        CWAV_ALRP: STRING
-        CWAV_ALRA: STRING
-        CWAV_ALR_NPCTL: STRING
-        CWAV_RISKV: STRING
-        CWAV_RISKS: STRING
+        CWAV_ALRB: DOUBLE
+        CWAV_ALRP: DOUBLE
+        CWAV_ALRA: DOUBLE
+        CWAV_ALR_NPCTL: DOUBLE
+        CWAV_RISKV: DOUBLE
+        CWAV_RISKS: DOUBLE
         CWAV_RISKR: STRING
-        DRGT_EVNTS: STRING
-        DRGT_AFREQ: STRING
-        DRGT_EXPA: STRING
-        DRGT_EXPT: STRING
-        DRGT_EXP_AREA: STRING
-        DRGT_HLRA: STRING
+        DRGT_EVNTS: DOUBLE
+        DRGT_AFREQ: DOUBLE
+        DRGT_EXPA: DOUBLE
+        DRGT_EXPT: DOUBLE
+        DRGT_EXP_AREA: DOUBLE
+        DRGT_HLRA: DOUBLE
         DRGT_HLRR: STRING
-        DRGT_EALA: STRING
-        DRGT_EALT: STRING
-        DRGT_EALS: STRING
+        DRGT_EALA: DOUBLE
+        DRGT_EALT: DOUBLE
+        DRGT_EALS: DOUBLE
         DRGT_EALR: STRING
-        DRGT_ALRA: STRING
-        DRGT_ALR_NPCTL: STRING
-        DRGT_RISKV: STRING
-        DRGT_RISKS: STRING
+        DRGT_ALRA: DOUBLE
+        DRGT_ALR_NPCTL: DOUBLE
+        DRGT_RISKV: DOUBLE
+        DRGT_RISKS: DOUBLE
         DRGT_RISKR: STRING
         ERQK_EVNTS: FLOAT
         ERQK_AFREQ: FLOAT
@@ -897,13 +1444,13 @@ sources:
         ERQK_EXP_AREA: FLOAT
         ERQK_HLRB: FLOAT
         ERQK_HLRP: FLOAT
-        ERQK_HLRR: FLOAT
+        ERQK_HLRR: STRING
         ERQK_EALB: FLOAT
         ERQK_EALP: FLOAT
         ERQK_EALPE: FLOAT
         ERQK_EALT: FLOAT
         ERQK_EALS: FLOAT
-        ERQK_EALR: FLOAT
+        ERQK_EALR: STRING
         ERQK_ALRB: FLOAT
         ERQK_ALRP: FLOAT
         ERQK_ALR_NPCTL: FLOAT
@@ -921,14 +1468,14 @@ sources:
         HAIL_HLRB: FLOAT
         HAIL_HLRP: FLOAT
         HAIL_HLRA: FLOAT
-        HAIL_HLRR: FLOAT
+        HAIL_HLRR: STRING
         HAIL_EALB: FLOAT
         HAIL_EALP: FLOAT
         HAIL_EALPE: FLOAT
         HAIL_EALA: FLOAT
         HAIL_EALT: FLOAT
         HAIL_EALS: FLOAT
-        HAIL_EALR: FLOAT
+        HAIL_EALR: STRING
         HAIL_ALRB: FLOAT
         HAIL_ALRP: FLOAT
         HAIL_ALRA: FLOAT
@@ -936,31 +1483,31 @@ sources:
         HAIL_RISKV: FLOAT
         HAIL_RISKS: FLOAT
         HAIL_RISKR: STRING
-        HWAV_EVNTS: STRING
-        HWAV_AFREQ: STRING
-        HWAV_EXPB: STRING
-        HWAV_EXPP: STRING
-        HWAV_EXPPE: STRING
-        HWAV_EXPA: STRING
-        HWAV_EXPT: STRING
-        HWAV_EXP_AREA: STRING
-        HWAV_HLRB: STRING
-        HWAV_HLRP: STRING
-        HWAV_HLRA: STRING
+        HWAV_EVNTS: DOUBLE
+        HWAV_AFREQ: DOUBLE
+        HWAV_EXPB: DOUBLE
+        HWAV_EXPP: DOUBLE
+        HWAV_EXPPE: DOUBLE
+        HWAV_EXPA: DOUBLE
+        HWAV_EXPT: DOUBLE
+        HWAV_EXP_AREA: DOUBLE
+        HWAV_HLRB: DOUBLE
+        HWAV_HLRP: DOUBLE
+        HWAV_HLRA: DOUBLE
         HWAV_HLRR: STRING
-        HWAV_EALB: STRING
-        HWAV_EALP: STRING
-        HWAV_EALPE: STRING
-        HWAV_EALA: STRING
-        HWAV_EALT: STRING
-        HWAV_EALS: STRING
+        HWAV_EALB: DOUBLE
+        HWAV_EALP: DOUBLE
+        HWAV_EALPE: DOUBLE
+        HWAV_EALA: DOUBLE
+        HWAV_EALT: DOUBLE
+        HWAV_EALS: DOUBLE
         HWAV_EALR: STRING
-        HWAV_ALRB: STRING
-        HWAV_ALRP: STRING
-        HWAV_ALRA: STRING
-        HWAV_ALR_NPCTL: STRING
-        HWAV_RISKV: STRING
-        HWAV_RISKS: STRING
+        HWAV_ALRB: DOUBLE
+        HWAV_ALRP: DOUBLE
+        HWAV_ALRA: DOUBLE
+        HWAV_ALR_NPCTL: DOUBLE
+        HWAV_RISKV: DOUBLE
+        HWAV_RISKS: DOUBLE
         HWAV_RISKR: STRING
         HRCN_EVNTS: FLOAT
         HRCN_AFREQ: FLOAT
@@ -973,14 +1520,14 @@ sources:
         HRCN_HLRB: FLOAT
         HRCN_HLRP: FLOAT
         HRCN_HLRA: FLOAT
-        HRCN_HLRR: FLOAT
+        HRCN_HLRR: STRING
         HRCN_EALB: FLOAT
         HRCN_EALP: FLOAT
         HRCN_EALPE: FLOAT
         HRCN_EALA: FLOAT
         HRCN_EALT: FLOAT
         HRCN_EALS: FLOAT
-        HRCN_EALR: FLOAT
+        HRCN_EALR: STRING
         HRCN_ALRB: FLOAT
         HRCN_ALRP: FLOAT
         HRCN_ALRA: FLOAT
@@ -988,97 +1535,97 @@ sources:
         HRCN_RISKV: FLOAT
         HRCN_RISKS: FLOAT
         HRCN_RISKR: STRING
-        ISTM_EVNTS: STRING
-        ISTM_AFREQ: STRING
-        ISTM_EXPB: STRING
-        ISTM_EXPP: STRING
-        ISTM_EXPPE: STRING
-        ISTM_EXPT: STRING
-        ISTM_EXP_AREA: STRING
-        ISTM_HLRB: STRING
-        ISTM_HLRP: STRING
+        ISTM_EVNTS: DOUBLE
+        ISTM_AFREQ: DOUBLE
+        ISTM_EXPB: DOUBLE
+        ISTM_EXPP: DOUBLE
+        ISTM_EXPPE: DOUBLE
+        ISTM_EXPT: DOUBLE
+        ISTM_EXP_AREA: DOUBLE
+        ISTM_HLRB: DOUBLE
+        ISTM_HLRP: DOUBLE
         ISTM_HLRR: STRING
-        ISTM_EALB: STRING
-        ISTM_EALP: STRING
-        ISTM_EALPE: STRING
-        ISTM_EALT: STRING
-        ISTM_EALS: STRING
+        ISTM_EALB: DOUBLE
+        ISTM_EALP: DOUBLE
+        ISTM_EALPE: DOUBLE
+        ISTM_EALT: DOUBLE
+        ISTM_EALS: DOUBLE
         ISTM_EALR: STRING
-        ISTM_ALRB: STRING
-        ISTM_ALRP: STRING
-        ISTM_ALR_NPCTL: STRING
-        ISTM_RISKV: STRING
-        ISTM_RISKS: STRING
+        ISTM_ALRB: DOUBLE
+        ISTM_ALRP: DOUBLE
+        ISTM_ALR_NPCTL: DOUBLE
+        ISTM_RISKV: DOUBLE
+        ISTM_RISKS: DOUBLE
         ISTM_RISKR: STRING
         LNDS_EVNTS: STRING
-        LNDS_AFREQ: STRING
-        LNDS_EXPB: STRING
-        LNDS_EXPP: STRING
-        LNDS_EXPPE: STRING
-        LNDS_EXPT: STRING
-        LNDS_EXP_AREA: STRING
-        LNDS_HLRB: STRING
-        LNDS_HLRP: STRING
+        LNDS_AFREQ: DOUBLE
+        LNDS_EXPB: DOUBLE
+        LNDS_EXPP: DOUBLE
+        LNDS_EXPPE: DOUBLE
+        LNDS_EXPT: DOUBLE
+        LNDS_EXP_AREA: DOUBLE
+        LNDS_HLRB: DOUBLE
+        LNDS_HLRP: DOUBLE
         LNDS_HLRR: STRING
-        LNDS_EALB: STRING
-        LNDS_EALP: STRING
-        LNDS_EALPE: STRING
-        LNDS_EALT: STRING
-        LNDS_EALS: STRING
+        LNDS_EALB: DOUBLE
+        LNDS_EALP: DOUBLE
+        LNDS_EALPE: DOUBLE
+        LNDS_EALT: DOUBLE
+        LNDS_EALS: DOUBLE
         LNDS_EALR: STRING
-        LNDS_ALRB: STRING
-        LNDS_ALRP: STRING
-        LNDS_ALR_NPCTL: STRING
-        LNDS_RISKV: STRING
-        LNDS_RISKS: STRING
+        LNDS_ALRB: DOUBLE
+        LNDS_ALRP: DOUBLE
+        LNDS_ALR_NPCTL: DOUBLE
+        LNDS_RISKV: DOUBLE
+        LNDS_RISKS: DOUBLE
         LNDS_RISKR: STRING
-        LTNG_EVNTS: STRING
-        LTNG_AFREQ: STRING
-        LTNG_EXPB: STRING
-        LTNG_EXPP: STRING
-        LTNG_EXPPE: STRING
-        LTNG_EXPT: STRING
-        LTNG_EXP_AREA: STRING
-        LTNG_HLRB: STRING
-        LTNG_HLRP: STRING
+        LTNG_EVNTS: DOUBLE
+        LTNG_AFREQ: DOUBLE
+        LTNG_EXPB: DOUBLE
+        LTNG_EXPP: DOUBLE
+        LTNG_EXPPE: DOUBLE
+        LTNG_EXPT: DOUBLE
+        LTNG_EXP_AREA: DOUBLE
+        LTNG_HLRB: DOUBLE
+        LTNG_HLRP: DOUBLE
         LTNG_HLRR: STRING
-        LTNG_EALB: STRING
-        LTNG_EALP: STRING
-        LTNG_EALPE: STRING
-        LTNG_EALT: STRING
-        LTNG_EALS: STRING
+        LTNG_EALB: DOUBLE
+        LTNG_EALP: DOUBLE
+        LTNG_EALPE: DOUBLE
+        LTNG_EALT: DOUBLE
+        LTNG_EALS: DOUBLE
         LTNG_EALR: STRING
-        LTNG_ALRB: STRING
-        LTNG_ALRP: STRING
-        LTNG_ALR_NPCTL: STRING
-        LTNG_RISKV: STRING
-        LTNG_RISKS: STRING
+        LTNG_ALRB: DOUBLE
+        LTNG_ALRP: DOUBLE
+        LTNG_ALR_NPCTL: DOUBLE
+        LTNG_RISKV: DOUBLE
+        LTNG_RISKS: DOUBLE
         LTNG_RISKR: STRING
-        IFLD_EVNTS: STRING
-        IFLD_AFREQ: STRING
-        IFLD_EXPB: STRING
-        IFLD_EXPP: STRING
-        IFLD_EXPPE: STRING
-        IFLD_EXPA: STRING
-        IFLD_EXPT: STRING
-        IFLD_EXP_AREA: STRING
-        IFLD_HLRB: STRING
-        IFLD_HLRP: STRING
-        IFLD_HLRA: STRING
+        IFLD_EVNTS: DOUBLE
+        IFLD_AFREQ: DOUBLE
+        IFLD_EXPB: DOUBLE
+        IFLD_EXPP: DOUBLE
+        IFLD_EXPPE: DOUBLE
+        IFLD_EXPA: DOUBLE
+        IFLD_EXPT: DOUBLE
+        IFLD_EXP_AREA: DOUBLE
+        IFLD_HLRB: DOUBLE
+        IFLD_HLRP: DOUBLE
+        IFLD_HLRA: DOUBLE
         IFLD_HLRR: STRING
-        IFLD_EALB: STRING
-        IFLD_EALP: STRING
-        IFLD_EALPE: STRING
-        IFLD_EALA: STRING
-        IFLD_EALT: STRING
-        IFLD_EALS: STRING
+        IFLD_EALB: DOUBLE
+        IFLD_EALP: DOUBLE
+        IFLD_EALPE: DOUBLE
+        IFLD_EALA: DOUBLE
+        IFLD_EALT: DOUBLE
+        IFLD_EALS: DOUBLE
         IFLD_EALR: STRING
-        IFLD_ALRB: STRING
-        IFLD_ALRP: STRING
-        IFLD_ALRA: STRING
-        IFLD_ALR_NPCTL: STRING
-        IFLD_RISKV: STRING
-        IFLD_RISKS: STRING
+        IFLD_ALRB: DOUBLE
+        IFLD_ALRP: DOUBLE
+        IFLD_ALRA: DOUBLE
+        IFLD_ALR_NPCTL: DOUBLE
+        IFLD_RISKV: DOUBLE
+        IFLD_RISKS: DOUBLE
         IFLD_RISKR: STRING
         SWND_EVNTS: FLOAT
         SWND_AFREQ: FLOAT
@@ -1091,14 +1638,14 @@ sources:
         SWND_HLRB: FLOAT
         SWND_HLRP: FLOAT
         SWND_HLRA: FLOAT
-        SWND_HLRR: FLOAT
+        SWND_HLRR: STRING
         SWND_EALB: FLOAT
         SWND_EALP: FLOAT
         SWND_EALPE: FLOAT
         SWND_EALA: FLOAT
         SWND_EALT: FLOAT
         SWND_EALS: FLOAT
-        SWND_EALR: FLOAT
+        SWND_EALR: STRING
         SWND_ALRB: FLOAT
         SWND_ALRP: FLOAT
         SWND_ALRA: FLOAT
@@ -1117,14 +1664,14 @@ sources:
         TRND_HLRB: FLOAT
         TRND_HLRP: FLOAT
         TRND_HLRA: FLOAT
-        TRND_HLRR: FLOAT
+        TRND_HLRR: STRING
         TRND_EALB: FLOAT
         TRND_EALP: FLOAT
         TRND_EALPE: FLOAT
         TRND_EALA: FLOAT
         TRND_EALT: FLOAT
         TRND_EALS: FLOAT
-        TRND_EALR: FLOAT
+        TRND_EALR: STRING
         TRND_ALRB: FLOAT
         TRND_ALRP: FLOAT
         TRND_ALRA: FLOAT
@@ -1132,49 +1679,49 @@ sources:
         TRND_RISKV: FLOAT
         TRND_RISKS: FLOAT
         TRND_RISKR: STRING
-        TSUN_EVNTS: STRING
-        TSUN_AFREQ: STRING
-        TSUN_EXPB: STRING
-        TSUN_EXPP: STRING
-        TSUN_EXPPE: STRING
-        TSUN_EXPT: STRING
-        TSUN_EXP_AREA: STRING
-        TSUN_HLRB: STRING
-        TSUN_HLRP: STRING
+        TSUN_EVNTS: DOUBLE
+        TSUN_AFREQ: DOUBLE
+        TSUN_EXPB: DOUBLE
+        TSUN_EXPP: DOUBLE
+        TSUN_EXPPE: DOUBLE
+        TSUN_EXPT: DOUBLE
+        TSUN_EXP_AREA: DOUBLE
+        TSUN_HLRB: DOUBLE
+        TSUN_HLRP: DOUBLE
         TSUN_HLRR: STRING
-        TSUN_EALB: STRING
-        TSUN_EALP: STRING
-        TSUN_EALPE: STRING
-        TSUN_EALT: STRING
-        TSUN_EALS: STRING
+        TSUN_EALB: DOUBLE
+        TSUN_EALP: DOUBLE
+        TSUN_EALPE: DOUBLE
+        TSUN_EALT: DOUBLE
+        TSUN_EALS: DOUBLE
         TSUN_EALR: STRING
-        TSUN_ALRB: STRING
-        TSUN_ALRP: STRING
-        TSUN_ALR_NPCTL: STRING
-        TSUN_RISKV: STRING
-        TSUN_RISKS: STRING
+        TSUN_ALRB: DOUBLE
+        TSUN_ALRP: DOUBLE
+        TSUN_ALR_NPCTL: DOUBLE
+        TSUN_RISKV: DOUBLE
+        TSUN_RISKS: DOUBLE
         TSUN_RISKR: STRING
-        VLCN_EVNTS: STRING
-        VLCN_AFREQ: STRING
-        VLCN_EXPB: STRING
-        VLCN_EXPP: STRING
-        VLCN_EXPPE: STRING
-        VLCN_EXPT: STRING
-        VLCN_EXP_AREA: STRING
-        VLCN_HLRB: STRING
-        VLCN_HLRP: STRING
+        VLCN_EVNTS: DOUBLE
+        VLCN_AFREQ: DOUBLE
+        VLCN_EXPB: DOUBLE
+        VLCN_EXPP: DOUBLE
+        VLCN_EXPPE: DOUBLE
+        VLCN_EXPT: DOUBLE
+        VLCN_EXP_AREA: DOUBLE
+        VLCN_HLRB: DOUBLE
+        VLCN_HLRP: DOUBLE
         VLCN_HLRR: STRING
-        VLCN_EALB: STRING
-        VLCN_EALP: STRING
-        VLCN_EALPE: STRING
-        VLCN_EALT: STRING
-        VLCN_EALS: STRING
+        VLCN_EALB: DOUBLE
+        VLCN_EALP: DOUBLE
+        VLCN_EALPE: DOUBLE
+        VLCN_EALT: DOUBLE
+        VLCN_EALS: DOUBLE
         VLCN_EALR: STRING
-        VLCN_ALRB: STRING
-        VLCN_ALRP: STRING
-        VLCN_ALR_NPCTL: STRING
-        VLCN_RISKV: STRING
-        VLCN_RISKS: STRING
+        VLCN_ALRB: DOUBLE
+        VLCN_ALRP: DOUBLE
+        VLCN_ALR_NPCTL: DOUBLE
+        VLCN_RISKV: DOUBLE
+        VLCN_RISKS: DOUBLE
         VLCN_RISKR: STRING
         WFIR_EVNTS: FLOAT
         WFIR_AFREQ: FLOAT
@@ -1187,14 +1734,14 @@ sources:
         WFIR_HLRB: FLOAT
         WFIR_HLRP: FLOAT
         WFIR_HLRA: FLOAT
-        WFIR_HLRR: FLOAT
+        WFIR_HLRR: STRING
         WFIR_EALB: FLOAT
         WFIR_EALP: FLOAT
         WFIR_EALPE: FLOAT
         WFIR_EALA: FLOAT
         WFIR_EALT: FLOAT
         WFIR_EALS: FLOAT
-        WFIR_EALR: FLOAT
+        WFIR_EALR: STRING
         WFIR_ALRB: FLOAT
         WFIR_ALRP: FLOAT
         WFIR_ALRA: FLOAT
@@ -1202,31 +1749,31 @@ sources:
         WFIR_RISKV: FLOAT
         WFIR_RISKS: FLOAT
         WFIR_RISKR: STRING
-        WNTW_EVNTS: STRING
-        WNTW_AFREQ: STRING
-        WNTW_EXPB: STRING
-        WNTW_EXPP: STRING
-        WNTW_EXPPE: STRING
-        WNTW_EXPA: STRING
-        WNTW_EXPT: STRING
-        WNTW_EXP_AREA: STRING
-        WNTW_HLRB: STRING
-        WNTW_HLRP: STRING
-        WNTW_HLRA: STRING
+        WNTW_EVNTS: DOUBLE
+        WNTW_AFREQ: DOUBLE
+        WNTW_EXPB: DOUBLE
+        WNTW_EXPP: DOUBLE
+        WNTW_EXPPE: DOUBLE
+        WNTW_EXPA: DOUBLE
+        WNTW_EXPT: DOUBLE
+        WNTW_EXP_AREA: DOUBLE
+        WNTW_HLRB: DOUBLE
+        WNTW_HLRP: DOUBLE
+        WNTW_HLRA: DOUBLE
         WNTW_HLRR: STRING
-        WNTW_EALB: STRING
-        WNTW_EALP: STRING
-        WNTW_EALPE: STRING
-        WNTW_EALA: STRING
-        WNTW_EALT: STRING
-        WNTW_EALS: STRING
+        WNTW_EALB: DOUBLE
+        WNTW_EALP: DOUBLE
+        WNTW_EALPE: DOUBLE
+        WNTW_EALA: DOUBLE
+        WNTW_EALT: DOUBLE
+        WNTW_EALS: DOUBLE
         WNTW_EALR: STRING
-        WNTW_ALRB: STRING
-        WNTW_ALRP: STRING
-        WNTW_ALRA: STRING
-        WNTW_ALR_NPCTL: STRING
-        WNTW_RISKV: STRING
-        WNTW_RISKS: STRING
+        WNTW_ALRB: DOUBLE
+        WNTW_ALRP: DOUBLE
+        WNTW_ALRA: DOUBLE
+        WNTW_ALR_NPCTL: DOUBLE
+        WNTW_RISKV: DOUBLE
+        WNTW_RISKS: DOUBLE
         WNTW_RISKR: STRING
         NRI_VER: STRING
         AIANNHCE: STRING
@@ -1401,30 +1948,28 @@ sources:
         contract_award_unique_key: STRING
         award_id_piid: STRING
         modification_number: STRING
-        transaction_number: STRING
+        transaction_number: BIGINT
         parent_award_agency_id: STRING
         parent_award_agency_name: STRING
         parent_award_id_piid: STRING
         parent_award_modification_number: STRING
-        federal_action_obligation: STRING
-        total_dollars_obligated: STRING
-        total_outlayed_amount_for_overall_award: STRING
-        base_and_exercised_options_value: STRING
-        current_total_value_of_award: STRING
-        base_and_all_options_value: STRING
-        potential_total_value_of_award: STRING
+        federal_action_obligation: DOUBLE
+        total_dollars_obligated: DOUBLE
+        total_outlayed_amount_for_overall_award: DOUBLE
+        base_and_exercised_options_value: DOUBLE
+        current_total_value_of_award: DOUBLE
+        base_and_all_options_value: DOUBLE
+        potential_total_value_of_award: DOUBLE
         disaster_emergency_fund_codes_for_overall_award: STRING
-        outlayed_amount_from_COVID-19_supplementals_for_overall_award: STRING
-        obligated_amount_from_COVID-19_supplementals_for_overall_award: STRING
-        outlayed_amount_from_IIJA_supplemental_for_overall_award: STRING
-        obligated_amount_from_IIJA_supplemental_for_overall_award: STRING
-        action_date: STRING
-        action_date_fiscal_year: STRING
-        period_of_performance_start_date: STRING
-        period_of_performance_current_end_date: STRING
-        period_of_performance_potential_end_date: STRING
-        ordering_period_end_date: STRING
-        solicitation_date: STRING
+        outlayed_amount_from_IIJA_supplemental_for_overall_award: DOUBLE
+        obligated_amount_from_IIJA_supplemental_for_overall_award: DOUBLE
+        action_date: DATE
+        action_date_fiscal_year: BIGINT
+        period_of_performance_start_date: DATE
+        period_of_performance_current_end_date: DATE
+        period_of_performance_potential_end_date: TIMESTAMP
+        ordering_period_end_date: DATE
+        solicitation_date: DATE
         awarding_agency_code: STRING
         awarding_agency_name: STRING
         awarding_sub_agency_code: STRING
@@ -1443,7 +1988,7 @@ sources:
         program_activities_funding_this_award: STRING
         foreign_funding: STRING
         foreign_funding_description: STRING
-        sam_exception: STRING
+        sam_exception: BIGINT
         sam_exception_description: STRING
         recipient_uei: STRING
         recipient_duns: STRING
@@ -1497,7 +2042,7 @@ sources:
         action_type_code: STRING
         action_type: STRING
         solicitation_identifier: STRING
-        number_of_actions: STRING
+        number_of_actions: BIGINT
         inherently_governmental_functions: STRING
         inherently_governmental_functions_description: STRING
         product_or_service_code: STRING
@@ -1506,7 +2051,7 @@ sources:
         contract_bundling: STRING
         dod_claimant_program_code: STRING
         dod_claimant_program_description: STRING
-        naics_code: STRING
+        naics_code: BIGINT
         naics_description: STRING
         recovered_materials_sustainability_code: STRING
         recovered_materials_sustainability: STRING
@@ -1538,21 +2083,21 @@ sources:
         fair_opportunity_limited_sources: STRING
         other_than_full_and_open_competition_code: STRING
         other_than_full_and_open_competition: STRING
-        number_of_offers_received: STRING
+        number_of_offers_received: BIGINT
         commercial_item_acquisition_procedures_code: STRING
         commercial_item_acquisition_procedures: STRING
-        small_business_competitiveness_demonstration_program: STRING
+        small_business_competitiveness_demonstration_program: BOOLEAN
         simplified_procedures_for_certain_commercial_items_code: STRING
-        simplified_procedures_for_certain_commercial_items: STRING
+        simplified_procedures_for_certain_commercial_items: BOOLEAN
         a76_fair_act_action_code: STRING
-        a76_fair_act_action: STRING
+        a76_fair_act_action: BOOLEAN
         fed_biz_opps_code: STRING
         fed_biz_opps: STRING
         local_area_set_aside_code: STRING
-        local_area_set_aside: STRING
-        price_evaluation_adjustment_preference_percent_difference: STRING
+        local_area_set_aside: BOOLEAN
+        price_evaluation_adjustment_preference_percent_difference: DOUBLE
         clinger_cohen_act_planning_code: STRING
-        clinger_cohen_act_planning: STRING
+        clinger_cohen_act_planning: BOOLEAN
         materials_supplies_articles_equipment_code: STRING
         materials_supplies_articles_equipment: STRING
         labor_standards_code: STRING
@@ -1585,115 +2130,112 @@ sources:
         performance_based_service_acquisition_code: STRING
         performance_based_service_acquisition: STRING
         multi_year_contract_code: STRING
-        multi_year_contract: STRING
+        multi_year_contract: BOOLEAN
         contract_financing_code: STRING
         contract_financing: STRING
         purchase_card_as_payment_method_code: STRING
-        purchase_card_as_payment_method: STRING
+        purchase_card_as_payment_method: BOOLEAN
         contingency_humanitarian_or_peacekeeping_operation_code: STRING
         contingency_humanitarian_or_peacekeeping_operation: STRING
-        alaskan_native_corporation_owned_firm: STRING
-        american_indian_owned_business: STRING
-        indian_tribe_federally_recognized: STRING
-        native_hawaiian_organization_owned_firm: STRING
-        tribally_owned_firm: STRING
-        veteran_owned_business: STRING
-        service_disabled_veteran_owned_business: STRING
-        woman_owned_business: STRING
-        women_owned_small_business: STRING
-        economically_disadvantaged_women_owned_small_business: STRING
-        joint_venture_women_owned_small_business: STRING
-        joint_venture_economic_disadvantaged_women_owned_small_bus: STRING
-        minority_owned_business: STRING
-        subcontinent_asian_asian_indian_american_owned_business: STRING
-        asian_pacific_american_owned_business: STRING
-        black_american_owned_business: STRING
-        hispanic_american_owned_business: STRING
-        native_american_owned_business: STRING
-        other_minority_owned_business: STRING
+        alaskan_native_corporation_owned_firm: BOOLEAN
+        american_indian_owned_business: BOOLEAN
+        indian_tribe_federally_recognized: BOOLEAN
+        native_hawaiian_organization_owned_firm: BOOLEAN
+        tribally_owned_firm: BOOLEAN
+        veteran_owned_business: BOOLEAN
+        service_disabled_veteran_owned_business: BOOLEAN
+        woman_owned_business: BOOLEAN
+        women_owned_small_business: BOOLEAN
+        economically_disadvantaged_women_owned_small_business: BOOLEAN
+        joint_venture_women_owned_small_business: BOOLEAN
+        joint_venture_economic_disadvantaged_women_owned_small_bus: BOOLEAN
+        minority_owned_business: BOOLEAN
+        subcontinent_asian_asian_indian_american_owned_business: BOOLEAN
+        asian_pacific_american_owned_business: BOOLEAN
+        black_american_owned_business: BOOLEAN
+        hispanic_american_owned_business: BOOLEAN
+        native_american_owned_business: BOOLEAN
+        other_minority_owned_business: BOOLEAN
         contracting_officers_determination_of_business_size: STRING
         contracting_officers_determination_of_business_size_code: STRING
-        emerging_small_business: STRING
-        community_developed_corporation_owned_firm: STRING
-        labor_surplus_area_firm: STRING
-        us_federal_government: STRING
-        federally_funded_research_and_development_corp: STRING
-        federal_agency: STRING
-        us_state_government: STRING
-        us_local_government: STRING
-        city_local_government: STRING
-        county_local_government: STRING
-        inter_municipal_local_government: STRING
-        local_government_owned: STRING
-        municipality_local_government: STRING
-        school_district_local_government: STRING
-        township_local_government: STRING
-        us_tribal_government: STRING
-        foreign_government: STRING
+        emerging_small_business: BOOLEAN
+        community_developed_corporation_owned_firm: BOOLEAN
+        labor_surplus_area_firm: BOOLEAN
+        us_federal_government: BOOLEAN
+        federally_funded_research_and_development_corp: BOOLEAN
+        federal_agency: BOOLEAN
+        us_state_government: BOOLEAN
+        us_local_government: BOOLEAN
+        city_local_government: BOOLEAN
+        county_local_government: BOOLEAN
+        inter_municipal_local_government: BOOLEAN
+        local_government_owned: BOOLEAN
+        municipality_local_government: BOOLEAN
+        school_district_local_government: BOOLEAN
+        township_local_government: BOOLEAN
+        us_tribal_government: BOOLEAN
+        foreign_government: BOOLEAN
         organizational_type: STRING
-        corporate_entity_not_tax_exempt: STRING
-        corporate_entity_tax_exempt: STRING
-        partnership_or_limited_liability_partnership: STRING
-        sole_proprietorship: STRING
-        small_agricultural_cooperative: STRING
-        international_organization: STRING
-        us_government_entity: STRING
-        community_development_corporation: STRING
-        domestic_shelter: STRING
-        educational_institution: STRING
-        foundation: STRING
-        hospital_flag: STRING
-        manufacturer_of_goods: STRING
-        veterinary_hospital: STRING
-        hispanic_servicing_institution: STRING
-        receives_contracts: STRING
-        receives_financial_assistance: STRING
-        receives_contracts_and_financial_assistance: STRING
-        airport_authority: STRING
-        council_of_governments: STRING
-        housing_authorities_public_tribal: STRING
-        interstate_entity: STRING
-        planning_commission: STRING
-        port_authority: STRING
-        transit_authority: STRING
-        subchapter_scorporation: STRING
-        limited_liability_corporation: STRING
-        foreign_owned: STRING
-        for_profit_organization: STRING
-        nonprofit_organization: STRING
-        other_not_for_profit_organization: STRING
-        the_ability_one_program: STRING
-        private_university_or_college: STRING
-        state_controlled_institution_of_higher_learning: STRING
-        1862_land_grant_college: STRING
-        1890_land_grant_college: STRING
-        1994_land_grant_college: STRING
-        minority_institution: STRING
-        historically_black_college: STRING
-        tribal_college: STRING
-        alaskan_native_servicing_institution: STRING
-        native_hawaiian_servicing_institution: STRING
-        school_of_forestry: STRING
-        veterinary_college: STRING
-        dot_certified_disadvantage: STRING
-        self_certified_small_disadvantaged_business: STRING
-        small_disadvantaged_business: STRING
-        c8a_program_participant: STRING
-        historically_underutilized_business_zone_hubzone_firm: STRING
-        sba_certified_8a_joint_venture: STRING
+        corporate_entity_not_tax_exempt: BOOLEAN
+        corporate_entity_tax_exempt: BOOLEAN
+        partnership_or_limited_liability_partnership: BOOLEAN
+        sole_proprietorship: BOOLEAN
+        small_agricultural_cooperative: BOOLEAN
+        international_organization: BOOLEAN
+        us_government_entity: BOOLEAN
+        community_development_corporation: BOOLEAN
+        domestic_shelter: BOOLEAN
+        educational_institution: BOOLEAN
+        foundation: BOOLEAN
+        hospital_flag: BOOLEAN
+        manufacturer_of_goods: BOOLEAN
+        veterinary_hospital: BOOLEAN
+        hispanic_servicing_institution: BOOLEAN
+        receives_contracts: BOOLEAN
+        receives_financial_assistance: BOOLEAN
+        receives_contracts_and_financial_assistance: BOOLEAN
+        airport_authority: BOOLEAN
+        council_of_governments: BOOLEAN
+        housing_authorities_public_tribal: BOOLEAN
+        interstate_entity: BOOLEAN
+        planning_commission: BOOLEAN
+        port_authority: BOOLEAN
+        transit_authority: BOOLEAN
+        subchapter_scorporation: BOOLEAN
+        limited_liability_corporation: BOOLEAN
+        foreign_owned: BOOLEAN
+        for_profit_organization: BOOLEAN
+        nonprofit_organization: BOOLEAN
+        other_not_for_profit_organization: BOOLEAN
+        the_ability_one_program: BOOLEAN
+        private_university_or_college: BOOLEAN
+        state_controlled_institution_of_higher_learning: BOOLEAN
+        minority_institution: BOOLEAN
+        historically_black_college: BOOLEAN
+        tribal_college: BOOLEAN
+        alaskan_native_servicing_institution: BOOLEAN
+        native_hawaiian_servicing_institution: BOOLEAN
+        school_of_forestry: BOOLEAN
+        veterinary_college: BOOLEAN
+        dot_certified_disadvantage: BOOLEAN
+        self_certified_small_disadvantaged_business: BOOLEAN
+        small_disadvantaged_business: BOOLEAN
+        c8a_program_participant: BOOLEAN
+        historically_underutilized_business_zone_hubzone_firm: BOOLEAN
+        sba_certified_8a_joint_venture: BOOLEAN
         highly_compensated_officer_1_name: STRING
-        highly_compensated_officer_1_amount: STRING
+        highly_compensated_officer_1_amount: DOUBLE
         highly_compensated_officer_2_name: STRING
-        highly_compensated_officer_2_amount: STRING
+        highly_compensated_officer_2_amount: DOUBLE
         highly_compensated_officer_3_name: STRING
-        highly_compensated_officer_3_amount: STRING
+        highly_compensated_officer_3_amount: DOUBLE
         highly_compensated_officer_4_name: STRING
-        highly_compensated_officer_4_amount: STRING
+        highly_compensated_officer_4_amount: DOUBLE
         highly_compensated_officer_5_name: STRING
-        highly_compensated_officer_5_amount: STRING
+        highly_compensated_officer_5_amount: DOUBLE
         usaspending_permalink: STRING
-        initial_report_date: STRING
-        last_modified_date: STRING
+        initial_report_date: TIMESTAMP WITH TIME ZONE
+        last_modified_date: TIMESTAMP WITH TIME ZONE
 
     - id: presidential_results_2024
       uri: "file://${DATA_DIR}/2024_election_returns_county.parquet"
@@ -1720,17 +2262,17 @@ sources:
         state_fips: STRING
         cj_event_type: STRING
         cj_event_type_label: STRING
-        offense_type: STRING
+        offense_type: BIGINT
         offense_type_label: STRING
-        age_group: STRING
+        age_group: BIGINT
         age_group_label: STRING
-        sex: STRING
+        sex: BIGINT
         sex_label: STRING
-        race_ethnicity: STRING
+        race_ethnicity: BIGINT
         race_ethnicity_label: STRING
         outcome_type: STRING
         outcome_type_label: STRING
-        estimation_type: STRING
+        estimation_type: BIGINT
         estimation_type_label: STRING
         statistic: FLOAT
 
@@ -1805,13 +2347,13 @@ sources:
         PUMA_FIPS: STRING
 
     - id: osm_node_in_tract
-      uri: "file://${DATA_DIR}/united_states_nodes_tract_crosswalk.csv"
+      uri: "file://${DATA_DIR}/united_states_nodes_tract_crosswalk.parquet"
       relationship_type: LOCATED_IN
       source_col: id
       target_col: GEOID
       schema_hints:
         GEOID: STRING
-        id:: STRING
+        id: STRING
 
     - id: puma_in_state
       uri: "file://${DATA_DIR}/state_county_tract_puma_crosswalk.csv"
@@ -2082,11 +2624,13 @@ sources:
       query: "SELECT contract_transaction_unique_key, prime_award_transaction_place_of_performance_state_fips_code FROM source WHERE prime_award_transaction_place_of_performance_state_fips_code IS NOT NULL"
 
     - id: election_result_in_county
+      uri: "file://${DATA_DIR}/2024_election_returns_county.parquet"
       relationship_type: LOCATED_IN
       source_entity_type: CountyElectionResult
       target_entity_type: County
       source_col: county_fips_str
-      target_col: FIPS
+      target_col: county_fips_str_target
+      query: "SELECT county_fips_str, county_fips_str AS county_fips_str_target FROM source"
 
     - id: cjars_record_in_county
       uri: "file://${DATA_DIR}/output/cjars_joe_2022_co.parquet"
@@ -3258,13 +3802,31 @@ queries:
     description: "Flag tracts whose combined annualized building loss across all six hazards exceeds $100,000 per year"
     inline: "MATCH (t:Tract) WITH t, t.nri_combined_building_eal > 100000 AS is_elevated_property_risk SET t.is_elevated_property_risk = is_elevated_property_risk"
 
+  - id: county_all_attributes
+    description: "All computed and source attributes for each County, one row per county"
+    inline: "MATCH (c:County) RETURN id(c) AS county_fips, c.County_Name AS county_name, c.State AS state, c.population_2020 AS population_2020, c.rucc_2023 AS rucc_2023, c.rucc_description AS rucc_description, c.is_metro AS is_metro, c.is_rural AS is_rural, c.rucc_class AS rucc_class, c.pres_rep_votes_2024 AS pres_rep_votes_2024, c.pres_dem_votes_2024 AS pres_dem_votes_2024, c.pres_two_party_votes_2024 AS pres_two_party_votes_2024, c.pres_rep_share_2024 AS pres_rep_share_2024, c.pres_dem_share_2024 AS pres_dem_share_2024, c.pres_rep_margin_2024 AS pres_rep_margin_2024, c.pres_winner_2024 AS pres_winner_2024, c.cjars_felony_employment_rate AS cjars_felony_employment_rate, c.cjars_felony_earnings AS cjars_felony_earnings, c.cjars_felony_medicaid_rate AS cjars_felony_medicaid_rate, c.cjars_felony_ssi_rate AS cjars_felony_ssi_rate, c.cjars_felony_hud_rate AS cjars_felony_hud_rate, c.cjars_felony_death_rate AS cjars_felony_death_rate, c.cjars_misdemeanor_employment_rate AS cjars_misdemeanor_employment_rate, c.cjars_misdemeanor_earnings AS cjars_misdemeanor_earnings, c.cjars_misdemeanor_medicaid_rate AS cjars_misdemeanor_medicaid_rate, c.cjars_misdemeanor_ssi_rate AS cjars_misdemeanor_ssi_rate, c.cjars_misdemeanor_hud_rate AS cjars_misdemeanor_hud_rate, c.cjars_misdemeanor_death_rate AS cjars_misdemeanor_death_rate, c.school_avg_per_pupil_spend AS school_avg_per_pupil_spend, c.school_count AS school_count, c.school_charter_share AS school_charter_share, c.school_avg_federal_revenue_share AS school_avg_federal_revenue_share, c.school_avg_local_revenue_share AS school_avg_local_revenue_share, c.school_total_enrollment AS school_total_enrollment, c.school_avg_instruction_spend_share AS school_avg_instruction_spend_share, c.school_elementary_count AS school_elementary_count, c.school_middle_count AS school_middle_count, c.school_high_count AS school_high_count, c.school_special_ed_share AS school_special_ed_share, c.school_high_federal_dependency_share AS school_high_federal_dependency_share, c.school_per_pupil_spend_vs_state_avg AS school_per_pupil_spend_vs_state_avg"
+
+  - id: tract_all_attributes
+    description: "All computed and source attributes for each Tract, one row per tract"
+    inline: "MATCH (t:Tract) RETURN id(t) AS tract_fips, t.longitude AS longitude, t.latitude AS latitude, t.earthquake_building_eal AS earthquake_building_eal, t.earthquake_risk_rating AS earthquake_risk_rating, t.flood_building_eal AS flood_building_eal, t.flood_risk_rating AS flood_risk_rating, t.hail_building_eal AS hail_building_eal, t.hail_risk_score AS hail_risk_score, t.hurricane_building_eal AS hurricane_building_eal, t.hurricane_risk_rating AS hurricane_risk_rating, t.is_elevated_property_risk AS is_elevated_property_risk, t.is_high_earthquake_risk AS is_high_earthquake_risk, t.is_high_flood_risk AS is_high_flood_risk, t.is_high_hurricane_risk AS is_high_hurricane_risk, t.is_high_wildfire_risk AS is_high_wildfire_risk, t.nri_combined_building_eal AS nri_combined_building_eal, t.nri_eal_score AS nri_eal_score, t.nri_eal_total AS nri_eal_total, t.nri_earthquake_risk_score AS nri_earthquake_risk_score, t.nri_flood_risk_score AS nri_flood_risk_score, t.nri_hurricane_risk_score AS nri_hurricane_risk_score, t.nri_resilience AS nri_resilience, t.nri_risk_rating AS nri_risk_rating, t.nri_risk_score AS nri_risk_score, t.nri_social_vulnerability AS nri_social_vulnerability, t.nri_tornado_risk_score AS nri_tornado_risk_score, t.nri_wildfire_risk_score AS nri_wildfire_risk_score, t.rucc_2023 AS rucc_2023, t.rucc_description AS rucc_description, t.tornado_building_eal AS tornado_building_eal, t.wildfire_building_eal AS wildfire_building_eal, t.wildfire_risk_rating AS wildfire_risk_rating, t.wind_building_eal AS wind_building_eal, t.wind_risk_score AS wind_risk_score"
+
+  - id: state_all_attributes
+    description: "All computed and source attributes for each State, one row per state"
+    inline: "MATCH (s:State) RETURN id(s) AS state_fips, s.agriculture_mining_ind_count_1yr AS agriculture_mining_ind_count_1yr, s.agriculture_mining_ind_count_5yr AS agriculture_mining_ind_count_5yr, s.architecture_engineering_count_1yr AS architecture_engineering_count_1yr, s.architecture_engineering_count_5yr AS architecture_engineering_count_5yr, s.arts_design_entertainment_count_1yr AS arts_design_entertainment_count_1yr, s.arts_design_entertainment_count_5yr AS arts_design_entertainment_count_5yr, s.arts_entertainment_food_count_1yr AS arts_entertainment_food_count_1yr, s.arts_entertainment_food_count_5yr AS arts_entertainment_food_count_5yr, s.avg_rucc_score AS avg_rucc_score, s.building_grounds_count_1yr AS building_grounds_count_1yr, s.building_grounds_count_5yr AS building_grounds_count_5yr, s.business_financial_count_1yr AS business_financial_count_1yr, s.business_financial_count_5yr AS business_financial_count_5yr, s.community_social_service_count_1yr AS community_social_service_count_1yr, s.community_social_service_count_5yr AS community_social_service_count_5yr, s.computer_math_count_1yr AS computer_math_count_1yr, s.computer_math_count_5yr AS computer_math_count_5yr, s.construction_extraction_count_1yr AS construction_extraction_count_1yr, s.construction_extraction_count_5yr AS construction_extraction_count_5yr, s.construction_ind_count_1yr AS construction_ind_count_1yr, s.construction_ind_count_5yr AS construction_ind_count_5yr, s.east_southeast_asian_pacific_lang_count_1yr AS east_southeast_asian_pacific_lang_count_1yr, s.east_southeast_asian_pacific_lang_count_5yr AS east_southeast_asian_pacific_lang_count_5yr, s.education_healthcare_count_1yr AS education_healthcare_count_1yr, s.education_healthcare_count_5yr AS education_healthcare_count_5yr, s.education_library_count_1yr AS education_library_count_1yr, s.education_library_count_5yr AS education_library_count_5yr, s.english_only_count_1yr AS english_only_count_1yr, s.english_only_count_5yr AS english_only_count_5yr, s.european_lang_count_1yr AS european_lang_count_1yr, s.european_lang_count_5yr AS european_lang_count_5yr, s.farming_fishing_forestry_count_1yr AS farming_fishing_forestry_count_1yr, s.farming_fishing_forestry_count_5yr AS farming_fishing_forestry_count_5yr, s.federal_award_count AS federal_award_count, s.finance_real_estate_count_1yr AS finance_real_estate_count_1yr, s.finance_real_estate_count_5yr AS finance_real_estate_count_5yr, s.food_preparation_serving_count_1yr AS food_preparation_serving_count_1yr, s.food_preparation_serving_count_5yr AS food_preparation_serving_count_5yr, s.healthcare_practitioners_count_1yr AS healthcare_practitioners_count_1yr, s.healthcare_practitioners_count_5yr AS healthcare_practitioners_count_5yr, s.healthcare_support_count_1yr AS healthcare_support_count_1yr, s.healthcare_support_count_5yr AS healthcare_support_count_5yr, s.information_count_1yr AS information_count_1yr, s.information_count_5yr AS information_count_5yr, s.installation_maintenance_repair_count_1yr AS installation_maintenance_repair_count_1yr, s.installation_maintenance_repair_count_5yr AS installation_maintenance_repair_count_5yr, s.is_large_state AS is_large_state, s.legal_count_1yr AS legal_count_1yr, s.legal_count_5yr AS legal_count_5yr, s.life_physical_social_science_count_1yr AS life_physical_social_science_count_1yr, s.life_physical_social_science_count_5yr AS life_physical_social_science_count_5yr, s.management_count_1yr AS management_count_1yr, s.management_count_5yr AS management_count_5yr, s.manufacturing_count_1yr AS manufacturing_count_1yr, s.manufacturing_count_5yr AS manufacturing_count_5yr, s.material_moving_count_1yr AS material_moving_count_1yr, s.material_moving_count_5yr AS material_moving_count_5yr, s.metro_county_count AS metro_county_count, s.mgmt_business_science_arts_count_1yr AS mgmt_business_science_arts_count_1yr, s.mgmt_business_science_arts_count_5yr AS mgmt_business_science_arts_count_5yr, s.middle_eastern_african_lang_count_1yr AS middle_eastern_african_lang_count_1yr, s.middle_eastern_african_lang_count_5yr AS middle_eastern_african_lang_count_5yr, s.military_count_1yr AS military_count_1yr, s.military_count_5yr AS military_count_5yr, s.military_industry_count_1yr AS military_industry_count_1yr, s.military_industry_count_5yr AS military_industry_count_5yr, s.natural_resources_construction_count_1yr AS natural_resources_construction_count_1yr, s.natural_resources_construction_count_5yr AS natural_resources_construction_count_5yr, s.num_counties AS num_counties, s.office_admin_support_count_1yr AS office_admin_support_count_1yr, s.office_admin_support_count_5yr AS office_admin_support_count_5yr, s.other_services_ind_count_1yr AS other_services_ind_count_1yr, s.other_services_ind_count_5yr AS other_services_ind_count_5yr, s.other_unspecified_lang_count_1yr AS other_unspecified_lang_count_1yr, s.other_unspecified_lang_count_5yr AS other_unspecified_lang_count_5yr, s.pct_metro_counties AS pct_metro_counties, s.pct_rural_counties AS pct_rural_counties, s.personal_care_service_count_1yr AS personal_care_service_count_1yr, s.personal_care_service_count_5yr AS personal_care_service_count_5yr, s.production_count_1yr AS production_count_1yr, s.production_count_5yr AS production_count_5yr, s.production_transportation_count_1yr AS production_transportation_count_1yr, s.production_transportation_count_5yr AS production_transportation_count_5yr, s.professional_management_ind_count_1yr AS professional_management_ind_count_1yr, s.professional_management_ind_count_5yr AS professional_management_ind_count_5yr, s.protective_service_count_1yr AS protective_service_count_1yr, s.protective_service_count_5yr AS protective_service_count_5yr, s.public_administration_count_1yr AS public_administration_count_1yr, s.public_administration_count_5yr AS public_administration_count_5yr, s.retail_trade_count_1yr AS retail_trade_count_1yr, s.retail_trade_count_5yr AS retail_trade_count_5yr, s.rural_county_count AS rural_county_count, s.sales_count_1yr AS sales_count_1yr, s.sales_count_5yr AS sales_count_5yr, s.sales_office_count_1yr AS sales_office_count_1yr, s.sales_office_count_5yr AS sales_office_count_5yr, s.school_avg_per_pupil_spend AS school_avg_per_pupil_spend, s.service_count_1yr AS service_count_1yr, s.service_count_5yr AS service_count_5yr, s.south_central_asian_lang_count_1yr AS south_central_asian_lang_count_1yr, s.south_central_asian_lang_count_5yr AS south_central_asian_lang_count_5yr, s.spanish_count_1yr AS spanish_count_1yr, s.spanish_count_5yr AS spanish_count_5yr, s.transportation_count_1yr AS transportation_count_1yr, s.transportation_count_5yr AS transportation_count_5yr, s.transportation_utilities_count_1yr AS transportation_utilities_count_1yr, s.transportation_utilities_count_5yr AS transportation_utilities_count_5yr, s.wholesale_trade_count_1yr AS wholesale_trade_count_1yr, s.wholesale_trade_count_5yr AS wholesale_trade_count_5yr"
+
+  - id: puma_all_attributes
+    description: "All computed and source attributes for each PUMA, one row per PUMA"
+    inline: "MATCH (pu:PUMA) RETURN id(pu) AS puma_fips, pu.agriculture_mining_ind_count_1yr AS agriculture_mining_ind_count_1yr, pu.agriculture_mining_ind_count_5yr AS agriculture_mining_ind_count_5yr, pu.architecture_engineering_count_1yr AS architecture_engineering_count_1yr, pu.architecture_engineering_count_5yr AS architecture_engineering_count_5yr, pu.arts_design_entertainment_count_1yr AS arts_design_entertainment_count_1yr, pu.arts_design_entertainment_count_5yr AS arts_design_entertainment_count_5yr, pu.arts_entertainment_food_count_1yr AS arts_entertainment_food_count_1yr, pu.arts_entertainment_food_count_5yr AS arts_entertainment_food_count_5yr, pu.avg_rucc_score AS avg_rucc_score, pu.building_grounds_count_1yr AS building_grounds_count_1yr, pu.building_grounds_count_5yr AS building_grounds_count_5yr, pu.business_financial_count_1yr AS business_financial_count_1yr, pu.business_financial_count_5yr AS business_financial_count_5yr, pu.community_social_service_count_1yr AS community_social_service_count_1yr, pu.community_social_service_count_5yr AS community_social_service_count_5yr, pu.computer_math_count_1yr AS computer_math_count_1yr, pu.computer_math_count_5yr AS computer_math_count_5yr, pu.construction_extraction_count_1yr AS construction_extraction_count_1yr, pu.construction_extraction_count_5yr AS construction_extraction_count_5yr, pu.construction_ind_count_1yr AS construction_ind_count_1yr, pu.construction_ind_count_5yr AS construction_ind_count_5yr, pu.east_southeast_asian_pacific_lang_count_1yr AS east_southeast_asian_pacific_lang_count_1yr, pu.east_southeast_asian_pacific_lang_count_5yr AS east_southeast_asian_pacific_lang_count_5yr, pu.education_healthcare_count_1yr AS education_healthcare_count_1yr, pu.education_healthcare_count_5yr AS education_healthcare_count_5yr, pu.education_library_count_1yr AS education_library_count_1yr, pu.education_library_count_5yr AS education_library_count_5yr, pu.english_only_count_1yr AS english_only_count_1yr, pu.english_only_count_5yr AS english_only_count_5yr, pu.european_lang_count_1yr AS european_lang_count_1yr, pu.european_lang_count_5yr AS european_lang_count_5yr, pu.farming_fishing_forestry_count_1yr AS farming_fishing_forestry_count_1yr, pu.farming_fishing_forestry_count_5yr AS farming_fishing_forestry_count_5yr, pu.finance_real_estate_count_1yr AS finance_real_estate_count_1yr, pu.finance_real_estate_count_5yr AS finance_real_estate_count_5yr, pu.food_preparation_serving_count_1yr AS food_preparation_serving_count_1yr, pu.food_preparation_serving_count_5yr AS food_preparation_serving_count_5yr, pu.healthcare_practitioners_count_1yr AS healthcare_practitioners_count_1yr, pu.healthcare_practitioners_count_5yr AS healthcare_practitioners_count_5yr, pu.healthcare_support_count_1yr AS healthcare_support_count_1yr, pu.healthcare_support_count_5yr AS healthcare_support_count_5yr, pu.housing_unit_count_1yr AS housing_unit_count_1yr, pu.housing_unit_count_5yr AS housing_unit_count_5yr, pu.information_count_1yr AS information_count_1yr, pu.information_count_5yr AS information_count_5yr, pu.installation_maintenance_repair_count_1yr AS installation_maintenance_repair_count_1yr, pu.installation_maintenance_repair_count_5yr AS installation_maintenance_repair_count_5yr, pu.legal_count_1yr AS legal_count_1yr, pu.legal_count_5yr AS legal_count_5yr, pu.life_physical_social_science_count_1yr AS life_physical_social_science_count_1yr, pu.life_physical_social_science_count_5yr AS life_physical_social_science_count_5yr, pu.management_count_1yr AS management_count_1yr, pu.management_count_5yr AS management_count_5yr, pu.manufacturing_count_1yr AS manufacturing_count_1yr, pu.manufacturing_count_5yr AS manufacturing_count_5yr, pu.material_moving_count_1yr AS material_moving_count_1yr, pu.material_moving_count_5yr AS material_moving_count_5yr, pu.mgmt_business_science_arts_count_1yr AS mgmt_business_science_arts_count_1yr, pu.mgmt_business_science_arts_count_5yr AS mgmt_business_science_arts_count_5yr, pu.middle_eastern_african_lang_count_1yr AS middle_eastern_african_lang_count_1yr, pu.middle_eastern_african_lang_count_5yr AS middle_eastern_african_lang_count_5yr, pu.military_count_1yr AS military_count_1yr, pu.military_count_5yr AS military_count_5yr, pu.military_industry_count_1yr AS military_industry_count_1yr, pu.military_industry_count_5yr AS military_industry_count_5yr, pu.natural_resources_construction_count_1yr AS natural_resources_construction_count_1yr, pu.natural_resources_construction_count_5yr AS natural_resources_construction_count_5yr, pu.office_admin_support_count_1yr AS office_admin_support_count_1yr, pu.office_admin_support_count_5yr AS office_admin_support_count_5yr, pu.other_services_ind_count_1yr AS other_services_ind_count_1yr, pu.other_services_ind_count_5yr AS other_services_ind_count_5yr, pu.other_unspecified_lang_count_1yr AS other_unspecified_lang_count_1yr, pu.other_unspecified_lang_count_5yr AS other_unspecified_lang_count_5yr, pu.pct_metro_tracts AS pct_metro_tracts, pu.pct_rural_tracts AS pct_rural_tracts, pu.personal_care_service_count_1yr AS personal_care_service_count_1yr, pu.personal_care_service_count_5yr AS personal_care_service_count_5yr, pu.pop_estimate_1yr AS pop_estimate_1yr, pu.pop_estimate_5yr AS pop_estimate_5yr, pu.production_count_1yr AS production_count_1yr, pu.production_count_5yr AS production_count_5yr, pu.production_transportation_count_1yr AS production_transportation_count_1yr, pu.production_transportation_count_5yr AS production_transportation_count_5yr, pu.professional_management_ind_count_1yr AS professional_management_ind_count_1yr, pu.professional_management_ind_count_5yr AS professional_management_ind_count_5yr, pu.protective_service_count_1yr AS protective_service_count_1yr, pu.protective_service_count_5yr AS protective_service_count_5yr, pu.public_administration_count_1yr AS public_administration_count_1yr, pu.public_administration_count_5yr AS public_administration_count_5yr, pu.retail_trade_count_1yr AS retail_trade_count_1yr, pu.retail_trade_count_5yr AS retail_trade_count_5yr, pu.sales_count_1yr AS sales_count_1yr, pu.sales_count_5yr AS sales_count_5yr, pu.sales_office_count_1yr AS sales_office_count_1yr, pu.sales_office_count_5yr AS sales_office_count_5yr, pu.service_count_1yr AS service_count_1yr, pu.service_count_5yr AS service_count_5yr, pu.south_central_asian_lang_count_1yr AS south_central_asian_lang_count_1yr, pu.south_central_asian_lang_count_5yr AS south_central_asian_lang_count_5yr, pu.spanish_count_1yr AS spanish_count_1yr, pu.spanish_count_5yr AS spanish_count_5yr, pu.transportation_count_1yr AS transportation_count_1yr, pu.transportation_count_5yr AS transportation_count_5yr, pu.transportation_utilities_count_1yr AS transportation_utilities_count_1yr, pu.transportation_utilities_count_5yr AS transportation_utilities_count_5yr, pu.veteran_count_1yr AS veteran_count_1yr, pu.veteran_count_5yr AS veteran_count_5yr, pu.wholesale_trade_count_1yr AS wholesale_trade_count_1yr, pu.wholesale_trade_count_5yr AS wholesale_trade_count_5yr"
+
 output:
-  - query_id: inside
-    uri: file://${PROJECT_ROOT}/packages/fastopendata/src/fastopendata/output/inside.csv
-  - query_id: num_counties
-    uri: file://${PROJECT_ROOT}/packages/fastopendata/src/fastopendata/output/num_counties.csv
-  - query_id: county_counter
-    uri: file://${PROJECT_ROOT}/packages/fastopendata/src/fastopendata/output/county_counter.csv
   - query_id: osm_longitude
     uri: file://${PROJECT_ROOT}/packages/fastopendata/src/fastopendata/output/osm.csv
+  - query_id: county_all_attributes
+    uri: file://${PROJECT_ROOT}/packages/fastopendata/src/fastopendata/output/county_all_attributes.csv
+  - query_id: tract_all_attributes
+    uri: file://${PROJECT_ROOT}/packages/fastopendata/src/fastopendata/output/tract_all_attributes.csv
+  - query_id: state_all_attributes
+    uri: file://${PROJECT_ROOT}/packages/fastopendata/src/fastopendata/output/state_all_attributes.csv
+  - query_id: puma_all_attributes
+    uri: file://${PROJECT_ROOT}/packages/fastopendata/src/fastopendata/output/puma_all_attributes.csv
 

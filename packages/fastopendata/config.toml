@@ -360,6 +360,12 @@ state_fips = [
   "78",
 ]
 
+# Small representative state set for ETL development/testing (see
+# fastopendata.config.Config.sample_state_fips and Snakefile rule sample_data).
+# Georgia (13) and Delaware (10): both have all geography levels and are
+# small enough to download/process quickly.
+sample_state_fips = ["13", "10"]
+
 block_group_fips = [
   "01",
   "02",

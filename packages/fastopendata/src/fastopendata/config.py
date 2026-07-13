@@ -477,6 +477,11 @@ class Config:
         return self._data["geography"]["state_fips"]
 
     @property
+    def sample_state_fips(self) -> list[str]:
+        """List of state FIPS codes used for the small ETL test/sample dataset."""
+        return self._data["geography"]["sample_state_fips"]
+
+    @property
     def block_group_fips(self) -> list[str]:
         """List of block group FIPS codes."""
         return self._data["geography"]["block_group_fips"]

@@ -292,10 +292,17 @@ class TestRemoteSourceMocking:
         mock_connect: MagicMock,
         fragment: str,
     ) -> None:
-        """Assert that the first execute() call on the connection contains *fragment*."""
+        """Assert that some execute() call on the connection contains *fragment*.
+
+        Checks all calls rather than a fixed index since setup statements
+        (e.g. ``SET arrow_large_buffer_size=true``) may precede the view
+        creation SQL.
+        """
         con = mock_connect.return_value
-        first_call_sql: str = con.execute.call_args_list[0][0][0]
-        assert fragment in first_call_sql
+        all_sql = [call[0][0] for call in con.execute.call_args_list]
+        assert any(fragment in sql for sql in all_sql), (
+            f"{fragment!r} not found in any execute() call: {all_sql!r}"
+        )
 
     def test_s3_csv_uri_passes_through(self) -> None:
         mock_connect = _mock_duckdb_connect(_PRESET_TABLE)
@@ -371,8 +378,10 @@ class TestRemoteSourceMocking:
         with patch("duckdb.connect", mock_connect):
             FileDataSource("s3://bucket/data.csv", CsvFormat(), query=q).read()
         con = mock_connect.return_value
-        second_call_sql: str = con.execute.call_args_list[1][0][0]
-        assert second_call_sql == q
+        # The custom query must be the *last* execute() call — preceded by
+        # setup statements (SET arrow_large_buffer_size, CREATE VIEW source).
+        last_call_sql: str = con.execute.call_args_list[-1][0][0]
+        assert last_call_sql == q
 
     def test_dataframe_source_uses_select_from_df(self) -> None:
         mock_connect = _mock_duckdb_connect(_PRESET_TABLE)
@@ -380,8 +389,8 @@ class TestRemoteSourceMocking:
         with patch("duckdb.connect", mock_connect):
             result = DataFrameDataSource(df).read()
         con = mock_connect.return_value
-        call_sql: str = con.execute.call_args_list[0][0][0]
-        assert "SELECT * FROM df" in call_sql
+        all_sql = [call[0][0] for call in con.execute.call_args_list]
+        assert any("SELECT * FROM df" in sql for sql in all_sql)
         assert result is _PRESET_TABLE
 
     def test_sql_source_connects_with_uri(self) -> None:

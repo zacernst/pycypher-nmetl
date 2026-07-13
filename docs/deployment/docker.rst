@@ -164,9 +164,16 @@ Persistent volumes ensure data survives container restarts:
    * - ``spark-events``
      - Spark event history for the History Server UI
    * - ``fastopendata-raw``
-     - Downloaded raw datasets
+     - Downloaded raw datasets (OSM PBF, TIGER shapefiles, etc.);
+       bind-mounted directly to ``${DATA_DIR}`` on the host — the same flat
+       location the native Snakemake pipeline (``make fod-data``) writes to,
+       so a file downloaded either way is visible to both
    * - ``nominatim-data``
-     - PostgreSQL database for Nominatim
+     - PostGIS database for Nominatim; bind-mounted to
+       ``${NOMINATIM_PGDATA_DIR}`` on the host (not Docker-managed storage,
+       and deliberately **not** nested under ``DATA_DIR`` — see
+       ``docs/deployment/troubleshooting.rst`` for why nesting corrupts the
+       import) so the multi-GB database lives on the data disk
 
 Building Custom Images
 ~~~~~~~~~~~~~~~~~~~~~~

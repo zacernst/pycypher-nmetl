@@ -461,6 +461,7 @@ def run_real_execution(
                     _resolve_uri(entity_src.uri),
                     id_col=entity_src.id_col,
                     query=entity_src.query,
+                    schema_hints=entity_src.schema_hints,
                 )
                 step.status = StepStatus.SUCCESS
             except Exception as exc:  # noqa: BLE001 - UI boundary
@@ -505,6 +506,7 @@ def run_real_execution(
                     target_col=rel_src.target_col,
                     id_col=rel_src.id_col,
                     query=rel_src.query,
+                    schema_hints=rel_src.schema_hints,
                 )
                 step.status = StepStatus.SUCCESS
             except Exception as exc:  # noqa: BLE001 - UI boundary

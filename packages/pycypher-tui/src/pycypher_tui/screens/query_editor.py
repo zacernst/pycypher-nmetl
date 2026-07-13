@@ -355,6 +355,8 @@ class QueryEditorScreen(Screen):
                             src.entity_type,
                             src.uri,
                             id_col=src.id_col,
+                            query=src.query,
+                            schema_hints=src.schema_hints,
                         )
                     for src in cfg.sources.relationships:
                         builder.add_relationship(
@@ -363,6 +365,8 @@ class QueryEditorScreen(Screen):
                             source_col=src.source_col,
                             target_col=src.target_col,
                             id_col=src.id_col,
+                            query=src.query,
+                            schema_hints=src.schema_hints,
                         )
                     context = builder.build(backend=cfg.backend_engine)
                     star = Star(context)

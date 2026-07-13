@@ -175,23 +175,81 @@ and requires approximately 32 GB of RAM.  Subsequent starts skip the import.
    # Check status
    make nominatim-status
 
+Nominatim fails with "could not open file ... Permission denied"
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Two independent causes can produce this; check both if the import gets
+partway through (roles created, ``DROP DATABASE`` succeeds) and then fails
+specifically on ``createdb``.
+
+**Cause 1 — bind-mount nesting.** ``nominatim-data`` (Postgres's ``PGDATA``)
+must **not** be a subdirectory of ``DATA_DIR``. ``DATA_DIR`` is separately
+bind-mounted read-write into the same container at ``/nominatim/data``, and
+the ``mediagis/nominatim`` entrypoint runs ``chown -R nominatim:nominatim
+/nominatim`` on every start. If ``PGDATA`` lives underneath ``DATA_DIR``, it
+is reachable from *both* mount points inside the container, so that chown
+silently walks into it too and reassigns ownership away from the ``postgres``
+system account — breaking access moments later when ``nominatim import``
+tries to create the database. This is why ``NOMINATIM_PGDATA_DIR`` in the
+Makefile is a **sibling** of ``DATA_DIR``
+(``.../fastopendata/nominatim-postgres``, not
+``.../fastopendata/data/nominatim/postgres``) — keep it that way.
+
+**Cause 2 — restrictive mount-point permissions.** The ``mediagis/nominatim``
+image runs PostgreSQL as a dedicated non-root OS account (uid 101 / gid 103
+in the ``4.4`` tag — check with ``docker compose run --rm --entrypoint sh
+nominatim -c 'getent passwd postgres'`` if the image is ever bumped).
+Postgres refuses to start unless it strictly owns ``PGDATA``, and if the
+drive is auto-mounted by udisks2 under ``/run/media/<user>/...``, that mount
+point is typically ``root:root`` with an ACL granting only the logged-in
+desktop user — Postgres's uid can't even traverse into it. Mount the drive at
+a stable, non-udisks2 location via ``/etc/fstab`` instead (e.g. ``/mnt/2tb``),
+then run once:
+
+.. code-block:: bash
+
+   # Let non-owner uids traverse the filesystem's own root dir
+   sudo chmod o+rx /mnt/2tb
+
+   # Postgres must literally own its data directory
+   sudo chown -R 101:103 "${NOMINATIM_PGDATA_DIR}"
+
+Both are one-time fixes tied to the filesystem itself (not the fragile
+udisks2 mount point), so they survive reboots/remounts as long as ``fstab``
+is used instead of the desktop auto-mounter. If ``NOMINATIM_PGDATA_DIR``
+ever ends up in a broken half-initialized state (partial ``chown`` applied,
+``initdb`` refusing to run because the directory isn't empty), wipe it and
+let the entrypoint reinitialize from scratch:
+
+.. code-block:: bash
+
+   make nominatim-down
+   docker compose run --rm --entrypoint sh nominatim \
+     -c 'find /var/lib/postgresql/14/main -mindepth 1 -delete'
+   make nominatim-up
+
 Nominatim returns empty results
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 **Cause**: Import is incomplete or PBF file is missing.
 
-**Fix**: Ensure the PBF exists before starting Nominatim:
+**Fix**: Both the ``fastopendata`` and ``nominatim`` containers bind-mount
+``fastopendata-raw`` to ``${DATA_DIR}`` on the host (see ``docker-compose.yml``),
+so check for the PBF there rather than under the git-tracked
+``packages/fastopendata/raw_data/`` path:
 
 .. code-block:: bash
 
-   ls packages/fastopendata/raw_data/us-latest.osm.pbf
+   ls "${DATA_DIR}/us-latest.osm.pbf"
 
-If missing, download it via the fastopendata container:
+If missing, download it either natively or via the fastopendata container —
+either way it lands in the same place, so Nominatim will pick it up without
+re-downloading:
 
 .. code-block:: bash
 
-   make fod-shell
-   # Inside container: follow DATASETS.md instructions to download the PBF
+   make fod-data-osm
+   # OR: make fod-shell, then follow DATASETS.md #16 to download the PBF
 
 Query Execution Issues
 ----------------------

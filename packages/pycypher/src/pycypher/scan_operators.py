@@ -500,7 +500,7 @@ class BindingFilter:
         from pycypher.binding_evaluator import BindingExpressionEvaluator
 
         evaluator = BindingExpressionEvaluator(frame)
-        mask: FrameSeries = evaluator.evaluate(self.predicate).fillna(False)
+        mask: FrameSeries = evaluator.evaluate(self.predicate).fillna(False).astype(bool)
         result = frame.filter(mask)
         if _DEBUG_ENABLED:
             LOGGER.debug(

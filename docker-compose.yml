@@ -121,6 +121,10 @@ services:
     volumes:
       - .:/workspace
       - uv-cache:/root/.cache/uv
+      # Bind-mounted to ${DATA_DIR} on the host (see the fastopendata-raw
+      # volume definition below) — the same flat location the native
+      # Snakemake pipeline (make fod-data) writes to, so files downloaded
+      # either way are shared.
       - fastopendata-raw:/workspace/packages/fastopendata/raw_data
     environment:
       - PYTHONUNBUFFERED=1
@@ -202,10 +206,14 @@ services:
     container_name: pycypher-nominatim
     image: mediagis/nominatim:4.4
     environment:
-      # Point at the PBF already downloaded by the fastopendata container.
-      # On first start the image runs a full import (can take several hours
-      # for the US extract — see packages/fastopendata/DATASETS.md #16).
-      # Set PBF_URL instead if you want Nominatim to download its own copy.
+      # Point at the PBF on the fastopendata-raw bind mount (${DATA_DIR} on
+      # the host). If us-latest.osm.pbf is already there — downloaded either
+      # natively via `make fod-data` or via the fastopendata container — the
+      # mediagis/nominatim image uses it as-is and does NOT download it
+      # again; PBF_URL is intentionally unset so no network fetch is
+      # attempted. On first start the image runs a full import (can take
+      # several hours for the US extract — see
+      # packages/fastopendata/DATASETS.md #16).
       - PBF_PATH=/nominatim/data/us-latest.osm.pbf
       - REPLICATION_URL=https://download.geofabrik.de/north-america/us-updates/
       - NOMINATIM_PASSWORD=${NOMINATIM_PASSWORD:?Set NOMINATIM_PASSWORD in .env}
@@ -216,9 +224,15 @@ services:
     ports:
       - "8092:8080"
     volumes:
-      # Read-only access to the OSM PBF downloaded by fastopendata
-      - fastopendata-raw:/nominatim/data:ro
-      # Persistent PostgreSQL database (survives container restarts)
+      # Access to the OSM PBF at ${DATA_DIR} (see fastopendata-raw volume
+      # definition below). Must NOT be :ro — the mediagis/nominatim
+      # entrypoint runs `chown -R nominatim:nominatim /nominatim` on every
+      # start, which fails and aborts the container if this is read-only.
+      - fastopendata-raw:/nominatim/data
+      # Persistent PostGIS database (survives container restarts).
+      # Bind-mounted under ${NOMINATIM_PGDATA_DIR} — a sibling of DATA_DIR,
+      # not nested inside it (see nominatim-data volume definition below for
+      # why nesting breaks the import).
       - nominatim-data:/var/lib/postgresql/14/main
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8080/search?q=New+York&format=json"]
@@ -266,8 +280,23 @@ volumes:
     driver: local
   fastopendata-raw:
     driver: local
+    driver_opts:
+      type: none
+      o: bind
+      # Flat layout matches the native Snakemake pipeline (Snakefile writes
+      # e.g. ${DATA_DIR}/us-latest.osm.pbf directly) so a PBF downloaded
+      # either natively or via the fastopendata container is visible to both.
+      device: ${DATA_DIR:?Set DATA_DIR before starting fastopendata/Nominatim (see Makefile export or .env)}
   nominatim-data:
     driver: local
+    driver_opts:
+      type: none
+      o: bind
+      # Deliberately a sibling of DATA_DIR, not nested inside it — see the
+      # NOMINATIM_PGDATA_DIR comment in the Makefile for why nesting breaks
+      # the import (mediagis/nominatim's `chown -R /nominatim` reaches into
+      # anything bind-mounted underneath DATA_DIR too).
+      device: ${NOMINATIM_PGDATA_DIR:?Set NOMINATIM_PGDATA_DIR before starting Nominatim (see Makefile export or .env)}
 
 networks:
   default:

@@ -12,8 +12,9 @@ the FastOpenData API.
 
 `packages/fastopendata/Snakefile` orchestrates download + processing of the
 source datasets. Driven by `make fod-data` from the repo root, which sets
-`DATA_DIR=/run/media/zac/2tb/fastopendata/data` (external 2 TB drive, 1.7 TB
-free as of this writing).
+`DATA_DIR=/mnt/2tb/fastopendata/data` (external 2 TB drive, mounted via
+`/etc/fstab` rather than udisks2 auto-mount as of 2026-07-11 — see
+`docs/deployment/troubleshooting.rst` for why).
 
 Datasets currently wired into `rule all`:
 

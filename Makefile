@@ -18,7 +18,16 @@ export PYCYPHER_DIR := ${PACKAGES_DIR}/pycypher
 export SHARED_DIR := ${PACKAGES_DIR}/shared
 export FASTOPENDATA_DIR := ${PACKAGES_DIR}/fastopendata
 export LC_ALL := C
-export DATA_DIR := /run/media/zac/2tb/fastopendata/data
+export DATA_DIR := /mnt/2tb/fastopendata/data
+export SAMPLE_DATA_DIR := /mnt/2tb/fastopendata/sample_data
+# Deliberately NOT nested under DATA_DIR: DATA_DIR is bind-mounted read-write
+# into the nominatim container at /nominatim/data, and the mediagis/nominatim
+# entrypoint does `chown -R nominatim:nominatim /nominatim` on every start.
+# If Postgres's data directory were a subdirectory of DATA_DIR, that chown
+# would silently reach it too (bind mounts of nested host paths are both
+# visible inside the container) and corrupt Postgres's file ownership right
+# after import starts. Keep it a sibling instead.
+export NOMINATIM_PGDATA_DIR := /mnt/2tb/fastopendata/nominatim-postgres
 
 # Documentation paths
 export DOCS_DIR := ${PROJECT_ROOT}/docs
@@ -297,6 +306,10 @@ fod_config:
 	@echo "Building configuration file from template..."
 	envsubst < ${FASTOPENDATA_DIR}/fod_input_configs.yaml.template > ${FASTOPENDATA_DIR}/fod_input_configs.yaml
 
+fod-config-sample:
+	@echo "Building configuration file from template..."
+	DATA_DIR=${SAMPLE_DATA_DIR} envsubst < ${FASTOPENDATA_DIR}/fod_input_configs.yaml.template > ${FASTOPENDATA_DIR}/fod_input_configs.yaml
+
 
 generate-models:
 	@echo "Generating Pydantic graph models from config template..."
@@ -307,6 +320,13 @@ generate-models:
 
 nmetl-go: fod_config fod-data
 	@echo "Running the NMETL pipeline..."
+	uv run nmetl run ${FASTOPENDATA_DIR}/fod_input_configs.yaml
+
+## Run the NMETL pipeline against a pre-populated SAMPLE_DATA_DIR (see
+## fod-data-sample-full). Skips the full download -- requires SAMPLE_DATA_DIR
+## to already be populated.
+nmetl-go-sample: fod-config-sample
+	@echo "Running the NMETL pipeline against SAMPLE_DATA_DIR..."
 	uv run nmetl run ${FASTOPENDATA_DIR}/fod_input_configs.yaml
 
 
@@ -540,6 +560,13 @@ dev-format:
 
 nominatim-up:
 	@echo "Starting Nominatim (first start triggers OSM import — see DATASETS.md #16)..."
+	@mkdir -p "${DATA_DIR}" "${NOMINATIM_PGDATA_DIR}"
+	@if [ -f "${DATA_DIR}/us-latest.osm.pbf" ]; then \
+		echo "Found existing PBF at ${DATA_DIR}/us-latest.osm.pbf — Nominatim will reuse it (no download)."; \
+	else \
+		echo "WARNING: ${DATA_DIR}/us-latest.osm.pbf not found. Nominatim will fail to import" \
+			"until it exists (see 'make fod-shell' + DATASETS.md #16, or 'make fod-data-osm')."; \
+	fi
 	docker compose up -d nominatim
 
 nominatim-down:
@@ -562,6 +589,7 @@ nominatim-status:
 
 fod-up:
 	@echo "Starting fastopendata container..."
+	@mkdir -p "${DATA_DIR}"
 	docker compose up -d fastopendata
 	@echo "  shell: make fod-shell"
 
@@ -794,10 +822,20 @@ fod-data-tiger:
 		raw_data/puma_combined.shp \
 		raw_data/combined_block_groups.shp
 
-## Download Georgia development subset (contracts + TIGER geometries)
-fod-data-georgia:
-	@echo "Downloading Georgia development dataset..."
-	$(FOD_SNAKEMAKE) georgia_dev
+## Download small multi-state sample dataset for ETL dev/testing (see config.toml geography.sample_state_fips)
+fod-data-sample:
+	@echo "Downloading fastopendata sample dataset..."
+	$(FOD_SNAKEMAKE) sample_data
+
+## Populate a small GA+DE-scoped SAMPLE_DATA_DIR that's a drop-in replacement
+## for DATA_DIR when running `nmetl run fod_input_configs.yaml`. Filters/copies
+## from an already-fully-populated DATA_DIR -- no re-downloads. Requires both
+## DATA_DIR and SAMPLE_DATA_DIR to be set. After populating, run:
+##   DATA_DIR=$$SAMPLE_DATA_DIR make fod_config
+##   DATA_DIR=$$SAMPLE_DATA_DIR uv run nmetl run packages/fastopendata/fod_input_configs.yaml
+fod-data-sample-full:
+	@echo "Populating sample DATA_DIR for nmetl iteration..."
+	$(FOD_SNAKEMAKE) sample_data_full
 
 ## Download and process OpenStreetMap U.S. extract (~10 GB)
 fod-data-osm:

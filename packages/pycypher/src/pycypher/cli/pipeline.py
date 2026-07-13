@@ -543,6 +543,7 @@ def run_impl(
                 entity_src.uri,
                 id_col=entity_src.id_col,
                 query=entity_src.query,
+                schema_hints=entity_src.schema_hints,
             )
         for j, rel_src in enumerate(
             pipeline_config.sources.relationships, 1
@@ -560,6 +561,7 @@ def run_impl(
                 id_col=rel_src.id_col,
                 query=rel_src.query,
                 allow_multi_edges=rel_src.allow_multi_edges,
+                schema_hints=rel_src.schema_hints,
             )
         context = builder.build()
     except FileNotFoundError as exc:

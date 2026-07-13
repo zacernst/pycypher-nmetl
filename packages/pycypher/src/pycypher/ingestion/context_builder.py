@@ -61,6 +61,7 @@ class ContextBuilder:
         *,
         id_col: str | None = None,
         query: str | None = None,
+        schema_hints: dict[str, str] | None = None,
     ) -> ContextBuilder:
         """Register an entity type loaded from *source*.
 
@@ -70,12 +71,14 @@ class ContextBuilder:
             id_col: Column to use as ``__ID__``.  Defaults to auto-generated
                 sequential integers.
             query: Optional SQL query applied after loading (file paths only).
+            schema_hints: Optional mapping of column name → DuckDB type
+                string, applied as a ``CAST`` before *query* runs.
 
         Returns:
             ``self`` for chaining.
 
         """
-        raw = data_source_from_uri(source, query=query).read()
+        raw = data_source_from_uri(source, query=query, schema_hints=schema_hints).read()
         table = normalize_entity_table(raw, id_col=id_col)
         entity_table = EntityTable.from_arrow(entity_type, table)
         self._entity_tables.append(entity_table)
@@ -91,6 +94,7 @@ class ContextBuilder:
         id_col: str | None = None,
         query: str | None = None,
         allow_multi_edges: bool = False,
+        schema_hints: dict[str, str] | None = None,
     ) -> ContextBuilder:
         """Register a relationship type loaded from *source*.
 
@@ -106,12 +110,14 @@ class ContextBuilder:
                 ``(source, target)`` pair are collapsed into a single edge.
                 Set to ``True`` to preserve parallel edges (e.g. one row per
                 transaction).
+            schema_hints: Optional mapping of column name → DuckDB type
+                string, applied as a ``CAST`` before *query* runs.
 
         Returns:
             ``self`` for chaining.
 
         """
-        raw = data_source_from_uri(source, query=query).read()
+        raw = data_source_from_uri(source, query=query, schema_hints=schema_hints).read()
         table = normalize_relationship_table(
             raw,
             source_col=source_col,

@@ -723,7 +723,11 @@ class PipelineConfig(BaseModel):
             *config.sources.relationships,
         ]:
             try:
-                ds = data_source_from_uri(source.uri, query=source.query)
+                ds = data_source_from_uri(
+                    source.uri,
+                    query=source.query,
+                    schema_hints=source.schema_hints,
+                )
                 result[source.id] = ds.read()
             except Exception as exc:  # noqa: BLE001 — error policy dispatch; SecurityError always re-raised
                 # SecurityError must always propagate — error policies must

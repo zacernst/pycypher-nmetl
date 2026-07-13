@@ -135,7 +135,7 @@ def derive_tract_puma_relationships(
 
 **Goal**: End-to-end pipeline with Georgia data, demonstrating all query patterns.
 
-**Input files** (from `snakemake georgia_dev`):
+**Input files** (from `make fod-data-sample` / `snakemake sample_data`):
 - `contracts_state_13.csv`
 - `tl_2025_13_tract.shp`
 - `tl_2024_13_bg.shp`

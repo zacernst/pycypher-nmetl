@@ -40,6 +40,10 @@ Performance notes
 
 Usage:
     DATA_DIR=/path/to/raw_data uv run python extract_osm_nodes.py
+
+Set OSM_PBF_FILE / OSM_NODES_OUTPUT (filenames relative to DATA_DIR) to
+process a different PBF, e.g. a per-state Geofabrik extract instead of the
+national us-latest.osm.pbf.
 """
 
 import base64
@@ -57,8 +61,8 @@ from fastopendata.config import config
 LOGGER.setLevel("INFO")
 
 DATA_DIR: Path = config.data_path
-PBF_FILE: str = str(DATA_DIR / "us-latest.osm.pbf")
-OUTPUT_FILE: Path = DATA_DIR / "united_states_nodes.csv"
+PBF_FILE: str = str(DATA_DIR / os.environ.get("OSM_PBF_FILE", "us-latest.osm.pbf"))
+OUTPUT_FILE: Path = DATA_DIR / os.environ.get("OSM_NODES_OUTPUT", "united_states_nodes.csv")
 
 # Stop early when this many filtered nodes have been written (-1 = no limit).
 MAX_NODES: int = 10_000_000_000

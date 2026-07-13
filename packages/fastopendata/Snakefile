@@ -17,6 +17,7 @@
 # =============================================================================
 
 from pathlib import Path
+import re
 import sys
 import os
 
@@ -24,6 +25,7 @@ import os
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 from fastopendata.config import config as fod_config
+from fastopendata.etl.state_pipeline import state_label
 
 DOCS_DIR = str(Path(workflow.basedir).parent.parent / "docs")
 
@@ -38,6 +40,20 @@ if not _DATA_DIR_RAW:
     )
 DATA_DIR = _DATA_DIR_RAW.rstrip('/')
 
+# SAMPLE_DATA_DIR is only required when populating the sample dataset
+# (rule sample_data_full). It must never be required for any other target,
+# since Snakemake evaluates this whole file regardless of which rule is
+# requested.
+_SAMPLE_DATA_DIR_RAW = os.environ.get('SAMPLE_DATA_DIR')
+if not _SAMPLE_DATA_DIR_RAW and 'sample_data_full' in sys.argv:
+    sys.exit(
+        "ERROR: SAMPLE_DATA_DIR environment variable is not set.\n"
+        "Set it before running snakemake, e.g.:\n"
+        "  SAMPLE_DATA_DIR=/mnt/data/fastopendata-sample DATA_DIR=/mnt/data/fastopendata"
+        " snakemake --cores 4 sample_data_full"
+    )
+SAMPLE_DATA_DIR = _SAMPLE_DATA_DIR_RAW.rstrip('/') if _SAMPLE_DATA_DIR_RAW else None
+
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
@@ -51,6 +67,20 @@ SHORT_TIMEOUT_SECONDS = fod_config.short_timeout_seconds
 LONG_TIMEOUT_SECONDS = fod_config.long_timeout_seconds
 
 BACKOFF = 120
+
+# Geofabrik state-extract slugs (lowercase, dash-separated full state name)
+# for the states in fod_config.sample_state_fips, e.g. "13" -> "georgia".
+SAMPLE_STATE_SLUGS = [
+    state_label(fips)[1].lower().replace(" ", "-")
+    for fips in fod_config.sample_state_fips
+]
+
+# Lowercase two-letter state abbreviations for the sample states, e.g.
+# "13" -> "ga". Matches the on-disk per-state election-returns filenames
+# ({abbrev}24.csv) used by rule sample_combine_state_election_returns.
+SAMPLE_STATE_ABBREV = [
+    state_label(fips)[0].lower() for fips in fod_config.sample_state_fips
+]
 
 # ---------------------------------------------------------------------------
 # all — every terminal artifact in the pipeline
@@ -560,6 +590,29 @@ rule extract_osm_nodes:
     shell:
         f"DATA_DIR={DATA_DIR} uv run python {SCRIPTS}/extract_osm_nodes.py"
 
+
+rule download_osm_state:
+    """Per-state Geofabrik OSM extract, used by the sample_data rule."""
+    output: f"{DATA_DIR}/{{state_slug}}-latest.osm.pbf"
+    shell:
+        "sleep $((5 + RANDOM % 10)) && "
+        "{CENSUS_WGET} --timeout=3600 --tries=3 --waitretry=60"
+        " 'https://download.geofabrik.de/north-america/us/{wildcards.state_slug}-latest.osm.pbf'"
+        " -O {output}"
+
+
+rule extract_osm_nodes_state:
+    """Parse a per-state PBF with osmium and write longitude/latitude/encoded_tags/id CSV."""
+    input: f"{DATA_DIR}/{{state_slug}}-latest.osm.pbf"
+    output: f"{DATA_DIR}/{{state_slug}}_nodes.csv"
+    resources:
+        mem_gb=2
+    shell:
+        f"DATA_DIR={DATA_DIR} OSM_PBF_FILE={{wildcards.state_slug}}-latest.osm.pbf"
+        f" OSM_NODES_OUTPUT={{wildcards.state_slug}}_nodes.csv"
+        f" uv run python {SCRIPTS}/extract_osm_nodes.py"
+
+
 rule create_osm_node_tract_crosswalk:
     """Spatial join"""
     input: f"{DATA_DIR}/united_states_nodes.parquet",
@@ -862,3 +915,294 @@ rule split_contracts_by_state:
 # NOTE: Legacy commented-out rules for ACS PUMS, SIPP, AHS, and earlier
 # TIGER/CJARS/OSM/Wikidata rule versions were removed in this cleanup.
 # See git history for the archived rule definitions if needed.
+
+
+rule sample_data:
+    """Small representative dataset for ETL development/testing.
+
+    Usage: snakemake --cores 4 sample_data
+    States controlled by config.toml geography.sample_state_fips (default:
+    Georgia + Delaware). Consumed by fastopendata.etl.state_pipeline /
+    georgia_pipeline.
+    """
+    input:
+        expand(f"{DATA_DIR}/contracts_state_{{fips}}.csv", fips=fod_config.sample_state_fips),
+        expand(f"{DATA_DIR}/tl_2025_{{fips}}_tract.shp", fips=fod_config.sample_state_fips),
+        expand(f"{DATA_DIR}/tl_2024_{{fips}}_bg.shp", fips=fod_config.sample_state_fips),
+        expand(f"{DATA_DIR}/tl_2024_{{fips}}_puma20.shp", fips=fod_config.sample_state_fips),
+        expand(f"{DATA_DIR}/{{state_slug}}_nodes.csv", state_slug=SAMPLE_STATE_SLUGS),
+        f"{DATA_DIR}/state_county_tract_puma.csv",
+
+
+# ===========================================================================
+# sample_data_full -- SAMPLE_DATA_DIR: a drop-in replacement for DATA_DIR,
+# scoped to the sample states, for fast nmetl iteration.
+#
+# Unlike rule sample_data (which writes GA/DE-scoped, state-suffixed files
+# into the shared DATA_DIR for the legacy state_pipeline.py consumer), this
+# populates a *separate* SAMPLE_DATA_DIR with exactly the files
+# fod_input_configs.yaml expects, by filtering/copying from an
+# already-fully-populated DATA_DIR. It does not re-download anything and is
+# not itself re-runnable against SAMPLE_DATA_DIR as a DATA_DIR (i.e. don't
+# run `snakemake all` or `sample_data` with DATA_DIR=$SAMPLE_DATA_DIR -- only
+# `sample_data_full` targets SAMPLE_DATA_DIR).
+#
+# Usage:
+#   SAMPLE_DATA_DIR=/path/to/sample DATA_DIR=/mnt/data/fastopendata \
+#       snakemake --cores 4 sample_data_full
+# ===========================================================================
+
+# Group A: large national parquet files filtered down to the sample states
+# by a single integer/string FIPS-style column.
+SAMPLE_FILTER_SPECS = {
+    "psam_pus.parquet": "STATE",
+    "psam_hus.parquet": "STATE",
+    "psam_pus_5yr.parquet": "STATE",
+    "psam_hus_5yr.parquet": "STATE",
+    "slfs23_1a.parquet": "FIPST",
+    "output/cjars_joe_2022_co.parquet": "state_fips",
+}
+
+rule sample_filter_column:
+    """Filter a parquet file down to the sample states by a FIPS column.
+
+    Driven by SAMPLE_FILTER_SPECS: {path relative to DATA_DIR: filter column}.
+    """
+    input: lambda wildcards: f"{DATA_DIR}/{wildcards.relpath}"
+    output: f"{SAMPLE_DATA_DIR}/{{relpath}}"
+    wildcard_constraints:
+        relpath = "|".join(re.escape(p) for p in SAMPLE_FILTER_SPECS)
+    params:
+        column=lambda wildcards: SAMPLE_FILTER_SPECS[wildcards.relpath],
+        fips_list=", ".join(f"'{f}'" for f in fod_config.sample_state_fips),
+    shell:
+        "mkdir -p \"$(dirname '{output}')\" && "
+        "uv run duckdb -c \""
+        "SET preserve_insertion_order = false; SET threads = 1; SET memory_limit = '6GB'; SET temp_directory = '/tmp'; "
+        "COPY (SELECT * FROM read_parquet('{input}') WHERE CAST({params.column} AS VARCHAR) IN ({params.fips_list})) TO '{output}' (FORMAT PARQUET, COMPRESSION 'ZSTD');\""
+
+
+# Group B: small/national reference tables with no geography column worth
+# filtering on -- copied through unfiltered.
+SAMPLE_COPY_FILES = [
+    "rural_urban_county_codes.parquet",
+    "occupation_groups.csv",
+    "occupation_subgroups.csv",
+    "industry_groups.csv",
+    "language_groups.csv",
+    "state_county_tract_puma_crosswalk.csv",
+]
+
+rule sample_copy_unfiltered:
+    """Copy small/national reference files into SAMPLE_DATA_DIR unfiltered."""
+    input: lambda wildcards: f"{DATA_DIR}/{wildcards.relpath}"
+    output: f"{SAMPLE_DATA_DIR}/{{relpath}}"
+    wildcard_constraints:
+        relpath = "|".join(re.escape(p) for p in SAMPLE_COPY_FILES)
+    shell:
+        "mkdir -p \"$(dirname '{output}')\" && cp '{input}' '{output}'"
+
+
+# Group C: bespoke predicate filters (different column names/formats, not
+# worth folding into SAMPLE_FILTER_SPECS).
+_SAMPLE_FOOD_ACCESS_WHERE = " OR ".join(
+    f"TRACT_FIPS LIKE '{fips}%'" for fips in fod_config.sample_state_fips
+)
+
+rule sample_filter_food_access:
+    """Filter food_access.parquet to census tracts in the sample states."""
+    input: f"{DATA_DIR}/food_access.parquet"
+    output: f"{SAMPLE_DATA_DIR}/food_access.parquet"
+    shell:
+        f"mkdir -p '{SAMPLE_DATA_DIR}' && uv run duckdb -c \""
+        f"SET preserve_insertion_order = false; SET threads = 1; SET memory_limit = '6GB'; SET temp_directory = '/tmp'; "
+        f"COPY (SELECT * FROM read_parquet('{DATA_DIR}/food_access.parquet') WHERE {_SAMPLE_FOOD_ACCESS_WHERE}) TO '{SAMPLE_DATA_DIR}/food_access.parquet' (FORMAT PARQUET, COMPRESSION 'ZSTD');\""
+
+
+_SAMPLE_NRI_WHERE = " OR ".join(
+    f"STATEFIPS = '{fips}'" for fips in fod_config.sample_state_fips
+)
+
+rule sample_filter_nri:
+    """Filter the FEMA NRI census-tract risk table to the sample states.
+
+    Stays CSV -- there is no existing parquet-conversion rule to mirror.
+    """
+    input: f"{DATA_DIR}/NRI_Table_CensusTracts.csv"
+    output: f"{SAMPLE_DATA_DIR}/NRI_Table_CensusTracts.csv"
+    shell:
+        f"mkdir -p '{SAMPLE_DATA_DIR}' && uv run duckdb -c \""
+        f"COPY (SELECT * FROM read_csv('{DATA_DIR}/NRI_Table_CensusTracts.csv', header=true, all_varchar=true) WHERE {_SAMPLE_NRI_WHERE}) TO '{SAMPLE_DATA_DIR}/NRI_Table_CensusTracts.csv' (FORMAT CSV, HEADER true);\""
+
+
+# Group D: bespoke rules that reuse rule sample_data's existing per-state
+# outputs, or scope the full pipeline's national aggregation rules down to
+# SAMPLE_STATE_ABBREV / fod_config.sample_state_fips.
+
+_SAMPLE_CONTRACT_FILES = [
+    f"{DATA_DIR}/contracts_state_{fips}.csv" for fips in fod_config.sample_state_fips
+]
+
+rule sample_combine_contracts:
+    """Concatenate the per-state FY2025 contract extracts already produced
+    by rule sample_data into a single sample-scoped file, matching the full
+    pipeline's combined-contracts filename.
+    """
+    input: _SAMPLE_CONTRACT_FILES
+    output: f"{SAMPLE_DATA_DIR}/FY2025_All_Contracts_Full_20260506.csv"
+    shell:
+        f"mkdir -p '{SAMPLE_DATA_DIR}' && "
+        f"head -1 '{_SAMPLE_CONTRACT_FILES[0]}' > '{SAMPLE_DATA_DIR}/FY2025_All_Contracts_Full_20260506.csv' && "
+        + " && ".join(
+            f"tail -n +2 '{f}' >> '{SAMPLE_DATA_DIR}/FY2025_All_Contracts_Full_20260506.csv'"
+            for f in _SAMPLE_CONTRACT_FILES
+        )
+
+
+rule sample_combine_state_election_returns:
+    """Combine per-state 2024 election returns for the sample states only."""
+    input:
+        expand(
+            f"{DATA_DIR}/2024-elections-official-main/individual_states/{{state_abbrev}}24.csv",
+            state_abbrev=SAMPLE_STATE_ABBREV,
+        )
+    output: f"{SAMPLE_DATA_DIR}/2024_election_returns.csv"
+    shell:
+        f"mkdir -p '{SAMPLE_DATA_DIR}' && "
+        f"head -1 {DATA_DIR}/2024-elections-official-main/individual_states/{SAMPLE_STATE_ABBREV[0]}24.csv > {SAMPLE_DATA_DIR}/2024_election_returns.csv && "
+        f"cat {' '.join(f'{DATA_DIR}/2024-elections-official-main/individual_states/{ab}24.csv' for ab in SAMPLE_STATE_ABBREV)}"
+        f' | grep -v "^precinct" >> {SAMPLE_DATA_DIR}/2024_election_returns.csv'
+
+
+rule sample_aggregate_election_returns_to_county:
+    """County-level 2024 presidential-race aggregation, scoped to the sample states."""
+    input: f"{SAMPLE_DATA_DIR}/2024_election_returns.csv"
+    output: f"{SAMPLE_DATA_DIR}/2024_election_returns_county.parquet"
+    shell:
+        f"uv run duckdb -c \""
+        f"COPY ("
+        f"  WITH pres AS ("
+        f"    SELECT"
+        f"      lpad(CAST(county_fips AS VARCHAR), 5, '0') AS county_fips_str,"
+        f"      party_simplified,"
+        f"      SUM(CAST(votes AS BIGINT)) AS party_votes"
+        f"    FROM read_csv('{SAMPLE_DATA_DIR}/2024_election_returns.csv', header=true, nullstr=['', 'NA'])"
+        f"    WHERE office = 'US PRESIDENT'"
+        f"      AND writein = 'FALSE'"
+        f"      AND party_simplified IN ('REPUBLICAN', 'DEMOCRAT')"
+        f"      AND county_fips IS NOT NULL"
+        f"    GROUP BY county_fips_str, party_simplified"
+        f"  ),"
+        f"  pivoted AS ("
+        f"    SELECT"
+        f"      county_fips_str,"
+        f"      SUM(CASE WHEN party_simplified = 'REPUBLICAN' THEN party_votes ELSE 0 END) AS rep_votes,"
+        f"      SUM(CASE WHEN party_simplified = 'DEMOCRAT'   THEN party_votes ELSE 0 END) AS dem_votes"
+        f"    FROM pres"
+        f"    GROUP BY county_fips_str"
+        f"  )"
+        f"  SELECT"
+        f"    county_fips_str,"
+        f"    rep_votes,"
+        f"    dem_votes,"
+        f"    rep_votes + dem_votes AS two_party_votes,"
+        f"    ROUND(rep_votes::DOUBLE / NULLIF(rep_votes + dem_votes, 0), 4) AS rep_two_party_share,"
+        f"    ROUND(dem_votes::DOUBLE / NULLIF(rep_votes + dem_votes, 0), 4) AS dem_two_party_share,"
+        f"    ROUND((rep_votes - dem_votes)::DOUBLE / NULLIF(rep_votes + dem_votes, 0), 4) AS rep_margin,"
+        f"    CASE"
+        f"      WHEN rep_votes > dem_votes THEN 'REPUBLICAN'"
+        f"      WHEN dem_votes > rep_votes THEN 'DEMOCRAT'"
+        f"      ELSE 'TIE'"
+        f"    END AS pres_winner_2024"
+        f"  FROM pivoted"
+        f") TO '{SAMPLE_DATA_DIR}/2024_election_returns_county.parquet' (FORMAT PARQUET, COMPRESSION 'ZSTD');\""
+
+
+_TRACT_SHP_EXTS = ["shp", "shx", "dbf", "prj", "cpg"]
+
+rule sample_stage_tract_shapefiles:
+    """Copy per-state TIGER tract shapefiles + sidecars into SAMPLE_DATA_DIR
+    so concatenate_tract_shape_files.py (directory-content-driven) can be
+    reused unmodified against the sample directory.
+    """
+    input:
+        expand(f"{DATA_DIR}/tl_2025_{{fips}}_tract.shp", fips=fod_config.sample_state_fips)
+    output:
+        expand(f"{SAMPLE_DATA_DIR}/tl_2025_{{fips}}_tract.shp", fips=fod_config.sample_state_fips)
+    shell:
+        f"mkdir -p '{SAMPLE_DATA_DIR}' && "
+        + " && ".join(
+            f"cp -f {DATA_DIR}/tl_2025_{fips}_tract.{ext} {SAMPLE_DATA_DIR}/tl_2025_{fips}_tract.{ext}"
+            for fips in fod_config.sample_state_fips
+            for ext in _TRACT_SHP_EXTS
+        )
+
+
+rule sample_concatenate_tiger_tract:
+    """Reuse concatenate_tract_shape_files.py unmodified against SAMPLE_DATA_DIR."""
+    input:
+        expand(f"{SAMPLE_DATA_DIR}/tl_2025_{{fips}}_tract.shp", fips=fod_config.sample_state_fips)
+    output: f"{SAMPLE_DATA_DIR}/tract_combined.shp"
+    shell:
+        f"DATA_DIR={SAMPLE_DATA_DIR} uv run python '{SCRIPTS}/concatenate_tract_shape_files.py'"
+
+
+rule sample_convert_united_states_nodes_to_parquet:
+    """Union per-state OSM node CSVs (from rule sample_data) into a single
+    sample-scoped parquet file, matching the filename join_to_tracts.py expects.
+    """
+    input:
+        expand(f"{DATA_DIR}/{{state_slug}}_nodes.csv", state_slug=SAMPLE_STATE_SLUGS)
+    output: f"{SAMPLE_DATA_DIR}/united_states_nodes.parquet"
+    shell:
+        f"mkdir -p '{SAMPLE_DATA_DIR}' && uv run duckdb -c \""
+        f"COPY (SELECT * FROM read_csv_auto(["
+        + ", ".join(f"'{DATA_DIR}/{slug}_nodes.csv'" for slug in SAMPLE_STATE_SLUGS)
+        + f"], union_by_name=true)) TO '{SAMPLE_DATA_DIR}/united_states_nodes.parquet' (FORMAT PARQUET, COMPRESSION 'ZSTD');\""
+
+
+rule sample_create_osm_node_tract_crosswalk:
+    """Spatial join, sample-scoped. Reuses join_to_tracts.py unmodified."""
+    input:
+        f"{SAMPLE_DATA_DIR}/united_states_nodes.parquet",
+        f"{SAMPLE_DATA_DIR}/tract_combined.shp"
+    output: f"{SAMPLE_DATA_DIR}/united_states_nodes_tract_crosswalk.parquet"
+    shell:
+        f"uv run python {SCRIPTS}/join_to_tracts.py {SAMPLE_DATA_DIR}"
+
+
+rule sample_data_full:
+    """Populate a small, GA+DE-scoped SAMPLE_DATA_DIR that is a drop-in
+    replacement for DATA_DIR when running `nmetl run fod_input_configs.yaml`.
+
+    Filters/copies from an already-fully-populated DATA_DIR -- does not
+    re-download anything. Populates exactly the 17 files
+    fod_input_configs.yaml declares as inputs.
+
+    Usage:
+        SAMPLE_DATA_DIR=/path/to/sample DATA_DIR=/mnt/data/fastopendata snakemake --cores 4 sample_data_full
+
+    After running, regenerate fod_input_configs.yaml against the sample
+    directory and run nmetl:
+
+        DATA_DIR=$SAMPLE_DATA_DIR make fod_config
+        DATA_DIR=$SAMPLE_DATA_DIR uv run nmetl run packages/fastopendata/fod_input_configs.yaml
+    """
+    input:
+        f"{SAMPLE_DATA_DIR}/united_states_nodes_tract_crosswalk.parquet",
+        f"{SAMPLE_DATA_DIR}/state_county_tract_puma_crosswalk.csv",
+        f"{SAMPLE_DATA_DIR}/rural_urban_county_codes.parquet",
+        f"{SAMPLE_DATA_DIR}/psam_hus.parquet",
+        f"{SAMPLE_DATA_DIR}/psam_pus.parquet",
+        f"{SAMPLE_DATA_DIR}/psam_hus_5yr.parquet",
+        f"{SAMPLE_DATA_DIR}/psam_pus_5yr.parquet",
+        f"{SAMPLE_DATA_DIR}/occupation_groups.csv",
+        f"{SAMPLE_DATA_DIR}/occupation_subgroups.csv",
+        f"{SAMPLE_DATA_DIR}/industry_groups.csv",
+        f"{SAMPLE_DATA_DIR}/language_groups.csv",
+        f"{SAMPLE_DATA_DIR}/NRI_Table_CensusTracts.csv",
+        f"{SAMPLE_DATA_DIR}/food_access.parquet",
+        f"{SAMPLE_DATA_DIR}/FY2025_All_Contracts_Full_20260506.csv",
+        f"{SAMPLE_DATA_DIR}/2024_election_returns_county.parquet",
+        f"{SAMPLE_DATA_DIR}/output/cjars_joe_2022_co.parquet",
+        f"{SAMPLE_DATA_DIR}/slfs23_1a.parquet",
