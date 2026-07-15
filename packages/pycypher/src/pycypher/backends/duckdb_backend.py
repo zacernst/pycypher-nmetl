@@ -326,6 +326,15 @@ class DuckDBBackend:
         """Return ``'duckdb'``."""
         return "duckdb"
 
+    @property
+    def connection(self) -> Any:
+        """The underlying DuckDB connection.
+
+        Exposed so the out-of-core relation engine can build and stream
+        relations on the same (spill-configured) connection the backend uses.
+        """
+        return self._conn
+
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
