@@ -178,6 +178,45 @@ Ordering + pagination (sort→limit fusion already present,
 `backends/duckdb_backend.py:382`), DISTINCT, and multi-part `WITH` queries as
 chained relations / CTEs. Eligibility += these.
 
+### Phase 10b — User-defined functions in the relation path (DuckDB UDFs)
+
+Today any function call in `WHERE`/`RETURN` (other than the built-in aggregates
+`count/sum/avg/min/max`) makes a query ineligible: `relation_sql.compile_expression`
+has no `FunctionInvocation` branch and returns `None`, so the query falls back
+to the in-memory pandas engine — where user functions *do* run (registered via
+the `functions:` config → `ScalarFunctionRegistry`, evaluated in pandas). So
+user Python functions work in queries, but never out-of-core.
+
+DuckDB supports first-class Python scalar UDFs (`con.create_function(name,
+callable, [arg_types], return_type)`), so this can be wired into the relation
+path:
+
+1. **Register** each `ScalarFunctionRegistry` / `functions:` callable on the
+   shared DuckDB connection via `con.create_function` (do this in
+   `_try_streaming_run` and wherever a relation-engine context is built).
+   Prefer the vectorized/Arrow UDF form (`type='arrow'`) for throughput over
+   per-row Python calls.
+2. **Compile** — add a `FunctionInvocation` branch to `compile_expression` that
+   emits `"funcname"(<compiled args>)` when `name` is a registered UDF (and all
+   args compile); otherwise return `None` (fall back). Gate on a set of
+   registered UDF names passed into the compiler (extend the `resolve` seam or
+   add a parallel `resolve_function` callback).
+3. **Eligibility** — a query using only registered UDFs (plus the existing
+   supported constructs) becomes eligible; unknown functions still fall back.
+
+Parity hazards to test against the pandas oracle (same discipline as WHERE):
+- **Type mapping** Cypher/DuckDB ↔ Python for argument and return types; declare
+  DuckDB arg/return types explicitly to avoid inference surprises.
+- **Null handling** — how the UDF sees/returns NULL vs the pandas evaluator.
+- **Determinism / side effects** — mark UDFs deterministic only if they are;
+  non-deterministic UDFs interact with the result cache.
+- **Error behavior** — a UDF that raises mid-scan aborts the DuckDB query; the
+  pandas path may differ. Decide whether to fall back on UDF errors.
+
+Scope: additive and independent of Phases 8–11; can land any time after the
+compiler exists (Phase 6). Per-function parity tests required. This closes the
+"functions force fallback" gap so UDF-using ETL can also run out-of-core.
+
 ### Phase 11 — Mutations (SET / CREATE / DELETE)
 Migrate `MutationEngine` / `binding_frame.mutate*` (`binding_frame.py:1487-1776`)
 for ETL that writes derived graph data. Sizable; **may be deferred** if the
@@ -216,6 +255,7 @@ not out-of-core) indefinitely. Observability (spill/temp metrics), CI
 | `DuckDBLazyFrame` as universal type | Moderate | `backends/duckdb_backend.py:27` |
 | Sink `COPY … TO` | Localized | `output_writer.py:111-116` |
 | Spill config | Localized | `backends/duckdb_backend.py:140` |
+| User functions as DuckDB UDFs (Phase 10b) | Localized-Moderate | `relation_sql.py`, `scalar_functions/`, `con.create_function` |
 
 Critical path: ingestion (relation) → `BindingFrame` IR + `get_property` →
 `DuckDBLazyFrame` composition. Sink, spill config, aggregation, and the result
