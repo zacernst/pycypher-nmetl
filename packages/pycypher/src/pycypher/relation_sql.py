@@ -97,6 +97,7 @@ def compile_aggregate(expr: Any, resolve: Any) -> str | None:
 def compile_expression(
     expr: Any,
     resolve: Any,
+    functions: frozenset[str] | set[str] | None = None,
 ) -> str | None:
     """Compile *expr* to a DuckDB SQL expression string, or ``None``.
 
@@ -107,11 +108,14 @@ def compile_expression(
             quoted / alias-qualified), or ``None`` if the variable/property is
             not resolvable.  This decouples the compiler from single-variable
             vs. multi-variable (join) column resolution.
+        functions: Optional set of registered scalar-UDF names (lowercase). A
+            ``FunctionInvocation`` compiles to a SQL call only when its name is
+            in this set (and all arguments compile); otherwise ``None``.
 
     Returns:
         A parenthesised SQL expression string, or ``None`` if *expr* uses any
         construct outside the supported subset (or references an unresolvable
-        variable/property).
+        variable/property/function).
 
     """
     from pycypher.ast_models import (
@@ -120,6 +124,7 @@ def compile_expression(
         BooleanLiteral,
         Comparison,
         FloatLiteral,
+        FunctionInvocation,
         IntegerLiteral,
         Not,
         NullCheck,
@@ -128,7 +133,12 @@ def compile_expression(
         StringLiteral,
         Variable,
     )
-    from pycypher.ingestion.security import escape_sql_string_literal
+    from pycypher.ingestion.security import (
+        escape_sql_string_literal,
+        sanitize_sql_identifier,
+    )
+
+    udf_names = functions or frozenset()
 
     def rec(node: Any) -> str | None:
         # --- Leaves ---
@@ -136,6 +146,21 @@ def compile_expression(
             if not isinstance(node.expression, Variable):
                 return None
             return resolve(node.expression.name, node.property)
+        # --- Registered scalar UDF call ---
+        if isinstance(node, FunctionInvocation):
+            fname = node.name.lower()
+            if fname not in udf_names:
+                return None
+            raw_args = (
+                node.arguments.get("arguments", [])
+                if isinstance(node.arguments, dict)
+                else []
+            )
+            compiled_args = [rec(a) for a in raw_args]
+            if any(c is None for c in compiled_args):
+                return None
+            safe = sanitize_sql_identifier(fname)
+            return f'{safe}({", ".join(compiled_args)})'
         if isinstance(node, IntegerLiteral):
             return str(int(node.value))
         if isinstance(node, FloatLiteral):

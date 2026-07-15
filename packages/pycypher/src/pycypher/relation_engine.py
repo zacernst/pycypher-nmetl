@@ -112,6 +112,44 @@ def register_streaming_source(
     store[label] = (lazy, attr_map)
 
 
+def register_relation_udf(
+    context: Context,
+    name: str,
+    fn: Any,
+    *,
+    param_types: list[str],
+    return_type: str,
+) -> None:
+    """Register a scalar Python function as a DuckDB UDF for the relation engine.
+
+    Makes ``fn`` callable from eligible out-of-core queries as ``name(args)``.
+    Types must be given explicitly (DuckDB type strings, e.g. ``"DOUBLE"``,
+    ``"VARCHAR"``, ``"BIGINT"``) — the query engine can't infer them.  DuckDB's
+    default null handling returns NULL for NULL input without invoking ``fn``.
+
+    Args:
+        context: A DuckDB-backed :class:`Context`.
+        name: Cypher function name used in queries (case-insensitive).
+        fn: A plain scalar Python callable (one value per argument → one value).
+        param_types: DuckDB type string per positional argument.
+        return_type: DuckDB return type string.
+
+    """
+    con = context.backend.connection
+    lname = name.lower()
+    con.create_function(lname, fn, param_types, return_type)
+    store = getattr(context, "_relation_udfs", None)
+    if store is None:
+        store = set()
+        context._relation_udfs = store
+    store.add(lname)
+
+
+def _udf_names(context: Context) -> frozenset[str]:
+    """Return the set of registered relation-engine UDF names (lowercase)."""
+    return frozenset(getattr(context, "_relation_udfs", ()))
+
+
 def _entity_attr_map(context: Context, label: str) -> dict[str, str] | None:
     """Property→column map for *label* from a streaming source or EntityTable."""
     streaming = getattr(context, "_streaming_sources", {})
@@ -427,7 +465,8 @@ def is_relation_eligible(query: Any, context: Context) -> bool:
     if plan is None:
         return False
 
-    if plan.where is not None and compile_expression(plan.where, plan.resolve) is None:
+    udfs = _udf_names(context)
+    if plan.where is not None and compile_expression(plan.where, plan.resolve, udfs) is None:
         return False
 
     if plan.order_by and _build_order_clause(plan.order_by, plan.items) is None:
@@ -442,7 +481,7 @@ def is_relation_eligible(query: Any, context: Context) -> bool:
                 return False
             continue
         # Non-aggregate: a group key (agg query) or a plain projection.
-        if compile_expression(item.expression, plan.resolve) is None:
+        if compile_expression(item.expression, plan.resolve, udfs) is None:
             return False
         needs_alias = plan.requires_alias or not isinstance(
             item.expression, PropertyLookup,
@@ -499,12 +538,13 @@ def execute_relation_query(
 
     plan = _analyze_match(query, context)
     con = context.backend.connection
+    udfs = _udf_names(context)
 
     base_rel = plan.build(con)
 
     # WHERE → SQL predicate composed onto the relation (lazy).
     if plan.where is not None:
-        base_rel = base_rel.filter(compile_expression(plan.where, plan.resolve))
+        base_rel = base_rel.filter(compile_expression(plan.where, plan.resolve, udfs))
 
     aggregating = any(is_aggregate(item.expression) for item in plan.items)
     if aggregating:
@@ -517,7 +557,7 @@ def execute_relation_query(
             if is_aggregate(item.expression):
                 sql_expr = compile_aggregate(item.expression, plan.resolve)
             else:
-                sql_expr = compile_expression(item.expression, plan.resolve)
+                sql_expr = compile_expression(item.expression, plan.resolve, udfs)
                 group_parts.append(sql_expr)
             select_parts.append(f'{sql_expr} AS "{alias}"')
         result_rel = base_rel.aggregate(
@@ -526,7 +566,7 @@ def execute_relation_query(
     else:
         project_parts = []
         for item in plan.items:
-            sql_expr = compile_expression(item.expression, plan.resolve)
+            sql_expr = compile_expression(item.expression, plan.resolve, udfs)
             alias = sanitize_sql_identifier(_output_column(item))
             project_parts.append(f'{sql_expr} AS "{alias}"')
         result_rel = base_rel.project(", ".join(project_parts))

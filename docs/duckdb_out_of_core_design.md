@@ -217,6 +217,24 @@ Scope: additive and independent of Phases 8–11; can land any time after the
 compiler exists (Phase 6). Per-function parity tests required. This closes the
 "functions force fallback" gap so UDF-using ETL can also run out-of-core.
 
+**Implemented (partial):** `relation_engine.register_relation_udf(context,
+name, fn, *, param_types, return_type)` registers a scalar Python function on
+the shared DuckDB connection via `con.create_function` with **explicit** DuckDB
+types, and records the name; `compile_expression` gained a `functions` param
+and a `FunctionInvocation` branch, so `name(args)` compiles (and the query is
+eligible) when the name is registered. Verified end-to-end in `WHERE` and
+`RETURN` (`tests/test_relation_udf.py`).
+
+**Remaining (registry auto-bridge):** automatically exposing the existing
+`functions:` config / `ScalarFunctionRegistry` callables is not done — the
+registry stores **Series-based, type-less** callables, so bridging them needs
+either (a) type metadata / annotations plumbed through `register_user_function`
+so `param_types`/`return_type` can be derived, or (b) per-call-site typed
+registration using the argument column types known at compile time, wrapping
+the Series callables as DuckDB Arrow-vectorized UDFs. Until then, `functions:`
+UDFs still force fallback to the in-memory engine (correct, not out-of-core);
+`register_relation_udf` is the explicit-types path that works today.
+
 ### Phase 11 — Mutations (SET / CREATE / DELETE)
 Migrate `MutationEngine` / `binding_frame.mutate*` (`binding_frame.py:1487-1776`)
 for ETL that writes derived graph data. Sizable; **may be deferred** if the
