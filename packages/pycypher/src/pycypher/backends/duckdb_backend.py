@@ -24,6 +24,79 @@ from pycypher.constants import ID_COLUMN
 from pycypher.cypher_types import BackendMask, SourceObject
 
 
+#: Mapping of spill-config setting name → environment variable used as the
+#: fallback when the corresponding constructor argument is ``None``.
+_SPILL_ENV_VARS: dict[str, str] = {
+    "memory_limit": "PYCYPHER_DUCKDB_MEMORY_LIMIT",
+    "temp_directory": "PYCYPHER_DUCKDB_TEMP_DIRECTORY",
+    "max_temp_directory_size": "PYCYPHER_DUCKDB_MAX_TEMP_DIRECTORY_SIZE",
+    "preserve_insertion_order": "PYCYPHER_DUCKDB_PRESERVE_INSERTION_ORDER",
+}
+
+_TRUE_STRINGS = frozenset({"1", "true", "yes", "on"})
+_FALSE_STRINGS = frozenset({"0", "false", "no", "off"})
+
+
+def _parse_bool(value: str) -> bool:
+    """Parse a boolean from an environment-variable string.
+
+    Raises:
+        ValueError: If *value* is not a recognised boolean spelling.
+
+    """
+    lowered = value.strip().lower()
+    if lowered in _TRUE_STRINGS:
+        return True
+    if lowered in _FALSE_STRINGS:
+        return False
+    msg = (
+        f"Invalid boolean for PYCYPHER_DUCKDB_PRESERVE_INSERTION_ORDER: "
+        f"{value!r}. Use one of true/false/1/0/yes/no/on/off."
+    )
+    raise ValueError(msg)
+
+
+def _spill_config(
+    *,
+    memory_limit: str | None,
+    temp_directory: str | None,
+    max_temp_directory_size: str | None,
+    preserve_insertion_order: bool | None,
+) -> dict[str, Any]:
+    """Build a DuckDB ``connect(config=...)`` dict from args + env fallbacks.
+
+    Each setting is included only when explicitly provided or present in the
+    environment; otherwise it is omitted so DuckDB's default applies.  Returns
+    an empty dict when nothing is configured (behaviour identical to the
+    historical ``duckdb.connect(":memory:")``).
+    """
+    import os
+
+    config: dict[str, Any] = {}
+
+    for key in ("memory_limit", "temp_directory", "max_temp_directory_size"):
+        explicit = {
+            "memory_limit": memory_limit,
+            "temp_directory": temp_directory,
+            "max_temp_directory_size": max_temp_directory_size,
+        }[key]
+        value = explicit if explicit is not None else os.environ.get(
+            _SPILL_ENV_VARS[key],
+        )
+        if value:
+            config[key] = value
+
+    pio = preserve_insertion_order
+    if pio is None:
+        env_val = os.environ.get(_SPILL_ENV_VARS["preserve_insertion_order"])
+        if env_val is not None:
+            pio = _parse_bool(env_val)
+    if pio is not None:
+        config["preserve_insertion_order"] = pio
+
+    return config
+
+
 class DuckDBLazyFrame:
     """Internal lazy wrapper around a DuckDB Relation.
 
@@ -128,16 +201,50 @@ class DuckDBBackend:
     and return ``pd.DataFrame`` for full backward compatibility.
     """
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        *,
+        memory_limit: str | None = None,
+        temp_directory: str | None = None,
+        max_temp_directory_size: str | None = None,
+        preserve_insertion_order: bool | None = None,
+    ) -> None:
         """Create a new DuckDB backend with an in-memory connection.
 
         The connection is created immediately and held for the lifetime of
         the backend.  Use as a context manager or call :meth:`close` to
         release the underlying DuckDB resources.
+
+        Spill / out-of-core settings are **opt-in**: any argument left as
+        ``None`` falls back to its ``PYCYPHER_DUCKDB_*`` environment variable
+        (see :func:`_spill_config`), and if that is also unset the DuckDB
+        default is used unchanged.  Settings are passed through DuckDB's
+        ``connect(config=...)`` dict rather than interpolated into SQL, so
+        operator-supplied values cannot inject SQL.
+
+        Args:
+            memory_limit: Soft RAM budget before DuckDB spills to disk
+                (e.g. ``"4GB"``).  Env: ``PYCYPHER_DUCKDB_MEMORY_LIMIT``.
+            temp_directory: Directory for spilled intermediates.
+                Env: ``PYCYPHER_DUCKDB_TEMP_DIRECTORY``.
+            max_temp_directory_size: Cap on spill directory size
+                (e.g. ``"50GB"``).
+                Env: ``PYCYPHER_DUCKDB_MAX_TEMP_DIRECTORY_SIZE``.
+            preserve_insertion_order: When ``False``, DuckDB may reorder rows
+                to reduce memory on large results.  Left unset by default so
+                ordering semantics are unchanged.
+                Env: ``PYCYPHER_DUCKDB_PRESERVE_INSERTION_ORDER``.
+
         """
         import duckdb
 
-        self._conn: Any = duckdb.connect(":memory:")
+        config = _spill_config(
+            memory_limit=memory_limit,
+            temp_directory=temp_directory,
+            max_temp_directory_size=max_temp_directory_size,
+            preserve_insertion_order=preserve_insertion_order,
+        )
+        self._conn: Any = duckdb.connect(":memory:", config=config)
         self._view_counter: int = 0
 
     def _next_view(self, prefix: str = "_v") -> str:
@@ -150,9 +257,12 @@ class DuckDBBackend:
     def close(self) -> None:
         """Explicitly close the DuckDB connection.
 
-        Safe to call multiple times — subsequent calls are no-ops.
+        Safe to call multiple times — subsequent calls are no-ops.  Uses
+        ``getattr`` so it is also safe when ``__init__`` raised before
+        ``_conn`` was assigned (e.g. invalid spill config), which ``__del__``
+        would otherwise turn into an ``AttributeError`` at GC time.
         """
-        if self._conn is not None:
+        if getattr(self, "_conn", None) is not None:
             try:
                 self._conn.close()
             except Exception:  # noqa: BLE001 — best-effort connection cleanup
