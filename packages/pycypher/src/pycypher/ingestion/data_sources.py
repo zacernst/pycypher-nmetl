@@ -35,6 +35,7 @@ from __future__ import annotations
 import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from typing import Any
 from urllib.parse import urlparse
 
 import pandas as pd
@@ -460,6 +461,38 @@ class DataSource(ABC):
 
         """
 
+    def read_relation(self, con: Any) -> Any:
+        """Return the source as a lazy DuckDB relation registered on *con*.
+
+        This is the out-of-core counterpart to :meth:`read`: instead of
+        materialising a full ``pa.Table``, it yields a ``DuckDBLazyFrame``
+        wrapping a relation on the caller-owned persistent connection *con*,
+        so downstream operations can stay inside DuckDB and spill to disk.
+
+        The default implementation materialises via :meth:`read` and registers
+        the Arrow table on *con* — correct but not streaming.  File-backed
+        sources override this to scan the file directly via DuckDB
+        (``read_parquet``/``read_csv_auto``) without ever building a full
+        Arrow table.
+
+        Args:
+            con: A persistent ``duckdb.DuckDBPyConnection`` (see
+                :func:`pycypher.backends.duckdb_backend.create_duckdb_connection`).
+                The caller owns its lifecycle.
+
+        Returns:
+            A ``DuckDBLazyFrame`` over *con*.
+
+        """
+        import uuid
+
+        from pycypher.backends.duckdb_backend import DuckDBLazyFrame
+
+        table = self.read()
+        name = f"_src_{uuid.uuid4().hex}"
+        con.register(name, table)
+        return DuckDBLazyFrame(con.sql(f'SELECT * FROM "{name}"'), con)
+
 
 # ---------------------------------------------------------------------------
 # File-backed source (format-as-strategy)
@@ -583,6 +616,67 @@ class FileDataSource(DataSource):
             con.execute(f"CREATE VIEW source AS {select} FROM __raw_source")  # nosec B608 — column/type identifiers validated by _schema_hints_replace_clause
             sql = self._query or "SELECT * FROM source"
             return con.execute(sql).to_arrow_table()
+
+    def read_relation(self, con: Any) -> Any:
+        """Scan the file directly via DuckDB, returning a lazy relation.
+
+        Streaming counterpart to :meth:`read`: builds the relation on the
+        caller-owned connection *con* without ``to_arrow_table()``, so the file
+        is never fully materialised.  Uses a ``WITH source AS (…)`` CTE rather
+        than named views, so any user *query* referencing ``source`` resolves
+        locally and multiple sources sharing one connection cannot collide.
+
+        Args:
+            con: A persistent ``duckdb.DuckDBPyConnection``.
+
+        Returns:
+            A ``DuckDBLazyFrame`` over *con*.
+
+        Raises:
+            SecurityError: If the URI, query, or schema hints fail validation.
+
+        """
+        from pycypher.backends.duckdb_backend import DuckDBLazyFrame
+
+        try:
+            validate_uri_scheme(self._uri)
+            path = _uri_to_duckdb_path(self._uri)
+            sanitize_file_path(path)
+            if self._query:
+                validate_sql_query(self._query)
+            if self._schema_hints:
+                _validate_schema_hints(self._schema_hints)
+        except (SecurityError, ValueError) as e:
+            msg = f"Security validation failed for file data source: {e}"
+            raise SecurityError(msg) from e
+
+        path = _uri_to_duckdb_path(self._uri)
+        # SECURITY: path escaped by view_sql via escape_sql_string_literal.
+        raw_select = f"SELECT * FROM {self._format.view_sql(path)}"  # nosec B608
+
+        replace_clause = None
+        if self._schema_hints:
+            raw_columns = set(con.sql(raw_select).columns)
+            applicable = {
+                col: t
+                for col, t in self._schema_hints.items()
+                if col in raw_columns
+            }
+            if applicable:
+                replace_clause = _schema_hints_replace_clause(applicable)
+
+        source_select = (
+            raw_select
+            if replace_clause is None
+            else f"SELECT * {replace_clause} FROM ({raw_select})"  # nosec B608 — identifiers/types validated by _schema_hints_replace_clause
+        )
+
+        if self._query:
+            final_sql = f"WITH source AS ({source_select}) {self._query}"  # nosec B608 — query validated by validate_sql_query
+        else:
+            final_sql = source_select
+
+        return DuckDBLazyFrame(con.sql(final_sql), con)
 
 
 # ---------------------------------------------------------------------------

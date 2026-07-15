@@ -97,6 +97,42 @@ def _spill_config(
     return config
 
 
+def create_duckdb_connection(
+    *,
+    memory_limit: str | None = None,
+    temp_directory: str | None = None,
+    max_temp_directory_size: str | None = None,
+    preserve_insertion_order: bool | None = None,
+) -> Any:
+    """Create a persistent in-memory DuckDB connection for out-of-core reads.
+
+    Applies the same opt-in spill settings as :class:`DuckDBBackend` (see
+    :func:`_spill_config`) plus ``arrow_large_buffer_size`` — required so very
+    large/wide string columns don't overflow Arrow's 32-bit offsets.
+
+    Unlike the throwaway connections in ``DataSource.read``, this connection is
+    intended to be **held and shared** across ingestion (``read_relation``) and
+    query execution so relations stay inside a single DuckDB instance and can
+    spill to disk rather than materialising to pandas/Arrow.
+
+    Returns:
+        An open ``duckdb.DuckDBPyConnection``.  The caller owns its lifecycle
+        and must ``close()`` it.
+
+    """
+    import duckdb
+
+    config = _spill_config(
+        memory_limit=memory_limit,
+        temp_directory=temp_directory,
+        max_temp_directory_size=max_temp_directory_size,
+        preserve_insertion_order=preserve_insertion_order,
+    )
+    con = duckdb.connect(":memory:", config=config)
+    con.execute("SET arrow_large_buffer_size=true")
+    return con
+
+
 class DuckDBLazyFrame:
     """Internal lazy wrapper around a DuckDB Relation.
 
