@@ -79,6 +79,8 @@ def register_streaming_source(
     context: Context,
     label: str,
     data_source: Any,
+    *,
+    id_col: str | None = None,
 ) -> None:
     """Register a file-backed entity as a streaming DuckDB relation.
 
@@ -93,13 +95,16 @@ def register_streaming_source(
         label: The entity label to register the source under.
         data_source: A :class:`DataSource` (typically from
             :func:`data_source_from_uri`).
+        id_col: The column designated as the entity ID.  Excluded from the
+            property map so semantics match the in-memory path (where the ID
+            column is consumed into ``__ID__`` and is not a property).
 
     """
     con = context.backend.connection
     lazy = data_source.read_relation(con)
-    # Every column is exposed as a property named after the column (identity
-    # map).  This mirrors the ContextBuilder convention for file sources.
-    attr_map = {col: col for col in lazy.columns}
+    # Every non-ID column is exposed as a property named after the column
+    # (identity map), mirroring the ContextBuilder convention for file sources.
+    attr_map = {col: col for col in lazy.columns if col != id_col}
     store = getattr(context, "_streaming_sources", None)
     if store is None:
         store = {}
