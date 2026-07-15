@@ -82,7 +82,6 @@ class TestEligibility:
             "MATCH (n:Person) WHERE substring(n.name, 0, 1) = 'A' RETURN n.name AS name",  # WHERE with unsupported fn
             "MATCH (n:Person) RETURN n.name AS name ORDER BY name",  # ORDER BY
             "MATCH (n:Person) RETURN DISTINCT n.name AS name",  # DISTINCT
-            "MATCH (n:Person) RETURN count(n) AS c",  # aggregation
             "MATCH (n:Person) RETURN n.name AS name LIMIT 2",  # LIMIT
             "MATCH (n:Person)-[:KNOWS]->(m:Person) RETURN n.name AS name",  # rel
             "MATCH (n:Person) RETURN n.missing_prop AS x",  # unknown property

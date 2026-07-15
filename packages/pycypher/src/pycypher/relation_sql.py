@@ -35,6 +35,64 @@ _ARITH_OPS: frozenset[str] = frozenset({"+", "-", "*", "/"})
 #: Allowed NULL-check operators.
 _NULL_OPS: dict[str, str] = {"IS NULL": "IS NULL", "IS NOT NULL": "IS NOT NULL"}
 
+#: Cypher aggregation function → DuckDB SQL aggregate.
+_AGG_FUNCS: dict[str, str] = {
+    "count": "COUNT",
+    "sum": "SUM",
+    "avg": "AVG",
+    "min": "MIN",
+    "max": "MAX",
+}
+
+
+def is_aggregate(expr: Any) -> bool:
+    """True if *expr* is an aggregation (``count(*)`` or a supported agg call)."""
+    from pycypher.ast_models import CountStar, FunctionInvocation
+
+    if isinstance(expr, CountStar):
+        return True
+    return (
+        isinstance(expr, FunctionInvocation)
+        and expr.name.lower() in _AGG_FUNCS
+    )
+
+
+def compile_aggregate(expr: Any, resolve: Any) -> str | None:
+    """Compile an aggregation expression to a DuckDB SQL aggregate, or ``None``.
+
+    Supports ``count(*)``, ``count(var)`` (→ ``COUNT(*)``), and
+    ``count|sum|avg|min|max(<expr>)`` with optional ``DISTINCT``.  Returns
+    ``None`` for anything else (including ``count(DISTINCT var)``), so the query
+    stays ineligible and falls back.
+    """
+    from pycypher.ast_models import CountStar, FunctionInvocation, Variable
+
+    if isinstance(expr, CountStar):
+        return "COUNT(*)"
+    if not isinstance(expr, FunctionInvocation):
+        return None
+    func = _AGG_FUNCS.get(expr.name.lower())
+    if func is None:
+        return None
+    args = (
+        expr.arguments.get("arguments", [])
+        if isinstance(expr.arguments, dict)
+        else []
+    )
+    if len(args) != 1:
+        return None
+    distinct = bool(getattr(expr, "distinct", False))
+    arg = args[0]
+    # count(node) counts bound (non-null) rows → COUNT(*); DISTINCT node needs a
+    # key column we don't resolve here, so leave it to the fallback.
+    if func == "COUNT" and isinstance(arg, Variable):
+        return None if distinct else "COUNT(*)"
+    inner = compile_expression(arg, resolve)
+    if inner is None:
+        return None
+    distinct_kw = "DISTINCT " if distinct else ""
+    return f"{func}({distinct_kw}{inner})"
+
 
 def compile_expression(
     expr: Any,

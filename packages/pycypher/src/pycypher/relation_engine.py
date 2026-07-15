@@ -364,7 +364,11 @@ def is_relation_eligible(query: Any, context: Context) -> bool:
     unsupported functions/operators.
     """
     from pycypher.ast_models import PropertyLookup
-    from pycypher.relation_sql import compile_expression
+    from pycypher.relation_sql import (
+        compile_aggregate,
+        compile_expression,
+        is_aggregate,
+    )
 
     plan = _analyze_match(query, context)
     if plan is None:
@@ -374,6 +378,14 @@ def is_relation_eligible(query: Any, context: Context) -> bool:
         return False
 
     for item in plan.items:
+        if is_aggregate(item.expression):
+            # Aggregates must compile and be explicitly aliased.
+            if compile_aggregate(item.expression, plan.resolve) is None:
+                return False
+            if item.alias is None:
+                return False
+            continue
+        # Non-aggregate: a group key (agg query) or a plain projection.
         if compile_expression(item.expression, plan.resolve) is None:
             return False
         needs_alias = plan.requires_alias or not isinstance(
@@ -423,7 +435,11 @@ def execute_relation_query(
     """
     from pycypher.backends.duckdb_backend import DuckDBLazyFrame
     from pycypher.ingestion.security import sanitize_sql_identifier
-    from pycypher.relation_sql import compile_expression
+    from pycypher.relation_sql import (
+        compile_aggregate,
+        compile_expression,
+        is_aggregate,
+    )
 
     plan = _analyze_match(query, context)
     con = context.backend.connection
@@ -434,12 +450,30 @@ def execute_relation_query(
     if plan.where is not None:
         base_rel = base_rel.filter(compile_expression(plan.where, plan.resolve))
 
-    project_parts = []
-    for item in plan.items:
-        sql_expr = compile_expression(item.expression, plan.resolve)
-        alias = sanitize_sql_identifier(_output_column(item))
-        project_parts.append(f'{sql_expr} AS "{alias}"')
-    projected = base_rel.project(", ".join(project_parts))
+    aggregating = any(is_aggregate(item.expression) for item in plan.items)
+    if aggregating:
+        # Non-aggregate RETURN items are GROUP BY keys (Cypher's implicit
+        # grouping); aggregates become SQL aggregate expressions.
+        select_parts = []
+        group_parts = []
+        for item in plan.items:
+            alias = sanitize_sql_identifier(_output_column(item))
+            if is_aggregate(item.expression):
+                sql_expr = compile_aggregate(item.expression, plan.resolve)
+            else:
+                sql_expr = compile_expression(item.expression, plan.resolve)
+                group_parts.append(sql_expr)
+            select_parts.append(f'{sql_expr} AS "{alias}"')
+        result_rel = base_rel.aggregate(
+            ", ".join(select_parts), ", ".join(group_parts),
+        )
+    else:
+        project_parts = []
+        for item in plan.items:
+            sql_expr = compile_expression(item.expression, plan.resolve)
+            alias = sanitize_sql_identifier(_output_column(item))
+            project_parts.append(f'{sql_expr} AS "{alias}"')
+        result_rel = base_rel.project(", ".join(project_parts))
 
-    bindings = RelationBindings(DuckDBLazyFrame(projected, con))
+    bindings = RelationBindings(DuckDBLazyFrame(result_rel, con))
     return bindings.to_pandas() if materialize else bindings
