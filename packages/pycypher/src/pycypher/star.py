@@ -533,6 +533,48 @@ class Star:
     # Main public API
     # ------------------------------------------------------------------
 
+    def stream_query_to_uri(
+        self,
+        query: str | Any,
+        uri: str,
+        fmt: Any | None = None,
+    ) -> bool:
+        """Stream an *eligible* query's result straight to *uri* (out-of-core).
+
+        When the opt-in relation engine is enabled and *query* is in the
+        eligible subset, this builds a lazy DuckDB relation and streams it to
+        the sink via ``COPY … TO`` — no pandas materialisation — and returns
+        ``True``.  Otherwise nothing is written and it returns ``False`` so the
+        caller can fall back to ``execute_query`` + a DataFrame writer.
+
+        Args:
+            query: Cypher query string or parsed AST.
+            uri: Destination URI (bare path / ``file://``; cloud is rejected).
+            fmt: Optional explicit output format; inferred from the extension
+                when ``None``.
+
+        Returns:
+            ``True`` if the query was streamed, ``False`` if not eligible.
+
+        """
+        from pycypher.ast_converter import ASTConverter
+        from pycypher.ingestion.output_writer import write_relation_to_uri
+        from pycypher.relation_engine import (
+            execute_relation_query,
+            is_relation_eligible,
+            relation_engine_enabled,
+        )
+
+        if not relation_engine_enabled(self.context):
+            return False
+        ast = query if not isinstance(query, str) else ASTConverter.from_cypher(query)
+        if not is_relation_eligible(ast, self.context):
+            return False
+
+        bindings = execute_relation_query(ast, self.context, materialize=False)
+        write_relation_to_uri(bindings.lazy, uri, fmt)
+        return True
+
     def execute_query(
         self,
         query: str | Any,

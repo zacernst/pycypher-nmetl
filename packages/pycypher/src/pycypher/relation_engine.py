@@ -14,16 +14,20 @@ Eligibility is intentionally tiny at this phase (single-label ``MATCH`` with an
 aliased property projection); later phases widen it (WHERE, joins, aggregation,
 …).  See ``docs/duckdb_out_of_core_design.md``.
 
-Correctness note: the relation is currently built by registering the entity's
-already-loaded ``source_obj`` on the DuckDB connection, so results are correct
-but not yet end-to-end out-of-core — Phase 5 wires ``read_relation`` sources and
-the shared connection through so scans stream from files.
+Source modes: with :func:`register_streaming_source` the base relation is a
+lazy ``read_relation`` view over a file (genuinely out-of-core, Phase 5);
+otherwise it falls back to the entity's in-memory ``source_obj``.  Combined
+with ``materialize=False`` + ``write_relation_to_uri`` (COPY), an eligible
+query streams file → relation → sink without a pandas frame.
+
+Still pipeline-level TODO (Phase 5b): wire ``cli/pipeline.py`` ``run_impl`` to
+register streaming sources and use ``stream_query_to_uri`` so ``nmetl run`` is
+out-of-core automatically.
 """
 
 from __future__ import annotations
 
 import os
-import uuid
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -50,6 +54,11 @@ class RelationBindings:
         self._lazy = lazy
 
     @property
+    def lazy(self) -> Any:
+        """The underlying ``DuckDBLazyFrame`` (for streaming to a sink)."""
+        return self._lazy
+
+    @property
     def columns(self) -> list[str]:
         """Column names, from the relation schema (no materialisation)."""
         return list(self._lazy.columns)
@@ -64,6 +73,74 @@ def relation_engine_enabled(context: Context) -> bool:
     if getattr(context, "_relation_engine_enabled", False):
         return True
     return os.environ.get(_ENABLE_ENV_VAR, "").strip().lower() in _TRUTHY
+
+
+def register_streaming_source(
+    context: Context,
+    label: str,
+    data_source: Any,
+) -> None:
+    """Register a file-backed entity as a streaming DuckDB relation.
+
+    Reads *data_source* via :meth:`DataSource.read_relation` on the context's
+    shared DuckDB connection (so the file is scanned lazily, never fully
+    loaded), derives a property→column map from the relation schema, and stores
+    both on ``context._streaming_sources`` for the relation engine to use as a
+    base relation.  Requires a DuckDB-backed context.
+
+    Args:
+        context: A DuckDB-backed :class:`Context`.
+        label: The entity label to register the source under.
+        data_source: A :class:`DataSource` (typically from
+            :func:`data_source_from_uri`).
+
+    """
+    con = context.backend.connection
+    lazy = data_source.read_relation(con)
+    # Every column is exposed as a property named after the column (identity
+    # map).  This mirrors the ContextBuilder convention for file sources.
+    attr_map = {col: col for col in lazy.columns}
+    store = getattr(context, "_streaming_sources", None)
+    if store is None:
+        store = {}
+        context._streaming_sources = store
+    store[label] = (lazy, attr_map)
+
+
+def _entity_attr_map(context: Context, label: str) -> dict[str, str] | None:
+    """Property→column map for *label* from a streaming source or EntityTable."""
+    streaming = getattr(context, "_streaming_sources", {})
+    if label in streaming:
+        return streaming[label][1]
+    entity = context.entity_mapping.mapping.get(label)
+    return entity.attribute_map if entity is not None else None
+
+
+def _base_relation(context: Context, label: str, con: Any) -> Any:
+    """Return a lazy DuckDB relation for *label*'s source rows.
+
+    Prefers a registered streaming relation (file-backed, out-of-core); falls
+    back to the entity's in-memory ``source_obj``.
+    """
+    streaming = getattr(context, "_streaming_sources", {})
+    if label in streaming:
+        return streaming[label][0].relation
+    entity = context.entity_mapping.mapping[label]
+    src = entity.source_obj
+    import pandas as pd
+
+    if isinstance(src, pd.DataFrame):
+        return con.from_df(src)
+    try:
+        import pyarrow as pa
+
+        if isinstance(src, pa.Table):
+            return con.from_arrow(src)
+    except ImportError:
+        pass
+    from pycypher.backends._helpers import _to_pandas
+
+    return con.from_df(_to_pandas(src))
 
 
 def is_relation_eligible(query: Any, context: Context) -> bool:
@@ -116,8 +193,8 @@ def is_relation_eligible(query: Any, context: Context) -> bool:
         return False
     var_name = node.variable.name
     label = node.labels[0]
-    entity = context.entity_mapping.mapping.get(label)
-    if entity is None:
+    attr_map = _entity_attr_map(context, label)
+    if attr_map is None:
         return False
 
     # --- RETURN: aliased property lookups on the match variable only ---
@@ -131,7 +208,7 @@ def is_relation_eligible(query: Any, context: Context) -> bool:
             return False
         if not isinstance(expr.expression, Variable) or expr.expression.name != var_name:
             return False
-        if expr.property not in entity.attribute_map:
+        if expr.property not in attr_map:
             return False
 
     return True
@@ -150,10 +227,27 @@ def _output_column(item: Any) -> str:
     return str(item.expression.property)
 
 
-def execute_relation_query(query: Any, context: Context) -> pd.DataFrame:
-    """Execute an eligible query via a DuckDB relation, returning pandas.
+def execute_relation_query(
+    query: Any,
+    context: Context,
+    *,
+    materialize: bool = True,
+) -> pd.DataFrame | RelationBindings:
+    """Execute an eligible query via a DuckDB relation.
+
+    Builds a lazy projected relation (``DuckDBPyRelation.project``) over the
+    entity's base relation — a streaming file view when registered, else the
+    in-memory ``source_obj`` — so nothing is materialised until the boundary.
 
     Precondition: :func:`is_relation_eligible` returned ``True`` for *query*.
+
+    Args:
+        query: The parsed, eligible query AST.
+        context: The DuckDB-backed context.
+        materialize: When ``True`` (default) return a pandas DataFrame; when
+            ``False`` return a :class:`RelationBindings` so the caller can
+            stream it to a sink without building a pandas frame.
+
     """
     from pycypher.backends.duckdb_backend import DuckDBLazyFrame
     from pycypher.ingestion.security import sanitize_sql_identifier
@@ -161,19 +255,16 @@ def execute_relation_query(query: Any, context: Context) -> pd.DataFrame:
     match, ret = query.clauses
     node = match.pattern.paths[0].elements[0]
     label = node.labels[0]
-    entity = context.entity_mapping.mapping[label]
-
+    attr_map = _entity_attr_map(context, label)
     con = context.backend.connection
-    view = f"_rel_{uuid.uuid4().hex}"
-    con.register(view, entity.source_obj)
-    try:
-        select_parts = []
-        for item in ret.items:
-            src_col = sanitize_sql_identifier(entity.attribute_map[item.expression.property])
-            alias = sanitize_sql_identifier(_output_column(item))
-            select_parts.append(f'"{src_col}" AS "{alias}"')
-        sql = f'SELECT {", ".join(select_parts)} FROM "{view}"'  # nosec B608 — identifiers validated by sanitize_sql_identifier; view is a generated uuid
-        lazy = DuckDBLazyFrame(con.sql(sql), con)
-        return RelationBindings(lazy).to_pandas()
-    finally:
-        con.unregister(view)
+
+    base_rel = _base_relation(context, label, con)
+    project_parts = []
+    for item in ret.items:
+        src_col = sanitize_sql_identifier(attr_map[item.expression.property])
+        alias = sanitize_sql_identifier(_output_column(item))
+        project_parts.append(f'"{src_col}" AS "{alias}"')
+    projected = base_rel.project(", ".join(project_parts))
+
+    bindings = RelationBindings(DuckDBLazyFrame(projected, con))
+    return bindings.to_pandas() if materialize else bindings
