@@ -56,20 +56,31 @@ def _assert_parity(query: str, sort_col: str = "name") -> None:
     pd.testing.assert_frame_equal(o, g, check_dtype=False)
 
 
+def _resolve(attr: dict[str, str]):
+    """A single-variable resolver for `n` over *attr* (property→column)."""
+
+    def resolve(var: str, prop: str) -> str | None:
+        if var != "n" or prop not in attr:
+            return None
+        return f'"{attr[prop]}"'
+
+    return resolve
+
+
 class TestCompiler:
     def test_supported_predicate_compiles(self) -> None:
         attr = {"age": "age", "name": "name"}
         where = ASTConverter.from_cypher(
             "MATCH (n:Person) WHERE n.age >= 30 AND n.name <> 'Bob' RETURN n.age AS a",
         ).clauses[0].where
-        assert compile_expression(where, "n", attr) is not None
+        assert compile_expression(where, _resolve(attr)) is not None
 
     def test_unsupported_function_returns_none(self) -> None:
         attr = {"name": "name"}
         where = ASTConverter.from_cypher(
             "MATCH (n:Person) WHERE upper(n.name) = 'ALICE' RETURN n.name AS x",
         ).clauses[0].where
-        assert compile_expression(where, "n", attr) is None
+        assert compile_expression(where, _resolve(attr)) is None
 
 
 class TestEligibility:

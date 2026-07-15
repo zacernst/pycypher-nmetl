@@ -38,20 +38,22 @@ _NULL_OPS: dict[str, str] = {"IS NULL": "IS NULL", "IS NOT NULL": "IS NOT NULL"}
 
 def compile_expression(
     expr: Any,
-    var_name: str,
-    attr_map: dict[str, str],
+    resolve: Any,
 ) -> str | None:
     """Compile *expr* to a DuckDB SQL expression string, or ``None``.
 
     Args:
         expr: A Cypher expression AST node.
-        var_name: The single node variable the query binds (property lookups
-            must reference it).
-        attr_map: Property→column map for that variable's entity.
+        resolve: A callable ``resolve(var_name, property) -> str | None`` that
+            returns the SQL column reference for a property lookup (already
+            quoted / alias-qualified), or ``None`` if the variable/property is
+            not resolvable.  This decouples the compiler from single-variable
+            vs. multi-variable (join) column resolution.
 
     Returns:
         A parenthesised SQL expression string, or ``None`` if *expr* uses any
-        construct outside the supported subset.
+        construct outside the supported subset (or references an unresolvable
+        variable/property).
 
     """
     from pycypher.ast_models import (
@@ -68,22 +70,14 @@ def compile_expression(
         StringLiteral,
         Variable,
     )
-    from pycypher.ingestion.security import (
-        escape_sql_string_literal,
-        sanitize_sql_identifier,
-    )
+    from pycypher.ingestion.security import escape_sql_string_literal
 
     def rec(node: Any) -> str | None:
         # --- Leaves ---
         if isinstance(node, PropertyLookup):
             if not isinstance(node.expression, Variable):
                 return None
-            if node.expression.name != var_name:
-                return None
-            col = attr_map.get(node.property)
-            if col is None:
-                return None
-            return f'"{sanitize_sql_identifier(col)}"'
+            return resolve(node.expression.name, node.property)
         if isinstance(node, IntegerLiteral):
             return str(int(node.value))
         if isinstance(node, FloatLiteral):

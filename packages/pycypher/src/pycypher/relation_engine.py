@@ -148,83 +148,238 @@ def _base_relation(context: Context, label: str, con: Any) -> Any:
     return con.from_df(_to_pandas(src))
 
 
-def is_relation_eligible(query: Any, context: Context) -> bool:
-    """Return True if *query* is in the subset the relation engine can execute.
+def _rel_attr_map(context: Context, label: str) -> dict[str, str] | None:
+    """Property→column map for a relationship *label* (in-memory rel source)."""
+    rel = context.relationship_mapping.mapping.get(label)
+    return rel.attribute_map if rel is not None else None
 
-    Conservative by design: any construct not explicitly handled returns
-    ``False`` so the caller falls back to the pandas engine.  Eligible: a
-    single-label ``MATCH`` of one node, an optional compilable ``WHERE``, and a
-    ``RETURN`` of compilable expressions (non-property expressions need an
-    explicit alias).  Ineligible: relationships, aggregation, ORDER/SKIP/LIMIT,
-    DISTINCT, WITH, and any expression using an unsupported function/operator.
+
+def _rel_base_relation(context: Context, label: str, con: Any) -> Any:
+    """Return a DuckDB relation over a relationship's in-memory source rows."""
+    rel = context.relationship_mapping.mapping[label]
+    src = rel.source_obj
+    import pandas as pd
+
+    if isinstance(src, pd.DataFrame):
+        return con.from_df(src)
+    try:
+        import pyarrow as pa
+
+        if isinstance(src, pa.Table):
+            return con.from_arrow(src)
+    except ImportError:
+        pass
+    from pycypher.backends._helpers import _to_pandas
+
+    return con.from_df(_to_pandas(src))
+
+
+def _make_resolve(variables: dict[str, tuple[str, dict[str, str]]]) -> Any:
+    """Build a ``resolve(var, prop)`` closure over the pattern's variables.
+
+    *variables* maps each bound variable to ``(sql_alias, attr_map)``.  An empty
+    alias references the column unqualified (single-relation case); otherwise it
+    is qualified as ``alias."col"`` (joins).
+    """
+    from pycypher.ingestion.security import sanitize_sql_identifier
+
+    def resolve(var: str, prop: str) -> str | None:
+        entry = variables.get(var)
+        if entry is None:
+            return None
+        alias, attr = entry
+        col = attr.get(prop)
+        if col is None:
+            return None
+        quoted = f'"{sanitize_sql_identifier(col)}"'
+        return f"{alias}.{quoted}" if alias else quoted
+
+    return resolve
+
+
+def _valid_node(node: Any) -> bool:
+    """True if *node* is a single-label variable node with no inline props."""
+    from pycypher.ast_models import NodePattern
+
+    return (
+        isinstance(node, NodePattern)
+        and node.variable is not None
+        and len(node.labels) == 1
+        and not node.properties
+    )
+
+
+class _Plan:
+    """A resolved, eligible relation-query plan."""
+
+    __slots__ = ("build", "items", "requires_alias", "resolve", "where")
+
+    def __init__(
+        self,
+        resolve: Any,
+        build: Any,
+        where: Any,
+        items: Any,
+        *,
+        requires_alias: bool,
+    ) -> None:
+        self.resolve = resolve  # resolve(var, prop) -> str | None
+        self.build = build  # build(con) -> DuckDBPyRelation
+        self.where = where  # WHERE expr or None
+        self.items = items  # RETURN items
+        self.requires_alias = requires_alias  # force explicit aliases (joins)
+
+
+def _analyze_match(query: Any, context: Context) -> _Plan | None:
+    """Return an execution plan for *query* if eligible, else ``None``.
+
+    Handles two pattern shapes: a single node, and a single directed
+    relationship between two nodes (with an optional relationship variable).
     """
     from pycypher.ast_models import (
         Match,
-        NodePattern,
-        PropertyLookup,
         Query,
+        RelationshipDirection,
+        RelationshipPattern,
         Return,
     )
 
-    # Backend must be DuckDB and expose a connection for relation building.
     if getattr(context, "backend_name", None) != "duckdb":
-        return False
+        return None
     if not hasattr(getattr(context, "backend", None), "connection"):
-        return False
-
+        return None
     if not isinstance(query, Query) or len(query.clauses) != 2:
-        return False
+        return None
     match, ret = query.clauses
     if not isinstance(match, Match) or not isinstance(ret, Return):
-        return False
-
-    # --- MATCH: single non-optional single-label node, no inline props ---
-    # A WHERE clause is allowed when it compiles to a SQL predicate (checked
-    # once the variable and attribute map are known, below).
+        return None
     if match.optional:
-        return False
+        return None
+    if ret.distinct or ret.order_by or ret.skip is not None or ret.limit is not None:
+        return None
+    if not ret.items:
+        return None
     paths = match.pattern.paths
     if len(paths) != 1:
-        return False
+        return None
     path = paths[0]
     if path.variable is not None:
-        return False
+        return None
     if getattr(path, "shortest_path_mode", "none") not in ("none", None):
-        return False
-    if len(path.elements) != 1:
-        return False
-    node = path.elements[0]
-    if not isinstance(node, NodePattern):
-        return False
-    if node.variable is None or len(node.labels) != 1 or node.properties:
-        return False
-    var_name = node.variable.name
-    label = node.labels[0]
-    attr_map = _entity_attr_map(context, label)
-    if attr_map is None:
-        return False
+        return None
+    elements = path.elements
 
-    # --- WHERE: must compile to a SQL predicate when present ---
-    if match.where is not None:
-        from pycypher.relation_sql import compile_expression
+    # --- Single node ---
+    if len(elements) == 1:
+        node = elements[0]
+        if not _valid_node(node):
+            return None
+        attr = _entity_attr_map(context, node.labels[0])
+        if attr is None:
+            return None
+        variables = {node.variable.name: ("", attr)}
+        label = node.labels[0]
 
-        if compile_expression(match.where, var_name, attr_map) is None:
-            return False
+        def build(con: Any, label: str = label) -> Any:
+            return _base_relation(context, label, con)
 
-    # --- RETURN: any compilable expression over the match variable ---
-    # A bare property lookup is named after the property (or its alias); any
-    # other expression (arithmetic, literal, …) requires an explicit alias so
-    # the output column name is unambiguous and matches the pandas engine.
-    if ret.distinct or ret.order_by or ret.skip is not None or ret.limit is not None:
-        return False
-    if not ret.items:
-        return False
+        return _Plan(
+            _make_resolve(variables), build, match.where, ret.items,
+            requires_alias=False,
+        )
+
+    # --- Single directed relationship: (n1)-[r]->(n2) or (n1)<-[r]-(n2) ---
+    if len(elements) == 3:
+        n1, relp, n2 = elements
+        if not (_valid_node(n1) and _valid_node(n2)):
+            return None
+        if not isinstance(relp, RelationshipPattern):
+            return None
+        if relp.length is not None or getattr(relp, "properties", None):
+            return None
+        if len(relp.labels) != 1:
+            return None
+        if relp.direction not in (
+            RelationshipDirection.RIGHT,
+            RelationshipDirection.LEFT,
+        ):
+            return None
+        v1, v2 = n1.variable.name, n2.variable.name
+        if v1 == v2:
+            return None
+        a1 = _entity_attr_map(context, n1.labels[0])
+        a2 = _entity_attr_map(context, n2.labels[0])
+        rel_attr = _rel_attr_map(context, relp.labels[0])
+        if a1 is None or a2 is None or rel_attr is None:
+            return None
+        variables: dict[str, tuple[str, dict[str, str]]] = {
+            v1: ("a", a1),
+            v2: ("b", a2),
+        }
+        if relp.variable is not None:
+            rv = relp.variable.name
+            if rv in variables:
+                return None
+            variables[rv] = ("r", rel_attr)
+
+        l1, l2, rlabel = n1.labels[0], n2.labels[0], relp.labels[0]
+        right = relp.direction == RelationshipDirection.RIGHT
+
+        def build(
+            con: Any,
+            l1: str = l1,
+            l2: str = l2,
+            rlabel: str = rlabel,
+            right: bool = right,  # noqa: FBT001
+        ) -> Any:
+            a = _base_relation(context, l1, con).set_alias("a")
+            b = _base_relation(context, l2, con).set_alias("b")
+            r = _rel_base_relation(context, rlabel, con).set_alias("r")
+            if right:
+                c1 = 'a."__ID__" = r."__SOURCE__"'
+                c2 = 'r."__TARGET__" = b."__ID__"'
+            else:
+                c1 = 'a."__ID__" = r."__TARGET__"'
+                c2 = 'r."__SOURCE__" = b."__ID__"'
+            return a.join(r, c1).join(b, c2)
+
+        return _Plan(
+            _make_resolve(variables), build, match.where, ret.items,
+            requires_alias=True,
+        )
+
+    return None
+
+
+def is_relation_eligible(query: Any, context: Context) -> bool:
+    """Return True if *query* is in the subset the relation engine can execute.
+
+    Conservative by design: any construct not explicitly handled makes the
+    query ineligible so the caller falls back to the pandas engine.  Eligible:
+    a single-node ``MATCH`` or a single directed relationship between two nodes,
+    an optional compilable ``WHERE``, and a ``RETURN`` of compilable expressions
+    (non-property expressions — and all expressions in a join — require an
+    explicit alias).  Ineligible: undirected/variable-length/multi-hop paths,
+    OPTIONAL MATCH, aggregation, ORDER/SKIP/LIMIT, DISTINCT, WITH, and
+    unsupported functions/operators.
+    """
+    from pycypher.ast_models import PropertyLookup
     from pycypher.relation_sql import compile_expression
 
-    for item in ret.items:
-        if compile_expression(item.expression, var_name, attr_map) is None:
+    plan = _analyze_match(query, context)
+    if plan is None:
+        return False
+
+    if plan.where is not None and compile_expression(plan.where, plan.resolve) is None:
+        return False
+
+    for item in plan.items:
+        if compile_expression(item.expression, plan.resolve) is None:
             return False
-        if not isinstance(item.expression, PropertyLookup) and item.alias is None:
+        needs_alias = plan.requires_alias or not isinstance(
+            item.expression, PropertyLookup,
+        )
+        if needs_alias and item.alias is None:
             return False
 
     return True
@@ -251,9 +406,10 @@ def execute_relation_query(
 ) -> pd.DataFrame | RelationBindings:
     """Execute an eligible query via a DuckDB relation.
 
-    Builds a lazy projected relation (``DuckDBPyRelation.project``) over the
-    entity's base relation — a streaming file view when registered, else the
-    in-memory ``source_obj`` — so nothing is materialised until the boundary.
+    Builds a lazy relation from the pattern plan (a single entity relation, or a
+    join across two entities and a relationship), composes ``WHERE`` as a
+    predicate and ``RETURN`` as a projection — all lazy ``DuckDBPyRelation``
+    operations — so nothing materialises until the boundary.
 
     Precondition: :func:`is_relation_eligible` returned ``True`` for *query*.
 
@@ -269,23 +425,18 @@ def execute_relation_query(
     from pycypher.ingestion.security import sanitize_sql_identifier
     from pycypher.relation_sql import compile_expression
 
-    match, ret = query.clauses
-    node = match.pattern.paths[0].elements[0]
-    label = node.labels[0]
-    var_name = node.variable.name
-    attr_map = _entity_attr_map(context, label)
+    plan = _analyze_match(query, context)
     con = context.backend.connection
 
-    base_rel = _base_relation(context, label, con)
+    base_rel = plan.build(con)
 
     # WHERE → SQL predicate composed onto the relation (lazy).
-    if match.where is not None:
-        predicate = compile_expression(match.where, var_name, attr_map)
-        base_rel = base_rel.filter(predicate)
+    if plan.where is not None:
+        base_rel = base_rel.filter(compile_expression(plan.where, plan.resolve))
 
     project_parts = []
-    for item in ret.items:
-        sql_expr = compile_expression(item.expression, var_name, attr_map)
+    for item in plan.items:
+        sql_expr = compile_expression(item.expression, plan.resolve)
         alias = sanitize_sql_identifier(_output_column(item))
         project_parts.append(f'{sql_expr} AS "{alias}"')
     projected = base_rel.project(", ".join(project_parts))
