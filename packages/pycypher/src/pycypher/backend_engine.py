@@ -81,6 +81,7 @@ from pycypher.backends._helpers import (
 from pycypher.backends.duckdb_backend import DuckDBBackend
 from pycypher.backends.pandas_backend import PandasBackend
 from pycypher.backends.polars_backend import PolarsBackend
+from pycypher.backends.spark_backend import SparkBackend
 from pycypher.constants import ID_COLUMN
 from pycypher.cypher_types import (
     BackendFrame,
@@ -613,9 +614,13 @@ _BACKEND_FACTORIES: dict[str, type] = {
     "polars": PolarsBackend,
     "duckdb": DuckDBBackend,
     "pandas": PandasBackend,
+    "spark": SparkBackend,
 }
 
 #: Fallback chain for auto selection (preferred → last resort).
+#: Spark is intentionally excluded — JVM startup makes it a poor automatic
+#: choice, so ``auto`` never selects it.  Spark is explicit-only
+#: (``backend="spark"`` / ``backend_engine: spark``).
 _FALLBACK_CHAIN: list[str] = ["polars", "duckdb", "pandas"]
 
 
@@ -1011,8 +1016,11 @@ def select_backend(
         """Wrap *b* with :class:`InstrumentedBackend` when instrumentation is enabled."""
         return InstrumentedBackend(b) if instrument else b
 
-    if hint not in {"auto", "pandas", "duckdb", "polars"}:
-        msg = f"Unknown backend hint: {hint!r}. Use 'auto', 'pandas', 'polars', or 'duckdb'."
+    if hint not in {"auto", "pandas", "duckdb", "polars", "spark"}:
+        msg = (
+            f"Unknown backend hint: {hint!r}. "
+            "Use 'auto', 'pandas', 'polars', 'duckdb', or 'spark'."
+        )
         raise ValueError(msg)
 
     # --- Explicit backend requested ---
@@ -1100,6 +1108,7 @@ __all__ = [
     "InstrumentedBackend",
     "PandasBackend",
     "PolarsBackend",
+    "SparkBackend",
     "check_backend_health",
     "get_circuit_breaker",
     "select_backend",
