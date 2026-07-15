@@ -10,12 +10,15 @@ Disabled by default — enabled per-:class:`Context` via a truthy
 ``PYCYPHER_DUCKDB_RELATION_ENGINE`` environment variable.  When disabled the
 dispatch never fires, guaranteeing zero behaviour change.
 
-Eligible subset so far: a single-label ``MATCH`` of one node, an optional
-``WHERE`` that compiles to a SQL predicate (:mod:`pycypher.relation_sql`), and a
-``RETURN`` of compilable expressions (property lookups, arithmetic, literals;
-non-property expressions require an explicit alias).  Not yet: relationships,
-aggregation, ORDER/SKIP/LIMIT, DISTINCT, WITH, functions.  Later phases widen
-it.  See ``docs/duckdb_out_of_core_design.md``.
+Eligible subset so far: a single node or a single directed relationship
+``MATCH``; an optional ``WHERE`` that compiles to a SQL predicate
+(:mod:`pycypher.relation_sql`); a ``RETURN`` of compilable expressions
+(property lookups, arithmetic, literals, registered scalar UDFs, and
+``count/sum/avg/min/max`` aggregates with implicit GROUP BY); and
+DISTINCT / ORDER BY / SKIP+LIMIT.  Duplicate output column names are rejected.
+Not yet: multi-hop / undirected / variable-length paths, OPTIONAL MATCH, WITH
+chaining, ``collect()``, and unregistered functions.  See
+``docs/duckdb_out_of_core_design.md``.
 
 Source modes: with :func:`register_streaming_source` the base relation is a
 lazy ``read_relation`` view over a file (genuinely out-of-core); otherwise it
@@ -256,7 +259,7 @@ class _Plan:
         "items",
         "limit",
         "order_by",
-        "requires_alias",
+        "qualified",
         "resolve",
         "skip",
         "where",
@@ -269,13 +272,13 @@ class _Plan:
         where: Any,
         ret: Any,
         *,
-        requires_alias: bool,
+        qualified: bool,
     ) -> None:
         self.resolve = resolve  # resolve(var, prop) -> str | None
         self.build = build  # build(con) -> DuckDBPyRelation
         self.where = where  # WHERE expr or None
         self.items = ret.items  # RETURN items
-        self.requires_alias = requires_alias  # force explicit aliases (joins)
+        self.qualified = qualified  # multi-variable pattern → qualified names
         self.distinct = bool(ret.distinct)
         self.order_by = ret.order_by  # list[OrderByItem] | None
         self.skip = ret.skip  # int | None
@@ -336,10 +339,7 @@ def _analyze_match(query: Any, context: Context) -> _Plan | None:
         def build(con: Any, label: str = label) -> Any:
             return _base_relation(context, label, con)
 
-        return _Plan(
-            _make_resolve(variables), build, match.where, ret,
-            requires_alias=False,
-        )
+        return _Plan(_make_resolve(variables), build, match.where, ret, qualified=False)
 
     # --- Single directed relationship: (n1)-[r]->(n2) or (n1)<-[r]-(n2) ---
     if len(elements) == 3:
@@ -396,15 +396,12 @@ def _analyze_match(query: Any, context: Context) -> _Plan | None:
                 c2 = 'r."__SOURCE__" = b."__ID__"'
             return a.join(r, c1).join(b, c2)
 
-        return _Plan(
-            _make_resolve(variables), build, match.where, ret,
-            requires_alias=True,
-        )
+        return _Plan(_make_resolve(variables), build, match.where, ret, qualified=True)
 
     return None
 
 
-def _build_order_clause(order_by: Any, items: Any) -> str | None:
+def _build_order_clause(order_by: Any, items: Any, *, qualified: bool) -> str | None:
     """Build a DuckDB ORDER BY clause referencing RETURN output columns.
 
     Supports ordering by an output alias (``ORDER BY name``) or by a returned
@@ -413,12 +410,11 @@ def _build_order_clause(order_by: Any, items: Any) -> str | None:
     Emits ``NULLS LAST`` to match the pandas engine's null ordering.
     """
     from pycypher.ast_models import PropertyLookup, Variable
-    from pycypher.ingestion.security import sanitize_sql_identifier
 
     output_names: set[str] = set()
     prop_to_output: dict[tuple[str, str], str] = {}
     for item in items:
-        name = _output_column(item)
+        name = _output_column(item, qualified=qualified)
         output_names.add(name)
         expr = item.expression
         if isinstance(expr, PropertyLookup) and isinstance(expr.expression, Variable):
@@ -437,7 +433,7 @@ def _build_order_clause(order_by: Any, items: Any) -> str | None:
         if col is None:
             return None
         direction = "ASC" if ob.ascending else "DESC"
-        parts.append(f'"{sanitize_sql_identifier(col)}" {direction} NULLS LAST')
+        parts.append(f"{_quote_output_alias(col)} {direction} NULLS LAST")
 
     return ", ".join(parts)
 
@@ -469,9 +465,14 @@ def is_relation_eligible(query: Any, context: Context) -> bool:
     if plan.where is not None and compile_expression(plan.where, plan.resolve, udfs) is None:
         return False
 
-    if plan.order_by and _build_order_clause(plan.order_by, plan.items) is None:
+    if (
+        plan.order_by
+        and _build_order_clause(plan.order_by, plan.items, qualified=plan.qualified)
+        is None
+    ):
         return False
 
+    output_names: list[str] = []
     for item in plan.items:
         if is_aggregate(item.expression):
             # Aggregates must compile and be explicitly aliased.
@@ -479,30 +480,49 @@ def is_relation_eligible(query: Any, context: Context) -> bool:
                 return False
             if item.alias is None:
                 return False
-            continue
-        # Non-aggregate: a group key (agg query) or a plain projection.
-        if compile_expression(item.expression, plan.resolve, udfs) is None:
-            return False
-        needs_alias = plan.requires_alias or not isinstance(
-            item.expression, PropertyLookup,
-        )
-        if needs_alias and item.alias is None:
-            return False
+        else:
+            # Non-aggregate: a group key (agg query) or a plain projection.
+            if compile_expression(item.expression, plan.resolve, udfs) is None:
+                return False
+            # A non-property expression needs an explicit alias so _output_column
+            # is well-defined.
+            if not isinstance(item.expression, PropertyLookup) and item.alias is None:
+                return False
+        output_names.append(_output_column(item, qualified=plan.qualified))
+
+    # Reject duplicate output columns (two returns mapping to the same name).
+    # Robust to the cached AST being mutated to fill in implicit aliases.
+    if len(set(output_names)) != len(output_names):
+        return False
 
     return True
 
 
-def _output_column(item: Any) -> str:
+def _quote_output_alias(name: str) -> str:
+    """Quote *name* as a DuckDB output identifier (safe for dots etc.).
+
+    Output aliases can legitimately contain dots (e.g. the pandas engine names a
+    bare join return ``a.name``), so we escape for a quoted identifier rather
+    than using the stricter :func:`sanitize_sql_identifier` (source columns).
+    """
+    return '"' + name.replace('"', '""') + '"'
+
+
+def _output_column(item: Any, *, qualified: bool) -> str:
     """Output column name for a return *item*, matching the pandas engine.
 
-    An explicit ``AS alias`` wins; otherwise a bare property lookup ``n.prop``
-    is named after the property (``prop``).  This mirrors the pandas engine and
-    is robust to the shared/cached AST being mutated in place (the engine
-    rewrites a missing alias to exactly the property name during execution).
+    An explicit ``AS alias`` wins.  Otherwise a bare property lookup is named
+    after the property (single-variable patterns) or as ``var.property``
+    (multi-variable / join patterns) — mirroring the pandas engine, and
+    deterministic whether or not the cached AST has been mutated to fill in the
+    implicit alias.
     """
     if item.alias is not None:
         return str(item.alias)
-    return str(item.expression.property)
+    expr = item.expression
+    if qualified:
+        return f"{expr.expression.name}.{expr.property}"
+    return str(expr.property)
 
 
 def execute_relation_query(
@@ -529,7 +549,6 @@ def execute_relation_query(
 
     """
     from pycypher.backends.duckdb_backend import DuckDBLazyFrame
-    from pycypher.ingestion.security import sanitize_sql_identifier
     from pycypher.relation_sql import (
         compile_aggregate,
         compile_expression,
@@ -553,13 +572,13 @@ def execute_relation_query(
         select_parts = []
         group_parts = []
         for item in plan.items:
-            alias = sanitize_sql_identifier(_output_column(item))
+            alias = _quote_output_alias(_output_column(item, qualified=plan.qualified))
             if is_aggregate(item.expression):
                 sql_expr = compile_aggregate(item.expression, plan.resolve)
             else:
                 sql_expr = compile_expression(item.expression, plan.resolve, udfs)
                 group_parts.append(sql_expr)
-            select_parts.append(f'{sql_expr} AS "{alias}"')
+            select_parts.append(f"{sql_expr} AS {alias}")
         result_rel = base_rel.aggregate(
             ", ".join(select_parts), ", ".join(group_parts),
         )
@@ -567,15 +586,17 @@ def execute_relation_query(
         project_parts = []
         for item in plan.items:
             sql_expr = compile_expression(item.expression, plan.resolve, udfs)
-            alias = sanitize_sql_identifier(_output_column(item))
-            project_parts.append(f'{sql_expr} AS "{alias}"')
+            alias = _quote_output_alias(_output_column(item, qualified=plan.qualified))
+            project_parts.append(f"{sql_expr} AS {alias}")
         result_rel = base_rel.project(", ".join(project_parts))
 
     # RETURN modifiers, in Cypher order: DISTINCT → ORDER BY → SKIP/LIMIT.
     if plan.distinct:
         result_rel = result_rel.distinct()
     if plan.order_by:
-        result_rel = result_rel.order(_build_order_clause(plan.order_by, plan.items))
+        result_rel = result_rel.order(
+            _build_order_clause(plan.order_by, plan.items, qualified=plan.qualified),
+        )
     if plan.limit is not None:
         result_rel = result_rel.limit(plan.limit, offset=plan.skip or 0)
 

@@ -97,12 +97,28 @@ class TestEligibility:
     def test_ineligible_rel_shapes(self, query: str) -> None:
         assert not is_relation_eligible(ASTConverter.from_cypher(query), _ctx("duckdb"))
 
-    def test_join_requires_aliases(self) -> None:
-        # Bare property lookups in a join would collide on output name → require
-        # explicit aliases → ineligible without them.
-        assert not is_relation_eligible(
+    def test_bare_join_returns_eligible_qualified(self) -> None:
+        # Bare property lookups in a join are named var.property (like the
+        # pandas engine), so they don't collide and are eligible.
+        assert is_relation_eligible(
             ASTConverter.from_cypher("MATCH (a:Person)-[:KNOWS]->(b:Person) RETURN a.name, b.name"),
             _ctx("duckdb"),
+        )
+
+    def test_duplicate_output_alias_ineligible(self) -> None:
+        # Two returns explicitly aliased to the same name collide → ineligible.
+        assert not is_relation_eligible(
+            ASTConverter.from_cypher(
+                "MATCH (a:Person)-[:KNOWS]->(b:Person) RETURN a.name AS x, b.name AS x",
+            ),
+            _ctx("duckdb"),
+        )
+
+    def test_bare_join_return_parity(self) -> None:
+        # Column names are qualified (a.name / b.name), matching the oracle.
+        _assert_parity(
+            "MATCH (a:Person)-[:KNOWS]->(b:Person) RETURN a.name, b.name",
+            ["a.name", "b.name"],
         )
 
 
