@@ -55,6 +55,11 @@ def _available_backends() -> list[str]:
         backends.append("polars")
     except Exception:
         pass
+    # Spark: gate on import only (do not start a JVM session at collection).
+    import importlib.util
+
+    if importlib.util.find_spec("pyspark") is not None:
+        backends.append("spark")
     return backends
 
 

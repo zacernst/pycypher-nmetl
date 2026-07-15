@@ -76,6 +76,40 @@ def _pandas_agg_to_sql(func: str) -> str:
     return result
 
 
+def _spark_agg_func(col: Any, func: str) -> Any:
+    """Map a pandas aggregation function name to a Spark Column expression.
+
+    Args:
+        col: A ``pyspark.sql.Column`` (or column name) to aggregate.
+        func: The pandas-style aggregation name (``"sum"``, ``"mean"``, ...).
+
+    Returns:
+        A ``pyspark.sql.Column`` representing the aggregation.
+
+    Raises:
+        ValueError: If *func* has no Spark equivalent.
+
+    """
+    from pyspark.sql import functions as F  # noqa: N812
+
+    mapping: dict[str, Any] = {
+        "sum": F.sum,
+        "count": F.count,
+        "mean": F.avg,
+        "min": F.min,
+        "max": F.max,
+        "std": F.stddev_samp,
+        "var": F.var_samp,
+        "first": F.first,
+        "last": F.last,
+    }
+    fn = mapping.get(func)
+    if fn is None:
+        msg = f"Unsupported aggregation function for Spark: {func!r}"
+        raise ValueError(msg)
+    return fn(col)
+
+
 def _polars_agg_func(col_expr: Any, func: str) -> Any:
     """Map pandas aggregation function name to a Polars expression."""
     mapping: dict[str, str] = {

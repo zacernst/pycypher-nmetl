@@ -623,7 +623,9 @@ class PipelineConfig(BaseModel):
     functions: list[FunctionConfig] = Field(default_factory=list)
     queries: list[QueryConfig] = Field(default_factory=list)
     output: list[OutputConfig] = Field(default_factory=list)
-    backend_engine: Literal["auto", "pandas", "duckdb", "polars"] = "auto"
+    backend_engine: Literal["auto", "pandas", "duckdb", "polars", "spark"] = (
+        "auto"
+    )
     state_fips: str = "13"
 
     @field_validator("version")

@@ -563,7 +563,7 @@ def run_impl(
                 allow_multi_edges=rel_src.allow_multi_edges,
                 schema_hints=rel_src.schema_hints,
             )
-        context = builder.build()
+        context = builder.build(backend=pipeline_config.backend_engine)
     except FileNotFoundError as exc:
         cli_error(f"data source file not found: {exc}")
     except PermissionError as exc:
@@ -686,6 +686,13 @@ def run_impl(
                 )
 
     pipeline_ms = (time.monotonic() - pipeline_start) * 1000
+
+    # Release backend resources (e.g. the DuckDB in-memory connection) rather
+    # than relying on ``__del__`` timing at interpreter shutdown.
+    backend_close = getattr(context.backend, "close", None)
+    if callable(backend_close):
+        backend_close()
+
     if tracker.failed and tracker.policy == "warn":
         click.echo(
             "Pipeline completed with warnings.  "

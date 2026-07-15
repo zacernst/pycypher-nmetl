@@ -77,7 +77,21 @@ def _make_context(backend: str = "pandas") -> Context:
     )
 
 
-@pytest.fixture(params=["pandas", "duckdb"])
+def _backend_params() -> list[object]:
+    """Backend params: pandas + duckdb always, spark when PySpark is present.
+
+    The spark param carries the ``spark`` marker so it can be deselected with
+    ``-m "not spark"`` and is omitted entirely when PySpark is not installed.
+    """
+    import importlib.util
+
+    params: list[object] = ["pandas", "duckdb"]
+    if importlib.util.find_spec("pyspark") is not None:
+        params.append(pytest.param("spark", marks=pytest.mark.spark))
+    return params
+
+
+@pytest.fixture(params=_backend_params())
 def ctx(request: pytest.FixtureRequest) -> Context:
     """Parametrized context fixture — one run per backend."""
     return _make_context(backend=request.param)
