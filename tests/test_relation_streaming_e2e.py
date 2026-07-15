@@ -87,9 +87,9 @@ class TestStreamToSink:
         ctx = _streaming_ctx()
         register_streaming_source(ctx, "Person", data_source_from_uri(str(people_parquet)))
         out = tmp_path / "x.parquet"
-        # WHERE => ineligible => not streamed.
+        # ORDER BY => ineligible => not streamed.
         streamed = Star(context=ctx).stream_query_to_uri(
-            "MATCH (n:Person) WHERE n.age > 20 RETURN n.name AS name",
+            "MATCH (n:Person) RETURN n.name AS name ORDER BY name",
             str(out),
         )
         assert streamed is False

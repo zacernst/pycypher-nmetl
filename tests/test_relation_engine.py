@@ -79,7 +79,7 @@ class TestEligibility:
     @pytest.mark.parametrize(
         "query",
         [
-            "MATCH (n:Person) WHERE n.age > 20 RETURN n.name AS name",  # WHERE
+            "MATCH (n:Person) WHERE substring(n.name, 0, 1) = 'A' RETURN n.name AS name",  # WHERE with unsupported fn
             "MATCH (n:Person) RETURN n.name AS name ORDER BY name",  # ORDER BY
             "MATCH (n:Person) RETURN DISTINCT n.name AS name",  # DISTINCT
             "MATCH (n:Person) RETURN count(n) AS c",  # aggregation
@@ -162,14 +162,14 @@ class TestParity:
 
 class TestFallback:
     def test_ineligible_query_still_correct_when_enabled(self) -> None:
-        # WHERE makes it ineligible; must fall back to the pandas engine and
+        # ORDER BY makes it ineligible; must fall back to the pandas engine and
         # still return the right answer.
         ctx = _ctx(backend="duckdb")
         ctx._relation_engine_enabled = True
         got = Star(context=ctx).execute_query(
-            "MATCH (n:Person) WHERE n.age > 28 RETURN n.name AS name",
+            "MATCH (n:Person) WHERE n.age > 28 RETURN n.name AS name ORDER BY name",
         )
-        assert sorted(got["name"].tolist()) == ["Alice", "Carol"]
+        assert got["name"].tolist() == ["Alice", "Carol"]
 
     def test_disabled_uses_existing_engine(self) -> None:
         # Eligible shape, but engine disabled → existing engine, correct result.

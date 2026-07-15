@@ -73,15 +73,18 @@ class TestFallback:
     def test_ineligible_pipeline_falls_back(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("PYCYPHER_DUCKDB_RELATION_ENGINE", "1")
         out = tmp_path / "out.parquet"
-        # WHERE => ineligible => normal in-memory path.
+        # ORDER BY => ineligible => normal in-memory path (WHERE alone would now
+        # be eligible, so the ineligibility here comes from ORDER BY).
         cfg = _config(
-            tmp_path, out, "MATCH (n:Person) WHERE n.age > 28 RETURN n.name AS name",
+            tmp_path,
+            out,
+            "MATCH (n:Person) WHERE n.age > 28 RETURN n.name AS name ORDER BY name",
         )
         result = CliRunner().invoke(cli, ["run", str(cfg)])
         assert result.exit_code == 0, result.output
         assert "out-of-core" not in result.output  # fell back
         got = pd.read_parquet(out)
-        assert sorted(got["name"].tolist()) == ["Alice", "Carol"]
+        assert got["name"].tolist() == ["Alice", "Carol"]
 
     def test_disabled_by_default_uses_normal_path(self, tmp_path: Path) -> None:
         # No env flag => streaming never attempted => normal path, correct output.

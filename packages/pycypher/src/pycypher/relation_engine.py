@@ -178,8 +178,10 @@ def is_relation_eligible(query: Any, context: Context) -> bool:
     if not isinstance(match, Match) or not isinstance(ret, Return):
         return False
 
-    # --- MATCH: single non-optional single-label node, no WHERE, no props ---
-    if match.optional or match.where is not None:
+    # --- MATCH: single non-optional single-label node, no inline props ---
+    # A WHERE clause is allowed when it compiles to a SQL predicate (checked
+    # once the variable and attribute map are known, below).
+    if match.optional:
         return False
     paths = match.pattern.paths
     if len(paths) != 1:
@@ -201,6 +203,13 @@ def is_relation_eligible(query: Any, context: Context) -> bool:
     attr_map = _entity_attr_map(context, label)
     if attr_map is None:
         return False
+
+    # --- WHERE: must compile to a SQL predicate when present ---
+    if match.where is not None:
+        from pycypher.relation_sql import compile_expression
+
+        if compile_expression(match.where, var_name, attr_map) is None:
+            return False
 
     # --- RETURN: aliased property lookups on the match variable only ---
     if ret.distinct or ret.order_by or ret.skip is not None or ret.limit is not None:
@@ -260,10 +269,19 @@ def execute_relation_query(
     match, ret = query.clauses
     node = match.pattern.paths[0].elements[0]
     label = node.labels[0]
+    var_name = node.variable.name
     attr_map = _entity_attr_map(context, label)
     con = context.backend.connection
 
     base_rel = _base_relation(context, label, con)
+
+    # WHERE → SQL predicate composed onto the relation (lazy).
+    if match.where is not None:
+        from pycypher.relation_sql import compile_expression
+
+        predicate = compile_expression(match.where, var_name, attr_map)
+        base_rel = base_rel.filter(predicate)
+
     project_parts = []
     for item in ret.items:
         src_col = sanitize_sql_identifier(attr_map[item.expression.property])
