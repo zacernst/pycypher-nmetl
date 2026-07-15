@@ -80,10 +80,9 @@ class TestEligibility:
         "query",
         [
             "MATCH (n:Person) WHERE substring(n.name, 0, 1) = 'A' RETURN n.name AS name",  # WHERE with unsupported fn
-            "MATCH (n:Person) RETURN n.name AS name ORDER BY name",  # ORDER BY
-            "MATCH (n:Person) RETURN DISTINCT n.name AS name",  # DISTINCT
-            "MATCH (n:Person) RETURN n.name AS name LIMIT 2",  # LIMIT
-            "MATCH (n:Person)-[:KNOWS]->(m:Person) RETURN n.name AS name",  # rel
+            "MATCH (n:Person) RETURN collect(n.name) AS names",  # unsupported aggregate
+            "MATCH (n:Person) WITH n WHERE n.age > 1 RETURN n.name AS name",  # WITH (multi-part)
+            "MATCH (n:Person)-[:KNOWS]->(m:Person) RETURN n.name AS name",  # rel (no KNOWS here)
             "MATCH (n:Person) RETURN n.missing_prop AS x",  # unknown property
             "MATCH (n:Unknown) RETURN n.name AS name",  # unknown label
         ],
@@ -161,14 +160,14 @@ class TestParity:
 
 class TestFallback:
     def test_ineligible_query_still_correct_when_enabled(self) -> None:
-        # ORDER BY makes it ineligible; must fall back to the pandas engine and
-        # still return the right answer.
+        # collect() is an unsupported aggregate → ineligible → must fall back to
+        # the pandas engine and still return the right answer.
         ctx = _ctx(backend="duckdb")
         ctx._relation_engine_enabled = True
         got = Star(context=ctx).execute_query(
-            "MATCH (n:Person) WHERE n.age > 28 RETURN n.name AS name ORDER BY name",
+            "MATCH (n:Person) RETURN collect(n.name) AS names",
         )
-        assert got["name"].tolist() == ["Alice", "Carol"]
+        assert sorted(got["names"].iloc[0]) == ["Alice", "Bob", "Carol"]
 
     def test_disabled_uses_existing_engine(self) -> None:
         # Eligible shape, but engine disabled → existing engine, correct result.

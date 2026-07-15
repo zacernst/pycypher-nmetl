@@ -212,22 +212,36 @@ def _valid_node(node: Any) -> bool:
 class _Plan:
     """A resolved, eligible relation-query plan."""
 
-    __slots__ = ("build", "items", "requires_alias", "resolve", "where")
+    __slots__ = (
+        "build",
+        "distinct",
+        "items",
+        "limit",
+        "order_by",
+        "requires_alias",
+        "resolve",
+        "skip",
+        "where",
+    )
 
     def __init__(
         self,
         resolve: Any,
         build: Any,
         where: Any,
-        items: Any,
+        ret: Any,
         *,
         requires_alias: bool,
     ) -> None:
         self.resolve = resolve  # resolve(var, prop) -> str | None
         self.build = build  # build(con) -> DuckDBPyRelation
         self.where = where  # WHERE expr or None
-        self.items = items  # RETURN items
+        self.items = ret.items  # RETURN items
         self.requires_alias = requires_alias  # force explicit aliases (joins)
+        self.distinct = bool(ret.distinct)
+        self.order_by = ret.order_by  # list[OrderByItem] | None
+        self.skip = ret.skip  # int | None
+        self.limit = ret.limit  # int | None
 
 
 def _analyze_match(query: Any, context: Context) -> _Plan | None:
@@ -255,9 +269,10 @@ def _analyze_match(query: Any, context: Context) -> _Plan | None:
         return None
     if match.optional:
         return None
-    if ret.distinct or ret.order_by or ret.skip is not None or ret.limit is not None:
-        return None
     if not ret.items:
+        return None
+    # SKIP without LIMIT has no DuckDBPyRelation form here — fall back.
+    if ret.skip is not None and ret.limit is None:
         return None
     paths = match.pattern.paths
     if len(paths) != 1:
@@ -284,7 +299,7 @@ def _analyze_match(query: Any, context: Context) -> _Plan | None:
             return _base_relation(context, label, con)
 
         return _Plan(
-            _make_resolve(variables), build, match.where, ret.items,
+            _make_resolve(variables), build, match.where, ret,
             requires_alias=False,
         )
 
@@ -344,11 +359,49 @@ def _analyze_match(query: Any, context: Context) -> _Plan | None:
             return a.join(r, c1).join(b, c2)
 
         return _Plan(
-            _make_resolve(variables), build, match.where, ret.items,
+            _make_resolve(variables), build, match.where, ret,
             requires_alias=True,
         )
 
     return None
+
+
+def _build_order_clause(order_by: Any, items: Any) -> str | None:
+    """Build a DuckDB ORDER BY clause referencing RETURN output columns.
+
+    Supports ordering by an output alias (``ORDER BY name``) or by a returned
+    property lookup (``ORDER BY n.age`` when ``n.age`` is in the RETURN).  Other
+    order keys, or an explicit NULLS placement, return ``None`` (fall back).
+    Emits ``NULLS LAST`` to match the pandas engine's null ordering.
+    """
+    from pycypher.ast_models import PropertyLookup, Variable
+    from pycypher.ingestion.security import sanitize_sql_identifier
+
+    output_names: set[str] = set()
+    prop_to_output: dict[tuple[str, str], str] = {}
+    for item in items:
+        name = _output_column(item)
+        output_names.add(name)
+        expr = item.expression
+        if isinstance(expr, PropertyLookup) and isinstance(expr.expression, Variable):
+            prop_to_output[(expr.expression.name, expr.property)] = name
+
+    parts: list[str] = []
+    for ob in order_by:
+        if getattr(ob, "nulls_placement", None) is not None:
+            return None  # explicit NULLS FIRST/LAST not mapped yet
+        expr = ob.expression
+        col: str | None = None
+        if isinstance(expr, Variable) and expr.name in output_names:
+            col = expr.name
+        elif isinstance(expr, PropertyLookup) and isinstance(expr.expression, Variable):
+            col = prop_to_output.get((expr.expression.name, expr.property))
+        if col is None:
+            return None
+        direction = "ASC" if ob.ascending else "DESC"
+        parts.append(f'"{sanitize_sql_identifier(col)}" {direction} NULLS LAST')
+
+    return ", ".join(parts)
 
 
 def is_relation_eligible(query: Any, context: Context) -> bool:
@@ -375,6 +428,9 @@ def is_relation_eligible(query: Any, context: Context) -> bool:
         return False
 
     if plan.where is not None and compile_expression(plan.where, plan.resolve) is None:
+        return False
+
+    if plan.order_by and _build_order_clause(plan.order_by, plan.items) is None:
         return False
 
     for item in plan.items:
@@ -474,6 +530,14 @@ def execute_relation_query(
             alias = sanitize_sql_identifier(_output_column(item))
             project_parts.append(f'{sql_expr} AS "{alias}"')
         result_rel = base_rel.project(", ".join(project_parts))
+
+    # RETURN modifiers, in Cypher order: DISTINCT → ORDER BY → SKIP/LIMIT.
+    if plan.distinct:
+        result_rel = result_rel.distinct()
+    if plan.order_by:
+        result_rel = result_rel.order(_build_order_clause(plan.order_by, plan.items))
+    if plan.limit is not None:
+        result_rel = result_rel.limit(plan.limit, offset=plan.skip or 0)
 
     bindings = RelationBindings(DuckDBLazyFrame(result_rel, con))
     return bindings.to_pandas() if materialize else bindings
