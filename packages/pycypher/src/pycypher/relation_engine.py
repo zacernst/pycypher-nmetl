@@ -10,19 +10,19 @@ Disabled by default — enabled per-:class:`Context` via a truthy
 ``PYCYPHER_DUCKDB_RELATION_ENGINE`` environment variable.  When disabled the
 dispatch never fires, guaranteeing zero behaviour change.
 
-Eligibility is intentionally tiny at this phase (single-label ``MATCH`` with an
-aliased property projection); later phases widen it (WHERE, joins, aggregation,
-…).  See ``docs/duckdb_out_of_core_design.md``.
+Eligible subset so far: a single-label ``MATCH`` of one node, an optional
+``WHERE`` that compiles to a SQL predicate (:mod:`pycypher.relation_sql`), and a
+``RETURN`` of compilable expressions (property lookups, arithmetic, literals;
+non-property expressions require an explicit alias).  Not yet: relationships,
+aggregation, ORDER/SKIP/LIMIT, DISTINCT, WITH, functions.  Later phases widen
+it.  See ``docs/duckdb_out_of_core_design.md``.
 
 Source modes: with :func:`register_streaming_source` the base relation is a
-lazy ``read_relation`` view over a file (genuinely out-of-core, Phase 5);
-otherwise it falls back to the entity's in-memory ``source_obj``.  Combined
-with ``materialize=False`` + ``write_relation_to_uri`` (COPY), an eligible
-query streams file → relation → sink without a pandas frame.
-
-Still pipeline-level TODO (Phase 5b): wire ``cli/pipeline.py`` ``run_impl`` to
-register streaming sources and use ``stream_query_to_uri`` so ``nmetl run`` is
-out-of-core automatically.
+lazy ``read_relation`` view over a file (genuinely out-of-core); otherwise it
+falls back to the entity's in-memory ``source_obj``.  Combined with
+``materialize=False`` + ``write_relation_to_uri`` (COPY), an eligible query
+streams file → relation → sink without a pandas frame, and ``nmetl run`` uses
+this automatically when enabled (see ``cli/pipeline.py`` ``_try_streaming_run``).
 """
 
 from __future__ import annotations
@@ -152,10 +152,11 @@ def is_relation_eligible(query: Any, context: Context) -> bool:
     """Return True if *query* is in the subset the relation engine can execute.
 
     Conservative by design: any construct not explicitly handled returns
-    ``False`` so the caller falls back to the pandas engine.  At this phase the
-    only eligible shape is a single-label ``MATCH`` of one node with an aliased
-    property projection and no ``WHERE``/``WITH``/relationships/ordering/
-    aggregation.
+    ``False`` so the caller falls back to the pandas engine.  Eligible: a
+    single-label ``MATCH`` of one node, an optional compilable ``WHERE``, and a
+    ``RETURN`` of compilable expressions (non-property expressions need an
+    explicit alias).  Ineligible: relationships, aggregation, ORDER/SKIP/LIMIT,
+    DISTINCT, WITH, and any expression using an unsupported function/operator.
     """
     from pycypher.ast_models import (
         Match,
@@ -163,7 +164,6 @@ def is_relation_eligible(query: Any, context: Context) -> bool:
         PropertyLookup,
         Query,
         Return,
-        Variable,
     )
 
     # Backend must be DuckDB and expose a connection for relation building.
@@ -211,18 +211,20 @@ def is_relation_eligible(query: Any, context: Context) -> bool:
         if compile_expression(match.where, var_name, attr_map) is None:
             return False
 
-    # --- RETURN: aliased property lookups on the match variable only ---
+    # --- RETURN: any compilable expression over the match variable ---
+    # A bare property lookup is named after the property (or its alias); any
+    # other expression (arithmetic, literal, …) requires an explicit alias so
+    # the output column name is unambiguous and matches the pandas engine.
     if ret.distinct or ret.order_by or ret.skip is not None or ret.limit is not None:
         return False
     if not ret.items:
         return False
+    from pycypher.relation_sql import compile_expression
+
     for item in ret.items:
-        expr = item.expression
-        if not isinstance(expr, PropertyLookup):
+        if compile_expression(item.expression, var_name, attr_map) is None:
             return False
-        if not isinstance(expr.expression, Variable) or expr.expression.name != var_name:
-            return False
-        if expr.property not in attr_map:
+        if not isinstance(item.expression, PropertyLookup) and item.alias is None:
             return False
 
     return True
@@ -265,6 +267,7 @@ def execute_relation_query(
     """
     from pycypher.backends.duckdb_backend import DuckDBLazyFrame
     from pycypher.ingestion.security import sanitize_sql_identifier
+    from pycypher.relation_sql import compile_expression
 
     match, ret = query.clauses
     node = match.pattern.paths[0].elements[0]
@@ -277,16 +280,14 @@ def execute_relation_query(
 
     # WHERE → SQL predicate composed onto the relation (lazy).
     if match.where is not None:
-        from pycypher.relation_sql import compile_expression
-
         predicate = compile_expression(match.where, var_name, attr_map)
         base_rel = base_rel.filter(predicate)
 
     project_parts = []
     for item in ret.items:
-        src_col = sanitize_sql_identifier(attr_map[item.expression.property])
+        sql_expr = compile_expression(item.expression, var_name, attr_map)
         alias = sanitize_sql_identifier(_output_column(item))
-        project_parts.append(f'"{src_col}" AS "{alias}"')
+        project_parts.append(f'{sql_expr} AS "{alias}"')
     projected = base_rel.project(", ".join(project_parts))
 
     bindings = RelationBindings(DuckDBLazyFrame(projected, con))
