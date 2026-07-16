@@ -10,16 +10,17 @@ Disabled by default — enabled per-:class:`Context` via a truthy
 ``PYCYPHER_DUCKDB_RELATION_ENGINE`` environment variable.  When disabled the
 dispatch never fires, guaranteeing zero behaviour change.
 
-Eligible subset so far: a single node or a fixed-length directed path
-``MATCH`` (one or more hops); an optional ``WHERE`` that compiles to a SQL
-predicate
-(:mod:`pycypher.relation_sql`); a ``RETURN`` of compilable expressions
-(property lookups, arithmetic, literals, registered scalar UDFs, and
-``count/sum/avg/min/max`` aggregates with implicit GROUP BY); and
-DISTINCT / ORDER BY / SKIP+LIMIT.  Duplicate output column names are rejected.
-Not yet: multi-hop / undirected / variable-length paths, OPTIONAL MATCH, WITH
-chaining, ``collect()``, and unregistered functions.  See
-``docs/duckdb_out_of_core_design.md``.
+Eligible subset so far: a required leading ``MATCH`` (single node or a
+fixed-length directed path of one or more hops) with optional inline node
+properties; zero or more ``OPTIONAL MATCH`` LEFT-join extensions from a bound
+node; an optional ``WHERE`` (compiled to a SQL predicate via
+:mod:`pycypher.relation_sql`); zero or more ``WITH`` stages; and a ``RETURN`` of
+compilable expressions (property lookups, arithmetic, literals, registered
+scalar UDFs, and ``count/sum/avg/min/max`` aggregates with implicit GROUP BY),
+plus DISTINCT / ORDER BY / SKIP+LIMIT.  Duplicate output column names are
+rejected.  Not yet: undirected / variable-length paths, a second required
+MATCH, OPTIONAL MATCH combined with aggregation, ``collect()``, UNWIND, and
+unregistered functions.  See ``docs/duckdb_out_of_core_design.md``.
 
 Source modes: with :func:`register_streaming_source` the base relation is a
 lazy ``read_relation`` view over a file (genuinely out-of-core); otherwise it
@@ -430,13 +431,17 @@ def _scalar_scope(output_names: list[str]) -> _Scope:
     return _Scope(_no_prop, resolve_var, qualified=False, node_vars=frozenset())
 
 
-def _analyze_pattern(match: Any, context: Context) -> tuple[Any, Any, bool, frozenset[str]] | None:
-    """Analyse the leading MATCH pattern.
+def _analyze_leading_pattern(
+    match: Any,
+    context: Context,
+    alias_gen: Any,
+) -> tuple[dict[str, tuple[str, dict[str, str]]], Any, list[tuple[str, str, Any]]] | None:
+    """Analyse the required leading MATCH pattern.
 
-    Returns ``(resolve, build, qualified, node_vars)`` or ``None`` if the
-    pattern is outside the supported subset (a single node, or a fixed-length
-    directed path of one or more relationships, with optional relationship
-    variables).
+    Returns ``(variables, build, inline_preds)`` — variables maps each bound
+    Cypher variable to ``(sql_alias, attr_map)``, build(con) returns the
+    pattern's relation, inline_preds are the nodes' inline-property equalities.
+    Aliases come from *alias_gen* so they are unique across the whole query.
     """
     from pycypher.ast_models import RelationshipDirection, RelationshipPattern
 
@@ -460,22 +465,16 @@ def _analyze_pattern(match: Any, context: Context) -> tuple[Any, Any, bool, froz
         attr = _entity_attr_map(context, node.labels[0])
         if attr is None:
             return None
-        variables = {node.variable.name: ("", attr)}
+        alias = alias_gen()
+        variables = {node.variable.name: (alias, attr)}
         label = node.labels[0]
 
-        def build(con: Any, label: str = label) -> Any:
-            return _base_relation(context, label, con)
+        def build(con: Any, label: str = label, alias: str = alias) -> Any:
+            return _base_relation(context, label, con).set_alias(alias)
 
-        return (
-            _make_resolve(variables),
-            build,
-            False,
-            frozenset(variables),
-            _inline_predicates([node]),
-        )
+        return variables, build, _inline_predicates([node])
 
-    # --- Fixed-length directed path: (n0)-[e0]->(n1)-[e1]->(n2)… (any hops) ---
-    # elements alternate node / relationship / node …, so an odd count ≥ 3.
+    # --- Fixed-length directed path (one or more hops) ---
     if len(elements) >= 3 and len(elements) % 2 == 1:
         nodes = elements[0::2]
         rels = elements[1::2]
@@ -499,15 +498,14 @@ def _analyze_pattern(match: Any, context: Context) -> tuple[Any, Any, bool, froz
         if any(a is None for a in node_attrs) or any(a is None for a in rel_attrs):
             return None
 
-        node_aliases = [f"n{i}" for i in range(len(nodes))]
-        rel_aliases = [f"e{j}" for j in range(len(rels))]
-        variables: dict[str, tuple[str, dict[str, str]]] = {}
+        node_aliases = [alias_gen() for _ in nodes]
+        rel_aliases = [alias_gen() for _ in rels]
+        variables = {}
         for i, nd in enumerate(nodes):
             variables[nd.variable.name] = (node_aliases[i], node_attrs[i])
         for j, rp in enumerate(rels):
             if rp.variable is not None:
                 variables[rp.variable.name] = (rel_aliases[j], rel_attrs[j])
-        # All bound variables (nodes + named rels) must be distinct.
         n_named = len(nodes) + sum(1 for rp in rels if rp.variable is not None)
         if len(variables) != n_named:
             return None
@@ -535,32 +533,132 @@ def _analyze_pattern(match: Any, context: Context) -> tuple[Any, Any, bool, froz
             acc = node_rels[0]
             for j, right in enumerate(rights):
                 na, nb, ea = node_aliases[j], node_aliases[j + 1], rel_aliases[j]
-                if right:  # (n_j)-[e_j]->(n_{j+1}): n_j source, n_{j+1} target
+                if right:
                     c1 = f'{na}."__ID__" = {ea}."__SOURCE__"'
                     c2 = f'{ea}."__TARGET__" = {nb}."__ID__"'
-                else:  # (n_j)<-[e_j]-(n_{j+1}): n_{j+1} source, n_j target
+                else:
                     c1 = f'{na}."__ID__" = {ea}."__TARGET__"'
                     c2 = f'{ea}."__SOURCE__" = {nb}."__ID__"'
                 acc = acc.join(rel_rels[j], c1).join(node_rels[j + 1], c2)
             return acc
 
-        return (
-            _make_resolve(variables),
-            build,
-            True,
-            frozenset(variables),
-            _inline_predicates(nodes),
-        )
+        return variables, build, _inline_predicates(nodes)
 
     return None
+
+
+def _analyze_optional_pattern(
+    bound: dict[str, tuple[str, dict[str, str]]],
+    context: Context,
+    opt_match: Any,
+    alias_gen: Any,
+) -> tuple[dict[str, tuple[str, dict[str, str]]], Any] | None:
+    """Analyse one OPTIONAL MATCH as a LEFT-join extension.
+
+    Supports a single directed relationship ``(x)-[e]->(y)`` / ``(x)<-[e]-(y)``
+    where the left node *x* is already bound and the right node *y* (and an
+    optional relationship variable) is new.  Returns ``(new_variables,
+    extend)`` where ``extend(con, base_rel)`` LEFT-joins the hop onto *base_rel*.
+    """
+    from pycypher.ast_models import (
+        NodePattern,
+        RelationshipDirection,
+        RelationshipPattern,
+    )
+
+    if opt_match.where is not None:
+        return None  # WHERE on an optional pattern would need join-condition placement
+    paths = opt_match.pattern.paths
+    if len(paths) != 1:
+        return None
+    path = paths[0]
+    if path.variable is not None:
+        return None
+    if getattr(path, "shortest_path_mode", "none") not in ("none", None):
+        return None
+    elements = path.elements
+    if len(elements) != 3:
+        return None
+    n_left, rp, n_right = elements
+    # The left node is already bound: referenced by variable, its label is
+    # optional (and ignored).  The right node is new and needs a single label.
+    if not (isinstance(n_left, NodePattern) and n_left.variable is not None):
+        return None
+    if not _valid_node(n_right):
+        return None
+    if getattr(n_left, "properties", None) or getattr(n_right, "properties", None):
+        return None  # inline props on an optional pattern not supported
+    if not isinstance(rp, RelationshipPattern):
+        return None
+    if rp.length is not None or getattr(rp, "properties", None):
+        return None
+    if len(rp.labels) != 1:
+        return None
+    if rp.direction not in (
+        RelationshipDirection.RIGHT,
+        RelationshipDirection.LEFT,
+    ):
+        return None
+
+    x_var, y_var = n_left.variable.name, n_right.variable.name
+    if x_var not in bound or y_var in bound:
+        return None  # left must be bound, right must be new
+    rel_attr = _rel_attr_map(context, rp.labels[0])
+    y_attr = _entity_attr_map(context, n_right.labels[0])
+    if rel_attr is None or y_attr is None:
+        return None
+
+    x_alias = bound[x_var][0]
+    y_alias, e_alias = alias_gen(), alias_gen()
+    new_vars: dict[str, tuple[str, dict[str, str]]] = {y_var: (y_alias, y_attr)}
+    if rp.variable is not None:
+        rv = rp.variable.name
+        if rv in bound or rv == y_var:
+            return None
+        new_vars[rv] = (e_alias, rel_attr)
+
+    right = rp.direction == RelationshipDirection.RIGHT
+    y_label, e_label = n_right.labels[0], rp.labels[0]
+
+    def extend(
+        con: Any,
+        base_rel: Any,
+        x_alias: str = x_alias,
+        y_alias: str = y_alias,
+        e_alias: str = e_alias,
+        y_label: str = y_label,
+        e_label: str = e_label,
+        right: bool = right,  # noqa: FBT001
+    ) -> Any:
+        e_rel = _rel_base_relation(context, e_label, con).set_alias(e_alias)
+        y_rel = _base_relation(context, y_label, con).set_alias(y_alias)
+        if right:
+            c1 = f'{x_alias}."__ID__" = {e_alias}."__SOURCE__"'
+            c2 = f'{e_alias}."__TARGET__" = {y_alias}."__ID__"'
+        else:
+            c1 = f'{x_alias}."__ID__" = {e_alias}."__TARGET__"'
+            c2 = f'{e_alias}."__SOURCE__" = {y_alias}."__ID__"'
+        return base_rel.join(e_rel, c1, how="left").join(y_rel, c2, how="left")
+
+    return new_vars, extend
+
+
+def _compose_build(base_build: Any, extend: Any) -> Any:
+    """Return a build that applies *extend* to *base_build*'s relation."""
+
+    def composed(con: Any, base_build: Any = base_build, extend: Any = extend) -> Any:
+        return extend(con, base_build(con))
+
+    return composed
 
 
 def _analyze_query(query: Any, context: Context) -> _Plan | None:
     """Return a pipeline plan for *query* if eligible, else ``None``.
 
-    Shape: a leading pattern ``MATCH``, then zero or more ``WITH`` stages, ending
-    in a ``RETURN``.  A ``MATCH`` after a ``WITH`` (second/correlated pattern) is
-    not supported.
+    Shape: a required leading ``MATCH``, then zero or more ``OPTIONAL MATCH``
+    (LEFT-join extensions from a bound node), then zero or more ``WITH`` stages,
+    ending in ``RETURN``.  A required ``MATCH`` after the first, or any ``MATCH``
+    after a ``WITH``, is not supported.
     """
     from pycypher.ast_models import Match, Query, Return, With
 
@@ -573,19 +671,61 @@ def _analyze_query(query: Any, context: Context) -> _Plan | None:
     clauses = query.clauses
     if len(clauses) < 2:
         return None
-    match = clauses[0]
-    if not isinstance(match, Match) or not isinstance(clauses[-1], Return):
+    if not isinstance(clauses[0], Match) or clauses[0].optional:
         return None
-    for clause in clauses[1:-1]:
+    if not isinstance(clauses[-1], Return):
+        return None
+
+    # Split the middle clauses: OPTIONAL MATCHes, then WITHs.
+    idx = 1
+    opt_matches: list[Any] = []
+    while idx < len(clauses) - 1 and isinstance(clauses[idx], Match):
+        if not clauses[idx].optional:
+            return None  # a second required MATCH is not supported
+        opt_matches.append(clauses[idx])
+        idx += 1
+    for clause in clauses[idx:-1]:
         if not isinstance(clause, With):
             return None
-    pattern = _analyze_pattern(match, context)
-    if pattern is None:
+    stages = list(clauses[idx:])
+
+    # Aggregating over an OPTIONAL pattern is not supported: count(<optional
+    # node>) must count non-null matches, but the engine's count(node) →
+    # COUNT(*) shortcut would over-count.  Fall back for correctness.
+    if opt_matches:
+        from pycypher.relation_sql import is_aggregate
+
+        if any(is_aggregate(it.expression) for stage in stages for it in stage.items):
+            return None
+
+    counter = [0]
+
+    def alias_gen() -> str:
+        alias = f"v{counter[0]}"
+        counter[0] += 1
+        return alias
+
+    lead = _analyze_leading_pattern(clauses[0], context, alias_gen)
+    if lead is None:
         return None
-    resolve, build, qualified, node_vars, inline_preds = pattern
+    variables, build, inline_preds = lead
+
+    for opt_match in opt_matches:
+        ext = _analyze_optional_pattern(variables, context, opt_match, alias_gen)
+        if ext is None:
+            return None
+        new_vars, extend = ext
+        variables = {**variables, **new_vars}
+        build = _compose_build(build, extend)
+
     return _Plan(
-        resolve, build, match.where, qualified, node_vars,
-        list(clauses[1:]), inline_preds,
+        _make_resolve(variables),
+        build,
+        clauses[0].where,
+        len(variables) > 1,
+        frozenset(variables),
+        stages,
+        inline_preds,
     )
 
 
