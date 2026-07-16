@@ -256,18 +256,6 @@ def parse(cypher_query: str, *, as_json: bool, run_validation: bool) -> None:
     help="Output format for results.",
 )
 @click.option(
-    "--suggestions",
-    is_flag=True,
-    default=False,
-    help="Show similar query patterns from the suggestion engine.",
-)
-@click.option(
-    "--hints",
-    is_flag=True,
-    default=False,
-    help="Show performance hints and optimization suggestions.",
-)
-@click.option(
     "--profile",
     is_flag=True,
     default=False,
@@ -287,8 +275,6 @@ def query(
     output: Path | None,
     limit: int | None,
     output_format: str,
-    suggestions: bool,
-    hints: bool,
     profile: bool,
     explain: bool,
 ) -> None:
@@ -320,32 +306,6 @@ def query(
             limit,
             output_format,
         )
-
-    # Show performance hints if requested
-    if hints:
-        from pycypher.cli_intelligence import (
-            PerformanceHintEngine,
-            format_hints,
-        )
-
-        hint_engine = PerformanceHintEngine()
-        hint_results = hint_engine.analyze(cypher_query)
-        hint_output = format_hints(hint_results)
-        if hint_output:
-            click.echo(hint_output)
-
-    # Show query suggestions if requested
-    if suggestions:
-        from pycypher.cli_intelligence import (
-            QuerySuggestionEngine,
-            format_suggestions,
-        )
-
-        suggestion_engine = QuerySuggestionEngine.with_common_patterns()
-        suggestion_results = suggestion_engine.suggest(cypher_query)
-        suggestion_output = format_suggestions(suggestion_results)
-        if suggestion_output:
-            click.echo(suggestion_output)
 
 
 @click.command("format-query")

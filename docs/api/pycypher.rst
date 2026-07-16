@@ -782,17 +782,6 @@ Type aliases and type definitions used across the codebase.
    :undoc-members:
    :show-inheritance:
 
-Query Learning — ML-Powered Optimization
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Adaptive query optimization using online learning with exponential moving
-averages.  No heavyweight ML dependencies.
-
-.. automodule:: pycypher.query_learning
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 Exceptions
 ~~~~~~~~~~
 

@@ -11,11 +11,6 @@ Subpackages
   compatibility checking and data lineage
 * :mod:`fastopendata.analytics` — query performance metrics, trend analysis,
   and regression detection
-* :mod:`fastopendata.multiverse` — speculative parallel execution with
-  collapse strategies
-* :mod:`fastopendata.swarm` — swarm intelligence optimizers (ant colony, bee
-  colony, particle swarm)
-* :mod:`fastopendata.loadbalancer` — adaptive load balancing and routing
 
 Heavy submodules (streaming, schema_evolution, analytics, pipeline) are
 loaded lazily on first access to reduce startup time for config-only usage.

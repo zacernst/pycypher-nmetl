@@ -17,7 +17,6 @@ first query to production deployment.
    data_etl_pipeline
    integration_guide
    production_deployment
-   ml_optimization
    troubleshooting
 
 Learning Pathway
@@ -53,9 +52,7 @@ work forward:
    notebooks.  Query parameters, error handling, context refresh patterns.
 8. :doc:`production_deployment` — Backend selection, rate limiting, audit
    logging, timeouts, and caching for production workloads.
-9. :doc:`ml_optimization` — ML-powered adaptive query optimization with
-   fingerprinting, selectivity learning, and join strategy selection.
-10. :doc:`troubleshooting` — Diagnose parse errors, missing results,
+9. :doc:`troubleshooting` — Diagnose parse errors, missing results,
    performance problems, and unexpected output.
 
 .. tip::
