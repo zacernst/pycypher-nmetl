@@ -37,7 +37,7 @@ export TESTS_DIR := ${PROJECT_ROOT}/tests
 export COVERAGE_DIR := ${PROJECT_ROOT}/coverage_report
 
 # Main targets
-.PHONY: help pycypher shared test tests docs lsp clean veryclean venv uv start format lint lint-changed audit typecheck coverage coverage-check check setup test-file test-find test-k test-mark watch reset lock-check dev-check bench bench-save bench-compare bench-memory metrics-snapshot metrics-prometheus test-telemetry dev-up dev-up-minimal dev-down dev-shell dev-rebuild dev-logs dev-test dev-typecheck dev-format spark-up spark-down spark-logs spark-ui spark-shell spark-scale neo4j-up neo4j-down neo4j-logs neo4j-browser neo4j-shell neo4j-reset infra-up infra-down test-spark test-neo4j test-integration fod-up fod-down fod-shell fod-logs fod-rebuild fod-api-up fod-api-down fod-api-shell fod-api-logs fod-api-rebuild fod-site nominatim-up nominatim-down nominatim-logs nominatim-search nominatim-status fod-data fod-data-plan fod-data-census fod-data-tiger fod-data-osm fod-data-wikidata fod-data-status fod-data-clean
+.PHONY: help pycypher shared test tests docs lsp clean veryclean venv uv start format lint lint-changed audit typecheck coverage coverage-check check setup test-file test-find test-k test-mark watch reset lock-check dev-check bench bench-save bench-compare bench-memory metrics-snapshot metrics-prometheus test-telemetry dev-up dev-up-minimal dev-down dev-shell dev-rebuild dev-logs dev-test dev-typecheck dev-format spark-up spark-down spark-logs spark-ui spark-shell spark-scale neo4j-up neo4j-down neo4j-logs neo4j-browser neo4j-shell neo4j-reset infra-up infra-down test-spark test-neo4j test-integration fod-up fod-down fod-shell fod-logs fod-rebuild fod-api-up fod-api-down fod-api-shell fod-api-logs fod-api-rebuild fod-site nominatim-up nominatim-down nominatim-logs nominatim-search nominatim-status fod-data fod-data-plan fod-data-census fod-data-tiger fod-data-osm fod-data-wikidata fod-data-status fod-data-clean import-cycles import-cycles-ratchet
 
 # Default target - run the complete build process
 all: clean venv format pycypher docs
@@ -365,6 +365,11 @@ feature-completeness:
 import-cycles:
 	@uv run python scripts/check_import_cycles.py
 
+# Import cycle ratchet — fail if a new cycle appears or an existing cycle
+# gains a member, relative to scripts/import_cycles_baseline.txt
+import-cycles-ratchet:
+	@uv run python scripts/check_import_cycles.py --ratchet
+
 # Orphan module detection (zero inbound imports)
 orphans:
 	@uv run python scripts/check_orphan_modules.py
@@ -443,7 +448,7 @@ dev-check:
 	@echo "Environment OK — all required Docker variables are set."
 
 # Run format + lint + typecheck + fast tests (local CI equivalent)
-check: lock-check format lint typecheck test-fast
+check: lock-check format lint typecheck import-cycles-ratchet test-fast
 
 ## Code quality dashboard — complexity hotspots, lint summary, type coverage
 quality:
