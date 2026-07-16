@@ -20,9 +20,24 @@ def load_workspace_config(config_path: Path) -> dict:
         return tomllib.load(f)
 
 
+def resolve_workspace_paths(config: dict) -> tuple[Path, Path]:
+    """Resolve base_dir/data_root, honouring the PYCYPHER_WORKSPACE_ROOT
+    environment override and treating relative TOML paths as relative to
+    base_dir rather than hardcoding a machine-specific path.
+    """
+    base_dir = Path(
+        os.environ.get("PYCYPHER_WORKSPACE_ROOT", config["workspace"]["base_dir"])
+    ).resolve()
+    data_root_raw = Path(config["workspace"]["data_root"])
+    data_root = (
+        data_root_raw if data_root_raw.is_absolute() else base_dir / data_root_raw
+    )
+    return base_dir, data_root
+
+
 def create_directories(config: dict, environment: str = "development") -> None:
     """Create workspace directory structure."""
-    data_root = Path(config["workspace"]["data_root"])
+    _, data_root = resolve_workspace_paths(config)
 
     # Create base directories
     directories = [
@@ -46,8 +61,7 @@ def create_directories(config: dict, environment: str = "development") -> None:
 
 def generate_env_file(config: dict, environment: str = "development") -> None:
     """Generate .env file with workspace environment variables."""
-    data_root = Path(config["workspace"]["data_root"])
-    base_dir = Path(config["workspace"]["base_dir"])
+    base_dir, data_root = resolve_workspace_paths(config)
 
     env_content = f"""# pycypher-nmetl Workspace Environment Variables
 # Generated from workspace.toml for {environment} environment

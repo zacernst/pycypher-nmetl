@@ -2,11 +2,13 @@
 # This file defines workspace-wide paths for data processing
 
 [workspace]
-# Base directory for all data processing
-base_dir = "/Users/zernst/git/pycypher-nmetl"
+# Base directory for all data processing. Relative paths are resolved
+# against the current working directory (normally the repo root); set
+# PYCYPHER_WORKSPACE_ROOT to override on a per-machine basis.
+base_dir = "."
 
-# Data storage and processing directories
-data_root = "/Users/zernst/git/pycypher-nmetl/data"
+# Data storage and processing directories, relative to base_dir.
+data_root = "data"
 
 [fastopendata]
 # fastopendata-specific directories (relative to data_root)

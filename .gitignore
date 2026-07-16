@@ -185,6 +185,11 @@ objects.inv
 # Ruff stuff:
 .ruff_cache/
 
+# Serena / Snakemake local state, vendored Google Cloud SDK
+.serena/
+.snakemake/
+google-cloud-sdk/
+
 # PyPI configuration file
 .pypirc
 *.woff2
