@@ -55,13 +55,55 @@ result = star.execute_query("MATCH (p:Person) WHERE p.age > 28 RETURN p.name")
 ## Backends
 
 `packages/pycypher/src/pycypher/backends/` contains `pandas_backend.py`,
-`polars_backend.py`, `duckdb_backend.py`. **Gotcha (see T9 investigation,
-2026-05-27):** the planning path in `star.py::_analyze_and_plan` does not
-dispatch to these backends during normal `execute_query` — execution flows
-through `BindingFrame` directly against the registered DataFrames regardless of
-`context.backend_name`. The TUI's backend-engine setting therefore has no
-runtime effect today. Treat `backend_name` as metadata until the dispatch is
-wired (or deleted).
+`polars_backend.py`, `duckdb_backend.py`; the `BackendEngine` protocol,
+factory/registry, and `select_backend` live in
+`packages/pycypher/src/pycypher/backend_engine.py`.
+
+**Dispatch is live (verified 2026-07-14).** `BindingFrame` delegates
+`filter`/`join`/`left_join`/`cross_join`/`rename` to `context.backend`
+(`binding_frame.py`), and `QueryAnalyzer` can swap the backend mid-query on
+optimizer hints (`query_analyzer.py`). `Context.__init__` always resolves a
+concrete engine (min. `PandasBackend`), so a `Context(backend="duckdb")`
+genuinely routes joins/filters through DuckDB. The earlier "backends are never
+called" gotcha is obsolete — do not reintroduce it.
+
+**Config threading (added 2026-07-14):** `PipelineConfig.backend_engine`
+(`auto`/`pandas`/`duckdb`/`polars`, `config.py:626`) is forwarded into the run
+via `builder.build(backend=...)` at `cli/pipeline.py:566`. `run_impl` also
+calls `context.backend.close()` at run end to release the DuckDB in-memory
+connection rather than relying on `__del__`.
+
+**Spark: implemented (Phases 1–8, 2026-07-14).** `SparkBackend`
+(`backends/spark_backend.py`) implements all 16 `BackendEngine` methods,
+is registered in `_BACKEND_FACTORIES`, and is a valid `backend_engine: spark`
+config value. It passes `check_backend_health`, the equivalence matrix
+(`test_backend_equivalence_comprehensive.py` — enrolled via `_available_backends()`),
+the e2e acceptance matrix (`test_backend_e2e_acceptance.py`), and an
+end-to-end `nmetl run`. See `docs/spark_backend_design.md`. Key properties:
+  - **Return contract:** every op returns pandas (like DuckDB); Spark powers
+    the set ops (`scan_entity`/`join`/`distinct`/`aggregate`/`sort`) and
+    materialises with `.toPandas()`. `filter`/`rename`/`concat`/`assign_column`/
+    `limit`/`skip` delegate to pandas.
+  - **Session:** `getOrCreate`; `close()` only stops a session the backend
+    created (`_owned`), so the run-path `close()` never tears down a shared
+    session (tests/embedded).
+  - **Explicit-only:** excluded from `_FALLBACK_CHAIN` — `auto` never selects
+    Spark (JVM startup cost).
+  - **Not yet distributed (Phase 9, deferred):** `BindingFrame.get_property`
+    and `AggregationEvaluator` still run on pandas, and bindings round-trip
+    through pandas between ops, so Spark is correct but collects to the driver.
+  - Tests carry `@pytest.mark.spark` and skip when pyspark is absent, so the
+    default `make test` is unaffected. Requires a JVM (verified: OpenJDK 21).
+
+Readiness: **pandas** (live default) and **duckdb** are production-ready —
+complete, tested by the equivalence + e2e acceptance suites, and validated
+end-to-end through `nmetl run`. **polars** is functional and passes the
+equivalence suite but is absent from the e2e acceptance matrix
+(`test_backend_e2e_acceptance.py`) and round-trips pandas↔polars on every op;
+treat it as experimental until it's in the e2e matrix. Two paths still run on
+pandas regardless of backend — `BindingFrame.get_property` and
+`AggregationEvaluator` (documented at `backend_engine.py:61-64`); this bounds
+speedup, not correctness.
 
 ## TUI notes
 

@@ -550,7 +550,25 @@ class ExecuteStage(Stage):
         if isinstance(parsed, UnionQuery):
             ctx.result = ctx.star._execute_union_query(parsed)
         elif isinstance(parsed, Query):
-            ctx.result = ctx.star._execute_query_binding_frame(parsed)
+            # Opt-in out-of-core relation path for the eligible subset; every
+            # other query falls back to the pandas BindingFrame engine.  When
+            # the relation engine is disabled (default) this never fires, so
+            # behaviour is unchanged.  See pycypher.relation_engine.
+            from pycypher.relation_engine import (
+                execute_relation_query,
+                is_relation_eligible,
+                relation_engine_enabled,
+            )
+
+            _context = ctx.star.context
+            if (
+                not is_mutation
+                and relation_engine_enabled(_context)
+                and is_relation_eligible(parsed, _context)
+            ):
+                ctx.result = execute_relation_query(parsed, _context)
+            else:
+                ctx.result = ctx.star._execute_query_binding_frame(parsed)
         else:
             from pycypher.exceptions import GrammarTransformerSyncError
 

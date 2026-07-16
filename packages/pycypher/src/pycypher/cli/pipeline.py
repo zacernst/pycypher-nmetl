@@ -465,6 +465,124 @@ def dry_run_validate(
 # ---------------------------------------------------------------------------
 
 
+def _close_context(context: Any) -> None:
+    """Best-effort close of a context's backend connection."""
+    backend = getattr(context, "backend", None)
+    close = getattr(backend, "close", None)
+    if callable(close):
+        close()
+
+
+def _try_streaming_run(
+    pipeline_config: Any,
+    queries: list[Any],
+    config: Path,
+    on_error: str | None,
+    verbose: bool,
+) -> bool:
+    """Run the pipeline via the out-of-core streaming path when it qualifies.
+
+    Returns ``True`` if the whole run was streamed (caller should stop), or
+    ``False`` if it did not qualify (caller falls through to the normal
+    in-memory path).  Qualifying requires: the ``duckdb`` backend, the relation
+    engine enabled, every query in the eligible subset, and every query having
+    at least one output sink.  The eligibility pre-check performs no writes, so
+    a ``False`` return leaves no partial output.
+    """
+    if pipeline_config.backend_engine != "duckdb":
+        return False
+
+    from pycypher.ast_converter import ASTConverter
+    from pycypher.ingestion.context_builder import ContextBuilder
+    from pycypher.ingestion.data_sources import data_source_from_uri
+    from pycypher.relation_engine import (
+        bridge_user_functions,
+        is_relation_eligible,
+        register_streaming_source,
+        relation_engine_enabled,
+    )
+    from pycypher.star import Star
+
+    context = ContextBuilder().build(backend="duckdb")
+    if not relation_engine_enabled(context):
+        _close_context(context)
+        return False
+
+    # Register user functions into the registry, then bridge the annotated ones
+    # onto the connection so eligible queries can call them out-of-core.
+    _register_user_functions(pipeline_config.functions)
+    bridge_user_functions(context)
+
+    config_dir = config.parent
+    plan: list[tuple[Any, str, list[Any]]] = []
+    try:
+        for entity_src in pipeline_config.sources.entities:
+            ds = data_source_from_uri(
+                entity_src.uri,
+                query=entity_src.query,
+                schema_hints=entity_src.schema_hints,
+            )
+            register_streaming_source(
+                context,
+                entity_src.entity_type,
+                ds,
+                id_col=entity_src.id_col,
+            )
+
+        for q in queries:
+            if q.inline is not None:
+                text = q.inline
+            elif q.source is not None:
+                text = _load_query_text(q.source, config_dir)
+            else:
+                return False
+            ast = ASTConverter.from_cypher(text)
+            if not is_relation_eligible(ast, context):
+                return False
+            sinks = [o for o in pipeline_config.output if o.query_id == q.id]
+            if not sinks:
+                return False
+            plan.append((q, text, sinks))
+    except Exception:  # noqa: BLE001 — any pre-check problem: fall back to the robust normal path
+        from shared.logger import LOGGER
+
+        LOGGER.debug("streaming pre-check failed; using in-memory path", exc_info=True)
+        _close_context(context)
+        return False
+
+    # All queries eligible and have sinks — stream each to its sink(s).
+    click.echo(f"Streaming {len(plan)} query/queries (out-of-core) …")
+    star = Star(context=context)
+    tracker = ErrorPolicyTracker((on_error or "fail").lower())
+    stream_errors = _QUERY_EXEC_ERRORS + _OUTPUT_ERRORS
+    try:
+        for qi, (q, text, sinks) in enumerate(plan, 1):
+            for si, sink in enumerate(sinks, 1):
+                try:
+                    star.stream_query_to_uri(text, sink.uri, sink.format)
+                    click.echo(
+                        f"  [{qi}/{len(plan)}] query [{q.id}]"
+                        f" output {si}/{len(sinks)}"
+                        f" -> {mask_uri_credentials(sink.uri)}",
+                    )
+                except stream_errors as exc:
+                    label = get_pipeline_error_label(exc)
+                    tracker.handle(
+                        f"query [{q.id}] {label}: {exc}",
+                    )
+    finally:
+        _close_context(context)
+
+    if tracker.failed and tracker.policy == "warn":
+        click.echo(
+            "Pipeline completed with warnings.  "
+            "One or more queries failed (see above).",
+            err=True,
+        )
+    click.echo("Done.")
+    return True
+
+
 def run_impl(
     config: Path,
     dry_run: bool,
@@ -517,6 +635,17 @@ def run_impl(
 
     if dry_run:
         dry_run_validate(pipeline_config, queries, config, verbose=verbose)
+        return
+
+    # -------------------------------------------------------------------
+    # Out-of-core streaming fast path (opt-in).  When enabled and the whole
+    # run qualifies (duckdb backend, every query in the relation-engine's
+    # eligible subset, every query has an output sink), stream each query
+    # file -> relation -> sink via DuckDB COPY without loading sources into
+    # memory.  Any mismatch returns False and we fall through to the normal
+    # in-memory path below, unchanged.
+    # -------------------------------------------------------------------
+    if _try_streaming_run(pipeline_config, queries, config, on_error, verbose):
         return
 
     # -------------------------------------------------------------------
