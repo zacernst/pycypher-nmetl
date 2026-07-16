@@ -235,11 +235,42 @@ the Series callables as DuckDB Arrow-vectorized UDFs. Until then, `functions:`
 UDFs still force fallback to the in-memory engine (correct, not out-of-core);
 `register_relation_udf` is the explicit-types path that works today.
 
-### Phase 11 — Mutations (SET / CREATE / DELETE)
-Migrate `MutationEngine` / `binding_frame.mutate*` (`binding_frame.py:1487-1776`)
-for ETL that writes derived graph data. Sizable; **may be deferred** if the
-out-of-core need is read/transform→sink rather than in-graph mutation — decide
-based on workload.
+### Phase 10c — WITH chaining (multi-part read queries)
+
+Support `MATCH … WITH … [WHERE] … RETURN …` as a pipeline of relations: each
+`WITH`/`RETURN` stage projects/aggregates the current relation to a new one
+whose output aliases become the next stage's in-scope (scalar) variables. A
+`WHERE` inside `WITH` filters the stage's output (HAVING semantics when the
+stage aggregates). Fits the streaming model directly (a chain of lazy
+`DuckDBPyRelation` ops) and is common in real ETL.
+
+First cut: one leading pattern `MATCH` (single node or single relationship),
+then one or more `WITH` stages, ending in `RETURN`; each stage supports
+projection / aggregation / `WHERE` / DISTINCT / ORDER BY / SKIP+LIMIT. Requires
+the compiler to resolve **bare variables** (post-`WITH` scalar columns), not
+just `var.property` lookups. Deferred within this cut: a `MATCH` after a `WITH`
+(correlated/second pattern) and `UNWIND`.
+
+### Phase 11 — Mutations (SET / CREATE / DELETE) — **DEFERRED (2026-07-15)**
+
+**Decision: deferred; mutations stay on the in-memory pandas engine.**
+
+Investigation showed mutations are stateful and in-memory by construction: the
+`MutationEngine` accumulates a mutable "shadow" graph layer in RAM
+(`self.context._shadow[entity_type] = concat([base_df, new_df])`,
+`mutation_engine.py:381`; `SET`/`DELETE` similarly mutate `source_obj`/shadow
+state). That growing in-memory graph state is exactly what out-of-core avoids,
+so mutations do not fit the read-only streaming model (`MATCH → filter/join/
+aggregate/project → sink`). Mutation queries also have a distinct clause shape
+(`[Match, Set]`, `[Match, Delete]`, `[Create]`) with no RETURN/sink, and already
+fall back to the pandas engine via the `not is_mutation` dispatch gate.
+
+The only shape that could stream — `MATCH … CREATE (derived {…})` writing
+derived rows to a *new* sink — is already expressible in the read path
+(`MATCH … RETURN <derived props>` → sink), so a CREATE-to-sink slice adds
+little. True out-of-core mutation would need disk-backed/delta graph storage —
+a separate project beyond "out-of-core ETL reads", to be scoped only if a
+workload genuinely requires it.
 
 ---
 
