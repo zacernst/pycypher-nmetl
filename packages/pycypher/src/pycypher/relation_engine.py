@@ -17,10 +17,13 @@ node; an optional ``WHERE`` (compiled to a SQL predicate via
 :mod:`pycypher.relation_sql`); zero or more ``WITH`` stages; and a ``RETURN`` of
 compilable expressions (property lookups, arithmetic, literals, registered
 scalar UDFs, and ``count/sum/avg/min/max`` aggregates with implicit GROUP BY),
-plus DISTINCT / ORDER BY / SKIP+LIMIT.  Duplicate output column names are
-rejected.  Not yet: undirected / variable-length paths, a second required
-MATCH, OPTIONAL MATCH combined with aggregation, ``collect()``, UNWIND, and
-unregistered functions.  See ``docs/duckdb_out_of_core_design.md``.
+plus DISTINCT / ORDER BY / SKIP+LIMIT.  Also: a leading ``UNWIND`` of a list, a
+leading ``WITH`` of constants, and ``UNWIND`` of a scalar list column in a
+``WITH`` stage.  Duplicate output column names are rejected.  Not yet:
+undirected / variable-length paths, a second required MATCH, OPTIONAL MATCH
+combined with aggregation, ``UNWIND`` in pattern scope (right after MATCH),
+``collect()``, and unregistered functions.  See
+``docs/duckdb_out_of_core_design.md``.
 
 Source modes: with :func:`register_streaming_source` the base relation is a
 lazy ``read_relation`` view over a file (genuinely out-of-core); otherwise it
@@ -363,41 +366,38 @@ def _compile_inline_predicates(
 
 
 class _Plan:
-    """A resolved, eligible relation-query plan: a leading pattern + stages."""
+    """A resolved, eligible relation-query plan: a base + pipeline stages."""
 
     __slots__ = (
         "build",
+        "initial_scope",
         "inline_preds",
         "match_where",
-        "node_vars",
-        "qualified",
-        "resolve",
         "stages",
+        "unwind_expr",
     )
 
     def __init__(
         self,
-        resolve: Any,
+        initial_scope: _Scope,
         build: Any,
         match_where: Any,
-        qualified: bool,  # noqa: FBT001
-        node_vars: frozenset[str],
         stages: list[Any],
         inline_preds: list[tuple[str, str, Any]],
+        unwind_expr: Any = None,
     ) -> None:
-        self.resolve = resolve  # (var, prop) -> col | None (pattern scope)
+        self.initial_scope = initial_scope  # scope over the base relation
         self.build = build  # build(con) -> DuckDBPyRelation
         self.match_where = match_where  # WHERE from the MATCH clause | None
-        self.qualified = qualified  # multi-variable pattern → qualified names
-        self.node_vars = node_vars  # pattern variable names
-        self.stages = stages  # [With, …, Return]
+        self.stages = stages  # [With | Unwind, …, Return]
         self.inline_preds = inline_preds  # (var, prop, value_ast) equality preds
+        self.unwind_expr = unwind_expr  # list expr of a leading UNWIND | None
 
 
 class _Scope:
     """Name resolution for one pipeline stage."""
 
-    __slots__ = ("node_vars", "qualified", "resolve", "resolve_var")
+    __slots__ = ("names", "node_vars", "qualified", "resolve", "resolve_var")
 
     def __init__(
         self,
@@ -406,11 +406,13 @@ class _Scope:
         *,
         qualified: bool,
         node_vars: frozenset[str],
+        names: frozenset[str] | None = None,
     ) -> None:
         self.resolve = resolve  # (var, prop) -> col | None
         self.resolve_var = resolve_var  # (name) -> col | None (bare scalars)
         self.qualified = qualified
         self.node_vars = node_vars
+        self.names = names  # scalar column names (for UNWIND '*'), None in pattern scope
 
 
 def _no_prop(_var: str, _prop: str) -> None:
@@ -423,12 +425,14 @@ def _no_var(_name: str) -> None:
 
 def _scalar_scope(output_names: list[str]) -> _Scope:
     """A scope where bare variables resolve to a prior stage's output columns."""
-    names = set(output_names)
+    names = frozenset(output_names)
 
     def resolve_var(name: str) -> str | None:
         return _quote_output_alias(name) if name in names else None
 
-    return _Scope(_no_prop, resolve_var, qualified=False, node_vars=frozenset())
+    return _Scope(
+        _no_prop, resolve_var, qualified=False, node_vars=frozenset(), names=names,
+    )
 
 
 def _analyze_leading_pattern(
@@ -652,15 +656,28 @@ def _compose_build(base_build: Any, extend: Any) -> Any:
     return composed
 
 
+def _leading_unwind_build(var: str, list_expr: Any) -> Any:
+    """Build for a leading ``UNWIND <list> AS var`` (base = the unnested list)."""
+
+    def build(con: Any, var: str = var, list_expr: Any = list_expr) -> Any:
+        from pycypher.relation_sql import compile_expression
+
+        list_sql = compile_expression(list_expr, _no_prop, resolve_var=_no_var)
+        return con.sql(f"SELECT UNNEST({list_sql}) AS {_quote_output_alias(var)}")
+
+    return build
+
+
 def _analyze_query(query: Any, context: Context) -> _Plan | None:
     """Return a pipeline plan for *query* if eligible, else ``None``.
 
-    Shape: a required leading ``MATCH``, then zero or more ``OPTIONAL MATCH``
-    (LEFT-join extensions from a bound node), then zero or more ``WITH`` stages,
-    ending in ``RETURN``.  A required ``MATCH`` after the first, or any ``MATCH``
-    after a ``WITH``, is not supported.
+    Shape: either a required leading ``MATCH`` (then zero or more ``OPTIONAL
+    MATCH`` LEFT-join extensions), or a leading ``UNWIND`` of a list; followed by
+    zero or more ``WITH``/``UNWIND`` stages; ending in ``RETURN``.  A second
+    required ``MATCH``, or any ``MATCH`` after the pattern phase, is not
+    supported.
     """
-    from pycypher.ast_models import Match, Query, Return, With
+    from pycypher.ast_models import Match, Query, Return, Unwind, With
 
     if getattr(context, "backend_name", None) != "duckdb":
         return None
@@ -669,14 +686,45 @@ def _analyze_query(query: Any, context: Context) -> _Plan | None:
     if not isinstance(query, Query):
         return None
     clauses = query.clauses
-    if len(clauses) < 2:
-        return None
-    if not isinstance(clauses[0], Match) or clauses[0].optional:
-        return None
-    if not isinstance(clauses[-1], Return):
+    if len(clauses) < 2 or not isinstance(clauses[-1], Return):
         return None
 
-    # Split the middle clauses: OPTIONAL MATCHes, then WITHs.
+    def _valid_stages(stages: list[Any]) -> bool:
+        # Middle stages (all but the final RETURN) must be WITH or UNWIND.
+        return all(isinstance(c, (With, Unwind)) for c in stages[:-1])
+
+    # --- Leading UNWIND of a list ---
+    if isinstance(clauses[0], Unwind):
+        uw = clauses[0]
+        if uw.alias is None:
+            return None
+        stages = list(clauses[1:])
+        if not _valid_stages(stages):
+            return None
+        return _Plan(
+            _scalar_scope([uw.alias]),
+            _leading_unwind_build(uw.alias, uw.expression),
+            None,
+            stages,
+            [],
+            unwind_expr=uw.expression,
+        )
+
+    # --- Leading WITH of constants (no source) → single-row base ---
+    if isinstance(clauses[0], With):
+        stages = list(clauses)
+        if not _valid_stages(stages):
+            return None
+
+        def build(con: Any) -> Any:
+            return con.sql("SELECT 1 AS __unit")
+
+        return _Plan(_scalar_scope([]), build, None, stages, [])
+
+    # --- Leading MATCH pattern (+ optional matches) ---
+    if not isinstance(clauses[0], Match) or clauses[0].optional:
+        return None
+
     idx = 1
     opt_matches: list[Any] = []
     while idx < len(clauses) - 1 and isinstance(clauses[idx], Match):
@@ -684,10 +732,9 @@ def _analyze_query(query: Any, context: Context) -> _Plan | None:
             return None  # a second required MATCH is not supported
         opt_matches.append(clauses[idx])
         idx += 1
-    for clause in clauses[idx:-1]:
-        if not isinstance(clause, With):
-            return None
     stages = list(clauses[idx:])
+    if not _valid_stages(stages):
+        return None
 
     # Aggregating over an OPTIONAL pattern is not supported: count(<optional
     # node>) must count non-null matches, but the engine's count(node) →
@@ -695,7 +742,11 @@ def _analyze_query(query: Any, context: Context) -> _Plan | None:
     if opt_matches:
         from pycypher.relation_sql import is_aggregate
 
-        if any(is_aggregate(it.expression) for stage in stages for it in stage.items):
+        if any(
+            is_aggregate(it.expression)
+            for stage in stages
+            for it in getattr(stage, "items", [])
+        ):
             return None
 
     counter = [0]
@@ -718,15 +769,13 @@ def _analyze_query(query: Any, context: Context) -> _Plan | None:
         variables = {**variables, **new_vars}
         build = _compose_build(build, extend)
 
-    return _Plan(
+    initial_scope = _Scope(
         _make_resolve(variables),
-        build,
-        clauses[0].where,
-        len(variables) > 1,
-        frozenset(variables),
-        stages,
-        inline_preds,
+        _no_var,
+        qualified=len(variables) > 1,
+        node_vars=frozenset(variables),
     )
+    return _Plan(initial_scope, build, clauses[0].where, stages, inline_preds)
 
 
 def _quote_output_alias(name: str) -> str:
@@ -810,6 +859,8 @@ class _StageSQL:
         "passthrough",
         "select_parts",
         "skip",
+        "unwind",
+        "unwind_select",
         "where_sql",
     )
 
@@ -845,12 +896,29 @@ def _plan_stage(
 
     Returns SQL pieces plus the resulting scope for the next stage.
     """
-    from pycypher.ast_models import PropertyLookup, Variable
+    from pycypher.ast_models import PropertyLookup, Unwind, Variable
     from pycypher.relation_sql import (
         compile_aggregate,
         compile_expression,
         is_aggregate,
     )
+
+    # --- UNWIND stage: expand a list column, keeping current columns ---
+    if isinstance(stage, Unwind):
+        if scope.names is None or stage.alias is None:
+            return None  # only supported in scalar scope (post-WITH / leading UNWIND)
+        if stage.alias in scope.names:
+            return None  # would shadow an existing column
+        expr_sql = compile_expression(
+            stage.expression, scope.resolve, udfs, scope.resolve_var,
+        )
+        if expr_sql is None:
+            return None
+        select = f"*, UNNEST({expr_sql}) AS {_quote_output_alias(stage.alias)}"
+        new_names = [*sorted(scope.names), stage.alias]
+        return _StageSQL(
+            unwind=True, unwind_select=select, new_scope=_scalar_scope(new_names),
+        )
 
     # --- Node pass-through WITH (filter only, scope unchanged) ---
     if not is_return and _stage_is_passthrough(stage, scope):
@@ -949,17 +1017,19 @@ def is_relation_eligible(query: Any, context: Context) -> bool:
         return False
 
     udfs = _udf_names(context)
+    resolve = plan.initial_scope.resolve
     if plan.match_where is not None and (
-        compile_expression(plan.match_where, plan.resolve, udfs) is None
+        compile_expression(plan.match_where, resolve, udfs) is None
     ):
         return False
-
-    if _compile_inline_predicates(plan.inline_preds, plan.resolve, udfs) is None:
+    if plan.unwind_expr is not None and (
+        compile_expression(plan.unwind_expr, _no_prop, resolve_var=_no_var) is None
+    ):
+        return False
+    if _compile_inline_predicates(plan.inline_preds, resolve, udfs) is None:
         return False
 
-    scope = _Scope(
-        plan.resolve, _no_var, qualified=plan.qualified, node_vars=plan.node_vars,
-    )
+    scope = plan.initial_scope
     last = len(plan.stages) - 1
     for i, stage in enumerate(plan.stages):
         sp = _plan_stage(stage, scope, udfs, is_return=(i == last))
@@ -997,18 +1067,21 @@ def execute_relation_query(
     con = context.backend.connection
     udfs = _udf_names(context)
 
+    resolve = plan.initial_scope.resolve
     rel = plan.build(con)
     if plan.match_where is not None:
-        rel = rel.filter(compile_expression(plan.match_where, plan.resolve, udfs))
-    for pred in _compile_inline_predicates(plan.inline_preds, plan.resolve, udfs) or []:
+        rel = rel.filter(compile_expression(plan.match_where, resolve, udfs))
+    for pred in _compile_inline_predicates(plan.inline_preds, resolve, udfs) or []:
         rel = rel.filter(pred)
 
-    scope = _Scope(
-        plan.resolve, _no_var, qualified=plan.qualified, node_vars=plan.node_vars,
-    )
+    scope = plan.initial_scope
     last = len(plan.stages) - 1
     for i, stage in enumerate(plan.stages):
         sp = _plan_stage(stage, scope, udfs, is_return=(i == last))
+        if sp.unwind:
+            rel = rel.project(sp.unwind_select)
+            scope = sp.new_scope
+            continue
         if sp.passthrough:
             if sp.where_sql is not None:
                 rel = rel.filter(sp.where_sql)

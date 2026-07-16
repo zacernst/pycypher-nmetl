@@ -260,7 +260,13 @@ then one or more `WITH` stages, ending in `RETURN`; each stage supports
 projection / aggregation / `WHERE` / DISTINCT / ORDER BY / SKIP+LIMIT. Requires
 the compiler to resolve **bare variables** (post-`WITH` scalar columns), not
 just `var.property` lookups. Deferred within this cut: a `MATCH` after a `WITH`
-(correlated/second pattern) and `UNWIND`.
+(correlated/second pattern).
+
+**UNWIND — DONE (first cut).** A leading `UNWIND <list>`, a leading `WITH` of
+constants, and `UNWIND <scalar list column>` in a `WITH` stage compile to DuckDB
+`UNNEST` (`compile_expression` gained a `ListLiteral` branch). `UNWIND` right
+after `MATCH` (pattern scope, keeping node bindings) is deferred — it needs the
+aliased pattern columns to survive the `UNNEST` projection.
 
 ### Phase 11 — Mutations (SET / CREATE / DELETE) — **DEFERRED (2026-07-15)**
 

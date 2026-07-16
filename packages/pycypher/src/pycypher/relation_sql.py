@@ -137,6 +137,7 @@ def compile_expression(
         FloatLiteral,
         FunctionInvocation,
         IntegerLiteral,
+        ListLiteral,
         Not,
         NullCheck,
         Or,
@@ -185,6 +186,11 @@ def compile_expression(
             return "TRUE" if node.value else "FALSE"
         if isinstance(node, StringLiteral):
             return escape_sql_string_literal(str(node.value))
+        if isinstance(node, ListLiteral):
+            compiled = [rec(e) for e in node.elements]
+            if any(c is None for c in compiled):
+                return None
+            return "[" + ", ".join(compiled) + "]"
 
         # --- Comparisons ---
         if isinstance(node, Comparison):
