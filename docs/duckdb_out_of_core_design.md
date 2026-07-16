@@ -231,15 +231,20 @@ and a `FunctionInvocation` branch, so `name(args)` compiles (and the query is
 eligible) when the name is registered. Verified end-to-end in `WHERE` and
 `RETURN` (`tests/test_relation_udf.py`).
 
-**Remaining (registry auto-bridge):** automatically exposing the existing
-`functions:` config / `ScalarFunctionRegistry` callables is not done — the
-registry stores **Series-based, type-less** callables, so bridging them needs
-either (a) type metadata / annotations plumbed through `register_user_function`
-so `param_types`/`return_type` can be derived, or (b) per-call-site typed
-registration using the argument column types known at compile time, wrapping
-the Series callables as DuckDB Arrow-vectorized UDFs. Until then, `functions:`
-UDFs still force fallback to the in-memory engine (correct, not out-of-core);
-`register_relation_udf` is the explicit-types path that works today.
+**Registry auto-bridge — DONE (2026-07-15).** `bridge_user_functions(context)`
+iterates the `ScalarFunctionRegistry` and, for each function registered from a
+plain scalar callable, recovers the original via `__wrapped__` (`_wrap_row_wise`
+now applies `functools.wraps`) and derives DuckDB `param_types`/`return_type`
+from its Python type **annotations** (`int→BIGINT`, `float→DOUBLE`, `str→VARCHAR`,
+`bool→BOOLEAN`); it then registers them via `register_relation_udf`.
+`_try_streaming_run` calls it, so a `functions:` config UDF works out-of-core
+automatically (verified via `nmetl run`). Functions without a recoverable
+original or without mappable annotations (built-ins, unannotated user
+functions) are skipped and still fall back to the pandas engine — so annotating
+a user function is what opts it into out-of-core. Type-matching caveat: a
+nullable numeric source column is DuckDB `DOUBLE`, so annotate such args as
+`float`. Chosen over per-call-site Arrow UDFs for simplicity; that remains a
+future optimisation for unannotated/built-in functions.
 
 ### Phase 10c — WITH chaining (multi-part read queries)
 

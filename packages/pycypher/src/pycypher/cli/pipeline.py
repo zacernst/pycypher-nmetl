@@ -496,6 +496,7 @@ def _try_streaming_run(
     from pycypher.ingestion.context_builder import ContextBuilder
     from pycypher.ingestion.data_sources import data_source_from_uri
     from pycypher.relation_engine import (
+        bridge_user_functions,
         is_relation_eligible,
         register_streaming_source,
         relation_engine_enabled,
@@ -506,6 +507,11 @@ def _try_streaming_run(
     if not relation_engine_enabled(context):
         _close_context(context)
         return False
+
+    # Register user functions into the registry, then bridge the annotated ones
+    # onto the connection so eligible queries can call them out-of-core.
+    _register_user_functions(pipeline_config.functions)
+    bridge_user_functions(context)
 
     config_dir = config.parent
     plan: list[tuple[Any, str, list[Any]]] = []

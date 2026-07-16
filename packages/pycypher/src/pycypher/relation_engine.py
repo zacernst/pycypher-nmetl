@@ -139,19 +139,97 @@ def register_relation_udf(
         return_type: DuckDB return type string.
 
     """
-    con = context.backend.connection
     lname = name.lower()
-    con.create_function(lname, fn, param_types, return_type)
     store = getattr(context, "_relation_udfs", None)
     if store is None:
         store = set()
         context._relation_udfs = store
+    if lname in store:  # idempotent — bridging may re-run over the same context
+        return
+    context.backend.connection.create_function(lname, fn, param_types, return_type)
     store.add(lname)
 
 
 def _udf_names(context: Context) -> frozenset[str]:
     """Return the set of registered relation-engine UDF names (lowercase)."""
     return frozenset(getattr(context, "_relation_udfs", ()))
+
+
+#: Python annotation type → DuckDB type string for bridging user functions.
+_PY_TO_DUCKDB: dict[type, str] = {
+    int: "BIGINT",
+    float: "DOUBLE",
+    str: "VARCHAR",
+    bool: "BOOLEAN",
+}
+
+
+def _duckdb_types_from_annotations(func: Any) -> tuple[list[str], str] | None:
+    """Derive ``(param_types, return_type)`` from *func*'s type annotations.
+
+    Returns ``None`` if the signature has non-positional params, or any
+    parameter / the return lacks a mappable annotation — such functions can't be
+    bridged and stay on the pandas engine.
+    """
+    import inspect
+    import typing
+
+    try:
+        hints = typing.get_type_hints(func)
+        sig = inspect.signature(func)
+    except (TypeError, ValueError, NameError):
+        return None
+
+    param_types: list[str] = []
+    for param in sig.parameters.values():
+        if param.kind not in (
+            inspect.Parameter.POSITIONAL_ONLY,
+            inspect.Parameter.POSITIONAL_OR_KEYWORD,
+        ):
+            return None
+        duckdb_type = _PY_TO_DUCKDB.get(hints.get(param.name))
+        if duckdb_type is None:
+            return None
+        param_types.append(duckdb_type)
+
+    return_type = _PY_TO_DUCKDB.get(hints.get("return"))
+    if return_type is None or not param_types:
+        return None
+    return param_types, return_type
+
+
+def bridge_user_functions(context: Context) -> None:
+    """Bridge annotated user scalar functions to DuckDB UDFs for out-of-core use.
+
+    Iterates the :class:`ScalarFunctionRegistry`; for each function registered
+    from a plain scalar callable (recoverable via ``__wrapped__``) whose type
+    annotations map cleanly to DuckDB types, registers it on the context's
+    connection via :func:`register_relation_udf`.  Functions without a
+    recoverable original or mappable annotations (e.g. built-ins, unannotated
+    user functions) are skipped and continue to fall back to the pandas engine.
+    """
+    if getattr(context, "backend_name", None) != "duckdb":
+        return
+    from pycypher.scalar_functions import ScalarFunctionRegistry
+
+    registry = ScalarFunctionRegistry.get_instance()
+    for name, meta in registry._functions.items():  # noqa: SLF001 — read-only bridge
+        original = getattr(meta.callable, "__wrapped__", None)
+        if original is None:
+            continue
+        types = _duckdb_types_from_annotations(original)
+        if types is None:
+            continue
+        param_types, return_type = types
+        try:
+            register_relation_udf(
+                context, name, original,
+                param_types=param_types, return_type=return_type,
+            )
+        except Exception:  # noqa: BLE001 — best-effort; skip anything DuckDB rejects
+            from shared.logger import LOGGER
+
+            LOGGER.debug("could not bridge user function %r", name, exc_info=True)
 
 
 def _entity_attr_map(context: Context, label: str) -> dict[str, str] | None:

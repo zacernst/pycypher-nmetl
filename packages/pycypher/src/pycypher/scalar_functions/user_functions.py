@@ -19,6 +19,7 @@ correctness is more valuable than per-row throughput for a first cut.
 
 from __future__ import annotations
 
+import functools
 import inspect
 import math
 from typing import TYPE_CHECKING, Any
@@ -98,8 +99,13 @@ def _wrap_row_wise(
     one bad row no longer aborts the entire query — but every failure is
     visible in the log instead of disappearing as a silent null cell.  A
     summary count is logged at the end if any rows failed.
+
+    ``functools.wraps`` preserves ``func`` as ``wrapped.__wrapped__`` so the
+    out-of-core DuckDB bridge can recover the original scalar callable and its
+    type annotations.
     """
 
+    @functools.wraps(func)
     def wrapped(*series_args: pd.Series) -> pd.Series:
         if not series_args:
             msg = (
