@@ -240,21 +240,61 @@ def _make_resolve(variables: dict[str, tuple[str, dict[str, str]]]) -> Any:
 
 
 def _valid_node(node: Any) -> bool:
-    """True if *node* is a single-label variable node with no inline props."""
+    """True if *node* is a single-label variable node.
+
+    Inline properties (``{prop: value}``) are allowed — they are desugared into
+    equality predicates during pattern analysis.
+    """
     from pycypher.ast_models import NodePattern
 
     return (
         isinstance(node, NodePattern)
         and node.variable is not None
         and len(node.labels) == 1
-        and not node.properties
     )
+
+
+def _inline_predicates(nodes: list[Any]) -> list[tuple[str, str, Any]]:
+    """Collect ``(var, property, value_ast)`` triples from nodes' inline props."""
+    preds: list[tuple[str, str, Any]] = []
+    for node in nodes:
+        for prop, value in (node.properties or {}).items():
+            preds.append((node.variable.name, prop, value))
+    return preds
+
+
+def _compile_inline_predicates(
+    inline_preds: list[tuple[str, str, Any]],
+    resolve: Any,
+    udfs: frozenset[str],
+) -> list[str] | None:
+    """Compile inline-property predicates to ``col = value`` SQL, or ``None``."""
+    from pycypher.relation_sql import compile_expression
+
+    out: list[str] = []
+    for var, prop, value_ast in inline_preds:
+        col = resolve(var, prop)
+        if col is None:
+            return None
+        val_sql = compile_expression(value_ast, resolve, udfs)
+        if val_sql is None:
+            return None
+        out.append(f"{col} = {val_sql}")
+    return out
 
 
 class _Plan:
     """A resolved, eligible relation-query plan: a leading pattern + stages."""
 
-    __slots__ = ("build", "match_where", "node_vars", "qualified", "resolve", "stages")
+    __slots__ = (
+        "build",
+        "inline_preds",
+        "match_where",
+        "node_vars",
+        "qualified",
+        "resolve",
+        "stages",
+    )
 
     def __init__(
         self,
@@ -264,6 +304,7 @@ class _Plan:
         qualified: bool,  # noqa: FBT001
         node_vars: frozenset[str],
         stages: list[Any],
+        inline_preds: list[tuple[str, str, Any]],
     ) -> None:
         self.resolve = resolve  # (var, prop) -> col | None (pattern scope)
         self.build = build  # build(con) -> DuckDBPyRelation
@@ -271,6 +312,7 @@ class _Plan:
         self.qualified = qualified  # multi-variable pattern → qualified names
         self.node_vars = node_vars  # pattern variable names
         self.stages = stages  # [With, …, Return]
+        self.inline_preds = inline_preds  # (var, prop, value_ast) equality preds
 
 
 class _Scope:
@@ -346,7 +388,13 @@ def _analyze_pattern(match: Any, context: Context) -> tuple[Any, Any, bool, froz
         def build(con: Any, label: str = label) -> Any:
             return _base_relation(context, label, con)
 
-        return _make_resolve(variables), build, False, frozenset(variables)
+        return (
+            _make_resolve(variables),
+            build,
+            False,
+            frozenset(variables),
+            _inline_predicates([node]),
+        )
 
     # --- Fixed-length directed path: (n0)-[e0]->(n1)-[e1]->(n2)… (any hops) ---
     # elements alternate node / relationship / node …, so an odd count ≥ 3.
@@ -418,7 +466,13 @@ def _analyze_pattern(match: Any, context: Context) -> tuple[Any, Any, bool, froz
                 acc = acc.join(rel_rels[j], c1).join(node_rels[j + 1], c2)
             return acc
 
-        return _make_resolve(variables), build, True, frozenset(variables)
+        return (
+            _make_resolve(variables),
+            build,
+            True,
+            frozenset(variables),
+            _inline_predicates(nodes),
+        )
 
     return None
 
@@ -450,8 +504,11 @@ def _analyze_query(query: Any, context: Context) -> _Plan | None:
     pattern = _analyze_pattern(match, context)
     if pattern is None:
         return None
-    resolve, build, qualified, node_vars = pattern
-    return _Plan(resolve, build, match.where, qualified, node_vars, list(clauses[1:]))
+    resolve, build, qualified, node_vars, inline_preds = pattern
+    return _Plan(
+        resolve, build, match.where, qualified, node_vars,
+        list(clauses[1:]), inline_preds,
+    )
 
 
 def _quote_output_alias(name: str) -> str:
@@ -679,6 +736,9 @@ def is_relation_eligible(query: Any, context: Context) -> bool:
     ):
         return False
 
+    if _compile_inline_predicates(plan.inline_preds, plan.resolve, udfs) is None:
+        return False
+
     scope = _Scope(
         plan.resolve, _no_var, qualified=plan.qualified, node_vars=plan.node_vars,
     )
@@ -722,6 +782,8 @@ def execute_relation_query(
     rel = plan.build(con)
     if plan.match_where is not None:
         rel = rel.filter(compile_expression(plan.match_where, plan.resolve, udfs))
+    for pred in _compile_inline_predicates(plan.inline_preds, plan.resolve, udfs) or []:
+        rel = rel.filter(pred)
 
     scope = _Scope(
         plan.resolve, _no_var, qualified=plan.qualified, node_vars=plan.node_vars,
