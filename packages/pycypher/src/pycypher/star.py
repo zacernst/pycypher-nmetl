@@ -604,284 +604,287 @@ class Star:
             QueryComplexityError: If complexity score exceeds threshold.
 
         """
-        # --- Rate limiting (pre-execution gate) ---
-        from pycypher.rate_limiter import get_global_limiter
+        with self.context.scoped_execution():
+            # --- Rate limiting (pre-execution gate) ---
+            from pycypher.rate_limiter import get_global_limiter
 
-        get_global_limiter().acquire()
+            get_global_limiter().acquire()
 
-        # --- Input validation ---
-        if isinstance(query, str) and not query.strip():
-            msg = "Query string must not be empty or whitespace-only."
-            raise ValueError(msg)
+            # --- Input validation ---
+            if isinstance(query, str) and not query.strip():
+                msg = "Query string must not be empty or whitespace-only."
+                raise ValueError(msg)
 
-        if parameters is not None and not isinstance(parameters, dict):
-            from pycypher.exceptions import WrongCypherTypeError
+            if parameters is not None and not isinstance(parameters, dict):
+                from pycypher.exceptions import WrongCypherTypeError
 
-            raise WrongCypherTypeError(
-                f"parameters must be a dict, got {type(parameters).__name__}",
+                raise WrongCypherTypeError(
+                    f"parameters must be a dict, got {type(parameters).__name__}",
+                )
+
+            _effective_timeout = (
+                timeout_seconds
+                if timeout_seconds is not None
+                else _DEFAULT_TIMEOUT_S
             )
 
-        _effective_timeout = (
-            timeout_seconds
-            if timeout_seconds is not None
-            else _DEFAULT_TIMEOUT_S
-        )
+            if _effective_timeout is not None and _effective_timeout < 0:
+                msg = f"timeout_seconds must be non-negative, got {_effective_timeout}"
+                raise ValueError(msg)
 
-        if _effective_timeout is not None and _effective_timeout < 0:
-            msg = f"timeout_seconds must be non-negative, got {_effective_timeout}"
-            raise ValueError(msg)
+            # Inject parameters into the shared context.
+            self.context._parameters.clear()
+            if parameters:
+                self.context._parameters.update(parameters)
 
-        # Inject parameters into the shared context.
-        self.context._parameters = dict(parameters) if parameters else {}
+            _qid = uuid.uuid4().hex[:12]
+            _qid_token = set_query_id(_qid)
+            _query_str = query if isinstance(query, str) else repr(query)
+            _param_keys = list(self.context._parameters.keys())
+            LOGGER.debug(
+                "execute_query: start  query=%r  parameters=%r",
+                _query_str[:120],
+                _param_keys,
+            )
+            _t0 = time.perf_counter()
+            _rss_before = get_rss_mb()
+            self._last_clause_timings: dict[str, float] = {}
+            self._last_clause_memory: dict[str, float] = {}
+            self.context.set_memory_budget_bytes(memory_budget_bytes)
+            _parse_elapsed_ms: float | None = None
 
-        _qid = uuid.uuid4().hex[:12]
-        _qid_token = set_query_id(_qid)
-        _query_str = query if isinstance(query, str) else repr(query)
-        _param_keys = list(self.context._parameters.keys())
-        LOGGER.debug(
-            "execute_query: start  query=%r  parameters=%r",
-            _query_str[:120],
-            _param_keys,
-        )
-        _t0 = time.perf_counter()
-        _rss_before = get_rss_mb()
-        self._last_clause_timings: dict[str, float] = {}
-        self._last_clause_memory: dict[str, float] = {}
-        self.context._memory_budget_bytes = memory_budget_bytes
-        _parse_elapsed_ms: float | None = None
+            # --- Timeout management ---
+            _timeout_handler = TimeoutHandler(
+                self.context,
+                timeout_seconds=_effective_timeout,
+                query_str=_query_str,
+                start_time=_t0,
+            )
+            _timeout_handler.__enter__()
 
-        # --- Timeout management ---
-        _timeout_handler = TimeoutHandler(
-            self.context,
-            timeout_seconds=_effective_timeout,
-            query_str=_query_str,
-            start_time=_t0,
-        )
-        _timeout_handler.__enter__()
+            # --- OpenTelemetry span ---
+            _otel_cm = trace_query(
+                _query_str,
+                query_id=_qid,
+                parameters=parameters,
+            )
+            _otel_span = _otel_cm.__enter__()
 
-        # --- OpenTelemetry span ---
-        _otel_cm = trace_query(
-            _query_str,
-            query_id=_qid,
-            parameters=parameters,
-        )
-        _otel_span = _otel_cm.__enter__()
+            # --- Result cache: fast path for repeated read-only queries ---
+            _NON_DETERMINISTIC = {"rand(", "randomuuid(", "timestamp("}
+            _cache_params = dict(parameters) if parameters else None
+            _from_cache = False
+            _query_lower = _query_str.lower() if isinstance(query, str) else ""
+            _cache_eligible = (
+                isinstance(query, str)
+                and self._result_cache.enabled
+                and not any(fn in _query_lower for fn in _NON_DETERMINISTIC)
+            )
+            if _cache_eligible:
+                cached = self._result_cache.get(query, _cache_params)
+                if cached is not None:
+                    _elapsed = time.perf_counter() - _t0
+                    _cached_rows = (
+                        len(cached) if isinstance(cached, pd.DataFrame) else 0
+                    )
+                    LOGGER.debug(
+                        "execute_query: cache hit  elapsed=%.3fs  query=%r",
+                        _elapsed,
+                        _query_str[:80],
+                    )
+                    audit_query_success(
+                        query_id=_qid,
+                        query=_query_str,
+                        elapsed_s=_elapsed,
+                        rows=_cached_rows,
+                        parameter_keys=_param_keys,
+                        cached=True,
+                    )
+                    _otel_span.set_attribute("pycypher.cached", True)
+                    _otel_span.set_attribute("result.rows", _cached_rows)
+                    _otel_span.set_attribute(
+                        "pycypher.elapsed_ms", round(_elapsed * 1000.0, 2)
+                    )
+                    _otel_cm.__exit__(None, None, None)
+                    return cached
 
-        # --- Result cache: fast path for repeated read-only queries ---
-        _NON_DETERMINISTIC = {"rand(", "randomuuid(", "timestamp("}
-        _cache_params = dict(parameters) if parameters else None
-        _from_cache = False
-        _query_lower = _query_str.lower() if isinstance(query, str) else ""
-        _cache_eligible = (
-            isinstance(query, str)
-            and self._result_cache.enabled
-            and not any(fn in _query_lower for fn in _NON_DETERMINISTIC)
-        )
-        if _cache_eligible:
-            cached = self._result_cache.get(query, _cache_params)
-            if cached is not None:
-                _elapsed = time.perf_counter() - _t0
-                _cached_rows = (
-                    len(cached) if isinstance(cached, pd.DataFrame) else 0
+            try:
+                # --- Pipeline execution: parse → validate → execute ---
+                from pycypher.pipeline import (
+                    ExecuteStage,
+                    ParseStage,
+                    Pipeline,
+                    ValidateStage,
                 )
-                LOGGER.debug(
-                    "execute_query: cache hit  elapsed=%.3fs  query=%r",
+
+                _effective_max_complexity = (
+                    max_complexity_score
+                    if max_complexity_score is not None
+                    else _DEFAULT_MAX_COMPLEXITY
+                )
+
+                _pipeline = Pipeline(
+                    [
+                        ParseStage(),
+                        ValidateStage(),
+                        ExecuteStage(),
+                    ]
+                )
+                _pipeline_result = _pipeline.run(
+                    query=query,
+                    star=self,
+                    parameters=parameters,
+                    max_complexity_score=_effective_max_complexity,
+                    memory_budget_bytes=memory_budget_bytes,
+                )
+
+                # PipelineResult.result is `pd.DataFrame | None`; mutations may
+                # legitimately produce None. The public contract returns a
+                # DataFrame, so coerce None → empty frame here.
+                result = _pipeline_result.result
+                if result is None:
+                    result = pd.DataFrame()
+                parsed_query = _pipeline_result.metadata.get("parsed_ast", query)
+                _is_mutation = _pipeline_result.metadata.get("is_mutation", False)
+
+                _parse_stage_time = _pipeline_result.stage_timings.get(
+                    "parse", 0.0
+                )
+                _parse_elapsed_ms = _parse_stage_time * 1000.0
+                self._last_parse_time_ms = _parse_elapsed_ms
+
+                _effective_warn_complexity = _COMPLEXITY_WARN
+                _complexity_score = _pipeline_result.metadata.get(
+                    "complexity_score"
+                )
+                if _complexity_score is not None:
+                    LOGGER.debug(
+                        "execute_query: complexity score=%d  breakdown=%s",
+                        _complexity_score,
+                        _pipeline_result.metadata.get("complexity_details", {}),
+                    )
+                    for _cw in _pipeline_result.metadata.get(
+                        "complexity_warnings", []
+                    ):
+                        LOGGER.warning("query complexity: %s", _cw)
+                    if (
+                        _effective_warn_complexity is not None
+                        and _complexity_score > _effective_warn_complexity
+                    ):
+                        LOGGER.warning(
+                            "Query complexity score %d exceeds warning "
+                            "threshold %d. Top contributors: %s",
+                            _complexity_score,
+                            _effective_warn_complexity,
+                            ", ".join(
+                                f"{k}={v}"
+                                for k, v in sorted(
+                                    _pipeline_result.metadata.get(
+                                        "complexity_details", {}
+                                    ).items(),
+                                    key=lambda x: x[1],
+                                    reverse=True,
+                                )[:3]
+                            ),
+                        )
+
+                _elapsed = time.perf_counter() - _t0
+                _rss_after = get_rss_mb()
+                _mem_delta = _rss_after - _rss_before
+                _nrows = len(result) if isinstance(result, pd.DataFrame) else 0
+                LOGGER.info(
+                    "execute_query: done  rows=%d  elapsed=%.3fs  rss_delta=%.1fMB  query=%r",
+                    _nrows,
                     _elapsed,
+                    _mem_delta,
                     _query_str[:80],
                 )
                 audit_query_success(
                     query_id=_qid,
                     query=_query_str,
                     elapsed_s=_elapsed,
-                    rows=_cached_rows,
+                    rows=_nrows,
                     parameter_keys=_param_keys,
-                    cached=True,
                 )
-                _otel_span.set_attribute("pycypher.cached", True)
-                _otel_span.set_attribute("result.rows", _cached_rows)
+                _clause_names: list[str] = (
+                    [type(c).__name__ for c in parsed_query.clauses]
+                    if hasattr(parsed_query, "clauses")
+                    else []
+                )
+                QUERY_METRICS.record_query(
+                    query_id=_qid,
+                    elapsed_s=_elapsed,
+                    rows=_nrows,
+                    clauses=_clause_names,
+                    memory_delta_mb=_mem_delta,
+                    clause_timings_ms=self._last_clause_timings or None,
+                    parse_time_ms=_parse_elapsed_ms,
+                    estimated_memory_mb=self._query_analyzer.last_estimated_memory_bytes
+                    / (1024.0 * 1024.0)
+                    if self._query_analyzer.last_estimated_memory_bytes
+                    else None,
+                    plan_time_ms=self._query_analyzer.last_plan_time_ms
+                    if self._query_analyzer.last_plan_time_ms
+                    else None,
+                )
+                QUERY_METRICS.update_cache_stats(self._result_cache.stats())
+                if isinstance(result, pd.DataFrame) and result.empty:
+                    LOGGER.debug(
+                        "execute_query: result is empty (0 rows) for query %r",
+                        _query_str[:80],
+                    )
+
+                _otel_span.set_attribute("result.rows", _nrows)
                 _otel_span.set_attribute(
                     "pycypher.elapsed_ms", round(_elapsed * 1000.0, 2)
                 )
-                _otel_cm.__exit__(None, None, None)
-                return cached
-
-        try:
-            # --- Pipeline execution: parse → validate → execute ---
-            from pycypher.pipeline import (
-                ExecuteStage,
-                ParseStage,
-                Pipeline,
-                ValidateStage,
-            )
-
-            _effective_max_complexity = (
-                max_complexity_score
-                if max_complexity_score is not None
-                else _DEFAULT_MAX_COMPLEXITY
-            )
-
-            _pipeline = Pipeline(
-                [
-                    ParseStage(),
-                    ValidateStage(),
-                    ExecuteStage(),
-                ]
-            )
-            _pipeline_result = _pipeline.run(
-                query=query,
-                star=self,
-                parameters=parameters,
-                max_complexity_score=_effective_max_complexity,
-                memory_budget_bytes=memory_budget_bytes,
-            )
-
-            # PipelineResult.result is `pd.DataFrame | None`; mutations may
-            # legitimately produce None. The public contract returns a
-            # DataFrame, so coerce None → empty frame here.
-            result = _pipeline_result.result
-            if result is None:
-                result = pd.DataFrame()
-            parsed_query = _pipeline_result.metadata.get("parsed_ast", query)
-            _is_mutation = _pipeline_result.metadata.get("is_mutation", False)
-
-            _parse_stage_time = _pipeline_result.stage_timings.get(
-                "parse", 0.0
-            )
-            _parse_elapsed_ms = _parse_stage_time * 1000.0
-            self._last_parse_time_ms = _parse_elapsed_ms
-
-            _effective_warn_complexity = _COMPLEXITY_WARN
-            _complexity_score = _pipeline_result.metadata.get(
-                "complexity_score"
-            )
-            if _complexity_score is not None:
-                LOGGER.debug(
-                    "execute_query: complexity score=%d  breakdown=%s",
-                    _complexity_score,
-                    _pipeline_result.metadata.get("complexity_details", {}),
+                _otel_span.set_attribute(
+                    "pycypher.memory_delta_mb", round(_mem_delta, 2)
                 )
-                for _cw in _pipeline_result.metadata.get(
-                    "complexity_warnings", []
-                ):
-                    LOGGER.warning("query complexity: %s", _cw)
-                if (
-                    _effective_warn_complexity is not None
-                    and _complexity_score > _effective_warn_complexity
-                ):
-                    LOGGER.warning(
-                        "Query complexity score %d exceeds warning "
-                        "threshold %d. Top contributors: %s",
-                        _complexity_score,
-                        _effective_warn_complexity,
-                        ", ".join(
-                            f"{k}={v}"
-                            for k, v in sorted(
-                                _pipeline_result.metadata.get(
-                                    "complexity_details", {}
-                                ).items(),
-                                key=lambda x: x[1],
-                                reverse=True,
-                            )[:3]
-                        ),
+                _otel_span.set_attribute("pycypher.cached", False)
+                if _parse_elapsed_ms is not None:
+                    _otel_span.set_attribute(
+                        "pycypher.parse_time_ms", round(_parse_elapsed_ms, 2)
                     )
 
-            _elapsed = time.perf_counter() - _t0
-            _rss_after = get_rss_mb()
-            _mem_delta = _rss_after - _rss_before
-            _nrows = len(result) if isinstance(result, pd.DataFrame) else 0
-            LOGGER.info(
-                "execute_query: done  rows=%d  elapsed=%.3fs  rss_delta=%.1fMB  query=%r",
-                _nrows,
-                _elapsed,
-                _mem_delta,
-                _query_str[:80],
-            )
-            audit_query_success(
-                query_id=_qid,
-                query=_query_str,
-                elapsed_s=_elapsed,
-                rows=_nrows,
-                parameter_keys=_param_keys,
-            )
-            _clause_names: list[str] = (
-                [type(c).__name__ for c in parsed_query.clauses]
-                if hasattr(parsed_query, "clauses")
-                else []
-            )
-            QUERY_METRICS.record_query(
-                query_id=_qid,
-                elapsed_s=_elapsed,
-                rows=_nrows,
-                clauses=_clause_names,
-                memory_delta_mb=_mem_delta,
-                clause_timings_ms=self._last_clause_timings or None,
-                parse_time_ms=_parse_elapsed_ms,
-                estimated_memory_mb=self._query_analyzer.last_estimated_memory_bytes
-                / (1024.0 * 1024.0)
-                if self._query_analyzer.last_estimated_memory_bytes
-                else None,
-                plan_time_ms=self._query_analyzer.last_plan_time_ms
-                if self._query_analyzer.last_plan_time_ms
-                else None,
-            )
-            QUERY_METRICS.update_cache_stats(self._result_cache.stats())
-            if isinstance(result, pd.DataFrame) and result.empty:
-                LOGGER.debug(
-                    "execute_query: result is empty (0 rows) for query %r",
+                if _is_mutation:
+                    self._result_cache.invalidate()
+                elif _cache_eligible and isinstance(result, pd.DataFrame):
+                    self._result_cache.put(query, _cache_params, result)
+
+                return result
+            except Exception as _exc:  # noqa: BLE001 — broad catch for metrics; re-raised below
+                _elapsed = time.perf_counter() - _t0
+                LOGGER.error(
+                    "execute_query: failed  elapsed=%.3fs  query=%r  error=%s",
+                    _elapsed,
                     _query_str[:80],
+                    _exc,
+                    exc_info=True,
                 )
-
-            _otel_span.set_attribute("result.rows", _nrows)
-            _otel_span.set_attribute(
-                "pycypher.elapsed_ms", round(_elapsed * 1000.0, 2)
-            )
-            _otel_span.set_attribute(
-                "pycypher.memory_delta_mb", round(_mem_delta, 2)
-            )
-            _otel_span.set_attribute("pycypher.cached", False)
-            if _parse_elapsed_ms is not None:
-                _otel_span.set_attribute(
-                    "pycypher.parse_time_ms", round(_parse_elapsed_ms, 2)
+                QUERY_METRICS.record_error(
+                    query_id=_qid,
+                    error_type=type(_exc).__name__,
+                    elapsed_s=_elapsed,
                 )
+                audit_query_error(
+                    query_id=_qid,
+                    query=_query_str,
+                    elapsed_s=_elapsed,
+                    error_type=type(_exc).__name__,
+                    parameter_keys=_param_keys,
+                )
+                raise
+            finally:
+                _timeout_handler.__exit__(None, None, None)
+                import sys as _sys
 
-            if _is_mutation:
-                self._result_cache.invalidate()
-            elif _cache_eligible and isinstance(result, pd.DataFrame):
-                self._result_cache.put(query, _cache_params, result)
-
-            return result
-        except Exception as _exc:  # noqa: BLE001 — broad catch for metrics; re-raised below
-            _elapsed = time.perf_counter() - _t0
-            LOGGER.error(
-                "execute_query: failed  elapsed=%.3fs  query=%r  error=%s",
-                _elapsed,
-                _query_str[:80],
-                _exc,
-                exc_info=True,
-            )
-            QUERY_METRICS.record_error(
-                query_id=_qid,
-                error_type=type(_exc).__name__,
-                elapsed_s=_elapsed,
-            )
-            audit_query_error(
-                query_id=_qid,
-                query=_query_str,
-                elapsed_s=_elapsed,
-                error_type=type(_exc).__name__,
-                parameter_keys=_param_keys,
-            )
-            raise
-        finally:
-            _timeout_handler.__exit__(None, None, None)
-            import sys as _sys
-
-            _ei = _sys.exc_info()
-            _otel_cm.__exit__(_ei[0], _ei[1], _ei[2])
-            reset_query_id(_qid_token)
-            self.context._parameters = {}
-            if self.context._shadow or self.context._shadow_rels:
-                self.context.rollback_query()
+                _ei = _sys.exc_info()
+                _otel_cm.__exit__(_ei[0], _ei[1], _ei[2])
+                reset_query_id(_qid_token)
+                self.context._parameters.clear()
+                if self.context._shadow or self.context._shadow_rels:
+                    self.context.rollback_query()
 
     async def execute_query_async(
         self,

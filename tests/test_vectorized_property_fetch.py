@@ -377,7 +377,8 @@ class TestShadowBypass:
                 "age": [31, 26, 36, 29],
             },
         )
-        context_with_data._shadow = {"Person": shadow_df}
+        context_with_data._shadow.clear()
+        context_with_data._shadow.update({"Person": shadow_df})
 
         a_scan = EntityScan("Person", "a").scan(context_with_data)
         # Should use shadow data, not vectorized store
