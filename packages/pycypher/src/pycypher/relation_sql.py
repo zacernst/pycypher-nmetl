@@ -57,13 +57,20 @@ def is_aggregate(expr: Any) -> bool:
     )
 
 
-def compile_aggregate(expr: Any, resolve: Any) -> str | None:
+def compile_aggregate(
+    expr: Any,
+    resolve: Any,
+    functions: frozenset[str] | set[str] | None = None,
+    resolve_var: Any = None,
+) -> str | None:
     """Compile an aggregation expression to a DuckDB SQL aggregate, or ``None``.
 
-    Supports ``count(*)``, ``count(var)`` (→ ``COUNT(*)``), and
-    ``count|sum|avg|min|max(<expr>)`` with optional ``DISTINCT``.  Returns
-    ``None`` for anything else (including ``count(DISTINCT var)``), so the query
-    stays ineligible and falls back.
+    Supports ``count(*)``, ``count(var)``, and
+    ``count|sum|avg|min|max(<expr>)`` with optional ``DISTINCT``.  The argument
+    expression is compiled with the same *functions*/*resolve_var* as
+    :func:`compile_expression`, so registered UDFs and post-``WITH`` scalar
+    variables work inside aggregates.  Returns ``None`` for anything else, so
+    the query stays ineligible and falls back.
     """
     from pycypher.ast_models import CountStar, FunctionInvocation, Variable
 
@@ -83,14 +90,17 @@ def compile_aggregate(expr: Any, resolve: Any) -> str | None:
         return None
     distinct = bool(getattr(expr, "distinct", False))
     arg = args[0]
-    # count(node) counts bound (non-null) rows → COUNT(*); DISTINCT node needs a
-    # key column we don't resolve here, so leave it to the fallback.
+    distinct_kw = "DISTINCT " if distinct else ""
     if func == "COUNT" and isinstance(arg, Variable):
+        # A post-WITH scalar column → COUNT(col) (counts non-null); a bound node
+        # variable (no scalar resolution) → COUNT(*).
+        col = resolve_var(arg.name) if resolve_var is not None else None
+        if col is not None:
+            return f"COUNT({distinct_kw}{col})"
         return None if distinct else "COUNT(*)"
-    inner = compile_expression(arg, resolve)
+    inner = compile_expression(arg, resolve, functions, resolve_var)
     if inner is None:
         return None
-    distinct_kw = "DISTINCT " if distinct else ""
     return f"{func}({distinct_kw}{inner})"
 
 

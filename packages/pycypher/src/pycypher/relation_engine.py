@@ -600,7 +600,9 @@ def _plan_stage(
     output_names: list[str] = []
     for it in stage.items:
         if is_aggregate(it.expression):
-            sql = compile_aggregate(it.expression, scope.resolve)
+            sql = compile_aggregate(
+                it.expression, scope.resolve, udfs, scope.resolve_var,
+            )
             if sql is None or it.alias is None:
                 return None
         else:
