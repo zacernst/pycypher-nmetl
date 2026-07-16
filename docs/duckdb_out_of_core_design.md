@@ -90,6 +90,7 @@ fallback and stays green.
 ## Foundation (shared with Approach B — prerequisites for A)
 
 ### Phase 0 — Design doc, dual-representation contract, oracle harness
+
 - This document: the `RelationBindings` contract, SQL mapping for
   variables/properties/predicates, eligibility predicate, size gate,
   materialisation boundary.
@@ -101,12 +102,14 @@ fallback and stays green.
   dataset, assert bounded RSS. Marked `slow` / `large_dataset`.
 
 ### Phase 1 — Spill configuration
+
 `SET memory_limit / temp_directory / max_temp_directory_size /
 preserve_insertion_order=false` in `DuckDBBackend.__init__`
 (`backends/duckdb_backend.py:131-141`), configurable. Tests: config applied; a
 single large op spills instead of OOM. Partial relief on its own.
 
 ### Phase 2 — Persistent connection + relation-returning ingestion
+
 Context-owned persistent DuckDB connection (lifecycle mirrors the
 `backend.close()` already in `run_impl`); `read_relation()` on
 `FileDataSource`/`SqlDataSource` returning a view over
@@ -114,6 +117,7 @@ Context-owned persistent DuckDB connection (lifecycle mirrors the
 (`data_sources.py:585`). Keep `.read()` for the fallback. Root-cause seam.
 
 ### Phase 3 — Streaming sink (`COPY … TO`)
+
 Relation-aware `write_relation_to_uri` emitting `COPY (<sql>) TO`
 (`output_writer.py:111-116`; pattern already in
 `packages/fastopendata/Snakefile:167`). Streams to disk, no pandas frame.
@@ -123,6 +127,7 @@ Relation-aware `write_relation_to_uri` emitting `COPY (<sql>) TO`
 ## IR scaffold
 
 ### Phase 4 — Dual-representation `BindingFrame` + fallback dispatch
+
 - Extract the `Bindings` interface; add `RelationBindings` (wraps
   `DuckDBLazyFrame`) alongside `PandasBindings`.
 - Add the **eligibility predicate** (starts: eligible ≈ nothing) + size gate,
@@ -139,11 +144,13 @@ Relation-aware `write_relation_to_uri` emitting `COPY (<sql>) TO`
 ## Feature migration (each phase widens eligibility; fallback covers the rest)
 
 ### Phase 5 — Entity scan + simple projection
+
 Single-label MATCH → relation scan (`SELECT __ID__ FROM <view>`); RETURN of
 ids/simple columns → `SELECT`. Eligibility += scan/project-only queries.
 Equivalence vs oracle + out-of-core assertion.
 
 ### Phase 6 — Property resolution as in-relation joins  *(HARD)*
+
 - `get_property` becomes a `LEFT JOIN` against the source view keyed on
   `__ID__`, projecting the property as a relation column — replacing the
   index-aligned Series model (`binding_frame.py:429-602`) and the Arrow→pandas
@@ -154,6 +161,7 @@ Equivalence vs oracle + out-of-core assertion.
   most design-heavy phases.
 
 ### Phase 7 — WHERE as SQL predicate  *(HARD — the numpy-mask filter)*
+
 - Build a Cypher-WHERE → DuckDB-SQL expression compiler: comparisons, boolean
   logic, IS NULL / three-valued logic, IN, string ops, supported scalar
   functions. Compose as `WHERE <predicate>` into the relation, replacing the
@@ -162,6 +170,7 @@ Equivalence vs oracle + out-of-core assertion.
 - Null-semantics parity is the main risk. Eligibility += SQL-expressible WHERE.
 
 ### Phase 8 — Relationship MATCH, equijoins, multi-pattern
+
 Relationship traversal → SQL joins on `__SOURCE__`/`__TARGET__`; fixed-length
 multi-hop → chained joins; OPTIONAL MATCH → `LEFT JOIN`; cross products.
 Eligibility += relationship patterns.
@@ -173,6 +182,7 @@ oracle including WHERE and aggregation over the path. Still ineligible:
 undirected, variable-length (`*1..3`), and OPTIONAL MATCH.
 
 ### Phase 9 — Aggregation in-relation
+
 Route WITH/RETURN aggregation to `GROUP BY` SQL (the unused
 `duckdb_backend.aggregate()` + `_pandas_agg_to_sql` already exist,
 `backends/duckdb_backend.py:353`). Handle `collect()`→`list()`, percentiles,
@@ -180,6 +190,7 @@ DISTINCT, null-aware counts. Eligibility += aggregating queries. Second
 null-semantics hotspot.
 
 ### Phase 10 — ORDER BY / SKIP / LIMIT / DISTINCT / WITH chaining
+
 Ordering + pagination (sort→limit fusion already present,
 `backends/duckdb_backend.py:382`), DISTINCT, and multi-part `WITH` queries as
 chained relations / CTEs. Eligibility += these.
@@ -211,6 +222,7 @@ path:
    supported constructs) becomes eligible; unknown functions still fall back.
 
 Parity hazards to test against the pandas oracle (same discipline as WHERE):
+
 - **Type mapping** Cypher/DuckDB ↔ Python for argument and return types; declare
   DuckDB arg/return types explicitly to avoid inference surprises.
 - **Null handling** — how the UDF sees/returns NULL vs the pandas evaluator.
@@ -287,13 +299,23 @@ derived rows to a *new* sink — is already expressible in the read path
 (`MATCH … RETURN <derived props>` → sink), so a CREATE-to-sink slice adds
 little. True out-of-core mutation would need disk-backed/delta graph storage —
 a separate project beyond "out-of-core ETL reads", to be scoped only if a
-workload genuinely requires it.
+workload genuinely requires it
+=======
+
+### Phase 11 — Mutations (SET / CREATE / DELETE)
+
+Migrate `MutationEngine` / `binding_frame.mutate*` (`binding_frame.py:1487-1776`)
+for ETL that writes derived graph data. Sizable; **may be deferred** if the
+out-of-core need is read/transform→sink rather than in-graph mutation — decide
+based on workload.
+>>>>>>> c89bca7 (docs: add out-of-core DuckDB migration plan (Approach A))
 
 ---
 
 ## Finalization
 
 ### Phase 12 — Streaming result contract + full-pipeline acceptance
+
 `execute_query` keeps eligible results as a relation and streams to sink (no
 forced `-> pd.DataFrame`; result cache + row-count metrics at `star.py:749,808`
 need relation-aware branches). **Headline test:** `nmetl run` over a
@@ -301,6 +323,7 @@ larger-than-`memory_limit` dataset with representative queries, bounded RSS,
 correct output. Report eligibility-coverage % against the query corpus.
 
 ### Phase 13 — Relegate fallback, hardening, docs
+
 Measure what still falls back; close gaps or accept them. **Variable-length
 paths (`PathExpander` BFS) are the genuinely open question** — DuckDB recursive
 CTEs can express them but it's complex; they may remain fallback-only (and thus
@@ -321,7 +344,6 @@ not out-of-core) indefinitely. Observability (spill/temp metrics), CI
 | `DuckDBLazyFrame` as universal type | Moderate | `backends/duckdb_backend.py:27` |
 | Sink `COPY … TO` | Localized | `output_writer.py:111-116` |
 | Spill config | Localized | `backends/duckdb_backend.py:140` |
-| User functions as DuckDB UDFs (Phase 10b) | Localized-Moderate | `relation_sql.py`, `scalar_functions/`, `con.create_function` |
 
 Critical path: ingestion (relation) → `BindingFrame` IR + `get_property` →
 `DuckDBLazyFrame` composition. Sink, spill config, aggregation, and the result
