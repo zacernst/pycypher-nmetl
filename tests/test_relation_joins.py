@@ -84,8 +84,6 @@ class TestEligibility:
     @pytest.mark.parametrize(
         "query",
         [
-            # multi-hop (2 rels) — not yet supported
-            "MATCH (a:Person)-[:KNOWS]->(b:Person)-[:KNOWS]->(c:Person) RETURN a.name AS x",
             # undirected — not supported
             "MATCH (a:Person)-[:KNOWS]-(b:Person) RETURN a.name AS x, b.name AS y",
             # variable-length — not supported

@@ -10,8 +10,9 @@ Disabled by default — enabled per-:class:`Context` via a truthy
 ``PYCYPHER_DUCKDB_RELATION_ENGINE`` environment variable.  When disabled the
 dispatch never fires, guaranteeing zero behaviour change.
 
-Eligible subset so far: a single node or a single directed relationship
-``MATCH``; an optional ``WHERE`` that compiles to a SQL predicate
+Eligible subset so far: a single node or a fixed-length directed path
+``MATCH`` (one or more hops); an optional ``WHERE`` that compiles to a SQL
+predicate
 (:mod:`pycypher.relation_sql`); a ``RETURN`` of compilable expressions
 (property lookups, arithmetic, literals, registered scalar UDFs, and
 ``count/sum/avg/min/max`` aggregates with implicit GROUP BY); and
@@ -313,8 +314,9 @@ def _analyze_pattern(match: Any, context: Context) -> tuple[Any, Any, bool, froz
     """Analyse the leading MATCH pattern.
 
     Returns ``(resolve, build, qualified, node_vars)`` or ``None`` if the
-    pattern is outside the supported subset (single node, or single directed
-    relationship between two nodes with an optional relationship variable).
+    pattern is outside the supported subset (a single node, or a fixed-length
+    directed path of one or more relationships, with optional relationship
+    variables).
     """
     from pycypher.ast_models import RelationshipDirection, RelationshipPattern
 
@@ -346,57 +348,75 @@ def _analyze_pattern(match: Any, context: Context) -> tuple[Any, Any, bool, froz
 
         return _make_resolve(variables), build, False, frozenset(variables)
 
-    # --- Single directed relationship: (n1)-[r]->(n2) or (n1)<-[r]-(n2) ---
-    if len(elements) == 3:
-        n1, relp, n2 = elements
-        if not (_valid_node(n1) and _valid_node(n2)):
+    # --- Fixed-length directed path: (n0)-[e0]->(n1)-[e1]->(n2)… (any hops) ---
+    # elements alternate node / relationship / node …, so an odd count ≥ 3.
+    if len(elements) >= 3 and len(elements) % 2 == 1:
+        nodes = elements[0::2]
+        rels = elements[1::2]
+        if not all(_valid_node(nd) for nd in nodes):
             return None
-        if not isinstance(relp, RelationshipPattern):
-            return None
-        if relp.length is not None or getattr(relp, "properties", None):
-            return None
-        if len(relp.labels) != 1:
-            return None
-        if relp.direction not in (
-            RelationshipDirection.RIGHT,
-            RelationshipDirection.LEFT,
-        ):
-            return None
-        v1, v2 = n1.variable.name, n2.variable.name
-        if v1 == v2:
-            return None
-        a1 = _entity_attr_map(context, n1.labels[0])
-        a2 = _entity_attr_map(context, n2.labels[0])
-        rel_attr = _rel_attr_map(context, relp.labels[0])
-        if a1 is None or a2 is None or rel_attr is None:
-            return None
-        variables: dict[str, tuple[str, dict[str, str]]] = {v1: ("a", a1), v2: ("b", a2)}
-        if relp.variable is not None:
-            rv = relp.variable.name
-            if rv in variables:
+        for rp in rels:
+            if not isinstance(rp, RelationshipPattern):
                 return None
-            variables[rv] = ("r", rel_attr)
+            if rp.length is not None or getattr(rp, "properties", None):
+                return None
+            if len(rp.labels) != 1:
+                return None
+            if rp.direction not in (
+                RelationshipDirection.RIGHT,
+                RelationshipDirection.LEFT,
+            ):
+                return None
 
-        l1, l2, rlabel = n1.labels[0], n2.labels[0], relp.labels[0]
-        right = relp.direction == RelationshipDirection.RIGHT
+        node_attrs = [_entity_attr_map(context, nd.labels[0]) for nd in nodes]
+        rel_attrs = [_rel_attr_map(context, rp.labels[0]) for rp in rels]
+        if any(a is None for a in node_attrs) or any(a is None for a in rel_attrs):
+            return None
+
+        node_aliases = [f"n{i}" for i in range(len(nodes))]
+        rel_aliases = [f"e{j}" for j in range(len(rels))]
+        variables: dict[str, tuple[str, dict[str, str]]] = {}
+        for i, nd in enumerate(nodes):
+            variables[nd.variable.name] = (node_aliases[i], node_attrs[i])
+        for j, rp in enumerate(rels):
+            if rp.variable is not None:
+                variables[rp.variable.name] = (rel_aliases[j], rel_attrs[j])
+        # All bound variables (nodes + named rels) must be distinct.
+        n_named = len(nodes) + sum(1 for rp in rels if rp.variable is not None)
+        if len(variables) != n_named:
+            return None
+
+        node_labels = [nd.labels[0] for nd in nodes]
+        rel_labels = [rp.labels[0] for rp in rels]
+        rights = [rp.direction == RelationshipDirection.RIGHT for rp in rels]
 
         def build(
             con: Any,
-            l1: str = l1,
-            l2: str = l2,
-            rlabel: str = rlabel,
-            right: bool = right,  # noqa: FBT001
+            node_labels: list[str] = node_labels,
+            rel_labels: list[str] = rel_labels,
+            rights: list[bool] = rights,
+            node_aliases: list[str] = node_aliases,
+            rel_aliases: list[str] = rel_aliases,
         ) -> Any:
-            a = _base_relation(context, l1, con).set_alias("a")
-            b = _base_relation(context, l2, con).set_alias("b")
-            r = _rel_base_relation(context, rlabel, con).set_alias("r")
-            if right:
-                c1 = 'a."__ID__" = r."__SOURCE__"'
-                c2 = 'r."__TARGET__" = b."__ID__"'
-            else:
-                c1 = 'a."__ID__" = r."__TARGET__"'
-                c2 = 'r."__SOURCE__" = b."__ID__"'
-            return a.join(r, c1).join(b, c2)
+            node_rels = [
+                _base_relation(context, lbl, con).set_alias(al)
+                for lbl, al in zip(node_labels, node_aliases, strict=True)
+            ]
+            rel_rels = [
+                _rel_base_relation(context, lbl, con).set_alias(al)
+                for lbl, al in zip(rel_labels, rel_aliases, strict=True)
+            ]
+            acc = node_rels[0]
+            for j, right in enumerate(rights):
+                na, nb, ea = node_aliases[j], node_aliases[j + 1], rel_aliases[j]
+                if right:  # (n_j)-[e_j]->(n_{j+1}): n_j source, n_{j+1} target
+                    c1 = f'{na}."__ID__" = {ea}."__SOURCE__"'
+                    c2 = f'{ea}."__TARGET__" = {nb}."__ID__"'
+                else:  # (n_j)<-[e_j]-(n_{j+1}): n_{j+1} source, n_j target
+                    c1 = f'{na}."__ID__" = {ea}."__TARGET__"'
+                    c2 = f'{ea}."__SOURCE__" = {nb}."__ID__"'
+                acc = acc.join(rel_rels[j], c1).join(node_rels[j + 1], c2)
+            return acc
 
         return _make_resolve(variables), build, True, frozenset(variables)
 

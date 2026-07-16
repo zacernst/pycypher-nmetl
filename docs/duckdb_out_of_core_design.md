@@ -166,6 +166,12 @@ Relationship traversal → SQL joins on `__SOURCE__`/`__TARGET__`; fixed-length
 multi-hop → chained joins; OPTIONAL MATCH → `LEFT JOIN`; cross products.
 Eligibility += relationship patterns.
 
+**Implemented:** single directed relationship, then generalised to a
+fixed-length directed path of one or more hops
+(`(a)-[:R]->(b)-[:S]->(c)…`) as a chain of DuckDB joins, with parity vs the
+oracle including WHERE and aggregation over the path. Still ineligible:
+undirected, variable-length (`*1..3`), and OPTIONAL MATCH.
+
 ### Phase 9 — Aggregation in-relation
 Route WITH/RETURN aggregation to `GROUP BY` SQL (the unused
 `duckdb_backend.aggregate()` + `_pandas_agg_to_sql` already exist,
