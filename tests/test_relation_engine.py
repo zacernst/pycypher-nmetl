@@ -81,7 +81,6 @@ class TestEligibility:
         [
             "MATCH (n:Person) WHERE substring(n.name, 0, 1) = 'A' RETURN n.name AS name",  # WHERE with unsupported fn
             "MATCH (n:Person) RETURN collect(n.name) AS names",  # unsupported aggregate
-            "MATCH (n:Person) WITH n WHERE n.age > 1 RETURN n.name AS name",  # WITH (multi-part)
             "MATCH (n:Person)-[:KNOWS]->(m:Person) RETURN n.name AS name",  # rel (no KNOWS here)
             "MATCH (n:Person) RETURN n.missing_prop AS x",  # unknown property
             "MATCH (n:Unknown) RETURN n.name AS name",  # unknown label

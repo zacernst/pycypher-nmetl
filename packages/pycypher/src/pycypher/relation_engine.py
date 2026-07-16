@@ -251,69 +251,74 @@ def _valid_node(node: Any) -> bool:
 
 
 class _Plan:
-    """A resolved, eligible relation-query plan."""
+    """A resolved, eligible relation-query plan: a leading pattern + stages."""
 
-    __slots__ = (
-        "build",
-        "distinct",
-        "items",
-        "limit",
-        "order_by",
-        "qualified",
-        "resolve",
-        "skip",
-        "where",
-    )
+    __slots__ = ("build", "match_where", "node_vars", "qualified", "resolve", "stages")
 
     def __init__(
         self,
         resolve: Any,
         build: Any,
-        where: Any,
-        ret: Any,
+        match_where: Any,
+        qualified: bool,  # noqa: FBT001
+        node_vars: frozenset[str],
+        stages: list[Any],
+    ) -> None:
+        self.resolve = resolve  # (var, prop) -> col | None (pattern scope)
+        self.build = build  # build(con) -> DuckDBPyRelation
+        self.match_where = match_where  # WHERE from the MATCH clause | None
+        self.qualified = qualified  # multi-variable pattern → qualified names
+        self.node_vars = node_vars  # pattern variable names
+        self.stages = stages  # [With, …, Return]
+
+
+class _Scope:
+    """Name resolution for one pipeline stage."""
+
+    __slots__ = ("node_vars", "qualified", "resolve", "resolve_var")
+
+    def __init__(
+        self,
+        resolve: Any,
+        resolve_var: Any,
         *,
         qualified: bool,
+        node_vars: frozenset[str],
     ) -> None:
-        self.resolve = resolve  # resolve(var, prop) -> str | None
-        self.build = build  # build(con) -> DuckDBPyRelation
-        self.where = where  # WHERE expr or None
-        self.items = ret.items  # RETURN items
-        self.qualified = qualified  # multi-variable pattern → qualified names
-        self.distinct = bool(ret.distinct)
-        self.order_by = ret.order_by  # list[OrderByItem] | None
-        self.skip = ret.skip  # int | None
-        self.limit = ret.limit  # int | None
+        self.resolve = resolve  # (var, prop) -> col | None
+        self.resolve_var = resolve_var  # (name) -> col | None (bare scalars)
+        self.qualified = qualified
+        self.node_vars = node_vars
 
 
-def _analyze_match(query: Any, context: Context) -> _Plan | None:
-    """Return an execution plan for *query* if eligible, else ``None``.
+def _no_prop(_var: str, _prop: str) -> None:
+    return None
 
-    Handles two pattern shapes: a single node, and a single directed
-    relationship between two nodes (with an optional relationship variable).
+
+def _no_var(_name: str) -> None:
+    return None
+
+
+def _scalar_scope(output_names: list[str]) -> _Scope:
+    """A scope where bare variables resolve to a prior stage's output columns."""
+    names = set(output_names)
+
+    def resolve_var(name: str) -> str | None:
+        return _quote_output_alias(name) if name in names else None
+
+    return _Scope(_no_prop, resolve_var, qualified=False, node_vars=frozenset())
+
+
+def _analyze_pattern(match: Any, context: Context) -> tuple[Any, Any, bool, frozenset[str]] | None:
+    """Analyse the leading MATCH pattern.
+
+    Returns ``(resolve, build, qualified, node_vars)`` or ``None`` if the
+    pattern is outside the supported subset (single node, or single directed
+    relationship between two nodes with an optional relationship variable).
     """
-    from pycypher.ast_models import (
-        Match,
-        Query,
-        RelationshipDirection,
-        RelationshipPattern,
-        Return,
-    )
+    from pycypher.ast_models import RelationshipDirection, RelationshipPattern
 
-    if getattr(context, "backend_name", None) != "duckdb":
-        return None
-    if not hasattr(getattr(context, "backend", None), "connection"):
-        return None
-    if not isinstance(query, Query) or len(query.clauses) != 2:
-        return None
-    match, ret = query.clauses
-    if not isinstance(match, Match) or not isinstance(ret, Return):
-        return None
     if match.optional:
-        return None
-    if not ret.items:
-        return None
-    # SKIP without LIMIT has no DuckDBPyRelation form here — fall back.
-    if ret.skip is not None and ret.limit is None:
         return None
     paths = match.pattern.paths
     if len(paths) != 1:
@@ -339,7 +344,7 @@ def _analyze_match(query: Any, context: Context) -> _Plan | None:
         def build(con: Any, label: str = label) -> Any:
             return _base_relation(context, label, con)
 
-        return _Plan(_make_resolve(variables), build, match.where, ret, qualified=False)
+        return _make_resolve(variables), build, False, frozenset(variables)
 
     # --- Single directed relationship: (n1)-[r]->(n2) or (n1)<-[r]-(n2) ---
     if len(elements) == 3:
@@ -365,10 +370,7 @@ def _analyze_match(query: Any, context: Context) -> _Plan | None:
         rel_attr = _rel_attr_map(context, relp.labels[0])
         if a1 is None or a2 is None or rel_attr is None:
             return None
-        variables: dict[str, tuple[str, dict[str, str]]] = {
-            v1: ("a", a1),
-            v2: ("b", a2),
-        }
+        variables: dict[str, tuple[str, dict[str, str]]] = {v1: ("a", a1), v2: ("b", a2)}
         if relp.variable is not None:
             rv = relp.variable.name
             if rv in variables:
@@ -396,16 +398,77 @@ def _analyze_match(query: Any, context: Context) -> _Plan | None:
                 c2 = 'r."__SOURCE__" = b."__ID__"'
             return a.join(r, c1).join(b, c2)
 
-        return _Plan(_make_resolve(variables), build, match.where, ret, qualified=True)
+        return _make_resolve(variables), build, True, frozenset(variables)
 
     return None
 
 
+def _analyze_query(query: Any, context: Context) -> _Plan | None:
+    """Return a pipeline plan for *query* if eligible, else ``None``.
+
+    Shape: a leading pattern ``MATCH``, then zero or more ``WITH`` stages, ending
+    in a ``RETURN``.  A ``MATCH`` after a ``WITH`` (second/correlated pattern) is
+    not supported.
+    """
+    from pycypher.ast_models import Match, Query, Return, With
+
+    if getattr(context, "backend_name", None) != "duckdb":
+        return None
+    if not hasattr(getattr(context, "backend", None), "connection"):
+        return None
+    if not isinstance(query, Query):
+        return None
+    clauses = query.clauses
+    if len(clauses) < 2:
+        return None
+    match = clauses[0]
+    if not isinstance(match, Match) or not isinstance(clauses[-1], Return):
+        return None
+    for clause in clauses[1:-1]:
+        if not isinstance(clause, With):
+            return None
+    pattern = _analyze_pattern(match, context)
+    if pattern is None:
+        return None
+    resolve, build, qualified, node_vars = pattern
+    return _Plan(resolve, build, match.where, qualified, node_vars, list(clauses[1:]))
+
+
+def _quote_output_alias(name: str) -> str:
+    """Quote *name* as a DuckDB output identifier (safe for dots etc.).
+
+    Output aliases can legitimately contain dots (e.g. the pandas engine names a
+    bare join return ``a.name``), so we escape for a quoted identifier rather
+    than using the stricter :func:`sanitize_sql_identifier` (source columns).
+    """
+    return '"' + name.replace('"', '""') + '"'
+
+
+def _output_column(item: Any, *, qualified: bool) -> str:
+    """Output column name for a return/with *item*, matching the pandas engine.
+
+    An explicit ``AS alias`` wins.  A bare variable (post-``WITH`` scalar) is
+    named after the variable.  A bare property lookup is named after the
+    property (single-variable patterns) or as ``var.property`` (multi-variable /
+    join patterns).  Deterministic regardless of cached-AST alias mutation.
+    """
+    from pycypher.ast_models import Variable
+
+    if item.alias is not None:
+        return str(item.alias)
+    expr = item.expression
+    if isinstance(expr, Variable):
+        return str(expr.name)
+    if qualified:
+        return f"{expr.expression.name}.{expr.property}"
+    return str(expr.property)
+
+
 def _build_order_clause(order_by: Any, items: Any, *, qualified: bool) -> str | None:
-    """Build a DuckDB ORDER BY clause referencing RETURN output columns.
+    """Build a DuckDB ORDER BY clause referencing a stage's output columns.
 
     Supports ordering by an output alias (``ORDER BY name``) or by a returned
-    property lookup (``ORDER BY n.age`` when ``n.age`` is in the RETURN).  Other
+    property lookup (``ORDER BY n.age`` when ``n.age`` is in the output).  Other
     order keys, or an explicit NULLS placement, return ``None`` (fall back).
     Emits ``NULLS LAST`` to match the pandas engine's null ordering.
     """
@@ -438,91 +501,172 @@ def _build_order_clause(order_by: Any, items: Any, *, qualified: bool) -> str | 
     return ", ".join(parts)
 
 
-def is_relation_eligible(query: Any, context: Context) -> bool:
-    """Return True if *query* is in the subset the relation engine can execute.
+class _StageSQL:
+    """Compiled SQL pieces for one pipeline stage."""
 
-    Conservative by design: any construct not explicitly handled makes the
-    query ineligible so the caller falls back to the pandas engine.  Eligible:
-    a single-node ``MATCH`` or a single directed relationship between two nodes,
-    an optional compilable ``WHERE``, and a ``RETURN`` of compilable expressions
-    (non-property expressions — and all expressions in a join — require an
-    explicit alias).  Ineligible: undirected/variable-length/multi-hop paths,
-    OPTIONAL MATCH, aggregation, ORDER/SKIP/LIMIT, DISTINCT, WITH, and
-    unsupported functions/operators.
+    __slots__ = (
+        "aggregating",
+        "distinct",
+        "group_parts",
+        "having_sql",
+        "limit",
+        "new_scope",
+        "order_clause",
+        "passthrough",
+        "select_parts",
+        "skip",
+        "where_sql",
+    )
+
+    def __init__(self, **kw: Any) -> None:
+        for slot in self.__slots__:
+            setattr(self, slot, kw.get(slot))
+
+
+def _stage_is_passthrough(stage: Any, scope: _Scope) -> bool:
+    """True if *stage* just passes the in-scope pattern variables through."""
+    from pycypher.ast_models import Variable
+
+    if stage.distinct or stage.order_by or stage.skip is not None or stage.limit is not None:
+        return False
+    if not stage.items:
+        return False
+    return all(
+        it.alias is None
+        and isinstance(it.expression, Variable)
+        and it.expression.name in scope.node_vars
+        for it in stage.items
+    )
+
+
+def _plan_stage(
+    stage: Any,
+    scope: _Scope,
+    udfs: frozenset[str],
+    *,
+    is_return: bool,
+) -> _StageSQL | None:
+    """Compile one WITH/RETURN stage over *scope*, or return ``None``.
+
+    Returns SQL pieces plus the resulting scope for the next stage.
     """
-    from pycypher.ast_models import PropertyLookup
+    from pycypher.ast_models import PropertyLookup, Variable
     from pycypher.relation_sql import (
         compile_aggregate,
         compile_expression,
         is_aggregate,
     )
 
-    plan = _analyze_match(query, context)
+    # --- Node pass-through WITH (filter only, scope unchanged) ---
+    if not is_return and _stage_is_passthrough(stage, scope):
+        stage_where = getattr(stage, "where", None)
+        where_sql = None
+        if stage_where is not None:
+            where_sql = compile_expression(
+                stage_where, scope.resolve, udfs, scope.resolve_var,
+            )
+            if where_sql is None:
+                return None
+        return _StageSQL(passthrough=True, where_sql=where_sql, new_scope=scope)
+
+    if not stage.items:
+        return None
+    if stage.skip is not None and stage.limit is None:
+        return None
+
+    aggregating = any(is_aggregate(it.expression) for it in stage.items)
+    select_parts: list[str] = []
+    group_parts: list[str] = []
+    output_names: list[str] = []
+    for it in stage.items:
+        if is_aggregate(it.expression):
+            sql = compile_aggregate(it.expression, scope.resolve)
+            if sql is None or it.alias is None:
+                return None
+        else:
+            sql = compile_expression(it.expression, scope.resolve, udfs, scope.resolve_var)
+            if sql is None:
+                return None
+            if (
+                not isinstance(it.expression, (PropertyLookup, Variable))
+                and it.alias is None
+            ):
+                return None
+            group_parts.append(sql)
+        name = _output_column(it, qualified=scope.qualified)
+        output_names.append(name)
+        select_parts.append(f"{sql} AS {_quote_output_alias(name)}")
+
+    if len(set(output_names)) != len(output_names):
+        return None
+
+    new_scope = _scalar_scope(output_names)
+
+    stage_where = getattr(stage, "where", None)
+    having_sql = None
+    if stage_where is not None:
+        having_sql = compile_expression(
+            stage_where, new_scope.resolve, udfs, new_scope.resolve_var,
+        )
+        if having_sql is None:
+            return None
+
+    order_clause = None
+    if stage.order_by:
+        order_clause = _build_order_clause(
+            stage.order_by, stage.items, qualified=scope.qualified,
+        )
+        if order_clause is None:
+            return None
+
+    return _StageSQL(
+        passthrough=False,
+        aggregating=aggregating,
+        select_parts=select_parts,
+        group_parts=group_parts,
+        having_sql=having_sql,
+        distinct=bool(stage.distinct),
+        order_clause=order_clause,
+        skip=stage.skip,
+        limit=stage.limit,
+        new_scope=new_scope,
+    )
+
+
+def is_relation_eligible(query: Any, context: Context) -> bool:
+    """Return True if *query* is in the subset the relation engine can execute.
+
+    Conservative by design: anything not explicitly handled makes the query
+    ineligible so the caller falls back to the pandas engine.  Eligible: a
+    single-node or single directed-relationship ``MATCH``; an optional
+    compilable ``WHERE``; zero or more ``WITH`` stages (projection / aggregation
+    / filter / DISTINCT / ORDER BY / SKIP+LIMIT, or a node pass-through); and a
+    ``RETURN`` of compilable expressions.  Ineligible: multi-hop / undirected /
+    variable-length paths, OPTIONAL MATCH, a MATCH after a WITH, unsupported
+    functions/operators, and ``collect()``.
+    """
+    from pycypher.relation_sql import compile_expression
+
+    plan = _analyze_query(query, context)
     if plan is None:
         return False
 
     udfs = _udf_names(context)
-    if plan.where is not None and compile_expression(plan.where, plan.resolve, udfs) is None:
-        return False
-
-    if (
-        plan.order_by
-        and _build_order_clause(plan.order_by, plan.items, qualified=plan.qualified)
-        is None
+    if plan.match_where is not None and (
+        compile_expression(plan.match_where, plan.resolve, udfs) is None
     ):
         return False
 
-    output_names: list[str] = []
-    for item in plan.items:
-        if is_aggregate(item.expression):
-            # Aggregates must compile and be explicitly aliased.
-            if compile_aggregate(item.expression, plan.resolve) is None:
-                return False
-            if item.alias is None:
-                return False
-        else:
-            # Non-aggregate: a group key (agg query) or a plain projection.
-            if compile_expression(item.expression, plan.resolve, udfs) is None:
-                return False
-            # A non-property expression needs an explicit alias so _output_column
-            # is well-defined.
-            if not isinstance(item.expression, PropertyLookup) and item.alias is None:
-                return False
-        output_names.append(_output_column(item, qualified=plan.qualified))
-
-    # Reject duplicate output columns (two returns mapping to the same name).
-    # Robust to the cached AST being mutated to fill in implicit aliases.
-    if len(set(output_names)) != len(output_names):
-        return False
-
+    scope = _Scope(
+        plan.resolve, _no_var, qualified=plan.qualified, node_vars=plan.node_vars,
+    )
+    last = len(plan.stages) - 1
+    for i, stage in enumerate(plan.stages):
+        sp = _plan_stage(stage, scope, udfs, is_return=(i == last))
+        if sp is None:
+            return False
+        scope = sp.new_scope
     return True
-
-
-def _quote_output_alias(name: str) -> str:
-    """Quote *name* as a DuckDB output identifier (safe for dots etc.).
-
-    Output aliases can legitimately contain dots (e.g. the pandas engine names a
-    bare join return ``a.name``), so we escape for a quoted identifier rather
-    than using the stricter :func:`sanitize_sql_identifier` (source columns).
-    """
-    return '"' + name.replace('"', '""') + '"'
-
-
-def _output_column(item: Any, *, qualified: bool) -> str:
-    """Output column name for a return *item*, matching the pandas engine.
-
-    An explicit ``AS alias`` wins.  Otherwise a bare property lookup is named
-    after the property (single-variable patterns) or as ``var.property``
-    (multi-variable / join patterns) — mirroring the pandas engine, and
-    deterministic whether or not the cached AST has been mutated to fill in the
-    implicit alias.
-    """
-    if item.alias is not None:
-        return str(item.alias)
-    expr = item.expression
-    if qualified:
-        return f"{expr.expression.name}.{expr.property}"
-    return str(expr.property)
 
 
 def execute_relation_query(
@@ -531,12 +675,11 @@ def execute_relation_query(
     *,
     materialize: bool = True,
 ) -> pd.DataFrame | RelationBindings:
-    """Execute an eligible query via a DuckDB relation.
+    """Execute an eligible query via a pipeline of lazy DuckDB relations.
 
-    Builds a lazy relation from the pattern plan (a single entity relation, or a
-    join across two entities and a relationship), composes ``WHERE`` as a
-    predicate and ``RETURN`` as a projection — all lazy ``DuckDBPyRelation``
-    operations — so nothing materialises until the boundary.
+    Builds the base relation from the pattern, applies the MATCH ``WHERE``, then
+    runs each ``WITH``/``RETURN`` stage (projection / aggregation / filter /
+    DISTINCT / ORDER BY / SKIP+LIMIT) as lazy ``DuckDBPyRelation`` ops.
 
     Precondition: :func:`is_relation_eligible` returned ``True`` for *query*.
 
@@ -544,61 +687,43 @@ def execute_relation_query(
         query: The parsed, eligible query AST.
         context: The DuckDB-backed context.
         materialize: When ``True`` (default) return a pandas DataFrame; when
-            ``False`` return a :class:`RelationBindings` so the caller can
-            stream it to a sink without building a pandas frame.
+            ``False`` return a :class:`RelationBindings` for streaming to a sink.
 
     """
     from pycypher.backends.duckdb_backend import DuckDBLazyFrame
-    from pycypher.relation_sql import (
-        compile_aggregate,
-        compile_expression,
-        is_aggregate,
-    )
+    from pycypher.relation_sql import compile_expression
 
-    plan = _analyze_match(query, context)
+    plan = _analyze_query(query, context)
     con = context.backend.connection
     udfs = _udf_names(context)
 
-    base_rel = plan.build(con)
+    rel = plan.build(con)
+    if plan.match_where is not None:
+        rel = rel.filter(compile_expression(plan.match_where, plan.resolve, udfs))
 
-    # WHERE → SQL predicate composed onto the relation (lazy).
-    if plan.where is not None:
-        base_rel = base_rel.filter(compile_expression(plan.where, plan.resolve, udfs))
+    scope = _Scope(
+        plan.resolve, _no_var, qualified=plan.qualified, node_vars=plan.node_vars,
+    )
+    last = len(plan.stages) - 1
+    for i, stage in enumerate(plan.stages):
+        sp = _plan_stage(stage, scope, udfs, is_return=(i == last))
+        if sp.passthrough:
+            if sp.where_sql is not None:
+                rel = rel.filter(sp.where_sql)
+            continue
+        if sp.aggregating:
+            rel = rel.aggregate(", ".join(sp.select_parts), ", ".join(sp.group_parts))
+        else:
+            rel = rel.project(", ".join(sp.select_parts))
+        if sp.having_sql is not None:
+            rel = rel.filter(sp.having_sql)
+        if sp.distinct:
+            rel = rel.distinct()
+        if sp.order_clause is not None:
+            rel = rel.order(sp.order_clause)
+        if sp.limit is not None:
+            rel = rel.limit(sp.limit, offset=sp.skip or 0)
+        scope = sp.new_scope
 
-    aggregating = any(is_aggregate(item.expression) for item in plan.items)
-    if aggregating:
-        # Non-aggregate RETURN items are GROUP BY keys (Cypher's implicit
-        # grouping); aggregates become SQL aggregate expressions.
-        select_parts = []
-        group_parts = []
-        for item in plan.items:
-            alias = _quote_output_alias(_output_column(item, qualified=plan.qualified))
-            if is_aggregate(item.expression):
-                sql_expr = compile_aggregate(item.expression, plan.resolve)
-            else:
-                sql_expr = compile_expression(item.expression, plan.resolve, udfs)
-                group_parts.append(sql_expr)
-            select_parts.append(f"{sql_expr} AS {alias}")
-        result_rel = base_rel.aggregate(
-            ", ".join(select_parts), ", ".join(group_parts),
-        )
-    else:
-        project_parts = []
-        for item in plan.items:
-            sql_expr = compile_expression(item.expression, plan.resolve, udfs)
-            alias = _quote_output_alias(_output_column(item, qualified=plan.qualified))
-            project_parts.append(f"{sql_expr} AS {alias}")
-        result_rel = base_rel.project(", ".join(project_parts))
-
-    # RETURN modifiers, in Cypher order: DISTINCT → ORDER BY → SKIP/LIMIT.
-    if plan.distinct:
-        result_rel = result_rel.distinct()
-    if plan.order_by:
-        result_rel = result_rel.order(
-            _build_order_clause(plan.order_by, plan.items, qualified=plan.qualified),
-        )
-    if plan.limit is not None:
-        result_rel = result_rel.limit(plan.limit, offset=plan.skip or 0)
-
-    bindings = RelationBindings(DuckDBLazyFrame(result_rel, con))
+    bindings = RelationBindings(DuckDBLazyFrame(rel, con))
     return bindings.to_pandas() if materialize else bindings

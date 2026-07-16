@@ -98,6 +98,7 @@ def compile_expression(
     expr: Any,
     resolve: Any,
     functions: frozenset[str] | set[str] | None = None,
+    resolve_var: Any = None,
 ) -> str | None:
     """Compile *expr* to a DuckDB SQL expression string, or ``None``.
 
@@ -146,6 +147,11 @@ def compile_expression(
             if not isinstance(node.expression, Variable):
                 return None
             return resolve(node.expression.name, node.property)
+        # --- Bare variable reference (post-WITH scalar column) ---
+        if isinstance(node, Variable):
+            if resolve_var is None:
+                return None
+            return resolve_var(node.name)
         # --- Registered scalar UDF call ---
         if isinstance(node, FunctionInvocation):
             fname = node.name.lower()
