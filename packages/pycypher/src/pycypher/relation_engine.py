@@ -113,11 +113,7 @@ def register_streaming_source(
     # Every non-ID column is exposed as a property named after the column
     # (identity map), mirroring the ContextBuilder convention for file sources.
     attr_map = {col: col for col in lazy.columns if col != id_col}
-    store = getattr(context, "_streaming_sources", None)
-    if store is None:
-        store = {}
-        context._streaming_sources = store
-    store[label] = (lazy, attr_map)
+    context._streaming_sources[label] = (lazy, attr_map)
 
 
 def register_relation_udf(
@@ -144,19 +140,15 @@ def register_relation_udf(
 
     """
     lname = name.lower()
-    store = getattr(context, "_relation_udfs", None)
-    if store is None:
-        store = set()
-        context._relation_udfs = store
-    if lname in store:  # idempotent — bridging may re-run over the same context
+    if lname in context._relation_udfs:  # idempotent — bridging may re-run over the same context
         return
     context.backend.connection.create_function(lname, fn, param_types, return_type)
-    store.add(lname)
+    context._relation_udfs.add(lname)
 
 
 def _udf_names(context: Context) -> frozenset[str]:
     """Return the set of registered relation-engine UDF names (lowercase)."""
-    return frozenset(getattr(context, "_relation_udfs", ()))
+    return frozenset(context._relation_udfs)
 
 
 #: Python annotation type → DuckDB type string for bridging user functions.
@@ -238,7 +230,7 @@ def bridge_user_functions(context: Context) -> None:
 
 def _entity_attr_map(context: Context, label: str) -> dict[str, str] | None:
     """Property→column map for *label* from a streaming source or EntityTable."""
-    streaming = getattr(context, "_streaming_sources", {})
+    streaming = context._streaming_sources
     if label in streaming:
         return streaming[label][1]
     entity = context.entity_mapping.mapping.get(label)
@@ -251,7 +243,7 @@ def _base_relation(context: Context, label: str, con: Any) -> Any:
     Prefers a registered streaming relation (file-backed, out-of-core); falls
     back to the entity's in-memory ``source_obj``.
     """
-    streaming = getattr(context, "_streaming_sources", {})
+    streaming = context._streaming_sources
     if label in streaming:
         return streaming[label][0].relation
     entity = context.entity_mapping.mapping[label]

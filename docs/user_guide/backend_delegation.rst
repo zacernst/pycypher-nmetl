@@ -106,10 +106,3 @@ materialization.
 
 **Use Polars** for Arrow-native processing pipelines where zero-copy
 interoperability matters.
-
-Integration with ML Optimization
----------------------------------
-
-The :doc:`../tutorials/ml_optimization` system works with any backend.
-The ``JoinPerformanceTracker`` records per-backend join performance so
-the planner can adapt strategy selection based on which backend is active.

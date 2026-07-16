@@ -1,6 +1,6 @@
 # PyCypher
 
-A comprehensive Cypher query parser and relational algebra engine with SAT-based constraint solving.
+A comprehensive Cypher query parser and relational algebra engine.
 
 ## Overview
 
@@ -31,57 +31,11 @@ PyCypher is a Python framework for parsing, analyzing, and executing Cypher grap
 - Adaptive cardinality feedback loops for self-improving query plans
 - Pluggable backend engines (Pandas, DuckDB, Polars)
 
-### ML-Powered Query Optimization
-
-PyCypher includes a lightweight online learning system that improves query plans over time
-without heavyweight ML dependencies. The `query_learning` module provides:
-
-- **Query Fingerprinting** — Structural similarity detection that groups queries by clause
-  structure, entity types, and predicate shapes (ignoring literal values). Queries like
-  `WHERE p.age > 30` and `WHERE p.age > 50` share the same fingerprint and reuse cached plans.
-
-- **Predicate Selectivity Learning** — Tracks actual vs. estimated selectivity per
-  `(entity_type, property, operator)` triple using exponential moving averages (EMA).
-  After sufficient observations, learned selectivity overrides heuristic defaults for
-  more accurate cardinality estimates.
-
-- **Join Strategy Learning** — Records join execution performance (elapsed time, output
-  accuracy) per size bucket and strategy. Over time, the planner automatically selects
-  the historically fastest strategy for each input size combination.
-
-- **Adaptive Plan Cache** — LRU cache with TTL that stores and reuses analysis results
-  keyed by query fingerprint. Automatically invalidated on data mutations (CREATE/SET/DELETE).
-
-```python
-from pycypher.query_learning import QueryLearningStore
-
-store = QueryLearningStore()
-
-# Record observed selectivity after query execution
-store.record_selectivity("Person", "age", ">", estimated=0.33, actual=0.12)
-
-# Retrieve learned selectivity for future planning
-learned = store.get_learned_selectivity("Person", "age", ">")
-
-# Record join performance for adaptive strategy selection
-store.record_join_performance(
-    strategy="hash", left_rows=10000, right_rows=500,
-    actual_output_rows=450, elapsed_ms=12.3,
-)
-
-# Get diagnostics snapshot
-print(store.diagnostics())
-# {'plan_cache': {'entries': 0, 'hits': 0, 'misses': 0, 'hit_rate': 0.0, ...}, ...}
-```
-
-All learning components are thread-safe with fine-grained locking and use bounded rolling
-windows (64 observations max) for predictable memory usage.
-
 ## Architecture
 
 The project is organized as a monorepo workspace:
 
-- **`packages/pycypher/`** - Cypher parser, AST models, relational algebra, SAT solver
+- **`packages/pycypher/`** - Cypher parser, AST models, relational algebra
 - **`packages/shared/`** - Common utilities, logging, telemetry
 
 ## Installation
@@ -232,8 +186,6 @@ uv run python -m pycypher.grammar_parser_cli --json "MATCH (n) RETURN n" > ast.j
 See the `examples/` directory for more detailed examples:
 
 - `ast_conversion_example.py` - Converting between AST formats
-- `projection_conversion_example.py` - Working with query projections
-- `solver_usage.py` - SAT solver integration
 - `advanced_grammar_examples.py` - Complex Cypher patterns
 
 ## Contributing

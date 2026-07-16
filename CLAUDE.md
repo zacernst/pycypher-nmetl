@@ -7,7 +7,9 @@ Orientation for future Claude sessions in this repository. Read this first.
 A Python monorepo (`pycypher-workspace`) implementing a Cypher query engine
 plus surrounding tooling. Managed by `uv` workspaces.
 
-Build/dev: `uv sync --all-extras`. Tests: `uv run pytest <pkg>/tests/`.
+Build/dev: `uv sync --all-extras`. Tests: the core `pycypher` suite lives at
+root `tests/` (`uv run pytest tests/`); `fastopendata` and `pycypher-tui`
+each have their own `packages/<pkg>/tests/` (`uv run pytest packages/<pkg>/tests/`).
 
 ## Package layout (`packages/`)
 

@@ -214,19 +214,15 @@ class QueryPlanner:
         self,
         *,
         memory_budget_bytes: int = 2 * 1024 * 1024 * 1024,  # 2GB default
-        learning_store: Any | None = None,
     ) -> None:
         """Initialize query planner.
 
         Args:
             memory_budget_bytes: Maximum memory budget for join operations.
                 Defaults to 2 GB.
-            learning_store: Optional :class:`~pycypher.query_learning.QueryLearningStore`
-                for adaptive join strategy selection from historical performance.
 
         """
         self._memory_budget = memory_budget_bytes
-        self._learning = learning_store
 
     def plan_join(
         self,
@@ -258,36 +254,6 @@ class QueryPlanner:
         """
         smaller = min(left_rows, right_rows)
         larger = max(left_rows, right_rows)
-
-        # Check learned strategy from ML feedback store
-        if self._learning is not None:
-            learned = self._learning.get_best_join_strategy(
-                left_rows, right_rows,
-            )
-            if learned is not None:
-                try:
-                    strategy = JoinStrategy(learned)
-                    estimated_mem = smaller * avg_row_bytes
-                    LOGGER.debug(
-                        "Using learned join strategy %s for %s ⋈ %s "
-                        "(%d × %d rows)",
-                        learned, left_name, right_name,
-                        left_rows, right_rows,
-                    )
-                    return JoinPlan(
-                        left_name=left_name,
-                        right_name=right_name,
-                        join_key=join_key,
-                        strategy=strategy,
-                        estimated_rows=min(left_rows, right_rows),
-                        estimated_memory_bytes=estimated_mem,
-                        notes=(
-                            f"Learned strategy: {learned} selected from "
-                            f"historical performance data."
-                        ),
-                    )
-                except ValueError:
-                    pass  # Unknown strategy value — fall through to heuristics
 
         if smaller <= _BROADCAST_THRESHOLD:
             # Small-large: replicate the small side.
@@ -586,7 +552,6 @@ class QueryPlanAnalyzer:
         query: Query,
         context: Context,
         feedback_store: CardinalityFeedbackStore | None = None,
-        learning_store: Any | None = None,
     ) -> None:
         """Initialize query plan analyzer.
 
@@ -596,15 +561,12 @@ class QueryPlanAnalyzer:
                 cardinality estimation.
             feedback_store: Optional feedback store for correcting estimates
                 based on historical execution data.
-            learning_store: Optional :class:`~pycypher.query_learning.QueryLearningStore`
-                for ML-based selectivity corrections and plan caching.
 
         """
         self.query = query
         self.context = context
         self._planner = get_default_planner()
         self._feedback = feedback_store
-        self._learning = learning_store
         self._table_stats: dict[str, TableStatistics] = {}
         self._build_table_stats()
 
@@ -728,18 +690,6 @@ class QueryPlanAnalyzer:
         # Normalize operator representations
         op = op.strip().upper()
 
-        # Check learned selectivity from ML feedback store first
-        if self._learning is not None:
-            learned = self._learning.get_learned_selectivity(
-                entity_type, column, op,
-            )
-            if learned is not None:
-                LOGGER.debug(
-                    "Using learned selectivity for %s.%s %s: %.4f",
-                    entity_type, column, op, learned,
-                )
-                return learned
-
         stats = self._get_column_stats(entity_type, column)
         if stats is None:
             return _DEFAULT_FILTER_SELECTIVITY
@@ -814,25 +764,7 @@ class QueryPlanAnalyzer:
         return 0
 
     def analyze(self) -> AnalysisResult:
-        """Walk the AST and produce a full analysis.
-
-        When a learning store is configured, checks the adaptive plan cache
-        first.  If a cached plan exists for a structurally similar query,
-        it is returned immediately.  After computing a fresh plan, it is
-        stored in the cache for future reuse.
-        """
-        # Check adaptive plan cache
-        fingerprint = None
-        if self._learning is not None:
-            fingerprint = self._learning.fingerprint(self.query)
-            cached = self._learning.get_cached_plan(fingerprint)
-            if cached is not None:
-                LOGGER.debug(
-                    "Plan cache hit for fingerprint %s",
-                    fingerprint.digest,
-                )
-                return cached
-
+        """Walk the AST and produce a full analysis."""
         from pycypher.ast_models import Match, Return, With
 
         result = AnalysisResult()
@@ -891,10 +823,6 @@ class QueryPlanAnalyzer:
         result.has_pushdown_opportunities = (
             len(result.pushdown_opportunities) > 0
         )
-
-        # Store in adaptive plan cache for future reuse
-        if self._learning is not None and fingerprint is not None:
-            self._learning.cache_plan(fingerprint, result)
 
         return result
 

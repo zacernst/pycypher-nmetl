@@ -266,7 +266,8 @@ class TestShadowBypassPushdown:
                 "city": ["X", "Y", "Z", "X", "Y"],
             },
         )
-        small_context._shadow = {"Person": shadow_df}
+        small_context._shadow.clear()
+        small_context._shadow.update({"Person": shadow_df})
 
         # With shadow, pushdown disabled → falls back to full scan
         # (EntityScan reads IDs from cache, not shadow)

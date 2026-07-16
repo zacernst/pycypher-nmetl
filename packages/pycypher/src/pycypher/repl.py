@@ -108,8 +108,6 @@ class CypherRepl(cmd.Cmd):
         "template",
         "batch",
         "examples",
-        "suggest",
-        "hints",
         "clear",
         "quit",
         "exit",
@@ -403,8 +401,6 @@ class CypherRepl(cmd.Cmd):
             "  .format <table|csv|json>  Set output format\n"
             "  .template save|list|run|delete  Manage query templates\n"
             "  .batch <file>          Run queries from a file\n"
-            "  .suggest <query>       Show similar query suggestions\n"
-            "  .hints <query>         Show performance hints for a query\n"
             "  .clear                 Clear the screen\n"
             "  .quit / .exit          Exit the REPL\n"
             "\n"
@@ -741,64 +737,6 @@ class CypherRepl(cmd.Cmd):
             " without running."
         )
         click.echo()
-
-    def do_suggest(self, arg: str) -> None:
-        """Show similar query suggestions for a given query.
-
-        Usage::
-
-            .suggest MATCH (p:Person) RETURN p.name
-
-        """
-        query = arg.strip()
-        if not query:
-            click.echo("Usage: .suggest <partial-or-full-query>")
-            return
-
-        try:
-            from pycypher.cli_intelligence import (
-                QuerySuggestionEngine,
-                format_suggestions,
-            )
-
-            engine = QuerySuggestionEngine.with_common_patterns()
-            suggestions = engine.suggest(query)
-            output = format_suggestions(suggestions)
-            if output:
-                click.echo(output)
-            else:
-                click.echo("No similar query patterns found.")
-        except Exception as exc:  # noqa: BLE001 — REPL: display error to user
-            click.echo(f"Suggestion error: {exc}")
-
-    def do_hints(self, arg: str) -> None:
-        """Show performance hints for a query.
-
-        Usage::
-
-            .hints MATCH (p:Person) RETURN *
-
-        """
-        query = arg.strip()
-        if not query:
-            click.echo("Usage: .hints <query>")
-            return
-
-        try:
-            from pycypher.cli_intelligence import (
-                PerformanceHintEngine,
-                format_hints,
-            )
-
-            engine = PerformanceHintEngine()
-            hints = engine.analyze(query)
-            output = format_hints(hints)
-            if output:
-                click.echo(output)
-            else:
-                click.echo("No performance issues detected.")
-        except Exception as exc:  # noqa: BLE001 — REPL: display error to user
-            click.echo(f"Hint analysis error: {exc}")
 
     def do_load(self, arg: str) -> None:
         """Load entity or relationship data sources mid-session.

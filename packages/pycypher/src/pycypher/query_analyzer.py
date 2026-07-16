@@ -241,7 +241,7 @@ class QueryAnalyzer:
                 self._context.backend.name,
                 _new_backend.name,
             )
-            self._context._backend = _new_backend
+            self._context.set_backend(_new_backend)
 
         # --- Query planner analysis ---
         from pycypher.query_planner import QueryPlanAnalyzer

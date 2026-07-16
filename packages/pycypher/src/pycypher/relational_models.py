@@ -62,6 +62,7 @@ if TYPE_CHECKING:
 from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
 from shared.logger import LOGGER
 
+from pycypher import execution_scope
 from pycypher.ast_models import Algebraizable, Variable, random_hash
 from pycypher.constants import (
     ID_COLUMN,
@@ -305,11 +306,6 @@ class Context(BaseModel):
         default_factory=dict,
     )
 
-    _shadow: dict[str, pd.DataFrame] = PrivateAttr(default_factory=dict)
-    #: Shadow layer for relationship mutations (CREATE / future DELETE).
-    _shadow_rels: dict[str, pd.DataFrame] = PrivateAttr(default_factory=dict)
-    #: Query parameters injected via ``Star.execute_query(parameters=...)``.
-    _parameters: dict[str, Any] = PrivateAttr(default_factory=dict)
     #: Property-lookup index cache: maps entity_type → ``source_df.set_index(ID_COLUMN)``.
     #: Populated lazily by ``BindingFrame.get_property()`` and cleared by
     #: ``commit_query()`` so mutations see fresh data.  The shadow path in
@@ -322,21 +318,84 @@ class Context(BaseModel):
     _backend: Any = PrivateAttr(default=None)
     #: Raw backend hint supplied at construction time.
     _backend_hint: str | None = PrivateAttr(default=None)
-    #: Query deadline (absolute ``time.perf_counter()`` value).  Set by
-    #: ``Star.execute_query(timeout_seconds=...)`` before ``begin_query()``.
-    #: ``None`` means no timeout.
-    _query_deadline: float | None = PrivateAttr(default=None)
-    #: The configured timeout in seconds (stored for error messages).
-    _query_timeout_seconds: float | None = PrivateAttr(default=None)
-    #: Optional memory budget in bytes.  Set by
-    #: ``Star.execute_query(memory_budget_bytes=...)``.
-    _memory_budget_bytes: int | None = PrivateAttr(default=None)
     #: Data epoch counter — incremented on every mutation commit.
     #: Used by query result caching to detect stale entries.
     _data_epoch: int = PrivateAttr(default=0)
     #: Graph-native index manager for O(degree) neighbor lookups and
     #: O(1) property equality lookups.  Created lazily on first access.
     _index_manager: Any = PrivateAttr(default=None)
+    #: Streaming sources registered via ``register_streaming_source``.
+    #: Context-lifetime state — registered once, reused across queries.
+    _streaming_sources: dict[str, Any] = PrivateAttr(default_factory=dict)
+    #: Relation UDFs registered via ``register_relation_udf``.
+    #: Context-lifetime state — registered once, reused across queries.
+    _relation_udfs: set[Any] = PrivateAttr(default_factory=set)
+    #: Per-*this-Context-instance* ``ContextVar`` backing the per-query
+    #: ``ExecutionScope`` (see ``execution_scope.py``). One ``ContextVar``
+    #: per ``Context`` instance — not a shared module-level singleton — so
+    #: two independent ``Context`` objects never share query state even
+    #: when used sequentially on the same thread (e.g. bare ``Context()``
+    #: in tests), while concurrent ``execute_query()`` calls sharing one
+    #: ``Context`` still get independent values per thread/async task.
+    _scope_var: execution_scope.ScopeVar = PrivateAttr(
+        default_factory=execution_scope.new_scope_var,
+    )
+
+    # NOTE: ``_shadow``, ``_shadow_rels``, ``_parameters``, ``_query_deadline``,
+    # ``_query_timeout_seconds``, and ``_memory_budget_bytes`` are *per-query*
+    # state, not Context-lifetime state. They live on an ``ExecutionScope``
+    # reached via ``self._scope_var`` instead of as ``PrivateAttr`` fields
+    # here, so concurrent ``Star.execute_query()`` calls on the same
+    # ``Star``/``Context`` don't race on them. The properties below provide
+    # read-through access so existing call sites (``self.context._shadow[...]``
+    # etc.) keep working unchanged.
+
+    @property
+    def _shadow(self) -> dict[str, pd.DataFrame]:
+        return execution_scope.current_scope(self._scope_var).shadow
+
+    @property
+    def _shadow_rels(self) -> dict[str, pd.DataFrame]:
+        return execution_scope.current_scope(self._scope_var).shadow_rels
+
+    @property
+    def _parameters(self) -> dict[str, Any]:
+        return execution_scope.current_scope(self._scope_var).parameters
+
+    @property
+    def _query_deadline(self) -> float | None:
+        return execution_scope.current_scope(self._scope_var).query_deadline
+
+    @property
+    def _query_timeout_seconds(self) -> float | None:
+        return execution_scope.current_scope(
+            self._scope_var,
+        ).query_timeout_seconds
+
+    @property
+    def _memory_budget_bytes(self) -> int | None:
+        return execution_scope.current_scope(
+            self._scope_var,
+        ).memory_budget_bytes
+
+    def set_memory_budget_bytes(self, value: int | None) -> None:
+        """Set the per-query memory budget on the active execution scope."""
+        execution_scope.current_scope(
+            self._scope_var,
+        ).memory_budget_bytes = value
+
+    def scoped_execution(self):
+        """Bracket a single query execution with an isolated per-Context scope.
+
+        Used by :meth:`Star.execute_query` to wrap the entire call so
+        concurrent calls sharing this ``Context`` don't race on
+        ``_parameters``/``_shadow``/``_shadow_rels``/``_query_deadline``/etc.
+        """
+        return execution_scope.scoped_execution(self._scope_var)
+
+    def set_backend(self, backend: Any) -> None:
+        """Swap the active backend engine (used by ``QueryAnalyzer`` hints)."""
+        self._backend = backend
 
     def model_post_init(self, __context: Any) -> None:
         """Resolve the backend engine after Pydantic initialisation."""
@@ -454,12 +513,13 @@ class Context(BaseModel):
         """
         import time
 
+        scope = execution_scope.current_scope(self._scope_var)
         if timeout_seconds is not None:
-            self._query_timeout_seconds = timeout_seconds
-            self._query_deadline = time.perf_counter() + timeout_seconds
+            scope.query_timeout_seconds = timeout_seconds
+            scope.query_deadline = time.perf_counter() + timeout_seconds
         else:
-            self._query_timeout_seconds = None
-            self._query_deadline = None
+            scope.query_timeout_seconds = None
+            scope.query_deadline = None
 
     def check_timeout(self, query_fragment: str = "") -> None:
         """Raise :class:`~pycypher.exceptions.QueryTimeoutError` if the deadline has passed.
@@ -493,13 +553,15 @@ class Context(BaseModel):
 
     def clear_deadline(self) -> None:
         """Disarm the per-query timeout (called in ``finally`` after execution)."""
-        self._query_deadline = None
-        self._query_timeout_seconds = None
+        scope = execution_scope.current_scope(self._scope_var)
+        scope.query_deadline = None
+        scope.query_timeout_seconds = None
 
     def begin_query(self) -> None:
         """Initialise the shadow layers for a new query transaction."""
-        self._shadow = {}
-        self._shadow_rels = {}
+        scope = execution_scope.current_scope(self._scope_var)
+        scope.shadow = {}
+        scope.shadow_rels = {}
 
     def commit_query(self) -> None:
         """Promote shadow DataFrames to the canonical entity and relationship tables.
@@ -512,11 +574,12 @@ class Context(BaseModel):
         for a new label fails).  This prevents stale shadow data from
         leaking into subsequent queries.
         """
+        scope = execution_scope.current_scope(self._scope_var)
         # Capture mutation flag BEFORE clearing shadows.
-        had_mutations: bool = bool(self._shadow or self._shadow_rels)
+        had_mutations: bool = bool(scope.shadow or scope.shadow_rels)
 
         try:
-            for entity_type, shadow_df in self._shadow.items():
+            for entity_type, shadow_df in scope.shadow.items():
                 if entity_type in self.entity_mapping.mapping:
                     self.entity_mapping.mapping[
                         entity_type
@@ -535,7 +598,7 @@ class Context(BaseModel):
                         source_obj=shadow_df,
                     )
 
-            for rel_type, shadow_df in self._shadow_rels.items():
+            for rel_type, shadow_df in scope.shadow_rels.items():
                 if rel_type in self.relationship_mapping.mapping:
                     self.relationship_mapping.mapping[
                         rel_type
@@ -555,8 +618,8 @@ class Context(BaseModel):
         finally:
             # Always clear shadow state — even on failure — to prevent stale
             # shadow data from leaking into subsequent queries.
-            self._shadow = {}
-            self._shadow_rels = {}
+            scope.shadow = {}
+            scope.shadow_rels = {}
 
         # Invalidate the property-lookup index cache only when there were actual
         # mutations — purely read-only queries commit with empty shadows, so the
@@ -567,8 +630,9 @@ class Context(BaseModel):
 
     def rollback_query(self) -> None:
         """Discard all shadow writes — leaves the context unmodified."""
-        self._shadow = {}
-        self._shadow_rels = {}
+        scope = execution_scope.current_scope(self._scope_var)
+        scope.shadow = {}
+        scope.shadow_rels = {}
         # Clear property-lookup cache to prevent stale entries that may
         # have been built from shadow-adjacent reads during the failed query.
         self._property_lookup_cache = {}
@@ -587,10 +651,11 @@ class Context(BaseModel):
             existed at the time of the call.
 
         """
+        scope = execution_scope.current_scope(self._scope_var)
         return {
-            "entities": {k: v.copy() for k, v in self._shadow.items()},
+            "entities": {k: v.copy() for k, v in scope.shadow.items()},
             "relationships": {
-                k: v.copy() for k, v in self._shadow_rels.items()
+                k: v.copy() for k, v in scope.shadow_rels.items()
             },
         }
 
@@ -608,8 +673,9 @@ class Context(BaseModel):
             savepoint: The snapshot returned by :meth:`savepoint`.
 
         """
-        self._shadow = savepoint["entities"]
-        self._shadow_rels = savepoint["relationships"]
+        scope = execution_scope.current_scope(self._scope_var)
+        scope.shadow = savepoint["entities"]
+        scope.shadow_rels = savepoint["relationships"]
         self._property_lookup_cache = {}
 
     def cypher_function(self, func: types.FunctionType) -> types.FunctionType:
