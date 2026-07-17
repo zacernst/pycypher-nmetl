@@ -26,6 +26,7 @@ from shared.logger import LOGGER
 if TYPE_CHECKING:
     from pycypher.aggregation_planner import AggregationPlanner
     from pycypher.binding_frame import BindingFrame
+    from pycypher.evaluator_protocol import ExpressionEvaluatorFactory
     from pycypher.expression_renderer import ExpressionRenderer
 
 
@@ -50,6 +51,8 @@ class ProjectionPlanner:
         agg_planner: AggregationPlanner,
         renderer: ExpressionRenderer,
         where_fn: Callable[..., BindingFrame],
+        *,
+        evaluator_factory: ExpressionEvaluatorFactory,
     ) -> None:
         """Initialise the projection planner.
 
@@ -60,11 +63,14 @@ class ProjectionPlanner:
                 explicit ``AS`` alias is provided.
             where_fn: Callback to apply a WHERE filter to a
                 :class:`BindingFrame`.
+            evaluator_factory: Factory for constructing an expression
+                evaluator over a given frame.
 
         """
         self._agg_planner = agg_planner
         self._renderer = renderer
         self._where_fn = where_fn
+        self._evaluator_factory = evaluator_factory
 
     def infer_alias(self, expression: Any) -> str | None:
         """Infer a display alias from an expression when none is given.
@@ -138,7 +144,6 @@ class ProjectionPlanner:
             A new ``pd.DataFrame`` with modifiers applied.
 
         """
-        from pycypher.binding_evaluator import BindingExpressionEvaluator
         from pycypher.binding_frame import BindingFrame
 
         # ── DISTINCT ─────────────────────────────────────────────────────────
@@ -172,7 +177,7 @@ class ProjectionPlanner:
             for idx, order_item in enumerate(order_by):
                 sort_col = f"__sort_{idx}__"
                 try:
-                    evaluator = BindingExpressionEvaluator(post_frame)
+                    evaluator = self._evaluator_factory(post_frame)
                     sort_series = evaluator.evaluate(
                         order_item.expression,
                     ).reset_index(drop=True)
@@ -187,7 +192,7 @@ class ProjectionPlanner:
                         _sort_exc,
                         idx,
                     )
-                    evaluator = BindingExpressionEvaluator(frame)
+                    evaluator = self._evaluator_factory(frame)
                     sort_series = evaluator.evaluate(
                         order_item.expression,
                     ).reset_index(drop=True)
@@ -239,7 +244,7 @@ class ProjectionPlanner:
         skip_val: Any = getattr(clause, "skip", None)
         if skip_val is not None:
             if not isinstance(skip_val, int):
-                evaluator = BindingExpressionEvaluator(frame)
+                evaluator = self._evaluator_factory(frame)
                 skip_val = int(evaluator.evaluate(skip_val).iloc[0])
             df = df.iloc[int(skip_val) :].reset_index(drop=True)
 
@@ -248,7 +253,7 @@ class ProjectionPlanner:
         limit_val: Any = getattr(clause, "limit", None)
         if limit_val is not None:
             if not isinstance(limit_val, int):
-                evaluator = BindingExpressionEvaluator(frame)
+                evaluator = self._evaluator_factory(frame)
                 limit_val = int(evaluator.evaluate(limit_val).iloc[0])
             df = df.iloc[: int(limit_val)].reset_index(drop=True)
 

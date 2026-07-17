@@ -46,6 +46,7 @@ if TYPE_CHECKING:
     )
     from pycypher.backend_engine import BackendEngine
     from pycypher.binding_frame import BindingFrame
+    from pycypher.evaluator_protocol import ExpressionEvaluatorFactory
     from pycypher.relational_models import Context
 
 
@@ -87,15 +88,23 @@ class MutationEngine:
 
     """
 
-    def __init__(self, context: Context) -> None:
+    def __init__(
+        self,
+        context: Context,
+        *,
+        evaluator_factory: ExpressionEvaluatorFactory,
+    ) -> None:
         """Initialize mutation engine.
 
         Args:
             context: The execution context holding entity and relationship
                 mappings. Mutations are applied through the shadow-write layer.
+            evaluator_factory: Factory for constructing an expression
+                evaluator over a given frame.
 
         """
         self.context: Context = context
+        self._evaluator_factory = evaluator_factory
 
     @property
     def _backend(self) -> BackendEngine | None:
@@ -126,13 +135,12 @@ class MutationEngine:
         """
         t0 = time.perf_counter()
         from pycypher.ast_models import MapLiteral, SetItem, SetPropertyItem
-        from pycypher.binding_evaluator import BindingExpressionEvaluator
 
         n_items = len(set_clause.items)
         n_rows = len(frame)
         LOGGER.debug("mutation SET: %d items, %d rows", n_items, n_rows)
 
-        evaluator = BindingExpressionEvaluator(frame)
+        evaluator = self._evaluator_factory(frame)
 
         for item in set_clause.items:
             if not isinstance(item, (SetPropertyItem, SetItem)):
@@ -477,7 +485,6 @@ class MutationEngine:
             RelationshipDirection,
             RelationshipPattern,
         )
-        from pycypher.binding_evaluator import BindingExpressionEvaluator
         from pycypher.binding_frame import BindingFrame
 
         if clause.pattern is None:
@@ -495,7 +502,7 @@ class MutationEngine:
         eval_frame = (
             make_seed_frame() if current_frame is None else current_frame
         )
-        evaluator = BindingExpressionEvaluator(eval_frame)
+        evaluator = self._evaluator_factory(eval_frame)
 
         new_vars: dict[str, pd.Series] = {}
         new_type_reg: dict[str, str] = {}
@@ -623,7 +630,6 @@ class MutationEngine:
         """
         t0 = time.perf_counter()
         from pycypher.ast_models import Variable
-        from pycypher.binding_evaluator import BindingExpressionEvaluator
         from pycypher.dataframe_utils import (
             source_to_pandas as _source_to_pandas,
         )
@@ -636,7 +642,7 @@ class MutationEngine:
             len(frame),
         )
 
-        evaluator = BindingExpressionEvaluator(frame)
+        evaluator = self._evaluator_factory(frame)
 
         for expr in clause.expressions:
             id_series = evaluator.evaluate(expr)
@@ -867,7 +873,6 @@ class MutationEngine:
         """
         t0 = time.perf_counter()
         from pycypher.ast_models import Create, Delete, Merge, Remove, Set
-        from pycypher.binding_evaluator import BindingExpressionEvaluator
         from pycypher.binding_frame import BindingFrame
 
         n_clauses = len(clause.clauses) if clause.clauses else 0
@@ -943,7 +948,7 @@ class MutationEngine:
 
         if current_frame is None:
             synthetic_frame = make_seed_frame()
-            evaluator = BindingExpressionEvaluator(frame=synthetic_frame)
+            evaluator = self._evaluator_factory(frame=synthetic_frame)
             list_series = evaluator.evaluate(clause.list_expression)
             raw_list = list_series.iloc[0] if len(list_series) > 0 else []
             if raw_list is None:
@@ -966,7 +971,7 @@ class MutationEngine:
                     element_value=element,
                 )
         else:
-            evaluator = BindingExpressionEvaluator(frame=current_frame)
+            evaluator = self._evaluator_factory(frame=current_frame)
             list_series = evaluator.evaluate(clause.list_expression)
 
             # Pre-compute rows as dicts and list values to avoid
@@ -1069,7 +1074,6 @@ class MutationEngine:
             YIELDed columns.
 
         """
-        from pycypher.binding_evaluator import BindingExpressionEvaluator
         from pycypher.binding_frame import BindingFrame
         from pycypher.relational_models import PROCEDURE_REGISTRY
 
@@ -1086,7 +1090,7 @@ class MutationEngine:
 
         args: list[Any] = []
         if clause.arguments and current_frame is not None:
-            evaluator = BindingExpressionEvaluator(current_frame)
+            evaluator = self._evaluator_factory(current_frame)
             for arg_expr in clause.arguments:
                 series = evaluator.evaluate(arg_expr)
                 args.append(series.iloc[0] if len(series) > 0 else None)

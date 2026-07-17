@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import pandas as pd
 import pytest
+from pycypher.binding_evaluator import BindingExpressionEvaluator
 from pycypher import Star
 from pycypher.exceptions import UnsupportedOperatorError
 from pycypher.ingestion import ContextBuilder
@@ -329,7 +330,7 @@ class TestUnsupportedOperator:
 
     def test_unknown_op_raises(self) -> None:
         """Calling evaluate_string_predicate with an unknown op raises."""
-        evaluator = StringPredicateEvaluator()
+        evaluator = StringPredicateEvaluator(evaluator_factory=BindingExpressionEvaluator)
 
         # Build a minimal mock for the evaluator protocol
         class _FakeExpr:

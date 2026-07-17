@@ -15,7 +15,7 @@ execution logic from the main orchestration facade.  The
 from __future__ import annotations
 
 import time
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Callable
 
 import pandas as pd
 from shared.logger import LOGGER
@@ -24,6 +24,7 @@ from shared.metrics import get_rss_mb
 from pycypher.binding_frame import BindingFrame
 
 if TYPE_CHECKING:
+    from pycypher.evaluator_protocol import ExpressionEvaluatorFactory
     from pycypher.frame_joiner import FrameJoiner
     from pycypher.mutation_engine import MutationEngine
     from pycypher.pattern_matcher import PatternMatcher
@@ -56,6 +57,8 @@ class ClauseExecutor:
         frame_joiner: FrameJoiner,
         projection_planner: ProjectionPlanner,
         query_analyzer: QueryAnalyzer,
+        *,
+        evaluator_factory: ExpressionEvaluatorFactory,
     ) -> None:
         self._context = context
         self._pattern_matcher = pattern_matcher
@@ -63,6 +66,35 @@ class ClauseExecutor:
         self._frame_joiner = frame_joiner
         self._projection_planner = projection_planner
         self._query_analyzer = query_analyzer
+        self._evaluator_factory = evaluator_factory
+
+        from pycypher.ast_models import (
+            Call,
+            Create,
+            Delete,
+            Foreach,
+            Match,
+            Merge,
+            Remove,
+            Return,
+            Set,
+            Unwind,
+            With,
+        )
+
+        self._dispatch_table: dict[type, Callable[[Any, Any, int | None], Any]] = {
+            Match: self._dispatch_match,
+            With: self._dispatch_with,
+            Return: self._dispatch_return,
+            Set: self._dispatch_set,
+            Remove: self._dispatch_remove,
+            Delete: self._dispatch_delete,
+            Unwind: self._dispatch_unwind,
+            Create: self._dispatch_create,
+            Call: self._dispatch_call,
+            Merge: self._dispatch_merge,
+            Foreach: self._dispatch_foreach,
+        }
 
     # ------------------------------------------------------------------
     # WHERE filter
@@ -73,6 +105,8 @@ class ClauseExecutor:
         where_expr: Any,
         result_frame: BindingFrame,
         fallback_frame: BindingFrame | None = None,
+        *,
+        evaluator_factory: ExpressionEvaluatorFactory,
     ) -> BindingFrame:
         """Apply a WHERE predicate to *result_frame*, with optional fallback.
 
@@ -84,27 +118,37 @@ class ClauseExecutor:
             where_expr: AST expression node for the WHERE predicate.
             result_frame: The frame to filter.
             fallback_frame: Optional pre-projection frame for variable lookup.
+            evaluator_factory: Factory for constructing an expression
+                evaluator over a given frame.
 
         Returns:
             A new filtered :class:`BindingFrame`.
 
         """
-        from pycypher.binding_evaluator import (
-            BindingExpressionEvaluator as _BEE,
-        )
         from pycypher.binding_frame import BindingFilter
 
         if fallback_frame is None:
-            return BindingFilter(predicate=where_expr).apply(result_frame)
+            return BindingFilter(
+                predicate=where_expr,
+                evaluator_factory=evaluator_factory,
+            ).apply(result_frame)
 
         try:
-            _mask = _BEE(result_frame).evaluate(where_expr).fillna(False)
+            _mask = (
+                evaluator_factory(result_frame)
+                .evaluate(where_expr)
+                .fillna(False)
+            )
             return result_frame.filter(_mask)
         except (ValueError, KeyError):
             LOGGER.debug(
                 "WHERE: evaluation failed on result frame, falling back to pre-projection frame",
             )
-            _pre_mask = _BEE(fallback_frame).evaluate(where_expr).fillna(False)
+            _pre_mask = (
+                evaluator_factory(fallback_frame)
+                .evaluate(where_expr)
+                .fillna(False)
+            )
             return result_frame.filter(_pre_mask)
 
     # ------------------------------------------------------------------
@@ -126,10 +170,8 @@ class ClauseExecutor:
             A new :class:`BindingFrame` with rows expanded from list elements.
 
         """
-        from pycypher.binding_evaluator import BindingExpressionEvaluator
-
         alias: str = clause.alias or "_unwind_col"
-        evaluator = BindingExpressionEvaluator(frame)
+        evaluator = self._evaluator_factory(frame)
         list_series = evaluator.evaluate(clause.expression).reset_index(
             drop=True,
         )
@@ -280,6 +322,125 @@ class ClauseExecutor:
     # Clause dispatch
     # ------------------------------------------------------------------
 
+    def _dispatch_match(
+        self,
+        clause: Any,
+        current_frame: Any,
+        limit_hint: int | None,
+    ) -> Any:
+        return self.handle_match_clause(clause, current_frame, limit_hint)
+
+    def _dispatch_with(
+        self,
+        clause: Any,
+        current_frame: Any,
+        _limit_hint: int | None,
+    ) -> Any:
+        if current_frame is None:
+            current_frame = self._frame_joiner.make_seed_frame()
+        return self._projection_planner.with_to_binding_frame(
+            clause, current_frame,
+        )
+
+    def _dispatch_return(
+        self,
+        clause: Any,
+        current_frame: Any,
+        _limit_hint: int | None,
+    ) -> Any:
+        if current_frame is None:
+            current_frame = self._frame_joiner.make_seed_frame()
+        return self._projection_planner.return_from_frame(
+            clause, current_frame,
+        )
+
+    def _dispatch_set(
+        self,
+        clause: Any,
+        current_frame: Any,
+        _limit_hint: int | None,
+    ) -> Any:
+        self.require_bound_frame(current_frame, "SET")
+        self._mutations.set_properties(clause, current_frame)
+        current_frame._property_cache.clear()
+        return current_frame
+
+    def _dispatch_remove(
+        self,
+        clause: Any,
+        current_frame: Any,
+        _limit_hint: int | None,
+    ) -> Any:
+        self.require_bound_frame(current_frame, "REMOVE")
+        self._mutations.remove_properties(clause, current_frame)
+        current_frame._property_cache.clear()
+        return current_frame
+
+    def _dispatch_delete(
+        self,
+        clause: Any,
+        current_frame: Any,
+        _limit_hint: int | None,
+    ) -> Any:
+        self.require_bound_frame(current_frame, "DELETE")
+        self._mutations.process_delete(clause, current_frame)
+        current_frame._property_cache.clear()
+        return current_frame
+
+    def _dispatch_unwind(
+        self,
+        clause: Any,
+        current_frame: Any,
+        _limit_hint: int | None,
+    ) -> Any:
+        return self.process_unwind_clause(clause, current_frame)
+
+    def _dispatch_create(
+        self,
+        clause: Any,
+        current_frame: Any,
+        _limit_hint: int | None,
+    ) -> Any:
+        return self._mutations.process_create(
+            clause,
+            current_frame,
+            make_seed_frame=self._frame_joiner.make_seed_frame,
+        )
+
+    def _dispatch_call(
+        self,
+        clause: Any,
+        current_frame: Any,
+        _limit_hint: int | None,
+    ) -> Any:
+        return self._mutations.process_call(clause, current_frame)
+
+    def _dispatch_merge(
+        self,
+        clause: Any,
+        current_frame: Any,
+        _limit_hint: int | None,
+    ) -> Any:
+        return self._mutations.process_merge(
+            clause,
+            current_frame,
+            match_to_binding_frame=self._pattern_matcher.match_to_binding_frame,
+            merge_frames_for_match=self._frame_joiner.merge_frames_for_match,
+            make_seed_frame=self._frame_joiner.make_seed_frame,
+        )
+
+    def _dispatch_foreach(
+        self,
+        clause: Any,
+        current_frame: Any,
+        _limit_hint: int | None,
+    ) -> Any:
+        return self._mutations.process_foreach(
+            clause,
+            current_frame,
+            make_seed_frame=self._frame_joiner.make_seed_frame,
+        )
+
     def dispatch_clause(
         self,
         clause: Any,
@@ -292,96 +453,14 @@ class ClauseExecutor:
         OPTIONAL MATCH, or a BindingFrame / ``None`` for all other clauses.
 
         """
-        from pycypher.ast_models import (
-            Call,
-            Create,
-            Delete,
-            Foreach,
-            Match,
-            Merge,
-            Remove,
-            Return,
-            Set,
-            Unwind,
-            With,
-        )
-
-        if isinstance(clause, Match):
-            result = self.handle_match_clause(
-                clause,
-                current_frame,
-                limit_hint,
+        handler = self._dispatch_table.get(type(clause))
+        if handler is None:
+            msg = (
+                f"Clause type '{type(clause).__name__}' is not yet supported "
+                "in the BindingFrame execution path."
             )
-            if isinstance(result, pd.DataFrame):
-                return result
-            return result
-
-        if isinstance(clause, With):
-            if current_frame is None:
-                current_frame = self._frame_joiner.make_seed_frame()
-            return self._projection_planner.with_to_binding_frame(
-                clause, current_frame,
-            )
-
-        if isinstance(clause, Return):
-            if current_frame is None:
-                current_frame = self._frame_joiner.make_seed_frame()
-            return self._projection_planner.return_from_frame(
-                clause, current_frame,
-            )
-
-        if isinstance(clause, Set):
-            self.require_bound_frame(current_frame, "SET")
-            self._mutations.set_properties(clause, current_frame)
-            current_frame._property_cache.clear()
-            return current_frame
-
-        if isinstance(clause, Remove):
-            self.require_bound_frame(current_frame, "REMOVE")
-            self._mutations.remove_properties(clause, current_frame)
-            current_frame._property_cache.clear()
-            return current_frame
-
-        if isinstance(clause, Delete):
-            self.require_bound_frame(current_frame, "DELETE")
-            self._mutations.process_delete(clause, current_frame)
-            current_frame._property_cache.clear()
-            return current_frame
-
-        if isinstance(clause, Unwind):
-            return self.process_unwind_clause(clause, current_frame)
-
-        if isinstance(clause, Create):
-            return self._mutations.process_create(
-                clause,
-                current_frame,
-                make_seed_frame=self._frame_joiner.make_seed_frame,
-            )
-
-        if isinstance(clause, Call):
-            return self._mutations.process_call(clause, current_frame)
-
-        if isinstance(clause, Merge):
-            return self._mutations.process_merge(
-                clause,
-                current_frame,
-                match_to_binding_frame=self._pattern_matcher.match_to_binding_frame,
-                merge_frames_for_match=self._frame_joiner.merge_frames_for_match,
-                make_seed_frame=self._frame_joiner.make_seed_frame,
-            )
-
-        if isinstance(clause, Foreach):
-            return self._mutations.process_foreach(
-                clause,
-                current_frame,
-                make_seed_frame=self._frame_joiner.make_seed_frame,
-            )
-
-        msg = (
-            f"Clause type '{type(clause).__name__}' is not yet supported "
-            "in the BindingFrame execution path."
-        )
-        raise NotImplementedError(msg)
+            raise NotImplementedError(msg)
+        return handler(clause, current_frame, limit_hint)
 
     # ------------------------------------------------------------------
     # Main execution loop

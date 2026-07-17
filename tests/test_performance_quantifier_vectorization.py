@@ -15,6 +15,7 @@ from unittest.mock import Mock, patch
 import pandas as pd
 import pytest
 from _perf_helpers import perf_threshold
+from pycypher.binding_evaluator import BindingExpressionEvaluator
 from pycypher.binding_frame import BindingFrame
 from pycypher.collection_evaluator import CollectionExpressionEvaluator
 from pycypher.ingestion import ContextBuilder
@@ -119,7 +120,7 @@ class TestQuantifierVectorizationImplementation:
     def test_vectorized_eval_quantifier_method_exists(self):
         """Test that vectorized eval_quantifier method exists in CollectionExpressionEvaluator."""
         frame = Mock()
-        evaluator = CollectionExpressionEvaluator(frame)
+        evaluator = CollectionExpressionEvaluator(frame, evaluator_factory=BindingExpressionEvaluator)
 
         # After implementation, this method should exist
         # In red phase: will fail because method doesn't exist yet

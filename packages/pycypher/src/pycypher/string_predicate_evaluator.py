@@ -24,7 +24,10 @@ from pycypher.exceptions import UnsupportedOperatorError, WrongCypherTypeError
 
 if TYPE_CHECKING:
     from pycypher.ast_models import Expression
-    from pycypher.evaluator_protocol import ExpressionEvaluatorProtocol
+    from pycypher.evaluator_protocol import (
+        ExpressionEvaluatorFactory,
+        ExpressionEvaluatorProtocol,
+    )
 
 _DEBUG_ENABLED: bool = LOGGER.isEnabledFor(logging.DEBUG)
 
@@ -125,6 +128,17 @@ class StringPredicateEvaluator:
     * ``"NOT IN"`` — inverse membership test (three-valued logic)
 
     """
+
+    def __init__(self, *, evaluator_factory: ExpressionEvaluatorFactory) -> None:
+        """Initialise the (stateless) string predicate evaluator.
+
+        Args:
+            evaluator_factory: Factory for constructing a fresh expression
+                evaluator over a derived frame. Unused today — accepted for
+                interface uniformity with the other sub-evaluators.
+
+        """
+        self._evaluator_factory = evaluator_factory
 
     def evaluate_string_predicate(
         self,

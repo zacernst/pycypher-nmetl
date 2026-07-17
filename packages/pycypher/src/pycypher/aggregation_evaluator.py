@@ -16,7 +16,10 @@ import pandas as pd
 
 if TYPE_CHECKING:
     from pycypher.ast_models import Arithmetic, CountStar, FunctionInvocation
-    from pycypher.evaluator_protocol import ExpressionEvaluatorProtocol
+    from pycypher.evaluator_protocol import (
+        ExpressionEvaluatorFactory,
+        ExpressionEvaluatorProtocol,
+    )
 from shared.logger import LOGGER
 
 from pycypher.binding_frame import BindingFrame
@@ -203,14 +206,22 @@ class AggregationExpressionEvaluator:
     while providing a focused, testable interface for aggregation operations.
     """
 
-    def __init__(self, frame: BindingFrame) -> None:
+    def __init__(
+        self,
+        frame: BindingFrame,
+        *,
+        evaluator_factory: ExpressionEvaluatorFactory,
+    ) -> None:
         """Initialize aggregation evaluator with binding frame context.
 
         Args:
             frame: BindingFrame providing variable and expression evaluation context
+            evaluator_factory: Factory for constructing a fresh expression
+                evaluator over a derived frame.
 
         """
         self.frame = frame
+        self._evaluator_factory = evaluator_factory
 
     def evaluate_aggregation(
         self,

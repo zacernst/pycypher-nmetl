@@ -19,6 +19,7 @@ from pycypher.ast_models import (
     RelationshipPattern,
     Variable,
 )
+from pycypher.binding_evaluator import BindingExpressionEvaluator
 from pycypher.binding_frame import BindingFrame
 from pycypher.path_expander import PathExpander
 from pycypher.pattern_matcher import (
@@ -168,6 +169,7 @@ def _make_matcher(ctx: Context) -> PatternMatcher:
         path_expander=expander,
         coerce_join_fn=_identity_join,
         apply_where_fn=_noop_where,
+        evaluator_factory=BindingExpressionEvaluator,
     )
 
 
@@ -475,6 +477,7 @@ class TestMatchToBindingFrame:
             path_expander=expander,
             coerce_join_fn=_identity_join,
             apply_where_fn=tracking_where,
+            evaluator_factory=BindingExpressionEvaluator,
         )
 
         from pycypher.ast_models import IntegerLiteral
@@ -839,6 +842,7 @@ class TestPredicatePushdown:
             path_expander=expander,
             coerce_join_fn=_identity_join,
             apply_where_fn=tracking_where,
+            evaluator_factory=BindingExpressionEvaluator,
         )
 
         from pycypher.ast_models import IntegerLiteral
@@ -899,6 +903,7 @@ class TestPredicatePushdown:
             path_expander=expander,
             coerce_join_fn=_identity_join,
             apply_where_fn=tracking_where,
+            evaluator_factory=BindingExpressionEvaluator,
         )
 
         # WHERE references both 'a' and 'b' — cannot push down

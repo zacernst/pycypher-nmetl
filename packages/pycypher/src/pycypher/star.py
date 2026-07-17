@@ -178,8 +178,24 @@ class Star:
         # Track variable-to-type mappings during pattern processing
         self.variable_type_registry: dict[Variable, str] = {}
 
+        # Single production expression-evaluator factory, injected into every
+        # component that needs to construct an evaluator over a frame — see
+        # IMPLEMENTATION_PLAN.md Phase 8 (evaluator-factory injection).
+        from functools import partial
+
+        from pycypher.binding_evaluator import BindingExpressionEvaluator
+
+        self._evaluator_factory = BindingExpressionEvaluator
+        _where_fn = partial(
+            ClauseExecutor.apply_where_filter,
+            evaluator_factory=self._evaluator_factory,
+        )
+
         # Delegate all mutation operations to the focused MutationEngine.
-        self._mutations: MutationEngine = MutationEngine(context=context)
+        self._mutations: MutationEngine = MutationEngine(
+            context=context,
+            evaluator_factory=self._evaluator_factory,
+        )
 
         # Delegate BFS path expansion to the focused PathExpander.
         self._path_expander: PathExpander = PathExpander(context=context)
@@ -192,7 +208,7 @@ class Star:
             match_fn=lambda clause, **kw: (
                 self._pattern_matcher.match_to_binding_frame(clause, **kw)
             ),
-            where_fn=ClauseExecutor.apply_where_filter,
+            where_fn=_where_fn,
         )
 
         # Delegate pattern matching to the focused PatternMatcher.
@@ -200,8 +216,9 @@ class Star:
             context=context,
             path_expander=self._path_expander,
             coerce_join_fn=self._frame_joiner.coerce_join,
-            apply_where_fn=ClauseExecutor.apply_where_filter,
+            apply_where_fn=_where_fn,
             multi_way_join_fn=self._frame_joiner.multi_way_join,
+            evaluator_factory=self._evaluator_factory,
         )
 
         # Delegate expression rendering.
@@ -210,7 +227,9 @@ class Star:
         # Delegate aggregation detection and planning.
         from pycypher.aggregation_planner import AggregationPlanner
 
-        self._agg_planner: AggregationPlanner = AggregationPlanner()
+        self._agg_planner: AggregationPlanner = AggregationPlanner(
+            evaluator_factory=self._evaluator_factory,
+        )
 
         # Delegate RETURN/WITH clause evaluation and projection modifiers.
         from pycypher.projection_planner import ProjectionPlanner
@@ -218,7 +237,8 @@ class Star:
         self._projection_planner: ProjectionPlanner = ProjectionPlanner(
             agg_planner=self._agg_planner,
             renderer=self._renderer,
-            where_fn=ClauseExecutor.apply_where_filter,
+            where_fn=_where_fn,
+            evaluator_factory=self._evaluator_factory,
         )
 
         # Cardinality feedback store.
@@ -242,6 +262,7 @@ class Star:
             frame_joiner=self._frame_joiner,
             projection_planner=self._projection_planner,
             query_analyzer=self._query_analyzer,
+            evaluator_factory=self._evaluator_factory,
         )
 
         # Query explainer — EXPLAIN text plans.
@@ -393,6 +414,7 @@ class Star:
             where_expr,
             result_frame,
             fallback_frame,
+            evaluator_factory=self._evaluator_factory,
         )
 
     def _apply_projection_modifiers(

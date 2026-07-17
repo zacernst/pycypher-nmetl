@@ -43,6 +43,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from pycypher.ast_models import Match
+    from pycypher.evaluator_protocol import ExpressionEvaluatorFactory
     from pycypher.relational_models import Context
 
 #: Synthetic variable name prefix for anonymous nodes.
@@ -122,6 +123,8 @@ class PatternMatcher:
         coerce_join_fn: Callable[..., BindingFrame],
         apply_where_fn: Callable[..., BindingFrame],
         multi_way_join_fn: Callable[..., BindingFrame] | None = None,
+        *,
+        evaluator_factory: ExpressionEvaluatorFactory,
     ) -> None:
         """Initialize pattern matcher.
 
@@ -134,6 +137,9 @@ class PatternMatcher:
                 for applying a WHERE predicate to a frame.
             multi_way_join_fn: Optional callable ``(frames) -> BindingFrame``
                 for n-way joins using LeapfrogTriejoin when applicable.
+            evaluator_factory: Factory for constructing an expression
+                evaluator, threaded into inline-property ``BindingFilter``
+                construction.
 
         """
         self.context = context
@@ -141,6 +147,7 @@ class PatternMatcher:
         self._coerce_join = coerce_join_fn
         self._apply_where_filter = apply_where_fn
         self._multi_way_join = multi_way_join_fn
+        self._evaluator_factory = evaluator_factory
 
     def node_pattern_to_binding_frame(
         self,
@@ -255,7 +262,10 @@ class PatternMatcher:
                 ),
                 right=prop_val,
             )
-            frame = BindingFilter(predicate=predicate).apply(frame)
+            frame = BindingFilter(
+                predicate=predicate,
+                evaluator_factory=self._evaluator_factory,
+            ).apply(frame)
         # For labelled nodes with pushdown, the pushed predicates have already
         # filtered at scan time — no need to re-apply them.
 
@@ -639,7 +649,10 @@ class PatternMatcher:
                         ),
                         right=prop_val,
                     )
-                    hop_f = BindingFilter(predicate=predicate).apply(
+                    hop_f = BindingFilter(
+                        predicate=predicate,
+                        evaluator_factory=self._evaluator_factory,
+                    ).apply(
                         hop_f,
                     )
 

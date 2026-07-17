@@ -16,6 +16,7 @@ import pandas as pd
 import pytest
 from pycypher import ContextBuilder, Star
 from pycypher.ast_models import MapLiteral
+from pycypher.binding_evaluator import BindingExpressionEvaluator
 from pycypher.binding_frame import BindingFrame
 from pycypher.collection_evaluator import CollectionExpressionEvaluator
 
@@ -126,7 +127,7 @@ class TestPatternComprehension:
             type_registry={"p": "Person"},
             context=ctx,
         )
-        evaluator = CollectionExpressionEvaluator(frame)
+        evaluator = CollectionExpressionEvaluator(frame, evaluator_factory=BindingExpressionEvaluator)
 
         class FakePC:
             variable: Any = None
@@ -162,7 +163,7 @@ class TestMapLiteralEdgePaths:
             type_registry={"p": "Person"},
             context=ctx,
         )
-        evaluator = CollectionExpressionEvaluator(frame)
+        evaluator = CollectionExpressionEvaluator(frame, evaluator_factory=BindingExpressionEvaluator)
 
         ml = MapLiteral(entries={}, value={})
 
@@ -184,7 +185,7 @@ class TestMapLiteralEdgePaths:
             type_registry={"p": "Person"},
             context=ctx,
         )
-        evaluator = CollectionExpressionEvaluator(frame)
+        evaluator = CollectionExpressionEvaluator(frame, evaluator_factory=BindingExpressionEvaluator)
 
         ml = MapLiteral(entries={}, value={"x": 42, "y": "hello"})
 
@@ -258,7 +259,7 @@ class TestMapProjectionEmpty:
             type_registry={"p": "Person"},
             context=ctx,
         )
-        evaluator = CollectionExpressionEvaluator(frame)
+        evaluator = CollectionExpressionEvaluator(frame, evaluator_factory=BindingExpressionEvaluator)
 
         class FakeVariable:
             name: str = "p"

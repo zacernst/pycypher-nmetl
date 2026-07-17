@@ -11,6 +11,7 @@ import operator
 
 import pandas as pd
 import pytest
+from pycypher.binding_evaluator import BindingExpressionEvaluator
 from pycypher.binding_frame import BindingFrame
 from pycypher.boolean_evaluator import (
     _BOOL_FOLD_OPS,
@@ -200,11 +201,11 @@ class TestBooleanExpressionEvaluator:
         test_frame: BindingFrame,
     ) -> BooleanExpressionEvaluator:
         """Create BooleanExpressionEvaluator instance."""
-        return BooleanExpressionEvaluator(test_frame)
+        return BooleanExpressionEvaluator(test_frame, evaluator_factory=BindingExpressionEvaluator)
 
     def test_evaluator_initialization(self, test_frame: BindingFrame) -> None:
         """Test evaluator initializes correctly."""
-        evaluator = BooleanExpressionEvaluator(test_frame)
+        evaluator = BooleanExpressionEvaluator(test_frame, evaluator_factory=BindingExpressionEvaluator)
         assert evaluator.frame is test_frame
 
     def test_evaluate_and_basic(
@@ -496,7 +497,7 @@ class TestBooleanEvaluatorIntegration:
             context=context,
             type_registry={"x": "X"},
         )
-        evaluator = BooleanExpressionEvaluator(frame)
+        evaluator = BooleanExpressionEvaluator(frame, evaluator_factory=BindingExpressionEvaluator)
 
         class MockEval:
             """Mock that maps string labels to predetermined series."""
@@ -758,7 +759,7 @@ class TestBooleanEvaluatorRegression:
             context=context,
             type_registry={"x": "X"},
         )
-        ev = BooleanExpressionEvaluator(frame)
+        ev = BooleanExpressionEvaluator(frame, evaluator_factory=BindingExpressionEvaluator)
 
         class MockEval:
             """Mock evaluator for regression test."""

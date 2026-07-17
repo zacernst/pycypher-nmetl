@@ -17,6 +17,7 @@ import time
 
 import pandas as pd
 import pytest
+from pycypher.binding_evaluator import BindingExpressionEvaluator
 from pycypher.constants import (
     ID_COLUMN,
     RELATIONSHIP_SOURCE_COLUMN,
@@ -409,7 +410,7 @@ class TestPushdownPerformance:
         t0 = time.perf_counter()
         for _ in range(20):
             frame = EntityScan("Person", "a").scan(large_context)
-            BindingFilter(predicate=predicate).apply(frame)
+            BindingFilter(predicate=predicate, evaluator_factory=BindingExpressionEvaluator).apply(frame)
         filter_time = time.perf_counter() - t0
 
         assert pushdown_time < filter_time, (

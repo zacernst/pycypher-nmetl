@@ -17,7 +17,10 @@ from typing import TYPE_CHECKING, Any, TypeGuard, cast
 import numpy as np
 
 if TYPE_CHECKING:
-    from pycypher.evaluator_protocol import ExpressionEvaluatorProtocol
+    from pycypher.evaluator_protocol import (
+        ExpressionEvaluatorFactory,
+        ExpressionEvaluatorProtocol,
+    )
 import pandas as pd
 from shared.helpers import is_null_value
 from shared.logger import LOGGER
@@ -433,14 +436,22 @@ class ArithmeticExpressionEvaluator:
     while providing a focused, testable interface for arithmetic operations.
     """
 
-    def __init__(self, frame: BindingFrame) -> None:
+    def __init__(
+        self,
+        frame: BindingFrame,
+        *,
+        evaluator_factory: ExpressionEvaluatorFactory,
+    ) -> None:
         """Initialize arithmetic evaluator with binding frame context.
 
         Args:
             frame: BindingFrame providing variable and expression evaluation context
+            evaluator_factory: Factory for constructing a fresh expression
+                evaluator over a derived frame.
 
         """
         self.frame = frame
+        self._evaluator_factory = evaluator_factory
 
     def evaluate_arithmetic(
         self,

@@ -34,6 +34,7 @@ from pycypher.scalar_functions import ScalarFunctionRegistry
 
 if TYPE_CHECKING:
     from pycypher.binding_frame import BindingFrame
+    from pycypher.evaluator_protocol import ExpressionEvaluatorFactory
 
 #: Dual-purpose functions that are scalar when called with a list literal,
 #: aggregation otherwise.
@@ -56,8 +57,19 @@ _KNOWN_GRAPH_FUNCTIONS: frozenset[str] = frozenset(
 class AggregationPlanner:
     """Detects aggregations in expressions and evaluates projection items.
 
-    Stateless — all state is passed via method parameters.
+    Aggregation-detection state is passed via method parameters; the only
+    constructor-injected dependency is the expression-evaluator factory.
     """
+
+    def __init__(self, *, evaluator_factory: ExpressionEvaluatorFactory) -> None:
+        """Initialise the aggregation planner.
+
+        Args:
+            evaluator_factory: Factory for constructing an expression
+                evaluator over a given (or per-group) frame.
+
+        """
+        self._evaluator_factory = evaluator_factory
 
     def contains_aggregation(self, expression: Any) -> bool:
         """Check recursively whether *expression* contains any aggregate function.
@@ -254,15 +266,13 @@ class AggregationPlanner:
             A plain ``pd.DataFrame``.
 
         """
-        from pycypher.binding_evaluator import BindingExpressionEvaluator
-
         agg_items = [
             i for i in items if self.contains_aggregation(i.expression)
         ]
         non_agg_items = [
             i for i in items if not self.contains_aggregation(i.expression)
         ]
-        evaluator = BindingExpressionEvaluator(frame)
+        evaluator = self._evaluator_factory(frame)
 
         if not agg_items:
             # Simple projection — batch PropertyLookups on the same variable
@@ -337,7 +347,7 @@ class AggregationPlanner:
                 mask = pd.Series(False, index=range(len(frame)))
                 mask.iloc[list(group_idx)] = True
                 group_frame = frame.filter(mask)
-                group_evaluator = BindingExpressionEvaluator(group_frame)
+                group_evaluator = self._evaluator_factory(group_frame)
 
                 # Locate the row in unique_groups that matches this group.
                 if isinstance(group_vals, tuple):

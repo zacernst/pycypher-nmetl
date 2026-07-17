@@ -690,7 +690,7 @@ class TestBindingFilter:
             ),
             right=StringLiteral(value="Alice"),
         )
-        filtered = BindingFilter(predicate=predicate).apply(bf)
+        filtered = BindingFilter(predicate=predicate, evaluator_factory=BindingExpressionEvaluator).apply(bf)
         assert len(filtered) == 1
         names = filtered.get_property("p", "name")
         assert list(names) == ["Alice"]
@@ -710,7 +710,7 @@ class TestBindingFilter:
             left=PropertyLookup(expression=Variable(name="p"), property="age"),
             right=IntegerLiteral(value=25),
         )
-        filtered = BindingFilter(predicate=predicate).apply(bf)
+        filtered = BindingFilter(predicate=predicate, evaluator_factory=BindingExpressionEvaluator).apply(bf)
         assert len(filtered) == 2
         names = set(filtered.get_property("p", "name"))
         assert names == {"Alice", "Carol"}
@@ -746,7 +746,7 @@ class TestBindingFilter:
                 ),
             ],
         )
-        filtered = BindingFilter(predicate=predicate).apply(bf)
+        filtered = BindingFilter(predicate=predicate, evaluator_factory=BindingExpressionEvaluator).apply(bf)
         assert len(filtered) == 1
         assert list(filtered.get_property("p", "name")) == ["Alice"]
 
@@ -765,7 +765,7 @@ class TestBindingFilter:
             left=PropertyLookup(expression=Variable(name="p"), property="age"),
             right=IntegerLiteral(value=100),
         )
-        filtered = BindingFilter(predicate=predicate).apply(bf)
+        filtered = BindingFilter(predicate=predicate, evaluator_factory=BindingExpressionEvaluator).apply(bf)
         assert len(filtered) == 0
 
     def test_filter_all_match(self, ctx: Context) -> None:
@@ -783,7 +783,7 @@ class TestBindingFilter:
             left=PropertyLookup(expression=Variable(name="p"), property="age"),
             right=IntegerLiteral(value=0),
         )
-        filtered = BindingFilter(predicate=predicate).apply(bf)
+        filtered = BindingFilter(predicate=predicate, evaluator_factory=BindingExpressionEvaluator).apply(bf)
         assert len(filtered) == 3
 
     def test_filter_after_join(self, ctx: Context) -> None:
@@ -811,7 +811,7 @@ class TestBindingFilter:
             ),
             right=StringLiteral(value="Alice"),
         )
-        filtered = BindingFilter(predicate=predicate).apply(joined)
+        filtered = BindingFilter(predicate=predicate, evaluator_factory=BindingExpressionEvaluator).apply(joined)
         # Alice has 2 outgoing KNOWS edges
         assert len(filtered) == 2
         assert all(filtered.get_property("p", "name") == "Alice")
