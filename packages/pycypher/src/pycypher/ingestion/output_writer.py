@@ -193,4 +193,4 @@ def write_relation_to_uri(
             f'COPY "{view}" TO {target} ({options})',  # nosec B608 — view is a generated uuid name; target escaped via escape_sql_string_literal
         )
     finally:
-        con.execute(f'DROP VIEW IF EXISTS "{view}"')
+        con.execute(f'DROP VIEW IF EXISTS "{view}"')  # nosec B608 — view is a generated UUID name, not user input

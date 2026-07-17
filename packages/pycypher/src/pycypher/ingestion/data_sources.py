@@ -491,7 +491,7 @@ class DataSource(ABC):
         table = self.read()
         name = f"_src_{uuid.uuid4().hex}"
         con.register(name, table)
-        return DuckDBLazyFrame(con.sql(f'SELECT * FROM "{name}"'), con)
+        return DuckDBLazyFrame(con.sql(f'SELECT * FROM "{name}"'), con)  # nosec B608 — name is a UUID-based internal identifier, not user input
 
 
 # ---------------------------------------------------------------------------
@@ -815,7 +815,7 @@ class DataFrameDataSource(DataSource):
             # Register the DataFrame with DuckDB so it can be queried
             con.register("df", self._df)
             select = "SELECT *" if replace_clause is None else f"SELECT * {replace_clause}"
-            return con.execute(f"{select} FROM df").to_arrow_table()
+            return con.execute(f"{select} FROM df").to_arrow_table()  # nosec B608 — column/type identifiers validated by _schema_hints_replace_clause
 
 
 class ArrowDataSource(DataSource):
