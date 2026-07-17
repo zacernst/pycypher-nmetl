@@ -1176,10 +1176,7 @@
 
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">pycypher.ast_models</span><span class="w"> </span><span class="kn">import</span> <span class="n">Expression</span>
-    <span class="kn">from</span><span class="w"> </span><span class="nn">pycypher.evaluator_protocol</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
-        <span class="n">ExpressionEvaluatorFactory</span><span class="p">,</span>
-        <span class="n">ExpressionEvaluatorProtocol</span><span class="p">,</span>
-    <span class="p">)</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">pycypher.evaluator_protocol</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExpressionEvaluatorProtocol</span>
 
 <span class="n">_DEBUG_ENABLED</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="n">LOGGER</span><span class="o">.</span><span class="n">isEnabledFor</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">)</span>
 
@@ -1282,20 +1279,6 @@
 <span class="sd">    * ``&quot;NOT IN&quot;`` — inverse membership test (three-valued logic)</span>
 
 <span class="sd">    &quot;&quot;&quot;</span>
-
-<div class="viewcode-block" id="StringPredicateEvaluator.__init__">
-<a class="viewcode-back" href="../../api/pycypher.html#pycypher.string_predicate_evaluator.StringPredicateEvaluator.__init__">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">evaluator_factory</span><span class="p">:</span> <span class="n">ExpressionEvaluatorFactory</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialise the (stateless) string predicate evaluator.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            evaluator_factory: Factory for constructing a fresh expression</span>
-<span class="sd">                evaluator over a derived frame. Unused today — accepted for</span>
-<span class="sd">                interface uniformity with the other sub-evaluators.</span>
-
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_evaluator_factory</span> <span class="o">=</span> <span class="n">evaluator_factory</span></div>
-
 
 <div class="viewcode-block" id="StringPredicateEvaluator.evaluate_string_predicate">
 <a class="viewcode-back" href="../../api/pycypher.html#pycypher.string_predicate_evaluator.StringPredicateEvaluator.evaluate_string_predicate">[docs]</a>
