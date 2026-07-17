@@ -23,6 +23,7 @@ from pycypher.ast_models import (
     ReturnItem,
     Variable,
 )
+from pycypher.binding_evaluator import BindingExpressionEvaluator
 from pycypher.projection_planner import ProjectionPlanner
 
 # ---------------------------------------------------------------------------
@@ -44,7 +45,9 @@ def _make_planner(
         renderer.render = MagicMock(return_value=None)
     if where_fn is None:
         where_fn = MagicMock()
-    return ProjectionPlanner(agg_planner, renderer, where_fn)
+    return ProjectionPlanner(
+        agg_planner, renderer, where_fn, evaluator_factory=BindingExpressionEvaluator
+    )
 
 
 def _prop(var_name: str, prop_name: str) -> PropertyLookup:

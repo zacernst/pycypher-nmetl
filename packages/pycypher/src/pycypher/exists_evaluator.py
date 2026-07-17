@@ -31,7 +31,10 @@ from pycypher.relational_models import (
 if TYPE_CHECKING:
     from pycypher.ast_models import PatternComprehension
     from pycypher.binding_frame import BindingFrame
-    from pycypher.evaluator_protocol import ExpressionEvaluatorProtocol
+    from pycypher.evaluator_protocol import (
+        ExpressionEvaluatorFactory,
+        ExpressionEvaluatorProtocol,
+    )
 
 _DEBUG_ENABLED: bool = LOGGER.isEnabledFor(logging.DEBUG)
 
@@ -51,15 +54,23 @@ class ExistsEvaluator:
 
     """
 
-    def __init__(self, frame: BindingFrame) -> None:
+    def __init__(
+        self,
+        frame: BindingFrame,
+        *,
+        evaluator_factory: ExpressionEvaluatorFactory,
+    ) -> None:
         """Initialise with the current binding frame.
 
         Args:
             frame: The :class:`BindingFrame` to evaluate EXISTS predicates
                 and pattern comprehensions against.
+            evaluator_factory: Factory for constructing a fresh expression
+                evaluator over a derived (sub) frame.
 
         """
         self.frame = frame
+        self._evaluator_factory = evaluator_factory
 
     # ------------------------------------------------------------------
     # EXISTS predicate
@@ -355,7 +366,6 @@ class ExistsEvaluator:
         orig_index = self.frame.bindings.index
 
         # Vectorised path: one pandas merge replaces O(n_rows × m_matches).
-        from pycypher.binding_evaluator import BindingExpressionEvaluator
         from pycypher.binding_frame import BindingFrame
 
         anchor_frame = pd.DataFrame(
@@ -390,7 +400,7 @@ class ExistsEvaluator:
             type_registry=sub_type_reg,
             context=self.frame.context,
         )
-        pairs_eval = BindingExpressionEvaluator(sub_frame)
+        pairs_eval = self._evaluator_factory(sub_frame)
 
         if pc.where is not None:
             keep_raw = pairs_eval.evaluate(pc.where)
@@ -404,7 +414,7 @@ class ExistsEvaluator:
                 type_registry=sub_type_reg,
                 context=self.frame.context,
             )
-            pairs_eval = BindingExpressionEvaluator(sub_frame)
+            pairs_eval = self._evaluator_factory(sub_frame)
 
         if pc.map_expr is not None:
             mapped = pairs_eval.evaluate(pc.map_expr)

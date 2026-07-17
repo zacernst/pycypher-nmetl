@@ -389,6 +389,7 @@ class BindingExpressionEvaluator:
 
             self._arithmetic_evaluator = ArithmeticExpressionEvaluator(
                 self.frame,
+                evaluator_factory=type(self),
             )
         return self._arithmetic_evaluator
 
@@ -398,7 +399,10 @@ class BindingExpressionEvaluator:
         if self._boolean_evaluator is None:
             from pycypher.boolean_evaluator import BooleanExpressionEvaluator
 
-            self._boolean_evaluator = BooleanExpressionEvaluator(self.frame)
+            self._boolean_evaluator = BooleanExpressionEvaluator(
+                self.frame,
+                evaluator_factory=type(self),
+            )
         return self._boolean_evaluator
 
     @property
@@ -411,6 +415,7 @@ class BindingExpressionEvaluator:
 
             self._aggregation_evaluator = AggregationExpressionEvaluator(
                 self.frame,
+                evaluator_factory=type(self),
             )
         return self._aggregation_evaluator
 
@@ -424,6 +429,7 @@ class BindingExpressionEvaluator:
 
             self._collection_evaluator = CollectionExpressionEvaluator(
                 self.frame,
+                evaluator_factory=type(self),
             )
         return self._collection_evaluator
 
@@ -433,7 +439,10 @@ class BindingExpressionEvaluator:
         if self._comparison_evaluator is None:
             from pycypher.comparison_evaluator import ComparisonEvaluator
 
-            self._comparison_evaluator = ComparisonEvaluator(self.frame)
+            self._comparison_evaluator = ComparisonEvaluator(
+                self.frame,
+                evaluator_factory=type(self),
+            )
         return self._comparison_evaluator
 
     @property
@@ -446,6 +455,7 @@ class BindingExpressionEvaluator:
 
             self._scalar_function_evaluator = ScalarFunctionEvaluator(
                 self.frame,
+                evaluator_factory=type(self),
             )
         return self._scalar_function_evaluator
 
@@ -457,7 +467,9 @@ class BindingExpressionEvaluator:
                 StringPredicateEvaluator,
             )
 
-            self._string_predicate_evaluator = StringPredicateEvaluator()
+            self._string_predicate_evaluator = StringPredicateEvaluator(
+                evaluator_factory=type(self),
+            )
         return self._string_predicate_evaluator
 
     @property
@@ -466,7 +478,10 @@ class BindingExpressionEvaluator:
         if self._exists_evaluator is None:
             from pycypher.exists_evaluator import ExistsEvaluator
 
-            self._exists_evaluator = ExistsEvaluator(self.frame)
+            self._exists_evaluator = ExistsEvaluator(
+                self.frame,
+                evaluator_factory=type(self),
+            )
         return self._exists_evaluator
 
     # ------------------------------------------------------------------

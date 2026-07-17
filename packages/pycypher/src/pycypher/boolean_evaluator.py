@@ -18,7 +18,10 @@ import numpy as np
 
 if TYPE_CHECKING:
     from pycypher.ast_models import Expression
-    from pycypher.evaluator_protocol import ExpressionEvaluatorProtocol
+    from pycypher.evaluator_protocol import (
+        ExpressionEvaluatorFactory,
+        ExpressionEvaluatorProtocol,
+    )
 import pandas as pd
 from shared.logger import LOGGER
 
@@ -131,14 +134,22 @@ class BooleanExpressionEvaluator:
     while providing a focused, testable interface for boolean operations.
     """
 
-    def __init__(self, frame: BindingFrame) -> None:
+    def __init__(
+        self,
+        frame: BindingFrame,
+        *,
+        evaluator_factory: ExpressionEvaluatorFactory,
+    ) -> None:
         """Initialize boolean evaluator with binding frame context.
 
         Args:
             frame: BindingFrame providing variable and expression evaluation context
+            evaluator_factory: Factory for constructing a fresh expression
+                evaluator over a derived frame.
 
         """
         self.frame = frame
+        self._evaluator_factory = evaluator_factory
 
     def evaluate_and(
         self,

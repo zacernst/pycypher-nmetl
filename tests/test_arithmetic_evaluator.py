@@ -20,6 +20,7 @@ from pycypher.arithmetic_evaluator import (
     _first_non_null_val,
     _is_temporal_val,
 )
+from pycypher.binding_evaluator import BindingExpressionEvaluator
 from pycypher.binding_frame import BindingFrame
 from pycypher.relational_models import (
     ID_COLUMN,
@@ -208,11 +209,11 @@ class TestArithmeticExpressionEvaluator:
         test_frame: BindingFrame,
     ) -> ArithmeticExpressionEvaluator:
         """Create ArithmeticExpressionEvaluator instance."""
-        return ArithmeticExpressionEvaluator(test_frame)
+        return ArithmeticExpressionEvaluator(test_frame, evaluator_factory=BindingExpressionEvaluator)
 
     def test_evaluator_initialization(self, test_frame: BindingFrame) -> None:
         """Test evaluator initializes correctly."""
-        evaluator = ArithmeticExpressionEvaluator(test_frame)
+        evaluator = ArithmeticExpressionEvaluator(test_frame, evaluator_factory=BindingExpressionEvaluator)
         assert evaluator.frame is test_frame
 
     def test_evaluate_arithmetic_addition(

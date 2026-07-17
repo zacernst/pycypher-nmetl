@@ -35,7 +35,10 @@ if TYPE_CHECKING:
         Quantifier,
         Reduce,
     )
-    from pycypher.evaluator_protocol import ExpressionEvaluatorProtocol
+    from pycypher.evaluator_protocol import (
+        ExpressionEvaluatorFactory,
+        ExpressionEvaluatorProtocol,
+    )
 from shared.helpers import is_null_raw_list as _is_null_raw_list
 from shared.logger import LOGGER
 
@@ -132,15 +135,23 @@ class CollectionExpressionEvaluator:
 
     """
 
-    def __init__(self, frame: BindingFrame) -> None:
+    def __init__(
+        self,
+        frame: BindingFrame,
+        *,
+        evaluator_factory: ExpressionEvaluatorFactory,
+    ) -> None:
         """Initialize collection evaluator with binding frame context.
 
         Args:
             frame: BindingFrame providing variable bindings and context for
                 collection expression evaluation.
+            evaluator_factory: Factory for constructing a fresh expression
+                evaluator over a derived (exploded/sub) frame.
 
         """
         self.frame = frame
+        self._evaluator_factory = evaluator_factory
 
     def eval_property_lookup(
         self,
@@ -334,7 +345,6 @@ class CollectionExpressionEvaluator:
                 "collection: list_comprehension  rows=%d",
                 len(self.frame),
             )
-        from pycypher.binding_evaluator import BindingExpressionEvaluator
         from pycypher.binding_frame import BindingFrame
 
         var_name: str = lc.variable.name if lc.variable else "_lc_var"
@@ -365,10 +375,8 @@ class CollectionExpressionEvaluator:
             type_registry={},
             context=self.frame.context,
         )
-        flat_evaluator: BindingExpressionEvaluator = (
-            BindingExpressionEvaluator(
-                flat_frame,
-            )
+        flat_evaluator: ExpressionEvaluatorProtocol = self._evaluator_factory(
+            flat_frame,
         )
 
         if lc.where is not None:
@@ -398,10 +406,8 @@ class CollectionExpressionEvaluator:
                 type_registry={},
                 context=self.frame.context,
             )
-            surv_evaluator: BindingExpressionEvaluator = (
-                BindingExpressionEvaluator(
-                    surv_frame,
-                )
+            surv_evaluator: ExpressionEvaluatorProtocol = self._evaluator_factory(
+                surv_frame,
             )
             mapped_values: list[Any] = list(
                 surv_evaluator.evaluate(lc.map_expr),
@@ -547,11 +553,7 @@ class CollectionExpressionEvaluator:
                 )
 
                 # Create evaluator for exploded frame and evaluate WHERE condition ONCE
-                from pycypher.binding_evaluator import (
-                    BindingExpressionEvaluator,
-                )
-
-                exploded_evaluator = BindingExpressionEvaluator(exploded_frame)
+                exploded_evaluator = self._evaluator_factory(exploded_frame)
                 where_results = exploded_evaluator.evaluate(q.where)
 
                 # Phase 4: Group results back by original row and apply quantifier logic
@@ -710,9 +712,7 @@ class CollectionExpressionEvaluator:
             )
 
             # Create evaluator for this step
-            from pycypher.binding_evaluator import BindingExpressionEvaluator
-
-            step_evaluator = BindingExpressionEvaluator(step_frame)
+            step_evaluator = self._evaluator_factory(step_frame)
 
             # Evaluate map_expr ONCE for all active rows
             new_accs = step_evaluator.evaluate(r.map_expr)

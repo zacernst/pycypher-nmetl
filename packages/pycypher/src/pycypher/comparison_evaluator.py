@@ -30,7 +30,10 @@ _DEBUG_ENABLED: bool = LOGGER.isEnabledFor(logging.DEBUG)
 if TYPE_CHECKING:
     from pycypher.ast_models import Expression, WhenClause
     from pycypher.binding_frame import BindingFrame
-    from pycypher.evaluator_protocol import ExpressionEvaluatorProtocol
+    from pycypher.evaluator_protocol import (
+        ExpressionEvaluatorFactory,
+        ExpressionEvaluatorProtocol,
+    )
 
 # ---------------------------------------------------------------------------
 # Operator dispatch tables
@@ -71,15 +74,23 @@ class ComparisonEvaluator:
 
     """
 
-    def __init__(self, frame: BindingFrame) -> None:
+    def __init__(
+        self,
+        frame: BindingFrame,
+        *,
+        evaluator_factory: ExpressionEvaluatorFactory,
+    ) -> None:
         """Initialise with a binding frame.
 
         Args:
             frame: The :class:`BindingFrame` against which expressions are
                 evaluated.
+            evaluator_factory: Factory for constructing a fresh expression
+                evaluator over a derived frame.
 
         """
         self.frame = frame
+        self._evaluator_factory = evaluator_factory
 
     # ------------------------------------------------------------------
     # Comparisons

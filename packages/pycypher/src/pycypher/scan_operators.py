@@ -36,6 +36,7 @@ from pycypher.dataframe_utils import source_to_pandas as _source_to_pandas
 if TYPE_CHECKING:
     from pycypher.ast_models import Expression
     from pycypher.binding_frame import BindingFrame
+    from pycypher.evaluator_protocol import ExpressionEvaluatorFactory
 
 # ---------------------------------------------------------------------------
 # Performance: module-level debug check avoids per-call overhead
@@ -482,6 +483,7 @@ class BindingFilter:
     """
 
     predicate: Expression
+    evaluator_factory: ExpressionEvaluatorFactory
 
     def apply(self, frame: BindingFrame) -> BindingFrame:
         """Return a new BindingFrame containing only rows where *predicate* is True.
@@ -496,10 +498,7 @@ class BindingFilter:
         if _DEBUG_ENABLED:
             _t0 = time.perf_counter()
             _rows_before = len(frame)
-        # Import here to avoid circular dependency at module load time
-        from pycypher.binding_evaluator import BindingExpressionEvaluator
-
-        evaluator = BindingExpressionEvaluator(frame)
+        evaluator = self.evaluator_factory(frame)
         mask: FrameSeries = evaluator.evaluate(self.predicate).fillna(False).astype(bool)
         result = frame.filter(mask)
         if _DEBUG_ENABLED:

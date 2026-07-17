@@ -18,7 +18,10 @@ from typing import TYPE_CHECKING, Any
 import pandas as pd
 
 if TYPE_CHECKING:
-    from pycypher.evaluator_protocol import ExpressionEvaluatorProtocol
+    from pycypher.evaluator_protocol import (
+        ExpressionEvaluatorFactory,
+        ExpressionEvaluatorProtocol,
+    )
 from shared.logger import LOGGER
 
 from pycypher.aggregation_evaluator import KNOWN_AGGREGATIONS
@@ -60,15 +63,23 @@ class ScalarFunctionEvaluator:
       used in scalar expression contexts.
     """
 
-    def __init__(self, frame: BindingFrame) -> None:
+    def __init__(
+        self,
+        frame: BindingFrame,
+        *,
+        evaluator_factory: ExpressionEvaluatorFactory,
+    ) -> None:
         """Initialize scalar function evaluator with binding frame context.
 
         Args:
             frame: The BindingFrame containing variable bindings, type registry,
                 and context for function evaluation.
+            evaluator_factory: Factory for constructing a fresh expression
+                evaluator over a derived frame.
 
         """
         self.frame = frame
+        self._evaluator_factory = evaluator_factory
 
     def evaluate_scalar_function(
         self,
