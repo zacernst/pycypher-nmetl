@@ -655,7 +655,7 @@ def _leading_unwind_build(var: str, list_expr: Any) -> Any:
         from pycypher.relation_sql import compile_expression
 
         list_sql = compile_expression(list_expr, _no_prop, resolve_var=_no_var)
-        return con.sql(f"SELECT UNNEST({list_sql}) AS {_quote_output_alias(var)}")
+        return con.sql(f"SELECT UNNEST({list_sql}) AS {_quote_output_alias(var)}")  # nosec B608 — list_sql from internal AST compiler, var safely double-quoted via _quote_output_alias
 
     return build
 
