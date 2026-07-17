@@ -1198,6 +1198,7 @@
     <span class="p">)</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">pycypher.backend_engine</span><span class="w"> </span><span class="kn">import</span> <span class="n">BackendEngine</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">pycypher.binding_frame</span><span class="w"> </span><span class="kn">import</span> <span class="n">BindingFrame</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">pycypher.evaluator_protocol</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExpressionEvaluatorFactory</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">pycypher.relational_models</span><span class="w"> </span><span class="kn">import</span> <span class="n">Context</span>
 
 
@@ -1243,15 +1244,23 @@
 
 <div class="viewcode-block" id="MutationEngine.__init__">
 <a class="viewcode-back" href="../../api/pycypher.html#pycypher.mutation_engine.MutationEngine.__init__">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">evaluator_factory</span><span class="p">:</span> <span class="n">ExpressionEvaluatorFactory</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize mutation engine.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            context: The execution context holding entity and relationship</span>
 <span class="sd">                mappings. Mutations are applied through the shadow-write layer.</span>
+<span class="sd">            evaluator_factory: Factory for constructing an expression</span>
+<span class="sd">                evaluator over a given frame.</span>
 
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span> <span class="o">=</span> <span class="n">context</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span> <span class="o">=</span> <span class="n">context</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_evaluator_factory</span> <span class="o">=</span> <span class="n">evaluator_factory</span></div>
 
 
     <span class="nd">@property</span>
@@ -1285,13 +1294,12 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">t0</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span>
         <span class="kn">from</span><span class="w"> </span><span class="nn">pycypher.ast_models</span><span class="w"> </span><span class="kn">import</span> <span class="n">MapLiteral</span><span class="p">,</span> <span class="n">SetItem</span><span class="p">,</span> <span class="n">SetPropertyItem</span>
-        <span class="kn">from</span><span class="w"> </span><span class="nn">pycypher.binding_evaluator</span><span class="w"> </span><span class="kn">import</span> <span class="n">BindingExpressionEvaluator</span>
 
         <span class="n">n_items</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">set_clause</span><span class="o">.</span><span class="n">items</span><span class="p">)</span>
         <span class="n">n_rows</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span>
         <span class="n">LOGGER</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;mutation SET: </span><span class="si">%d</span><span class="s2"> items, </span><span class="si">%d</span><span class="s2"> rows&quot;</span><span class="p">,</span> <span class="n">n_items</span><span class="p">,</span> <span class="n">n_rows</span><span class="p">)</span>
 
-        <span class="n">evaluator</span> <span class="o">=</span> <span class="n">BindingExpressionEvaluator</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span>
+        <span class="n">evaluator</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_evaluator_factory</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span>
 
         <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">set_clause</span><span class="o">.</span><span class="n">items</span><span class="p">:</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="p">(</span><span class="n">SetPropertyItem</span><span class="p">,</span> <span class="n">SetItem</span><span class="p">)):</span>
@@ -1651,7 +1659,6 @@
             <span class="n">RelationshipDirection</span><span class="p">,</span>
             <span class="n">RelationshipPattern</span><span class="p">,</span>
         <span class="p">)</span>
-        <span class="kn">from</span><span class="w"> </span><span class="nn">pycypher.binding_evaluator</span><span class="w"> </span><span class="kn">import</span> <span class="n">BindingExpressionEvaluator</span>
         <span class="kn">from</span><span class="w"> </span><span class="nn">pycypher.binding_frame</span><span class="w"> </span><span class="kn">import</span> <span class="n">BindingFrame</span>
 
         <span class="k">if</span> <span class="n">clause</span><span class="o">.</span><span class="n">pattern</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -1669,7 +1676,7 @@
         <span class="n">eval_frame</span> <span class="o">=</span> <span class="p">(</span>
             <span class="n">make_seed_frame</span><span class="p">()</span> <span class="k">if</span> <span class="n">current_frame</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">current_frame</span>
         <span class="p">)</span>
-        <span class="n">evaluator</span> <span class="o">=</span> <span class="n">BindingExpressionEvaluator</span><span class="p">(</span><span class="n">eval_frame</span><span class="p">)</span>
+        <span class="n">evaluator</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_evaluator_factory</span><span class="p">(</span><span class="n">eval_frame</span><span class="p">)</span>
 
         <span class="n">new_vars</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="n">new_type_reg</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
@@ -1800,7 +1807,6 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">t0</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span>
         <span class="kn">from</span><span class="w"> </span><span class="nn">pycypher.ast_models</span><span class="w"> </span><span class="kn">import</span> <span class="n">Variable</span>
-        <span class="kn">from</span><span class="w"> </span><span class="nn">pycypher.binding_evaluator</span><span class="w"> </span><span class="kn">import</span> <span class="n">BindingExpressionEvaluator</span>
         <span class="kn">from</span><span class="w"> </span><span class="nn">pycypher.dataframe_utils</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
             <span class="n">source_to_pandas</span> <span class="k">as</span> <span class="n">_source_to_pandas</span><span class="p">,</span>
         <span class="p">)</span>
@@ -1813,7 +1819,7 @@
             <span class="nb">len</span><span class="p">(</span><span class="n">frame</span><span class="p">),</span>
         <span class="p">)</span>
 
-        <span class="n">evaluator</span> <span class="o">=</span> <span class="n">BindingExpressionEvaluator</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span>
+        <span class="n">evaluator</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_evaluator_factory</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span>
 
         <span class="k">for</span> <span class="n">expr</span> <span class="ow">in</span> <span class="n">clause</span><span class="o">.</span><span class="n">expressions</span><span class="p">:</span>
             <span class="n">id_series</span> <span class="o">=</span> <span class="n">evaluator</span><span class="o">.</span><span class="n">evaluate</span><span class="p">(</span><span class="n">expr</span><span class="p">)</span>
@@ -2050,7 +2056,6 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">t0</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span>
         <span class="kn">from</span><span class="w"> </span><span class="nn">pycypher.ast_models</span><span class="w"> </span><span class="kn">import</span> <span class="n">Create</span><span class="p">,</span> <span class="n">Delete</span><span class="p">,</span> <span class="n">Merge</span><span class="p">,</span> <span class="n">Remove</span><span class="p">,</span> <span class="n">Set</span>
-        <span class="kn">from</span><span class="w"> </span><span class="nn">pycypher.binding_evaluator</span><span class="w"> </span><span class="kn">import</span> <span class="n">BindingExpressionEvaluator</span>
         <span class="kn">from</span><span class="w"> </span><span class="nn">pycypher.binding_frame</span><span class="w"> </span><span class="kn">import</span> <span class="n">BindingFrame</span>
 
         <span class="n">n_clauses</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">clause</span><span class="o">.</span><span class="n">clauses</span><span class="p">)</span> <span class="k">if</span> <span class="n">clause</span><span class="o">.</span><span class="n">clauses</span> <span class="k">else</span> <span class="mi">0</span>
@@ -2126,7 +2131,7 @@
 
         <span class="k">if</span> <span class="n">current_frame</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">synthetic_frame</span> <span class="o">=</span> <span class="n">make_seed_frame</span><span class="p">()</span>
-            <span class="n">evaluator</span> <span class="o">=</span> <span class="n">BindingExpressionEvaluator</span><span class="p">(</span><span class="n">frame</span><span class="o">=</span><span class="n">synthetic_frame</span><span class="p">)</span>
+            <span class="n">evaluator</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_evaluator_factory</span><span class="p">(</span><span class="n">frame</span><span class="o">=</span><span class="n">synthetic_frame</span><span class="p">)</span>
             <span class="n">list_series</span> <span class="o">=</span> <span class="n">evaluator</span><span class="o">.</span><span class="n">evaluate</span><span class="p">(</span><span class="n">clause</span><span class="o">.</span><span class="n">list_expression</span><span class="p">)</span>
             <span class="n">raw_list</span> <span class="o">=</span> <span class="n">list_series</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">list_series</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="p">[]</span>
             <span class="k">if</span> <span class="n">raw_list</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -2149,7 +2154,7 @@
                     <span class="n">element_value</span><span class="o">=</span><span class="n">element</span><span class="p">,</span>
                 <span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">evaluator</span> <span class="o">=</span> <span class="n">BindingExpressionEvaluator</span><span class="p">(</span><span class="n">frame</span><span class="o">=</span><span class="n">current_frame</span><span class="p">)</span>
+            <span class="n">evaluator</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_evaluator_factory</span><span class="p">(</span><span class="n">frame</span><span class="o">=</span><span class="n">current_frame</span><span class="p">)</span>
             <span class="n">list_series</span> <span class="o">=</span> <span class="n">evaluator</span><span class="o">.</span><span class="n">evaluate</span><span class="p">(</span><span class="n">clause</span><span class="o">.</span><span class="n">list_expression</span><span class="p">)</span>
 
             <span class="c1"># Pre-compute rows as dicts and list values to avoid</span>
@@ -2258,7 +2263,6 @@
 <span class="sd">            YIELDed columns.</span>
 
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="kn">from</span><span class="w"> </span><span class="nn">pycypher.binding_evaluator</span><span class="w"> </span><span class="kn">import</span> <span class="n">BindingExpressionEvaluator</span>
         <span class="kn">from</span><span class="w"> </span><span class="nn">pycypher.binding_frame</span><span class="w"> </span><span class="kn">import</span> <span class="n">BindingFrame</span>
         <span class="kn">from</span><span class="w"> </span><span class="nn">pycypher.relational_models</span><span class="w"> </span><span class="kn">import</span> <span class="n">PROCEDURE_REGISTRY</span>
 
@@ -2275,7 +2279,7 @@
 
         <span class="n">args</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">if</span> <span class="n">clause</span><span class="o">.</span><span class="n">arguments</span> <span class="ow">and</span> <span class="n">current_frame</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">evaluator</span> <span class="o">=</span> <span class="n">BindingExpressionEvaluator</span><span class="p">(</span><span class="n">current_frame</span><span class="p">)</span>
+            <span class="n">evaluator</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_evaluator_factory</span><span class="p">(</span><span class="n">current_frame</span><span class="p">)</span>
             <span class="k">for</span> <span class="n">arg_expr</span> <span class="ow">in</span> <span class="n">clause</span><span class="o">.</span><span class="n">arguments</span><span class="p">:</span>
                 <span class="n">series</span> <span class="o">=</span> <span class="n">evaluator</span><span class="o">.</span><span class="n">evaluate</span><span class="p">(</span><span class="n">arg_expr</span><span class="p">)</span>
                 <span class="n">args</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">series</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">series</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="kc">None</span><span class="p">)</span>

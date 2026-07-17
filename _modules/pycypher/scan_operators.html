@@ -1188,6 +1188,7 @@
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">pycypher.ast_models</span><span class="w"> </span><span class="kn">import</span> <span class="n">Expression</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">pycypher.binding_frame</span><span class="w"> </span><span class="kn">import</span> <span class="n">BindingFrame</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">pycypher.evaluator_protocol</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExpressionEvaluatorFactory</span>
 
 <span class="c1"># ---------------------------------------------------------------------------</span>
 <span class="c1"># Performance: module-level debug check avoids per-call overhead</span>
@@ -1651,6 +1652,7 @@
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">predicate</span><span class="p">:</span> <span class="n">Expression</span>
+    <span class="n">evaluator_factory</span><span class="p">:</span> <span class="n">ExpressionEvaluatorFactory</span>
 
 <div class="viewcode-block" id="BindingFilter.apply">
 <a class="viewcode-back" href="../../api/pycypher.html#pycypher.scan_operators.BindingFilter.apply">[docs]</a>
@@ -1667,10 +1669,7 @@
         <span class="k">if</span> <span class="n">_DEBUG_ENABLED</span><span class="p">:</span>
             <span class="n">_t0</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span>
             <span class="n">_rows_before</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span>
-        <span class="c1"># Import here to avoid circular dependency at module load time</span>
-        <span class="kn">from</span><span class="w"> </span><span class="nn">pycypher.binding_evaluator</span><span class="w"> </span><span class="kn">import</span> <span class="n">BindingExpressionEvaluator</span>
-
-        <span class="n">evaluator</span> <span class="o">=</span> <span class="n">BindingExpressionEvaluator</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span>
+        <span class="n">evaluator</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">evaluator_factory</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span>
         <span class="n">mask</span><span class="p">:</span> <span class="n">FrameSeries</span> <span class="o">=</span> <span class="n">evaluator</span><span class="o">.</span><span class="n">evaluate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">predicate</span><span class="p">)</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">bool</span><span class="p">)</span>
         <span class="n">result</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">mask</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">_DEBUG_ENABLED</span><span class="p">:</span>

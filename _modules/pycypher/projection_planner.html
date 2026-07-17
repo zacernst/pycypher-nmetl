@@ -1178,6 +1178,7 @@
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">pycypher.aggregation_planner</span><span class="w"> </span><span class="kn">import</span> <span class="n">AggregationPlanner</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">pycypher.binding_frame</span><span class="w"> </span><span class="kn">import</span> <span class="n">BindingFrame</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">pycypher.evaluator_protocol</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExpressionEvaluatorFactory</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">pycypher.expression_renderer</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExpressionRenderer</span>
 
 
@@ -1206,6 +1207,8 @@
         <span class="n">agg_planner</span><span class="p">:</span> <span class="n">AggregationPlanner</span><span class="p">,</span>
         <span class="n">renderer</span><span class="p">:</span> <span class="n">ExpressionRenderer</span><span class="p">,</span>
         <span class="n">where_fn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">BindingFrame</span><span class="p">],</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">evaluator_factory</span><span class="p">:</span> <span class="n">ExpressionEvaluatorFactory</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialise the projection planner.</span>
 
@@ -1216,11 +1219,14 @@
 <span class="sd">                explicit ``AS`` alias is provided.</span>
 <span class="sd">            where_fn: Callback to apply a WHERE filter to a</span>
 <span class="sd">                :class:`BindingFrame`.</span>
+<span class="sd">            evaluator_factory: Factory for constructing an expression</span>
+<span class="sd">                evaluator over a given frame.</span>
 
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_agg_planner</span> <span class="o">=</span> <span class="n">agg_planner</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_renderer</span> <span class="o">=</span> <span class="n">renderer</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_where_fn</span> <span class="o">=</span> <span class="n">where_fn</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_where_fn</span> <span class="o">=</span> <span class="n">where_fn</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_evaluator_factory</span> <span class="o">=</span> <span class="n">evaluator_factory</span></div>
 
 
 <div class="viewcode-block" id="ProjectionPlanner.infer_alias">
@@ -1303,7 +1309,6 @@
 <span class="sd">            A new ``pd.DataFrame`` with modifiers applied.</span>
 
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="kn">from</span><span class="w"> </span><span class="nn">pycypher.binding_evaluator</span><span class="w"> </span><span class="kn">import</span> <span class="n">BindingExpressionEvaluator</span>
         <span class="kn">from</span><span class="w"> </span><span class="nn">pycypher.binding_frame</span><span class="w"> </span><span class="kn">import</span> <span class="n">BindingFrame</span>
 
         <span class="c1"># ── DISTINCT ─────────────────────────────────────────────────────────</span>
@@ -1337,7 +1342,7 @@
             <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">order_item</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">order_by</span><span class="p">):</span>
                 <span class="n">sort_col</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;__sort_</span><span class="si">{</span><span class="n">idx</span><span class="si">}</span><span class="s2">__&quot;</span>
                 <span class="k">try</span><span class="p">:</span>
-                    <span class="n">evaluator</span> <span class="o">=</span> <span class="n">BindingExpressionEvaluator</span><span class="p">(</span><span class="n">post_frame</span><span class="p">)</span>
+                    <span class="n">evaluator</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_evaluator_factory</span><span class="p">(</span><span class="n">post_frame</span><span class="p">)</span>
                     <span class="n">sort_series</span> <span class="o">=</span> <span class="n">evaluator</span><span class="o">.</span><span class="n">evaluate</span><span class="p">(</span>
                         <span class="n">order_item</span><span class="o">.</span><span class="n">expression</span><span class="p">,</span>
                     <span class="p">)</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
@@ -1352,7 +1357,7 @@
                         <span class="n">_sort_exc</span><span class="p">,</span>
                         <span class="n">idx</span><span class="p">,</span>
                     <span class="p">)</span>
-                    <span class="n">evaluator</span> <span class="o">=</span> <span class="n">BindingExpressionEvaluator</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span>
+                    <span class="n">evaluator</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_evaluator_factory</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span>
                     <span class="n">sort_series</span> <span class="o">=</span> <span class="n">evaluator</span><span class="o">.</span><span class="n">evaluate</span><span class="p">(</span>
                         <span class="n">order_item</span><span class="o">.</span><span class="n">expression</span><span class="p">,</span>
                     <span class="p">)</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
@@ -1404,7 +1409,7 @@
         <span class="n">skip_val</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">clause</span><span class="p">,</span> <span class="s2">&quot;skip&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">skip_val</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">skip_val</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
-                <span class="n">evaluator</span> <span class="o">=</span> <span class="n">BindingExpressionEvaluator</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span>
+                <span class="n">evaluator</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_evaluator_factory</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span>
                 <span class="n">skip_val</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">evaluator</span><span class="o">.</span><span class="n">evaluate</span><span class="p">(</span><span class="n">skip_val</span><span class="p">)</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
             <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">skip_val</span><span class="p">)</span> <span class="p">:]</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
@@ -1413,7 +1418,7 @@
         <span class="n">limit_val</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">clause</span><span class="p">,</span> <span class="s2">&quot;limit&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">limit_val</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">limit_val</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
-                <span class="n">evaluator</span> <span class="o">=</span> <span class="n">BindingExpressionEvaluator</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span>
+                <span class="n">evaluator</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_evaluator_factory</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span>
                 <span class="n">limit_val</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">evaluator</span><span class="o">.</span><span class="n">evaluate</span><span class="p">(</span><span class="n">limit_val</span><span class="p">)</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
             <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:</span> <span class="nb">int</span><span class="p">(</span><span class="n">limit_val</span><span class="p">)]</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 

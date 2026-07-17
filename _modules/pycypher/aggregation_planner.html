@@ -1186,6 +1186,7 @@
 
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">pycypher.binding_frame</span><span class="w"> </span><span class="kn">import</span> <span class="n">BindingFrame</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">pycypher.evaluator_protocol</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExpressionEvaluatorFactory</span>
 
 <span class="c1">#: Dual-purpose functions that are scalar when called with a list literal,</span>
 <span class="c1">#: aggregation otherwise.</span>
@@ -1210,8 +1211,22 @@
 <span class="k">class</span><span class="w"> </span><span class="nc">AggregationPlanner</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Detects aggregations in expressions and evaluates projection items.</span>
 
-<span class="sd">    Stateless — all state is passed via method parameters.</span>
+<span class="sd">    Aggregation-detection state is passed via method parameters; the only</span>
+<span class="sd">    constructor-injected dependency is the expression-evaluator factory.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="AggregationPlanner.__init__">
+<a class="viewcode-back" href="../../api/pycypher.html#pycypher.aggregation_planner.AggregationPlanner.__init__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">evaluator_factory</span><span class="p">:</span> <span class="n">ExpressionEvaluatorFactory</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialise the aggregation planner.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            evaluator_factory: Factory for constructing an expression</span>
+<span class="sd">                evaluator over a given (or per-group) frame.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_evaluator_factory</span> <span class="o">=</span> <span class="n">evaluator_factory</span></div>
+
 
 <div class="viewcode-block" id="AggregationPlanner.contains_aggregation">
 <a class="viewcode-back" href="../../api/pycypher.html#pycypher.aggregation_planner.AggregationPlanner.contains_aggregation">[docs]</a>
@@ -1413,15 +1428,13 @@
 <span class="sd">            A plain ``pd.DataFrame``.</span>
 
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="kn">from</span><span class="w"> </span><span class="nn">pycypher.binding_evaluator</span><span class="w"> </span><span class="kn">import</span> <span class="n">BindingExpressionEvaluator</span>
-
         <span class="n">agg_items</span> <span class="o">=</span> <span class="p">[</span>
             <span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">items</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">contains_aggregation</span><span class="p">(</span><span class="n">i</span><span class="o">.</span><span class="n">expression</span><span class="p">)</span>
         <span class="p">]</span>
         <span class="n">non_agg_items</span> <span class="o">=</span> <span class="p">[</span>
             <span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">items</span> <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">contains_aggregation</span><span class="p">(</span><span class="n">i</span><span class="o">.</span><span class="n">expression</span><span class="p">)</span>
         <span class="p">]</span>
-        <span class="n">evaluator</span> <span class="o">=</span> <span class="n">BindingExpressionEvaluator</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span>
+        <span class="n">evaluator</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_evaluator_factory</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="ow">not</span> <span class="n">agg_items</span><span class="p">:</span>
             <span class="c1"># Simple projection — batch PropertyLookups on the same variable</span>
@@ -1496,7 +1509,7 @@
                 <span class="n">mask</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="kc">False</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">frame</span><span class="p">)))</span>
                 <span class="n">mask</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="nb">list</span><span class="p">(</span><span class="n">group_idx</span><span class="p">)]</span> <span class="o">=</span> <span class="kc">True</span>
                 <span class="n">group_frame</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">mask</span><span class="p">)</span>
-                <span class="n">group_evaluator</span> <span class="o">=</span> <span class="n">BindingExpressionEvaluator</span><span class="p">(</span><span class="n">group_frame</span><span class="p">)</span>
+                <span class="n">group_evaluator</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_evaluator_factory</span><span class="p">(</span><span class="n">group_frame</span><span class="p">)</span>
 
                 <span class="c1"># Locate the row in unique_groups that matches this group.</span>
                 <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">group_vals</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>

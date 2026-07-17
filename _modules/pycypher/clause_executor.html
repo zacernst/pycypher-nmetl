@@ -1167,7 +1167,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Any</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">shared.logger</span><span class="w"> </span><span class="kn">import</span> <span class="n">LOGGER</span>
@@ -1176,6 +1176,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">pycypher.binding_frame</span><span class="w"> </span><span class="kn">import</span> <span class="n">BindingFrame</span>
 
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">pycypher.evaluator_protocol</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExpressionEvaluatorFactory</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">pycypher.frame_joiner</span><span class="w"> </span><span class="kn">import</span> <span class="n">FrameJoiner</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">pycypher.mutation_engine</span><span class="w"> </span><span class="kn">import</span> <span class="n">MutationEngine</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">pycypher.pattern_matcher</span><span class="w"> </span><span class="kn">import</span> <span class="n">PatternMatcher</span>
@@ -1212,13 +1213,44 @@
         <span class="n">frame_joiner</span><span class="p">:</span> <span class="n">FrameJoiner</span><span class="p">,</span>
         <span class="n">projection_planner</span><span class="p">:</span> <span class="n">ProjectionPlanner</span><span class="p">,</span>
         <span class="n">query_analyzer</span><span class="p">:</span> <span class="n">QueryAnalyzer</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">evaluator_factory</span><span class="p">:</span> <span class="n">ExpressionEvaluatorFactory</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_context</span> <span class="o">=</span> <span class="n">context</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_pattern_matcher</span> <span class="o">=</span> <span class="n">pattern_matcher</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_mutations</span> <span class="o">=</span> <span class="n">mutations</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_frame_joiner</span> <span class="o">=</span> <span class="n">frame_joiner</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_projection_planner</span> <span class="o">=</span> <span class="n">projection_planner</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_query_analyzer</span> <span class="o">=</span> <span class="n">query_analyzer</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_query_analyzer</span> <span class="o">=</span> <span class="n">query_analyzer</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_evaluator_factory</span> <span class="o">=</span> <span class="n">evaluator_factory</span>
+
+        <span class="kn">from</span><span class="w"> </span><span class="nn">pycypher.ast_models</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+            <span class="n">Call</span><span class="p">,</span>
+            <span class="n">Create</span><span class="p">,</span>
+            <span class="n">Delete</span><span class="p">,</span>
+            <span class="n">Foreach</span><span class="p">,</span>
+            <span class="n">Match</span><span class="p">,</span>
+            <span class="n">Merge</span><span class="p">,</span>
+            <span class="n">Remove</span><span class="p">,</span>
+            <span class="n">Return</span><span class="p">,</span>
+            <span class="n">Set</span><span class="p">,</span>
+            <span class="n">Unwind</span><span class="p">,</span>
+            <span class="n">With</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_dispatch_table</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">type</span><span class="p">,</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Any</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">],</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">Match</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dispatch_match</span><span class="p">,</span>
+            <span class="n">With</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dispatch_with</span><span class="p">,</span>
+            <span class="n">Return</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dispatch_return</span><span class="p">,</span>
+            <span class="n">Set</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dispatch_set</span><span class="p">,</span>
+            <span class="n">Remove</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dispatch_remove</span><span class="p">,</span>
+            <span class="n">Delete</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dispatch_delete</span><span class="p">,</span>
+            <span class="n">Unwind</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dispatch_unwind</span><span class="p">,</span>
+            <span class="n">Create</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dispatch_create</span><span class="p">,</span>
+            <span class="n">Call</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dispatch_call</span><span class="p">,</span>
+            <span class="n">Merge</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dispatch_merge</span><span class="p">,</span>
+            <span class="n">Foreach</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dispatch_foreach</span><span class="p">,</span>
+        <span class="p">}</span></div>
 
 
     <span class="c1"># ------------------------------------------------------------------</span>
@@ -1232,6 +1264,8 @@
         <span class="n">where_expr</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
         <span class="n">result_frame</span><span class="p">:</span> <span class="n">BindingFrame</span><span class="p">,</span>
         <span class="n">fallback_frame</span><span class="p">:</span> <span class="n">BindingFrame</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">evaluator_factory</span><span class="p">:</span> <span class="n">ExpressionEvaluatorFactory</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">BindingFrame</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply a WHERE predicate to *result_frame*, with optional fallback.</span>
 
@@ -1243,27 +1277,37 @@
 <span class="sd">            where_expr: AST expression node for the WHERE predicate.</span>
 <span class="sd">            result_frame: The frame to filter.</span>
 <span class="sd">            fallback_frame: Optional pre-projection frame for variable lookup.</span>
+<span class="sd">            evaluator_factory: Factory for constructing an expression</span>
+<span class="sd">                evaluator over a given frame.</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            A new filtered :class:`BindingFrame`.</span>
 
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="kn">from</span><span class="w"> </span><span class="nn">pycypher.binding_evaluator</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
-            <span class="n">BindingExpressionEvaluator</span> <span class="k">as</span> <span class="n">_BEE</span><span class="p">,</span>
-        <span class="p">)</span>
         <span class="kn">from</span><span class="w"> </span><span class="nn">pycypher.binding_frame</span><span class="w"> </span><span class="kn">import</span> <span class="n">BindingFilter</span>
 
         <span class="k">if</span> <span class="n">fallback_frame</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">BindingFilter</span><span class="p">(</span><span class="n">predicate</span><span class="o">=</span><span class="n">where_expr</span><span class="p">)</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">result_frame</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">BindingFilter</span><span class="p">(</span>
+                <span class="n">predicate</span><span class="o">=</span><span class="n">where_expr</span><span class="p">,</span>
+                <span class="n">evaluator_factory</span><span class="o">=</span><span class="n">evaluator_factory</span><span class="p">,</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">result_frame</span><span class="p">)</span>
 
         <span class="k">try</span><span class="p">:</span>
-            <span class="n">_mask</span> <span class="o">=</span> <span class="n">_BEE</span><span class="p">(</span><span class="n">result_frame</span><span class="p">)</span><span class="o">.</span><span class="n">evaluate</span><span class="p">(</span><span class="n">where_expr</span><span class="p">)</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
+            <span class="n">_mask</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">evaluator_factory</span><span class="p">(</span><span class="n">result_frame</span><span class="p">)</span>
+                <span class="o">.</span><span class="n">evaluate</span><span class="p">(</span><span class="n">where_expr</span><span class="p">)</span>
+                <span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
+            <span class="p">)</span>
             <span class="k">return</span> <span class="n">result_frame</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">_mask</span><span class="p">)</span>
         <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">):</span>
             <span class="n">LOGGER</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
                 <span class="s2">&quot;WHERE: evaluation failed on result frame, falling back to pre-projection frame&quot;</span><span class="p">,</span>
             <span class="p">)</span>
-            <span class="n">_pre_mask</span> <span class="o">=</span> <span class="n">_BEE</span><span class="p">(</span><span class="n">fallback_frame</span><span class="p">)</span><span class="o">.</span><span class="n">evaluate</span><span class="p">(</span><span class="n">where_expr</span><span class="p">)</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
+            <span class="n">_pre_mask</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">evaluator_factory</span><span class="p">(</span><span class="n">fallback_frame</span><span class="p">)</span>
+                <span class="o">.</span><span class="n">evaluate</span><span class="p">(</span><span class="n">where_expr</span><span class="p">)</span>
+                <span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
+            <span class="p">)</span>
             <span class="k">return</span> <span class="n">result_frame</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">_pre_mask</span><span class="p">)</span></div>
 
 
@@ -1288,10 +1332,8 @@
 <span class="sd">            A new :class:`BindingFrame` with rows expanded from list elements.</span>
 
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="kn">from</span><span class="w"> </span><span class="nn">pycypher.binding_evaluator</span><span class="w"> </span><span class="kn">import</span> <span class="n">BindingExpressionEvaluator</span>
-
         <span class="n">alias</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">clause</span><span class="o">.</span><span class="n">alias</span> <span class="ow">or</span> <span class="s2">&quot;_unwind_col&quot;</span>
-        <span class="n">evaluator</span> <span class="o">=</span> <span class="n">BindingExpressionEvaluator</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span>
+        <span class="n">evaluator</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_evaluator_factory</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span>
         <span class="n">list_series</span> <span class="o">=</span> <span class="n">evaluator</span><span class="o">.</span><span class="n">evaluate</span><span class="p">(</span><span class="n">clause</span><span class="o">.</span><span class="n">expression</span><span class="p">)</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span>
             <span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
         <span class="p">)</span>
@@ -1455,6 +1497,125 @@
     <span class="c1"># Clause dispatch</span>
     <span class="c1"># ------------------------------------------------------------------</span>
 
+    <span class="k">def</span><span class="w"> </span><span class="nf">_dispatch_match</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">clause</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+        <span class="n">current_frame</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+        <span class="n">limit_hint</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_match_clause</span><span class="p">(</span><span class="n">clause</span><span class="p">,</span> <span class="n">current_frame</span><span class="p">,</span> <span class="n">limit_hint</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_dispatch_with</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">clause</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+        <span class="n">current_frame</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+        <span class="n">_limit_hint</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">current_frame</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">current_frame</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_frame_joiner</span><span class="o">.</span><span class="n">make_seed_frame</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_projection_planner</span><span class="o">.</span><span class="n">with_to_binding_frame</span><span class="p">(</span>
+            <span class="n">clause</span><span class="p">,</span> <span class="n">current_frame</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_dispatch_return</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">clause</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+        <span class="n">current_frame</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+        <span class="n">_limit_hint</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">current_frame</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">current_frame</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_frame_joiner</span><span class="o">.</span><span class="n">make_seed_frame</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_projection_planner</span><span class="o">.</span><span class="n">return_from_frame</span><span class="p">(</span>
+            <span class="n">clause</span><span class="p">,</span> <span class="n">current_frame</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_dispatch_set</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">clause</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+        <span class="n">current_frame</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+        <span class="n">_limit_hint</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">require_bound_frame</span><span class="p">(</span><span class="n">current_frame</span><span class="p">,</span> <span class="s2">&quot;SET&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_mutations</span><span class="o">.</span><span class="n">set_properties</span><span class="p">(</span><span class="n">clause</span><span class="p">,</span> <span class="n">current_frame</span><span class="p">)</span>
+        <span class="n">current_frame</span><span class="o">.</span><span class="n">_property_cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">current_frame</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_dispatch_remove</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">clause</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+        <span class="n">current_frame</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+        <span class="n">_limit_hint</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">require_bound_frame</span><span class="p">(</span><span class="n">current_frame</span><span class="p">,</span> <span class="s2">&quot;REMOVE&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_mutations</span><span class="o">.</span><span class="n">remove_properties</span><span class="p">(</span><span class="n">clause</span><span class="p">,</span> <span class="n">current_frame</span><span class="p">)</span>
+        <span class="n">current_frame</span><span class="o">.</span><span class="n">_property_cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">current_frame</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_dispatch_delete</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">clause</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+        <span class="n">current_frame</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+        <span class="n">_limit_hint</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">require_bound_frame</span><span class="p">(</span><span class="n">current_frame</span><span class="p">,</span> <span class="s2">&quot;DELETE&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_mutations</span><span class="o">.</span><span class="n">process_delete</span><span class="p">(</span><span class="n">clause</span><span class="p">,</span> <span class="n">current_frame</span><span class="p">)</span>
+        <span class="n">current_frame</span><span class="o">.</span><span class="n">_property_cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">current_frame</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_dispatch_unwind</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">clause</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+        <span class="n">current_frame</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+        <span class="n">_limit_hint</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">process_unwind_clause</span><span class="p">(</span><span class="n">clause</span><span class="p">,</span> <span class="n">current_frame</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_dispatch_create</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">clause</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+        <span class="n">current_frame</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+        <span class="n">_limit_hint</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mutations</span><span class="o">.</span><span class="n">process_create</span><span class="p">(</span>
+            <span class="n">clause</span><span class="p">,</span>
+            <span class="n">current_frame</span><span class="p">,</span>
+            <span class="n">make_seed_frame</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_frame_joiner</span><span class="o">.</span><span class="n">make_seed_frame</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_dispatch_call</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">clause</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+        <span class="n">current_frame</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+        <span class="n">_limit_hint</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mutations</span><span class="o">.</span><span class="n">process_call</span><span class="p">(</span><span class="n">clause</span><span class="p">,</span> <span class="n">current_frame</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_dispatch_merge</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">clause</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+        <span class="n">current_frame</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+        <span class="n">_limit_hint</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mutations</span><span class="o">.</span><span class="n">process_merge</span><span class="p">(</span>
+            <span class="n">clause</span><span class="p">,</span>
+            <span class="n">current_frame</span><span class="p">,</span>
+            <span class="n">match_to_binding_frame</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_pattern_matcher</span><span class="o">.</span><span class="n">match_to_binding_frame</span><span class="p">,</span>
+            <span class="n">merge_frames_for_match</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_frame_joiner</span><span class="o">.</span><span class="n">merge_frames_for_match</span><span class="p">,</span>
+            <span class="n">make_seed_frame</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_frame_joiner</span><span class="o">.</span><span class="n">make_seed_frame</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_dispatch_foreach</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">clause</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+        <span class="n">current_frame</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+        <span class="n">_limit_hint</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mutations</span><span class="o">.</span><span class="n">process_foreach</span><span class="p">(</span>
+            <span class="n">clause</span><span class="p">,</span>
+            <span class="n">current_frame</span><span class="p">,</span>
+            <span class="n">make_seed_frame</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_frame_joiner</span><span class="o">.</span><span class="n">make_seed_frame</span><span class="p">,</span>
+        <span class="p">)</span>
+
 <div class="viewcode-block" id="ClauseExecutor.dispatch_clause">
 <a class="viewcode-back" href="../../api/pycypher.html#pycypher.clause_executor.ClauseExecutor.dispatch_clause">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">dispatch_clause</span><span class="p">(</span>
@@ -1469,96 +1630,14 @@
 <span class="sd">        OPTIONAL MATCH, or a BindingFrame / ``None`` for all other clauses.</span>
 
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="kn">from</span><span class="w"> </span><span class="nn">pycypher.ast_models</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
-            <span class="n">Call</span><span class="p">,</span>
-            <span class="n">Create</span><span class="p">,</span>
-            <span class="n">Delete</span><span class="p">,</span>
-            <span class="n">Foreach</span><span class="p">,</span>
-            <span class="n">Match</span><span class="p">,</span>
-            <span class="n">Merge</span><span class="p">,</span>
-            <span class="n">Remove</span><span class="p">,</span>
-            <span class="n">Return</span><span class="p">,</span>
-            <span class="n">Set</span><span class="p">,</span>
-            <span class="n">Unwind</span><span class="p">,</span>
-            <span class="n">With</span><span class="p">,</span>
-        <span class="p">)</span>
-
-        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">clause</span><span class="p">,</span> <span class="n">Match</span><span class="p">):</span>
-            <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_match_clause</span><span class="p">(</span>
-                <span class="n">clause</span><span class="p">,</span>
-                <span class="n">current_frame</span><span class="p">,</span>
-                <span class="n">limit_hint</span><span class="p">,</span>
+        <span class="n">handler</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dispatch_table</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">clause</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">handler</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Clause type &#39;</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">clause</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&#39; is not yet supported &quot;</span>
+                <span class="s2">&quot;in the BindingFrame execution path.&quot;</span>
             <span class="p">)</span>
-            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">):</span>
-                <span class="k">return</span> <span class="n">result</span>
-            <span class="k">return</span> <span class="n">result</span>
-
-        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">clause</span><span class="p">,</span> <span class="n">With</span><span class="p">):</span>
-            <span class="k">if</span> <span class="n">current_frame</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="n">current_frame</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_frame_joiner</span><span class="o">.</span><span class="n">make_seed_frame</span><span class="p">()</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_projection_planner</span><span class="o">.</span><span class="n">with_to_binding_frame</span><span class="p">(</span>
-                <span class="n">clause</span><span class="p">,</span> <span class="n">current_frame</span><span class="p">,</span>
-            <span class="p">)</span>
-
-        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">clause</span><span class="p">,</span> <span class="n">Return</span><span class="p">):</span>
-            <span class="k">if</span> <span class="n">current_frame</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="n">current_frame</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_frame_joiner</span><span class="o">.</span><span class="n">make_seed_frame</span><span class="p">()</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_projection_planner</span><span class="o">.</span><span class="n">return_from_frame</span><span class="p">(</span>
-                <span class="n">clause</span><span class="p">,</span> <span class="n">current_frame</span><span class="p">,</span>
-            <span class="p">)</span>
-
-        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">clause</span><span class="p">,</span> <span class="n">Set</span><span class="p">):</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">require_bound_frame</span><span class="p">(</span><span class="n">current_frame</span><span class="p">,</span> <span class="s2">&quot;SET&quot;</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_mutations</span><span class="o">.</span><span class="n">set_properties</span><span class="p">(</span><span class="n">clause</span><span class="p">,</span> <span class="n">current_frame</span><span class="p">)</span>
-            <span class="n">current_frame</span><span class="o">.</span><span class="n">_property_cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
-            <span class="k">return</span> <span class="n">current_frame</span>
-
-        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">clause</span><span class="p">,</span> <span class="n">Remove</span><span class="p">):</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">require_bound_frame</span><span class="p">(</span><span class="n">current_frame</span><span class="p">,</span> <span class="s2">&quot;REMOVE&quot;</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_mutations</span><span class="o">.</span><span class="n">remove_properties</span><span class="p">(</span><span class="n">clause</span><span class="p">,</span> <span class="n">current_frame</span><span class="p">)</span>
-            <span class="n">current_frame</span><span class="o">.</span><span class="n">_property_cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
-            <span class="k">return</span> <span class="n">current_frame</span>
-
-        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">clause</span><span class="p">,</span> <span class="n">Delete</span><span class="p">):</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">require_bound_frame</span><span class="p">(</span><span class="n">current_frame</span><span class="p">,</span> <span class="s2">&quot;DELETE&quot;</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_mutations</span><span class="o">.</span><span class="n">process_delete</span><span class="p">(</span><span class="n">clause</span><span class="p">,</span> <span class="n">current_frame</span><span class="p">)</span>
-            <span class="n">current_frame</span><span class="o">.</span><span class="n">_property_cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
-            <span class="k">return</span> <span class="n">current_frame</span>
-
-        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">clause</span><span class="p">,</span> <span class="n">Unwind</span><span class="p">):</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">process_unwind_clause</span><span class="p">(</span><span class="n">clause</span><span class="p">,</span> <span class="n">current_frame</span><span class="p">)</span>
-
-        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">clause</span><span class="p">,</span> <span class="n">Create</span><span class="p">):</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mutations</span><span class="o">.</span><span class="n">process_create</span><span class="p">(</span>
-                <span class="n">clause</span><span class="p">,</span>
-                <span class="n">current_frame</span><span class="p">,</span>
-                <span class="n">make_seed_frame</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_frame_joiner</span><span class="o">.</span><span class="n">make_seed_frame</span><span class="p">,</span>
-            <span class="p">)</span>
-
-        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">clause</span><span class="p">,</span> <span class="n">Call</span><span class="p">):</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mutations</span><span class="o">.</span><span class="n">process_call</span><span class="p">(</span><span class="n">clause</span><span class="p">,</span> <span class="n">current_frame</span><span class="p">)</span>
-
-        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">clause</span><span class="p">,</span> <span class="n">Merge</span><span class="p">):</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mutations</span><span class="o">.</span><span class="n">process_merge</span><span class="p">(</span>
-                <span class="n">clause</span><span class="p">,</span>
-                <span class="n">current_frame</span><span class="p">,</span>
-                <span class="n">match_to_binding_frame</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_pattern_matcher</span><span class="o">.</span><span class="n">match_to_binding_frame</span><span class="p">,</span>
-                <span class="n">merge_frames_for_match</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_frame_joiner</span><span class="o">.</span><span class="n">merge_frames_for_match</span><span class="p">,</span>
-                <span class="n">make_seed_frame</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_frame_joiner</span><span class="o">.</span><span class="n">make_seed_frame</span><span class="p">,</span>
-            <span class="p">)</span>
-
-        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">clause</span><span class="p">,</span> <span class="n">Foreach</span><span class="p">):</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mutations</span><span class="o">.</span><span class="n">process_foreach</span><span class="p">(</span>
-                <span class="n">clause</span><span class="p">,</span>
-                <span class="n">current_frame</span><span class="p">,</span>
-                <span class="n">make_seed_frame</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_frame_joiner</span><span class="o">.</span><span class="n">make_seed_frame</span><span class="p">,</span>
-            <span class="p">)</span>
-
-        <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="sa">f</span><span class="s2">&quot;Clause type &#39;</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">clause</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&#39; is not yet supported &quot;</span>
-            <span class="s2">&quot;in the BindingFrame execution path.&quot;</span>
-        <span class="p">)</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span></div>
+            <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">handler</span><span class="p">(</span><span class="n">clause</span><span class="p">,</span> <span class="n">current_frame</span><span class="p">,</span> <span class="n">limit_hint</span><span class="p">)</span></div>
 
 
     <span class="c1"># ------------------------------------------------------------------</span>

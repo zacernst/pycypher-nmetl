@@ -8882,7 +8882,7 @@ execution logic from the main orchestration facade.  The
 </ul>
 <dl class="py class">
 <dt class="sig sig-object py" id="pycypher.clause_executor.ClauseExecutor">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.clause_executor.</span></span><span class="sig-name descname"><span class="pre">ClauseExecutor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">context</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pattern_matcher</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mutations</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">frame_joiner</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">projection_planner</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">query_analyzer</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/clause_executor.html#ClauseExecutor"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.clause_executor.ClauseExecutor" title="Link to this definition"></a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.clause_executor.</span></span><span class="sig-name descname"><span class="pre">ClauseExecutor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">context</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pattern_matcher</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mutations</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">frame_joiner</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">projection_planner</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">query_analyzer</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">evaluator_factory</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/clause_executor.html#ClauseExecutor"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.clause_executor.ClauseExecutor" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <p>Execute Cypher clauses against the BindingFrame IR.</p>
 <p>Encapsulates clause dispatch, MATCH handling, UNWIND processing,
@@ -8901,14 +8901,14 @@ WHERE filtering, and the main execution loop.</p>
 </dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="pycypher.clause_executor.ClauseExecutor.__init__">
-<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">context</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pattern_matcher</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mutations</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">frame_joiner</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">projection_planner</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">query_analyzer</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/clause_executor.html#ClauseExecutor.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.clause_executor.ClauseExecutor.__init__" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">context</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pattern_matcher</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mutations</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">frame_joiner</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">projection_planner</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">query_analyzer</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">evaluator_factory</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/clause_executor.html#ClauseExecutor.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.clause_executor.ClauseExecutor.__init__" title="Link to this definition"></a></dt>
 <dd><dl class="field-list simple">
 </dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="pycypher.clause_executor.ClauseExecutor.apply_where_filter">
-<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">apply_where_filter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">where_expr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">result_frame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fallback_frame</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/clause_executor.html#ClauseExecutor.apply_where_filter"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.clause_executor.ClauseExecutor.apply_where_filter" title="Link to this definition"></a></dt>
+<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">apply_where_filter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">where_expr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">result_frame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fallback_frame</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">evaluator_factory</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/clause_executor.html#ClauseExecutor.apply_where_filter"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.clause_executor.ClauseExecutor.apply_where_filter" title="Link to this definition"></a></dt>
 <dd><p>Apply a WHERE predicate to <em>result_frame</em>, with optional fallback.</p>
 <p>First tries evaluating <em>where_expr</em> against <em>result_frame</em>.  If that
 raises <code class="docutils literal notranslate"><span class="pre">ValueError</span></code> or <code class="docutils literal notranslate"><span class="pre">KeyError</span></code>, falls back to evaluating against
@@ -8916,16 +8916,18 @@ raises <code class="docutils literal notranslate"><span class="pre">ValueError</
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>where_expr</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a>) – AST expression node for the WHERE predicate.</p></li>
+<li><p><strong>where_expr</strong> (<em>Any</em>) – AST expression node for the WHERE predicate.</p></li>
 <li><p><strong>result_frame</strong> (<a class="reference internal" href="#pycypher.binding_frame.BindingFrame" title="pycypher.binding_frame.BindingFrame"><em>BindingFrame</em></a>) – The frame to filter.</p></li>
 <li><p><strong>fallback_frame</strong> (<a class="reference internal" href="#pycypher.binding_frame.BindingFrame" title="pycypher.binding_frame.BindingFrame"><em>BindingFrame</em></a><em> | </em><em>None</em>) – Optional pre-projection frame for variable lookup.</p></li>
+<li><p><strong>evaluator_factory</strong> (<a class="reference internal" href="#pycypher.evaluator_protocol.ExpressionEvaluatorFactory" title="pycypher.evaluator_protocol.ExpressionEvaluatorFactory"><em>ExpressionEvaluatorFactory</em></a>) – Factory for constructing an expression
+evaluator over a given frame.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>A new filtered <code class="xref py py-class docutils literal notranslate"><span class="pre">BindingFrame</span></code>.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference internal" href="#pycypher.binding_frame.BindingFrame" title="pycypher.binding_frame.BindingFrame"><em>BindingFrame</em></a></p>
+<dd class="field-odd"><p><a class="reference internal" href="#pycypher.binding_frame.BindingFrame" title="pycypher.binding_frame.BindingFrame">BindingFrame</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -9170,7 +9172,7 @@ self-documenting.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="pycypher.pattern_matcher.PatternMatcher">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.pattern_matcher.</span></span><span class="sig-name descname"><span class="pre">PatternMatcher</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">context</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path_expander</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">coerce_join_fn</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">apply_where_fn</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">multi_way_join_fn</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/pattern_matcher.html#PatternMatcher"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.pattern_matcher.PatternMatcher" title="Link to this definition"></a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.pattern_matcher.</span></span><span class="sig-name descname"><span class="pre">PatternMatcher</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">context</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path_expander</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">coerce_join_fn</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">apply_where_fn</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">multi_way_join_fn</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">evaluator_factory</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/pattern_matcher.html#PatternMatcher"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.pattern_matcher.PatternMatcher" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <p>Translates Cypher MATCH patterns into BindingFrame instances.</p>
 <p>Delegates BFS-based operations to <a class="reference internal" href="#pycypher.path_expander.PathExpander" title="pycypher.path_expander.PathExpander"><code class="xref py py-class docutils literal notranslate"><span class="pre">PathExpander</span></code></a>.</p>
@@ -9211,7 +9213,7 @@ are pushed down <em>before</em> the cross-path join to reduce row counts.</p></l
 </dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="pycypher.pattern_matcher.PatternMatcher.__init__">
-<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">context</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path_expander</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">coerce_join_fn</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">apply_where_fn</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">multi_way_join_fn</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/pattern_matcher.html#PatternMatcher.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.pattern_matcher.PatternMatcher.__init__" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">context</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path_expander</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">coerce_join_fn</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">apply_where_fn</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">multi_way_join_fn</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">evaluator_factory</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/pattern_matcher.html#PatternMatcher.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.pattern_matcher.PatternMatcher.__init__" title="Link to this definition"></a></dt>
 <dd><p>Initialize pattern matcher.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -9224,6 +9226,9 @@ joining two frames (inner or cross join).</p></li>
 for applying a WHERE predicate to a frame.</p></li>
 <li><p><strong>multi_way_join_fn</strong> (<em>Callable</em><em>[</em><em>...</em><em>, </em><a class="reference internal" href="#pycypher.binding_frame.BindingFrame" title="pycypher.binding_frame.BindingFrame"><em>BindingFrame</em></a><em>] </em><em>| </em><em>None</em>) – Optional callable <code class="docutils literal notranslate"><span class="pre">(frames)</span> <span class="pre">-&gt;</span> <span class="pre">BindingFrame</span></code>
 for n-way joins using LeapfrogTriejoin when applicable.</p></li>
+<li><p><strong>evaluator_factory</strong> (<a class="reference internal" href="#pycypher.evaluator_protocol.ExpressionEvaluatorFactory" title="pycypher.evaluator_protocol.ExpressionEvaluatorFactory"><em>ExpressionEvaluatorFactory</em></a>) – Factory for constructing an expression
+evaluator, threaded into inline-property <code class="docutils literal notranslate"><span class="pre">BindingFilter</span></code>
+construction.</p></li>
 </ul>
 </dd>
 </dl>
@@ -10267,7 +10272,7 @@ to decompose the 2904-line evaluator into specialized, maintainable components.<
 <p>Architecture Loop 277 - Phase 1 Implementation</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="pycypher.arithmetic_evaluator.ArithmeticExpressionEvaluator">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.arithmetic_evaluator.</span></span><span class="sig-name descname"><span class="pre">ArithmeticExpressionEvaluator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">frame</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/arithmetic_evaluator.html#ArithmeticExpressionEvaluator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.arithmetic_evaluator.ArithmeticExpressionEvaluator" title="Link to this definition"></a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.arithmetic_evaluator.</span></span><span class="sig-name descname"><span class="pre">ArithmeticExpressionEvaluator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">frame</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">evaluator_factory</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/arithmetic_evaluator.html#ArithmeticExpressionEvaluator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.arithmetic_evaluator.ArithmeticExpressionEvaluator" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <p>Specialized evaluator for arithmetic and comparison expressions.</p>
 <p>This class handles all arithmetic operations (+, -, *, /, %, ^),
@@ -10279,11 +10284,15 @@ while providing a focused, testable interface for arithmetic operations.</p>
 </dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="pycypher.arithmetic_evaluator.ArithmeticExpressionEvaluator.__init__">
-<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">frame</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/arithmetic_evaluator.html#ArithmeticExpressionEvaluator.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.arithmetic_evaluator.ArithmeticExpressionEvaluator.__init__" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">frame</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">evaluator_factory</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/arithmetic_evaluator.html#ArithmeticExpressionEvaluator.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.arithmetic_evaluator.ArithmeticExpressionEvaluator.__init__" title="Link to this definition"></a></dt>
 <dd><p>Initialize arithmetic evaluator with binding frame context.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>frame</strong> (<a class="reference internal" href="#pycypher.binding_frame.BindingFrame" title="pycypher.binding_frame.BindingFrame"><em>BindingFrame</em></a>) – BindingFrame providing variable and expression evaluation context</p>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>frame</strong> (<a class="reference internal" href="#pycypher.binding_frame.BindingFrame" title="pycypher.binding_frame.BindingFrame"><em>BindingFrame</em></a>) – BindingFrame providing variable and expression evaluation context</p></li>
+<li><p><strong>evaluator_factory</strong> (<a class="reference internal" href="#pycypher.evaluator_protocol.ExpressionEvaluatorFactory" title="pycypher.evaluator_protocol.ExpressionEvaluatorFactory"><em>ExpressionEvaluatorFactory</em></a>) – Factory for constructing a fresh expression
+evaluator over a derived frame.</p></li>
+</ul>
 </dd>
 </dl>
 </dd></dl>
@@ -10422,7 +10431,7 @@ sentinels (None, np.nan, pd.NA), consistent with the other Kleene functions.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="pycypher.boolean_evaluator.BooleanExpressionEvaluator">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.boolean_evaluator.</span></span><span class="sig-name descname"><span class="pre">BooleanExpressionEvaluator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">frame</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/boolean_evaluator.html#BooleanExpressionEvaluator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.boolean_evaluator.BooleanExpressionEvaluator" title="Link to this definition"></a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.boolean_evaluator.</span></span><span class="sig-name descname"><span class="pre">BooleanExpressionEvaluator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">frame</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">evaluator_factory</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/boolean_evaluator.html#BooleanExpressionEvaluator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.boolean_evaluator.BooleanExpressionEvaluator" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <p>Specialized evaluator for boolean logic expressions.</p>
 <p>This class handles all boolean operations (AND, OR, NOT, XOR) with proper
@@ -10434,11 +10443,15 @@ while providing a focused, testable interface for boolean operations.</p>
 </dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="pycypher.boolean_evaluator.BooleanExpressionEvaluator.__init__">
-<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">frame</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/boolean_evaluator.html#BooleanExpressionEvaluator.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.boolean_evaluator.BooleanExpressionEvaluator.__init__" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">frame</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">evaluator_factory</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/boolean_evaluator.html#BooleanExpressionEvaluator.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.boolean_evaluator.BooleanExpressionEvaluator.__init__" title="Link to this definition"></a></dt>
 <dd><p>Initialize boolean evaluator with binding frame context.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>frame</strong> (<a class="reference internal" href="#pycypher.binding_frame.BindingFrame" title="pycypher.binding_frame.BindingFrame"><em>BindingFrame</em></a>) – BindingFrame providing variable and expression evaluation context</p>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>frame</strong> (<a class="reference internal" href="#pycypher.binding_frame.BindingFrame" title="pycypher.binding_frame.BindingFrame"><em>BindingFrame</em></a>) – BindingFrame providing variable and expression evaluation context</p></li>
+<li><p><strong>evaluator_factory</strong> (<a class="reference internal" href="#pycypher.evaluator_protocol.ExpressionEvaluatorFactory" title="pycypher.evaluator_protocol.ExpressionEvaluatorFactory"><em>ExpressionEvaluatorFactory</em></a>) – Factory for constructing a fresh expression
+evaluator over a derived frame.</p></li>
+</ul>
 </dd>
 </dl>
 </dd></dl>
@@ -10572,7 +10585,7 @@ module.</p>
 </ul>
 <dl class="py class">
 <dt class="sig sig-object py" id="pycypher.comparison_evaluator.ComparisonEvaluator">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.comparison_evaluator.</span></span><span class="sig-name descname"><span class="pre">ComparisonEvaluator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">frame</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/comparison_evaluator.html#ComparisonEvaluator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.comparison_evaluator.ComparisonEvaluator" title="Link to this definition"></a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.comparison_evaluator.</span></span><span class="sig-name descname"><span class="pre">ComparisonEvaluator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">frame</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">evaluator_factory</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/comparison_evaluator.html#ComparisonEvaluator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.comparison_evaluator.ComparisonEvaluator" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <p>Evaluates comparison, null-check, unary, and CASE expressions.</p>
 <p>All methods accept an <code class="docutils literal notranslate"><span class="pre">evaluator</span></code> parameter — the parent
@@ -10588,12 +10601,16 @@ sub-expressions can be recursively evaluated without circular imports.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="pycypher.comparison_evaluator.ComparisonEvaluator.__init__">
-<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">frame</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/comparison_evaluator.html#ComparisonEvaluator.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.comparison_evaluator.ComparisonEvaluator.__init__" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">frame</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">evaluator_factory</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/comparison_evaluator.html#ComparisonEvaluator.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.comparison_evaluator.ComparisonEvaluator.__init__" title="Link to this definition"></a></dt>
 <dd><p>Initialise with a binding frame.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>frame</strong> (<a class="reference internal" href="#pycypher.binding_frame.BindingFrame" title="pycypher.binding_frame.BindingFrame"><em>BindingFrame</em></a>) – The <code class="xref py py-class docutils literal notranslate"><span class="pre">BindingFrame</span></code> against which expressions are
-evaluated.</p>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>frame</strong> (<a class="reference internal" href="#pycypher.binding_frame.BindingFrame" title="pycypher.binding_frame.BindingFrame"><em>BindingFrame</em></a>) – The <code class="xref py py-class docutils literal notranslate"><span class="pre">BindingFrame</span></code> against which expressions are
+evaluated.</p></li>
+<li><p><strong>evaluator_factory</strong> (<a class="reference internal" href="#pycypher.evaluator_protocol.ExpressionEvaluatorFactory" title="pycypher.evaluator_protocol.ExpressionEvaluatorFactory"><em>ExpressionEvaluatorFactory</em></a>) – Factory for constructing a fresh expression
+evaluator over a derived frame.</p></li>
+</ul>
 </dd>
 </dl>
 </dd></dl>
@@ -10720,7 +10737,7 @@ predicate family (<code class="docutils literal notranslate"><span class="pre">S
 <p>Includes ReDoS protection for the <code class="docutils literal notranslate"><span class="pre">=~</span></code> regex operator.</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="pycypher.string_predicate_evaluator.StringPredicateEvaluator">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.string_predicate_evaluator.</span></span><span class="sig-name descname"><span class="pre">StringPredicateEvaluator</span></span><a class="reference internal" href="../_modules/pycypher/string_predicate_evaluator.html#StringPredicateEvaluator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.string_predicate_evaluator.StringPredicateEvaluator" title="Link to this definition"></a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.string_predicate_evaluator.</span></span><span class="sig-name descname"><span class="pre">StringPredicateEvaluator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">evaluator_factory</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/string_predicate_evaluator.html#StringPredicateEvaluator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.string_predicate_evaluator.StringPredicateEvaluator" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <p>Evaluates string and membership predicates.</p>
 <p>Supported operators:</p>
@@ -10732,6 +10749,21 @@ predicate family (<code class="docutils literal notranslate"><span class="pre">S
 <li><p><code class="docutils literal notranslate"><span class="pre">&quot;IN&quot;</span></code> — membership test against a list (three-valued logic)</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">&quot;NOT</span> <span class="pre">IN&quot;</span></code> — inverse membership test (three-valued logic)</p></li>
 </ul>
+<dl class="field-list simple">
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="pycypher.string_predicate_evaluator.StringPredicateEvaluator.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">evaluator_factory</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/string_predicate_evaluator.html#StringPredicateEvaluator.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.string_predicate_evaluator.StringPredicateEvaluator.__init__" title="Link to this definition"></a></dt>
+<dd><p>Initialise the (stateless) string predicate evaluator.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>evaluator_factory</strong> (<a class="reference internal" href="#pycypher.evaluator_protocol.ExpressionEvaluatorFactory" title="pycypher.evaluator_protocol.ExpressionEvaluatorFactory"><em>ExpressionEvaluatorFactory</em></a>) – Factory for constructing a fresh expression
+evaluator over a derived frame. Unused today — accepted for
+interface uniformity with the other sub-evaluators.</p>
+</dd>
+</dl>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="pycypher.string_predicate_evaluator.StringPredicateEvaluator.evaluate_string_predicate">
 <span class="sig-name descname"><span class="pre">evaluate_string_predicate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">op</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">left_expr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">right_expr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">evaluator</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/string_predicate_evaluator.html#StringPredicateEvaluator.evaluate_string_predicate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.string_predicate_evaluator.StringPredicateEvaluator.evaluate_string_predicate" title="Link to this definition"></a></dt>
@@ -10784,7 +10816,7 @@ focused, independently testable module.</p>
 </ul>
 <dl class="py class">
 <dt class="sig sig-object py" id="pycypher.exists_evaluator.ExistsEvaluator">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.exists_evaluator.</span></span><span class="sig-name descname"><span class="pre">ExistsEvaluator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">frame</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/exists_evaluator.html#ExistsEvaluator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.exists_evaluator.ExistsEvaluator" title="Link to this definition"></a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.exists_evaluator.</span></span><span class="sig-name descname"><span class="pre">ExistsEvaluator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">frame</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">evaluator_factory</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/exists_evaluator.html#ExistsEvaluator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.exists_evaluator.ExistsEvaluator" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <p>Evaluates EXISTS predicates and pattern comprehensions.</p>
 <p>Follows the established evaluator pattern: takes a
@@ -10797,12 +10829,16 @@ the parent evaluator as a callback parameter on each public method.</p>
 </dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="pycypher.exists_evaluator.ExistsEvaluator.__init__">
-<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">frame</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/exists_evaluator.html#ExistsEvaluator.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.exists_evaluator.ExistsEvaluator.__init__" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">frame</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">evaluator_factory</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/exists_evaluator.html#ExistsEvaluator.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.exists_evaluator.ExistsEvaluator.__init__" title="Link to this definition"></a></dt>
 <dd><p>Initialise with the current binding frame.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>frame</strong> (<a class="reference internal" href="#pycypher.binding_frame.BindingFrame" title="pycypher.binding_frame.BindingFrame"><em>BindingFrame</em></a>) – The <code class="xref py py-class docutils literal notranslate"><span class="pre">BindingFrame</span></code> to evaluate EXISTS predicates
-and pattern comprehensions against.</p>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>frame</strong> (<a class="reference internal" href="#pycypher.binding_frame.BindingFrame" title="pycypher.binding_frame.BindingFrame"><em>BindingFrame</em></a>) – The <code class="xref py py-class docutils literal notranslate"><span class="pre">BindingFrame</span></code> to evaluate EXISTS predicates
+and pattern comprehensions against.</p></li>
+<li><p><strong>evaluator_factory</strong> (<a class="reference internal" href="#pycypher.evaluator_protocol.ExpressionEvaluatorFactory" title="pycypher.evaluator_protocol.ExpressionEvaluatorFactory"><em>ExpressionEvaluatorFactory</em></a>) – Factory for constructing a fresh expression
+evaluator over a derived (sub) frame.</p></li>
+</ul>
 </dd>
 </dl>
 </dd></dl>
@@ -10883,7 +10919,7 @@ to decompose the 2904-line evaluator into specialized, maintainable components.<
 
 <dl class="py class">
 <dt class="sig sig-object py" id="pycypher.aggregation_evaluator.AggregationExpressionEvaluator">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.aggregation_evaluator.</span></span><span class="sig-name descname"><span class="pre">AggregationExpressionEvaluator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">frame</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/aggregation_evaluator.html#AggregationExpressionEvaluator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.aggregation_evaluator.AggregationExpressionEvaluator" title="Link to this definition"></a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.aggregation_evaluator.</span></span><span class="sig-name descname"><span class="pre">AggregationExpressionEvaluator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">frame</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">evaluator_factory</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/aggregation_evaluator.html#AggregationExpressionEvaluator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.aggregation_evaluator.AggregationExpressionEvaluator" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <p>Specialized evaluator for aggregation expressions.</p>
 <p>This class handles all aggregation operations (SUM, AVG, MIN, MAX, COUNT,
@@ -10895,11 +10931,15 @@ while providing a focused, testable interface for aggregation operations.</p>
 </dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="pycypher.aggregation_evaluator.AggregationExpressionEvaluator.__init__">
-<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">frame</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/aggregation_evaluator.html#AggregationExpressionEvaluator.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.aggregation_evaluator.AggregationExpressionEvaluator.__init__" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">frame</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">evaluator_factory</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/aggregation_evaluator.html#AggregationExpressionEvaluator.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.aggregation_evaluator.AggregationExpressionEvaluator.__init__" title="Link to this definition"></a></dt>
 <dd><p>Initialize aggregation evaluator with binding frame context.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>frame</strong> (<a class="reference internal" href="#pycypher.binding_frame.BindingFrame" title="pycypher.binding_frame.BindingFrame"><em>BindingFrame</em></a>) – BindingFrame providing variable and expression evaluation context</p>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>frame</strong> (<a class="reference internal" href="#pycypher.binding_frame.BindingFrame" title="pycypher.binding_frame.BindingFrame"><em>BindingFrame</em></a>) – BindingFrame providing variable and expression evaluation context</p></li>
+<li><p><strong>evaluator_factory</strong> (<a class="reference internal" href="#pycypher.evaluator_protocol.ExpressionEvaluatorFactory" title="pycypher.evaluator_protocol.ExpressionEvaluatorFactory"><em>ExpressionEvaluatorFactory</em></a>) – Factory for constructing a fresh expression
+evaluator over a derived frame.</p></li>
+</ul>
 </dd>
 </dl>
 </dd></dl>
@@ -10976,10 +11016,25 @@ a focused, independently testable module.</p>
 </ul>
 <dl class="py class">
 <dt class="sig sig-object py" id="pycypher.aggregation_planner.AggregationPlanner">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.aggregation_planner.</span></span><span class="sig-name descname"><span class="pre">AggregationPlanner</span></span><a class="reference internal" href="../_modules/pycypher/aggregation_planner.html#AggregationPlanner"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.aggregation_planner.AggregationPlanner" title="Link to this definition"></a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.aggregation_planner.</span></span><span class="sig-name descname"><span class="pre">AggregationPlanner</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">evaluator_factory</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/aggregation_planner.html#AggregationPlanner"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.aggregation_planner.AggregationPlanner" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <p>Detects aggregations in expressions and evaluates projection items.</p>
-<p>Stateless — all state is passed via method parameters.</p>
+<p>Aggregation-detection state is passed via method parameters; the only
+constructor-injected dependency is the expression-evaluator factory.</p>
+<dl class="field-list simple">
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="pycypher.aggregation_planner.AggregationPlanner.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">evaluator_factory</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/aggregation_planner.html#AggregationPlanner.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.aggregation_planner.AggregationPlanner.__init__" title="Link to this definition"></a></dt>
+<dd><p>Initialise the aggregation planner.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>evaluator_factory</strong> (<a class="reference internal" href="#pycypher.evaluator_protocol.ExpressionEvaluatorFactory" title="pycypher.evaluator_protocol.ExpressionEvaluatorFactory"><em>ExpressionEvaluatorFactory</em></a>) – Factory for constructing an expression
+evaluator over a given (or per-group) frame.</p>
+</dd>
+</dl>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="pycypher.aggregation_planner.AggregationPlanner.contains_aggregation">
 <span class="sig-name descname"><span class="pre">contains_aggregation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">expression</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/aggregation_planner.html#AggregationPlanner.contains_aggregation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.aggregation_planner.AggregationPlanner.contains_aggregation" title="Link to this definition"></a></dt>
@@ -11050,7 +11105,7 @@ god object into focused, testable, and maintainable CollectionExpressionEvaluato
 extractions (AggregationExpressionEvaluator, ArithmeticExpressionEvaluator).</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="pycypher.collection_evaluator.CollectionExpressionEvaluator">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.collection_evaluator.</span></span><span class="sig-name descname"><span class="pre">CollectionExpressionEvaluator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">frame</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/collection_evaluator.html#CollectionExpressionEvaluator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.collection_evaluator.CollectionExpressionEvaluator" title="Link to this definition"></a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.collection_evaluator.</span></span><span class="sig-name descname"><span class="pre">CollectionExpressionEvaluator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">frame</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">evaluator_factory</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/collection_evaluator.html#CollectionExpressionEvaluator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.collection_evaluator.CollectionExpressionEvaluator" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <p>Evaluates collection-related expressions.</p>
 <p>This class handles complex collection operations that were previously
@@ -11064,12 +11119,16 @@ maintainability.</p>
 </dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="pycypher.collection_evaluator.CollectionExpressionEvaluator.__init__">
-<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">frame</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/collection_evaluator.html#CollectionExpressionEvaluator.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.collection_evaluator.CollectionExpressionEvaluator.__init__" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">frame</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">evaluator_factory</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/collection_evaluator.html#CollectionExpressionEvaluator.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.collection_evaluator.CollectionExpressionEvaluator.__init__" title="Link to this definition"></a></dt>
 <dd><p>Initialize collection evaluator with binding frame context.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>frame</strong> (<a class="reference internal" href="#pycypher.binding_frame.BindingFrame" title="pycypher.binding_frame.BindingFrame"><em>BindingFrame</em></a>) – BindingFrame providing variable bindings and context for
-collection expression evaluation.</p>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>frame</strong> (<a class="reference internal" href="#pycypher.binding_frame.BindingFrame" title="pycypher.binding_frame.BindingFrame"><em>BindingFrame</em></a>) – BindingFrame providing variable bindings and context for
+collection expression evaluation.</p></li>
+<li><p><strong>evaluator_factory</strong> (<a class="reference internal" href="#pycypher.evaluator_protocol.ExpressionEvaluatorFactory" title="pycypher.evaluator_protocol.ExpressionEvaluatorFactory"><em>ExpressionEvaluatorFactory</em></a>) – Factory for constructing a fresh expression
+evaluator over a derived (exploded/sub) frame.</p></li>
+</ul>
 </dd>
 </dl>
 </dd></dl>
@@ -11672,7 +11731,7 @@ This extraction follows the proven delegation pattern established in previous lo
 maintaining 100% backward compatibility while achieving clear separation of concerns.</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="pycypher.scalar_function_evaluator.ScalarFunctionEvaluator">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.scalar_function_evaluator.</span></span><span class="sig-name descname"><span class="pre">ScalarFunctionEvaluator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">frame</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/scalar_function_evaluator.html#ScalarFunctionEvaluator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.scalar_function_evaluator.ScalarFunctionEvaluator" title="Link to this definition"></a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.scalar_function_evaluator.</span></span><span class="sig-name descname"><span class="pre">ScalarFunctionEvaluator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">frame</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">evaluator_factory</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/scalar_function_evaluator.html#ScalarFunctionEvaluator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.scalar_function_evaluator.ScalarFunctionEvaluator" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <p>Evaluates Cypher scalar functions and graph introspection functions.</p>
 <p>This class handles the evaluation of scalar function calls, with special handling
@@ -11707,12 +11766,16 @@ used in scalar expression contexts.</p></li>
 </dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="pycypher.scalar_function_evaluator.ScalarFunctionEvaluator.__init__">
-<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">frame</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/scalar_function_evaluator.html#ScalarFunctionEvaluator.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.scalar_function_evaluator.ScalarFunctionEvaluator.__init__" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">frame</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">evaluator_factory</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/scalar_function_evaluator.html#ScalarFunctionEvaluator.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.scalar_function_evaluator.ScalarFunctionEvaluator.__init__" title="Link to this definition"></a></dt>
 <dd><p>Initialize scalar function evaluator with binding frame context.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>frame</strong> (<a class="reference internal" href="#pycypher.binding_frame.BindingFrame" title="pycypher.binding_frame.BindingFrame"><em>BindingFrame</em></a>) – The BindingFrame containing variable bindings, type registry,
-and context for function evaluation.</p>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>frame</strong> (<a class="reference internal" href="#pycypher.binding_frame.BindingFrame" title="pycypher.binding_frame.BindingFrame"><em>BindingFrame</em></a>) – The BindingFrame containing variable bindings, type registry,
+and context for function evaluation.</p></li>
+<li><p><strong>evaluator_factory</strong> (<a class="reference internal" href="#pycypher.evaluator_protocol.ExpressionEvaluatorFactory" title="pycypher.evaluator_protocol.ExpressionEvaluatorFactory"><em>ExpressionEvaluatorFactory</em></a>) – Factory for constructing a fresh expression
+evaluator over a derived frame.</p></li>
+</ul>
 </dd>
 </dl>
 </dd></dl>
@@ -14780,7 +14843,7 @@ and <code class="docutils literal notranslate"><span class="pre">_tgt_{rel_var}<
 
 <dl class="py class">
 <dt class="sig sig-object py" id="pycypher.scan_operators.BindingFilter">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.scan_operators.</span></span><span class="sig-name descname"><span class="pre">BindingFilter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">predicate</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/scan_operators.html#BindingFilter"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.scan_operators.BindingFilter" title="Link to this definition"></a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.scan_operators.</span></span><span class="sig-name descname"><span class="pre">BindingFilter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">predicate</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">evaluator_factory</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/scan_operators.html#BindingFilter"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.scan_operators.BindingFilter" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <p>Filters a BindingFrame by evaluating a boolean AST expression.</p>
 <p>This is the Phase-3 analogue of the legacy <code class="docutils literal notranslate"><span class="pre">FilterRows</span></code> operator.
@@ -14805,6 +14868,11 @@ delegates directly to <a class="reference internal" href="#pycypher.binding_eval
 <span class="sig-name descname"><span class="pre">predicate</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#pycypher.ast_models.Expression" title="pycypher.ast_models.Expression"><span class="pre">Expression</span></a></em><a class="headerlink" href="#id91" title="Link to this definition"></a></dt>
 <dd></dd></dl>
 
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pycypher.scan_operators.BindingFilter.evaluator_factory">
+<span class="sig-name descname"><span class="pre">evaluator_factory</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#pycypher.evaluator_protocol.ExpressionEvaluatorFactory" title="pycypher.evaluator_protocol.ExpressionEvaluatorFactory"><span class="pre">ExpressionEvaluatorFactory</span></a></em><a class="headerlink" href="#pycypher.scan_operators.BindingFilter.evaluator_factory" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="pycypher.scan_operators.BindingFilter.apply">
 <span class="sig-name descname"><span class="pre">apply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">frame</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/scan_operators.html#BindingFilter.apply"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.scan_operators.BindingFilter.apply" title="Link to this definition"></a></dt>
@@ -14824,7 +14892,7 @@ delegates directly to <a class="reference internal" href="#pycypher.binding_eval
 
 <dl class="py method">
 <dt class="sig sig-object py" id="pycypher.scan_operators.BindingFilter.__init__">
-<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">predicate</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.scan_operators.BindingFilter.__init__" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">predicate</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">evaluator_factory</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycypher.scan_operators.BindingFilter.__init__" title="Link to this definition"></a></dt>
 <dd><dl class="field-list simple">
 </dl>
 </dd></dl>
@@ -17142,7 +17210,7 @@ testable module.</p>
 </ul>
 <dl class="py class">
 <dt class="sig sig-object py" id="pycypher.projection_planner.ProjectionPlanner">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.projection_planner.</span></span><span class="sig-name descname"><span class="pre">ProjectionPlanner</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">agg_planner</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">renderer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">where_fn</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/projection_planner.html#ProjectionPlanner"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.projection_planner.ProjectionPlanner" title="Link to this definition"></a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.projection_planner.</span></span><span class="sig-name descname"><span class="pre">ProjectionPlanner</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">agg_planner</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">renderer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">where_fn</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">evaluator_factory</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/projection_planner.html#ProjectionPlanner"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.projection_planner.ProjectionPlanner" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <p>Evaluates RETURN and WITH clauses, applying projection modifiers.</p>
 <p>Stateless aside from injected dependencies — all mutable state is
@@ -17161,7 +17229,7 @@ for generating human-readable expression text.</p></li>
 </dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="pycypher.projection_planner.ProjectionPlanner.__init__">
-<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">agg_planner</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">renderer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">where_fn</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/projection_planner.html#ProjectionPlanner.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.projection_planner.ProjectionPlanner.__init__" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">agg_planner</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">renderer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">where_fn</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">evaluator_factory</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/projection_planner.html#ProjectionPlanner.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.projection_planner.ProjectionPlanner.__init__" title="Link to this definition"></a></dt>
 <dd><p>Initialise the projection planner.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -17172,6 +17240,8 @@ grouped evaluation in WITH/RETURN clauses.</p></li>
 explicit <code class="docutils literal notranslate"><span class="pre">AS</span></code> alias is provided.</p></li>
 <li><p><strong>where_fn</strong> (<em>Callable</em><em>[</em><em>...</em><em>, </em><a class="reference internal" href="#pycypher.binding_frame.BindingFrame" title="pycypher.binding_frame.BindingFrame"><em>BindingFrame</em></a><em>]</em>) – Callback to apply a WHERE filter to a
 <code class="xref py py-class docutils literal notranslate"><span class="pre">BindingFrame</span></code>.</p></li>
+<li><p><strong>evaluator_factory</strong> (<a class="reference internal" href="#pycypher.evaluator_protocol.ExpressionEvaluatorFactory" title="pycypher.evaluator_protocol.ExpressionEvaluatorFactory"><em>ExpressionEvaluatorFactory</em></a>) – Factory for constructing an expression
+evaluator over a given frame.</p></li>
 </ul>
 </dd>
 </dl>
@@ -18716,7 +18786,7 @@ enclosing query succeeds.</p>
 </div>
 <dl class="py class">
 <dt class="sig sig-object py" id="pycypher.mutation_engine.MutationEngine">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.mutation_engine.</span></span><span class="sig-name descname"><span class="pre">MutationEngine</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">context</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/mutation_engine.html#MutationEngine"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.mutation_engine.MutationEngine" title="Link to this definition"></a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.mutation_engine.</span></span><span class="sig-name descname"><span class="pre">MutationEngine</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">context</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">evaluator_factory</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/mutation_engine.html#MutationEngine"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.mutation_engine.MutationEngine" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <p>Encapsulates all write-path operations for Cypher query execution.</p>
 <p>Each method corresponds to a mutation clause type (SET, CREATE, DELETE,
@@ -18753,12 +18823,16 @@ entity and relationship mappings.</p>
 </dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="pycypher.mutation_engine.MutationEngine.__init__">
-<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">context</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/mutation_engine.html#MutationEngine.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.mutation_engine.MutationEngine.__init__" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">context</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">evaluator_factory</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/mutation_engine.html#MutationEngine.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.mutation_engine.MutationEngine.__init__" title="Link to this definition"></a></dt>
 <dd><p>Initialize mutation engine.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>context</strong> (<a class="reference internal" href="#pycypher.relational_models.Context" title="pycypher.relational_models.Context"><em>Context</em></a>) – The execution context holding entity and relationship
-mappings. Mutations are applied through the shadow-write layer.</p>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>context</strong> (<a class="reference internal" href="#pycypher.relational_models.Context" title="pycypher.relational_models.Context"><em>Context</em></a>) – The execution context holding entity and relationship
+mappings. Mutations are applied through the shadow-write layer.</p></li>
+<li><p><strong>evaluator_factory</strong> (<a class="reference internal" href="#pycypher.evaluator_protocol.ExpressionEvaluatorFactory" title="pycypher.evaluator_protocol.ExpressionEvaluatorFactory"><em>ExpressionEvaluatorFactory</em></a>) – Factory for constructing an expression
+evaluator over a given frame.</p></li>
+</ul>
 </dd>
 </dl>
 </dd></dl>
