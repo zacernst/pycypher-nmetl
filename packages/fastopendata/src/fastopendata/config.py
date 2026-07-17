@@ -224,6 +224,14 @@ class Config:
                 msg = f"paths.{key} must be a non-empty string, got {val!r}"
                 raise ValueError(msg)
 
+        # data_dir is optional (DATA_DIR env var is the primary source, see
+        # Config.data_dir), but if a config file sets it, it can't be blank.
+        if "data_dir" in data.get("paths", {}):
+            val = data["paths"]["data_dir"]
+            if not isinstance(val, str) or not val.strip():
+                msg = f"paths.data_dir must be a non-empty string, got {val!r}"
+                raise ValueError(msg)
+
         required_downloads = ["max_concurrent", "max_retries", "timeout"]
         missing_dl = [
             k for k in required_downloads if k not in data.get("downloads", {})
@@ -356,10 +364,12 @@ class Config:
     def data_dir(self) -> str:
         """Data directory path (can be overridden by DATA_DIR environment variable).
 
-        The path is resolved and validated to prevent path traversal into
-        system-critical directories.
+        Falls back to ``paths.data_dir`` in the config file if the
+        environment variable is not set. The path is resolved and
+        validated to prevent path traversal into system-critical
+        directories.
         """
-        raw = os.environ.get("DATA_DIR")# , self._data["paths"]["data_dir"])
+        raw = os.environ.get("DATA_DIR") or self._data["paths"].get("data_dir")
         return self._validate_data_dir(raw)
 
     @property

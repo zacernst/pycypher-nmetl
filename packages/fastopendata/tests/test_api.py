@@ -43,22 +43,13 @@ class TestHealthEndpoints:
     def test_root_returns_ok(self, client: TestClient) -> None:
         r = client.get("/")
         assert r.status_code == 200
-        body = r.json()
-        assert body["status"] == "ok"
-        assert "api_version" in body
-        assert "pycypher_version" in body
+        assert r.content == b""
 
     def test_health_returns_ok(self, client: TestClient) -> None:
         r = client.get("/health")
         assert r.status_code == 200
         body = r.json()
         assert body["status"] == "ok"
-
-    def test_root_and_health_agree(self, client: TestClient) -> None:
-        root = client.get("/").json()
-        health = client.get("/health").json()
-        assert root["api_version"] == health["api_version"]
-        assert root["pycypher_version"] == health["pycypher_version"]
 
 
 # ── Dataset listing ───────────────────────────────────────────────────

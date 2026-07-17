@@ -97,8 +97,14 @@ file = "fastopendata.log"
 
 
 @pytest.fixture
-def cfg(config_file: Path) -> Config:
-    """Return a Config loaded from the test fixture."""
+def cfg(config_file: Path, monkeypatch: pytest.MonkeyPatch) -> Config:
+    """Return a Config loaded from the test fixture.
+
+    Exercises the config-file-driven ``paths.data_dir`` fallback, so the
+    DATA_DIR environment variable (which the test session otherwise
+    defaults, see conftest.py) must be absent here.
+    """
+    monkeypatch.delenv("DATA_DIR", raising=False)
     return Config(config_file)
 
 
@@ -365,13 +371,14 @@ class TestPaths:
         assert cfg.temp_path.is_absolute()
         assert "tmp" in str(cfg.temp_path)
 
-    def test_data_dir_env_override(self, config_file: Path) -> None:
-        os.environ["DATA_DIR"] = "/tmp/override"
-        try:
-            c = Config(config_file)
-            assert c.data_dir.endswith("/override")
-        finally:
-            del os.environ["DATA_DIR"]
+    def test_data_dir_env_override(
+        self,
+        config_file: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setenv("DATA_DIR", "/tmp/override")
+        c = Config(config_file)
+        assert c.data_dir.endswith("/override")
 
 
 # ── Download properties ────────────────────────────────────────────────

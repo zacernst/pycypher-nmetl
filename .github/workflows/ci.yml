@@ -238,6 +238,33 @@ jobs:
         continue-on-error: true
 
   # ──────────────────────────────────────────────
+  # Code hygiene: import cycle ratchet (fails only on growth vs. baseline)
+  # ──────────────────────────────────────────────
+  import-cycles:
+    name: Import Cycle Ratchet
+    needs: lock-check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Install Python 3.14 (managed by uv)
+        run: uv python install ${{ env.PYTHON_VERSION }}
+
+      - name: Install workspace dependencies
+        run: uv sync --frozen
+
+      - name: Check import cycles against baseline
+        run: uv run python scripts/check_import_cycles.py --ratchet
+
+  # ──────────────────────────────────────────────
   # Security: custom pattern detection
   # ──────────────────────────────────────────────
   security-patterns:

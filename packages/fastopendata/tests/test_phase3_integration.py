@@ -12,12 +12,12 @@ end-to-end:
 4. ``ConfigManager.set_state_fips`` / ``get_state_fips`` round-trip the
    value and reject invalid input.
 5. ``StateSelector`` (the TUI screen) imports cleanly from
-   ``pycypher_tui.screens.state_selector``.
+   ``fastopendata.tui.state_selector``.
 
 The granular per-feature tests live in ``test_etl_pipeline.py``,
-``test_api.py``, ``packages/pycypher-tui/tests/test_state_selector.py``,
-and ``tests/test_config.py``; this file is the single Phase 3 acceptance
-suite that ties them together.
+``test_api.py``, ``test_state_selector.py``, and ``tests/test_config.py``
+(root); this file is the single Phase 3 acceptance suite that ties them
+together.
 """
 
 from __future__ import annotations
@@ -337,8 +337,8 @@ class TestStateSelectorImport:
     """Phase 3 deliverable #5: TUI screen module loads without errors."""
 
     def test_state_selector_imports(self) -> None:
-        """``from pycypher_tui.screens.state_selector import StateSelector`` works."""
-        from pycypher_tui.screens.state_selector import StateSelector
+        """``from fastopendata.tui.state_selector import StateSelector`` works."""
+        from fastopendata.tui.state_selector import StateSelector
 
         # Sanity: the message class advertised in the task description
         # exists on the screen and carries the documented attributes.

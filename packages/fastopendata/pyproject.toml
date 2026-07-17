@@ -53,8 +53,9 @@ tui = ["textual>=1.0.0,<2.0.0"]
 
 [project.scripts]
 
-[tool.hatchling.build.targets.wheel]
+[tool.hatch.build.targets.wheel]
 # Only include source code, exclude raw data and other unnecessary files
+sources = ["src"]
 include = [
     "src/fastopendata",
 ]
@@ -63,7 +64,7 @@ exclude = [
     "tmp/",
     ".snakemake/",
     "*.txt",
-    "out",
+    "src/fastopendata/output/",
     "__pycache__/",
     "*.pyc",
     "tests/",  # Exclude tests from wheel
