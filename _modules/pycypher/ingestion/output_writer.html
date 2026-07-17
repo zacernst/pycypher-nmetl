@@ -1350,7 +1350,7 @@
             <span class="sa">f</span><span class="s1">&#39;COPY &quot;</span><span class="si">{</span><span class="n">view</span><span class="si">}</span><span class="s1">&quot; TO </span><span class="si">{</span><span class="n">target</span><span class="si">}</span><span class="s1"> (</span><span class="si">{</span><span class="n">options</span><span class="si">}</span><span class="s1">)&#39;</span><span class="p">,</span>  <span class="c1"># nosec B608 — view is a generated uuid name; target escaped via escape_sql_string_literal</span>
         <span class="p">)</span>
     <span class="k">finally</span><span class="p">:</span>
-        <span class="n">con</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;DROP VIEW IF EXISTS &quot;</span><span class="si">{</span><span class="n">view</span><span class="si">}</span><span class="s1">&quot;&#39;</span><span class="p">)</span>  <span class="c1"># nosec B608 — view is a generated UUID name, not user input</span></div>
+        <span class="n">con</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;DROP VIEW IF EXISTS &quot;</span><span class="si">{</span><span class="n">view</span><span class="si">}</span><span class="s1">&quot;&#39;</span><span class="p">)</span></div>
 
 </pre></div>
 
