@@ -1,0 +1,70 @@
+This is XeTeX, Version 3.141592653-2.6-0.999998 (TeX Live 2026) (preloaded format=xelatex 2026.7.16)  16 JUL 2026 20:43
+entering extended mode
+ restricted \write18 enabled.
+ %&-line parsing enabled.
+**pycypher.tex
+(./pycypher.tex
+LaTeX2e <2025-11-01>
+L3 programming layer <2026-03-20>
+(./sphinxmanual.cls
+Document Class: sphinxmanual 2019/12/01 v2.3.0 Document class (Sphinx manual)
+(/usr/share/texlive/texmf-dist/tex/latex/base/report.cls
+Document Class: report 2025/01/22 v1.4n Standard LaTeX document class
+(/usr/share/texlive/texmf-dist/tex/latex/base/size10.clo
+File: size10.clo 2025/01/22 v1.4n Standard LaTeX file (size option)
+)
+\c@part=\count271
+\c@chapter=\count272
+\c@section=\count273
+\c@subsection=\count274
+\c@subsubsection=\count275
+\c@paragraph=\count276
+\c@subparagraph=\count277
+\c@figure=\count278
+\c@table=\count279
+\abovecaptionskip=\skip49
+\belowcaptionskip=\skip50
+\bibindent=\dimen150
+)
+LaTeX Info: Redefining \and on input line 35.
+)
+\sphinxpxdimen=\dimen151
+
+
+! LaTeX Error: File `cmap.sty' not found.
+
+Type X to quit or <RETURN> to proceed,
+or enter new name. (Default extension: sty)
+
+Enter file name: git status
+
+! LaTeX Error: File `git status.sty' not found.
+
+Type X to quit or <RETURN> to proceed,
+or enter new name. (Default extension: sty)
+
+Enter file name: git status
+
+! LaTeX Error: File `git status.sty' not found.
+
+Type X to quit or <RETURN> to proceed,
+or enter new name. (Default extension: sty)
+
+Enter file name: 
+! Emergency stop.
+<read *> 
+         
+l.26 \usepackage
+                {fontspec}^^M
+End of file on the terminal!
+
+ 
+Here is how much of TeX's memory you used:
+ 323 strings out of 470015
+ 4328 string characters out of 5475611
+ 427603 words of memory out of 6000000
+ 29174 multiletter control sequences out of 15000+600000
+ 627729 words of font info for 41 fonts, out of 8000000 for 9000
+ 14 hyphenation exceptions out of 8191
+ 49i,0n,52p,149b,40s stack positions out of 10000i,1000n,20000p,200000b,200000s
+No pages of output.

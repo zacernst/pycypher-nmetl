@@ -1,0 +1,19 @@
+# Fdb version 4
+["pdflatex"] 1784249009.92693 "pycypher.tex" "pycypher.pdf" "pycypher" 1784249027.25548 2
+  "/usr/share/texlive/texmf-dist/tex/latex/base/report.cls" 1777593600 23203 f495085ac76be4e20c5e1e88646a241e ""
+  "/usr/share/texlive/texmf-dist/tex/latex/base/size10.clo" 1777593600 8448 686612a86f0e04f41ea577f5ec7e83d8 ""
+  "/usr/share/texlive/texmf-dist/tex/latex/base/textcomp.sty" 1777593600 2846 e26604d3d895e65d874c07f30c291f3f ""
+  "/usr/share/texlive/texmf-dist/tex/latex/hyperref/hyperref.sty" 1777145858 222324 0031817ce93a9942f5c9df80df47244b ""
+  "/usr/share/texlive/texmf-dist/web2c/texmf.cnf" 1777593600 43785 66587115382950aca692b5f6e3c2fb74 ""
+  "/var/lib/texmf/web2c/xetex/xelatex.fmt" 1784244931 5322363 22874fc803ed371726740401256ad553 ""
+  "cmap.sty" 0 -1 0 ""
+  "git status.sty" 0 -1 0 ""
+  "pycypher.aux" 1784244878.04897 32 3985256e7290058c681f74d7a3565a19 "pdflatex"
+  "pycypher.tex" 1784249009.86122 3173051 1dd48bceec9cf67875ecd17c72224618 ""
+  "sphinx.sty" 1783036894.52532 54203 ee7fe875437470f5328ee20661bb9f1d ""
+  "sphinxmanual.cls" 1783036894.52832 4241 7b0d7a37df7b5715fb0dbd585c52ecdb ""
+  (generated)
+  "pycypher.aux"
+  "pycypher.log"
+  "pycypher.pdf"
+  (rewritten before read)
