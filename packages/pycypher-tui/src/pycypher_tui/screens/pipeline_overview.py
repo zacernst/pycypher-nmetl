@@ -263,7 +263,7 @@ class PipelineOverviewScreen(VimNavigableScreen[SectionInfo]):
     @property
     def _screen_override_keys(self) -> frozenset[str]:
         return frozenset(
-            {"i", "u", "ctrl+r", "1", "2", "3", "4", "5", "6", "b", "s"}
+            {"i", "u", "ctrl+r", "1", "2", "3", "4", "5", "6", "b"}
         )
 
     def handle_extra_key(self, key: str) -> bool:

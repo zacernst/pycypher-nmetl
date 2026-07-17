@@ -7,6 +7,8 @@ regressions when dependency versions change.
 
 from __future__ import annotations
 
+import mmap
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -203,9 +205,22 @@ class TestDuckDBLargeDatasetPatterns:
         conn.close()
 
 
-deltalake = pytest.importorskip("deltalake", reason="deltalake not installed")
+# deltalake bundles a jemalloc allocator that aborts the process with
+# SIGABRT — uncatchable as a Python exception, so plain importorskip can't
+# help — on non-4KiB OS page sizes (e.g. 16KiB on Asahi Linux/Apple
+# Silicon, 64KiB on some AWS Graviton kernels). Skip before the import runs.
+_DELTALAKE_PAGE_SIZE_INCOMPATIBLE = mmap.PAGESIZE != 4096
+
+if _DELTALAKE_PAGE_SIZE_INCOMPATIBLE:
+    deltalake = None
+else:
+    deltalake = pytest.importorskip("deltalake", reason="deltalake not installed")
 
 
+@pytest.mark.skipif(
+    _DELTALAKE_PAGE_SIZE_INCOMPATIBLE,
+    reason="deltalake's jemalloc allocator aborts the process on non-4KiB page sizes",
+)
 class TestDeltaLakeCompatibility:
     """Verify Delta Lake storage layer works."""
 

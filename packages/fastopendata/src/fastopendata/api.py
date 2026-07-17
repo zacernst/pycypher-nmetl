@@ -37,7 +37,6 @@ from fastapi.openapi.docs import (
     get_swagger_ui_html,
     get_swagger_ui_oauth2_redirect_html,
 )
-from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pycypher.exceptions import (
     GraphTypeNotFoundError,
@@ -674,8 +673,8 @@ class CypherQueryResponse(BaseModel):
 
 
 @app.get("/")
-async def root() -> RedirectResponse:
-    return RedirectResponse(url="/site/", status_code=301)
+async def root() -> Response:
+    return Response(status_code=200)
 
 
 @app.get("/single_request")

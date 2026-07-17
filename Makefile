@@ -196,8 +196,8 @@ clean:
 	rm -rfv ${COVERAGE_DIR}
 
 test:
-	uv run pytest -n ${PYTHON_TEST_THREADS} --ignore=tests/test_large_dataset_dependency_compat.py tests/ ; \
-	uv run pytest -n ${PYTHON_TEST_THREADS} packages/fastopendata/tests/ ; \
+	uv run pytest -n ${PYTHON_TEST_THREADS} tests/ && \
+	uv run pytest -n ${PYTHON_TEST_THREADS} packages/fastopendata/tests/ && \
 	uv run pytest packages/pycypher-tui/tests/
 
 tests: test
@@ -775,8 +775,8 @@ coverage-check:
 docs:
 	@echo "Building documentation..."
 	cd ${DOCS_DIR} && uv run make html
-	@echo "Building PDF documentation..."
-	cd ${DOCS_DIR} && uv run make latexpdf
+	# @echo "Building PDF documentation..."
+	# cd ${DOCS_DIR} && uv run make latexpdf
 
 lsp:
 	@echo "Starting PyCypher LSP server (stdin/stdout)..."
