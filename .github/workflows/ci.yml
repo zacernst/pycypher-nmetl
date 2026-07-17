@@ -484,3 +484,14 @@ jobs:
           name: html-docs
           path: docs/_build/html/
           retention-days: 7
+  deploy_docs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./docs/_build/html # Points directly to your build folder
