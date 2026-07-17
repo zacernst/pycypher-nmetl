@@ -14,7 +14,9 @@ concurrency:
 # Principle of least privilege: only request the permissions each job needs.
 # Default is read-only; individual jobs can escalate if required.
 permissions:
-  contents: read
+  contents: write      # Required to push commits or tags back to the repo
+  pull-requests: write # Required to create, comment, or merge PRs
+  issues: write        # Required to edit issues
 
 env:
   UV_SYSTEM_PYTHON: "0"
