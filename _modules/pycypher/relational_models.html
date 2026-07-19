@@ -1496,12 +1496,19 @@
     <span class="c1">#: Graph-native index manager for O(degree) neighbor lookups and</span>
     <span class="c1">#: O(1) property equality lookups.  Created lazily on first access.</span>
     <span class="n">_index_manager</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="n">PrivateAttr</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+    <span class="c1">#: Subquery executor (see ``pycypher.subquery_protocol.SubqueryExecutor``).</span>
+    <span class="c1">#: Registered once by ``Star.__init__`` (the composition root); read by</span>
+    <span class="c1">#: ``ExistsEvaluator`` to run EXISTS subqueries without importing ``Star``.</span>
+    <span class="n">_subquery_executor</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="n">PrivateAttr</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
     <span class="c1">#: Streaming sources registered via ``register_streaming_source``.</span>
     <span class="c1">#: Context-lifetime state — registered once, reused across queries.</span>
     <span class="n">_streaming_sources</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="n">PrivateAttr</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
     <span class="c1">#: Relation UDFs registered via ``register_relation_udf``.</span>
     <span class="c1">#: Context-lifetime state — registered once, reused across queries.</span>
     <span class="n">_relation_udfs</span><span class="p">:</span> <span class="nb">set</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="n">PrivateAttr</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">set</span><span class="p">)</span>
+    <span class="c1">#: Opt-in flag for the out-of-core relation engine (see</span>
+    <span class="c1">#: ``relation_engine.relation_engine_enabled``). Off by default.</span>
+    <span class="n">_relation_engine_enabled</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="n">PrivateAttr</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
     <span class="c1">#: Per-*this-Context-instance* ``ContextVar`` backing the per-query</span>
     <span class="c1">#: ``ExecutionScope`` (see ``execution_scope.py``). One ``ContextVar``</span>
     <span class="c1">#: per ``Context`` instance — not a shared module-level singleton — so</span>
@@ -1576,6 +1583,25 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">set_backend</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">backend</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Swap the active backend engine (used by ``QueryAnalyzer`` hints).&quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_backend</span> <span class="o">=</span> <span class="n">backend</span></div>
+
+
+<div class="viewcode-block" id="Context.set_subquery_executor">
+<a class="viewcode-back" href="../../api/pycypher.html#pycypher.relational_models.Context.set_subquery_executor">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">set_subquery_executor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">executor</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Register the subquery executor (called once by ``Star.__init__``).&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_subquery_executor</span> <span class="o">=</span> <span class="n">executor</span></div>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">subquery_executor</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the registered :class:`~pycypher.subquery_protocol.SubqueryExecutor`.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_subquery_executor</span>
+
+<div class="viewcode-block" id="Context.set_relation_engine_enabled">
+<a class="viewcode-back" href="../../api/pycypher.html#pycypher.relational_models.Context.set_relation_engine_enabled">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">set_relation_engine_enabled</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">enabled</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Enable/disable the out-of-core relation engine for this context.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_relation_engine_enabled</span> <span class="o">=</span> <span class="n">enabled</span></div>
 
 
 <div class="viewcode-block" id="Context.model_post_init">

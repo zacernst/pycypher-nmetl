@@ -1241,6 +1241,21 @@
     <span class="k">return</span> <span class="n">StringLiteral</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">val</span><span class="p">))</span>
 
 
+<span class="k">class</span><span class="w"> </span><span class="nc">_StarSubqueryExecutor</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Adapter satisfying ``pycypher.subquery_protocol.SubqueryExecutor``.</span>
+
+<span class="sd">    Delegates to an already-constructed ``ClauseExecutor`` so EXISTS</span>
+<span class="sd">    subqueries reuse the outer ``Star``&#39;s execution loop instead of</span>
+<span class="sd">    constructing a throwaway ``Star``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">clause_executor</span><span class="p">:</span> <span class="n">ClauseExecutor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_clause_executor</span> <span class="o">=</span> <span class="n">clause_executor</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">initial_frame</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_clause_executor</span><span class="o">.</span><span class="n">execute_query_inner</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">initial_frame</span><span class="p">)</span>
+
+
 <div class="viewcode-block" id="get_cache_stats">
 <a class="viewcode-back" href="../../api/pycypher.html#pycypher.star.get_cache_stats">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">get_cache_stats</span><span class="p">(</span><span class="n">star</span><span class="p">:</span> <span class="n">Star</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
@@ -1423,6 +1438,11 @@
             <span class="n">query_analyzer</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_query_analyzer</span><span class="p">,</span>
             <span class="n">evaluator_factory</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_evaluator_factory</span><span class="p">,</span>
         <span class="p">)</span>
+
+        <span class="c1"># Subquery executor — lets EXISTS subqueries run through the clause</span>
+        <span class="c1"># executor without importing Star (breaks the exists_evaluator &lt;-&gt;</span>
+        <span class="c1"># star import cycle).</span>
+        <span class="n">context</span><span class="o">.</span><span class="n">set_subquery_executor</span><span class="p">(</span><span class="n">_StarSubqueryExecutor</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_clause_executor</span><span class="p">))</span>
 
         <span class="c1"># Query explainer — EXPLAIN text plans.</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_query_explainer</span><span class="p">:</span> <span class="n">QueryExplainer</span> <span class="o">=</span> <span class="n">QueryExplainer</span><span class="p">(</span>

@@ -1173,6 +1173,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">pycypher.ast_models</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">ASTConverter</span><span class="p">,</span>
     <span class="n">Create</span><span class="p">,</span>
+    <span class="n">Delete</span><span class="p">,</span>
     <span class="n">Match</span><span class="p">,</span>
     <span class="n">Merge</span><span class="p">,</span>
     <span class="n">NodePattern</span><span class="p">,</span>
@@ -1236,7 +1237,10 @@
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Return nodes in dependency-respecting execution order.</span>
 
 <span class="sd">        Uses Kahn&#39;s algorithm: repeatedly selects nodes whose dependencies</span>
-<span class="sd">        have all been processed.</span>
+<span class="sd">        have all been processed. Ties among simultaneously-ready nodes (no</span>
+<span class="sd">        dependency edge between them either way) are broken by original</span>
+<span class="sd">        ``self.nodes`` order rather than set-iteration order, so independent</span>
+<span class="sd">        queries keep their YAML order instead of being shuffled run to run.</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            List of :class:`QueryNode` in valid execution order.</span>
@@ -1252,13 +1256,13 @@
         <span class="p">)</span>
         <span class="n">result</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">QueryNode</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="n">remaining</span> <span class="o">=</span> <span class="p">{</span><span class="n">node</span><span class="o">.</span><span class="n">query_id</span> <span class="k">for</span> <span class="n">node</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="p">}</span>
-        <span class="n">node_map</span> <span class="o">=</span> <span class="p">{</span><span class="n">node</span><span class="o">.</span><span class="n">query_id</span><span class="p">:</span> <span class="n">node</span> <span class="k">for</span> <span class="n">node</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="p">}</span>
 
         <span class="k">while</span> <span class="n">remaining</span><span class="p">:</span>
             <span class="n">ready</span> <span class="o">=</span> <span class="p">[</span>
-                <span class="n">node_map</span><span class="p">[</span><span class="n">nid</span><span class="p">]</span>
-                <span class="k">for</span> <span class="n">nid</span> <span class="ow">in</span> <span class="n">remaining</span>
-                <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">node_map</span><span class="p">[</span><span class="n">nid</span><span class="p">]</span><span class="o">.</span><span class="n">dependencies</span> <span class="o">&amp;</span> <span class="n">remaining</span><span class="p">)</span>
+                <span class="n">node</span>
+                <span class="k">for</span> <span class="n">node</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span>
+                <span class="k">if</span> <span class="n">node</span><span class="o">.</span><span class="n">query_id</span> <span class="ow">in</span> <span class="n">remaining</span>
+                <span class="ow">and</span> <span class="ow">not</span> <span class="p">(</span><span class="n">node</span><span class="o">.</span><span class="n">dependencies</span> <span class="o">&amp;</span> <span class="n">remaining</span><span class="p">)</span>
             <span class="p">]</span>
 
             <span class="k">if</span> <span class="ow">not</span> <span class="n">ready</span><span class="p">:</span>
@@ -1381,6 +1385,10 @@
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Extract entity/relationship types created by this query.</span>
 
 <span class="sd">        Scans CREATE and MERGE clauses for node labels and relationship types.</span>
+<span class="sd">        A DELETE also counts as producing the types matched by its MATCH</span>
+<span class="sd">        clause(s) — row removal mutates the table just as CREATE/SET do, so</span>
+<span class="sd">        later queries reading that type must be ordered after it even though</span>
+<span class="sd">        DELETE has no pattern of its own to scan.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">produced</span><span class="p">:</span> <span class="nb">set</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
 
@@ -1391,6 +1399,13 @@
                 <span class="n">produced</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">_extract_types_from_pattern</span><span class="p">(</span><span class="n">clause</span><span class="o">.</span><span class="n">pattern</span><span class="p">),</span>
                 <span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">clause</span><span class="p">,</span> <span class="n">Delete</span><span class="p">)</span> <span class="k">for</span> <span class="n">clause</span> <span class="ow">in</span> <span class="n">ast</span><span class="o">.</span><span class="n">clauses</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">clause</span> <span class="ow">in</span> <span class="n">ast</span><span class="o">.</span><span class="n">clauses</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">clause</span><span class="p">,</span> <span class="n">Match</span><span class="p">)</span> <span class="ow">and</span> <span class="n">clause</span><span class="o">.</span><span class="n">pattern</span><span class="p">:</span>
+                    <span class="n">produced</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">_extract_types_from_pattern</span><span class="p">(</span><span class="n">clause</span><span class="o">.</span><span class="n">pattern</span><span class="p">),</span>
+                    <span class="p">)</span>
 
         <span class="k">return</span> <span class="n">produced</span>
 

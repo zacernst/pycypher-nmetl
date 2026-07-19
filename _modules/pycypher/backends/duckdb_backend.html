@@ -1251,12 +1251,13 @@
 
 <span class="k">def</span><span class="w"> </span><span class="nf">create_duckdb_connection</span><span class="p">(</span>
     <span class="o">*</span><span class="p">,</span>
+    <span class="n">database_path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">memory_limit</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">temp_directory</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">max_temp_directory_size</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">preserve_insertion_order</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Create a persistent in-memory DuckDB connection for out-of-core reads.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Create a persistent DuckDB connection for out-of-core reads.</span>
 
 <span class="sd">    Applies the same opt-in spill settings as :class:`DuckDBBackend` (see</span>
 <span class="sd">    :func:`_spill_config`) plus ``arrow_large_buffer_size`` — required so very</span>
@@ -1266,6 +1267,11 @@
 <span class="sd">    intended to be **held and shared** across ingestion (``read_relation``) and</span>
 <span class="sd">    query execution so relations stay inside a single DuckDB instance and can</span>
 <span class="sd">    spill to disk rather than materialising to pandas/Arrow.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        database_path: Path to a file-backed DuckDB database. When ``None``</span>
+<span class="sd">            (default), an in-memory (``:memory:``) database is used —</span>
+<span class="sd">            behaviour is unchanged from before this parameter existed.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        An open ``duckdb.DuckDBPyConnection``.  The caller owns its lifecycle</span>
@@ -1280,9 +1286,92 @@
         <span class="n">max_temp_directory_size</span><span class="o">=</span><span class="n">max_temp_directory_size</span><span class="p">,</span>
         <span class="n">preserve_insertion_order</span><span class="o">=</span><span class="n">preserve_insertion_order</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">con</span> <span class="o">=</span> <span class="n">duckdb</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s2">&quot;:memory:&quot;</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">)</span>
+    <span class="n">con</span> <span class="o">=</span> <span class="n">duckdb</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">database_path</span> <span class="ow">or</span> <span class="s2">&quot;:memory:&quot;</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">)</span>
     <span class="n">con</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SET arrow_large_buffer_size=true&quot;</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">con</span>
+
+
+<span class="c1">#: Env var overriding the parent directory for scratch DuckDB database</span>
+<span class="c1">#: files.  Deliberately separate from ``PYCYPHER_DUCKDB_TEMP_DIRECTORY``</span>
+<span class="c1">#: (used for spill files, sized/cleaned independently — see</span>
+<span class="c1">#: docs/duckdb_full_parity_design.md, &quot;Scratch file location&quot;).</span>
+<span class="n">_SCRATCH_DIR_ENV_VAR</span> <span class="o">=</span> <span class="s2">&quot;PYCYPHER_DUCKDB_SCRATCH_DIRECTORY&quot;</span>
+
+<span class="c1">#: Filename prefix identifying pycypher scratch database files, used by both</span>
+<span class="c1">#: the creator and the orphan sweep so unrelated files in the same directory</span>
+<span class="c1">#: are never touched.</span>
+<span class="n">_SCRATCH_FILE_PREFIX</span> <span class="o">=</span> <span class="s2">&quot;pycypher-duckdb-run-&quot;</span>
+
+<span class="c1">#: Orphaned scratch files (from a hard-killed prior run) older than this are</span>
+<span class="c1">#: removed by :func:`sweep_orphaned_scratch_databases`. A run normally</span>
+<span class="c1">#: deletes its own file within seconds, so anything past a day is orphaned,</span>
+<span class="c1">#: not just slow.</span>
+<span class="n">_ORPHAN_MAX_AGE_SECONDS</span> <span class="o">=</span> <span class="mi">86_400</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_scratch_directory</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the parent directory for scratch DuckDB database files.&quot;&quot;&quot;</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
+
+    <span class="n">override</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">_SCRATCH_DIR_ENV_VAR</span><span class="p">)</span>
+    <span class="n">directory</span> <span class="o">=</span> <span class="n">override</span> <span class="ow">or</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">gettempdir</span><span class="p">()</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">directory</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">create_scratch_database_path</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a fresh, run-unique path for a file-backed scratch database.</span>
+
+<span class="sd">    Does not create the file itself — ``duckdb.connect()`` does that lazily</span>
+<span class="sd">    on first use. Each call returns a distinct path (via a UUID component),</span>
+<span class="sd">    so concurrent callers never collide even though concurrent runs are not</span>
+<span class="sd">    otherwise supported (see docs/duckdb_full_parity_design.md).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">uuid</span>
+
+    <span class="n">directory</span> <span class="o">=</span> <span class="n">_scratch_directory</span><span class="p">()</span>
+    <span class="n">filename</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">_SCRATCH_FILE_PREFIX</span><span class="si">}{</span><span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">()</span><span class="o">.</span><span class="n">hex</span><span class="si">}</span><span class="s2">.duckdb&quot;</span>
+    <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">directory</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">filename</span><span class="si">}</span><span class="s2">&quot;</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">sweep_orphaned_scratch_databases</span><span class="p">(</span>
+    <span class="n">max_age_seconds</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">_ORPHAN_MAX_AGE_SECONDS</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Delete scratch database files left behind by a hard-killed prior run.</span>
+
+<span class="sd">    Only removes files matching the ``pycypher-duckdb-run-*`` naming</span>
+<span class="sd">    convention in the scratch directory, and only those older than</span>
+<span class="sd">    *max_age_seconds* — a live run&#39;s own file is always younger than that.</span>
+<span class="sd">    Disk hygiene only; correctness does not depend on this running (each run</span>
+<span class="sd">    gets a fresh, unique path regardless). Best-effort: a file that</span>
+<span class="sd">    disappears or can&#39;t be removed between listing and deletion is skipped.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Paths of files that were removed.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">glob</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+
+    <span class="n">directory</span> <span class="o">=</span> <span class="n">_scratch_directory</span><span class="p">()</span>
+    <span class="n">pattern</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">directory</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">_SCRATCH_FILE_PREFIX</span><span class="si">}</span><span class="s2">*.duckdb&quot;</span>
+    <span class="n">now</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+    <span class="n">removed</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">pattern</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">now</span> <span class="o">-</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">getmtime</span><span class="p">(</span><span class="n">path</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">max_age_seconds</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+            <span class="n">removed</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+            <span class="n">LOGGER</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                <span class="s2">&quot;Failed to remove orphaned scratch database </span><span class="si">%s</span><span class="s2">; skipping&quot;</span><span class="p">,</span>
+                <span class="n">path</span><span class="p">,</span>
+                <span class="n">exc_info</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="p">)</span>
+    <span class="k">return</span> <span class="n">removed</span>
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">DuckDBLazyFrame</span><span class="p">:</span>
@@ -1396,12 +1485,13 @@
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="o">*</span><span class="p">,</span>
+        <span class="n">database_path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">memory_limit</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">temp_directory</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">max_temp_directory_size</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">preserve_insertion_order</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create a new DuckDB backend with an in-memory connection.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create a new DuckDB backend with an in-memory or file-backed connection.</span>
 
 <span class="sd">        The connection is created immediately and held for the lifetime of</span>
 <span class="sd">        the backend.  Use as a context manager or call :meth:`close` to</span>
@@ -1415,6 +1505,13 @@
 <span class="sd">        operator-supplied values cannot inject SQL.</span>
 
 <span class="sd">        Args:</span>
+<span class="sd">            database_path: Path to a file-backed DuckDB database, enabling</span>
+<span class="sd">                genuinely mutable, persistent tables (see</span>
+<span class="sd">                ``docs/duckdb_full_parity_design.md``). When ``None``</span>
+<span class="sd">                (default), an in-memory (``:memory:``) database is used, as</span>
+<span class="sd">                before this parameter existed. The caller owns the file&#39;s</span>
+<span class="sd">                lifecycle (creation and deletion); this class only opens and</span>
+<span class="sd">                closes the connection.</span>
 <span class="sd">            memory_limit: Soft RAM budget before DuckDB spills to disk</span>
 <span class="sd">                (e.g. ``&quot;4GB&quot;``).  Env: ``PYCYPHER_DUCKDB_MEMORY_LIMIT``.</span>
 <span class="sd">            temp_directory: Directory for spilled intermediates.</span>
@@ -1436,7 +1533,8 @@
             <span class="n">max_temp_directory_size</span><span class="o">=</span><span class="n">max_temp_directory_size</span><span class="p">,</span>
             <span class="n">preserve_insertion_order</span><span class="o">=</span><span class="n">preserve_insertion_order</span><span class="p">,</span>
         <span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_conn</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="n">duckdb</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s2">&quot;:memory:&quot;</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_database_path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="n">database_path</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_conn</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="n">duckdb</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">database_path</span> <span class="ow">or</span> <span class="s2">&quot;:memory:&quot;</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_view_counter</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span></div>
 
 
@@ -1494,6 +1592,11 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">name</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Return ``&#39;duckdb&#39;``.&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="s2">&quot;duckdb&quot;</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">database_path</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Path to the file-backed database, or ``None`` if in-memory.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_database_path</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">connection</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>

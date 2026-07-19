@@ -1350,7 +1350,6 @@
             <span class="n">With</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="kn">from</span><span class="w"> </span><span class="nn">pycypher.binding_frame</span><span class="w"> </span><span class="kn">import</span> <span class="n">BindingFrame</span>
-        <span class="kn">from</span><span class="w"> </span><span class="nn">pycypher.star</span><span class="w"> </span><span class="kn">import</span> <span class="n">Star</span>
 
         <span class="n">n_rows</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">bindings</span><span class="p">)</span>
         <span class="n">orig_index</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">bindings</span><span class="o">.</span><span class="n">index</span>
@@ -1388,10 +1387,9 @@
 
         <span class="n">batch_query</span> <span class="o">=</span> <span class="n">Query</span><span class="p">(</span><span class="n">clauses</span><span class="o">=</span><span class="n">batch_clauses</span><span class="p">)</span>
 
-        <span class="n">temp_star</span> <span class="o">=</span> <span class="n">Star</span><span class="p">(</span><span class="n">context</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">context</span><span class="p">)</span>
-        <span class="n">result_df</span> <span class="o">=</span> <span class="n">temp_star</span><span class="o">.</span><span class="n">_execute_query_binding_frame_inner</span><span class="p">(</span>
+        <span class="n">result_df</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">subquery_executor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
             <span class="n">batch_query</span><span class="p">,</span>
-            <span class="n">initial_frame</span><span class="o">=</span><span class="n">augmented_frame</span><span class="p">,</span>
+            <span class="n">augmented_frame</span><span class="p">,</span>
         <span class="p">)</span>
 
         <span class="k">if</span> <span class="n">result_df</span><span class="o">.</span><span class="n">empty</span> <span class="ow">or</span> <span class="n">sentinel</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">result_df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>

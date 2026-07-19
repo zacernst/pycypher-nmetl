@@ -7797,6 +7797,28 @@ concurrent calls sharing this <code class="docutils literal notranslate"><span c
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="pycypher.relational_models.Context.set_subquery_executor">
+<span class="sig-name descname"><span class="pre">set_subquery_executor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">executor</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/relational_models.html#Context.set_subquery_executor"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.relational_models.Context.set_subquery_executor" title="Link to this definition"></a></dt>
+<dd><p>Register the subquery executor (called once by <code class="docutils literal notranslate"><span class="pre">Star.__init__</span></code>).</p>
+<dl class="field-list simple">
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="pycypher.relational_models.Context.subquery_executor">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">subquery_executor</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></em><a class="headerlink" href="#pycypher.relational_models.Context.subquery_executor" title="Link to this definition"></a></dt>
+<dd><p>Return the registered <code class="xref py py-class docutils literal notranslate"><span class="pre">SubqueryExecutor</span></code>.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pycypher.relational_models.Context.set_relation_engine_enabled">
+<span class="sig-name descname"><span class="pre">set_relation_engine_enabled</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">enabled</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/relational_models.html#Context.set_relation_engine_enabled"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.relational_models.Context.set_relation_engine_enabled" title="Link to this definition"></a></dt>
+<dd><p>Enable/disable the out-of-core relation engine for this context.</p>
+<dl class="field-list simple">
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="pycypher.relational_models.Context.model_post_init">
 <span class="sig-name descname"><span class="pre">model_post_init</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">_Context__context</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/relational_models.html#Context.model_post_init"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.relational_models.Context.model_post_init" title="Link to this definition"></a></dt>
 <dd><p>Resolve the backend engine after Pydantic initialisation.</p>
@@ -12625,7 +12647,7 @@ resets all backends to CLOSED.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="pycypher.backend_engine.DuckDBBackend">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.backend_engine.</span></span><span class="sig-name descname"><span class="pre">DuckDBBackend</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">memory_limit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temp_directory</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_temp_directory_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">preserve_insertion_order</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/backends/duckdb_backend.html#DuckDBBackend"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.backend_engine.DuckDBBackend" title="Link to this definition"></a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.backend_engine.</span></span><span class="sig-name descname"><span class="pre">DuckDBBackend</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">database_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">memory_limit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temp_directory</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_temp_directory_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">preserve_insertion_order</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/backends/duckdb_backend.html#DuckDBBackend"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.backend_engine.DuckDBBackend" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <p>DuckDB-based backend for analytical workloads.</p>
 <p>Uses DuckDB’s in-process OLAP engine for efficient columnar operations.
@@ -12667,8 +12689,8 @@ and return <code class="docutils literal notranslate"><span class="pre">pd.DataF
 
 <dl class="py method">
 <dt class="sig sig-object py" id="pycypher.backend_engine.DuckDBBackend.__init__">
-<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">memory_limit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temp_directory</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_temp_directory_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">preserve_insertion_order</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/backends/duckdb_backend.html#DuckDBBackend.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.backend_engine.DuckDBBackend.__init__" title="Link to this definition"></a></dt>
-<dd><p>Create a new DuckDB backend with an in-memory connection.</p>
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">database_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">memory_limit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temp_directory</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_temp_directory_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">preserve_insertion_order</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/backends/duckdb_backend.html#DuckDBBackend.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.backend_engine.DuckDBBackend.__init__" title="Link to this definition"></a></dt>
+<dd><p>Create a new DuckDB backend with an in-memory or file-backed connection.</p>
 <p>The connection is created immediately and held for the lifetime of
 the backend.  Use as a context manager or call <a class="reference internal" href="#pycypher.backend_engine.DuckDBBackend.close" title="pycypher.backend_engine.DuckDBBackend.close"><code class="xref py py-meth docutils literal notranslate"><span class="pre">close()</span></code></a> to
 release the underlying DuckDB resources.</p>
@@ -12681,6 +12703,13 @@ operator-supplied values cannot inject SQL.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
+<li><p><strong>database_path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – Path to a file-backed DuckDB database, enabling
+genuinely mutable, persistent tables (see
+<code class="docutils literal notranslate"><span class="pre">docs/duckdb_full_parity_design.md</span></code>). When <code class="docutils literal notranslate"><span class="pre">None</span></code>
+(default), an in-memory (<code class="docutils literal notranslate"><span class="pre">:memory:</span></code>) database is used, as
+before this parameter existed. The caller owns the file’s
+lifecycle (creation and deletion); this class only opens and
+closes the connection.</p></li>
 <li><p><strong>memory_limit</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – Soft RAM budget before DuckDB spills to disk
 (e.g. <code class="docutils literal notranslate"><span class="pre">&quot;4GB&quot;</span></code>).  Env: <code class="docutils literal notranslate"><span class="pre">PYCYPHER_DUCKDB_MEMORY_LIMIT</span></code>.</p></li>
 <li><p><strong>temp_directory</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – Directory for spilled intermediates.
@@ -12739,6 +12768,12 @@ would otherwise turn into an <code class="docutils literal notranslate"><span cl
 <dd><p>The underlying DuckDB connection.</p>
 <p>Exposed so the out-of-core relation engine can build and stream
 relations on the same (spill-configured) connection the backend uses.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="pycypher.backend_engine.DuckDBBackend.database_path">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">database_path</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></em><a class="headerlink" href="#pycypher.backend_engine.DuckDBBackend.database_path" title="Link to this definition"></a></dt>
+<dd><p>Path to the file-backed database, or <code class="docutils literal notranslate"><span class="pre">None</span></code> if in-memory.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -19186,7 +19221,10 @@ execution order when combining multiple Cypher queries.</p>
 <span class="sig-name descname"><span class="pre">topological_sort</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/multi_query_analyzer.html#DependencyGraph.topological_sort"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.multi_query_analyzer.DependencyGraph.topological_sort" title="Link to this definition"></a></dt>
 <dd><p>Return nodes in dependency-respecting execution order.</p>
 <p>Uses Kahn’s algorithm: repeatedly selects nodes whose dependencies
-have all been processed.</p>
+have all been processed. Ties among simultaneously-ready nodes (no
+dependency edge between them either way) are broken by original
+<code class="docutils literal notranslate"><span class="pre">self.nodes</span></code> order rather than set-iteration order, so independent
+queries keep their YAML order instead of being shuffled run to run.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
 <dd class="field-odd"><p>List of <a class="reference internal" href="#pycypher.multi_query_analyzer.QueryNode" title="pycypher.multi_query_analyzer.QueryNode"><code class="xref py py-class docutils literal notranslate"><span class="pre">QueryNode</span></code></a> in valid execution order.</p>
@@ -21381,7 +21419,7 @@ URI extension (e.g. <code class="docutils literal notranslate"><span class="pre"
 
 <dl class="py class">
 <dt class="sig sig-object py" id="pycypher.ingestion.config.PipelineConfig">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.ingestion.config.</span></span><span class="sig-name descname"><span class="pre">PipelineConfig</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">version='1.0'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">project=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sources=&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">functions=&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">queries=&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output=&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">backend_engine='auto'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">state_fips='13'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/ingestion/config.html#PipelineConfig"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.ingestion.config.PipelineConfig" title="Link to this definition"></a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.ingestion.config.</span></span><span class="sig-name descname"><span class="pre">PipelineConfig</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">version='1.0'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">project=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sources=&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">functions=&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">queries=&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output=&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">backend_engine='auto'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">relation_engine=False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">state_fips='13'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/ingestion/config.html#PipelineConfig"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.ingestion.config.PipelineConfig" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference external" href="https://pydantic.dev/docs/validation/latest/api/pydantic/base_model/#pydantic.BaseModel" title="(in Pydantic v0.0.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseModel</span></code></a></p>
 <p>Root configuration model for a pycypher ETL pipeline.</p>
 <dl class="field-list simple">
@@ -21489,6 +21527,14 @@ query’s parsed AST.</p>
 <dt class="sig sig-object py" id="pycypher.ingestion.config.PipelineConfig.backend_engine">
 <span class="sig-name descname"><span class="pre">backend_engine</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#pycypher.ast_models.Literal" title="pycypher.ast_models.Literal"><span class="pre">Literal</span></a><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'auto'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'pandas'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'duckdb'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'polars'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'spark'</span></span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#pycypher.ingestion.config.PipelineConfig.backend_engine" title="Link to this definition"></a></dt>
 <dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pycypher.ingestion.config.PipelineConfig.relation_engine">
+<span class="sig-name descname"><span class="pre">relation_engine</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></em><a class="headerlink" href="#pycypher.ingestion.config.PipelineConfig.relation_engine" title="Link to this definition"></a></dt>
+<dd><p>Opt into the out-of-core DuckDB relation engine for eligible
+read-only queries (see relation_engine.py). No effect unless
+backend_engine == “duckdb”.</p>
+</dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="pycypher.ingestion.config.PipelineConfig.state_fips">

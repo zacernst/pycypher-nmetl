@@ -1837,6 +1837,10 @@
     <span class="n">backend_engine</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;auto&quot;</span><span class="p">,</span> <span class="s2">&quot;pandas&quot;</span><span class="p">,</span> <span class="s2">&quot;duckdb&quot;</span><span class="p">,</span> <span class="s2">&quot;polars&quot;</span><span class="p">,</span> <span class="s2">&quot;spark&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
         <span class="s2">&quot;auto&quot;</span>
     <span class="p">)</span>
+    <span class="c1">#: Opt into the out-of-core DuckDB relation engine for eligible</span>
+    <span class="c1">#: read-only queries (see relation_engine.py). No effect unless</span>
+    <span class="c1">#: backend_engine == &quot;duckdb&quot;.</span>
+    <span class="n">relation_engine</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
     <span class="n">state_fips</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;13&quot;</span>
 
 <div class="viewcode-block" id="PipelineConfig.check_version">
