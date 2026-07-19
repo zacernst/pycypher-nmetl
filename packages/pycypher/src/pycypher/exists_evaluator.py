@@ -190,7 +190,6 @@ class ExistsEvaluator:
             With,
         )
         from pycypher.binding_frame import BindingFrame
-        from pycypher.star import Star
 
         n_rows = len(self.frame.bindings)
         orig_index = self.frame.bindings.index
@@ -228,10 +227,9 @@ class ExistsEvaluator:
 
         batch_query = Query(clauses=batch_clauses)
 
-        temp_star = Star(context=self.frame.context)
-        result_df = temp_star._execute_query_binding_frame_inner(
+        result_df = self.frame.context.subquery_executor.execute(
             batch_query,
-            initial_frame=augmented_frame,
+            augmented_frame,
         )
 
         if result_df.empty or sentinel not in result_df.columns:

@@ -93,10 +93,14 @@ def register_streaming_source(
     """Register a file-backed entity as a streaming DuckDB relation.
 
     Reads *data_source* via :meth:`DataSource.read_relation` on the context's
-    shared DuckDB connection (so the file is scanned lazily, never fully
-    loaded), derives a property→column map from the relation schema, and stores
-    both on ``context._streaming_sources`` for the relation engine to use as a
-    base relation.  Requires a DuckDB-backed context.
+    shared DuckDB connection, then materialises it once into a real DuckDB
+    table (``relation.create()``, a streaming ``CREATE TABLE AS SELECT`` that
+    never loads the file into pandas) instead of leaving it as a lazy view the
+    relation engine would otherwise re-scan from disk on every query that
+    reads this source (see docs/duckdb_full_parity_design.md, Phase 1).
+    Derives a property→column map from the relation schema, and stores both
+    on ``context._streaming_sources`` for the relation engine to use as a base
+    relation.  Requires a DuckDB-backed context.
 
     Args:
         context: A DuckDB-backed :class:`Context`.
@@ -108,12 +112,19 @@ def register_streaming_source(
             column is consumed into ``__ID__`` and is not a property).
 
     """
+    from pycypher.backends._helpers import validate_identifier
+    from pycypher.backends.duckdb_backend import DuckDBLazyFrame
+
     con = context.backend.connection
     lazy = data_source.read_relation(con)
     # Every non-ID column is exposed as a property named after the column
     # (identity map), mirroring the ContextBuilder convention for file sources.
     attr_map = {col: col for col in lazy.columns if col != id_col}
-    context._streaming_sources[label] = (lazy, attr_map)
+
+    table_name = f"_streaming_source_{validate_identifier(label)}"
+    lazy.relation.create(table_name)
+    materialized = DuckDBLazyFrame(con.table(table_name), con)
+    context._streaming_sources[label] = (materialized, attr_map, id_col)
 
 
 def register_relation_udf(
@@ -361,6 +372,7 @@ class _Plan:
     """A resolved, eligible relation-query plan: a base + pipeline stages."""
 
     __slots__ = (
+        "alias_gen",
         "build",
         "initial_scope",
         "inline_preds",
@@ -377,6 +389,7 @@ class _Plan:
         stages: list[Any],
         inline_preds: list[tuple[str, str, Any]],
         unwind_expr: Any = None,
+        alias_gen: Any = None,
     ) -> None:
         self.initial_scope = initial_scope  # scope over the base relation
         self.build = build  # build(con) -> DuckDBPyRelation
@@ -384,6 +397,10 @@ class _Plan:
         self.stages = stages  # [With | Unwind, …, Return]
         self.inline_preds = inline_preds  # (var, prop, value_ast) equality preds
         self.unwind_expr = unwind_expr  # list expr of a leading UNWIND | None
+        # Shared alias counter, reused for any embedded second MATCH so its
+        # aliases can never collide with the leading pattern's (DuckDB raises
+        # "Ambiguous reference to table" if two crossed relations reuse an alias).
+        self.alias_gen = alias_gen
 
 
 class _Scope:
@@ -665,9 +682,10 @@ def _analyze_query(query: Any, context: Context) -> _Plan | None:
 
     Shape: either a required leading ``MATCH`` (then zero or more ``OPTIONAL
     MATCH`` LEFT-join extensions), or a leading ``UNWIND`` of a list; followed by
-    zero or more ``WITH``/``UNWIND`` stages; ending in ``RETURN``.  A second
-    required ``MATCH``, or any ``MATCH`` after the pattern phase, is not
-    supported.
+    zero or more ``WITH``/``UNWIND`` stages, optionally including exactly one
+    additional required ``MATCH`` immediately after a ``WITH`` (a cross-joined
+    multi-pattern query); ending in ``RETURN``.  Any other ``MATCH`` after the
+    pattern phase is not supported.
     """
     from pycypher.ast_models import Match, Query, Return, Unwind, With
 
@@ -681,9 +699,35 @@ def _analyze_query(query: Any, context: Context) -> _Plan | None:
     if len(clauses) < 2 or not isinstance(clauses[-1], Return):
         return None
 
+    counter = [0]
+
+    def alias_gen() -> str:
+        alias = f"v{counter[0]}"
+        counter[0] += 1
+        return alias
+
     def _valid_stages(stages: list[Any]) -> bool:
-        # Middle stages (all but the final RETURN) must be WITH or UNWIND.
-        return all(isinstance(c, (With, Unwind)) for c in stages[:-1])
+        # Middle stages (all but the final RETURN) must be WITH or UNWIND,
+        # except for at most one embedded MATCH: non-optional, not first,
+        # and immediately preceded by a WITH (a cross-joined second pattern).
+        non_terminal = stages[:-1]
+        match_idxs = [i for i, c in enumerate(non_terminal) if isinstance(c, Match)]
+        if len(match_idxs) > 1:
+            return False
+        if match_idxs:
+            i = match_idxs[0]
+            if (
+                i == 0
+                or not isinstance(non_terminal[i - 1], With)
+                or non_terminal[i].optional
+            ):
+                return False
+        skip = match_idxs[0] if match_idxs else -1
+        return all(
+            isinstance(c, (With, Unwind))
+            for j, c in enumerate(non_terminal)
+            if j != skip
+        )
 
     # --- Leading UNWIND of a list ---
     if isinstance(clauses[0], Unwind):
@@ -700,6 +744,7 @@ def _analyze_query(query: Any, context: Context) -> _Plan | None:
             stages,
             [],
             unwind_expr=uw.expression,
+            alias_gen=alias_gen,
         )
 
     # --- Leading WITH of constants (no source) → single-row base ---
@@ -711,7 +756,7 @@ def _analyze_query(query: Any, context: Context) -> _Plan | None:
         def build(con: Any) -> Any:
             return con.sql("SELECT 1 AS __unit")
 
-        return _Plan(_scalar_scope([]), build, None, stages, [])
+        return _Plan(_scalar_scope([]), build, None, stages, [], alias_gen=alias_gen)
 
     # --- Leading MATCH pattern (+ optional matches) ---
     if not isinstance(clauses[0], Match) or clauses[0].optional:
@@ -741,13 +786,6 @@ def _analyze_query(query: Any, context: Context) -> _Plan | None:
         ):
             return None
 
-    counter = [0]
-
-    def alias_gen() -> str:
-        alias = f"v{counter[0]}"
-        counter[0] += 1
-        return alias
-
     lead = _analyze_leading_pattern(clauses[0], context, alias_gen)
     if lead is None:
         return None
@@ -767,7 +805,46 @@ def _analyze_query(query: Any, context: Context) -> _Plan | None:
         qualified=len(variables) > 1,
         node_vars=frozenset(variables),
     )
-    return _Plan(initial_scope, build, clauses[0].where, stages, inline_preds)
+    return _Plan(
+        initial_scope, build, clauses[0].where, stages, inline_preds, alias_gen=alias_gen,
+    )
+
+
+def _analyze_second_match(
+    prior_scope: _Scope, match: Any, context: Context, alias_gen: Any,
+) -> tuple[_Scope, Any, Any, list[tuple[str, str, Any]], str] | None:
+    """Analyse a ``MATCH`` embedded after a ``WITH`` (a cross-joined pattern).
+
+    Returns ``(new_scope, build, where, inline_preds, acc_alias)``. *build*
+    is the second pattern's own relation builder (reused verbatim from
+    :func:`_analyze_leading_pattern`). *new_scope* resolves both the new
+    pattern's variables and the prior stage's scalar outputs, the latter
+    qualified against *acc_alias* — the alias the caller must
+    ``set_alias()`` on the accumulated relation before crossing, so that
+    column names shared between the two sides of the cross join never
+    collide. *alias_gen* must be the plan's shared counter (not a fresh
+    one), or the second pattern's aliases could collide with the leading
+    pattern's, which DuckDB rejects as an ambiguous table reference.
+    """
+    if match.optional:
+        return None
+    lead = _analyze_leading_pattern(match, context, alias_gen)
+    if lead is None:
+        return None
+    new_vars, build, inline_preds = lead
+    prior_names = prior_scope.names or frozenset()
+    if prior_names & new_vars.keys():
+        return None  # name collision between WITH output and new pattern var
+    acc_alias = alias_gen()
+    resolve = _make_resolve(new_vars)
+
+    def resolve_var(name: str) -> str | None:
+        return f"{acc_alias}.{_quote_output_alias(name)}" if name in prior_names else None
+
+    new_scope = _Scope(
+        resolve, resolve_var, qualified=True, node_vars=frozenset(new_vars),
+    )
+    return new_scope, build, match.where, inline_preds, acc_alias
 
 
 def _quote_output_alias(name: str) -> str:
@@ -995,13 +1072,18 @@ def is_relation_eligible(query: Any, context: Context) -> bool:
 
     Conservative by design: anything not explicitly handled makes the query
     ineligible so the caller falls back to the pandas engine.  Eligible: a
-    single-node or single directed-relationship ``MATCH``; an optional
-    compilable ``WHERE``; zero or more ``WITH`` stages (projection / aggregation
-    / filter / DISTINCT / ORDER BY / SKIP+LIMIT, or a node pass-through); and a
-    ``RETURN`` of compilable expressions.  Ineligible: multi-hop / undirected /
-    variable-length paths, OPTIONAL MATCH, a MATCH after a WITH, unsupported
+    single-node or fixed-length directed-path ``MATCH`` (one or more hops);
+    zero or more ``OPTIONAL MATCH`` LEFT-join extensions from a bound node;
+    an optional compilable ``WHERE``; zero or more ``WITH`` stages (projection
+    / aggregation / filter / DISTINCT / ORDER BY / SKIP+LIMIT, or a node
+    pass-through); a cross-joined second required ``MATCH`` immediately after
+    a ``WITH``; and a ``RETURN`` of compilable expressions.  Ineligible:
+    undirected / variable-length paths, more than one embedded second
+    ``MATCH`` or one not preceded by a ``WITH``, ``OPTIONAL MATCH`` combined
+    with aggregation, ``UNWIND`` in pattern scope, unsupported
     functions/operators, and ``collect()``.
     """
+    from pycypher.ast_models import Match
     from pycypher.relation_sql import compile_expression
 
     plan = _analyze_query(query, context)
@@ -1024,6 +1106,20 @@ def is_relation_eligible(query: Any, context: Context) -> bool:
     scope = plan.initial_scope
     last = len(plan.stages) - 1
     for i, stage in enumerate(plan.stages):
+        if isinstance(stage, Match):
+            ext = _analyze_second_match(scope, stage, context, plan.alias_gen)
+            if ext is None:
+                return False
+            new_scope, _build, where, inline_preds, _acc_alias = ext
+            if where is not None and (
+                compile_expression(where, new_scope.resolve, udfs, new_scope.resolve_var)
+                is None
+            ):
+                return False
+            if _compile_inline_predicates(inline_preds, new_scope.resolve, udfs) is None:
+                return False
+            scope = new_scope
+            continue
         sp = _plan_stage(stage, scope, udfs, is_return=(i == last))
         if sp is None:
             return False
@@ -1052,6 +1148,7 @@ def execute_relation_query(
             ``False`` return a :class:`RelationBindings` for streaming to a sink.
 
     """
+    from pycypher.ast_models import Match
     from pycypher.backends.duckdb_backend import DuckDBLazyFrame
     from pycypher.relation_sql import compile_expression
 
@@ -1069,6 +1166,23 @@ def execute_relation_query(
     scope = plan.initial_scope
     last = len(plan.stages) - 1
     for i, stage in enumerate(plan.stages):
+        if isinstance(stage, Match):
+            new_scope, build, where, inline_preds, acc_alias = _analyze_second_match(
+                scope, stage, context, plan.alias_gen,
+            )
+            # `.join(other, "true")` rather than `.cross()`: DuckDB's relation
+            # API drops component-alias info after a `.filter()`/`.project()`
+            # chained onto a `.cross()` result (verified — raises "Referenced
+            # table ... not found"), but preserves it across `.join()`.
+            rel = rel.set_alias(acc_alias).join(build(con), "true")
+            if where is not None:
+                rel = rel.filter(
+                    compile_expression(where, new_scope.resolve, udfs, new_scope.resolve_var),
+                )
+            for pred in _compile_inline_predicates(inline_preds, new_scope.resolve, udfs) or []:
+                rel = rel.filter(pred)
+            scope = new_scope
+            continue
         sp = _plan_stage(stage, scope, udfs, is_return=(i == last))
         if sp.unwind:
             rel = rel.project(sp.unwind_select)
@@ -1094,3 +1208,444 @@ def execute_relation_query(
 
     bindings = RelationBindings(DuckDBLazyFrame(rel, con))
     return bindings.to_pandas() if materialize else bindings
+
+
+# ---------------------------------------------------------------------------
+# Mutations (docs/duckdb_full_parity_design.md, Phase 2: SET / DELETE / CREATE)
+# ---------------------------------------------------------------------------
+
+
+def _analyze_single_node_match(
+    query: Any,
+    context: Context,
+    clause_type: type,
+) -> tuple[Any, Any, str, str, Any] | None:
+    """Return ``(match, next_clause, label, var_name, resolve)`` for a
+    required, non-optional, single-node ``MATCH [WHERE ...]`` immediately
+    followed by exactly one clause of *clause_type*, on a label with a
+    registered streaming source — the shared eligibility shape for ``SET``
+    and ``DELETE``.  Callers must still validate the following clause's own
+    item/expression shape (this only checks its type and position).
+
+    *Label* must have a registered streaming source (:func:`register_streaming_source`)
+    — the real, writable DuckDB table the mutation compiles a native
+    statement against; entities only available via the in-memory
+    ``entity_mapping`` fallback are ineligible since there is no table to
+    write to.
+    """
+    from pycypher.ast_models import Match, Query
+
+    if getattr(context, "backend_name", None) != "duckdb":
+        return None
+    if not hasattr(getattr(context, "backend", None), "connection"):
+        return None
+    if not isinstance(query, Query):
+        return None
+    clauses = query.clauses
+    if len(clauses) != 2:
+        return None
+    match, next_clause = clauses
+    if not isinstance(match, Match) or match.optional:
+        return None
+    if not isinstance(next_clause, clause_type):
+        return None
+
+    paths = match.pattern.paths
+    if len(paths) != 1 or paths[0].variable is not None:
+        return None
+    elements = paths[0].elements
+    if len(elements) != 1:
+        return None
+    node = elements[0]
+    if not _valid_node(node):
+        return None
+
+    label = node.labels[0]
+    if label not in context._streaming_sources:
+        return None
+    attr = _entity_attr_map(context, label)
+    if attr is None:
+        return None
+
+    var_name = node.variable.name
+    resolve = _make_resolve({var_name: ("", attr)})
+
+    return match, next_clause, label, var_name, resolve
+
+
+def _analyze_set_query(
+    query: Any,
+    context: Context,
+) -> tuple[Any, Any, str, str, Any] | None:
+    """Return ``(match, set_clause, label, var_name, resolve)`` if *query* is
+    a single-table ``SET``-eligible mutation, else ``None``.
+
+    Eligible shape: exactly ``MATCH (var:Label) [WHERE ...] SET ...`` — see
+    :func:`_analyze_single_node_match` for the shared MATCH-shape checks
+    (no relationship pattern, no ``OPTIONAL MATCH``, no ``WITH`` stages,
+    label has a registered streaming source), plus a ``SET`` whose items are
+    all plain ``var.prop = expr`` assignments targeting *var*.  The AST
+    converter represents every ``SET`` item form (property assignment,
+    ``SET n:Label``, ``SET n = {..}``, ``SET n += {..}``) as the same
+    :class:`SetItem` class, distinguished only by which fields are
+    populated: a plain property assignment has a non-sentinel ``property``
+    (not ``None``, ``"*"``, or ``"*+"``), a populated ``expression``, and no
+    ``labels`` — anything else (label sets, whole-map sets/merges) is
+    rejected here.
+    """
+    from pycypher.ast_models import Set
+
+    info = _analyze_single_node_match(query, context, Set)
+    if info is None:
+        return None
+    match, set_clause, label, var_name, resolve = info
+    if not set_clause.items:
+        return None
+
+    if not all(
+        item.variable is not None
+        and item.variable.name == var_name
+        and item.property is not None
+        and item.property not in ("*", "*+")
+        and item.expression is not None
+        and not item.labels
+        for item in set_clause.items
+    ):
+        return None
+
+    return match, set_clause, label, var_name, resolve
+
+
+def is_relation_set_eligible(query: Any, context: Context) -> bool:
+    """Return True if *query* is a single-table ``SET`` the relation engine
+    can execute as a native ``UPDATE`` (see :func:`_analyze_set_query`).
+    """
+    from pycypher.relation_sql import compile_expression
+
+    info = _analyze_set_query(query, context)
+    if info is None:
+        return False
+    match, set_clause, _label, var_name, resolve = info
+
+    udfs = _udf_names(context)
+    if match.where is not None and compile_expression(match.where, resolve, udfs) is None:
+        return False
+    node = match.pattern.paths[0].elements[0]
+    if _compile_inline_predicates(_inline_predicates([node]), resolve, udfs) is None:
+        return False
+    for item in set_clause.items:
+        if resolve(var_name, item.property) is None:
+            return False
+        if compile_expression(item.expression, resolve, udfs) is None:
+            return False
+    return True
+
+
+def execute_relation_set(query: Any, context: Context) -> None:
+    """Execute an eligible single-table ``SET`` as a native ``UPDATE``.
+
+    Precondition: :func:`is_relation_set_eligible` returned ``True`` for
+    *query*. No return value — mirrors the pandas path's convention of an
+    empty result for a non-``RETURN``-terminal mutation query.
+    """
+    from pycypher.backends._helpers import validate_identifier
+    from pycypher.relation_sql import compile_expression
+
+    match, set_clause, label, var_name, resolve = _analyze_set_query(query, context)  # type: ignore[misc]
+    udfs = _udf_names(context)
+
+    where_parts: list[str] = []
+    if match.where is not None:
+        where_parts.append(compile_expression(match.where, resolve, udfs))  # type: ignore[arg-type]
+    node = match.pattern.paths[0].elements[0]
+    where_parts.extend(
+        _compile_inline_predicates(_inline_predicates([node]), resolve, udfs) or [],
+    )
+
+    set_parts = [
+        f"{resolve(var_name, item.property)} = {compile_expression(item.expression, resolve, udfs)}"
+        for item in set_clause.items
+    ]
+
+    table = f"_streaming_source_{validate_identifier(label)}"
+    sql = f'UPDATE "{table}" SET {", ".join(set_parts)}'  # nosec B608 — table validated by validate_identifier; set/where parts built exclusively from relation_sql.compile_expression's whitelisted compiler
+    if where_parts:
+        sql += " WHERE " + " AND ".join(where_parts)
+
+    context.backend.connection.execute(sql)
+
+
+def _analyze_delete_query(
+    query: Any,
+    context: Context,
+) -> tuple[Any, Any, str, str, Any] | None:
+    """Return ``(match, delete_clause, label, var_name, resolve)`` if *query*
+    is a single-table ``DELETE``-eligible mutation, else ``None``.
+
+    Eligible shape: exactly ``MATCH (var:Label) [WHERE ...] DELETE var`` —
+    see :func:`_analyze_single_node_match` for the shared MATCH-shape checks,
+    plus a non-``DETACH`` ``DELETE`` whose sole expression is a ``Variable``
+    matching *var* (mirrors the pandas ``process_delete``'s Variable-only
+    handling, ``mutation_engine.py:647-666``).  ``DETACH DELETE`` and
+    deleting anything other than the bound node (e.g. a relationship
+    variable, or multiple expressions) are out of scope for this slice.
+    """
+    from pycypher.ast_models import Delete, Variable
+
+    info = _analyze_single_node_match(query, context, Delete)
+    if info is None:
+        return None
+    match, delete_clause, label, var_name, resolve = info
+    if delete_clause.detach:
+        return None
+    if len(delete_clause.expressions) != 1:
+        return None
+    expr = delete_clause.expressions[0]
+    if not (isinstance(expr, Variable) and expr.name == var_name):
+        return None
+
+    return match, delete_clause, label, var_name, resolve
+
+
+def is_relation_delete_eligible(query: Any, context: Context) -> bool:
+    """Return True if *query* is a single-table ``DELETE`` the relation
+    engine can execute as a native ``DELETE FROM`` (see
+    :func:`_analyze_delete_query`).
+    """
+    from pycypher.relation_sql import compile_expression
+
+    info = _analyze_delete_query(query, context)
+    if info is None:
+        return False
+    match, _delete_clause, _label, _var_name, resolve = info
+
+    udfs = _udf_names(context)
+    if match.where is not None and compile_expression(match.where, resolve, udfs) is None:
+        return False
+    node = match.pattern.paths[0].elements[0]
+    return _compile_inline_predicates(_inline_predicates([node]), resolve, udfs) is not None
+
+
+def execute_relation_delete(query: Any, context: Context) -> None:
+    """Execute an eligible single-table ``DELETE`` as a native ``DELETE FROM``.
+
+    Precondition: :func:`is_relation_delete_eligible` returned ``True`` for
+    *query*. No return value — mirrors the pandas path's convention of an
+    empty result for a non-``RETURN``-terminal mutation query.  Compiles the
+    ``MATCH``'s ``WHERE`` + inline predicates straight into the ``DELETE``'s
+    ``WHERE`` (no ``id IN (...)`` subquery) since the eligible shape only
+    ever has the one bound variable being deleted.
+    """
+    from pycypher.backends._helpers import validate_identifier
+    from pycypher.relation_sql import compile_expression
+
+    match, _delete_clause, label, _var_name, resolve = _analyze_delete_query(  # type: ignore[misc]
+        query, context,
+    )
+    udfs = _udf_names(context)
+
+    where_parts: list[str] = []
+    if match.where is not None:
+        where_parts.append(compile_expression(match.where, resolve, udfs))  # type: ignore[arg-type]
+    node = match.pattern.paths[0].elements[0]
+    where_parts.extend(
+        _compile_inline_predicates(_inline_predicates([node]), resolve, udfs) or [],
+    )
+
+    table = f"_streaming_source_{validate_identifier(label)}"
+    sql = f'DELETE FROM "{table}"'  # nosec B608 — table validated by validate_identifier; where parts built exclusively from relation_sql.compile_expression's whitelisted compiler
+    if where_parts:
+        sql += " WHERE " + " AND ".join(where_parts)
+
+    context.backend.connection.execute(sql)
+
+
+#: DuckDB integer type names for which sequence-based ``MAX(id)+1`` ID
+#: generation is well-defined.
+_INTEGER_DUCKDB_TYPES = frozenset({
+    "TINYINT", "SMALLINT", "INTEGER", "BIGINT", "HUGEINT",
+    "UTINYINT", "USMALLINT", "UINTEGER", "UBIGINT", "UHUGEINT",
+})
+
+
+def _streaming_id_col(context: Context, label: str) -> str | None:
+    """Return the registered ID column for *label*'s streaming source, or
+    ``None`` if there is no streaming source or it has no ``id_col``.
+    """
+    entry = context._streaming_sources.get(label)
+    return entry[2] if entry is not None else None
+
+
+def _streaming_id_is_integer(context: Context, label: str) -> bool:
+    """True if *label*'s streaming ``id_col`` (if any) has an integer type.
+
+    ``True`` when there is no ``id_col`` to validate (nothing to check).
+    Sequence-based ``nextval()`` ID generation only produces integers, so a
+    non-integer ID column makes ``CREATE`` ineligible for this slice.
+    """
+    id_col = _streaming_id_col(context, label)
+    if id_col is None:
+        return True
+    materialized = context._streaming_sources[label][0]
+    relation = materialized.relation
+    try:
+        idx = relation.columns.index(id_col)
+    except ValueError:
+        return False
+    return str(relation.types[idx]).upper() in _INTEGER_DUCKDB_TYPES
+
+
+def _analyze_create_query(
+    query: Any,
+    context: Context,
+) -> tuple[str, dict[str, Any]] | None:
+    """Return ``(label, properties)`` if *query* is a standalone single-node
+    ``CREATE``-eligible mutation, else ``None``.
+
+    Eligible shape: exactly ``CREATE (var:Label {...})`` — a single clause
+    (no preceding ``MATCH``), a single path, a single node with exactly one
+    label and no relationship.  Row-per-matched-row ``CREATE`` (following a
+    ``MATCH``) and relationship ``CREATE``, both supported by the pandas
+    ``process_create``, are out of scope for this slice.  *Label* must have
+    a registered streaming source, and every property key must already
+    resolve to an existing column via :func:`_entity_attr_map` — creating a
+    brand-new property column would require ``ALTER TABLE``, which this
+    slice does not attempt (an unknown property key falls back to pandas,
+    which grows the shadow schema dynamically).
+    """
+    from pycypher.ast_models import Create, NodePattern, Query
+
+    if getattr(context, "backend_name", None) != "duckdb":
+        return None
+    if not hasattr(getattr(context, "backend", None), "connection"):
+        return None
+    if not isinstance(query, Query):
+        return None
+    clauses = query.clauses
+    if len(clauses) != 1:
+        return None
+    create = clauses[0]
+    if not isinstance(create, Create) or create.pattern is None:
+        return None
+    paths = create.pattern.paths
+    if len(paths) != 1:
+        return None
+    path = paths[0]
+    if path.variable is not None:
+        return None
+    elements = path.elements
+    if len(elements) != 1:
+        return None
+    node = elements[0]
+    if not (isinstance(node, NodePattern) and len(node.labels) == 1):
+        return None
+
+    label = node.labels[0]
+    if label not in context._streaming_sources:
+        return None
+    attr = _entity_attr_map(context, label)
+    if attr is None:
+        return None
+    if any(key not in attr for key in node.properties):
+        return None
+
+    return label, node.properties
+
+
+def is_relation_create_eligible(query: Any, context: Context) -> bool:
+    """Return True if *query* is a standalone single-node ``CREATE`` the
+    relation engine can execute as a native ``INSERT`` (see
+    :func:`_analyze_create_query`).
+    """
+    from pycypher.relation_sql import compile_expression
+
+    info = _analyze_create_query(query, context)
+    if info is None:
+        return False
+    label, properties = info
+    if not _streaming_id_is_integer(context, label):
+        return False
+
+    udfs = _udf_names(context)
+    return all(
+        compile_expression(expr, _no_prop, udfs, resolve_var=_no_var) is not None
+        for expr in properties.values()
+    )
+
+
+def execute_relation_create(query: Any, context: Context) -> None:
+    """Execute an eligible standalone single-node ``CREATE`` as a native
+    ``INSERT``.
+
+    Precondition: :func:`is_relation_create_eligible` returned ``True`` for
+    *query*. No return value — mirrors the pandas path's convention of an
+    empty result for a non-``RETURN``-terminal mutation query.  When *label*
+    has a registered ``id_col``, generates the new ID via a DuckDB
+    ``SEQUENCE`` (created lazily, idempotently — ``START`` only applies the
+    first time — seeded above the current max), replacing
+    ``MutationEngine._next_ids``'s pandas max-scan for this path only; the
+    pandas path itself is untouched.
+    """
+    from pycypher.backends._helpers import validate_identifier
+    from pycypher.relation_sql import compile_expression
+
+    label, properties = _analyze_create_query(query, context)  # type: ignore[misc]
+    attr = _entity_attr_map(context, label)  # type: ignore[assignment]
+    udfs = _udf_names(context)
+    con = context.backend.connection
+    table = f"_streaming_source_{validate_identifier(label)}"
+
+    cols: list[str] = []
+    values: list[str] = []
+
+    id_col = _streaming_id_col(context, label)
+    if id_col is not None:
+        quoted_id_col = validate_identifier(id_col)
+        seq = f"_streaming_seq_{validate_identifier(label)}"
+        max_id = con.execute(
+            f'SELECT COALESCE(MAX("{quoted_id_col}"), 0) FROM "{table}"',  # nosec B608 — table/id_col validated identifiers
+        ).fetchone()[0]
+        con.execute(
+            f'CREATE SEQUENCE IF NOT EXISTS "{seq}" START {int(max_id) + 1}',  # nosec B608 — seq name validated; start value is an int, not user SQL
+        )
+        cols.append(quoted_id_col)
+        values.append(f"nextval('{seq}')")
+
+    for key, expr in properties.items():
+        cols.append(validate_identifier(attr[key]))
+        values.append(compile_expression(expr, _no_prop, udfs, resolve_var=_no_var))  # type: ignore[arg-type]
+
+    col_list = ", ".join(f'"{c}"' for c in cols)
+    val_list = ", ".join(values)
+    sql = f'INSERT INTO "{table}" ({col_list}) SELECT {val_list}'  # nosec B608 — table/columns validated identifiers; values from relation_sql.compile_expression's whitelisted compiler or nextval() sequence call
+    con.execute(sql)
+
+
+def is_relation_mutation_eligible(query: Any, context: Context) -> str | None:
+    """Return ``"set"``/``"create"``/``"delete"`` if *query* is an eligible
+    single-table mutation the relation engine can execute natively, else
+    ``None``.  Checked in that order; a single query shape can only ever
+    match one kind.
+    """
+    if is_relation_set_eligible(query, context):
+        return "set"
+    if is_relation_create_eligible(query, context):
+        return "create"
+    if is_relation_delete_eligible(query, context):
+        return "delete"
+    return None
+
+
+def execute_relation_mutation(query: Any, context: Context, kind: str) -> None:
+    """Dispatch to the native execute function for *kind* (see
+    :func:`is_relation_mutation_eligible`).
+    """
+    if kind == "set":
+        execute_relation_set(query, context)
+    elif kind == "create":
+        execute_relation_create(query, context)
+    elif kind == "delete":
+        execute_relation_delete(query, context)
+    else:
+        msg = f"Unknown relation mutation kind: {kind!r}"
+        raise ValueError(msg)

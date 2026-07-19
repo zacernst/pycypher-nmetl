@@ -555,18 +555,32 @@ class ExecuteStage(Stage):
             # the relation engine is disabled (default) this never fires, so
             # behaviour is unchanged.  See pycypher.relation_engine.
             from pycypher.relation_engine import (
+                execute_relation_mutation,
                 execute_relation_query,
                 is_relation_eligible,
+                is_relation_mutation_eligible,
                 relation_engine_enabled,
             )
 
             _context = ctx.star.context
+            mutation_kind = (
+                is_relation_mutation_eligible(parsed, _context)
+                if is_mutation and relation_engine_enabled(_context)
+                else None
+            )
             if (
                 not is_mutation
                 and relation_engine_enabled(_context)
                 and is_relation_eligible(parsed, _context)
             ):
                 ctx.result = execute_relation_query(parsed, _context)
+            elif mutation_kind is not None:
+                # Phase 2 (docs/duckdb_full_parity_design.md): a narrow
+                # single-table SET/CREATE/DELETE compiled to native DML.
+                import pandas as pd
+
+                execute_relation_mutation(parsed, _context, mutation_kind)
+                ctx.result = pd.DataFrame()
             else:
                 ctx.result = ctx.star._execute_query_binding_frame(parsed)
         else:

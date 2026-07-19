@@ -99,12 +99,13 @@ def _spill_config(
 
 def create_duckdb_connection(
     *,
+    database_path: str | None = None,
     memory_limit: str | None = None,
     temp_directory: str | None = None,
     max_temp_directory_size: str | None = None,
     preserve_insertion_order: bool | None = None,
 ) -> Any:
-    """Create a persistent in-memory DuckDB connection for out-of-core reads.
+    """Create a persistent DuckDB connection for out-of-core reads.
 
     Applies the same opt-in spill settings as :class:`DuckDBBackend` (see
     :func:`_spill_config`) plus ``arrow_large_buffer_size`` — required so very
@@ -114,6 +115,11 @@ def create_duckdb_connection(
     intended to be **held and shared** across ingestion (``read_relation``) and
     query execution so relations stay inside a single DuckDB instance and can
     spill to disk rather than materialising to pandas/Arrow.
+
+    Args:
+        database_path: Path to a file-backed DuckDB database. When ``None``
+            (default), an in-memory (``:memory:``) database is used —
+            behaviour is unchanged from before this parameter existed.
 
     Returns:
         An open ``duckdb.DuckDBPyConnection``.  The caller owns its lifecycle
@@ -128,9 +134,92 @@ def create_duckdb_connection(
         max_temp_directory_size=max_temp_directory_size,
         preserve_insertion_order=preserve_insertion_order,
     )
-    con = duckdb.connect(":memory:", config=config)
+    con = duckdb.connect(database_path or ":memory:", config=config)
     con.execute("SET arrow_large_buffer_size=true")
     return con
+
+
+#: Env var overriding the parent directory for scratch DuckDB database
+#: files.  Deliberately separate from ``PYCYPHER_DUCKDB_TEMP_DIRECTORY``
+#: (used for spill files, sized/cleaned independently — see
+#: docs/duckdb_full_parity_design.md, "Scratch file location").
+_SCRATCH_DIR_ENV_VAR = "PYCYPHER_DUCKDB_SCRATCH_DIRECTORY"
+
+#: Filename prefix identifying pycypher scratch database files, used by both
+#: the creator and the orphan sweep so unrelated files in the same directory
+#: are never touched.
+_SCRATCH_FILE_PREFIX = "pycypher-duckdb-run-"
+
+#: Orphaned scratch files (from a hard-killed prior run) older than this are
+#: removed by :func:`sweep_orphaned_scratch_databases`. A run normally
+#: deletes its own file within seconds, so anything past a day is orphaned,
+#: not just slow.
+_ORPHAN_MAX_AGE_SECONDS = 86_400
+
+
+def _scratch_directory() -> str:
+    """Return the parent directory for scratch DuckDB database files."""
+    import os
+    import tempfile
+
+    override = os.environ.get(_SCRATCH_DIR_ENV_VAR)
+    directory = override or tempfile.gettempdir()
+    os.makedirs(directory, exist_ok=True)
+    return directory
+
+
+def create_scratch_database_path() -> str:
+    """Return a fresh, run-unique path for a file-backed scratch database.
+
+    Does not create the file itself — ``duckdb.connect()`` does that lazily
+    on first use. Each call returns a distinct path (via a UUID component),
+    so concurrent callers never collide even though concurrent runs are not
+    otherwise supported (see docs/duckdb_full_parity_design.md).
+    """
+    import uuid
+
+    directory = _scratch_directory()
+    filename = f"{_SCRATCH_FILE_PREFIX}{uuid.uuid4().hex}.duckdb"
+    return f"{directory}/{filename}"
+
+
+def sweep_orphaned_scratch_databases(
+    max_age_seconds: float = _ORPHAN_MAX_AGE_SECONDS,
+) -> list[str]:
+    """Delete scratch database files left behind by a hard-killed prior run.
+
+    Only removes files matching the ``pycypher-duckdb-run-*`` naming
+    convention in the scratch directory, and only those older than
+    *max_age_seconds* — a live run's own file is always younger than that.
+    Disk hygiene only; correctness does not depend on this running (each run
+    gets a fresh, unique path regardless). Best-effort: a file that
+    disappears or can't be removed between listing and deletion is skipped.
+
+    Returns:
+        Paths of files that were removed.
+
+    """
+    import glob
+    import os
+    import time
+
+    directory = _scratch_directory()
+    pattern = f"{directory}/{_SCRATCH_FILE_PREFIX}*.duckdb"
+    now = time.time()
+    removed: list[str] = []
+    for path in glob.glob(pattern):
+        try:
+            if now - os.path.getmtime(path) < max_age_seconds:
+                continue
+            os.remove(path)
+            removed.append(path)
+        except OSError:
+            LOGGER.warning(
+                "Failed to remove orphaned scratch database %s; skipping",
+                path,
+                exc_info=True,
+            )
+    return removed
 
 
 class DuckDBLazyFrame:
@@ -240,12 +329,13 @@ class DuckDBBackend:
     def __init__(
         self,
         *,
+        database_path: str | None = None,
         memory_limit: str | None = None,
         temp_directory: str | None = None,
         max_temp_directory_size: str | None = None,
         preserve_insertion_order: bool | None = None,
     ) -> None:
-        """Create a new DuckDB backend with an in-memory connection.
+        """Create a new DuckDB backend with an in-memory or file-backed connection.
 
         The connection is created immediately and held for the lifetime of
         the backend.  Use as a context manager or call :meth:`close` to
@@ -259,6 +349,13 @@ class DuckDBBackend:
         operator-supplied values cannot inject SQL.
 
         Args:
+            database_path: Path to a file-backed DuckDB database, enabling
+                genuinely mutable, persistent tables (see
+                ``docs/duckdb_full_parity_design.md``). When ``None``
+                (default), an in-memory (``:memory:``) database is used, as
+                before this parameter existed. The caller owns the file's
+                lifecycle (creation and deletion); this class only opens and
+                closes the connection.
             memory_limit: Soft RAM budget before DuckDB spills to disk
                 (e.g. ``"4GB"``).  Env: ``PYCYPHER_DUCKDB_MEMORY_LIMIT``.
             temp_directory: Directory for spilled intermediates.
@@ -280,7 +377,8 @@ class DuckDBBackend:
             max_temp_directory_size=max_temp_directory_size,
             preserve_insertion_order=preserve_insertion_order,
         )
-        self._conn: Any = duckdb.connect(":memory:", config=config)
+        self._database_path: str | None = database_path
+        self._conn: Any = duckdb.connect(database_path or ":memory:", config=config)
         self._view_counter: int = 0
 
     def _next_view(self, prefix: str = "_v") -> str:
@@ -325,6 +423,11 @@ class DuckDBBackend:
     def name(self) -> str:
         """Return ``'duckdb'``."""
         return "duckdb"
+
+    @property
+    def database_path(self) -> str | None:
+        """Path to the file-backed database, or ``None`` if in-memory."""
+        return self._database_path
 
     @property
     def connection(self) -> Any:

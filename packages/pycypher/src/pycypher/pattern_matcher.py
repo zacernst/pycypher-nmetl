@@ -188,12 +188,24 @@ class PatternMatcher:
         # Only literal equality predicates can be pushed into EntityScan.
         from pycypher.ast_models import Literal as _Literal
 
+        # Scan-time pushdown is only attempted for labelled nodes, where a
+        # single EntityScan.scan() call can push predicates through the
+        # index for that one entity type. Unlabeled patterns may fan out
+        # across several entity types with different schemas, so their
+        # properties are always applied via the post-scan BindingFilter
+        # loop below instead — otherwise a filter silently vanishes for any
+        # unlabeled pattern (pushdown was only ever wired into the labelled
+        # EntityScan call).
         _pushable: dict[str, Any] = {}
         _remaining_props: dict[str, Any] = {}
         for prop_name, prop_val in (node.properties or {}).items():
-            if isinstance(prop_val, _Literal) and not isinstance(
-                prop_val,
-                (type(None),),
+            if (
+                node.labels
+                and isinstance(prop_val, _Literal)
+                and not isinstance(
+                    prop_val,
+                    (type(None),),
+                )
             ):
                 _pushable[prop_name] = prop_val.value
             else:

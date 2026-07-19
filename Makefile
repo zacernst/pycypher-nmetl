@@ -197,10 +197,13 @@ clean:
 
 test:
 	uv run pytest -n ${PYTHON_TEST_THREADS} tests/ && \
-	uv run pytest -n ${PYTHON_TEST_THREADS} packages/fastopendata/tests/ && \
-	uv run pytest packages/pycypher-tui/tests/
+	uv run pytest -n ${PYTHON_TEST_THREADS} packages/fastopendata/tests/
 
 tests: test
+
+# TUI development is suspended; run explicitly until it resumes.
+test-tui:
+	uv run pytest packages/pycypher-tui/tests/
 
 test-fast:
 	uv run pytest -n auto -x -m "not slow" --ignore=tests/load_testing --ignore=tests/large_dataset .

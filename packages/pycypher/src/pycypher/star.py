@@ -89,6 +89,21 @@ def _literal_from_python_value(val: Any) -> Any:
     return StringLiteral(value=str(val))
 
 
+class _StarSubqueryExecutor:
+    """Adapter satisfying ``pycypher.subquery_protocol.SubqueryExecutor``.
+
+    Delegates to an already-constructed ``ClauseExecutor`` so EXISTS
+    subqueries reuse the outer ``Star``'s execution loop instead of
+    constructing a throwaway ``Star``.
+    """
+
+    def __init__(self, clause_executor: ClauseExecutor) -> None:
+        self._clause_executor = clause_executor
+
+    def execute(self, query: Any, initial_frame: Any) -> pd.DataFrame:
+        return self._clause_executor.execute_query_inner(query, initial_frame)
+
+
 def get_cache_stats(star: Star | None = None) -> dict[str, Any]:
     """Return combined cache statistics from all PyCypher caches."""
     from pycypher.ast_models import _parse_cypher_cached
@@ -264,6 +279,11 @@ class Star:
             query_analyzer=self._query_analyzer,
             evaluator_factory=self._evaluator_factory,
         )
+
+        # Subquery executor — lets EXISTS subqueries run through the clause
+        # executor without importing Star (breaks the exists_evaluator <->
+        # star import cycle).
+        context.set_subquery_executor(_StarSubqueryExecutor(self._clause_executor))
 
         # Query explainer — EXPLAIN text plans.
         self._query_explainer: QueryExplainer = QueryExplainer(
