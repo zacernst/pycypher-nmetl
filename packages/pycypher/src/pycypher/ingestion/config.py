@@ -626,6 +626,10 @@ class PipelineConfig(BaseModel):
     backend_engine: Literal["auto", "pandas", "duckdb", "polars", "spark"] = (
         "auto"
     )
+    #: Opt into the out-of-core DuckDB relation engine for eligible
+    #: read-only queries (see relation_engine.py). No effect unless
+    #: backend_engine == "duckdb".
+    relation_engine: bool = False
     state_fips: str = "13"
 
     @field_validator("version")

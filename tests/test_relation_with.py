@@ -3,7 +3,9 @@
 Verifies multi-part read queries (MATCH … WITH … [WHERE] … RETURN …) run through
 the relation engine as a pipeline of relations and match the pandas oracle:
 node pass-through filters, aggregate-then-HAVING, scalar projections, ORDER/LIMIT
-across stages, and chained WITHs.  A MATCH after a WITH remains ineligible.
+across stages, and chained WITHs.  A second required MATCH immediately after a
+WITH (a cross-joined multi-pattern query) is also supported — see Phase 3 slice 1
+of docs/duckdb_full_parity_design.md.
 
 See docs/duckdb_out_of_core_design.md, Phase 10c.
 """
@@ -77,11 +79,31 @@ class TestEligibility:
     def test_with_eligible(self, query: str) -> None:
         assert is_relation_eligible(ASTConverter.from_cypher(query), _ctx("duckdb"))
 
-    def test_match_after_with_ineligible(self) -> None:
-        # A second MATCH after a WITH is not supported.
-        assert not is_relation_eligible(
+    def test_match_after_with_eligible(self) -> None:
+        # A second required MATCH immediately after a WITH cross-joins.
+        assert is_relation_eligible(
             ASTConverter.from_cypher(
                 "MATCH (n:Person) WITH n.name AS name MATCH (m:Person) RETURN name AS x",
+            ),
+            _ctx("duckdb"),
+        )
+
+    def test_match_after_with_optional_ineligible(self) -> None:
+        # An OPTIONAL MATCH after a WITH is a distinct, unsupported shape.
+        assert not is_relation_eligible(
+            ASTConverter.from_cypher(
+                "MATCH (n:Person) WITH n.name AS name "
+                "OPTIONAL MATCH (m:Person) RETURN name AS x",
+            ),
+            _ctx("duckdb"),
+        )
+
+    def test_second_match_not_preceded_by_with_ineligible(self) -> None:
+        # A second required MATCH directly after the first (no WITH) is a
+        # distinct, already-rejected shape (not this slice's cross join).
+        assert not is_relation_eligible(
+            ASTConverter.from_cypher(
+                "MATCH (n:Person) MATCH (m:Person) RETURN n.name AS x",
             ),
             _ctx("duckdb"),
         )
@@ -127,4 +149,17 @@ class TestParity:
             "MATCH (n:Person) WITH n.dept AS dept, count(*) AS c "
             "WHERE c >= 1 RETURN dept AS d, c AS cnt ORDER BY cnt DESC, d ASC",
             ordered=True,
+        )
+
+    def test_second_match_uncorrelated_cross_join(self) -> None:
+        _assert_parity(
+            "MATCH (n:Person) WITH n.name AS name MATCH (m:Person) RETURN name AS x",
+            ordered=False,
+        )
+
+    def test_second_match_correlated_join(self) -> None:
+        _assert_parity(
+            "MATCH (n:Person) WITH n.name AS name MATCH (m:Person) "
+            "WHERE m.name = name RETURN m.age AS age",
+            ordered=False,
         )

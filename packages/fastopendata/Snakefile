@@ -1,4 +1,4 @@
-# ===================oto==========================================================
+# =============================================================================
 # Snakefile — fastopendata data pipeline
 #
 # Downloads and processes all 17 source datasets used by fastopendata.

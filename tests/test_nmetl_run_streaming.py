@@ -30,14 +30,21 @@ def _write_people(tmp_path: Path) -> Path:
     return src
 
 
-def _config(tmp_path: Path, out: Path, query: str) -> Path:
+def _config(
+    tmp_path: Path,
+    out: Path,
+    query: str,
+    *,
+    relation_engine: bool = False,
+) -> Path:
     src = _write_people(tmp_path)
     cfg = tmp_path / "pipeline.yaml"
+    relation_engine_line = f"relation_engine: {str(relation_engine).lower()}\n" if relation_engine else ""
     cfg.write_text(
         f"""\
 version: "1.0"
 backend_engine: duckdb
-sources:
+{relation_engine_line}sources:
   entities:
     - id: people_src
       uri: "{src}"
@@ -67,6 +74,98 @@ class TestStreamingRun:
         got = pd.read_parquet(out).sort_values("name").reset_index(drop=True)
         assert got["name"].tolist() == ["Alice", "Bob", "Carol"]
         assert set(got.columns) == {"name", "age"}
+
+    def test_relation_engine_enabled_via_config(self, tmp_path: Path) -> None:
+        # No env var — `relation_engine: true` in the YAML alone must enable
+        # the streaming path.
+        out = tmp_path / "out.parquet"
+        cfg = _config(
+            tmp_path,
+            out,
+            "MATCH (n:Person) RETURN n.name AS name, n.age AS age",
+            relation_engine=True,
+        )
+
+        result = CliRunner().invoke(cli, ["run", str(cfg)])
+        assert result.exit_code == 0, result.output
+        assert "out-of-core" in result.output
+        got = pd.read_parquet(out).sort_values("name").reset_index(drop=True)
+        assert got["name"].tolist() == ["Alice", "Bob", "Carol"]
+
+
+def _config_multi(
+    tmp_path: Path,
+    out: Path,
+    queries: list[tuple[str, str]],
+) -> Path:
+    """Build a pipeline config from *queries* (a list of ``(id, inline)``
+    pairs); only the last query gets an output sink, to *out*.
+    """
+    src = _write_people(tmp_path)
+    cfg = tmp_path / "pipeline.yaml"
+    queries_yaml = "\n".join(f'  - id: {qid}\n    inline: "{text}"' for qid, text in queries)
+    last_id = queries[-1][0]
+    cfg.write_text(
+        f"""\
+version: "1.0"
+backend_engine: duckdb
+relation_engine: true
+sources:
+  entities:
+    - id: people_src
+      uri: "{src}"
+      entity_type: Person
+      id_col: id
+queries:
+{queries_yaml}
+output:
+  - query_id: {last_id}
+    uri: "{out}"
+    format: parquet
+""",
+    )
+    return cfg
+
+
+class TestMutationInterleavedWithRead:
+    """A no-sink SET/CREATE/DELETE mutation ahead of a read+sink query still
+    takes the streaming path, and the sink reflects the mutation.
+    """
+
+    def test_set_then_read_streams(self, tmp_path: Path) -> None:
+        out = tmp_path / "out.parquet"
+        cfg = _config_multi(
+            tmp_path,
+            out,
+            [
+                ("q1", "MATCH (n:Person) WHERE n.age > 28 SET n.age = 99"),
+                ("q2", "MATCH (n:Person) RETURN n.name AS name, n.age AS age"),
+            ],
+        )
+        result = CliRunner().invoke(cli, ["run", str(cfg)])
+        assert result.exit_code == 0, result.output
+        assert "out-of-core" in result.output
+        got = pd.read_parquet(out).sort_values("name").reset_index(drop=True)
+        expected = {"Alice": 99, "Bob": 25, "Carol": 99}
+        assert dict(zip(got["name"], got["age"])) == expected
+
+    def test_create_then_delete_then_read_streams(self, tmp_path: Path) -> None:
+        out = tmp_path / "out.parquet"
+        cfg = _config_multi(
+            tmp_path,
+            out,
+            [
+                ("q1", "CREATE (n:Person {name: 'Dave', age: 40})"),
+                ("q2", "MATCH (n:Person) WHERE n.name = 'Bob' DELETE n"),
+                ("q3", "MATCH (n:Person) RETURN n.name AS name, n.age AS age"),
+            ],
+        )
+        result = CliRunner().invoke(cli, ["run", str(cfg)])
+        assert result.exit_code == 0, result.output
+        assert "out-of-core" in result.output
+        got = pd.read_parquet(out).sort_values("name").reset_index(drop=True)
+        assert got["name"].tolist() == ["Alice", "Carol", "Dave"]
+        assert dict(zip(got["name"], got["age"]))["Dave"] == 40
 
 
 class TestFallback:

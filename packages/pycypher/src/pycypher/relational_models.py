@@ -324,12 +324,19 @@ class Context(BaseModel):
     #: Graph-native index manager for O(degree) neighbor lookups and
     #: O(1) property equality lookups.  Created lazily on first access.
     _index_manager: Any = PrivateAttr(default=None)
+    #: Subquery executor (see ``pycypher.subquery_protocol.SubqueryExecutor``).
+    #: Registered once by ``Star.__init__`` (the composition root); read by
+    #: ``ExistsEvaluator`` to run EXISTS subqueries without importing ``Star``.
+    _subquery_executor: Any = PrivateAttr(default=None)
     #: Streaming sources registered via ``register_streaming_source``.
     #: Context-lifetime state — registered once, reused across queries.
     _streaming_sources: dict[str, Any] = PrivateAttr(default_factory=dict)
     #: Relation UDFs registered via ``register_relation_udf``.
     #: Context-lifetime state — registered once, reused across queries.
     _relation_udfs: set[Any] = PrivateAttr(default_factory=set)
+    #: Opt-in flag for the out-of-core relation engine (see
+    #: ``relation_engine.relation_engine_enabled``). Off by default.
+    _relation_engine_enabled: bool = PrivateAttr(default=False)
     #: Per-*this-Context-instance* ``ContextVar`` backing the per-query
     #: ``ExecutionScope`` (see ``execution_scope.py``). One ``ContextVar``
     #: per ``Context`` instance — not a shared module-level singleton — so
@@ -396,6 +403,19 @@ class Context(BaseModel):
     def set_backend(self, backend: Any) -> None:
         """Swap the active backend engine (used by ``QueryAnalyzer`` hints)."""
         self._backend = backend
+
+    def set_subquery_executor(self, executor: Any) -> None:
+        """Register the subquery executor (called once by ``Star.__init__``)."""
+        self._subquery_executor = executor
+
+    @property
+    def subquery_executor(self) -> Any:
+        """Return the registered :class:`~pycypher.subquery_protocol.SubqueryExecutor`."""
+        return self._subquery_executor
+
+    def set_relation_engine_enabled(self, enabled: bool) -> None:
+        """Enable/disable the out-of-core relation engine for this context."""
+        self._relation_engine_enabled = enabled
 
     def model_post_init(self, __context: Any) -> None:
         """Resolve the backend engine after Pydantic initialisation."""

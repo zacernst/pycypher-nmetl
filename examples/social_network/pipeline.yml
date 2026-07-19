@@ -3,6 +3,7 @@ version: "1.0"
 project:
   name: example_social_network_test
   description: "Just an example to test the pipeline flow"
+  backend_engine: duckdb
 
 sources:
   entities:
@@ -47,17 +48,52 @@ sources:
       relationship_type: LIVES_IN
       source_col: __ID__
       target_col: city
+    - id: knows
+      uri: file:///home/zac/git/pycypher-nmetl/examples/social_network/data/knows.csv
+      relationship_type: KNOWS
+      source_col: __SOURCE__
+      target_col: __TARGET__
 
 queries:
   - id: age_plus_one
     description: "Add one to the persons age"
-    source: file:///home/zac/git/pycypher-nmetl/examples/social_network/queries/age_plus_one.cypher
+    inline: |
+      MATCH (p:Person)-[:WORKS_AT]->(c:Company)
+      WITH p.age + 1 AS age_plus_one,
+      p.name AS name,
+      c.name AS company_name
+      RETURN age_plus_one, name, company_name
   - id: people_per_city
     description: "Count how many people are in each city"
-    source: file:///home/zac/git/pycypher-nmetl/examples/social_network/queries/people_per_city.cypher
+    inline: |
+      MATCH (p:Person)-[:LIVES_IN]->(c:City)
+      WITH c.city_name AS city_name,
+      COUNT(p) AS num_people
+      RETURN city_name, num_people
+  - id: num_people_known
+    description: "Counts the number of people each person knows"
+    inline: |
+      MATCH (p:Person) WITH p AS knower
+      MATCH (knower:Person)-[:KNOWS]->(p:Person)
+      WITH knower,
+      COUNT(p) AS num_known
+      SET knower.num_known = num_known
+  - id: popular
+    description: "Does the person know four or more people?"
+    inline: |
+      MATCH (p:Person) SET p.popular = (p.num_known >= 4)
+  - id: popularity
+    description: "Query for returning popularity"
+    inline: |
+      MATCH (p:Person) RETURN id(p) AS person_id, p.popular AS is_popular
 
 output:
   - query_id: age_plus_one
     uri: file:///home/zac/git/pycypher-nmetl/examples/social_network/output.csv
   - query_id: people_per_city
     uri: file:///home/zac/git/pycypher-nmetl/examples/social_network/city_aggregate.csv
+  - query_id: num_people_known
+    uri: file:///home/zac/git/pycypher-nmetl/examples/social_network/num_people_known.csv
+  - query_id: popularity
+    uri: file:///home/zac/git/pycypher-nmetl/examples/social_network/popularity.csv
+

@@ -188,6 +188,9 @@ class TestEvaluateExistsQuery:
         match = Match(pattern=pattern, where=None)
         subquery = Query(clauses=[match])  # No RETURN
 
+        from pycypher.star import Star
+
+        Star(context=alice_frame.context)
         ee = ExistsEvaluator(alice_frame, evaluator_factory=BindingExpressionEvaluator)
         result = ee.evaluate_exists(subquery, evaluator_mock)
 
@@ -219,6 +222,9 @@ class TestEvaluateExistsQuery:
         )
         subquery = Query(clauses=[match, ret])
 
+        from pycypher.star import Star
+
+        Star(context=alice_frame.context)
         ee = ExistsEvaluator(alice_frame, evaluator_factory=BindingExpressionEvaluator)
         result = ee.evaluate_exists(subquery, evaluator_mock)
 
@@ -280,6 +286,9 @@ class TestEvaluateExistsPattern:
         path = PatternPath(elements=[source, rel1, mid, rel2, target])
         pattern = Pattern(paths=[path])
 
+        from pycypher.star import Star
+
+        Star(context=alice_frame.context)
         ee = ExistsEvaluator(alice_frame, evaluator_factory=BindingExpressionEvaluator)
         result = ee.evaluate_exists(pattern, evaluator_mock)
 
@@ -626,6 +635,9 @@ class TestExistsViaQueryExecution:
         )
         subquery = Query(clauses=[match, ret])
 
+        from pycypher.star import Star
+
+        Star(context=simple_context)
         ee = ExistsEvaluator(frame, evaluator_factory=BindingExpressionEvaluator)
         result = ee._exists_via_query_execution(subquery)
         assert list(result) == [False, False, False]

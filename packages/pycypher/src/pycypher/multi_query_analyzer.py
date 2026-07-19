@@ -21,6 +21,7 @@ from shared.logger import LOGGER
 from pycypher.ast_models import (
     ASTConverter,
     Create,
+    Delete,
     Match,
     Merge,
     NodePattern,
@@ -77,7 +78,10 @@ class DependencyGraph:
         """Return nodes in dependency-respecting execution order.
 
         Uses Kahn's algorithm: repeatedly selects nodes whose dependencies
-        have all been processed.
+        have all been processed. Ties among simultaneously-ready nodes (no
+        dependency edge between them either way) are broken by original
+        ``self.nodes`` order rather than set-iteration order, so independent
+        queries keep their YAML order instead of being shuffled run to run.
 
         Returns:
             List of :class:`QueryNode` in valid execution order.
@@ -93,13 +97,13 @@ class DependencyGraph:
         )
         result: list[QueryNode] = []
         remaining = {node.query_id for node in self.nodes}
-        node_map = {node.query_id: node for node in self.nodes}
 
         while remaining:
             ready = [
-                node_map[nid]
-                for nid in remaining
-                if not (node_map[nid].dependencies & remaining)
+                node
+                for node in self.nodes
+                if node.query_id in remaining
+                and not (node.dependencies & remaining)
             ]
 
             if not ready:
@@ -215,6 +219,10 @@ class QueryDependencyAnalyzer:
         """Extract entity/relationship types created by this query.
 
         Scans CREATE and MERGE clauses for node labels and relationship types.
+        A DELETE also counts as producing the types matched by its MATCH
+        clause(s) — row removal mutates the table just as CREATE/SET do, so
+        later queries reading that type must be ordered after it even though
+        DELETE has no pattern of its own to scan.
         """
         produced: set[str] = set()
 
@@ -225,6 +233,13 @@ class QueryDependencyAnalyzer:
                 produced.update(
                     self._extract_types_from_pattern(clause.pattern),
                 )
+
+        if any(isinstance(clause, Delete) for clause in ast.clauses):
+            for clause in ast.clauses:
+                if isinstance(clause, Match) and clause.pattern:
+                    produced.update(
+                        self._extract_types_from_pattern(clause.pattern),
+                    )
 
         return produced
 

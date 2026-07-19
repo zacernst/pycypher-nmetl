@@ -473,6 +473,29 @@ def _close_context(context: Any) -> None:
         close()
 
 
+def _delete_scratch_database(scratch_path: str) -> None:
+    """Best-effort removal of a run's scratch DuckDB file (and WAL sidecar).
+
+    Called from a ``finally`` block so the scratch file never outlives the
+    run regardless of success or failure (see docs/duckdb_full_parity_design.md,
+    "Crash cleanup" — graceful-failure case; the hard-crash case is covered
+    separately by :func:`~pycypher.backends.duckdb_backend.sweep_orphaned_scratch_databases`).
+    """
+    from shared.logger import LOGGER
+
+    for path in (scratch_path, f"{scratch_path}.wal"):
+        try:
+            os.remove(path)
+        except FileNotFoundError:
+            pass
+        except OSError:
+            LOGGER.warning(
+                "Failed to remove scratch database file %s; skipping",
+                path,
+                exc_info=True,
+            )
+
+
 def _try_streaming_run(
     pipeline_config: Any,
     queries: list[Any],
@@ -485,78 +508,111 @@ def _try_streaming_run(
     Returns ``True`` if the whole run was streamed (caller should stop), or
     ``False`` if it did not qualify (caller falls through to the normal
     in-memory path).  Qualifying requires: the ``duckdb`` backend, the relation
-    engine enabled, every query in the eligible subset, and every query having
-    at least one output sink.  The eligibility pre-check performs no writes, so
-    a ``False`` return leaves no partial output.
+    engine enabled, and every query either an eligible single-table mutation
+    (``SET``/``CREATE``/``DELETE``, see :func:`~pycypher.relation_engine.
+    is_relation_mutation_eligible` — no output sink required) or in the
+    read-eligible subset with at least one output sink.  The eligibility
+    pre-check performs no writes, so a ``False`` return leaves no partial
+    output.
     """
     if pipeline_config.backend_engine != "duckdb":
         return False
 
     from pycypher.ast_converter import ASTConverter
+    from pycypher.backends.duckdb_backend import (
+        DuckDBBackend,
+        create_scratch_database_path,
+        sweep_orphaned_scratch_databases,
+    )
     from pycypher.ingestion.context_builder import ContextBuilder
     from pycypher.ingestion.data_sources import data_source_from_uri
     from pycypher.relation_engine import (
         bridge_user_functions,
+        execute_relation_mutation,
         is_relation_eligible,
+        is_relation_mutation_eligible,
         register_streaming_source,
         relation_engine_enabled,
     )
     from pycypher.star import Star
 
-    context = ContextBuilder().build(backend="duckdb")
-    if not relation_engine_enabled(context):
-        _close_context(context)
-        return False
-
-    # Register user functions into the registry, then bridge the annotated ones
-    # onto the connection so eligible queries can call them out-of-core.
-    _register_user_functions(pipeline_config.functions)
-    bridge_user_functions(context)
-
-    config_dir = config.parent
-    plan: list[tuple[Any, str, list[Any]]] = []
+    # Disk hygiene only (see docs/duckdb_full_parity_design.md, "Crash
+    # cleanup") — removes scratch files orphaned by a hard-killed prior run
+    # before this run creates its own.
+    sweep_orphaned_scratch_databases()
+    scratch_path = create_scratch_database_path()
+    context = ContextBuilder().build(
+        backend=DuckDBBackend(database_path=scratch_path),
+    )
     try:
-        for entity_src in pipeline_config.sources.entities:
-            ds = data_source_from_uri(
-                entity_src.uri,
-                query=entity_src.query,
-                schema_hints=entity_src.schema_hints,
-            )
-            register_streaming_source(
-                context,
-                entity_src.entity_type,
-                ds,
-                id_col=entity_src.id_col,
-            )
+        context.set_relation_engine_enabled(pipeline_config.relation_engine)
+        if not relation_engine_enabled(context):
+            return False
 
-        for q in queries:
-            if q.inline is not None:
-                text = q.inline
-            elif q.source is not None:
-                text = _load_query_text(q.source, config_dir)
-            else:
-                return False
-            ast = ASTConverter.from_cypher(text)
-            if not is_relation_eligible(ast, context):
-                return False
-            sinks = [o for o in pipeline_config.output if o.query_id == q.id]
-            if not sinks:
-                return False
-            plan.append((q, text, sinks))
-    except Exception:  # noqa: BLE001 — any pre-check problem: fall back to the robust normal path
-        from shared.logger import LOGGER
+        # Register user functions into the registry, then bridge the annotated
+        # ones onto the connection so eligible queries can call them out-of-core.
+        _register_user_functions(pipeline_config.functions)
+        bridge_user_functions(context)
 
-        LOGGER.debug("streaming pre-check failed; using in-memory path", exc_info=True)
-        _close_context(context)
-        return False
+        config_dir = config.parent
+        plan: list[tuple[Any, str, str | None, list[Any]]] = []
+        try:
+            for entity_src in pipeline_config.sources.entities:
+                ds = data_source_from_uri(
+                    entity_src.uri,
+                    query=entity_src.query,
+                    schema_hints=entity_src.schema_hints,
+                )
+                register_streaming_source(
+                    context,
+                    entity_src.entity_type,
+                    ds,
+                    id_col=entity_src.id_col,
+                )
 
-    # All queries eligible and have sinks — stream each to its sink(s).
-    click.echo(f"Streaming {len(plan)} query/queries (out-of-core) …")
-    star = Star(context=context)
-    tracker = ErrorPolicyTracker((on_error or "fail").lower())
-    stream_errors = _QUERY_EXEC_ERRORS + _OUTPUT_ERRORS
-    try:
-        for qi, (q, text, sinks) in enumerate(plan, 1):
+            for q in queries:
+                if q.inline is not None:
+                    text = q.inline
+                elif q.source is not None:
+                    text = _load_query_text(q.source, config_dir)
+                else:
+                    return False
+                ast = ASTConverter.from_cypher(text)
+                mutation_kind = is_relation_mutation_eligible(ast, context)
+                if mutation_kind is not None:
+                    plan.append((q, text, mutation_kind, []))
+                    continue
+                if not is_relation_eligible(ast, context):
+                    return False
+                sinks = [o for o in pipeline_config.output if o.query_id == q.id]
+                if not sinks:
+                    return False
+                plan.append((q, text, None, sinks))
+        except Exception:  # noqa: BLE001 — any pre-check problem: fall back to the robust normal path
+            from shared.logger import LOGGER
+
+            LOGGER.debug("streaming pre-check failed; using in-memory path", exc_info=True)
+            return False
+
+        # All queries eligible — mutations execute directly, reads stream to
+        # their sink(s).
+        click.echo(f"Streaming {len(plan)} query/queries (out-of-core) …")
+        star = Star(context=context)
+        tracker = ErrorPolicyTracker((on_error or "fail").lower())
+        stream_errors = _QUERY_EXEC_ERRORS + _OUTPUT_ERRORS
+        for qi, (q, text, mutation_kind, sinks) in enumerate(plan, 1):
+            if mutation_kind is not None:
+                try:
+                    execute_relation_mutation(
+                        ASTConverter.from_cypher(text), context, mutation_kind,
+                    )
+                    click.echo(f"  [{qi}/{len(plan)}] query [{q.id}] ({mutation_kind})")
+                except stream_errors as exc:
+                    label = get_pipeline_error_label(exc)
+                    tracker.handle(
+                        f"query [{q.id}] {label}: {exc}",
+                    )
+                continue
             for si, sink in enumerate(sinks, 1):
                 try:
                     star.stream_query_to_uri(text, sink.uri, sink.format)
@@ -570,17 +626,22 @@ def _try_streaming_run(
                     tracker.handle(
                         f"query [{q.id}] {label}: {exc}",
                     )
-    finally:
-        _close_context(context)
 
-    if tracker.failed and tracker.policy == "warn":
-        click.echo(
-            "Pipeline completed with warnings.  "
-            "One or more queries failed (see above).",
-            err=True,
-        )
-    click.echo("Done.")
-    return True
+        if tracker.failed and tracker.policy == "warn":
+            click.echo(
+                "Pipeline completed with warnings.  "
+                "One or more queries failed (see above).",
+                err=True,
+            )
+        click.echo("Done.")
+        return True
+    finally:
+        # Graceful-failure crash cleanup (see docs/duckdb_full_parity_design.md,
+        # "Crash cleanup"): runs on every exit path — success, an early
+        # ineligibility return, or an unhandled exception — so the scratch
+        # database never outlives this run.
+        _close_context(context)
+        _delete_scratch_database(scratch_path)
 
 
 def run_impl(
