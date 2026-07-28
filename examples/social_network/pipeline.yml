@@ -4,6 +4,7 @@ project:
   name: example_social_network_test
   description: "Just an example to test the pipeline flow"
   backend_engine: duckdb
+  relation_engine: true
 
 sources:
   entities:

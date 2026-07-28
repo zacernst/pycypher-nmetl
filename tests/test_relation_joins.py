@@ -5,7 +5,7 @@ as DuckDB joins and match the pandas oracle: both directions, same-label
 endpoints, relationship-variable property access, and WHERE over multiple
 variables.  Multi-hop / undirected / OPTIONAL remain ineligible (fall back).
 
-See docs/duckdb_out_of_core_design.md, Phase 8.
+See docs/duckdb_full_parity_design.md.
 """
 
 from __future__ import annotations

@@ -23,7 +23,7 @@ leading ``WITH`` of constants, and ``UNWIND`` of a scalar list column in a
 undirected / variable-length paths, a second required MATCH, OPTIONAL MATCH
 combined with aggregation, ``UNWIND`` in pattern scope (right after MATCH),
 ``collect()``, and unregistered functions.  See
-``docs/duckdb_out_of_core_design.md``.
+``docs/duckdb_full_parity_design.md``.
 
 Source modes: with :func:`register_streaming_source` the base relation is a
 lazy ``read_relation`` view over a file (genuinely out-of-core); otherwise it
@@ -35,8 +35,11 @@ this automatically when enabled (see ``cli/pipeline.py`` ``_try_streaming_run``)
 
 from __future__ import annotations
 
+import logging
 import os
 from typing import TYPE_CHECKING, Any
+
+from shared.logger import LOGGER
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -1206,6 +1209,9 @@ def execute_relation_query(
             rel = rel.limit(sp.limit, offset=sp.skip or 0)
         scope = sp.new_scope
 
+    if LOGGER.isEnabledFor(logging.DEBUG):
+        LOGGER.debug("[duckdb-relation] %s", rel.sql_query())
+
     bindings = RelationBindings(DuckDBLazyFrame(rel, con))
     return bindings.to_pandas() if materialize else bindings
 
@@ -1372,6 +1378,7 @@ def execute_relation_set(query: Any, context: Context) -> None:
     if where_parts:
         sql += " WHERE " + " AND ".join(where_parts)
 
+    LOGGER.debug("[duckdb-relation] %s", sql)
     context.backend.connection.execute(sql)
 
 
@@ -1457,6 +1464,7 @@ def execute_relation_delete(query: Any, context: Context) -> None:
     if where_parts:
         sql += " WHERE " + " AND ".join(where_parts)
 
+    LOGGER.debug("[duckdb-relation] %s", sql)
     context.backend.connection.execute(sql)
 
 
@@ -1618,6 +1626,7 @@ def execute_relation_create(query: Any, context: Context) -> None:
     col_list = ", ".join(f'"{c}"' for c in cols)
     val_list = ", ".join(values)
     sql = f'INSERT INTO "{table}" ({col_list}) SELECT {val_list}'  # nosec B608 — table/columns validated identifiers; values from relation_sql.compile_expression's whitelisted compiler or nextval() sequence call
+    LOGGER.debug("[duckdb-relation] %s", sql)
     con.execute(sql)
 
 

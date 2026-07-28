@@ -463,6 +463,7 @@ class DuckDBBackend:
             The query result as a pandas DataFrame.
 
         """
+        LOGGER.debug("[duckdb] %s", sql)
         for view_name, frame in views.items():
             self._conn.register(view_name, _to_df(frame))
         try:

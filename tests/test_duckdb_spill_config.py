@@ -5,7 +5,7 @@ temp_directory, max_temp_directory_size, preserve_insertion_order) are applied
 via the injection-safe ``connect(config=...)`` dict, honour environment-variable
 fallbacks, and leave DuckDB defaults untouched when unset (no behaviour change).
 
-See docs/duckdb_out_of_core_design.md, Phase 1.
+See docs/duckdb_full_parity_design.md.
 """
 
 from __future__ import annotations

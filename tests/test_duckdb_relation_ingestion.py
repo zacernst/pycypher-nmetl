@@ -6,7 +6,7 @@ directly (no full Arrow materialisation), that schema hints and user queries
 still apply, that multiple sources share one connection without collision, and
 that the existing ``.read()`` Arrow path is unchanged.
 
-See docs/duckdb_out_of_core_design.md, Phase 2.
+See docs/duckdb_full_parity_design.md.
 """
 
 from __future__ import annotations

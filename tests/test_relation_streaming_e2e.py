@@ -5,7 +5,7 @@ Proves the full streaming spine: a file source read as a lazy relation
 via COPY, with no full pandas materialisation, including under a low
 memory_limit.
 
-See docs/duckdb_out_of_core_design.md, Phase 5.
+See docs/duckdb_full_parity_design.md.
 """
 
 from __future__ import annotations

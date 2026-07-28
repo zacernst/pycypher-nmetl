@@ -5,7 +5,7 @@ a duckdb backend, an all-eligible pipeline streams each query file->sink via
 DuckDB (out-of-core); ineligible pipelines and the disabled default fall back to
 the normal in-memory path unchanged.
 
-See docs/duckdb_out_of_core_design.md, Phase 5b.
+See docs/duckdb_full_parity_design.md.
 """
 
 from __future__ import annotations

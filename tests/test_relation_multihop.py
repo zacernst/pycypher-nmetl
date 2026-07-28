@@ -4,7 +4,7 @@ Verifies chained relationship patterns like (a)-[:KNOWS]->(b)-[:KNOWS]->(c) run
 through the relation engine as a chain of DuckDB joins and match the pandas
 oracle. Undirected / variable-length paths remain ineligible.
 
-See docs/duckdb_out_of_core_design.md (Phase 8 generalisation).
+See docs/duckdb_full_parity_design.md.
 """
 
 from __future__ import annotations

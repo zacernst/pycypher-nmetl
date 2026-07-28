@@ -4,7 +4,7 @@ Verifies that RETURN items beyond bare property lookups (arithmetic, literals)
 are eligible when explicitly aliased and match the pandas oracle; non-property
 expressions without an alias remain ineligible.
 
-See docs/duckdb_out_of_core_design.md, Phase 7.
+See docs/duckdb_full_parity_design.md.
 """
 
 from __future__ import annotations

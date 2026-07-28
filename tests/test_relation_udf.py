@@ -4,7 +4,7 @@ Verifies register_relation_udf makes a scalar Python function callable from
 eligible out-of-core queries (in RETURN and WHERE), producing correct results;
 unregistered function names remain ineligible (fall back).
 
-See docs/duckdb_out_of_core_design.md, Phase 10b.
+See docs/duckdb_full_parity_design.md.
 """
 
 from __future__ import annotations

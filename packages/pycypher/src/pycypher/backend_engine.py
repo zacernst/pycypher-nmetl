@@ -663,6 +663,15 @@ class InstrumentedBackend:
         """Return the inner backend's name."""
         return self._inner.name
 
+    @property
+    def connection(self) -> Any:
+        """Proxy the inner backend's raw connection (e.g. DuckDB), if any.
+
+        Needed because :mod:`pycypher.relation_engine` reaches past the
+        ``BackendEngine`` protocol for direct SQL/relation access.
+        """
+        return self._inner.connection
+
     def _record(self, op: str, elapsed_ms: float, span: Any = None) -> None:
         """Record timing for an operation and annotate the OTel span."""
         self.operation_timings.setdefault(op, []).append(elapsed_ms)
@@ -881,6 +890,12 @@ class InstrumentedBackend:
     def memory_estimate_bytes(self, frame: BackendFrame) -> int:
         """Delegate memory_estimate_bytes."""
         return self._inner.memory_estimate_bytes(frame)
+
+    def close(self) -> None:
+        """Delegate close to the inner backend, if it defines one."""
+        inner_close = getattr(self._inner, "close", None)
+        if callable(inner_close):
+            inner_close()
 
 
 def select_backend_for_query(

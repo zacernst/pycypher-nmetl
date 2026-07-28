@@ -4,7 +4,7 @@ Verifies the expression compiler and WHERE support: eligible WHERE queries run
 through the relation engine and match the pandas oracle (including null
 semantics), while unsupported predicates (functions) fall back.
 
-See docs/duckdb_out_of_core_design.md, Phase 6.
+See docs/duckdb_full_parity_design.md.
 """
 
 from __future__ import annotations

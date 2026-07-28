@@ -4,7 +4,7 @@ Verifies the opt-in relation engine: eligibility classification, result parity
 with the pandas BindingFrame engine for the eligible subset, fallback for
 ineligible queries, and that it is inert when disabled (the default).
 
-See docs/duckdb_out_of_core_design.md, Phase 4.
+See docs/duckdb_full_parity_design.md.
 """
 
 from __future__ import annotations

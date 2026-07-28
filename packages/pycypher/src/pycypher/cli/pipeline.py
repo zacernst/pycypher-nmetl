@@ -543,11 +543,17 @@ def _try_streaming_run(
     scratch_path = create_scratch_database_path()
     context = ContextBuilder().build(
         backend=DuckDBBackend(database_path=scratch_path),
+        instrument=verbose,
     )
     try:
         context.set_relation_engine_enabled(pipeline_config.relation_engine)
         if not relation_engine_enabled(context):
             return False
+
+        if verbose:
+            from shared.logger import LOGGER
+
+            LOGGER.info("Backend: %s (out-of-core streaming)", context.backend_name)
 
         # Register user functions into the registry, then bridge the annotated
         # ones onto the connection so eligible queries can call them out-of-core.
@@ -657,24 +663,27 @@ def run_impl(
     Separated from the Click decorator so ``nmetl_cli.py`` can re-export it
     for backward compatibility.
     """
+    import logging
+
     from shared.logger import LOGGER
 
     if verbose:
-        click.echo(f"Loading config: {config}")
+        LOGGER.setLevel(logging.DEBUG)
+
+    LOGGER.info("Loading config: %s", config)
 
     pipeline_config = load_config(config, verbose=verbose)
 
-    if verbose:
-        project_name = (
-            pipeline_config.project.name
-            if pipeline_config.project
-            else "(unnamed)"
-        )
-        click.echo(f"Project: {project_name}")
-        n_entity = len(pipeline_config.sources.entities)
-        n_rel = len(pipeline_config.sources.relationships)
-        click.echo(f"Sources: {n_entity} entity, {n_rel} relationship")
-        click.echo(f"Queries: {len(pipeline_config.queries)}")
+    project_name = (
+        pipeline_config.project.name
+        if pipeline_config.project
+        else "(unnamed)"
+    )
+    LOGGER.info("Project: %s", project_name)
+    n_entity = len(pipeline_config.sources.entities)
+    n_rel = len(pipeline_config.sources.relationships)
+    LOGGER.info("Sources: %d entity, %d relationship", n_entity, n_rel)
+    LOGGER.info("Queries: %d", len(pipeline_config.queries))
 
     # Filter to requested queries (if --query-id was used)
     queries = pipeline_config.queries
@@ -753,7 +762,9 @@ def run_impl(
                 allow_multi_edges=rel_src.allow_multi_edges,
                 schema_hints=rel_src.schema_hints,
             )
-        context = builder.build(backend=pipeline_config.backend_engine)
+        context = builder.build(
+            backend=pipeline_config.backend_engine, instrument=verbose,
+        )
     except FileNotFoundError as exc:
         cli_error(f"data source file not found: {exc}")
     except PermissionError as exc:
@@ -762,6 +773,8 @@ def run_impl(
         cli_error(f"invalid data source format or configuration: {exc}")
     except OSError as exc:
         cli_error(f"file system error loading data sources: {exc}")
+
+    LOGGER.info("Backend: %s", context.backend_name)
 
     # Register user-defined Cypher functions before any query runs.
     _register_user_functions(pipeline_config.functions)

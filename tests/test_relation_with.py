@@ -7,7 +7,7 @@ across stages, and chained WITHs.  A second required MATCH immediately after a
 WITH (a cross-joined multi-pattern query) is also supported — see Phase 3 slice 1
 of docs/duckdb_full_parity_design.md.
 
-See docs/duckdb_out_of_core_design.md, Phase 10c.
+See docs/duckdb_full_parity_design.md.
 """
 
 from __future__ import annotations

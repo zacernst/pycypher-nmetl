@@ -422,13 +422,17 @@ class Context(BaseModel):
         super().model_post_init(__context)
         # _backend and _backend_hint are set via __init__ override below
 
-    def __init__(self, *, backend: Any = None, **data: Any) -> None:
+    def __init__(self, *, backend: Any = None, instrument: bool = False, **data: Any) -> None:
         """Initialise the query context with entity/relationship data and a backend engine.
 
         Args:
             backend: Backend engine or hint string (``"pandas"``, ``"duckdb"``,
                 ``"polars"``, ``"auto"``).  Defaults to :class:`PandasBackend`
                 when ``None`` or ``"pandas"``.
+            instrument: When ``True``, wrap the resolved backend in
+                :class:`~pycypher.backend_engine.InstrumentedBackend` so every
+                operation logs its backend name and timing at DEBUG level
+                (used by ``nmetl run --verbose``).
             **data: Pydantic field values — typically ``entity_mapping``,
                 ``relationship_mapping``, and ``functions``.
 
@@ -463,6 +467,11 @@ class Context(BaseModel):
             # Pre-constructed BackendEngine instance
             self._backend = backend
             self._backend_hint = getattr(backend, "name", "custom")
+
+        if instrument:
+            from pycypher.backend_engine import InstrumentedBackend
+
+            self._backend = InstrumentedBackend(self._backend)
 
     @property
     def backend(self) -> Any:

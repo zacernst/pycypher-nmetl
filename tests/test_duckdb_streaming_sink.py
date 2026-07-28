@@ -5,7 +5,7 @@ without a pandas frame, produces output equivalent to the pandas writer, honours
 format inference and explicit format, rejects cloud URIs and non-relation input,
 and round-trips with Phase 2's read_relation.
 
-See docs/duckdb_out_of_core_design.md, Phase 3.
+See docs/duckdb_full_parity_design.md.
 """
 
 from __future__ import annotations

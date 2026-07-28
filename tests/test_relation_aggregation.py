@@ -3,7 +3,7 @@
 Verifies count(*)/count/sum/avg/min/max aggregations (full-table and grouped,
 with DISTINCT) run through the relation engine and match the pandas oracle.
 
-See docs/duckdb_out_of_core_design.md, Phase 9.
+See docs/duckdb_full_parity_design.md.
 """
 
 from __future__ import annotations

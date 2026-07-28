@@ -11,7 +11,7 @@ raw; identifiers go through :func:`sanitize_sql_identifier` and string literals
 through :func:`escape_sql_string_literal`, so a compiled expression cannot
 inject SQL.
 
-See ``docs/duckdb_out_of_core_design.md`` (Phases 6-7).
+See ``docs/duckdb_full_parity_design.md``.
 """
 
 from __future__ import annotations
