@@ -1366,12 +1366,14 @@
 
 <div class="viewcode-block" id="ContextBuilder.build">
 <a class="viewcode-back" href="../../../api/pycypher.html#pycypher.ingestion.context_builder.ContextBuilder.build">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">build</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">backend</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;auto&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Context</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">build</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">backend</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;auto&quot;</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">instrument</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Context</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Assemble and return the :class:`~pycypher.relational_models.Context`.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            backend: Backend engine hint — ``&quot;auto&quot;`` (default), ``&quot;pandas&quot;``,</span>
 <span class="sd">                ``&quot;duckdb&quot;``, or ``&quot;polars&quot;``.</span>
+<span class="sd">            instrument: When ``True``, wrap the backend so every operation</span>
+<span class="sd">                logs its backend name and timing at DEBUG level.</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            A fully populated :class:`~pycypher.relational_models.Context`.</span>
@@ -1389,6 +1391,7 @@
             <span class="n">entity_mapping</span><span class="o">=</span><span class="n">entity_mapping</span><span class="p">,</span>
             <span class="n">relationship_mapping</span><span class="o">=</span><span class="n">relationship_mapping</span><span class="p">,</span>
             <span class="n">backend</span><span class="o">=</span><span class="n">backend</span><span class="p">,</span>
+            <span class="n">instrument</span><span class="o">=</span><span class="n">instrument</span><span class="p">,</span>
         <span class="p">)</span></div>
 </div>
 

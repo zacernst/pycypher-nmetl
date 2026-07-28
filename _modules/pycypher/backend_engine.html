@@ -1904,6 +1904,15 @@
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the inner backend&#39;s name.&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_inner</span><span class="o">.</span><span class="n">name</span>
 
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">connection</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Proxy the inner backend&#39;s raw connection (e.g. DuckDB), if any.</span>
+
+<span class="sd">        Needed because :mod:`pycypher.relation_engine` reaches past the</span>
+<span class="sd">        ``BackendEngine`` protocol for direct SQL/relation access.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_inner</span><span class="o">.</span><span class="n">connection</span>
+
     <span class="k">def</span><span class="w"> </span><span class="nf">_record</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">op</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">elapsed_ms</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">span</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Record timing for an operation and annotate the OTel span.&quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">operation_timings</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">op</span><span class="p">,</span> <span class="p">[])</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">elapsed_ms</span><span class="p">)</span>
@@ -2172,6 +2181,15 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">memory_estimate_bytes</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frame</span><span class="p">:</span> <span class="n">BackendFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Delegate memory_estimate_bytes.&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_inner</span><span class="o">.</span><span class="n">memory_estimate_bytes</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="InstrumentedBackend.close">
+<a class="viewcode-back" href="../../api/pycypher.html#pycypher.backend_engine.InstrumentedBackend.close">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Delegate close to the inner backend, if it defines one.&quot;&quot;&quot;</span>
+        <span class="n">inner_close</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_inner</span><span class="p">,</span> <span class="s2">&quot;close&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">callable</span><span class="p">(</span><span class="n">inner_close</span><span class="p">):</span>
+            <span class="n">inner_close</span><span class="p">()</span></div>
 </div>
 
 

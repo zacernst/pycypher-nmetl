@@ -7735,7 +7735,7 @@ partially-mutated state.</p>
 </section>
 <dl class="py class">
 <dt class="sig sig-object py" id="pycypher.relational_models.Context">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.relational_models.</span></span><span class="sig-name descname"><span class="pre">Context</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">backend=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">entity_mapping=EntityMapping(mapping={})</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">relationship_mapping=RelationshipMapping(mapping={})</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cypher_functions=&lt;factory&gt;</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/relational_models.html#Context"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.relational_models.Context" title="Link to this definition"></a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycypher.relational_models.</span></span><span class="sig-name descname"><span class="pre">Context</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">backend=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">instrument=False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">entity_mapping=EntityMapping(mapping={})</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">relationship_mapping=RelationshipMapping(mapping={})</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cypher_functions=&lt;factory&gt;</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/relational_models.html#Context"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.relational_models.Context" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference external" href="https://pydantic.dev/docs/validation/latest/api/pydantic/base_model/#pydantic.BaseModel" title="(in Pydantic v0.0.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseModel</span></code></a></p>
 <p>Context for translation operations.</p>
 <p>The optional <em>backend</em> parameter selects the DataFrame computation engine.
@@ -7828,7 +7828,7 @@ concurrent calls sharing this <code class="docutils literal notranslate"><span c
 
 <dl class="py method">
 <dt class="sig sig-object py" id="pycypher.relational_models.Context.__init__">
-<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">backend</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">data</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/relational_models.html#Context.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.relational_models.Context.__init__" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">backend</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">instrument</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">data</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/relational_models.html#Context.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.relational_models.Context.__init__" title="Link to this definition"></a></dt>
 <dd><p>Initialise the query context with entity/relationship data and a backend engine.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -7836,6 +7836,10 @@ concurrent calls sharing this <code class="docutils literal notranslate"><span c
 <li><p><strong>backend</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a>) – Backend engine or hint string (<code class="docutils literal notranslate"><span class="pre">&quot;pandas&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;duckdb&quot;</span></code>,
 <code class="docutils literal notranslate"><span class="pre">&quot;polars&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;auto&quot;</span></code>).  Defaults to <code class="xref py py-class docutils literal notranslate"><span class="pre">PandasBackend</span></code>
 when <code class="docutils literal notranslate"><span class="pre">None</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;pandas&quot;</span></code>.</p></li>
+<li><p><strong>instrument</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – When <code class="docutils literal notranslate"><span class="pre">True</span></code>, wrap the resolved backend in
+<a class="reference internal" href="#pycypher.backend_engine.InstrumentedBackend" title="pycypher.backend_engine.InstrumentedBackend"><code class="xref py py-class docutils literal notranslate"><span class="pre">InstrumentedBackend</span></code></a> so every
+operation logs its backend name and timing at DEBUG level
+(used by <code class="docutils literal notranslate"><span class="pre">nmetl</span> <span class="pre">run</span> <span class="pre">--verbose</span></code>).</p></li>
 <li><p><strong>**data</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a>) – Pydantic field values — typically <code class="docutils literal notranslate"><span class="pre">entity_mapping</span></code>,
 <code class="docutils literal notranslate"><span class="pre">relationship_mapping</span></code>, and <code class="docutils literal notranslate"><span class="pre">functions</span></code>.</p></li>
 </ul>
@@ -8207,6 +8211,12 @@ in downstream joins (e.g. <code class="docutils literal notranslate"><span class
 </dl>
 </dd></dl>
 
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pycypher.relational_models.EntityTable.model_config">
+<span class="sig-name descname"><span class="pre">model_config</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ClassVar</span><span class="p"><span class="pre">[</span></span><span class="pre">ConfigDict</span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{}</span></em><a class="headerlink" href="#pycypher.relational_models.EntityTable.model_config" title="Link to this definition"></a></dt>
+<dd><p>Configuration for the model, should be a dictionary conforming to [<cite>ConfigDict</cite>][pydantic.config.ConfigDict].</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="pycypher.relational_models.EntityTable.to_spark">
 <span class="sig-name descname"><span class="pre">to_spark</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">context</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/relational_models.html#EntityTable.to_spark"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.relational_models.EntityTable.to_spark" title="Link to this definition"></a></dt>
@@ -8228,12 +8238,6 @@ DataFrames (column rename only) and non-Spark sources (pandas conversion).</p>
 <dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a></p>
 </dd>
 </dl>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="pycypher.relational_models.EntityTable.model_config">
-<span class="sig-name descname"><span class="pre">model_config</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ClassVar</span><span class="p"><span class="pre">[</span></span><span class="pre">ConfigDict</span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{}</span></em><a class="headerlink" href="#pycypher.relational_models.EntityTable.model_config" title="Link to this definition"></a></dt>
-<dd><p>Configuration for the model, should be a dictionary conforming to [<cite>ConfigDict</cite>][pydantic.config.ConfigDict].</p>
 </dd></dl>
 
 </dd></dl>
@@ -8689,7 +8693,7 @@ the base timeout).  Set to <code class="docutils literal notranslate"><span clas
 Returns <code class="docutils literal notranslate"><span class="pre">None</span></code> if the lock cannot be acquired (timeout).</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.4)"><em>DataFrame</em></a> | None</p>
+<dd class="field-even"><p><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.5)"><em>DataFrame</em></a> | None</p>
 </dd>
 </dl>
 </dd></dl>
@@ -8858,7 +8862,7 @@ when <code class="docutils literal notranslate"><span class="pre">None</span></c
 </ul>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.4)"><em>DataFrame</em></a></p>
+<dd class="field-even"><p><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.5)"><em>DataFrame</em></a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -9011,7 +9015,7 @@ evaluator over a given frame.</p></li>
 an OPTIONAL MATCH as first clause finds no matches.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a> | <a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.4)"><em>DataFrame</em></a></p>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a> | <a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.5)"><em>DataFrame</em></a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -9059,7 +9063,7 @@ CREATE, UNWIND, MERGE, CALL, FOREACH) with dead column elimination.</p>
 <dd class="field-even"><p>A <code class="docutils literal notranslate"><span class="pre">pd.DataFrame</span></code> with columns matching the RETURN aliases.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.4)"><em>DataFrame</em></a></p>
+<dd class="field-odd"><p><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.5)"><em>DataFrame</em></a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -9086,7 +9090,7 @@ transaction.</p>
 <dd class="field-even"><p>A <code class="docutils literal notranslate"><span class="pre">pd.DataFrame</span></code> combining all sub-query results.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.4)"><em>DataFrame</em></a></p>
+<dd class="field-odd"><p><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.5)"><em>DataFrame</em></a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -9621,7 +9625,7 @@ stored here</strong> — they are fetched on-demand from the Context via
 values are entity or relationship IDs.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.4)">pandas.DataFrame</a></p>
+<dd class="field-odd"><p><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.5)">pandas.DataFrame</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -9651,7 +9655,7 @@ string (e.g. <code class="docutils literal notranslate"><span class="pre">{&quot
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="id58">
-<span class="sig-name descname"><span class="pre">bindings</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.4)"><span class="pre">DataFrame</span></a></em><a class="headerlink" href="#id58" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">bindings</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.5)"><span class="pre">DataFrame</span></a></em><a class="headerlink" href="#id58" title="Link to this definition"></a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
@@ -9714,7 +9718,7 @@ same length).</p>
 </ul>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.Series.html#pandas.Series" title="(in pandas v3.0.4)"><em>Series</em></a></p>
+<dd class="field-even"><p><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.Series.html#pandas.Series" title="(in pandas v3.0.5)"><em>Series</em></a></p>
 </dd>
 </dl>
 <div class="admonition note">
@@ -9746,7 +9750,7 @@ variables or when the entity type cannot be resolved.</p>
 <dd class="field-even"><p>A dict mapping each property name to a <code class="docutils literal notranslate"><span class="pre">pd.Series</span></code> of values.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)">dict</a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a>, <a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.Series.html#pandas.Series" title="(in pandas v3.0.4)"><em>Series</em></a>]</p>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)">dict</a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a>, <a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.Series.html#pandas.Series" title="(in pandas v3.0.5)"><em>Series</em></a>]</p>
 </dd>
 </dl>
 </dd></dl>
@@ -9757,7 +9761,7 @@ variables or when the entity type cannot be resolved.</p>
 <dd><p>Return a new BindingFrame containing only rows where <em>mask</em> is True.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>mask</strong> (<a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.Series.html#pandas.Series" title="(in pandas v3.0.4)"><em>Series</em></a>) – A boolean <code class="docutils literal notranslate"><span class="pre">pd.Series</span></code> aligned with <code class="docutils literal notranslate"><span class="pre">self.bindings</span></code>.</p>
+<dd class="field-odd"><p><strong>mask</strong> (<a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.Series.html#pandas.Series" title="(in pandas v3.0.5)"><em>Series</em></a>) – A boolean <code class="docutils literal notranslate"><span class="pre">pd.Series</span></code> aligned with <code class="docutils literal notranslate"><span class="pre">self.bindings</span></code>.</p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>A new BindingFrame with the same type_registry and context.</p>
@@ -9888,14 +9892,14 @@ Series first (e.g. using <code class="docutils literal notranslate"><span class=
 directly.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>computed</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.Series.html#pandas.Series" title="(in pandas v3.0.4)"><em>Series</em></a><em>]</em>) – Mapping from output alias to a <code class="docutils literal notranslate"><span class="pre">pd.Series</span></code> aligned
+<dd class="field-odd"><p><strong>computed</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.Series.html#pandas.Series" title="(in pandas v3.0.5)"><em>Series</em></a><em>]</em>) – Mapping from output alias to a <code class="docutils literal notranslate"><span class="pre">pd.Series</span></code> aligned
 with <code class="docutils literal notranslate"><span class="pre">self.bindings</span></code>.</p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>A plain <code class="docutils literal notranslate"><span class="pre">pd.DataFrame</span></code> with one column per alias.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.4)"><em>DataFrame</em></a></p>
+<dd class="field-odd"><p><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.5)"><em>DataFrame</em></a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -9913,7 +9917,7 @@ which is the same object that <code class="docutils literal notranslate"><span c
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>var_name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – The Cypher variable whose entity table is updated.</p></li>
 <li><p><strong>prop_name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – The attribute name to set or overwrite.</p></li>
-<li><p><strong>values</strong> (<a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.Series.html#pandas.Series" title="(in pandas v3.0.4)"><em>Series</em></a>) – A <code class="docutils literal notranslate"><span class="pre">pd.Series</span></code> of new values aligned with <code class="docutils literal notranslate"><span class="pre">self.bindings</span></code>.</p></li>
+<li><p><strong>values</strong> (<a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.Series.html#pandas.Series" title="(in pandas v3.0.5)"><em>Series</em></a>) – A <code class="docutils literal notranslate"><span class="pre">pd.Series</span></code> of new values aligned with <code class="docutils literal notranslate"><span class="pre">self.bindings</span></code>.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Raises<span class="colon">:</span></dt>
@@ -9942,7 +9946,7 @@ assignment from the merged result.</p>
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>var_name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – The Cypher variable whose entity table is updated.</p></li>
-<li><p><strong>properties</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.Series.html#pandas.Series" title="(in pandas v3.0.4)"><em>Series</em></a><em>]</em>) – Mapping from property name to a <code class="docutils literal notranslate"><span class="pre">pd.Series</span></code> of new
+<li><p><strong>properties</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.Series.html#pandas.Series" title="(in pandas v3.0.5)"><em>Series</em></a><em>]</em>) – Mapping from property name to a <code class="docutils literal notranslate"><span class="pre">pd.Series</span></code> of new
 values, each aligned with <code class="docutils literal notranslate"><span class="pre">self.bindings</span></code>.</p></li>
 </ul>
 </dd>
@@ -11714,7 +11718,7 @@ Custom functions registered via <code class="docutils literal notranslate"><span
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Function name</p></li>
-<li><p><strong>args</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.Series.html#pandas.Series" title="(in pandas v3.0.4)"><em>Series</em></a><em>]</em>) – List of argument Series</p></li>
+<li><p><strong>args</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.Series.html#pandas.Series" title="(in pandas v3.0.5)"><em>Series</em></a><em>]</em>) – List of argument Series</p></li>
 <li><p><strong>**kwargs</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a>) – Additional keyword arguments</p></li>
 </ul>
 </dd>
@@ -11732,7 +11736,7 @@ Custom functions registered via <code class="docutils literal notranslate"><span
 </ul>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.Series.html#pandas.Series" title="(in pandas v3.0.4)"><em>Series</em></a></p>
+<dd class="field-even"><p><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.Series.html#pandas.Series" title="(in pandas v3.0.5)"><em>Series</em></a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -12443,7 +12447,7 @@ for interop with existing code that expects pandas.</p>
 <dd class="field-even"><p>A pandas DataFrame.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.4)"><em>DataFrame</em></a></p>
+<dd class="field-odd"><p><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.5)"><em>DataFrame</em></a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -12945,6 +12949,14 @@ counts are recorded in <a class="reference internal" href="#pycypher.backend_eng
 <dd><p>Return the inner backend’s name.</p>
 </dd></dl>
 
+<dl class="py property">
+<dt class="sig sig-object py" id="pycypher.backend_engine.InstrumentedBackend.connection">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">connection</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></em><a class="headerlink" href="#pycypher.backend_engine.InstrumentedBackend.connection" title="Link to this definition"></a></dt>
+<dd><p>Proxy the inner backend’s raw connection (e.g. DuckDB), if any.</p>
+<p>Needed because <code class="xref py py-mod docutils literal notranslate"><span class="pre">pycypher.relation_engine</span></code> reaches past the
+<code class="docutils literal notranslate"><span class="pre">BackendEngine</span></code> protocol for direct SQL/relation access.</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="pycypher.backend_engine.InstrumentedBackend.timing_summary">
 <span class="sig-name descname"><span class="pre">timing_summary</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/backend_engine.html#InstrumentedBackend.timing_summary"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.backend_engine.InstrumentedBackend.timing_summary" title="Link to this definition"></a></dt>
@@ -13084,6 +13096,14 @@ counts are recorded in <a class="reference internal" href="#pycypher.backend_eng
 <dt class="sig sig-object py" id="pycypher.backend_engine.InstrumentedBackend.memory_estimate_bytes">
 <span class="sig-name descname"><span class="pre">memory_estimate_bytes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">frame</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/backend_engine.html#InstrumentedBackend.memory_estimate_bytes"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.backend_engine.InstrumentedBackend.memory_estimate_bytes" title="Link to this definition"></a></dt>
 <dd><p>Delegate memory_estimate_bytes.</p>
+<dl class="field-list simple">
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pycypher.backend_engine.InstrumentedBackend.close">
+<span class="sig-name descname"><span class="pre">close</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/backend_engine.html#InstrumentedBackend.close"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.backend_engine.InstrumentedBackend.close" title="Link to this definition"></a></dt>
+<dd><p>Delegate close to the inner backend, if it defines one.</p>
 <dl class="field-list simple">
 </dl>
 </dd></dl>
@@ -16715,7 +16735,7 @@ adjacency lists for O(degree) neighbor lookups instead of O(E) table scans.</p>
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>rel_type</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Relationship type label.</p></li>
-<li><p><strong>source_df</strong> (<a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.4)"><em>DataFrame</em></a>) – DataFrame with __ID__, __SOURCE__, __TARGET__ columns.</p></li>
+<li><p><strong>source_df</strong> (<a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.5)"><em>DataFrame</em></a>) – DataFrame with __ID__, __SOURCE__, __TARGET__ columns.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -16864,7 +16884,7 @@ relationships where __TARGET__ is in target_ids.</p>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>entity_type</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Entity type label.</p></li>
 <li><p><strong>property_name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Column name to index.</p></li>
-<li><p><strong>source_df</strong> (<a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.4)"><em>DataFrame</em></a>) – DataFrame with __ID__ and property columns.</p></li>
+<li><p><strong>source_df</strong> (<a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.5)"><em>DataFrame</em></a>) – DataFrame with __ID__ and property columns.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -16948,7 +16968,7 @@ count retrieval.</p>
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>entity_type</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Entity type label.</p></li>
-<li><p><strong>source_df</strong> (<a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.4)"><em>DataFrame</em></a>) – DataFrame with __ID__ column.</p></li>
+<li><p><strong>source_df</strong> (<a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.5)"><em>DataFrame</em></a>) – DataFrame with __ID__ column.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -17021,7 +17041,7 @@ Lookup cost: O(k log N) for k query IDs against N stored entities.</p>
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>entity_type</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – The entity type label.</p></li>
-<li><p><strong>source_df</strong> (<a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.4)"><em>DataFrame</em></a>) – DataFrame with ID_COLUMN and property columns.</p></li>
+<li><p><strong>source_df</strong> (<a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.5)"><em>DataFrame</em></a>) – DataFrame with ID_COLUMN and property columns.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -17163,7 +17183,7 @@ lookup instead of O(E) table scan + isin() filter.</p>
 if no index is available (caller should fall back to table scan).</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.4)"><em>DataFrame</em></a> | None</p>
+<dd class="field-even"><p><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.5)"><em>DataFrame</em></a> | None</p>
 </dd>
 </dl>
 </dd></dl>
@@ -18676,7 +18696,7 @@ the base timeout).  Set to <code class="docutils literal notranslate"><span clas
 Returns <code class="docutils literal notranslate"><span class="pre">None</span></code> if the lock cannot be acquired (timeout).</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.4)"><em>DataFrame</em></a> | None</p>
+<dd class="field-even"><p><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.5)"><em>DataFrame</em></a> | None</p>
 </dd>
 </dl>
 </dd></dl>
@@ -19757,7 +19777,7 @@ builder chain:</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>entity_frames</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.4)"><em>DataFrame</em></a><em>]</em>) – Mapping of label to DataFrame (entity or relationship).</p></li>
+<li><p><strong>entity_frames</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.5)"><em>DataFrame</em></a><em>]</em>) – Mapping of label to DataFrame (entity or relationship).</p></li>
 <li><p><strong>id_column</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – Column to use as the <code class="docutils literal notranslate"><span class="pre">__ID__</span></code> identity key.  Defaults
 to the standard <code class="docutils literal notranslate"><span class="pre">ID_COLUMN</span></code> (<code class="docutils literal notranslate"><span class="pre">&quot;__ID__&quot;</span></code>).  Pass the name of
 an existing column to use it as the identifier.</p></li>
@@ -19768,7 +19788,7 @@ an existing column to use it as the identifier.</p></li>
 </dd>
 <dt class="field-odd">Raises<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#TypeError" title="(in Python v3.14)"><strong>TypeError</strong></a> – If any value in <em>entity_frames</em> is not a
-    <a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.4)"><code class="xref py py-class docutils literal notranslate"><span class="pre">pandas.DataFrame</span></code></a>.</p>
+    <a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.5)"><code class="xref py py-class docutils literal notranslate"><span class="pre">pandas.DataFrame</span></code></a>.</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p><a class="reference internal" href="#pycypher.relational_models.Context" title="pycypher.relational_models.Context"><em>Context</em></a></p>
@@ -19778,12 +19798,16 @@ an existing column to use it as the identifier.</p></li>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="pycypher.ingestion.context_builder.ContextBuilder.build">
-<span class="sig-name descname"><span class="pre">build</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">backend</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'auto'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/ingestion/context_builder.html#ContextBuilder.build"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.ingestion.context_builder.ContextBuilder.build" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">build</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">backend</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'auto'</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">instrument</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pycypher/ingestion/context_builder.html#ContextBuilder.build"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycypher.ingestion.context_builder.ContextBuilder.build" title="Link to this definition"></a></dt>
 <dd><p>Assemble and return the <a class="reference internal" href="#pycypher.relational_models.Context" title="pycypher.relational_models.Context"><code class="xref py py-class docutils literal notranslate"><span class="pre">Context</span></code></a>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>backend</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Backend engine hint — <code class="docutils literal notranslate"><span class="pre">&quot;auto&quot;</span></code> (default), <code class="docutils literal notranslate"><span class="pre">&quot;pandas&quot;</span></code>,
-<code class="docutils literal notranslate"><span class="pre">&quot;duckdb&quot;</span></code>, or <code class="docutils literal notranslate"><span class="pre">&quot;polars&quot;</span></code>.</p>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>backend</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Backend engine hint — <code class="docutils literal notranslate"><span class="pre">&quot;auto&quot;</span></code> (default), <code class="docutils literal notranslate"><span class="pre">&quot;pandas&quot;</span></code>,
+<code class="docutils literal notranslate"><span class="pre">&quot;duckdb&quot;</span></code>, or <code class="docutils literal notranslate"><span class="pre">&quot;polars&quot;</span></code>.</p></li>
+<li><p><strong>instrument</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – When <code class="docutils literal notranslate"><span class="pre">True</span></code>, wrap the backend so every operation
+logs its backend name and timing at DEBUG level.</p></li>
+</ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>A fully populated <a class="reference internal" href="#pycypher.relational_models.Context" title="pycypher.relational_models.Context"><code class="xref py py-class docutils literal notranslate"><span class="pre">Context</span></code></a>.</p>
@@ -20336,7 +20360,7 @@ DuckDB’s type mapping, ensuring consistent Arrow schema handling.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>df</strong> (<a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.4)"><em>DataFrame</em></a>) – The source DataFrame.</p></li>
+<li><p><strong>df</strong> (<a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.5)"><em>DataFrame</em></a>) – The source DataFrame.</p></li>
 <li><p><strong>schema_hints</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>] </em><em>| </em><em>None</em>) – Optional mapping of column name → DuckDB type
 string, applied as explicit <code class="docutils literal notranslate"><span class="pre">CAST</span></code> expressions.</p></li>
 </ul>
@@ -20352,7 +20376,7 @@ string, applied as explicit <code class="docutils literal notranslate"><span cla
 
 <dl class="py property">
 <dt class="sig sig-object py" id="pycypher.ingestion.data_sources.DataFrameDataSource.dataframe">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">dataframe</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.4)"><span class="pre">DataFrame</span></a></em><a class="headerlink" href="#pycypher.ingestion.data_sources.DataFrameDataSource.dataframe" title="Link to this definition"></a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">dataframe</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.5)"><span class="pre">DataFrame</span></a></em><a class="headerlink" href="#pycypher.ingestion.data_sources.DataFrameDataSource.dataframe" title="Link to this definition"></a></dt>
 <dd><p>The wrapped pandas DataFrame.</p>
 </dd></dl>
 
@@ -20451,7 +20475,7 @@ performed.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>uri</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.4)"><em>DataFrame</em></a><em> | </em><em>Table</em>) – Source identifier.  Accepts a URI string, a <code class="docutils literal notranslate"><span class="pre">pd.DataFrame</span></code>,
+<li><p><strong>uri</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.5)"><em>DataFrame</em></a><em> | </em><em>Table</em>) – Source identifier.  Accepts a URI string, a <code class="docutils literal notranslate"><span class="pre">pd.DataFrame</span></code>,
 or a <code class="docutils literal notranslate"><span class="pre">pa.Table</span></code>.</p></li>
 <li><p><strong>query</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – Optional SQL override for file-based sources.  Required for
 SQL-scheme (database) sources.</p></li>
@@ -21923,7 +21947,7 @@ from the file extension of <em>uri</em>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>df</strong> (<em>pd.DataFrame</em>) – The <a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.4)"><code class="xref py py-class docutils literal notranslate"><span class="pre">pandas.DataFrame</span></code></a> to serialise.</p></li>
+<li><p><strong>df</strong> (<em>pd.DataFrame</em>) – The <a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.5)"><code class="xref py py-class docutils literal notranslate"><span class="pre">pandas.DataFrame</span></code></a> to serialise.</p></li>
 <li><p><strong>uri</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Destination URI.  Bare paths and <code class="docutils literal notranslate"><span class="pre">file://</span></code> URIs are accepted.
 Cloud URIs raise <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#NotImplementedError" title="(in Python v3.14)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">NotImplementedError</span></code></a>.</p></li>
 <li><p><strong>fmt</strong> (<a class="reference internal" href="#pycypher.ingestion.config.OutputFormat" title="pycypher.ingestion.config.OutputFormat"><em>OutputFormat</em></a><em> | </em><em>None</em>) – Explicit <a class="reference internal" href="#pycypher.ingestion.config.OutputFormat" title="pycypher.ingestion.config.OutputFormat"><code class="xref py py-class docutils literal notranslate"><span class="pre">OutputFormat</span></code></a>.
@@ -22255,7 +22279,7 @@ Set to <code class="docutils literal notranslate"><span class="pre">True</span><
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>df</strong> (<a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.4)"><em>DataFrame</em></a>) – DataFrame whose rows represent nodes.  Must contain
+<li><p><strong>df</strong> (<a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.5)"><em>DataFrame</em></a>) – DataFrame whose rows represent nodes.  Must contain
 <code class="docutils literal notranslate"><span class="pre">mapping.id_column</span></code> and all columns referenced by
 <code class="docutils literal notranslate"><span class="pre">mapping.property_columns.values()</span></code>.</p></li>
 <li><p><strong>mapping</strong> (<a class="reference internal" href="#pycypher.sinks.neo4j.NodeMapping" title="pycypher.sinks.neo4j.NodeMapping"><em>NodeMapping</em></a>) – Declares how columns map onto the target label and
@@ -22284,7 +22308,7 @@ exist in the database.  Write nodes first with <a class="reference internal" hre
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>df</strong> (<a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.4)"><em>DataFrame</em></a>) – DataFrame whose rows represent relationships.  Must contain
+<li><p><strong>df</strong> (<a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.5)"><em>DataFrame</em></a>) – DataFrame whose rows represent relationships.  Must contain
 <code class="docutils literal notranslate"><span class="pre">mapping.source_id_column</span></code>, <code class="docutils literal notranslate"><span class="pre">mapping.target_id_column</span></code>,
 and all columns referenced by
 <code class="docutils literal notranslate"><span class="pre">mapping.property_columns.values()</span></code>.</p></li>
@@ -22550,7 +22574,7 @@ and metrics information for the coordinator.</p>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#Exception" title="(in Python v3.14)"><strong>Exception</strong></a> – On query failure.</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.4)"><em>DataFrame</em></a></p>
+<dd class="field-even"><p><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.5)"><em>DataFrame</em></a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -23007,7 +23031,7 @@ instance.  If <code class="docutils literal notranslate"><span class="pre">None<
 <dd class="field-even"><p>DataFrame with result rows.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.4)"><em>DataFrame</em></a></p>
+<dd class="field-odd"><p><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.5)"><em>DataFrame</em></a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -23101,7 +23125,7 @@ heartbeat is marked unavailable.</p></li>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#RuntimeError" title="(in Python v3.14)"><strong>RuntimeError</strong></a> – If no active workers are available.</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.4)"><em>DataFrame</em></a></p>
+<dd class="field-even"><p><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.5)"><em>DataFrame</em></a></p>
 </dd>
 </dl>
 </dd></dl>

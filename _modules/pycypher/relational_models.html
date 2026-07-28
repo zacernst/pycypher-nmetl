@@ -1614,13 +1614,17 @@
 
 <div class="viewcode-block" id="Context.__init__">
 <a class="viewcode-back" href="../../api/pycypher.html#pycypher.relational_models.Context.__init__">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">backend</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">data</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">backend</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">instrument</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">data</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialise the query context with entity/relationship data and a backend engine.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            backend: Backend engine or hint string (``&quot;pandas&quot;``, ``&quot;duckdb&quot;``,</span>
 <span class="sd">                ``&quot;polars&quot;``, ``&quot;auto&quot;``).  Defaults to :class:`PandasBackend`</span>
 <span class="sd">                when ``None`` or ``&quot;pandas&quot;``.</span>
+<span class="sd">            instrument: When ``True``, wrap the resolved backend in</span>
+<span class="sd">                :class:`~pycypher.backend_engine.InstrumentedBackend` so every</span>
+<span class="sd">                operation logs its backend name and timing at DEBUG level</span>
+<span class="sd">                (used by ``nmetl run --verbose``).</span>
 <span class="sd">            **data: Pydantic field values — typically ``entity_mapping``,</span>
 <span class="sd">                ``relationship_mapping``, and ``functions``.</span>
 
@@ -1654,7 +1658,12 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="c1"># Pre-constructed BackendEngine instance</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_backend</span> <span class="o">=</span> <span class="n">backend</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_backend_hint</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">backend</span><span class="p">,</span> <span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="s2">&quot;custom&quot;</span><span class="p">)</span></div>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_backend_hint</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">backend</span><span class="p">,</span> <span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="s2">&quot;custom&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">instrument</span><span class="p">:</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">pycypher.backend_engine</span><span class="w"> </span><span class="kn">import</span> <span class="n">InstrumentedBackend</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_backend</span> <span class="o">=</span> <span class="n">InstrumentedBackend</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_backend</span><span class="p">)</span></div>
 
 
     <span class="nd">@property</span>
