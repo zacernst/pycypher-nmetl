@@ -18,7 +18,7 @@ export PYCYPHER_DIR := ${PACKAGES_DIR}/pycypher
 export SHARED_DIR := ${PACKAGES_DIR}/shared
 export FASTOPENDATA_DIR := ${PACKAGES_DIR}/fastopendata
 export LC_ALL := C
-export DATA_DIR := /mnt/2tb/fastopendata/data
+export DATA_DIR := /home/zac/scratch/# /mnt/2tb/fastopendata/data
 export SAMPLE_DATA_DIR := /mnt/2tb/fastopendata/sample_data
 # Deliberately NOT nested under DATA_DIR: DATA_DIR is bind-mounted read-write
 # into the nominatim container at /nominatim/data, and the mediagis/nominatim

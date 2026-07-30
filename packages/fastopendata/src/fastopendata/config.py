@@ -479,7 +479,10 @@ class Config:
         msg = f"Dataset {dataset_name} has no URL configured"
         raise ValueError(msg)
 
-    # Geography configuration
+    @property# Geography configuration
+    def fsq_parquet_files(self) -> list[str]:
+        """List of parquet files from foursquare open data set"""
+        return self._data["data_file_lists"]["fsq_parquet_files"]
 
     @property
     def state_fips(self) -> list[str]:
