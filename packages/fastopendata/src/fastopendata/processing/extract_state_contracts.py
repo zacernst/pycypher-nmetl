@@ -10,7 +10,7 @@ Usage:
 Environment variables:
     STATE_FIPS  — 2-digit FIPS code (e.g. "13" for Georgia)
     DATA_DIR    — directory containing the source CSV files (default: raw_data)
-    CONTRACT_GLOB — glob pattern for input files (default: FY2025_All_Contracts_Full_*.csv)
+    CONTRACT_GLOB — glob pattern for input files (default: FY2025_All_Contracts_Full*.csv)
 """
 
 from __future__ import annotations
@@ -32,7 +32,7 @@ POP_STATE_FIPS_COL = "prime_award_transaction_place_of_performance_state_fips_co
 def extract_state_contracts(
     state_fips: str,
     data_dir: Path,
-    contract_glob: str = "FY2025_All_Contracts_Full_*.csv",
+    contract_glob: str = "FY2025_All_Contracts_Full*.csv",
     output_filename: str | None = None,
 ) -> Path:
     """Filter contract CSVs to rows matching a state FIPS code.
@@ -121,7 +121,7 @@ def main() -> None:
 
     data_dir = Path(os.environ.get("DATA_DIR", "raw_data"))
     contract_glob = os.environ.get(
-        "CONTRACT_GLOB", "FY2025_All_Contracts_Full_*.csv"
+        "CONTRACT_GLOB", "FY2025_All_Contracts_Full*.csv"
     )
 
     try:

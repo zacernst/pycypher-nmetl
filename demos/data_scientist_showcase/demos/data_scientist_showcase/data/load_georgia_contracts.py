@@ -6,7 +6,7 @@ analysis in the demonstration scripts.
 
 The raw data lives at::
 
-    packages/fastopendata/FY2025_All_Contracts_Full_20260307_*.csv
+    packages/fastopendata/FY2025_All_Contracts_Full.csv
 
 This module produces a trimmed DataFrame with the most interesting columns
 for demonstrating real-world data messiness, geographic analysis, and
@@ -86,7 +86,7 @@ GA_COUNTY_FIPS_MAX = "13321"
 def load_georgia_contracts(
     *,
     data_dir: Path | None = None,
-    contract_glob: str = "FY2025_All_Contracts_Full_*.csv",
+    contract_glob: str = "FY2025_All_Contracts_Full*.csv",
     max_rows: int | None = None,
     columns: list[str] | None = None,
     verbose: bool = True,

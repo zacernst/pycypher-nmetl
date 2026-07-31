@@ -26,6 +26,9 @@ sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 from fastopendata.config import config as fod_config
 from fastopendata.etl.state_pipeline import state_label
+from fastopendata.processing.resolve_fy2025_contracts_filename import (
+    resolve_latest_filename,
+)
 
 DOCS_DIR = str(Path(workflow.basedir).parent.parent / "docs")
 
@@ -82,6 +85,17 @@ SAMPLE_STATE_ABBREV = [
     state_label(fips)[0].lower() for fips in fod_config.sample_state_fips
 ]
 
+# Fixed, date-free local names for the USAspending FY2025 "All Contracts
+# Full" archive. The remote filename changes periodically
+# (FY2025_All_Contracts_Full_<YYYYMMDD>.zip) -- rule download_fy2025_contracts
+# resolves the current remote name at execution time via
+# resolve_fy2025_contracts_filename.py and saves it locally under these
+# fixed names, so every downstream rule/consumer can reference a single
+# stable path instead of a moving date suffix.
+FY2025_CONTRACTS_ZIP = f"{DATA_DIR}/FY2025_All_Contracts_Full.zip"
+FY2025_CONTRACTS_CSV = f"{DATA_DIR}/FY2025_All_Contracts_Full.csv"
+FY2025_CONTRACTS_CSV_SAMPLE = f"{SAMPLE_DATA_DIR}/FY2025_All_Contracts_Full.csv"
+
 # ---------------------------------------------------------------------------
 # all — every terminal artifact in the pipeline
 # ---------------------------------------------------------------------------
@@ -119,7 +133,7 @@ rule all:
         # expand(f"{DATA_DIR}/tl_2025_{{zipcode}}_addr.dbf", zipcode=fod_config.zips),
         # expand(f"{DATA_DIR}/tl_2025_{{fips}}_tract.shp", fips=fod_config.state_fips),
         # expand(f"{DATA_DIR}/tl_2024_{{state_fips}}_bg.shp", state_fips=fod_config.state_fips),
-        f"{DATA_DIR}/FY2025_All_Contracts_Full_20260706.csv",
+        FY2025_CONTRACTS_CSV,
 
 rule unzip_common_core_fiscal_data_2022:
     input: f"{DATA_DIR}/common_core_fiscal_2022.zip"
@@ -927,20 +941,30 @@ rule concatenate_tiger_tabblock:
 # ===========================================================================
 
 rule download_fy2025_contracts:
-    """Flaky because the target file to download changes filename periodically."""
-    output: f"{DATA_DIR}/FY2025_All_Contracts_Full_20260706.zip"
+    """The remote target changes filename periodically
+    (FY2025_All_Contracts_Full_<YYYYMMDD>.zip). resolve_latest_filename()
+    looks up the current name from the USAspending S3 listing at execution
+    time; the file is saved locally under the fixed FY2025_CONTRACTS_ZIP
+    name so downstream rules never depend on the remote date suffix."""
+    output: FY2025_CONTRACTS_ZIP
+    params:
+        remote_filename=lambda wildcards: resolve_latest_filename()
     shell:
         "sleep $((5 + RANDOM % 10)) && "
         f"{CENSUS_WGET} --timeout={SHORT_TIMEOUT_SECONDS} --continue --tries=100"
-        "    'https://files.usaspending.gov/award_data_archive/FY2025_All_Contracts_Full_20260706.zip'"
+        "    'https://files.usaspending.gov/award_data_archive/{params.remote_filename}'"
         "    -O - > {output}"
 
 
 rule extract_fy2025_contracts:
-    input: f"{DATA_DIR}/FY2025_All_Contracts_Full_20260706.zip"
-    output: f"{DATA_DIR}/FY2025_All_Contracts_Full_20260706.csv"
+    """The zip's internal CSV member names also embed the release date, so
+    the member names aren't known ahead of time either -- see
+    extract_fy2025_contracts.py, which discovers them from the zip's own
+    member list and combines them under the fixed FY2025_CONTRACTS_CSV name."""
+    input: FY2025_CONTRACTS_ZIP
+    output: FY2025_CONTRACTS_CSV
     shell:
-        "unzip -o {input} -d \"{DATA_DIR}/\" && head -1 {DATA_DIR}/FY2025_All_Contracts_Full_20260706_1.csv > {DATA_DIR}/tmp && cat {DATA_DIR}/FY2025_All_Contracts*csv | grep -v last_modified_date >> {DATA_DIR}/tmp && mv {DATA_DIR}/tmp {DATA_DIR}/FY2025_All_Contracts_Full_20260507.csv"
+        f"uv run python {SCRIPTS}/extract_fy2025_contracts.py '{FY2025_CONTRACTS_ZIP}' '{FY2025_CONTRACTS_CSV}'"
 
 
 rule split_contracts_by_state:
@@ -950,7 +974,7 @@ rule split_contracts_by_state:
     Run per-state:
         DATA_DIR=... snakemake --cores 4 "$DATA_DIR/contracts_state_13.csv"
     """
-    input: f"{DATA_DIR}/FY2025_All_Contracts_Full_20260706.csv"
+    input: FY2025_CONTRACTS_CSV
     output: f"{DATA_DIR}/contracts_state_{{fips}}.csv"
     shell:
         f"STATE_FIPS={{wildcards.fips}} DATA_DIR={DATA_DIR} "
@@ -1091,12 +1115,12 @@ rule sample_combine_contracts:
     pipeline's combined-contracts filename.
     """
     input: _SAMPLE_CONTRACT_FILES
-    output: f"{SAMPLE_DATA_DIR}/FY2025_All_Contracts_Full_20260706.csv"
+    output: FY2025_CONTRACTS_CSV_SAMPLE
     shell:
         f"mkdir -p '{SAMPLE_DATA_DIR}' && "
-        f"head -1 '{_SAMPLE_CONTRACT_FILES[0]}' > '{SAMPLE_DATA_DIR}/FY2025_All_Contracts_Full_20260706.csv' && "
+        f"head -1 '{_SAMPLE_CONTRACT_FILES[0]}' > '{FY2025_CONTRACTS_CSV_SAMPLE}' && "
         + " && ".join(
-            f"tail -n +2 '{f}' >> '{SAMPLE_DATA_DIR}/FY2025_All_Contracts_Full_20260706.csv'"
+            f"tail -n +2 '{f}' >> '{FY2025_CONTRACTS_CSV_SAMPLE}'"
             for f in _SAMPLE_CONTRACT_FILES
         )
 
@@ -1244,7 +1268,7 @@ rule sample_data_full:
         f"{SAMPLE_DATA_DIR}/language_groups.csv",
         f"{SAMPLE_DATA_DIR}/NRI_Table_CensusTracts.csv",
         f"{SAMPLE_DATA_DIR}/food_access.parquet",
-        f"{SAMPLE_DATA_DIR}/FY2025_All_Contracts_Full_20260706.csv",
+        FY2025_CONTRACTS_CSV_SAMPLE,
         f"{SAMPLE_DATA_DIR}/2024_election_returns_county.parquet",
         f"{SAMPLE_DATA_DIR}/output/cjars_joe_2022_co.parquet",
         f"{SAMPLE_DATA_DIR}/slfs23_1a.parquet",

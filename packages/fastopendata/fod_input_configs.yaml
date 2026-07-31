@@ -1967,7 +1967,7 @@ sources:
         TractSNAP: STRING
 
     - id: usa_spending
-      uri: "file:///home/zac/scratch/data/FY2025_All_Contracts_Full_20260506.csv"
+      uri: "file:///home/zac/scratch/data/FY2025_All_Contracts_Full.csv"
       entity_type: FederalAward
       id_col: contract_transaction_unique_key
       schema_hints:
@@ -2644,7 +2644,7 @@ sources:
         FROM source
 
     - id: award_performed_in_state
-      uri: "file:///home/zac/scratch/data/FY2025_All_Contracts_Full_20260506.csv"
+      uri: "file:///home/zac/scratch/data/FY2025_All_Contracts_Full.csv"
       relationship_type: PERFORMED_IN
       source_col: contract_transaction_unique_key
       target_col: prime_award_transaction_place_of_performance_state_fips_code
