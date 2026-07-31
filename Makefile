@@ -18,8 +18,8 @@ export PYCYPHER_DIR := ${PACKAGES_DIR}/pycypher
 export SHARED_DIR := ${PACKAGES_DIR}/shared
 export FASTOPENDATA_DIR := ${PACKAGES_DIR}/fastopendata
 export LC_ALL := C
-export DATA_DIR := /home/zac/scratch/# /mnt/2tb/fastopendata/data
-export SAMPLE_DATA_DIR := /mnt/2tb/fastopendata/sample_data
+export DATA_DIR := /home/zac/scratch/data# /mnt/2tb/fastopendata/data
+export SAMPLE_DATA_DIR := ${DATA_DIR}/sample_data
 # Deliberately NOT nested under DATA_DIR: DATA_DIR is bind-mounted read-write
 # into the nominatim container at /nominatim/data, and the mediagis/nominatim
 # entrypoint does `chown -R nominatim:nominatim /nominatim` on every start.
@@ -27,7 +27,7 @@ export SAMPLE_DATA_DIR := /mnt/2tb/fastopendata/sample_data
 # would silently reach it too (bind mounts of nested host paths are both
 # visible inside the container) and corrupt Postgres's file ownership right
 # after import starts. Keep it a sibling instead.
-export NOMINATIM_PGDATA_DIR := /mnt/2tb/fastopendata/nominatim-postgres
+export NOMINATIM_PGDATA_DIR := /home/zac/scratch/nominatim-postgres
 
 # Documentation paths
 export DOCS_DIR := ${PROJECT_ROOT}/docs

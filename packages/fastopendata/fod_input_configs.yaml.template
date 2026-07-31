@@ -1786,6 +1786,33 @@ sources:
         HIFLD_AREA: STRING
         HIFLD_TYPE: STRING
 
+    - id: cre_social_vulnerability
+      uri: file://${DATA_DIR}/CRE_24_Tract_fips.csv
+      entity_type: Tract
+      id_col: TRACT_FIPS
+      schema_hints:
+        GEO_ID: STRING
+        STATE: STRING
+        COUNTY: STRING
+        TRACT: STRING
+        CBSA: STRING
+        NAME: STRING
+        WATER_TRACT: STRING
+        POPUNI: FLOAT
+        PRED0_E: FLOAT
+        PRED0_M: FLOAT
+        PRED0_PE: FLOAT
+        PRED0_PM: FLOAT
+        PRED12_E: FLOAT
+        PRED12_M: FLOAT
+        PRED12_PE: FLOAT
+        PRED12_PM: FLOAT
+        PRED3_E: FLOAT
+        PRED3_M: FLOAT
+        PRED3_PE: FLOAT
+        PRED3_PM: FLOAT
+        TRACT_FIPS: STRING
+
     - id: food_access
       uri: "file://${DATA_DIR}/food_access.parquet"
       entity_type: Tract
@@ -3806,9 +3833,23 @@ queries:
     description: "All computed and source attributes for each County, one row per county"
     inline: "MATCH (c:County) RETURN id(c) AS county_fips, c.County_Name AS county_name, c.State AS state, c.population_2020 AS population_2020, c.rucc_2023 AS rucc_2023, c.rucc_description AS rucc_description, c.is_metro AS is_metro, c.is_rural AS is_rural, c.rucc_class AS rucc_class, c.pres_rep_votes_2024 AS pres_rep_votes_2024, c.pres_dem_votes_2024 AS pres_dem_votes_2024, c.pres_two_party_votes_2024 AS pres_two_party_votes_2024, c.pres_rep_share_2024 AS pres_rep_share_2024, c.pres_dem_share_2024 AS pres_dem_share_2024, c.pres_rep_margin_2024 AS pres_rep_margin_2024, c.pres_winner_2024 AS pres_winner_2024, c.cjars_felony_employment_rate AS cjars_felony_employment_rate, c.cjars_felony_earnings AS cjars_felony_earnings, c.cjars_felony_medicaid_rate AS cjars_felony_medicaid_rate, c.cjars_felony_ssi_rate AS cjars_felony_ssi_rate, c.cjars_felony_hud_rate AS cjars_felony_hud_rate, c.cjars_felony_death_rate AS cjars_felony_death_rate, c.cjars_misdemeanor_employment_rate AS cjars_misdemeanor_employment_rate, c.cjars_misdemeanor_earnings AS cjars_misdemeanor_earnings, c.cjars_misdemeanor_medicaid_rate AS cjars_misdemeanor_medicaid_rate, c.cjars_misdemeanor_ssi_rate AS cjars_misdemeanor_ssi_rate, c.cjars_misdemeanor_hud_rate AS cjars_misdemeanor_hud_rate, c.cjars_misdemeanor_death_rate AS cjars_misdemeanor_death_rate, c.school_avg_per_pupil_spend AS school_avg_per_pupil_spend, c.school_count AS school_count, c.school_charter_share AS school_charter_share, c.school_avg_federal_revenue_share AS school_avg_federal_revenue_share, c.school_avg_local_revenue_share AS school_avg_local_revenue_share, c.school_total_enrollment AS school_total_enrollment, c.school_avg_instruction_spend_share AS school_avg_instruction_spend_share, c.school_elementary_count AS school_elementary_count, c.school_middle_count AS school_middle_count, c.school_high_count AS school_high_count, c.school_special_ed_share AS school_special_ed_share, c.school_high_federal_dependency_share AS school_high_federal_dependency_share, c.school_per_pupil_spend_vs_state_avg AS school_per_pupil_spend_vs_state_avg"
 
+  - id: cre_social_vulnerability
+    description: "Copy Community Resilience Estimates population and social-vulnerability rates onto each Tract node"
+    inline: "MATCH (t:Tract) WITH t, t.POPUNI AS cre_population, t.PRED0_PE AS cre_pct_zero_vulnerability, t.PRED0_PM AS cre_pct_zero_vulnerability_moe, t.PRED12_PE AS cre_pct_one_two_vulnerability, t.PRED12_PM AS cre_pct_one_two_vulnerability_moe, t.PRED3_PE AS cre_pct_high_vulnerability, t.PRED3_PM AS cre_pct_high_vulnerability_moe, t.PRED3_E AS cre_high_vulnerability_count, t.PRED3_M AS cre_high_vulnerability_count_moe SET t.cre_population = cre_population, t.cre_pct_zero_vulnerability = cre_pct_zero_vulnerability, t.cre_pct_zero_vulnerability_moe = cre_pct_zero_vulnerability_moe, t.cre_pct_one_two_vulnerability = cre_pct_one_two_vulnerability, t.cre_pct_one_two_vulnerability_moe = cre_pct_one_two_vulnerability_moe, t.cre_pct_high_vulnerability = cre_pct_high_vulnerability, t.cre_pct_high_vulnerability_moe = cre_pct_high_vulnerability_moe, t.cre_high_vulnerability_count = cre_high_vulnerability_count, t.cre_high_vulnerability_count_moe = cre_high_vulnerability_count_moe"
+    property_types:
+      cre_population: float
+      cre_pct_zero_vulnerability: float
+      cre_pct_zero_vulnerability_moe: float
+      cre_pct_one_two_vulnerability: float
+      cre_pct_one_two_vulnerability_moe: float
+      cre_pct_high_vulnerability: float
+      cre_pct_high_vulnerability_moe: float
+      cre_high_vulnerability_count: float
+      cre_high_vulnerability_count_moe: float
+
   - id: tract_all_attributes
     description: "All computed and source attributes for each Tract, one row per tract"
-    inline: "MATCH (t:Tract) RETURN id(t) AS tract_fips, t.longitude AS longitude, t.latitude AS latitude, t.earthquake_building_eal AS earthquake_building_eal, t.earthquake_risk_rating AS earthquake_risk_rating, t.flood_building_eal AS flood_building_eal, t.flood_risk_rating AS flood_risk_rating, t.hail_building_eal AS hail_building_eal, t.hail_risk_score AS hail_risk_score, t.hurricane_building_eal AS hurricane_building_eal, t.hurricane_risk_rating AS hurricane_risk_rating, t.is_elevated_property_risk AS is_elevated_property_risk, t.is_high_earthquake_risk AS is_high_earthquake_risk, t.is_high_flood_risk AS is_high_flood_risk, t.is_high_hurricane_risk AS is_high_hurricane_risk, t.is_high_wildfire_risk AS is_high_wildfire_risk, t.nri_combined_building_eal AS nri_combined_building_eal, t.nri_eal_score AS nri_eal_score, t.nri_eal_total AS nri_eal_total, t.nri_earthquake_risk_score AS nri_earthquake_risk_score, t.nri_flood_risk_score AS nri_flood_risk_score, t.nri_hurricane_risk_score AS nri_hurricane_risk_score, t.nri_resilience AS nri_resilience, t.nri_risk_rating AS nri_risk_rating, t.nri_risk_score AS nri_risk_score, t.nri_social_vulnerability AS nri_social_vulnerability, t.nri_tornado_risk_score AS nri_tornado_risk_score, t.nri_wildfire_risk_score AS nri_wildfire_risk_score, t.rucc_2023 AS rucc_2023, t.rucc_description AS rucc_description, t.tornado_building_eal AS tornado_building_eal, t.wildfire_building_eal AS wildfire_building_eal, t.wildfire_risk_rating AS wildfire_risk_rating, t.wind_building_eal AS wind_building_eal, t.wind_risk_score AS wind_risk_score"
+    inline: "MATCH (t:Tract) RETURN id(t) AS tract_fips, t.longitude AS longitude, t.latitude AS latitude, t.cre_population AS cre_population, t.cre_pct_zero_vulnerability AS cre_pct_zero_vulnerability, t.cre_pct_zero_vulnerability_moe AS cre_pct_zero_vulnerability_moe, t.cre_pct_one_two_vulnerability AS cre_pct_one_two_vulnerability, t.cre_pct_one_two_vulnerability_moe AS cre_pct_one_two_vulnerability_moe, t.cre_pct_high_vulnerability AS cre_pct_high_vulnerability, t.cre_pct_high_vulnerability_moe AS cre_pct_high_vulnerability_moe, t.cre_high_vulnerability_count AS cre_high_vulnerability_count, t.cre_high_vulnerability_count_moe AS cre_high_vulnerability_count_moe, t.earthquake_building_eal AS earthquake_building_eal, t.earthquake_risk_rating AS earthquake_risk_rating, t.flood_building_eal AS flood_building_eal, t.flood_risk_rating AS flood_risk_rating, t.hail_building_eal AS hail_building_eal, t.hail_risk_score AS hail_risk_score, t.hurricane_building_eal AS hurricane_building_eal, t.hurricane_risk_rating AS hurricane_risk_rating, t.is_elevated_property_risk AS is_elevated_property_risk, t.is_high_earthquake_risk AS is_high_earthquake_risk, t.is_high_flood_risk AS is_high_flood_risk, t.is_high_hurricane_risk AS is_high_hurricane_risk, t.is_high_wildfire_risk AS is_high_wildfire_risk, t.nri_combined_building_eal AS nri_combined_building_eal, t.nri_eal_score AS nri_eal_score, t.nri_eal_total AS nri_eal_total, t.nri_earthquake_risk_score AS nri_earthquake_risk_score, t.nri_flood_risk_score AS nri_flood_risk_score, t.nri_hurricane_risk_score AS nri_hurricane_risk_score, t.nri_resilience AS nri_resilience, t.nri_risk_rating AS nri_risk_rating, t.nri_risk_score AS nri_risk_score, t.nri_social_vulnerability AS nri_social_vulnerability, t.nri_tornado_risk_score AS nri_tornado_risk_score, t.nri_wildfire_risk_score AS nri_wildfire_risk_score, t.rucc_2023 AS rucc_2023, t.rucc_description AS rucc_description, t.tornado_building_eal AS tornado_building_eal, t.wildfire_building_eal AS wildfire_building_eal, t.wildfire_risk_rating AS wildfire_risk_rating, t.wind_building_eal AS wind_building_eal, t.wind_risk_score AS wind_risk_score"
 
   - id: state_all_attributes
     description: "All computed and source attributes for each State, one row per state"

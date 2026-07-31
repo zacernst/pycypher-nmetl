@@ -7,7 +7,7 @@ functions:
 sources:
   entities:
     - id: osm_nodes
-      uri: "file:///mnt/2tb/fastopendata/sample_data/united_states_nodes_tract_crosswalk.parquet"
+      uri: "file:///home/zac/scratch/data/united_states_nodes_tract_crosswalk.parquet"
       entity_type: OSMNode
       id_col: id
       schema_hints:
@@ -17,7 +17,7 @@ sources:
         id: BIGINT
 
     - id: state_crosswalk
-      uri: "file:///mnt/2tb/fastopendata/sample_data/state_county_tract_puma_crosswalk.csv"
+      uri: "file:///home/zac/scratch/data/state_county_tract_puma_crosswalk.csv"
       entity_type: State
       id_col: STATE_FIPS
       schema_hints:
@@ -31,7 +31,7 @@ sources:
         PUMA_FIPS: STRING
 
     - id: county_crosswalk
-      uri: "file:///mnt/2tb/fastopendata/sample_data/state_county_tract_puma_crosswalk.csv"
+      uri: "file:///home/zac/scratch/data/state_county_tract_puma_crosswalk.csv"
       entity_type: County
       id_col: COUNTY_FIPS
       schema_hints:
@@ -45,7 +45,7 @@ sources:
         PUMA_FIPS: STRING
 
     - id: rural_urban_county_codes
-      uri: "file:///mnt/2tb/fastopendata/sample_data/rural_urban_county_codes.parquet"
+      uri: "file:///home/zac/scratch/data/rural_urban_county_codes.parquet"
       entity_type: County
       id_col: FIPS
       schema_hints:
@@ -57,7 +57,7 @@ sources:
         rucc_description: STRING
 
     - id: tract_crosswalk
-      uri: "file:///mnt/2tb/fastopendata/sample_data/state_county_tract_puma_crosswalk.csv"
+      uri: "file:///home/zac/scratch/data/state_county_tract_puma_crosswalk.csv"
       entity_type: Tract
       id_col: TRACT_FIPS
       schema_hints:
@@ -71,7 +71,7 @@ sources:
         PUMA_FIPS: STRING
 
     - id: puma_crosswalk
-      uri: "file:///mnt/2tb/fastopendata/sample_data/state_county_tract_puma_crosswalk.csv"
+      uri: "file:///home/zac/scratch/data/state_county_tract_puma_crosswalk.csv"
       entity_type: PUMA
       id_col: PUMA_FIPS
       schema_hints:
@@ -85,7 +85,7 @@ sources:
         PUMA_FIPS: STRING
 
     - id: tract_osm
-      uri: "file:///mnt/2tb/fastopendata/sample_data/united_states_nodes_tract_crosswalk.parquet"
+      uri: "file:///home/zac/scratch/data/united_states_nodes_tract_crosswalk.parquet"
       entity_type: Tract
       id_col: GEOID
       schema_hints:
@@ -94,7 +94,7 @@ sources:
         latitude: float
 
     - id: psam_housing_survey
-      uri: "file:///mnt/2tb/fastopendata/sample_data/psam_hus.parquet"
+      uri: "file:///home/zac/scratch/data/psam_hus.parquet"
       entity_type: HousingSurvey1yr
       id_col: SERIALNO
       query: >-
@@ -354,7 +354,7 @@ sources:
         overcrowded: STRING
 
     - id: psam_person_survey
-      uri: "file:///mnt/2tb/fastopendata/sample_data/psam_pus.parquet"
+      uri: "file:///home/zac/scratch/data/psam_pus.parquet"
       entity_type: PersonSurvey1yr
       id_col: PERSON_ID
       query: >-
@@ -679,7 +679,7 @@ sources:
         language_group: STRING
 
     - id: occupation_groups
-      uri: "file:///mnt/2tb/fastopendata/sample_data/occupation_groups.csv"
+      uri: "file:///home/zac/scratch/data/occupation_groups.csv"
       entity_type: OccupationGroup
       id_col: occ_group_code
       schema_hints:
@@ -689,7 +689,7 @@ sources:
         socp_max: BIGINT
 
     - id: occupation_subgroups
-      uri: "file:///mnt/2tb/fastopendata/sample_data/occupation_subgroups.csv"
+      uri: "file:///home/zac/scratch/data/occupation_subgroups.csv"
       entity_type: OccupationSubgroup
       id_col: occ_subgroup_code
       schema_hints:
@@ -699,7 +699,7 @@ sources:
         socp_max: BIGINT
 
     - id: industry_groups
-      uri: "file:///mnt/2tb/fastopendata/sample_data/industry_groups.csv"
+      uri: "file:///home/zac/scratch/data/industry_groups.csv"
       entity_type: IndustryGroup
       id_col: ind_group_code
       schema_hints:
@@ -708,7 +708,7 @@ sources:
         indp_ranges: STRING
 
     - id: language_groups
-      uri: "file:///mnt/2tb/fastopendata/sample_data/language_groups.csv"
+      uri: "file:///home/zac/scratch/data/language_groups.csv"
       entity_type: LanguageGroup
       id_col: lang_group_code
       schema_hints:
@@ -717,7 +717,7 @@ sources:
         lanp_range: STRING
 
     - id: psam_housing_survey_5yr
-      uri: "file:///mnt/2tb/fastopendata/sample_data/psam_hus_5yr.parquet"
+      uri: "file:///home/zac/scratch/data/psam_hus_5yr.parquet"
       entity_type: HousingSurvey5yr
       id_col: SERIALNO
       query: >-
@@ -977,7 +977,7 @@ sources:
         overcrowded: STRING
 
     - id: psam_person_survey_5yr
-      uri: "file:///mnt/2tb/fastopendata/sample_data/psam_pus_5yr.parquet"
+      uri: "file:///home/zac/scratch/data/psam_pus_5yr.parquet"
       entity_type: PersonSurvey5yr
       id_col: PERSON_ID
       query: >-
@@ -1302,7 +1302,7 @@ sources:
         language_group: STRING
 
     - id: fema_risk_index
-      uri: file:///mnt/2tb/fastopendata/sample_data/NRI_Table_CensusTracts.csv
+      uri: file:///home/zac/scratch/data/NRI_Table_CensusTracts.csv
       entity_type: Tract
       id_col: TRACTFIPS
       schema_hints:
@@ -1786,8 +1786,35 @@ sources:
         HIFLD_AREA: STRING
         HIFLD_TYPE: STRING
 
+    - id: cre_social_vulnerability
+      uri: file:///home/zac/scratch/data/CRE_24_Tract_fips.csv
+      entity_type: Tract
+      id_col: TRACT_FIPS
+      schema_hints:
+        GEO_ID: STRING
+        STATE: STRING
+        COUNTY: STRING
+        TRACT: STRING
+        CBSA: STRING
+        NAME: STRING
+        WATER_TRACT: STRING
+        POPUNI: FLOAT
+        PRED0_E: FLOAT
+        PRED0_M: FLOAT
+        PRED0_PE: FLOAT
+        PRED0_PM: FLOAT
+        PRED12_E: FLOAT
+        PRED12_M: FLOAT
+        PRED12_PE: FLOAT
+        PRED12_PM: FLOAT
+        PRED3_E: FLOAT
+        PRED3_M: FLOAT
+        PRED3_PE: FLOAT
+        PRED3_PM: FLOAT
+        TRACT_FIPS: STRING
+
     - id: food_access
-      uri: "file:///mnt/2tb/fastopendata/sample_data/food_access.parquet"
+      uri: "file:///home/zac/scratch/data/food_access.parquet"
       entity_type: Tract
       id_col: TRACT_FIPS
       schema_hints:
@@ -1940,7 +1967,7 @@ sources:
         TractSNAP: STRING
 
     - id: usa_spending
-      uri: "file:///mnt/2tb/fastopendata/sample_data/FY2025_All_Contracts_Full_20260506.csv"
+      uri: "file:///home/zac/scratch/data/FY2025_All_Contracts_Full_20260506.csv"
       entity_type: FederalAward
       id_col: contract_transaction_unique_key
       schema_hints:
@@ -2238,7 +2265,7 @@ sources:
         last_modified_date: TIMESTAMP WITH TIME ZONE
 
     - id: presidential_results_2024
-      uri: "file:///mnt/2tb/fastopendata/sample_data/2024_election_returns_county.parquet"
+      uri: "file:///home/zac/scratch/data/2024_election_returns_county.parquet"
       entity_type: CountyElectionResult
       id_col: county_fips_str
       schema_hints:
@@ -2252,7 +2279,7 @@ sources:
         pres_winner_2024: STRING
 
     - id: cjars_records
-      uri: "file:///mnt/2tb/fastopendata/sample_data/output/cjars_joe_2022_co.parquet"
+      uri: "file:///home/zac/scratch/data/output/cjars_joe_2022_co.parquet"
       entity_type: CJARSRecord
       id_col: record_id
       schema_hints:
@@ -2277,7 +2304,7 @@ sources:
         statistic: FLOAT
 
     - id: school_fiscal
-      uri: "file:///mnt/2tb/fastopendata/sample_data/slfs23_1a.parquet"
+      uri: "file:///home/zac/scratch/data/slfs23_1a.parquet"
       entity_type: School
       id_col: NCESSCH
       schema_hints:
@@ -2302,7 +2329,7 @@ sources:
 
   relationships:
     - id: county_in_state
-      uri: "file:///mnt/2tb/fastopendata/sample_data/state_county_tract_puma_crosswalk.csv"
+      uri: "file:///home/zac/scratch/data/state_county_tract_puma_crosswalk.csv"
       relationship_type: LOCATED_IN
       source_col: COUNTY_FIPS
       target_col: STATE_FIPS
@@ -2317,7 +2344,7 @@ sources:
         PUMA_FIPS: STRING
 
     - id: tract_in_county
-      uri: "file:///mnt/2tb/fastopendata/sample_data/state_county_tract_puma_crosswalk.csv"
+      uri: "file:///home/zac/scratch/data/state_county_tract_puma_crosswalk.csv"
       relationship_type: LOCATED_IN
       source_col: TRACT_FIPS
       target_col: COUNTY_FIPS
@@ -2332,7 +2359,7 @@ sources:
         PUMA_FIPS: STRING
 
     - id: tract_in_puma
-      uri: "file:///mnt/2tb/fastopendata/sample_data/state_county_tract_puma_crosswalk.csv"
+      uri: "file:///home/zac/scratch/data/state_county_tract_puma_crosswalk.csv"
       relationship_type: LOCATED_IN
       source_col: TRACT_FIPS
       target_col: PUMA_FIPS
@@ -2347,7 +2374,7 @@ sources:
         PUMA_FIPS: STRING
 
     - id: osm_node_in_tract
-      uri: "file:///mnt/2tb/fastopendata/sample_data/united_states_nodes_tract_crosswalk.parquet"
+      uri: "file:///home/zac/scratch/data/united_states_nodes_tract_crosswalk.parquet"
       relationship_type: LOCATED_IN
       source_col: id
       target_col: GEOID
@@ -2356,7 +2383,7 @@ sources:
         id: STRING
 
     - id: puma_in_state
-      uri: "file:///mnt/2tb/fastopendata/sample_data/state_county_tract_puma_crosswalk.csv"
+      uri: "file:///home/zac/scratch/data/state_county_tract_puma_crosswalk.csv"
       relationship_type: LOCATED_IN
       source_col: PUMA_FIPS
       target_col: STATE_FIPS
@@ -2371,21 +2398,21 @@ sources:
         PUMA_FIPS: STRING
 
     - id: person_lives_in_puma
-      uri: "file:///mnt/2tb/fastopendata/sample_data/psam_pus.parquet"
+      uri: "file:///home/zac/scratch/data/psam_pus.parquet"
       relationship_type: LOCATED_IN
       source_col: PERSON_ID
       target_col: PUMA_FIPS
       query: "SELECT SERIALNO || '_' || CAST(SPORDER AS VARCHAR) AS PERSON_ID, STATE || PUMA AS PUMA_FIPS FROM source"
 
     - id: housing_located_in_puma
-      uri: "file:///mnt/2tb/fastopendata/sample_data/psam_hus.parquet"
+      uri: "file:///home/zac/scratch/data/psam_hus.parquet"
       relationship_type: LOCATED_IN
       source_col: SERIALNO
       target_col: PUMA_FIPS
       query: "SELECT SERIALNO, STATE || PUMA AS PUMA_FIPS FROM source"
 
     - id: person_resides_in_unit
-      uri: "file:///mnt/2tb/fastopendata/sample_data/psam_pus.parquet"
+      uri: "file:///home/zac/scratch/data/psam_pus.parquet"
       relationship_type: RESIDES_IN
       source_entity_type: PersonSurvey1yr
       target_entity_type: HousingSurvey1yr
@@ -2394,7 +2421,7 @@ sources:
       query: "SELECT SERIALNO || '_' || CAST(SPORDER AS VARCHAR) AS PERSON_ID, SERIALNO FROM source"
 
     - id: person_works_in_occ_group
-      uri: "file:///mnt/2tb/fastopendata/sample_data/psam_pus.parquet"
+      uri: "file:///home/zac/scratch/data/psam_pus.parquet"
       relationship_type: WORKS_IN
       source_entity_type: PersonSurvey1yr
       target_entity_type: OccupationGroup
@@ -2412,7 +2439,7 @@ sources:
         FROM source) sub WHERE occ_group IS NOT NULL
 
     - id: person_works_in_occ_subgroup
-      uri: "file:///mnt/2tb/fastopendata/sample_data/psam_pus.parquet"
+      uri: "file:///home/zac/scratch/data/psam_pus.parquet"
       relationship_type: WORKS_IN
       source_entity_type: PersonSurvey1yr
       target_entity_type: OccupationSubgroup
@@ -2449,7 +2476,7 @@ sources:
         FROM source) sub WHERE occ_subgroup IS NOT NULL
 
     - id: person_works_in_industry
-      uri: "file:///mnt/2tb/fastopendata/sample_data/psam_pus.parquet"
+      uri: "file:///home/zac/scratch/data/psam_pus.parquet"
       relationship_type: EMPLOYED_IN
       source_entity_type: PersonSurvey1yr
       target_entity_type: IndustryGroup
@@ -2476,7 +2503,7 @@ sources:
         FROM source) sub WHERE industry_group IS NOT NULL
 
     - id: person_speaks_language_group
-      uri: "file:///mnt/2tb/fastopendata/sample_data/psam_pus.parquet"
+      uri: "file:///home/zac/scratch/data/psam_pus.parquet"
       relationship_type: SPEAKS
       source_entity_type: PersonSurvey1yr
       target_entity_type: LanguageGroup
@@ -2494,21 +2521,21 @@ sources:
         FROM source
 
     - id: person_5yr_lives_in_puma
-      uri: "file:///mnt/2tb/fastopendata/sample_data/psam_pus_5yr.parquet"
+      uri: "file:///home/zac/scratch/data/psam_pus_5yr.parquet"
       relationship_type: LOCATED_IN
       source_col: PERSON_ID
       target_col: PUMA_FIPS
       query: "SELECT SERIALNO || '_' || CAST(SPORDER AS VARCHAR) AS PERSON_ID, STATE || PUMA AS PUMA_FIPS FROM source"
 
     - id: housing_5yr_located_in_puma
-      uri: "file:///mnt/2tb/fastopendata/sample_data/psam_hus_5yr.parquet"
+      uri: "file:///home/zac/scratch/data/psam_hus_5yr.parquet"
       relationship_type: LOCATED_IN
       source_col: SERIALNO
       target_col: PUMA_FIPS
       query: "SELECT SERIALNO, STATE || PUMA AS PUMA_FIPS FROM source"
 
     - id: person_5yr_resides_in_unit
-      uri: "file:///mnt/2tb/fastopendata/sample_data/psam_pus_5yr.parquet"
+      uri: "file:///home/zac/scratch/data/psam_pus_5yr.parquet"
       relationship_type: RESIDES_IN
       source_entity_type: PersonSurvey5yr
       target_entity_type: HousingSurvey5yr
@@ -2517,7 +2544,7 @@ sources:
       query: "SELECT SERIALNO || '_' || CAST(SPORDER AS VARCHAR) AS PERSON_ID, SERIALNO FROM source"
 
     - id: person_5yr_works_in_occ_group
-      uri: "file:///mnt/2tb/fastopendata/sample_data/psam_pus_5yr.parquet"
+      uri: "file:///home/zac/scratch/data/psam_pus_5yr.parquet"
       relationship_type: WORKS_IN
       source_entity_type: PersonSurvey5yr
       target_entity_type: OccupationGroup
@@ -2535,7 +2562,7 @@ sources:
         FROM source) sub WHERE occ_group IS NOT NULL
 
     - id: person_5yr_works_in_occ_subgroup
-      uri: "file:///mnt/2tb/fastopendata/sample_data/psam_pus_5yr.parquet"
+      uri: "file:///home/zac/scratch/data/psam_pus_5yr.parquet"
       relationship_type: WORKS_IN
       source_entity_type: PersonSurvey5yr
       target_entity_type: OccupationSubgroup
@@ -2572,7 +2599,7 @@ sources:
         FROM source) sub WHERE occ_subgroup IS NOT NULL
 
     - id: person_5yr_works_in_industry
-      uri: "file:///mnt/2tb/fastopendata/sample_data/psam_pus_5yr.parquet"
+      uri: "file:///home/zac/scratch/data/psam_pus_5yr.parquet"
       relationship_type: EMPLOYED_IN
       source_entity_type: PersonSurvey5yr
       target_entity_type: IndustryGroup
@@ -2599,7 +2626,7 @@ sources:
         FROM source) sub WHERE industry_group IS NOT NULL
 
     - id: person_5yr_speaks_language_group
-      uri: "file:///mnt/2tb/fastopendata/sample_data/psam_pus_5yr.parquet"
+      uri: "file:///home/zac/scratch/data/psam_pus_5yr.parquet"
       relationship_type: SPEAKS
       source_entity_type: PersonSurvey5yr
       target_entity_type: LanguageGroup
@@ -2617,14 +2644,14 @@ sources:
         FROM source
 
     - id: award_performed_in_state
-      uri: "file:///mnt/2tb/fastopendata/sample_data/FY2025_All_Contracts_Full_20260506.csv"
+      uri: "file:///home/zac/scratch/data/FY2025_All_Contracts_Full_20260506.csv"
       relationship_type: PERFORMED_IN
       source_col: contract_transaction_unique_key
       target_col: prime_award_transaction_place_of_performance_state_fips_code
       query: "SELECT contract_transaction_unique_key, prime_award_transaction_place_of_performance_state_fips_code FROM source WHERE prime_award_transaction_place_of_performance_state_fips_code IS NOT NULL"
 
     - id: election_result_in_county
-      uri: "file:///mnt/2tb/fastopendata/sample_data/2024_election_returns_county.parquet"
+      uri: "file:///home/zac/scratch/data/2024_election_returns_county.parquet"
       relationship_type: LOCATED_IN
       source_entity_type: CountyElectionResult
       target_entity_type: County
@@ -2633,7 +2660,7 @@ sources:
       query: "SELECT county_fips_str, county_fips_str AS county_fips_str_target FROM source"
 
     - id: cjars_record_in_county
-      uri: "file:///mnt/2tb/fastopendata/sample_data/output/cjars_joe_2022_co.parquet"
+      uri: "file:///home/zac/scratch/data/output/cjars_joe_2022_co.parquet"
       relationship_type: LOCATED_IN
       source_col: record_id
       target_col: county_fips_5
@@ -2642,7 +2669,7 @@ sources:
         county_fips_5: STRING
 
     - id: school_in_county
-      uri: "file:///mnt/2tb/fastopendata/sample_data/slfs23_1a.parquet"
+      uri: "file:///home/zac/scratch/data/slfs23_1a.parquet"
       relationship_type: LOCATED_IN
       source_col: NCESSCH
       target_col: CNTY
@@ -3806,9 +3833,23 @@ queries:
     description: "All computed and source attributes for each County, one row per county"
     inline: "MATCH (c:County) RETURN id(c) AS county_fips, c.County_Name AS county_name, c.State AS state, c.population_2020 AS population_2020, c.rucc_2023 AS rucc_2023, c.rucc_description AS rucc_description, c.is_metro AS is_metro, c.is_rural AS is_rural, c.rucc_class AS rucc_class, c.pres_rep_votes_2024 AS pres_rep_votes_2024, c.pres_dem_votes_2024 AS pres_dem_votes_2024, c.pres_two_party_votes_2024 AS pres_two_party_votes_2024, c.pres_rep_share_2024 AS pres_rep_share_2024, c.pres_dem_share_2024 AS pres_dem_share_2024, c.pres_rep_margin_2024 AS pres_rep_margin_2024, c.pres_winner_2024 AS pres_winner_2024, c.cjars_felony_employment_rate AS cjars_felony_employment_rate, c.cjars_felony_earnings AS cjars_felony_earnings, c.cjars_felony_medicaid_rate AS cjars_felony_medicaid_rate, c.cjars_felony_ssi_rate AS cjars_felony_ssi_rate, c.cjars_felony_hud_rate AS cjars_felony_hud_rate, c.cjars_felony_death_rate AS cjars_felony_death_rate, c.cjars_misdemeanor_employment_rate AS cjars_misdemeanor_employment_rate, c.cjars_misdemeanor_earnings AS cjars_misdemeanor_earnings, c.cjars_misdemeanor_medicaid_rate AS cjars_misdemeanor_medicaid_rate, c.cjars_misdemeanor_ssi_rate AS cjars_misdemeanor_ssi_rate, c.cjars_misdemeanor_hud_rate AS cjars_misdemeanor_hud_rate, c.cjars_misdemeanor_death_rate AS cjars_misdemeanor_death_rate, c.school_avg_per_pupil_spend AS school_avg_per_pupil_spend, c.school_count AS school_count, c.school_charter_share AS school_charter_share, c.school_avg_federal_revenue_share AS school_avg_federal_revenue_share, c.school_avg_local_revenue_share AS school_avg_local_revenue_share, c.school_total_enrollment AS school_total_enrollment, c.school_avg_instruction_spend_share AS school_avg_instruction_spend_share, c.school_elementary_count AS school_elementary_count, c.school_middle_count AS school_middle_count, c.school_high_count AS school_high_count, c.school_special_ed_share AS school_special_ed_share, c.school_high_federal_dependency_share AS school_high_federal_dependency_share, c.school_per_pupil_spend_vs_state_avg AS school_per_pupil_spend_vs_state_avg"
 
+  - id: cre_social_vulnerability
+    description: "Copy Community Resilience Estimates population and social-vulnerability rates onto each Tract node"
+    inline: "MATCH (t:Tract) WITH t, t.POPUNI AS cre_population, t.PRED0_PE AS cre_pct_zero_vulnerability, t.PRED0_PM AS cre_pct_zero_vulnerability_moe, t.PRED12_PE AS cre_pct_one_two_vulnerability, t.PRED12_PM AS cre_pct_one_two_vulnerability_moe, t.PRED3_PE AS cre_pct_high_vulnerability, t.PRED3_PM AS cre_pct_high_vulnerability_moe, t.PRED3_E AS cre_high_vulnerability_count, t.PRED3_M AS cre_high_vulnerability_count_moe SET t.cre_population = cre_population, t.cre_pct_zero_vulnerability = cre_pct_zero_vulnerability, t.cre_pct_zero_vulnerability_moe = cre_pct_zero_vulnerability_moe, t.cre_pct_one_two_vulnerability = cre_pct_one_two_vulnerability, t.cre_pct_one_two_vulnerability_moe = cre_pct_one_two_vulnerability_moe, t.cre_pct_high_vulnerability = cre_pct_high_vulnerability, t.cre_pct_high_vulnerability_moe = cre_pct_high_vulnerability_moe, t.cre_high_vulnerability_count = cre_high_vulnerability_count, t.cre_high_vulnerability_count_moe = cre_high_vulnerability_count_moe"
+    property_types:
+      cre_population: float
+      cre_pct_zero_vulnerability: float
+      cre_pct_zero_vulnerability_moe: float
+      cre_pct_one_two_vulnerability: float
+      cre_pct_one_two_vulnerability_moe: float
+      cre_pct_high_vulnerability: float
+      cre_pct_high_vulnerability_moe: float
+      cre_high_vulnerability_count: float
+      cre_high_vulnerability_count_moe: float
+
   - id: tract_all_attributes
     description: "All computed and source attributes for each Tract, one row per tract"
-    inline: "MATCH (t:Tract) RETURN id(t) AS tract_fips, t.longitude AS longitude, t.latitude AS latitude, t.earthquake_building_eal AS earthquake_building_eal, t.earthquake_risk_rating AS earthquake_risk_rating, t.flood_building_eal AS flood_building_eal, t.flood_risk_rating AS flood_risk_rating, t.hail_building_eal AS hail_building_eal, t.hail_risk_score AS hail_risk_score, t.hurricane_building_eal AS hurricane_building_eal, t.hurricane_risk_rating AS hurricane_risk_rating, t.is_elevated_property_risk AS is_elevated_property_risk, t.is_high_earthquake_risk AS is_high_earthquake_risk, t.is_high_flood_risk AS is_high_flood_risk, t.is_high_hurricane_risk AS is_high_hurricane_risk, t.is_high_wildfire_risk AS is_high_wildfire_risk, t.nri_combined_building_eal AS nri_combined_building_eal, t.nri_eal_score AS nri_eal_score, t.nri_eal_total AS nri_eal_total, t.nri_earthquake_risk_score AS nri_earthquake_risk_score, t.nri_flood_risk_score AS nri_flood_risk_score, t.nri_hurricane_risk_score AS nri_hurricane_risk_score, t.nri_resilience AS nri_resilience, t.nri_risk_rating AS nri_risk_rating, t.nri_risk_score AS nri_risk_score, t.nri_social_vulnerability AS nri_social_vulnerability, t.nri_tornado_risk_score AS nri_tornado_risk_score, t.nri_wildfire_risk_score AS nri_wildfire_risk_score, t.rucc_2023 AS rucc_2023, t.rucc_description AS rucc_description, t.tornado_building_eal AS tornado_building_eal, t.wildfire_building_eal AS wildfire_building_eal, t.wildfire_risk_rating AS wildfire_risk_rating, t.wind_building_eal AS wind_building_eal, t.wind_risk_score AS wind_risk_score"
+    inline: "MATCH (t:Tract) RETURN id(t) AS tract_fips, t.longitude AS longitude, t.latitude AS latitude, t.cre_population AS cre_population, t.cre_pct_zero_vulnerability AS cre_pct_zero_vulnerability, t.cre_pct_zero_vulnerability_moe AS cre_pct_zero_vulnerability_moe, t.cre_pct_one_two_vulnerability AS cre_pct_one_two_vulnerability, t.cre_pct_one_two_vulnerability_moe AS cre_pct_one_two_vulnerability_moe, t.cre_pct_high_vulnerability AS cre_pct_high_vulnerability, t.cre_pct_high_vulnerability_moe AS cre_pct_high_vulnerability_moe, t.cre_high_vulnerability_count AS cre_high_vulnerability_count, t.cre_high_vulnerability_count_moe AS cre_high_vulnerability_count_moe, t.earthquake_building_eal AS earthquake_building_eal, t.earthquake_risk_rating AS earthquake_risk_rating, t.flood_building_eal AS flood_building_eal, t.flood_risk_rating AS flood_risk_rating, t.hail_building_eal AS hail_building_eal, t.hail_risk_score AS hail_risk_score, t.hurricane_building_eal AS hurricane_building_eal, t.hurricane_risk_rating AS hurricane_risk_rating, t.is_elevated_property_risk AS is_elevated_property_risk, t.is_high_earthquake_risk AS is_high_earthquake_risk, t.is_high_flood_risk AS is_high_flood_risk, t.is_high_hurricane_risk AS is_high_hurricane_risk, t.is_high_wildfire_risk AS is_high_wildfire_risk, t.nri_combined_building_eal AS nri_combined_building_eal, t.nri_eal_score AS nri_eal_score, t.nri_eal_total AS nri_eal_total, t.nri_earthquake_risk_score AS nri_earthquake_risk_score, t.nri_flood_risk_score AS nri_flood_risk_score, t.nri_hurricane_risk_score AS nri_hurricane_risk_score, t.nri_resilience AS nri_resilience, t.nri_risk_rating AS nri_risk_rating, t.nri_risk_score AS nri_risk_score, t.nri_social_vulnerability AS nri_social_vulnerability, t.nri_tornado_risk_score AS nri_tornado_risk_score, t.nri_wildfire_risk_score AS nri_wildfire_risk_score, t.rucc_2023 AS rucc_2023, t.rucc_description AS rucc_description, t.tornado_building_eal AS tornado_building_eal, t.wildfire_building_eal AS wildfire_building_eal, t.wildfire_risk_rating AS wildfire_risk_rating, t.wind_building_eal AS wind_building_eal, t.wind_risk_score AS wind_risk_score"
 
   - id: state_all_attributes
     description: "All computed and source attributes for each State, one row per state"

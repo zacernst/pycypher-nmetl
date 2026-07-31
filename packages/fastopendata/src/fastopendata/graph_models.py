@@ -357,6 +357,15 @@ class State(BaseModel):
 
 
 class Tract(BaseModel):
+    cre_high_vulnerability_count: Optional[float] = Field(default=None, description="Copy Community Resilience Estimates population and social-vulnerability rates onto each Tract node")
+    cre_high_vulnerability_count_moe: Optional[float] = Field(default=None, description="Copy Community Resilience Estimates population and social-vulnerability rates onto each Tract node")
+    cre_pct_high_vulnerability: Optional[float] = Field(default=None, description="Copy Community Resilience Estimates population and social-vulnerability rates onto each Tract node")
+    cre_pct_high_vulnerability_moe: Optional[float] = Field(default=None, description="Copy Community Resilience Estimates population and social-vulnerability rates onto each Tract node")
+    cre_pct_one_two_vulnerability: Optional[float] = Field(default=None, description="Copy Community Resilience Estimates population and social-vulnerability rates onto each Tract node")
+    cre_pct_one_two_vulnerability_moe: Optional[float] = Field(default=None, description="Copy Community Resilience Estimates population and social-vulnerability rates onto each Tract node")
+    cre_pct_zero_vulnerability: Optional[float] = Field(default=None, description="Copy Community Resilience Estimates population and social-vulnerability rates onto each Tract node")
+    cre_pct_zero_vulnerability_moe: Optional[float] = Field(default=None, description="Copy Community Resilience Estimates population and social-vulnerability rates onto each Tract node")
+    cre_population: Optional[float] = Field(default=None, description="Copy Community Resilience Estimates population and social-vulnerability rates onto each Tract node")
     earthquake_building_eal: Optional[float] = Field(default=None, description="Set earthquake risk score, rating, and annualized building loss on each Tract node")
     earthquake_risk_rating: Optional[float] = Field(default=None, description="Set earthquake risk score, rating, and annualized building loss on each Tract node")
     flood_building_eal: Optional[float] = Field(default=None, description="Set riverine flood risk score, rating, and annualized building loss on each Tract node")
