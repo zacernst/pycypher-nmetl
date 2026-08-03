@@ -821,7 +821,7 @@ fod-data-census:
 	$(FOD_SNAKEMAKE) \
 		raw_data/output/cjars_joe_2022_co.csv \
 		raw_data/state_county_tract_puma.csv \
-		raw_data/FY2025_All_Contracts_Full_20260306.csv
+		raw_data/FY2025_All_Contracts_Full.csv
 
 ## Download only TIGER/Line geographic shapefiles
 fod-data-tiger:

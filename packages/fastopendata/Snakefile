@@ -104,8 +104,9 @@ FY2025_CONTRACTS_CSV_SAMPLE = f"{SAMPLE_DATA_DIR}/FY2025_All_Contracts_Full.csv"
 
 rule all:
     input:
-        f"{DATA_DIR}/fsq_us.parquet",
-        f"{DATA_DIR}/output/cjars_joe_2022_co.parquet",
+        ### f"{DATA_DIR}/fsq_us.parquet",
+        f"{DATA_DIR}/fsq_joined_with_tract.parquet",
+        # f"{DATA_DIR}/output/cjars_joe_2022_co.parquet",
         f"{DATA_DIR}/united_states_nodes_tract_crosswalk.parquet",
         f"{DATA_DIR}/psam_pus.parquet",
         f"{DATA_DIR}/puma_combined.shp",
@@ -120,7 +121,7 @@ rule all:
         f"{DATA_DIR}/psam_pus_5yr.parquet",
         f"{DATA_DIR}/psam_hus_5yr.parquet",
         f"{DATA_DIR}/slfs23_1a.parquet",
-        f"{DATA_DIR}/united_states_nodes.parquet",
+        ### f"{DATA_DIR}/united_states_nodes.parquet",
         f"{DATA_DIR}/CRE_24_Tract_fips.parquet",
         ### f"{DATA_DIR}/wikidata_us_points.json",
         f"{DATA_DIR}/2024_election_returns.parquet",
@@ -540,6 +541,14 @@ rule extract_us_four_square_data:
         f"""uv run duckdb -c "SET preserve_insertion_order=false; SET threads=4; COPY
         (SELECT * FROM read_parquet('{DATA_DIR}/release/dt=2026-07-09/places/parquet') WHERE country = 'US') TO '{DATA_DIR}/fsq_us.parquet' (FORMAT parquet, COMPRESSION zstd, ROW_GROUP_SIZE 10_000);" """
 
+rule create_fsq_node_tract_crosswalk:
+    """Spatial join"""
+    input: f"{DATA_DIR}/fsq_us.parquet",
+           f"{DATA_DIR}/tract_combined.shp"
+    output: f"{DATA_DIR}/fsq_joined_with_tract.parquet"
+    shell:
+        f"uv run python {SCRIPTS}/join_fsq_to_tracts.py"
+
 rule download_tiger_tract:
     # resources:
     #     census_download=1
@@ -673,14 +682,14 @@ rule create_osm_node_tract_crosswalk:
            f"{DATA_DIR}/tract_combined.shp"
     output: f"{DATA_DIR}/united_states_nodes_tract_crosswalk.parquet"
     shell:
-        f"uv run python {SCRIPTS}/join_to_tracts.py {DATA_DIR}"
+        f"uv run python {SCRIPTS}/join_united_states_nodes_to_tracts.py {DATA_DIR}"
 
-# rule convert_osm_node_tract_crosswalk_to_parquet:
-#     """Spatial join"""
-#     input: f"{DATA_DIR}/united_states_nodes_tract_crosswalk.csv"
-#     output: f"{DATA_DIR}/united_states_nodes_tract_crosswalk.parquet"
-#     shell:
-#         f"uv run duckdb -c \"COPY '{DATA_DIR}/united_states_nodes_tract_crosswalk.csv' TO '{DATA_DIR}/united_states_nodes_tract_crosswalk.parquet' (FORMAT PARQUET, COMPRESSION 'ZSTD');\""
+rule convert_osm_node_tract_crosswalk_to_parquet:
+    """Spatial join"""
+    input: f"{DATA_DIR}/united_states_nodes_tract_crosswalk.csv"
+    output: f"{DATA_DIR}/united_states_nodes_tract_crosswalk.parquet"
+    shell:
+        f"uv run duckdb -c \"COPY '{DATA_DIR}/united_states_nodes_tract_crosswalk.csv' TO '{DATA_DIR}/united_states_nodes_tract_crosswalk.parquet' (FORMAT PARQUET, COMPRESSION 'ZSTD');\""
 
 
 rule filter_wikidata_us_points:
