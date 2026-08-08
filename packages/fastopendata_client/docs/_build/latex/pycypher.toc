@@ -1,0 +1,812 @@
+\selectlanguage *[]{english}
+\contentsline {chapter}{\numberline {1}Zero to Hello World}{2}{chapter.1}%
+\contentsline {section}{\numberline {1.1}Prerequisites}{2}{section.1.1}%
+\contentsline {section}{\numberline {1.2}Level 1: Your First Query}{2}{section.1.2}%
+\contentsline {section}{\numberline {1.3}Level 2: Filtering with WHERE}{3}{section.1.3}%
+\contentsline {section}{\numberline {1.4}Level 3: Multiple Entity Types}{3}{section.1.4}%
+\contentsline {section}{\numberline {1.5}Level 4: Relationships}{4}{section.1.5}%
+\contentsline {section}{\numberline {1.6}Level 5: Aggregation}{5}{section.1.6}%
+\contentsline {section}{\numberline {1.7}Runnable Example}{5}{section.1.7}%
+\contentsline {section}{\numberline {1.8}Next Steps}{5}{section.1.8}%
+\contentsline {chapter}{\numberline {2}Getting Started}{6}{chapter.2}%
+\contentsline {section}{\numberline {2.1}Installation}{6}{section.2.1}%
+\contentsline {section}{\numberline {2.2}Quick Start: Run Your First Query}{6}{section.2.2}%
+\contentsline {section}{\numberline {2.3}Using ContextBuilder (Recommended)}{7}{section.2.3}%
+\contentsline {section}{\numberline {2.4}One\sphinxhyphen {}Line Context Builder}{8}{section.2.4}%
+\contentsline {section}{\numberline {2.5}Graph Queries: MATCH with Relationships}{8}{section.2.5}%
+\contentsline {section}{\numberline {2.6}WHERE Label Predicates}{8}{section.2.6}%
+\contentsline {section}{\numberline {2.7}Variable\sphinxhyphen {}Length Paths}{9}{section.2.7}%
+\contentsline {section}{\numberline {2.8}shortestPath and allShortestPaths}{9}{section.2.8}%
+\contentsline {section}{\numberline {2.9}OPTIONAL MATCH — Left\sphinxhyphen {}Join Semantics}{10}{section.2.9}%
+\contentsline {section}{\numberline {2.10}WITH + UNWIND: List Explosion}{10}{section.2.10}%
+\contentsline {section}{\numberline {2.11}Aggregation}{11}{section.2.11}%
+\contentsline {section}{\numberline {2.12}WITH * — Pass\sphinxhyphen {}Through Projection}{11}{section.2.12}%
+\contentsline {section}{\numberline {2.13}UNION — Combining Query Results}{12}{section.2.13}%
+\contentsline {section}{\numberline {2.14}Mutating the Graph — CREATE, MERGE, DELETE, REMOVE}{12}{section.2.14}%
+\contentsline {subsection}{\numberline {2.14.1}CREATE — Insert New Nodes and Relationships}{12}{subsection.2.14.1}%
+\contentsline {subsection}{\numberline {2.14.2}MERGE — Upsert Semantics}{12}{subsection.2.14.2}%
+\contentsline {subsection}{\numberline {2.14.3}SET — Update Properties}{13}{subsection.2.14.3}%
+\contentsline {subsection}{\numberline {2.14.4}REMOVE — Delete Properties}{13}{subsection.2.14.4}%
+\contentsline {subsection}{\numberline {2.14.5}DELETE — Remove Nodes}{13}{subsection.2.14.5}%
+\contentsline {section}{\numberline {2.15}FOREACH — Iterate Over a List}{13}{section.2.15}%
+\contentsline {section}{\numberline {2.16}Functional Expressions}{14}{section.2.16}%
+\contentsline {subsection}{\numberline {2.16.1}List Comprehensions}{14}{subsection.2.16.1}%
+\contentsline {subsection}{\numberline {2.16.2}Pattern Comprehensions}{14}{subsection.2.16.2}%
+\contentsline {subsection}{\numberline {2.16.3}Quantifier Predicates}{15}{subsection.2.16.3}%
+\contentsline {subsection}{\numberline {2.16.4}EXISTS Subqueries}{15}{subsection.2.16.4}%
+\contentsline {subsection}{\numberline {2.16.5}REDUCE}{16}{subsection.2.16.5}%
+\contentsline {section}{\numberline {2.17}Scalar Functions}{16}{section.2.17}%
+\contentsline {subsection}{\numberline {2.17.1}Auto\sphinxhyphen {}generated Column Names}{18}{subsection.2.17.1}%
+\contentsline {section}{\numberline {2.18}Running Tests}{19}{section.2.18}%
+\contentsline {section}{\numberline {2.19}Next Steps}{19}{section.2.19}%
+\contentsline {chapter}{\numberline {3}Tutorials}{20}{chapter.3}%
+\contentsline {section}{\numberline {3.1}Cypher for SQL Users}{20}{section.3.1}%
+\contentsline {subsection}{\numberline {3.1.1}The 60\sphinxhyphen {}Second Mental Model}{21}{subsection.3.1.1}%
+\contentsline {subsection}{\numberline {3.1.2}Side\sphinxhyphen {}by\sphinxhyphen {}Side Examples}{21}{subsection.3.1.2}%
+\contentsline {subsubsection}{SELECT … FROM … WHERE}{22}{subsubsection*.30}%
+\contentsline {subsubsection}{JOIN (Inner Join via Relationship)}{22}{subsubsection*.31}%
+\contentsline {subsubsection}{LEFT JOIN (OPTIONAL MATCH)}{23}{subsubsection*.32}%
+\contentsline {subsubsection}{GROUP BY with Aggregation}{23}{subsubsection*.33}%
+\contentsline {subsubsection}{Subqueries (WITH Clause)}{24}{subsubsection*.34}%
+\contentsline {subsubsection}{EXISTS (Subquery Predicate)}{24}{subsubsection*.35}%
+\contentsline {subsubsection}{COLLECT (No SQL Equivalent)}{24}{subsubsection*.36}%
+\contentsline {subsection}{\numberline {3.1.3}Common SQL Patterns Translated}{25}{subsection.3.1.3}%
+\contentsline {subsubsection}{DISTINCT}{25}{subsubsection*.37}%
+\contentsline {subsubsection}{COUNT with Filter}{25}{subsubsection*.38}%
+\contentsline {subsubsection}{LIKE (String Matching)}{25}{subsubsection*.39}%
+\contentsline {subsubsection}{IN List}{25}{subsubsection*.40}%
+\contentsline {subsubsection}{COALESCE / NULL Handling}{25}{subsubsection*.41}%
+\contentsline {subsubsection}{CASE Expressions}{26}{subsubsection*.42}%
+\contentsline {subsubsection}{INSERT / UPDATE / DELETE}{26}{subsubsection*.43}%
+\contentsline {subsection}{\numberline {3.1.4}When to Use Graph Patterns vs SQL Thinking}{26}{subsection.3.1.4}%
+\contentsline {subsection}{\numberline {3.1.5}Key Syntax Differences Cheat Sheet}{27}{subsection.3.1.5}%
+\contentsline {section}{\numberline {3.2}Basic Query Execution}{27}{section.3.2}%
+\contentsline {subsection}{\numberline {3.2.1}Learning Objectives}{27}{subsection.3.2.1}%
+\contentsline {subsection}{\numberline {3.2.2}Setup}{27}{subsection.3.2.2}%
+\contentsline {subsection}{\numberline {3.2.3}Running Queries}{28}{subsection.3.2.3}%
+\contentsline {subsubsection}{Simple MATCH}{28}{subsubsection*.44}%
+\contentsline {subsubsection}{Filtering with WHERE}{28}{subsubsection*.45}%
+\contentsline {subsubsection}{Sorting and Limiting}{28}{subsubsection*.46}%
+\contentsline {subsubsection}{Aggregation}{28}{subsubsection*.47}%
+\contentsline {subsection}{\numberline {3.2.4}Relationship Patterns}{28}{subsection.3.2.4}%
+\contentsline {subsection}{\numberline {3.2.5}Discovering Available Functions}{29}{subsection.3.2.5}%
+\contentsline {subsection}{\numberline {3.2.6}Advanced: Inspecting the Parsed AST}{29}{subsection.3.2.6}%
+\contentsline {subsection}{\numberline {3.2.7}Error Handling}{29}{subsection.3.2.7}%
+\contentsline {subsection}{\numberline {3.2.8}Next Steps}{30}{subsection.3.2.8}%
+\contentsline {section}{\numberline {3.3}Graph Modeling}{30}{section.3.3}%
+\contentsline {subsection}{\numberline {3.3.1}Prerequisites}{31}{subsection.3.3.1}%
+\contentsline {subsection}{\numberline {3.3.2}Why Graph Modeling Matters}{31}{subsection.3.3.2}%
+\contentsline {subsection}{\numberline {3.3.3}The Core Abstraction}{31}{subsection.3.3.3}%
+\contentsline {subsection}{\numberline {3.3.4}Designing Entities}{31}{subsection.3.3.4}%
+\contentsline {subsubsection}{One Table per Concept}{31}{subsubsection*.66}%
+\contentsline {subsubsection}{Choosing IDs}{32}{subsubsection*.67}%
+\contentsline {subsubsection}{Properties}{32}{subsubsection*.68}%
+\contentsline {subsection}{\numberline {3.3.5}Designing Relationships}{32}{subsection.3.3.5}%
+\contentsline {subsubsection}{Relationship Direction}{32}{subsubsection*.69}%
+\contentsline {subsubsection}{Relationship Properties}{33}{subsubsection*.70}%
+\contentsline {subsubsection}{Multiple Relationship Types}{33}{subsubsection*.71}%
+\contentsline {subsection}{\numberline {3.3.6}Common Modeling Patterns}{33}{subsection.3.3.6}%
+\contentsline {subsubsection}{Hub\sphinxhyphen {}and\sphinxhyphen {}Spoke (Star Schema)}{33}{subsubsection*.72}%
+\contentsline {subsubsection}{Chain (Sequential Events)}{34}{subsubsection*.73}%
+\contentsline {subsubsection}{Bipartite Graph}{34}{subsubsection*.74}%
+\contentsline {subsection}{\numberline {3.3.7}Try It Yourself}{35}{subsection.3.3.7}%
+\contentsline {subsection}{\numberline {3.3.8}Common Pitfalls}{35}{subsection.3.3.8}%
+\contentsline {subsection}{\numberline {3.3.9}Next Steps}{35}{subsection.3.3.9}%
+\contentsline {section}{\numberline {3.4}Pattern Matching}{35}{section.3.4}%
+\contentsline {subsection}{\numberline {3.4.1}Learning Objectives}{35}{subsection.3.4.1}%
+\contentsline {subsection}{\numberline {3.4.2}Prerequisites}{36}{subsection.3.4.2}%
+\contentsline {subsection}{\numberline {3.4.3}Relationship Patterns}{36}{subsection.3.4.3}%
+\contentsline {subsection}{\numberline {3.4.4}Label Predicates in WHERE}{37}{subsection.3.4.4}%
+\contentsline {subsection}{\numberline {3.4.5}Variable\sphinxhyphen {}Length Paths}{37}{subsection.3.4.5}%
+\contentsline {subsection}{\numberline {3.4.6}shortestPath and allShortestPaths}{38}{subsection.3.4.6}%
+\contentsline {subsection}{\numberline {3.4.7}OPTIONAL MATCH — Left\sphinxhyphen {}Join Semantics}{39}{subsection.3.4.7}%
+\contentsline {subsection}{\numberline {3.4.8}Cross\sphinxhyphen {}Product MATCH}{39}{subsection.3.4.8}%
+\contentsline {subsection}{\numberline {3.4.9}Pattern Comprehensions}{40}{subsection.3.4.9}%
+\contentsline {subsection}{\numberline {3.4.10}EXISTS Subqueries}{40}{subsection.3.4.10}%
+\contentsline {subsection}{\numberline {3.4.11}Quantifier Predicates}{40}{subsection.3.4.11}%
+\contentsline {subsection}{\numberline {3.4.12}REDUCE Expressions}{41}{subsection.3.4.12}%
+\contentsline {subsection}{\numberline {3.4.13}List Comprehensions}{42}{subsection.3.4.13}%
+\contentsline {subsection}{\numberline {3.4.14}Query Parameters}{42}{subsection.3.4.14}%
+\contentsline {subsection}{\numberline {3.4.15}Performance Tips}{43}{subsection.3.4.15}%
+\contentsline {subsection}{\numberline {3.4.16}Next Steps}{43}{subsection.3.4.16}%
+\contentsline {section}{\numberline {3.5}Query Validation}{43}{section.3.5}%
+\contentsline {subsection}{\numberline {3.5.1}Prerequisites}{44}{subsection.3.5.1}%
+\contentsline {subsection}{\numberline {3.5.2}Overview}{44}{subsection.3.5.2}%
+\contentsline {subsection}{\numberline {3.5.3}Syntax Validation}{44}{subsection.3.5.3}%
+\contentsline {subsubsection}{Quick Check}{44}{subsubsection*.89}%
+\contentsline {subsubsection}{Catching Parse Errors}{44}{subsubsection*.90}%
+\contentsline {subsection}{\numberline {3.5.4}Semantic Validation}{44}{subsection.3.5.4}%
+\contentsline {subsubsection}{Basic Usage}{44}{subsubsection*.91}%
+\contentsline {subsubsection}{Error Severity Levels}{45}{subsubsection*.92}%
+\contentsline {subsubsection}{What Gets Validated}{45}{subsubsection*.93}%
+\contentsline {subsubsection}{Convenience Wrapper}{45}{subsubsection*.94}%
+\contentsline {subsection}{\numberline {3.5.5}AST\sphinxhyphen {}Level Validation}{45}{subsection.3.5.5}%
+\contentsline {subsection}{\numberline {3.5.6}Runtime Exception Handling}{46}{subsection.3.5.6}%
+\contentsline {subsection}{\numberline {3.5.7}Putting It Together}{47}{subsection.3.5.7}%
+\contentsline {subsection}{\numberline {3.5.8}Next Steps}{47}{subsection.3.5.8}%
+\contentsline {section}{\numberline {3.6}AST Manipulation}{47}{section.3.6}%
+\contentsline {subsection}{\numberline {3.6.1}Prerequisites}{48}{subsection.3.6.1}%
+\contentsline {subsection}{\numberline {3.6.2}Overview}{48}{subsection.3.6.2}%
+\contentsline {subsection}{\numberline {3.6.3}Parsing a Query to a Typed AST}{48}{subsection.3.6.3}%
+\contentsline {subsection}{\numberline {3.6.4}Creating AST Nodes from Scratch}{49}{subsection.3.6.4}%
+\contentsline {subsubsection}{Nodes and Labels}{49}{subsubsection*.107}%
+\contentsline {subsubsection}{Relationship Patterns}{49}{subsubsection*.108}%
+\contentsline {subsubsection}{Expressions}{49}{subsubsection*.109}%
+\contentsline {subsection}{\numberline {3.6.5}Traversing the AST}{50}{subsection.3.6.5}%
+\contentsline {subsection}{\numberline {3.6.6}Pretty\sphinxhyphen {}Printing}{51}{subsection.3.6.6}%
+\contentsline {subsection}{\numberline {3.6.7}Validation}{51}{subsection.3.6.7}%
+\contentsline {subsection}{\numberline {3.6.8}Common AST Node Types}{51}{subsection.3.6.8}%
+\contentsline {subsection}{\numberline {3.6.9}Next Steps}{51}{subsection.3.6.9}%
+\contentsline {section}{\numberline {3.7}Data ETL Pipeline}{52}{section.3.7}%
+\contentsline {subsection}{\numberline {3.7.1}Prerequisites}{52}{subsection.3.7.1}%
+\contentsline {subsection}{\numberline {3.7.2}Overview}{52}{subsection.3.7.2}%
+\contentsline {subsection}{\numberline {3.7.3}Programmatic Pipeline}{53}{subsection.3.7.3}%
+\contentsline {subsubsection}{Loading Data with ContextBuilder}{53}{subsubsection*.125}%
+\contentsline {subsubsection}{Quick Setup from a Dict}{53}{subsubsection*.126}%
+\contentsline {subsubsection}{Supported Data Sources}{54}{subsubsection*.127}%
+\contentsline {subsection}{\numberline {3.7.4}YAML Configuration}{54}{subsection.3.7.4}%
+\contentsline {subsubsection}{Config File Structure}{54}{subsubsection*.128}%
+\contentsline {subsubsection}{Environment Variables}{55}{subsubsection*.129}%
+\contentsline {subsection}{\numberline {3.7.5}The \sphinxstyleliteralintitle {\sphinxupquote {nmetl}} CLI}{55}{subsection.3.7.5}%
+\contentsline {subsubsection}{Error Handling}{55}{subsubsection*.130}%
+\contentsline {subsection}{\numberline {3.7.6}Writing Output}{55}{subsection.3.7.6}%
+\contentsline {subsection}{\numberline {3.7.7}Security}{56}{subsection.3.7.7}%
+\contentsline {subsection}{\numberline {3.7.8}Complete Example}{56}{subsection.3.7.8}%
+\contentsline {subsection}{\numberline {3.7.9}Next Steps}{57}{subsection.3.7.9}%
+\contentsline {section}{\numberline {3.8}Integration Guide}{57}{section.3.8}%
+\contentsline {subsection}{\numberline {3.8.1}Prerequisites}{58}{subsection.3.8.1}%
+\contentsline {subsection}{\numberline {3.8.2}Core Integration Pattern}{58}{subsection.3.8.2}%
+\contentsline {subsection}{\numberline {3.8.3}Web API Integration}{58}{subsection.3.8.3}%
+\contentsline {subsubsection}{Flask Example}{58}{subsubsection*.147}%
+\contentsline {subsubsection}{FastAPI Example}{59}{subsubsection*.148}%
+\contentsline {subsubsection}{Query Parameters for Safety}{60}{subsubsection*.149}%
+\contentsline {subsection}{\numberline {3.8.4}Data Pipeline Integration}{60}{subsection.3.8.4}%
+\contentsline {subsubsection}{Batch Processing}{60}{subsubsection*.150}%
+\contentsline {subsubsection}{Mutation Pipelines}{61}{subsubsection*.151}%
+\contentsline {subsubsection}{YAML Pipeline with nmetl}{61}{subsubsection*.152}%
+\contentsline {subsection}{\numberline {3.8.5}Jupyter Notebook Integration}{62}{subsection.3.8.5}%
+\contentsline {subsection}{\numberline {3.8.6}Pre\sphinxhyphen {}Execution Validation}{62}{subsection.3.8.6}%
+\contentsline {subsection}{\numberline {3.8.7}Error Handling Strategy}{63}{subsection.3.8.7}%
+\contentsline {subsection}{\numberline {3.8.8}Context Refresh}{63}{subsection.3.8.8}%
+\contentsline {subsection}{\numberline {3.8.9}Production Checklist}{63}{subsection.3.8.9}%
+\contentsline {subsection}{\numberline {3.8.10}Next Steps}{64}{subsection.3.8.10}%
+\contentsline {section}{\numberline {3.9}Production Deployment Patterns}{64}{section.3.9}%
+\contentsline {subsection}{\numberline {3.9.1}Prerequisites}{64}{subsection.3.9.1}%
+\contentsline {subsection}{\numberline {3.9.2}Backend Selection}{64}{subsection.3.9.2}%
+\contentsline {subsection}{\numberline {3.9.3}Rate Limiting}{65}{subsection.3.9.3}%
+\contentsline {subsection}{\numberline {3.9.4}Audit Logging}{66}{subsection.3.9.4}%
+\contentsline {subsection}{\numberline {3.9.5}Timeouts and Memory Budgets}{66}{subsection.3.9.5}%
+\contentsline {subsection}{\numberline {3.9.6}Result Caching}{67}{subsection.3.9.6}%
+\contentsline {subsection}{\numberline {3.9.7}Complete Production Checklist}{67}{subsection.3.9.7}%
+\contentsline {subsection}{\numberline {3.9.8}Next Steps}{68}{subsection.3.9.8}%
+\contentsline {section}{\numberline {3.10}ML\sphinxhyphen {}Powered Query Optimization}{68}{section.3.10}%
+\contentsline {subsection}{\numberline {3.10.1}Learning Objectives}{68}{subsection.3.10.1}%
+\contentsline {subsection}{\numberline {3.10.2}Prerequisites}{69}{subsection.3.10.2}%
+\contentsline {subsection}{\numberline {3.10.3}Architecture Overview}{69}{subsection.3.10.3}%
+\contentsline {subsection}{\numberline {3.10.4}Getting Started}{69}{subsection.3.10.4}%
+\contentsline {subsection}{\numberline {3.10.5}Query Fingerprinting}{69}{subsection.3.10.5}%
+\contentsline {subsection}{\numberline {3.10.6}Adaptive Plan Caching}{70}{subsection.3.10.6}%
+\contentsline {subsubsection}{Measuring Cache Effectiveness}{70}{subsubsection*.180}%
+\contentsline {subsubsection}{Cache Configuration}{70}{subsubsection*.181}%
+\contentsline {subsubsection}{Mutation Invalidation}{71}{subsubsection*.182}%
+\contentsline {subsection}{\numberline {3.10.7}Predicate Selectivity Learning}{71}{subsection.3.10.7}%
+\contentsline {subsubsection}{Using Correction Factors}{71}{subsubsection*.183}%
+\contentsline {subsection}{\numberline {3.10.8}Join Strategy Learning}{71}{subsection.3.10.8}%
+\contentsline {subsubsection}{Size Buckets}{72}{subsubsection*.184}%
+\contentsline {subsubsection}{Strategy Statistics}{72}{subsubsection*.185}%
+\contentsline {subsection}{\numberline {3.10.9}Diagnostics}{72}{subsection.3.10.9}%
+\contentsline {subsubsection}{Resetting State}{73}{subsubsection*.186}%
+\contentsline {subsection}{\numberline {3.10.10}Configuration Constants}{73}{subsection.3.10.10}%
+\contentsline {subsection}{\numberline {3.10.11}Try It Yourself}{73}{subsection.3.10.11}%
+\contentsline {subsection}{\numberline {3.10.12}Next Steps}{73}{subsection.3.10.12}%
+\contentsline {section}{\numberline {3.11}Troubleshooting Queries}{73}{section.3.11}%
+\contentsline {subsection}{\numberline {3.11.1}Prerequisites}{74}{subsection.3.11.1}%
+\contentsline {subsection}{\numberline {3.11.2}Diagnostic Tools}{74}{subsection.3.11.2}%
+\contentsline {subsubsection}{Enable Debug Logging}{74}{subsubsection*.206}%
+\contentsline {subsubsection}{Validate Before Executing}{74}{subsubsection*.207}%
+\contentsline {subsubsection}{Check Available Functions}{74}{subsubsection*.208}%
+\contentsline {subsubsection}{Inspect the Parsed AST}{75}{subsubsection*.209}%
+\contentsline {subsubsection}{Query Metrics}{75}{subsubsection*.210}%
+\contentsline {subsection}{\numberline {3.11.3}Parse Errors}{75}{subsection.3.11.3}%
+\contentsline {subsubsection}{“Syntax error” or UnexpectedInput}{75}{subsubsection*.211}%
+\contentsline {subsection}{\numberline {3.11.4}Missing or Empty Results}{76}{subsection.3.11.4}%
+\contentsline {subsubsection}{Query returns empty DataFrame}{76}{subsubsection*.212}%
+\contentsline {subsubsection}{Property returns NULL unexpectedly}{76}{subsubsection*.213}%
+\contentsline {subsubsection}{Unexpected extra rows}{77}{subsubsection*.214}%
+\contentsline {subsection}{\numberline {3.11.5}Performance Issues}{77}{subsection.3.11.5}%
+\contentsline {subsubsection}{Query is slow}{77}{subsubsection*.215}%
+\contentsline {subsubsection}{Memory usage is high}{77}{subsubsection*.216}%
+\contentsline {subsection}{\numberline {3.11.6}Exception Reference}{78}{subsection.3.11.6}%
+\contentsline {subsection}{\numberline {3.11.7}Try It Yourself}{78}{subsection.3.11.7}%
+\contentsline {subsection}{\numberline {3.11.8}Next Steps}{78}{subsection.3.11.8}%
+\contentsline {section}{\numberline {3.12}Learning Pathway}{78}{section.3.12}%
+\contentsline {section}{\numberline {3.13}Prerequisites}{79}{section.3.13}%
+\contentsline {section}{\numberline {3.14}Related Resources}{79}{section.3.14}%
+\contentsline {subsection}{\numberline {3.14.1}Example Scripts}{80}{subsection.3.14.1}%
+\contentsline {chapter}{\numberline {4}API Reference}{81}{chapter.4}%
+\contentsline {section}{\numberline {4.1}PyCypher API}{81}{section.4.1}%
+\contentsline {subsection}{\numberline {4.1.1}Quick Start}{81}{subsection.4.1.1}%
+\contentsline {subsection}{\numberline {4.1.2}Core Modules}{82}{subsection.4.1.2}%
+\contentsline {subsubsection}{AST Models}{82}{subsubsection*.217}%
+\contentsline {subsubsection}{Grammar Parser}{115}{subsubsection*.600}%
+\contentsline {subsubsection}{Grammar Transformers}{118}{subsubsection*.615}%
+\contentsline {subsubsection}{Grammar Rule Mixins}{120}{subsubsection*.626}%
+\contentsline {paragraph}{Architecture}{120}{paragraph*.628}%
+\contentsline {subsubsection}{AST Converter}{154}{subsubsection*.803}%
+\contentsline {subsubsection}{AST Rewriter}{154}{subsubsection*.808}%
+\contentsline {subsection}{\numberline {4.1.3}Data Model}{156}{subsection.4.1.3}%
+\contentsline {subsubsection}{Relational Models}{156}{subsubsection*.815}%
+\contentsline {paragraph}{Data containers}{156}{paragraph*.817}%
+\contentsline {paragraph}{Context and atomicity}{156}{paragraph*.818}%
+\contentsline {paragraph}{Key constants}{156}{paragraph*.819}%
+\contentsline {subsubsection}{Constants}{165}{subsubsection*.882}%
+\contentsline {subsection}{\numberline {4.1.4}Query Execution}{166}{subsection.4.1.4}%
+\contentsline {subsubsection}{Star (Query Orchestrator)}{166}{subsubsection*.896}%
+\contentsline {paragraph}{Query lifecycle}{168}{paragraph*.907}%
+\contentsline {subsubsection}{Clause Executor}{170}{subsubsection*.915}%
+\contentsline {subsubsection}{Pattern Matcher}{172}{subsubsection*.929}%
+\contentsline {paragraph}{Architecture}{173}{paragraph*.931}%
+\contentsline {paragraph}{Algorithm overview}{174}{paragraph*.946}%
+\contentsline {subsubsection}{Path Expander}{175}{subsubsection*.951}%
+\contentsline {paragraph}{Architecture}{176}{paragraph*.953}%
+\contentsline {paragraph}{Algorithm overview}{176}{paragraph*.955}%
+\contentsline {subsubsection}{Expression Renderer}{177}{subsubsection*.959}%
+\contentsline {paragraph}{Architecture}{178}{paragraph*.961}%
+\contentsline {subsection}{\numberline {4.1.5}BindingFrame Execution}{178}{subsection.4.1.5}%
+\contentsline {subsubsection}{BindingFrame}{178}{subsubsection*.965}%
+\contentsline {paragraph}{Key operations}{179}{paragraph*.969}%
+\contentsline {subsubsection}{Evaluator Protocol}{184}{subsubsection*.990}%
+\contentsline {subsubsection}{BindingExpression Evaluator}{185}{subsubsection*.999}%
+\contentsline {paragraph}{Design}{185}{paragraph*.1001}%
+\contentsline {subsubsection}{Arithmetic Evaluator}{188}{subsubsection*.1017}%
+\contentsline {subsubsection}{Boolean Evaluator}{190}{subsubsection*.1024}%
+\contentsline {subsubsection}{Comparison Evaluator}{192}{subsubsection*.1037}%
+\contentsline {subsubsection}{String Predicate Evaluator}{194}{subsubsection*.1046}%
+\contentsline {subsubsection}{EXISTS Evaluator}{195}{subsubsection*.1050}%
+\contentsline {subsubsection}{Aggregation Evaluator}{196}{subsubsection*.1056}%
+\contentsline {subsubsection}{Aggregation Planner}{198}{subsubsection*.1063}%
+\contentsline {subsubsection}{Collection Evaluator}{199}{subsubsection*.1068}%
+\contentsline {subsubsection}{Scalar Functions}{202}{subsubsection*.1081}%
+\contentsline {paragraph}{Vectorisation strategy by category}{202}{paragraph*.1083}%
+\contentsline {subsubsection}{Scalar Function Evaluator}{207}{subsubsection*.1105}%
+\contentsline {subsection}{\numberline {4.1.6}Execution Engine}{209}{subsection.4.1.6}%
+\contentsline {subsubsection}{Configuration}{209}{subsubsection*.1110}%
+\contentsline {paragraph}{Environment Variables}{209}{paragraph*.1112}%
+\contentsline {subsubsection}{Backend Engine}{211}{subsubsection*.1129}%
+\contentsline {paragraph}{Architecture}{212}{paragraph*.1131}%
+\contentsline {paragraph}{Integration Status}{212}{paragraph*.1132}%
+\contentsline {subsubsection}{Query Planner}{228}{subsubsection*.1253}%
+\contentsline {paragraph}{Architecture}{228}{paragraph*.1255}%
+\contentsline {subsubsection}{Query Analyzer}{234}{subsubsection*.1305}%
+\contentsline {subsubsection}{Cardinality Estimator}{235}{subsubsection*.1314}%
+\contentsline {subsubsection}{Scan Operators}{238}{subsubsection*.1344}%
+\contentsline {subsubsection}{Query Complexity}{241}{subsubsection*.1368}%
+\contentsline {subsubsection}{Query Optimizer}{242}{subsubsection*.1380}%
+\contentsline {paragraph}{Architecture}{243}{paragraph*.1382}%
+\contentsline {subsubsection}{Query Validator}{248}{subsubsection*.1437}%
+\contentsline {subsubsection}{Query Formatter}{249}{subsubsection*.1448}%
+\contentsline {subsubsection}{Query Profiler}{251}{subsubsection*.1462}%
+\contentsline {subsubsection}{Input Validator}{254}{subsubsection*.1495}%
+\contentsline {subsubsection}{Frame Joiner}{255}{subsubsection*.1506}%
+\contentsline {subsubsection}{LeapfrogTriejoin}{258}{subsubsection*.1517}%
+\contentsline {paragraph}{Architecture}{258}{paragraph*.1519}%
+\contentsline {paragraph}{Integration}{258}{paragraph*.1520}%
+\contentsline {subsubsection}{Graph Index}{260}{subsubsection*.1530}%
+\contentsline {paragraph}{Architecture}{260}{paragraph*.1532}%
+\contentsline {subsubsection}{Projection Planner}{267}{subsubsection*.1592}%
+\contentsline {subsubsection}{Variable Manager}{269}{subsubsection*.1601}%
+\contentsline {paragraph}{Architecture}{270}{paragraph*.1603}%
+\contentsline {subsubsection}{Pipeline}{271}{subsubsection*.1609}%
+\contentsline {paragraph}{Architecture}{271}{paragraph*.1611}%
+\contentsline {subsubsection}{Lazy Evaluation}{278}{subsubsection*.1669}%
+\contentsline {paragraph}{Architecture}{278}{paragraph*.1671}%
+\contentsline {subsubsection}{Result Cache}{282}{subsubsection*.1709}%
+\contentsline {subsubsection}{Timeout Handler}{284}{subsubsection*.1726}%
+\contentsline {subsubsection}{Mutation Engine}{286}{subsubsection*.1733}%
+\contentsline {paragraph}{State transition model}{286}{paragraph*.1736}%
+\contentsline {subsection}{\numberline {4.1.7}Multi\sphinxhyphen {}Query Composition}{289}{subsection.4.1.7}%
+\contentsline {subsubsection}{Multi\sphinxhyphen {}Query Analyzer}{289}{subsubsection*.1749}%
+\contentsline {subsubsection}{Multi\sphinxhyphen {}Query Executor}{291}{subsubsection*.1772}%
+\contentsline {subsection}{\numberline {4.1.8}Validation}{293}{subsection.4.1.8}%
+\contentsline {subsubsection}{Semantic Validator}{293}{subsubsection*.1780}%
+\contentsline {subsection}{\numberline {4.1.9}Ingestion Layer}{295}{subsection.4.1.9}%
+\contentsline {subsubsection}{Context Builder}{295}{subsubsection*.1806}%
+\contentsline {subsubsection}{Data Sources}{297}{subsubsection*.1814}%
+\contentsline {paragraph}{Supported URI schemes}{298}{paragraph*.1815}%
+\contentsline {subsubsection}{Pipeline Config}{304}{subsubsection*.1864}%
+\contentsline {paragraph}{Environment variables}{304}{paragraph*.1865}%
+\contentsline {paragraph}{Supported URI schemes}{304}{paragraph*.1866}%
+\contentsline {subsubsection}{DuckDB Reader}{315}{subsubsection*.1991}%
+\contentsline {subsubsection}{Arrow Utilities}{317}{subsubsection*.1999}%
+\contentsline {subsubsection}{Output Writer}{318}{subsubsection*.2003}%
+\contentsline {paragraph}{Supported URI forms}{318}{paragraph*.2004}%
+\contentsline {subsubsection}{Security}{319}{subsubsection*.2006}%
+\contentsline {subsection}{\numberline {4.1.10}Sinks}{321}{subsection.4.1.10}%
+\contentsline {subsubsection}{Neo4j Sink}{321}{subsubsection*.2018}%
+\contentsline {subsection}{\numberline {4.1.11}Distributed Execution}{325}{subsection.4.1.11}%
+\contentsline {subsubsection}{Cluster}{325}{subsubsection*.2043}%
+\contentsline {paragraph}{Architecture}{325}{paragraph*.2045}%
+\contentsline {subsection}{\numberline {4.1.12}CLI}{332}{subsection.4.1.12}%
+\contentsline {subsubsection}{NMETL CLI}{332}{subsubsection*.2113}%
+\contentsline {subsection}{\numberline {4.1.13}Security \& Observability}{332}{subsection.4.1.13}%
+\contentsline {subsubsection}{Audit Logging}{332}{subsubsection*.2116}%
+\contentsline {subsubsection}{Rate Limiter}{334}{subsubsection*.2124}%
+\contentsline {subsection}{\numberline {4.1.14}Utilities}{336}{subsection.4.1.14}%
+\contentsline {subsubsection}{Types}{336}{subsubsection*.2136}%
+\contentsline {subsubsection}{Query Learning — ML\sphinxhyphen {}Powered Optimization}{337}{subsubsection*.2144}%
+\contentsline {subsubsection}{Exceptions}{345}{subsubsection*.2224}%
+\contentsline {section}{\numberline {4.2}Shared API}{358}{section.4.2}%
+\contentsline {subsection}{\numberline {4.2.1}Submodules}{358}{subsection.4.2.1}%
+\contentsline {subsection}{\numberline {4.2.2}Core Modules}{359}{subsection.4.2.2}%
+\contentsline {subsubsection}{Logger}{359}{subsubsection*.2356}%
+\contentsline {paragraph}{Query correlation}{359}{paragraph*.2358}%
+\contentsline {subsubsection}{Metrics}{360}{subsubsection*.2364}%
+\contentsline {subsubsection}{Helpers}{366}{subsubsection*.2431}%
+\contentsline {subsubsection}{Telemetry}{368}{subsubsection*.2440}%
+\contentsline {subsection}{\numberline {4.2.3}Observability}{368}{subsection.4.2.3}%
+\contentsline {subsubsection}{OpenTelemetry}{368}{subsubsection*.2442}%
+\contentsline {subsubsection}{Exporters}{370}{subsubsection*.2449}%
+\contentsline {subsection}{\numberline {4.2.4}Compatibility}{373}{subsection.4.2.4}%
+\contentsline {subsubsection}{API Surface Compatibility}{373}{subsubsection*.2470}%
+\contentsline {paragraph}{Neo4j Cypher compatibility}{373}{paragraph*.2472}%
+\contentsline {subsubsection}{Deprecation Utilities}{377}{subsubsection*.2503}%
+\contentsline {section}{\numberline {4.3}Package Overview}{378}{section.4.3}%
+\contentsline {subsection}{\numberline {4.3.1}PyCypher}{378}{subsection.4.3.1}%
+\contentsline {subsection}{\numberline {4.3.2}Shared}{379}{subsection.4.3.2}%
+\contentsline {chapter}{\numberline {5}User Guide}{380}{chapter.5}%
+\contentsline {section}{\numberline {5.1}Data Model Requirements}{380}{section.5.1}%
+\contentsline {subsection}{\numberline {5.1.1}Why Does PyCypher Need \sphinxstyleliteralintitle {\sphinxupquote {\_\_ID\_\_}} Columns?}{381}{subsection.5.1.1}%
+\contentsline {subsubsection}{The Short Answer}{381}{subsubsection*.2531}%
+\contentsline {subsubsection}{Why Not Just Use Row Position?}{381}{subsubsection*.2532}%
+\contentsline {subsection}{\numberline {5.1.2}Using Your Existing Column Names}{382}{subsection.5.1.2}%
+\contentsline {subsubsection}{The Most Common Pattern}{382}{subsubsection*.2533}%
+\contentsline {subsubsection}{From the CLI}{382}{subsubsection*.2534}%
+\contentsline {subsubsection}{In YAML Pipeline Config}{383}{subsubsection*.2535}%
+\contentsline {subsubsection}{When No ID Column Exists}{383}{subsubsection*.2536}%
+\contentsline {subsection}{\numberline {5.1.3}Real\sphinxhyphen {}World Examples}{383}{subsection.5.1.3}%
+\contentsline {subsubsection}{Example 1: E\sphinxhyphen {}Commerce (Customer → Order → Product)}{383}{subsubsection*.2537}%
+\contentsline {subsubsection}{Example 2: Social Network (User follows User)}{384}{subsubsection*.2538}%
+\contentsline {subsubsection}{Example 3: Multi\sphinxhyphen {}Entity (Person + Company + Employment)}{385}{subsubsection*.2539}%
+\contentsline {subsection}{\numberline {5.1.4}Data Preparation Guide}{386}{subsection.5.1.4}%
+\contentsline {subsubsection}{Converting Existing Tables}{386}{subsubsection*.2540}%
+\contentsline {subsubsection}{Handling Composite Keys}{386}{subsubsection*.2541}%
+\contentsline {subsubsection}{ID Generation Strategies}{387}{subsubsection*.2542}%
+\contentsline {subsubsection}{Type Coercion}{387}{subsubsection*.2543}%
+\contentsline {subsection}{\numberline {5.1.5}Troubleshooting Common Data Issues}{387}{subsection.5.1.5}%
+\contentsline {subsubsection}{Empty Query Results}{387}{subsubsection*.2544}%
+\contentsline {subsubsection}{KeyError: \sphinxstyleliteralintitle {\sphinxupquote {\_\_ID\_\_}}}{388}{subsubsection*.2545}%
+\contentsline {subsubsection}{Duplicate ID Warning}{388}{subsubsection*.2546}%
+\contentsline {subsubsection}{Missing Relationship Columns}{388}{subsubsection*.2547}%
+\contentsline {subsection}{\numberline {5.1.6}Quick Reference}{389}{subsection.5.1.6}%
+\contentsline {subsection}{\numberline {5.1.7}Next Steps}{389}{subsection.5.1.7}%
+\contentsline {section}{\numberline {5.2}Variables in PyCypher}{389}{section.5.2}%
+\contentsline {subsection}{\numberline {5.2.1}Understanding Variable Representation}{389}{subsection.5.2.1}%
+\contentsline {subsection}{\numberline {5.2.2}The Variable Class}{389}{subsection.5.2.2}%
+\contentsline {subsection}{\numberline {5.2.3}Where Variables Are Used}{389}{subsection.5.2.3}%
+\contentsline {subsubsection}{Node Patterns}{389}{subsubsection*.2548}%
+\contentsline {subsubsection}{Relationship Patterns}{390}{subsubsection*.2549}%
+\contentsline {subsubsection}{Property Lookups}{390}{subsubsection*.2550}%
+\contentsline {subsubsection}{List Comprehensions}{390}{subsubsection*.2551}%
+\contentsline {subsection}{\numberline {5.2.4}Migration from String Variables}{390}{subsection.5.2.4}%
+\contentsline {subsection}{\numberline {5.2.5}Benefits}{391}{subsection.5.2.5}%
+\contentsline {subsection}{\numberline {5.2.6}See Also}{391}{subsection.5.2.6}%
+\contentsline {section}{\numberline {5.3}AST Nodes}{391}{section.5.3}%
+\contentsline {subsection}{\numberline {5.3.1}Overview}{391}{subsection.5.3.1}%
+\contentsline {subsection}{\numberline {5.3.2}Node Hierarchy}{391}{subsection.5.3.2}%
+\contentsline {subsection}{\numberline {5.3.3}Core Node Types}{391}{subsection.5.3.3}%
+\contentsline {subsubsection}{Query}{391}{subsubsection*.2552}%
+\contentsline {subsubsection}{Clauses}{392}{subsubsection*.2553}%
+\contentsline {subsubsection}{Expressions}{392}{subsubsection*.2554}%
+\contentsline {subsubsection}{Patterns}{393}{subsubsection*.2555}%
+\contentsline {subsubsection}{Literals}{394}{subsubsection*.2556}%
+\contentsline {subsubsection}{Variables}{395}{subsubsection*.2557}%
+\contentsline {subsection}{\numberline {5.3.4}Validation}{395}{subsection.5.3.4}%
+\contentsline {subsection}{\numberline {5.3.5}Tree Traversal}{395}{subsection.5.3.5}%
+\contentsline {subsection}{\numberline {5.3.6}Pydantic Integration}{396}{subsection.5.3.6}%
+\contentsline {subsection}{\numberline {5.3.7}For More Information}{396}{subsection.5.3.7}%
+\contentsline {section}{\numberline {5.4}Query Processing}{396}{section.5.4}%
+\contentsline {subsection}{\numberline {5.4.1}Overview}{396}{subsection.5.4.1}%
+\contentsline {subsection}{\numberline {5.4.2}Parsing Pipeline}{396}{subsection.5.4.2}%
+\contentsline {subsubsection}{Raw Parsing}{396}{subsubsection*.2558}%
+\contentsline {subsubsection}{AST Conversion}{397}{subsubsection*.2559}%
+\contentsline {subsection}{\numberline {5.4.3}Validation}{397}{subsection.5.4.3}%
+\contentsline {subsubsection}{Semantic Validation}{397}{subsubsection*.2560}%
+\contentsline {subsection}{\numberline {5.4.4}Query Execution}{398}{subsection.5.4.4}%
+\contentsline {subsubsection}{BindingFrame IR}{398}{subsubsection*.2561}%
+\contentsline {subsection}{\numberline {5.4.5}Expression Evaluation}{399}{subsection.5.4.5}%
+\contentsline {subsection}{\numberline {5.4.6}Cross\sphinxhyphen {}Product MATCH}{400}{subsection.5.4.6}%
+\contentsline {subsubsection}{Aggregation}{401}{subsubsection*.2562}%
+\contentsline {subsection}{\numberline {5.4.7}Projection Modifiers: ORDER BY, LIMIT, SKIP, DISTINCT}{401}{subsection.5.4.7}%
+\contentsline {subsubsection}{Auto\sphinxhyphen {}generated Column Names}{402}{subsubsection*.2563}%
+\contentsline {subsection}{\numberline {5.4.8}OPTIONAL MATCH — Left\sphinxhyphen {}Join Semantics}{403}{subsection.5.4.8}%
+\contentsline {subsection}{\numberline {5.4.9}UNWIND — List Explosion}{404}{subsection.5.4.9}%
+\contentsline {subsection}{\numberline {5.4.10}WITH * — Pass\sphinxhyphen {}Through Projection}{404}{subsection.5.4.10}%
+\contentsline {subsection}{\numberline {5.4.11}Variable\sphinxhyphen {}Length Paths}{405}{subsection.5.4.11}%
+\contentsline {subsection}{\numberline {5.4.12}shortestPath and allShortestPaths}{405}{subsection.5.4.12}%
+\contentsline {subsection}{\numberline {5.4.13}SET Clause and Atomicity}{406}{subsection.5.4.13}%
+\contentsline {subsection}{\numberline {5.4.14}REMOVE Clause}{406}{subsection.5.4.14}%
+\contentsline {subsection}{\numberline {5.4.15}CREATE and MERGE Clauses}{407}{subsection.5.4.15}%
+\contentsline {subsection}{\numberline {5.4.16}DELETE Clause}{407}{subsection.5.4.16}%
+\contentsline {subsection}{\numberline {5.4.17}FOREACH Clause}{408}{subsection.5.4.17}%
+\contentsline {subsection}{\numberline {5.4.18}UNION — Combining Results}{408}{subsection.5.4.18}%
+\contentsline {subsubsection}{End\sphinxhyphen {}to\sphinxhyphen {}End Processing}{409}{subsubsection*.2564}%
+\contentsline {subsection}{\numberline {5.4.19}Error Handling}{409}{subsection.5.4.19}%
+\contentsline {subsubsection}{Handling Parse Errors}{409}{subsubsection*.2565}%
+\contentsline {subsection}{\numberline {5.4.20}Performance Considerations}{409}{subsection.5.4.20}%
+\contentsline {subsection}{\numberline {5.4.21}For More Information}{411}{subsection.5.4.21}%
+\contentsline {section}{\numberline {5.5}Error Handling Patterns}{411}{section.5.5}%
+\contentsline {subsection}{\numberline {5.5.1}Exception Hierarchy}{411}{subsection.5.5.1}%
+\contentsline {subsection}{\numberline {5.5.2}Catching Parse Errors}{411}{subsection.5.5.2}%
+\contentsline {subsection}{\numberline {5.5.3}Catching Runtime Errors}{412}{subsection.5.5.3}%
+\contentsline {subsection}{\numberline {5.5.4}Resource Limit Errors}{412}{subsection.5.5.4}%
+\contentsline {subsection}{\numberline {5.5.5}Rate Limit Errors}{412}{subsection.5.5.5}%
+\contentsline {subsection}{\numberline {5.5.6}Pre\sphinxhyphen {}execution Validation}{413}{subsection.5.5.6}%
+\contentsline {subsection}{\numberline {5.5.7}Security and Pipeline Errors}{413}{subsection.5.5.7}%
+\contentsline {subsection}{\numberline {5.5.8}Best Practices}{413}{subsection.5.5.8}%
+\contentsline {subsection}{\numberline {5.5.9}Troubleshooting Quick Reference}{415}{subsection.5.5.9}%
+\contentsline {subsubsection}{Debugging Commands}{416}{subsubsection*.2566}%
+\contentsline {section}{\numberline {5.6}Configuration Reference}{416}{section.5.6}%
+\contentsline {subsection}{\numberline {5.6.1}Query Execution}{416}{subsection.5.6.1}%
+\contentsline {subsection}{\numberline {5.6.2}Caching}{417}{subsection.5.6.2}%
+\contentsline {subsection}{\numberline {5.6.3}Logging and Metrics}{417}{subsection.5.6.3}%
+\contentsline {subsection}{\numberline {5.6.4}Telemetry}{417}{subsection.5.6.4}%
+\contentsline {subsection}{\numberline {5.6.5}Per\sphinxhyphen {}Query Overrides}{417}{subsection.5.6.5}%
+\contentsline {subsection}{\numberline {5.6.6}Production Configuration Example}{418}{subsection.5.6.6}%
+\contentsline {section}{\numberline {5.7}Performance Tuning}{418}{section.5.7}%
+\contentsline {subsection}{\numberline {5.7.1}Environment Variables at a Glance}{419}{subsection.5.7.1}%
+\contentsline {subsection}{\numberline {5.7.2}Query Timeouts}{419}{subsection.5.7.2}%
+\contentsline {subsection}{\numberline {5.7.3}Memory Budget}{419}{subsection.5.7.3}%
+\contentsline {subsection}{\numberline {5.7.4}Cross\sphinxhyphen {}Join Limits}{420}{subsection.5.7.4}%
+\contentsline {subsection}{\numberline {5.7.5}Result Caching}{420}{subsection.5.7.5}%
+\contentsline {subsubsection}{Parse Caching}{421}{subsubsection*.2589}%
+\contentsline {subsection}{\numberline {5.7.6}Graph\sphinxhyphen {}Native Indexes}{421}{subsection.5.7.6}%
+\contentsline {subsection}{\numberline {5.7.7}LeapfrogTriejoin (Multi\sphinxhyphen {}Way Joins)}{421}{subsection.5.7.7}%
+\contentsline {subsection}{\numberline {5.7.8}Cardinality Feedback Loops}{422}{subsection.5.7.8}%
+\contentsline {subsection}{\numberline {5.7.9}Rate Limiting}{422}{subsection.5.7.9}%
+\contentsline {subsection}{\numberline {5.7.10}Audit Logging}{422}{subsection.5.7.10}%
+\contentsline {subsection}{\numberline {5.7.11}Query Structure Best Practices}{423}{subsection.5.7.11}%
+\contentsline {subsubsection}{Push Filters Early}{423}{subsubsection*.2590}%
+\contentsline {subsubsection}{Bound Variable\sphinxhyphen {}Length Paths}{423}{subsubsection*.2591}%
+\contentsline {subsubsection}{Use WITH to Pipeline Results}{423}{subsubsection*.2592}%
+\contentsline {subsubsection}{Prefer Relationship Patterns over Cross\sphinxhyphen {}Joins}{424}{subsubsection*.2593}%
+\contentsline {subsection}{\numberline {5.7.12}Monitoring and Diagnostics}{424}{subsection.5.7.12}%
+\contentsline {subsubsection}{Query Metrics}{424}{subsubsection*.2594}%
+\contentsline {subsubsection}{Query Execution Logging}{424}{subsubsection*.2595}%
+\contentsline {subsection}{\numberline {5.7.13}Common Bottlenecks}{424}{subsection.5.7.13}%
+\contentsline {subsection}{\numberline {5.7.14}Production Deployment Checklist}{424}{subsection.5.7.14}%
+\contentsline {subsection}{\numberline {5.7.15}For More Information}{425}{subsection.5.7.15}%
+\contentsline {section}{\numberline {5.8}Constants and Magic Values Reference}{425}{section.5.8}%
+\contentsline {subsection}{\numberline {5.8.1}Environment\sphinxhyphen {}Configurable Constants}{425}{subsection.5.8.1}%
+\contentsline {subsubsection}{Query Execution Limits}{426}{subsubsection*.2607}%
+\contentsline {subsubsection}{Security Limits}{426}{subsubsection*.2608}%
+\contentsline {subsubsection}{Caching}{427}{subsubsection*.2609}%
+\contentsline {subsection}{\numberline {5.8.2}Internal Constants (Not Configurable)}{427}{subsection.5.8.2}%
+\contentsline {subsubsection}{Cardinality Estimator}{427}{subsubsection*.2610}%
+\contentsline {subsubsection}{Query Planner}{428}{subsubsection*.2611}%
+\contentsline {subsubsection}{Path Expansion (BFS)}{428}{subsubsection*.2612}%
+\contentsline {subsubsection}{Query Learning}{428}{subsubsection*.2613}%
+\contentsline {subsubsection}{Other Internal Limits}{429}{subsubsection*.2614}%
+\contentsline {subsubsection}{Display Defaults}{429}{subsubsection*.2615}%
+\contentsline {section}{\numberline {5.9}Overview}{429}{section.5.9}%
+\contentsline {chapter}{\numberline {6}Deployment \& Scaling}{431}{chapter.6}%
+\contentsline {section}{\numberline {6.1}Security Hardening}{431}{section.6.1}%
+\contentsline {subsection}{\numberline {6.1.1}Production Security Checklist}{432}{subsection.6.1.1}%
+\contentsline {subsection}{\numberline {6.1.2}Input Validation}{432}{subsection.6.1.2}%
+\contentsline {subsubsection}{SQL Query Validation}{432}{subsubsection*.2638}%
+\contentsline {subsubsection}{Path Validation}{433}{subsubsection*.2639}%
+\contentsline {subsubsection}{SSRF Protection}{433}{subsubsection*.2640}%
+\contentsline {subsubsection}{Regex Safety}{433}{subsubsection*.2641}%
+\contentsline {subsection}{\numberline {6.1.3}Environment Hardening}{433}{subsection.6.1.3}%
+\contentsline {subsubsection}{Secrets}{433}{subsubsection*.2642}%
+\contentsline {subsubsection}{Security\sphinxhyphen {}Sensitive Environment Variables}{434}{subsubsection*.2643}%
+\contentsline {subsection}{\numberline {6.1.4}Network Security}{434}{subsection.6.1.4}%
+\contentsline {subsubsection}{Egress Restrictions}{434}{subsubsection*.2644}%
+\contentsline {subsubsection}{Neo4j Connection Security}{435}{subsubsection*.2645}%
+\contentsline {subsection}{\numberline {6.1.5}Resource Limits}{435}{subsection.6.1.5}%
+\contentsline {subsubsection}{Query Timeout}{435}{subsubsection*.2646}%
+\contentsline {subsubsection}{BFS Path Expansion}{435}{subsubsection*.2647}%
+\contentsline {subsubsection}{AST Cache}{436}{subsubsection*.2648}%
+\contentsline {subsection}{\numberline {6.1.6}Monitoring and Alerting}{436}{subsection.6.1.6}%
+\contentsline {subsubsection}{Security Events to Monitor}{436}{subsubsection*.2649}%
+\contentsline {subsubsection}{Structured Logging}{436}{subsubsection*.2650}%
+\contentsline {subsection}{\numberline {6.1.7}Docker Security}{436}{subsection.6.1.7}%
+\contentsline {subsection}{\numberline {6.1.8}Function Registration Security}{437}{subsection.6.1.8}%
+\contentsline {subsection}{\numberline {6.1.9}Incident Response}{437}{subsection.6.1.9}%
+\contentsline {section}{\numberline {6.2}Docker Containerisation}{438}{section.6.2}%
+\contentsline {subsection}{\numberline {6.2.1}Images}{438}{subsection.6.2.1}%
+\contentsline {subsubsection}{Production Image (\sphinxstyleliteralintitle {\sphinxupquote {Dockerfile}})}{438}{subsubsection*.2651}%
+\contentsline {subsubsection}{Development Image (\sphinxstyleliteralintitle {\sphinxupquote {Dockerfile.dev}})}{438}{subsubsection*.2652}%
+\contentsline {subsection}{\numberline {6.2.2}Docker Compose}{438}{subsection.6.2.2}%
+\contentsline {subsubsection}{Quick Start}{439}{subsubsection*.2653}%
+\contentsline {subsubsection}{Services}{439}{subsubsection*.2654}%
+\contentsline {subsubsection}{Optional Profiles}{439}{subsubsection*.2655}%
+\contentsline {subsubsection}{Volumes}{439}{subsubsection*.2656}%
+\contentsline {subsubsection}{Building Custom Images}{440}{subsubsection*.2657}%
+\contentsline {subsubsection}{Health Checks}{440}{subsubsection*.2658}%
+\contentsline {subsubsection}{Kubernetes Deployment}{440}{subsubsection*.2659}%
+\contentsline {section}{\numberline {6.3}Environment Configuration}{441}{section.6.3}%
+\contentsline {subsection}{\numberline {6.3.1}Setup}{441}{subsection.6.3.1}%
+\contentsline {subsection}{\numberline {6.3.2}Required Variables}{442}{subsection.6.3.2}%
+\contentsline {subsection}{\numberline {6.3.3}Optional Variables}{442}{subsection.6.3.3}%
+\contentsline {subsubsection}{Connection URLs}{442}{subsubsection*.2660}%
+\contentsline {subsection}{\numberline {6.3.4}Monitoring \& Observability}{443}{subsection.6.3.4}%
+\contentsline {subsection}{\numberline {6.3.5}Python Environment}{443}{subsection.6.3.5}%
+\contentsline {subsection}{\numberline {6.3.6}Security Notes}{444}{subsection.6.3.6}%
+\contentsline {section}{\numberline {6.4}Scaling \& Performance}{444}{section.6.4}%
+\contentsline {subsection}{\numberline {6.4.1}Backend Selection}{444}{subsection.6.4.1}%
+\contentsline {subsubsection}{Health Checks and Circuit Breaker}{444}{subsubsection*.2661}%
+\contentsline {subsection}{\numberline {6.4.2}Spark Cluster (Docker Infrastructure)}{445}{subsection.6.4.2}%
+\contentsline {subsubsection}{Worker Configuration}{445}{subsubsection*.2662}%
+\contentsline {subsubsection}{Neo4j Tuning (Docker Infrastructure)}{445}{subsubsection*.2663}%
+\contentsline {subsection}{\numberline {6.4.3}Query\sphinxhyphen {}Level Performance}{446}{subsection.6.4.3}%
+\contentsline {subsubsection}{Memory Budget}{446}{subsubsection*.2664}%
+\contentsline {subsubsection}{Cross\sphinxhyphen {}Join Limits}{446}{subsubsection*.2665}%
+\contentsline {subsubsection}{Query Timeout}{446}{subsubsection*.2666}%
+\contentsline {subsubsection}{Lazy Evaluation}{446}{subsubsection*.2667}%
+\contentsline {subsection}{\numberline {6.4.4}Performance Testing}{446}{subsection.6.4.4}%
+\contentsline {subsection}{\numberline {6.4.5}Resource Planning}{447}{subsection.6.4.5}%
+\contentsline {section}{\numberline {6.5}Monitoring \& Operations}{447}{section.6.5}%
+\contentsline {subsection}{\numberline {6.5.1}Query Metrics}{447}{subsection.6.5.1}%
+\contentsline {subsubsection}{Metrics Snapshot}{447}{subsubsection*.2668}%
+\contentsline {subsubsection}{Diagnostic Report}{448}{subsubsection*.2669}%
+\contentsline {subsubsection}{Cache Statistics}{448}{subsubsection*.2670}%
+\contentsline {subsection}{\numberline {6.5.2}Metrics Export}{448}{subsection.6.5.2}%
+\contentsline {subsubsection}{Prometheus}{448}{subsubsection*.2671}%
+\contentsline {subsubsection}{StatsD / Datadog}{448}{subsubsection*.2672}%
+\contentsline {subsubsection}{JSON File}{449}{subsubsection*.2673}%
+\contentsline {subsubsection}{Programmatic Export}{449}{subsubsection*.2674}%
+\contentsline {subsection}{\numberline {6.5.3}OpenTelemetry Distributed Tracing}{449}{subsection.6.5.3}%
+\contentsline {subsection}{\numberline {6.5.4}Structured Logging}{450}{subsection.6.5.4}%
+\contentsline {subsubsection}{Query ID Correlation}{450}{subsubsection*.2675}%
+\contentsline {subsection}{\numberline {6.5.5}Container Logs}{450}{subsection.6.5.5}%
+\contentsline {subsection}{\numberline {6.5.6}Service Health}{450}{subsection.6.5.6}%
+\contentsline {subsubsection}{Backend Health Monitoring}{451}{subsubsection*.2676}%
+\contentsline {subsection}{\numberline {6.5.7}Operational Runbook}{451}{subsection.6.5.7}%
+\contentsline {subsubsection}{Restart a Stuck Container}{451}{subsubsection*.2677}%
+\contentsline {subsubsection}{Clear Neo4j Data}{451}{subsubsection*.2678}%
+\contentsline {subsubsection}{Reset Spark State}{451}{subsubsection*.2679}%
+\contentsline {subsubsection}{Check Nominatim Import Progress}{452}{subsubsection*.2680}%
+\contentsline {section}{\numberline {6.6}Troubleshooting}{452}{section.6.6}%
+\contentsline {subsection}{\numberline {6.6.1}Docker Issues}{452}{subsection.6.6.1}%
+\contentsline {subsubsection}{\sphinxstyleliteralintitle {\sphinxupquote {docker compose up}} fails with “variable not set”}{452}{subsubsection*.2681}%
+\contentsline {subsubsection}{Container starts but \sphinxstyleliteralintitle {\sphinxupquote {uv sync}} fails}{452}{subsubsection*.2682}%
+\contentsline {subsubsection}{Port conflicts}{452}{subsubsection*.2683}%
+\contentsline {subsection}{\numberline {6.6.2}Python / Dependency Issues}{453}{subsection.6.6.2}%
+\contentsline {subsubsection}{\sphinxstyleliteralintitle {\sphinxupquote {ModuleNotFoundError: No module named 'pycypher'}}}{453}{subsubsection*.2684}%
+\contentsline {subsubsection}{\sphinxstyleliteralintitle {\sphinxupquote {Python >= 3.14 required}}}{453}{subsubsection*.2685}%
+\contentsline {subsubsection}{Backend failures}{453}{subsubsection*.2686}%
+\contentsline {subsection}{\numberline {6.6.3}Spark Issues}{453}{subsection.6.6.3}%
+\contentsline {subsubsection}{Spark worker cannot connect to master}{453}{subsubsection*.2687}%
+\contentsline {subsubsection}{Spark job fails with OOM}{453}{subsubsection*.2688}%
+\contentsline {subsection}{\numberline {6.6.4}Neo4j Issues}{454}{subsection.6.6.4}%
+\contentsline {subsubsection}{Neo4j authentication failure}{454}{subsubsection*.2689}%
+\contentsline {subsubsection}{Neo4j APOC procedures not available}{454}{subsubsection*.2690}%
+\contentsline {subsection}{\numberline {6.6.5}Nominatim Issues}{454}{subsection.6.6.5}%
+\contentsline {subsubsection}{Nominatim import takes hours}{454}{subsubsection*.2691}%
+\contentsline {subsubsection}{Nominatim returns empty results}{454}{subsubsection*.2692}%
+\contentsline {subsection}{\numberline {6.6.6}Query Execution Issues}{454}{subsection.6.6.6}%
+\contentsline {subsubsection}{Query hangs or runs too long}{454}{subsubsection*.2693}%
+\contentsline {subsubsection}{Cross\sphinxhyphen {}product produces too many rows}{455}{subsubsection*.2694}%
+\contentsline {subsubsection}{\sphinxstyleliteralintitle {\sphinxupquote {GraphTypeNotFoundError}}}{455}{subsubsection*.2695}%
+\contentsline {subsection}{\numberline {6.6.7}Getting Help}{455}{subsection.6.6.7}%
+\contentsline {section}{\numberline {6.7}Architecture Overview}{455}{section.6.7}%
+\contentsline {subsection}{\numberline {6.7.1}Deployment Modes}{455}{subsection.6.7.1}%
+\contentsline {subsection}{\numberline {6.7.2}Prerequisites}{456}{subsection.6.7.2}%
+\contentsline {chapter}{\numberline {7}Developer Guide}{457}{chapter.7}%
+\contentsline {section}{\numberline {7.1}Architecture}{457}{section.7.1}%
+\contentsline {subsection}{\numberline {7.1.1}Project Structure}{457}{subsection.7.1.1}%
+\contentsline {subsubsection}{Dependency Order}{457}{subsubsection*.2696}%
+\contentsline {subsection}{\numberline {7.1.2}PyCypher Architecture}{457}{subsection.7.1.2}%
+\contentsline {subsubsection}{Core Components}{457}{subsubsection*.2697}%
+\contentsline {subsection}{\numberline {7.1.3}Design Patterns}{459}{subsection.7.1.3}%
+\contentsline {subsubsection}{Visitor Pattern}{459}{subsubsection*.2698}%
+\contentsline {subsubsection}{BindingFrame Execution Model}{459}{subsubsection*.2699}%
+\contentsline {subsubsection}{Query\sphinxhyphen {}Scoped Atomicity}{460}{subsubsection*.2700}%
+\contentsline {subsection}{\numberline {7.1.4}Extension Points}{460}{subsection.7.1.4}%
+\contentsline {subsubsection}{Custom Cypher Functions}{460}{subsubsection*.2701}%
+\contentsline {subsubsection}{Custom Scalar Functions}{460}{subsubsection*.2702}%
+\contentsline {subsection}{\numberline {7.1.5}Testing Architecture}{460}{subsection.7.1.5}%
+\contentsline {subsubsection}{Test Organization}{460}{subsubsection*.2703}%
+\contentsline {subsubsection}{Test Execution}{461}{subsubsection*.2704}%
+\contentsline {subsection}{\numberline {7.1.6}Configuration Management}{461}{subsection.7.1.6}%
+\contentsline {subsubsection}{Environment Management}{461}{subsubsection*.2705}%
+\contentsline {subsubsection}{Type Checking}{461}{subsubsection*.2706}%
+\contentsline {subsubsection}{Code Formatting}{462}{subsubsection*.2707}%
+\contentsline {subsection}{\numberline {7.1.7}Build System}{462}{subsection.7.1.7}%
+\contentsline {subsubsection}{Makefile Targets}{462}{subsubsection*.2708}%
+\contentsline {subsubsection}{Package Management}{462}{subsubsection*.2709}%
+\contentsline {subsection}{\numberline {7.1.8}Performance Characteristics}{462}{subsection.7.1.8}%
+\contentsline {subsubsection}{Parser}{462}{subsubsection*.2710}%
+\contentsline {subsubsection}{Query Execution}{462}{subsubsection*.2711}%
+\contentsline {subsection}{\numberline {7.1.9}For More Information}{463}{subsection.7.1.9}%
+\contentsline {section}{\numberline {7.2}Architecture Decision Records}{463}{section.7.2}%
+\contentsline {subsection}{\numberline {7.2.1}ADR\sphinxhyphen {}001: BindingFrame as Core Intermediate Representation}{463}{subsection.7.2.1}%
+\contentsline {subsubsection}{Context}{463}{subsubsection*.2712}%
+\contentsline {subsubsection}{Decision}{463}{subsubsection*.2713}%
+\contentsline {subsubsection}{Alternatives Considered}{464}{subsubsection*.2714}%
+\contentsline {subsubsection}{Consequences}{464}{subsubsection*.2715}%
+\contentsline {subsection}{\numberline {7.2.2}ADR\sphinxhyphen {}002: Lark Parser with Earley Algorithm}{464}{subsection.7.2.2}%
+\contentsline {subsubsection}{Context}{464}{subsubsection*.2716}%
+\contentsline {subsubsection}{Decision}{464}{subsubsection*.2717}%
+\contentsline {subsubsection}{Alternatives Considered}{464}{subsubsection*.2718}%
+\contentsline {subsubsection}{Consequences}{465}{subsubsection*.2719}%
+\contentsline {subsection}{\numberline {7.2.3}ADR\sphinxhyphen {}003: Pydantic\sphinxhyphen {}Based Strongly\sphinxhyphen {}Typed AST Models}{465}{subsection.7.2.3}%
+\contentsline {subsubsection}{Context}{465}{subsubsection*.2720}%
+\contentsline {subsubsection}{Decision}{465}{subsubsection*.2721}%
+\contentsline {subsubsection}{Alternatives Considered}{465}{subsubsection*.2722}%
+\contentsline {subsubsection}{Consequences}{465}{subsubsection*.2723}%
+\contentsline {subsection}{\numberline {7.2.4}ADR\sphinxhyphen {}004: Query\sphinxhyphen {}Scoped Shadow Write Atomicity}{466}{subsection.7.2.4}%
+\contentsline {subsubsection}{Context}{466}{subsubsection*.2724}%
+\contentsline {subsubsection}{Decision}{466}{subsubsection*.2725}%
+\contentsline {subsubsection}{Alternatives Considered}{466}{subsubsection*.2726}%
+\contentsline {subsubsection}{Consequences}{466}{subsubsection*.2727}%
+\contentsline {subsection}{\numberline {7.2.5}ADR\sphinxhyphen {}005: Composable Evaluator Pattern}{466}{subsection.7.2.5}%
+\contentsline {subsubsection}{Context}{467}{subsubsection*.2728}%
+\contentsline {subsubsection}{Decision}{467}{subsubsection*.2729}%
+\contentsline {subsubsection}{Alternatives Considered}{467}{subsubsection*.2730}%
+\contentsline {subsubsection}{Consequences}{467}{subsubsection*.2731}%
+\contentsline {subsection}{\numberline {7.2.6}ADR\sphinxhyphen {}006: Pluggable Backend Engine Protocol}{468}{subsection.7.2.6}%
+\contentsline {subsubsection}{Context}{468}{subsubsection*.2732}%
+\contentsline {subsubsection}{Decision}{468}{subsubsection*.2733}%
+\contentsline {subsubsection}{Alternatives Considered}{468}{subsubsection*.2734}%
+\contentsline {subsubsection}{Consequences}{468}{subsubsection*.2735}%
+\contentsline {subsection}{\numberline {7.2.7}ADR\sphinxhyphen {}007: Graph\sphinxhyphen {}Native Index Structures}{468}{subsection.7.2.7}%
+\contentsline {subsubsection}{Context}{469}{subsubsection*.2736}%
+\contentsline {subsubsection}{Decision}{469}{subsubsection*.2737}%
+\contentsline {subsubsection}{Alternatives Considered}{469}{subsubsection*.2738}%
+\contentsline {subsubsection}{Consequences}{469}{subsubsection*.2739}%
+\contentsline {subsection}{\numberline {7.2.8}ADR\sphinxhyphen {}008: Monorepo Workspace Structure}{469}{subsection.7.2.8}%
+\contentsline {subsubsection}{Context}{470}{subsubsection*.2740}%
+\contentsline {subsubsection}{Decision}{470}{subsubsection*.2741}%
+\contentsline {subsubsection}{Alternatives Considered}{470}{subsubsection*.2742}%
+\contentsline {subsubsection}{Consequences}{470}{subsubsection*.2743}%
+\contentsline {subsection}{\numberline {7.2.9}ADR\sphinxhyphen {}009: Star as Central Query Coordinator}{470}{subsection.7.2.9}%
+\contentsline {subsubsection}{Context}{470}{subsubsection*.2744}%
+\contentsline {subsubsection}{Decision}{471}{subsubsection*.2745}%
+\contentsline {subsubsection}{Alternatives Considered}{471}{subsubsection*.2746}%
+\contentsline {subsubsection}{Consequences}{471}{subsubsection*.2747}%
+\contentsline {subsection}{\numberline {7.2.10}ADR\sphinxhyphen {}010: Vectorized Scalar Function Evaluation}{471}{subsection.7.2.10}%
+\contentsline {subsubsection}{Context}{471}{subsubsection*.2748}%
+\contentsline {subsubsection}{Decision}{472}{subsubsection*.2749}%
+\contentsline {subsubsection}{Alternatives Considered}{472}{subsubsection*.2750}%
+\contentsline {subsubsection}{Consequences}{472}{subsubsection*.2751}%
+\contentsline {subsection}{\numberline {7.2.11}ADR\sphinxhyphen {}011: Grammar Rule Mixins Package Split}{472}{subsection.7.2.11}%
+\contentsline {subsubsection}{Context}{472}{subsubsection*.2752}%
+\contentsline {subsubsection}{Decision}{473}{subsubsection*.2753}%
+\contentsline {subsubsection}{Alternatives Considered}{473}{subsubsection*.2754}%
+\contentsline {subsubsection}{Consequences}{473}{subsubsection*.2755}%
+\contentsline {subsection}{\numberline {7.2.12}ADR\sphinxhyphen {}012: Automatic Test Markers and Isolation Fixtures}{473}{subsection.7.2.12}%
+\contentsline {subsubsection}{Context}{473}{subsubsection*.2756}%
+\contentsline {subsubsection}{Decision}{474}{subsubsection*.2757}%
+\contentsline {subsubsection}{Alternatives Considered}{474}{subsubsection*.2758}%
+\contentsline {subsubsection}{Consequences}{474}{subsubsection*.2759}%
+\contentsline {section}{\numberline {7.3}Contributing}{475}{section.7.3}%
+\contentsline {subsection}{\numberline {7.3.1}Development Environment}{475}{subsection.7.3.1}%
+\contentsline {subsubsection}{Requirements}{475}{subsubsection*.2783}%
+\contentsline {subsubsection}{Initial Setup}{476}{subsubsection*.2784}%
+\contentsline {subsubsection}{Project Structure}{476}{subsubsection*.2785}%
+\contentsline {subsection}{\numberline {7.3.2}Code Style}{476}{subsection.7.3.2}%
+\contentsline {subsubsection}{Formatting}{476}{subsubsection*.2786}%
+\contentsline {subsubsection}{Type Annotations}{476}{subsubsection*.2787}%
+\contentsline {subsubsection}{Docstrings}{476}{subsubsection*.2788}%
+\contentsline {subsection}{\numberline {7.3.3}Running Tests}{477}{subsection.7.3.3}%
+\contentsline {subsection}{\numberline {7.3.4}Making Changes}{477}{subsection.7.3.4}%
+\contentsline {subsubsection}{Branch Naming}{477}{subsubsection*.2789}%
+\contentsline {subsubsection}{Commit Messages}{477}{subsubsection*.2790}%
+\contentsline {subsection}{\numberline {7.3.5}Pull Request Process}{478}{subsection.7.3.5}%
+\contentsline {subsubsection}{Code Review}{478}{subsubsection*.2791}%
+\contentsline {subsection}{\numberline {7.3.6}Adding Dependencies}{478}{subsection.7.3.6}%
+\contentsline {subsection}{\numberline {7.3.7}Documentation}{478}{subsection.7.3.7}%
+\contentsline {subsection}{\numberline {7.3.8}Editor Integration (LSP)}{478}{subsection.7.3.8}%
+\contentsline {subsubsection}{Features}{478}{subsubsection*.2792}%
+\contentsline {subsubsection}{Starting the Server}{479}{subsubsection*.2793}%
+\contentsline {subsubsection}{VS Code}{479}{subsubsection*.2794}%
+\contentsline {subsubsection}{Neovim (nvim\sphinxhyphen {}lspconfig)}{479}{subsubsection*.2795}%
+\contentsline {subsubsection}{Emacs (lsp\sphinxhyphen {}mode)}{479}{subsubsection*.2796}%
+\contentsline {subsubsection}{File Type Detection}{480}{subsubsection*.2797}%
+\contentsline {section}{\numberline {7.4}Testing}{480}{section.7.4}%
+\contentsline {subsection}{\numberline {7.4.1}Running Tests}{481}{subsection.7.4.1}%
+\contentsline {subsubsection}{Quick Reference}{481}{subsubsection*.2826}%
+\contentsline {subsubsection}{Targeting Specific Tests}{481}{subsubsection*.2827}%
+\contentsline {subsubsection}{Coverage}{482}{subsubsection*.2828}%
+\contentsline {subsection}{\numberline {7.4.2}Test Architecture}{482}{subsection.7.4.2}%
+\contentsline {subsubsection}{Directory Layout}{482}{subsubsection*.2829}%
+\contentsline {subsubsection}{Automatic Test Markers}{482}{subsubsection*.2830}%
+\contentsline {subsubsection}{Test Isolation}{483}{subsubsection*.2831}%
+\contentsline {subsubsection}{Shared Fixtures}{483}{subsubsection*.2832}%
+\contentsline {subsection}{\numberline {7.4.3}Writing Tests}{483}{subsection.7.4.3}%
+\contentsline {subsubsection}{Test Structure}{483}{subsubsection*.2833}%
+\contentsline {subsubsection}{Testing Query Execution (End\sphinxhyphen {}to\sphinxhyphen {}End)}{484}{subsubsection*.2834}%
+\contentsline {subsubsection}{Testing AST Construction}{484}{subsubsection*.2835}%
+\contentsline {subsubsection}{Testing Error Paths}{485}{subsubsection*.2836}%
+\contentsline {subsubsection}{Testing Mutations (CREATE, SET, DELETE)}{485}{subsubsection*.2837}%
+\contentsline {subsubsection}{Testing Shadow State Atomicity}{485}{subsubsection*.2838}%
+\contentsline {subsection}{\numberline {7.4.4}Performance Testing}{486}{subsection.7.4.4}%
+\contentsline {subsubsection}{Writing Robust Performance Tests}{486}{subsubsection*.2839}%
+\contentsline {subsubsection}{Benchmark Tests}{486}{subsubsection*.2840}%
+\contentsline {subsection}{\numberline {7.4.5}Integration Tests}{486}{subsection.7.4.5}%
+\contentsline {subsubsection}{Spark Integration}{486}{subsubsection*.2841}%
+\contentsline {subsubsection}{Neo4j Integration}{487}{subsubsection*.2842}%
+\contentsline {subsubsection}{Large Dataset Tests}{487}{subsubsection*.2843}%
+\contentsline {subsection}{\numberline {7.4.6}Configuration for Testing}{487}{subsection.7.4.6}%
+\contentsline {subsubsection}{Environment Variables}{487}{subsubsection*.2844}%
+\contentsline {subsubsection}{Timeout Configuration}{487}{subsubsection*.2845}%
+\contentsline {subsection}{\numberline {7.4.7}Continuous Integration}{488}{subsection.7.4.7}%
+\contentsline {subsection}{\numberline {7.4.8}Type Checking}{488}{subsection.7.4.8}%
+\contentsline {section}{\numberline {7.5}Release Process}{488}{section.7.5}%
+\contentsline {subsection}{\numberline {7.5.1}Version Numbering}{488}{subsection.7.5.1}%
+\contentsline {subsection}{\numberline {7.5.2}Pre\sphinxhyphen {}Release Checklist}{489}{subsection.7.5.2}%
+\contentsline {subsubsection}{Bump Version}{489}{subsubsection*.2853}%
+\contentsline {subsection}{\numberline {7.5.3}Building Packages}{489}{subsection.7.5.3}%
+\contentsline {subsection}{\numberline {7.5.4}Publishing}{489}{subsection.7.5.4}%
+\contentsline {subsection}{\numberline {7.5.5}Post\sphinxhyphen {}Release}{490}{subsection.7.5.5}%
+\contentsline {subsection}{\numberline {7.5.6}CI/CD}{490}{subsection.7.5.6}%
+\contentsline {section}{\numberline {7.6}Security Hardening \& Compliance}{490}{section.7.6}%
+\contentsline {subsection}{\numberline {7.6.1}Threat Model}{491}{subsection.7.6.1}%
+\contentsline {subsection}{\numberline {7.6.2}Input Validation}{491}{subsection.7.6.2}%
+\contentsline {subsubsection}{Cypher query parameters}{491}{subsubsection*.2870}%
+\contentsline {subsubsection}{SQL data\sphinxhyphen {}source queries}{491}{subsubsection*.2871}%
+\contentsline {subsubsection}{File path sanitisation}{491}{subsubsection*.2872}%
+\contentsline {subsubsection}{URI scheme validation}{492}{subsubsection*.2873}%
+\contentsline {subsection}{\numberline {7.6.3}Resource Limits}{492}{subsection.7.6.3}%
+\contentsline {subsubsection}{Cross\sphinxhyphen {}join row limit}{492}{subsubsection*.2874}%
+\contentsline {subsubsection}{Query timeout}{492}{subsubsection*.2875}%
+\contentsline {subsubsection}{Memory budget}{492}{subsubsection*.2876}%
+\contentsline {subsection}{\numberline {7.6.4}Internal Column Protection}{492}{subsection.7.6.4}%
+\contentsline {subsection}{\numberline {7.6.5}Semantic Validation}{493}{subsection.7.6.5}%
+\contentsline {subsection}{\numberline {7.6.6}Error Handling}{493}{subsection.7.6.6}%
+\contentsline {subsection}{\numberline {7.6.7}Logging and Audit}{493}{subsection.7.6.7}%
+\contentsline {subsection}{\numberline {7.6.8}Deployment Checklist}{494}{subsection.7.6.8}%
+\contentsline {subsection}{\numberline {7.6.9}Security Testing}{494}{subsection.7.6.9}%
+\contentsline {section}{\numberline {7.7}Threat Model \& Trust Boundaries}{494}{section.7.7}%
+\contentsline {subsection}{\numberline {7.7.1}Overview}{495}{subsection.7.7.1}%
+\contentsline {subsection}{\numberline {7.7.2}Trust Boundaries}{495}{subsection.7.7.2}%
+\contentsline {subsubsection}{TB\sphinxhyphen {}1: User Input Boundary}{496}{subsubsection*.2890}%
+\contentsline {subsubsection}{TB\sphinxhyphen {}2: Configuration Boundary}{496}{subsubsection*.2891}%
+\contentsline {subsubsection}{TB\sphinxhyphen {}3: Data I/O Boundary}{497}{subsubsection*.2892}%
+\contentsline {subsubsection}{TB\sphinxhyphen {}4: SQL Execution Boundary}{497}{subsubsection*.2893}%
+\contentsline {subsubsection}{TB\sphinxhyphen {}5: Output Boundary}{498}{subsubsection*.2894}%
+\contentsline {subsection}{\numberline {7.7.3}Security\sphinxhyphen {}Sensitive Operations}{498}{subsection.7.7.3}%
+\contentsline {subsection}{\numberline {7.7.4}Audit \& Logging Architecture}{499}{subsection.7.7.4}%
+\contentsline {subsection}{\numberline {7.7.5}Data Flow Summary}{499}{subsection.7.7.5}%
+\contentsline {subsection}{\numberline {7.7.6}Coordination Requirements}{500}{subsection.7.7.6}%
+\contentsline {subsection}{\numberline {7.7.7}Security Testing}{500}{subsection.7.7.7}%
+\contentsline {subsection}{\numberline {7.7.8}Document History}{500}{subsection.7.7.8}%
+\contentsline {section}{\numberline {7.8}New Contributors}{500}{section.7.8}%
+\contentsline {section}{\numberline {7.9}Overview}{501}{section.7.9}%
+\contentsline {chapter}{\numberline {8}Architecture Decision Records}{502}{chapter.8}%
+\contentsline {section}{\numberline {8.1}ADR\sphinxhyphen {}001: Use Lark with Earley Algorithm for Cypher Parsing}{502}{section.8.1}%
+\contentsline {subsection}{\numberline {8.1.1}Context}{502}{subsection.8.1.1}%
+\contentsline {subsection}{\numberline {8.1.2}Decision}{503}{subsection.8.1.2}%
+\contentsline {subsection}{\numberline {8.1.3}Consequences}{503}{subsection.8.1.3}%
+\contentsline {section}{\numberline {8.2}ADR\sphinxhyphen {}002: BindingFrame as Intermediate Representation}{503}{section.8.2}%
+\contentsline {subsection}{\numberline {8.2.1}Context}{503}{subsection.8.2.1}%
+\contentsline {subsection}{\numberline {8.2.2}Decision}{504}{subsection.8.2.2}%
+\contentsline {subsection}{\numberline {8.2.3}Consequences}{504}{subsection.8.2.3}%
+\contentsline {section}{\numberline {8.3}ADR\sphinxhyphen {}003: ID\sphinxhyphen {}Only Column Preservation Strategy}{504}{section.8.3}%
+\contentsline {subsection}{\numberline {8.3.1}Context}{505}{subsection.8.3.1}%
+\contentsline {subsection}{\numberline {8.3.2}Decision}{505}{subsection.8.3.2}%
+\contentsline {subsection}{\numberline {8.3.3}Consequences}{505}{subsection.8.3.3}%
+\contentsline {section}{\numberline {8.4}ADR\sphinxhyphen {}004: Shadow\sphinxhyphen {}Write Mutation Pattern for Atomicity}{505}{section.8.4}%
+\contentsline {subsection}{\numberline {8.4.1}Context}{506}{subsection.8.4.1}%
+\contentsline {subsection}{\numberline {8.4.2}Decision}{506}{subsection.8.4.2}%
+\contentsline {subsection}{\numberline {8.4.3}Consequences}{506}{subsection.8.4.3}%
+\contentsline {section}{\numberline {8.5}ADR\sphinxhyphen {}005: Backend Engine Protocol for Pluggable DataFrames}{506}{section.8.5}%
+\contentsline {subsection}{\numberline {8.5.1}Context}{507}{subsection.8.5.1}%
+\contentsline {subsection}{\numberline {8.5.2}Decision}{507}{subsection.8.5.2}%
+\contentsline {subsection}{\numberline {8.5.3}Consequences}{507}{subsection.8.5.3}%
+\contentsline {section}{\numberline {8.6}ADR\sphinxhyphen {}006: Star Class Decomposition into Specialised Modules}{508}{section.8.6}%
+\contentsline {subsection}{\numberline {8.6.1}Context}{508}{subsection.8.6.1}%
+\contentsline {subsection}{\numberline {8.6.2}Decision}{508}{subsection.8.6.2}%
+\contentsline {subsection}{\numberline {8.6.3}Consequences}{508}{subsection.8.6.3}%
+\contentsline {section}{\numberline {8.7}ADR\sphinxhyphen {}007: Extract Cardinality Estimator from Query Planner}{509}{section.8.7}%
+\contentsline {subsection}{\numberline {8.7.1}Context}{509}{subsection.8.7.1}%
+\contentsline {subsection}{\numberline {8.7.2}Decision}{509}{subsection.8.7.2}%
+\contentsline {subsection}{\numberline {8.7.3}Consequences}{510}{subsection.8.7.3}%
+\contentsline {chapter}{\numberline {9}Overview}{511}{chapter.9}%
+\contentsline {chapter}{\numberline {10}Key Features}{512}{chapter.10}%
+\contentsline {chapter}{\numberline {11}Quick Start}{513}{chapter.11}%
+\contentsline {chapter}{\numberline {12}Examples}{514}{chapter.12}%
+\contentsline {chapter}{\numberline {13}Indices and tables}{515}{chapter.13}%
+\contentsline {chapter}{Python Module Index}{516}{section*.2895}%
+\contentsline {chapter}{Index}{518}{section*.2896}%

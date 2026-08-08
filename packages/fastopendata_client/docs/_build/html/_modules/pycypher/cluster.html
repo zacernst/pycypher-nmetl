@@ -1,0 +1,1793 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>pycypher.cluster &mdash; PyCypher 0.0.19 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=2fd7553c"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            PyCypher
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../hello_world.html">Zero to Hello World</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../hello_world.html#prerequisites">Prerequisites</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../hello_world.html#level-1-your-first-query">Level 1: Your First Query</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../hello_world.html#level-2-filtering-with-where">Level 2: Filtering with WHERE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../hello_world.html#level-3-multiple-entity-types">Level 3: Multiple Entity Types</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../hello_world.html#level-4-relationships">Level 4: Relationships</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../hello_world.html#level-5-aggregation">Level 5: Aggregation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../hello_world.html#runnable-example">Runnable Example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../hello_world.html#next-steps">Next Steps</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../getting_started.html">Getting Started</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../getting_started.html#installation">Installation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../getting_started.html#quick-start-run-your-first-query">Quick Start: Run Your First Query</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../getting_started.html#using-contextbuilder-recommended">Using ContextBuilder (Recommended)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../getting_started.html#one-line-context-builder">One-Line Context Builder</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../getting_started.html#graph-queries-match-with-relationships">Graph Queries: MATCH with Relationships</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../getting_started.html#where-label-predicates">WHERE Label Predicates</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../getting_started.html#variable-length-paths">Variable-Length Paths</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../getting_started.html#shortestpath-and-allshortestpaths">shortestPath and allShortestPaths</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../getting_started.html#optional-match-left-join-semantics">OPTIONAL MATCH — Left-Join Semantics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../getting_started.html#with-unwind-list-explosion">WITH + UNWIND: List Explosion</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../getting_started.html#aggregation">Aggregation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../getting_started.html#with-pass-through-projection">WITH * — Pass-Through Projection</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../getting_started.html#union-combining-query-results">UNION — Combining Query Results</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../getting_started.html#mutating-the-graph-create-merge-delete-remove">Mutating the Graph — CREATE, MERGE, DELETE, REMOVE</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../getting_started.html#create-insert-new-nodes-and-relationships">CREATE — Insert New Nodes and Relationships</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../getting_started.html#merge-upsert-semantics">MERGE — Upsert Semantics</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../getting_started.html#set-update-properties">SET — Update Properties</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../getting_started.html#remove-delete-properties">REMOVE — Delete Properties</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../getting_started.html#delete-remove-nodes">DELETE — Remove Nodes</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../getting_started.html#foreach-iterate-over-a-list">FOREACH — Iterate Over a List</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../getting_started.html#functional-expressions">Functional Expressions</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../getting_started.html#list-comprehensions">List Comprehensions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../getting_started.html#pattern-comprehensions">Pattern Comprehensions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../getting_started.html#quantifier-predicates">Quantifier Predicates</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../getting_started.html#exists-subqueries">EXISTS Subqueries</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../getting_started.html#reduce">REDUCE</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../getting_started.html#scalar-functions">Scalar Functions</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../getting_started.html#auto-generated-column-names">Auto-generated Column Names</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../getting_started.html#running-tests">Running Tests</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../getting_started.html#next-steps">Next Steps</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorials/index.html">Tutorials</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../tutorials/cypher_for_sql_users.html">Cypher for SQL Users</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/cypher_for_sql_users.html#the-60-second-mental-model">The 60-Second Mental Model</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/cypher_for_sql_users.html#side-by-side-examples">Side-by-Side Examples</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../tutorials/cypher_for_sql_users.html#select-from-where">SELECT … FROM … WHERE</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../tutorials/cypher_for_sql_users.html#join-inner-join-via-relationship">JOIN (Inner Join via Relationship)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../tutorials/cypher_for_sql_users.html#left-join-optional-match">LEFT JOIN (OPTIONAL MATCH)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../tutorials/cypher_for_sql_users.html#group-by-with-aggregation">GROUP BY with Aggregation</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../tutorials/cypher_for_sql_users.html#subqueries-with-clause">Subqueries (WITH Clause)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../tutorials/cypher_for_sql_users.html#exists-subquery-predicate">EXISTS (Subquery Predicate)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../tutorials/cypher_for_sql_users.html#collect-no-sql-equivalent">COLLECT (No SQL Equivalent)</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/cypher_for_sql_users.html#common-sql-patterns-translated">Common SQL Patterns Translated</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../tutorials/cypher_for_sql_users.html#distinct">DISTINCT</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../tutorials/cypher_for_sql_users.html#count-with-filter">COUNT with Filter</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../tutorials/cypher_for_sql_users.html#like-string-matching">LIKE (String Matching)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../tutorials/cypher_for_sql_users.html#in-list">IN List</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../tutorials/cypher_for_sql_users.html#coalesce-null-handling">COALESCE / NULL Handling</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../tutorials/cypher_for_sql_users.html#case-expressions">CASE Expressions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../tutorials/cypher_for_sql_users.html#insert-update-delete">INSERT / UPDATE / DELETE</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/cypher_for_sql_users.html#when-to-use-graph-patterns-vs-sql-thinking">When to Use Graph Patterns vs SQL Thinking</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/cypher_for_sql_users.html#key-syntax-differences-cheat-sheet">Key Syntax Differences Cheat Sheet</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../tutorials/basic_query_parsing.html">Basic Query Execution</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/basic_query_parsing.html#learning-objectives">Learning Objectives</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/basic_query_parsing.html#setup">Setup</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/basic_query_parsing.html#running-queries">Running Queries</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../tutorials/basic_query_parsing.html#simple-match">Simple MATCH</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../tutorials/basic_query_parsing.html#filtering-with-where">Filtering with WHERE</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../tutorials/basic_query_parsing.html#sorting-and-limiting">Sorting and Limiting</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../tutorials/basic_query_parsing.html#aggregation">Aggregation</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/basic_query_parsing.html#relationship-patterns">Relationship Patterns</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/basic_query_parsing.html#discovering-available-functions">Discovering Available Functions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/basic_query_parsing.html#advanced-inspecting-the-parsed-ast">Advanced: Inspecting the Parsed AST</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/basic_query_parsing.html#error-handling">Error Handling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/basic_query_parsing.html#next-steps">Next Steps</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../tutorials/graph_modeling.html">Graph Modeling</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/graph_modeling.html#prerequisites">Prerequisites</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/graph_modeling.html#why-graph-modeling-matters">Why Graph Modeling Matters</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/graph_modeling.html#the-core-abstraction">The Core Abstraction</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/graph_modeling.html#designing-entities">Designing Entities</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../tutorials/graph_modeling.html#one-table-per-concept">One Table per Concept</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../tutorials/graph_modeling.html#choosing-ids">Choosing IDs</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../tutorials/graph_modeling.html#properties">Properties</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/graph_modeling.html#designing-relationships">Designing Relationships</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../tutorials/graph_modeling.html#relationship-direction">Relationship Direction</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../tutorials/graph_modeling.html#relationship-properties">Relationship Properties</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../tutorials/graph_modeling.html#multiple-relationship-types">Multiple Relationship Types</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/graph_modeling.html#common-modeling-patterns">Common Modeling Patterns</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../tutorials/graph_modeling.html#hub-and-spoke-star-schema">Hub-and-Spoke (Star Schema)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../tutorials/graph_modeling.html#chain-sequential-events">Chain (Sequential Events)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../tutorials/graph_modeling.html#bipartite-graph">Bipartite Graph</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/graph_modeling.html#try-it-yourself">Try It Yourself</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/graph_modeling.html#common-pitfalls">Common Pitfalls</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/graph_modeling.html#next-steps">Next Steps</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../tutorials/pattern_matching.html">Pattern Matching</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/pattern_matching.html#learning-objectives">Learning Objectives</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/pattern_matching.html#prerequisites">Prerequisites</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/pattern_matching.html#relationship-patterns">Relationship Patterns</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/pattern_matching.html#label-predicates-in-where">Label Predicates in WHERE</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/pattern_matching.html#variable-length-paths">Variable-Length Paths</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/pattern_matching.html#shortestpath-and-allshortestpaths">shortestPath and allShortestPaths</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/pattern_matching.html#optional-match-left-join-semantics">OPTIONAL MATCH — Left-Join Semantics</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/pattern_matching.html#cross-product-match">Cross-Product MATCH</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/pattern_matching.html#pattern-comprehensions">Pattern Comprehensions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/pattern_matching.html#exists-subqueries">EXISTS Subqueries</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/pattern_matching.html#quantifier-predicates">Quantifier Predicates</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/pattern_matching.html#reduce-expressions">REDUCE Expressions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/pattern_matching.html#list-comprehensions">List Comprehensions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/pattern_matching.html#query-parameters">Query Parameters</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/pattern_matching.html#performance-tips">Performance Tips</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/pattern_matching.html#next-steps">Next Steps</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../tutorials/query_validation.html">Query Validation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/query_validation.html#prerequisites">Prerequisites</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/query_validation.html#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/query_validation.html#syntax-validation">Syntax Validation</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../tutorials/query_validation.html#quick-check">Quick Check</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../tutorials/query_validation.html#catching-parse-errors">Catching Parse Errors</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/query_validation.html#semantic-validation">Semantic Validation</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../tutorials/query_validation.html#basic-usage">Basic Usage</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../tutorials/query_validation.html#error-severity-levels">Error Severity Levels</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../tutorials/query_validation.html#what-gets-validated">What Gets Validated</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../tutorials/query_validation.html#convenience-wrapper">Convenience Wrapper</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/query_validation.html#ast-level-validation">AST-Level Validation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/query_validation.html#runtime-exception-handling">Runtime Exception Handling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/query_validation.html#putting-it-together">Putting It Together</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/query_validation.html#next-steps">Next Steps</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../tutorials/ast_manipulation.html">AST Manipulation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/ast_manipulation.html#prerequisites">Prerequisites</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/ast_manipulation.html#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/ast_manipulation.html#parsing-a-query-to-a-typed-ast">Parsing a Query to a Typed AST</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/ast_manipulation.html#creating-ast-nodes-from-scratch">Creating AST Nodes from Scratch</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../tutorials/ast_manipulation.html#nodes-and-labels">Nodes and Labels</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../tutorials/ast_manipulation.html#relationship-patterns">Relationship Patterns</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../tutorials/ast_manipulation.html#expressions">Expressions</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/ast_manipulation.html#traversing-the-ast">Traversing the AST</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/ast_manipulation.html#pretty-printing">Pretty-Printing</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/ast_manipulation.html#validation">Validation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/ast_manipulation.html#common-ast-node-types">Common AST Node Types</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/ast_manipulation.html#next-steps">Next Steps</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../tutorials/data_etl_pipeline.html">Data ETL Pipeline</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/data_etl_pipeline.html#prerequisites">Prerequisites</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/data_etl_pipeline.html#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/data_etl_pipeline.html#programmatic-pipeline">Programmatic Pipeline</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../tutorials/data_etl_pipeline.html#loading-data-with-contextbuilder">Loading Data with ContextBuilder</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../tutorials/data_etl_pipeline.html#quick-setup-from-a-dict">Quick Setup from a Dict</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../tutorials/data_etl_pipeline.html#supported-data-sources">Supported Data Sources</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/data_etl_pipeline.html#yaml-configuration">YAML Configuration</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../tutorials/data_etl_pipeline.html#config-file-structure">Config File Structure</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../tutorials/data_etl_pipeline.html#environment-variables">Environment Variables</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/data_etl_pipeline.html#the-nmetl-cli">The <code class="docutils literal notranslate"><span class="pre">nmetl</span></code> CLI</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../tutorials/data_etl_pipeline.html#error-handling">Error Handling</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/data_etl_pipeline.html#writing-output">Writing Output</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/data_etl_pipeline.html#security">Security</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/data_etl_pipeline.html#complete-example">Complete Example</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/data_etl_pipeline.html#next-steps">Next Steps</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../tutorials/integration_guide.html">Integration Guide</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/integration_guide.html#prerequisites">Prerequisites</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/integration_guide.html#core-integration-pattern">Core Integration Pattern</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/integration_guide.html#web-api-integration">Web API Integration</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../tutorials/integration_guide.html#flask-example">Flask Example</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../tutorials/integration_guide.html#fastapi-example">FastAPI Example</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../tutorials/integration_guide.html#query-parameters-for-safety">Query Parameters for Safety</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/integration_guide.html#data-pipeline-integration">Data Pipeline Integration</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../tutorials/integration_guide.html#batch-processing">Batch Processing</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../tutorials/integration_guide.html#mutation-pipelines">Mutation Pipelines</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../tutorials/integration_guide.html#yaml-pipeline-with-nmetl">YAML Pipeline with nmetl</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/integration_guide.html#jupyter-notebook-integration">Jupyter Notebook Integration</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/integration_guide.html#pre-execution-validation">Pre-Execution Validation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/integration_guide.html#error-handling-strategy">Error Handling Strategy</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/integration_guide.html#context-refresh">Context Refresh</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/integration_guide.html#production-checklist">Production Checklist</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/integration_guide.html#next-steps">Next Steps</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../tutorials/production_deployment.html">Production Deployment Patterns</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/production_deployment.html#prerequisites">Prerequisites</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/production_deployment.html#backend-selection">Backend Selection</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/production_deployment.html#rate-limiting">Rate Limiting</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/production_deployment.html#audit-logging">Audit Logging</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/production_deployment.html#timeouts-and-memory-budgets">Timeouts and Memory Budgets</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/production_deployment.html#result-caching">Result Caching</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/production_deployment.html#complete-production-checklist">Complete Production Checklist</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/production_deployment.html#next-steps">Next Steps</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../tutorials/troubleshooting.html">Troubleshooting Queries</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/troubleshooting.html#prerequisites">Prerequisites</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/troubleshooting.html#diagnostic-tools">Diagnostic Tools</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../tutorials/troubleshooting.html#enable-debug-logging">Enable Debug Logging</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../tutorials/troubleshooting.html#validate-before-executing">Validate Before Executing</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../tutorials/troubleshooting.html#check-available-functions">Check Available Functions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../tutorials/troubleshooting.html#inspect-the-parsed-ast">Inspect the Parsed AST</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../tutorials/troubleshooting.html#query-metrics">Query Metrics</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/troubleshooting.html#parse-errors">Parse Errors</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../tutorials/troubleshooting.html#syntax-error-or-unexpectedinput">“Syntax error” or UnexpectedInput</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/troubleshooting.html#missing-or-empty-results">Missing or Empty Results</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../tutorials/troubleshooting.html#query-returns-empty-dataframe">Query returns empty DataFrame</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../tutorials/troubleshooting.html#property-returns-null-unexpectedly">Property returns NULL unexpectedly</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../tutorials/troubleshooting.html#unexpected-extra-rows">Unexpected extra rows</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/troubleshooting.html#performance-issues">Performance Issues</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../tutorials/troubleshooting.html#query-is-slow">Query is slow</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../tutorials/troubleshooting.html#memory-usage-is-high">Memory usage is high</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/troubleshooting.html#exception-reference">Exception Reference</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/troubleshooting.html#try-it-yourself">Try It Yourself</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/troubleshooting.html#next-steps">Next Steps</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../tutorials/index.html#learning-pathway">Learning Pathway</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../tutorials/index.html#prerequisites">Prerequisites</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../tutorials/index.html#related-resources">Related Resources</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../tutorials/index.html#example-scripts">Example Scripts</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index.html">API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../api/pycypher.html">PyCypher API</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../api/pycypher.html#quick-start">Quick Start</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/pycypher.html#core-modules">Core Modules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../api/pycypher.html#ast-models">AST Models</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../api/pycypher.html#grammar-parser">Grammar Parser</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../api/pycypher.html#grammar-transformers">Grammar Transformers</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../api/pycypher.html#grammar-rule-mixins">Grammar Rule Mixins</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../api/pycypher.html#ast-converter">AST Converter</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../api/pycypher.html#ast-rewriter">AST Rewriter</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/pycypher.html#data-model">Data Model</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../api/pycypher.html#relational-models">Relational Models</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../api/pycypher.html#constants">Constants</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/pycypher.html#query-execution">Query Execution</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../api/pycypher.html#star-query-orchestrator">Star (Query Orchestrator)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../api/pycypher.html#clause-executor">Clause Executor</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../api/pycypher.html#pattern-matcher">Pattern Matcher</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../api/pycypher.html#path-expander">Path Expander</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../api/pycypher.html#expression-renderer">Expression Renderer</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/pycypher.html#bindingframe-execution">BindingFrame Execution</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../api/pycypher.html#bindingframe">BindingFrame</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../api/pycypher.html#evaluator-protocol">Evaluator Protocol</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../api/pycypher.html#bindingexpression-evaluator">BindingExpression Evaluator</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../api/pycypher.html#arithmetic-evaluator">Arithmetic Evaluator</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../api/pycypher.html#boolean-evaluator">Boolean Evaluator</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../api/pycypher.html#comparison-evaluator">Comparison Evaluator</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../api/pycypher.html#string-predicate-evaluator">String Predicate Evaluator</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../api/pycypher.html#exists-evaluator">EXISTS Evaluator</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../api/pycypher.html#aggregation-evaluator">Aggregation Evaluator</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../api/pycypher.html#aggregation-planner">Aggregation Planner</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../api/pycypher.html#collection-evaluator">Collection Evaluator</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../api/pycypher.html#scalar-functions">Scalar Functions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../api/pycypher.html#scalar-function-evaluator">Scalar Function Evaluator</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/pycypher.html#execution-engine">Execution Engine</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../api/pycypher.html#configuration">Configuration</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../api/pycypher.html#backend-engine">Backend Engine</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../api/pycypher.html#query-planner">Query Planner</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../api/pycypher.html#query-analyzer">Query Analyzer</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../api/pycypher.html#cardinality-estimator">Cardinality Estimator</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../api/pycypher.html#scan-operators">Scan Operators</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../api/pycypher.html#query-complexity">Query Complexity</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../api/pycypher.html#query-optimizer">Query Optimizer</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../api/pycypher.html#query-validator">Query Validator</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../api/pycypher.html#query-formatter">Query Formatter</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../api/pycypher.html#query-profiler">Query Profiler</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../api/pycypher.html#input-validator">Input Validator</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../api/pycypher.html#frame-joiner">Frame Joiner</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../api/pycypher.html#leapfrogtriejoin">LeapfrogTriejoin</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../api/pycypher.html#graph-index">Graph Index</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../api/pycypher.html#projection-planner">Projection Planner</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../api/pycypher.html#variable-manager">Variable Manager</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../api/pycypher.html#pipeline">Pipeline</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../api/pycypher.html#lazy-evaluation">Lazy Evaluation</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../api/pycypher.html#result-cache">Result Cache</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../api/pycypher.html#timeout-handler">Timeout Handler</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../api/pycypher.html#mutation-engine">Mutation Engine</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/pycypher.html#multi-query-composition">Multi-Query Composition</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../api/pycypher.html#multi-query-analyzer">Multi-Query Analyzer</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../api/pycypher.html#multi-query-executor">Multi-Query Executor</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/pycypher.html#validation">Validation</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../api/pycypher.html#semantic-validator">Semantic Validator</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/pycypher.html#ingestion-layer">Ingestion Layer</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../api/pycypher.html#context-builder">Context Builder</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../api/pycypher.html#module-pycypher.ingestion.data_sources">Data Sources</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../api/pycypher.html#module-pycypher.ingestion.config">Pipeline Config</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../api/pycypher.html#module-pycypher.ingestion.duckdb_reader">DuckDB Reader</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../api/pycypher.html#module-pycypher.ingestion.arrow_utils">Arrow Utilities</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../api/pycypher.html#module-pycypher.ingestion.output_writer">Output Writer</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../api/pycypher.html#module-pycypher.ingestion.security">Security</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/pycypher.html#sinks">Sinks</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../api/pycypher.html#neo4j-sink">Neo4j Sink</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/pycypher.html#distributed-execution">Distributed Execution</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../api/pycypher.html#cluster">Cluster</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/pycypher.html#cli">CLI</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../api/pycypher.html#nmetl-cli">NMETL CLI</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/pycypher.html#security-observability">Security &amp; Observability</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../api/pycypher.html#audit-logging">Audit Logging</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../api/pycypher.html#rate-limiter">Rate Limiter</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/pycypher.html#utilities">Utilities</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../api/pycypher.html#types">Types</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../api/pycypher.html#exceptions">Exceptions</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/shared.html">Shared API</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../api/shared.html#submodules">Submodules</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/shared.html#core-modules">Core Modules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../api/shared.html#logger">Logger</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../api/shared.html#metrics">Metrics</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../api/shared.html#helpers">Helpers</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../api/shared.html#telemetry">Telemetry</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/shared.html#observability">Observability</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../api/shared.html#opentelemetry">OpenTelemetry</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../api/shared.html#exporters">Exporters</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/shared.html#compatibility">Compatibility</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../api/shared.html#api-surface-compatibility">API Surface Compatibility</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../api/shared.html#deprecation-utilities">Deprecation Utilities</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/index.html#package-overview">Package Overview</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../api/index.html#pycypher">PyCypher</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/index.html#shared">Shared</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/index.html">User Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../user_guide/data_model.html">Data Model Requirements</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/data_model.html#why-does-pycypher-need-id-columns">Why Does PyCypher Need <code class="docutils literal notranslate"><span class="pre">__ID__</span></code> Columns?</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../user_guide/data_model.html#the-short-answer">The Short Answer</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../user_guide/data_model.html#why-not-just-use-row-position">Why Not Just Use Row Position?</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/data_model.html#using-your-existing-column-names">Using Your Existing Column Names</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../user_guide/data_model.html#the-most-common-pattern">The Most Common Pattern</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../user_guide/data_model.html#from-the-cli">From the CLI</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../user_guide/data_model.html#in-yaml-pipeline-config">In YAML Pipeline Config</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../user_guide/data_model.html#when-no-id-column-exists">When No ID Column Exists</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/data_model.html#real-world-examples">Real-World Examples</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../user_guide/data_model.html#example-1-e-commerce-customer-order-product">Example 1: E-Commerce (Customer → Order → Product)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../user_guide/data_model.html#example-2-social-network-user-follows-user">Example 2: Social Network (User follows User)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../user_guide/data_model.html#example-3-multi-entity-person-company-employment">Example 3: Multi-Entity (Person + Company + Employment)</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/data_model.html#data-preparation-guide">Data Preparation Guide</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../user_guide/data_model.html#converting-existing-tables">Converting Existing Tables</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../user_guide/data_model.html#handling-composite-keys">Handling Composite Keys</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../user_guide/data_model.html#id-generation-strategies">ID Generation Strategies</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../user_guide/data_model.html#type-coercion">Type Coercion</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/data_model.html#troubleshooting-common-data-issues">Troubleshooting Common Data Issues</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../user_guide/data_model.html#empty-query-results">Empty Query Results</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../user_guide/data_model.html#keyerror-id">KeyError: <code class="docutils literal notranslate"><span class="pre">__ID__</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../user_guide/data_model.html#duplicate-id-warning">Duplicate ID Warning</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../user_guide/data_model.html#missing-relationship-columns">Missing Relationship Columns</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/data_model.html#quick-reference">Quick Reference</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/data_model.html#next-steps">Next Steps</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../user_guide/variables.html">Variables in PyCypher</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/variables.html#understanding-variable-representation">Understanding Variable Representation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/variables.html#the-variable-class">The Variable Class</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/variables.html#where-variables-are-used">Where Variables Are Used</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../user_guide/variables.html#node-patterns">Node Patterns</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../user_guide/variables.html#relationship-patterns">Relationship Patterns</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../user_guide/variables.html#property-lookups">Property Lookups</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../user_guide/variables.html#list-comprehensions">List Comprehensions</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/variables.html#migration-from-string-variables">Migration from String Variables</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/variables.html#benefits">Benefits</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/variables.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../user_guide/ast_nodes.html">AST Nodes</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/ast_nodes.html#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/ast_nodes.html#node-hierarchy">Node Hierarchy</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/ast_nodes.html#core-node-types">Core Node Types</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../user_guide/ast_nodes.html#query">Query</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../user_guide/ast_nodes.html#clauses">Clauses</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../user_guide/ast_nodes.html#expressions">Expressions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../user_guide/ast_nodes.html#patterns">Patterns</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../user_guide/ast_nodes.html#literals">Literals</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../user_guide/ast_nodes.html#variables">Variables</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/ast_nodes.html#validation">Validation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/ast_nodes.html#tree-traversal">Tree Traversal</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/ast_nodes.html#pydantic-integration">Pydantic Integration</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/ast_nodes.html#for-more-information">For More Information</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../user_guide/query_processing.html">Query Processing</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/query_processing.html#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/query_processing.html#parsing-pipeline">Parsing Pipeline</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../user_guide/query_processing.html#raw-parsing">Raw Parsing</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../user_guide/query_processing.html#ast-conversion">AST Conversion</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/query_processing.html#validation">Validation</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../user_guide/query_processing.html#semantic-validation">Semantic Validation</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/query_processing.html#query-execution">Query Execution</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../user_guide/query_processing.html#bindingframe-ir">BindingFrame IR</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/query_processing.html#expression-evaluation">Expression Evaluation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/query_processing.html#cross-product-match">Cross-Product MATCH</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../user_guide/query_processing.html#aggregation">Aggregation</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/query_processing.html#projection-modifiers-order-by-limit-skip-distinct">Projection Modifiers: ORDER BY, LIMIT, SKIP, DISTINCT</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../user_guide/query_processing.html#auto-generated-column-names">Auto-generated Column Names</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/query_processing.html#optional-match-left-join-semantics">OPTIONAL MATCH — Left-Join Semantics</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/query_processing.html#unwind-list-explosion">UNWIND — List Explosion</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/query_processing.html#with-pass-through-projection">WITH * — Pass-Through Projection</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/query_processing.html#variable-length-paths">Variable-Length Paths</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/query_processing.html#shortestpath-and-allshortestpaths">shortestPath and allShortestPaths</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/query_processing.html#set-clause-and-atomicity">SET Clause and Atomicity</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/query_processing.html#remove-clause">REMOVE Clause</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/query_processing.html#create-and-merge-clauses">CREATE and MERGE Clauses</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/query_processing.html#delete-clause">DELETE Clause</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/query_processing.html#foreach-clause">FOREACH Clause</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/query_processing.html#union-combining-results">UNION — Combining Results</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../user_guide/query_processing.html#end-to-end-processing">End-to-End Processing</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/query_processing.html#error-handling">Error Handling</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../user_guide/query_processing.html#handling-parse-errors">Handling Parse Errors</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/query_processing.html#performance-considerations">Performance Considerations</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/query_processing.html#for-more-information">For More Information</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../user_guide/error_handling.html">Error Handling Patterns</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/error_handling.html#exception-hierarchy">Exception Hierarchy</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/error_handling.html#catching-parse-errors">Catching Parse Errors</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/error_handling.html#catching-runtime-errors">Catching Runtime Errors</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/error_handling.html#resource-limit-errors">Resource Limit Errors</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/error_handling.html#rate-limit-errors">Rate Limit Errors</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/error_handling.html#pre-execution-validation">Pre-execution Validation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/error_handling.html#security-and-pipeline-errors">Security and Pipeline Errors</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/error_handling.html#best-practices">Best Practices</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/error_handling.html#troubleshooting-quick-reference">Troubleshooting Quick Reference</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../user_guide/error_handling.html#debugging-commands">Debugging Commands</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../user_guide/configuration.html">Configuration Reference</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/configuration.html#query-execution">Query Execution</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/configuration.html#caching">Caching</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/configuration.html#logging-and-metrics">Logging and Metrics</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/configuration.html#telemetry">Telemetry</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/configuration.html#per-query-overrides">Per-Query Overrides</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/configuration.html#production-configuration-example">Production Configuration Example</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../user_guide/performance_tuning.html">Performance Tuning</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/performance_tuning.html#environment-variables-at-a-glance">Environment Variables at a Glance</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/performance_tuning.html#query-timeouts">Query Timeouts</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/performance_tuning.html#memory-budget">Memory Budget</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/performance_tuning.html#cross-join-limits">Cross-Join Limits</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/performance_tuning.html#result-caching">Result Caching</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../user_guide/performance_tuning.html#parse-caching">Parse Caching</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/performance_tuning.html#graph-native-indexes">Graph-Native Indexes</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/performance_tuning.html#leapfrogtriejoin-multi-way-joins">LeapfrogTriejoin (Multi-Way Joins)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/performance_tuning.html#cardinality-feedback-loops">Cardinality Feedback Loops</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/performance_tuning.html#rate-limiting">Rate Limiting</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/performance_tuning.html#audit-logging">Audit Logging</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/performance_tuning.html#query-structure-best-practices">Query Structure Best Practices</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../user_guide/performance_tuning.html#push-filters-early">Push Filters Early</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../user_guide/performance_tuning.html#bound-variable-length-paths">Bound Variable-Length Paths</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../user_guide/performance_tuning.html#use-with-to-pipeline-results">Use WITH to Pipeline Results</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../user_guide/performance_tuning.html#prefer-relationship-patterns-over-cross-joins">Prefer Relationship Patterns over Cross-Joins</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/performance_tuning.html#monitoring-and-diagnostics">Monitoring and Diagnostics</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../user_guide/performance_tuning.html#query-metrics">Query Metrics</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../user_guide/performance_tuning.html#query-execution-logging">Query Execution Logging</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/performance_tuning.html#common-bottlenecks">Common Bottlenecks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/performance_tuning.html#production-deployment-checklist">Production Deployment Checklist</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/performance_tuning.html#for-more-information">For More Information</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../user_guide/constants_reference.html">Constants and Magic Values Reference</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/constants_reference.html#environment-configurable-constants">Environment-Configurable Constants</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../user_guide/constants_reference.html#query-execution-limits">Query Execution Limits</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../user_guide/constants_reference.html#security-limits">Security Limits</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../user_guide/constants_reference.html#caching">Caching</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../user_guide/constants_reference.html#internal-constants-not-configurable">Internal Constants (Not Configurable)</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../user_guide/constants_reference.html#cardinality-estimator">Cardinality Estimator</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../user_guide/constants_reference.html#query-planner">Query Planner</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../user_guide/constants_reference.html#path-expansion-bfs">Path Expansion (BFS)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../user_guide/constants_reference.html#query-learning">Query Learning</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../user_guide/constants_reference.html#other-internal-limits">Other Internal Limits</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../user_guide/constants_reference.html#display-defaults">Display Defaults</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../user_guide/index.html#overview">Overview</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../deployment/index.html">Deployment &amp; Scaling</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../deployment/security.html">Security Hardening</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../deployment/security.html#production-security-checklist">Production Security Checklist</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../deployment/security.html#input-validation">Input Validation</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../deployment/security.html#sql-query-validation">SQL Query Validation</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../deployment/security.html#path-validation">Path Validation</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../deployment/security.html#ssrf-protection">SSRF Protection</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../deployment/security.html#regex-safety">Regex Safety</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../deployment/security.html#environment-hardening">Environment Hardening</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../deployment/security.html#secrets">Secrets</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../deployment/security.html#security-sensitive-environment-variables">Security-Sensitive Environment Variables</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../deployment/security.html#network-security">Network Security</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../deployment/security.html#egress-restrictions">Egress Restrictions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../deployment/security.html#neo4j-connection-security">Neo4j Connection Security</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../deployment/security.html#resource-limits">Resource Limits</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../deployment/security.html#query-timeout">Query Timeout</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../deployment/security.html#bfs-path-expansion">BFS Path Expansion</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../deployment/security.html#ast-cache">AST Cache</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../deployment/security.html#monitoring-and-alerting">Monitoring and Alerting</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../deployment/security.html#security-events-to-monitor">Security Events to Monitor</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../deployment/security.html#structured-logging">Structured Logging</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../deployment/security.html#docker-security">Docker Security</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../deployment/security.html#function-registration-security">Function Registration Security</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../deployment/security.html#incident-response">Incident Response</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../deployment/docker.html">Docker Containerisation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../deployment/docker.html#images">Images</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../deployment/docker.html#production-image-dockerfile">Production Image (<code class="docutils literal notranslate"><span class="pre">Dockerfile</span></code>)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../deployment/docker.html#development-image-dockerfile-dev">Development Image (<code class="docutils literal notranslate"><span class="pre">Dockerfile.dev</span></code>)</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../deployment/docker.html#docker-compose">Docker Compose</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../deployment/docker.html#quick-start">Quick Start</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../deployment/docker.html#services">Services</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../deployment/docker.html#optional-profiles">Optional Profiles</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../deployment/docker.html#volumes">Volumes</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../deployment/docker.html#building-custom-images">Building Custom Images</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../deployment/docker.html#health-checks">Health Checks</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../deployment/docker.html#kubernetes-deployment">Kubernetes Deployment</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../deployment/environment.html">Environment Configuration</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../deployment/environment.html#setup">Setup</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../deployment/environment.html#required-variables">Required Variables</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../deployment/environment.html#optional-variables">Optional Variables</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../deployment/environment.html#connection-urls">Connection URLs</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../deployment/environment.html#monitoring-observability">Monitoring &amp; Observability</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../deployment/environment.html#python-environment">Python Environment</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../deployment/environment.html#security-notes">Security Notes</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../deployment/scaling.html">Scaling &amp; Performance</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../deployment/scaling.html#backend-selection">Backend Selection</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../deployment/scaling.html#health-checks-and-circuit-breaker">Health Checks and Circuit Breaker</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../deployment/scaling.html#spark-cluster-docker-infrastructure">Spark Cluster (Docker Infrastructure)</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../deployment/scaling.html#worker-configuration">Worker Configuration</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../deployment/scaling.html#neo4j-tuning-docker-infrastructure">Neo4j Tuning (Docker Infrastructure)</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../deployment/scaling.html#query-level-performance">Query-Level Performance</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../deployment/scaling.html#memory-budget">Memory Budget</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../deployment/scaling.html#cross-join-limits">Cross-Join Limits</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../deployment/scaling.html#query-timeout">Query Timeout</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../deployment/scaling.html#lazy-evaluation">Lazy Evaluation</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../deployment/scaling.html#performance-testing">Performance Testing</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../deployment/scaling.html#resource-planning">Resource Planning</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../deployment/monitoring.html">Monitoring &amp; Operations</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../deployment/monitoring.html#query-metrics">Query Metrics</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../deployment/monitoring.html#metrics-snapshot">Metrics Snapshot</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../deployment/monitoring.html#diagnostic-report">Diagnostic Report</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../deployment/monitoring.html#cache-statistics">Cache Statistics</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../deployment/monitoring.html#metrics-export">Metrics Export</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../deployment/monitoring.html#prometheus">Prometheus</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../deployment/monitoring.html#statsd-datadog">StatsD / Datadog</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../deployment/monitoring.html#json-file">JSON File</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../deployment/monitoring.html#programmatic-export">Programmatic Export</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../deployment/monitoring.html#opentelemetry-distributed-tracing">OpenTelemetry Distributed Tracing</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../deployment/monitoring.html#structured-logging">Structured Logging</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../deployment/monitoring.html#query-id-correlation">Query ID Correlation</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../deployment/monitoring.html#container-logs">Container Logs</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../deployment/monitoring.html#service-health">Service Health</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../deployment/monitoring.html#backend-health-monitoring">Backend Health Monitoring</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../deployment/monitoring.html#operational-runbook">Operational Runbook</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../deployment/monitoring.html#restart-a-stuck-container">Restart a Stuck Container</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../deployment/monitoring.html#clear-neo4j-data">Clear Neo4j Data</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../deployment/monitoring.html#reset-spark-state">Reset Spark State</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../deployment/monitoring.html#check-nominatim-import-progress">Check Nominatim Import Progress</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../deployment/troubleshooting.html">Troubleshooting</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../deployment/troubleshooting.html#docker-issues">Docker Issues</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../deployment/troubleshooting.html#docker-compose-up-fails-with-variable-not-set"><code class="docutils literal notranslate"><span class="pre">docker</span> <span class="pre">compose</span> <span class="pre">up</span></code> fails with “variable not set”</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../deployment/troubleshooting.html#container-starts-but-uv-sync-fails">Container starts but <code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">sync</span></code> fails</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../deployment/troubleshooting.html#port-conflicts">Port conflicts</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../deployment/troubleshooting.html#python-dependency-issues">Python / Dependency Issues</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../deployment/troubleshooting.html#modulenotfounderror-no-module-named-pycypher"><code class="docutils literal notranslate"><span class="pre">ModuleNotFoundError:</span> <span class="pre">No</span> <span class="pre">module</span> <span class="pre">named</span> <span class="pre">'pycypher'</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../deployment/troubleshooting.html#python-3-14-required"><code class="docutils literal notranslate"><span class="pre">Python</span> <span class="pre">&gt;=</span> <span class="pre">3.14</span> <span class="pre">required</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../deployment/troubleshooting.html#backend-failures">Backend failures</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../deployment/troubleshooting.html#spark-issues">Spark Issues</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../deployment/troubleshooting.html#spark-worker-cannot-connect-to-master">Spark worker cannot connect to master</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../deployment/troubleshooting.html#spark-job-fails-with-oom">Spark job fails with OOM</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../deployment/troubleshooting.html#neo4j-issues">Neo4j Issues</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../deployment/troubleshooting.html#neo4j-authentication-failure">Neo4j authentication failure</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../deployment/troubleshooting.html#neo4j-apoc-procedures-not-available">Neo4j APOC procedures not available</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../deployment/troubleshooting.html#nominatim-issues">Nominatim Issues</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../deployment/troubleshooting.html#nominatim-import-takes-hours">Nominatim import takes hours</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../deployment/troubleshooting.html#nominatim-fails-with-could-not-open-file-permission-denied">Nominatim fails with “could not open file … Permission denied”</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../deployment/troubleshooting.html#nominatim-returns-empty-results">Nominatim returns empty results</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../deployment/troubleshooting.html#query-execution-issues">Query Execution Issues</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../deployment/troubleshooting.html#query-hangs-or-runs-too-long">Query hangs or runs too long</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../deployment/troubleshooting.html#cross-product-produces-too-many-rows">Cross-product produces too many rows</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../deployment/troubleshooting.html#graphtypenotfounderror"><code class="docutils literal notranslate"><span class="pre">GraphTypeNotFoundError</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../deployment/troubleshooting.html#getting-help">Getting Help</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../deployment/index.html#architecture-overview">Architecture Overview</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../deployment/index.html#deployment-modes">Deployment Modes</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../deployment/index.html#prerequisites">Prerequisites</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../developer_guide/index.html">Developer Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../developer_guide/architecture.html">Architecture</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../developer_guide/architecture.html#project-structure">Project Structure</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/architecture.html#dependency-order">Dependency Order</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../developer_guide/architecture.html#pycypher-architecture">PyCypher Architecture</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/architecture.html#core-components">Core Components</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../developer_guide/architecture.html#design-patterns">Design Patterns</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/architecture.html#visitor-pattern">Visitor Pattern</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/architecture.html#bindingframe-execution-model">BindingFrame Execution Model</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/architecture.html#query-scoped-atomicity">Query-Scoped Atomicity</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../developer_guide/architecture.html#extension-points">Extension Points</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/architecture.html#custom-cypher-functions">Custom Cypher Functions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/architecture.html#custom-scalar-functions">Custom Scalar Functions</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../developer_guide/architecture.html#testing-architecture">Testing Architecture</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/architecture.html#test-organization">Test Organization</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/architecture.html#test-execution">Test Execution</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../developer_guide/architecture.html#configuration-management">Configuration Management</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/architecture.html#environment-management">Environment Management</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/architecture.html#type-checking">Type Checking</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/architecture.html#code-formatting">Code Formatting</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../developer_guide/architecture.html#build-system">Build System</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/architecture.html#makefile-targets">Makefile Targets</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/architecture.html#package-management">Package Management</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../developer_guide/architecture.html#performance-characteristics">Performance Characteristics</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/architecture.html#parser">Parser</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/architecture.html#query-execution">Query Execution</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../developer_guide/architecture.html#for-more-information">For More Information</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../developer_guide/adr/index.html">Architecture Decision Records</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../developer_guide/adr/001-binding-frame-ir.html">ADR-001: BindingFrame as Core Intermediate Representation</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/adr/001-binding-frame-ir.html#context">Context</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/adr/001-binding-frame-ir.html#decision">Decision</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/adr/001-binding-frame-ir.html#alternatives-considered">Alternatives Considered</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/adr/001-binding-frame-ir.html#consequences">Consequences</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../developer_guide/adr/002-lark-earley-parser.html">ADR-002: Lark Parser with Earley Algorithm</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/adr/002-lark-earley-parser.html#context">Context</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/adr/002-lark-earley-parser.html#decision">Decision</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/adr/002-lark-earley-parser.html#alternatives-considered">Alternatives Considered</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/adr/002-lark-earley-parser.html#consequences">Consequences</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../developer_guide/adr/003-pydantic-ast-models.html">ADR-003: Pydantic-Based Strongly-Typed AST Models</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/adr/003-pydantic-ast-models.html#context">Context</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/adr/003-pydantic-ast-models.html#decision">Decision</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/adr/003-pydantic-ast-models.html#alternatives-considered">Alternatives Considered</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/adr/003-pydantic-ast-models.html#consequences">Consequences</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../developer_guide/adr/004-shadow-write-atomicity.html">ADR-004: Query-Scoped Shadow Write Atomicity</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/adr/004-shadow-write-atomicity.html#context">Context</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/adr/004-shadow-write-atomicity.html#decision">Decision</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/adr/004-shadow-write-atomicity.html#alternatives-considered">Alternatives Considered</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/adr/004-shadow-write-atomicity.html#consequences">Consequences</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../developer_guide/adr/005-composable-evaluators.html">ADR-005: Composable Evaluator Pattern</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/adr/005-composable-evaluators.html#context">Context</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/adr/005-composable-evaluators.html#decision">Decision</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/adr/005-composable-evaluators.html#alternatives-considered">Alternatives Considered</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/adr/005-composable-evaluators.html#consequences">Consequences</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../developer_guide/adr/006-pluggable-backends.html">ADR-006: Pluggable Backend Engine Protocol</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/adr/006-pluggable-backends.html#context">Context</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/adr/006-pluggable-backends.html#decision">Decision</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/adr/006-pluggable-backends.html#alternatives-considered">Alternatives Considered</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/adr/006-pluggable-backends.html#consequences">Consequences</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../developer_guide/adr/007-graph-native-indexes.html">ADR-007: Graph-Native Index Structures</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/adr/007-graph-native-indexes.html#context">Context</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/adr/007-graph-native-indexes.html#decision">Decision</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/adr/007-graph-native-indexes.html#alternatives-considered">Alternatives Considered</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/adr/007-graph-native-indexes.html#consequences">Consequences</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../developer_guide/adr/008-monorepo-workspace.html">ADR-008: Monorepo Workspace Structure</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/adr/008-monorepo-workspace.html#context">Context</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/adr/008-monorepo-workspace.html#decision">Decision</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/adr/008-monorepo-workspace.html#alternatives-considered">Alternatives Considered</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/adr/008-monorepo-workspace.html#consequences">Consequences</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../developer_guide/adr/009-star-coordinator.html">ADR-009: Star as Central Query Coordinator</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/adr/009-star-coordinator.html#context">Context</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/adr/009-star-coordinator.html#decision">Decision</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/adr/009-star-coordinator.html#alternatives-considered">Alternatives Considered</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/adr/009-star-coordinator.html#consequences">Consequences</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../developer_guide/adr/010-vectorized-evaluation.html">ADR-010: Vectorized Scalar Function Evaluation</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/adr/010-vectorized-evaluation.html#context">Context</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/adr/010-vectorized-evaluation.html#decision">Decision</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/adr/010-vectorized-evaluation.html#alternatives-considered">Alternatives Considered</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/adr/010-vectorized-evaluation.html#consequences">Consequences</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../developer_guide/adr/011-grammar-mixin-package.html">ADR-011: Grammar Rule Mixins Package Split</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/adr/011-grammar-mixin-package.html#context">Context</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/adr/011-grammar-mixin-package.html#decision">Decision</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/adr/011-grammar-mixin-package.html#alternatives-considered">Alternatives Considered</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/adr/011-grammar-mixin-package.html#consequences">Consequences</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../developer_guide/adr/012-auto-test-markers.html">ADR-012: Automatic Test Markers and Isolation Fixtures</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/adr/012-auto-test-markers.html#context">Context</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/adr/012-auto-test-markers.html#decision">Decision</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/adr/012-auto-test-markers.html#alternatives-considered">Alternatives Considered</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/adr/012-auto-test-markers.html#consequences">Consequences</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../developer_guide/contributing.html">Contributing</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../developer_guide/contributing.html#development-environment">Development Environment</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/contributing.html#requirements">Requirements</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/contributing.html#initial-setup">Initial Setup</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/contributing.html#project-structure">Project Structure</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../developer_guide/contributing.html#code-style">Code Style</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/contributing.html#formatting">Formatting</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/contributing.html#type-annotations">Type Annotations</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/contributing.html#docstrings">Docstrings</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../developer_guide/contributing.html#running-tests">Running Tests</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../developer_guide/contributing.html#making-changes">Making Changes</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/contributing.html#branch-naming">Branch Naming</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/contributing.html#commit-messages">Commit Messages</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../developer_guide/contributing.html#pull-request-process">Pull Request Process</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/contributing.html#code-review">Code Review</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../developer_guide/contributing.html#adding-dependencies">Adding Dependencies</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../developer_guide/contributing.html#documentation">Documentation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../developer_guide/contributing.html#editor-integration-lsp">Editor Integration (LSP)</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/contributing.html#features">Features</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/contributing.html#starting-the-server">Starting the Server</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/contributing.html#vs-code">VS Code</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/contributing.html#neovim-nvim-lspconfig">Neovim (nvim-lspconfig)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/contributing.html#emacs-lsp-mode">Emacs (lsp-mode)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/contributing.html#file-type-detection">File Type Detection</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../developer_guide/testing.html">Testing</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../developer_guide/testing.html#running-tests">Running Tests</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/testing.html#quick-reference">Quick Reference</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/testing.html#targeting-specific-tests">Targeting Specific Tests</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/testing.html#coverage">Coverage</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../developer_guide/testing.html#test-architecture">Test Architecture</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/testing.html#directory-layout">Directory Layout</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/testing.html#automatic-test-markers">Automatic Test Markers</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/testing.html#test-isolation">Test Isolation</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/testing.html#shared-fixtures">Shared Fixtures</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../developer_guide/testing.html#writing-tests">Writing Tests</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/testing.html#test-structure">Test Structure</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/testing.html#testing-query-execution-end-to-end">Testing Query Execution (End-to-End)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/testing.html#testing-ast-construction">Testing AST Construction</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/testing.html#testing-error-paths">Testing Error Paths</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/testing.html#testing-mutations-create-set-delete">Testing Mutations (CREATE, SET, DELETE)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/testing.html#testing-shadow-state-atomicity">Testing Shadow State Atomicity</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../developer_guide/testing.html#performance-testing">Performance Testing</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/testing.html#writing-robust-performance-tests">Writing Robust Performance Tests</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/testing.html#benchmark-tests">Benchmark Tests</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../developer_guide/testing.html#integration-tests">Integration Tests</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/testing.html#spark-integration">Spark Integration</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/testing.html#neo4j-integration">Neo4j Integration</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/testing.html#large-dataset-tests">Large Dataset Tests</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../developer_guide/testing.html#configuration-for-testing">Configuration for Testing</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/testing.html#environment-variables">Environment Variables</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/testing.html#timeout-configuration">Timeout Configuration</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../developer_guide/testing.html#continuous-integration">Continuous Integration</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../developer_guide/testing.html#type-checking">Type Checking</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../developer_guide/release.html">Release Process</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../developer_guide/release.html#version-numbering">Version Numbering</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../developer_guide/release.html#pre-release-checklist">Pre-Release Checklist</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/release.html#bump-version">Bump Version</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../developer_guide/release.html#building-packages">Building Packages</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../developer_guide/release.html#publishing">Publishing</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../developer_guide/release.html#post-release">Post-Release</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../developer_guide/release.html#ci-cd">CI/CD</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../developer_guide/security.html">Security Hardening &amp; Compliance</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../developer_guide/security.html#threat-model">Threat Model</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../developer_guide/security.html#input-validation">Input Validation</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/security.html#cypher-query-parameters">Cypher query parameters</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/security.html#sql-data-source-queries">SQL data-source queries</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/security.html#file-path-sanitisation">File path sanitisation</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/security.html#uri-scheme-validation">URI scheme validation</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../developer_guide/security.html#resource-limits">Resource Limits</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/security.html#cross-join-row-limit">Cross-join row limit</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/security.html#query-timeout">Query timeout</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/security.html#memory-budget">Memory budget</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../developer_guide/security.html#internal-column-protection">Internal Column Protection</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../developer_guide/security.html#semantic-validation">Semantic Validation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../developer_guide/security.html#error-handling">Error Handling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../developer_guide/security.html#logging-and-audit">Logging and Audit</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../developer_guide/security.html#deployment-checklist">Deployment Checklist</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../developer_guide/security.html#security-testing">Security Testing</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../developer_guide/threat_model.html">Threat Model &amp; Trust Boundaries</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../developer_guide/threat_model.html#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../developer_guide/threat_model.html#trust-boundaries">Trust Boundaries</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/threat_model.html#tb-1-user-input-boundary">TB-1: User Input Boundary</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/threat_model.html#tb-2-configuration-boundary">TB-2: Configuration Boundary</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/threat_model.html#tb-3-data-i-o-boundary">TB-3: Data I/O Boundary</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/threat_model.html#tb-4-sql-execution-boundary">TB-4: SQL Execution Boundary</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../developer_guide/threat_model.html#tb-5-output-boundary">TB-5: Output Boundary</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../developer_guide/threat_model.html#security-sensitive-operations">Security-Sensitive Operations</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../developer_guide/threat_model.html#audit-logging-architecture">Audit &amp; Logging Architecture</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../developer_guide/threat_model.html#data-flow-summary">Data Flow Summary</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../developer_guide/threat_model.html#coordination-requirements">Coordination Requirements</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../developer_guide/threat_model.html#security-testing">Security Testing</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../developer_guide/threat_model.html#document-history">Document History</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../developer_guide/index.html#new-contributors">New Contributors</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../developer_guide/index.html#overview">Overview</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../adr/index.html">Architecture Decision Records</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../adr/adr-001-lark-earley-parser.html">ADR-001: Use Lark with Earley Algorithm for Cypher Parsing</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../adr/adr-001-lark-earley-parser.html#context">Context</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../adr/adr-001-lark-earley-parser.html#decision">Decision</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../adr/adr-001-lark-earley-parser.html#consequences">Consequences</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../adr/adr-002-binding-frame-ir.html">ADR-002: BindingFrame as Intermediate Representation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../adr/adr-002-binding-frame-ir.html#context">Context</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../adr/adr-002-binding-frame-ir.html#decision">Decision</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../adr/adr-002-binding-frame-ir.html#consequences">Consequences</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../adr/adr-003-id-only-column-preservation.html">ADR-003: ID-Only Column Preservation Strategy</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../adr/adr-003-id-only-column-preservation.html#context">Context</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../adr/adr-003-id-only-column-preservation.html#decision">Decision</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../adr/adr-003-id-only-column-preservation.html#consequences">Consequences</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../adr/adr-004-shadow-write-mutations.html">ADR-004: Shadow-Write Mutation Pattern for Atomicity</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../adr/adr-004-shadow-write-mutations.html#context">Context</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../adr/adr-004-shadow-write-mutations.html#decision">Decision</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../adr/adr-004-shadow-write-mutations.html#consequences">Consequences</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../adr/adr-005-backend-engine-protocol.html">ADR-005: Backend Engine Protocol for Pluggable DataFrames</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../adr/adr-005-backend-engine-protocol.html#context">Context</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../adr/adr-005-backend-engine-protocol.html#decision">Decision</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../adr/adr-005-backend-engine-protocol.html#consequences">Consequences</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../adr/adr-006-star-class-decomposition.html">ADR-006: Star Class Decomposition into Specialised Modules</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../adr/adr-006-star-class-decomposition.html#context">Context</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../adr/adr-006-star-class-decomposition.html#decision">Decision</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../adr/adr-006-star-class-decomposition.html#consequences">Consequences</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../adr/adr-007-cardinality-estimator-extraction.html">ADR-007: Extract Cardinality Estimator from Query Planner</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../adr/adr-007-cardinality-estimator-extraction.html#context">Context</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../adr/adr-007-cardinality-estimator-extraction.html#decision">Decision</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../adr/adr-007-cardinality-estimator-extraction.html#consequences">Consequences</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">PyCypher</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">pycypher.cluster</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for pycypher.cluster</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Distributed execution scaffolding for cluster deployment.</span>
+
+<span class="sd">Defines the coordination protocols, worker node registration, query</span>
+<span class="sd">distribution strategies, and fault tolerance patterns needed for</span>
+<span class="sd">enterprise-scale distributed query execution.</span>
+
+<span class="sd">This module provides **interfaces and local implementations** — the</span>
+<span class="sd">actual network transport and distributed scheduling are deferred to</span>
+<span class="sd">Phase 3.  The local implementations allow testing the coordination</span>
+<span class="sd">logic without a real cluster.</span>
+
+<span class="sd">Architecture</span>
+<span class="sd">~~~~~~~~~~~~</span>
+
+<span class="sd">::</span>
+
+<span class="sd">    ┌──────────────────────────────────┐</span>
+<span class="sd">    │         ClusterCoordinator       │</span>
+<span class="sd">    │  (registers workers, routes      │</span>
+<span class="sd">    │   queries, aggregates metrics)   │</span>
+<span class="sd">    └──────┬───────────┬───────────┬───┘</span>
+<span class="sd">           │           │           │</span>
+<span class="sd">     ┌─────▼──┐  ┌─────▼──┐  ┌────▼───┐</span>
+<span class="sd">     │Worker 1│  │Worker 2│  │Worker N│</span>
+<span class="sd">     │(Star)  │  │(Star)  │  │(Star)  │</span>
+<span class="sd">     └────────┘  └────────┘  └────────┘</span>
+
+<span class="sd">Each worker wraps a :class:`~pycypher.star.Star` instance.  The</span>
+<span class="sd">coordinator selects a worker via a pluggable :class:`QueryRouter`</span>
+<span class="sd">strategy (round-robin, least-loaded, hash-based).</span>
+
+<span class="sd">Usage::</span>
+
+<span class="sd">    from pycypher.cluster import ClusterCoordinator, LocalWorker</span>
+
+<span class="sd">    coord = ClusterCoordinator()</span>
+<span class="sd">    coord.register_worker(LocalWorker(&quot;w1&quot;))</span>
+<span class="sd">    coord.register_worker(LocalWorker(&quot;w2&quot;))</span>
+
+<span class="sd">    result = coord.execute_query(&quot;MATCH (p:Person) RETURN p.name&quot;)</span>
+<span class="sd">    health = coord.cluster_health()</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">threading</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">enum</span><span class="w"> </span><span class="kn">import</span> <span class="n">Enum</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Protocol</span><span class="p">,</span> <span class="n">runtime_checkable</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">shared.logger</span><span class="w"> </span><span class="kn">import</span> <span class="n">LOGGER</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">pycypher.exceptions</span><span class="w"> </span><span class="kn">import</span> <span class="n">WorkerExecutionError</span>
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Worker status</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+
+<div class="viewcode-block" id="WorkerStatus">
+<a class="viewcode-back" href="../../api/pycypher.html#pycypher.cluster.WorkerStatus">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">WorkerStatus</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Health state of a cluster worker.&quot;&quot;&quot;</span>
+
+    <span class="n">ACTIVE</span> <span class="o">=</span> <span class="s2">&quot;active&quot;</span>
+    <span class="n">DRAINING</span> <span class="o">=</span> <span class="s2">&quot;draining&quot;</span>
+    <span class="n">UNAVAILABLE</span> <span class="o">=</span> <span class="s2">&quot;unavailable&quot;</span></div>
+
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Worker protocol</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+
+<div class="viewcode-block" id="Worker">
+<a class="viewcode-back" href="../../api/pycypher.html#pycypher.cluster.Worker">[docs]</a>
+<span class="nd">@runtime_checkable</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Worker</span><span class="p">(</span><span class="n">Protocol</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Protocol that every cluster worker must satisfy.</span>
+
+<span class="sd">    A worker wraps a query execution engine and exposes health</span>
+<span class="sd">    and metrics information for the coordinator.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">worker_id</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Unique identifier for this worker.&quot;&quot;&quot;</span>
+        <span class="o">...</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">status</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">WorkerStatus</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Current health status.&quot;&quot;&quot;</span>
+        <span class="o">...</span>
+
+<div class="viewcode-block" id="Worker.execute_query">
+<a class="viewcode-back" href="../../api/pycypher.html#pycypher.cluster.Worker.execute_query">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">execute_query</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">parameters</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Execute a Cypher query on this worker.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            query: Cypher query string.</span>
+<span class="sd">            parameters: Optional named parameters.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            DataFrame with result rows.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            Exception: On query failure.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="o">...</span></div>
+
+
+<div class="viewcode-block" id="Worker.health_check">
+<a class="viewcode-back" href="../../api/pycypher.html#pycypher.cluster.Worker.health_check">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">health_check</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">WorkerHealth</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return current health snapshot for this worker.&quot;&quot;&quot;</span>
+        <span class="o">...</span></div>
+</div>
+
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Worker health snapshot</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+
+<div class="viewcode-block" id="WorkerHealth">
+<a class="viewcode-back" href="../../api/pycypher.html#pycypher.cluster.WorkerHealth">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">WorkerHealth</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Point-in-time health snapshot for a single worker.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        worker_id: Unique worker identifier.</span>
+<span class="sd">        status: Current worker status.</span>
+<span class="sd">        queries_executed: Total queries handled by this worker.</span>
+<span class="sd">        errors: Total errors on this worker.</span>
+<span class="sd">        avg_latency_ms: Rolling average query latency in ms.</span>
+<span class="sd">        last_heartbeat: Monotonic timestamp of last successful heartbeat.</span>
+<span class="sd">        active_queries: Number of queries currently executing.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">worker_id</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">status</span><span class="p">:</span> <span class="n">WorkerStatus</span>
+    <span class="n">queries_executed</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">errors</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">avg_latency_ms</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">last_heartbeat</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">active_queries</span><span class="p">:</span> <span class="nb">int</span></div>
+
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Cluster health</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+
+<div class="viewcode-block" id="ClusterHealth">
+<a class="viewcode-back" href="../../api/pycypher.html#pycypher.cluster.ClusterHealth">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ClusterHealth</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Aggregate health snapshot for the entire cluster.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        total_workers: Number of registered workers.</span>
+<span class="sd">        active_workers: Workers in ACTIVE status.</span>
+<span class="sd">        unavailable_workers: Workers in UNAVAILABLE status.</span>
+<span class="sd">        total_queries: Sum of queries across all workers.</span>
+<span class="sd">        total_errors: Sum of errors across all workers.</span>
+<span class="sd">        cluster_error_rate: Aggregate error rate (0.0–1.0).</span>
+<span class="sd">        avg_latency_ms: Weighted average latency across workers.</span>
+<span class="sd">        worker_health: Per-worker health snapshots.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">total_workers</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">active_workers</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">unavailable_workers</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">total_queries</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">total_errors</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">cluster_error_rate</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">avg_latency_ms</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">worker_health</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">WorkerHealth</span><span class="p">]</span></div>
+
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Query routing strategy</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+
+<div class="viewcode-block" id="QueryRouter">
+<a class="viewcode-back" href="../../api/pycypher.html#pycypher.cluster.QueryRouter">[docs]</a>
+<span class="nd">@runtime_checkable</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">QueryRouter</span><span class="p">(</span><span class="n">Protocol</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Strategy for selecting which worker handles a query.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="QueryRouter.select_worker">
+<a class="viewcode-back" href="../../api/pycypher.html#pycypher.cluster.QueryRouter.select_worker">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">select_worker</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">workers</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Worker</span><span class="p">],</span>
+        <span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Worker</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Choose a worker for the given query.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            workers: List of active workers to choose from.</span>
+<span class="sd">            query: The Cypher query string (for hash-based routing).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The selected worker.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            RuntimeError: If no suitable worker is available.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="o">...</span></div>
+</div>
+
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Built-in routing strategies</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+
+<div class="viewcode-block" id="RoundRobinRouter">
+<a class="viewcode-back" href="../../api/pycypher.html#pycypher.cluster.RoundRobinRouter">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">RoundRobinRouter</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Distributes queries evenly across workers in order.</span>
+
+<span class="sd">    Thread-safe via atomic counter increment.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="RoundRobinRouter.__init__">
+<a class="viewcode-back" href="../../api/pycypher.html#pycypher.cluster.RoundRobinRouter.__init__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialise the router with a zero counter and a threading lock.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_counter</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_lock</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Lock</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="RoundRobinRouter.select_worker">
+<a class="viewcode-back" href="../../api/pycypher.html#pycypher.cluster.RoundRobinRouter.select_worker">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">select_worker</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">workers</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Worker</span><span class="p">],</span>
+        <span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Worker</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Select next worker in round-robin order.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            workers: Active workers.</span>
+<span class="sd">            query: Query string (unused for round-robin).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The next worker in rotation.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            RuntimeError: If workers list is empty.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">workers</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;No active workers available&quot;</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lock</span><span class="p">:</span>
+            <span class="n">idx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_counter</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="n">workers</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_counter</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">return</span> <span class="n">workers</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="LeastLoadedRouter">
+<a class="viewcode-back" href="../../api/pycypher.html#pycypher.cluster.LeastLoadedRouter">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">LeastLoadedRouter</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Routes queries to the worker with fewest active queries.</span>
+
+<span class="sd">    Falls back to round-robin when all workers have equal load.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="LeastLoadedRouter.select_worker">
+<a class="viewcode-back" href="../../api/pycypher.html#pycypher.cluster.LeastLoadedRouter.select_worker">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">select_worker</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">workers</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Worker</span><span class="p">],</span>
+        <span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Worker</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Select the least-loaded worker.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            workers: Active workers.</span>
+<span class="sd">            query: Query string (unused).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The worker with lowest active_queries count.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            RuntimeError: If workers list is empty.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">workers</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;No active workers available&quot;</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">min</span><span class="p">(</span><span class="n">workers</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">w</span><span class="p">:</span> <span class="n">w</span><span class="o">.</span><span class="n">health_check</span><span class="p">()</span><span class="o">.</span><span class="n">active_queries</span><span class="p">)</span></div>
+</div>
+
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Local worker implementation (for testing without a cluster)</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+
+<div class="viewcode-block" id="LocalWorker">
+<a class="viewcode-back" href="../../api/pycypher.html#pycypher.cluster.LocalWorker">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">LocalWorker</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;In-process worker that wraps a Star instance.</span>
+
+<span class="sd">    Provides the :class:`Worker` protocol for local testing and</span>
+<span class="sd">    single-node deployment.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        worker_id: Unique identifier for this worker.</span>
+<span class="sd">        star: Optional pre-configured Star instance.  If ``None``,</span>
+<span class="sd">            a default Star is created.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="LocalWorker.__init__">
+<a class="viewcode-back" href="../../api/pycypher.html#pycypher.cluster.LocalWorker.__init__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">worker_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">star</span><span class="p">:</span> <span class="n">Any</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create a local in-process worker.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            worker_id: Unique identifier for this worker.</span>
+<span class="sd">            star: Optional pre-configured :class:`~pycypher.star.Star`</span>
+<span class="sd">                instance.  If ``None``, a default Star is created lazily.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_worker_id</span> <span class="o">=</span> <span class="n">worker_id</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_status</span> <span class="o">=</span> <span class="n">WorkerStatus</span><span class="o">.</span><span class="n">ACTIVE</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_queries_executed</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_errors</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_total_latency_ms</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_active_queries</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_last_heartbeat</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">monotonic</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_lock</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Lock</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">star</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_star</span> <span class="o">=</span> <span class="n">star</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">pycypher.star</span><span class="w"> </span><span class="kn">import</span> <span class="n">Star</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_star</span> <span class="o">=</span> <span class="n">Star</span><span class="p">()</span></div>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">worker_id</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Unique identifier for this worker.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_worker_id</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">status</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">WorkerStatus</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Current health status.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_status</span>
+
+<div class="viewcode-block" id="LocalWorker.execute_query">
+<a class="viewcode-back" href="../../api/pycypher.html#pycypher.cluster.LocalWorker.execute_query">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">execute_query</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">parameters</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Execute a query on the wrapped Star instance.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            query: Cypher query string.</span>
+<span class="sd">            parameters: Optional named parameters.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            DataFrame with result rows.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lock</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_active_queries</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="n">t0</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_star</span><span class="o">.</span><span class="n">execute_query</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">parameters</span><span class="o">=</span><span class="n">parameters</span><span class="p">)</span>
+            <span class="n">elapsed_ms</span> <span class="o">=</span> <span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span> <span class="o">-</span> <span class="n">t0</span><span class="p">)</span> <span class="o">*</span> <span class="mf">1000.0</span>
+            <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lock</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_queries_executed</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_total_latency_ms</span> <span class="o">+=</span> <span class="n">elapsed_ms</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_last_heartbeat</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">monotonic</span><span class="p">()</span>
+            <span class="k">return</span> <span class="n">result</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>  <span class="c1"># noqa: BLE001 — wraps any error with worker context; re-raised as WorkerExecutionError</span>
+            <span class="n">elapsed_ms</span> <span class="o">=</span> <span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span> <span class="o">-</span> <span class="n">t0</span><span class="p">)</span> <span class="o">*</span> <span class="mf">1000.0</span>
+            <span class="n">snippet</span> <span class="o">=</span> <span class="n">query</span><span class="p">[:</span><span class="mi">80</span><span class="p">]</span>
+            <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lock</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_errors</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">LOGGER</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+                <span class="s2">&quot;Worker </span><span class="si">%s</span><span class="s2"> query failed after </span><span class="si">%.1f</span><span class="s2">ms: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_worker_id</span><span class="p">,</span>
+                <span class="n">elapsed_ms</span><span class="p">,</span>
+                <span class="n">snippet</span><span class="p">,</span>
+                <span class="n">exc_info</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="k">raise</span> <span class="n">WorkerExecutionError</span><span class="p">(</span>
+                <span class="n">worker_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_worker_id</span><span class="p">,</span>
+                <span class="n">query_snippet</span><span class="o">=</span><span class="n">snippet</span><span class="p">,</span>
+                <span class="n">elapsed_ms</span><span class="o">=</span><span class="n">elapsed_ms</span><span class="p">,</span>
+            <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lock</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_active_queries</span> <span class="o">-=</span> <span class="mi">1</span></div>
+
+
+<div class="viewcode-block" id="LocalWorker.health_check">
+<a class="viewcode-back" href="../../api/pycypher.html#pycypher.cluster.LocalWorker.health_check">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">health_check</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">WorkerHealth</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return current health snapshot.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            WorkerHealth with current counters and latency.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lock</span><span class="p">:</span>
+            <span class="n">total</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_queries_executed</span>
+            <span class="n">avg_latency</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_total_latency_ms</span> <span class="o">/</span> <span class="n">total</span> <span class="k">if</span> <span class="n">total</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mf">0.0</span>
+            <span class="k">return</span> <span class="n">WorkerHealth</span><span class="p">(</span>
+                <span class="n">worker_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_worker_id</span><span class="p">,</span>
+                <span class="n">status</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_status</span><span class="p">,</span>
+                <span class="n">queries_executed</span><span class="o">=</span><span class="n">total</span><span class="p">,</span>
+                <span class="n">errors</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_errors</span><span class="p">,</span>
+                <span class="n">avg_latency_ms</span><span class="o">=</span><span class="n">avg_latency</span><span class="p">,</span>
+                <span class="n">last_heartbeat</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_last_heartbeat</span><span class="p">,</span>
+                <span class="n">active_queries</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_active_queries</span><span class="p">,</span>
+            <span class="p">)</span></div>
+</div>
+
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Cluster coordinator</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+
+<div class="viewcode-block" id="ClusterCoordinator">
+<a class="viewcode-back" href="../../api/pycypher.html#pycypher.cluster.ClusterCoordinator">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ClusterCoordinator</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Central coordinator for distributed query execution.</span>
+
+<span class="sd">    Manages worker registration, query routing, and aggregate health</span>
+<span class="sd">    monitoring.  Thread-safe for concurrent query submission.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        router: Query routing strategy.  Defaults to</span>
+<span class="sd">            :class:`RoundRobinRouter`.</span>
+<span class="sd">        heartbeat_timeout_s: Seconds after which a worker with no</span>
+<span class="sd">            heartbeat is marked unavailable.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">router</span><span class="p">:</span> <span class="n">QueryRouter</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">RoundRobinRouter</span><span class="p">)</span>
+    <span class="n">heartbeat_timeout_s</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">30.0</span>
+    <span class="n">_workers</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Worker</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
+    <span class="n">_lock</span><span class="p">:</span> <span class="n">threading</span><span class="o">.</span><span class="n">Lock</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">threading</span><span class="o">.</span><span class="n">Lock</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ClusterCoordinator.register_worker">
+<a class="viewcode-back" href="../../api/pycypher.html#pycypher.cluster.ClusterCoordinator.register_worker">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">register_worker</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">worker</span><span class="p">:</span> <span class="n">Worker</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Register a worker with the cluster.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            worker: A Worker instance to add.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If a worker with the same ID is already registered.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lock</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">worker</span><span class="o">.</span><span class="n">worker_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_workers</span><span class="p">:</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Worker &#39;</span><span class="si">{</span><span class="n">worker</span><span class="o">.</span><span class="n">worker_id</span><span class="si">}</span><span class="s2">&#39; already registered&quot;</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_workers</span><span class="p">[</span><span class="n">worker</span><span class="o">.</span><span class="n">worker_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">worker</span></div>
+
+
+<div class="viewcode-block" id="ClusterCoordinator.deregister_worker">
+<a class="viewcode-back" href="../../api/pycypher.html#pycypher.cluster.ClusterCoordinator.deregister_worker">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">deregister_worker</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">worker_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Remove a worker from the cluster.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            worker_id: ID of the worker to remove.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If worker_id is not registered.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lock</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">worker_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_workers</span><span class="p">:</span>
+                <span class="n">registered</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_workers</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Worker &#39;</span><span class="si">{</span><span class="n">worker_id</span><span class="si">}</span><span class="s2">&#39; not registered. &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;Registered workers: </span><span class="si">{</span><span class="n">registered</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+            <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_workers</span><span class="p">[</span><span class="n">worker_id</span><span class="p">]</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_active_workers</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">Worker</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return list of workers in ACTIVE status.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">[</span>
+            <span class="n">w</span>
+            <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_workers</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">w</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="n">WorkerStatus</span><span class="o">.</span><span class="n">ACTIVE</span>
+        <span class="p">]</span>
+
+<div class="viewcode-block" id="ClusterCoordinator.execute_query">
+<a class="viewcode-back" href="../../api/pycypher.html#pycypher.cluster.ClusterCoordinator.execute_query">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">execute_query</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">parameters</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Route and execute a query on a selected worker.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            query: Cypher query string.</span>
+<span class="sd">            parameters: Optional named parameters.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            DataFrame with result rows.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            RuntimeError: If no active workers are available.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lock</span><span class="p">:</span>
+            <span class="n">active</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_active_workers</span><span class="p">()</span>
+        <span class="n">worker</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">router</span><span class="o">.</span><span class="n">select_worker</span><span class="p">(</span><span class="n">active</span><span class="p">,</span> <span class="n">query</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">worker</span><span class="o">.</span><span class="n">execute_query</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">parameters</span><span class="o">=</span><span class="n">parameters</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ClusterCoordinator.cluster_health">
+<a class="viewcode-back" href="../../api/pycypher.html#pycypher.cluster.ClusterCoordinator.cluster_health">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">cluster_health</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ClusterHealth</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return aggregate health snapshot for the cluster.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            ClusterHealth with per-worker and aggregate metrics.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lock</span><span class="p">:</span>
+            <span class="n">workers</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_workers</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+
+        <span class="n">worker_healths</span> <span class="o">=</span> <span class="p">[</span><span class="n">w</span><span class="o">.</span><span class="n">health_check</span><span class="p">()</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">workers</span><span class="p">]</span>
+
+        <span class="n">total_queries</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">wh</span><span class="o">.</span><span class="n">queries_executed</span> <span class="k">for</span> <span class="n">wh</span> <span class="ow">in</span> <span class="n">worker_healths</span><span class="p">)</span>
+        <span class="n">total_errors</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">wh</span><span class="o">.</span><span class="n">errors</span> <span class="k">for</span> <span class="n">wh</span> <span class="ow">in</span> <span class="n">worker_healths</span><span class="p">)</span>
+        <span class="n">total_ops</span> <span class="o">=</span> <span class="n">total_queries</span> <span class="o">+</span> <span class="n">total_errors</span>
+
+        <span class="c1"># Weighted average latency by query count.</span>
+        <span class="n">weighted_latency</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span>
+            <span class="n">wh</span><span class="o">.</span><span class="n">avg_latency_ms</span> <span class="o">*</span> <span class="n">wh</span><span class="o">.</span><span class="n">queries_executed</span> <span class="k">for</span> <span class="n">wh</span> <span class="ow">in</span> <span class="n">worker_healths</span>
+        <span class="p">)</span>
+        <span class="n">avg_latency</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">weighted_latency</span> <span class="o">/</span> <span class="n">total_queries</span> <span class="k">if</span> <span class="n">total_queries</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mf">0.0</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">ClusterHealth</span><span class="p">(</span>
+            <span class="n">total_workers</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">worker_healths</span><span class="p">),</span>
+            <span class="n">active_workers</span><span class="o">=</span><span class="nb">sum</span><span class="p">(</span>
+                <span class="mi">1</span> <span class="k">for</span> <span class="n">wh</span> <span class="ow">in</span> <span class="n">worker_healths</span> <span class="k">if</span> <span class="n">wh</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="n">WorkerStatus</span><span class="o">.</span><span class="n">ACTIVE</span>
+            <span class="p">),</span>
+            <span class="n">unavailable_workers</span><span class="o">=</span><span class="nb">sum</span><span class="p">(</span>
+                <span class="mi">1</span>
+                <span class="k">for</span> <span class="n">wh</span> <span class="ow">in</span> <span class="n">worker_healths</span>
+                <span class="k">if</span> <span class="n">wh</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="n">WorkerStatus</span><span class="o">.</span><span class="n">UNAVAILABLE</span>
+            <span class="p">),</span>
+            <span class="n">total_queries</span><span class="o">=</span><span class="n">total_queries</span><span class="p">,</span>
+            <span class="n">total_errors</span><span class="o">=</span><span class="n">total_errors</span><span class="p">,</span>
+            <span class="n">cluster_error_rate</span><span class="o">=</span><span class="n">total_errors</span> <span class="o">/</span> <span class="n">total_ops</span>
+            <span class="k">if</span> <span class="n">total_ops</span> <span class="o">&gt;</span> <span class="mi">0</span>
+            <span class="k">else</span> <span class="mf">0.0</span><span class="p">,</span>
+            <span class="n">avg_latency_ms</span><span class="o">=</span><span class="n">avg_latency</span><span class="p">,</span>
+            <span class="n">worker_health</span><span class="o">=</span><span class="n">worker_healths</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">worker_count</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Number of registered workers.&quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lock</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_workers</span><span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, PyCypher Contributors.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

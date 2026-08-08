@@ -1,0 +1,523 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Zero to Hello World &mdash; FastOpenData Python Client 0.0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=d45e8c67"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Getting Started" href="getting_started.html" />
+    <link rel="prev" title="PyCypher Documentation" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            FastOpenData Python Client
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Zero to Hello World</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#prerequisites">Prerequisites</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#level-1-your-first-query">Level 1: Your First Query</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#level-2-filtering-with-where">Level 2: Filtering with WHERE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#level-3-multiple-entity-types">Level 3: Multiple Entity Types</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#level-4-relationships">Level 4: Relationships</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#level-5-aggregation">Level 5: Aggregation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#runnable-example">Runnable Example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#next-steps">Next Steps</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting Started</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="getting_started.html#installation">Installation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting_started.html#quick-start-run-your-first-query">Quick Start: Run Your First Query</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting_started.html#using-contextbuilder-recommended">Using ContextBuilder (Recommended)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting_started.html#one-line-context-builder">One-Line Context Builder</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting_started.html#graph-queries-match-with-relationships">Graph Queries: MATCH with Relationships</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting_started.html#where-label-predicates">WHERE Label Predicates</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting_started.html#variable-length-paths">Variable-Length Paths</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting_started.html#shortestpath-and-allshortestpaths">shortestPath and allShortestPaths</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting_started.html#optional-match-left-join-semantics">OPTIONAL MATCH — Left-Join Semantics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting_started.html#with-unwind-list-explosion">WITH + UNWIND: List Explosion</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting_started.html#aggregation">Aggregation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting_started.html#with-pass-through-projection">WITH * — Pass-Through Projection</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting_started.html#union-combining-query-results">UNION — Combining Query Results</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting_started.html#mutating-the-graph-create-merge-delete-remove">Mutating the Graph — CREATE, MERGE, DELETE, REMOVE</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="getting_started.html#create-insert-new-nodes-and-relationships">CREATE — Insert New Nodes and Relationships</a></li>
+<li class="toctree-l3"><a class="reference internal" href="getting_started.html#merge-upsert-semantics">MERGE — Upsert Semantics</a></li>
+<li class="toctree-l3"><a class="reference internal" href="getting_started.html#set-update-properties">SET — Update Properties</a></li>
+<li class="toctree-l3"><a class="reference internal" href="getting_started.html#remove-delete-properties">REMOVE — Delete Properties</a></li>
+<li class="toctree-l3"><a class="reference internal" href="getting_started.html#delete-remove-nodes">DELETE — Remove Nodes</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="getting_started.html#foreach-iterate-over-a-list">FOREACH — Iterate Over a List</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting_started.html#functional-expressions">Functional Expressions</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="getting_started.html#list-comprehensions">List Comprehensions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="getting_started.html#pattern-comprehensions">Pattern Comprehensions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="getting_started.html#quantifier-predicates">Quantifier Predicates</a></li>
+<li class="toctree-l3"><a class="reference internal" href="getting_started.html#exists-subqueries">EXISTS Subqueries</a></li>
+<li class="toctree-l3"><a class="reference internal" href="getting_started.html#reduce">REDUCE</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="getting_started.html#scalar-functions">Scalar Functions</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="getting_started.html#auto-generated-column-names">Auto-generated Column Names</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="getting_started.html#running-tests">Running Tests</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting_started.html#next-steps">Next Steps</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="api/index.html">API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/pycypher.html">PyCypher API</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api/pycypher.html#quick-start">Quick Start</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/pycypher.html#core-modules">Core Modules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api/pycypher.html#ast-models">AST Models</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/pycypher.html#grammar-parser">Grammar Parser</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/pycypher.html#grammar-transformers">Grammar Transformers</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/pycypher.html#grammar-rule-mixins">Grammar Rule Mixins</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/pycypher.html#ast-converter">AST Converter</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/pycypher.html#ast-rewriter">AST Rewriter</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api/pycypher.html#data-model">Data Model</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api/pycypher.html#relational-models">Relational Models</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/pycypher.html#constants">Constants</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api/pycypher.html#query-execution">Query Execution</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api/pycypher.html#star-query-orchestrator">Star (Query Orchestrator)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/pycypher.html#clause-executor">Clause Executor</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/pycypher.html#pattern-matcher">Pattern Matcher</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/pycypher.html#path-expander">Path Expander</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/pycypher.html#expression-renderer">Expression Renderer</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api/pycypher.html#bindingframe-execution">BindingFrame Execution</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api/pycypher.html#bindingframe">BindingFrame</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/pycypher.html#evaluator-protocol">Evaluator Protocol</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/pycypher.html#bindingexpression-evaluator">BindingExpression Evaluator</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/pycypher.html#arithmetic-evaluator">Arithmetic Evaluator</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/pycypher.html#boolean-evaluator">Boolean Evaluator</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/pycypher.html#comparison-evaluator">Comparison Evaluator</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/pycypher.html#string-predicate-evaluator">String Predicate Evaluator</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/pycypher.html#exists-evaluator">EXISTS Evaluator</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/pycypher.html#aggregation-evaluator">Aggregation Evaluator</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/pycypher.html#aggregation-planner">Aggregation Planner</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/pycypher.html#collection-evaluator">Collection Evaluator</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/pycypher.html#scalar-functions">Scalar Functions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/pycypher.html#scalar-function-evaluator">Scalar Function Evaluator</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api/pycypher.html#execution-engine">Execution Engine</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api/pycypher.html#configuration">Configuration</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/pycypher.html#backend-engine">Backend Engine</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/pycypher.html#query-planner">Query Planner</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/pycypher.html#query-analyzer">Query Analyzer</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/pycypher.html#cardinality-estimator">Cardinality Estimator</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/pycypher.html#scan-operators">Scan Operators</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/pycypher.html#query-complexity">Query Complexity</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/pycypher.html#query-optimizer">Query Optimizer</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/pycypher.html#query-validator">Query Validator</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/pycypher.html#query-formatter">Query Formatter</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/pycypher.html#query-profiler">Query Profiler</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/pycypher.html#input-validator">Input Validator</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/pycypher.html#frame-joiner">Frame Joiner</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/pycypher.html#leapfrogtriejoin">LeapfrogTriejoin</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/pycypher.html#graph-index">Graph Index</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/pycypher.html#projection-planner">Projection Planner</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/pycypher.html#variable-manager">Variable Manager</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/pycypher.html#pipeline">Pipeline</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/pycypher.html#lazy-evaluation">Lazy Evaluation</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/pycypher.html#result-cache">Result Cache</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/pycypher.html#timeout-handler">Timeout Handler</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/pycypher.html#mutation-engine">Mutation Engine</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api/pycypher.html#multi-query-composition">Multi-Query Composition</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api/pycypher.html#multi-query-analyzer">Multi-Query Analyzer</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/pycypher.html#multi-query-executor">Multi-Query Executor</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api/pycypher.html#validation">Validation</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api/pycypher.html#semantic-validator">Semantic Validator</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api/pycypher.html#ingestion-layer">Ingestion Layer</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api/pycypher.html#context-builder">Context Builder</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/pycypher.html#module-pycypher.ingestion.data_sources">Data Sources</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/pycypher.html#module-pycypher.ingestion.config">Pipeline Config</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/pycypher.html#module-pycypher.ingestion.duckdb_reader">DuckDB Reader</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/pycypher.html#module-pycypher.ingestion.arrow_utils">Arrow Utilities</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/pycypher.html#module-pycypher.ingestion.output_writer">Output Writer</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/pycypher.html#module-pycypher.ingestion.security">Security</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api/pycypher.html#sinks">Sinks</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api/pycypher.html#neo4j-sink">Neo4j Sink</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api/pycypher.html#distributed-execution">Distributed Execution</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api/pycypher.html#cluster">Cluster</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api/pycypher.html#cli">CLI</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api/pycypher.html#nmetl-cli">NMETL CLI</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api/pycypher.html#security-observability">Security &amp; Observability</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api/pycypher.html#audit-logging">Audit Logging</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/pycypher.html#rate-limiter">Rate Limiter</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api/pycypher.html#utilities">Utilities</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api/pycypher.html#types">Types</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/pycypher.html#exceptions">Exceptions</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="api/shared.html">Shared API</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api/shared.html#submodules">Submodules</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/shared.html#core-modules">Core Modules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api/shared.html#logger">Logger</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/shared.html#metrics">Metrics</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/shared.html#helpers">Helpers</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/shared.html#telemetry">Telemetry</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api/shared.html#observability">Observability</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api/shared.html#opentelemetry">OpenTelemetry</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/shared.html#exporters">Exporters</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api/shared.html#compatibility">Compatibility</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api/shared.html#api-surface-compatibility">API Surface Compatibility</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/shared.html#deprecation-utilities">Deprecation Utilities</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="api/index.html#package-overview">Package Overview</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api/index.html#pycypher">PyCypher</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/index.html#shared">Shared</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="adr/index.html">Architecture Decision Records</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="adr/adr-001-lark-earley-parser.html">ADR-001: Use Lark with Earley Algorithm for Cypher Parsing</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="adr/adr-001-lark-earley-parser.html#context">Context</a></li>
+<li class="toctree-l3"><a class="reference internal" href="adr/adr-001-lark-earley-parser.html#decision">Decision</a></li>
+<li class="toctree-l3"><a class="reference internal" href="adr/adr-001-lark-earley-parser.html#consequences">Consequences</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="adr/adr-002-binding-frame-ir.html">ADR-002: BindingFrame as Intermediate Representation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="adr/adr-002-binding-frame-ir.html#context">Context</a></li>
+<li class="toctree-l3"><a class="reference internal" href="adr/adr-002-binding-frame-ir.html#decision">Decision</a></li>
+<li class="toctree-l3"><a class="reference internal" href="adr/adr-002-binding-frame-ir.html#consequences">Consequences</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="adr/adr-003-id-only-column-preservation.html">ADR-003: ID-Only Column Preservation Strategy</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="adr/adr-003-id-only-column-preservation.html#context">Context</a></li>
+<li class="toctree-l3"><a class="reference internal" href="adr/adr-003-id-only-column-preservation.html#decision">Decision</a></li>
+<li class="toctree-l3"><a class="reference internal" href="adr/adr-003-id-only-column-preservation.html#consequences">Consequences</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="adr/adr-004-shadow-write-mutations.html">ADR-004: Shadow-Write Mutation Pattern for Atomicity</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="adr/adr-004-shadow-write-mutations.html#context">Context</a></li>
+<li class="toctree-l3"><a class="reference internal" href="adr/adr-004-shadow-write-mutations.html#decision">Decision</a></li>
+<li class="toctree-l3"><a class="reference internal" href="adr/adr-004-shadow-write-mutations.html#consequences">Consequences</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="adr/adr-005-backend-engine-protocol.html">ADR-005: Backend Engine Protocol for Pluggable DataFrames</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="adr/adr-005-backend-engine-protocol.html#context">Context</a></li>
+<li class="toctree-l3"><a class="reference internal" href="adr/adr-005-backend-engine-protocol.html#decision">Decision</a></li>
+<li class="toctree-l3"><a class="reference internal" href="adr/adr-005-backend-engine-protocol.html#consequences">Consequences</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="adr/adr-006-star-class-decomposition.html">ADR-006: Star Class Decomposition into Specialised Modules</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="adr/adr-006-star-class-decomposition.html#context">Context</a></li>
+<li class="toctree-l3"><a class="reference internal" href="adr/adr-006-star-class-decomposition.html#decision">Decision</a></li>
+<li class="toctree-l3"><a class="reference internal" href="adr/adr-006-star-class-decomposition.html#consequences">Consequences</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="adr/adr-007-cardinality-estimator-extraction.html">ADR-007: Extract Cardinality Estimator from Query Planner</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="adr/adr-007-cardinality-estimator-extraction.html#context">Context</a></li>
+<li class="toctree-l3"><a class="reference internal" href="adr/adr-007-cardinality-estimator-extraction.html#decision">Decision</a></li>
+<li class="toctree-l3"><a class="reference internal" href="adr/adr-007-cardinality-estimator-extraction.html#consequences">Consequences</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">FastOpenData Python Client</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Zero to Hello World</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/hello_world.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="zero-to-hello-world">
+<h1>Zero to Hello World<a class="headerlink" href="#zero-to-hello-world" title="Link to this heading"></a></h1>
+<p>Get a working Cypher query in under 5 minutes.  No external files, no
+databases — just Python and PyCypher.</p>
+<nav class="contents local" id="on-this-page">
+<p class="topic-title">On this page</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="#prerequisites" id="id1">Prerequisites</a></p></li>
+<li><p><a class="reference internal" href="#level-1-your-first-query" id="id2">Level 1: Your First Query</a></p></li>
+<li><p><a class="reference internal" href="#level-2-filtering-with-where" id="id3">Level 2: Filtering with WHERE</a></p></li>
+<li><p><a class="reference internal" href="#level-3-multiple-entity-types" id="id4">Level 3: Multiple Entity Types</a></p></li>
+<li><p><a class="reference internal" href="#level-4-relationships" id="id5">Level 4: Relationships</a></p></li>
+<li><p><a class="reference internal" href="#level-5-aggregation" id="id6">Level 5: Aggregation</a></p></li>
+<li><p><a class="reference internal" href="#runnable-example" id="id7">Runnable Example</a></p></li>
+<li><p><a class="reference internal" href="#next-steps" id="id8">Next Steps</a></p></li>
+</ul>
+</nav>
+<section id="prerequisites">
+<h2><a class="toc-backref" href="#id1" role="doc-backlink">Prerequisites</a><a class="headerlink" href="#prerequisites" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>Python 3.14+</p></li>
+<li><p>PyCypher installed (see <a class="reference internal" href="getting_started.html"><span class="doc">Getting Started</span></a> for installation)</p></li>
+</ul>
+</section>
+<section id="level-1-your-first-query">
+<h2><a class="toc-backref" href="#id2" role="doc-backlink">Level 1: Your First Query</a><a class="headerlink" href="#level-1-your-first-query" title="Link to this heading"></a></h2>
+<p>Three lines of setup, one query, instant results:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pycypher</span><span class="w"> </span><span class="kn">import</span> <span class="n">ContextBuilder</span><span class="p">,</span> <span class="n">Star</span>
+
+<span class="c1"># Create in-memory data</span>
+<span class="n">people</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
+    <span class="s2">&quot;__ID__&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span>
+    <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;Alice&quot;</span><span class="p">,</span> <span class="s2">&quot;Bob&quot;</span><span class="p">,</span> <span class="s2">&quot;Carol&quot;</span><span class="p">],</span>
+    <span class="s2">&quot;age&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">30</span><span class="p">,</span> <span class="mi">25</span><span class="p">,</span> <span class="mi">35</span><span class="p">],</span>
+<span class="p">})</span>
+
+<span class="c1"># Build context and execute</span>
+<span class="n">context</span> <span class="o">=</span> <span class="n">ContextBuilder</span><span class="o">.</span><span class="n">from_dict</span><span class="p">({</span><span class="s2">&quot;Person&quot;</span><span class="p">:</span> <span class="n">people</span><span class="p">})</span>
+<span class="n">star</span> <span class="o">=</span> <span class="n">Star</span><span class="p">(</span><span class="n">context</span><span class="o">=</span><span class="n">context</span><span class="p">)</span>
+
+<span class="n">result</span> <span class="o">=</span> <span class="n">star</span><span class="o">.</span><span class="n">execute_query</span><span class="p">(</span>
+    <span class="s2">&quot;MATCH (p:Person) RETURN p.name AS name, p.age AS age&quot;</span>
+<span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>Output:</strong></p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span> name  age
+Alice   30
+  Bob   25
+Carol   35
+</pre></div>
+</div>
+<p><strong>What just happened:</strong></p>
+<ol class="arabic simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">ContextBuilder.from_dict()</span></code> wrapped your DataFrame as a <code class="docutils literal notranslate"><span class="pre">Person</span></code>
+entity table.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Star</span></code> is the query engine — call <code class="docutils literal notranslate"><span class="pre">execute_query()</span></code> with any Cypher
+string.</p></li>
+<li><p>The result is a standard <code class="docutils literal notranslate"><span class="pre">pandas.DataFrame</span></code>.</p></li>
+</ol>
+<p>The <code class="docutils literal notranslate"><span class="pre">__ID__</span></code> column is required — it uniquely identifies each row (like a
+primary key).</p>
+</section>
+<section id="level-2-filtering-with-where">
+<h2><a class="toc-backref" href="#id3" role="doc-backlink">Level 2: Filtering with WHERE</a><a class="headerlink" href="#level-2-filtering-with-where" title="Link to this heading"></a></h2>
+<p>Add a <code class="docutils literal notranslate"><span class="pre">WHERE</span></code> clause to filter results:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">result</span> <span class="o">=</span> <span class="n">star</span><span class="o">.</span><span class="n">execute_query</span><span class="p">(</span>
+    <span class="s2">&quot;MATCH (p:Person) WHERE p.age &gt;= 30 RETURN p.name AS name, p.age AS age&quot;</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>Output:</strong></p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span> name  age
+Alice   30
+Carol   35
+</pre></div>
+</div>
+<p>Any comparison operator works: <code class="docutils literal notranslate"><span class="pre">=</span></code>, <code class="docutils literal notranslate"><span class="pre">&lt;&gt;</span></code>, <code class="docutils literal notranslate"><span class="pre">&lt;</span></code>, <code class="docutils literal notranslate"><span class="pre">&gt;</span></code>, <code class="docutils literal notranslate"><span class="pre">&lt;=</span></code>, <code class="docutils literal notranslate"><span class="pre">&gt;=</span></code>.
+Combine with <code class="docutils literal notranslate"><span class="pre">AND</span></code>, <code class="docutils literal notranslate"><span class="pre">OR</span></code>, <code class="docutils literal notranslate"><span class="pre">NOT</span></code>.</p>
+</section>
+<section id="level-3-multiple-entity-types">
+<h2><a class="toc-backref" href="#id4" role="doc-backlink">Level 3: Multiple Entity Types</a><a class="headerlink" href="#level-3-multiple-entity-types" title="Link to this heading"></a></h2>
+<p>Add more DataFrames to query across different entity types:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">products</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
+    <span class="s2">&quot;__ID__&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">30</span><span class="p">],</span>
+    <span class="s2">&quot;title&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;Widget&quot;</span><span class="p">,</span> <span class="s2">&quot;Gadget&quot;</span><span class="p">,</span> <span class="s2">&quot;Gizmo&quot;</span><span class="p">],</span>
+    <span class="s2">&quot;price&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mf">9.99</span><span class="p">,</span> <span class="mf">49.99</span><span class="p">,</span> <span class="mf">24.99</span><span class="p">],</span>
+<span class="p">})</span>
+
+<span class="n">context</span> <span class="o">=</span> <span class="n">ContextBuilder</span><span class="o">.</span><span class="n">from_dict</span><span class="p">({</span>
+    <span class="s2">&quot;Person&quot;</span><span class="p">:</span> <span class="n">people</span><span class="p">,</span>
+    <span class="s2">&quot;Product&quot;</span><span class="p">:</span> <span class="n">products</span><span class="p">,</span>
+<span class="p">})</span>
+<span class="n">star</span> <span class="o">=</span> <span class="n">Star</span><span class="p">(</span><span class="n">context</span><span class="o">=</span><span class="n">context</span><span class="p">)</span>
+
+<span class="n">result</span> <span class="o">=</span> <span class="n">star</span><span class="o">.</span><span class="n">execute_query</span><span class="p">(</span>
+    <span class="s2">&quot;MATCH (p:Product) WHERE p.price &lt; 30 &quot;</span>
+    <span class="s2">&quot;RETURN p.title AS product, p.price AS price ORDER BY p.price ASC&quot;</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>Output:</strong></p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>product  price
+ Widget   9.99
+  Gizmo  24.99
+</pre></div>
+</div>
+</section>
+<section id="level-4-relationships">
+<h2><a class="toc-backref" href="#id5" role="doc-backlink">Level 4: Relationships</a><a class="headerlink" href="#level-4-relationships" title="Link to this heading"></a></h2>
+<p>Connect entities with relationships.  A relationship DataFrame needs three
+special columns: <code class="docutils literal notranslate"><span class="pre">__ID__</span></code>, <code class="docutils literal notranslate"><span class="pre">__SOURCE__</span></code> (from-entity ID), and
+<code class="docutils literal notranslate"><span class="pre">__TARGET__</span></code> (to-entity ID):</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">purchases</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
+    <span class="s2">&quot;__ID__&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">100</span><span class="p">,</span> <span class="mi">101</span><span class="p">,</span> <span class="mi">102</span><span class="p">],</span>
+    <span class="s2">&quot;__SOURCE__&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>     <span class="c1"># Person IDs</span>
+    <span class="s2">&quot;__TARGET__&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">30</span><span class="p">],</span>   <span class="c1"># Product IDs</span>
+    <span class="s2">&quot;date&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;2024-01&quot;</span><span class="p">,</span> <span class="s2">&quot;2024-02&quot;</span><span class="p">,</span> <span class="s2">&quot;2024-03&quot;</span><span class="p">],</span>
+<span class="p">})</span>
+
+<span class="n">context</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">ContextBuilder</span><span class="p">()</span>
+    <span class="o">.</span><span class="n">add_entity</span><span class="p">(</span><span class="s2">&quot;Person&quot;</span><span class="p">,</span> <span class="n">people</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">add_entity</span><span class="p">(</span><span class="s2">&quot;Product&quot;</span><span class="p">,</span> <span class="n">products</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">add_relationship</span><span class="p">(</span>
+        <span class="s2">&quot;BOUGHT&quot;</span><span class="p">,</span> <span class="n">purchases</span><span class="p">,</span>
+        <span class="n">source_col</span><span class="o">=</span><span class="s2">&quot;__SOURCE__&quot;</span><span class="p">,</span> <span class="n">target_col</span><span class="o">=</span><span class="s2">&quot;__TARGET__&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="o">.</span><span class="n">build</span><span class="p">()</span>
+<span class="p">)</span>
+<span class="n">star</span> <span class="o">=</span> <span class="n">Star</span><span class="p">(</span><span class="n">context</span><span class="o">=</span><span class="n">context</span><span class="p">)</span>
+
+<span class="n">result</span> <span class="o">=</span> <span class="n">star</span><span class="o">.</span><span class="n">execute_query</span><span class="p">(</span>
+    <span class="s2">&quot;MATCH (person:Person)-[:BOUGHT]-&gt;(item:Product) &quot;</span>
+    <span class="s2">&quot;RETURN person.name AS buyer, item.title AS product &quot;</span>
+    <span class="s2">&quot;ORDER BY buyer, product&quot;</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>Output:</strong></p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>buyer product
+Alice   Gizmo
+Alice  Widget
+  Bob  Gadget
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">-[:BOUGHT]-&gt;</span></code> arrow in the MATCH pattern follows the relationship
+from source to target.</p>
+</section>
+<section id="level-5-aggregation">
+<h2><a class="toc-backref" href="#id6" role="doc-backlink">Level 5: Aggregation</a><a class="headerlink" href="#level-5-aggregation" title="Link to this heading"></a></h2>
+<p>Use <code class="docutils literal notranslate"><span class="pre">count()</span></code>, <code class="docutils literal notranslate"><span class="pre">collect()</span></code>, <code class="docutils literal notranslate"><span class="pre">sum()</span></code>, <code class="docutils literal notranslate"><span class="pre">avg()</span></code>, and other aggregation
+functions:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">result</span> <span class="o">=</span> <span class="n">star</span><span class="o">.</span><span class="n">execute_query</span><span class="p">(</span>
+    <span class="s2">&quot;MATCH (person:Person)-[:BOUGHT]-&gt;(item:Product) &quot;</span>
+    <span class="s2">&quot;RETURN person.name AS buyer, count(item) AS items_bought, &quot;</span>
+    <span class="s2">&quot;       collect(item.title) AS products &quot;</span>
+    <span class="s2">&quot;ORDER BY items_bought DESC&quot;</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>Output:</strong></p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>buyer  items_bought        products
+Alice             2  [Widget, Gizmo]
+  Bob             1        [Gadget]
+</pre></div>
+</div>
+</section>
+<section id="runnable-example">
+<h2><a class="toc-backref" href="#id7" role="doc-backlink">Runnable Example</a><a class="headerlink" href="#runnable-example" title="Link to this heading"></a></h2>
+<p>All the code above is available as a single runnable file:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>examples/hello_world.py
+</pre></div>
+</div>
+</section>
+<section id="next-steps">
+<h2><a class="toc-backref" href="#id8" role="doc-backlink">Next Steps</a><a class="headerlink" href="#next-steps" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="getting_started.html"><span class="doc">Getting Started</span></a> — Full getting started guide with all Cypher features</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">examples/quickstart.py</span></code> — Extended example with error handling</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">examples/social_network/run_demo.py</span></code> — Graph traversal patterns</p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="index.html" class="btn btn-neutral float-left" title="PyCypher Documentation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="getting_started.html" class="btn btn-neutral float-right" title="Getting Started" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, PyCypher Contributors.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

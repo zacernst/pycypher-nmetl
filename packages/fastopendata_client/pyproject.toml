@@ -1,0 +1,50 @@
+[project]
+name = "fastopendata-client"
+version = "0.1.0"
+description = "Python client and CLI for FastOpenData project"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+  "click>=8.3.3",
+  "pydantic>=2.13.4",
+  "pytest>=9.0.3",
+  "requests>=2.34.2",
+  "rich>=14.3.4",
+]
+
+[tool.ruff]
+# Set the maximum line length for both linting and formatting
+line-length = 88
+
+# Target specific Python versions
+target-version = "py314"
+
+# Exclude common directories from linting and formatting
+exclude = [".git", ".venv", "__pycache__", "build", "dist"]
+
+[tool.ruff.lint]
+# Select specific rule categories
+# E: pycodestyle errors, F: Pyflakes, I: isort, W: pycodestyle warnings
+select = ["E", "F", "I", "W"]
+
+# Ignore rules that conflict with your coding style
+ignore = [
+  # "E501", # Ignore line-length violations (let the formatter handle it)
+]
+
+# Allow fixing lint issues automatically (used by "ruff_fix")
+fixable = ["ALL"]
+unfixable = []
+
+[tool.ruff.lint.isort]
+# Configure import sorting behavior
+combine-as-imports = true
+force-single-line = false
+known-first-party = ["my_project_package"]
+
+[tool.ruff.format]
+# Configure code formatting options (similar to Black)
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
